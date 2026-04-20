@@ -162,12 +162,42 @@ const initFilters = () => {
 };
 
 
-/* --- 4. CREATION DE COMPTES UTILISATEURS --- */
+/* --- 4. CREATION DE COMPTES UTILISATEURS (AVEC FORMATAGE & PASSWORD AUTO) --- */
+
+// Générateur de mot de passe aléatoire de 10 caractères
+const generateRandomPassword = () => {
+    const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%&";
+    let password = "";
+    for (let i = 0; i < 10; i++) {
+        password += charset.charAt(Math.floor(Math.random() * charset.length));
+    }
+    return password;
+};
+
+// Formateur de texte intelligent (Majuscule pour Nom, Majuscules intelligentes pour Prénom)
+const formatNom = (str) => str.toUpperCase();
+const formatPrenom = (str) => {
+    // Met en majuscule la première lettre et toute lettre suivant un espace ou un tiret
+    return str.toLowerCase().replace(/(^|\s|-)\S/g, letter => letter.toUpperCase());
+};
+
 const initUserCreation = () => {
     const form = document.getElementById('create-user-form');
     const msgBox = document.getElementById('user-creation-msg');
+    const pwdInput = document.getElementById('new-user-password');
+    const regenBtn = document.getElementById('btn-regen-pwd');
 
     if (!form) return;
+
+    // Remplir le mot de passe au démarrage
+    if (pwdInput) pwdInput.value = generateRandomPassword();
+
+    // Bouton pour regénérer un mot de passe
+    if (regenBtn) {
+        regenBtn.addEventListener('click', () => {
+            pwdInput.value = generateRandomPassword();
+        });
+    }
 
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -176,10 +206,14 @@ const initUserCreation = () => {
         msgBox.textContent = 'Création en cours...';
         msgBox.style.display = 'block';
 
-        const prenom = document.getElementById('new-user-prenom').value.trim();
-        const nom = document.getElementById('new-user-nom').value.trim();
+        // Formatage strict imposé par le code
+        const rawPrenom = document.getElementById('new-user-prenom').value.trim();
+        const rawNom = document.getElementById('new-user-nom').value.trim();
+        
+        const prenom = formatPrenom(rawPrenom);
+        const nom = formatNom(rawNom);
         const email = document.getElementById('new-user-email').value.trim();
-        const password = document.getElementById('new-user-password').value;
+        const password = document.getElementById('new-user-password').value; // Le mot de passe généré
         const role = document.getElementById('new-user-role').value;
 
         try {
@@ -201,8 +235,11 @@ const initUserCreation = () => {
             await sendPasswordResetEmail(auth, email);
 
             msgBox.classList.add('success');
-            msgBox.textContent = `✅ Compte créé ! Un email a été envoyé.`;
+            msgBox.textContent = `✅ Compte créé pour ${prenom} ${nom} ! Un email a été envoyé.`;
+            
             form.reset(); 
+            // Regénérer un nouveau mot de passe pour le compte suivant
+            pwdInput.value = generateRandomPassword();
             fetchUsers(); 
 
         } catch (error) {
@@ -214,7 +251,7 @@ const initUserCreation = () => {
 };
 
 
-/* --- 5. MODALE D'EDITION (GOD MODE & SECURITE) --- */
+/* --- 5. MODALE D'EDITION (GOD MODE & SECURITE & FORMATAGE) --- */
 const openEditModal = (userId) => {
     const targetUser = allUsersData.find(u => u.id === userId);
     if(!targetUser) return;
@@ -243,7 +280,7 @@ const openEditModal = (userId) => {
     roleSelect.value = targetUser.role || 'student';
     statutSelect.value = targetUser.statut || 'actif';
 
-    // Réinitialisation de tous les verrous par défaut (On ouvre tout)
+    // Réinitialisation de tous les verrous par défaut
     prenomInput.disabled = false;
     nomInput.disabled = false;
     roleSelect.disabled = false;
@@ -259,63 +296,52 @@ const openEditModal = (userId) => {
 
     const godExists = allUsersData.some(u => u.isGod === true);
 
-    // ==========================================
     // RÈGLES DE SÉCURITÉ DE LA MODALE
-    // ==========================================
-
-    // RÈGLE 1 : VERROUILLAGE TOTAL SI ON REGARDE LE GOD EN ÉTANT UN SIMPLE ADMIN
     if (targetUser.isGod && !isCurrentUserGod) {
         prenomInput.disabled = true;
         nomInput.disabled = true;
         roleSelect.disabled = true;
         statutSelect.disabled = true;
-        resetPwdBtn.style.display = 'none'; // Pas de reset de mdp possible
-        submitBtn.style.display = 'none'; // Pas d'enregistrement possible
-        deleteZone.style.display = 'none'; // Pas de suppression possible
+        resetPwdBtn.style.display = 'none';
+        submitBtn.style.display = 'none';
+        deleteZone.style.display = 'none'; 
         
         godContainer.style.display = 'block';
         godLabelWrapper.style.display = 'none';
         godDesc.style.marginTop = '0';
         godDesc.innerHTML = "<span style='color: #ffd700; font-size: 1.1rem; font-weight: bold;'>👑 Cet utilisateur est l'Administrateur Suprême (Lecture seule).</span>";
     } 
-    
-    // RÈGLE 2 : SI LE GOD REGARDE SON PROPRE PROFIL
     else if (targetUser.isGod && isCurrentUserGod) {
-        deleteZone.style.display = 'none'; // Ne peut pas se suicider
-        roleSelect.disabled = true; // Ne peut pas se dégrader tout seul
-        statutSelect.disabled = true; // Ne peut pas se suspendre
+        deleteZone.style.display = 'none'; 
+        roleSelect.disabled = true; 
+        statutSelect.disabled = true; 
 
         godContainer.style.display = 'block';
         godLabelWrapper.style.display = 'none';
         godDesc.style.marginTop = '0';
         godDesc.innerHTML = "<span style='color: #ffd700; font-size: 1.1rem; font-weight: bold;'>👑 Vous êtes l'Administrateur Suprême de la plateforme.</span>";
     }
-
-    // RÈGLE 3 : GESTION DU COURONNEMENT (LE TRÔNE EST VIDE OU LE GOD LE CÈDE)
     else if (!targetUser.isGod && targetUser.role === 'admin') {
         if (!godExists) {
             godContainer.style.display = 'block';
             godCheckbox.disabled = false;
             if (targetUser.id === currentUid) {
                 godDesc.innerHTML = "Aucun God n'existe. Cochez pour <strong>réclamer</strong> les pouvoirs suprêmes (irréversible).";
-                deleteZone.style.display = 'none'; // Pas de suicide
+                deleteZone.style.display = 'none'; 
             } else {
                 godDesc.innerHTML = "Aucun God n'existe. Cochez pour lui <strong>donner</strong> les pouvoirs suprêmes.";
             }
         } else if (isCurrentUserGod) {
-            // Le God actuel veut transférer son pouvoir
             godContainer.style.display = 'block';
             godCheckbox.disabled = false;
             godDesc.innerHTML = "⚠️ En cochant cette case, vous lui <strong>transférez</strong> vos pouvoirs suprêmes. Vous les perdrez définitivement.";
         }
     }
 
-    // RÈGLE 4 : PROTECTION DE BASE CONTRE LE SUICIDE ADMIN (Si pas God)
     if (targetUser.id === currentUid && !targetUser.isGod) {
         deleteZone.style.display = 'none';
     }
 
-    // RÈGLE 5 : UN ADMIN NORMAL NE PEUT PAS SUPPRIMER UN AUTRE ADMIN
     if (targetUser.role === 'admin' && !isCurrentUserGod && targetUser.id !== currentUid) {
         deleteZone.style.display = 'none';
     }
@@ -339,7 +365,6 @@ const initModalLogic = () => {
         const userId = document.getElementById('edit-user-id').value;
         const targetUser = allUsersData.find(u => u.id === userId);
 
-        // Ultime vérification de sécurité côté JS
         if (targetUser.isGod && !isCurrentUserGod) {
             alert("❌ Accès refusé : Impossible de réinitialiser le mot de passe de l'Administrateur Suprême.");
             return;
@@ -359,7 +384,6 @@ const initModalLogic = () => {
         const userId = document.getElementById('edit-user-id').value;
         const targetUser = allUsersData.find(u => u.id === userId);
 
-        // Ultime vérification de sécurité côté JS
         if (targetUser.isGod && !isCurrentUserGod) {
             alert("❌ Accès refusé : Vous ne pouvez pas modifier le profil de l'Administrateur Suprême.");
             return;
@@ -367,13 +391,16 @@ const initModalLogic = () => {
         
         const updates = {};
         
-        // On n'enregistre que ce qui n'est pas verrouillé
+        // FORMATAGE STRICT APPLIQUE EGALEMENT A LA MODIFICATION
         if (!document.getElementById('edit-user-prenom').disabled) {
-            updates.prenom = document.getElementById('edit-user-prenom').value.trim();
+            const rawPrenom = document.getElementById('edit-user-prenom').value.trim();
+            updates.prenom = formatPrenom(rawPrenom);
         }
         if (!document.getElementById('edit-user-nom').disabled) {
-            updates.nom = document.getElementById('edit-user-nom').value.trim();
+            const rawNom = document.getElementById('edit-user-nom').value.trim();
+            updates.nom = formatNom(rawNom);
         }
+        
         if (!document.getElementById('edit-user-role').disabled) {
             updates.role = document.getElementById('edit-user-role').value;
             updates.statut = document.getElementById('edit-user-statut').value;
@@ -404,7 +431,6 @@ const initModalLogic = () => {
         const userId = document.getElementById('edit-user-id').value;
         const targetUser = allUsersData.find(u => u.id === userId);
 
-        // Ultime vérification de sécurité côté JS
         if (targetUser.isGod) {
             alert("❌ Accès refusé : Le compte Suprême ne peut pas être supprimé.");
             return;
