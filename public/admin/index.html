@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SBI Admin - Dashboard</title>
-    <link rel="stylesheet" href="../public/css/style.css">
+    <title>SBI Admin - Management</title>
+    <link rel="stylesheet" href="../css/style.css">
     <link rel="stylesheet" href="css/admin.css">
 </head>
 <body class="admin-layout">
@@ -13,31 +13,87 @@
         <div class="sidebar-header">
             <span class="logo-text">SBI <span class="text-blue">A</span>DMIN</span>
         </div>
+        
         <nav class="sidebar-nav">
-            <a href="#" class="nav-item active">📊 Dashboard</a>
-            <a href="#" class="nav-item">⚽ Formations</a>
-            <a href="#" class="nav-item">👥 Étudiants</a>
-            <button id="logout-btn" class="nav-item btn-logout">🚪 Déconnexion</button>
+            <button class="nav-item active" data-target="view-dashboard">📊 Dashboard</button>
+            <button class="nav-item" data-target="view-users">👥 Gestion des comptes</button>
+            <button class="nav-item" data-target="view-courses">⚽ Formations</button>
+            
+            <div class="sidebar-footer">
+                <button id="btn-clear-cache" class="nav-item action-btn">🔄 Vider le cache</button>
+                <a href="../index.html" class="nav-item action-btn">🌍 Retour au site</a>
+                <button id="logout-btn" class="nav-item btn-logout text-red">🚪 Déconnexion</button>
+            </div>
         </nav>
     </aside>
 
     <main class="admin-main">
-        <header class="main-header">
-            <h1 class="uppercase">Tableau de b<span class="text-blue">o</span>rd</h1>
-        </header>
-
-        <section class="admin-content">
+        
+        <section id="view-dashboard" class="admin-view active">
+            <header class="main-header">
+                <h1 class="uppercase">Tableau de b<span class="text-blue">o</span>rd</h1>
+                <p class="subtitle">Vue d'ensemble de la plateforme</p>
+            </header>
             <div class="stats-grid">
-                <div class="card stat-card"><h3>12</h3><p>Formations</p></div>
-                <div class="card stat-card"><h3>154</h3><p>Étudiants</p></div>
-                <div class="card stat-card"><h3>89%</h3><p>Taux de réussite</p></div>
+                <div class="card stat-card"><h3>12</h3><p>Formations actives</p></div>
+                <div class="card stat-card"><h3>154</h3><p>Étudiants inscrits</p></div>
+                <div class="card stat-card"><h3>3</h3><p>Enseignants</p></div>
             </div>
         </section>
+
+        <section id="view-users" class="admin-view">
+            <header class="main-header">
+                <h1 class="uppercase">Gest<span class="text-blue">i</span>on des comptes</h1>
+                <p class="subtitle">Créer et gérer les accès étudiants et enseignants.</p>
+            </header>
+            
+            <div class="admin-grid-layout">
+                <div class="card form-card">
+                    <h2 style="margin-bottom: 1.5rem; border-bottom: 1px solid #333; padding-bottom: 1rem;">Créer un accès</h2>
+                    <form id="create-user-form">
+                        <div class="form-group">
+                            <label>Nom complet</label>
+                            <input type="text" id="new-user-name" required placeholder="Ex: Jean Dupont">
+                        </div>
+                        <div class="form-group">
+                            <label>Adresse Email</label>
+                            <input type="email" id="new-user-email" required placeholder="jean@exemple.com">
+                        </div>
+                        <div class="form-group">
+                            <label>Mot de passe provisoire</label>
+                            <input type="password" id="new-user-password" required placeholder="Min. 6 caractères">
+                        </div>
+                        <div class="form-group">
+                            <label>Rôle sur la plateforme</label>
+                            <select id="new-user-role" required>
+                                <option value="student">Étudiant</option>
+                                <option value="teacher">Enseignant</option>
+                                <option value="admin">Administrateur</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn-primary" style="width: 100%; margin-top: 1rem;">Créer le compte</button>
+                    </form>
+                    <div id="user-creation-msg" class="sys-msg"></div>
+                </div>
+
+                <div class="card list-card">
+                    <h2 style="margin-bottom: 1.5rem; border-bottom: 1px solid #333; padding-bottom: 1rem;">Comptes récents</h2>
+                    <div id="users-list-container" class="empty-state">
+                        <p>La liste des utilisateurs apparaîtra ici.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="view-courses" class="admin-view">
+            <header class="main-header">
+                <h1 class="uppercase">Format<span class="text-blue">i</span>ons</h1>
+            </header>
+            <div class="card"><p>L'interface de création de cours arrivera ici.</p></div>
+        </section>
+
     </main>
 
-    <script type="module">
-        import { logoutUser } from '../public/js/auth.js';
-        document.getElementById('logout-btn').addEventListener('click', logoutUser);
-    </script>
+    <script type="module" src="js/admin-core.js"></script>
 </body>
 </html>
