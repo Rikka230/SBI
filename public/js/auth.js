@@ -56,22 +56,20 @@ const fetchUserRole = async (uid) => {
 /* --- 1.3 ROUTE GUARD & REDIRECTIONS --- */
 const enforceSecurityPolicies = (user, role) => {
     const currentPath = window.location.pathname;
+    console.log("📍 Position actuelle :", currentPath, "| Rôle détecté :", role);
 
-    // Règle A : Si l'utilisateur est connecté et se trouve sur la page login
     if (user && currentPath.includes('login.html')) {
         if (role === 'admin') {
+            console.log("🚀 Redirection vers Admin...");
             window.location.href = '../admin/index.html';
         } else if (role === 'teacher') {
             window.location.href = '../teacher/index.html';
-        } else {
+        } else if (role === 'student') {
+            console.log("🚀 Redirection vers Étudiant...");
             window.location.href = '../student/dashboard.html';
+        } else {
+            console.error("❌ Rôle inconnu, arrêt de la redirection pour éviter une boucle.");
         }
-        return;
-    }
-
-    // Règle B : Protection du Back-Office Admin (éjecte quiconque n'est pas admin)
-    if (currentPath.includes('/admin') && role !== 'admin') {
-        window.location.href = '../public/login.html';
         return;
     }
 
