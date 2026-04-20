@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SBI - Espace Enseignant</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="sbi-diagonal-bg" style="min-height: 100vh; display: flex; flex-direction: column;">
+
+    <header class="site-header">
+        <div class="logo-container sbi-break-box">
+            <span class="logo-text">SBI <span class="text-blue">T</span>EACHER</span>
+        </div>
+        <button id="logout-btn" class="btn-secondary" style="border-color: #ff4a4a; color: #ff4a4a;">🚪 Déconnexion</button>
+    </header>
+
+    <main style="flex-grow: 1; display: flex; align-items: center; justify-content: center; padding: 0 5%;">
+        <div class="card fade-in text-center" style="max-width: 600px; width: 100%;">
+            <h1 class="uppercase" style="margin-bottom: 1rem;">Bienvenue dans votre espace <span class="text-blue">e</span>nseignant</h1>
+            <p style="color: var(--text-muted); margin-bottom: 2rem;">L'interface de gestion de vos classes est en cours de construction.</p>
+        </div>
+    </main>
+
+    <script type="module">
+        import { logoutUser } from '/js/auth.js';
+        document.getElementById('logout-btn').addEventListener('click', logoutUser);
+    </script>
+</body>
+</html>
