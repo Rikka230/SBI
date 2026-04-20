@@ -33,11 +33,25 @@ const secondaryAuth = getAuth(secondaryApp);
 let allUsersData = [];
 
 
-/* --- 2. NAVIGATION INTERNE --- */
+/* --- 2. NAVIGATION INTERNE AVEC MEMOIRE (F5) --- */
 const initNavigation = () => {
     const navButtons = document.querySelectorAll('.nav-item[data-target]');
     const views = document.querySelectorAll('.admin-view');
 
+    // Vérifier si un onglet était déjà ouvert avant le rafraîchissement
+    const savedTab = sessionStorage.getItem('activeAdminTab');
+    if (savedTab) {
+        navButtons.forEach(b => b.classList.remove('active'));
+        views.forEach(v => v.classList.remove('active'));
+        
+        const activeBtn = document.querySelector(`.nav-item[data-target="${savedTab}"]`);
+        if (activeBtn) activeBtn.classList.add('active');
+        
+        const activeView = document.getElementById(savedTab);
+        if (activeView) activeView.classList.add('active');
+    }
+
+    // Comportement au clic
     navButtons.forEach(btn => {
         btn.addEventListener('click', (e) => {
             navButtons.forEach(b => b.classList.remove('active'));
@@ -46,6 +60,9 @@ const initNavigation = () => {
             const targetId = e.target.getAttribute('data-target');
             e.target.classList.add('active');
             document.getElementById(targetId).classList.add('active');
+
+            // Sauvegarder l'onglet cliqué dans la mémoire session
+            sessionStorage.setItem('activeAdminTab', targetId);
         });
     });
 };
@@ -80,26 +97,31 @@ const renderUsersList = (usersToRender) => {
 
     usersToRender.forEach(user => {
         const displayName = (user.prenom && user.nom) ? `${user.prenom} ${user.nom}` : (user.nom || "Sans nom");
-        const statusLabel = user.statut === 'suspendu' ? '<span style="color: #ff4a4a; font-weight:bold;">● Suspendu</span>' : '<span style="color: #2ed573; font-weight:bold;">● Actif</span>';
+        const statusLabel = user.statut === 'suspendu' ? '<span style="color: #ff4a4a; font-weight:bold;">Suspendu</span>' : '<span style="color: #2ed573; font-weight:bold;">Actif</span>';
 
         let roleBadge = '';
-        if(user.role === 'admin') roleBadge = '<span style="background: rgba(255, 74, 74, 0.2); color: #ff4a4a; padding: 3px 10px; border-radius: 12px; font-size: 0.8rem; font-weight:bold; display:inline-block;">Admin</span>';
-        if(user.role === 'teacher') roleBadge = '<span style="background: rgba(42, 87, 255, 0.2); color: var(--sbi-blue); padding: 3px 10px; border-radius: 12px; font-size: 0.8rem; font-weight:bold; display:inline-block;">Enseignant</span>';
-        if(user.role === 'student') roleBadge = '<span style="background: rgba(46, 213, 115, 0.2); color: #2ed573; padding: 3px 10px; border-radius: 12px; font-size: 0.8rem; font-weight:bold; display:inline-block;">Étudiant</span>';
+        if(user.role === 'admin') roleBadge = '<span style="color: #ff4a4a; font-weight:bold;">Admin</span>';
+        if(user.role === 'teacher') roleBadge = '<span style="color: var(--sbi-blue); font-weight:bold;">Enseignant</span>';
+        if(user.role === 'student') roleBadge = '<span style="color: #9ca3af; font-weight:bold;">Étudiant</span>';
 
-        // STRUCTURE GRID A 2 COLONNES STRICTES
+        // STRUCTURE GRID SUR 1 SEULE LIGNE (Rôle | Nom | Email | Statut | Bouton)
         const userCardHTML = `
-            <div style="background: #0a0a0c; padding: 1.2rem; border: 1px solid #222; border-radius: 6px; margin-bottom: 0.8rem; display: grid; grid-template-columns: 1fr auto; gap: 1.5rem; align-items: center; opacity: ${user.statut === 'suspendu' ? '0.6' : '1'}; transition: all 0.2s;">
+            <div style="background: #0a0a0c; padding: 0.8rem 1.2rem; border: 1px solid #222; border-radius: 6px; margin-bottom: 0.5rem; display: grid; grid-template-columns: 100px 1.5fr 2fr 100px 120px; gap: 1rem; align-items: center; opacity: ${user.statut === 'suspendu' ? '0.6' : '1'}; transition: all 0.2s;">
                 
-                <div style="display: flex; flex-direction: column; gap: 0.4rem; overflow: hidden;">
-                    <h4 style="margin: 0; font-size: 1.1rem; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${displayName}</h4>
-                    <div style="margin: 0;">${roleBadge}</div>
-                    <p style="margin: 0; font-size: 0.85rem; color: #9ca3af; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">📧 ${user.email}</p>
-                    <div style="margin: 0; font-size: 0.85rem;">${statusLabel}</div>
+                <div style="font-size: 0.9rem;">${roleBadge}</div>
+                
+                <div style="color: white; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${displayName}">
+                    ${displayName}
                 </div>
-
-                <div>
-                    <button class="btn-secondary btn-edit-user" data-id="${user.id}" style="padding: 0.6rem 1.5rem; font-size: 0.9rem; min-width: 120px; white-space: nowrap; text-align: center;">Éditer</button>
+                
+                <div style="color: #9ca3af; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${user.email}">
+                    ${user.email}
+                </div>
+                
+                <div style="font-size: 0.85rem;">${statusLabel}</div>
+                
+                <div style="text-align: right;">
+                    <button class="btn-secondary btn-edit-user" data-id="${user.id}" style="padding: 0.4rem 1rem; font-size: 0.85rem; width: 100%;">Éditer</button>
                 </div>
                 
             </div>
