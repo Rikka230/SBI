@@ -98,7 +98,7 @@
                         </div>
                     </div>
                     
-                    <div style="display: grid; grid-template-columns: 100px 1.5fr 2fr 100px 120px; gap: 1rem; padding: 0.5rem 1.2rem; color: #9ca3af; font-size: 0.8rem; font-weight: bold; text-transform: uppercase; border-bottom: 1px solid #222; margin-bottom: 0.8rem;">
+                    <div style="display: grid; grid-template-columns: 120px 1.5fr 2fr 100px 120px; gap: 1rem; padding: 0.5rem 1.2rem; color: #9ca3af; font-size: 0.8rem; font-weight: bold; text-transform: uppercase; border-bottom: 1px solid #222; margin-bottom: 0.8rem;">
                         <div>Rôle</div>
                         <div>Utilisateur</div>
                         <div>Email</div>
@@ -142,7 +142,6 @@
                 <div class="form-group">
                     <label>Email de connexion (Lecture seule)</label>
                     <input type="email" id="edit-user-email" disabled style="opacity: 0.5; cursor: not-allowed;">
-                    <small style="color: #9ca3af; display: block; margin-top: 0.5rem;">Pour changer d'email, supprimez puis recréez le compte.</small>
                 </div>
                 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
@@ -163,6 +162,14 @@
                         </select>
                     </div>
                 </div>
+
+                <div id="god-mode-container" style="display: none; background: rgba(255, 215, 0, 0.1); padding: 1rem; border: 1px solid #ffd700; border-radius: 4px; margin-bottom: 1.5rem;">
+                    <label style="color: #ffd700; font-weight: bold; display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                        <input type="checkbox" id="edit-user-isgod" style="width: auto; margin: 0;">
+                        👑 Administrateur Suprême (God Mode)
+                    </label>
+                    <small id="god-mode-desc" style="color: #9ca3af; display: block; margin-top: 0.5rem;">Cochez pour transférer les pouvoirs suprêmes. Vous les perdrez.</small>
+                </div>
                 
                 <button type="button" id="reset-pwd-btn" class="btn-secondary" style="width: 100%; margin-bottom: 1.5rem; border-color: var(--sbi-blue); color: var(--sbi-blue);">📧 Envoyer un lien de réinitialisation de mot de passe</button>
 
@@ -171,7 +178,7 @@
                     <button type="button" id="close-modal-btn" class="btn-secondary" style="flex: 1;">Annuler</button>
                 </div>
 
-                <div style="margin-top: 1.5rem; text-align: center; border-top: 1px solid #333; padding-top: 1rem;">
+                <div id="delete-zone" style="margin-top: 1.5rem; text-align: center; border-top: 1px solid #333; padding-top: 1rem;">
                     <button type="button" id="delete-user-btn" class="nav-item text-red" style="width: 100%; justify-content: center; display: flex; font-weight: bold; background: rgba(255, 74, 74, 0.1); border-radius: 4px;">⚠️ Supprimer le compte définitivement</button>
                 </div>
             </form>
