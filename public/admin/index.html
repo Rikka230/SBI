@@ -65,11 +65,16 @@
                             <label>Adresse Email</label>
                             <input type="email" id="new-user-email" required placeholder="jean@exemple.com">
                         </div>
+                        
                         <div class="form-group">
                             <label>Mot de passe provisoire</label>
-                            <input type="password" id="new-user-password" required placeholder="Min. 6 caractères">
-                            <small style="color: #9ca3af; display: block; margin-top: 0.5rem;">Un email lui sera envoyé pour le modifier.</small>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <input type="text" id="new-user-password" required readonly style="background-color: #1e1e24; color: #00ffa3; font-weight: bold; font-family: monospace; letter-spacing: 2px;">
+                                <button type="button" id="btn-regen-pwd" class="btn-secondary" title="Générer un autre mot de passe" style="padding: 0 1rem;">🔄</button>
+                            </div>
+                            <small style="color: #9ca3af; display: block; margin-top: 0.5rem;">Généré automatiquement. Un email lui sera envoyé pour le modifier.</small>
                         </div>
+                        
                         <div class="form-group">
                             <label>Rôle sur la plateforme</label>
                             <select id="new-user-role" required>
