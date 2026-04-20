@@ -44,16 +44,22 @@
         <section id="view-users" class="admin-view">
             <header class="main-header">
                 <h1 class="uppercase">Gest<span class="text-blue">i</span>on des comptes</h1>
-                <p class="subtitle">Créer et gérer les accès étudiants et enseignants.</p>
+                <p class="subtitle">Créer, rechercher et gérer les accès de la plateforme.</p>
             </header>
             
             <div class="admin-grid-layout">
                 <div class="card form-card">
                     <h2 style="margin-bottom: 1.5rem; border-bottom: 1px solid #333; padding-bottom: 1rem;">Créer un accès</h2>
                     <form id="create-user-form">
-                        <div class="form-group">
-                            <label>Nom complet</label>
-                            <input type="text" id="new-user-name" required placeholder="Ex: Jean Dupont">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div class="form-group">
+                                <label>Prénom</label>
+                                <input type="text" id="new-user-prenom" required placeholder="Jean">
+                            </div>
+                            <div class="form-group">
+                                <label>Nom</label>
+                                <input type="text" id="new-user-nom" required placeholder="Dupont">
+                            </div>
                         </div>
                         <div class="form-group">
                             <label>Adresse Email</label>
@@ -62,6 +68,7 @@
                         <div class="form-group">
                             <label>Mot de passe provisoire</label>
                             <input type="password" id="new-user-password" required placeholder="Min. 6 caractères">
+                            <small style="color: #9ca3af; display: block; margin-top: 0.5rem;">Un email lui sera envoyé pour le modifier.</small>
                         </div>
                         <div class="form-group">
                             <label>Rôle sur la plateforme</label>
@@ -77,9 +84,22 @@
                 </div>
 
                 <div class="card list-card">
-                    <h2 style="margin-bottom: 1.5rem; border-bottom: 1px solid #333; padding-bottom: 1rem;">Comptes récents</h2>
-                    <div id="users-list-container" class="empty-state">
-                        <p>La liste des utilisateurs apparaîtra ici.</p>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid #333; padding-bottom: 1rem;">
+                        <h2 style="margin: 0;">Comptes existants</h2>
+                        
+                        <div style="display: flex; gap: 1rem;">
+                            <input type="text" id="search-user" placeholder="Rechercher un nom..." style="padding: 0.5rem; background: #0a0a0c; border: 1px solid #333; color: white; border-radius: 4px;">
+                            <select id="filter-role" style="padding: 0.5rem; background: #0a0a0c; border: 1px solid #333; color: white; border-radius: 4px;">
+                                <option value="all">Tous les rôles</option>
+                                <option value="admin">Admins</option>
+                                <option value="teacher">Enseignants</option>
+                                <option value="student">Étudiants</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div id="users-list-container" style="max-height: 500px; overflow-y: auto;">
+                        <div class="empty-state">Chargement des comptes...</div>
                     </div>
                 </div>
             </div>
