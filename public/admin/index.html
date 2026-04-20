@@ -130,25 +130,35 @@
                         <input type="text" id="edit-user-nom" required>
                     </div>
                 </div>
-                
-                <div class="form-group">
-                    <label>Rôle</label>
-                    <select id="edit-user-role" required>
-                        <option value="student">Étudiant</option>
-                        <option value="teacher">Enseignant</option>
-                        <option value="admin">Administrateur</option>
-                    </select>
-                </div>
 
                 <div class="form-group">
-                    <label>Statut d'accès</label>
-                    <select id="edit-user-statut" required>
-                        <option value="actif">Actif (Accès autorisé)</option>
-                        <option value="suspendu">Suspendu (Accès bloqué)</option>
-                    </select>
+                    <label>Email de connexion (Lecture seule)</label>
+                    <input type="email" id="edit-user-email" disabled style="opacity: 0.5; cursor: not-allowed;">
+                    <small style="color: #9ca3af; display: block; margin-top: 0.5rem;">Pour changer d'email, supprimez puis recréez le compte.</small>
                 </div>
                 
-                <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group">
+                        <label>Rôle</label>
+                        <select id="edit-user-role" required>
+                            <option value="student">Étudiant</option>
+                            <option value="teacher">Enseignant</option>
+                            <option value="admin">Administrateur</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Statut d'accès</label>
+                        <select id="edit-user-statut" required>
+                            <option value="actif">Actif</option>
+                            <option value="suspendu">Suspendu</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <button type="button" id="reset-pwd-btn" class="btn-secondary" style="width: 100%; margin-bottom: 1.5rem; border-color: var(--sbi-blue); color: var(--sbi-blue);">📧 Envoyer un lien de réinitialisation de mot de passe</button>
+
+                <div style="display: flex; gap: 1rem; margin-top: 1rem;">
                     <button type="submit" class="btn-primary" style="flex: 1;">Enregistrer</button>
                     <button type="button" id="close-modal-btn" class="btn-secondary" style="flex: 1;">Annuler</button>
                 </div>
