@@ -7,7 +7,6 @@
 /* --- 1.1 INITIALISATION OUTILS DE BASE --- */
 import { logoutUser } from '/js/auth.js';
 import { db, auth } from '/js/firebase-init.js';
-// Ajout de updateDoc et deleteDoc pour l'édition et suppression
 import { doc, setDoc, collection, getDocs, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
@@ -88,7 +87,6 @@ const renderUsersList = (usersToRender) => {
         if(user.role === 'teacher') roleBadge = '<span style="background: rgba(42, 87, 255, 0.2); color: var(--sbi-blue); padding: 2px 8px; border-radius: 12px; font-size: 0.8rem;">Enseignant</span>';
         if(user.role === 'student') roleBadge = '<span style="background: rgba(46, 213, 115, 0.2); color: #2ed573; padding: 2px 8px; border-radius: 12px; font-size: 0.8rem;">Étudiant</span>';
 
-        // Ajout de l'attribut data-id pour lier le bouton à l'utilisateur
         const userCardHTML = `
             <div style="background: #0a0a0c; padding: 1rem; border: 1px solid #222; border-radius: 4px; margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center; opacity: ${user.statut === 'suspendu' ? '0.6' : '1'};">
                 <div>
@@ -101,7 +99,6 @@ const renderUsersList = (usersToRender) => {
         container.insertAdjacentHTML('beforeend', userCardHTML);
     });
 
-    // Attacher les écouteurs d'événements aux nouveaux boutons "Éditer"
     attachEditListeners();
 };
 
@@ -177,7 +174,7 @@ const initUserCreation = () => {
             await sendPasswordResetEmail(auth, email);
 
             msgBox.classList.add('success');
-            msgBox.textContent = `✅ Compte créé ! Email envoyé.`;
+            msgBox.textContent = `✅ Compte créé ! Un email a été envoyé.`;
             form.reset(); 
             fetchUsers(); 
 
@@ -195,14 +192,13 @@ const openEditModal = (userId) => {
     const user = allUsersData.find(u => u.id === userId);
     if(!user) return;
 
-    // Remplir les champs avec les données actuelles
     document.getElementById('edit-user-id').value = user.id;
     document.getElementById('edit-user-prenom').value = user.prenom || '';
     document.getElementById('edit-user-nom').value = user.nom || '';
+    document.getElementById('edit-user-email').value = user.email || '';
     document.getElementById('edit-user-role').value = user.role || 'student';
     document.getElementById('edit-user-statut').value = user.statut || 'actif';
 
-    // Afficher la modale
     document.getElementById('edit-user-modal').style.display = 'flex';
 };
 
@@ -211,10 +207,23 @@ const initModalLogic = () => {
     const closeBtn = document.getElementById('close-modal-btn');
     const form = document.getElementById('edit-user-form');
     const deleteBtn = document.getElementById('delete-user-btn');
+    const resetPwdBtn = document.getElementById('reset-pwd-btn');
 
     // Fermer la modale
     closeBtn.addEventListener('click', () => {
         modal.style.display = 'none';
+    });
+
+    // Envoi du lien de réinitialisation de mot de passe
+    resetPwdBtn.addEventListener('click', async () => {
+        const userEmail = document.getElementById('edit-user-email').value;
+        try {
+            await sendPasswordResetEmail(auth, userEmail);
+            alert(`✅ Un e-mail de réinitialisation vient d'être envoyé à ${userEmail}`);
+        } catch (error) {
+            console.error("Erreur reset password:", error);
+            alert("❌ Impossible d'envoyer l'e-mail. Vérifiez la connexion.");
+        }
     });
 
     // Enregistrer les modifications
@@ -234,7 +243,7 @@ const initModalLogic = () => {
                 statut: newStatut
             });
             modal.style.display = 'none';
-            fetchUsers(); // Rafraîchir la liste instantanément
+            fetchUsers(); 
         } catch (error) {
             console.error("Erreur mise à jour:", error);
             alert("Erreur lors de la mise à jour des données.");
@@ -248,7 +257,7 @@ const initModalLogic = () => {
             try {
                 await deleteDoc(doc(db, "users", userId));
                 modal.style.display = 'none';
-                fetchUsers(); // Rafraîchir la liste
+                fetchUsers(); 
             } catch (error) {
                 console.error("Erreur suppression:", error);
                 alert("Erreur lors de la suppression du compte.");
@@ -263,5 +272,5 @@ document.addEventListener('DOMContentLoaded', () => {
     initFilters();
     fetchUsers(); 
     initUserCreation();
-    initModalLogic(); // Initialisation de la modale
+    initModalLogic(); 
 });
