@@ -32,26 +32,26 @@ if (loginForm) {
     });
 }
 
-/* --- 1.2 VERIFICATION DES ROLES FIRESTORE --- */
-const fetchUserRole = async (uid) => {
+/* --- 1.2 VERIFICATION PROFIL FIRESTORE (Rôle + Statut) --- */
+const fetchUserData = async (uid) => {
     try {
         const userRef = doc(db, "users", uid);
         const userSnap = await getDoc(userRef);
         
         if (userSnap.exists()) {
-            return userSnap.data().role;
+            return { role: userSnap.data().role, statut: userSnap.data().statut };
         } else {
-            console.warn("⚠️ Aucun rôle trouvé, attribution étudiant par défaut.");
-            return "student"; 
+            console.warn("⚠️ Aucun profil trouvé, attribution étudiant par défaut.");
+            return { role: "student", statut: "actif" }; 
         }
     } catch (error) {
-        console.error("Erreur lors de la lecture du rôle :", error);
-        return "student";
+        console.error("Erreur lors de la lecture du profil :", error);
+        return { role: "student", statut: "actif" };
     }
 };
 
-/* --- 1.3 ROUTE GUARD & REDIRECTIONS (SECURITE ANTI-BOUCLE) --- */
-const enforceSecurityPolicies = (user, role) => {
+/* --- 1.3 ROUTE GUARD & REDIRECTIONS --- */
+const enforceSecurityPolicies = async (user, userData) => {
     const currentPath = window.location.pathname;
 
     // Règle A : Éjecte les non-connectés des zones privées
@@ -64,23 +64,30 @@ const enforceSecurityPolicies = (user, role) => {
         return; 
     }
 
-    // Règle B : Protection stricte du Dashboard Admin
-    if (currentPath.includes('/admin') && role !== 'admin') {
+    // Règle B : BLOCAGE DES COMPTES SUSPENDUS
+    if (userData.statut === 'suspendu') {
+        alert("Votre compte a été suspendu par un administrateur.");
+        await signOut(auth); // On le déconnecte de force
         window.location.replace('/login.html');
         return;
     }
 
-    // Règle C : Redirection POST-LOGIN vers le bon espace
+    // Règle C : Protection stricte du Dashboard Admin
+    if (currentPath.includes('/admin') && userData.role !== 'admin') {
+        window.location.replace('/login.html');
+        return;
+    }
+
+    // Règle D : Redirection POST-LOGIN vers le bon espace
     const isPublicIndex = currentPath === '/' || currentPath === '/index.html' || currentPath === '/index';
     const isLogin = currentPath.includes('login');
 
     if (user && (isPublicIndex || isLogin)) {
-        // La condition !currentPath... empêche la boucle si on y est déjà
-        if (role === 'admin' && !currentPath.includes('/admin')) {
+        if (userData.role === 'admin' && !currentPath.includes('/admin')) {
             window.location.replace('/admin/index.html'); 
-        } else if (role === 'student' && !currentPath.includes('/student')) {
+        } else if (userData.role === 'student' && !currentPath.includes('/student')) {
             window.location.replace('/student/dashboard.html');
-        } else if (role === 'teacher' && !currentPath.includes('/teacher')) {
+        } else if (userData.role === 'teacher' && !currentPath.includes('/teacher')) {
             window.location.replace('/teacher/index.html');
         }
     }
@@ -89,8 +96,8 @@ const enforceSecurityPolicies = (user, role) => {
 /* --- 1.4 OBSERVATEUR D'ETAT GLOBAL --- */
 onAuthStateChanged(auth, async (user) => {
     if (user) {
-        const role = await fetchUserRole(user.uid);
-        enforceSecurityPolicies(user, role);
+        const userData = await fetchUserData(user.uid);
+        enforceSecurityPolicies(user, userData);
     } else {
         enforceSecurityPolicies(null, null);
     }
