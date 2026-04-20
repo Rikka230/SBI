@@ -80,20 +80,28 @@ const renderUsersList = (usersToRender) => {
 
     usersToRender.forEach(user => {
         const displayName = (user.prenom && user.nom) ? `${user.prenom} ${user.nom}` : (user.nom || "Sans nom");
-        const statusLabel = user.statut === 'suspendu' ? '<span style="color: #ff4a4a;">● Suspendu</span>' : '<span style="color: #2ed573;">● Actif</span>';
+        const statusLabel = user.statut === 'suspendu' ? '<span style="color: #ff4a4a; font-weight:bold;">● Suspendu</span>' : '<span style="color: #2ed573; font-weight:bold;">● Actif</span>';
 
         let roleBadge = '';
-        if(user.role === 'admin') roleBadge = '<span style="background: rgba(255, 74, 74, 0.2); color: #ff4a4a; padding: 2px 8px; border-radius: 12px; font-size: 0.8rem;">Admin</span>';
-        if(user.role === 'teacher') roleBadge = '<span style="background: rgba(42, 87, 255, 0.2); color: var(--sbi-blue); padding: 2px 8px; border-radius: 12px; font-size: 0.8rem;">Enseignant</span>';
-        if(user.role === 'student') roleBadge = '<span style="background: rgba(46, 213, 115, 0.2); color: #2ed573; padding: 2px 8px; border-radius: 12px; font-size: 0.8rem;">Étudiant</span>';
+        if(user.role === 'admin') roleBadge = '<span style="background: rgba(255, 74, 74, 0.2); color: #ff4a4a; padding: 3px 10px; border-radius: 12px; font-size: 0.8rem; font-weight:bold; display:inline-block;">Admin</span>';
+        if(user.role === 'teacher') roleBadge = '<span style="background: rgba(42, 87, 255, 0.2); color: var(--sbi-blue); padding: 3px 10px; border-radius: 12px; font-size: 0.8rem; font-weight:bold; display:inline-block;">Enseignant</span>';
+        if(user.role === 'student') roleBadge = '<span style="background: rgba(46, 213, 115, 0.2); color: #2ed573; padding: 3px 10px; border-radius: 12px; font-size: 0.8rem; font-weight:bold; display:inline-block;">Étudiant</span>';
 
+        // STRUCTURE GRID A 2 COLONNES STRICTES
         const userCardHTML = `
-            <div style="background: #0a0a0c; padding: 1rem; border: 1px solid #222; border-radius: 4px; margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center; opacity: ${user.statut === 'suspendu' ? '0.6' : '1'};">
-                <div>
-                    <h4 style="margin: 0 0 0.2rem 0;">${displayName} ${roleBadge}</h4>
-                    <p style="margin: 0; font-size: 0.85rem; color: #9ca3af;">${user.email} | ${statusLabel}</p>
+            <div style="background: #0a0a0c; padding: 1.2rem; border: 1px solid #222; border-radius: 6px; margin-bottom: 0.8rem; display: grid; grid-template-columns: 1fr auto; gap: 1.5rem; align-items: center; opacity: ${user.statut === 'suspendu' ? '0.6' : '1'}; transition: all 0.2s;">
+                
+                <div style="display: flex; flex-direction: column; gap: 0.4rem; overflow: hidden;">
+                    <h4 style="margin: 0; font-size: 1.1rem; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${displayName}</h4>
+                    <div style="margin: 0;">${roleBadge}</div>
+                    <p style="margin: 0; font-size: 0.85rem; color: #9ca3af; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">📧 ${user.email}</p>
+                    <div style="margin: 0; font-size: 0.85rem;">${statusLabel}</div>
                 </div>
-                <button class="btn-secondary btn-edit-user" data-id="${user.id}" style="padding: 0.4rem 1rem; font-size: 0.85rem;">Éditer</button>
+
+                <div>
+                    <button class="btn-secondary btn-edit-user" data-id="${user.id}" style="padding: 0.6rem 1.5rem; font-size: 0.9rem; min-width: 120px; white-space: nowrap; text-align: center;">Éditer</button>
+                </div>
+                
             </div>
         `;
         container.insertAdjacentHTML('beforeend', userCardHTML);
@@ -209,12 +217,10 @@ const initModalLogic = () => {
     const deleteBtn = document.getElementById('delete-user-btn');
     const resetPwdBtn = document.getElementById('reset-pwd-btn');
 
-    // Fermer la modale
     closeBtn.addEventListener('click', () => {
         modal.style.display = 'none';
     });
 
-    // Envoi du lien de réinitialisation de mot de passe
     resetPwdBtn.addEventListener('click', async () => {
         const userEmail = document.getElementById('edit-user-email').value;
         try {
@@ -226,7 +232,6 @@ const initModalLogic = () => {
         }
     });
 
-    // Enregistrer les modifications
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
         const userId = document.getElementById('edit-user-id').value;
@@ -250,7 +255,6 @@ const initModalLogic = () => {
         }
     });
 
-    // Supprimer le profil
     deleteBtn.addEventListener('click', async () => {
         const userId = document.getElementById('edit-user-id').value;
         if(confirm("🛑 DANGER : Cela va supprimer définitivement l'accès de cet utilisateur à la plateforme. Confirmer ?")) {
