@@ -3,27 +3,68 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SBI - Espace Enseignant</title>
-    <link rel="stylesheet" href="/css/style.css">
+    <title>Espace Enseignant - SBI</title>
+    <style>
+        body {
+            background-color: #050505;
+            color: #ffffff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .dashboard-header {
+            width: 100%;
+            max-width: 1000px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #333;
+            padding-bottom: 1rem;
+            margin-bottom: 2rem;
+        }
+        .btn-logout {
+            background-color: #ff4a4a;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .btn-logout:hover {
+            background-color: #ff2a2a;
+        }
+        .content-area {
+            width: 100%;
+            max-width: 1000px;
+            text-align: center;
+            padding: 3rem;
+            background: #111;
+            border: 1px solid #222;
+            border-radius: 8px;
+        }
+    </style>
 </head>
-<body class="sbi-diagonal-bg" style="min-height: 100vh; display: flex; flex-direction: column;">
+<body>
 
-    <header class="site-header">
-        <div class="logo-container sbi-break-box">
-            <span class="logo-text">SBI <span class="text-blue">T</span>EACHER</span>
-        </div>
-        <button id="logout-btn" class="btn-secondary" style="border-color: #ff4a4a; color: #ff4a4a;">🚪 Déconnexion</button>
-    </header>
+    <div class="dashboard-header">
+        <h1>👨‍🏫 Espace Enseignant</h1>
+        <button id="logout-btn" class="btn-logout">🚪 Déconnexion</button>
+    </div>
 
-    <main style="flex-grow: 1; display: flex; align-items: center; justify-content: center; padding: 0 5%;">
-        <div class="card fade-in text-center" style="max-width: 600px; width: 100%;">
-            <h1 class="uppercase" style="margin-bottom: 1rem;">Bienvenue dans votre espace <span class="text-blue">e</span>nseignant</h1>
-            <p style="color: var(--text-muted); margin-bottom: 2rem;">L'interface de gestion de vos classes est en cours de construction.</p>
-        </div>
-    </main>
+    <div class="content-area">
+        <h2>Bienvenue sur votre tableau de bord</h2>
+        <p style="color: #888;">C'est ici que vous pourrez créer et gérer vos modules de formation.</p>
+        
+        <button id="btn-create-formation" style="margin-top: 2rem; padding: 1rem 2rem; background: #2ed573; color: #000; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">+ Créer une nouvelle formation</button>
+    </div>
 
     <script type="module">
         import { logoutUser } from '/js/auth.js';
+        
         document.getElementById('logout-btn').addEventListener('click', logoutUser);
     </script>
 </body>
