@@ -29,7 +29,6 @@ const firebaseConfig = {
 const secondaryApp = initializeApp(firebaseConfig, "AdminCreationApp");
 const secondaryAuth = getAuth(secondaryApp);
 
-// Variables Globales pour la gestion des droits
 let allUsersData = [];
 let currentUid = null;
 let isCurrentUserGod = false;
@@ -78,10 +77,8 @@ const fetchUsers = async () => {
             allUsersData.push({ id: doc.id, ...doc.data() });
         });
 
-        // DEFINITION DU POUVOIR DU COMPTE CONNECTE
         const godExists = allUsersData.some(u => u.isGod === true);
         const myProfile = allUsersData.find(u => u.id === currentUid);
-        // Si aucun God n'existe, tous les admins ont le pouvoir de nommer le premier God
         isCurrentUserGod = godExists ? (myProfile && myProfile.isGod === true) : true;
         
         renderUsersList(allUsersData);
@@ -230,41 +227,49 @@ const openEditModal = (userId) => {
 
     const godContainer = document.getElementById('god-mode-container');
     const godCheckbox = document.getElementById('edit-user-isgod');
+    const godLabelWrapper = godCheckbox.parentElement; // Le label contenant la case
     const godDesc = document.getElementById('god-mode-desc');
+    
     const deleteZone = document.getElementById('delete-zone');
     const roleSelect = document.getElementById('edit-user-role');
     const statutSelect = document.getElementById('edit-user-statut');
 
-    // Réinitialisation par défaut
+    // Réinitialisation de l'affichage par défaut
     godContainer.style.display = 'none';
-    godCheckbox.checked = targetUser.isGod === true;
+    godCheckbox.checked = false;
+    godLabelWrapper.style.display = 'flex'; // Affiche la case à cocher
+    godDesc.style.marginTop = '0.5rem';
     deleteZone.style.display = 'block';
     roleSelect.disabled = false;
     statutSelect.disabled = false;
 
-    // A. LOGIQUE DU GOD MODE (Transfert de pouvoir)
-    if (isCurrentUserGod && targetUser.role === 'admin') {
+    // A. LOGIQUE DU GOD MODE
+    if (targetUser.isGod) {
+        // Le profil ouvert EST le God
         godContainer.style.display = 'block';
-        if (targetUser.isGod) {
-            godCheckbox.disabled = true;
-            godDesc.textContent = "Cet utilisateur détient les pouvoirs suprêmes.";
+        godLabelWrapper.style.display = 'none'; // On masque la case à cocher
+        godDesc.style.marginTop = '0'; // On réajuste l'espacement
+        
+        if (targetUser.id === currentUid) {
+            godDesc.innerHTML = "<span style='color: #ffd700; font-size: 1.1rem; font-weight: bold;'>👑 Vous êtes l'Administrateur Suprême de la plateforme.</span>";
         } else {
-            godCheckbox.disabled = false;
-            godDesc.textContent = "Attention : En cochant cette case, vous lui transférez les pouvoirs suprêmes (vous les perdrez).";
+            godDesc.innerHTML = "<span style='color: #ffd700; font-size: 1.1rem; font-weight: bold;'>👑 Cet utilisateur est l'Administrateur Suprême.</span>";
         }
+    } else if (isCurrentUserGod && targetUser.role === 'admin') {
+        // Le God ouvre le profil d'un Admin normal (Transfert possible)
+        godContainer.style.display = 'block';
+        godCheckbox.disabled = false;
+        godDesc.innerHTML = "Attention : En cochant cette case, vous lui transférez les pouvoirs suprêmes (vous les perdrez).";
     }
 
     // B. LOGIQUE DE VERROUILLAGE DES DROITS DE SUPPRESSION
     if (targetUser.isGod) {
-        // Personne ne peut supprimer, dégrader ou suspendre le God
         deleteZone.style.display = 'none';
         roleSelect.disabled = true;
         statutSelect.disabled = true;
     } else if (targetUser.role === 'admin' && !isCurrentUserGod) {
-        // Seul le God peut supprimer un Admin
         deleteZone.style.display = 'none';
     } else if (targetUser.id === currentUid) {
-        // Un utilisateur ne peut pas se supprimer lui-même
         deleteZone.style.display = 'none';
     }
 
@@ -302,17 +307,14 @@ const initModalLogic = () => {
             nom: document.getElementById('edit-user-nom').value.trim(),
         };
 
-        // On ne met à jour le rôle et statut que s'ils ne sont pas verrouillés
         if (!document.getElementById('edit-user-role').disabled) {
             updates.role = document.getElementById('edit-user-role').value;
             updates.statut = document.getElementById('edit-user-statut').value;
         }
 
-        // Si le God a coché la case pour transférer son pouvoir
-        if (isCurrentUserGod && godCheckbox.checked && !godCheckbox.disabled && targetUser.id !== currentUid) {
+        if (isCurrentUserGod && godCheckbox.checked && godCheckbox.parentElement.style.display !== 'none' && targetUser.id !== currentUid) {
             updates.isGod = true;
             
-            // On cherche l'ancien God pour le déchoir de ses droits
             const currentGodProfile = allUsersData.find(u => u.isGod === true);
             if (currentGodProfile) {
                 await updateDoc(doc(db, "users", currentGodProfile.id), { isGod: false });
@@ -351,7 +353,6 @@ document.addEventListener('DOMContentLoaded', () => {
     initUserCreation();
     initModalLogic(); 
 
-    // On attend de savoir qui est connecté avant de charger les utilisateurs
     onAuthStateChanged(auth, (user) => {
         if (user) {
             currentUid = user.uid;
