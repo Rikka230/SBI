@@ -119,3 +119,21 @@
 .sys-msg.error { background: rgba(255, 74, 74, 0.1); color: #ff4a4a; border: 1px solid #ff4a4a; display: block; }
 
 .empty-state { text-align: center; color: #555; padding: 3rem 0; font-style: italic; }
+
+/* --- 6. FENETRES MODALES (POP-UPS) --- */
+.modal-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(5px);
+    display: flex; justify-content: center; align-items: center;
+    z-index: 2000;
+}
+
+.modal-content {
+    width: 100%; max-width: 500px;
+    background: #141418;
+    border: 1px solid #333;
+    animation: fadeIn 0.3s ease;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+}
