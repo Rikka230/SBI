@@ -56,7 +56,7 @@ const enforceSecurityPolicies = async (user, userData) => {
 
     // Règle A : Éjecte les non-connectés des zones privées
     if (!user) {
-        if (currentPath.includes('/admin') || currentPath.includes('/student') || currentPath.includes('/teacher')) {
+        if (currentPath.includes('/admin') || currentPath.includes('/student') || currentPath.includes('teacherindex.html')) {
             if (!currentPath.includes('login')) {
                 window.location.replace('/login.html');
             }
@@ -87,8 +87,8 @@ const enforceSecurityPolicies = async (user, userData) => {
             window.location.replace('/admin/index.html'); 
         } else if (userData.role === 'student' && !currentPath.includes('/student')) {
             window.location.replace('/student/dashboard.html');
-        } else if (userData.role === 'teacher' && !currentPath.includes('/teacher')) {
-            window.location.replace('/teacher/index.html');
+        } else if (userData.role === 'teacher' && !currentPath.includes('teacherindex.html')) {
+            window.location.replace('/teacherindex.html');
         }
     }
 };
