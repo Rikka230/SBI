@@ -440,6 +440,10 @@ const initModalLogic = () => {
                 // LE PLAN B : On force Firebase à cracher le jeton d'authentification tout frais
                 const securityToken = await auth.currentUser.getIdToken(true);
 
+// --- LIGNE À AJOUTER POUR ESPIONNER ---
+console.log("MON BADGE DE SÉCURITÉ EST :", securityToken);
+
+const deleteUserAccount = httpsCallable(functionsInstance, 'deleteUserAccount');
                 const deleteUserAccount = httpsCallable(functionsInstance, 'deleteUserAccount');
                 
                 // On glisse discrètement le jeton dans le colis (data) envoyé au serveur
