@@ -2,10 +2,10 @@
  * =======================================================================
  * 1. CONFIGURATION & INITIALISATION FIREBASE (V9 Modulaire - Vanilla JS)
  * =======================================================================
- * Note: Intègre Firebase App Check (Anti-bot), Firestore Local Cache et Analytics
+ * Note: Intègre Firestore Local Cache et Analytics. (App Check temporairement désactivé)
  */
 
-// Importation native depuis le CDN Google (Pas besoin de npm install)
+// Importation native depuis le CDN Google
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-analytics.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
@@ -15,7 +15,9 @@ import {
     persistentMultipleTabManager 
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { getStorage } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
-import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app-check.js";
+
+// L'import de AppCheck est commenté pour l'instant
+// import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app-check.js";
 
 /* --- 1.1 VARIABLES D'ENVIRONNEMENT SBI --- */
 const firebaseConfig = {
@@ -33,11 +35,13 @@ const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);
 
 /* --- 1.3 BOUCLIER ANTI-BOT (APP CHECK avec reCAPTCHA v3) --- */
-// À FAIRE : Remplacer la clé ci-dessous par la clé publique reCAPTCHA v3 générée sur Google Cloud Console
+// DESACTIVE POUR LES TESTS : À réactiver quand la vraie clé Google reCAPTCHA sera générée
+/*
 const appCheck = initializeAppCheck(app, {
     provider: new ReCaptchaV3Provider('TA_CLE_PUBLIQUE_RECAPTCHA_V3_ICI'),
     isTokenAutoRefreshEnabled: true 
 });
+*/
 
 /* --- 1.4 INITIALISATION DE FIRESTORE AVEC MISE EN CACHE --- */
 // Forçage du cache local pour limiter les requêtes de lecture facturables
@@ -51,8 +55,8 @@ const db = initializeFirestore(app, {
 const auth = getAuth(app);
 const storage = getStorage(app);
 
-console.log("🔥 Firebase SBI initialisé avec succès : Cache, Analytics & Sécurité Actifs");
+console.log("🔥 Firebase SBI initialisé avec succès : Cache & Analytics Actifs");
 
 /* --- 1.6 EXPORTATION DES SERVICES --- */
-// Permet d'utiliser ces variables dans main.js, admin.js, etc.
+// Permet d'utiliser ces variables dans main.js, admin.js, auth.js, etc.
 export { app, auth, db, storage, analytics };
