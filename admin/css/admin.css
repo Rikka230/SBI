@@ -1,0 +1,64 @@
+/* --- 1. LAYOUT DASHBOARD --- */
+.admin-layout {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    min-height: 100vh;
+    background: #050505;
+}
+
+.admin-sidebar {
+    background: #0f0f12;
+    padding: 2rem 0;
+    border-right: 1px solid #222;
+}
+
+.sidebar-header {
+    padding: 0 2rem 2rem;
+    border-bottom: 1px solid #222;
+}
+
+.sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    padding: 1rem 0;
+}
+
+.nav-item {
+    padding: 1rem 2rem;
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: 0.3s;
+}
+
+.nav-item:hover, .nav-item.active {
+    color: white;
+    background: #1a1a20;
+    border-left: 4px solid var(--sbi-blue);
+}
+
+.btn-logout {
+    margin-top: auto;
+    background: transparent;
+    border: none;
+    text-align: left;
+    cursor: pointer;
+    font-size: 1rem;
+}
+
+/* --- 2. CONTENU --- */
+.admin-main { padding: 3rem; }
+.main-header { margin-bottom: 3rem; }
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2rem;
+}
+
+.stat-card {
+    text-align: left !important;
+    border-top: none !important;
+    border-left: 4px solid var(--sbi-blue);
+}
+
+.stat-card h3 { font-size: 2.5rem; margin: 0; }
