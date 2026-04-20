@@ -77,6 +77,7 @@ const fetchUsers = async () => {
             allUsersData.push({ id: doc.id, ...doc.data() });
         });
 
+        // DEFINITION DU POUVOIR DU COMPTE CONNECTE
         const godExists = allUsersData.some(u => u.isGod === true);
         const myProfile = allUsersData.find(u => u.id === currentUid);
         isCurrentUserGod = godExists ? (myProfile && myProfile.isGod === true) : true;
@@ -243,9 +244,11 @@ const openEditModal = (userId) => {
     roleSelect.disabled = false;
     statutSelect.disabled = false;
 
-    // A. LOGIQUE DU GOD MODE
+    const godExists = allUsersData.some(u => u.isGod === true);
+
+    // A. LOGIQUE DU GOD MODE (AFFICHAGE)
     if (targetUser.isGod) {
-        // Le profil ouvert EST le God
+        // Le profil ouvert EST le God officiel
         godContainer.style.display = 'block';
         godLabelWrapper.style.display = 'none'; // On masque la case à cocher
         godDesc.style.marginTop = '0'; // On réajuste l'espacement
@@ -255,11 +258,20 @@ const openEditModal = (userId) => {
         } else {
             godDesc.innerHTML = "<span style='color: #ffd700; font-size: 1.1rem; font-weight: bold;'>👑 Cet utilisateur est l'Administrateur Suprême.</span>";
         }
-    } else if (isCurrentUserGod && targetUser.role === 'admin') {
-        // Le God ouvre le profil d'un Admin normal (Transfert possible)
+    } else if (!godExists && targetUser.role === 'admin') {
+        // Aucun God n'existe encore. La couronne est vacante.
         godContainer.style.display = 'block';
         godCheckbox.disabled = false;
-        godDesc.innerHTML = "Attention : En cochant cette case, vous lui transférez les pouvoirs suprêmes (vous les perdrez).";
+        if (targetUser.id === currentUid) {
+            godDesc.innerHTML = "Aucun God n'existe. Cochez pour <strong>réclamer</strong> les pouvoirs suprêmes (irréversible).";
+        } else {
+            godDesc.innerHTML = "Aucun God n'existe. Cochez pour lui <strong>donner</strong> les pouvoirs suprêmes.";
+        }
+    } else if (isCurrentUserGod && targetUser.role === 'admin' && targetUser.id !== currentUid) {
+        // Le God actuel veut transférer son pouvoir à un autre admin
+        godContainer.style.display = 'block';
+        godCheckbox.disabled = false;
+        godDesc.innerHTML = "⚠️ En cochant cette case, vous lui <strong>transférez</strong> vos pouvoirs suprêmes. Vous les perdrez définitivement.";
     }
 
     // B. LOGIQUE DE VERROUILLAGE DES DROITS DE SUPPRESSION
@@ -283,6 +295,7 @@ const initModalLogic = () => {
     const deleteBtn = document.getElementById('delete-user-btn');
     const resetPwdBtn = document.getElementById('reset-pwd-btn');
     const godCheckbox = document.getElementById('edit-user-isgod');
+    const godLabelWrapper = godCheckbox.parentElement;
 
     closeBtn.addEventListener('click', () => { modal.style.display = 'none'; });
 
@@ -312,12 +325,19 @@ const initModalLogic = () => {
             updates.statut = document.getElementById('edit-user-statut').value;
         }
 
-        if (isCurrentUserGod && godCheckbox.checked && godCheckbox.parentElement.style.display !== 'none' && targetUser.id !== currentUid) {
-            updates.isGod = true;
-            
-            const currentGodProfile = allUsersData.find(u => u.isGod === true);
-            if (currentGodProfile) {
-                await updateDoc(doc(db, "users", currentGodProfile.id), { isGod: false });
+        // C. LOGIQUE DE SAUVEGARDE GOD MODE
+        const godExists = allUsersData.some(u => u.isGod === true);
+        
+        if (godCheckbox.checked && godLabelWrapper.style.display !== 'none') {
+            // Seul le God actuel (ou n'importe qui si le trône est vide) peut valider ce choix
+            if (isCurrentUserGod || !godExists) {
+                updates.isGod = true;
+                
+                // Si y avait un ancien God, on le rétrograde
+                const currentGodProfile = allUsersData.find(u => u.isGod === true);
+                if (currentGodProfile && currentGodProfile.id !== targetUser.id) {
+                    await updateDoc(doc(db, "users", currentGodProfile.id), { isGod: false });
+                }
             }
         }
 
