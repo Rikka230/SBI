@@ -38,7 +38,6 @@ const initNavigation = () => {
     const navButtons = document.querySelectorAll('.nav-item[data-target]');
     const views = document.querySelectorAll('.admin-view');
 
-    // Vérifier si un onglet était déjà ouvert avant le rafraîchissement
     const savedTab = sessionStorage.getItem('activeAdminTab');
     if (savedTab) {
         navButtons.forEach(b => b.classList.remove('active'));
@@ -51,7 +50,6 @@ const initNavigation = () => {
         if (activeView) activeView.classList.add('active');
     }
 
-    // Comportement au clic
     navButtons.forEach(btn => {
         btn.addEventListener('click', (e) => {
             navButtons.forEach(b => b.classList.remove('active'));
@@ -61,7 +59,6 @@ const initNavigation = () => {
             e.target.classList.add('active');
             document.getElementById(targetId).classList.add('active');
 
-            // Sauvegarder l'onglet cliqué dans la mémoire session
             sessionStorage.setItem('activeAdminTab', targetId);
         });
     });
@@ -99,16 +96,16 @@ const renderUsersList = (usersToRender) => {
         const displayName = (user.prenom && user.nom) ? `${user.prenom} ${user.nom}` : (user.nom || "Sans nom");
         const statusLabel = user.statut === 'suspendu' ? '<span style="color: #ff4a4a; font-weight:bold;">Suspendu</span>' : '<span style="color: #2ed573; font-weight:bold;">Actif</span>';
 
+        // NOUVEAUX STYLES DE BADGES (Vert néon pour Étudiant, Jaune pour Enseignant)
         let roleBadge = '';
-        if(user.role === 'admin') roleBadge = '<span style="color: #ff4a4a; font-weight:bold;">Admin</span>';
-        if(user.role === 'teacher') roleBadge = '<span style="color: var(--sbi-blue); font-weight:bold;">Enseignant</span>';
-        if(user.role === 'student') roleBadge = '<span style="color: #9ca3af; font-weight:bold;">Étudiant</span>';
+        if(user.role === 'admin') roleBadge = '<span style="background: rgba(255, 74, 74, 0.15); color: #ff4a4a; border: 1px solid rgba(255, 74, 74, 0.4); padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight:bold; display:inline-block;">Admin</span>';
+        if(user.role === 'teacher') roleBadge = '<span style="background: rgba(255, 215, 0, 0.15); color: #ffd700; border: 1px solid rgba(255, 215, 0, 0.4); padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight:bold; display:inline-block;">Enseignant</span>';
+        if(user.role === 'student') roleBadge = '<span style="background: rgba(0, 255, 163, 0.15); color: #00ffa3; border: 1px solid rgba(0, 255, 163, 0.4); padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight:bold; display:inline-block;">Étudiant</span>';
 
-        // STRUCTURE GRID SUR 1 SEULE LIGNE (Rôle | Nom | Email | Statut | Bouton)
         const userCardHTML = `
-            <div style="background: #0a0a0c; padding: 0.8rem 1.2rem; border: 1px solid #222; border-radius: 6px; margin-bottom: 0.5rem; display: grid; grid-template-columns: 100px 1.5fr 2fr 100px 120px; gap: 1rem; align-items: center; opacity: ${user.statut === 'suspendu' ? '0.6' : '1'}; transition: all 0.2s;">
+            <div style="background: #0a0a0c; padding: 0.8rem 1.2rem; border: 1px solid #222; border-radius: 6px; margin-bottom: 0.5rem; display: grid; grid-template-columns: 120px 1.5fr 2fr 100px 120px; gap: 1rem; align-items: center; opacity: ${user.statut === 'suspendu' ? '0.6' : '1'}; transition: all 0.2s;">
                 
-                <div style="font-size: 0.9rem;">${roleBadge}</div>
+                <div>${roleBadge}</div>
                 
                 <div style="color: white; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${displayName}">
                     ${displayName}
