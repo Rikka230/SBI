@@ -416,7 +416,7 @@ const initModalLogic = () => {
         }
     });
 
-    // --- APPEL AU SERVEUR AVEC LE JETON FORCÉ ---
+    // --- APPEL AU SERVEUR (Nettoyé pour la V2) ---
     deleteBtn.addEventListener('click', async () => {
         const userId = document.getElementById('edit-user-id').value;
         const targetUser = allUsersData.find(u => u.id === userId);
@@ -429,7 +429,7 @@ const initModalLogic = () => {
         const confirmMsg = "🛑 DANGER ABSOLU : Le compte va être intégralement détruit (Base de données ET accès Firebase Auth).\n\nConfirmer la suppression définitive ?";
         
         if(confirm(confirmMsg)) {
-            deleteBtn.textContent = "⏳ Vérification des droits...";
+            deleteBtn.textContent = "⏳ Suppression en cours...";
             deleteBtn.disabled = true;
 
             try {
@@ -437,19 +437,9 @@ const initModalLogic = () => {
                     throw new Error("Session expirée. Veuillez vous reconnecter.");
                 }
 
-                // LE PLAN B : On force Firebase à cracher le jeton d'authentification tout frais
-                const securityToken = await auth.currentUser.getIdToken(true);
-
-                // --- LIGNE POUR ESPIONNER ---
-                console.log("MON BADGE DE SÉCURITÉ EST :", securityToken);
-
+                // Appel propre à la Cloud Function V2 (plus besoin d'injecter manuellement le token)
                 const deleteUserAccount = httpsCallable(functionsInstance, 'deleteUserAccount');
-                
-                // On glisse discrètement le jeton dans le colis (data) envoyé au serveur
-                const result = await deleteUserAccount({ 
-                    uid: userId,
-                    token: securityToken 
-                });
+                const result = await deleteUserAccount({ uid: userId });
                 
                 alert(`✅ Succès : ${result.data.message}`);
                 modal.style.display = 'none';
