@@ -57,21 +57,24 @@ const fetchUserRole = async (uid) => {
 const enforceSecurityPolicies = (user, role) => {
     const currentPath = window.location.pathname;
 
-    if (user && (currentPath.includes('login.html') || currentPath === '/')) {
+    // Règle A : Redirection après le login (Compatible avec les Pretty URLs de Netlify)
+    // On cherche juste 'login' au lieu de 'login.html'
+    if (user && (currentPath.includes('login') || currentPath === '/' || currentPath.includes('index'))) {
         if (role === 'admin') {
-            // Le chemin est maintenant relatif à partir de la racine du dossier public
-            window.location.href = 'admin/index.html'; 
+            // Chemin absolu depuis la racine publique de Netlify
+            window.location.href = '/admin/index.html'; 
         } else if (role === 'student') {
-            window.location.href = 'student/dashboard.html';
-        }else {
+            window.location.href = '/student/dashboard.html';
+        } else {
             console.error("❌ Rôle inconnu, arrêt de la redirection pour éviter une boucle.");
         }
         return;
     }
 
-    // Règle C : Protection des espaces privés (éjecte les non-connectés)
+    // Règle B : Protection des espaces privés (éjecte les non-connectés)
     if (!user && (currentPath.includes('/student') || currentPath.includes('/teacher') || currentPath.includes('/admin'))) {
-        window.location.href = '../public/login.html';
+        // Chemin absolu vers la page de login à la racine
+        window.location.href = '/login.html';
     }
 };
 
@@ -89,7 +92,7 @@ onAuthStateChanged(auth, async (user) => {
 /* --- 1.5 FONCTION DE DECONNEXION GLOBALE --- */
 export const logoutUser = () => {
     signOut(auth).then(() => {
-        window.location.href = '../public/index.html';
+        window.location.href = '/index.html';
     }).catch((error) => {
         console.error("Erreur lors de la déconnexion :", error);
     });
