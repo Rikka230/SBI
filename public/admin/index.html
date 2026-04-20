@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SBI Admin - Dashboard</title>
+    <link rel="stylesheet" href="../public/css/style.css">
+    <link rel="stylesheet" href="css/admin.css">
+</head>
+<body class="admin-layout">
+
+    <aside class="admin-sidebar">
+        <div class="sidebar-header">
+            <span class="logo-text">SBI <span class="text-blue">A</span>DMIN</span>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="#" class="nav-item active">📊 Dashboard</a>
+            <a href="#" class="nav-item">⚽ Formations</a>
+            <a href="#" class="nav-item">👥 Étudiants</a>
+            <button id="logout-btn" class="nav-item btn-logout">🚪 Déconnexion</button>
+        </nav>
+    </aside>
+
+    <main class="admin-main">
+        <header class="main-header">
+            <h1 class="uppercase">Tableau de b<span class="text-blue">o</span>rd</h1>
+        </header>
+
+        <section class="admin-content">
+            <div class="stats-grid">
+                <div class="card stat-card"><h3>12</h3><p>Formations</p></div>
+                <div class="card stat-card"><h3>154</h3><p>Étudiants</p></div>
+                <div class="card stat-card"><h3>89%</h3><p>Taux de réussite</p></div>
+            </div>
+        </section>
+    </main>
+
+    <script type="module">
+        import { logoutUser } from '../public/js/auth.js';
+        document.getElementById('logout-btn').addEventListener('click', logoutUser);
+    </script>
+</body>
+</html>
