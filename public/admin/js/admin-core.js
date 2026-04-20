@@ -6,10 +6,16 @@
 
 /* --- 1.1 INITIALISATION OUTILS DE BASE --- */
 import { logoutUser } from '/js/auth.js';
-import { db, auth } from '/js/firebase-init.js';
+// Ajout de "app" dans l'importation pour lier les Cloud Functions
+import { db, auth, app } from '/js/firebase-init.js';
 import { doc, setDoc, collection, getDocs, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, sendPasswordResetEmail, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+// NOUVEAU : Importation du module Cloud Functions
+import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js";
+
+// Initialisation de la connexion avec le Backend
+const functionsInstance = getFunctions(app);
 
 document.getElementById('logout-btn').addEventListener('click', logoutUser);
 document.getElementById('btn-clear-cache').addEventListener('click', () => {
@@ -77,7 +83,6 @@ const fetchUsers = async () => {
             allUsersData.push({ id: doc.id, ...doc.data() });
         });
 
-        // DEFINITION DU POUVOIR DU COMPTE CONNECTE
         const godExists = allUsersData.some(u => u.isGod === true);
         const myProfile = allUsersData.find(u => u.id === currentUid);
         isCurrentUserGod = godExists ? (myProfile && myProfile.isGod === true) : true;
@@ -162,9 +167,8 @@ const initFilters = () => {
 };
 
 
-/* --- 4. CREATION DE COMPTES UTILISATEURS (AVEC FORMATAGE & PASSWORD AUTO) --- */
+/* --- 4. CREATION DE COMPTES UTILISATEURS --- */
 
-// Générateur de mot de passe aléatoire de 10 caractères
 const generateRandomPassword = () => {
     const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%&";
     let password = "";
@@ -174,10 +178,8 @@ const generateRandomPassword = () => {
     return password;
 };
 
-// Formateur de texte intelligent (Majuscule pour Nom, Majuscules intelligentes pour Prénom)
 const formatNom = (str) => str.toUpperCase();
 const formatPrenom = (str) => {
-    // Met en majuscule la première lettre et toute lettre suivant un espace ou un tiret
     return str.toLowerCase().replace(/(^|\s|-)\S/g, letter => letter.toUpperCase());
 };
 
@@ -189,10 +191,8 @@ const initUserCreation = () => {
 
     if (!form) return;
 
-    // Remplir le mot de passe au démarrage
     if (pwdInput) pwdInput.value = generateRandomPassword();
 
-    // Bouton pour regénérer un mot de passe
     if (regenBtn) {
         regenBtn.addEventListener('click', () => {
             pwdInput.value = generateRandomPassword();
@@ -206,14 +206,13 @@ const initUserCreation = () => {
         msgBox.textContent = 'Création en cours...';
         msgBox.style.display = 'block';
 
-        // Formatage strict imposé par le code
         const rawPrenom = document.getElementById('new-user-prenom').value.trim();
         const rawNom = document.getElementById('new-user-nom').value.trim();
         
         const prenom = formatPrenom(rawPrenom);
         const nom = formatNom(rawNom);
         const email = document.getElementById('new-user-email').value.trim();
-        const password = document.getElementById('new-user-password').value; // Le mot de passe généré
+        const password = document.getElementById('new-user-password').value;
         const role = document.getElementById('new-user-role').value;
 
         try {
@@ -238,7 +237,6 @@ const initUserCreation = () => {
             msgBox.textContent = `✅ Compte créé pour ${prenom} ${nom} ! Un email a été envoyé.`;
             
             form.reset(); 
-            // Regénérer un nouveau mot de passe pour le compte suivant
             pwdInput.value = generateRandomPassword();
             fetchUsers(); 
 
@@ -251,12 +249,11 @@ const initUserCreation = () => {
 };
 
 
-/* --- 5. MODALE D'EDITION (GOD MODE & SECURITE & FORMATAGE) --- */
+/* --- 5. MODALE D'EDITION (GOD MODE & SECURITE & CLOUD FUNCTIONS) --- */
 const openEditModal = (userId) => {
     const targetUser = allUsersData.find(u => u.id === userId);
     if(!targetUser) return;
 
-    // Éléments du DOM
     const prenomInput = document.getElementById('edit-user-prenom');
     const nomInput = document.getElementById('edit-user-nom');
     const emailInput = document.getElementById('edit-user-email');
@@ -272,7 +269,6 @@ const openEditModal = (userId) => {
     const resetPwdBtn = document.getElementById('reset-pwd-btn');
     const submitBtn = document.querySelector('#edit-user-form button[type="submit"]');
 
-    // Remplissage des données
     document.getElementById('edit-user-id').value = targetUser.id;
     prenomInput.value = targetUser.prenom || '';
     nomInput.value = targetUser.nom || '';
@@ -280,7 +276,6 @@ const openEditModal = (userId) => {
     roleSelect.value = targetUser.role || 'student';
     statutSelect.value = targetUser.statut || 'actif';
 
-    // Réinitialisation de tous les verrous par défaut
     prenomInput.disabled = false;
     nomInput.disabled = false;
     roleSelect.disabled = false;
@@ -296,7 +291,6 @@ const openEditModal = (userId) => {
 
     const godExists = allUsersData.some(u => u.isGod === true);
 
-    // RÈGLES DE SÉCURITÉ DE LA MODALE
     if (targetUser.isGod && !isCurrentUserGod) {
         prenomInput.disabled = true;
         nomInput.disabled = true;
@@ -391,7 +385,6 @@ const initModalLogic = () => {
         
         const updates = {};
         
-        // FORMATAGE STRICT APPLIQUE EGALEMENT A LA MODIFICATION
         if (!document.getElementById('edit-user-prenom').disabled) {
             const rawPrenom = document.getElementById('edit-user-prenom').value.trim();
             updates.prenom = formatPrenom(rawPrenom);
@@ -427,6 +420,7 @@ const initModalLogic = () => {
         }
     });
 
+    // L'APPEL AU NOUVEAU BACKEND
     deleteBtn.addEventListener('click', async () => {
         const userId = document.getElementById('edit-user-id').value;
         const targetUser = allUsersData.find(u => u.id === userId);
@@ -436,14 +430,28 @@ const initModalLogic = () => {
             return;
         }
 
-        if(confirm("🛑 DANGER : Cela va supprimer définitivement l'accès de cet utilisateur à la plateforme. Confirmer ?")) {
+        const confirmMsg = "🛑 DANGER ABSOLU : Le compte va être intégralement détruit (Base de données ET accès Firebase Auth).\n\nL'email sera libéré. Confirmer la suppression définitive ?";
+        
+        if(confirm(confirmMsg)) {
+            // Modification du texte du bouton pour faire patienter l'utilisateur
+            deleteBtn.textContent = "⏳ Suppression en cours côté serveur...";
+            deleteBtn.disabled = true;
+
             try {
-                await deleteDoc(doc(db, "users", userId));
+                // Appel de la Cloud Function
+                const deleteUserAccount = httpsCallable(functionsInstance, 'deleteUserAccount');
+                const result = await deleteUserAccount({ uid: userId });
+                
+                alert(`✅ Succès : ${result.data.message}`);
                 modal.style.display = 'none';
                 fetchUsers(); 
             } catch (error) {
                 console.error("Erreur suppression:", error);
-                alert("Erreur lors de la suppression du compte.");
+                alert("❌ Le serveur a refusé la suppression : " + error.message);
+            } finally {
+                // Rétablissement du bouton
+                deleteBtn.textContent = "⚠️ Supprimer le compte définitivement";
+                deleteBtn.disabled = false;
             }
         }
     });
