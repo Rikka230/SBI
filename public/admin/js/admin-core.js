@@ -4,17 +4,15 @@
  * =======================================================================
  */
 
-/* --- 1.1 INITIALISATION OUTILS DE BASE --- */
+/* --- 1.1 INITIALISATION OUTILS DE BASE ET BACKEND --- */
 import { logoutUser } from '/js/auth.js';
-// Ajout de "app" dans l'importation pour lier les Cloud Functions
-import { db, auth, app } from '/js/firebase-init.js';
+import { db, auth, app } from '/js/firebase-init.js'; // "app" est importé ici
 import { doc, setDoc, collection, getDocs, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, sendPasswordResetEmail, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-// NOUVEAU : Importation du module Cloud Functions
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js";
 
-// Initialisation de la connexion avec le Backend
+// Connexion au serveur Google (Cloud Functions) liée à la session en cours
 const functionsInstance = getFunctions(app);
 
 document.getElementById('logout-btn').addEventListener('click', logoutUser);
@@ -26,7 +24,7 @@ document.getElementById('btn-clear-cache').addEventListener('click', () => {
     }
 });
 
-/* --- 1.2 CONFIGURATION APP SECONDAIRE --- */
+/* --- 1.2 CONFIGURATION APP SECONDAIRE (POUR CREATION) --- */
 const firebaseConfig = {
     apiKey: "AIzaSyBCBY51kkexg7jJgEpVYlKCNbZemrtdaiY",
     authDomain: "sbi-web-4f6b4.firebaseapp.com",
@@ -249,7 +247,7 @@ const initUserCreation = () => {
 };
 
 
-/* --- 5. MODALE D'EDITION (GOD MODE & SECURITE & CLOUD FUNCTIONS) --- */
+/* --- 5. MODALE D'EDITION ET SUPPRESSION (CLOUD FUNCTIONS) --- */
 const openEditModal = (userId) => {
     const targetUser = allUsersData.find(u => u.id === userId);
     if(!targetUser) return;
@@ -420,7 +418,7 @@ const initModalLogic = () => {
         }
     });
 
-    // L'APPEL AU NOUVEAU BACKEND
+    // --- APPEL SÉCURISÉ AU BACKEND ---
     deleteBtn.addEventListener('click', async () => {
         const userId = document.getElementById('edit-user-id').value;
         const targetUser = allUsersData.find(u => u.id === userId);
@@ -430,15 +428,17 @@ const initModalLogic = () => {
             return;
         }
 
-        const confirmMsg = "🛑 DANGER ABSOLU : Le compte va être intégralement détruit (Base de données ET accès Firebase Auth).\n\nL'email sera libéré. Confirmer la suppression définitive ?";
+        const confirmMsg = "🛑 DANGER ABSOLU : Le compte va être intégralement détruit (Base de données ET accès Firebase Auth).\n\nConfirmer la suppression définitive ?";
         
         if(confirm(confirmMsg)) {
-            // Modification du texte du bouton pour faire patienter l'utilisateur
-            deleteBtn.textContent = "⏳ Suppression en cours côté serveur...";
+            deleteBtn.textContent = "⏳ Vérification des droits...";
             deleteBtn.disabled = true;
 
             try {
-                // Appel de la Cloud Function
+                if (!auth.currentUser) {
+                    throw new Error("Session expirée. Veuillez vous reconnecter.");
+                }
+
                 const deleteUserAccount = httpsCallable(functionsInstance, 'deleteUserAccount');
                 const result = await deleteUserAccount({ uid: userId });
                 
@@ -446,10 +446,9 @@ const initModalLogic = () => {
                 modal.style.display = 'none';
                 fetchUsers(); 
             } catch (error) {
-                console.error("Erreur suppression:", error);
-                alert("❌ Le serveur a refusé la suppression : " + error.message);
+                console.error("Détails erreur:", error);
+                alert("❌ Erreur serveur : " + error.message);
             } finally {
-                // Rétablissement du bouton
                 deleteBtn.textContent = "⚠️ Supprimer le compte définitivement";
                 deleteBtn.disabled = false;
             }
