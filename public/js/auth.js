@@ -16,17 +16,14 @@ if (loginForm) {
     loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         
-        // On masque les erreurs précédentes
         errorMessage.style.display = 'none';
         
         const email = document.getElementById('email').value.trim();
         const password = document.getElementById('password').value;
         
         try {
-            // Tentative de connexion via Firebase
             await signInWithEmailAndPassword(auth, email, password);
             console.log("✅ Connexion réussie");
-            // La redirection est gérée automatiquement par onAuthStateChanged plus bas
         } catch (error) {
             console.error("❌ Erreur de connexion :", error.code);
             errorMessage.textContent = "Email ou mot de passe incorrect.";
@@ -42,9 +39,9 @@ const fetchUserRole = async (uid) => {
         const userSnap = await getDoc(userRef);
         
         if (userSnap.exists()) {
-            return userSnap.data().role; // Ex: "admin", "teacher", "student"
+            return userSnap.data().role;
         } else {
-            console.warn("⚠️ Aucun rôle trouvé pour cet utilisateur, attribution du rôle étudiant par défaut.");
+            console.warn("⚠️ Aucun rôle trouvé, attribution étudiant par défaut.");
             return "student"; 
         }
     } catch (error) {
@@ -53,33 +50,43 @@ const fetchUserRole = async (uid) => {
     }
 };
 
-/* --- 1.3 ROUTE GUARD & REDIRECTIONS --- */
+/* --- 1.3 ROUTE GUARD & REDIRECTIONS (SECURITE ANTI-BOUCLE) --- */
 const enforceSecurityPolicies = (user, role) => {
     const currentPath = window.location.pathname;
 
-    // Règle A : Redirection après le login (Compatible avec les Pretty URLs de Netlify)
-    // On cherche juste 'login' au lieu de 'login.html'
-    if (user && (currentPath.includes('login') || currentPath === '/' || currentPath.includes('index'))) {
-        if (role === 'admin') {
-            // Chemin absolu depuis la racine publique de Netlify
-            window.location.href = '/admin/index.html'; 
-        } else if (role === 'student') {
-            window.location.href = '/student/dashboard.html';
-        } else {
-            console.error("❌ Rôle inconnu, arrêt de la redirection pour éviter une boucle.");
+    // Règle A : Éjecte les non-connectés des zones privées
+    if (!user) {
+        if (currentPath.includes('/admin') || currentPath.includes('/student') || currentPath.includes('/teacher')) {
+            if (!currentPath.includes('login')) {
+                window.location.replace('/login.html');
+            }
         }
+        return; 
+    }
+
+    // Règle B : Protection stricte du Dashboard Admin
+    if (currentPath.includes('/admin') && role !== 'admin') {
+        window.location.replace('/login.html');
         return;
     }
 
-    // Règle B : Protection des espaces privés (éjecte les non-connectés)
-    if (!user && (currentPath.includes('/student') || currentPath.includes('/teacher') || currentPath.includes('/admin'))) {
-        // Chemin absolu vers la page de login à la racine
-        window.location.href = '/login.html';
+    // Règle C : Redirection POST-LOGIN vers le bon espace
+    const isPublicIndex = currentPath === '/' || currentPath === '/index.html' || currentPath === '/index';
+    const isLogin = currentPath.includes('login');
+
+    if (user && (isPublicIndex || isLogin)) {
+        // La condition !currentPath... empêche la boucle si on y est déjà
+        if (role === 'admin' && !currentPath.includes('/admin')) {
+            window.location.replace('/admin/index.html'); 
+        } else if (role === 'student' && !currentPath.includes('/student')) {
+            window.location.replace('/student/dashboard.html');
+        } else if (role === 'teacher' && !currentPath.includes('/teacher')) {
+            window.location.replace('/teacher/index.html');
+        }
     }
 };
 
 /* --- 1.4 OBSERVATEUR D'ETAT GLOBAL --- */
-// Se déclenche à chaque changement d'état (connexion/déconnexion)
 onAuthStateChanged(auth, async (user) => {
     if (user) {
         const role = await fetchUserRole(user.uid);
@@ -92,7 +99,7 @@ onAuthStateChanged(auth, async (user) => {
 /* --- 1.5 FONCTION DE DECONNEXION GLOBALE --- */
 export const logoutUser = () => {
     signOut(auth).then(() => {
-        window.location.href = '/index.html';
+        window.location.replace('/index.html');
     }).catch((error) => {
         console.error("Erreur lors de la déconnexion :", error);
     });
