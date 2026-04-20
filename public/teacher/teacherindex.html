@@ -8,7 +8,7 @@
         body {
             background-color: #050505;
             color: #ffffff;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Segoe UI', sans-serif;
             margin: 0;
             padding: 2rem;
             display: flex;
@@ -34,9 +34,6 @@
             cursor: pointer;
             font-weight: bold;
         }
-        .btn-logout:hover {
-            background-color: #ff2a2a;
-        }
         .content-area {
             width: 100%;
             max-width: 1000px;
@@ -57,14 +54,16 @@
 
     <div class="content-area">
         <h2>Bienvenue sur votre tableau de bord</h2>
-        <p style="color: #888;">C'est ici que vous pourrez créer et gérer vos modules de formation.</p>
+        <p style="color: #888;">Prêt à créer du nouveau contenu ?</p>
         
-        <button id="btn-create-formation" style="margin-top: 2rem; padding: 1rem 2rem; background: #2ed573; color: #000; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">+ Créer une nouvelle formation</button>
+        <button id="btn-create-formation" style="margin-top: 2rem; padding: 1rem 2rem; background: #2ed573; color: #000; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">
+            + Créer une nouvelle formation
+        </button>
     </div>
 
     <script type="module">
-        import { logoutUser } from '/js/auth.js';
-        
+        // Note le ../ car on est dans le dossier /teacher/
+        import { logoutUser } from '../js/auth.js';
         document.getElementById('logout-btn').addEventListener('click', logoutUser);
     </script>
 </body>
