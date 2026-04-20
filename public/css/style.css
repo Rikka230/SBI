@@ -1,0 +1,177 @@
+/* --- 1. VARIABLES & TYPOGRAPHIE --- */
+:root {
+    --bg-dark: #0a0a0c; /* Noir profond */
+    --bg-surface: #141418; /* Gris très sombre pour les cartes */
+    --sbi-blue: #2a57ff;
+    --text-light: #ffffff;
+    --text-muted: #9ca3af;
+    
+    /* Typographie fluide : s'adapte automatiquement à l'écran */
+    --font-sans: 'Arial', sans-serif;
+    --text-hero: clamp(2.5rem, 6vw, 4.5rem);
+    --text-h2: clamp(2rem, 4vw, 3rem);
+    --text-body: clamp(1rem, 1.5vw, 1.125rem);
+    
+    /* Espacements de base */
+    --space-xl: clamp(4rem, 10vw, 8rem);
+    --space-md: 2rem;
+}
+
+/* --- 2. RESET & BASE --- */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; font-family: var(--font-sans); background: var(--bg-dark); color: var(--text-light); }
+body { overflow-x: hidden; line-height: 1.5; }
+.uppercase { text-transform: uppercase; font-weight: 900; letter-spacing: -0.02em; }
+.text-center { text-align: center; }
+.text-blue {
+    color: var(--sbi-blue) !important;
+    -webkit-text-fill-color: var(--sbi-blue) !important; /* Force la couleur brute dans la lettre */
+    -webkit-font-smoothing: antialiased; /* Bloque l'effet d'éclaircissement parasite du navigateur sur fond noir */
+    -moz-osx-font-smoothing: grayscale;
+    text-shadow: none !important; /* Sécurité absolue contre tout halo hérité */
+    opacity: 1 !important;
+}
+.padding-global { padding: var(--space-xl) 5%; }
+
+/* --- 3. BRANDING & EFFETS "CASSURE" --- */
+/* Diagonale agressive pour les fonds de section */
+.sbi-diagonal-bg {
+    position: relative;
+    background: linear-gradient(160deg, var(--bg-dark) 0%, #0d1630 100%);
+    clip-path: polygon(0 0, 100% 0, 100% 92%, 0 100%);
+    padding-bottom: calc(var(--space-xl) * 1.5);
+}
+
+/* Bouton avec un coin cassé */
+.sbi-break-btn {
+    clip-path: polygon(0 0, 100% 0, 100% 75%, 90% 100%, 0 100%);
+}
+
+/* --- 4. BOUTONS (Ultra clairs et massifs pour mobile) --- */
+.btn-primary, .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    font-weight: bold;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    border: none;
+}
+
+.btn-primary {
+    background-color: var(--sbi-blue);
+    color: white;
+    padding: 1rem 2rem;
+    border-radius: 4px;
+}
+
+.btn-primary:hover { background-color: #1a40d6; transform: scale(1.02); }
+
+/* Le bouton d'appel à l'action massif (Fat-Finger friendly) */
+.btn-massive {
+    font-size: 1.25rem;
+    padding: 1.5rem 3rem;
+    width: 100%; /* Prend toute la largeur sur mobile */
+    max-width: 400px;
+}
+
+.btn-secondary {
+    background-color: transparent;
+    color: var(--text-light);
+    border: 2px solid var(--sbi-blue);
+    padding: 0.75rem 1.5rem;
+    border-radius: 4px;
+    width: 100%;
+}
+
+.btn-secondary:hover { background-color: var(--sbi-blue); }
+
+/* --- 5. HEADER --- */
+.site-header {
+    position: fixed; top: 0; left: 0; width: 100%;
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 1rem 5%;
+    background: rgba(10, 10, 12, 0.9);
+    backdrop-filter: blur(10px);
+    z-index: 1000;
+}
+
+.logo-text { font-size: 2rem; font-weight: 900; letter-spacing: -2px; }
+.main-nav { display: none; } /* Masqué sur mobile pour la simplicité extrême */
+
+/* --- 6. HERO SECTION --- */
+.hero-section {
+    min-height: 100vh;
+    display: flex; align-items: center;
+    padding: 0 5%;
+    margin-top: 60px; /* Espace pour le header fixe */
+}
+
+.hero-content {
+    position: relative;
+    z-index: 2;
+    max-width: 800px;
+}
+
+.hero-content h1 { font-size: var(--text-hero); margin-bottom: 1.5rem; line-height: 1.1; }
+.hero-subtitle { font-size: var(--text-body); color: var(--text-muted); margin-bottom: 2.5rem; max-width: 600px; }
+
+.hero-visual {
+    position: absolute; top: 0; right: 0; width: 50%; height: 100%;
+    z-index: 1;
+}
+
+.hero-visual img { width: 100%; height: 100%; object-fit: cover; opacity: 0.5; }
+
+/* Masque de fondu vers le noir pour intégrer l'image au fond */
+.mask-gradient {
+    mask-image: linear-gradient(to right, transparent, black 50%);
+    -webkit-mask-image: linear-gradient(to right, transparent, black 50%);
+}
+
+/* --- 7. CARTES ET GRILLES --- */
+.grid-cards, .grid-avantages {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+    margin-top: var(--space-md);
+}
+
+.card {
+    background: var(--bg-surface);
+    padding: 2.5rem 1.5rem;
+    border-radius: 8px;
+    border-top: 4px solid var(--sbi-blue); /* Rappel de couleur */
+    text-align: center;
+    transition: transform 0.3s ease;
+}
+
+.card:hover { transform: translateY(-5px); }
+.card-icon { font-size: 3rem; margin-bottom: 1rem; }
+.card h3 { font-size: 1.5rem; margin-bottom: 1rem; }
+.card p { color: var(--text-muted); margin-bottom: 2rem; }
+
+.icon-large { font-size: 3.5rem; margin-bottom: 1rem; }
+
+/* --- 8. FOOTER --- */
+.site-footer { text-align: center; padding: 2rem; color: var(--text-muted); border-top: 1px solid #222; }
+
+/* --- 9. ANIMATIONS --- */
+.fade-in {
+    opacity: 0; transform: translateY(20px); transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+.fade-in.visible { opacity: 1; transform: translateY(0); }
+
+/* --- 10. MEDIA QUERIES (Desktop) --- */
+@media (min-width: 768px) {
+    .main-nav { display: flex; gap: 2rem; }
+    .nav-link { color: var(--text-light); text-decoration: none; font-weight: bold; }
+    .nav-link:hover { color: var(--sbi-blue); }
+    .grid-cards { grid-template-columns: repeat(3, 1fr); }
+    .grid-avantages { grid-template-columns: repeat(3, 1fr); gap: 4rem; }
+}
+@media (max-width: 767px) {
+    .hero-visual { width: 100%; mask-image: linear-gradient(to top, transparent, black 80%); -webkit-mask-image: linear-gradient(to top, transparent, black 80%); }
+    .hero-content { margin-top: 4rem; text-align: center; }
+}
