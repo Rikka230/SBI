@@ -4,15 +4,14 @@
  * =======================================================================
  */
 
-/* --- 1.1 INITIALISATION OUTILS DE BASE ET BACKEND --- */
+/* --- 1.1 INITIALISATION OUTILS DE BASE --- */
 import { logoutUser } from '/js/auth.js';
-import { db, auth, app } from '/js/firebase-init.js'; // "app" est importé ici
+import { db, auth, app } from '/js/firebase-init.js';
 import { doc, setDoc, collection, getDocs, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, sendPasswordResetEmail, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js";
 
-// Connexion au serveur Google (Cloud Functions) liée à la session en cours
 const functionsInstance = getFunctions(app);
 
 document.getElementById('logout-btn').addEventListener('click', logoutUser);
@@ -24,7 +23,7 @@ document.getElementById('btn-clear-cache').addEventListener('click', () => {
     }
 });
 
-/* --- 1.2 CONFIGURATION APP SECONDAIRE (POUR CREATION) --- */
+/* --- 1.2 CONFIGURATION APP SECONDAIRE --- */
 const firebaseConfig = {
     apiKey: "AIzaSyBCBY51kkexg7jJgEpVYlKCNbZemrtdaiY",
     authDomain: "sbi-web-4f6b4.firebaseapp.com",
@@ -166,7 +165,6 @@ const initFilters = () => {
 
 
 /* --- 4. CREATION DE COMPTES UTILISATEURS --- */
-
 const generateRandomPassword = () => {
     const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%&";
     let password = "";
@@ -418,7 +416,7 @@ const initModalLogic = () => {
         }
     });
 
-    // --- APPEL SÉCURISÉ AU BACKEND ---
+    // --- APPEL AU SERVEUR AVEC LE JETON FORCÉ ---
     deleteBtn.addEventListener('click', async () => {
         const userId = document.getElementById('edit-user-id').value;
         const targetUser = allUsersData.find(u => u.id === userId);
@@ -439,8 +437,16 @@ const initModalLogic = () => {
                     throw new Error("Session expirée. Veuillez vous reconnecter.");
                 }
 
+                // LE PLAN B : On force Firebase à cracher le jeton d'authentification tout frais
+                const securityToken = await auth.currentUser.getIdToken(true);
+
                 const deleteUserAccount = httpsCallable(functionsInstance, 'deleteUserAccount');
-                const result = await deleteUserAccount({ uid: userId });
+                
+                // On glisse discrètement le jeton dans le colis (data) envoyé au serveur
+                const result = await deleteUserAccount({ 
+                    uid: userId,
+                    token: securityToken 
+                });
                 
                 alert(`✅ Succès : ${result.data.message}`);
                 modal.style.display = 'none';
