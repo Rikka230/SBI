@@ -214,74 +214,109 @@ const initUserCreation = () => {
 };
 
 
-/* --- 5. MODALE D'EDITION (GOD MODE & SUPPRESSION) --- */
+/* --- 5. MODALE D'EDITION (GOD MODE & SECURITE) --- */
 const openEditModal = (userId) => {
     const targetUser = allUsersData.find(u => u.id === userId);
     if(!targetUser) return;
 
-    document.getElementById('edit-user-id').value = targetUser.id;
-    document.getElementById('edit-user-prenom').value = targetUser.prenom || '';
-    document.getElementById('edit-user-nom').value = targetUser.nom || '';
-    document.getElementById('edit-user-email').value = targetUser.email || '';
-    document.getElementById('edit-user-role').value = targetUser.role || 'student';
-    document.getElementById('edit-user-statut').value = targetUser.statut || 'actif';
-
+    // Éléments du DOM
+    const prenomInput = document.getElementById('edit-user-prenom');
+    const nomInput = document.getElementById('edit-user-nom');
+    const emailInput = document.getElementById('edit-user-email');
+    const roleSelect = document.getElementById('edit-user-role');
+    const statutSelect = document.getElementById('edit-user-statut');
+    
     const godContainer = document.getElementById('god-mode-container');
     const godCheckbox = document.getElementById('edit-user-isgod');
-    const godLabelWrapper = godCheckbox.parentElement; // Le label contenant la case
+    const godLabelWrapper = godCheckbox.parentElement;
     const godDesc = document.getElementById('god-mode-desc');
     
     const deleteZone = document.getElementById('delete-zone');
-    const roleSelect = document.getElementById('edit-user-role');
-    const statutSelect = document.getElementById('edit-user-statut');
+    const resetPwdBtn = document.getElementById('reset-pwd-btn');
+    const submitBtn = document.querySelector('#edit-user-form button[type="submit"]');
 
-    // Réinitialisation de l'affichage par défaut
-    godContainer.style.display = 'none';
-    godCheckbox.checked = false;
-    godLabelWrapper.style.display = 'flex'; // Affiche la case à cocher
-    godDesc.style.marginTop = '0.5rem';
-    deleteZone.style.display = 'block';
+    // Remplissage des données
+    document.getElementById('edit-user-id').value = targetUser.id;
+    prenomInput.value = targetUser.prenom || '';
+    nomInput.value = targetUser.nom || '';
+    emailInput.value = targetUser.email || '';
+    roleSelect.value = targetUser.role || 'student';
+    statutSelect.value = targetUser.statut || 'actif';
+
+    // Réinitialisation de tous les verrous par défaut (On ouvre tout)
+    prenomInput.disabled = false;
+    nomInput.disabled = false;
     roleSelect.disabled = false;
     statutSelect.disabled = false;
+    resetPwdBtn.style.display = 'block';
+    submitBtn.style.display = 'block';
+    deleteZone.style.display = 'block';
+    
+    godContainer.style.display = 'none';
+    godCheckbox.checked = false;
+    godLabelWrapper.style.display = 'flex';
+    godDesc.style.marginTop = '0.5rem';
 
     const godExists = allUsersData.some(u => u.isGod === true);
 
-    // A. LOGIQUE DU GOD MODE (AFFICHAGE)
-    if (targetUser.isGod) {
-        // Le profil ouvert EST le God officiel
-        godContainer.style.display = 'block';
-        godLabelWrapper.style.display = 'none'; // On masque la case à cocher
-        godDesc.style.marginTop = '0'; // On réajuste l'espacement
-        
-        if (targetUser.id === currentUid) {
-            godDesc.innerHTML = "<span style='color: #ffd700; font-size: 1.1rem; font-weight: bold;'>👑 Vous êtes l'Administrateur Suprême de la plateforme.</span>";
-        } else {
-            godDesc.innerHTML = "<span style='color: #ffd700; font-size: 1.1rem; font-weight: bold;'>👑 Cet utilisateur est l'Administrateur Suprême.</span>";
-        }
-    } else if (!godExists && targetUser.role === 'admin') {
-        // Aucun God n'existe encore. La couronne est vacante.
-        godContainer.style.display = 'block';
-        godCheckbox.disabled = false;
-        if (targetUser.id === currentUid) {
-            godDesc.innerHTML = "Aucun God n'existe. Cochez pour <strong>réclamer</strong> les pouvoirs suprêmes (irréversible).";
-        } else {
-            godDesc.innerHTML = "Aucun God n'existe. Cochez pour lui <strong>donner</strong> les pouvoirs suprêmes.";
-        }
-    } else if (isCurrentUserGod && targetUser.role === 'admin' && targetUser.id !== currentUid) {
-        // Le God actuel veut transférer son pouvoir à un autre admin
-        godContainer.style.display = 'block';
-        godCheckbox.disabled = false;
-        godDesc.innerHTML = "⚠️ En cochant cette case, vous lui <strong>transférez</strong> vos pouvoirs suprêmes. Vous les perdrez définitivement.";
-    }
+    // ==========================================
+    // RÈGLES DE SÉCURITÉ DE LA MODALE
+    // ==========================================
 
-    // B. LOGIQUE DE VERROUILLAGE DES DROITS DE SUPPRESSION
-    if (targetUser.isGod) {
-        deleteZone.style.display = 'none';
+    // RÈGLE 1 : VERROUILLAGE TOTAL SI ON REGARDE LE GOD EN ÉTANT UN SIMPLE ADMIN
+    if (targetUser.isGod && !isCurrentUserGod) {
+        prenomInput.disabled = true;
+        nomInput.disabled = true;
         roleSelect.disabled = true;
         statutSelect.disabled = true;
-    } else if (targetUser.role === 'admin' && !isCurrentUserGod) {
+        resetPwdBtn.style.display = 'none'; // Pas de reset de mdp possible
+        submitBtn.style.display = 'none'; // Pas d'enregistrement possible
+        deleteZone.style.display = 'none'; // Pas de suppression possible
+        
+        godContainer.style.display = 'block';
+        godLabelWrapper.style.display = 'none';
+        godDesc.style.marginTop = '0';
+        godDesc.innerHTML = "<span style='color: #ffd700; font-size: 1.1rem; font-weight: bold;'>👑 Cet utilisateur est l'Administrateur Suprême (Lecture seule).</span>";
+    } 
+    
+    // RÈGLE 2 : SI LE GOD REGARDE SON PROPRE PROFIL
+    else if (targetUser.isGod && isCurrentUserGod) {
+        deleteZone.style.display = 'none'; // Ne peut pas se suicider
+        roleSelect.disabled = true; // Ne peut pas se dégrader tout seul
+        statutSelect.disabled = true; // Ne peut pas se suspendre
+
+        godContainer.style.display = 'block';
+        godLabelWrapper.style.display = 'none';
+        godDesc.style.marginTop = '0';
+        godDesc.innerHTML = "<span style='color: #ffd700; font-size: 1.1rem; font-weight: bold;'>👑 Vous êtes l'Administrateur Suprême de la plateforme.</span>";
+    }
+
+    // RÈGLE 3 : GESTION DU COURONNEMENT (LE TRÔNE EST VIDE OU LE GOD LE CÈDE)
+    else if (!targetUser.isGod && targetUser.role === 'admin') {
+        if (!godExists) {
+            godContainer.style.display = 'block';
+            godCheckbox.disabled = false;
+            if (targetUser.id === currentUid) {
+                godDesc.innerHTML = "Aucun God n'existe. Cochez pour <strong>réclamer</strong> les pouvoirs suprêmes (irréversible).";
+                deleteZone.style.display = 'none'; // Pas de suicide
+            } else {
+                godDesc.innerHTML = "Aucun God n'existe. Cochez pour lui <strong>donner</strong> les pouvoirs suprêmes.";
+            }
+        } else if (isCurrentUserGod) {
+            // Le God actuel veut transférer son pouvoir
+            godContainer.style.display = 'block';
+            godCheckbox.disabled = false;
+            godDesc.innerHTML = "⚠️ En cochant cette case, vous lui <strong>transférez</strong> vos pouvoirs suprêmes. Vous les perdrez définitivement.";
+        }
+    }
+
+    // RÈGLE 4 : PROTECTION DE BASE CONTRE LE SUICIDE ADMIN (Si pas God)
+    if (targetUser.id === currentUid && !targetUser.isGod) {
         deleteZone.style.display = 'none';
-    } else if (targetUser.id === currentUid) {
+    }
+
+    // RÈGLE 5 : UN ADMIN NORMAL NE PEUT PAS SUPPRIMER UN AUTRE ADMIN
+    if (targetUser.role === 'admin' && !isCurrentUserGod && targetUser.id !== currentUid) {
         deleteZone.style.display = 'none';
     }
 
@@ -301,6 +336,15 @@ const initModalLogic = () => {
 
     resetPwdBtn.addEventListener('click', async () => {
         const userEmail = document.getElementById('edit-user-email').value;
+        const userId = document.getElementById('edit-user-id').value;
+        const targetUser = allUsersData.find(u => u.id === userId);
+
+        // Ultime vérification de sécurité côté JS
+        if (targetUser.isGod && !isCurrentUserGod) {
+            alert("❌ Accès refusé : Impossible de réinitialiser le mot de passe de l'Administrateur Suprême.");
+            return;
+        }
+
         try {
             await sendPasswordResetEmail(auth, userEmail);
             alert(`✅ Un e-mail de réinitialisation vient d'être envoyé à ${userEmail}`);
@@ -314,26 +358,31 @@ const initModalLogic = () => {
         e.preventDefault();
         const userId = document.getElementById('edit-user-id').value;
         const targetUser = allUsersData.find(u => u.id === userId);
-        
-        const updates = {
-            prenom: document.getElementById('edit-user-prenom').value.trim(),
-            nom: document.getElementById('edit-user-nom').value.trim(),
-        };
 
+        // Ultime vérification de sécurité côté JS
+        if (targetUser.isGod && !isCurrentUserGod) {
+            alert("❌ Accès refusé : Vous ne pouvez pas modifier le profil de l'Administrateur Suprême.");
+            return;
+        }
+        
+        const updates = {};
+        
+        // On n'enregistre que ce qui n'est pas verrouillé
+        if (!document.getElementById('edit-user-prenom').disabled) {
+            updates.prenom = document.getElementById('edit-user-prenom').value.trim();
+        }
+        if (!document.getElementById('edit-user-nom').disabled) {
+            updates.nom = document.getElementById('edit-user-nom').value.trim();
+        }
         if (!document.getElementById('edit-user-role').disabled) {
             updates.role = document.getElementById('edit-user-role').value;
             updates.statut = document.getElementById('edit-user-statut').value;
         }
 
-        // C. LOGIQUE DE SAUVEGARDE GOD MODE
         const godExists = allUsersData.some(u => u.isGod === true);
-        
         if (godCheckbox.checked && godLabelWrapper.style.display !== 'none') {
-            // Seul le God actuel (ou n'importe qui si le trône est vide) peut valider ce choix
             if (isCurrentUserGod || !godExists) {
                 updates.isGod = true;
-                
-                // Si y avait un ancien God, on le rétrograde
                 const currentGodProfile = allUsersData.find(u => u.isGod === true);
                 if (currentGodProfile && currentGodProfile.id !== targetUser.id) {
                     await updateDoc(doc(db, "users", currentGodProfile.id), { isGod: false });
@@ -353,6 +402,14 @@ const initModalLogic = () => {
 
     deleteBtn.addEventListener('click', async () => {
         const userId = document.getElementById('edit-user-id').value;
+        const targetUser = allUsersData.find(u => u.id === userId);
+
+        // Ultime vérification de sécurité côté JS
+        if (targetUser.isGod) {
+            alert("❌ Accès refusé : Le compte Suprême ne peut pas être supprimé.");
+            return;
+        }
+
         if(confirm("🛑 DANGER : Cela va supprimer définitivement l'accès de cet utilisateur à la plateforme. Confirmer ?")) {
             try {
                 await deleteDoc(doc(db, "users", userId));
