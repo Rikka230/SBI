@@ -4,8 +4,9 @@
  * =======================================================================
  */
 
-import { logoutUser } from '../../public/js/auth.js';
-import { db } from '../../public/js/firebase-init.js';
+// On remonte de 2 crans (depuis admin/js/) pour atteindre js/ à la racine
+import { logoutUser } from '../../js/auth.js';
+import { db } from '../../js/firebase-init.js';
 import { doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 // Imports pour l'application secondaire (Création silencieuse de comptes)
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
@@ -27,7 +28,7 @@ document.getElementById('btn-clear-cache').addEventListener('click', () => {
 
 /* --- 1.2 CONFIGURATION APP SECONDAIRE (Création d'utilisateurs sans déconnexion) --- */
 const firebaseConfig = {
-    apiKey: "TON_API_KEY_ICI", // <-- À REMPLACER
+    apiKey: "AIzaSyBCBY51kkexg7jJgEpVYlKCNbZemrtdaiY",
     authDomain: "sbi-web-4f6b4.firebaseapp.com",
     projectId: "sbi-web-4f6b4"
 };
