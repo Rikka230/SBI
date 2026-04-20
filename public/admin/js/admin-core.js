@@ -9,10 +9,9 @@ import { logoutUser } from '/js/auth.js';
 import { db, auth } from '/js/firebase-init.js';
 import { doc, setDoc, collection, getDocs, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+import { getAuth, createUserWithEmailAndPassword, sendPasswordResetEmail, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
 document.getElementById('logout-btn').addEventListener('click', logoutUser);
-
 document.getElementById('btn-clear-cache').addEventListener('click', () => {
     if(confirm('Vider le cache local ? Cela rechargera la page.')) {
         localStorage.clear();
@@ -30,7 +29,10 @@ const firebaseConfig = {
 const secondaryApp = initializeApp(firebaseConfig, "AdminCreationApp");
 const secondaryAuth = getAuth(secondaryApp);
 
+// Variables Globales pour la gestion des droits
 let allUsersData = [];
+let currentUid = null;
+let isCurrentUserGod = false;
 
 
 /* --- 2. NAVIGATION INTERNE AVEC MEMOIRE (F5) --- */
@@ -75,6 +77,12 @@ const fetchUsers = async () => {
         querySnapshot.forEach((doc) => {
             allUsersData.push({ id: doc.id, ...doc.data() });
         });
+
+        // DEFINITION DU POUVOIR DU COMPTE CONNECTE
+        const godExists = allUsersData.some(u => u.isGod === true);
+        const myProfile = allUsersData.find(u => u.id === currentUid);
+        // Si aucun God n'existe, tous les admins ont le pouvoir de nommer le premier God
+        isCurrentUserGod = godExists ? (myProfile && myProfile.isGod === true) : true;
         
         renderUsersList(allUsersData);
     } catch (error) {
@@ -96,31 +104,24 @@ const renderUsersList = (usersToRender) => {
         const displayName = (user.prenom && user.nom) ? `${user.prenom} ${user.nom}` : (user.nom || "Sans nom");
         const statusLabel = user.statut === 'suspendu' ? '<span style="color: #ff4a4a; font-weight:bold;">Suspendu</span>' : '<span style="color: #2ed573; font-weight:bold;">Actif</span>';
 
-        // NOUVEAUX STYLES DE BADGES (Vert néon pour Étudiant, Jaune pour Enseignant)
         let roleBadge = '';
-        if(user.role === 'admin') roleBadge = '<span style="background: rgba(255, 74, 74, 0.15); color: #ff4a4a; border: 1px solid rgba(255, 74, 74, 0.4); padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight:bold; display:inline-block;">Admin</span>';
-        if(user.role === 'teacher') roleBadge = '<span style="background: rgba(255, 215, 0, 0.15); color: #ffd700; border: 1px solid rgba(255, 215, 0, 0.4); padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight:bold; display:inline-block;">Enseignant</span>';
-        if(user.role === 'student') roleBadge = '<span style="background: rgba(0, 255, 163, 0.15); color: #00ffa3; border: 1px solid rgba(0, 255, 163, 0.4); padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight:bold; display:inline-block;">Étudiant</span>';
+        if (user.isGod) {
+            roleBadge = '<span style="background: rgba(255, 215, 0, 0.2); color: #ffd700; border: 1px solid #ffd700; padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight:bold; display:inline-block;">👑 Suprême</span>';
+        } else if(user.role === 'admin') {
+            roleBadge = '<span style="background: rgba(255, 74, 74, 0.15); color: #ff4a4a; border: 1px solid rgba(255, 74, 74, 0.4); padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight:bold; display:inline-block;">Admin</span>';
+        } else if(user.role === 'teacher') {
+            roleBadge = '<span style="background: rgba(255, 215, 0, 0.15); color: #ffd700; border: 1px solid rgba(255, 215, 0, 0.4); padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight:bold; display:inline-block;">Enseignant</span>';
+        } else if(user.role === 'student') {
+            roleBadge = '<span style="background: rgba(0, 255, 163, 0.15); color: #00ffa3; border: 1px solid rgba(0, 255, 163, 0.4); padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight:bold; display:inline-block;">Étudiant</span>';
+        }
 
         const userCardHTML = `
             <div style="background: #0a0a0c; padding: 0.8rem 1.2rem; border: 1px solid #222; border-radius: 6px; margin-bottom: 0.5rem; display: grid; grid-template-columns: 120px 1.5fr 2fr 100px 120px; gap: 1rem; align-items: center; opacity: ${user.statut === 'suspendu' ? '0.6' : '1'}; transition: all 0.2s;">
-                
                 <div>${roleBadge}</div>
-                
-                <div style="color: white; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${displayName}">
-                    ${displayName}
-                </div>
-                
-                <div style="color: #9ca3af; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${user.email}">
-                    ${user.email}
-                </div>
-                
+                <div style="color: white; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${displayName}">${displayName}</div>
+                <div style="color: #9ca3af; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${user.email}">${user.email}</div>
                 <div style="font-size: 0.85rem;">${statusLabel}</div>
-                
-                <div style="text-align: right;">
-                    <button class="btn-secondary btn-edit-user" data-id="${user.id}" style="padding: 0.4rem 1rem; font-size: 0.85rem; width: 100%;">Éditer</button>
-                </div>
-                
+                <div style="text-align: right;"><button class="btn-secondary btn-edit-user" data-id="${user.id}" style="padding: 0.4rem 1rem; font-size: 0.85rem; width: 100%;">Éditer</button></div>
             </div>
         `;
         container.insertAdjacentHTML('beforeend', userCardHTML);
@@ -193,6 +194,7 @@ const initUserCreation = () => {
                 email: email,
                 role: role,
                 statut: "actif",
+                isGod: false,
                 dateCreation: new Date().toISOString(),
                 formationsAcces: [] 
             });
@@ -214,17 +216,57 @@ const initUserCreation = () => {
 };
 
 
-/* --- 5. MODALE D'EDITION, SUSPENSION ET SUPPRESSION --- */
+/* --- 5. MODALE D'EDITION (GOD MODE & SUPPRESSION) --- */
 const openEditModal = (userId) => {
-    const user = allUsersData.find(u => u.id === userId);
-    if(!user) return;
+    const targetUser = allUsersData.find(u => u.id === userId);
+    if(!targetUser) return;
 
-    document.getElementById('edit-user-id').value = user.id;
-    document.getElementById('edit-user-prenom').value = user.prenom || '';
-    document.getElementById('edit-user-nom').value = user.nom || '';
-    document.getElementById('edit-user-email').value = user.email || '';
-    document.getElementById('edit-user-role').value = user.role || 'student';
-    document.getElementById('edit-user-statut').value = user.statut || 'actif';
+    document.getElementById('edit-user-id').value = targetUser.id;
+    document.getElementById('edit-user-prenom').value = targetUser.prenom || '';
+    document.getElementById('edit-user-nom').value = targetUser.nom || '';
+    document.getElementById('edit-user-email').value = targetUser.email || '';
+    document.getElementById('edit-user-role').value = targetUser.role || 'student';
+    document.getElementById('edit-user-statut').value = targetUser.statut || 'actif';
+
+    const godContainer = document.getElementById('god-mode-container');
+    const godCheckbox = document.getElementById('edit-user-isgod');
+    const godDesc = document.getElementById('god-mode-desc');
+    const deleteZone = document.getElementById('delete-zone');
+    const roleSelect = document.getElementById('edit-user-role');
+    const statutSelect = document.getElementById('edit-user-statut');
+
+    // Réinitialisation par défaut
+    godContainer.style.display = 'none';
+    godCheckbox.checked = targetUser.isGod === true;
+    deleteZone.style.display = 'block';
+    roleSelect.disabled = false;
+    statutSelect.disabled = false;
+
+    // A. LOGIQUE DU GOD MODE (Transfert de pouvoir)
+    if (isCurrentUserGod && targetUser.role === 'admin') {
+        godContainer.style.display = 'block';
+        if (targetUser.isGod) {
+            godCheckbox.disabled = true;
+            godDesc.textContent = "Cet utilisateur détient les pouvoirs suprêmes.";
+        } else {
+            godCheckbox.disabled = false;
+            godDesc.textContent = "Attention : En cochant cette case, vous lui transférez les pouvoirs suprêmes (vous les perdrez).";
+        }
+    }
+
+    // B. LOGIQUE DE VERROUILLAGE DES DROITS DE SUPPRESSION
+    if (targetUser.isGod) {
+        // Personne ne peut supprimer, dégrader ou suspendre le God
+        deleteZone.style.display = 'none';
+        roleSelect.disabled = true;
+        statutSelect.disabled = true;
+    } else if (targetUser.role === 'admin' && !isCurrentUserGod) {
+        // Seul le God peut supprimer un Admin
+        deleteZone.style.display = 'none';
+    } else if (targetUser.id === currentUid) {
+        // Un utilisateur ne peut pas se supprimer lui-même
+        deleteZone.style.display = 'none';
+    }
 
     document.getElementById('edit-user-modal').style.display = 'flex';
 };
@@ -235,10 +277,9 @@ const initModalLogic = () => {
     const form = document.getElementById('edit-user-form');
     const deleteBtn = document.getElementById('delete-user-btn');
     const resetPwdBtn = document.getElementById('reset-pwd-btn');
+    const godCheckbox = document.getElementById('edit-user-isgod');
 
-    closeBtn.addEventListener('click', () => {
-        modal.style.display = 'none';
-    });
+    closeBtn.addEventListener('click', () => { modal.style.display = 'none'; });
 
     resetPwdBtn.addEventListener('click', async () => {
         const userEmail = document.getElementById('edit-user-email').value;
@@ -254,18 +295,32 @@ const initModalLogic = () => {
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
         const userId = document.getElementById('edit-user-id').value;
-        const newPrenom = document.getElementById('edit-user-prenom').value.trim();
-        const newNom = document.getElementById('edit-user-nom').value.trim();
-        const newRole = document.getElementById('edit-user-role').value;
-        const newStatut = document.getElementById('edit-user-statut').value;
+        const targetUser = allUsersData.find(u => u.id === userId);
+        
+        const updates = {
+            prenom: document.getElementById('edit-user-prenom').value.trim(),
+            nom: document.getElementById('edit-user-nom').value.trim(),
+        };
+
+        // On ne met à jour le rôle et statut que s'ils ne sont pas verrouillés
+        if (!document.getElementById('edit-user-role').disabled) {
+            updates.role = document.getElementById('edit-user-role').value;
+            updates.statut = document.getElementById('edit-user-statut').value;
+        }
+
+        // Si le God a coché la case pour transférer son pouvoir
+        if (isCurrentUserGod && godCheckbox.checked && !godCheckbox.disabled && targetUser.id !== currentUid) {
+            updates.isGod = true;
+            
+            // On cherche l'ancien God pour le déchoir de ses droits
+            const currentGodProfile = allUsersData.find(u => u.isGod === true);
+            if (currentGodProfile) {
+                await updateDoc(doc(db, "users", currentGodProfile.id), { isGod: false });
+            }
+        }
 
         try {
-            await updateDoc(doc(db, "users", userId), {
-                prenom: newPrenom,
-                nom: newNom,
-                role: newRole,
-                statut: newStatut
-            });
+            await updateDoc(doc(db, "users", userId), updates);
             modal.style.display = 'none';
             fetchUsers(); 
         } catch (error) {
@@ -289,11 +344,18 @@ const initModalLogic = () => {
     });
 };
 
-// --- INITIALISATION GLOBALE ---
+// --- INITIALISATION GLOBALE EN ATTENDANT L'AUTHENTIFICATION ---
 document.addEventListener('DOMContentLoaded', () => {
     initNavigation();
     initFilters();
-    fetchUsers(); 
     initUserCreation();
     initModalLogic(); 
+
+    // On attend de savoir qui est connecté avant de charger les utilisateurs
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            currentUid = user.uid;
+            fetchUsers(); 
+        }
+    });
 });
