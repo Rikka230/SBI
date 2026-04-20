@@ -7,14 +7,13 @@
 /* --- 1.1 INITIALISATION OUTILS DE BASE --- */
 import { logoutUser } from '/js/auth.js';
 import { db, auth } from '/js/firebase-init.js';
-import { doc, setDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+// Ajout de updateDoc et deleteDoc pour l'édition et suppression
+import { doc, setDoc, collection, getDocs, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
-// Action : Bouton de déconnexion
 document.getElementById('logout-btn').addEventListener('click', logoutUser);
 
-// Action : Bouton Vidage de Cache
 document.getElementById('btn-clear-cache').addEventListener('click', () => {
     if(confirm('Vider le cache local ? Cela rechargera la page.')) {
         localStorage.clear();
@@ -32,11 +31,10 @@ const firebaseConfig = {
 const secondaryApp = initializeApp(firebaseConfig, "AdminCreationApp");
 const secondaryAuth = getAuth(secondaryApp);
 
-// Variable globale pour stocker la liste des utilisateurs et filtrer sans recharger
 let allUsersData = [];
 
 
-/* --- 2. NAVIGATION INTERNE (Système d'onglets) --- */
+/* --- 2. NAVIGATION INTERNE --- */
 const initNavigation = () => {
     const navButtons = document.querySelectorAll('.nav-item[data-target]');
     const views = document.querySelectorAll('.admin-view');
@@ -55,13 +53,11 @@ const initNavigation = () => {
 
 
 /* --- 3. AFFICHAGE ET RECHERCHE DES UTILISATEURS --- */
-
-// Récupérer les données depuis Firestore
 const fetchUsers = async () => {
     const container = document.getElementById('users-list-container');
     try {
         const querySnapshot = await getDocs(collection(db, "users"));
-        allUsersData = []; // Réinitialise le tableau
+        allUsersData = []; 
         
         querySnapshot.forEach((doc) => {
             allUsersData.push({ id: doc.id, ...doc.data() });
@@ -69,15 +65,14 @@ const fetchUsers = async () => {
         
         renderUsersList(allUsersData);
     } catch (error) {
-        console.error("Erreur lors de la récupération des utilisateurs:", error);
-        container.innerHTML = `<div class="sys-msg error" style="display:block;">Impossible de charger les utilisateurs.</div>`;
+        console.error("Erreur récupération:", error);
+        container.innerHTML = `<div class="sys-msg error" style="display:block;">Erreur de chargement.</div>`;
     }
 };
 
-// Dessiner le HTML de la liste
 const renderUsersList = (usersToRender) => {
     const container = document.getElementById('users-list-container');
-    container.innerHTML = ''; // On vide le conteneur
+    container.innerHTML = ''; 
 
     if (usersToRender.length === 0) {
         container.innerHTML = '<div class="empty-state">Aucun compte trouvé.</div>';
@@ -85,30 +80,41 @@ const renderUsersList = (usersToRender) => {
     }
 
     usersToRender.forEach(user => {
-        // Sécurité si les anciens comptes n'ont pas la structure nom/prenom
-        const displayName = (user.prenom && user.nom) ? `${user.prenom} ${user.nom}` : (user.nom || "Utilisateur sans nom");
-        const statusLabel = user.statut === 'actif' ? '<span style="color: #2ed573;">● Actif</span>' : '<span style="color: #9ca3af;">● Inconnu</span>';
+        const displayName = (user.prenom && user.nom) ? `${user.prenom} ${user.nom}` : (user.nom || "Sans nom");
+        const statusLabel = user.statut === 'suspendu' ? '<span style="color: #ff4a4a;">● Suspendu</span>' : '<span style="color: #2ed573;">● Actif</span>';
 
-        // Traduction visuelle des rôles
         let roleBadge = '';
         if(user.role === 'admin') roleBadge = '<span style="background: rgba(255, 74, 74, 0.2); color: #ff4a4a; padding: 2px 8px; border-radius: 12px; font-size: 0.8rem;">Admin</span>';
         if(user.role === 'teacher') roleBadge = '<span style="background: rgba(42, 87, 255, 0.2); color: var(--sbi-blue); padding: 2px 8px; border-radius: 12px; font-size: 0.8rem;">Enseignant</span>';
         if(user.role === 'student') roleBadge = '<span style="background: rgba(46, 213, 115, 0.2); color: #2ed573; padding: 2px 8px; border-radius: 12px; font-size: 0.8rem;">Étudiant</span>';
 
+        // Ajout de l'attribut data-id pour lier le bouton à l'utilisateur
         const userCardHTML = `
-            <div style="background: #0a0a0c; padding: 1rem; border: 1px solid #222; border-radius: 4px; margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
+            <div style="background: #0a0a0c; padding: 1rem; border: 1px solid #222; border-radius: 4px; margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center; opacity: ${user.statut === 'suspendu' ? '0.6' : '1'};">
                 <div>
                     <h4 style="margin: 0 0 0.2rem 0;">${displayName} ${roleBadge}</h4>
                     <p style="margin: 0; font-size: 0.85rem; color: #9ca3af;">${user.email} | ${statusLabel}</p>
                 </div>
-                <button class="btn-secondary" style="padding: 0.4rem 1rem; font-size: 0.85rem;">Éditer</button>
+                <button class="btn-secondary btn-edit-user" data-id="${user.id}" style="padding: 0.4rem 1rem; font-size: 0.85rem;">Éditer</button>
             </div>
         `;
         container.insertAdjacentHTML('beforeend', userCardHTML);
     });
+
+    // Attacher les écouteurs d'événements aux nouveaux boutons "Éditer"
+    attachEditListeners();
 };
 
-// Logique de Filtrage
+const attachEditListeners = () => {
+    const editBtns = document.querySelectorAll('.btn-edit-user');
+    editBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const userId = e.target.getAttribute('data-id');
+            openEditModal(userId);
+        });
+    });
+};
+
 const initFilters = () => {
     const searchInput = document.getElementById('search-user');
     const roleFilter = document.getElementById('filter-role');
@@ -120,12 +126,8 @@ const initFilters = () => {
         const filteredUsers = allUsersData.filter(user => {
             const fullName = `${user.prenom || ''} ${user.nom || ''}`.toLowerCase();
             const email = (user.email || '').toLowerCase();
-            
-            // Vérifie la recherche texte
             const matchesSearch = fullName.includes(searchTerm) || email.includes(searchTerm);
-            // Vérifie le rôle
             const matchesRole = roleTerm === 'all' || user.role === roleTerm;
-
             return matchesSearch && matchesRole;
         });
 
@@ -158,45 +160,98 @@ const initUserCreation = () => {
         const role = document.getElementById('new-user-role').value;
 
         try {
-            // 1. Création silencieuse
             const userCredential = await createUserWithEmailAndPassword(secondaryAuth, email, password);
             const newUid = userCredential.user.uid;
 
-            // 2. Enregistrement Base de données
             await setDoc(doc(db, "users", newUid), {
                 prenom: prenom,
                 nom: nom,
                 email: email,
                 role: role,
-                statut: "actif", // Statut par défaut
+                statut: "actif",
                 dateCreation: new Date().toISOString(),
                 formationsAcces: [] 
             });
 
-            // 3. Déconnexion instance secondaire
             await secondaryAuth.signOut();
-
-            // 4. Envoi de l'email de réinitialisation via l'instance principale
             await sendPasswordResetEmail(auth, email);
 
-            // Succès
             msgBox.classList.add('success');
-            msgBox.textContent = `✅ Compte créé ! Un email de configuration a été envoyé à ${prenom}.`;
+            msgBox.textContent = `✅ Compte créé ! Email envoyé.`;
             form.reset(); 
-            
-            // Met à jour la liste en direct
-            fetchUsers();
+            fetchUsers(); 
 
         } catch (error) {
             console.error("Erreur création:", error);
             msgBox.classList.add('error');
-            
-            if (error.code === 'auth/email-already-in-use') {
-                msgBox.textContent = "❌ Cet email est déjà utilisé.";
-            } else if (error.code === 'auth/weak-password') {
-                msgBox.textContent = "❌ Le mot de passe doit faire au moins 6 caractères.";
-            } else {
-                msgBox.textContent = "❌ Erreur : " + error.message;
+            msgBox.textContent = "❌ Erreur : " + error.message;
+        }
+    });
+};
+
+
+/* --- 5. MODALE D'EDITION, SUSPENSION ET SUPPRESSION --- */
+const openEditModal = (userId) => {
+    const user = allUsersData.find(u => u.id === userId);
+    if(!user) return;
+
+    // Remplir les champs avec les données actuelles
+    document.getElementById('edit-user-id').value = user.id;
+    document.getElementById('edit-user-prenom').value = user.prenom || '';
+    document.getElementById('edit-user-nom').value = user.nom || '';
+    document.getElementById('edit-user-role').value = user.role || 'student';
+    document.getElementById('edit-user-statut').value = user.statut || 'actif';
+
+    // Afficher la modale
+    document.getElementById('edit-user-modal').style.display = 'flex';
+};
+
+const initModalLogic = () => {
+    const modal = document.getElementById('edit-user-modal');
+    const closeBtn = document.getElementById('close-modal-btn');
+    const form = document.getElementById('edit-user-form');
+    const deleteBtn = document.getElementById('delete-user-btn');
+
+    // Fermer la modale
+    closeBtn.addEventListener('click', () => {
+        modal.style.display = 'none';
+    });
+
+    // Enregistrer les modifications
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const userId = document.getElementById('edit-user-id').value;
+        const newPrenom = document.getElementById('edit-user-prenom').value.trim();
+        const newNom = document.getElementById('edit-user-nom').value.trim();
+        const newRole = document.getElementById('edit-user-role').value;
+        const newStatut = document.getElementById('edit-user-statut').value;
+
+        try {
+            await updateDoc(doc(db, "users", userId), {
+                prenom: newPrenom,
+                nom: newNom,
+                role: newRole,
+                statut: newStatut
+            });
+            modal.style.display = 'none';
+            fetchUsers(); // Rafraîchir la liste instantanément
+        } catch (error) {
+            console.error("Erreur mise à jour:", error);
+            alert("Erreur lors de la mise à jour des données.");
+        }
+    });
+
+    // Supprimer le profil
+    deleteBtn.addEventListener('click', async () => {
+        const userId = document.getElementById('edit-user-id').value;
+        if(confirm("🛑 DANGER : Cela va supprimer définitivement l'accès de cet utilisateur à la plateforme. Confirmer ?")) {
+            try {
+                await deleteDoc(doc(db, "users", userId));
+                modal.style.display = 'none';
+                fetchUsers(); // Rafraîchir la liste
+            } catch (error) {
+                console.error("Erreur suppression:", error);
+                alert("Erreur lors de la suppression du compte.");
             }
         }
     });
@@ -206,6 +261,7 @@ const initUserCreation = () => {
 document.addEventListener('DOMContentLoaded', () => {
     initNavigation();
     initFilters();
-    fetchUsers(); // Charge la liste dès le démarrage
+    fetchUsers(); 
     initUserCreation();
+    initModalLogic(); // Initialisation de la modale
 });
