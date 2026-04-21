@@ -29,12 +29,10 @@ document.addEventListener('DOMContentLoaded', () => {
             await loadFormationsCategories(); 
             await loadCourses(); 
 
-            // Redirection magique si l'Admin vient de cliquer sur une Notif !
             const urlParams = new URLSearchParams(window.location.search);
             const editId = urlParams.get('edit');
             if (editId) {
                 window.editCourse(editId);
-                // On nettoie l'URL pour ne pas ré-ouvrir à chaque F5
                 window.history.replaceState({}, document.title, window.location.pathname + "?tab=tab-editor");
             }
         } else {
@@ -559,9 +557,10 @@ async function saveCourseToFirebase() {
     if (forcePending) finalStatut = 'pending';
     else if (isActive) finalStatut = 'approved';
 
+    // On préserve le créateur original
     const finalAuteurId = courseId ? editingCourseAuthorId : currentUid;
 
-    // BUG DE NOTIFICATION CORRIGÉ ICI (Double sécurité)
+    // Détection stricte de la validation
     const isValidation = (courseId && editingCourseOriginalStatus === 'pending' && finalStatut === 'approved' && !isTeacher);
 
     try {
@@ -586,7 +585,6 @@ async function saveCourseToFirebase() {
             alert(forcePending ? '✅ Cours soumis pour validation !' : '✅ Nouveau cours créé !');
         }
 
-        // --- ENVOI DES NOTIFICATIONS EN ARRIÈRE-PLAN ---
         if (forcePending) {
             addDoc(collection(db, "notifications"), {
                 type: 'course_validation',
@@ -599,13 +597,12 @@ async function saveCourseToFirebase() {
             }).catch(e => console.error(e));
         }
         
-        // Si l'Admin vient de valider le cours d'un prof
         if (isValidation && editingCourseAuthorId && editingCourseAuthorId !== currentUid) {
             addDoc(collection(db, "notifications"), {
                 type: 'course_approved',
                 courseId: courseRefId,
                 courseTitle: title,
-                destinataireId: editingCourseAuthorId, // Envoi direct au Prof
+                destinataireId: editingCourseAuthorId,
                 dateCreation: serverTimestamp(),
                 readBy: []
             }).catch(e => console.error(e));
@@ -748,9 +745,13 @@ window.duplicateCourse = async (id) => {
     }
 };
 
+// NOVEAU: Sécurité renforcée pour la suppression
 window.deleteCourse = async (id) => {
-    if(confirm("Supprimer intégralement ce cours ?")) {
+    const confirmation = prompt("⚠️ ATTENTION : La suppression est définitive.\nTapez 'SUPPRIMER' en majuscules pour confirmer :");
+    if (confirmation === 'SUPPRIMER') {
         await deleteDoc(doc(db, "courses", id));
         loadCourses();
+    } else if (confirmation !== null) {
+        alert("Suppression annulée.");
     }
 };
