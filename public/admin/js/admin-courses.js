@@ -520,7 +520,8 @@ async function saveCourseToFirebase() {
     
     const courseId = document.getElementById('edit-course-id').value;
     const title = document.getElementById('course-title').value.trim();
-    const isActive = document.getElementById('course-active').checked;
+    let isActive = document.getElementById('course-active').checked;
+    
     const selectedPills = Array.from(document.querySelectorAll('.formation-pill.selected')).map(p => p.getAttribute('data-val'));
 
     if (!title) { alert('⚠️ Veuillez entrer un Titre Global.'); return; }
@@ -530,22 +531,47 @@ async function saveCourseToFirebase() {
     saveBtn.textContent = 'Sauvegarde...';
     saveBtn.disabled = true;
 
+    // --- NOUVEAU : WORKFLOW DE VALIDATION ---
+    // Si c'est un prof, on force le statut inactif et on met en attente
+    const isTeacher = currentUserProfile && currentUserProfile.role === 'teacher';
+    const forcePending = isTeacher; 
+    
+    if (forcePending) isActive = false; // Interdiction de publier en direct
+    const statutVal = forcePending ? 'pending' : 'approved';
+
     try {
         const courseData = {
             titre: title,
             actif: isActive,
+            statutValidation: statutVal,
             formations: selectedPills,
             auteurId: currentUid,
             chapitres: currentChapters
         };
 
+        let courseRefId = courseId;
+
         if (courseId) {
             await updateDoc(doc(db, "courses", courseId), courseData);
-            alert('✅ Cours mis à jour !');
+            alert(forcePending ? '✅ Modifications envoyées pour validation !' : '✅ Cours mis à jour !');
         } else {
             courseData.dateCreation = serverTimestamp();
-            await addDoc(collection(db, "courses"), courseData);
-            alert('✅ Nouveau cours créé !');
+            const docRef = await addDoc(collection(db, "courses"), courseData);
+            courseRefId = docRef.id;
+            alert(forcePending ? '✅ Cours soumis pour validation !' : '✅ Nouveau cours créé !');
+        }
+
+        // Création de la notification pour les admins si le cours est en attente
+        if (forcePending) {
+            await addDoc(collection(db, "notifications"), {
+                type: 'course_validation',
+                courseId: courseRefId,
+                courseTitle: title,
+                auteurId: currentUid,
+                auteurName: (currentUserProfile.prenom || '') + ' ' + (currentUserProfile.nom || ''),
+                dateCreation: serverTimestamp(),
+                readBy: []
+            });
         }
         
         window.prepareNewCourse(); 
@@ -577,7 +603,13 @@ async function loadCourses() {
             const data = docSnap.data();
             const courseId = docSnap.id;
             
-            const statusHtml = data.actif ? `<span style="color: var(--accent-green); font-weight: bold; font-size: 0.8rem;">● ACTIF</span>` : `<span style="color: var(--accent-red); font-weight: bold; font-size: 0.8rem;">● BROUILLON</span>`;
+            // Indicateur Visuel : Actif, Brouillon, ou En Attente de Validation
+            let statusHtml = '';
+            if (data.statutValidation === 'pending') {
+                statusHtml = `<span style="color: var(--accent-yellow); font-weight: bold; font-size: 0.8rem;">⏳ EN ATTENTE</span>`;
+            } else {
+                statusHtml = data.actif ? `<span style="color: var(--accent-green); font-weight: bold; font-size: 0.8rem;">● ACTIF</span>` : `<span style="color: var(--accent-red); font-weight: bold; font-size: 0.8rem;">● BROUILLON</span>`;
+            }
             
             const tagsHtml = data.formations ? data.formations.map(fId => {
                 const formObj = allFormationsData.find(f => f.id === fId || f.titre === fId); 
