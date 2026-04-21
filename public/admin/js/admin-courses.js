@@ -1,6 +1,6 @@
 /**
  * =======================================================================
- * ADMIN COURSES - Gestion des Cours, Examens et Medias (A-Z)
+ * ADMIN COURSES - Gestion des Cours, Examens QCM et Medias (A-Z)
  * =======================================================================
  */
 
@@ -18,24 +18,33 @@ document.addEventListener('DOMContentLoaded', () => {
         if (user) { currentUid = user.uid; loadCourses(); }
     });
 
+    // Écouteurs principaux attachés proprement
     document.getElementById('btn-save-course').addEventListener('click', saveCourseToFirebase);
     document.getElementById('btn-add-chapter').addEventListener('click', () => createNewChapter('text'));
     document.getElementById('btn-add-quiz').addEventListener('click', () => createNewChapter('quiz'));
+    
+    const newCourseBtn = document.getElementById('btn-trigger-new-course');
+    if(newCourseBtn) newCourseBtn.addEventListener('click', window.prepareNewCourse);
 
-    // Sélection des Pilules de Formation
+    // Ajout dynamique de question QCM
+    document.getElementById('btn-add-question').addEventListener('click', addQuizQuestion);
+
     document.querySelectorAll('.formation-pill').forEach(pill => {
         pill.addEventListener('click', (e) => e.target.classList.toggle('selected'));
     });
 
-    // Mise à jour du titre en temps réel
-    document.getElementById('chapter-title').addEventListener('input', (e) => {
+    // Update titre
+    document.getElementById('chapter-title').addEventListener('input', updateActiveTitle);
+    document.getElementById('quiz-title').addEventListener('input', updateActiveTitle);
+
+    function updateActiveTitle(e) {
         if(activeChapterId) {
             const chap = currentChapters.find(c => c.id === activeChapterId);
             if(chap) { chap.titre = e.target.value; renderChaptersList(); }
         }
-    });
+    }
 
-    // COMPRESSION D'IMAGE A LA VOLÉE (Optimisation WebP)
+    // COMPRESSION IMAGE & UPLOAD UI
     document.getElementById('chapter-image-upload').addEventListener('change', async function(e) {
         const file = e.target.files[0];
         if(!file) return;
@@ -44,7 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
         img.src = URL.createObjectURL(file);
         img.onload = () => {
             const canvas = document.createElement('canvas');
-            const MAX_WIDTH = 1000; // Largeur max pour économiser la place
+            const MAX_WIDTH = 1200; 
             const scaleSize = MAX_WIDTH / img.width;
             canvas.width = MAX_WIDTH;
             canvas.height = img.height * scaleSize;
@@ -52,8 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
             
-            // Conversion en Base64 format WebP (Qualité 80%)
-            const dataUrl = canvas.toDataURL('image/webp', 0.8);
+            const dataUrl = canvas.toDataURL('image/webp', 0.85);
             
             document.getElementById('chapter-image-base64').value = dataUrl;
             const preview = document.getElementById('chapter-image-preview');
@@ -76,6 +84,7 @@ window.prepareNewCourse = function() {
     
     document.getElementById('no-chapter-zone').style.display = 'flex';
     document.getElementById('chapter-editor-zone').style.display = 'none';
+    document.getElementById('quiz-editor-zone').style.display = 'none';
     
     renderChaptersList();
     window.switchCourseTab('tab-editor');
@@ -88,11 +97,12 @@ function createNewChapter(type) {
     const newChap = {
         id: newId,
         type: type,
-        titre: type === 'quiz' ? `Examen Final` : `Leçon ${currentChapters.filter(c=>c.type==='text').length + 1}`,
+        titre: type === 'quiz' ? `Examen` : `Leçon ${currentChapters.filter(c=>c.type==='text').length + 1}`,
         contenu: '',
         mediaType: 'image',
         mediaImage: '',
-        mediaVideo: ''
+        mediaVideo: '',
+        questions: [] // Array pour le QCM
     };
     
     currentChapters.push(newChap);
@@ -110,6 +120,9 @@ function saveCurrentChapterContent() {
         chap.mediaImage = document.getElementById('chapter-image-base64').value;
         chap.mediaVideo = document.getElementById('chapter-video-url').value;
         chap.contenu = window.quill ? window.quill.root.innerHTML : '';
+    } else if (chap.type === 'quiz') {
+        chap.titre = document.getElementById('quiz-title').value;
+        chap.questions = gatherQuizQuestions(); // Capture les questions créées
     }
 }
 
@@ -120,35 +133,38 @@ window.selectChapter = function(id) {
     if(!chap) return;
 
     document.getElementById('no-chapter-zone').style.display = 'none';
-    document.getElementById('chapter-editor-zone').style.display = 'flex';
-    
-    document.getElementById('chapter-title').value = chap.titre;
 
-    // Restauration des médias
-    if(chap.mediaType === 'video') {
-        document.querySelector('input[name="media_type"][value="video"]').checked = true;
-        document.getElementById('media-image-zone').style.display = 'none';
-        document.getElementById('media-video-zone').style.display = 'flex';
-    } else {
-        document.querySelector('input[name="media_type"][value="image"]').checked = true;
-        document.getElementById('media-image-zone').style.display = 'flex';
-        document.getElementById('media-video-zone').style.display = 'none';
-    }
-    
-    document.getElementById('chapter-video-url').value = chap.mediaVideo || '';
-    document.getElementById('chapter-image-base64').value = chap.mediaImage || '';
-    
-    const preview = document.getElementById('chapter-image-preview');
-    if(chap.mediaImage) {
-        preview.src = chap.mediaImage;
-        preview.style.display = 'block';
-    } else {
-        preview.style.display = 'none';
-    }
+    if (chap.type === 'text') {
+        document.getElementById('quiz-editor-zone').style.display = 'none';
+        document.getElementById('chapter-editor-zone').style.display = 'flex';
+        
+        document.getElementById('chapter-title').value = chap.titre;
 
-    // CORRECTION DU BUG QUILL : Paste sécurisé
-    if(window.quill) {
-        window.quill.clipboard.dangerouslyPasteHTML(chap.contenu || '');
+        // UI Media
+        if(chap.mediaType === 'video') {
+            document.querySelector('input[name="media_type"][value="video"]').checked = true;
+            document.getElementById('media-image-zone').style.display = 'none';
+            document.getElementById('media-video-zone').style.display = 'flex';
+        } else {
+            document.querySelector('input[name="media_type"][value="image"]').checked = true;
+            document.getElementById('media-image-zone').style.display = 'flex';
+            document.getElementById('media-video-zone').style.display = 'none';
+        }
+        
+        document.getElementById('chapter-video-url').value = chap.mediaVideo || '';
+        document.getElementById('chapter-image-base64').value = chap.mediaImage || '';
+        const preview = document.getElementById('chapter-image-preview');
+        if(chap.mediaImage) { preview.src = chap.mediaImage; preview.style.display = 'block'; } 
+        else { preview.style.display = 'none'; }
+
+        if(window.quill) window.quill.clipboard.dangerouslyPasteHTML(chap.contenu || '');
+
+    } else {
+        // C'est un Examen
+        document.getElementById('chapter-editor-zone').style.display = 'none';
+        document.getElementById('quiz-editor-zone').style.display = 'flex';
+        document.getElementById('quiz-title').value = chap.titre;
+        renderQuizBuilder(chap.questions || []);
     }
 
     renderChaptersList();
@@ -162,6 +178,7 @@ window.deleteChapter = function(id, event) {
             activeChapterId = null;
             document.getElementById('no-chapter-zone').style.display = 'flex';
             document.getElementById('chapter-editor-zone').style.display = 'none';
+            document.getElementById('quiz-editor-zone').style.display = 'none';
         }
         renderChaptersList();
     }
@@ -189,6 +206,91 @@ function renderChaptersList() {
         list.insertAdjacentHTML('beforeend', li);
     });
 }
+
+/* =========================================================
+   LOGIQUE DU CONSTRUCTEUR D'EXAMEN (QCM)
+========================================================= */
+
+function addQuizQuestion() {
+    const container = document.getElementById('quiz-questions-container');
+    const qIndex = container.children.length;
+    
+    const qHTML = `
+        <div class="quiz-question-block" style="background: #111; padding: 1.5rem; border: 1px solid #333; border-radius: 6px; position: relative;">
+            <button onclick="this.parentElement.remove()" style="position: absolute; right: 10px; top: 10px; background: none; border: none; color: var(--accent-red); cursor: pointer; font-size: 1.2rem;">&times;</button>
+            
+            <input type="text" class="q-title" placeholder="Votre question..." style="width: 100%; font-size: 1.1rem; padding: 0.8rem; background: transparent; color: white; border: none; border-bottom: 1px solid #555; outline: none; margin-bottom: 1rem;">
+            
+            <div style="display: flex; flex-direction: column; gap: 0.5rem;" class="q-options-container">
+                <label style="display: flex; align-items: center; gap: 0.5rem; color: #aaa;">
+                    <input type="radio" name="correct_q${qIndex}" value="0" checked>
+                    <input type="text" class="q-opt" placeholder="Réponse 1" style="flex-grow:1; background: #222; border: 1px solid #444; padding: 0.5rem; color: white; border-radius:4px; outline:none;">
+                </label>
+                <label style="display: flex; align-items: center; gap: 0.5rem; color: #aaa;">
+                    <input type="radio" name="correct_q${qIndex}" value="1">
+                    <input type="text" class="q-opt" placeholder="Réponse 2" style="flex-grow:1; background: #222; border: 1px solid #444; padding: 0.5rem; color: white; border-radius:4px; outline:none;">
+                </label>
+                <label style="display: flex; align-items: center; gap: 0.5rem; color: #aaa;">
+                    <input type="radio" name="correct_q${qIndex}" value="2">
+                    <input type="text" class="q-opt" placeholder="Réponse 3 (Optionnelle)" style="flex-grow:1; background: #222; border: 1px solid #444; padding: 0.5rem; color: white; border-radius:4px; outline:none;">
+                </label>
+            </div>
+            
+            <div style="margin-top: 1rem; display: flex; align-items: center; gap: 1rem;">
+                <span style="color: var(--text-muted); font-size: 0.85rem;">Cochez la bonne réponse.</span>
+                <input type="number" class="q-points" value="1" min="1" style="width: 60px; background: #222; border: 1px solid #444; padding: 0.4rem; color: white; border-radius: 4px;"> <span style="color: var(--text-muted); font-size: 0.85rem;">Point(s)</span>
+            </div>
+        </div>
+    `;
+    container.insertAdjacentHTML('beforeend', qHTML);
+}
+
+function gatherQuizQuestions() {
+    const questions = [];
+    document.querySelectorAll('.quiz-question-block').forEach((block, index) => {
+        const title = block.querySelector('.q-title').value.trim();
+        const points = parseInt(block.querySelector('.q-points').value) || 1;
+        const options = Array.from(block.querySelectorAll('.q-opt')).map(inp => inp.value.trim()).filter(v => v !== '');
+        
+        const correctRadio = block.querySelector(`input[name="correct_q${index}"]:checked`);
+        const correctIndex = correctRadio ? parseInt(correctRadio.value) : 0;
+
+        if(title && options.length >= 2) {
+            questions.push({ question: title, options: options, correctIndex: correctIndex, points: points });
+        }
+    });
+    return questions;
+}
+
+function renderQuizBuilder(questions) {
+    const container = document.getElementById('quiz-questions-container');
+    container.innerHTML = '';
+    
+    questions.forEach((q, index) => {
+        const qHTML = `
+        <div class="quiz-question-block" style="background: #111; padding: 1.5rem; border: 1px solid #333; border-radius: 6px; position: relative;">
+            <button onclick="this.parentElement.remove()" style="position: absolute; right: 10px; top: 10px; background: none; border: none; color: var(--accent-red); cursor: pointer; font-size: 1.2rem;">&times;</button>
+            
+            <input type="text" class="q-title" value="${q.question}" style="width: 100%; font-size: 1.1rem; padding: 0.8rem; background: transparent; color: white; border: none; border-bottom: 1px solid #555; outline: none; margin-bottom: 1rem;">
+            
+            <div style="display: flex; flex-direction: column; gap: 0.5rem;" class="q-options-container">
+                ${[0,1,2].map(i => `
+                <label style="display: flex; align-items: center; gap: 0.5rem; color: #aaa;">
+                    <input type="radio" name="correct_q${index}" value="${i}" ${q.correctIndex === i ? 'checked' : ''}>
+                    <input type="text" class="q-opt" value="${q.options[i] || ''}" placeholder="Réponse ${i+1}" style="flex-grow:1; background: #222; border: 1px solid #444; padding: 0.5rem; color: white; border-radius:4px; outline:none;">
+                </label>
+                `).join('')}
+            </div>
+            
+            <div style="margin-top: 1rem; display: flex; align-items: center; gap: 1rem;">
+                <span style="color: var(--text-muted); font-size: 0.85rem;">Cochez la bonne réponse.</span>
+                <input type="number" class="q-points" value="${q.points}" min="1" style="width: 60px; background: #222; border: 1px solid #444; padding: 0.4rem; color: white; border-radius: 4px;"> <span style="color: var(--text-muted); font-size: 0.85rem;">Point(s)</span>
+            </div>
+        </div>`;
+        container.insertAdjacentHTML('beforeend', qHTML);
+    });
+}
+
 
 /* =========================================================
    FIREBASE : SAUVEGARDE ET CHARGEMENT
@@ -298,18 +400,10 @@ window.editCourse = async (id) => {
             });
 
             currentChapters = data.chapitres || [];
-            
             window.switchCourseTab('tab-editor');
-            renderChaptersList();
-
-            // BUG CORRIGÉ : Ouvre automatiquement la première étape !
-            if(currentChapters.length > 0) {
-                selectChapter(currentChapters[0].id);
-            } else {
-                activeChapterId = null;
-                document.getElementById('no-chapter-zone').style.display = 'flex';
-                document.getElementById('chapter-editor-zone').style.display = 'none';
-            }
+            
+            if(currentChapters.length > 0) selectChapter(currentChapters[0].id);
+            else renderChaptersList();
         }
     } catch (error) {
         alert("Impossible de charger le cours.");
