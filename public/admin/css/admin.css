@@ -1,60 +1,211 @@
-/* =========================================================
-   NOUVEAUX COMPOSANTS UI (FIREBASE STYLE)
-   ========================================================= */
+/**
+ * =======================================================================
+ * ADMIN THEME - Design Firebase & Couleurs (A-Z)
+ * =======================================================================
+ */
 
-/* --- THÈME PANNEAUX LATERAUX --- */
-.admin-sidebar-left { background-color: var(--color-panel); border-right: 1px solid var(--color-border); padding: 2rem; }
-.admin-sidebar-right { background-color: var(--color-panel); border-left: 1px solid var(--color-border); box-shadow: -10px 0 30px rgba(0,0,0,0.5); }
-.admin-main-wrapper { background-color: var(--color-bg); }
-
-/* --- TOPBAR --- */
-.admin-topbar { background-color: var(--color-panel); border-bottom: 1px solid var(--color-border); }
-.topbar-left, .topbar-right { display: flex; align-items: center; gap: 15px; }
-.topbar-title { font-weight: 600; font-size: 1.1rem; color: #fff; letter-spacing: 1px; }
-
-.ui-icon-btn { 
-    background: transparent; color: var(--color-text-muted); font-size: 1.2rem; 
-    border: none; cursor: pointer; padding: 8px; border-radius: 50%; transition: 0.3s;
-    display: flex; align-items: center; justify-content: center;
+:root {
+    --bg-dark: #121212;
+    --bg-panel: #1e1e1e;
+    --bg-card: #2c2c2c;
+    --text-main: #ffffff;
+    --text-muted: #9ca3af;
+    --border-color: #333333;
+    
+    --accent-blue: #8ab4f8; /* Bleu style Firebase */
+    --accent-green: #2ed573;
+    --accent-red: #ff4a4a;
+    --accent-yellow: #fbbc04;
 }
-.ui-icon-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
 
-.profile-bubble {
-    width: 35px; height: 35px; background: var(--color-accent); color: #fff;
-    border-radius: 50%; display: flex; align-items: center; justify-content: center;
-    font-weight: bold; cursor: pointer; transition: 0.3s;
+body {
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+    font-family: 'Inter', 'Segoe UI', sans-serif;
 }
-.profile-bubble:hover { transform: scale(1.1); box-shadow: 0 0 15px rgba(215, 39, 37, 0.5); }
-.profile-bubble.large { width: 80px; height: 80px; font-size: 2rem; margin: 0 auto 15px auto; }
 
-/* --- PANNEAU DROIT (INTÉRIEUR) --- */
-.right-panel-header { display: flex; justify-content: space-between; align-items: center; padding: 20px; border-bottom: 1px solid var(--color-border); }
-.right-panel-header h3 { font-size: 1rem; font-weight: 400; }
-.right-panel-content { flex-grow: 1; padding: 20px; overflow-y: auto; }
-.right-panel-footer { padding: 20px; border-top: 1px solid var(--color-border); }
-
-.profile-info { text-align: center; padding-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.05); margin-bottom: 20px; }
-.profile-info h4 { font-size: 1.2rem; margin-bottom: 5px; }
-.profile-info p { color: var(--color-accent); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; }
-
-.notification-zone h5 { color: var(--color-text-muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 15px; }
-.notif-item { padding: 12px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 6px; font-size: 0.85rem; margin-bottom: 10px; }
-
-/* --- OVERLAY MOBILE --- */
-.ui-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.7); z-index: 95; backdrop-filter: blur(3px); }
-
-/* --- SECTION FORMATION --- */
-.formation-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 2rem; }
-.formation-card { 
-    background: #0a0a0a; border: 1px solid rgba(255,255,255,0.05); padding: 3rem 2rem; 
-    border-radius: 12px; text-align: center; transition: all 0.3s; display: block; text-decoration: none;
+/* --- PANNEAUX --- */
+.side-panel {
+    background-color: var(--bg-panel);
+    border-right: 1px solid var(--border-color);
 }
-.formation-card:hover { border-color: var(--color-accent); transform: translateY(-5px); background: #111; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-.formation-icon { font-size: 3rem; margin-bottom: 1rem; }
-.formation-card h3 { color: #fff; font-size: 1.2rem; margin-bottom: 0.5rem; letter-spacing: 1px; }
-.formation-card p { color: var(--color-text-muted); font-size: 0.85rem; }
+#right-panel {
+    border-right: none;
+    border-left: 1px solid var(--border-color);
+}
 
-/* Hacher le bouton Menu Gauche sur PC */
-@media (min-width: 1025px) {
-    #ui-toggle-left { display: none; }
+.panel-header {
+    height: var(--header-height);
+    display: flex;
+    align-items: center;
+    padding: 0 1.5rem;
+    font-weight: 600;
+    font-size: 1.1rem;
+    border-bottom: 1px solid var(--border-color);
+    letter-spacing: 0.5px;
+}
+
+.top-bar {
+    background-color: var(--bg-dark);
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* --- NAVIGATION GAUCHE --- */
+.nav-menu {
+    list-style: none;
+    padding: 1rem 0;
+    margin: 0;
+}
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    padding: 0.8rem 1.5rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.95rem;
+}
+
+.nav-item svg {
+    width: 20px;
+    height: 20px;
+    margin-right: 15px;
+    fill: currentColor;
+}
+
+.nav-item:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+    color: var(--text-main);
+}
+
+.nav-item.active {
+    background-color: rgba(138, 180, 248, 0.1);
+    color: var(--accent-blue);
+    border-left: 3px solid var(--accent-blue);
+}
+
+/* --- PANNEAU DROIT (UTILISATEUR) --- */
+.right-section {
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.profile-widget {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.avatar {
+    width: 40px;
+    height: 40px;
+    background-color: var(--accent-blue);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    color: var(--bg-dark);
+}
+
+.user-info p {
+    margin: 0;
+}
+.user-info .name {
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+.user-info .role {
+    font-size: 0.8rem;
+    color: var(--accent-yellow);
+}
+
+.action-btn {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+    padding: 0.8rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: 0.2s;
+    margin-bottom: 0.8rem;
+    font-size: 0.9rem;
+}
+
+.action-btn svg {
+    width: 18px;
+    height: 18px;
+    margin-right: 10px;
+    fill: currentColor;
+}
+
+.action-btn:hover { background-color: rgba(255, 255, 255, 0.05); }
+.action-btn.danger { color: var(--accent-red); border-color: rgba(255, 74, 74, 0.3); }
+.action-btn.danger:hover { background-color: rgba(255, 74, 74, 0.1); }
+
+/* --- BOUTONS TOP BAR MOBILES --- */
+.mobile-toggle {
+    background: transparent;
+    border: none;
+    color: var(--text-main);
+    cursor: pointer;
+    padding: 0.5rem;
+}
+.mobile-toggle svg { width: 24px; height: 24px; fill: currentColor; }
+
+/* --- DESIGN DES FORMATIONS (2 GROS BLOCS) --- */
+.formations-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+.formation-card {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 3rem 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    color: var(--text-main);
+}
+
+.formation-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+    border-color: var(--accent-blue);
+}
+
+.formation-card svg {
+    width: 60px;
+    height: 60px;
+    margin-bottom: 1.5rem;
+    fill: var(--accent-blue);
+}
+
+.formation-card.live svg {
+    fill: var(--accent-red);
+}
+
+.formation-card h3 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.5rem;
+}
+
+.formation-card p {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 0.95rem;
 }
