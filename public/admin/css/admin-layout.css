@@ -4,6 +4,7 @@
  * =======================================================================
  */
 
+/* Bloque les animations au chargement (Anti-Saut / FOUC) */
 .preload * {
     -webkit-transition: none !important;
     -moz-transition: none !important;
@@ -13,8 +14,8 @@
 }
 
 :root {
-    --left-panel-width: 230px; /* Affiné (avant 260px) */
-    --left-panel-mini-width: 60px; /* Affiné (avant 70px) */
+    --left-panel-width: 230px;
+    --left-panel-mini-width: 60px;
     --right-panel-width: 280px;
     --header-height: 60px;
     --transition-speed: 0.3s;
@@ -45,7 +46,7 @@ body {
     transition: transform var(--transition-speed) ease-in-out, width var(--transition-speed) ease-in-out;
     display: flex;
     flex-direction: column;
-    overflow-x: hidden;
+    overflow-x: hidden; /* Coupe proprement le texte au repli */
 }
 
 #left-panel { left: 0; width: var(--left-panel-width); }
@@ -90,47 +91,5 @@ body {
     .mobile-toggle.left-toggle { display: none !important; }
     .mobile-toggle.right-toggle { display: flex; }
 
-    /* L'état réduit du panneau gauche */
-    .app-container.left-collapsed #left-panel { width: var(--left-panel-mini-width); }
-    .app-container.left-collapsed #main-content { margin-left: var(--left-panel-mini-width); }
-    .app-container.left-collapsed .top-bar { left: var(--left-panel-mini-width); }
-    
-    .app-container.left-collapsed #btn-toggle-panel svg { transform: rotate(180deg); }
-    
-    /* FINI LE DISPLAY: NONE ! On rend juste les textes transparents */
-    .app-container.left-collapsed .logo-zone,
-    .app-container.left-collapsed .nav-text {
-        opacity: 0;
-        pointer-events: none;
-    }
-    
-    /* Quand réduit, on centre tout dans le header */
-    .app-container.left-collapsed .panel-header { justify-content: center; padding: 0; }
-    .app-container.left-collapsed #btn-toggle-panel { display: none; } /* Optionnel: tu peux cacher la flèche si tu préfères cliquer sur le logo mini pour rouvrir, ou la laisser */
-    .app-container.left-collapsed .nav-item { padding: 0.8rem 0; justify-content: center; }
-    .app-container.left-collapsed .nav-item svg { margin-right: 0; }
-
-    .app-container.right-collapsed #right-panel { transform: translateX(100%); }
-    .app-container.right-collapsed #main-content { margin-right: 0; }
-    .app-container.right-collapsed .top-bar { right: 0; }
-}
-/* 2. Ecrans Moyens (Tablettes / Petits Laptops) */
-@media (max-width: 1024px) {
-    #right-panel { transform: translateX(100%); }
-    #main-content { margin-left: var(--left-panel-width); margin-right: 0; }
-    .top-bar { left: var(--left-panel-width); right: 0; }
-    .mobile-toggle.right-toggle { display: flex; }
-    .mobile-toggle.left-toggle { display: none; }
-
-    .app-container.right-open #right-panel { transform: translateX(0); }
-}
-
-/* 3. Ecrans Mobiles */
-@media (max-width: 768px) {
-    #left-panel { transform: translateX(-100%); }
-    #main-content { margin-left: 0; }
-    .top-bar { left: 0; }
-    .mobile-toggle.left-toggle { display: flex; }
-
-    .app-container.left-open #left-panel { transform: translateX(0); }
-}
+    /* === ÉTAT RÉDUIT (PANNEAU GAUCHE) === */
+    .app-container.left-collapsed #left-panel { width: var(--left-
