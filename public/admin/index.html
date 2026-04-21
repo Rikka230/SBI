@@ -12,15 +12,16 @@
 <div class="app-container" id="app-container">
 
     <aside id="left-panel" class="side-panel">
-        <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; width: 100%; box-sizing: border-box;">
+        <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; padding: 0 15px; width: 100%; box-sizing: border-box;">
             <div class="logo-zone" style="display: flex; align-items: center; overflow: hidden; white-space: nowrap;">
                 <span style="color: var(--accent-blue); font-weight: bold;">🔥 SBI</span><span>&nbsp;Console</span>
             </div>
-            <button id="btn-toggle-panel" style="background:none; border:none; color:var(--text-muted); cursor:pointer; padding:5px; display:flex; align-items: center; justify-content: center;">
+            <button id="btn-toggle-panel" style="background:none; border:none; color:var(--text-muted); cursor:pointer; padding:5px; margin:0; display:flex; align-items: center;">
                 <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" style="transition: transform 0.3s;"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z"/></svg>
             </button>
             <span class="logo-mini" style="display: none; font-size: 1.2rem;">🔥</span>
         </div>
+        
         <ul class="nav-menu">
             <li class="nav-item active" data-target="view-dashboard">
                 <svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
@@ -74,6 +75,7 @@
                 </div>
 
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem;">
+                    
                     <div style="background: var(--bg-card); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); height: fit-content;">
                         <h3 style="margin-top: 0;">Créer un compte</h3>
                         <form id="create-user-form" style="display: flex; flex-direction: column; gap: 1rem;">
@@ -132,15 +134,8 @@
     </main>
 
     <aside id="right-panel" class="side-panel">
-        <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; padding: 0 15px; width: 100%; box-sizing: border-box;">
-            <div class="logo-zone" style="white-space: nowrap; overflow: hidden;">
-                <span style="color: var(--accent-blue); font-weight: bold;">🔥 SBI</span><span>&nbsp;Console</span>
-            </div>
-            
-            <button id="btn-toggle-panel" style="background:none; border:none; color:var(--text-muted); cursor:pointer; padding:5px; margin:0; display:flex; align-items: center;">
-                <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" style="transition: transform 0.3s;"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z"/></svg>
-            </button>
-            <span class="logo-mini" style="display: none; font-size: 1.2rem;">🔥</span>
+        <div class="panel-header" style="justify-content: flex-end;">
+            <svg style="width: 20px; height: 20px; fill: var(--text-muted); cursor: pointer;" viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/></svg>
         </div>
         
         <div class="right-section">
@@ -168,6 +163,7 @@
 
 <script type="module" src="js/admin-ui.js"></script>
 <script type="module" src="js/admin-core.js"></script>
+
 <div id="edit-user-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center;">
     <div style="background: var(--bg-card); padding: 2rem; border-radius: 8px; border: 1px solid var(--border-color); width: 100%; max-width: 500px;">
         <h3 style="margin-top: 0;">Modifier l'utilisateur</h3>
@@ -207,5 +203,6 @@
         </div>
     </div>
 </div>
+
 </body>
 </html>
