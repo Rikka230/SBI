@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SBI Console - Gestion des Cours</title>
+    <link rel="stylesheet" href="css/admin-layout.css">
+    <link rel="stylesheet" href="css/admin.css">
+    <style>
+        /* Styles spécifiques pour les sous-onglets de cette page */
+        .sub-nav {
+            display: flex;
+            gap: 2rem;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 2rem;
+        }
+        .sub-nav-item {
+            padding: 1rem 0;
+            color: var(--text-muted);
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .sub-nav-item:hover { color: var(--text-main); }
+        .sub-nav-item.active {
+            color: var(--accent-blue);
+            border-bottom-color: var(--accent-blue);
+        }
+        .course-section { display: none; animation: fadeIn 0.3s; }
+        .course-section.active { display: block; }
+        
+        /* Style pour les tags de catégories/formations */
+        .tag {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            margin-right: 5px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+    </style>
+</head>
+<body class="preload">
+
+<div class="app-container" id="app-container">
+
+    <script>
+        if (window.innerWidth > 1024) {
+            const app = document.getElementById('app-container');
+            if (localStorage.getItem('leftPanelCollapsed') === 'true') app.classList.add('left-collapsed');
+            if (localStorage.getItem('rightPanelCollapsed') === 'true') app.classList.add('right-collapsed');
+        }
+    </script>
+
+    <aside id="left-panel" class="side-panel">
+        <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; padding: 0 15px; width: 100%; box-sizing: border-box;">
+            <div class="logo-zone" style="display: flex; align-items: center; overflow: hidden; white-space: nowrap; transition: opacity 0.2s ease;">
+                <span style="color: var(--accent-blue); font-weight: bold;">🔥 SBI</span><span>&nbsp;Console</span>
+            </div>
+            <button id="btn-toggle-panel" style="position: absolute; right: 12px; background:none; border:none; color:var(--text-muted); cursor:pointer; padding:5px; margin:0; display:flex; align-items: center;">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" style="transition: transform 0.3s;"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z"/></svg>
+            </button>
+        </div>
+        
+        <ul class="nav-menu">
+            <li class="nav-item" onclick="window.location.href='index.html'">
+                <svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
+                <span class="nav-text">Tableau de Bord</span>
+            </li>
+            <li class="nav-item active" onclick="window.location.href='index.html'">
+                <svg viewBox="0 0 24 24"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/></svg>
+                <span class="nav-text">Formations</span>
+            </li>
+        </ul>
+    </aside>
+
+    <header class="top-bar">
+        <button class="mobile-toggle left-toggle" id="btn-toggle-mobile">
+            <svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+        </button>
+        <span class="page-title" style="font-weight: 600;">
+            <a href="index.html" style="color: var(--text-muted); text-decoration: none;">Formations</a> / Cours
+        </span>
+        <button class="mobile-toggle right-toggle" id="btn-toggle-right">
+            <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+        </button>
+    </header>
+
+    <main id="main-content">
+        <div class="content-wrapper">
+            
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h2>Gestionnaire de Cours</h2>
+                <button class="action-btn" style="width: auto; background: var(--accent-blue); color: white; border: none;" onclick="switchCourseTab('tab-editor')">
+                    + Nouveau Cours
+                </button>
+            </div>
+
+            <div class="sub-nav">
+                <div class="sub-nav-item active" onclick="switchCourseTab('tab-list')" id="nav-tab-list">Bibliothèque</div>
+                <div class="sub-nav-item" onclick="switchCourseTab('tab-editor')" id="nav-tab-editor">Éditeur de Cours</div>
+                <div class="sub-nav-item" onclick="switchCourseTab('tab-exam')" id="nav-tab-exam">Éditeur d'Examens</div>
+                <div class="sub-nav-item" onclick="switchCourseTab('tab-tracking')" id="nav-tab-tracking">Suivi & Assignations</div>
+            </div>
+
+            <div id="tab-list" class="course-section active">
+                <div style="background: var(--bg-card); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 1.5rem; display: flex; gap: 1rem;">
+                    <select style="padding: 0.8rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px; flex-grow: 1;">
+                        <option value="all">Filtrer par Formation...</option>
+                        <option value="f1">Formation Devenir Mangaka</option>
+                        <option value="f2">Formation Illustration Pro</option>
+                    </select>
+                    <input type="text" placeholder="Rechercher un cours..." style="padding: 0.8rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px; flex-grow: 2;">
+                </div>
+
+                <div style="background: var(--bg-card); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem;">
+                            <span style="color: var(--accent-green); font-weight: bold; font-size: 0.8rem;">● ACTIF</span>
+                            <h3 style="margin: 0;">Les bases de la perspective</h3>
+                        </div>
+                        <div>
+                            <span class="tag">🎨 Formation Mangaka</span>
+                            <span class="tag">✏️ Illustration Pro</span>
+                            <span style="color: var(--text-muted); font-size: 0.85rem; margin-left: 1rem;">4 Chapitres • 1 Test</span>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="action-btn" style="width: auto; margin: 0;">Aperçu</button>
+                        <button class="action-btn" style="width: auto; margin: 0; color: var(--accent-blue); border-color: rgba(42, 87, 255, 0.4);">Éditer</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-editor" class="course-section">
+                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem;">
+                    
+                    <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+                        <input type="text" placeholder="Titre du Cours" style="font-size: 1.5rem; font-weight: bold; padding: 1rem; background: transparent; color: white; border: none; border-bottom: 2px solid var(--border-color); outline: none;">
+                        
+                        <div style="background: var(--bg-card); border-radius: 8px; border: 1px solid var(--border-color); min-height: 400px; padding: 1rem;">
+                            <p style="color: var(--text-muted); text-align: center; margin-top: 100px;">
+                                [Zone d'intégration du futur Éditeur de Texte Riche (Quill.js)]<br>
+                                Permettra l'ajout de texte formatté, images, et iframes YouTube.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+                        <div style="background: var(--bg-card); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color);">
+                            <h4 style="margin-top: 0;">Paramètres du Cours</h4>
+                            <label style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
+                                <input type="checkbox" checked> Rendre le cours visible (Actif)
+                            </label>
+                            <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Assigner aux Formations :</label>
+                            <select multiple style="width: 100%; height: 80px; padding: 0.5rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px;">
+                                <option value="f1">Devenir Mangaka</option>
+                                <option value="f2">Illustration Pro</option>
+                            </select>
+                        </div>
+
+                        <div style="background: var(--bg-card); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color);">
+                            <h4 style="margin-top: 0;">Structure (Chapitres)</h4>
+                            <ul style="list-style: none; padding: 0; margin: 0 0 1rem 0;">
+                                <li style="padding: 0.5rem; background: #111; border: 1px solid #333; margin-bottom: 0.5rem; border-radius: 4px; display: flex; justify-content: space-between;">
+                                    <span>Partie 1 : Introduction</span> <span>☰</span>
+                                </li>
+                                <li style="padding: 0.5rem; background: #111; border: 1px solid #333; margin-bottom: 0.5rem; border-radius: 4px; display: flex; justify-content: space-between;">
+                                    <span>Partie 1.2 : Matériel</span> <span>☰</span>
+                                </li>
+                            </ul>
+                            <button class="action-btn" style="width: 100%; margin: 0; justify-content: center;">+ Ajouter une section</button>
+                        </div>
+                        
+                        <button class="action-btn" style="background: var(--accent-green); color: black; border: none; font-weight: bold; justify-content: center;">Sauvegarder le Cours</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-exam" class="course-section">
+                <div style="text-align: center; padding: 4rem; background: var(--bg-card); border-radius: 8px; border: 1px dashed var(--border-color);">
+                    <h3 style="color: var(--accent-yellow);">Constructeur de Quiz / Examen</h3>
+                    <p style="color: var(--text-muted);">Espace dédié pour créer des questions (QCM, texte libre), paramétrer les points et lier le test à un cours.</p>
+                </div>
+            </div>
+
+            <div id="tab-tracking" class="course-section">
+                <div style="text-align: center; padding: 4rem; background: var(--bg-card); border-radius: 8px; border: 1px solid var(--border-color);">
+                    <h3 style="color: var(--accent-blue);">Suivi Pédagogique</h3>
+                    <p style="color: var(--text-muted);">Tableau de bord affichant la progression des élèves inscrits et les notes obtenues aux tests.</p>
+                </div>
+            </div>
+
+        </div>
+    </main>
+</div>
+
+<script type="module" src="js/admin-ui.js"></script>
+<script>
+    // Petit script temporaire pour gérer le changement d'onglets visuellement
+    function switchCourseTab(tabId) {
+        document.querySelectorAll('.sub-nav-item').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.course-section').forEach(el => el.classList.remove('active'));
+        
+        document.getElementById('nav-' + tabId).classList.add('active');
+        document.getElementById(tabId).classList.add('active');
+    }
+</script>
+
+</body>
+</html>
