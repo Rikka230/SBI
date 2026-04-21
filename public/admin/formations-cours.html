@@ -9,6 +9,7 @@
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
 
     <style>
+        *, *::before, *::after { box-sizing: border-box; }
         .sub-nav { display: flex; gap: 2rem; border-bottom: 1px solid var(--border-color); margin-bottom: 2rem; }
         .sub-nav-item { padding: 1rem 0; color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; font-weight: 600; transition: all 0.2s; }
         .sub-nav-item:hover { color: var(--text-main); }
@@ -37,6 +38,8 @@
         .ql-snow .ql-picker { color: var(--text-muted) !important; }
         .ql-snow .ql-picker-options { background-color: var(--bg-panel); border-color: var(--border-color); }
         .ql-editor.ql-blank::before { color: #555; font-style: normal; }
+        /* SECURITE D'EDITION : On force l'éditeur à toujours être cliquable */
+        .ql-editor { min-height: 300px; user-select: text !important; pointer-events: auto !important; cursor: text; }
     </style>
 </head>
 <body class="preload">
@@ -106,6 +109,15 @@
             </div>
 
             <div id="tab-list" class="course-section active">
+                <div style="background: var(--bg-card); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 1.5rem; display: flex; gap: 1rem;">
+                    <select style="padding: 0.8rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px; flex-grow: 1;">
+                        <option value="all">Toutes les Formations</option>
+                        <option value="Formation Mangaka">Formation Mangaka</option>
+                        <option value="Illustration Pro">Illustration Pro</option>
+                    </select>
+                    <input type="text" placeholder="Rechercher un cours..." style="padding: 0.8rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px; flex-grow: 2;">
+                </div>
+
                 <div id="courses-list-container">
                     <p style="color: var(--text-muted); text-align: center;">Chargement de la bibliothèque...</p>
                 </div>
@@ -156,11 +168,11 @@
                                 </div>
                             </div>
 
-                            <div id="course-editor" style="height: 350px;"></div>
+                            <div id="course-editor"></div>
                         </div>
 
                         <div id="quiz-editor-zone" style="display: none; flex-direction: column; gap: 1rem; background: rgba(255, 188, 4, 0.05); padding: 1.5rem; border-radius: 8px; border: 1px solid rgba(255, 188, 4, 0.3);">
-                            <label style="color: var(--accent-yellow); font-size: 0.85rem; font-weight: bold;">Constructeur d'Examen (QCM)</label>
+                            <label style="color: var(--accent-yellow); font-size: 0.85rem; font-weight: bold;">Constructeur d'Examen (QCM Multiple)</label>
                             <input type="text" id="quiz-title" placeholder="Titre de l'examen (ex: Test Final de Perspective)" style="width: 100%; font-size: 1.2rem; padding: 0.8rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px; outline: none;">
                             
                             <div id="quiz-questions-container" style="display: flex; flex-direction: column; gap: 1.5rem; margin-top: 1rem;"></div>
@@ -263,7 +275,7 @@
             }
         });
 
-        // Bulles d'info corrigées avec les bons sélecteurs CSS
+        // Légendes Quill corrigées
         const tooltips = [
             ['.ql-size .ql-picker-label', 'Taille du texte'],
             ['button.ql-bold', 'Gras'],
