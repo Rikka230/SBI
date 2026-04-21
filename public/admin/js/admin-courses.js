@@ -13,19 +13,18 @@ let currentUid = null;
 let currentChapters = [];
 let activeChapterId = null;
 
-// NOUVEAU : Mémoire pour les Formations et Utilisateurs
 let allFormationsData = [];
 let allUsersForAccess = [];
 
 document.addEventListener('DOMContentLoaded', () => {
     
-    // Authentification
+    // Authentification et chargement initial
     onAuthStateChanged(auth, (user) => {
         if (user) { 
             currentUid = user.uid; 
-            loadUsersForAccess(); // On charge les gens
-            loadFormationsCategories(); // On charge les catégories
-            loadCourses(); // On charge la biblio
+            loadUsersForAccess(); 
+            loadFormationsCategories(); 
+            loadCourses(); 
         } else {
             window.location.replace('/login.html');
         }
@@ -41,7 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Écouteurs Édition Cours
+    // Écouteurs de l'Éditeur de Cours
     document.getElementById('btn-save-course').addEventListener('click', saveCourseToFirebase);
     document.getElementById('btn-add-chapter').addEventListener('click', () => createNewChapter('text'));
     document.getElementById('btn-add-quiz').addEventListener('click', () => createNewChapter('quiz'));
@@ -63,7 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // UPLOADS
+    // UPLOADS MEDIAS
     const imgUpload = document.getElementById('chapter-image-upload');
     if (imgUpload) {
         imgUpload.addEventListener('change', async function(e) {
@@ -100,7 +99,24 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- ÉCOUTEURS POUR LA MODALE FORMATION ---
+    // ==========================================
+    // LOGIQUE DE RECHERCHE DANS LES LISTES D'ACCÈS
+    // ==========================================
+    document.getElementById('search-profs').addEventListener('input', (e) => {
+        const term = e.target.value.toLowerCase();
+        document.querySelectorAll('#formation-profs-list label').forEach(lbl => {
+            lbl.style.display = lbl.textContent.toLowerCase().includes(term) ? 'flex' : 'none';
+        });
+    });
+
+    document.getElementById('search-students').addEventListener('input', (e) => {
+        const term = e.target.value.toLowerCase();
+        document.querySelectorAll('#formation-students-list label').forEach(lbl => {
+            lbl.style.display = lbl.textContent.toLowerCase().includes(term) ? 'flex' : 'none';
+        });
+    });
+
+    // Modale Formations
     document.getElementById('btn-create-formation').addEventListener('click', () => openFormationModal(null));
     document.getElementById('close-formation-modal-btn').addEventListener('click', () => document.getElementById('formation-modal').style.display='none');
     
@@ -121,7 +137,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 await addDoc(collection(db, "formations"), data);
             }
             document.getElementById('formation-modal').style.display = 'none';
-            loadFormationsCategories(); // Recharge pour afficher la nouvelle catégorie
+            loadFormationsCategories(); 
         } catch(err) { alert('Erreur de sauvegarde'); }
     });
 
@@ -139,24 +155,21 @@ document.addEventListener('DOMContentLoaded', () => {
    1. GESTION DES CATÉGORIES (FORMATIONS)
 ========================================================= */
 
-// On charge tout le monde pour pouvoir cocher profs et élèves
 async function loadUsersForAccess() {
     const snap = await getDocs(collection(db, "users"));
     allUsersForAccess = [];
     snap.forEach(d => allUsersForAccess.push({id: d.id, ...d.data()}));
 }
 
-// On charge les formations créées
 async function loadFormationsCategories() {
     const snap = await getDocs(collection(db, "formations"));
     allFormationsData = [];
     snap.forEach(d => allFormationsData.push({id: d.id, ...d.data()}));
     
-    renderFormationsList(); // MAJ du menu "Catégories & Accès"
-    renderFormationsPillsAndFilters(); // MAJ des pilules dans l'éditeur de cours
+    renderFormationsList(); 
+    renderFormationsPillsAndFilters(); 
 }
 
-// Affichage visuel de la bibliothèque de catégories
 function renderFormationsList() {
     const container = document.getElementById('formations-list-container');
     if(!container) return;
@@ -174,8 +187,14 @@ function renderFormationsList() {
             <div style="background: var(--bg-card); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); display: flex; flex-direction: column; justify-content: space-between;">
                 <div style="margin-bottom: 1rem;">
                     <h3 style="margin-top: 0; color: var(--accent-blue);">${form.titre}</h3>
-                    <p style="font-size: 0.85rem; color: var(--text-muted); margin:0;">👨‍🏫 ${pCount} prof(s) assigné(s)</p>
-                    <p style="font-size: 0.85rem; color: var(--text-muted); margin:0;">🎓 ${sCount} élève(s) inscrit(s)</p>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); margin:0;">
+                        <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24" style="vertical-align: middle; margin-right: 4px;"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                        ${pCount} prof(s) assigné(s)
+                    </p>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); margin:0; margin-top: 4px;">
+                        <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24" style="vertical-align: middle; margin-right: 4px;"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/></svg>
+                        ${sCount} élève(s) inscrit(s)
+                    </p>
                 </div>
                 <button class="action-btn btn-edit-formation" data-id="${form.id}" style="margin-bottom:0; justify-content:center;">Modifier les accès</button>
             </div>
@@ -188,13 +207,15 @@ function renderFormationsList() {
     });
 }
 
-// Ouverture de la modale avec les cases cochées
 window.openFormationModal = function(formationId) {
     const modal = document.getElementById('formation-modal');
     const profsContainer = document.getElementById('formation-profs-list');
     const studentsContainer = document.getElementById('formation-students-list');
     
+    // On vide les listes et les barres de recherche
     profsContainer.innerHTML = ''; studentsContainer.innerHTML = '';
+    document.getElementById('search-profs').value = '';
+    document.getElementById('search-students').value = '';
 
     let targetForm = formationId ? allFormationsData.find(f => f.id === formationId) : null;
     
@@ -204,7 +225,7 @@ window.openFormationModal = function(formationId) {
     document.getElementById('delete-formation-zone').style.display = targetForm ? 'block' : 'none';
 
     allUsersForAccess.forEach(u => {
-        if (u.role === 'admin' || u.isGod) return; // Les admins n'ont pas besoin d'être cochés
+        if (u.role === 'admin' || u.isGod) return; 
         
         const isChecked = targetForm && (
             (u.role === 'teacher' && targetForm.profs && targetForm.profs.includes(u.id)) ||
@@ -227,14 +248,11 @@ window.openFormationModal = function(formationId) {
     modal.style.display = 'flex';
 }
 
-// CRÉATION DYNAMIQUE DES PILULES DANS L'ÉDITEUR
 function renderFormationsPillsAndFilters() {
-    // 1. Pilules
     const selector = document.getElementById('formations-selector');
     if(selector) {
         selector.innerHTML = '';
         allFormationsData.forEach(form => {
-            // Le data-val est l'ID de la formation pour le relier en base
             selector.insertAdjacentHTML('beforeend', `<span class="formation-pill" data-val="${form.id}">${form.titre}</span>`);
         });
         document.querySelectorAll('.formation-pill').forEach(pill => {
@@ -242,7 +260,6 @@ function renderFormationsPillsAndFilters() {
         });
     }
 
-    // 2. Filtre de la Bibliothèque
     const filter = document.getElementById('library-formation-filter');
     if(filter) {
         filter.innerHTML = '<option value="all">Toutes les Catégories</option>';
@@ -483,8 +500,6 @@ async function saveCourseToFirebase() {
     const courseId = document.getElementById('edit-course-id').value;
     const title = document.getElementById('course-title').value.trim();
     const isActive = document.getElementById('course-active').checked;
-    
-    // On sauvegarde désormais les ID des formations cochées !
     const selectedPills = Array.from(document.querySelectorAll('.formation-pill.selected')).map(p => p.getAttribute('data-val'));
 
     if (!title) { alert('⚠️ Veuillez entrer un Titre Global.'); return; }
@@ -543,9 +558,8 @@ async function loadCourses() {
             
             const statusHtml = data.actif ? `<span style="color: var(--accent-green); font-weight: bold; font-size: 0.8rem;">● ACTIF</span>` : `<span style="color: var(--accent-red); font-weight: bold; font-size: 0.8rem;">● BROUILLON</span>`;
             
-            // On affiche le vrai nom de la formation grâce à l'ID sauvegardé
             const tagsHtml = data.formations ? data.formations.map(fId => {
-                const formObj = allFormationsData.find(f => f.id === fId || f.titre === fId); // fallback compatibilité vieux cours
+                const formObj = allFormationsData.find(f => f.id === fId || f.titre === fId); 
                 const displayName = formObj ? formObj.titre : fId;
                 return `<span class="tag">📁 ${displayName}</span>`;
             }).join('') : '';
@@ -585,7 +599,6 @@ window.editCourse = async (id) => {
             
             document.querySelectorAll('.formation-pill').forEach(pill => {
                 const val = pill.getAttribute('data-val');
-                // Compatibilité : on check l'ID ou le Titre (anciens cours)
                 if(data.formations && (data.formations.includes(val) || data.formations.includes(pill.textContent))) {
                     pill.classList.add('selected');
                 } else {
