@@ -6,6 +6,15 @@
     <title>SBI Console - Administration</title>
     <link rel="stylesheet" href="css/admin-layout.css">
     <link rel="stylesheet" href="css/admin.css">
+    <style>
+        .admin-view { display: none !important; }
+        .admin-view.active { display: block !important; }
+    </style>
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        if(urlParams.has('tab')) { sessionStorage.setItem('activeAdminTab', urlParams.get('tab')); }
+    </script>
+</head>
 </head>
 <body class="preload">
     <script>
