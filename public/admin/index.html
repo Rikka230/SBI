@@ -6,24 +6,16 @@
     <title>SBI Console - Administration</title>
     <link rel="stylesheet" href="css/admin-layout.css">
     <link rel="stylesheet" href="css/admin.css">
-    <style>
-        .admin-view { display: none !important; }
-        .admin-view.active { display: block !important; }
-    <style> .admin-view { display: none; } </style>
     <script>
+        // Nettoyage de l'URL et mémorisation de l'onglet ciblé
         const urlParams = new URLSearchParams(window.location.search);
-        const activeTab = urlParams.get('tab') || sessionStorage.getItem('activeAdminTab') || 'view-dashboard';
-        sessionStorage.setItem('activeAdminTab', activeTab);
-        document.write(`<style>#${activeTab} { display: block !important; }</style>`);
+        if(urlParams.has('tab')) { 
+            sessionStorage.setItem('activeAdminTab', urlParams.get('tab')); 
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
     </script>
 </head>
-</head>
-</head>
 <body class="preload">
-    <script>
-    const urlParams = new URLSearchParams(window.location.search);
-    if(urlParams.has('tab')) { sessionStorage.setItem('activeAdminTab', urlParams.get('tab')); }
-</script>
 
 <div class="app-container" id="app-container">
 
@@ -46,7 +38,7 @@
         </div>
         
         <ul class="nav-menu">
-            <li class="nav-item active" data-target="view-dashboard">
+            <li class="nav-item" data-target="view-dashboard">
                 <svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
                 <span class="nav-text">Tableau de Bord</span>
             </li>
@@ -78,7 +70,7 @@
     <main id="main-content">
         <div class="content-wrapper">
 
-            <section id="view-dashboard">
+            <section id="view-dashboard" class="admin-view">
                 <h2>Données analytiques</h2>
                 <p style="color: var(--text-muted);">Aperçu global de la plateforme à venir ici.</p>
             </section>
@@ -98,7 +90,6 @@
                 </div>
 
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem;">
-                    
                     <div style="background: var(--bg-card); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); height: fit-content;">
                         <h3 style="margin-top: 0;">Créer un compte</h3>
                         <form id="create-user-form" style="display: flex; flex-direction: column; gap: 1rem;">
@@ -124,8 +115,7 @@
 
                     <div style="background: var(--bg-card); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color);">
                         <h3 style="margin-top: 0;">Comptes existants</h3>
-                        <div id="users-list-container" style="display: flex; flex-direction: column; gap: 0.5rem;">
-                            </div>
+                        <div id="users-list-container" style="display: flex; flex-direction: column; gap: 0.5rem;"></div>
                     </div>
                 </div>
             </section>
