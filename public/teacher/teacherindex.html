@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Espace Enseignant - SBI</title>
-    <link rel="stylesheet" href="../css/admin-notifications.css">
+    
+    <link rel="stylesheet" href="../admin/css/admin-notifications.css">
+    
     <style>
         body {
             background-color: #050505;
@@ -98,7 +100,7 @@
         </button>
     </div>
 
-    <script type="module" src="../js/admin-notifications.js"></script>
+    <script type="module" src="../admin/js/admin-notifications.js"></script>
 
     <script type="module">
         import { logoutUser } from '../js/auth.js';
@@ -164,8 +166,7 @@
                         courseTitle: testTitle,
                         auteurId: currentUid,
                         auteurName: auteurName,
-                        dateCreation: serverTimestamp(),
-                        readBy: []
+                        dateCreation: serverTimestamp()
                     });
 
                     alert("✅ Faux cours créé ! Attendez la validation de l'Admin !");
