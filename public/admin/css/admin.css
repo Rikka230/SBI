@@ -209,3 +209,69 @@ body {
     color: var(--text-muted);
     font-size: 0.95rem;
 }
+
+/* --- BEAUTÉ DES FORMULAIRES --- */
+
+/* 1. Cases à cocher façon "Toggle Switch" Apple/Android (Sauf QCM) */
+input[type="checkbox"]:not(.q-correct-cb) {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 44px;
+    height: 24px;
+    background: #222;
+    border-radius: 24px;
+    position: relative;
+    cursor: pointer;
+    outline: none;
+    transition: 0.3s;
+    border: 1px solid var(--border-color);
+    flex-shrink: 0;
+}
+input[type="checkbox"]:not(.q-correct-cb)::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 18px;
+    height: 18px;
+    background: #888;
+    border-radius: 50%;
+    transition: transform 0.3s, background 0.3s;
+}
+input[type="checkbox"]:not(.q-correct-cb):checked {
+    background: rgba(42, 87, 255, 0.2);
+    border-color: var(--accent-blue);
+}
+input[type="checkbox"]:not(.q-correct-cb):checked::after {
+    transform: translateX(20px);
+    background: var(--accent-blue);
+}
+
+/* 2. Checkbox carrées classiques pour les réponses du QCM */
+input[type="checkbox"].q-correct-cb {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 22px;
+    height: 22px;
+    background: #222;
+    border: 2px solid #555;
+    border-radius: 4px;
+    cursor: pointer;
+    position: relative;
+    transition: 0.2s;
+    flex-shrink: 0;
+}
+input[type="checkbox"].q-correct-cb:checked {
+    background: var(--accent-green);
+    border-color: var(--accent-green);
+}
+input[type="checkbox"].q-correct-cb:checked::after {
+    content: '✔';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #000;
+    font-weight: bold;
+    font-size: 14px;
+}
