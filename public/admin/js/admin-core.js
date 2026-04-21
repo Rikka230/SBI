@@ -13,7 +13,6 @@ import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/
 
 const functionsInstance = getFunctions(app);
 
-// Configuration app secondaire pour la création de compte sans déconnecter l'admin
 const firebaseConfig = {
     apiKey: "AIzaSyBCBY51kkexg7jJgEpVYlKCNbZemrtdaiY",
     authDomain: "sbi-web-4f6b4.firebaseapp.com",
@@ -60,7 +59,6 @@ const renderUsersList = (usersToRender) => {
         const displayName = (user.prenom && user.nom) ? `${user.prenom} ${user.nom}` : (user.nom || "Sans nom");
         const statusLabel = user.statut === 'suspendu' ? '<span style="color: #ff4a4a; font-weight:bold;">Suspendu</span>' : '<span style="color: #2ed573; font-weight:bold;">Actif</span>';
         
-        // On prépare les couleurs pleines pour la colonne "Rôle"
         let roleBgColor = '';
         let roleTextColor = '';
         let roleText = '';
@@ -75,12 +73,10 @@ const renderUsersList = (usersToRender) => {
             roleBgColor = 'rgba(0, 255, 163, 0.15)'; roleTextColor = '#00ffa3'; roleText = 'Élève';
         }
 
-        // On utilise "align-items: stretch" pour que les bords fassent toute la hauteur
-        // On a enlevé le "padding" global de la carte pour le mettre uniquement sur les textes du milieu
         const userCardHTML = `
             <div style="background: #0a0a0c; border: 1px solid #222; border-radius: 6px; margin-bottom: 0.4rem; display: grid; grid-template-columns: 85px 1fr 1.5fr 70px 85px; align-items: stretch; opacity: ${user.statut === 'suspendu' ? '0.6' : '1'}; font-size: 0.8rem; overflow: hidden;">
                 
-                <div style="background: ${roleBgColor}; color: ${roleTextColor}; display: flex; align-items: center; justify-content: center; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; font-size: 0.7rem; border-right: 1px solid #222;">
+                <div style="background: ${roleBgColor}; color: ${roleTextColor}; display: flex; align-items: center; justify-content: center; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; font-size: 0.7rem; border-right: 1px solid #222; text-align: center;">
                     ${roleText}
                 </div>
 
@@ -171,37 +167,173 @@ const initUserCreation = () => {
     });
 };
 
+/* --- LOGIQUE SÉCURISÉE DU GOD MODE ET MODALE --- */
 const openEditModal = (userId) => {
     const targetUser = allUsersData.find(u => u.id === userId);
     if(!targetUser) return;
+    
+    const prenomInput = document.getElementById('edit-user-prenom');
+    const nomInput = document.getElementById('edit-user-nom');
+    const emailInput = document.getElementById('edit-user-email');
+    const roleSelect = document.getElementById('edit-user-role');
+    const statutSelect = document.getElementById('edit-user-statut');
+    
+    const godContainer = document.getElementById('god-mode-container');
+    const godCheckbox = document.getElementById('edit-user-isgod');
+    const godLabelWrapper = godCheckbox ? godCheckbox.parentElement : null;
+    const godDesc = document.getElementById('god-mode-desc');
+    
+    const deleteZone = document.getElementById('delete-zone');
+    const resetPwdBtn = document.getElementById('reset-pwd-btn');
+    const submitBtn = document.querySelector('#edit-user-form button[type="submit"]');
+
     document.getElementById('edit-user-id').value = targetUser.id;
-    document.getElementById('edit-user-prenom').value = targetUser.prenom || '';
-    document.getElementById('edit-user-nom').value = targetUser.nom || '';
-    document.getElementById('edit-user-email').value = targetUser.email || '';
-    document.getElementById('edit-user-role').value = targetUser.role || 'student';
-    document.getElementById('edit-user-statut').value = targetUser.statut || 'actif';
+    prenomInput.value = targetUser.prenom || '';
+    nomInput.value = targetUser.nom || '';
+    emailInput.value = targetUser.email || '';
+    roleSelect.value = targetUser.role || 'student';
+    statutSelect.value = targetUser.statut || 'actif';
+
+    // Réinitialisation de base
+    prenomInput.disabled = false;
+    nomInput.disabled = false;
+    roleSelect.disabled = false;
+    statutSelect.disabled = false;
+    if(resetPwdBtn) resetPwdBtn.style.display = 'block';
+    if(submitBtn) submitBtn.style.display = 'block';
+    if(deleteZone) deleteZone.style.display = 'block';
+    
+    if (godContainer) {
+        godContainer.style.display = 'none';
+        if(godCheckbox) godCheckbox.checked = false;
+        if(godLabelWrapper) godLabelWrapper.style.display = 'flex';
+        if(godDesc) godDesc.style.marginTop = '0.5rem';
+    }
+
+    const godExists = allUsersData.some(u => u.isGod === true);
+
+    // VÉRIFICATION DES SÉCURITÉS SUPRÊMES
+    if (targetUser.isGod && !isCurrentUserGod) {
+        // Tu n'es pas Dieu, tu regardes Dieu = INTERDIT DE TOUCHER
+        prenomInput.disabled = true; nomInput.disabled = true;
+        roleSelect.disabled = true; statutSelect.disabled = true;
+        if(resetPwdBtn) resetPwdBtn.style.display = 'none';
+        if(submitBtn) submitBtn.style.display = 'none';
+        if(deleteZone) deleteZone.style.display = 'none'; 
+        
+        if (godContainer) {
+            godContainer.style.display = 'block';
+            if(godLabelWrapper) godLabelWrapper.style.display = 'none';
+            if(godDesc) {
+                godDesc.style.marginTop = '0';
+                godDesc.innerHTML = "<span style='color: #ffd700; font-size: 1.1rem; font-weight: bold;'>👑 Cet utilisateur est l'Administrateur Suprême (Lecture seule).</span>";
+            }
+        }
+    } 
+    else if (targetUser.isGod && isCurrentUserGod) {
+        // Tu es Dieu et tu te regardes = ÉDITION OUI, SUPPRESSION NON
+        if(deleteZone) deleteZone.style.display = 'none'; 
+        roleSelect.disabled = true; 
+        statutSelect.disabled = true; 
+
+        if (godContainer) {
+            godContainer.style.display = 'block';
+            if(godLabelWrapper) godLabelWrapper.style.display = 'none';
+            if(godDesc) {
+                godDesc.style.marginTop = '0';
+                godDesc.innerHTML = "<span style='color: #ffd700; font-size: 1.1rem; font-weight: bold;'>👑 Vous êtes l'Administrateur Suprême de la plateforme.</span>";
+            }
+        }
+    }
+    else if (!targetUser.isGod && targetUser.role === 'admin') {
+        // C'est un simple Admin. Peut-on lui donner le God Mode ?
+        if (!godExists && godContainer) {
+            godContainer.style.display = 'block';
+            if(godCheckbox) godCheckbox.disabled = false;
+            
+            if (targetUser.id === currentUid && godDesc) {
+                godDesc.innerHTML = "Aucun Suprême n'existe. Cochez pour <strong>réclamer</strong> les pouvoirs (irréversible).";
+            } else if (godDesc) {
+                godDesc.innerHTML = "Aucun Suprême n'existe. Cochez pour lui <strong>donner</strong> les pouvoirs.";
+            }
+        } else if (isCurrentUserGod && godContainer) {
+            // Tu es Dieu, tu peux transférer ton titre
+            godContainer.style.display = 'block';
+            if(godCheckbox) godCheckbox.disabled = false;
+            if(godDesc) godDesc.innerHTML = "⚠️ En cochant, vous lui <strong>transférez</strong> vos pouvoirs. Vous les perdrez définitivement.";
+        }
+    }
+
+    // Protection anti-suicide
+    if (targetUser.id === currentUid && deleteZone) {
+        deleteZone.style.display = 'none';
+    }
+
     document.getElementById('edit-user-modal').style.display = 'flex';
 };
 
 const initModalLogic = () => {
     const modal = document.getElementById('edit-user-modal');
     if(!modal) return;
+    
     document.getElementById('close-modal-btn').addEventListener('click', () => modal.style.display = 'none');
     
     document.getElementById('edit-user-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const userId = document.getElementById('edit-user-id').value;
-        await updateDoc(doc(db, "users", userId), {
-            prenom: formatPrenom(document.getElementById('edit-user-prenom').value),
-            nom: formatNom(document.getElementById('edit-user-nom').value),
-            role: document.getElementById('edit-user-role').value,
-            statut: document.getElementById('edit-user-statut').value
-        });
-        modal.style.display = 'none'; fetchUsers();
+        const targetUser = allUsersData.find(u => u.id === userId);
+
+        if (targetUser.isGod && !isCurrentUserGod) {
+            alert("❌ Accès refusé : Vous ne pouvez pas modifier le profil de l'Administrateur Suprême.");
+            return;
+        }
+
+        const updates = {};
+        if (!document.getElementById('edit-user-prenom').disabled) updates.prenom = formatPrenom(document.getElementById('edit-user-prenom').value);
+        if (!document.getElementById('edit-user-nom').disabled) updates.nom = formatNom(document.getElementById('edit-user-nom').value);
+        if (!document.getElementById('edit-user-role').disabled) {
+            updates.role = document.getElementById('edit-user-role').value;
+            updates.statut = document.getElementById('edit-user-statut').value;
+        }
+
+        // --- GESTION DU TRANSFERT DE POUVOIR ---
+        const godCheckbox = document.getElementById('edit-user-isgod');
+        const godLabelWrapper = godCheckbox ? godCheckbox.parentElement : null;
+        const godExists = allUsersData.some(u => u.isGod === true);
+
+        if (godCheckbox && godCheckbox.checked && godLabelWrapper.style.display !== 'none') {
+            if (isCurrentUserGod || !godExists) {
+                updates.isGod = true;
+                const currentGodProfile = allUsersData.find(u => u.isGod === true);
+                if (currentGodProfile && currentGodProfile.id !== targetUser.id) {
+                    // Retire le titre de l'ancien Dieu
+                    await updateDoc(doc(db, "users", currentGodProfile.id), { isGod: false });
+                }
+            }
+        }
+
+        try {
+            await updateDoc(doc(db, "users", userId), updates);
+            modal.style.display = 'none'; fetchUsers();
+        } catch (error) {
+            alert("Erreur de sauvegarde.");
+        }
     });
 
     document.getElementById('delete-user-btn').addEventListener('click', async () => {
         const userId = document.getElementById('edit-user-id').value;
+        const targetUser = allUsersData.find(u => u.id === userId);
+
+        // --- DOUBLE SÉCURITÉ DE SUPPRESSION ---
+        if (targetUser.isGod) {
+            alert("❌ SÉCURITÉ : Le compte Suprême ne peut pas être supprimé !");
+            return; 
+        }
+        if (targetUser.id === currentUid) {
+            alert("❌ SÉCURITÉ : Vous ne pouvez pas supprimer votre propre compte.");
+            return;
+        }
+
         if(confirm("DANGER ABSOLU : Supprimer définitivement ?")) {
             try {
                 const deleteUserAccount = httpsCallable(functionsInstance, 'deleteUserAccount');
@@ -210,36 +342,38 @@ const initModalLogic = () => {
             } catch (error) { alert("❌ Erreur serveur."); }
         }
     });
+
+    document.getElementById('reset-pwd-btn').addEventListener('click', async () => {
+        const userEmail = document.getElementById('edit-user-email').value;
+        try {
+            await sendPasswordResetEmail(auth, userEmail);
+            alert(`✅ E-mail de réinitialisation envoyé à ${userEmail}`);
+        } catch (error) {
+            alert("❌ Impossible d'envoyer l'e-mail.");
+        }
+    });
 };
 
-// --- LANCEMENT PROPRE DE L'APPLICATION ---
 document.addEventListener('DOMContentLoaded', () => {
     
-    // BUG CORRIGÉ : Réactivation des boutons du panneau droit dans index.html
     const logoutBtn = document.getElementById('logout-btn');
-    if(logoutBtn) {
-        logoutBtn.addEventListener('click', logoutUser);
-    }
+    if(logoutBtn) logoutBtn.addEventListener('click', logoutUser);
     
     const cacheBtn = document.getElementById('btn-clear-cache');
-    if(cacheBtn) {
-        cacheBtn.addEventListener('click', () => {
-            if(confirm('Vider le cache local ? Cela rechargera la page.')) {
-                localStorage.clear();
-                sessionStorage.clear();
-                window.location.reload(true);
-            }
-        });
-    }
+    if(cacheBtn) cacheBtn.addEventListener('click', () => {
+        if(confirm('Vider le cache local ? Cela rechargera la page.')) {
+            localStorage.clear(); sessionStorage.clear(); window.location.reload(true);
+        }
+    });
 
-    initFilters();
-    initUserCreation();
-    initModalLogic(); 
+    if (typeof initFilters === "function") initFilters();
+    if (typeof initUserCreation === "function") initUserCreation();
+    if (typeof initModalLogic === "function") initModalLogic(); 
 
     onAuthStateChanged(auth, (user) => {
         if (user) { 
             currentUid = user.uid; 
-            fetchUsers(); 
+            if (typeof fetchUsers === "function") fetchUsers(); 
         } else {
             window.location.replace('/login.html');
         }
