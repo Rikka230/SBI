@@ -270,3 +270,8 @@ input[type="checkbox"]:checked::after {
     transform: translateX(20px);
     background: var(--accent-blue);
 }
+
+/* 4. Correction globale des débordements */
+input, select, textarea {
+    box-sizing: border-box !important;
+}
