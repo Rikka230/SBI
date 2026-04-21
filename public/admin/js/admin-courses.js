@@ -12,9 +12,20 @@ import { logoutUser } from '/js/auth.js';
 let currentUid = null;
 let currentChapters = [];
 let activeChapterId = null;
- 
 
 document.addEventListener('DOMContentLoaded', () => {
+    
+    // === LE BLOC MANQUANT : Vérification et Chargement ===
+    onAuthStateChanged(auth, (user) => {
+        if (user) { 
+            currentUid = user.uid; 
+            loadCourses(); // C'est CA qui charge la bibliothèque !
+        } else {
+            window.location.replace('/login.html');
+        }
+    });
+
+    // Écouteurs du Panneau Droit
     const logoutBtn = document.getElementById('logout-btn');
     if(logoutBtn) logoutBtn.addEventListener('click', logoutUser);
     
@@ -35,14 +46,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const newCourseBtn = document.getElementById('btn-trigger-new-course');
     if(newCourseBtn) newCourseBtn.addEventListener('click', window.prepareNewCourse);
 
-    document.getElementById('btn-add-question').addEventListener('click', addQuizQuestion);
+    const addQuestionBtn = document.getElementById('btn-add-question');
+    if (addQuestionBtn) addQuestionBtn.addEventListener('click', addQuizQuestion);
 
     document.querySelectorAll('.formation-pill').forEach(pill => {
         pill.addEventListener('click', (e) => e.target.classList.toggle('selected'));
     });
 
     document.getElementById('chapter-title').addEventListener('input', updateActiveTitle);
-    document.getElementById('quiz-title').addEventListener('input', updateActiveTitle);
+    const quizTitleInput = document.getElementById('quiz-title');
+    if (quizTitleInput) quizTitleInput.addEventListener('input', updateActiveTitle);
 
     function updateActiveTitle(e) {
         if(activeChapterId) {
@@ -52,50 +65,55 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // UPLOAD IMAGE (Compression)
-    document.getElementById('chapter-image-upload').addEventListener('change', async function(e) {
-        const file = e.target.files[0];
-        if(!file) return;
-        
-        const img = new Image();
-        img.src = URL.createObjectURL(file);
-        img.onload = () => {
-            const canvas = document.createElement('canvas');
-            const MAX_WIDTH = 1200; 
-            const scaleSize = MAX_WIDTH / img.width;
-            canvas.width = MAX_WIDTH;
-            canvas.height = img.height * scaleSize;
+    const imgUpload = document.getElementById('chapter-image-upload');
+    if (imgUpload) {
+        imgUpload.addEventListener('change', async function(e) {
+            const file = e.target.files[0];
+            if(!file) return;
             
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-            
-            const dataUrl = canvas.toDataURL('image/webp', 0.85);
-            
-            document.getElementById('chapter-image-base64').value = dataUrl;
-            const preview = document.getElementById('chapter-image-preview');
-            preview.src = dataUrl;
-            preview.style.display = 'block';
-        };
-    });
+            const img = new Image();
+            img.src = URL.createObjectURL(file);
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const MAX_WIDTH = 1200; 
+                const scaleSize = MAX_WIDTH / img.width;
+                canvas.width = MAX_WIDTH;
+                canvas.height = img.height * scaleSize;
+                
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                
+                const dataUrl = canvas.toDataURL('image/webp', 0.85);
+                
+                document.getElementById('chapter-image-base64').value = dataUrl;
+                const preview = document.getElementById('chapter-image-preview');
+                preview.src = dataUrl;
+                preview.style.display = 'block';
+            };
+        });
+    }
 
     // UPLOAD VIDÉO
-    document.getElementById('chapter-video-upload').addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        if(!file) return;
-        
-        if(file.size > 1048576) { 
-            // 1 Mo est la limite Firestore. En prod, il faudra utiliser Firebase Storage.
-            alert("⚠️ Attention : La base de données Firestore est limitée à 1Mo par document. Cette vidéo est trop lourde. Pour un vrai site, il faudra implémenter Firebase Storage pour les vidéos.");
-        }
+    const vidUpload = document.getElementById('chapter-video-upload');
+    if (vidUpload) {
+        vidUpload.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if(!file) return;
+            
+            if(file.size > 1048576) { 
+                alert("⚠️ Attention : La base de données Firestore est limitée à 1Mo par document. Pour un vrai site, il faudra implémenter Firebase Storage pour les vidéos.");
+            }
 
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            document.getElementById('chapter-video-base64').value = event.target.result;
-            const preview = document.getElementById('chapter-video-preview');
-            preview.src = event.target.result;
-            preview.style.display = 'block';
-        };
-        reader.readAsDataURL(file);
-    });
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                document.getElementById('chapter-video-base64').value = event.target.result;
+                const preview = document.getElementById('chapter-video-preview');
+                preview.src = event.target.result;
+                preview.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        });
+    }
 });
 
 /* =========================================================
@@ -129,7 +147,7 @@ function createNewChapter(type) {
         mediaType: 'image',
         mediaImage: '',
         mediaVideo: '',
-        questions: []
+        questions: [] // Array pour le QCM
     };
     
     currentChapters.push(newChap);
@@ -149,7 +167,7 @@ function saveCurrentChapterContent() {
         chap.contenu = window.quill ? window.quill.root.innerHTML : '';
     } else if (chap.type === 'quiz') {
         chap.titre = document.getElementById('quiz-title').value;
-        chap.questions = gatherQuizQuestions(); 
+        chap.questions = gatherQuizQuestions(); // Capture les questions créées
     }
 }
 
@@ -167,6 +185,7 @@ window.selectChapter = function(id) {
         
         document.getElementById('chapter-title').value = chap.titre;
 
+        // UI Media
         if(chap.mediaType === 'video') {
             document.querySelector('input[name="media_type"][value="video"]').checked = true;
             document.getElementById('media-image-zone').style.display = 'none';
@@ -179,15 +198,18 @@ window.selectChapter = function(id) {
         
         document.getElementById('chapter-video-base64').value = chap.mediaVideo || '';
         const vPreview = document.getElementById('chapter-video-preview');
-        if(chap.mediaVideo) { vPreview.src = chap.mediaVideo; vPreview.style.display = 'block'; } else { vPreview.style.display = 'none'; }
+        if(chap.mediaVideo) { vPreview.src = chap.mediaVideo; vPreview.style.display = 'block'; } 
+        else { vPreview.style.display = 'none'; }
 
         document.getElementById('chapter-image-base64').value = chap.mediaImage || '';
         const iPreview = document.getElementById('chapter-image-preview');
-        if(chap.mediaImage) { iPreview.src = chap.mediaImage; iPreview.style.display = 'block'; } else { iPreview.style.display = 'none'; }
+        if(chap.mediaImage) { iPreview.src = chap.mediaImage; iPreview.style.display = 'block'; } 
+        else { iPreview.style.display = 'none'; }
 
         if(window.quill) window.quill.clipboard.dangerouslyPasteHTML(chap.contenu || '');
 
     } else {
+        // C'est un Examen
         document.getElementById('chapter-editor-zone').style.display = 'none';
         document.getElementById('quiz-editor-zone').style.display = 'flex';
         document.getElementById('quiz-title').value = chap.titre;
@@ -235,7 +257,7 @@ function renderChaptersList() {
 }
 
 /* =========================================================
-   LOGIQUE DU QCM (DYNAMIQUE)
+   LOGIQUE DU CONSTRUCTEUR D'EXAMEN (QCM)
 ========================================================= */
 
 function addQuizQuestion() {
@@ -250,7 +272,7 @@ function addQuizQuestion() {
             
             <div class="q-options-container" style="display: flex; flex-direction: column; gap: 0.5rem;">
                 <label style="display: flex; align-items: center; gap: 0.5rem; color: #aaa;">
-                    <input type="checkbox" class="q-correct-cb" value="0">
+                    <input type="checkbox" class="q-correct-cb" value="0" checked>
                     <input type="text" class="q-opt" placeholder="Réponse 1" style="flex-grow:1; background: #222; border: 1px solid #444; padding: 0.5rem; color: white; border-radius:4px; outline:none;">
                 </label>
                 <label style="display: flex; align-items: center; gap: 0.5rem; color: #aaa;">
@@ -291,7 +313,6 @@ function gatherQuizQuestions() {
         const points = parseInt(block.querySelector('.q-points').value) || 1;
         const options = Array.from(block.querySelectorAll('.q-opt')).map(inp => inp.value.trim());
         
-        // NOUVEAU : On récupère un tableau de toutes les cases cochées
         const correctIndices = Array.from(block.querySelectorAll('.q-correct-cb:checked')).map(cb => parseInt(cb.value));
 
         if(title && options.length >= 2) {
@@ -306,7 +327,6 @@ function renderQuizBuilder(questions) {
     container.innerHTML = '';
     
     questions.forEach((q, index) => {
-        // Compatibilité avec les vieux cours qui n'avaient qu'une réponse
         const indices = q.correctIndices || (q.correctIndex !== undefined ? [q.correctIndex] : []);
         
         const optionsHTML = q.options.map((opt, i) => `
@@ -335,7 +355,6 @@ function renderQuizBuilder(questions) {
         container.insertAdjacentHTML('beforeend', qHTML);
     });
 }
-
 
 /* =========================================================
    FIREBASE : SAUVEGARDE ET CHARGEMENT
@@ -464,7 +483,7 @@ window.duplicateCourse = async (id) => {
                 const data = docSnap.data();
                 const copyData = {
                     titre: data.titre + " (Copie)",
-                    actif: false, // La copie est toujours en brouillon par sécurité
+                    actif: false, 
                     formations: data.formations,
                     auteurId: currentUid,
                     chapitres: data.chapitres,
