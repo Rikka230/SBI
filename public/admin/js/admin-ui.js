@@ -12,32 +12,37 @@ document.addEventListener('DOMContentLoaded', () => {
     const navItems = document.querySelectorAll('.nav-item[data-target]');
     const views = document.querySelectorAll('.admin-view');
 
-    /* --- 1. GESTION DES PANNEAUX LATERAUX (MOBILES/TABLETTES) --- */
+    /* --- 1. GESTION DES PANNEAUX LATERAUX --- */
     
     // Toggle Menu Gauche
     if (leftToggleBtn) {
         leftToggleBtn.addEventListener('click', () => {
-            appContainer.classList.toggle('left-open');
-            appContainer.classList.remove('right-open'); // Ferme la droite si ouverte
+            if (window.innerWidth > 1024) {
+                appContainer.classList.toggle('left-collapsed');
+            } else {
+                appContainer.classList.toggle('left-open');
+                appContainer.classList.remove('right-open');
+            }
         });
     }
 
     // Toggle Menu Droit
     if (rightToggleBtn) {
         rightToggleBtn.addEventListener('click', () => {
-            appContainer.classList.toggle('right-open');
-            appContainer.classList.remove('left-open'); // Ferme la gauche si ouverte
+            if (window.innerWidth > 1024) {
+                appContainer.classList.toggle('right-collapsed');
+            } else {
+                appContainer.classList.toggle('right-open');
+                appContainer.classList.remove('left-open');
+            }
         });
     }
-
-    // Fermer les panneaux au clic sur le contenu central (sur mobile)
     document.getElementById('main-content').addEventListener('click', () => {
         if (window.innerWidth <= 1024) {
             appContainer.classList.remove('left-open');
             appContainer.classList.remove('right-open');
         }
     });
-
     /* --- 2. NAVIGATION ENTRE LES ONGLETS --- */
 
     // Restaurer le dernier onglet actif (Mémoire au rafraîchissement)
