@@ -14,25 +14,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /* --- 1. GESTION DES PANNEAUX LATERAUX --- */
     
-    // Nouveaux IDs des boutons
     const desktopToggleBtn = document.getElementById('btn-toggle-panel');
     const mobileToggleBtn = document.getElementById('btn-toggle-mobile');
 
-    // MÉMOIRE F5 : Restaurer l'état du panneau au chargement
-    if (localStorage.getItem('leftPanelCollapsed') === 'true' && window.innerWidth > 1024) {
-        appContainer.classList.add('left-collapsed');
-    }
+    // Réactive les animations une fois la page bien chargée
+    setTimeout(() => {
+        document.body.classList.remove('preload');
+    }, 100);
 
     // Toggle Panneau Gauche (PC)
     if (desktopToggleBtn) {
         desktopToggleBtn.addEventListener('click', () => {
             appContainer.classList.toggle('left-collapsed');
-            // Sauvegarde de l'état
             localStorage.setItem('leftPanelCollapsed', appContainer.classList.contains('left-collapsed'));
         });
     }
 
-    // Toggle Panneau Gauche (Mobile)
+    // Toggle Menu Gauche (Mobile)
     if (mobileToggleBtn) {
         mobileToggleBtn.addEventListener('click', () => {
             appContainer.classList.toggle('left-open');
@@ -40,11 +38,13 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Toggle Menu Droit (inchangé)
+    // Toggle Menu Droit (PC et Mobile)
     if (rightToggleBtn) {
         rightToggleBtn.addEventListener('click', () => {
             if (window.innerWidth > 1024) {
                 appContainer.classList.toggle('right-collapsed');
+                // Sauvegarde de l'état du panneau droit !
+                localStorage.setItem('rightPanelCollapsed', appContainer.classList.contains('right-collapsed'));
             } else {
                 appContainer.classList.toggle('right-open');
                 appContainer.classList.remove('left-open');
