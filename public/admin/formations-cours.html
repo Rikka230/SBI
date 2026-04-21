@@ -264,24 +264,25 @@
         });
 
         // Bulles d'info corrigées avec les bons sélecteurs CSS
-        const tooltips = {
-            '.ql-size .ql-picker-label': 'Taille du texte', 
-            '.ql-bold': 'Gras', 
-            '.ql-italic': 'Italique', 
-            '.ql-underline': 'Souligné', 
-            '.ql-strike': 'Barré',
-            '.ql-color .ql-picker-label': 'Couleur du texte', 
-            '.ql-background .ql-picker-label': 'Surlignage', 
-            '.ql-list[value="ordered"]': 'Liste numérotée',
-            '.ql-list[value="bullet"]': 'Liste à puces', 
-            '.ql-align .ql-picker-label': 'Alignement', 
-            '.ql-link': 'Insérer un lien', 
-            '.ql-clean': 'Effacer le formatage'
-        };
-        for (let [selector, title] of Object.entries(tooltips)) {
-            const el = document.querySelector(`.ql-toolbar ${selector}`);
+        const tooltips = [
+            ['.ql-size .ql-picker-label', 'Taille du texte'],
+            ['button.ql-bold', 'Gras'],
+            ['button.ql-italic', 'Italique'],
+            ['button.ql-underline', 'Souligné'],
+            ['button.ql-strike', 'Barré'],
+            ['.ql-color .ql-picker-label', 'Couleur du texte'],
+            ['.ql-background .ql-picker-label', 'Surlignage'],
+            ['button.ql-list[value="ordered"]', 'Liste numérotée'],
+            ['button.ql-list[value="bullet"]', 'Liste à puces'],
+            ['.ql-align .ql-picker-label', 'Alignement'],
+            ['button.ql-link', 'Insérer un lien'],
+            ['button.ql-clean', 'Effacer le formatage']
+        ];
+        
+        tooltips.forEach(([selector, title]) => {
+            const el = document.querySelector('.ql-toolbar ' + selector);
             if (el) el.setAttribute('title', title);
-        }
+        });
     });
 </script>
 
