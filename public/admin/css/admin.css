@@ -4,9 +4,12 @@
  * =======================================================================
  */
 
-/* Règle d'or : Empêche TOUS les éléments (comme le titre) de déborder de l'écran */
+/* Règle de protection globale : Empêche TOUS les champs de déborder de l'écran */
 *, *::before, *::after {
     box-sizing: border-box;
+}
+input, select, textarea {
+    box-sizing: border-box !important;
 }
 
 :root {
