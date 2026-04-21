@@ -9,11 +9,14 @@
     <style>
         .admin-view { display: none !important; }
         .admin-view.active { display: block !important; }
-    </style>
+    <style> .admin-view { display: none; } </style>
     <script>
         const urlParams = new URLSearchParams(window.location.search);
-        if(urlParams.has('tab')) { sessionStorage.setItem('activeAdminTab', urlParams.get('tab')); }
+        const activeTab = urlParams.get('tab') || sessionStorage.getItem('activeAdminTab') || 'view-dashboard';
+        sessionStorage.setItem('activeAdminTab', activeTab);
+        document.write(`<style>#${activeTab} { display: block !important; }</style>`);
     </script>
+</head>
 </head>
 </head>
 <body class="preload">
@@ -75,7 +78,7 @@
     <main id="main-content">
         <div class="content-wrapper">
 
-            <section id="view-dashboard" class="admin-view active">
+            <section id="view-dashboard">
                 <h2>Données analytiques</h2>
                 <p style="color: var(--text-muted);">Aperçu global de la plateforme à venir ici.</p>
             </section>
