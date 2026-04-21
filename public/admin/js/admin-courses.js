@@ -585,27 +585,28 @@ async function saveCourseToFirebase() {
             alert(forcePending ? '✅ Cours soumis pour validation !' : '✅ Nouveau cours créé !');
         }
 
+        // --- ENVOI DES NOTIFICATIONS 100% FIABLE ---
+        // On FORCE le programme à attendre que Firebase ait fini avec 'await' !
+        
         if (forcePending) {
-            addDoc(collection(db, "notifications"), {
+            await addDoc(collection(db, "notifications"), {
                 type: 'course_validation',
                 courseId: courseRefId,
                 courseTitle: title,
                 auteurId: currentUid,
                 auteurName: (currentUserProfile.prenom || '') + ' ' + (currentUserProfile.nom || ''),
                 dateCreation: serverTimestamp(),
-                readBy: []
-            }).catch(e => console.error(e));
+            });
         }
         
         if (isValidation && editingCourseAuthorId && editingCourseAuthorId !== currentUid) {
-            addDoc(collection(db, "notifications"), {
+            await addDoc(collection(db, "notifications"), {
                 type: 'course_approved',
                 courseId: courseRefId,
                 courseTitle: title,
-                destinataireId: editingCourseAuthorId,
+                destinataireId: editingCourseAuthorId, // Envoi direct au Prof
                 dateCreation: serverTimestamp(),
-                readBy: []
-            }).catch(e => console.error(e));
+            });
         }
         
         window.prepareNewCourse(); 
@@ -745,13 +746,13 @@ window.duplicateCourse = async (id) => {
     }
 };
 
-// NOVEAU: Sécurité renforcée pour la suppression
+// NOUVEAU : VERROU DE SÉCURITÉ DE SUPPRESSION
 window.deleteCourse = async (id) => {
-    const confirmation = prompt("⚠️ ATTENTION : La suppression est définitive.\nTapez 'SUPPRIMER' en majuscules pour confirmer :");
-    if (confirmation === 'SUPPRIMER') {
+    const verification = prompt("⚠️ ATTENTION : La suppression d'un cours est définitive.\nTapez 'SUPPRIMER' en majuscules pour confirmer :");
+    if (verification === 'SUPPRIMER') {
         await deleteDoc(doc(db, "courses", id));
         loadCourses();
-    } else if (confirmation !== null) {
-        alert("Suppression annulée.");
+    } else if (verification !== null) {
+        alert("Suppression annulée. Vous n'avez pas tapé 'SUPPRIMER'.");
     }
 };
