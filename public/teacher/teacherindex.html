@@ -56,15 +56,96 @@
         <h2>Bienvenue sur votre tableau de bord</h2>
         <p style="color: #888;">Prêt à créer du nouveau contenu ?</p>
         
-        <button id="btn-create-formation" style="margin-top: 2rem; padding: 1rem 2rem; background: #2ed573; color: #000; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">
-            + Créer une nouvelle formation
+        <button id="btn-create-formation" style="margin-top: 2rem; padding: 1rem 2rem; background: #2ed573; color: #000; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; transition: 0.2s;">
+            + Créer un cours de Test (Envoi Notification)
         </button>
     </div>
 
     <script type="module">
-        // Note le ../ car on est dans le dossier /teacher/
         import { logoutUser } from '../js/auth.js';
-        document.getElementById('logout-btn').addEventListener('click', logoutUser);
+        import { db, auth } from '../js/firebase-init.js';
+        import { collection, addDoc, serverTimestamp, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+
+        let currentUid = null;
+        let currentUserProfile = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('logout-btn').addEventListener('click', logoutUser);
+
+            // Vérification de la connexion et récupération du profil du prof
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    currentUid = user.uid;
+                    const userSnap = await getDoc(doc(db, "users", currentUid));
+                    if (userSnap.exists()) {
+                        currentUserProfile = userSnap.data();
+                    }
+                } else {
+                    window.location.replace('../login.html');
+                }
+            });
+
+            // Action du bouton de test
+            document.getElementById('btn-create-formation').addEventListener('click', async () => {
+                if (!currentUid) return;
+
+                const btn = document.getElementById('btn-create-formation');
+                btn.textContent = "Création et envoi en cours...";
+                btn.disabled = true;
+                btn.style.opacity = "0.5";
+
+                try {
+                    const testTitle = "Cours de Test Teacher";
+                    
+                    // 1. Création d'un faux cours en attente de validation
+                    const courseRef = await addDoc(collection(db, "courses"), {
+                        titre: testTitle,
+                        actif: false,
+                        statutValidation: "pending",
+                        formations: [], 
+                        auteurId: currentUid,
+                        chapitres: [{
+                            id: "chap_test",
+                            type: "text",
+                            titre: "Étape Générée",
+                            contenu: "<p>Ceci est un cours de test généré par le bouton pour tester la cloche de notification.</p>",
+                            mediaType: "image",
+                            mediaImage: "",
+                            mediaVideo: ""
+                        }],
+                        dateCreation: serverTimestamp()
+                    });
+
+                    // 2. Détermination du nom à afficher dans la notif
+                    let auteurName = "Professeur Inconnu";
+                    if (currentUserProfile) {
+                        auteurName = `${currentUserProfile.prenom || ''} ${currentUserProfile.nom || ''}`.trim() || currentUserProfile.email;
+                    }
+
+                    // 3. Déclenchement de la notification Admin
+                    await addDoc(collection(db, "notifications"), {
+                        type: 'course_validation',
+                        courseId: courseRef.id,
+                        courseTitle: testTitle,
+                        auteurId: currentUid,
+                        auteurName: auteurName,
+                        dateCreation: serverTimestamp(),
+                        readBy: []
+                    });
+
+                    alert("✅ Faux cours créé ! Retourne sur ton espace Admin pour voir la cloche sonner !");
+                    
+                } catch (error) {
+                    console.error(error);
+                    alert("❌ Erreur lors de la création.");
+                } finally {
+                    btn.textContent = "+ Créer un cours de Test (Envoi Notification)";
+                    btn.disabled = false;
+                    btn.style.opacity = "1";
+                }
+            });
+        });
     </script>
 </body>
 </html>
