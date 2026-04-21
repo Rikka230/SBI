@@ -587,11 +587,26 @@ async function loadCourses() {
 
             const nbChapitres = data.chapitres ? data.chapitres.length : 0;
             
+            // --- NOUVEAU : Récupération du créateur du cours ---
+            let authorName = "Système";
+            if (data.auteurId && allUsersForAccess.length > 0) {
+                const authorObj = allUsersForAccess.find(u => u.id === data.auteurId);
+                if (authorObj) {
+                    authorName = (authorObj.prenom || authorObj.nom) ? `${authorObj.prenom || ''} ${authorObj.nom || ''}`.trim() : authorObj.email;
+                }
+            }
+            
             const html = `
             <div style="background: var(--bg-card); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; opacity: ${data.actif ? '1' : '0.6'};">
                 <div>
                     <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem;">
-                        ${statusHtml} <h3 style="margin: 0;">${data.titre}</h3>
+                        ${statusHtml} 
+                        <h3 style="margin: 0; display: flex; align-items: center;">
+                            ${data.titre}
+                            <span style="font-size: 0.85rem; font-weight: normal; color: var(--text-muted); font-style: italic; margin-left: 0.8rem;">
+                                par ${authorName}
+                            </span>
+                        </h3>
                     </div>
                     <div>${tagsHtml} <span style="color: var(--text-muted); font-size: 0.85rem; margin-left: 1rem;">${nbChapitres} Étape(s)</span></div>
                 </div>
@@ -607,7 +622,6 @@ async function loadCourses() {
         listContainer.innerHTML = '<p style="color:red; text-align:center;">Erreur système.</p>';
     }
 }
-
 window.editCourse = async (id) => {
     try {
         const docSnap = await getDoc(doc(db, "courses", id));
