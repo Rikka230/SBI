@@ -14,19 +14,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /* --- 1. GESTION DES PANNEAUX LATERAUX --- */
     
-    // Toggle Menu Gauche
-    if (leftToggleBtn) {
-        leftToggleBtn.addEventListener('click', () => {
-            if (window.innerWidth > 1024) {
-                appContainer.classList.toggle('left-collapsed');
-            } else {
-                appContainer.classList.toggle('left-open');
-                appContainer.classList.remove('right-open');
-            }
+    // Nouveaux IDs des boutons
+    const desktopToggleBtn = document.getElementById('btn-toggle-panel');
+    const mobileToggleBtn = document.getElementById('btn-toggle-mobile');
+
+    // MÉMOIRE F5 : Restaurer l'état du panneau au chargement
+    if (localStorage.getItem('leftPanelCollapsed') === 'true' && window.innerWidth > 1024) {
+        appContainer.classList.add('left-collapsed');
+    }
+
+    // Toggle Panneau Gauche (PC)
+    if (desktopToggleBtn) {
+        desktopToggleBtn.addEventListener('click', () => {
+            appContainer.classList.toggle('left-collapsed');
+            // Sauvegarde de l'état
+            localStorage.setItem('leftPanelCollapsed', appContainer.classList.contains('left-collapsed'));
         });
     }
 
-    // Toggle Menu Droit
+    // Toggle Panneau Gauche (Mobile)
+    if (mobileToggleBtn) {
+        mobileToggleBtn.addEventListener('click', () => {
+            appContainer.classList.toggle('left-open');
+            appContainer.classList.remove('right-open');
+        });
+    }
+
+    // Toggle Menu Droit (inchangé)
     if (rightToggleBtn) {
         rightToggleBtn.addEventListener('click', () => {
             if (window.innerWidth > 1024) {
@@ -37,12 +51,15 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+    
+    // Fermeture automatique sur mobile au clic
     document.getElementById('main-content').addEventListener('click', () => {
         if (window.innerWidth <= 1024) {
             appContainer.classList.remove('left-open');
             appContainer.classList.remove('right-open');
         }
     });
+    
     /* --- 2. NAVIGATION ENTRE LES ONGLETS --- */
 
     // Restaurer le dernier onglet actif (Mémoire au rafraîchissement)
