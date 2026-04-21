@@ -1,22 +1,20 @@
 /**
  * =======================================================================
- * ADMIN COURSES - Gestion des Cours et Chapitres (A-Z)
+ * ADMIN COURSES - Gestion des Cours, Examens et Formations (A-Z)
  * =======================================================================
  */
 
 import { db, auth } from '/js/firebase-init.js';
-import { collection, addDoc, getDocs, doc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { collection, addDoc, getDocs, doc, deleteDoc, updateDoc, serverTimestamp, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
 let currentUid = null;
-
-// --- VARIABLES POUR LA STRUCTURE DU COURS ---
 let currentChapters = [];
 let activeChapterId = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     
-    // Vérification de sécurité
+    // 1. Authentification
     onAuthStateChanged(auth, (user) => {
         if (user) {
             currentUid = user.uid;
@@ -26,61 +24,81 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Écouteurs globaux
-    const saveBtn = document.getElementById('btn-save-course');
-    if(saveBtn) saveBtn.addEventListener('click', saveCourseToFirebase);
+    // 2. Écouteurs de base
+    document.getElementById('btn-save-course').addEventListener('click', saveCourseToFirebase);
+    document.getElementById('btn-add-chapter').addEventListener('click', () => createNewChapter('text'));
+    document.getElementById('btn-add-quiz').addEventListener('click', () => createNewChapter('quiz'));
 
-    const addChapterBtn = document.getElementById('btn-add-chapter');
-    if(addChapterBtn) addChapterBtn.addEventListener('click', createNewChapter);
-
-    // Mise à jour en temps réel du nom du chapitre dans la barre latérale
-    const chapTitleInput = document.getElementById('chapter-title');
-    if(chapTitleInput) {
-        chapTitleInput.addEventListener('input', (e) => {
-            if(activeChapterId) {
-                const chap = currentChapters.find(c => c.id === activeChapterId);
-                if(chap) {
-                    chap.titre = e.target.value;
-                    renderChaptersList();
-                }
-            }
+    // 3. Gestionnaire des "Pilules" de Catégorie (Formations)
+    document.querySelectorAll('.formation-pill').forEach(pill => {
+        pill.addEventListener('click', (e) => {
+            e.target.classList.toggle('selected');
         });
+    });
+
+    // 4. Mise à jour du titre en temps réel dans la liste
+    document.getElementById('chapter-title').addEventListener('input', updateActiveTitle);
+    document.getElementById('quiz-title').addEventListener('input', updateActiveTitle);
+
+    function updateActiveTitle(e) {
+        if(activeChapterId) {
+            const chap = currentChapters.find(c => c.id === activeChapterId);
+            if(chap) { chap.titre = e.target.value; renderChaptersList(); }
+        }
     }
 });
 
 
 /* =========================================================
-   LOGIQUE DE GESTION DES CHAPITRES (ETAPES)
+   LOGIQUE DE L'INTERFACE D'ÉDITION
 ========================================================= */
 
-// 1. Ajouter une nouvelle étape vierge
-function createNewChapter() {
-    // On sauvegarde ce qu'on était en train d'écrire avant de créer le nouveau
+window.prepareNewCourse = function() {
+    document.getElementById('edit-course-id').value = '';
+    document.getElementById('course-title').value = '';
+    currentChapters = [];
+    activeChapterId = null;
+    document.querySelectorAll('.formation-pill').forEach(p => p.classList.remove('selected'));
+    
+    document.getElementById('no-chapter-zone').style.display = 'flex';
+    document.getElementById('chapter-editor-zone').style.display = 'none';
+    document.getElementById('quiz-editor-zone').style.display = 'none';
+    
+    renderChaptersList();
+    window.switchCourseTab('tab-editor');
+};
+
+function createNewChapter(type) {
     saveCurrentChapterContent();
 
     const newId = 'chap_' + Date.now().toString();
     const newChap = {
         id: newId,
-        titre: `Étape ${currentChapters.length + 1}`,
-        contenu: ''
+        type: type, // 'text' ou 'quiz'
+        titre: type === 'quiz' ? `Examen` : `Leçon ${currentChapters.filter(c=>c.type==='text').length + 1}`,
+        contenu: '',
+        image: ''
     };
     
     currentChapters.push(newChap);
     selectChapter(newId);
 }
 
-// 2. Sauvegarder l'éditeur Quill vers le tableau mémoire Javascript
 function saveCurrentChapterContent() {
-    if(activeChapterId) {
-        const chap = currentChapters.find(c => c.id === activeChapterId);
-        if(chap) {
-            chap.titre = document.getElementById('chapter-title').value;
-            chap.contenu = window.quill ? window.quill.root.innerHTML : '';
-        }
+    if(!activeChapterId) return;
+    const chap = currentChapters.find(c => c.id === activeChapterId);
+    if(!chap) return;
+
+    if (chap.type === 'text') {
+        chap.titre = document.getElementById('chapter-title').value;
+        chap.image = document.getElementById('chapter-image').value;
+        chap.contenu = window.quill ? window.quill.root.innerHTML : '';
+    } else if (chap.type === 'quiz') {
+        chap.titre = document.getElementById('quiz-title').value;
+        // Données du quiz à sauvegarder plus tard
     }
 }
 
-// 3. Basculer l'éditeur sur une étape précise (disponible globalement pour onclick HTML)
 window.selectChapter = function(id) {
     saveCurrentChapterContent(); 
     
@@ -88,52 +106,55 @@ window.selectChapter = function(id) {
     const chap = currentChapters.find(c => c.id === id);
     if(!chap) return;
 
-    // Affiche l'éditeur et cache le message "État Zéro"
     document.getElementById('no-chapter-zone').style.display = 'none';
-    document.getElementById('chapter-editor-zone').style.display = 'flex';
 
-    // Remplissage avec les données de l'étape cliquée
-    document.getElementById('chapter-title').value = chap.titre;
-    if(window.quill) {
-        window.quill.root.innerHTML = chap.contenu;
+    if (chap.type === 'text') {
+        document.getElementById('quiz-editor-zone').style.display = 'none';
+        document.getElementById('chapter-editor-zone').style.display = 'flex';
+        
+        document.getElementById('chapter-title').value = chap.titre;
+        document.getElementById('chapter-image').value = chap.image || '';
+        if(window.quill) window.quill.root.innerHTML = chap.contenu || '';
+    } else {
+        document.getElementById('chapter-editor-zone').style.display = 'none';
+        document.getElementById('quiz-editor-zone').style.display = 'flex';
+        document.getElementById('quiz-title').value = chap.titre;
     }
 
     renderChaptersList();
 }
 
-// 4. Supprimer une étape
 window.deleteChapter = function(id, event) {
-    event.stopPropagation(); // Empêche de déclencher "selectChapter" en même temps
-    if(confirm('Supprimer définitivement cette étape du cours ?')) {
+    event.stopPropagation();
+    if(confirm('Supprimer cette étape ?')) {
         currentChapters = currentChapters.filter(c => c.id !== id);
-        
         if(activeChapterId === id) {
             activeChapterId = null;
             document.getElementById('no-chapter-zone').style.display = 'flex';
             document.getElementById('chapter-editor-zone').style.display = 'none';
+            document.getElementById('quiz-editor-zone').style.display = 'none';
         }
         renderChaptersList();
     }
 }
 
-// 5. Mettre à jour visuellement la liste latérale
 function renderChaptersList() {
     const list = document.getElementById('chapters-list');
     if(!list) return;
-    
     list.innerHTML = '';
     
     currentChapters.forEach((chap, index) => {
         const isActive = chap.id === activeChapterId;
         const bg = isActive ? 'rgba(42, 87, 255, 0.1)' : '#111';
         const border = isActive ? '1px solid var(--accent-blue)' : '1px solid #333';
-        const color = isActive ? 'var(--accent-blue)' : 'white';
-        const fw = isActive ? 'bold' : 'normal';
+        
+        let icon = chap.type === 'quiz' ? '📝 ' : `${index + 1}. `;
+        let color = chap.type === 'quiz' ? 'var(--accent-yellow)' : (isActive ? 'var(--accent-blue)' : 'white');
 
         const li = `
-            <li onclick="selectChapter('${chap.id}')" style="padding: 0.8rem; background: ${bg}; border: ${border}; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: 0.2s; color: ${color}; font-weight: ${fw};">
-                <span style="flex-grow: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${index + 1}. ${chap.titre}</span>
-                <button onclick="deleteChapter('${chap.id}', event)" style="background:none; border:none; color:var(--accent-red); cursor:pointer; padding: 0 5px; font-size: 1.2rem; display: flex; align-items: center;" title="Supprimer l'étape">&times;</button>
+            <li onclick="selectChapter('${chap.id}')" style="padding: 0.8rem; background: ${bg}; border: ${border}; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; color: ${color};">
+                <span style="flex-grow: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${icon}${chap.titre}</span>
+                <button onclick="deleteChapter('${chap.id}', event)" style="background:none; border:none; color:var(--accent-red); cursor:pointer;">&times;</button>
             </li>
         `;
         list.insertAdjacentHTML('beforeend', li);
@@ -142,64 +163,58 @@ function renderChaptersList() {
 
 
 /* =========================================================
-   COMMUNICATION AVEC FIREBASE
+   FIREBASE : SAUVEGARDE ET CHARGEMENT
 ========================================================= */
 
-// ENVOI DU COURS COMPLET
 async function saveCourseToFirebase() {
-    saveCurrentChapterContent(); // S'assure que la dernière ligne tapée est sauvée
+    saveCurrentChapterContent(); 
     
-    const titleInput = document.getElementById('course-title');
-    const activeCheckbox = document.getElementById('course-active');
-    const formationsSelect = document.getElementById('course-formations');
+    const courseId = document.getElementById('edit-course-id').value;
+    const title = document.getElementById('course-title').value.trim();
+    const isActive = document.getElementById('course-active').checked;
     
-    const title = titleInput.value.trim();
-    const isActive = activeCheckbox.checked;
-    const selectedFormations = Array.from(formationsSelect.selectedOptions).map(opt => opt.value);
+    // Récupérer les "pilules" sélectionnées
+    const selectedPills = Array.from(document.querySelectorAll('.formation-pill.selected')).map(p => p.getAttribute('data-val'));
 
-    // Protections
     if (!title) { alert('⚠️ Veuillez entrer un Titre Global pour le cours.'); return; }
-    if (currentChapters.length === 0) { alert('⚠️ Le cours doit contenir au moins une étape pour être sauvegardé.'); return; }
 
     const saveBtn = document.getElementById('btn-save-course');
-    saveBtn.textContent = 'Sauvegarde en cours...';
+    saveBtn.textContent = 'Sauvegarde...';
     saveBtn.disabled = true;
 
     try {
-        await addDoc(collection(db, "courses"), {
+        const courseData = {
             titre: title,
             actif: isActive,
-            formations: selectedFormations,
+            formations: selectedPills,
             auteurId: currentUid,
-            dateCreation: serverTimestamp(),
-            chapitres: currentChapters // L'ensemble des chapitres et leurs textes partent d'un coup !
-        });
+            chapitres: currentChapters
+        };
 
-        alert('✅ Cours complet sauvegardé avec succès !');
+        if (courseId) {
+            // Mise à jour existant
+            await updateDoc(doc(db, "courses", courseId), courseData);
+            alert('✅ Cours mis à jour !');
+        } else {
+            // Nouveau cours
+            courseData.dateCreation = serverTimestamp();
+            await addDoc(collection(db, "courses"), courseData);
+            alert('✅ Nouveau cours créé !');
+        }
         
-        // RESET DE L'INTERFACE
-        titleInput.value = '';
-        currentChapters = [];
-        activeChapterId = null;
-        renderChaptersList();
-        document.getElementById('no-chapter-zone').style.display = 'flex';
-        document.getElementById('chapter-editor-zone').style.display = 'none';
-        if(window.quill) window.quill.root.innerHTML = '';
-        
-        // Rafraîchir la bibliothèque et changer d'onglet
+        window.prepareNewCourse(); // Reset l'interface
         loadCourses();
         window.switchCourseTab('tab-list');
 
     } catch (error) {
-        console.error("Erreur de sauvegarde:", error);
-        alert("❌ Erreur : " + error.message);
+        console.error("Erreur:", error);
+        alert("❌ Erreur de sauvegarde.");
     } finally {
         saveBtn.textContent = 'Sauvegarder le Cours Complet';
         saveBtn.disabled = false;
     }
 }
 
-// LECTURE DE LA BIBLIOTHÈQUE
 async function loadCourses() {
     const listContainer = document.getElementById('courses-list-container');
     if(!listContainer) return;
@@ -209,7 +224,7 @@ async function loadCourses() {
         listContainer.innerHTML = '';
         
         if(querySnapshot.empty) {
-            listContainer.innerHTML = '<p style="color:var(--text-muted); text-align:center;">Aucun cours trouvé. Créez la première leçon !</p>';
+            listContainer.innerHTML = '<p style="color:var(--text-muted); text-align:center;">Aucun cours. Cliquez sur + Nouveau Cours.</p>';
             return;
         }
 
@@ -222,45 +237,73 @@ async function loadCourses() {
                 : `<span style="color: var(--accent-red); font-weight: bold; font-size: 0.8rem;">● BROUILLON</span>`;
             
             const tagsHtml = data.formations ? data.formations.map(f => `<span class="tag">📁 ${f}</span>`).join('') : '';
-            // On compte le nombre exact d'étapes dans Firebase
             const nbChapitres = data.chapitres ? data.chapitres.length : 0;
             
             const html = `
             <div style="background: var(--bg-card); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; opacity: ${data.actif ? '1' : '0.6'};">
                 <div>
                     <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem;">
-                        ${statusHtml}
-                        <h3 style="margin: 0;">${data.titre}</h3>
+                        ${statusHtml} <h3 style="margin: 0;">${data.titre}</h3>
                     </div>
-                    <div>
-                        ${tagsHtml}
-                        <span style="color: var(--accent-yellow); font-size: 0.85rem; margin-left: 1rem; font-weight:bold;">${nbChapitres} Étape(s)</span>
-                        <span style="color: var(--text-muted); font-size: 0.8rem; margin-left: 10px;">(ID: ${courseId.substring(0,6)})</span>
-                    </div>
+                    <div>${tagsHtml} <span style="color: var(--text-muted); font-size: 0.85rem; margin-left: 1rem;">${nbChapitres} Étape(s)</span></div>
                 </div>
                 <div style="display: flex; gap: 0.5rem;">
-                    <button class="action-btn" style="width: auto; margin: 0; color: var(--accent-blue); border-color: rgba(42, 87, 255, 0.4);">Modifier</button>
-                    <button class="action-btn danger" style="width: auto; margin: 0;" onclick="deleteCourse('${courseId}')" title="Supprimer le cours complet">❌</button>
+                    <button class="action-btn" style="width: auto; margin: 0; color: var(--accent-blue);" onclick="window.editCourse('${courseId}')">Éditer</button>
+                    <button class="action-btn danger" style="width: auto; margin: 0;" onclick="window.deleteCourse('${courseId}')">❌</button>
                 </div>
             </div>`;
-            
             listContainer.insertAdjacentHTML('beforeend', html);
         });
-        
     } catch (error) {
-        console.error("Erreur chargement:", error);
-        listContainer.innerHTML = '<p style="color:red; text-align:center;">Erreur de chargement des cours.</p>';
+        listContainer.innerHTML = '<p style="color:red; text-align:center;">Erreur système.</p>';
     }
 }
 
-// SUPPRESSION DE COURS
-window.deleteCourse = async (id) => {
-    if(confirm("DANGER : Supprimer intégralement ce cours et toutes ses étapes ?")) {
-        try {
-            await deleteDoc(doc(db, "courses", id));
-            loadCourses();
-        } catch(e) {
-            alert("Erreur de suppression.");
+// CHARGER UN COURS EXISTANT DANS L'ÉDITEUR
+window.editCourse = async (id) => {
+    try {
+        const docSnap = await getDoc(doc(db, "courses", id));
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+            
+            // Remplir les données globales
+            document.getElementById('edit-course-id').value = id;
+            document.getElementById('course-title').value = data.titre || '';
+            document.getElementById('course-active').checked = data.actif;
+            
+            // Mettre à jour les pilules de sélection
+            document.querySelectorAll('.formation-pill').forEach(pill => {
+                const val = pill.getAttribute('data-val');
+                if(data.formations && data.formations.includes(val)) {
+                    pill.classList.add('selected');
+                } else {
+                    pill.classList.remove('selected');
+                }
+            });
+
+            // Recharger les chapitres
+            currentChapters = data.chapitres || [];
+            activeChapterId = null; // On force l'état zéro au démarrage
+            
+            document.getElementById('no-chapter-zone').style.display = 'flex';
+            document.getElementById('chapter-editor-zone').style.display = 'none';
+            document.getElementById('quiz-editor-zone').style.display = 'none';
+            
+            renderChaptersList();
+            window.switchCourseTab('tab-editor');
+            
+        } else {
+            alert("Ce cours n'existe plus.");
         }
+    } catch (error) {
+        console.error("Erreur de chargement", error);
+        alert("Impossible de charger le cours.");
     }
-}
+};
+
+window.deleteCourse = async (id) => {
+    if(confirm("Supprimer intégralement ce cours et toutes ses étapes ?")) {
+        await deleteDoc(doc(db, "courses", id));
+        loadCourses();
+    }
+};
