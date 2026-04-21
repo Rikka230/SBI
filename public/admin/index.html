@@ -6,13 +6,14 @@
     <title>SBI Console - Administration</title>
     <link rel="stylesheet" href="css/admin-layout.css">
     <link rel="stylesheet" href="css/admin.css">
+    
+    <style> .admin-view { display: none !important; } </style>
     <script>
-        // Nettoyage de l'URL et mémorisation de l'onglet ciblé
         const urlParams = new URLSearchParams(window.location.search);
-        if(urlParams.has('tab')) { 
-            sessionStorage.setItem('activeAdminTab', urlParams.get('tab')); 
-            window.history.replaceState({}, document.title, window.location.pathname);
-        }
+        const activeTab = urlParams.get('tab') || sessionStorage.getItem('activeAdminTab') || 'view-dashboard';
+        sessionStorage.setItem('activeAdminTab', activeTab);
+        document.write(`<style>#${activeTab} { display: block !important; }</style>`);
+        window.history.replaceState({}, document.title, window.location.pathname); // Nettoie l'URL
     </script>
 </head>
 <body class="preload">
