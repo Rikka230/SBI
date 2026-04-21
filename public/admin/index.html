@@ -12,9 +12,14 @@
 <div class="app-container" id="app-container">
 
     <aside id="left-panel" class="side-panel">
-        <div class="panel-header">
-            <span class="logo-text" style="color: var(--accent-blue);">🔥 SBI</span> <span class="logo-text">&nbsp;Console</span>
-            <span class="logo-mini" style="display: none;">🔥</span>
+        <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; width: 100%; box-sizing: border-box;">
+            <div class="logo-zone" style="display: flex; align-items: center; overflow: hidden; white-space: nowrap;">
+                <span style="color: var(--accent-blue); font-weight: bold;">🔥 SBI</span><span>&nbsp;Console</span>
+            </div>
+            <button id="btn-toggle-panel" style="background:none; border:none; color:var(--text-muted); cursor:pointer; padding:5px; display:flex; align-items: center; justify-content: center;">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" style="transition: transform 0.3s;"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z"/></svg>
+            </button>
+            <span class="logo-mini" style="display: none; font-size: 1.2rem;">🔥</span>
         </div>
         <ul class="nav-menu">
             <li class="nav-item active" data-target="view-dashboard">
@@ -37,8 +42,8 @@
     </aside>
 
     <header class="top-bar">
-        <button class="mobile-toggle left-toggle" id="btn-toggle-left" style="transition: transform 0.3s ease;">
-            <svg viewBox="0 0 24 24"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z"/></svg>
+        <button class="mobile-toggle left-toggle" id="btn-toggle-mobile">
+            <svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
         </button>
         <span class="page-title" style="font-weight: 600;">SBI Admin</span>
         <button class="mobile-toggle right-toggle" id="btn-toggle-right">
