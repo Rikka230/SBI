@@ -8,8 +8,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@200;400;600&display=swap" rel="stylesheet">
     
-    <link rel="stylesheet" href="admin-layout.css?v=1.0">
-    <link rel="stylesheet" href="admin.css?v=3.0">
+    <link rel="stylesheet" href="css/admin-layout.css?v=1.0">
+    <link rel="stylesheet" href="css/admin.css?v=3.0">
 </head>
 <body>
 
@@ -22,7 +22,9 @@
                 <button type="submit" class="btn-primary" style="width: 100%;">Connexion</button>
                 <p id="login-error" class="error-text hidden">Identifiants incorrects.</p>
             </form>
-            <div style="margin-top: 2rem;"><a href="index.html" class="back-link-login">← Retour au site public</a></div>
+            <div style="margin-top: 2rem;">
+                <a href="../index.html" class="back-link-login">← Retour au site public</a>
+            </div>
         </div>
     </div>
 
@@ -41,7 +43,7 @@
                 <a href="#formation">Formation</a> 
             </nav>
             <div class="sidebar-footer">
-                <a href="index.html" target="_blank" class="btn-secondary" style="display: block; text-align: center; margin-bottom: 15px; text-decoration: none; font-size: 0.8rem;">Voir le site</a>
+                <a href="../index.html" target="_blank" class="btn-secondary" style="display: block; text-align: center; margin-bottom: 15px; text-decoration: none; font-size: 0.8rem;">Voir le site</a>
             </div>
         </aside>
 
@@ -158,6 +160,6 @@
         });
     </script>
 
-    <script type="module" src="main.js?v=6.0"></script>
+    <script type="module" src="js/admin-core.js?v=6.0"></script>
 </body>
 </html>
