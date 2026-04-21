@@ -7,15 +7,24 @@
 import { db, auth } from '/js/firebase-init.js';
 import { collection, addDoc, getDocs, doc, deleteDoc, updateDoc, serverTimestamp, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+import { logoutUser } from '/js/auth.js';
 
 let currentUid = null;
 let currentChapters = [];
 let activeChapterId = null;
+ 
 
 document.addEventListener('DOMContentLoaded', () => {
+    const logoutBtn = document.getElementById('logout-btn');
+    if(logoutBtn) logoutBtn.addEventListener('click', logoutUser);
     
-    onAuthStateChanged(auth, (user) => {
-        if (user) { currentUid = user.uid; loadCourses(); }
+    const cacheBtn = document.getElementById('btn-clear-cache');
+    if(cacheBtn) cacheBtn.addEventListener('click', () => {
+        if(confirm('Vider le cache local ? Cela rechargera la page.')) {
+            localStorage.clear();
+            sessionStorage.clear();
+            window.location.reload(true);
+        }
     });
 
     // Écouteurs de la vue Édition
@@ -241,11 +250,11 @@ function addQuizQuestion() {
             
             <div class="q-options-container" style="display: flex; flex-direction: column; gap: 0.5rem;">
                 <label style="display: flex; align-items: center; gap: 0.5rem; color: #aaa;">
-                    <input type="radio" name="correct_q${qIndex}" value="0" checked>
+                    <input type="checkbox" class="q-correct-cb" value="0">
                     <input type="text" class="q-opt" placeholder="Réponse 1" style="flex-grow:1; background: #222; border: 1px solid #444; padding: 0.5rem; color: white; border-radius:4px; outline:none;">
                 </label>
                 <label style="display: flex; align-items: center; gap: 0.5rem; color: #aaa;">
-                    <input type="radio" name="correct_q${qIndex}" value="1">
+                    <input type="checkbox" class="q-correct-cb" value="1">
                     <input type="text" class="q-opt" placeholder="Réponse 2" style="flex-grow:1; background: #222; border: 1px solid #444; padding: 0.5rem; color: white; border-radius:4px; outline:none;">
                 </label>
             </div>
@@ -253,7 +262,7 @@ function addQuizQuestion() {
             <button type="button" onclick="window.addOptionToQuestion(this)" style="margin-top:0.8rem; background:none; border:none; color:var(--accent-blue); cursor:pointer; font-size:0.85rem;">+ Ajouter un choix</button>
             
             <div style="margin-top: 1.5rem; display: flex; align-items: center; gap: 1rem; border-top: 1px solid #333; padding-top: 1rem;">
-                <span style="color: var(--text-muted); font-size: 0.85rem;">Cochez le bouton radio de la bonne réponse.</span>
+                <span style="color: var(--text-muted); font-size: 0.85rem;">Cochez <strong>les</strong> bonnes réponses.</span>
                 <input type="number" class="q-points" value="1" min="1" style="width: 60px; background: #222; border: 1px solid #444; padding: 0.4rem; color: white; border-radius: 4px;"> <span style="color: var(--text-muted); font-size: 0.85rem;">Point(s)</span>
             </div>
         </div>
@@ -263,13 +272,11 @@ function addQuizQuestion() {
 
 window.addOptionToQuestion = function(btn) {
     const container = btn.previousElementSibling;
-    const qBlock = container.parentElement;
-    const qIndex = qBlock.getAttribute('data-qindex');
     const optIndex = container.children.length;
     
     const html = `
         <label style="display: flex; align-items: center; gap: 0.5rem; color: #aaa;">
-            <input type="radio" name="correct_q${qIndex}" value="${optIndex}">
+            <input type="checkbox" class="q-correct-cb" value="${optIndex}">
             <input type="text" class="q-opt" placeholder="Nouvelle réponse" style="flex-grow:1; background: #222; border: 1px solid #444; padding: 0.5rem; color: white; border-radius:4px; outline:none;">
             <button type="button" onclick="this.parentElement.remove()" style="background:none; border:none; color:var(--accent-red); cursor:pointer; padding: 0 5px;">&times;</button>
         </label>
@@ -282,14 +289,13 @@ function gatherQuizQuestions() {
     document.querySelectorAll('.quiz-question-block').forEach((block) => {
         const title = block.querySelector('.q-title').value.trim();
         const points = parseInt(block.querySelector('.q-points').value) || 1;
-        const qIndex = block.getAttribute('data-qindex');
-        
         const options = Array.from(block.querySelectorAll('.q-opt')).map(inp => inp.value.trim());
-        const correctRadio = block.querySelector(`input[name="correct_q${qIndex}"]:checked`);
-        const correctIndex = correctRadio ? parseInt(correctRadio.value) : 0;
+        
+        // NOUVEAU : On récupère un tableau de toutes les cases cochées
+        const correctIndices = Array.from(block.querySelectorAll('.q-correct-cb:checked')).map(cb => parseInt(cb.value));
 
         if(title && options.length >= 2) {
-            questions.push({ question: title, options: options, correctIndex: correctIndex, points: points });
+            questions.push({ question: title, options: options, correctIndices: correctIndices, points: points });
         }
     });
     return questions;
@@ -300,9 +306,12 @@ function renderQuizBuilder(questions) {
     container.innerHTML = '';
     
     questions.forEach((q, index) => {
+        // Compatibilité avec les vieux cours qui n'avaient qu'une réponse
+        const indices = q.correctIndices || (q.correctIndex !== undefined ? [q.correctIndex] : []);
+        
         const optionsHTML = q.options.map((opt, i) => `
             <label style="display: flex; align-items: center; gap: 0.5rem; color: #aaa;">
-                <input type="radio" name="correct_q${index}" value="${i}" ${q.correctIndex === i ? 'checked' : ''}>
+                <input type="checkbox" class="q-correct-cb" value="${i}" ${indices.includes(i) ? 'checked' : ''}>
                 <input type="text" class="q-opt" value="${opt}" placeholder="Réponse ${i+1}" style="flex-grow:1; background: #222; border: 1px solid #444; padding: 0.5rem; color: white; border-radius:4px; outline:none;">
                 ${i > 1 ? `<button type="button" onclick="this.parentElement.remove()" style="background:none; border:none; color:var(--accent-red); cursor:pointer;">&times;</button>` : ''}
             </label>
@@ -319,7 +328,7 @@ function renderQuizBuilder(questions) {
             <button type="button" onclick="window.addOptionToQuestion(this)" style="margin-top:0.8rem; background:none; border:none; color:var(--accent-blue); cursor:pointer; font-size:0.85rem;">+ Ajouter un choix</button>
             
             <div style="margin-top: 1.5rem; display: flex; align-items: center; gap: 1rem; border-top: 1px solid #333; padding-top: 1rem;">
-                <span style="color: var(--text-muted); font-size: 0.85rem;">Cochez la bonne réponse.</span>
+                <span style="color: var(--text-muted); font-size: 0.85rem;">Cochez <strong>les</strong> bonnes réponses.</span>
                 <input type="number" class="q-points" value="${q.points}" min="1" style="width: 60px; background: #222; border: 1px solid #444; padding: 0.4rem; color: white; border-radius: 4px;"> <span style="color: var(--text-muted); font-size: 0.85rem;">Point(s)</span>
             </div>
         </div>`;
