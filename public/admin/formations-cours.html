@@ -117,11 +117,27 @@
                 <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem;">
                     
                     <div style="display: flex; flex-direction: column; gap: 1.5rem;">
-                        <input type="text" id="course-title" placeholder="Titre du Chapitre / Leçon" style="font-size: 1.5rem; font-weight: bold; padding: 1rem; background: transparent; color: white; border: none; border-bottom: 2px solid var(--border-color); outline: none;">
-                        <div id="course-editor" style="height: 500px;"></div>
+                        
+                        <div style="background: var(--bg-card); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color);">
+                            <label style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.5rem; display: block; font-weight: bold;">Titre Global du Cours</label>
+                            <input type="text" id="course-title" placeholder="Ex: Les bases de la perspective" style="width: 100%; font-size: 1.5rem; font-weight: bold; padding: 0.5rem 0; background: transparent; color: white; border: none; border-bottom: 2px solid var(--border-color); outline: none; transition: border-color 0.2s;">
+                        </div>
+
+                        <div id="no-chapter-zone" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 400px; background: rgba(255,255,255,0.02); border: 1px dashed var(--border-color); border-radius: 8px; color: var(--text-muted);">
+                            <svg style="width: 48px; height: 48px; fill: currentColor; margin-bottom: 1rem;" viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+                            <p style="font-size: 1.1rem;">Sélectionnez ou créez une étape à droite pour commencer à rédiger.</p>
+                        </div>
+
+                        <div id="chapter-editor-zone" style="display: none; flex-direction: column; gap: 1rem; background: var(--bg-card); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color);">
+                            <label style="color: var(--accent-blue); font-size: 0.85rem; font-weight: bold;">Édition de l'étape en cours</label>
+                            <input type="text" id="chapter-title" placeholder="Titre de l'étape (ex: 1. Introduction)" style="width: 100%; font-size: 1.2rem; padding: 0.8rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px; outline: none; box-sizing: border-box;">
+                            
+                            <div id="course-editor" style="height: 400px;"></div>
+                        </div>
                     </div>
 
                     <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+                        
                         <div style="background: var(--bg-card); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color);">
                             <h4 style="margin-top: 0; color: var(--accent-blue);">Paramètres du Cours</h4>
                             <label style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem; cursor: pointer;">
@@ -130,15 +146,27 @@
                             </label>
                             
                             <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.9rem;">Assigner aux Formations :</label>
-                            <select id="course-formations" multiple style="width: 100%; height: 80px; padding: 0.5rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px;">
+                            <select id="course-formations" multiple style="width: 100%; height: 80px; padding: 0.5rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px; outline: none;">
                                 <option value="Formation Mangaka" selected>Devenir Mangaka</option>
                                 <option value="Illustration Pro">Illustration Pro</option>
                             </select>
-                            <p style="font-size: 0.75rem; color: #666; margin-top: 5px;">(Maintenez CTRL pour en sélectionner plusieurs)</p>
+                        </div>
+
+                        <div style="background: var(--bg-card); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color);">
+                            <h4 style="margin-top: 0; display: flex; justify-content: space-between; align-items: center;">
+                                Structure du cours
+                            </h4>
+                            
+                            <ul id="chapters-list" style="list-style: none; padding: 0; margin: 0 0 1rem 0; display: flex; flex-direction: column; gap: 0.5rem;">
+                            </ul>
+                            
+                            <button id="btn-add-chapter" class="action-btn" style="width: 100%; margin: 0; justify-content: center; border-style: dashed; color: var(--text-muted); transition: 0.2s;">
+                                + Ajouter une étape
+                            </button>
                         </div>
                         
                         <button id="btn-save-course" class="action-btn" style="background: var(--accent-green); color: black; border: none; font-weight: bold; justify-content: center; padding: 1rem; font-size: 1rem;">
-                            Sauvegarder le Cours
+                            Sauvegarder le Cours Complet
                         </button>
                     </div>
                 </div>
