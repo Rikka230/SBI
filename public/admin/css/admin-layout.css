@@ -46,7 +46,7 @@ body {
     transition: transform var(--transition-speed) ease-in-out, width var(--transition-speed) ease-in-out;
     display: flex;
     flex-direction: column;
-    overflow-x: hidden; /* Coupe proprement le texte au repli */
+    overflow-x: hidden; /* Coupe proprement le texte au repli sans décaler les icônes */
 }
 
 #left-panel { left: 0; width: var(--left-panel-width); }
@@ -92,4 +92,53 @@ body {
     .mobile-toggle.right-toggle { display: flex; }
 
     /* === ÉTAT RÉDUIT (PANNEAU GAUCHE) === */
-    .app-container.left-collapsed #left-panel { width: var(--left-
+    .app-container.left-collapsed #left-panel { width: var(--left-panel-mini-width); }
+    .app-container.left-collapsed #main-content { margin-left: var(--left-panel-mini-width); }
+    .app-container.left-collapsed .top-bar { left: var(--left-panel-mini-width); }
+    
+    /* HEADER : On cache le Logo en douceur et on centre la flèche */
+    .app-container.left-collapsed .logo-zone { 
+        opacity: 0; 
+        width: 0;
+        pointer-events: none;
+    }
+    .app-container.left-collapsed .panel-header { 
+        padding: 0; 
+        justify-content: center; 
+    }
+    .app-container.left-collapsed #btn-toggle-panel svg { transform: rotate(180deg); }
+    
+    /* MENU : Magie ! On rend juste le texte transparent.
+       L'overflow-x: hidden du panneau coupe ce qui dépasse.
+       On ne touche plus au flex ni au margin, l'icône reste parfaitement à 20px ! */
+    .app-container.left-collapsed .nav-text {
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    /* === ÉTAT RÉDUIT (PANNEAU DROIT) === */
+    .app-container.right-collapsed #right-panel { transform: translateX(100%); }
+    .app-container.right-collapsed #main-content { margin-right: 0; }
+    .app-container.right-collapsed .top-bar { right: 0; }
+}
+
+/* 2. Ecrans Moyens (Tablettes / Petits Laptops) */
+@media (max-width: 1024px) {
+    #right-panel { transform: translateX(100%); }
+    #main-content { margin-left: var(--left-panel-width); margin-right: 0; }
+    .top-bar { left: var(--left-panel-width); right: 0; }
+    .mobile-toggle.right-toggle { display: flex; }
+    .mobile-toggle.left-toggle { display: none; }
+
+    .app-container.right-open #right-panel { transform: translateX(0); }
+}
+
+/* 3. Ecrans Mobiles */
+@media (max-width: 768px) {
+    #left-panel { transform: translateX(-100%); }
+    #main-content { margin-left: 0; }
+    .top-bar { left: 0; }
+    .mobile-toggle.left-toggle { display: flex; }
+
+    .app-container.left-open #left-panel { transform: translateX(0); }
+}
