@@ -155,7 +155,14 @@ const initUserCreation = () => {
         try {
             const userCredential = await createUserWithEmailAndPassword(secondaryAuth, email, pwdInput.value);
             await setDoc(doc(db, "users", userCredential.user.uid), {
-                prenom, nom, email, role, statut: "actif", isGod: false, dateCreation: new Date().toISOString()
+                prenom: prenom, 
+                nom: nom, 
+                email: email, 
+                role: role, 
+                statut: "actif", 
+                isGod: false, 
+                dateCreation: new Date().toISOString(),
+                formationsAcces: [] // L'élément crucial qui manquait !
             });
             await secondaryAuth.signOut();
             await sendPasswordResetEmail(auth, email);
