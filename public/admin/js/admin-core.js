@@ -425,7 +425,7 @@ const initModalLogic = () => {
 
 // --- INITIALISATION GLOBALE EN ATTENDANT L'AUTHENTIFICATION ---
 document.addEventListener('DOMContentLoaded', () => {
-    initNavigation();
+    // La ligne initNavigation() a été supprimée d'ici !
     initFilters();
     initUserCreation();
     initModalLogic(); 
