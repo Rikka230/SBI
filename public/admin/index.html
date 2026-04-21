@@ -8,6 +8,10 @@
     <link rel="stylesheet" href="css/admin.css">
 </head>
 <body class="preload">
+    <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    if(urlParams.has('tab')) { sessionStorage.setItem('activeAdminTab', urlParams.get('tab')); }
+</script>
 
 <div class="app-container" id="app-container">
 
