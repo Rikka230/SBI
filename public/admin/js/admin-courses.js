@@ -171,14 +171,14 @@ window.selectChapter = function(id) {
 
     document.getElementById('no-chapter-zone').style.display = 'none';
 
-    // CORRECTION CRITIQUE : Rétrocompatibilité pour les anciens cours
+    // On ouvre le QCM UNIQUEMENT si c'est explicitement marqué "quiz"
     if (chap.type === 'quiz') {
         document.getElementById('chapter-editor-zone').style.display = 'none';
         document.getElementById('quiz-editor-zone').style.display = 'flex';
         document.getElementById('quiz-title').value = chap.titre || '';
         renderQuizBuilder(chap.questions || []);
     } else {
-        // PAR DÉFAUT (Anciens cours + Nouveaux Textes)
+        // Pour tout le reste (texte ou anciens cours sauvegardés sans type), on ouvre l'éditeur
         document.getElementById('quiz-editor-zone').style.display = 'none';
         document.getElementById('chapter-editor-zone').style.display = 'flex';
         
