@@ -33,9 +33,11 @@ const fetchUsers = async () => {
         const querySnapshot = await getDocs(collection(db, "users"));
         allUsersData = []; 
         querySnapshot.forEach((doc) => { allUsersData.push({ id: doc.id, ...doc.data() }); });
+        
         const godExists = allUsersData.some(u => u.isGod === true);
         const myProfile = allUsersData.find(u => u.id === currentUid);
         isCurrentUserGod = godExists ? (myProfile && myProfile.isGod === true) : true;
+        
         renderUsersList(allUsersData);
     } catch (error) {
         container.innerHTML = `<div class="sys-msg error" style="display:block;">Erreur de chargement.</div>`;
@@ -46,30 +48,34 @@ const renderUsersList = (usersToRender) => {
     const container = document.getElementById('users-list-container');
     if(!container) return;
     container.innerHTML = ''; 
+    
     if (usersToRender.length === 0) {
         container.innerHTML = '<div class="empty-state">Aucun compte trouvé.</div>'; return;
     }
+    
     usersToRender.forEach(user => {
         const displayName = (user.prenom && user.nom) ? `${user.prenom} ${user.nom}` : (user.nom || "Sans nom");
         const statusLabel = user.statut === 'suspendu' ? '<span style="color: #ff4a4a; font-weight:bold;">Suspendu</span>' : '<span style="color: #2ed573; font-weight:bold;">Actif</span>';
+        
         let roleBadge = '';
         if (user.isGod) roleBadge = '<span style="background: rgba(255, 215, 0, 0.2); color: #ffd700; border: 1px solid #ffd700; padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight:bold; display:inline-block;">👑 Suprême</span>';
         else if(user.role === 'admin') roleBadge = '<span style="background: rgba(255, 74, 74, 0.15); color: #ff4a4a; border: 1px solid rgba(255, 74, 74, 0.4); padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight:bold; display:inline-block;">Admin</span>';
         else if(user.role === 'teacher') roleBadge = '<span style="background: rgba(255, 215, 0, 0.15); color: #ffd700; border: 1px solid rgba(255, 215, 0, 0.4); padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight:bold; display:inline-block;">Enseignant</span>';
         else if(user.role === 'student') roleBadge = '<span style="background: rgba(0, 255, 163, 0.15); color: #00ffa3; border: 1px solid rgba(0, 255, 163, 0.4); padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight:bold; display:inline-block;">Étudiant</span>';
 
-        // L'affichage est débloqué ici avec "word-break: break-word;"
+        // BUG CORRIGÉ : L'ajout de "min-width: 0;" force la grille CSS à accepter le retour à la ligne !
         const userCardHTML = `
             <div style="background: #0a0a0c; padding: 0.8rem 1.2rem; border: 1px solid #222; border-radius: 6px; margin-bottom: 0.5rem; display: grid; grid-template-columns: 120px 1.5fr 2fr 100px 120px; gap: 1rem; align-items: center; opacity: ${user.statut === 'suspendu' ? '0.6' : '1'};">
                 <div>${roleBadge}</div>
-                <div style="color: white; font-weight: bold; word-break: break-word;">${displayName}</div>
-                <div style="color: #9ca3af; font-size: 0.9rem; word-break: break-word;">${user.email}</div>
+                <div style="color: white; font-weight: bold; word-break: break-word; min-width: 0;">${displayName}</div>
+                <div style="color: #9ca3af; font-size: 0.9rem; word-break: break-word; min-width: 0;">${user.email}</div>
                 <div style="font-size: 0.85rem;">${statusLabel}</div>
                 <div style="text-align: right;"><button class="action-btn btn-edit-user" data-id="${user.id}" style="padding: 0.4rem 1rem; font-size: 0.85rem; margin:0; width: 100%;">Éditer</button></div>
             </div>
         `;
         container.insertAdjacentHTML('beforeend', userCardHTML);
     });
+    
     document.querySelectorAll('.btn-edit-user').forEach(btn => {
         btn.addEventListener('click', (e) => openEditModal(e.target.getAttribute('data-id')));
     });
@@ -178,12 +184,36 @@ const initModalLogic = () => {
     });
 };
 
-// LANCEMENT PROPRE
+// --- LANCEMENT PROPRE DE L'APPLICATION ---
 document.addEventListener('DOMContentLoaded', () => {
+    
+    // BUG CORRIGÉ : Réactivation des boutons du panneau droit dans index.html
+    const logoutBtn = document.getElementById('logout-btn');
+    if(logoutBtn) {
+        logoutBtn.addEventListener('click', logoutUser);
+    }
+    
+    const cacheBtn = document.getElementById('btn-clear-cache');
+    if(cacheBtn) {
+        cacheBtn.addEventListener('click', () => {
+            if(confirm('Vider le cache local ? Cela rechargera la page.')) {
+                localStorage.clear();
+                sessionStorage.clear();
+                window.location.reload(true);
+            }
+        });
+    }
+
     initFilters();
     initUserCreation();
     initModalLogic(); 
+
     onAuthStateChanged(auth, (user) => {
-        if (user) { currentUid = user.uid; fetchUsers(); }
+        if (user) { 
+            currentUid = user.uid; 
+            fetchUsers(); 
+        } else {
+            window.location.replace('/login.html');
+        }
     });
 });
