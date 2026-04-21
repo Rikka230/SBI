@@ -4,18 +4,9 @@
  * =======================================================================
  */
 
-/* Bloque les animations au chargement (Anti-Saut / FOUC) */
-.preload * {
-    -webkit-transition: none !important;
-    -moz-transition: none !important;
-    -ms-transition: none !important;
-    -o-transition: none !important;
-    transition: none !important;
-}
-
 :root {
-    --left-panel-width: 230px;
-    --left-panel-mini-width: 60px;
+    --left-panel-width: 230px; /* Affiné (avant 260px) */
+    --left-panel-mini-width: 60px; /* Affiné (avant 70px) */
     --right-panel-width: 280px;
     --header-height: 60px;
     --transition-speed: 0.3s;
@@ -46,7 +37,6 @@ body {
     transition: transform var(--transition-speed) ease-in-out, width var(--transition-speed) ease-in-out;
     display: flex;
     flex-direction: column;
-    overflow-x: hidden; /* Coupe proprement le texte au repli sans décaler les icônes */
 }
 
 #left-panel { left: 0; width: var(--left-panel-width); }
@@ -91,37 +81,26 @@ body {
     .mobile-toggle.left-toggle { display: none !important; }
     .mobile-toggle.right-toggle { display: flex; }
 
-    /* === ÉTAT RÉDUIT (PANNEAU GAUCHE) === */
     .app-container.left-collapsed #left-panel { width: var(--left-panel-mini-width); }
     .app-container.left-collapsed #main-content { margin-left: var(--left-panel-mini-width); }
     .app-container.left-collapsed .top-bar { left: var(--left-panel-mini-width); }
     
-    /* HEADER : On cache le Logo en douceur et on centre la flèche */
-    .app-container.left-collapsed .logo-zone { 
-        opacity: 0; 
-        width: 0;
-        pointer-events: none;
-    }
-    .app-container.left-collapsed .panel-header { 
-        padding: 0; 
-        justify-content: center; 
-    }
+    /* Rotation de la flèche et gestion du logo quand on réduit */
     .app-container.left-collapsed #btn-toggle-panel svg { transform: rotate(180deg); }
     
-    /* MENU : Magie ! On rend juste le texte transparent.
-       L'overflow-x: hidden du panneau coupe ce qui dépasse.
-       On ne touche plus au flex ni au margin, l'icône reste parfaitement à 20px ! */
-    .app-container.left-collapsed .nav-text {
-        opacity: 0;
-        pointer-events: none;
-    }
+    .app-container.left-collapsed .logo-zone { display: none; }
+    .app-container.left-collapsed .logo-mini { display: block !important; margin: 0 auto; }
+    
+    /* Quand réduit, on centre tout dans le header */
+    .app-container.left-collapsed .panel-header { justify-content: center; padding: 0; }
+    .app-container.left-collapsed #btn-toggle-panel { display: none; } /* Optionnel: tu peux cacher la flèche si tu préfères cliquer sur le logo mini pour rouvrir, ou la laisser */
+    .app-container.left-collapsed .nav-item { padding: 0.8rem 0; justify-content: center; }
+    .app-container.left-collapsed .nav-item svg { margin-right: 0; }
 
-    /* === ÉTAT RÉDUIT (PANNEAU DROIT) === */
     .app-container.right-collapsed #right-panel { transform: translateX(100%); }
     .app-container.right-collapsed #main-content { margin-right: 0; }
     .app-container.right-collapsed .top-bar { right: 0; }
 }
-
 /* 2. Ecrans Moyens (Tablettes / Petits Laptops) */
 @media (max-width: 1024px) {
     #right-panel { transform: translateX(100%); }
