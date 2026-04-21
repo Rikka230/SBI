@@ -1,6 +1,6 @@
 /**
  * =======================================================================
- * ADMIN COURSES - Gestion des Cours, Examens QCM et Medias (A-Z)
+ * ADMIN COURSES - Gestion des Cours, Formations et Accès
  * =======================================================================
  */
 
@@ -13,12 +13,19 @@ let currentUid = null;
 let currentChapters = [];
 let activeChapterId = null;
 
+// NOUVEAU : Mémoire pour les Formations et Utilisateurs
+let allFormationsData = [];
+let allUsersForAccess = [];
+
 document.addEventListener('DOMContentLoaded', () => {
     
+    // Authentification
     onAuthStateChanged(auth, (user) => {
         if (user) { 
             currentUid = user.uid; 
-            loadCourses(); 
+            loadUsersForAccess(); // On charge les gens
+            loadFormationsCategories(); // On charge les catégories
+            loadCourses(); // On charge la biblio
         } else {
             window.location.replace('/login.html');
         }
@@ -30,12 +37,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const cacheBtn = document.getElementById('btn-clear-cache');
     if(cacheBtn) cacheBtn.addEventListener('click', () => {
         if(confirm('Vider le cache local ? Cela rechargera la page.')) {
-            localStorage.clear();
-            sessionStorage.clear();
-            window.location.reload(true);
+            localStorage.clear(); sessionStorage.clear(); window.location.reload(true);
         }
     });
 
+    // Écouteurs Édition Cours
     document.getElementById('btn-save-course').addEventListener('click', saveCourseToFirebase);
     document.getElementById('btn-add-chapter').addEventListener('click', () => createNewChapter('text'));
     document.getElementById('btn-add-quiz').addEventListener('click', () => createNewChapter('quiz'));
@@ -45,10 +51,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const addQuestionBtn = document.getElementById('btn-add-question');
     if (addQuestionBtn) addQuestionBtn.addEventListener('click', addQuizQuestion);
-
-    document.querySelectorAll('.formation-pill').forEach(pill => {
-        pill.addEventListener('click', (e) => e.target.classList.toggle('selected'));
-    });
 
     document.getElementById('chapter-title').addEventListener('input', updateActiveTitle);
     const quizTitleInput = document.getElementById('quiz-title');
@@ -61,30 +63,23 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // UPLOADS
     const imgUpload = document.getElementById('chapter-image-upload');
     if (imgUpload) {
         imgUpload.addEventListener('change', async function(e) {
             const file = e.target.files[0];
             if(!file) return;
-            
             const img = new Image();
             img.src = URL.createObjectURL(file);
             img.onload = () => {
                 const canvas = document.createElement('canvas');
-                const MAX_WIDTH = 1200; 
-                const scaleSize = MAX_WIDTH / img.width;
-                canvas.width = MAX_WIDTH;
-                canvas.height = img.height * scaleSize;
-                
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                
+                const MAX_WIDTH = 1200; const scaleSize = MAX_WIDTH / img.width;
+                canvas.width = MAX_WIDTH; canvas.height = img.height * scaleSize;
+                const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
                 const dataUrl = canvas.toDataURL('image/webp', 0.85);
-                
                 document.getElementById('chapter-image-base64').value = dataUrl;
                 const preview = document.getElementById('chapter-image-preview');
-                preview.src = dataUrl;
-                preview.style.display = 'block';
+                preview.src = dataUrl; preview.style.display = 'block';
             };
         });
     }
@@ -94,23 +89,173 @@ document.addEventListener('DOMContentLoaded', () => {
         vidUpload.addEventListener('change', function(e) {
             const file = e.target.files[0];
             if(!file) return;
-            
-            if(file.size > 1048576) { 
-                alert("⚠️ Attention : Limite Firestore de 1Mo atteinte. En prod, utilisez Firebase Storage.");
-            }
-
+            if(file.size > 1048576) { alert("⚠️ Limite Firestore de 1Mo atteinte."); }
             const reader = new FileReader();
             reader.onload = (event) => {
                 document.getElementById('chapter-video-base64').value = event.target.result;
                 const preview = document.getElementById('chapter-video-preview');
-                preview.src = event.target.result;
-                preview.style.display = 'block';
+                preview.src = event.target.result; preview.style.display = 'block';
             };
             reader.readAsDataURL(file);
         });
     }
+
+    // --- ÉCOUTEURS POUR LA MODALE FORMATION ---
+    document.getElementById('btn-create-formation').addEventListener('click', () => openFormationModal(null));
+    document.getElementById('close-formation-modal-btn').addEventListener('click', () => document.getElementById('formation-modal').style.display='none');
+    
+    document.getElementById('formation-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const formId = document.getElementById('edit-formation-id').value;
+        const titre = document.getElementById('formation-titre').value.trim();
+        
+        const profs = Array.from(document.querySelectorAll('.cb-formation-user[data-role="teacher"]:checked')).map(cb => cb.dataset.uid);
+        const students = Array.from(document.querySelectorAll('.cb-formation-user[data-role="student"]:checked')).map(cb => cb.dataset.uid);
+
+        const data = { titre, profs, students };
+
+        try {
+            if (formId) {
+                await updateDoc(doc(db, "formations", formId), data);
+            } else {
+                await addDoc(collection(db, "formations"), data);
+            }
+            document.getElementById('formation-modal').style.display = 'none';
+            loadFormationsCategories(); // Recharge pour afficher la nouvelle catégorie
+        } catch(err) { alert('Erreur de sauvegarde'); }
+    });
+
+    document.getElementById('delete-formation-btn').addEventListener('click', async () => {
+        const formId = document.getElementById('edit-formation-id').value;
+        if(confirm('DANGER : Supprimer cette catégorie ? (Les cours associés perdront leur tag).')) {
+            await deleteDoc(doc(db, "formations", formId));
+            document.getElementById('formation-modal').style.display = 'none';
+            loadFormationsCategories();
+        }
+    });
 });
 
+/* =========================================================
+   1. GESTION DES CATÉGORIES (FORMATIONS)
+========================================================= */
+
+// On charge tout le monde pour pouvoir cocher profs et élèves
+async function loadUsersForAccess() {
+    const snap = await getDocs(collection(db, "users"));
+    allUsersForAccess = [];
+    snap.forEach(d => allUsersForAccess.push({id: d.id, ...d.data()}));
+}
+
+// On charge les formations créées
+async function loadFormationsCategories() {
+    const snap = await getDocs(collection(db, "formations"));
+    allFormationsData = [];
+    snap.forEach(d => allFormationsData.push({id: d.id, ...d.data()}));
+    
+    renderFormationsList(); // MAJ du menu "Catégories & Accès"
+    renderFormationsPillsAndFilters(); // MAJ des pilules dans l'éditeur de cours
+}
+
+// Affichage visuel de la bibliothèque de catégories
+function renderFormationsList() {
+    const container = document.getElementById('formations-list-container');
+    if(!container) return;
+    container.innerHTML = '';
+    
+    if(allFormationsData.length === 0) {
+        container.innerHTML = '<p style="color:var(--text-muted); grid-column: 1/-1;">Aucune catégorie. Créez-en une !</p>'; 
+        return;
+    }
+
+    allFormationsData.forEach(form => {
+        const pCount = form.profs ? form.profs.length : 0;
+        const sCount = form.students ? form.students.length : 0;
+        const html = `
+            <div style="background: var(--bg-card); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); display: flex; flex-direction: column; justify-content: space-between;">
+                <div style="margin-bottom: 1rem;">
+                    <h3 style="margin-top: 0; color: var(--accent-blue);">${form.titre}</h3>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); margin:0;">👨‍🏫 ${pCount} prof(s) assigné(s)</p>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); margin:0;">🎓 ${sCount} élève(s) inscrit(s)</p>
+                </div>
+                <button class="action-btn btn-edit-formation" data-id="${form.id}" style="margin-bottom:0; justify-content:center;">Modifier les accès</button>
+            </div>
+        `;
+        container.insertAdjacentHTML('beforeend', html);
+    });
+
+    document.querySelectorAll('.btn-edit-formation').forEach(btn => {
+        btn.addEventListener('click', e => openFormationModal(e.target.dataset.id));
+    });
+}
+
+// Ouverture de la modale avec les cases cochées
+window.openFormationModal = function(formationId) {
+    const modal = document.getElementById('formation-modal');
+    const profsContainer = document.getElementById('formation-profs-list');
+    const studentsContainer = document.getElementById('formation-students-list');
+    
+    profsContainer.innerHTML = ''; studentsContainer.innerHTML = '';
+
+    let targetForm = formationId ? allFormationsData.find(f => f.id === formationId) : null;
+    
+    document.getElementById('edit-formation-id').value = formationId || '';
+    document.getElementById('formation-titre').value = targetForm ? targetForm.titre : '';
+    document.getElementById('formation-modal-title').textContent = targetForm ? "Modifier la Catégorie" : "Créer une Catégorie";
+    document.getElementById('delete-formation-zone').style.display = targetForm ? 'block' : 'none';
+
+    allUsersForAccess.forEach(u => {
+        if (u.role === 'admin' || u.isGod) return; // Les admins n'ont pas besoin d'être cochés
+        
+        const isChecked = targetForm && (
+            (u.role === 'teacher' && targetForm.profs && targetForm.profs.includes(u.id)) ||
+            (u.role === 'student' && targetForm.students && targetForm.students.includes(u.id))
+        ) ? 'checked' : '';
+
+        const name = (u.prenom || u.nom) ? `${u.prenom || ''} ${u.nom || ''}`.trim() : u.email;
+
+        const checkboxHtml = `
+            <label style="display: flex; align-items: center; gap: 0.5rem; color: white; font-size: 0.85rem; cursor: pointer;">
+                <input type="checkbox" class="cb-formation-user" data-uid="${u.id}" data-role="${u.role}" ${isChecked}>
+                ${name}
+            </label>
+        `;
+
+        if (u.role === 'teacher') profsContainer.insertAdjacentHTML('beforeend', checkboxHtml);
+        else if (u.role === 'student') studentsContainer.insertAdjacentHTML('beforeend', checkboxHtml);
+    });
+
+    modal.style.display = 'flex';
+}
+
+// CRÉATION DYNAMIQUE DES PILULES DANS L'ÉDITEUR
+function renderFormationsPillsAndFilters() {
+    // 1. Pilules
+    const selector = document.getElementById('formations-selector');
+    if(selector) {
+        selector.innerHTML = '';
+        allFormationsData.forEach(form => {
+            // Le data-val est l'ID de la formation pour le relier en base
+            selector.insertAdjacentHTML('beforeend', `<span class="formation-pill" data-val="${form.id}">${form.titre}</span>`);
+        });
+        document.querySelectorAll('.formation-pill').forEach(pill => {
+            pill.addEventListener('click', (e) => e.target.classList.toggle('selected'));
+        });
+    }
+
+    // 2. Filtre de la Bibliothèque
+    const filter = document.getElementById('library-formation-filter');
+    if(filter) {
+        filter.innerHTML = '<option value="all">Toutes les Catégories</option>';
+        allFormationsData.forEach(form => {
+            filter.insertAdjacentHTML('beforeend', `<option value="${form.id}">${form.titre}</option>`);
+        });
+    }
+}
+
+
+/* =========================================================
+   2. LOGIQUE DE L'INTERFACE D'ÉDITION DE COURS
+========================================================= */
 
 window.prepareNewCourse = function() {
     document.getElementById('edit-course-id').value = '';
@@ -129,19 +274,14 @@ window.prepareNewCourse = function() {
 
 function createNewChapter(type) {
     saveCurrentChapterContent();
-
     const newId = 'chap_' + Date.now().toString();
     const newChap = {
         id: newId,
         type: type,
         titre: type === 'quiz' ? `Examen` : `Leçon ${currentChapters.filter(c=>c.type==='text').length + 1}`,
         contenu: '',
-        mediaType: 'image',
-        mediaImage: '',
-        mediaVideo: '',
-        questions: [] 
+        mediaType: 'image', mediaImage: '', mediaVideo: '', questions: [] 
     };
-    
     currentChapters.push(newChap);
     selectChapter(newId);
 }
@@ -171,14 +311,12 @@ window.selectChapter = function(id) {
 
     document.getElementById('no-chapter-zone').style.display = 'none';
 
-    // On ouvre le QCM UNIQUEMENT si c'est explicitement marqué "quiz"
     if (chap.type === 'quiz') {
         document.getElementById('chapter-editor-zone').style.display = 'none';
         document.getElementById('quiz-editor-zone').style.display = 'flex';
         document.getElementById('quiz-title').value = chap.titre || '';
         renderQuizBuilder(chap.questions || []);
     } else {
-        // Pour tout le reste (texte ou anciens cours sauvegardés sans type), on ouvre l'éditeur
         document.getElementById('quiz-editor-zone').style.display = 'none';
         document.getElementById('chapter-editor-zone').style.display = 'flex';
         
@@ -209,7 +347,6 @@ window.selectChapter = function(id) {
             window.quill.clipboard.dangerouslyPasteHTML(chap.contenu || '');
         }
     }
-
     renderChaptersList();
 }
 
@@ -250,17 +387,13 @@ function renderChaptersList() {
     });
 }
 
-
 function addQuizQuestion() {
     const container = document.getElementById('quiz-questions-container');
     const qIndex = container.children.length;
-    
     const qHTML = `
         <div class="quiz-question-block" data-qindex="${qIndex}" style="background: #111; padding: 1.5rem; border: 1px solid #333; border-radius: 6px; position: relative;">
             <button onclick="this.parentElement.remove()" style="position: absolute; right: 10px; top: 10px; background: none; border: none; color: var(--accent-red); cursor: pointer; font-size: 1.2rem;">&times;</button>
-            
             <input type="text" class="q-title" placeholder="Votre question..." style="width: 100%; font-size: 1.1rem; padding: 0.8rem; background: transparent; color: white; border: none; border-bottom: 1px solid #555; outline: none; margin-bottom: 1rem;">
-            
             <div class="q-options-container" style="display: flex; flex-direction: column; gap: 0.5rem;">
                 <label style="display: flex; align-items: center; gap: 0.5rem; color: #aaa;">
                     <input type="checkbox" class="q-correct-cb" value="0" checked>
@@ -271,12 +404,10 @@ function addQuizQuestion() {
                     <input type="text" class="q-opt" placeholder="Réponse 2" style="flex-grow:1; background: #222; border: 1px solid #444; padding: 0.5rem; color: white; border-radius:4px; outline:none;">
                 </label>
             </div>
-            
-            <button type="button" onclick="window.addOptionToQuestion(this)" style="margin-top:0.8rem; background:none; border:none; color:var(--accent-blue); cursor:pointer; font-size:0.85rem;">+ Ajouter un choix</button>
-            
-            <div style="margin-top: 1.5rem; display: flex; align-items: center; gap: 1rem; border-top: 1px solid #333; padding-top: 1rem;">
-                <span style="color: var(--text-muted); font-size: 0.85rem;">Cochez <strong>les</strong> bonnes réponses.</span>
-                <input type="number" class="q-points" value="1" min="1" style="width: 60px; background: #222; border: 1px solid #444; padding: 0.4rem; color: white; border-radius: 4px;"> <span style="color: var(--text-muted); font-size: 0.85rem;">Point(s)</span>
+            <button type=\"button\" onclick=\"window.addOptionToQuestion(this)\" style=\"margin-top:0.8rem; background:none; border:none; color:var(--accent-blue); cursor:pointer; font-size:0.85rem;\">+ Ajouter un choix</button>
+            <div style=\"margin-top: 1.5rem; display: flex; align-items: center; gap: 1rem; border-top: 1px solid #333; padding-top: 1rem;\">
+                <span style=\"color: var(--text-muted); font-size: 0.85rem;\">Cochez <strong>les</strong> bonnes réponses.</span>
+                <input type=\"number\" class=\"q-points\" value=\"1\" min=\"1\" style=\"width: 60px; background: #222; border: 1px solid #444; padding: 0.4rem; color: white; border-radius: 4px;\"> <span style=\"color: var(--text-muted); font-size: 0.85rem;\">Point(s)</span>
             </div>
         </div>
     `;
@@ -286,12 +417,11 @@ function addQuizQuestion() {
 window.addOptionToQuestion = function(btn) {
     const container = btn.previousElementSibling;
     const optIndex = container.children.length;
-    
     const html = `
-        <label style="display: flex; align-items: center; gap: 0.5rem; color: #aaa;">
-            <input type="checkbox" class="q-correct-cb" value="${optIndex}">
-            <input type="text" class="q-opt" placeholder="Nouvelle réponse" style="flex-grow:1; background: #222; border: 1px solid #444; padding: 0.5rem; color: white; border-radius:4px; outline:none;">
-            <button type="button" onclick="this.parentElement.remove()" style="background:none; border:none; color:var(--accent-red); cursor:pointer; padding: 0 5px;">&times;</button>
+        <label style=\"display: flex; align-items: center; gap: 0.5rem; color: #aaa;\">
+            <input type=\"checkbox\" class=\"q-correct-cb\" value=\"${optIndex}\">
+            <input type=\"text\" class=\"q-opt\" placeholder=\"Nouvelle réponse\" style=\"flex-grow:1; background: #222; border: 1px solid #444; padding: 0.5rem; color: white; border-radius:4px; outline:none;\">
+            <button type=\"button\" onclick=\"this.parentElement.remove()\" style=\"background:none; border:none; color:var(--accent-red); cursor:pointer; padding: 0 5px;\">&times;</button>
         </label>
     `;
     container.insertAdjacentHTML('beforeend', html);
@@ -303,7 +433,6 @@ function gatherQuizQuestions() {
         const title = block.querySelector('.q-title').value.trim();
         const points = parseInt(block.querySelector('.q-points').value) || 1;
         const options = Array.from(block.querySelectorAll('.q-opt')).map(inp => inp.value.trim());
-        
         const correctIndices = Array.from(block.querySelectorAll('.q-correct-cb:checked')).map(cb => parseInt(cb.value));
 
         if(title && options.length >= 2) {
@@ -319,33 +448,34 @@ function renderQuizBuilder(questions) {
     
     questions.forEach((q, index) => {
         const indices = q.correctIndices || (q.correctIndex !== undefined ? [q.correctIndex] : []);
-        
         const optionsHTML = q.options.map((opt, i) => `
-            <label style="display: flex; align-items: center; gap: 0.5rem; color: #aaa;">
-                <input type="checkbox" class="q-correct-cb" value="${i}" ${indices.includes(i) ? 'checked' : ''}>
-                <input type="text" class="q-opt" value="${opt}" placeholder="Réponse ${i+1}" style="flex-grow:1; background: #222; border: 1px solid #444; padding: 0.5rem; color: white; border-radius:4px; outline:none;">
-                ${i > 1 ? `<button type="button" onclick="this.parentElement.remove()" style="background:none; border:none; color:var(--accent-red); cursor:pointer;">&times;</button>` : ''}
+            <label style=\"display: flex; align-items: center; gap: 0.5rem; color: #aaa;\">
+                <input type=\"checkbox\" class=\"q-correct-cb\" value=\"${i}\" ${indices.includes(i) ? 'checked' : ''}>
+                <input type=\"text\" class=\"q-opt\" value=\"${opt}\" placeholder=\"Réponse ${i+1}\" style=\"flex-grow:1; background: #222; border: 1px solid #444; padding: 0.5rem; color: white; border-radius:4px; outline:none;\">
+                ${i > 1 ? `<button type=\"button\" onclick=\"this.parentElement.remove()\" style=\"background:none; border:none; color:var(--accent-red); cursor:pointer;\">&times;</button>` : ''}
             </label>
         `).join('');
 
         const qHTML = `
-        <div class="quiz-question-block" data-qindex="${index}" style="background: #111; padding: 1.5rem; border: 1px solid #333; border-radius: 6px; position: relative;">
-            <button onclick="this.parentElement.remove()" style="position: absolute; right: 10px; top: 10px; background: none; border: none; color: var(--accent-red); cursor: pointer; font-size: 1.2rem;">&times;</button>
-            <input type="text" class="q-title" value="${q.question}" style="width: 100%; font-size: 1.1rem; padding: 0.8rem; background: transparent; color: white; border: none; border-bottom: 1px solid #555; outline: none; margin-bottom: 1rem;">
-            
-            <div class="q-options-container" style="display: flex; flex-direction: column; gap: 0.5rem;">
+        <div class=\"quiz-question-block\" data-qindex=\"${index}\" style=\"background: #111; padding: 1.5rem; border: 1px solid #333; border-radius: 6px; position: relative;\">
+            <button onclick=\"this.parentElement.remove()\" style=\"position: absolute; right: 10px; top: 10px; background: none; border: none; color: var(--accent-red); cursor: pointer; font-size: 1.2rem;\">&times;</button>
+            <input type=\"text\" class=\"q-title\" value=\"${q.question}\" style=\"width: 100%; font-size: 1.1rem; padding: 0.8rem; background: transparent; color: white; border: none; border-bottom: 1px solid #555; outline: none; margin-bottom: 1rem;\">
+            <div class=\"q-options-container\" style=\"display: flex; flex-direction: column; gap: 0.5rem;\">
                 ${optionsHTML}
             </div>
-            <button type="button" onclick="window.addOptionToQuestion(this)" style="margin-top:0.8rem; background:none; border:none; color:var(--accent-blue); cursor:pointer; font-size:0.85rem;">+ Ajouter un choix</button>
-            
-            <div style="margin-top: 1.5rem; display: flex; align-items: center; gap: 1rem; border-top: 1px solid #333; padding-top: 1rem;">
-                <span style="color: var(--text-muted); font-size: 0.85rem;">Cochez <strong>les</strong> bonnes réponses.</span>
-                <input type="number" class="q-points" value="${q.points}" min="1" style="width: 60px; background: #222; border: 1px solid #444; padding: 0.4rem; color: white; border-radius: 4px;"> <span style="color: var(--text-muted); font-size: 0.85rem;">Point(s)</span>
+            <button type=\"button\" onclick=\"window.addOptionToQuestion(this)\" style=\"margin-top:0.8rem; background:none; border:none; color:var(--accent-blue); cursor:pointer; font-size:0.85rem;\">+ Ajouter un choix</button>
+            <div style=\"margin-top: 1.5rem; display: flex; align-items: center; gap: 1rem; border-top: 1px solid #333; padding-top: 1rem;\">
+                <span style=\"color: var(--text-muted); font-size: 0.85rem;\">Cochez <strong>les</strong> bonnes réponses.</span>
+                <input type=\"number\" class=\"q-points\" value=\"${q.points}\" min=\"1\" style=\"width: 60px; background: #222; border: 1px solid #444; padding: 0.4rem; color: white; border-radius: 4px;\"> <span style=\"color: var(--text-muted); font-size: 0.85rem;\">Point(s)</span>
             </div>
         </div>`;
         container.insertAdjacentHTML('beforeend', qHTML);
     });
 }
+
+/* =========================================================
+   3. SAUVEGARDE ET CHARGEMENT DES COURS
+========================================================= */
 
 async function saveCourseToFirebase() {
     saveCurrentChapterContent(); 
@@ -354,6 +484,7 @@ async function saveCourseToFirebase() {
     const title = document.getElementById('course-title').value.trim();
     const isActive = document.getElementById('course-active').checked;
     
+    // On sauvegarde désormais les ID des formations cochées !
     const selectedPills = Array.from(document.querySelectorAll('.formation-pill.selected')).map(p => p.getAttribute('data-val'));
 
     if (!title) { alert('⚠️ Veuillez entrer un Titre Global.'); return; }
@@ -411,7 +542,14 @@ async function loadCourses() {
             const courseId = docSnap.id;
             
             const statusHtml = data.actif ? `<span style="color: var(--accent-green); font-weight: bold; font-size: 0.8rem;">● ACTIF</span>` : `<span style="color: var(--accent-red); font-weight: bold; font-size: 0.8rem;">● BROUILLON</span>`;
-            const tagsHtml = data.formations ? data.formations.map(f => `<span class="tag">📁 ${f}</span>`).join('') : '';
+            
+            // On affiche le vrai nom de la formation grâce à l'ID sauvegardé
+            const tagsHtml = data.formations ? data.formations.map(fId => {
+                const formObj = allFormationsData.find(f => f.id === fId || f.titre === fId); // fallback compatibilité vieux cours
+                const displayName = formObj ? formObj.titre : fId;
+                return `<span class="tag">📁 ${displayName}</span>`;
+            }).join('') : '';
+
             const nbChapitres = data.chapitres ? data.chapitres.length : 0;
             
             const html = `
@@ -447,8 +585,12 @@ window.editCourse = async (id) => {
             
             document.querySelectorAll('.formation-pill').forEach(pill => {
                 const val = pill.getAttribute('data-val');
-                if(data.formations && data.formations.includes(val)) pill.classList.add('selected');
-                else pill.classList.remove('selected');
+                // Compatibilité : on check l'ID ou le Titre (anciens cours)
+                if(data.formations && (data.formations.includes(val) || data.formations.includes(pill.textContent))) {
+                    pill.classList.add('selected');
+                } else {
+                    pill.classList.remove('selected');
+                }
             });
 
             currentChapters = data.chapitres || [];
