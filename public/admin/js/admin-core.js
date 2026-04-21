@@ -48,10 +48,10 @@ const renderUsersList = (usersToRender) => {
     const container = document.getElementById('users-list-container');
     if(!container) return;
     
-    // On vide le conteneur et on active la barre de défilement horizontale
+    // Nettoyage (on retire l'ancien scroll horizontal)
     container.innerHTML = ''; 
-    container.style.overflowX = 'auto';
-    container.style.paddingBottom = '10px'; // Laisse respirer la scrollbar
+    container.style.overflowX = 'hidden';
+    container.style.paddingBottom = '0';
     
     if (usersToRender.length === 0) {
         container.innerHTML = '<div class="empty-state">Aucun compte trouvé.</div>'; return;
@@ -61,20 +61,29 @@ const renderUsersList = (usersToRender) => {
         const displayName = (user.prenom && user.nom) ? `${user.prenom} ${user.nom}` : (user.nom || "Sans nom");
         const statusLabel = user.statut === 'suspendu' ? '<span style="color: #ff4a4a; font-weight:bold;">Suspendu</span>' : '<span style="color: #2ed573; font-weight:bold;">Actif</span>';
         
+        // Style harmonisé pour les étiquettes (Rôle et Bouton Éditer)
+        const badgeStyle = "padding: 4px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; display: inline-block; text-align: center; width: 100%; text-transform: uppercase; letter-spacing: 0.5px;";
+        
+        // Le Rôle n'est plus un bouton, juste un fond coloré léger et élégant
         let roleBadge = '';
-        if (user.isGod) roleBadge = '<span style="background: rgba(255, 215, 0, 0.2); color: #ffd700; border: 1px solid #ffd700; padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight:bold; display:inline-block; white-space:nowrap;">👑 Suprême</span>';
-        else if(user.role === 'admin') roleBadge = '<span style="background: rgba(255, 74, 74, 0.15); color: #ff4a4a; border: 1px solid rgba(255, 74, 74, 0.4); padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight:bold; display:inline-block; white-space:nowrap;">Admin</span>';
-        else if(user.role === 'teacher') roleBadge = '<span style="background: rgba(255, 215, 0, 0.15); color: #ffd700; border: 1px solid rgba(255, 215, 0, 0.4); padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight:bold; display:inline-block; white-space:nowrap;">Enseignant</span>';
-        else if(user.role === 'student') roleBadge = '<span style="background: rgba(0, 255, 163, 0.15); color: #00ffa3; border: 1px solid rgba(0, 255, 163, 0.4); padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight:bold; display:inline-block; white-space:nowrap;">Étudiant</span>';
+        if (user.isGod) roleBadge = `<span style="${badgeStyle} background: rgba(255, 215, 0, 0.08); color: #ffd700;">Suprême</span>`;
+        else if(user.role === 'admin') roleBadge = `<span style="${badgeStyle} background: rgba(255, 74, 74, 0.08); color: #ff4a4a;">Admin</span>`;
+        else if(user.role === 'teacher') roleBadge = `<span style="${badgeStyle} background: rgba(251, 188, 4, 0.08); color: #fbbc04;">Prof</span>`;
+        else if(user.role === 'student') roleBadge = `<span style="${badgeStyle} background: rgba(0, 255, 163, 0.08); color: #00ffa3;">Élève</span>`;
 
-        // Affichage en ligne sans retour à la ligne (white-space: nowrap) avec taille minimale (min-width: 800px)
+        // Le bouton Éditer reprend exactement le même design que le rôle (en bleu)
+        const editBtnStyle = `${badgeStyle} background: rgba(42, 87, 255, 0.1); color: #2A57FF; border: none; cursor: pointer; transition: background-color 0.2s;`;
+
+        // Grille resserrée (gap réduit), petite police (0.8rem) et colonnes ajustées
         const userCardHTML = `
-            <div style="background: #0a0a0c; padding: 0.8rem 1.2rem; border: 1px solid #222; border-radius: 6px; margin-bottom: 0.5rem; display: grid; grid-template-columns: 120px auto auto 100px 100px; gap: 1.5rem; align-items: center; opacity: ${user.statut === 'suspendu' ? '0.6' : '1'}; min-width: 800px;">
+            <div style="background: #0a0a0c; padding: 0.6rem 0.8rem; border: 1px solid #222; border-radius: 6px; margin-bottom: 0.4rem; display: grid; grid-template-columns: 75px 1fr 1.5fr 70px 75px; gap: 0.8rem; align-items: center; opacity: ${user.statut === 'suspendu' ? '0.6' : '1'}; font-size: 0.8rem;">
                 <div>${roleBadge}</div>
-                <div style="color: white; font-weight: bold; white-space: nowrap;">${displayName}</div>
-                <div style="color: #9ca3af; font-size: 0.9rem; white-space: nowrap;">${user.email}</div>
-                <div style="font-size: 0.85rem; white-space: nowrap;">${statusLabel}</div>
-                <div style="text-align: right;"><button class="action-btn btn-edit-user" data-id="${user.id}" style="padding: 0.4rem 1rem; font-size: 0.85rem; margin:0; width: 100%; white-space: nowrap;">Éditer</button></div>
+                <div style="color: white; font-weight: bold; word-break: break-word; min-width: 0;">${displayName}</div>
+                <div style="color: #9ca3af; word-break: break-word; min-width: 0;">${user.email}</div>
+                <div style="text-align: center;">${statusLabel}</div>
+                <div>
+                    <button class="btn-edit-user" data-id="${user.id}" style="${editBtnStyle}" onmouseover="this.style.background='rgba(42, 87, 255, 0.2)'" onmouseout="this.style.background='rgba(42, 87, 255, 0.1)'">Éditer</button>
+                </div>
             </div>
         `;
         container.insertAdjacentHTML('beforeend', userCardHTML);
