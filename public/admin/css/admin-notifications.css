@@ -1,0 +1,47 @@
+/**
+ * =======================================================================
+ * ADMIN NOTIFICATIONS - Bulles, Cloche et Interface de validation
+ * =======================================================================
+ */
+
+/* Bulles rouges de notification (+1) */
+.notif-badge {
+    position: absolute;
+    background-color: var(--accent-red);
+    color: white;
+    font-size: 0.7rem;
+    font-weight: bold;
+    border-radius: 50%;
+    min-width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    top: -5px;
+    right: -5px;
+    border: 2px solid var(--bg-panel);
+    z-index: 10;
+}
+
+/* Carte individuelle d'une notification */
+.notif-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.notif-item:hover {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+/* Effet visuel pour les notifications non lues */
+.notif-item.unread {
+    background: rgba(42, 87, 255, 0.05);
+}
+.notif-item.unread:hover {
+    background: rgba(42, 87, 255, 0.08);
+}
