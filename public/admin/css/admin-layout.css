@@ -4,6 +4,14 @@
  * =======================================================================
  */
 
+.preload * {
+    -webkit-transition: none !important;
+    -moz-transition: none !important;
+    -ms-transition: none !important;
+    -o-transition: none !important;
+    transition: none !important;
+}
+
 :root {
     --left-panel-width: 230px; /* Affiné (avant 260px) */
     --left-panel-mini-width: 60px; /* Affiné (avant 70px) */
