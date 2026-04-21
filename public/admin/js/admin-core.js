@@ -425,7 +425,8 @@ const initModalLogic = () => {
 
 // --- INITIALISATION GLOBALE EN ATTENDANT L'AUTHENTIFICATION ---
 document.addEventListener('DOMContentLoaded', () => {
-    initNavigation();
+    
+    // On lance uniquement les fonctions qui existent encore !
     initFilters();
     initUserCreation();
     initModalLogic(); 
