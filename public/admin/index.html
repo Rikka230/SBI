@@ -132,8 +132,15 @@
     </main>
 
     <aside id="right-panel" class="side-panel">
-        <div class="panel-header" style="justify-content: flex-end;">
-            <svg style="width: 20px; height: 20px; fill: var(--text-muted); cursor: pointer;" viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/></svg>
+        <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; padding: 0 15px; width: 100%; box-sizing: border-box;">
+            <div class="logo-zone" style="white-space: nowrap; overflow: hidden;">
+                <span style="color: var(--accent-blue); font-weight: bold;">🔥 SBI</span><span>&nbsp;Console</span>
+            </div>
+            
+            <button id="btn-toggle-panel" style="background:none; border:none; color:var(--text-muted); cursor:pointer; padding:5px; margin:0; display:flex; align-items: center;">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" style="transition: transform 0.3s;"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z"/></svg>
+            </button>
+            <span class="logo-mini" style="display: none; font-size: 1.2rem;">🔥</span>
         </div>
         
         <div class="right-section">
