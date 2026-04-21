@@ -54,8 +54,50 @@
             </section>
 
             <section id="view-users" class="admin-view">
-                <h2>Gestion des Utilisateurs</h2>
-                </section>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                    <h2>Gestion des Utilisateurs</h2>
+                    <div style="display: flex; gap: 1rem;">
+                        <input type="text" id="search-user" placeholder="🔍 Rechercher..." style="padding: 0.5rem; background: var(--bg-card); color: white; border: 1px solid var(--border-color); border-radius: 4px;">
+                        <select id="filter-role" style="padding: 0.5rem; background: var(--bg-card); color: white; border: 1px solid var(--border-color); border-radius: 4px;">
+                            <option value="all">Tous les rôles</option>
+                            <option value="admin">Administrateurs</option>
+                            <option value="teacher">Enseignants</option>
+                            <option value="student">Étudiants</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem;">
+                    <div style="background: var(--bg-card); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); height: fit-content;">
+                        <h3 style="margin-top: 0;">Créer un compte</h3>
+                        <form id="create-user-form" style="display: flex; flex-direction: column; gap: 1rem;">
+                            <input type="text" id="new-user-prenom" placeholder="Prénom" required style="padding: 0.8rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px;">
+                            <input type="text" id="new-user-nom" placeholder="Nom" required style="padding: 0.8rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px;">
+                            <input type="email" id="new-user-email" placeholder="Email" required style="padding: 0.8rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px;">
+                            
+                            <div style="display: flex; gap: 0.5rem;">
+                                <input type="text" id="new-user-password" placeholder="Mot de passe" required style="flex-grow: 1; padding: 0.8rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px;">
+                                <button type="button" id="btn-regen-pwd" style="padding: 0 1rem; background: #333; color: white; border: none; border-radius: 4px; cursor: pointer;">🔄</button>
+                            </div>
+
+                            <select id="new-user-role" style="padding: 0.8rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px;">
+                                <option value="student">Étudiant</option>
+                                <option value="teacher">Enseignant</option>
+                                <option value="admin">Administrateur</option>
+                            </select>
+                            
+                            <button type="submit" style="padding: 1rem; background: var(--accent-blue); color: #000; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">Créer le compte</button>
+                        </form>
+                        <div id="user-creation-msg" style="display: none; margin-top: 1rem; padding: 1rem; border-radius: 4px;"></div>
+                    </div>
+
+                    <div style="background: var(--bg-card); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color);">
+                        <h3 style="margin-top: 0;">Comptes existants</h3>
+                        <div id="users-list-container" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                            </div>
+                    </div>
+                </div>
+            </section>
 
             <section id="view-formations" class="admin-view">
                 <h2>Structure de Formations</h2>
@@ -113,6 +155,44 @@
 
 <script type="module" src="js/admin-ui.js"></script>
 <script type="module" src="js/admin-core.js"></script>
+<div id="edit-user-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center;">
+    <div style="background: var(--bg-card); padding: 2rem; border-radius: 8px; border: 1px solid var(--border-color); width: 100%; max-width: 500px;">
+        <h3 style="margin-top: 0;">Modifier l'utilisateur</h3>
+        <form id="edit-user-form" style="display: flex; flex-direction: column; gap: 1rem;">
+            <input type="hidden" id="edit-user-id">
+            <input type="text" id="edit-user-prenom" placeholder="Prénom" style="padding: 0.8rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px;">
+            <input type="text" id="edit-user-nom" placeholder="Nom" style="padding: 0.8rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px;">
+            <input type="email" id="edit-user-email" disabled style="padding: 0.8rem; background: #0a0a0c; color: #666; border: 1px solid #222; border-radius: 4px; cursor: not-allowed;">
+            
+            <select id="edit-user-role" style="padding: 0.8rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px;">
+                <option value="student">Étudiant</option>
+                <option value="teacher">Enseignant</option>
+                <option value="admin">Administrateur</option>
+            </select>
+            
+            <select id="edit-user-statut" style="padding: 0.8rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px;">
+                <option value="actif">Actif</option>
+                <option value="suspendu">Suspendu</option>
+            </select>
 
+            <div id="god-mode-container" style="background: rgba(255, 215, 0, 0.1); padding: 1rem; border: 1px solid rgba(255, 215, 0, 0.3); border-radius: 4px; display: none;">
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: #ffd700; font-weight: bold;">
+                    <input type="checkbox" id="edit-user-isgod"> Rôle Suprême (God Mode)
+                </label>
+                <p id="god-mode-desc" style="margin: 0.5rem 0 0 0; font-size: 0.85rem; color: #aaa;"></p>
+            </div>
+
+            <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                <button type="submit" style="flex: 1; padding: 1rem; background: var(--accent-green); color: #000; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">Enregistrer</button>
+                <button type="button" id="reset-pwd-btn" style="flex: 1; padding: 1rem; background: #444; color: white; border: none; border-radius: 4px; cursor: pointer;">Reset Mdp</button>
+                <button type="button" id="close-modal-btn" style="flex: 1; padding: 1rem; background: transparent; color: white; border: 1px solid #555; border-radius: 4px; cursor: pointer;">Annuler</button>
+            </div>
+        </form>
+        
+        <div id="delete-zone" style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #444;">
+            <button id="delete-user-btn" style="width: 100%; padding: 1rem; background: rgba(255, 74, 74, 0.1); color: var(--accent-red); border: 1px solid var(--accent-red); border-radius: 4px; font-weight: bold; cursor: pointer;">⚠️ Supprimer définitivement</button>
+        </div>
+    </div>
+</div>
 </body>
 </html>
