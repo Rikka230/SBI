@@ -37,38 +37,6 @@ let currentUid = null;
 let isCurrentUserGod = false;
 
 
-/* --- 2. NAVIGATION INTERNE AVEC MEMOIRE (F5) --- */
-const initNavigation = () => {
-    const navButtons = document.querySelectorAll('.nav-item[data-target]');
-    const views = document.querySelectorAll('.admin-view');
-
-    const savedTab = sessionStorage.getItem('activeAdminTab');
-    if (savedTab) {
-        navButtons.forEach(b => b.classList.remove('active'));
-        views.forEach(v => v.classList.remove('active'));
-        
-        const activeBtn = document.querySelector(`.nav-item[data-target="${savedTab}"]`);
-        if (activeBtn) activeBtn.classList.add('active');
-        
-        const activeView = document.getElementById(savedTab);
-        if (activeView) activeView.classList.add('active');
-    }
-
-    navButtons.forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            navButtons.forEach(b => b.classList.remove('active'));
-            views.forEach(v => v.classList.remove('active'));
-
-            const targetId = e.target.getAttribute('data-target');
-            e.target.classList.add('active');
-            document.getElementById(targetId).classList.add('active');
-
-            sessionStorage.setItem('activeAdminTab', targetId);
-        });
-    });
-};
-
-
 /* --- 3. AFFICHAGE ET RECHERCHE DES UTILISATEURS --- */
 const fetchUsers = async () => {
     const container = document.getElementById('users-list-container');
