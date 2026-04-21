@@ -47,7 +47,11 @@ const fetchUsers = async () => {
 const renderUsersList = (usersToRender) => {
     const container = document.getElementById('users-list-container');
     if(!container) return;
+    
+    // On vide le conteneur et on active la barre de défilement horizontale
     container.innerHTML = ''; 
+    container.style.overflowX = 'auto';
+    container.style.paddingBottom = '10px'; // Laisse respirer la scrollbar
     
     if (usersToRender.length === 0) {
         container.innerHTML = '<div class="empty-state">Aucun compte trouvé.</div>'; return;
@@ -58,19 +62,19 @@ const renderUsersList = (usersToRender) => {
         const statusLabel = user.statut === 'suspendu' ? '<span style="color: #ff4a4a; font-weight:bold;">Suspendu</span>' : '<span style="color: #2ed573; font-weight:bold;">Actif</span>';
         
         let roleBadge = '';
-        if (user.isGod) roleBadge = '<span style="background: rgba(255, 215, 0, 0.2); color: #ffd700; border: 1px solid #ffd700; padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight:bold; display:inline-block;">👑 Suprême</span>';
-        else if(user.role === 'admin') roleBadge = '<span style="background: rgba(255, 74, 74, 0.15); color: #ff4a4a; border: 1px solid rgba(255, 74, 74, 0.4); padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight:bold; display:inline-block;">Admin</span>';
-        else if(user.role === 'teacher') roleBadge = '<span style="background: rgba(255, 215, 0, 0.15); color: #ffd700; border: 1px solid rgba(255, 215, 0, 0.4); padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight:bold; display:inline-block;">Enseignant</span>';
-        else if(user.role === 'student') roleBadge = '<span style="background: rgba(0, 255, 163, 0.15); color: #00ffa3; border: 1px solid rgba(0, 255, 163, 0.4); padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight:bold; display:inline-block;">Étudiant</span>';
+        if (user.isGod) roleBadge = '<span style="background: rgba(255, 215, 0, 0.2); color: #ffd700; border: 1px solid #ffd700; padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight:bold; display:inline-block; white-space:nowrap;">👑 Suprême</span>';
+        else if(user.role === 'admin') roleBadge = '<span style="background: rgba(255, 74, 74, 0.15); color: #ff4a4a; border: 1px solid rgba(255, 74, 74, 0.4); padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight:bold; display:inline-block; white-space:nowrap;">Admin</span>';
+        else if(user.role === 'teacher') roleBadge = '<span style="background: rgba(255, 215, 0, 0.15); color: #ffd700; border: 1px solid rgba(255, 215, 0, 0.4); padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight:bold; display:inline-block; white-space:nowrap;">Enseignant</span>';
+        else if(user.role === 'student') roleBadge = '<span style="background: rgba(0, 255, 163, 0.15); color: #00ffa3; border: 1px solid rgba(0, 255, 163, 0.4); padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight:bold; display:inline-block; white-space:nowrap;">Étudiant</span>';
 
-        // BUG CORRIGÉ : L'ajout de "min-width: 0;" force la grille CSS à accepter le retour à la ligne !
+        // Affichage en ligne sans retour à la ligne (white-space: nowrap) avec taille minimale (min-width: 800px)
         const userCardHTML = `
-            <div style="background: #0a0a0c; padding: 0.8rem 1.2rem; border: 1px solid #222; border-radius: 6px; margin-bottom: 0.5rem; display: grid; grid-template-columns: 120px 1.5fr 2fr 100px 120px; gap: 1rem; align-items: center; opacity: ${user.statut === 'suspendu' ? '0.6' : '1'};">
+            <div style="background: #0a0a0c; padding: 0.8rem 1.2rem; border: 1px solid #222; border-radius: 6px; margin-bottom: 0.5rem; display: grid; grid-template-columns: 120px auto auto 100px 100px; gap: 1.5rem; align-items: center; opacity: ${user.statut === 'suspendu' ? '0.6' : '1'}; min-width: 800px;">
                 <div>${roleBadge}</div>
-                <div style="color: white; font-weight: bold; word-break: break-word; min-width: 0;">${displayName}</div>
-                <div style="color: #9ca3af; font-size: 0.9rem; word-break: break-word; min-width: 0;">${user.email}</div>
-                <div style="font-size: 0.85rem;">${statusLabel}</div>
-                <div style="text-align: right;"><button class="action-btn btn-edit-user" data-id="${user.id}" style="padding: 0.4rem 1rem; font-size: 0.85rem; margin:0; width: 100%;">Éditer</button></div>
+                <div style="color: white; font-weight: bold; white-space: nowrap;">${displayName}</div>
+                <div style="color: #9ca3af; font-size: 0.9rem; white-space: nowrap;">${user.email}</div>
+                <div style="font-size: 0.85rem; white-space: nowrap;">${statusLabel}</div>
+                <div style="text-align: right;"><button class="action-btn btn-edit-user" data-id="${user.id}" style="padding: 0.4rem 1rem; font-size: 0.85rem; margin:0; width: 100%; white-space: nowrap;">Éditer</button></div>
             </div>
         `;
         container.insertAdjacentHTML('beforeend', userCardHTML);
