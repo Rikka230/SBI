@@ -15,17 +15,17 @@ let activeChapterId = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     
-    // === LE BLOC MANQUANT : Vérification et Chargement ===
+    // Authentification
     onAuthStateChanged(auth, (user) => {
         if (user) { 
             currentUid = user.uid; 
-            loadCourses(); // C'est CA qui charge la bibliothèque !
+            loadCourses(); 
         } else {
             window.location.replace('/login.html');
         }
     });
 
-    // Écouteurs du Panneau Droit
+    // Panneau Droit
     const logoutBtn = document.getElementById('logout-btn');
     if(logoutBtn) logoutBtn.addEventListener('click', logoutUser);
     
@@ -38,7 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Écouteurs de la vue Édition
+    // Boutons Édition
     document.getElementById('btn-save-course').addEventListener('click', saveCourseToFirebase);
     document.getElementById('btn-add-chapter').addEventListener('click', () => createNewChapter('text'));
     document.getElementById('btn-add-quiz').addEventListener('click', () => createNewChapter('quiz'));
@@ -64,7 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // UPLOAD IMAGE (Compression)
+    // UPLOAD IMAGE (Compression WebP)
     const imgUpload = document.getElementById('chapter-image-upload');
     if (imgUpload) {
         imgUpload.addEventListener('change', async function(e) {
@@ -147,7 +147,7 @@ function createNewChapter(type) {
         mediaType: 'image',
         mediaImage: '',
         mediaVideo: '',
-        questions: [] // Array pour le QCM
+        questions: [] 
     };
     
     currentChapters.push(newChap);
@@ -167,7 +167,7 @@ function saveCurrentChapterContent() {
         chap.contenu = window.quill ? window.quill.root.innerHTML : '';
     } else if (chap.type === 'quiz') {
         chap.titre = document.getElementById('quiz-title').value;
-        chap.questions = gatherQuizQuestions(); // Capture les questions créées
+        chap.questions = gatherQuizQuestions(); 
     }
 }
 
@@ -206,10 +206,10 @@ window.selectChapter = function(id) {
         if(chap.mediaImage) { iPreview.src = chap.mediaImage; iPreview.style.display = 'block'; } 
         else { iPreview.style.display = 'none'; }
 
-        if(window.quill) window.quill.clipboard.dangerouslyPasteHTML(chap.contenu || '');
+        // REPARATION DU BUG D'EDITION DE TEXTE (innerHTML brut plutôt que pasteHTML)
+        if(window.quill) window.quill.root.innerHTML = chap.contenu || '';
 
     } else {
-        // C'est un Examen
         document.getElementById('chapter-editor-zone').style.display = 'none';
         document.getElementById('quiz-editor-zone').style.display = 'flex';
         document.getElementById('quiz-title').value = chap.titre;
@@ -257,7 +257,7 @@ function renderChaptersList() {
 }
 
 /* =========================================================
-   LOGIQUE DU CONSTRUCTEUR D'EXAMEN (QCM)
+   LOGIQUE DU CONSTRUCTEUR D'EXAMEN (QCM MULTIPLE)
 ========================================================= */
 
 function addQuizQuestion() {
@@ -313,6 +313,7 @@ function gatherQuizQuestions() {
         const points = parseInt(block.querySelector('.q-points').value) || 1;
         const options = Array.from(block.querySelectorAll('.q-opt')).map(inp => inp.value.trim());
         
+        // Tableau de TOUTES les cases cochées
         const correctIndices = Array.from(block.querySelectorAll('.q-correct-cb:checked')).map(cb => parseInt(cb.value));
 
         if(title && options.length >= 2) {
@@ -340,7 +341,7 @@ function renderQuizBuilder(questions) {
         const qHTML = `
         <div class="quiz-question-block" data-qindex="${index}" style="background: #111; padding: 1.5rem; border: 1px solid #333; border-radius: 6px; position: relative;">
             <button onclick="this.parentElement.remove()" style="position: absolute; right: 10px; top: 10px; background: none; border: none; color: var(--accent-red); cursor: pointer; font-size: 1.2rem;">&times;</button>
-            <input type="text" class="q-title" value="${q.question}" style="width: 100%; font-size: 1.1rem; padding: 0.8rem; background: transparent; color: white; border: none; border-bottom: 1px solid #555; outline: none; margin-bottom: 1rem;">
+            <input type="text" class="q-title" value="${q.question}" style="width: 100%; font-size: 1.1rem; padding: 0.8rem; background: transparent; color: white; border: none; border-bottom: 1px solid #555; outline: margin-bottom: 1rem;">
             
             <div class="q-options-container" style="display: flex; flex-direction: column; gap: 0.5rem;">
                 ${optionsHTML}
@@ -355,6 +356,7 @@ function renderQuizBuilder(questions) {
         container.insertAdjacentHTML('beforeend', qHTML);
     });
 }
+
 
 /* =========================================================
    FIREBASE : SAUVEGARDE ET CHARGEMENT
@@ -436,7 +438,7 @@ async function loadCourses() {
                     <div>${tagsHtml} <span style="color: var(--text-muted); font-size: 0.85rem; margin-left: 1rem;">${nbChapitres} Étape(s)</span></div>
                 </div>
                 <div style="display: flex; gap: 0.5rem;">
-                    <button class="action-btn" style="width: auto; margin: 0; color: var(--accent-yellow);" onclick="window.duplicateCourse('${courseId}')" title="Créer une copie de ce cours">Copier</button>
+                    <button class="action-btn" style="width: auto; margin: 0; color: var(--accent-yellow);" onclick="window.duplicateCourse('${courseId}')" title="Créer une copie">Copier</button>
                     <button class="action-btn" style="width: auto; margin: 0; color: var(--accent-blue);" onclick="window.editCourse('${courseId}')">Éditer</button>
                     <button class="action-btn danger" style="width: auto; margin: 0;" onclick="window.deleteCourse('${courseId}')">❌</button>
                 </div>
