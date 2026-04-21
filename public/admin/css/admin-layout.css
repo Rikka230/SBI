@@ -78,7 +78,8 @@ body {
 @media (min-width: 1025px) {
     #main-content { margin-left: var(--left-panel-width); margin-right: var(--right-panel-width); }
     .top-bar { left: var(--left-panel-width); right: var(--right-panel-width); }
-    .mobile-toggle { display: none !important; } /* On cache les boutons de la barre du haut sur PC */
+    .mobile-toggle.left-toggle { display: none !important; }
+    .mobile-toggle.right-toggle { display: flex; }
 
     .app-container.left-collapsed #left-panel { width: var(--left-panel-mini-width); }
     .app-container.left-collapsed #main-content { margin-left: var(--left-panel-mini-width); }
