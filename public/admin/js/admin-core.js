@@ -84,17 +84,15 @@ const renderUsersList = (usersToRender) => {
         }
 
         const userCardHTML = `
-            <div style="background: #0a0a0c; padding: 1.2rem 1.5rem; border: 1px solid #222; border-radius: 8px; margin-bottom: 0.8rem; display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; justify-content: space-between; opacity: ${user.statut === 'suspendu' ? '0.6' : '1'}; transition: transform 0.2s, box-shadow 0.2s;">
-                <div style="display: flex; align-items: center; gap: 1.5rem; flex-grow: 1; min-width: 250px;">
-                    <div style="min-width: 100px;">${roleBadge}</div>
-                    <div style="display: flex; flex-direction: column;">
-                        <span style="color: white; font-weight: bold; font-size: 1.05rem; letter-spacing: 0.5px;">${displayName}</span>
-                        <span style="color: #9ca3af; font-size: 0.9rem; margin-top: 0.2rem;">${user.email}</span>
-                    </div>
+            <div style="background: var(--bg-card); padding: 1.2rem; border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 0.8rem; display: grid; grid-template-columns: 100px 1fr 80px 100px; gap: 1.5rem; align-items: center; opacity: ${user.statut === 'suspendu' ? '0.6' : '1'}; transition: box-shadow 0.2s;">
+                <div style="text-align: center;">${roleBadge}</div>
+                <div style="display: flex; flex-direction: column; overflow: hidden;">
+                    <span style="color: white; font-weight: bold; font-size: 1.05rem; white-space: normal; word-break: break-word;">${displayName}</span>
+                    <span style="color: #9ca3af; font-size: 0.85rem; margin-top: 0.3rem; white-space: normal; word-break: break-all;">${user.email}</span>
                 </div>
-                <div style="display: flex; align-items: center; gap: 2rem;">
-                    <div style="font-size: 0.9rem; min-width: 80px; text-align: center;">${statusLabel}</div>
-                    <button class="btn-secondary btn-edit-user" data-id="${user.id}" style="padding: 0.6rem 1.5rem; font-size: 0.85rem; font-weight: bold; background: rgba(138, 180, 248, 0.1); border: 1px solid rgba(138, 180, 248, 0.4); color: var(--accent-blue); border-radius: 6px; cursor: pointer; transition: all 0.2s;">Éditer</button>
+                <div style="font-size: 0.9rem; text-align: center;">${statusLabel}</div>
+                <div style="text-align: right;">
+                    <button class="btn-secondary btn-edit-user" data-id="${user.id}" style="padding: 0.5rem 1rem; width: 100%; font-size: 0.85rem; font-weight: bold; background: transparent; border: 1px solid #555; color: white; border-radius: 6px; cursor: pointer; transition: all 0.2s;">Éditer</button>
                 </div>
             </div>
         `;
