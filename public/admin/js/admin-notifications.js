@@ -1,11 +1,11 @@
 /**
  * =======================================================================
- * NOTIFICATIONS - Écoute temps réel et Interface du panneau
+ * NOTIFICATIONS - Écoute temps réel, Interface et Auto-Nettoyage
  * =======================================================================
  */
 
 import { db, auth } from '/js/firebase-init.js';
-import { collection, query, onSnapshot, doc, updateDoc, arrayUnion, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { collection, query, onSnapshot, doc, deleteDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
 let currentUid = null;
@@ -48,28 +48,23 @@ function initNotificationsRealtime() {
     
     onSnapshot(q, (snapshot) => {
         const notifs = [];
-        let unreadCount = 0;
 
         snapshot.forEach(docSnap => {
             const data = docSnap.data();
             
             if (data.destinataireId) {
-                // Notifs ciblées (ex: le prof qui reçoit sa validation)
                 if (data.destinataireId === currentUid) {
                     notifs.push({ id: docSnap.id, ...data });
-                    if (!data.readBy || !data.readBy.includes(currentUid)) unreadCount++;
                 }
             } 
             else if (currentUserProfile && (currentUserProfile.role === 'admin' || currentUserProfile.isGod)) {
-                // Notifs globales pour les Admins (ex: nouveau cours à valider)
                 if (data.auteurId !== currentUid) {
                     notifs.push({ id: docSnap.id, ...data });
-                    if (!data.readBy || !data.readBy.includes(currentUid)) unreadCount++;
                 }
             }
         });
 
-        updateRedBadges(unreadCount);
+        updateRedBadges(notifs.length);
         renderNotificationsList(notifs);
     });
 }
@@ -102,23 +97,22 @@ function renderNotificationsList(notifs) {
     notifs.sort((a,b) => (b.dateCreation?.toMillis() || 0) - (a.dateCreation?.toMillis() || 0));
 
     notifs.forEach(notif => {
-        const isUnread = !notif.readBy || !notif.readBy.includes(currentUid);
-        const dotIndicator = isUnread ? `<div class="unread-dot" style="width:8px; height:8px; background:#ff4a4a; border-radius:50%; flex-shrink:0; margin-top: 5px;"></div>` : '';
+        const dotIndicator = `<div class="unread-dot" style="width:8px; height:8px; background:#ff4a4a; border-radius:50%; flex-shrink:0; margin-top: 5px;"></div>`;
         
         let titleText = ""; let bodyText = ""; let iconSvg = "";
         
         if (notif.type === 'course_approved') {
             titleText = "🎉 Cours Validé !";
-            bodyText = `Votre cours "<span style="color:white;">${notif.courseTitle}</span>" a été validé et publié.`;
+            bodyText = `Votre cours "<span style="color:white;">${notif.courseTitle}</span>" a été publié.`;
             iconSvg = `<svg width="20" height="20" fill="#2ed573" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>`;
         } else {
             titleText = "Validation Requise";
-            bodyText = `<strong>${notif.auteurName}</strong> a soumis le cours "<span style="color:white;">${notif.courseTitle}</span>".`;
+            bodyText = `<strong>${notif.auteurName}</strong> a soumis "<span style="color:white;">${notif.courseTitle}</span>".`;
             iconSvg = `<svg width="20" height="20" fill="#fbbc04" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>`;
         }
 
         const html = `
-            <div class="notif-item ${isUnread ? 'unread' : ''}" data-id="${notif.id}" data-course="${notif.courseId}" style="display: flex; align-items: flex-start; gap: 1rem; padding: 1rem; border-bottom: 1px solid #333; cursor: pointer; transition: background 0.2s; background: ${isUnread ? 'rgba(42, 87, 255, 0.05)' : 'transparent'};">
+            <div class="notif-item" data-id="${notif.id}" data-course="${notif.courseId}" style="display: flex; align-items: flex-start; gap: 1rem; padding: 1rem; border-bottom: 1px solid #333; cursor: pointer; transition: background 0.2s; background: rgba(42, 87, 255, 0.05);">
                 ${dotIndicator}
                 <div style="flex-shrink:0;">${iconSvg}</div>
                 <div>
@@ -130,34 +124,32 @@ function renderNotificationsList(notifs) {
         container.insertAdjacentHTML('beforeend', html);
     });
 
-    // BUG CORRIGÉ : Clic instantané non bloquant !
     document.querySelectorAll('.notif-item').forEach(item => {
         item.addEventListener('click', (e) => {
             const notifId = e.currentTarget.getAttribute('data-id');
             const courseId = e.currentTarget.getAttribute('data-course');
             
-            // Mise à jour invisible en arrière-plan sans ralentir
-            updateDoc(doc(db, "notifications", notifId), {
-                readBy: arrayUnion(currentUid)
-            }).catch(err => console.error(err));
+            // SUPPRESSION IMMÉDIATE POUR VIDER FIREBASE
+            deleteDoc(doc(db, "notifications", notifId)).catch(err => console.error(err));
 
-            // Si c'est le professeur qui clique sur sa notif "Validé"
+            // Disparition visuelle instantanée
+            e.currentTarget.style.display = 'none';
+
+            // Comportement de redirection
             if (currentUserProfile && currentUserProfile.role === 'teacher') {
                 alert("Génial ! Votre cours est maintenant en ligne !");
                 document.getElementById('notifications-section').style.display = 'none';
-                return;
-            }
-
-            // Redirection robuste pour l'Admin
-            if(window.location.href.includes('formations-cours')) {
-                if(typeof window.editCourse === 'function') {
-                    window.editCourse(courseId);
-                    document.getElementById('notifications-section').style.display = 'none'; // Ferme le panneau
+            } else {
+                if(window.location.href.includes('formations-cours')) {
+                    if(typeof window.editCourse === 'function') {
+                        window.editCourse(courseId);
+                        document.getElementById('notifications-section').style.display = 'none';
+                    } else {
+                        window.location.href = `formations-cours.html?edit=${courseId}`;
+                    }
                 } else {
                     window.location.href = `formations-cours.html?edit=${courseId}`;
                 }
-            } else {
-                window.location.href = `formations-cours.html?edit=${courseId}`;
             }
         });
     });
