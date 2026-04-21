@@ -17,7 +17,6 @@ let activeChapterId = null;
 let allFormationsData = [];
 let allUsersForAccess = [];
 
-// MÉMOIRE DE L'ÉDITION EN COURS
 let editingCourseAuthorId = null;
 let editingCourseOriginalStatus = null;
 
@@ -30,11 +29,12 @@ document.addEventListener('DOMContentLoaded', () => {
             await loadFormationsCategories(); 
             await loadCourses(); 
 
-            // NOUVEAU : Ouvre automatiquement le cours si on arrive depuis une Notification !
+            // Redirection magique si l'Admin vient de cliquer sur une Notif !
             const urlParams = new URLSearchParams(window.location.search);
             const editId = urlParams.get('edit');
             if (editId) {
                 window.editCourse(editId);
+                // On nettoie l'URL pour ne pas ré-ouvrir à chaque F5
                 window.history.replaceState({}, document.title, window.location.pathname + "?tab=tab-editor");
             }
         } else {
@@ -550,7 +550,6 @@ async function saveCourseToFirebase() {
     saveBtn.textContent = 'Sauvegarde...';
     saveBtn.disabled = true;
 
-    // WORKFLOW DE VALIDATION ET PROTECTION DE L'AUTEUR
     const isTeacher = currentUserProfile && currentUserProfile.role === 'teacher';
     const forcePending = isTeacher; 
     
@@ -560,8 +559,10 @@ async function saveCourseToFirebase() {
     if (forcePending) finalStatut = 'pending';
     else if (isActive) finalStatut = 'approved';
 
-    // On s'assure de ne pas écraser l'auteur si un Admin modifie le cours d'un Prof
     const finalAuteurId = courseId ? editingCourseAuthorId : currentUid;
+
+    // BUG DE NOTIFICATION CORRIGÉ ICI (Double sécurité)
+    const isValidation = (courseId && editingCourseOriginalStatus === 'pending' && finalStatut === 'approved' && !isTeacher);
 
     try {
         const courseData = {
@@ -585,10 +586,9 @@ async function saveCourseToFirebase() {
             alert(forcePending ? '✅ Cours soumis pour validation !' : '✅ Nouveau cours créé !');
         }
 
-        // --- ENVOI DES NOTIFICATIONS ---
-        // 1. Si un Prof crée/modifie, on avertit les Admins
+        // --- ENVOI DES NOTIFICATIONS EN ARRIÈRE-PLAN ---
         if (forcePending) {
-            await addDoc(collection(db, "notifications"), {
+            addDoc(collection(db, "notifications"), {
                 type: 'course_validation',
                 courseId: courseRefId,
                 courseTitle: title,
@@ -596,20 +596,19 @@ async function saveCourseToFirebase() {
                 auteurName: (currentUserProfile.prenom || '') + ' ' + (currentUserProfile.nom || ''),
                 dateCreation: serverTimestamp(),
                 readBy: []
-            });
+            }).catch(e => console.error(e));
         }
         
-        // 2. Si un Admin valide un cours en attente (passe de pending à approved)
-        const isValidation = (courseId && editingCourseOriginalStatus === 'pending' && finalStatut === 'approved' && !isTeacher);
+        // Si l'Admin vient de valider le cours d'un prof
         if (isValidation && editingCourseAuthorId && editingCourseAuthorId !== currentUid) {
-            await addDoc(collection(db, "notifications"), {
+            addDoc(collection(db, "notifications"), {
                 type: 'course_approved',
                 courseId: courseRefId,
                 courseTitle: title,
-                destinataireId: editingCourseAuthorId, // Notification ciblée au prof !
+                destinataireId: editingCourseAuthorId, // Envoi direct au Prof
                 dateCreation: serverTimestamp(),
                 readBy: []
-            });
+            }).catch(e => console.error(e));
         }
         
         window.prepareNewCourse(); 
@@ -701,7 +700,6 @@ window.editCourse = async (id) => {
             document.getElementById('course-title').value = data.titre || '';
             document.getElementById('course-active').checked = data.actif;
             
-            // MÉMORISATION DE L'AUTEUR ET DU STATUT ORIGINAL POUR LA VALIDATION
             editingCourseAuthorId = data.auteurId || currentUid;
             editingCourseOriginalStatus = data.statutValidation || 'approved';
 
