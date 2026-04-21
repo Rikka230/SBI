@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Espace Enseignant - SBI</title>
+    <link rel="stylesheet" href="../css/admin-notifications.css">
     <style>
         body {
             background-color: #050505;
@@ -25,6 +26,12 @@
             padding-bottom: 1rem;
             margin-bottom: 2rem;
         }
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            position: relative;
+        }
         .btn-logout {
             background-color: #ff4a4a;
             color: white;
@@ -43,13 +50,43 @@
             border: 1px solid #222;
             border-radius: 8px;
         }
+        /* Panneau de notification flottant pour le Professeur */
+        #notifications-section {
+            position: absolute;
+            top: 50px;
+            right: 0;
+            width: 320px;
+            background: #1e1e1e;
+            border: 1px solid #333;
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            z-index: 1000;
+            text-align: left;
+            max-height: 400px;
+            overflow-y: auto;
+        }
     </style>
 </head>
 <body>
 
     <div class="dashboard-header">
         <h1>👨‍🏫 Espace Enseignant</h1>
-        <button id="logout-btn" class="btn-logout">🚪 Déconnexion</button>
+        
+        <div class="header-actions">
+            <div id="notif-bell-btn" style="position: relative; cursor: pointer; display: flex; align-items: center; padding: 5px;">
+                <svg style="width: 24px; height: 24px; fill: #9ca3af; transition: fill 0.2s;" viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/></svg>
+                <span class="notif-badge" id="bell-badge" style="display:none;">0</span>
+            </div>
+
+            <button id="logout-btn" class="btn-logout">🚪 Déconnexion</button>
+
+            <div id="notifications-section" style="display:none;">
+                <div style="padding: 1rem; border-bottom: 1px solid #333; font-weight: bold; color: #9ca3af; font-size: 0.9rem;" id="notif-panel-title">VOS NOTIFICATIONS</div>
+                <div id="notifications-list" style="display: flex; flex-direction: column;"></div>
+            </div>
+            
+            <div id="profile-section" style="display:none;"></div> 
+        </div>
     </div>
 
     <div class="content-area">
@@ -60,6 +97,8 @@
             + Créer un cours de Test (Envoi Notification)
         </button>
     </div>
+
+    <script type="module" src="../js/admin-notifications.js"></script>
 
     <script type="module">
         import { logoutUser } from '../js/auth.js';
@@ -73,7 +112,6 @@
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('logout-btn').addEventListener('click', logoutUser);
 
-            // Vérification de la connexion et récupération du profil du prof
             onAuthStateChanged(auth, async (user) => {
                 if (user) {
                     currentUid = user.uid;
@@ -86,7 +124,6 @@
                 }
             });
 
-            // Action du bouton de test
             document.getElementById('btn-create-formation').addEventListener('click', async () => {
                 if (!currentUid) return;
 
@@ -98,7 +135,6 @@
                 try {
                     const testTitle = "Cours de Test Teacher";
                     
-                    // 1. Création d'un faux cours en attente de validation
                     const courseRef = await addDoc(collection(db, "courses"), {
                         titre: testTitle,
                         actif: false,
@@ -117,13 +153,11 @@
                         dateCreation: serverTimestamp()
                     });
 
-                    // 2. Détermination du nom à afficher dans la notif
                     let auteurName = "Professeur Inconnu";
                     if (currentUserProfile) {
                         auteurName = `${currentUserProfile.prenom || ''} ${currentUserProfile.nom || ''}`.trim() || currentUserProfile.email;
                     }
 
-                    // 3. Déclenchement de la notification Admin
                     await addDoc(collection(db, "notifications"), {
                         type: 'course_validation',
                         courseId: courseRef.id,
@@ -134,7 +168,7 @@
                         readBy: []
                     });
 
-                    alert("✅ Faux cours créé ! Retourne sur ton espace Admin pour voir la cloche sonner !");
+                    alert("✅ Faux cours créé ! Attendez la validation de l'Admin !");
                     
                 } catch (error) {
                     console.error(error);
