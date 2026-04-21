@@ -51,20 +51,15 @@ body {
 }
 
 /* --- NAVIGATION GAUCHE --- */
-.nav-menu {
-    list-style: none;
-    padding: 1rem 0;
-    margin: 0;
-}
-
 .nav-item {
     display: flex;
     align-items: center;
-    padding: 0.8rem 1.5rem;
+    padding: 0.8rem 20px; /* Aligné parfaitement pour les 60px du panneau réduit */
     color: var(--text-muted);
     cursor: pointer;
-    transition: all 0.2s;
+    transition: background-color 0.2s, color 0.2s; /* On évite le "all" qui crée des bugs visuels */
     font-size: 0.95rem;
+    white-space: nowrap;
 }
 
 .nav-item svg {
@@ -72,6 +67,11 @@ body {
     height: 20px;
     margin-right: 15px;
     fill: currentColor;
+    flex-shrink: 0;
+}
+
+.nav-text {
+    transition: opacity 0.2s ease;
 }
 
 .nav-item:hover {
