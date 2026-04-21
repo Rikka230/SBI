@@ -10,6 +10,7 @@ import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/fi
 import { logoutUser } from '/js/auth.js';
 
 let currentUid = null;
+let currentUserProfile = null; // NOUVEAU : On stocke le profil de la personne connectée
 let currentChapters = [];
 let activeChapterId = null;
 
@@ -18,12 +19,12 @@ let allUsersForAccess = [];
 
 document.addEventListener('DOMContentLoaded', () => {
     
-    // Authentification et chargement initial
-    onAuthStateChanged(auth, (user) => {
+    // NOUVEAU : On passe en "async" pour forcer le chargement de l'utilisateur AVANT les formations
+    onAuthStateChanged(auth, async (user) => {
         if (user) { 
             currentUid = user.uid; 
-            loadUsersForAccess(); 
-            loadFormationsCategories(); 
+            await loadUsersForAccess(); // On attend de savoir qui tu es (Admin ? Prof ?)
+            await loadFormationsCategories(); // Ensuite on charge les formations filtrées
             loadCourses(); 
         } else {
             window.location.replace('/login.html');
@@ -40,7 +41,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Écouteurs de l'Éditeur de Cours
     document.getElementById('btn-save-course').addEventListener('click', saveCourseToFirebase);
     document.getElementById('btn-add-chapter').addEventListener('click', () => createNewChapter('text'));
     document.getElementById('btn-add-quiz').addEventListener('click', () => createNewChapter('quiz'));
@@ -99,9 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // ==========================================
-    // LOGIQUE DE RECHERCHE DANS LES LISTES D'ACCÈS
-    // ==========================================
+    // RECHERCHE DANS LES LISTES D'ACCÈS
     document.getElementById('search-profs').addEventListener('input', (e) => {
         const term = e.target.value.toLowerCase();
         document.querySelectorAll('#formation-profs-list label').forEach(lbl => {
@@ -116,7 +114,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Modale Formations
+    // MODALE FORMATIONS
     document.getElementById('btn-create-formation').addEventListener('click', () => openFormationModal(null));
     document.getElementById('close-formation-modal-btn').addEventListener('click', () => document.getElementById('formation-modal').style.display='none');
     
@@ -134,6 +132,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (formId) {
                 await updateDoc(doc(db, "formations", formId), data);
             } else {
+                // NOUVEAU : Enregistrement de l'Auteur et de la Date de Création
+                data.auteurId = currentUid;
+                data.dateCreation = serverTimestamp();
                 await addDoc(collection(db, "formations"), data);
             }
             document.getElementById('formation-modal').style.display = 'none';
@@ -159,6 +160,20 @@ async function loadUsersForAccess() {
     const snap = await getDocs(collection(db, "users"));
     allUsersForAccess = [];
     snap.forEach(d => allUsersForAccess.push({id: d.id, ...d.data()}));
+    
+    // NOUVEAU : On identifie le rôle de l'utilisateur connecté
+    currentUserProfile = allUsersForAccess.find(u => u.id === currentUid);
+}
+
+// NOUVEAU : Filtre de sécurité intelligent
+function getAccessibleFormations() {
+    if (!currentUserProfile) return [];
+    // Si Admin ou Dieu, on voit TOUTES les formations
+    if (currentUserProfile.role === 'admin' || currentUserProfile.isGod) {
+        return allFormationsData;
+    }
+    // Si Professeur, on ne voit QUE les formations où on est assigné
+    return allFormationsData.filter(form => form.profs && form.profs.includes(currentUid));
 }
 
 async function loadFormationsCategories() {
@@ -175,12 +190,14 @@ function renderFormationsList() {
     if(!container) return;
     container.innerHTML = '';
     
-    if(allFormationsData.length === 0) {
-        container.innerHTML = '<p style="color:var(--text-muted); grid-column: 1/-1;">Aucune catégorie. Créez-en une !</p>'; 
+    const visibleFormations = getAccessibleFormations();
+    
+    if(visibleFormations.length === 0) {
+        container.innerHTML = '<p style="color:var(--text-muted); grid-column: 1/-1;">Aucune catégorie disponible pour votre compte.</p>'; 
         return;
     }
 
-    allFormationsData.forEach(form => {
+    visibleFormations.forEach(form => {
         const pCount = form.profs ? form.profs.length : 0;
         const sCount = form.students ? form.students.length : 0;
         const html = `
@@ -212,7 +229,6 @@ window.openFormationModal = function(formationId) {
     const profsContainer = document.getElementById('formation-profs-list');
     const studentsContainer = document.getElementById('formation-students-list');
     
-    // On vide les listes et les barres de recherche
     profsContainer.innerHTML = ''; studentsContainer.innerHTML = '';
     document.getElementById('search-profs').value = '';
     document.getElementById('search-students').value = '';
@@ -234,6 +250,7 @@ window.openFormationModal = function(formationId) {
 
         const name = (u.prenom || u.nom) ? `${u.prenom || ''} ${u.nom || ''}`.trim() : u.email;
 
+        // On garde ton design Haute Performance intact
         const checkboxHtml = `
             <label class="compact-user-row">
                 <input type="checkbox" class="cb-formation-user compact-cb" data-uid="${u.id}" data-role="${u.role}" ${isChecked}>
@@ -251,10 +268,12 @@ window.openFormationModal = function(formationId) {
 }
 
 function renderFormationsPillsAndFilters() {
+    const visibleFormations = getAccessibleFormations();
+
     const selector = document.getElementById('formations-selector');
     if(selector) {
         selector.innerHTML = '';
-        allFormationsData.forEach(form => {
+        visibleFormations.forEach(form => {
             selector.insertAdjacentHTML('beforeend', `<span class="formation-pill" data-val="${form.id}">${form.titre}</span>`);
         });
         document.querySelectorAll('.formation-pill').forEach(pill => {
@@ -265,7 +284,7 @@ function renderFormationsPillsAndFilters() {
     const filter = document.getElementById('library-formation-filter');
     if(filter) {
         filter.innerHTML = '<option value="all">Toutes les Catégories</option>';
-        allFormationsData.forEach(form => {
+        visibleFormations.forEach(form => {
             filter.insertAdjacentHTML('beforeend', `<option value="${form.id}">${form.titre}</option>`);
         });
     }
