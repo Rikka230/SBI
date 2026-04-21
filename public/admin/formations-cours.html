@@ -263,13 +263,23 @@
             }
         });
 
+        // Bulles d'info corrigées avec les bons sélecteurs CSS
         const tooltips = {
-            'ql-size': 'Taille du texte', 'ql-bold': 'Gras', 'ql-italic': 'Italique', 'ql-underline': 'Souligné', 'ql-strike': 'Barré',
-            'ql-color': 'Couleur du texte', 'ql-background': 'Surlignage', 'ql-list[value="ordered"]': 'Liste numérotée',
-            'ql-list[value="bullet"]': 'Liste à puces', 'ql-align': 'Alignement', 'ql-link': 'Insérer un lien', 'ql-clean': 'Effacer le formatage'
+            '.ql-size .ql-picker-label': 'Taille du texte', 
+            '.ql-bold': 'Gras', 
+            '.ql-italic': 'Italique', 
+            '.ql-underline': 'Souligné', 
+            '.ql-strike': 'Barré',
+            '.ql-color .ql-picker-label': 'Couleur du texte', 
+            '.ql-background .ql-picker-label': 'Surlignage', 
+            '.ql-list[value="ordered"]': 'Liste numérotée',
+            '.ql-list[value="bullet"]': 'Liste à puces', 
+            '.ql-align .ql-picker-label': 'Alignement', 
+            '.ql-link': 'Insérer un lien', 
+            '.ql-clean': 'Effacer le formatage'
         };
-        for (let [cls, title] of Object.entries(tooltips)) {
-            const el = document.querySelector(`.ql-toolbar .${cls.replace('[', '\\[').replace(']', '\\]')}`);
+        for (let [selector, title] of Object.entries(tooltips)) {
+            const el = document.querySelector(`.ql-toolbar ${selector}`);
             if (el) el.setAttribute('title', title);
         }
     });
