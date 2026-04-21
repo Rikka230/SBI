@@ -87,11 +87,13 @@ body {
     
     /* Rotation de la flèche et gestion du logo quand on réduit */
     .app-container.left-collapsed #btn-toggle-panel svg { transform: rotate(180deg); }
+    
     .app-container.left-collapsed .logo-zone { display: none; }
     .app-container.left-collapsed .logo-mini { display: block !important; margin: 0 auto; }
-    .app-container.left-collapsed .panel-header { justify-content: center; padding: 0; }
     
-    .app-container.left-collapsed .nav-text { display: none; }
+    /* Quand réduit, on centre tout dans le header */
+    .app-container.left-collapsed .panel-header { justify-content: center; padding: 0; }
+    .app-container.left-collapsed #btn-toggle-panel { display: none; } /* Optionnel: tu peux cacher la flèche si tu préfères cliquer sur le logo mini pour rouvrir, ou la laisser */
     .app-container.left-collapsed .nav-item { padding: 0.8rem 0; justify-content: center; }
     .app-container.left-collapsed .nav-item svg { margin-right: 0; }
 
