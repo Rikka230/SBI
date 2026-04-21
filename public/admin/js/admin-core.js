@@ -423,18 +423,3 @@ const initModalLogic = () => {
     });
 };
 
-// --- INITIALISATION GLOBALE EN ATTENDANT L'AUTHENTIFICATION ---
-document.addEventListener('DOMContentLoaded', () => {
-    
-    // On lance uniquement les fonctions qui existent encore !
-    initFilters();
-    initUserCreation();
-    initModalLogic(); 
-
-    onAuthStateChanged(auth, (user) => {
-        if (user) {
-            currentUid = user.uid;
-            fetchUsers(); 
-        }
-    });
-});
