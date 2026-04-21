@@ -15,7 +15,6 @@ let activeChapterId = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     
-    // Authentification
     onAuthStateChanged(auth, (user) => {
         if (user) { 
             currentUid = user.uid; 
@@ -25,7 +24,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Panneau Droit
     const logoutBtn = document.getElementById('logout-btn');
     if(logoutBtn) logoutBtn.addEventListener('click', logoutUser);
     
@@ -38,7 +36,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Boutons Édition
     document.getElementById('btn-save-course').addEventListener('click', saveCourseToFirebase);
     document.getElementById('btn-add-chapter').addEventListener('click', () => createNewChapter('text'));
     document.getElementById('btn-add-quiz').addEventListener('click', () => createNewChapter('quiz'));
@@ -64,7 +61,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // UPLOAD IMAGE (Compression WebP)
     const imgUpload = document.getElementById('chapter-image-upload');
     if (imgUpload) {
         imgUpload.addEventListener('change', async function(e) {
@@ -93,7 +89,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // UPLOAD VIDÉO
     const vidUpload = document.getElementById('chapter-video-upload');
     if (vidUpload) {
         vidUpload.addEventListener('change', function(e) {
@@ -101,7 +96,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if(!file) return;
             
             if(file.size > 1048576) { 
-                alert("⚠️ Attention : La base de données Firestore est limitée à 1Mo par document. Pour un vrai site, il faudra implémenter Firebase Storage pour les vidéos.");
+                alert("⚠️ Attention : Limite Firestore de 1Mo atteinte. En prod, utilisez Firebase Storage.");
             }
 
             const reader = new FileReader();
@@ -116,9 +111,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-/* =========================================================
-   LOGIQUE DE L'INTERFACE D'ÉDITION
-========================================================= */
 
 window.prepareNewCourse = function() {
     document.getElementById('edit-course-id').value = '';
@@ -185,7 +177,6 @@ window.selectChapter = function(id) {
         
         document.getElementById('chapter-title').value = chap.titre;
 
-        // UI Media
         if(chap.mediaType === 'video') {
             document.querySelector('input[name="media_type"][value="video"]').checked = true;
             document.getElementById('media-image-zone').style.display = 'none';
@@ -206,8 +197,12 @@ window.selectChapter = function(id) {
         if(chap.mediaImage) { iPreview.src = chap.mediaImage; iPreview.style.display = 'block'; } 
         else { iPreview.style.display = 'none'; }
 
-        // REPARATION DU BUG D'EDITION DE TEXTE (innerHTML brut plutôt que pasteHTML)
-        if(window.quill) window.quill.root.innerHTML = chap.contenu || '';
+        // === RÉPARATION CRITIQUE QUILL ===
+        // On réinitialise l'éditeur proprement et on utilise le paste sécurisé pour le garder cliquable !
+        if(window.quill) {
+            window.quill.setContents([]);
+            window.quill.clipboard.dangerouslyPasteHTML(chap.contenu || '');
+        }
 
     } else {
         document.getElementById('chapter-editor-zone').style.display = 'none';
@@ -256,9 +251,6 @@ function renderChaptersList() {
     });
 }
 
-/* =========================================================
-   LOGIQUE DU CONSTRUCTEUR D'EXAMEN (QCM MULTIPLE)
-========================================================= */
 
 function addQuizQuestion() {
     const container = document.getElementById('quiz-questions-container');
@@ -313,7 +305,6 @@ function gatherQuizQuestions() {
         const points = parseInt(block.querySelector('.q-points').value) || 1;
         const options = Array.from(block.querySelectorAll('.q-opt')).map(inp => inp.value.trim());
         
-        // Tableau de TOUTES les cases cochées
         const correctIndices = Array.from(block.querySelectorAll('.q-correct-cb:checked')).map(cb => parseInt(cb.value));
 
         if(title && options.length >= 2) {
@@ -341,7 +332,7 @@ function renderQuizBuilder(questions) {
         const qHTML = `
         <div class="quiz-question-block" data-qindex="${index}" style="background: #111; padding: 1.5rem; border: 1px solid #333; border-radius: 6px; position: relative;">
             <button onclick="this.parentElement.remove()" style="position: absolute; right: 10px; top: 10px; background: none; border: none; color: var(--accent-red); cursor: pointer; font-size: 1.2rem;">&times;</button>
-            <input type="text" class="q-title" value="${q.question}" style="width: 100%; font-size: 1.1rem; padding: 0.8rem; background: transparent; color: white; border: none; border-bottom: 1px solid #555; outline: margin-bottom: 1rem;">
+            <input type="text" class="q-title" value="${q.question}" style="width: 100%; font-size: 1.1rem; padding: 0.8rem; background: transparent; color: white; border: none; border-bottom: 1px solid #555; outline: none; margin-bottom: 1rem;">
             
             <div class="q-options-container" style="display: flex; flex-direction: column; gap: 0.5rem;">
                 ${optionsHTML}
@@ -356,11 +347,6 @@ function renderQuizBuilder(questions) {
         container.insertAdjacentHTML('beforeend', qHTML);
     });
 }
-
-
-/* =========================================================
-   FIREBASE : SAUVEGARDE ET CHARGEMENT
-========================================================= */
 
 async function saveCourseToFirebase() {
     saveCurrentChapterContent(); 
