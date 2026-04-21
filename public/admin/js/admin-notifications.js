@@ -125,30 +125,40 @@ function renderNotificationsList(notifs) {
     });
 
     document.querySelectorAll('.notif-item').forEach(item => {
-        item.addEventListener('click', (e) => {
+        item.addEventListener('click', async (e) => {
+            e.preventDefault();
             const notifId = e.currentTarget.getAttribute('data-id');
             const courseId = e.currentTarget.getAttribute('data-course');
             
-            // SUPPRESSION IMMÉDIATE POUR VIDER FIREBASE
-            deleteDoc(doc(db, "notifications", notifId)).catch(err => console.error(err));
-
-            // Disparition visuelle instantanée
+            // Disparition visuelle instantanée pour le confort
             e.currentTarget.style.display = 'none';
 
-            // Comportement de redirection
+            try {
+                // Suppression de la notification en base
+                await deleteDoc(doc(db, "notifications", notifId));
+            } catch(err) {
+                console.error("Erreur suppression notif:", err);
+            }
+
+            // Comportement au clic selon la personne
             if (currentUserProfile && currentUserProfile.role === 'teacher') {
                 alert("Génial ! Votre cours est maintenant en ligne !");
-                document.getElementById('notifications-section').style.display = 'none';
+                const nSection = document.getElementById('notifications-section');
+                if(nSection) nSection.style.display = 'none';
             } else {
-                if(window.location.href.includes('formations-cours')) {
+                // Pour l'Admin : on redirige de force et à 100%
+                const nSection = document.getElementById('notifications-section');
+                if(nSection) nSection.style.display = 'none';
+                
+                if(window.location.pathname.includes('formations-cours.html')) {
                     if(typeof window.editCourse === 'function') {
                         window.editCourse(courseId);
-                        document.getElementById('notifications-section').style.display = 'none';
                     } else {
-                        window.location.href = `formations-cours.html?edit=${courseId}`;
+                        window.location.assign(`formations-cours.html?edit=${courseId}`);
                     }
                 } else {
-                    window.location.href = `formations-cours.html?edit=${courseId}`;
+                    // Si on est sur l'index, on part sur la page des cours
+                    window.location.assign(`formations-cours.html?edit=${courseId}`);
                 }
             }
         });
