@@ -6,8 +6,11 @@
     <title>SBI Console - Gestion des Cours</title>
     <link rel="stylesheet" href="css/admin-layout.css">
     <link rel="stylesheet" href="css/admin.css">
+    
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+
     <style>
-        /* Styles spécifiques pour les sous-onglets de cette page */
+        /* --- SOUS-NAVIGATION DES COURS --- */
         .sub-nav {
             display: flex;
             gap: 2rem;
@@ -30,7 +33,6 @@
         .course-section { display: none; animation: fadeIn 0.3s; }
         .course-section.active { display: block; }
         
-        /* Style pour les tags de catégories/formations */
         .tag {
             background: rgba(255, 255, 255, 0.1);
             padding: 4px 12px;
@@ -41,6 +43,27 @@
             align-items: center;
             gap: 5px;
         }
+
+        /* --- THEME DARK POUR L'EDITEUR QUILL --- */
+        .ql-toolbar.ql-snow {
+            border-color: var(--border-color) !important;
+            background-color: var(--bg-panel);
+            border-radius: 8px 8px 0 0;
+            padding: 10px;
+        }
+        .ql-container.ql-snow {
+            border-color: var(--border-color) !important;
+            background-color: #0a0a0c;
+            border-radius: 0 0 8px 8px;
+            color: var(--text-main);
+            font-family: inherit;
+            font-size: 1.05rem;
+        }
+        .ql-snow .ql-stroke { stroke: var(--text-muted) !important; }
+        .ql-snow .ql-fill { fill: var(--text-muted) !important; }
+        .ql-snow .ql-picker { color: var(--text-muted) !important; }
+        .ql-snow .ql-picker-options { background-color: var(--bg-panel); border-color: var(--border-color); }
+        .ql-editor.ql-blank::before { color: #555; font-style: normal; }
     </style>
 </head>
 <body class="preload">
@@ -57,12 +80,13 @@
 
     <aside id="left-panel" class="side-panel">
         <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; padding: 0 15px; width: 100%; box-sizing: border-box;">
-            <div class="logo-zone" style="display: flex; align-items: center; overflow: hidden; white-space: nowrap; transition: opacity 0.2s ease;">
+            <div class="logo-zone" style="display: flex; align-items: center; overflow: hidden; white-space: nowrap;">
                 <span style="color: var(--accent-blue); font-weight: bold;">🔥 SBI</span><span>&nbsp;Console</span>
             </div>
-            <button id="btn-toggle-panel" style="position: absolute; right: 12px; background:none; border:none; color:var(--text-muted); cursor:pointer; padding:5px; margin:0; display:flex; align-items: center;">
+            <button id="btn-toggle-panel" style="background:none; border:none; color:var(--text-muted); cursor:pointer; padding:5px; margin:0; display:flex; align-items: center;">
                 <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" style="transition: transform 0.3s;"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z"/></svg>
             </button>
+            <span class="logo-mini" style="display: none; font-size: 1.2rem;">🔥</span>
         </div>
         
         <ul class="nav-menu">
@@ -70,9 +94,17 @@
                 <svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
                 <span class="nav-text">Tableau de Bord</span>
             </li>
+            <li class="nav-item" onclick="window.location.href='index.html'">
+                <svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+                <span class="nav-text">Utilisateurs</span>
+            </li>
             <li class="nav-item active" onclick="window.location.href='index.html'">
                 <svg viewBox="0 0 24 24"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/></svg>
                 <span class="nav-text">Formations</span>
+            </li>
+            <li class="nav-item" onclick="window.location.href='index.html'">
+                <svg viewBox="0 0 24 24"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.06-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.73,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.06,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.43-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.49-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/></svg>
+                <span class="nav-text">Paramètres</span>
             </li>
         </ul>
     </aside>
@@ -82,7 +114,7 @@
             <svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
         </button>
         <span class="page-title" style="font-weight: 600;">
-            <a href="index.html" style="color: var(--text-muted); text-decoration: none;">Formations</a> / Cours
+            <a href="index.html" style="color: var(--text-muted); text-decoration: none; transition: color 0.2s;">Formations</a> <span style="color:var(--text-muted)">/</span> Cours
         </span>
         <button class="mobile-toggle right-toggle" id="btn-toggle-right">
             <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
@@ -94,7 +126,7 @@
             
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <h2>Gestionnaire de Cours</h2>
-                <button class="action-btn" style="width: auto; background: var(--accent-blue); color: white; border: none;" onclick="switchCourseTab('tab-editor')">
+                <button class="action-btn" style="width: auto; background: var(--accent-blue); color: white; border: none; font-weight: bold;" onclick="switchCourseTab('tab-editor')">
                     + Nouveau Cours
                 </button>
             </div>
@@ -116,7 +148,7 @@
                     <input type="text" placeholder="Rechercher un cours..." style="padding: 0.8rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px; flex-grow: 2;">
                 </div>
 
-                <div style="background: var(--bg-card); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                <div style="background: var(--bg-card); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; transition: transform 0.2s;">
                     <div>
                         <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem;">
                             <span style="color: var(--accent-green); font-weight: bold; font-size: 0.8rem;">● ACTIF</span>
@@ -125,12 +157,28 @@
                         <div>
                             <span class="tag">🎨 Formation Mangaka</span>
                             <span class="tag">✏️ Illustration Pro</span>
-                            <span style="color: var(--text-muted); font-size: 0.85rem; margin-left: 1rem;">4 Chapitres • 1 Test</span>
+                            <span style="color: var(--text-muted); font-size: 0.85rem; margin-left: 1rem;">4 Chapitres • 1 Examen</span>
                         </div>
                     </div>
                     <div style="display: flex; gap: 0.5rem;">
                         <button class="action-btn" style="width: auto; margin: 0;">Aperçu</button>
-                        <button class="action-btn" style="width: auto; margin: 0; color: var(--accent-blue); border-color: rgba(42, 87, 255, 0.4);">Éditer</button>
+                        <button class="action-btn" style="width: auto; margin: 0; color: var(--accent-blue); border-color: rgba(42, 87, 255, 0.4);" onclick="switchCourseTab('tab-editor')">Éditer</button>
+                    </div>
+                </div>
+
+                <div style="background: var(--bg-card); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; opacity: 0.6;">
+                    <div>
+                        <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem;">
+                            <span style="color: var(--accent-red); font-weight: bold; font-size: 0.8rem;">● BROUILLON</span>
+                            <h3 style="margin: 0;">Théorie des Couleurs</h3>
+                        </div>
+                        <div>
+                            <span class="tag">✏️ Illustration Pro</span>
+                            <span style="color: var(--text-muted); font-size: 0.85rem; margin-left: 1rem;">1 Chapitre • 0 Examen</span>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="action-btn" style="width: auto; margin: 0; color: var(--accent-blue); border-color: rgba(42, 87, 255, 0.4);" onclick="switchCourseTab('tab-editor')">Éditer</button>
                     </div>
                 </div>
             </div>
@@ -139,43 +187,55 @@
                 <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem;">
                     
                     <div style="display: flex; flex-direction: column; gap: 1.5rem;">
-                        <input type="text" placeholder="Titre du Cours" style="font-size: 1.5rem; font-weight: bold; padding: 1rem; background: transparent; color: white; border: none; border-bottom: 2px solid var(--border-color); outline: none;">
+                        <input type="text" placeholder="Titre du Chapitre / Leçon" style="font-size: 1.5rem; font-weight: bold; padding: 1rem; background: transparent; color: white; border: none; border-bottom: 2px solid var(--border-color); outline: none;">
                         
-                        <div style="background: var(--bg-card); border-radius: 8px; border: 1px solid var(--border-color); min-height: 400px; padding: 1rem;">
-                            <p style="color: var(--text-muted); text-align: center; margin-top: 100px;">
-                                [Zone d'intégration du futur Éditeur de Texte Riche (Quill.js)]<br>
-                                Permettra l'ajout de texte formatté, images, et iframes YouTube.
-                            </p>
+                        <div>
+                            <div id="course-editor" style="height: 500px;"></div>
                         </div>
                     </div>
 
                     <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+                        
                         <div style="background: var(--bg-card); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color);">
-                            <h4 style="margin-top: 0;">Paramètres du Cours</h4>
-                            <label style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
+                            <h4 style="margin-top: 0; color: var(--accent-blue);">Paramètres du Cours</h4>
+                            <label style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem; cursor: pointer;">
                                 <input type="checkbox" checked> Rendre le cours visible (Actif)
                             </label>
-                            <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Assigner aux Formations :</label>
+                            
+                            <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.9rem;">Assigner aux Formations :</label>
                             <select multiple style="width: 100%; height: 80px; padding: 0.5rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px;">
-                                <option value="f1">Devenir Mangaka</option>
+                                <option value="f1" selected>Devenir Mangaka</option>
                                 <option value="f2">Illustration Pro</option>
                             </select>
                         </div>
 
                         <div style="background: var(--bg-card); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color);">
-                            <h4 style="margin-top: 0;">Structure (Chapitres)</h4>
+                            <h4 style="margin-top: 0; display: flex; justify-content: space-between;">
+                                Structure
+                                <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: normal;">Glisser pour trier</span>
+                            </h4>
+                            
                             <ul style="list-style: none; padding: 0; margin: 0 0 1rem 0;">
-                                <li style="padding: 0.5rem; background: #111; border: 1px solid #333; margin-bottom: 0.5rem; border-radius: 4px; display: flex; justify-content: space-between;">
-                                    <span>Partie 1 : Introduction</span> <span>☰</span>
+                                <li style="padding: 0.8rem; background: rgba(42, 87, 255, 0.1); border: 1px solid var(--accent-blue); margin-bottom: 0.5rem; border-radius: 4px; display: flex; justify-content: space-between; cursor: pointer; font-weight: bold; color: var(--accent-blue);">
+                                    <span>1. Introduction</span> <span>☰</span>
                                 </li>
-                                <li style="padding: 0.5rem; background: #111; border: 1px solid #333; margin-bottom: 0.5rem; border-radius: 4px; display: flex; justify-content: space-between;">
-                                    <span>Partie 1.2 : Matériel</span> <span>☰</span>
+                                <li style="padding: 0.8rem; background: #111; border: 1px solid #333; margin-bottom: 0.5rem; border-radius: 4px; display: flex; justify-content: space-between; cursor: pointer; transition: 0.2s;">
+                                    <span>1.2. Le Matériel</span> <span>☰</span>
+                                </li>
+                                <li style="padding: 0.8rem; background: #111; border: 1px solid #333; margin-bottom: 0.5rem; border-radius: 4px; display: flex; justify-content: space-between; cursor: pointer; transition: 0.2s;">
+                                    <span>2. L'encrage</span> <span>☰</span>
+                                </li>
+                                <li style="padding: 0.8rem; background: rgba(255, 188, 4, 0.1); border: 1px dashed var(--accent-yellow); margin-bottom: 0.5rem; border-radius: 4px; display: flex; justify-content: space-between; cursor: pointer; color: var(--accent-yellow);">
+                                    <span>📝 Examen Final</span> <span>⚙️</span>
                                 </li>
                             </ul>
-                            <button class="action-btn" style="width: 100%; margin: 0; justify-content: center;">+ Ajouter une section</button>
+                            
+                            <button class="action-btn" style="width: 100%; margin: 0; justify-content: center; border-style: dashed;">+ Ajouter une section</button>
                         </div>
                         
-                        <button class="action-btn" style="background: var(--accent-green); color: black; border: none; font-weight: bold; justify-content: center;">Sauvegarder le Cours</button>
+                        <button class="action-btn" style="background: var(--accent-green); color: black; border: none; font-weight: bold; justify-content: center; padding: 1rem; font-size: 1rem;">
+                            Sauvegarder le Chapitre
+                        </button>
                     </div>
                 </div>
             </div>
@@ -189,18 +249,47 @@
 
             <div id="tab-tracking" class="course-section">
                 <div style="text-align: center; padding: 4rem; background: var(--bg-card); border-radius: 8px; border: 1px solid var(--border-color);">
-                    <h3 style="color: var(--accent-blue);">Suivi Pédagogique</h3>
-                    <p style="color: var(--text-muted);">Tableau de bord affichant la progression des élèves inscrits et les notes obtenues aux tests.</p>
+                    <h3 style="color: var(--accent-blue);">Suivi Pédagogique & Professeurs</h3>
+                    <p style="color: var(--text-muted);">Tableau de bord affichant les professeurs assignés, la progression des élèves inscrits et les notes obtenues aux tests.</p>
                 </div>
             </div>
 
         </div>
     </main>
+
+    <aside id="right-panel" class="side-panel">
+        <div class="panel-header" style="justify-content: flex-end;">
+            <svg style="width: 20px; height: 20px; fill: var(--text-muted); cursor: pointer;" viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/></svg>
+        </div>
+        
+        <div class="right-section">
+            <div class="profile-widget">
+                <div class="avatar">A</div>
+                <div class="user-info">
+                    <p class="name">Antony</p>
+                    <p class="role">Admin Suprême</p>
+                </div>
+            </div>
+
+            <button class="action-btn" id="btn-clear-cache">
+                <svg viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+                Rafraîchir le Cache
+            </button>
+
+            <button class="action-btn danger" id="logout-btn">
+                <svg viewBox="0 0 24 24"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
+                Déconnexion
+            </button>
+        </div>
+    </aside>
+
 </div>
 
 <script type="module" src="js/admin-ui.js"></script>
+
+<script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
 <script>
-    // Petit script temporaire pour gérer le changement d'onglets visuellement
+    // --- 1. Gestion des sous-onglets ---
     function switchCourseTab(tabId) {
         document.querySelectorAll('.sub-nav-item').forEach(el => el.classList.remove('active'));
         document.querySelectorAll('.course-section').forEach(el => el.classList.remove('active'));
@@ -208,6 +297,25 @@
         document.getElementById('nav-' + tabId).classList.add('active');
         document.getElementById(tabId).classList.add('active');
     }
+
+    // --- 2. Initialisation de l'Éditeur de texte ---
+    document.addEventListener("DOMContentLoaded", function() {
+        var quill = new Quill('#course-editor', {
+            theme: 'snow',
+            placeholder: 'Rédigez le contenu de la leçon ici (texte, images, vidéos youtube, liens)...',
+            modules: {
+                toolbar: [
+                    [{ 'header': [1, 2, 3, false] }], // Titres
+                    ['bold', 'italic', 'underline', 'strike'], // Style
+                    [{ 'color': [] }, { 'background': [] }], // Couleurs
+                    [{ 'list': 'ordered'}, { 'list': 'bullet' }], // Listes
+                    [{ 'align': [] }], // Alignement
+                    ['link', 'image', 'video'], // Médias
+                    ['clean'] // Effacer le formatage
+                ]
+            }
+        });
+    });
 </script>
 
 </body>
