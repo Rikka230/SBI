@@ -10,22 +10,33 @@ import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/fi
 import { logoutUser } from '/js/auth.js';
 
 let currentUid = null;
-let currentUserProfile = null; // NOUVEAU : On stocke le profil de la personne connectée
+let currentUserProfile = null; 
 let currentChapters = [];
 let activeChapterId = null;
 
 let allFormationsData = [];
 let allUsersForAccess = [];
 
+// MÉMOIRE DE L'ÉDITION EN COURS
+let editingCourseAuthorId = null;
+let editingCourseOriginalStatus = null;
+
 document.addEventListener('DOMContentLoaded', () => {
     
-    // NOUVEAU : On passe en "async" pour forcer le chargement de l'utilisateur AVANT les formations
     onAuthStateChanged(auth, async (user) => {
         if (user) { 
             currentUid = user.uid; 
-            await loadUsersForAccess(); // On attend de savoir qui tu es (Admin ? Prof ?)
-            await loadFormationsCategories(); // Ensuite on charge les formations filtrées
-            loadCourses(); 
+            await loadUsersForAccess(); 
+            await loadFormationsCategories(); 
+            await loadCourses(); 
+
+            // NOUVEAU : Ouvre automatiquement le cours si on arrive depuis une Notification !
+            const urlParams = new URLSearchParams(window.location.search);
+            const editId = urlParams.get('edit');
+            if (editId) {
+                window.editCourse(editId);
+                window.history.replaceState({}, document.title, window.location.pathname + "?tab=tab-editor");
+            }
         } else {
             window.location.replace('/login.html');
         }
@@ -62,7 +73,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // UPLOADS MEDIAS
     const imgUpload = document.getElementById('chapter-image-upload');
     if (imgUpload) {
         imgUpload.addEventListener('change', async function(e) {
@@ -99,7 +109,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // RECHERCHE DANS LES LISTES D'ACCÈS
     document.getElementById('search-profs').addEventListener('input', (e) => {
         const term = e.target.value.toLowerCase();
         document.querySelectorAll('#formation-profs-list label').forEach(lbl => {
@@ -114,7 +123,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // MODALE FORMATIONS
     document.getElementById('btn-create-formation').addEventListener('click', () => openFormationModal(null));
     document.getElementById('close-formation-modal-btn').addEventListener('click', () => document.getElementById('formation-modal').style.display='none');
     
@@ -132,7 +140,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (formId) {
                 await updateDoc(doc(db, "formations", formId), data);
             } else {
-                // NOUVEAU : Enregistrement de l'Auteur et de la Date de Création
                 data.auteurId = currentUid;
                 data.dateCreation = serverTimestamp();
                 await addDoc(collection(db, "formations"), data);
@@ -160,19 +167,12 @@ async function loadUsersForAccess() {
     const snap = await getDocs(collection(db, "users"));
     allUsersForAccess = [];
     snap.forEach(d => allUsersForAccess.push({id: d.id, ...d.data()}));
-    
-    // NOUVEAU : On identifie le rôle de l'utilisateur connecté
     currentUserProfile = allUsersForAccess.find(u => u.id === currentUid);
 }
 
-// NOUVEAU : Filtre de sécurité intelligent
 function getAccessibleFormations() {
     if (!currentUserProfile) return [];
-    // Si Admin ou Dieu, on voit TOUTES les formations
-    if (currentUserProfile.role === 'admin' || currentUserProfile.isGod) {
-        return allFormationsData;
-    }
-    // Si Professeur, on ne voit QUE les formations où on est assigné
+    if (currentUserProfile.role === 'admin' || currentUserProfile.isGod) return allFormationsData;
     return allFormationsData.filter(form => form.profs && form.profs.includes(currentUid));
 }
 
@@ -198,19 +198,36 @@ function renderFormationsList() {
     }
 
     visibleFormations.forEach(form => {
-        const pCount = form.profs ? form.profs.length : 0;
+        let profNames = "Aucun professeur";
+        if (form.profs && form.profs.length > 0) {
+            const namesArray = form.profs.map(uid => {
+                const u = allUsersForAccess.find(user => user.id === uid);
+                if (u) return (u.prenom || u.nom) ? `${u.prenom || ''} ${u.nom || ''}`.trim() : u.email;
+                return "Inconnu";
+            });
+            profNames = namesArray.join(', ');
+        }
+
+        let authorName = "Système";
+        if (form.auteurId && allUsersForAccess.length > 0) {
+            const authorObj = allUsersForAccess.find(u => u.id === form.auteurId);
+            if (authorObj) authorName = (authorObj.prenom || authorObj.nom) ? `${authorObj.prenom || ''} ${authorObj.nom || ''}`.trim() : authorObj.email;
+        }
+
         const sCount = form.students ? form.students.length : 0;
+        
         const html = `
             <div style="background: var(--bg-card); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); display: flex; flex-direction: column; justify-content: space-between;">
                 <div style="margin-bottom: 1rem;">
-                    <h3 style="margin-top: 0; color: var(--accent-blue);">${form.titre}</h3>
-                    <p style="font-size: 0.85rem; color: var(--text-muted); margin:0;">
+                    <h3 style="margin-top: 0; margin-bottom: 0.2rem; color: var(--accent-blue);">${form.titre}</h3>
+                    <p style="font-size: 0.75rem; color: #666; margin: 0 0 1rem 0; font-style: italic;">Créé par ${authorName}</p>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); margin:0; line-height: 1.4;">
                         <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24" style="vertical-align: middle; margin-right: 4px;"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
-                        ${pCount} prof(s) assigné(s)
+                        <span style="vertical-align: middle;">${profNames}</span>
                     </p>
-                    <p style="font-size: 0.85rem; color: var(--text-muted); margin:0; margin-top: 4px;">
+                    <p style="font-size: 0.85rem; color: var(--text-muted); margin:0; margin-top: 6px;">
                         <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24" style="vertical-align: middle; margin-right: 4px;"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/></svg>
-                        ${sCount} élève(s) inscrit(s)
+                        <span style="vertical-align: middle;">${sCount} élève(s) inscrit(s)</span>
                     </p>
                 </div>
                 <button class="action-btn btn-edit-formation" data-id="${form.id}" style="margin-bottom:0; justify-content:center;">Modifier les accès</button>
@@ -250,7 +267,6 @@ window.openFormationModal = function(formationId) {
 
         const name = (u.prenom || u.nom) ? `${u.prenom || ''} ${u.nom || ''}`.trim() : u.email;
 
-        // On garde ton design Haute Performance intact
         const checkboxHtml = `
             <label class="compact-user-row">
                 <input type="checkbox" class="cb-formation-user compact-cb" data-uid="${u.id}" data-role="${u.role}" ${isChecked}>
@@ -296,6 +312,9 @@ function renderFormationsPillsAndFilters() {
 ========================================================= */
 
 window.prepareNewCourse = function() {
+    editingCourseAuthorId = null;
+    editingCourseOriginalStatus = null;
+
     document.getElementById('edit-course-id').value = '';
     document.getElementById('course-title').value = '';
     currentChapters = [];
@@ -531,21 +550,26 @@ async function saveCourseToFirebase() {
     saveBtn.textContent = 'Sauvegarde...';
     saveBtn.disabled = true;
 
-    // --- NOUVEAU : WORKFLOW DE VALIDATION ---
-    // Si c'est un prof, on force le statut inactif et on met en attente
+    // WORKFLOW DE VALIDATION ET PROTECTION DE L'AUTEUR
     const isTeacher = currentUserProfile && currentUserProfile.role === 'teacher';
     const forcePending = isTeacher; 
     
-    if (forcePending) isActive = false; // Interdiction de publier en direct
-    const statutVal = forcePending ? 'pending' : 'approved';
+    if (forcePending) isActive = false; 
+    
+    let finalStatut = 'draft';
+    if (forcePending) finalStatut = 'pending';
+    else if (isActive) finalStatut = 'approved';
+
+    // On s'assure de ne pas écraser l'auteur si un Admin modifie le cours d'un Prof
+    const finalAuteurId = courseId ? editingCourseAuthorId : currentUid;
 
     try {
         const courseData = {
             titre: title,
             actif: isActive,
-            statutValidation: statutVal,
+            statutValidation: finalStatut,
             formations: selectedPills,
-            auteurId: currentUid,
+            auteurId: finalAuteurId,
             chapitres: currentChapters
         };
 
@@ -561,7 +585,8 @@ async function saveCourseToFirebase() {
             alert(forcePending ? '✅ Cours soumis pour validation !' : '✅ Nouveau cours créé !');
         }
 
-        // Création de la notification pour les admins si le cours est en attente
+        // --- ENVOI DES NOTIFICATIONS ---
+        // 1. Si un Prof crée/modifie, on avertit les Admins
         if (forcePending) {
             await addDoc(collection(db, "notifications"), {
                 type: 'course_validation',
@@ -569,6 +594,19 @@ async function saveCourseToFirebase() {
                 courseTitle: title,
                 auteurId: currentUid,
                 auteurName: (currentUserProfile.prenom || '') + ' ' + (currentUserProfile.nom || ''),
+                dateCreation: serverTimestamp(),
+                readBy: []
+            });
+        }
+        
+        // 2. Si un Admin valide un cours en attente (passe de pending à approved)
+        const isValidation = (courseId && editingCourseOriginalStatus === 'pending' && finalStatut === 'approved' && !isTeacher);
+        if (isValidation && editingCourseAuthorId && editingCourseAuthorId !== currentUid) {
+            await addDoc(collection(db, "notifications"), {
+                type: 'course_approved',
+                courseId: courseRefId,
+                courseTitle: title,
+                destinataireId: editingCourseAuthorId, // Notification ciblée au prof !
                 dateCreation: serverTimestamp(),
                 readBy: []
             });
@@ -603,14 +641,13 @@ async function loadCourses() {
             const data = docSnap.data();
             const courseId = docSnap.id;
             
-            // Indicateur Visuel : Actif, Brouillon, ou En Attente de Validation
             let statusHtml = '';
             if (data.statutValidation === 'pending') {
                 statusHtml = `<span style="color: var(--accent-yellow); font-weight: bold; font-size: 0.8rem;">⏳ EN ATTENTE</span>`;
             } else {
                 statusHtml = data.actif ? `<span style="color: var(--accent-green); font-weight: bold; font-size: 0.8rem;">● ACTIF</span>` : `<span style="color: var(--accent-red); font-weight: bold; font-size: 0.8rem;">● BROUILLON</span>`;
             }
-            
+
             const tagsHtml = data.formations ? data.formations.map(fId => {
                 const formObj = allFormationsData.find(f => f.id === fId || f.titre === fId); 
                 const displayName = formObj ? formObj.titre : fId;
@@ -619,7 +656,6 @@ async function loadCourses() {
 
             const nbChapitres = data.chapitres ? data.chapitres.length : 0;
             
-            // --- NOUVEAU : Récupération du créateur du cours ---
             let authorName = "Système";
             if (data.auteurId && allUsersForAccess.length > 0) {
                 const authorObj = allUsersForAccess.find(u => u.id === data.auteurId);
@@ -654,6 +690,7 @@ async function loadCourses() {
         listContainer.innerHTML = '<p style="color:red; text-align:center;">Erreur système.</p>';
     }
 }
+
 window.editCourse = async (id) => {
     try {
         const docSnap = await getDoc(doc(db, "courses", id));
@@ -664,6 +701,10 @@ window.editCourse = async (id) => {
             document.getElementById('course-title').value = data.titre || '';
             document.getElementById('course-active').checked = data.actif;
             
+            // MÉMORISATION DE L'AUTEUR ET DU STATUT ORIGINAL POUR LA VALIDATION
+            editingCourseAuthorId = data.auteurId || currentUid;
+            editingCourseOriginalStatus = data.statutValidation || 'approved';
+
             document.querySelectorAll('.formation-pill').forEach(pill => {
                 const val = pill.getAttribute('data-val');
                 if(data.formations && (data.formations.includes(val) || data.formations.includes(pill.textContent))) {
@@ -693,6 +734,7 @@ window.duplicateCourse = async (id) => {
                 const copyData = {
                     titre: data.titre + " (Copie)",
                     actif: false, 
+                    statutValidation: "draft",
                     formations: data.formations,
                     auteurId: currentUid,
                     chapitres: data.chapitres,
