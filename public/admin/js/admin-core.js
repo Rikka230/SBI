@@ -84,16 +84,12 @@ const renderUsersList = (usersToRender) => {
         }
 
         const userCardHTML = `
-            <div style="background: var(--bg-card); padding: 1.2rem; border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 0.8rem; display: grid; grid-template-columns: 100px 1fr 80px 100px; gap: 1.5rem; align-items: center; opacity: ${user.statut === 'suspendu' ? '0.6' : '1'}; transition: box-shadow 0.2s;">
-                <div style="text-align: center;">${roleBadge}</div>
-                <div style="display: flex; flex-direction: column; overflow: hidden;">
-                    <span style="color: white; font-weight: bold; font-size: 1.05rem; white-space: normal; word-break: break-word;">${displayName}</span>
-                    <span style="color: #9ca3af; font-size: 0.85rem; margin-top: 0.3rem; white-space: normal; word-break: break-all;">${user.email}</span>
-                </div>
-                <div style="font-size: 0.9rem; text-align: center;">${statusLabel}</div>
-                <div style="text-align: right;">
-                    <button class="btn-secondary btn-edit-user" data-id="${user.id}" style="padding: 0.5rem 1rem; width: 100%; font-size: 0.85rem; font-weight: bold; background: transparent; border: 1px solid #555; color: white; border-radius: 6px; cursor: pointer; transition: all 0.2s;">Éditer</button>
-                </div>
+            <div style="background: #0a0a0c; padding: 0.8rem 1.2rem; border: 1px solid #222; border-radius: 6px; margin-bottom: 0.5rem; display: grid; grid-template-columns: 120px 1.5fr 2fr 100px 120px; gap: 1rem; align-items: center; opacity: ${user.statut === 'suspendu' ? '0.6' : '1'}; transition: all 0.2s;">
+                <div>${roleBadge}</div>
+                <div style="color: white; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${displayName}">${displayName}</div>
+                <div style="color: #9ca3af; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${user.email}">${user.email}</div>
+                <div style="font-size: 0.85rem;">${statusLabel}</div>
+                <div style="text-align: right;"><button class="btn-secondary btn-edit-user" data-id="${user.id}" style="padding: 0.4rem 1rem; font-size: 0.85rem; width: 100%;">Éditer</button></div>
             </div>
         `;
         container.insertAdjacentHTML('beforeend', userCardHTML);
@@ -429,7 +425,7 @@ const initModalLogic = () => {
 
 // --- INITIALISATION GLOBALE EN ATTENDANT L'AUTHENTIFICATION ---
 document.addEventListener('DOMContentLoaded', () => {
-    // La ligne initNavigation() a été supprimée d'ici !
+    initNavigation();
     initFilters();
     initUserCreation();
     initModalLogic(); 

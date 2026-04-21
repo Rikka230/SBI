@@ -1,6 +1,7 @@
 /**
  * =======================================================================
  * ADMIN UI - Gestion Visuelle et Navigation (A-Z)
+ * (Indépendant des appels base de données)
  * =======================================================================
  */
 
@@ -12,73 +13,71 @@ document.addEventListener('DOMContentLoaded', () => {
     const views = document.querySelectorAll('.admin-view');
 
     /* --- 1. GESTION DES PANNEAUX LATERAUX --- */
-    const desktopToggleBtn = document.getElementById('btn-toggle-panel');
-    const mobileToggleBtn = document.getElementById('btn-toggle-mobile');
-
-    setTimeout(() => {
-        document.body.classList.remove('preload');
-    }, 100);
-
-    if (desktopToggleBtn) {
-        desktopToggleBtn.addEventListener('click', () => {
-            appContainer.classList.toggle('left-collapsed');
-            localStorage.setItem('leftPanelCollapsed', appContainer.classList.contains('left-collapsed'));
+    
+    // Toggle Menu Gauche
+    if (leftToggleBtn) {
+        leftToggleBtn.addEventListener('click', () => {
+            if (window.innerWidth > 1024) {
+                appContainer.classList.toggle('left-collapsed');
+            } else {
+                appContainer.classList.toggle('left-open');
+                appContainer.classList.remove('right-open');
+            }
         });
     }
 
-    if (mobileToggleBtn) {
-        mobileToggleBtn.addEventListener('click', () => {
-            appContainer.classList.toggle('left-open');
-            appContainer.classList.remove('right-open');
-        });
-    }
-
+    // Toggle Menu Droit
     if (rightToggleBtn) {
         rightToggleBtn.addEventListener('click', () => {
             if (window.innerWidth > 1024) {
                 appContainer.classList.toggle('right-collapsed');
-                localStorage.setItem('rightPanelCollapsed', appContainer.classList.contains('right-collapsed'));
             } else {
                 appContainer.classList.toggle('right-open');
                 appContainer.classList.remove('left-open');
             }
         });
     }
-    
     document.getElementById('main-content').addEventListener('click', () => {
         if (window.innerWidth <= 1024) {
             appContainer.classList.remove('left-open');
             appContainer.classList.remove('right-open');
         }
     });
-    
     /* --- 2. NAVIGATION ENTRE LES ONGLETS --- */
-    
-    // Le Dashboard s'ouvre par défaut s'il n'y a pas de mémoire
-    const savedTab = sessionStorage.getItem('activeAdminTab') || 'view-dashboard';
-    switchView(savedTab);
 
+    // Restaurer le dernier onglet actif (Mémoire au rafraîchissement)
+    const savedTab = sessionStorage.getItem('activeAdminTab');
+    if (savedTab) {
+        switchView(savedTab);
+    }
+
+    // Écouteurs sur le menu de navigation
     navItems.forEach(btn => {
         btn.addEventListener('click', (e) => {
             const targetId = e.currentTarget.getAttribute('data-target');
             switchView(targetId);
             
+            // Sur mobile, on ferme le menu après avoir cliqué
             if (window.innerWidth <= 768) {
                 appContainer.classList.remove('left-open');
             }
         });
     });
 
+    // Fonction de bascule d'affichage
     function switchView(targetId) {
+        // Désactive tous les boutons et vues
         navItems.forEach(b => b.classList.remove('active'));
         views.forEach(v => v.classList.remove('active'));
 
+        // Active la cible
         const activeBtn = document.querySelector(`.nav-item[data-target="${targetId}"]`);
         const activeView = document.getElementById(targetId);
 
         if (activeBtn) activeBtn.classList.add('active');
         if (activeView) activeView.classList.add('active');
 
+        // Sauvegarde en session
         sessionStorage.setItem('activeAdminTab', targetId);
     }
 });
