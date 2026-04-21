@@ -213,3 +213,60 @@ body {
     color: var(--text-muted);
     font-size: 0.95rem;
 }
+
+/* --- BEAUTÉ DES FORMULAIRES (UI Premium) --- */
+
+/* 1. Barres de défilement (Scrollbars) */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: var(--bg-dark); }
+::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent-blue); }
+
+/* 2. Listes déroulantes (Select) */
+select {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 1em;
+}
+select:focus {
+    border-color: var(--accent-blue) !important;
+    outline: none;
+}
+
+/* 3. Cases à cocher façon "Toggle Switch" Apple/Android */
+input[type="checkbox"] {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 44px;
+    height: 24px;
+    background: #222;
+    border-radius: 24px;
+    position: relative;
+    cursor: pointer;
+    outline: none;
+    transition: 0.3s;
+    border: 1px solid var(--border-color);
+    flex-shrink: 0; /* Empêche l'écrasement */
+}
+input[type="checkbox"]::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 18px;
+    height: 18px;
+    background: #888;
+    border-radius: 50%;
+    transition: transform 0.3s, background 0.3s;
+}
+input[type="checkbox"]:checked {
+    background: rgba(42, 87, 255, 0.2);
+    border-color: var(--accent-blue);
+}
+input[type="checkbox"]:checked::after {
+    transform: translateX(20px);
+    background: var(--accent-blue);
+}
