@@ -4,6 +4,11 @@
  * =======================================================================
  */
 
+/* Règle d'or : Empêche TOUS les éléments (comme le titre) de déborder de l'écran */
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
 :root {
     --bg-dark: #121212;
     --bg-panel: #1e1e1e;
@@ -60,21 +65,20 @@ body {
 .nav-item {
     display: flex;
     align-items: center;
-    padding: 0.8rem 20px; /* 20px d'espace à gauche (parfait pour le panneau de 60px) */
+    padding: 0.8rem 20px;
     color: var(--text-muted);
     cursor: pointer;
     transition: background-color 0.2s, color 0.2s;
     font-size: 0.95rem;
     white-space: nowrap;
-    box-sizing: border-box; /* IMPORTANT : Empêche la bordure de déformer la boîte */
     width: 100%;
 }
 
 .nav-item.active {
-    background-color: rgba(42, 87, 255, 0.1); /* Le bon bleu Firebase en fond */
+    background-color: rgba(42, 87, 255, 0.1);
     color: var(--accent-blue);
     border-left: 3px solid var(--accent-blue);
-    padding-left: 17px; /* ASTUCE PRO : 20px - 3px de bordure = 17px. L'icône ne bougera pas d'un pixel ! */
+    padding-left: 17px;
 }
 
 .nav-item svg {
@@ -82,7 +86,7 @@ body {
     height: 20px;
     margin-right: 15px;
     fill: currentColor;
-    flex-shrink: 0; /* L'icône ne s'écrase jamais */
+    flex-shrink: 0;
 }
 
 .nav-text {
@@ -162,7 +166,7 @@ body {
 }
 .mobile-toggle svg { width: 24px; height: 24px; fill: currentColor; }
 
-/* --- DESIGN DES FORMATIONS (2 GROS BLOCS) --- */
+/* --- DESIGN DES FORMATIONS --- */
 .formations-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -214,15 +218,12 @@ body {
     font-size: 0.95rem;
 }
 
-/* --- BEAUTÉ DES FORMULAIRES (UI Premium) --- */
-
-/* 1. Barres de défilement (Scrollbars) */
+/* --- BEAUTÉ DES FORMULAIRES --- */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: var(--bg-dark); }
 ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--accent-blue); }
 
-/* 2. Listes déroulantes (Select) */
 select {
     appearance: none;
     -webkit-appearance: none;
@@ -231,13 +232,10 @@ select {
     background-position: right 10px center;
     background-size: 1em;
 }
-select:focus {
-    border-color: var(--accent-blue) !important;
-    outline: none;
-}
+select:focus { border-color: var(--accent-blue) !important; outline: none; }
 
-/* 3. Cases à cocher façon "Toggle Switch" Apple/Android */
-input[type="checkbox"] {
+/* Cases à cocher façon "Toggle Switch" Apple (Sauf pour le QCM) */
+input[type="checkbox"]:not(.q-correct-cb) {
     appearance: none;
     -webkit-appearance: none;
     width: 44px;
@@ -249,9 +247,9 @@ input[type="checkbox"] {
     outline: none;
     transition: 0.3s;
     border: 1px solid var(--border-color);
-    flex-shrink: 0; /* Empêche l'écrasement */
+    flex-shrink: 0;
 }
-input[type="checkbox"]::after {
+input[type="checkbox"]:not(.q-correct-cb)::after {
     content: '';
     position: absolute;
     top: 2px;
@@ -262,16 +260,40 @@ input[type="checkbox"]::after {
     border-radius: 50%;
     transition: transform 0.3s, background 0.3s;
 }
-input[type="checkbox"]:checked {
+input[type="checkbox"]:not(.q-correct-cb):checked {
     background: rgba(42, 87, 255, 0.2);
     border-color: var(--accent-blue);
 }
-input[type="checkbox"]:checked::after {
+input[type="checkbox"]:not(.q-correct-cb):checked::after {
     transform: translateX(20px);
     background: var(--accent-blue);
 }
 
-/* 4. Correction globale des débordements */
-input, select, textarea {
-    box-sizing: border-box !important;
+/* NOUVEAU : Checkbox carrées classiques pour les réponses du QCM */
+input[type="checkbox"].q-correct-cb {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 22px;
+    height: 22px;
+    background: #222;
+    border: 2px solid #555;
+    border-radius: 4px;
+    cursor: pointer;
+    position: relative;
+    transition: 0.2s;
+    flex-shrink: 0;
+}
+input[type="checkbox"].q-correct-cb:checked {
+    background: var(--accent-green);
+    border-color: var(--accent-green);
+}
+input[type="checkbox"].q-correct-cb:checked::after {
+    content: '✔';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #000;
+    font-weight: bold;
+    font-size: 14px;
 }
