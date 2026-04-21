@@ -6,12 +6,12 @@
 
 :root {
     --left-panel-width: 260px;
+    --left-panel-mini-width: 70px; /* La nouvelle largeur "réduite" */
     --right-panel-width: 280px;
     --header-height: 60px;
     --transition-speed: 0.3s;
 }
 
-/* Structure globale */
 body {
     margin: 0;
     padding: 0;
@@ -28,29 +28,20 @@ body {
     position: relative;
 }
 
-/* --- PANNEAUX LATERAUX --- */
 .side-panel {
     height: 100%;
     position: fixed;
     top: 0;
     bottom: 0;
     z-index: 100;
-    transition: transform var(--transition-speed) ease-in-out;
+    transition: transform var(--transition-speed) ease-in-out, width var(--transition-speed) ease-in-out;
     display: flex;
     flex-direction: column;
 }
 
-#left-panel {
-    left: 0;
-    width: var(--left-panel-width);
-}
+#left-panel { left: 0; width: var(--left-panel-width); }
+#right-panel { right: 0; width: var(--right-panel-width); }
 
-#right-panel {
-    right: 0;
-    width: var(--right-panel-width);
-}
-
-/* --- CONTENU CENTRAL --- */
 #main-content {
     flex-grow: 1;
     height: 100%;
@@ -71,21 +62,10 @@ body {
     transition: left var(--transition-speed), right var(--transition-speed);
 }
 
-.content-wrapper {
-    padding: 2rem;
-    max-width: 1200px;
-    margin: 0 auto;
-}
+.content-wrapper { padding: 2rem; max-width: 1200px; margin: 0 auto; }
 
-/* Vues administratives (Onglets) */
-.admin-view {
-    display: none;
-    animation: fadeIn 0.3s ease-in-out;
-}
-
-.admin-view.active {
-    display: block;
-}
+.admin-view { display: none; animation: fadeIn 0.3s ease-in-out; }
+.admin-view.active { display: block; }
 
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(10px); }
@@ -105,10 +85,25 @@ body {
         right: var(--right-panel-width);
     }
     .mobile-toggle { display: flex; }
-    .app-container.left-collapsed #left-panel { transform: translateX(-100%); }
-    .app-container.left-collapsed #main-content { margin-left: 0; }
-    .app-container.left-collapsed .top-bar { left: 0; }
 
+    /* ETAT REDUIT (MINI-BARRE) POUR LE PANNEAU GAUCHE */
+    .app-container.left-collapsed #left-panel { width: var(--left-panel-mini-width); }
+    .app-container.left-collapsed #main-content { margin-left: var(--left-panel-mini-width); }
+    .app-container.left-collapsed .top-bar { left: var(--left-panel-mini-width); }
+    
+    /* Rotation de la flèche de 180° */
+    .app-container.left-collapsed #btn-toggle-left { transform: rotate(180deg); }
+
+    /* On cache le texte quand c'est réduit */
+    .app-container.left-collapsed .nav-text, 
+    .app-container.left-collapsed .logo-text { display: none; }
+    .app-container.left-collapsed .logo-mini { display: block !important; }
+    
+    .app-container.left-collapsed .panel-header { justify-content: center; padding: 0; }
+    .app-container.left-collapsed .nav-item { padding: 0.8rem 0; justify-content: center; }
+    .app-container.left-collapsed .nav-item svg { margin-right: 0; }
+
+    /* LE PANNEAU DROIT disparait totalement (Pas de mini-barre à droite) */
     .app-container.right-collapsed #right-panel { transform: translateX(100%); }
     .app-container.right-collapsed #main-content { margin-right: 0; }
     .app-container.right-collapsed .top-bar { right: 0; }
@@ -117,18 +112,11 @@ body {
 /* 2. Ecrans Moyens (Tablettes / Petits Laptops) */
 @media (max-width: 1024px) {
     #right-panel { transform: translateX(100%); }
-    #main-content {
-        margin-left: var(--left-panel-width);
-        margin-right: 0;
-    }
-    .top-bar {
-        left: var(--left-panel-width);
-        right: 0;
-    }
+    #main-content { margin-left: var(--left-panel-width); margin-right: 0; }
+    .top-bar { left: var(--left-panel-width); right: 0; }
     .mobile-toggle.right-toggle { display: flex; }
     .mobile-toggle.left-toggle { display: none; }
 
-    /* Classes appliquées via JS quand le panneau de droite s'ouvre */
     .app-container.right-open #right-panel { transform: translateX(0); }
 }
 
@@ -139,7 +127,5 @@ body {
     .top-bar { left: 0; }
     .mobile-toggle.left-toggle { display: flex; }
 
-    /* Classes appliquées via JS quand les panneaux s'ouvrent */
     .app-container.left-open #left-panel { transform: translateX(0); }
-    /* Sur mobile, on affiche qu'une vue à la fois, le contenu central passe dessous */
 }
