@@ -3,163 +3,116 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Silencio - Administration Web</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@200;400;600&display=swap" rel="stylesheet">
-    
-    <link rel="stylesheet" href="css/admin-layout.css?v=1.0">
-    <link rel="stylesheet" href="css/admin.css?v=3.0">
+    <title>SBI Console - Administration</title>
+    <link rel="stylesheet" href="css/admin-layout.css">
+    <link rel="stylesheet" href="css/admin.css">
 </head>
 <body>
 
-    <div id="login-overlay" class="login-overlay">
-        <div id="login-box" class="login-box hidden">
-            <h2>SBI <span>WEB</span></h2>
-            <form id="login-form">
-                <div class="form-group"><input type="email" id="admin-email" placeholder="Email" required autocomplete="username"></div>
-                <div class="form-group"><input type="password" id="admin-password" placeholder="Mot de passe" required autocomplete="current-password"></div>
-                <button type="submit" class="btn-primary" style="width: 100%;">Connexion</button>
-                <p id="login-error" class="error-text hidden">Identifiants incorrects.</p>
-            </form>
-            <div style="margin-top: 2rem;">
-                <a href="../index.html" class="back-link-login">← Retour au site public</a>
-            </div>
+<div class="app-container" id="app-container">
+
+    <aside id="left-panel" class="side-panel">
+        <div class="panel-header">
+            <span style="color: var(--accent-blue);">🔥 SBI</span> Console
         </div>
-    </div>
+        <ul class="nav-menu">
+            <li class="nav-item active" data-target="view-dashboard">
+                <svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
+                Tableau de Bord
+            </li>
+            <li class="nav-item" data-target="view-users">
+                <svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+                Utilisateurs
+            </li>
+            <li class="nav-item" data-target="view-formations">
+                <svg viewBox="0 0 24 24"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/></svg>
+                Formations
+            </li>
+            <li class="nav-item" data-target="view-settings">
+                <svg viewBox="0 0 24 24"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.06-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.73,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.06,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.43-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.49-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/></svg>
+                Paramètres
+            </li>
+        </ul>
+    </aside>
 
-    <div id="toast" class="toast hidden">Action réussie.</div>
+    <header class="top-bar">
+        <button class="mobile-toggle left-toggle" id="btn-toggle-left">
+            <svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+        </button>
+        <span class="page-title" style="font-weight: 600;">SBI Admin</span>
+        <button class="mobile-toggle right-toggle" id="btn-toggle-right">
+            <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+        </button>
+    </header>
 
-    <div class="admin-app-container">
+    <main id="main-content">
+        <div class="content-wrapper">
+
+            <section id="view-dashboard" class="admin-view active">
+                <h2>Données analytiques</h2>
+                <p style="color: var(--text-muted);">Aperçu global de la plateforme à venir ici.</p>
+            </section>
+
+            <section id="view-users" class="admin-view">
+                <h2>Gestion des Utilisateurs</h2>
+                </section>
+
+            <section id="view-formations" class="admin-view">
+                <h2>Structure de Formations</h2>
+                <p style="color: var(--text-muted);">Sélectionnez le module pédagogique à gérer :</p>
+                
+                <div class="formations-grid">
+                    <a href="formations-cours.html" class="formation-card">
+                        <svg viewBox="0 0 24 24"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12zM10 9h8v2h-8zm0 3h4v2h-4zm0-6h8v2h-8z"/></svg>
+                        <h3>C O U R S</h3>
+                        <p>Vidéos, PDF, Chapitres et Quizz</p>
+                    </a>
+
+                    <a href="formations-live.html" class="formation-card live">
+                        <svg viewBox="0 0 24 24"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4zM14 13h-3v3H9v-3H6v-2h3V8h2v3h3v2z"/></svg>
+                        <h3>L I V E</h3>
+                        <p>Masterclass et Sessions en Direct</p>
+                    </a>
+                </div>
+            </section>
+
+            <section id="view-settings" class="admin-view">
+                <h2>Paramètres Plateforme</h2>
+            </section>
+
+        </div>
+    </main>
+
+    <aside id="right-panel" class="side-panel">
+        <div class="panel-header" style="justify-content: flex-end;">
+            <svg style="width: 20px; height: 20px; fill: var(--text-muted); cursor: pointer;" viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/></svg>
+        </div>
         
-        <aside class="admin-sidebar-left admin-sidebar" id="sidebar-left">
-            <div class="admin-logo">SBI <span>WEB</span></div>
-            <nav>
-                <a href="#projets" class="active">Gestion des Projets</a>
-                <a href="#accueil">Vidéo d'Accueil</a>
-                <a href="#apropos">À Propos</a>
-                <a href="#contact">Contact & Réseaux</a>
-                <a href="#equipe">L'Équipe</a>
-                <a href="#formation">Formation</a> 
-            </nav>
-            <div class="sidebar-footer">
-                <a href="../index.html" target="_blank" class="btn-secondary" style="display: block; text-align: center; margin-bottom: 15px; text-decoration: none; font-size: 0.8rem;">Voir le site</a>
-            </div>
-        </aside>
-
-        <main class="admin-main-wrapper">
-            
-            <header class="admin-topbar">
-                <div class="topbar-left">
-                    <button id="ui-toggle-left" class="ui-icon-btn">☰</button>
-                    <span class="topbar-title" id="main-topbar-title">Tableau de bord</span>
-                </div>
-                
-                <div class="topbar-right">
-                    <button class="ui-icon-btn" title="Rafraîchir le cache" onclick="window.location.reload(true);">🔄</button>
-                    <button class="ui-icon-btn" id="ui-toggle-right" title="Notifications & Profil">🔔</button>
-                    <div class="profile-bubble" id="ui-profile-btn">A</div>
-                </div>
-            </header>
-
-            <div class="admin-content-area">
-                
-                <header class="content-header">
-                    <h1 id="main-content-title">Projets en Production</h1>
-                    <button id="btn-add-new" class="btn-primary">+ Nouveau</button>
-                </header>
-
-                <div class="dashboard-grid">
-                    
-                    <section id="view-list" class="panel list-panel" data-tab="projets">
-                        <div class="search-container" style="margin-bottom: 1.5rem; position: relative;">
-                            <input type="text" id="search-project" placeholder="Rechercher un film par titre..." style="width: 100%; padding: 12px 12px 12px 40px; background: var(--color-bg); border: 1px solid var(--color-border); color: var(--color-text); border-radius: 4px; font-family: inherit;">
-                            <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); opacity: 0.5;">🔍</span>
-                        </div>
-                        <div class="list-scroll-container">
-                            <ul id="project-list" class="sortable-list"></ul>
-                        </div>
-                    </section>
-
-                    <section id="panel-formation" class="panel hidden" data-tab="formation" style="grid-column: 1 / -1;">
-                        <div class="formation-grid">
-                            <a href="cours.html" class="formation-card">
-                                <div class="formation-icon">📚</div>
-                                <h3>Gestion des COURS</h3>
-                                <p>Gérez vos modules et leçons</p>
-                            </a>
-                            <a href="live.html" class="formation-card">
-                                <div class="formation-icon">🎥</div>
-                                <h3>Gestion des LIVES</h3>
-                                <p>Programmez vos sessions en direct</p>
-                            </a>
-                        </div>
-                    </section>
-
+        <div class="right-section">
+            <div class="profile-widget">
+                <div class="avatar">A</div>
+                <div class="user-info">
+                    <p class="name">Antony</p>
+                    <p class="role">Admin Suprême</p>
                 </div>
             </div>
-        </main>
 
-        <aside class="admin-sidebar-right" id="sidebar-right">
-            <div class="right-panel-header">
-                <h3>Mon Profil</h3>
-                <button id="ui-close-right" class="ui-icon-btn">✕</button>
-            </div>
-            <div class="right-panel-content">
-                <div class="profile-info">
-                    <div class="profile-bubble large">A</div>
-                    <h4>Antony</h4>
-                    <p>Directeur Artistique</p>
-                </div>
-                
-                <div class="notification-zone">
-                    <h5>Notifications</h5>
-                    <div class="notif-item">✔️ Mise à jour v2.0 installée</div>
-                    <div class="notif-item">🔔 Pensez à vérifier le cache</div>
-                </div>
-            </div>
-            <div class="right-panel-footer">
-                <button class="btn-primary logout-btn" style="width: 100%; background: #222;">Déconnexion</button>
-            </div>
-        </aside>
+            <button class="action-btn" id="btn-clear-cache">
+                <svg viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+                Rafraîchir le Cache
+            </button>
 
-        <div id="ui-mobile-overlay" class="ui-overlay hidden"></div>
+            <button class="action-btn danger" id="logout-btn">
+                <svg viewBox="0 0 24 24"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
+                Déconnexion
+            </button>
+        </div>
+    </aside>
 
-    </div>
-    
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const btnLeft = document.getElementById('ui-toggle-left');
-            const btnRight = document.getElementById('ui-toggle-right');
-            const btnProfile = document.getElementById('ui-profile-btn');
-            const btnCloseRight = document.getElementById('ui-close-right');
-            const sidebarLeft = document.getElementById('sidebar-left');
-            const sidebarRight = document.getElementById('sidebar-right');
-            const overlay = document.getElementById('ui-mobile-overlay');
+</div>
 
-            function closeAll() {
-                sidebarLeft.classList.remove('is-open');
-                sidebarRight.classList.remove('is-open');
-                overlay.classList.add('hidden');
-            }
+<script type="module" src="js/admin-ui.js"></script>
+<script type="module" src="js/admin-core.js"></script>
 
-            btnLeft.addEventListener('click', () => {
-                sidebarLeft.classList.toggle('is-open');
-                if(window.innerWidth <= 1024) overlay.classList.remove('hidden');
-            });
-
-            const toggleRight = () => {
-                sidebarRight.classList.toggle('is-open');
-                if(sidebarRight.classList.contains('is-open') && window.innerWidth <= 1024) overlay.classList.remove('hidden');
-            };
-
-            btnRight.addEventListener('click', toggleRight);
-            btnProfile.addEventListener('click', toggleRight);
-            btnCloseRight.addEventListener('click', closeAll);
-            overlay.addEventListener('click', closeAll);
-        });
-    </script>
-
-    <script type="module" src="js/admin-core.js?v=6.0"></script>
 </body>
 </html>
