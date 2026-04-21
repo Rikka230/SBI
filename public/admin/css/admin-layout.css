@@ -1,112 +1,139 @@
-/* =========================================================
-   1. VARIABLES DE STRUCTURE (ADMIN LAYOUT)
-   ========================================================= */
+/**
+ * =======================================================================
+ * ADMIN LAYOUT - Squelette et Responsive (A-Z)
+ * =======================================================================
+ */
+
 :root {
-    --sidebar-left-width: 260px;
-    --sidebar-right-width: 300px;
-    --topbar-height: 70px;
-    --transition-speed: 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+    --left-panel-width: 260px;
+    --right-panel-width: 280px;
+    --header-height: 60px;
+    --transition-speed: 0.3s;
 }
 
-/* =========================================================
-   2. FONDATIONS & CONTENEUR PRINCIPAL
-   ========================================================= */
-html, body {
-    margin: 0; padding: 0; width: 100%; height: 100%;
-    overflow: hidden; /* Empêche le scroll global, chaque zone aura le sien */
-}
-
-.admin-app-container {
+/* Structure globale */
+body {
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
     display: flex;
+    height: 100vh;
     width: 100vw;
-    height: 100vh;
+}
+
+.app-container {
+    display: flex;
+    width: 100%;
+    height: 100%;
     position: relative;
-    overflow: hidden;
 }
 
-/* =========================================================
-   3. PANNEAU GAUCHE (NAVIGATION)
-   ========================================================= */
-.admin-sidebar-left {
-    width: var(--sidebar-left-width);
-    height: 100vh;
-    flex-shrink: 0;
-    display: flex;
-    flex-direction: column;
-    transition: transform var(--transition-speed);
-    z-index: 100;
-}
-
-/* =========================================================
-   4. ZONE CENTRALE (TOPBAR + CONTENU)
-   ========================================================= */
-.admin-main-wrapper {
-    flex-grow: 1;
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
-    min-width: 0; /* Empêche le débordement sur les petits écrans */
-    transition: margin var(--transition-speed);
-}
-
-.admin-topbar {
-    height: var(--topbar-height);
-    flex-shrink: 0;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0 2rem;
-    z-index: 90;
-}
-
-.admin-content-area {
-    flex-grow: 1;
-    overflow-y: auto; /* Le scroll se fait uniquement ici */
-    padding: 2rem;
-}
-
-/* =========================================================
-   5. PANNEAU DROIT (PROFIL & NOTIFICATIONS)
-   ========================================================= */
-.admin-sidebar-right {
+/* --- PANNEAUX LATERAUX --- */
+.side-panel {
+    height: 100%;
     position: fixed;
     top: 0;
-    right: 0;
-    width: var(--sidebar-right-width);
-    height: 100vh;
-    transform: translateX(100%); /* Caché par défaut */
-    transition: transform var(--transition-speed);
-    z-index: 110;
+    bottom: 0;
+    z-index: 100;
+    transition: transform var(--transition-speed) ease-in-out;
     display: flex;
     flex-direction: column;
 }
 
-.admin-sidebar-right.is-open {
-    transform: translateX(0);
+#left-panel {
+    left: 0;
+    width: var(--left-panel-width);
 }
 
-/* =========================================================
-   6. RESPONSIVE & ADAPTABILITÉ (MÉCANIQUE MOBILE)
-   ========================================================= */
+#right-panel {
+    right: 0;
+    width: var(--right-panel-width);
+}
+
+/* --- CONTENU CENTRAL --- */
+#main-content {
+    flex-grow: 1;
+    height: 100%;
+    overflow-y: auto;
+    transition: margin var(--transition-speed) ease-in-out;
+    padding-top: var(--header-height);
+}
+
+.top-bar {
+    position: fixed;
+    top: 0;
+    height: var(--header-height);
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 1rem;
+    transition: left var(--transition-speed), right var(--transition-speed);
+}
+
+.content-wrapper {
+    padding: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* Vues administratives (Onglets) */
+.admin-view {
+    display: none;
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+.admin-view.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- ADAPTABILITÉ (RESPONSIVE) --- */
+
+/* 1. Ecrans PC (Larges) */
+@media (min-width: 1025px) {
+    #main-content {
+        margin-left: var(--left-panel-width);
+        margin-right: var(--right-panel-width);
+    }
+    .top-bar {
+        left: var(--left-panel-width);
+        right: var(--right-panel-width);
+    }
+    /* Les boutons "Menu" de la barre du haut sont cachés sur PC */
+    .mobile-toggle { display: none; }
+}
+
+/* 2. Ecrans Moyens (Tablettes / Petits Laptops) */
 @media (max-width: 1024px) {
-    /* Sur mobile/tablette, le panneau gauche devient volant et caché par défaut */
-    .admin-sidebar-left {
-        position: fixed;
-        left: 0;
-        top: 0;
-        transform: translateX(-100%);
+    #right-panel { transform: translateX(100%); }
+    #main-content {
+        margin-left: var(--left-panel-width);
+        margin-right: 0;
     }
-    
-    .admin-sidebar-left.is-open {
-        transform: translateX(0);
+    .top-bar {
+        left: var(--left-panel-width);
+        right: 0;
     }
-    
-    /* Le contenu central prend 100% de l'espace */
-    .admin-main-wrapper {
-        width: 100vw;
-    }
-    
-    .admin-content-area {
-        padding: 1rem;
-    }
+    .mobile-toggle.right-toggle { display: flex; }
+    .mobile-toggle.left-toggle { display: none; }
+
+    /* Classes appliquées via JS quand le panneau de droite s'ouvre */
+    .app-container.right-open #right-panel { transform: translateX(0); }
+}
+
+/* 3. Ecrans Mobiles */
+@media (max-width: 768px) {
+    #left-panel { transform: translateX(-100%); }
+    #main-content { margin-left: 0; }
+    .top-bar { left: 0; }
+    .mobile-toggle.left-toggle { display: flex; }
+
+    /* Classes appliquées via JS quand les panneaux s'ouvrent */
+    .app-container.left-open #left-panel { transform: translateX(0); }
+    /* Sur mobile, on affiche qu'une vue à la fois, le contenu central passe dessous */
 }
