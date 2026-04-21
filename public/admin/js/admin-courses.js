@@ -171,11 +171,18 @@ window.selectChapter = function(id) {
 
     document.getElementById('no-chapter-zone').style.display = 'none';
 
-    if (chap.type === 'text') {
+    // CORRECTION CRITIQUE : Rétrocompatibilité pour les anciens cours
+    if (chap.type === 'quiz') {
+        document.getElementById('chapter-editor-zone').style.display = 'none';
+        document.getElementById('quiz-editor-zone').style.display = 'flex';
+        document.getElementById('quiz-title').value = chap.titre || '';
+        renderQuizBuilder(chap.questions || []);
+    } else {
+        // PAR DÉFAUT (Anciens cours + Nouveaux Textes)
         document.getElementById('quiz-editor-zone').style.display = 'none';
         document.getElementById('chapter-editor-zone').style.display = 'flex';
         
-        document.getElementById('chapter-title').value = chap.titre;
+        document.getElementById('chapter-title').value = chap.titre || '';
 
         if(chap.mediaType === 'video') {
             document.querySelector('input[name="media_type"][value="video"]').checked = true;
@@ -197,18 +204,10 @@ window.selectChapter = function(id) {
         if(chap.mediaImage) { iPreview.src = chap.mediaImage; iPreview.style.display = 'block'; } 
         else { iPreview.style.display = 'none'; }
 
-        // === RÉPARATION CRITIQUE QUILL ===
-        // On réinitialise l'éditeur proprement et on utilise le paste sécurisé pour le garder cliquable !
         if(window.quill) {
             window.quill.setContents([]);
             window.quill.clipboard.dangerouslyPasteHTML(chap.contenu || '');
         }
-
-    } else {
-        document.getElementById('chapter-editor-zone').style.display = 'none';
-        document.getElementById('quiz-editor-zone').style.display = 'flex';
-        document.getElementById('quiz-title').value = chap.titre;
-        renderQuizBuilder(chap.questions || []);
     }
 
     renderChaptersList();
