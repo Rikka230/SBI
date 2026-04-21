@@ -7,13 +7,23 @@
     <link rel="stylesheet" href="css/admin-layout.css">
     <link rel="stylesheet" href="css/admin.css">
     
-    <style> .admin-view { display: none !important; } </style>
     <script>
+        // Mémorisation propre de l'URL pour les onglets
         const urlParams = new URLSearchParams(window.location.search);
         const activeTab = urlParams.get('tab') || sessionStorage.getItem('activeAdminTab') || 'view-dashboard';
         sessionStorage.setItem('activeAdminTab', activeTab);
-        document.write(`<style>#${activeTab} { display: block !important; }</style>`);
-        window.history.replaceState({}, document.title, window.location.pathname); // Nettoie l'URL
+        
+        // Style temporaire supprimé dès que la page est chargée
+        document.write(`<style id="anti-flash-style">
+            .admin-view { display: none; }
+            #${activeTab} { display: block; }
+        </style>`);
+        window.history.replaceState({}, document.title, window.location.pathname);
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            const styleNode = document.getElementById('anti-flash-style');
+            if(styleNode) styleNode.remove(); // Rend le contrôle au Javascript !
+        });
     </script>
 </head>
 <body class="preload">
@@ -91,6 +101,7 @@
                 </div>
 
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem;">
+                    
                     <div style="background: var(--bg-card); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); height: fit-content;">
                         <h3 style="margin-top: 0;">Créer un compte</h3>
                         <form id="create-user-form" style="display: flex; flex-direction: column; gap: 1rem;">
@@ -116,7 +127,8 @@
 
                     <div style="background: var(--bg-card); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color);">
                         <h3 style="margin-top: 0;">Comptes existants</h3>
-                        <div id="users-list-container" style="display: flex; flex-direction: column; gap: 0.5rem;"></div>
+                        <div id="users-list-container" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                            </div>
                     </div>
                 </div>
             </section>
