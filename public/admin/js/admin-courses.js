@@ -235,9 +235,11 @@ window.openFormationModal = function(formationId) {
         const name = (u.prenom || u.nom) ? `${u.prenom || ''} ${u.nom || ''}`.trim() : u.email;
 
         const checkboxHtml = `
-            <label style="display: flex; align-items: center; gap: 0.5rem; color: white; font-size: 0.85rem; cursor: pointer;">
-                <input type="checkbox" class="cb-formation-user" data-uid="${u.id}" data-role="${u.role}" ${isChecked}>
-                ${name}
+            <label class="compact-user-row">
+                <input type="checkbox" class="cb-formation-user compact-cb" data-uid="${u.id}" data-role="${u.role}" ${isChecked}>
+                <span style="font-size: 0.85rem; color: #ddd; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; width: 100%;">
+                    ${name}
+                </span>
             </label>
         `;
 
