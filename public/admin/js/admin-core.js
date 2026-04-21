@@ -48,7 +48,6 @@ const renderUsersList = (usersToRender) => {
     const container = document.getElementById('users-list-container');
     if(!container) return;
     
-    // Nettoyage (on retire l'ancien scroll horizontal)
     container.innerHTML = ''; 
     container.style.overflowX = 'hidden';
     container.style.paddingBottom = '0';
@@ -61,29 +60,45 @@ const renderUsersList = (usersToRender) => {
         const displayName = (user.prenom && user.nom) ? `${user.prenom} ${user.nom}` : (user.nom || "Sans nom");
         const statusLabel = user.statut === 'suspendu' ? '<span style="color: #ff4a4a; font-weight:bold;">Suspendu</span>' : '<span style="color: #2ed573; font-weight:bold;">Actif</span>';
         
-        // Style harmonisé pour les étiquettes (Rôle et Bouton Éditer)
-        const badgeStyle = "padding: 4px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; display: inline-block; text-align: center; width: 100%; text-transform: uppercase; letter-spacing: 0.5px;";
-        
-        // Le Rôle n'est plus un bouton, juste un fond coloré léger et élégant
-        let roleBadge = '';
-        if (user.isGod) roleBadge = `<span style="${badgeStyle} background: rgba(255, 215, 0, 0.08); color: #ffd700;">Suprême</span>`;
-        else if(user.role === 'admin') roleBadge = `<span style="${badgeStyle} background: rgba(255, 74, 74, 0.08); color: #ff4a4a;">Admin</span>`;
-        else if(user.role === 'teacher') roleBadge = `<span style="${badgeStyle} background: rgba(251, 188, 4, 0.08); color: #fbbc04;">Prof</span>`;
-        else if(user.role === 'student') roleBadge = `<span style="${badgeStyle} background: rgba(0, 255, 163, 0.08); color: #00ffa3;">Élève</span>`;
+        // On prépare les couleurs pleines pour la colonne "Rôle"
+        let roleBgColor = '';
+        let roleTextColor = '';
+        let roleText = '';
 
-        // Le bouton Éditer reprend exactement le même design que le rôle (en bleu)
-        const editBtnStyle = `${badgeStyle} background: rgba(42, 87, 255, 0.1); color: #2A57FF; border: none; cursor: pointer; transition: background-color 0.2s;`;
+        if (user.isGod) {
+            roleBgColor = 'rgba(255, 215, 0, 0.15)'; roleTextColor = '#ffd700'; roleText = '👑 Suprême';
+        } else if(user.role === 'admin') {
+            roleBgColor = 'rgba(255, 74, 74, 0.15)'; roleTextColor = '#ff4a4a'; roleText = 'Admin';
+        } else if(user.role === 'teacher') {
+            roleBgColor = 'rgba(251, 188, 4, 0.15)'; roleTextColor = '#fbbc04'; roleText = 'Prof';
+        } else if(user.role === 'student') {
+            roleBgColor = 'rgba(0, 255, 163, 0.15)'; roleTextColor = '#00ffa3'; roleText = 'Élève';
+        }
 
-        // Grille resserrée (gap réduit), petite police (0.8rem) et colonnes ajustées
+        // On utilise "align-items: stretch" pour que les bords fassent toute la hauteur
+        // On a enlevé le "padding" global de la carte pour le mettre uniquement sur les textes du milieu
         const userCardHTML = `
-            <div style="background: #0a0a0c; padding: 0.6rem 0.8rem; border: 1px solid #222; border-radius: 6px; margin-bottom: 0.4rem; display: grid; grid-template-columns: 75px 1fr 1.5fr 70px 75px; gap: 0.8rem; align-items: center; opacity: ${user.statut === 'suspendu' ? '0.6' : '1'}; font-size: 0.8rem;">
-                <div>${roleBadge}</div>
-                <div style="color: white; font-weight: bold; word-break: break-word; min-width: 0;">${displayName}</div>
-                <div style="color: #9ca3af; word-break: break-word; min-width: 0;">${user.email}</div>
-                <div style="text-align: center;">${statusLabel}</div>
-                <div>
-                    <button class="btn-edit-user" data-id="${user.id}" style="${editBtnStyle}" onmouseover="this.style.background='rgba(42, 87, 255, 0.2)'" onmouseout="this.style.background='rgba(42, 87, 255, 0.1)'">Éditer</button>
+            <div style="background: #0a0a0c; border: 1px solid #222; border-radius: 6px; margin-bottom: 0.4rem; display: grid; grid-template-columns: 85px 1fr 1.5fr 70px 85px; align-items: stretch; opacity: ${user.statut === 'suspendu' ? '0.6' : '1'}; font-size: 0.8rem; overflow: hidden;">
+                
+                <div style="background: ${roleBgColor}; color: ${roleTextColor}; display: flex; align-items: center; justify-content: center; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; font-size: 0.7rem; border-right: 1px solid #222;">
+                    ${roleText}
                 </div>
+
+                <div style="color: white; font-weight: bold; word-break: break-word; min-width: 0; padding: 0.6rem 0.8rem; display: flex; align-items: center;">
+                    ${displayName}
+                </div>
+                
+                <div style="color: #9ca3af; word-break: break-word; min-width: 0; padding: 0.6rem 0.8rem; display: flex; align-items: center;">
+                    ${user.email}
+                </div>
+                
+                <div style="text-align: center; padding: 0.6rem 0.8rem; display: flex; align-items: center; justify-content: center;">
+                    ${statusLabel}
+                </div>
+                
+                <button class="btn-edit-user" data-id="${user.id}" style="background: rgba(42, 87, 255, 0.1); color: #2A57FF; border: none; border-left: 1px solid #222; cursor: pointer; transition: background-color 0.2s; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; font-size: 0.7rem; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; padding: 0;" onmouseover="this.style.background='rgba(42, 87, 255, 0.2)'" onmouseout="this.style.background='rgba(42, 87, 255, 0.1)'">
+                    Éditer
+                </button>
             </div>
         `;
         container.insertAdjacentHTML('beforeend', userCardHTML);
