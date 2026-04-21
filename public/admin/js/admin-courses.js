@@ -1,6 +1,6 @@
 /**
  * =======================================================================
- * ADMIN COURSES - Gestion des Cours, Examens et Formations (A-Z)
+ * ADMIN COURSES - Gestion des Cours, Examens et Medias (A-Z)
  * =======================================================================
  */
 
@@ -14,40 +14,54 @@ let activeChapterId = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     
-    // 1. Authentification
     onAuthStateChanged(auth, (user) => {
-        if (user) {
-            currentUid = user.uid;
-            loadCourses();
-        } else {
-            window.location.replace('/login.html');
-        }
+        if (user) { currentUid = user.uid; loadCourses(); }
     });
 
-    // 2. Écouteurs de base
     document.getElementById('btn-save-course').addEventListener('click', saveCourseToFirebase);
     document.getElementById('btn-add-chapter').addEventListener('click', () => createNewChapter('text'));
     document.getElementById('btn-add-quiz').addEventListener('click', () => createNewChapter('quiz'));
 
-    // 3. Gestionnaire des "Pilules" de Catégorie (Formations)
+    // Sélection des Pilules de Formation
     document.querySelectorAll('.formation-pill').forEach(pill => {
-        pill.addEventListener('click', (e) => {
-            e.target.classList.toggle('selected');
-        });
+        pill.addEventListener('click', (e) => e.target.classList.toggle('selected'));
     });
 
-    // 4. Mise à jour du titre en temps réel dans la liste
-    document.getElementById('chapter-title').addEventListener('input', updateActiveTitle);
-    document.getElementById('quiz-title').addEventListener('input', updateActiveTitle);
-
-    function updateActiveTitle(e) {
+    // Mise à jour du titre en temps réel
+    document.getElementById('chapter-title').addEventListener('input', (e) => {
         if(activeChapterId) {
             const chap = currentChapters.find(c => c.id === activeChapterId);
             if(chap) { chap.titre = e.target.value; renderChaptersList(); }
         }
-    }
-});
+    });
 
+    // COMPRESSION D'IMAGE A LA VOLÉE (Optimisation WebP)
+    document.getElementById('chapter-image-upload').addEventListener('change', async function(e) {
+        const file = e.target.files[0];
+        if(!file) return;
+        
+        const img = new Image();
+        img.src = URL.createObjectURL(file);
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const MAX_WIDTH = 1000; // Largeur max pour économiser la place
+            const scaleSize = MAX_WIDTH / img.width;
+            canvas.width = MAX_WIDTH;
+            canvas.height = img.height * scaleSize;
+            
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            
+            // Conversion en Base64 format WebP (Qualité 80%)
+            const dataUrl = canvas.toDataURL('image/webp', 0.8);
+            
+            document.getElementById('chapter-image-base64').value = dataUrl;
+            const preview = document.getElementById('chapter-image-preview');
+            preview.src = dataUrl;
+            preview.style.display = 'block';
+        };
+    });
+});
 
 /* =========================================================
    LOGIQUE DE L'INTERFACE D'ÉDITION
@@ -62,7 +76,6 @@ window.prepareNewCourse = function() {
     
     document.getElementById('no-chapter-zone').style.display = 'flex';
     document.getElementById('chapter-editor-zone').style.display = 'none';
-    document.getElementById('quiz-editor-zone').style.display = 'none';
     
     renderChaptersList();
     window.switchCourseTab('tab-editor');
@@ -74,10 +87,12 @@ function createNewChapter(type) {
     const newId = 'chap_' + Date.now().toString();
     const newChap = {
         id: newId,
-        type: type, // 'text' ou 'quiz'
-        titre: type === 'quiz' ? `Examen` : `Leçon ${currentChapters.filter(c=>c.type==='text').length + 1}`,
+        type: type,
+        titre: type === 'quiz' ? `Examen Final` : `Leçon ${currentChapters.filter(c=>c.type==='text').length + 1}`,
         contenu: '',
-        image: ''
+        mediaType: 'image',
+        mediaImage: '',
+        mediaVideo: ''
     };
     
     currentChapters.push(newChap);
@@ -91,34 +106,49 @@ function saveCurrentChapterContent() {
 
     if (chap.type === 'text') {
         chap.titre = document.getElementById('chapter-title').value;
-        chap.image = document.getElementById('chapter-image').value;
+        chap.mediaType = document.querySelector('input[name="media_type"]:checked').value;
+        chap.mediaImage = document.getElementById('chapter-image-base64').value;
+        chap.mediaVideo = document.getElementById('chapter-video-url').value;
         chap.contenu = window.quill ? window.quill.root.innerHTML : '';
-    } else if (chap.type === 'quiz') {
-        chap.titre = document.getElementById('quiz-title').value;
-        // Données du quiz à sauvegarder plus tard
     }
 }
 
 window.selectChapter = function(id) {
     saveCurrentChapterContent(); 
-    
     activeChapterId = id;
     const chap = currentChapters.find(c => c.id === id);
     if(!chap) return;
 
     document.getElementById('no-chapter-zone').style.display = 'none';
+    document.getElementById('chapter-editor-zone').style.display = 'flex';
+    
+    document.getElementById('chapter-title').value = chap.titre;
 
-    if (chap.type === 'text') {
-        document.getElementById('quiz-editor-zone').style.display = 'none';
-        document.getElementById('chapter-editor-zone').style.display = 'flex';
-        
-        document.getElementById('chapter-title').value = chap.titre;
-        document.getElementById('chapter-image').value = chap.image || '';
-        if(window.quill) window.quill.root.innerHTML = chap.contenu || '';
+    // Restauration des médias
+    if(chap.mediaType === 'video') {
+        document.querySelector('input[name="media_type"][value="video"]').checked = true;
+        document.getElementById('media-image-zone').style.display = 'none';
+        document.getElementById('media-video-zone').style.display = 'flex';
     } else {
-        document.getElementById('chapter-editor-zone').style.display = 'none';
-        document.getElementById('quiz-editor-zone').style.display = 'flex';
-        document.getElementById('quiz-title').value = chap.titre;
+        document.querySelector('input[name="media_type"][value="image"]').checked = true;
+        document.getElementById('media-image-zone').style.display = 'flex';
+        document.getElementById('media-video-zone').style.display = 'none';
+    }
+    
+    document.getElementById('chapter-video-url').value = chap.mediaVideo || '';
+    document.getElementById('chapter-image-base64').value = chap.mediaImage || '';
+    
+    const preview = document.getElementById('chapter-image-preview');
+    if(chap.mediaImage) {
+        preview.src = chap.mediaImage;
+        preview.style.display = 'block';
+    } else {
+        preview.style.display = 'none';
+    }
+
+    // CORRECTION DU BUG QUILL : Paste sécurisé
+    if(window.quill) {
+        window.quill.clipboard.dangerouslyPasteHTML(chap.contenu || '');
     }
 
     renderChaptersList();
@@ -132,7 +162,6 @@ window.deleteChapter = function(id, event) {
             activeChapterId = null;
             document.getElementById('no-chapter-zone').style.display = 'flex';
             document.getElementById('chapter-editor-zone').style.display = 'none';
-            document.getElementById('quiz-editor-zone').style.display = 'none';
         }
         renderChaptersList();
     }
@@ -152,7 +181,7 @@ function renderChaptersList() {
         let color = chap.type === 'quiz' ? 'var(--accent-yellow)' : (isActive ? 'var(--accent-blue)' : 'white');
 
         const li = `
-            <li onclick="selectChapter('${chap.id}')" style="padding: 0.8rem; background: ${bg}; border: ${border}; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; color: ${color};">
+            <li onclick="selectChapter('${chap.id}')" style="padding: 0.8rem; background: ${bg}; border: ${border}; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; color: ${color}; font-weight: ${isActive ? 'bold' : 'normal'};">
                 <span style="flex-grow: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${icon}${chap.titre}</span>
                 <button onclick="deleteChapter('${chap.id}', event)" style="background:none; border:none; color:var(--accent-red); cursor:pointer;">&times;</button>
             </li>
@@ -160,7 +189,6 @@ function renderChaptersList() {
         list.insertAdjacentHTML('beforeend', li);
     });
 }
-
 
 /* =========================================================
    FIREBASE : SAUVEGARDE ET CHARGEMENT
@@ -173,10 +201,10 @@ async function saveCourseToFirebase() {
     const title = document.getElementById('course-title').value.trim();
     const isActive = document.getElementById('course-active').checked;
     
-    // Récupérer les "pilules" sélectionnées
     const selectedPills = Array.from(document.querySelectorAll('.formation-pill.selected')).map(p => p.getAttribute('data-val'));
 
-    if (!title) { alert('⚠️ Veuillez entrer un Titre Global pour le cours.'); return; }
+    if (!title) { alert('⚠️ Veuillez entrer un Titre Global.'); return; }
+    if (currentChapters.length === 0) { alert('⚠️ Ajoutez au moins une étape.'); return; }
 
     const saveBtn = document.getElementById('btn-save-course');
     saveBtn.textContent = 'Sauvegarde...';
@@ -192,22 +220,19 @@ async function saveCourseToFirebase() {
         };
 
         if (courseId) {
-            // Mise à jour existant
             await updateDoc(doc(db, "courses", courseId), courseData);
             alert('✅ Cours mis à jour !');
         } else {
-            // Nouveau cours
             courseData.dateCreation = serverTimestamp();
             await addDoc(collection(db, "courses"), courseData);
             alert('✅ Nouveau cours créé !');
         }
         
-        window.prepareNewCourse(); // Reset l'interface
+        window.prepareNewCourse(); 
         loadCourses();
         window.switchCourseTab('tab-list');
 
     } catch (error) {
-        console.error("Erreur:", error);
         alert("❌ Erreur de sauvegarde.");
     } finally {
         saveBtn.textContent = 'Sauvegarder le Cours Complet';
@@ -224,7 +249,7 @@ async function loadCourses() {
         listContainer.innerHTML = '';
         
         if(querySnapshot.empty) {
-            listContainer.innerHTML = '<p style="color:var(--text-muted); text-align:center;">Aucun cours. Cliquez sur + Nouveau Cours.</p>';
+            listContainer.innerHTML = '<p style="color:var(--text-muted); text-align:center;">Aucun cours.</p>';
             return;
         }
 
@@ -232,10 +257,7 @@ async function loadCourses() {
             const data = docSnap.data();
             const courseId = docSnap.id;
             
-            const statusHtml = data.actif 
-                ? `<span style="color: var(--accent-green); font-weight: bold; font-size: 0.8rem;">● ACTIF</span>`
-                : `<span style="color: var(--accent-red); font-weight: bold; font-size: 0.8rem;">● BROUILLON</span>`;
-            
+            const statusHtml = data.actif ? `<span style="color: var(--accent-green); font-weight: bold; font-size: 0.8rem;">● ACTIF</span>` : `<span style="color: var(--accent-red); font-weight: bold; font-size: 0.8rem;">● BROUILLON</span>`;
             const tagsHtml = data.formations ? data.formations.map(f => `<span class="tag">📁 ${f}</span>`).join('') : '';
             const nbChapitres = data.chapitres ? data.chapitres.length : 0;
             
@@ -259,50 +281,43 @@ async function loadCourses() {
     }
 }
 
-// CHARGER UN COURS EXISTANT DANS L'ÉDITEUR
 window.editCourse = async (id) => {
     try {
         const docSnap = await getDoc(doc(db, "courses", id));
         if (docSnap.exists()) {
             const data = docSnap.data();
             
-            // Remplir les données globales
             document.getElementById('edit-course-id').value = id;
             document.getElementById('course-title').value = data.titre || '';
             document.getElementById('course-active').checked = data.actif;
             
-            // Mettre à jour les pilules de sélection
             document.querySelectorAll('.formation-pill').forEach(pill => {
                 const val = pill.getAttribute('data-val');
-                if(data.formations && data.formations.includes(val)) {
-                    pill.classList.add('selected');
-                } else {
-                    pill.classList.remove('selected');
-                }
+                if(data.formations && data.formations.includes(val)) pill.classList.add('selected');
+                else pill.classList.remove('selected');
             });
 
-            // Recharger les chapitres
             currentChapters = data.chapitres || [];
-            activeChapterId = null; // On force l'état zéro au démarrage
             
-            document.getElementById('no-chapter-zone').style.display = 'flex';
-            document.getElementById('chapter-editor-zone').style.display = 'none';
-            document.getElementById('quiz-editor-zone').style.display = 'none';
-            
-            renderChaptersList();
             window.switchCourseTab('tab-editor');
-            
-        } else {
-            alert("Ce cours n'existe plus.");
+            renderChaptersList();
+
+            // BUG CORRIGÉ : Ouvre automatiquement la première étape !
+            if(currentChapters.length > 0) {
+                selectChapter(currentChapters[0].id);
+            } else {
+                activeChapterId = null;
+                document.getElementById('no-chapter-zone').style.display = 'flex';
+                document.getElementById('chapter-editor-zone').style.display = 'none';
+            }
         }
     } catch (error) {
-        console.error("Erreur de chargement", error);
         alert("Impossible de charger le cours.");
     }
 };
 
 window.deleteCourse = async (id) => {
-    if(confirm("Supprimer intégralement ce cours et toutes ses étapes ?")) {
+    if(confirm("Supprimer intégralement ce cours ?")) {
         await deleteDoc(doc(db, "courses", id));
         loadCourses();
     }
