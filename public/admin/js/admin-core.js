@@ -58,11 +58,12 @@ const renderUsersList = (usersToRender) => {
         else if(user.role === 'teacher') roleBadge = '<span style="background: rgba(255, 215, 0, 0.15); color: #ffd700; border: 1px solid rgba(255, 215, 0, 0.4); padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight:bold; display:inline-block;">Enseignant</span>';
         else if(user.role === 'student') roleBadge = '<span style="background: rgba(0, 255, 163, 0.15); color: #00ffa3; border: 1px solid rgba(0, 255, 163, 0.4); padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight:bold; display:inline-block;">Étudiant</span>';
 
+        // L'affichage est débloqué ici avec "word-break: break-word;"
         const userCardHTML = `
             <div style="background: #0a0a0c; padding: 0.8rem 1.2rem; border: 1px solid #222; border-radius: 6px; margin-bottom: 0.5rem; display: grid; grid-template-columns: 120px 1.5fr 2fr 100px 120px; gap: 1rem; align-items: center; opacity: ${user.statut === 'suspendu' ? '0.6' : '1'};">
                 <div>${roleBadge}</div>
-                <div style="color: white; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${displayName}</div>
-                <div style="color: #9ca3af; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${user.email}</div>
+                <div style="color: white; font-weight: bold; word-break: break-word;">${displayName}</div>
+                <div style="color: #9ca3af; font-size: 0.9rem; word-break: break-word;">${user.email}</div>
                 <div style="font-size: 0.85rem;">${statusLabel}</div>
                 <div style="text-align: right;"><button class="action-btn btn-edit-user" data-id="${user.id}" style="padding: 0.4rem 1rem; font-size: 0.85rem; margin:0; width: 100%;">Éditer</button></div>
             </div>
