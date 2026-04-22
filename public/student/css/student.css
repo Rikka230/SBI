@@ -15,9 +15,11 @@
 *, *::before, *::after { box-sizing: border-box; }
 body { background-color: var(--bg-body) !important; color: var(--text-main); }
 
-/* FIX : Tuer l'espace fantôme du panneau droit admin */
-#app-container { grid-template-columns: 250px 1fr !important; }
-#app-container.left-collapsed { grid-template-columns: 80px 1fr !important; }
+/* FIX DU FANTÔME : On force 2 colonnes et on étire la Top Bar à 100% de l'espace */
+.app-container { grid-template-columns: 250px 1fr !important; }
+.app-container.left-collapsed { grid-template-columns: 80px 1fr !important; }
+.top-bar { width: calc(100% - 250px) !important; right: 0 !important; }
+.app-container.left-collapsed .top-bar { width: calc(100% - 80px) !important; }
 
 #btn-toggle-panel svg { fill: var(--text-main) !important; }
 
@@ -44,16 +46,17 @@ body { background-color: var(--bg-body) !important; color: var(--text-main); }
 .student-view { display: none; animation: fadeIn 0.3s; }
 .student-view.active { display: block; }
 
-/* BADGE EDITION AVATAR */
+/* BADGE EDITION AVATAR (Correction de l'écrasement) */
 .edit-avatar-badge { opacity: 0; transform: scale(0.8); transition: 0.2s; pointer-events: none; }
 .editing .edit-avatar-badge { opacity: 1; transform: scale(1); pointer-events: auto; }
-.editing #prof-avatar:hover .edit-avatar-badge { transform: scale(1.1); }
+.editing .avatar-wrapper:hover .edit-avatar-badge { transform: scale(1.1); }
 
 @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
 @media (max-width: 900px) { 
-    #app-container { grid-template-columns: 1fr !important; }
+    .app-container { grid-template-columns: 1fr !important; }
     .hub-grid { grid-template-columns: 1fr; } 
     .search-bar-top { display: none; } 
     .content-wrapper { padding: 1.5rem; }
+    .top-bar { width: 100% !important; }
 }
