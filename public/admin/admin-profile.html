@@ -64,8 +64,10 @@
                     <div class="profile-main-info">
                         <div class="avatar-wrapper">
                             <img src="https://via.placeholder.com/150/111/444?text=?" id="prof-avatar-img" alt="Avatar">
-                            <div class="online-dot" id="prof-online-dot"></div>
-                            <button class="edit-avatar-btn" id="btn-trigger-crop" title="Changer la photo">📷</button>
+                            <div class="online-dot offline" id="prof-online-dot"></div>
+                            <button class="edit-avatar-btn" id="btn-trigger-crop" title="Changer la photo">
+                                <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M21 6h-3.17L16 4H8L6.17 6H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.65 0-3 1.35-3 3s1.35 3 3 3 3-1.35 3-3-1.35-3-3-3z"/></svg>
+                            </button>
                         </div>
                         <div class="identity-zone">
                             <h2 id="prof-name">Chargement... <span id="prof-badge-zone"></span></h2>
@@ -84,10 +86,18 @@
                             <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;"><span id="prof-xp-text">0</span> / 1000 XP</p>
                             
                             <div class="badges-grid">
-                                <div class="badge-slot" id="badge-bronze" title="Bronze (5 cours)">🥉</div>
-                                <div class="badge-slot" id="badge-silver" title="Argent (15 cours)">🥈</div>
-                                <div class="badge-slot" id="badge-gold" title="Or (30 cours)">🥇</div>
-                                <div class="badge-slot" id="badge-diamond" title="Diamant (50 cours)">💎</div>
+                                <div class="badge-slot" id="badge-bronze" title="Bronze (5 cours)">
+                                    <svg width="24" height="24" fill="#cd7f32" viewBox="0 0 24 24"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>
+                                </div>
+                                <div class="badge-slot" id="badge-silver" title="Argent (15 cours)">
+                                    <svg width="24" height="24" fill="#c0c0c0" viewBox="0 0 24 24"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>
+                                </div>
+                                <div class="badge-slot" id="badge-gold" title="Or (30 cours)">
+                                    <svg width="24" height="24" fill="#ffd700" viewBox="0 0 24 24"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>
+                                </div>
+                                <div class="badge-slot" id="badge-diamond" title="Diamant (50 cours)">
+                                    <svg width="24" height="24" fill="#00ffff" viewBox="0 0 24 24"><path d="M19 3H5L2 9l10 12L22 9l-3-6zm-7 1.5L16 9l-4 9.5L8 9l4-4.5z"/></svg>
+                                </div>
                             </div>
                         </div>
 
@@ -102,7 +112,10 @@
                     <div class="profile-main">
                         <div class="profile-tabs-header">
                             <div class="p-tab active" data-ptarget="ptab-public">Profil Public</div>
-                            <div class="p-tab" data-ptarget="ptab-private">Données Privées 🔒</div>
+                            <div class="p-tab" data-ptarget="ptab-private">
+                                Données Privées 
+                                <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24" style="vertical-align:text-bottom; margin-left:4px;"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+                            </div>
                             <div class="p-tab" data-ptarget="ptab-activity">Activité Récente</div>
                         </div>
 
@@ -162,7 +175,6 @@
             </div>
         </div>
         <div class="right-section" id="profile-section">
-            
             <button class="action-btn" id="btn-my-profile" style="color: var(--accent-blue); border-color: rgba(42, 87, 255, 0.3);">
                 <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg> 
                 Mon Profil
@@ -185,7 +197,7 @@
         
         <div id="crop-zone" onclick="if(!this.hasImage) document.getElementById('pfp-file-input').click()">
             <span id="crop-placeholder" style="position: absolute; top:50%; left:50%; transform: translate(-50%, -50%); color: #555; pointer-events: none;">Glisser / Cliquer</span>
-            <img id="crop-image" src="" style="display: none;">
+            <img id="crop-image" src="" style="display: none; cross-origin: anonymous;">
         </div>
 
         <div style="margin-top: 1.5rem; text-align: left; padding: 0 1rem;">
@@ -201,7 +213,7 @@
 </div>
 
 <script type="module" src="js/admin-ui.js"></script>
-<script type="module" src="js/admin-notifications.js"></script>
+<script type="module" src="js/tracker.js"></script> <script type="module" src="js/admin-notifications.js"></script>
 <script type="module" src="js/admin-profile.js"></script>
 
 </body>
