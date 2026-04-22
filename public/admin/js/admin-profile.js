@@ -7,29 +7,51 @@
 import { db, auth } from '/js/firebase-init.js';
 import { doc, getDoc, updateDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+import { logoutUser } from '/js/auth.js';
 
 let currentProfileId = null;
 let currentProfileData = null;
+let currentUid = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     
-    // NOUVEAU : Lecture de l'ID depuis l'URL (ex: admin-profile.html?id=xxx)
+    // Assignation des boutons de la barre latérale qui n'étaient pas gérés
+    const logoutBtn = document.getElementById('logout-btn');
+    if(logoutBtn) logoutBtn.addEventListener('click', logoutUser);
+    
+    const cacheBtn = document.getElementById('btn-clear-cache');
+    if(cacheBtn) cacheBtn.addEventListener('click', () => {
+        if(confirm('Vider le cache local ? Cela rechargera la page.')) {
+            localStorage.clear(); sessionStorage.clear(); window.location.reload(true);
+        }
+    });
+
     const urlParams = new URLSearchParams(window.location.search);
     const profileId = urlParams.get('id');
 
     onAuthStateChanged(auth, async (user) => {
-        if (user && profileId) {
-            currentProfileId = profileId;
-            loadFullProfile(profileId);
-        } else if (!user) {
-            window.location.replace('/login.html');
+        if (user) {
+            currentUid = user.uid;
+
+            // Rendre le bouton "Mon Profil" fonctionnel sur cette page
+            const myProfileBtn = document.getElementById('btn-my-profile');
+            if(myProfileBtn) {
+                myProfileBtn.addEventListener('click', () => {
+                    window.location.href = `admin-profile.html?id=${currentUid}`;
+                });
+            }
+
+            if (profileId) {
+                currentProfileId = profileId;
+                loadFullProfile(profileId);
+            } else {
+                window.location.replace('index.html?tab=view-users');
+            }
         } else {
-            // Si pas d'ID dans l'URL, on le renvoie au Hub
-            window.location.replace('index.html?tab=view-users');
+            window.location.replace('/login.html');
         }
     });
 
-    // GESTION DES ONGLETS DU PROFIL
     document.querySelectorAll('.p-tab').forEach(tab => {
         tab.addEventListener('click', (e) => {
             document.querySelectorAll('.p-tab').forEach(t => t.classList.remove('active'));
@@ -40,7 +62,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // SAUVEGARDE DES DONNÉES
     document.getElementById('btn-save-public').addEventListener('click', async () => {
         if(!currentProfileId) return;
         const bio = document.getElementById('prof-bio').value;
@@ -61,7 +82,6 @@ document.addEventListener('DOMContentLoaded', () => {
     initCropperEngine();
 });
 
-// Chargement des données Firestore
 async function loadFullProfile(userId) {
     try {
         const snap = await getDoc(doc(db, "users", userId));
@@ -82,7 +102,6 @@ function renderProfile(user) {
     const displayName = (user.prenom || user.nom) ? `${user.prenom || ''} ${user.nom || ''}`.trim() : "Utilisateur Sans Nom";
     document.getElementById('prof-name').innerHTML = `${displayName} <span id="prof-badge-zone"></span>`;
     
-    // Avatar
     document.getElementById('prof-avatar-img').src = user.photoURL || `https://ui-avatars.com/api/?name=${displayName}&background=111&color=fff&size=150`;
 
     const dot = document.getElementById('prof-online-dot');
@@ -175,6 +194,7 @@ function initCropperEngine() {
     const btnOpen = document.getElementById('btn-trigger-crop');
     const btnCancel = document.getElementById('btn-cancel-crop');
     const btnSave = document.getElementById('btn-save-crop');
+    const zoomSlider = document.getElementById('crop-zoom');
     
     const zone = document.getElementById('crop-zone');
     const input = document.getElementById('pfp-file-input');
@@ -183,7 +203,10 @@ function initCropperEngine() {
 
     let isDragging = false;
     let startX, startY, currentX = 0, currentY = 0;
-    let scale = 1;
+    
+    let baseWidth = 0;
+    let baseHeight = 0;
+    let currentZoom = 1;
 
     btnOpen.addEventListener('click', () => { modal.style.display = 'flex'; });
     btnCancel.addEventListener('click', () => { modal.style.display = 'none'; });
@@ -211,20 +234,50 @@ function initCropperEngine() {
                 
                 const ratio = img.naturalWidth / img.naturalHeight;
                 if (ratio > 1) { 
-                    img.style.height = '300px';
-                    img.style.width = 'auto';
-                    scale = 300 / img.naturalHeight;
+                    baseHeight = 300;
+                    baseWidth = 300 * ratio;
                 } else { 
-                    img.style.width = '300px';
-                    img.style.height = 'auto';
-                    scale = 300 / img.naturalWidth;
+                    baseWidth = 300;
+                    baseHeight = 300 / ratio;
                 }
                 
+                currentZoom = 1;
+                if(zoomSlider) zoomSlider.value = 1;
+                
+                updateImageSize();
                 currentX = 0; currentY = 0;
-                img.style.transform = `translate(0px, 0px)`;
+                updateImagePosition();
             }
         };
         reader.readAsDataURL(file);
+    }
+
+    if(zoomSlider) {
+        zoomSlider.addEventListener('input', (e) => {
+            currentZoom = parseFloat(e.target.value);
+            updateImageSize();
+            checkBounds(); 
+            updateImagePosition();
+        });
+    }
+
+    function updateImageSize() {
+        img.style.width = (baseWidth * currentZoom) + 'px';
+        img.style.height = (baseHeight * currentZoom) + 'px';
+    }
+
+    function updateImagePosition() {
+        img.style.transform = `translate(${currentX}px, ${currentY}px)`;
+    }
+
+    function checkBounds() {
+        const boundsX = zone.clientWidth - (baseWidth * currentZoom);
+        const boundsY = zone.clientHeight - (baseHeight * currentZoom);
+
+        if(currentX > 0) currentX = 0;
+        if(currentY > 0) currentY = 0;
+        if(currentX < boundsX) currentX = boundsX;
+        if(currentY < boundsY) currentY = boundsY;
     }
 
     zone.addEventListener('mousedown', e => {
@@ -236,19 +289,11 @@ function initCropperEngine() {
     window.addEventListener('mouseup', () => { isDragging = false; });
     window.addEventListener('mousemove', e => {
         if(!isDragging || !zone.hasImage) return;
-        
         currentX = e.clientX - startX;
         currentY = e.clientY - startY;
 
-        const boundsX = zone.clientWidth - img.width;
-        const boundsY = zone.clientHeight - img.height;
-
-        if(currentX > 0) currentX = 0;
-        if(currentY > 0) currentY = 0;
-        if(currentX < boundsX) currentX = boundsX;
-        if(currentY < boundsY) currentY = boundsY;
-
-        img.style.transform = `translate(${currentX}px, ${currentY}px)`;
+        checkBounds();
+        updateImagePosition();
     });
 
     btnSave.addEventListener('click', async () => {
@@ -260,8 +305,14 @@ function initCropperEngine() {
         canvas.width = 200; canvas.height = 200;
         const ctx = canvas.getContext('2d');
 
-        const finalScale = 200 / 300; 
-        ctx.drawImage(img, currentX * finalScale, currentY * finalScale, img.width * finalScale, img.height * finalScale);
+        // On calcule la taille réelle affichée avec le zoom, ramenée sur du 200px
+        const ratioZoneCanvas = 200 / 300; 
+        const renderW = baseWidth * currentZoom * ratioZoneCanvas;
+        const renderH = baseHeight * currentZoom * ratioZoneCanvas;
+        const renderX = currentX * ratioZoneCanvas;
+        const renderY = currentY * ratioZoneCanvas;
+
+        ctx.drawImage(img, renderX, renderY, renderW, renderH);
 
         const webpData = canvas.toDataURL('image/webp', 0.8);
 
