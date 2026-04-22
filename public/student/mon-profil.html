@@ -15,7 +15,7 @@
         .profile-header { background: var(--bg-card); border-radius: 16px; border: 1px solid var(--border-color); padding: 2.5rem; display: flex; align-items: center; gap: 2rem; margin-bottom: 2.5rem; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03); position: relative; overflow: hidden; }
         .profile-header::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 100px; background: linear-gradient(90deg, var(--accent-green), #00ffa3); opacity: 0.15; z-index: 0; }
         
-        .avatar-wrapper { position: relative; width: 120px; height: 120px; z-index: 1; margin: 0; }
+        .avatar-wrapper { position: relative; width: 120px; height: 120px; z-index: 1; margin: 0; flex-shrink: 0; }
         
         .profile-info { z-index: 1; flex-grow: 1; }
         .profile-info h1 { margin: 0 0 0.5rem 0; font-size: 2rem; color: var(--text-main); display: flex; align-items: center; gap: 0.5rem; }
@@ -26,7 +26,6 @@
         
         .editing .prof-input { background: #f9fafb; border-color: var(--border-color); }
         .editing .prof-input:focus { border-color: var(--accent-green); background: #fff; box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1); }
-        .editing .prof-input[disabled] { background: #e5e7eb; color: #9ca3af; cursor: not-allowed; border-color: transparent; }
 
         .private-section, .edit-mode-only { display: none; }
         
@@ -62,7 +61,7 @@
                     <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                         <div style="width: 100%; max-width: 400px;">
                             <h1 id="prof-name">Chargement...</h1>
-                            <p id="prof-bio-display">Élève de la plateforme SBI</p>
+                            <p id="prof-bio-display" style="margin: 0; color: var(--text-muted);">Élève de la plateforme SBI</p>
                             <div style="margin-top: 1rem; display: inline-block; background: rgba(16, 185, 129, 0.1); color: var(--accent-green); padding: 5px 15px; border-radius: 20px; font-weight: bold;">
                                 Niveau <span id="prof-level">1</span> (<span id="prof-xp">0</span> XP)
                             </div>
@@ -111,7 +110,7 @@
                             <h3 class="section-title" style="margin-bottom: 1.5rem;">Profil Public</h3>
                             <div class="form-group">
                                 <label>À propos de moi (Bio)</label>
-                                <textarea id="prof-bio" class="prof-input" rows="5" placeholder="Dites-en plus sur vous..." style="resize: none;" disabled></textarea>
+                                <textarea id="prof-bio" class="prof-input" rows="5" placeholder="Dites-en plus sur vous..." disabled></textarea>
                             </div>
                             <div class="edit-mode-only" style="margin-top: 1.5rem;">
                                 <button id="btn-save-public" class="action-btn" style="width: auto; background: var(--accent-green); color: white; border: none; padding: 0.8rem 1.5rem; border-radius: 8px; font-weight: bold;">Enregistrer la bio</button>
@@ -165,14 +164,14 @@
         <h3 style="margin-top:0; color: var(--text-main);">Changer la photo</h3>
         <input type="file" id="pfp-file-input" accept="image/*" style="display: none;">
         
-        <div id="crop-zone" onclick="if(!this.hasImage) document.getElementById('pfp-file-input').click()" style="border: 2px dashed var(--border-color); border-radius: 50%; background: #f9fafb; position: relative; width: 300px; height: 300px; margin: 0 auto; overflow: hidden; cursor: pointer;">
-            <span id="crop-placeholder" style="position: absolute; top:50%; left:50%; transform: translate(-50%, -50%); color: var(--text-muted); pointer-events: none;">Glisser / Cliquer une image</span>
+        <div id="crop-zone" style="border: 2px dashed var(--border-color); border-radius: 50%; background: #f9fafb; position: relative; width: 300px; height: 300px; margin: 0 auto; overflow: hidden; cursor: grab;">
+            <span id="crop-placeholder" style="position: absolute; top:50%; left:50%; transform: translate(-50%, -50%); color: var(--text-muted); pointer-events: none;">Glisser l'image</span>
             <img id="crop-image" src="" style="display: none; cross-origin: anonymous; position: absolute; top:0; left:0; transform-origin: top left;">
         </div>
 
         <div style="margin-top: 1.5rem; text-align: left; padding: 0 1rem;">
             <label style="color: var(--text-muted); font-size: 0.8rem; display: block; margin-bottom: 0.5rem; font-weight: bold;">Zoom</label>
-            <input type="range" id="crop-zoom" min="1" max="3" step="0.05" value="1" style="width: 100%; accent-color: var(--accent-green);">
+            <input type="range" id="crop-zoom" min="0.5" max="3" step="0.05" value="1" style="width: 100%; accent-color: var(--accent-green);">
         </div>
 
         <div style="display: flex; gap: 1rem; margin-top: 2rem;">
@@ -193,7 +192,6 @@
 
 <script type="module" src="/admin/js/admin-ui.js"></script>
 <script type="module" src="/admin/js/tracker.js"></script>
-
 <script type="module" src="/js/profile-core.js"></script>
 
 </body>
