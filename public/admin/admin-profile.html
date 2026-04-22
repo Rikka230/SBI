@@ -100,6 +100,7 @@
                                 </div>
                             </div>
                             <div class="data-group">
+                                <p style="color: var(--accent-red); font-size: 0.85rem; margin-top:0;">⚠️ Informations sensibles. Visibles uniquement par l'utilisateur et les Administrateurs.</p>
                                 <label style="color: var(--text-muted); font-size: 0.85rem;">Numéro de téléphone</label>
                                 <input type="text" id="prof-phone" placeholder="+33 6..." style="width: 100%; box-sizing: border-box; padding: 0.8rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px; margin-bottom: 1rem;">
                                 
@@ -133,9 +134,9 @@
             
             <input type="file" id="pfp-file-input" accept="image/*" style="display: none;">
             
-            <div id="crop-zone" onclick="if(!this.hasImage) document.getElementById('pfp-file-input').click()" style="border-color: var(--border-color);">
+            <div id="crop-zone" onclick="if(!this.hasImage) document.getElementById('pfp-file-input').click()" style="border: 2px dashed var(--border-color); border-radius: 50%; width: 300px; height: 300px; margin: 0 auto; overflow: hidden; position: relative; cursor: pointer;">
                 <span id="crop-placeholder" style="position: absolute; top:50%; left:50%; transform: translate(-50%, -50%); color: var(--text-muted); pointer-events: none;">Glisser / Cliquer</span>
-                <img id="crop-image" src="" style="display: none; cross-origin: anonymous;">
+                <img id="crop-image" src="" style="display: none; cross-origin: anonymous; position: absolute; top:0; left:0; transform-origin: top left;">
             </div>
 
             <div style="margin-top: 1.5rem; text-align: left; padding: 0 1rem;">
