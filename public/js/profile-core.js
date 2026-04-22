@@ -1,6 +1,6 @@
 /**
  * =======================================================================
- * PROFILE CORE - Moteur Unique (Admin & Étudiant)
+ * PROFILE CORE - Moteur Unique (Admin & Étudiant) + CROPPER.JS
  * =======================================================================
  */
 
@@ -14,6 +14,7 @@ let loggedInUserId = null;
 let isOwner = false;
 let isAdmin = false;
 let isEditMode = false;
+let cropperInstance = null; // Stockage de l'instance Cropper.js
 
 document.addEventListener('DOMContentLoaded', () => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -23,7 +24,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (user) {
             loggedInUserId = user.uid;
             
-            // Déterminer le rôle
             const mySnap = await getDoc(doc(db, "users", loggedInUserId));
             if (mySnap.exists()) {
                 const myData = mySnap.data();
@@ -38,7 +38,6 @@ document.addEventListener('DOMContentLoaded', () => {
             setupSaveButtons();
             initCropperEngine();
 
-            // Boutons spécifiques Admin
             const myProfileBtn = document.getElementById('btn-my-profile');
             if(myProfileBtn) myProfileBtn.addEventListener('click', () => window.location.href = `admin-profile.html?id=${loggedInUserId}`);
 
@@ -55,7 +54,6 @@ async function loadProfileData(uid) {
             currentProfileData = snap.data();
             const data = currentProfileData;
             
-            // 1. IDENTITÉ
             const displayName = `${data.prenom || ''} ${data.nom || ''}`.trim() || "Utilisateur Sans Nom";
             const nameEl = document.getElementById('prof-name');
             if(nameEl) {
@@ -69,18 +67,15 @@ async function loadProfileData(uid) {
             if(document.getElementById('prof-bio-display')) document.getElementById('prof-bio-display').textContent = data.bio || 'Élève de la plateforme SBI';
             if(document.getElementById('prof-bio')) document.getElementById('prof-bio').value = data.bio || '';
 
-            // 2. AVATAR UNIFIÉ
             const avatarUrl = data.photoURL || `https://ui-avatars.com/api/?name=${displayName}&background=111&color=fff&size=150`;
             const avatarImg = document.getElementById('prof-avatar-img');
             if(avatarImg) avatarImg.src = avatarUrl;
             
-            // SYNCHRONISATION TOP BAR (Étudiant)
             const topName = document.getElementById('top-user-name');
             if (topName && isOwner) topName.textContent = displayName;
             const topAvatar = document.getElementById('top-user-avatar');
             if (topAvatar && isOwner) topAvatar.innerHTML = `<img src="${avatarUrl}" style="width:100%; height:100%; object-fit:cover;">`;
 
-            // 3. STATUT EN LIGNE (Admin Uniquement)
             const dot = document.getElementById('prof-online-dot');
             const statusText = document.getElementById('prof-status-text');
             if(dot && statusText) {
@@ -93,7 +88,6 @@ async function loadProfileData(uid) {
                 }
             }
 
-            // 4. BADGES DE RÔLE (Admin Uniquement)
             const badgeZone = document.getElementById('prof-badge-zone');
             if(badgeZone) {
                 if (data.isGod) badgeZone.innerHTML = `<span style="background:rgba(255,215,0,0.15); color:#ffd700; padding:4px 8px; border-radius:4px; font-size:0.7rem; vertical-align:middle; display:inline-flex; align-items:center; gap:4px;"><svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L9 8H3l5 5-2 7 6-4 6 4-2-7 5-5h-6z"/></svg> SUPRÊME</span>`;
@@ -102,7 +96,6 @@ async function loadProfileData(uid) {
                 else badgeZone.innerHTML = `<span style="background:rgba(0,255,163,0.15); color:#00ffa3; padding:4px 8px; border-radius:4px; font-size:0.7rem; vertical-align:middle;">ÉLÈVE</span>`;
             }
 
-            // 5. GAMIFICATION
             const xp = data.xp || 0;
             const level = Math.floor(xp / 100) + 1;
             
@@ -136,7 +129,6 @@ async function loadProfileData(uid) {
             if(level >= 6 && document.getElementById('badge-gold')) document.getElementById('badge-gold').classList.add('unlocked');
             if(level >= 10 && document.getElementById('badge-diamond')) document.getElementById('badge-diamond').classList.add('unlocked');
 
-            // 6. DONNÉES PRIVÉES ET ACTIVITÉ
             if (isOwner || isAdmin) {
                 const emailEl = document.getElementById('prof-email');
                 if(emailEl) {
@@ -239,136 +231,129 @@ function setupSaveButtons() {
 function initCropperEngine() {
     const modal = document.getElementById('crop-modal');
     const input = document.getElementById('pfp-file-input');
-    const img = document.getElementById('crop-image');
-    const zone = document.getElementById('crop-zone');
-    const zoomSlider = document.getElementById('crop-zoom');
-    if(!modal || !input || !img || !zone) return;
+    const imageElement = document.getElementById('crop-image');
+    if(!modal || !input || !imageElement) return;
 
-    let isDragging = false;
-    let startX, startY, currentX = 0, currentY = 0;
-    let baseWidth = 0, baseHeight = 0, currentZoom = 1;
+    let originalImageDataUrl = null; // Stocke la version originale redimensionnée
 
-    // Création d'un bouton d'upload clair, dynamique selon le thème
-    if (!document.getElementById('btn-upload-new')) {
-        const uploadBtn = document.createElement('button');
-        uploadBtn.id = 'btn-upload-new';
-        uploadBtn.textContent = "Importer une nouvelle image";
-        uploadBtn.style.cssText = "display:block; width:100%; padding:0.8rem; background: transparent; color: var(--text-main); border: 2px dashed var(--text-muted); border-radius: 8px; margin-bottom: 1rem; cursor: pointer; font-weight: bold; transition: 0.2s;";
-        uploadBtn.onmouseover = () => uploadBtn.style.background = "rgba(128,128,128,0.1)";
-        uploadBtn.onmouseout = () => uploadBtn.style.background = "transparent";
-        uploadBtn.onclick = () => input.click();
-        zone.parentNode.insertBefore(uploadBtn, zone);
+    // Fonction de compression (Évite de dépasser la limite de 1Mo de Firestore)
+    function compressImage(file, maxWidth, callback) {
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            const img = new Image();
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+
+                if (width > maxWidth) {
+                    height = Math.round((height *= maxWidth / width));
+                    width = maxWidth;
+                }
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                // Renvoie un webP HD optimisé
+                callback(canvas.toDataURL('image/webp', 0.9));
+            };
+            img.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
     }
 
-    zone.onclick = null;
-    zone.style.cursor = 'grab';
-
+    // Ouverture de la modale
     const openTrigger = document.getElementById('btn-trigger-crop');
     if(openTrigger) {
         openTrigger.addEventListener('click', () => {
             modal.style.display = 'flex';
-            if (currentProfileData && currentProfileData.photoURL && !zone.hasImage) {
-                img.crossOrigin = "anonymous";
-                img.src = currentProfileData.photoURL;
-                img.onload = () => setupImage();
+            // On charge l'originale si elle existe, sinon la miniature
+            const imageToLoad = (currentProfileData && currentProfileData.photoOriginal) 
+                                ? currentProfileData.photoOriginal 
+                                : (currentProfileData && currentProfileData.photoURL ? currentProfileData.photoURL : null);
+            
+            if (imageToLoad && !cropperInstance) {
+                imageElement.crossOrigin = "anonymous";
+                imageElement.src = imageToLoad;
+                originalImageDataUrl = imageToLoad;
+                
+                // Cropper.js : Création de l'instance
+                imageElement.onload = () => {
+                    cropperInstance = new Cropper(imageElement, {
+                        aspectRatio: 1,
+                        viewMode: 1,
+                        dragMode: 'move',
+                        autoCropArea: 1,
+                        restore: false,
+                        guides: false,
+                        center: false,
+                        highlight: false,
+                        cropBoxMovable: false,
+                        cropBoxResizable: false,
+                        toggleDragModeOnDblclick: false,
+                    });
+                };
             }
         });
     }
 
-    document.getElementById('btn-cancel-crop')?.addEventListener('click', () => modal.style.display = 'none');
+    // Changement d'image
+    document.getElementById('btn-upload-new')?.addEventListener('click', () => input.click());
 
     input.onchange = (e) => {
         if(e.target.files.length > 0) {
-            modal.style.display = 'flex';
-            const reader = new FileReader();
-            reader.onload = (re) => {
-                img.src = re.target.result;
-                img.onload = () => setupImage();
-            };
-            reader.readAsDataURL(e.target.files[0]);
+            // Compresse l'image originale max 800px pour Firestore
+            compressImage(e.target.files[0], 800, (compressedBase64) => {
+                originalImageDataUrl = compressedBase64;
+                
+                if (cropperInstance) {
+                    cropperInstance.replace(compressedBase64);
+                } else {
+                    imageElement.src = compressedBase64;
+                    cropperInstance = new Cropper(imageElement, {
+                        aspectRatio: 1,
+                        viewMode: 1,
+                        dragMode: 'move',
+                        autoCropArea: 1,
+                        cropBoxMovable: false,
+                        cropBoxResizable: false,
+                        guides: false,
+                        highlight: false
+                    });
+                }
+            });
         }
     };
 
-    function setupImage() {
-        zone.hasImage = true;
-        const ph = document.getElementById('crop-placeholder');
-        if(ph) ph.style.display = 'none';
-        img.style.display = 'block';
-        
-        const ratio = img.naturalWidth / img.naturalHeight;
-        if (ratio > 1) { baseHeight = 300; baseWidth = 300 * ratio; } 
-        else { baseWidth = 300; baseHeight = 300 / ratio; }
-        
-        currentZoom = parseFloat(zoomSlider ? zoomSlider.value : 1);
-        
-        currentX = (300 - (baseWidth * currentZoom)) / 2;
-        currentY = (300 - (baseHeight * currentZoom)) / 2;
-        
-        updateImageSize();
-        updateImagePosition();
-    }
-
-    if(zoomSlider) {
-        zoomSlider.addEventListener('input', (e) => {
-            const newZoom = parseFloat(e.target.value);
-            const oldWidth = baseWidth * currentZoom;
-            const oldHeight = baseHeight * currentZoom;
-            const newWidth = baseWidth * newZoom;
-            const newHeight = baseHeight * newZoom;
-            
-            currentX -= (newWidth - oldWidth) / 2;
-            currentY -= (newHeight - oldHeight) / 2;
-            
-            currentZoom = newZoom;
-            updateImageSize(); 
-            checkBounds(); 
-            updateImagePosition();
-        });
-    }
-
-    function updateImageSize() { img.style.width = (baseWidth * currentZoom) + 'px'; img.style.height = (baseHeight * currentZoom) + 'px'; }
-    function updateImagePosition() { img.style.transform = `translate(${currentX}px, ${currentY}px)`; }
-    
-    function checkBounds() {
-        const minX = 300 - (baseWidth * currentZoom);
-        const minY = 300 - (baseHeight * currentZoom);
-        if(currentX > 0) currentX = 0; 
-        if(currentY > 0) currentY = 0;
-        if(currentX < minX) currentX = minX; 
-        if(currentY < minY) currentY = minY;
-    }
-
-    zone.addEventListener('mousedown', e => {
-        if(!zone.hasImage) return;
-        isDragging = true;
-        zone.style.cursor = 'grabbing';
-        e.preventDefault(); 
-        startX = e.clientX - currentX; startY = e.clientY - currentY;
-    });
-    window.addEventListener('mouseup', () => { isDragging = false; zone.style.cursor = 'grab'; });
-    window.addEventListener('mousemove', e => {
-        if(!isDragging || !zone.hasImage) return;
-        currentX = e.clientX - startX; currentY = e.clientY - startY;
-        checkBounds(); updateImagePosition();
+    // Annuler
+    document.getElementById('btn-cancel-crop')?.addEventListener('click', () => {
+        modal.style.display = 'none';
     });
 
+    // Enregistrer
     document.getElementById('btn-save-crop')?.addEventListener('click', async () => {
-        if(!zone.hasImage || !currentProfileId) return;
-        const btnSave = document.getElementById('btn-save-crop');
-        btnSave.textContent = "Compression...";
+        if(!cropperInstance || !currentProfileId || !originalImageDataUrl) return;
         
-        const canvas = document.createElement('canvas');
-        canvas.width = 200; canvas.height = 200;
-        const ctx = canvas.getContext('2d');
-        const ratioZoneCanvas = 200 / 300; 
-        ctx.drawImage(img, currentX * ratioZoneCanvas, currentY * ratioZoneCanvas, baseWidth * currentZoom * ratioZoneCanvas, baseHeight * currentZoom * ratioZoneCanvas);
-        const webpData = canvas.toDataURL('image/webp', 0.8);
+        const btnSave = document.getElementById('btn-save-crop');
+        btnSave.textContent = "Mise à jour...";
+        
+        // Extrait le crop en 200x200
+        const croppedCanvas = cropperInstance.getCroppedCanvas({ width: 200, height: 200 });
+        const croppedWebpData = croppedCanvas.toDataURL('image/webp', 0.8);
 
         try {
-            await updateDoc(doc(db, "users", currentProfileId), { photoURL: webpData });
+            // Sauvegarde de la miniature (photoURL) ET du fichier d'origine optimisé (photoOriginal)
+            await updateDoc(doc(db, "users", currentProfileId), { 
+                photoURL: croppedWebpData,
+                photoOriginal: originalImageDataUrl
+            });
             loadProfileData(currentProfileId); 
             modal.style.display = 'none';
-        } catch(e) { alert("Erreur réseau."); } 
-        finally { btnSave.textContent = "Appliquer"; }
+        } catch(e) { 
+            console.error(e);
+            alert("Erreur réseau ou fichier trop volumineux."); 
+        } finally { 
+            btnSave.textContent = "Appliquer"; 
+        }
     });
 }
