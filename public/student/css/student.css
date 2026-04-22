@@ -15,7 +15,7 @@
 *, *::before, *::after { box-sizing: border-box; }
 body { background-color: var(--bg-body) !important; color: var(--text-main); }
 
-/* FIX DU FANTÔME */
+/* FIX DU FANTÔME : On tue la 3ème colonne de l'admin */
 #app-container { grid-template-columns: 250px 1fr !important; }
 #app-container.left-collapsed { grid-template-columns: 80px 1fr !important; }
 .top-bar { width: calc(100% - 250px) !important; right: 0 !important; }
@@ -24,7 +24,7 @@ body { background-color: var(--bg-body) !important; color: var(--text-main); }
 #btn-toggle-panel svg { fill: var(--text-main) !important; }
 
 .content-wrapper { padding: 2.5rem 4%; max-width: 1400px; margin: 0 auto; }
-.hub-grid { display: grid; grid-template-columns: 2fr 1.2fr; gap: 2.5rem; margin-top: 2rem; align-items: start; }
+
 .hub-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px; padding: 2rem; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03); }
 
 .xp-bar-bg { width: 100%; height: 10px; background: #e5e7eb; border-radius: 10px; overflow: hidden; margin-top: 1.5rem; }
@@ -38,7 +38,7 @@ body { background-color: var(--bg-body) !important; color: var(--text-main); }
 .section-title { font-size: 1.25rem; font-weight: 700; display: flex; align-items: center; gap: 0.8rem; margin: 0; color: var(--text-main); }
 .section-icon { font-size: 1.4rem; background: var(--bg-body); width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; }
 
-/* ONGLETS ÉTUDIANT (Profil) */
+/* ONGLETS ÉTUDIANT */
 .student-sub-nav { display: flex; gap: 2rem; border-bottom: 1px solid var(--border-color); margin-bottom: 2rem; }
 .student-sub-nav-item { padding: 1rem 0; color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; font-weight: 600; transition: all 0.2s; }
 .student-sub-nav-item:hover { color: var(--text-main); }
@@ -46,36 +46,22 @@ body { background-color: var(--bg-body) !important; color: var(--text-main); }
 .student-view { display: none; animation: fadeIn 0.3s; }
 .student-view.active { display: block; }
 
-/* --- NOUVEAU BADGE EDITION AVATAR (Parfaitement positionné et rond) --- */
+/* BADGE PHOTO ROND PARFAIT */
 .edit-avatar-badge { 
-    position: absolute; 
-    bottom: 2px; 
-    right: 2px; 
-    background: var(--accent-green); 
-    color: white; 
-    width: 36px; 
-    height: 36px; 
-    border-radius: 50%; 
-    display: flex; 
-    align-items: center; 
-    justify-content: center; 
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2); 
-    border: 3px solid var(--bg-card); /* Contour blanc pour détacher de la photo */
-    cursor: pointer; 
-    opacity: 0; 
-    transform: scale(0.8); 
-    transition: 0.2s; 
-    pointer-events: none; 
-    z-index: 10;
+    position: absolute; bottom: 0; right: 0; 
+    width: 36px; height: 36px; 
+    background: var(--accent-green); color: white; 
+    border-radius: 50%; border: 3px solid var(--bg-card); 
+    display: flex; align-items: center; justify-content: center; 
+    cursor: pointer; z-index: 10; opacity: 0; pointer-events: none; transition: 0.2s; 
 }
-.editing .edit-avatar-badge { opacity: 1; transform: scale(1); pointer-events: auto; }
-.editing .avatar-wrapper:hover .edit-avatar-badge { transform: scale(1.1); background: #059669; }
+.editing .edit-avatar-badge { opacity: 1; pointer-events: auto; }
+.edit-avatar-badge svg { width: 18px; height: 18px; flex-shrink: 0; }
 
 @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
 @media (max-width: 900px) { 
     #app-container { grid-template-columns: 1fr !important; }
-    .hub-grid { grid-template-columns: 1fr; } 
     .search-bar-top { display: none; } 
     .content-wrapper { padding: 1.5rem; }
     .top-bar { width: 100% !important; }
