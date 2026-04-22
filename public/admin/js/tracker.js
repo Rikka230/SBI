@@ -11,6 +11,10 @@ import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/fi
 let sessionStart = Date.now();
 let activeUid = null;
 
+// Optimisation : Sauvegarde toutes les 5 minutes au lieu d'1 minute.
+// Cela divise par 5 ta consommation de base de données Firebase.
+const SYNC_INTERVAL_MS = 300000; 
+
 onAuthStateChanged(auth, async (user) => {
     if (user) {
         activeUid = user.uid;
@@ -49,18 +53,20 @@ onAuthStateChanged(auth, async (user) => {
             }
         } catch(e) { console.error("Erreur chargement profil panel", e); }
 
-        // 2. CHRONOMÈTRE DE CONNEXION (Toutes les minutes)
+        // 2. CHRONOMÈTRE DE CONNEXION (Synchronisation périodique)
         setInterval(() => {
             if(!activeUid) return;
             const now = Date.now();
             const diffSeconds = Math.floor((now - sessionStart) / 1000);
-            sessionStart = now;
+            
             if (diffSeconds > 0) {
+                // On met à jour le marqueur de temps AVANT l'envoi
+                sessionStart = now; 
                 updateDoc(doc(db, "users", activeUid), {
                     totalConnectionTime: increment(diffSeconds)
                 }).catch(()=>{});
             }
-        }, 60000); 
+        }, SYNC_INTERVAL_MS); 
 
     } else {
         if (activeUid) {
@@ -70,14 +76,25 @@ onAuthStateChanged(auth, async (user) => {
     }
 });
 
+// 3. SAUVEGARDE À LA FERMETURE OU AU CHANGEMENT D'ONGLET
 document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === 'hidden' && activeUid) {
-        const diffSeconds = Math.floor((Date.now() - sessionStart) / 1000);
-        updateDoc(doc(db, "users", activeUid), {
-            isOnline: false,
-            totalConnectionTime: increment(diffSeconds)
-        }).catch(()=>{});
+        const now = Date.now();
+        const diffSeconds = Math.floor((now - sessionStart) / 1000);
+        
+        if (diffSeconds > 0) {
+            // FIX : Indispensable de remettre le chrono à zéro ici pour éviter de compter l'intervalle en double
+            sessionStart = now; 
+            updateDoc(doc(db, "users", activeUid), {
+                isOnline: false,
+                totalConnectionTime: increment(diffSeconds)
+            }).catch(()=>{});
+        } else {
+            // Si le temps est inférieur à 1s, on passe juste hors-ligne
+            updateDoc(doc(db, "users", activeUid), { isOnline: false }).catch(()=>{});
+        }
     } else if (document.visibilityState === 'visible' && activeUid) {
+        // L'utilisateur revient sur l'onglet, on relance le chrono
         sessionStart = Date.now();
         updateDoc(doc(db, "users", activeUid), { isOnline: true }).catch(()=>{});
     }
