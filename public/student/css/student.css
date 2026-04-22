@@ -1,0 +1,142 @@
+/* =======================================================================
+   THÈME ÉTUDIANT (LIGHT MODE) ET STYLES DU HUB
+   ======================================================================= */
+
+/* --- 1. VARIABLES DU THÈME CLAIR --- */
+:root {
+    --bg-body: #f4f7f6; /* Fond de page gris/bleuté ultra léger */
+    --bg-panel: #ffffff; /* Menu et barre du haut blancs */
+    --bg-card: #ffffff; /* Cartes blanches */
+    --border-color: #e2e8f0; /* Bordures douces */
+    --text-main: #1f2937; /* Texte sombre principal */
+    --text-muted: #6b7280; /* Texte secondaire gris */
+    --accent-green: #10b981; /* Vert émeraude dynamique étudiant */
+}
+
+/* --- 2. SURCHARGES GLOBALES --- */
+*, *::before, *::after { 
+    box-sizing: border-box; 
+}
+
+body { 
+    background-color: var(--bg-body) !important; 
+    color: var(--text-main); 
+}
+
+/* Surcharge pour l'icône de fermeture du panneau sur fond blanc */
+#btn-toggle-panel svg { 
+    fill: var(--text-main) !important; 
+}
+
+/* --- 3. STRUCTURE DU HUB ÉTUDIANT --- */
+.content-wrapper { 
+    padding: 2.5rem 4%; 
+    max-width: 1400px; 
+    margin: 0 auto; 
+}
+
+.hub-grid { 
+    display: grid; 
+    grid-template-columns: 2fr 1.2fr; 
+    gap: 2.5rem; 
+    margin-top: 2rem; 
+    align-items: start; 
+}
+
+.hub-card { 
+    background: var(--bg-card); 
+    border: 1px solid var(--border-color); 
+    border-radius: 16px; 
+    padding: 2rem; 
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03); 
+}
+
+/* --- 4. BARRE D'EXPÉRIENCE (XP) --- */
+.xp-bar-bg { 
+    width: 100%; 
+    height: 10px; 
+    background: #e5e7eb; 
+    border-radius: 10px; 
+    overflow: hidden; 
+    margin-top: 1.5rem; 
+}
+
+.xp-bar-fill { 
+    height: 100%; 
+    background: linear-gradient(90deg, #10b981, #34d399); 
+    width: 0%; 
+    transition: width 1.5s cubic-bezier(0.22, 1, 0.36, 1); 
+    border-radius: 10px; 
+}
+
+/* --- 5. BARRE DE RECHERCHE SUPÉRIEURE --- */
+.search-bar-top { 
+    flex-grow: 1; 
+    max-width: 500px; 
+    position: relative; 
+    margin-left: 2rem; 
+}
+
+.search-bar-top input { 
+    width: 100%; 
+    padding: 0.7rem 1.5rem 0.7rem 2.8rem; 
+    background: #f9fafb; 
+    border: 1px solid var(--border-color); 
+    border-radius: 20px; 
+    color: var(--text-main); 
+    outline: none; 
+    transition: 0.2s; 
+    font-family: inherit; 
+    font-size: 0.95rem; 
+}
+
+.search-bar-top input:focus { 
+    border-color: var(--accent-green); 
+    background: #ffffff; 
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1); 
+}
+
+.search-bar-top svg { 
+    position: absolute; 
+    left: 1rem; 
+    top: 50%; 
+    transform: translateY(-50%); 
+    fill: var(--text-muted); 
+    width: 18px; 
+    height: 18px; 
+}
+
+/* --- 6. TYPOGRAPHIE ET ICÔNES DES CARTES --- */
+.section-title { 
+    font-size: 1.25rem; 
+    font-weight: 700; 
+    display: flex; 
+    align-items: center; 
+    gap: 0.8rem; 
+    margin: 0; 
+    color: var(--text-main); 
+}
+
+.section-icon { 
+    font-size: 1.4rem; 
+    background: var(--bg-body); 
+    width: 42px; 
+    height: 42px; 
+    border-radius: 10px; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+}
+
+/* --- 7. RESPONSIVE DESIGN --- */
+@media (max-width: 900px) { 
+    .hub-grid { 
+        grid-template-columns: 1fr; 
+    } 
+    .search-bar-top { 
+        display: none; 
+    } 
+    .content-wrapper { 
+        padding: 1.5rem; 
+    }
+}
