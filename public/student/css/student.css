@@ -15,11 +15,47 @@
 *, *::before, *::after { box-sizing: border-box; }
 body { background-color: var(--bg-body) !important; color: var(--text-main); }
 
-/* FIX DU FANTÔME : On tue la 3ème colonne de l'admin */
-#app-container { grid-template-columns: 250px 1fr !important; }
+/* FIX DU FANTÔME : On tue la 3ème colonne de l'admin et on force le full width */
+#app-container { 
+    grid-template-columns: 250px 1fr !important; 
+    grid-template-areas: "sidebar main" !important;
+    width: 100vw !important;
+    max-width: 100% !important;
+    overflow-x: hidden;
+}
 #app-container.left-collapsed { grid-template-columns: 80px 1fr !important; }
 .top-bar { width: calc(100% - 250px) !important; right: 0 !important; }
 .app-container.left-collapsed .top-bar { width: calc(100% - 80px) !important; }
+
+/* FIX DU DASHBOARD : Structure de la grille interne */
+.hub-grid {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 2.5rem;
+    align-items: start;
+    width: 100%;
+}
+
+/* FIX DE LA BIO : Rendre le textarea invisible en mode lecture */
+.prof-input[disabled] {
+    background: transparent !important;
+    color: var(--text-main) !important;
+    cursor: default !important;
+    border-color: transparent !important;
+    padding: 0 !important;
+    resize: none;
+    font-family: inherit;
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+
+@media (max-width: 1024px) { 
+    .hub-grid { grid-template-columns: 1fr; }
+    #app-container { grid-template-columns: 1fr !important; }
+    .search-bar-top { display: none; } 
+    .content-wrapper { padding: 1.5rem; }
+    .top-bar { width: 100% !important; }
+}
 
 #btn-toggle-panel svg { fill: var(--text-main) !important; }
 
