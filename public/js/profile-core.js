@@ -74,6 +74,12 @@ async function loadProfileData(uid) {
             const avatarImg = document.getElementById('prof-avatar-img');
             if(avatarImg) avatarImg.src = avatarUrl;
             
+            // SYNCHRONISATION TOP BAR (Étudiant)
+            const topName = document.getElementById('top-user-name');
+            if (topName && isOwner) topName.textContent = displayName;
+            const topAvatar = document.getElementById('top-user-avatar');
+            if (topAvatar && isOwner) topAvatar.innerHTML = `<img src="${avatarUrl}" style="width:100%; height:100%; object-fit:cover;">`;
+
             // 3. STATUT EN LIGNE (Admin Uniquement)
             const dot = document.getElementById('prof-online-dot');
             const statusText = document.getElementById('prof-status-text');
@@ -96,19 +102,22 @@ async function loadProfileData(uid) {
                 else badgeZone.innerHTML = `<span style="background:rgba(0,255,163,0.15); color:#00ffa3; padding:4px 8px; border-radius:4px; font-size:0.7rem; vertical-align:middle;">ÉLÈVE</span>`;
             }
 
-            // 5. GAMIFICATION (XP Cliquable pour l'Admin)
+            // 5. GAMIFICATION
             const xp = data.xp || 0;
             const level = Math.floor(xp / 100) + 1;
             
             if(document.getElementById('prof-level')) document.getElementById('prof-level').textContent = level;
+            const topLevel = document.getElementById('top-user-level');
+            if (topLevel && isOwner) topLevel.textContent = `Niveau ${level}`;
             
             const xpEls = [document.getElementById('prof-xp'), document.getElementById('prof-xp-text')];
             xpEls.forEach(el => {
                 if(el) {
-                    el.textContent = xp;
+                    el.innerHTML = `${xp}`;
+                    // Ajout d'une icône d'édition claire pour l'admin
                     if(isAdmin) {
+                        el.innerHTML = `${xp} <svg width="14" height="14" style="cursor:pointer; vertical-align:middle; fill:currentColor; opacity:0.6; margin-left:4px;" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>`;
                         el.style.cursor = 'pointer';
-                        el.style.textDecoration = 'underline';
                         el.title = "Cliquez pour modifier l'XP";
                         el.onclick = async () => {
                             const newXp = prompt(`Modifier l'XP de cet élève (Actuel : ${xp}) :`, xp);
