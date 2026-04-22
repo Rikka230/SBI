@@ -122,7 +122,7 @@
                         <div id="ptab-public" class="p-tab-content active">
                             <div class="data-group">
                                 <label style="color: var(--text-muted); font-size: 0.85rem; font-weight: bold;">Titre professionnel / Bio</label>
-                                <textarea id="prof-bio" style="width: 100%; min-height: 100px; background: #111; color: white; border: 1px solid #333; border-radius: 4px; padding: 1rem; margin-top: 0.5rem; outline: none; font-family: inherit;" placeholder="Ex: Passionné d'art et directeur artistique..."></textarea>
+                                <textarea id="prof-bio" style="width: 100%; box-sizing: border-box; min-height: 100px; background: #111; color: white; border: 1px solid #333; border-radius: 4px; padding: 1rem; margin-top: 0.5rem; outline: none; font-family: inherit;" placeholder="Ex: Passionné d'art et directeur artistique..."></textarea>
                                 <button id="btn-save-public" class="action-btn" style="width:auto; margin-top: 1rem; background: var(--accent-blue); border:none; color:white;">Enregistrer le profil public</button>
                             </div>
                         </div>
@@ -141,10 +141,10 @@
                             <div class="data-group">
                                 <p style="color: var(--accent-red); font-size: 0.85rem; margin-top:0;">⚠️ Informations sensibles. Visibles uniquement par l'utilisateur et les Administrateurs.</p>
                                 <label style="color: var(--text-muted); font-size: 0.85rem;">Numéro de téléphone</label>
-                                <input type="text" id="prof-phone" placeholder="+33 6..." style="width: 100%; padding: 0.8rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px; margin-bottom: 1rem;">
+                                <input type="text" id="prof-phone" placeholder="+33 6..." style="width: 100%; box-sizing: border-box; padding: 0.8rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px; margin-bottom: 1rem;">
                                 
                                 <label style="color: var(--text-muted); font-size: 0.85rem;">Adresse postale</label>
-                                <input type="text" id="prof-address" placeholder="123 rue..." style="width: 100%; padding: 0.8rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px;">
+                                <input type="text" id="prof-address" placeholder="123 rue..." style="width: 100%; box-sizing: border-box; padding: 0.8rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px;">
                                 
                                 <button id="btn-save-private" class="action-btn" style="width:auto; margin-top: 1rem; background: var(--accent-red); border:none; color:white;">Enregistrer les données privées</button>
                             </div>
@@ -174,7 +174,16 @@
                 </div>
             </div>
         </div>
+        
         <div class="right-section" id="profile-section">
+            <div class="profile-widget">
+                <div class="avatar">A</div>
+                <div class="user-info">
+                    <p class="name">Antony</p>
+                    <p class="role">Admin Suprême</p>
+                </div>
+            </div>
+            
             <button class="action-btn" id="btn-my-profile" style="color: var(--accent-blue); border-color: rgba(42, 87, 255, 0.3);">
                 <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg> 
                 Mon Profil
@@ -182,6 +191,7 @@
             <button class="action-btn" id="btn-clear-cache"><svg viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg> Rafraîchir le Cache</button>
             <button class="action-btn danger" id="logout-btn"><svg viewBox="0 0 24 24"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg> Déconnexion</button>
         </div>
+        
         <div class="right-section" id="notifications-section" style="display:none; padding: 0; border:none;">
             <div id="notifications-list" style="display: flex; flex-direction: column;"></div>
         </div>
@@ -213,7 +223,8 @@
 </div>
 
 <script type="module" src="js/admin-ui.js"></script>
-<script type="module" src="js/tracker.js"></script> <script type="module" src="js/admin-notifications.js"></script>
+<script type="module" src="js/tracker.js"></script>
+<script type="module" src="js/admin-notifications.js"></script>
 <script type="module" src="js/admin-profile.js"></script>
 
 </body>
