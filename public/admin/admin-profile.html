@@ -8,7 +8,6 @@
     <link rel="stylesheet" href="css/admin.css">
     <link rel="stylesheet" href="css/admin-notifications.css">
     <link rel="stylesheet" href="css/admin-profile.css">
-    
     <script src="js/components.js"></script>
 </head>
 <body class="preload">
@@ -39,7 +38,6 @@
     <main id="main-content">
         <div class="content-wrapper">
             <section class="admin-view active">
-                <input type="hidden" id="active-profile-id">
                 
                 <div class="profile-header-card">
                     <div class="profile-cover"></div>
@@ -60,51 +58,32 @@
 
                 <div class="profile-grid">
                     <div class="profile-sidebar">
-                        <div class="gamification-box" id="prof-gamification" style="display:none;">
+                        <div class="gamification-box" id="prof-gamification" style="display:block;">
                             <h4 style="margin: 0 0 0.5rem 0; color: var(--accent-blue);">Niveau <span id="prof-level">1</span></h4>
                             <div class="xp-bar-container">
                                 <div class="xp-bar-fill" id="prof-xp-fill"></div>
                             </div>
-                            <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;"><span id="prof-xp-text">0</span> / 1000 XP</p>
-                            
-                            <div class="badges-grid">
-                                <div class="badge-slot" id="badge-bronze" title="Bronze (5 cours)">
-                                    <svg width="24" height="24" fill="#cd7f32" viewBox="0 0 24 24"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>
-                                </div>
-                                <div class="badge-slot" id="badge-silver" title="Argent (15 cours)">
-                                    <svg width="24" height="24" fill="#c0c0c0" viewBox="0 0 24 24"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>
-                                </div>
-                                <div class="badge-slot" id="badge-gold" title="Or (30 cours)">
-                                    <svg width="24" height="24" fill="#ffd700" viewBox="0 0 24 24"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>
-                                </div>
-                                <div class="badge-slot" id="badge-diamond" title="Diamant (50 cours)">
-                                    <svg width="24" height="24" fill="#00ffff" viewBox="0 0 24 24"><path d="M19 3H5L2 9l10 12L22 9l-3-6zm-7 1.5L16 9l-4 9.5L8 9l4-4.5z"/></svg>
-                                </div>
-                            </div>
+                            <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;"><span id="prof-xp">0</span> / 1000 XP</p>
                         </div>
 
                         <div class="data-group">
                             <h4 style="margin: 0 0 1rem 0; color: var(--text-main);">📚 Formations</h4>
                             <div id="prof-formations-list" style="display: flex; flex-direction: column; gap: 0.5rem; color: var(--text-muted); font-size: 0.9rem;">
-                                Chargement des assignations...
+                                Affichage à venir...
                             </div>
                         </div>
                     </div>
 
                     <div class="profile-main">
                         <div class="profile-tabs-header">
-                            <div class="p-tab active" data-ptarget="ptab-public">Profil Public</div>
-                            <div class="p-tab" data-ptarget="ptab-private">
-                                Données Privées 
-                                <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24" style="vertical-align:text-bottom; margin-left:4px;"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
-                            </div>
-                            <div class="p-tab" data-ptarget="ptab-activity">Activité Récente</div>
+                            <div class="p-tab active" onclick="document.querySelectorAll('.p-tab').forEach(t=>t.classList.remove('active')); this.classList.add('active'); document.querySelectorAll('.p-tab-content').forEach(c=>c.classList.remove('active')); document.getElementById('ptab-public').classList.add('active');">Profil Public</div>
+                            <div class="p-tab private-section" onclick="document.querySelectorAll('.p-tab').forEach(t=>t.classList.remove('active')); this.classList.add('active'); document.querySelectorAll('.p-tab-content').forEach(c=>c.classList.remove('active')); document.getElementById('ptab-private').classList.add('active');">Données Privées 🔒</div>
                         </div>
 
                         <div id="ptab-public" class="p-tab-content active">
                             <div class="data-group">
                                 <label style="color: var(--text-muted); font-size: 0.85rem; font-weight: bold;">Titre professionnel / Bio</label>
-                                <textarea id="prof-bio" style="width: 100%; box-sizing: border-box; min-height: 100px; background: #111; color: white; border: 1px solid #333; border-radius: 4px; padding: 1rem; margin-top: 0.5rem; outline: none; font-family: inherit;" placeholder="Ex: Passionné d'art et directeur artistique..."></textarea>
+                                <textarea id="prof-bio" style="width: 100%; box-sizing: border-box; min-height: 100px; background: #111; color: white; border: 1px solid #333; border-radius: 4px; padding: 1rem; margin-top: 0.5rem; outline: none; font-family: inherit; resize: none;" placeholder="Ex: Passionné d'art et directeur artistique..."></textarea>
                                 <button id="btn-save-public" class="action-btn" style="width:auto; margin-top: 1rem; background: var(--accent-blue); border:none; color:white;">Enregistrer le profil public</button>
                             </div>
                         </div>
@@ -115,13 +94,8 @@
                                     <span class="data-label">Email de connexion</span>
                                     <span class="data-value" id="prof-email">...</span>
                                 </div>
-                                <div class="data-row">
-                                    <span class="data-label">Temps de connexion total</span>
-                                    <span class="data-value" style="color: var(--accent-yellow);" id="prof-time">...</span>
-                                </div>
                             </div>
                             <div class="data-group">
-                                <p style="color: var(--accent-red); font-size: 0.85rem; margin-top:0;">⚠️ Informations sensibles. Visibles uniquement par l'utilisateur et les Administrateurs.</p>
                                 <label style="color: var(--text-muted); font-size: 0.85rem;">Numéro de téléphone</label>
                                 <input type="text" id="prof-phone" placeholder="+33 6..." style="width: 100%; box-sizing: border-box; padding: 0.8rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px; margin-bottom: 1rem;">
                                 
@@ -129,15 +103,6 @@
                                 <input type="text" id="prof-address" placeholder="123 rue..." style="width: 100%; box-sizing: border-box; padding: 0.8rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px;">
                                 
                                 <button id="btn-save-private" class="action-btn" style="width:auto; margin-top: 1rem; background: var(--accent-red); border:none; color:white;">Enregistrer les données privées</button>
-                            </div>
-                        </div>
-
-                        <div id="ptab-activity" class="p-tab-content">
-                            <div class="data-group">
-                                <h4 style="margin: 0 0 1rem 0;">Dernières actions</h4>
-                                <ul style="color: var(--text-muted); font-size: 0.9rem; padding-left: 1rem;" id="prof-activity-list">
-                                    <li>Chargement...</li>
-                                </ul>
                             </div>
                         </div>
                     </div>
@@ -148,10 +113,13 @@
 
     <admin-right-panel></admin-right-panel>
 
-</div> <script type="module" src="js/admin-ui.js"></script>
+</div> 
+
+<script type="module" src="js/admin-ui.js"></script>
 <script type="module" src="js/tracker.js"></script>
 <script type="module" src="js/admin-notifications.js"></script>
-<script type="module" src="js/admin-profile.js"></script>
+
+<script type="module" src="js/profile-core.js"></script>
 
 </body>
 </html>
