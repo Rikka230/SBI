@@ -8,7 +8,6 @@
     <link rel="stylesheet" href="css/admin.css">
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
     <link rel="stylesheet" href="css/admin-notifications.css">
-    
     <script src="js/components.js"></script>
 
     <style>
@@ -20,38 +19,56 @@
         .course-section { display: none; animation: fadeIn 0.3s; }
         .course-section.active { display: block; }
         
-        .formation-pill { padding: 8px 16px; background: #111; border: 1px solid #333; border-radius: 20px; cursor: pointer; user-select: none; font-size: 0.85rem; color: #aaa; transition: 0.2s; }
-        .formation-pill:hover { border-color: #555; }
-        .formation-pill.selected { background: rgba(42, 87, 255, 0.1); border-color: var(--accent-blue); color: #fff; }
-        
-        .tag { display: inline-block; padding: 4px 8px; background: #222; border-radius: 4px; font-size: 0.75rem; margin-right: 5px; color: #ddd; }
-        
-        .ql-container.ql-snow { border: 1px solid var(--border-color); border-bottom-left-radius: 4px; border-bottom-right-radius: 4px; background: #111; color: white; min-height: 400px; font-size: 1rem; }
-        .ql-toolbar.ql-snow { border: 1px solid var(--border-color); border-top-left-radius: 4px; border-top-right-radius: 4px; background: #1e1e1e; }
-        .ql-snow .ql-stroke { stroke: #fff; }
-        .ql-snow .ql-fill, .ql-snow .ql-stroke.ql-fill { fill: #fff; }
-        .ql-snow .ql-picker { color: #fff; }
-        .ql-snow .ql-picker-options { background-color: #1e1e1e; border-color: var(--border-color); }
-        .ql-editor { padding: 1.5rem; line-height: 1.6; }
-        
-        /* Personnalisation Quill pour la taille du texte */
-        .ql-snow .ql-picker.ql-size .ql-picker-label::before,
-        .ql-snow .ql-picker.ql-size .ql-picker-item::before { content: 'Normal'; }
-        .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="small"]::before,
-        .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="small"]::before { content: 'Petit'; }
-        .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="large"]::before,
-        .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="large"]::before { content: 'Sous-titre'; }
-        .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="huge"]::before,
-        .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="huge"]::before { content: 'Titre'; }
+        .formation-pill { padding: 8px 16px; background: #111; border: 1px solid #333; border-radius: 20px; color: var(--text-muted); cursor: pointer; transition: all 0.2s; font-size: 0.85rem; user-select: none; }
+        .formation-pill:hover { border-color: var(--text-main); color: var(--text-main); }
+        .formation-pill.selected { background: rgba(42, 87, 255, 0.15); border-color: var(--accent-blue); color: var(--accent-blue); font-weight: bold; }
 
-        /* QCM Builder Styles */
-        input[type="checkbox"].q-correct-cb {
-            appearance: none; -webkit-appearance: none; width: 22px; height: 22px; background: #222; border: 2px solid #555; border-radius: 4px; cursor: pointer; position: relative; transition: 0.2s; flex-shrink: 0;
-        }
-        input[type="checkbox"].q-correct-cb:checked { background: var(--accent-green); border-color: var(--accent-green); }
-        input[type="checkbox"].q-correct-cb:checked::after { content: '✔'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #000; font-weight: bold; font-size: 14px; }
+        .media-toggle { display: flex; gap: 1.5rem; margin-bottom: 1rem; border-bottom: 1px solid #333; padding-bottom: 1rem; }
+        .media-toggle label { color: var(--text-muted); cursor: pointer; display: flex; align-items: center; gap: 0.5rem; transition: color 0.2s; }
+        .media-toggle label:hover { color: var(--text-main); }
+        .media-toggle input[type="radio"] { accent-color: var(--accent-blue); width: 16px; height: 16px; }
         
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        .upload-zone { border: 1px dashed #444; border-radius: 6px; padding: 1.5rem; text-align: center; cursor: pointer; transition: 0.2s; background: rgba(255,255,255,0.02); }
+        .upload-zone:hover { border-color: var(--accent-blue); background: rgba(42, 87, 255, 0.05); }
+        
+        .protected-media { user-select: none; -webkit-user-drag: none; pointer-events: auto; }
+
+        .ql-toolbar.ql-snow { border-color: var(--border-color) !important; background-color: var(--bg-panel); border-radius: 8px 8px 0 0; padding: 10px; }
+        .ql-container.ql-snow { border-color: var(--border-color) !important; background-color: #0a0a0c; border-radius: 0 0 8px 8px; color: var(--text-main); font-family: inherit; font-size: 1.05rem; }
+        .ql-snow .ql-stroke { stroke: var(--text-muted) !important; }
+        .ql-snow .ql-fill { fill: var(--text-muted) !important; }
+        .ql-snow .ql-picker { color: var(--text-muted) !important; }
+        .ql-snow .ql-picker-options { background-color: var(--bg-panel); border-color: var(--border-color); }
+        .ql-editor.ql-blank::before { color: #555; font-style: normal; }
+        .ql-editor { min-height: 300px; user-select: text !important; pointer-events: auto !important; cursor: text; }
+        
+        /* Personnalisation de la Scrollbar pour les listes de recherche */
+        .search-list-container::-webkit-scrollbar { width: 6px; }
+        .search-list-container::-webkit-scrollbar-track { background: #111; border-radius: 4px; }
+        .search-list-container::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
+        .search-list-container::-webkit-scrollbar-thumb:hover { background: var(--accent-blue); }
+        /* --- DESIGN HAUTE DENSITÉ POUR LES LISTES D'ACCÈS --- */
+        .compact-user-row {
+            display: flex; align-items: center; gap: 0.5rem; 
+            padding: 0.3rem 0.5rem; margin: 0; 
+            cursor: pointer; border-radius: 4px; transition: background 0.1s;
+        }
+        .compact-user-row:hover { background: rgba(255, 255, 255, 0.05); }
+        
+        /* Petites cases carrées pour gagner de la place */
+        input[type="checkbox"].compact-cb {
+            appearance: none; -webkit-appearance: none;
+            width: 16px; height: 16px;
+            background: #222; border: 1px solid #555; border-radius: 3px;
+            cursor: pointer; position: relative; flex-shrink: 0; margin: 0;
+        }
+        input[type="checkbox"].compact-cb:checked {
+            background: var(--accent-blue); border-color: var(--accent-blue);
+        }
+        input[type="checkbox"].compact-cb:checked::after {
+            content: '✔'; position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%); color: white; font-size: 11px;
+        }
     </style>
 </head>
 <body class="preload">
@@ -67,10 +84,11 @@
     </script>
 
     <admin-left-panel></admin-left-panel>
+
     <header class="top-bar">
         <button class="mobile-toggle left-toggle" id="btn-toggle-mobile"><svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg></button>
         <span class="page-title" style="font-weight: 600;">
-            <a href="index.html?tab=view-formations" style="color: var(--text-muted); text-decoration: none;">Formations</a> <span style="color:var(--text-muted)">/</span> Bibliothèque de Cours
+            <a href="index.html?tab=view-formations" style="color: var(--text-muted); text-decoration: none;">Formations</a> <span style="color:var(--text-muted)">/</span> Cours
         </span>
         <button class="mobile-toggle right-toggle" id="btn-toggle-right" style="position: relative;">
             <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
@@ -81,212 +99,217 @@
     <main id="main-content">
         <div class="content-wrapper">
             
-            <div class="sub-nav">
-                <div class="sub-nav-item active" data-tab="tab-list">Bibliothèque</div>
-                <div class="sub-nav-item" data-tab="tab-formations">Catégories & Accès</div>
-                <div class="sub-nav-item" data-tab="tab-editor" id="btn-trigger-new-course" style="color: var(--accent-green);">+ Créer un Cours</div>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h2>Gestionnaire de Cours</h2>
+                <button id="btn-trigger-new-course" class="action-btn" style="width: auto; background: var(--accent-blue); color: white; border: none; font-weight: bold;">
+                    + Nouveau Cours
+                </button>
             </div>
 
-            <section id="tab-list" class="course-section active">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                    <h2 style="margin: 0;">Tous les Cours</h2>
-                    <select id="library-formation-filter" style="padding: 0.5rem; background: var(--bg-card); color: white; border: 1px solid var(--border-color); border-radius: 4px;">
-                        <option value="all">Toutes les catégories</option>
+            <div class="sub-nav">
+                <div class="sub-nav-item active" onclick="switchCourseTab('tab-list')" id="nav-tab-list">Bibliothèque</div>
+                <div class="sub-nav-item" onclick="switchCourseTab('tab-editor')" id="nav-tab-editor">Éditeur de Cours</div>
+                <div class="sub-nav-item" onclick="switchCourseTab('tab-formations')" id="nav-tab-formations">Catégories & Accès</div>
+                <div class="sub-nav-item" onclick="switchCourseTab('tab-tracking')" id="nav-tab-tracking">Suivi Pédagogique</div>
+            </div>
+
+            <div id="tab-list" class="course-section active">
+                <div style="background: var(--bg-card); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 1.5rem; display: flex; gap: 1rem;">
+                    <select id="library-formation-filter" style="padding: 0.8rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px; flex-grow: 1;">
+                        <option value="all">Toutes les Catégories</option>
                     </select>
+                    <input type="text" id="search-course" placeholder="Rechercher un cours..." style="padding: 0.8rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px; flex-grow: 2;">
                 </div>
+
                 <div id="courses-list-container">
-                    <p style="color:var(--text-muted);">Chargement de la bibliothèque...</p>
+                    <p style="color: var(--text-muted); text-align: center;">Chargement de la bibliothèque...</p>
                 </div>
-            </section>
+            </div>
 
-            <section id="tab-formations" class="course-section">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                    <h2 style="margin: 0;">Catégories (Formations)</h2>
-                    <button id="btn-create-formation" class="action-btn" style="background: var(--accent-blue); color: white; border: none;">+ Nouvelle Catégorie</button>
-                </div>
-                <p style="color: var(--text-muted); margin-bottom: 2rem;">Les catégories permettent de regrouper les cours et de définir quels professeurs et élèves y ont accès.</p>
-                <div id="formations-list-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem;">
-                    <p style="color:var(--text-muted);">Chargement des catégories...</p>
-                </div>
-            </section>
-
-            <section id="tab-editor" class="course-section">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-                    <h2 style="margin: 0;" id="editor-main-title">Éditeur de Cours</h2>
-                    <div style="display: flex; gap: 1rem; align-items: center;">
-                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--text-muted);">
-                            <input type="checkbox" id="course-active" checked> Mettre en ligne
-                        </label>
-                        <button id="btn-save-course" class="action-btn" style="background: var(--accent-green); color: #000; border: none; font-weight: bold; width: auto; margin: 0;">Sauvegarder le Cours Complet</button>
-                    </div>
-                </div>
-
-                <div style="display: grid; grid-template-columns: 250px 1fr; gap: 2rem; align-items: start;">
+            <div id="tab-editor" class="course-section">
+                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem;">
                     
                     <div style="display: flex; flex-direction: column; gap: 1.5rem;">
                         <div style="background: var(--bg-card); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color);">
-                            <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.85rem;">Titre Global du Cours *</label>
-                            <input type="text" id="course-title" placeholder="Ex: Introduction à l'Art" style="width: 100%; padding: 0.8rem; background: #111; border: 1px solid #333; color: white; border-radius: 4px; margin-bottom: 1rem;">
+                            <label style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.5rem; display: block; font-weight: bold;">Titre Global du Cours</label>
                             <input type="hidden" id="edit-course-id">
+                            <input type="text" id="course-title" placeholder="Ex: Les bases de la perspective" style="width: 100%; font-size: 1.5rem; font-weight: bold; padding: 0.5rem 0; background: transparent; color: white; border: none; border-bottom: 2px solid var(--border-color); outline: none;">
+                        </div>
+
+                        <div id="no-chapter-zone" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 400px; background: rgba(255,255,255,0.02); border: 1px dashed var(--border-color); border-radius: 8px; color: var(--text-muted);">
+                            <p style="font-size: 1.1rem;">Sélectionnez ou créez une étape à droite.</p>
+                        </div>
+
+                        <div id="chapter-editor-zone" style="display: none; flex-direction: column; gap: 1rem; background: var(--bg-card); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color);">
+                            <label style="color: var(--accent-blue); font-size: 0.85rem; font-weight: bold;">Édition de la leçon</label>
+                            <input type="text" id="chapter-title" placeholder="Titre de l'étape" style="width: 100%; font-size: 1.2rem; padding: 0.8rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px; outline: none;">
                             
-                            <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.85rem;">Assigner à des Catégories</label>
-                            <div id="formations-selector" style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.5rem;">
+                            <div style="background: #111; padding: 1.5rem; border-radius: 6px; border: 1px solid #333;">
+                                <div class="media-toggle">
+                                    <label><input type="radio" name="media_type" value="image" checked> <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg> Image Optimisée</label>
+                                    <label><input type="radio" name="media_type" value="video"> <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M18 3v2h-2V3H8v2H6V3H4v18h2v-2h2v2h8v-2h2v2h2V3h-2zM8 17H6v-2h2v2zm0-4H6v-2h2v2zm0-4H6V7h2v2zm10 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V7h2v2z"/></svg> Fichier Vidéo (Protégé)</label>
+                                </div>
+                                
+                                <div id="media-image-zone" style="display: flex; flex-direction: column; gap: 1rem;">
+                                    <div class="upload-zone" onclick="document.getElementById('chapter-image-upload').click()">
+                                        <svg width="32" height="32" fill="var(--text-muted)" viewBox="0 0 24 24" style="margin-bottom:10px;"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg>
+                                        <p style="margin:0; color:var(--text-muted); font-size:0.9rem;">Cliquez pour uploader une image</p>
+                                    </div>
+                                    <input type="file" id="chapter-image-upload" accept="image/*" style="display: none;">
+                                    <input type="hidden" id="chapter-image-base64">
+                                    <img id="chapter-image-preview" class="protected-media" oncontextmenu="return false;" src="" style="display:none; max-height: 200px; border-radius:6px; object-fit: contain; border: 1px solid #333;">
+                                </div>
+                                
+                                <div id="media-video-zone" style="display: none; flex-direction: column; gap: 1rem;">
+                                    <div class="upload-zone" onclick="document.getElementById('chapter-video-upload').click()">
+                                        <svg width="32" height="32" fill="var(--text-muted)" viewBox="0 0 24 24" style="margin-bottom:10px;"><path d="M18 3v2h-2V3H8v2H6V3H4v18h2v-2h2v2h8v-2h2v2h2V3h-2zM8 17H6v-2h2v2zm0-4H6v-2h2v2zm0-4H6V7h2v2zm10 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V7h2v2z"/></svg>
+                                        <p style="margin:0; color:var(--text-muted); font-size:0.9rem;">Cliquez pour uploader un fichier Vidéo (MP4/WebM)</p>
+                                    </div>
+                                    <input type="file" id="chapter-video-upload" accept="video/mp4,video/webm" style="display: none;">
+                                    <input type="hidden" id="chapter-video-base64">
+                                    <video id="chapter-video-preview" controls controlsList="nodownload" oncontextmenu="return false;" class="protected-media" style="display:none; max-height: 300px; width:100%; border-radius:6px; background:#000; border: 1px solid #333;"></video>
+                                </div>
+                            </div>
+
+                            <div id="course-editor"></div>
+                        </div>
+
+                        <div id="quiz-editor-zone" style="display: none; flex-direction: column; gap: 1rem; background: rgba(255, 188, 4, 0.05); padding: 1.5rem; border-radius: 8px; border: 1px solid rgba(255, 188, 4, 0.3);">
+                            <label style="color: var(--accent-yellow); font-size: 0.85rem; font-weight: bold;">Constructeur d'Examen (QCM Multiple)</label>
+                            <input type="text" id="quiz-title" placeholder="Titre de l'examen (ex: Test Final de Perspective)" style="width: 100%; font-size: 1.2rem; padding: 0.8rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px; outline: none;">
+                            
+                            <div id="quiz-questions-container" style="display: flex; flex-direction: column; gap: 1.5rem; margin-top: 1rem;"></div>
+
+                            <button id="btn-add-question" class="action-btn" style="width: 100%; margin-top: 1rem; justify-content: center; border: 1px dashed var(--accent-yellow); color: var(--accent-yellow); background: rgba(255, 188, 4, 0.1);">
+                                + Ajouter une Question QCM
+                            </button>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+                        <div style="background: var(--bg-card); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color);">
+                            <h4 style="margin-top: 0; color: var(--accent-blue);">Paramètres du Cours</h4>
+                            <label style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.5rem; cursor: pointer;">
+                                <input type="checkbox" id="course-active" checked> Rendre le cours visible
+                            </label>
+                            <label style="display: block; margin-bottom: 0.8rem; color: var(--text-muted); font-size: 0.9rem;">Assigner aux Catégories :</label>
+                            
+                            <div id="formations-selector" style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                                <span style="color: var(--text-muted); font-size: 0.85rem;">Chargement des catégories...</span>
                             </div>
                         </div>
 
                         <div style="background: var(--bg-card); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color);">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                                <h4 style="margin: 0;">Plan du Cours</h4>
-                            </div>
-                            
-                            <ul id="chapters-list" style="list-style: none; padding: 0; margin: 0 0 1rem 0; display: flex; flex-direction: column; gap: 0.5rem;">
-                                <li style="color: var(--text-muted); font-size: 0.85rem; font-style: italic;">Aucune étape.</li>
-                            </ul>
-
-                            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-                                <button id="btn-add-chapter" style="width: 100%; padding: 0.6rem; background: rgba(42, 87, 255, 0.1); color: var(--accent-blue); border: 1px dashed var(--accent-blue); border-radius: 4px; cursor: pointer; transition: 0.2s;">+ Ajouter Leçon</button>
-                                <button id="btn-add-quiz" style="width: 100%; padding: 0.6rem; background: rgba(251, 188, 4, 0.1); color: var(--accent-yellow); border: 1px dashed var(--accent-yellow); border-radius: 4px; cursor: pointer; transition: 0.2s;">+ Ajouter Examen (QCM)</button>
+                            <h4 style="margin-top: 0;">Structure du cours</h4>
+                            <ul id="chapters-list" style="list-style: none; padding: 0; margin: 0 0 1rem 0; display: flex; flex-direction: column; gap: 0.5rem;"></ul>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <button id="btn-add-chapter" class="action-btn" style="flex: 1; margin: 0; justify-content: center; border-style: dashed; color: var(--text-muted); font-size: 0.8rem;">+ Leçon</button>
+                                <button id="btn-add-quiz" class="action-btn" style="flex: 1; margin: 0; justify-content: center; border-style: dashed; color: var(--accent-yellow); border-color: rgba(255, 188, 4, 0.4); font-size: 0.8rem;">+ Examen</button>
                             </div>
                         </div>
-                    </div>
-
-                    <div style="background: var(--bg-card); border-radius: 8px; border: 1px solid var(--border-color); min-height: 500px; display: flex; flex-direction: column;">
                         
-                        <div id="no-chapter-zone" style="flex-grow: 1; display: flex; align-items: center; justify-content: center; color: var(--text-muted); flex-direction: column; gap: 1rem; padding: 3rem; text-align: center;">
-                            <svg width="48" height="48" fill="currentColor" viewBox="0 0 24 24" style="opacity: 0.5;"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
-                            <p style="margin:0;">Créez ou sélectionnez une étape dans le plan à gauche pour commencer l'édition.</p>
-                        </div>
-
-                        <div id="chapter-editor-zone" style="display: none; flex-direction: column; padding: 2rem;">
-                            <input type="text" id="chapter-title" placeholder="Titre de la leçon..." style="width: 100%; font-size: 1.5rem; padding: 0; background: transparent; color: white; border: none; outline: none; margin-bottom: 2rem; font-weight: bold;">
-                            
-                            <div style="margin-bottom: 1.5rem;">
-                                <label style="display: block; margin-bottom: 0.8rem; color: var(--text-muted); font-size: 0.85rem; font-weight: bold; text-transform: uppercase;">Média Principal</label>
-                                <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
-                                    <label style="cursor: pointer; display: flex; align-items: center; gap: 0.5rem;"><input type="radio" name="media_type" value="image" checked onchange="document.getElementById('media-image-zone').style.display='flex'; document.getElementById('media-video-zone').style.display='none';"> Image</label>
-                                    <label style="cursor: pointer; display: flex; align-items: center; gap: 0.5rem;"><input type="radio" name="media_type" value="video" onchange="document.getElementById('media-image-zone').style.display='none'; document.getElementById('media-video-zone').style.display='flex';"> Vidéo</label>
-                                </div>
-
-                                <div id="media-image-zone" style="display: flex; flex-direction: column; gap: 1rem; background: #111; padding: 1rem; border-radius: 4px; border: 1px dashed #333;">
-                                    <input type="file" id="chapter-image-upload" accept="image/*" style="color: var(--text-muted);">
-                                    <input type="hidden" id="chapter-image-base64">
-                                    <img id="chapter-image-preview" src="" style="display: none; max-width: 100%; max-height: 300px; border-radius: 4px; object-fit: contain; margin-top: 0.5rem; border: 1px solid #333;">
-                                </div>
-
-                                <div id="media-video-zone" style="display: none; flex-direction: column; gap: 1rem; background: #111; padding: 1rem; border-radius: 4px; border: 1px dashed #333;">
-                                    <p style="margin:0; font-size:0.8rem; color:var(--text-muted);">Upload direct limité (ex: 1Mo). Pour les gros fichiers, un système externe sera nécessaire.</p>
-                                    <input type="file" id="chapter-video-upload" accept="video/mp4,video/webm" style="color: var(--text-muted);">
-                                    <input type="hidden" id="chapter-video-base64">
-                                    <video id="chapter-video-preview" controls style="display: none; max-width: 100%; max-height: 300px; border-radius: 4px; margin-top: 0.5rem; border: 1px solid #333;"></video>
-                                </div>
-                            </div>
-
-                            <label style="display: block; margin-bottom: 0.8rem; color: var(--text-muted); font-size: 0.85rem; font-weight: bold; text-transform: uppercase;">Contenu Texte</label>
-                            <div id="quill-editor"></div>
-                        </div>
-
-                        <div id="quiz-editor-zone" style="display: none; flex-direction: column; padding: 2rem;">
-                            <input type="text" id="quiz-title" placeholder="Titre de l'examen (ex: QCM Final)..." style="width: 100%; font-size: 1.5rem; padding: 0; background: transparent; color: var(--accent-yellow); border: none; outline: none; margin-bottom: 2rem; font-weight: bold;">
-                            
-                            <p style="color: var(--text-muted); margin-top: 0; margin-bottom: 2rem;">Ajoutez des questions et cochez la (ou les) bonne(s) réponse(s).</p>
-                            
-                            <div id="quiz-questions-container" style="display: flex; flex-direction: column; gap: 2rem;">
-                                </div>
-                            
-                            <button id="btn-add-question" style="margin-top: 2rem; padding: 1rem; background: transparent; border: 2px dashed #444; color: var(--text-muted); border-radius: 8px; cursor: pointer; transition: 0.2s; font-weight: bold; font-size: 1rem;">
-                                + Nouvelle Question
-                            </button>
-                        </div>
+                        <button id="btn-save-course" class="action-btn" style="background: var(--accent-green); color: black; border: none; font-weight: bold; justify-content: center; padding: 1rem; font-size: 1rem;">
+                            Sauvegarder le Cours Complet
+                        </button>
                     </div>
                 </div>
-            </section>
+            </div>
+
+            <div id="tab-formations" class="course-section">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                    <div>
+                        <h2 style="margin:0;">Catégories & Accès</h2>
+                        <p style="color: var(--text-muted); margin: 0;">Gérez les accès de vos étudiants et professeurs aux différentes formations.</p>
+                    </div>
+                    <button id="btn-create-formation" class="action-btn" style="width: auto; background: var(--accent-blue); color: white; border: none; font-weight: bold; margin:0;">
+                        + Nouvelle Catégorie
+                    </button>
+                </div>
+                
+                <div id="formations-list-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem;">
+                    <p style="color: var(--text-muted);">Chargement de vos formations...</p>
+                </div>
+            </div>
+
+            <div id="tab-tracking" class="course-section">
+                <div style="text-align: center; padding: 4rem; background: var(--bg-card); border-radius: 8px; border: 1px solid var(--border-color);">
+                    <h3 style="color: var(--accent-blue);">Suivi Pédagogique</h3>
+                    <p style="color: var(--text-muted);">Espace en cours de construction...</p>
+                </div>
+            </div>
+
         </div>
     </main>
 
     <admin-right-panel></admin-right-panel>
 
-</div> <div id="formation-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center;">
-    <div style="background: var(--bg-card); padding: 2rem; border-radius: 8px; border: 1px solid var(--border-color); width: 100%; max-width: 700px; max-height: 90vh; display: flex; flex-direction: column;">
-        
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-            <h3 style="margin: 0;" id="formation-modal-title">Créer une Catégorie</h3>
-            <button id="close-formation-modal-btn" style="background:none; border:none; color:white; font-size: 1.5rem; cursor:pointer;">&times;</button>
-        </div>
+</div> 
 
-        <div style="overflow-y: auto; padding-right: 10px; flex-grow: 1;">
-            <form id="formation-form" style="display: flex; flex-direction: column; gap: 1.5rem;">
-                <input type="hidden" id="edit-formation-id">
+<div id="formation-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center;">
+    <div style="background: var(--bg-card); padding: 2rem; border-radius: 8px; border: 1px solid var(--border-color); width: 100%; max-width: 600px; max-height: 90vh; overflow-y: auto;">
+        <h3 id="formation-modal-title" style="margin-top: 0;">Créer une Catégorie de Formation</h3>
+        <form id="formation-form" style="display: flex; flex-direction: column; gap: 1rem;">
+            <input type="hidden" id="edit-formation-id">
+            
+            <label style="color: var(--text-muted); font-size: 0.85rem; font-weight: bold;">Titre de la formation</label>
+            <input type="text" id="formation-titre" placeholder="Ex: Masterclass Illustration" required style="padding: 0.8rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px; outline: none;">
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
                 
-                <div>
-                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Nom de la catégorie *</label>
-                    <input type="text" id="formation-titre" required placeholder="Ex: Masterclass Aquarelle" style="width: 100%; padding: 0.8rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px;">
+                <div style="background: #111; padding: 1rem; border-radius: 6px; border: 1px solid #333; display: flex; flex-direction: column;">
+                    <label style="color: var(--accent-yellow); font-size: 0.85rem; font-weight: bold; display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                        <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg> Professeurs autorisés
+                    </label>
+                    <input type="text" id="search-profs" placeholder="Rechercher un prof..." style="width: 100%; padding: 0.5rem; background: #222; color: white; border: 1px solid #444; border-radius: 4px; margin-bottom: 0.5rem; font-size: 0.8rem; outline: none;">
+                    <div id="formation-profs-list" class="search-list-container" style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 200px; overflow-y: auto; padding-right: 5px;"></div>
                 </div>
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
-                    
-                    <div style="background: #111; border: 1px solid #333; border-radius: 6px; padding: 1rem; display: flex; flex-direction: column; height: 350px;">
-                        <h4 style="margin-top: 0; margin-bottom: 1rem; color: var(--accent-yellow); border-bottom: 1px solid #333; padding-bottom: 0.5rem;">👨‍🏫 Professeurs Autorisés</h4>
-                        <input type="text" id="search-profs" placeholder="Rechercher un prof..." style="width: 100%; padding: 0.5rem; margin-bottom: 1rem; background: #222; border: 1px solid #444; color: white; border-radius: 4px; font-size: 0.85rem;">
-                        <div id="formation-profs-list" style="overflow-y: auto; flex-grow: 1; display: flex; flex-direction: column; gap: 0.5rem;">
-                        </div>
-                    </div>
-
-                    <div style="background: #111; border: 1px solid #333; border-radius: 6px; padding: 1rem; display: flex; flex-direction: column; height: 350px;">
-                        <h4 style="margin-top: 0; margin-bottom: 1rem; color: var(--accent-green); border-bottom: 1px solid #333; padding-bottom: 0.5rem;">👨‍🎓 Élèves Inscrits</h4>
-                        <input type="text" id="search-students" placeholder="Rechercher un élève..." style="width: 100%; padding: 0.5rem; margin-bottom: 1rem; background: #222; border: 1px solid #444; color: white; border-radius: 4px; font-size: 0.85rem;">
-                        <div id="formation-students-list" style="overflow-y: auto; flex-grow: 1; display: flex; flex-direction: column; gap: 0.5rem;">
-                        </div>
-                    </div>
-
+                <div style="background: #111; padding: 1rem; border-radius: 6px; border: 1px solid #333; display: flex; flex-direction: column;">
+                    <label style="color: var(--accent-green); font-size: 0.85rem; font-weight: bold; display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                        <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/></svg> Étudiants inscrits
+                    </label>
+                    <input type="text" id="search-students" placeholder="Rechercher un élève..." style="width: 100%; padding: 0.5rem; background: #222; color: white; border: 1px solid #444; border-radius: 4px; margin-bottom: 0.5rem; font-size: 0.8rem; outline: none;">
+                    <div id="formation-students-list" class="search-list-container" style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 200px; overflow-y: auto; padding-right: 5px;"></div>
                 </div>
 
-                <button type="submit" style="padding: 1rem; background: var(--accent-blue); color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; margin-top: 1rem;">Enregistrer la Catégorie</button>
-            </form>
-
-            <div id="delete-formation-zone" style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #333; display: none;">
-                <button id="delete-formation-btn" style="width: 100%; padding: 0.8rem; background: rgba(255, 74, 74, 0.1); color: var(--accent-red); border: 1px solid var(--accent-red); border-radius: 4px; cursor: pointer;">Supprimer cette catégorie</button>
             </div>
+            
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">Note : Les administrateurs ont un accès automatique à tout.</p>
+
+            <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                <button type="submit" style="flex: 1; padding: 1rem; background: var(--accent-blue); color: #000; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">Sauvegarder</button>
+                <button type="button" id="close-formation-modal-btn" style="flex: 1; padding: 1rem; background: transparent; color: white; border: 1px solid #555; border-radius: 4px; cursor: pointer;">Annuler</button>
+            </div>
+        </form>
+        <div id="delete-formation-zone" style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #444; display: none;">
+            <button id="delete-formation-btn" style="width: 100%; padding: 1rem; background: rgba(255, 74, 74, 0.1); color: var(--accent-red); border: 1px solid var(--accent-red); border-radius: 4px; font-weight: bold; cursor: pointer;">⚠️ Supprimer cette Catégorie</button>
         </div>
     </div>
 </div>
 
-<script>
-    document.addEventListener('DOMContentLoaded', () => {
-        const tabs = document.querySelectorAll('.sub-nav-item');
-        const sections = document.querySelectorAll('.course-section');
-
-        window.switchCourseTab = function(targetId) {
-            tabs.forEach(t => t.classList.remove('active'));
-            sections.forEach(s => s.classList.remove('active'));
-
-            const targetTab = Array.from(tabs).find(t => t.getAttribute('data-tab') === targetId);
-            if(targetTab) targetTab.classList.add('active');
-            
-            const targetSection = document.getElementById(targetId);
-            if(targetSection) targetSection.classList.add('active');
-
-            const url = new URL(window.location);
-            if(targetId === 'tab-editor' && document.getElementById('edit-course-id').value) {
-                url.searchParams.set('edit', document.getElementById('edit-course-id').value);
-            } else {
-                url.searchParams.delete('edit');
-            }
-            window.history.replaceState({}, '', url);
-        };
-
-        tabs.forEach(tab => {
-            tab.addEventListener('click', (e) => {
-                if(e.currentTarget.id === 'btn-trigger-new-course') return;
-                switchCourseTab(e.currentTarget.getAttribute('data-tab'));
-            });
-        });
-    });
-</script>
-
 <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
 <script>
+    window.switchCourseTab = function(tabId) {
+        document.querySelectorAll('.sub-nav-item').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.course-section').forEach(el => el.classList.remove('active'));
+        document.getElementById('nav-' + tabId).classList.add('active');
+        document.getElementById(tabId).classList.add('active');
+    };
+
+    document.querySelectorAll('input[name="media_type"]').forEach(radio => {
+        radio.addEventListener('change', (e) => {
+            if (e.target.value === 'image') {
+                document.getElementById('media-image-zone').style.display = 'flex';
+                document.getElementById('media-video-zone').style.display = 'none';
+            } else {
+                document.getElementById('media-image-zone').style.display = 'none';
+                document.getElementById('media-video-zone').style.display = 'flex';
+            }
+        });
+    });
+
     document.addEventListener("DOMContentLoaded", function() {
-        window.quill = new Quill('#quill-editor', {
+        window.quill = new Quill('#course-editor', {
             theme: 'snow',
             placeholder: 'Rédigez le contenu de la leçon ici...',
             modules: {
@@ -320,6 +343,6 @@
 <script type="module" src="js/admin-courses.js"></script>
 <script type="module" src="js/tracker.js"></script>
 <script type="module" src="js/admin-notifications.js"></script>
-
 </body>
 </html>
+}
