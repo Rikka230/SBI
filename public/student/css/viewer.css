@@ -1,0 +1,63 @@
+:root {
+    --bg-netflix: #0f0f0f;
+    --bg-sidebar: #18181b;
+    --text-netflix: #ffffff;
+    --text-muted-netflix: #a1a1aa;
+    --accent-netflix: #10b981;
+}
+
+body.netflix-mode {
+    background-color: var(--bg-netflix) !important;
+    color: var(--text-netflix);
+    margin: 0; padding: 0;
+    overflow: hidden;
+    height: 100vh; width: 100vw;
+    display: flex; flex-direction: column;
+}
+
+.viewer-header {
+    height: 60px; background: var(--bg-netflix); border-bottom: 1px solid #27272a;
+    display: flex; align-items: center; justify-content: space-between; padding: 0 2rem;
+}
+.btn-back-hub {
+    color: var(--text-muted-netflix); text-decoration: none; display: flex; align-items: center; gap: 0.5rem; transition: 0.2s; font-weight: bold;
+}
+.btn-back-hub:hover { color: white; }
+
+.viewer-body {
+    display: flex; height: calc(100vh - 60px); width: 100%;
+}
+
+.viewer-sidebar {
+    width: 320px; background: var(--bg-sidebar); border-left: 1px solid #27272a;
+    display: flex; flex-direction: column; overflow-y: auto;
+}
+
+.viewer-main {
+    flex-grow: 1; display: flex; flex-direction: column; overflow-y: auto; padding: 2rem;
+}
+
+.chapter-tab {
+    padding: 1.2rem; border-bottom: 1px solid #27272a; cursor: pointer; transition: 0.2s;
+    display: flex; align-items: center; justify-content: space-between;
+}
+.chapter-tab:hover { background: rgba(255,255,255,0.05); }
+.chapter-tab.active { border-left: 4px solid var(--accent-netflix); background: rgba(16, 185, 129, 0.1); }
+.chapter-tab.done .tab-title { color: var(--accent-netflix); }
+
+.tab-title { font-weight: bold; font-size: 0.95rem; color: var(--text-muted-netflix); }
+.active .tab-title { color: white; }
+
+.media-container { width: 100%; max-width: 900px; margin: 0 auto 2rem auto; border-radius: 8px; overflow: hidden; background: black; }
+.media-container img, .media-container video { width: 100%; display: block; }
+.text-container { max-width: 900px; margin: 0 auto; font-size: 1.1rem; line-height: 1.8; color: #d4d4d8; }
+
+.action-bar {
+    max-width: 900px; margin: 3rem auto 2rem auto; width: 100%;
+    display: flex; justify-content: flex-end; padding-top: 2rem; border-top: 1px solid #27272a;
+}
+
+.btn-validate {
+    background: var(--accent-netflix); color: black; font-weight: bold; border: none; padding: 1rem 2rem; border-radius: 8px; cursor: pointer; transition: 0.2s; font-size: 1.1rem;
+}
+.btn-validate:disabled { background: #3f3f46; color: #71717a; cursor: not-allowed; }
