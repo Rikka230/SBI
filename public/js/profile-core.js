@@ -249,6 +249,10 @@ function initCropperEngine() {
     let startX, startY, currentX = 0, currentY = 0;
     let baseWidth = 0, baseHeight = 0, currentZoom = 1;
 
+    // Débloque la possibilité de cliquer pour uploader, même si une image est déjà là
+    zone.onclick = () => { input.click(); };
+    zone.style.cursor = 'pointer';
+
     const openTrigger = document.getElementById('btn-trigger-crop');
     if(openTrigger) {
         openTrigger.addEventListener('click', () => {
@@ -304,13 +308,19 @@ function initCropperEngine() {
     function checkBounds() {
         const boundsX = zone.clientWidth - (baseWidth * currentZoom);
         const boundsY = zone.clientHeight - (baseHeight * currentZoom);
-        if(currentX > 0) currentX = 0; if(currentY > 0) currentY = 0;
-        if(currentX < boundsX) currentX = boundsX; if(currentY < boundsY) currentY = boundsY;
+        
+        // Sécurité pour éviter les tremblements
+        if(currentX > 0) currentX = 0; 
+        if(currentY > 0) currentY = 0;
+        if(boundsX < 0 && currentX < boundsX) currentX = boundsX; 
+        if(boundsY < 0 && currentY < boundsY) currentY = boundsY;
     }
 
     zone.addEventListener('mousedown', e => {
         if(!zone.hasImage) return;
         isDragging = true;
+        // Empêche le comportement natif de drag'n'drop de l'image HTML
+        e.preventDefault(); 
         startX = e.clientX - currentX; startY = e.clientY - currentY;
     });
     window.addEventListener('mouseup', () => { isDragging = false; });
