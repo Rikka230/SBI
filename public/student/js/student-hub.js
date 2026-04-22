@@ -4,19 +4,18 @@
  * =======================================================================
  */
 
-// Mise à jour des chemins : on remonte de 2 dossiers (../../) pour trouver le js/ racine
-import { db, auth } from '../../js/firebase-init.js';
+import { db, auth } from '/js/firebase-init.js';
 import { doc, getDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
 document.addEventListener('DOMContentLoaded', () => {
     
-    // Vérification de la connexion
     onAuthStateChanged(auth, async (user) => {
         if (user) {
             loadStudentData(user.uid);
         } else {
-            window.location.replace('../../login.html'); // Remonte aussi pour le login
+            // Sécurité avec chemin absolu : renvoi vers la racine
+            window.location.replace('/login.html'); 
         }
     });
 
@@ -30,51 +29,61 @@ async function loadStudentData(uid) {
             
             // 1. Mise à jour de la Top Bar
             const name = data.prenom || data.nom || "Étudiant";
-            document.getElementById('top-user-name').textContent = name;
+            const topUserName = document.getElementById('top-user-name');
+            if(topUserName) topUserName.textContent = name;
             
-            if(data.photoURL) {
-                document.getElementById('top-user-avatar').innerHTML = `<img src="${data.photoURL}" style="width:100%; height:100%; object-fit:cover;">`;
-            } else {
-                document.getElementById('top-user-avatar').textContent = name.charAt(0).toUpperCase();
+            const topUserAvatar = document.getElementById('top-user-avatar');
+            if(topUserAvatar) {
+                if(data.photoURL) {
+                    topUserAvatar.innerHTML = `<img src="${data.photoURL}" style="width:100%; height:100%; object-fit:cover;">`;
+                } else {
+                    topUserAvatar.textContent = name.charAt(0).toUpperCase();
+                }
             }
 
-            // 2. Logique de Gamification / XP
-            const xp = data.xp || 150; // XP par défaut pour le test
+            // 2. Logique de Gamification / XP : Lecture depuis la BDD (0 par défaut)
+            const xp = data.xp || 0; 
             const level = Math.floor(xp / 100) + 1;
             const percent = Math.min((xp / 1000) * 100, 100);
 
-            document.getElementById('top-user-level').textContent = `Niveau ${level}`;
-            document.getElementById('hub-level').textContent = level;
-            document.getElementById('hub-xp').textContent = xp;
+            const topUserLevel = document.getElementById('top-user-level');
+            if(topUserLevel) topUserLevel.textContent = `Niveau ${level}`;
             
-            // Animation fluide de la barre
+            const hubLevel = document.getElementById('hub-level');
+            if(hubLevel) hubLevel.textContent = level;
+            
+            const hubXp = document.getElementById('hub-xp');
+            if(hubXp) hubXp.textContent = xp;
+            
             setTimeout(() => { 
                 const xpFill = document.getElementById('hub-xp-fill');
                 if(xpFill) xpFill.style.width = percent + '%'; 
             }, 300);
 
-            // 3. Récupération des Formations Assignées par l'Admin
+            // 3. Récupération des Formations Assignées
             const formationsSnap = await getDocs(collection(db, "formations"));
             const formationsList = document.getElementById('assigned-formations-list');
             let assigned = [];
             
             formationsSnap.forEach(docSnap => {
                 const f = docSnap.data();
-                if (f.students && f.students.includes(uid)) {
+                // N'oublions pas que les admins et les God ont aussi accès à tout pour tester
+                if ((f.students && f.students.includes(uid)) || data.role === 'admin' || data.isGod) {
                     assigned.push(f.titre);
                 }
             });
 
-            // Affichage des catégories débloquées
-            if (assigned.length > 0) {
-                formationsList.innerHTML = assigned.map(a => `
-                    <div style="padding: 1rem; background: #0a0a0c; border: 1px solid #222; border-radius: 6px; color: white; display: flex; align-items: center; gap: 0.8rem; cursor: pointer; transition: 0.2s;" onmouseover="this.style.borderColor='var(--accent-green)'" onmouseout="this.style.borderColor='#222'">
-                        <div style="width: 8px; height: 8px; background: var(--accent-green); border-radius: 50%;"></div>
-                        ${a}
-                    </div>
-                `).join('');
-            } else {
-                formationsList.innerHTML = '<p style="color:var(--text-muted); font-style:italic;">Aucun module ne vous a été assigné par l\'équipe pédagogique.</p>';
+            if(formationsList) {
+                if (assigned.length > 0) {
+                    formationsList.innerHTML = assigned.map(a => `
+                        <div style="padding: 1rem; background: #0a0a0c; border: 1px solid #222; border-radius: 6px; color: white; display: flex; align-items: center; gap: 0.8rem; cursor: pointer; transition: 0.2s;" onmouseover="this.style.borderColor='var(--accent-green)'" onmouseout="this.style.borderColor='#222'">
+                            <div style="width: 8px; height: 8px; background: var(--accent-green); border-radius: 50%; flex-shrink: 0;"></div>
+                            <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${a}</span>
+                        </div>
+                    `).join('');
+                } else {
+                    formationsList.innerHTML = '<p style="color:var(--text-muted); font-style:italic;">Aucun module ne vous a été assigné par l\'équipe pédagogique.</p>';
+                }
             }
         }
     } catch(e) {
