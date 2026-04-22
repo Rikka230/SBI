@@ -127,3 +127,53 @@ class AdminRightPanel extends HTMLElement {
     }
 }
 customElements.define('admin-right-panel', AdminRightPanel);
+
+/* --- 3. LE PANNEAU LATÉRAL GAUCHE (ÉTUDIANT) --- */
+class StudentLeftPanel extends HTMLElement {
+    connectedCallback() {
+        this.innerHTML = `
+            <aside id="left-panel" class="side-panel">
+                <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; padding: 0 15px; width: 100%; box-sizing: border-box;">
+                    <div class="logo-zone" style="display: flex; align-items: center; overflow: hidden; white-space: nowrap;">
+                        <span style="color: var(--accent-green); font-weight: bold;">🎓 SBI</span><span>&nbsp;Student</span>
+                    </div>
+                    <button id="btn-toggle-panel" style="background:none; border:none; color:var(--text-muted); cursor:pointer; padding:5px; margin:0; display:flex; align-items: center;">
+                        <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" style="transition: transform 0.3s;"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z"/></svg>
+                    </button>
+                </div>
+                
+                <ul class="nav-menu">
+                    <li class="nav-item active" onclick="window.location.href='dashboard.html'">
+                        <svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
+                        <span class="nav-text">Mon Hub</span>
+                    </li>
+                    <li class="nav-item" onclick="window.location.href='mes-cours.html'">
+                        <svg viewBox="0 0 24 24"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/></svg>
+                        <span class="nav-text">Mes Cours</span>
+                    </li>
+                    <li class="nav-item" onclick="window.location.href='mon-profil.html'">
+                        <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                        <span class="nav-text">Mon Profil & XP</span>
+                    </li>
+                </ul>
+
+                <div style="margin-top: auto; padding: 1rem; border-top: 1px solid #333;">
+                    <button id="logout-btn-student" style="width: 100%; padding: 0.8rem; background: rgba(255, 74, 74, 0.1); color: var(--accent-red); border: 1px solid var(--accent-red); border-radius: 4px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                        <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg> Déconnexion
+                    </button>
+                </div>
+            </aside>
+        `;
+
+        // Logique de déconnexion interne au composant
+        const logoutBtn = this.querySelector('#logout-btn-student');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', async () => {
+                const { getAuth, signOut } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js");
+                const auth = getAuth();
+                signOut(auth).then(() => { window.location.href = '../login.html'; });
+            });
+        }
+    }
+}
+customElements.define('student-left-panel', StudentLeftPanel);
