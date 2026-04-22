@@ -15,7 +15,7 @@
 *, *::before, *::after { box-sizing: border-box; }
 body { background-color: var(--bg-body) !important; color: var(--text-main); }
 
-/* --- FIX DU FANTÔME ET DE LA BARRE DU HAUT --- */
+/* FIX DU FANTÔME */
 #app-container { grid-template-columns: 250px 1fr !important; }
 #app-container.left-collapsed { grid-template-columns: 80px 1fr !important; }
 .top-bar { width: calc(100% - 250px) !important; right: 0 !important; }
@@ -46,10 +46,30 @@ body { background-color: var(--bg-body) !important; color: var(--text-main); }
 .student-view { display: none; animation: fadeIn 0.3s; }
 .student-view.active { display: block; }
 
-/* BADGE EDITION AVATAR (Forme fixe pour ne pas s'écraser) */
-.edit-avatar-badge { opacity: 0; transform: scale(0.8); transition: 0.2s; pointer-events: none; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+/* --- NOUVEAU BADGE EDITION AVATAR (Parfaitement positionné et rond) --- */
+.edit-avatar-badge { 
+    position: absolute; 
+    bottom: 2px; 
+    right: 2px; 
+    background: var(--accent-green); 
+    color: white; 
+    width: 36px; 
+    height: 36px; 
+    border-radius: 50%; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2); 
+    border: 3px solid var(--bg-card); /* Contour blanc pour détacher de la photo */
+    cursor: pointer; 
+    opacity: 0; 
+    transform: scale(0.8); 
+    transition: 0.2s; 
+    pointer-events: none; 
+    z-index: 10;
+}
 .editing .edit-avatar-badge { opacity: 1; transform: scale(1); pointer-events: auto; }
-.editing .avatar-wrapper:hover .edit-avatar-badge { transform: scale(1.1); }
+.editing .avatar-wrapper:hover .edit-avatar-badge { transform: scale(1.1); background: #059669; }
 
 @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
