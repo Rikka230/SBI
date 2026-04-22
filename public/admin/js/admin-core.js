@@ -73,8 +73,9 @@ const renderUsersList = (usersToRender) => {
             roleBgColor = 'rgba(0, 255, 163, 0.15)'; roleTextColor = '#00ffa3'; roleText = 'Élève';
         }
 
+        // NOUVEAU : Ajout de la colonne Profil en vert (75px) dans la grille
         const userCardHTML = `
-            <div style="background: #0a0a0c; border: 1px solid #222; border-radius: 6px; margin-bottom: 0.4rem; display: grid; grid-template-columns: 85px 1fr 1.5fr 70px 85px; align-items: stretch; opacity: ${user.statut === 'suspendu' ? '0.6' : '1'}; font-size: 0.8rem; overflow: hidden;">
+            <div style="background: #0a0a0c; border: 1px solid #222; border-radius: 6px; margin-bottom: 0.4rem; display: grid; grid-template-columns: 85px 1fr 1.5fr 70px 75px 75px; align-items: stretch; opacity: ${user.statut === 'suspendu' ? '0.6' : '1'}; font-size: 0.8rem; overflow: hidden;">
                 
                 <div style="background: ${roleBgColor}; color: ${roleTextColor}; display: flex; align-items: center; justify-content: center; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; font-size: 0.7rem; border-right: 1px solid #222; text-align: center;">
                     ${roleText}
@@ -91,6 +92,10 @@ const renderUsersList = (usersToRender) => {
                 <div style="text-align: center; padding: 0.6rem 0.8rem; display: flex; align-items: center; justify-content: center;">
                     ${statusLabel}
                 </div>
+
+                <button class="btn-view-profile" data-id="${user.id}" style="background: rgba(46, 213, 115, 0.1); color: #2ed573; border: none; border-left: 1px solid #222; cursor: pointer; transition: background-color 0.2s; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; font-size: 0.7rem; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; padding: 0;" onmouseover="this.style.background='rgba(46, 213, 115, 0.2)'" onmouseout="this.style.background='rgba(46, 213, 115, 0.1)'">
+                    Profil
+                </button>
                 
                 <button class="btn-edit-user" data-id="${user.id}" style="background: rgba(42, 87, 255, 0.1); color: #2A57FF; border: none; border-left: 1px solid #222; cursor: pointer; transition: background-color 0.2s; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; font-size: 0.7rem; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; padding: 0;" onmouseover="this.style.background='rgba(42, 87, 255, 0.2)'" onmouseout="this.style.background='rgba(42, 87, 255, 0.1)'">
                     Éditer
@@ -100,6 +105,14 @@ const renderUsersList = (usersToRender) => {
         container.insertAdjacentHTML('beforeend', userCardHTML);
     });
     
+    // Événement pour ouvrir le profil
+    document.querySelectorAll('.btn-view-profile').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            window.location.href = `admin-profile.html?id=${e.target.getAttribute('data-id')}`;
+        });
+    });
+
+    // Événement pour ouvrir la modale d'édition
     document.querySelectorAll('.btn-edit-user').forEach(btn => {
         btn.addEventListener('click', (e) => openEditModal(e.target.getAttribute('data-id')));
     });
@@ -162,7 +175,7 @@ const initUserCreation = () => {
                 statut: "actif", 
                 isGod: false, 
                 dateCreation: new Date().toISOString(),
-                formationsAcces: []
+                formationsAcces: [] 
             });
             await secondaryAuth.signOut();
             await sendPasswordResetEmail(auth, email);
@@ -275,16 +288,6 @@ const openEditModal = (userId) => {
 const initModalLogic = () => {
     const modal = document.getElementById('edit-user-modal');
     if(!modal) return;
-
-    // --- LIAISON VERS LA PAGE PROFIL SÉPARÉE ---
-    const btnOpenProfile = document.getElementById('btn-open-full-profile');
-    if (btnOpenProfile) {
-        btnOpenProfile.addEventListener('click', () => {
-            const userId = document.getElementById('edit-user-id').value;
-            // Redirection directe vers la nouvelle page dédiée
-            window.location.href = `admin-profile.html?id=${userId}`;
-        });
-    }
     
     document.getElementById('close-modal-btn').addEventListener('click', () => modal.style.display = 'none');
     
@@ -363,6 +366,18 @@ const initModalLogic = () => {
 
 document.addEventListener('DOMContentLoaded', () => {
     
+    // FIX : Assignation globale et robuste du bouton "Mon Profil"
+    const myProfileBtn = document.getElementById('btn-my-profile');
+    if(myProfileBtn) {
+        myProfileBtn.addEventListener('click', () => {
+            if (currentUid) {
+                window.location.href = `admin-profile.html?id=${currentUid}`;
+            } else {
+                alert("Veuillez patienter, chargement de l'utilisateur en cours...");
+            }
+        });
+    }
+
     const logoutBtn = document.getElementById('logout-btn');
     if(logoutBtn) logoutBtn.addEventListener('click', logoutUser);
     
