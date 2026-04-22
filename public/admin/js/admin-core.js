@@ -280,6 +280,17 @@ const openEditModal = (userId) => {
 };
 
 const initModalLogic = () => {
+
+    // --- NOUVEAU LIAISON PROFIL ---
+    const btnOpenProfile = document.getElementById('btn-open-full-profile');
+    if (btnOpenProfile) {
+        btnOpenProfile.addEventListener('click', () => {
+            const userId = document.getElementById('edit-user-id').value;
+            modal.style.display = 'none'; // Ferme la petite modale
+            if(window.openFullProfile) window.openFullProfile(userId); // Ouvre le grand profil
+        });
+    }
+    
     const modal = document.getElementById('edit-user-modal');
     if(!modal) return;
     
