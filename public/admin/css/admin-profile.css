@@ -1,0 +1,210 @@
+/**
+ * =======================================================================
+ * ADMIN PROFILE - Design du profil, Gamification et Recadrage PFP
+ * =======================================================================
+ */
+
+/* --- EN-TÊTE DU PROFIL --- */
+.profile-header-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 2rem;
+    position: relative;
+}
+
+.profile-cover {
+    height: 150px;
+    background: linear-gradient(135deg, var(--bg-dark) 0%, rgba(42, 87, 255, 0.2) 100%);
+    position: relative;
+}
+
+.profile-main-info {
+    display: flex;
+    padding: 0 2rem 2rem 2rem;
+    position: relative;
+    gap: 2rem;
+}
+
+/* --- AVATAR & STATUT EN LIGNE --- */
+.avatar-wrapper {
+    margin-top: -50px;
+    position: relative;
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    border: 4px solid var(--bg-card);
+    background: var(--bg-dark);
+    flex-shrink: 0;
+}
+
+.avatar-wrapper img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.online-dot {
+    position: absolute;
+    bottom: 5px;
+    right: 5px;
+    width: 20px;
+    height: 20px;
+    background: var(--accent-green);
+    border: 3px solid var(--bg-card);
+    border-radius: 50%;
+    transition: background 0.3s;
+}
+.online-dot.offline { background: var(--text-muted); }
+
+.edit-avatar-btn {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    background: var(--accent-blue);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    transition: 0.2s;
+}
+.edit-avatar-btn:hover { transform: scale(1.1); }
+
+/* --- IDENTITÉ & BADGES RÔLE --- */
+.identity-zone {
+    margin-top: 1rem;
+    flex-grow: 1;
+}
+.identity-zone h2 {
+    margin: 0 0 0.5rem 0;
+    font-size: 2rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+/* --- GRILLE PRINCIPALE --- */
+.profile-grid {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 2rem;
+}
+
+/* --- COLONNE GAUCHE (Gamification & Formations) --- */
+.profile-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.gamification-box {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1.5rem;
+    text-align: center;
+}
+
+.xp-bar-container {
+    width: 100%;
+    height: 12px;
+    background: #111;
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 1rem 0;
+    border: 1px solid #333;
+}
+.xp-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent-blue), #00ffa3);
+    width: 0%;
+    transition: width 1s ease-out;
+}
+
+.badges-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+.badge-slot {
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.05);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    filter: grayscale(100%) opacity(0.3);
+    transition: 0.3s;
+}
+.badge-slot.unlocked { filter: none; }
+
+/* --- COLONNE DROITE (Onglets Privé/Public) --- */
+.profile-tabs-header {
+    display: flex;
+    gap: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 1.5rem;
+}
+.p-tab {
+    padding: 1rem 2rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-weight: bold;
+    border-bottom: 2px solid transparent;
+    transition: 0.2s;
+}
+.p-tab.active {
+    color: var(--accent-blue);
+    border-bottom-color: var(--accent-blue);
+}
+
+.p-tab-content { display: none; animation: fadeIn 0.3s; }
+.p-tab-content.active { display: block; }
+
+.data-group {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+.data-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 1rem 0;
+    border-bottom: 1px solid #222;
+}
+.data-row:last-child { border-bottom: none; padding-bottom: 0; }
+.data-label { color: var(--text-muted); font-size: 0.9rem; }
+.data-value { font-weight: bold; text-align: right; }
+
+/* --- MODULE RECADRAGE PFP --- */
+#crop-zone {
+    width: 300px;
+    height: 300px;
+    border-radius: 50%;
+    border: 2px dashed var(--text-muted);
+    margin: 0 auto;
+    position: relative;
+    overflow: hidden;
+    background: #111;
+    cursor: grab;
+}
+#crop-zone:active { cursor: grabbing; }
+#crop-image {
+    position: absolute;
+    top: 0; left: 0;
+    transform-origin: top left;
+    user-select: none;
+    -webkit-user-drag: none;
+}
