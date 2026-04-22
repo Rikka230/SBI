@@ -8,7 +8,6 @@
     <link rel="stylesheet" href="/admin/css/admin-layout.css">
     <link rel="stylesheet" href="/admin/css/admin.css">
     <link rel="stylesheet" href="/admin/css/admin-notifications.css">
-    
     <link rel="stylesheet" href="/student/css/student.css">
     
     <script src="/admin/js/components.js"></script>
@@ -35,7 +34,6 @@
         </div>
 
         <div style="display: flex; align-items: center; gap: 1.5rem; margin-left: auto; padding-right: 1rem;">
-            
             <div style="position: relative; cursor: pointer; padding: 5px;">
                 <svg style="width: 22px; height: 22px; fill: var(--text-muted);" viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/></svg>
                 <span class="notif-badge" id="bell-badge" style="display:none; top: 0px; right: 0px;">0</span>
@@ -48,7 +46,6 @@
                 </div>
                 <div id="top-user-avatar" style="width: 42px; height: 42px; border-radius: 50%; background: var(--bg-body); border: 2px solid var(--border-color); overflow: hidden; display: flex; align-items: center; justify-content: center; font-weight: bold; color: var(--text-main); flex-shrink: 0;"></div>
             </div>
-
         </div>
     </header>
 
@@ -63,7 +60,12 @@
                     
                     <div class="hub-card">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <h3 class="section-title"><span class="section-icon">🎮</span> Ma Progression</h3>
+                            <h3 class="section-title">
+                                <span class="section-icon">
+                                    <svg width="24" height="24" fill="var(--accent-green)" viewBox="0 0 24 24"><path d="M21 6H3c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-10 7H8v3H6v-3H3v-2h3V8h2v3h3v2zm4.5 2c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm3-3c-.83 0-1.5-.67-1.5-1.5S17.67 9 18.5 9s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>
+                                </span> 
+                                Ma Progression
+                            </h3>
                             <span style="color: var(--accent-green); font-weight: 800; font-size: 1.1rem; background: rgba(16, 185, 129, 0.1); padding: 4px 12px; border-radius: 20px;">Niveau <span id="hub-level">1</span></span>
                         </div>
                         <div class="xp-bar-bg">
@@ -73,7 +75,12 @@
                     </div>
 
                     <div class="hub-card">
-                        <h3 class="section-title" style="margin-bottom: 1.5rem;"><span class="section-icon">📚</span> Mes cours récents</h3>
+                        <h3 class="section-title" style="margin-bottom: 1.5rem;">
+                            <span class="section-icon">
+                                <svg width="24" height="24" fill="var(--accent-green)" viewBox="0 0 24 24"><path d="M18 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 4h5v8l-2.5-1.5L6 12V4z"/></svg>
+                            </span> 
+                            Mes cours récents
+                        </h3>
                         
                         <div id="recent-courses-list" style="min-height: 120px; display: flex; align-items: center; justify-content: center; background: #f9fafb; border-radius: 10px; border: 1px dashed #d1d5db;">
                             <p style="color: var(--text-muted); font-style: italic; margin: 0;">Aucun cours commencé pour le moment.</p>
@@ -89,7 +96,12 @@
                 <div class="right-col" style="display: flex; flex-direction: column; gap: 2.5rem;">
                     
                     <div class="hub-card" style="height: 100%; display: flex; flex-direction: column;">
-                        <h3 class="section-title"><span class="section-icon">📁</span> Mes Formations</h3>
+                        <h3 class="section-title">
+                            <span class="section-icon">
+                                <svg width="24" height="24" fill="var(--accent-green)" viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
+                            </span> 
+                            Mes Formations
+                        </h3>
                         <p style="font-size: 0.95rem; color: var(--text-muted); margin-bottom: 2rem; margin-top: 1rem; line-height: 1.5;">Retrouvez ici le plan d'étude spécifique qui vous a été assigné par l'équipe pédagogique.</p>
                         
                         <div id="assigned-formations-list" style="display: flex; flex-direction: column; gap: 0.8rem; color: var(--text-muted);">
