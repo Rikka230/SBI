@@ -249,9 +249,21 @@ function initCropperEngine() {
     let startX, startY, currentX = 0, currentY = 0;
     let baseWidth = 0, baseHeight = 0, currentZoom = 1;
 
-    // Débloque la possibilité de cliquer pour uploader, même si une image est déjà là
-    zone.onclick = () => { input.click(); };
-    zone.style.cursor = 'pointer';
+    // Création d'un bouton d'upload clair (évite le conflit avec le drag)
+    if (!document.getElementById('btn-upload-new')) {
+        const uploadBtn = document.createElement('button');
+        uploadBtn.id = 'btn-upload-new';
+        uploadBtn.textContent = "Importer une nouvelle image";
+        uploadBtn.style.cssText = "display:block; width:100%; padding:0.8rem; background:#f3f4f6; color:var(--text-main); border:1px solid var(--border-color); border-radius:8px; margin-bottom:1rem; cursor:pointer; font-weight:bold; transition:0.2s;";
+        uploadBtn.onmouseover = () => uploadBtn.style.background = "#e5e7eb";
+        uploadBtn.onmouseout = () => uploadBtn.style.background = "#f3f4f6";
+        uploadBtn.onclick = () => input.click();
+        zone.parentNode.insertBefore(uploadBtn, zone);
+    }
+
+    // On s'assure que la zone ne déclenche plus l'input au clic
+    zone.onclick = null;
+    zone.style.cursor = 'grab';
 
     const openTrigger = document.getElementById('btn-trigger-crop');
     if(openTrigger) {
@@ -291,43 +303,73 @@ function initCropperEngine() {
         
         currentZoom = 1;
         if(zoomSlider) zoomSlider.value = 1;
+        
+        // Centrage initial automatique
+        currentX = (300 - baseWidth) / 2;
+        currentY = (300 - baseHeight) / 2;
+        
         updateImageSize();
-        currentX = 0; currentY = 0;
         updateImagePosition();
     }
 
     if(zoomSlider) {
         zoomSlider.addEventListener('input', (e) => {
-            currentZoom = parseFloat(e.target.value);
-            updateImageSize(); checkBounds(); updateImagePosition();
+            const newZoom = parseFloat(e.target.value);
+            const oldWidth = baseWidth * currentZoom;
+            const oldHeight = baseHeight * currentZoom;
+            const newWidth = baseWidth * newZoom;
+            const newHeight = baseHeight * newZoom;
+            
+            // Ajustement de X et Y pour zoomer depuis le centre et non le bord
+            currentX -= (newWidth - oldWidth) / 2;
+            currentY -= (newHeight - oldHeight) / 2;
+            
+            currentZoom = newZoom;
+            updateImageSize(); 
+            checkBounds(); 
+            updateImagePosition();
         });
     }
 
-    function updateImageSize() { img.style.width = (baseWidth * currentZoom) + 'px'; img.style.height = (baseHeight * currentZoom) + 'px'; }
-    function updateImagePosition() { img.style.transform = `translate(${currentX}px, ${currentY}px)`; }
+    function updateImageSize() { 
+        img.style.width = (baseWidth * currentZoom) + 'px'; 
+        img.style.height = (baseHeight * currentZoom) + 'px'; 
+    }
+    
+    function updateImagePosition() { 
+        img.style.transform = `translate(${currentX}px, ${currentY}px)`; 
+    }
+    
     function checkBounds() {
-        const boundsX = zone.clientWidth - (baseWidth * currentZoom);
-        const boundsY = zone.clientHeight - (baseHeight * currentZoom);
+        const minX = 300 - (baseWidth * currentZoom);
+        const minY = 300 - (baseHeight * currentZoom);
         
-        // Sécurité pour éviter les tremblements
         if(currentX > 0) currentX = 0; 
         if(currentY > 0) currentY = 0;
-        if(boundsX < 0 && currentX < boundsX) currentX = boundsX; 
-        if(boundsY < 0 && currentY < boundsY) currentY = boundsY;
+        if(currentX < minX) currentX = minX; 
+        if(currentY < minY) currentY = minY;
     }
 
     zone.addEventListener('mousedown', e => {
         if(!zone.hasImage) return;
         isDragging = true;
-        // Empêche le comportement natif de drag'n'drop de l'image HTML
-        e.preventDefault(); 
-        startX = e.clientX - currentX; startY = e.clientY - currentY;
+        zone.style.cursor = 'grabbing';
+        e.preventDefault(); // Bloque le drag'n'drop natif de l'image
+        startX = e.clientX - currentX; 
+        startY = e.clientY - currentY;
     });
-    window.addEventListener('mouseup', () => { isDragging = false; });
+    
+    window.addEventListener('mouseup', () => { 
+        isDragging = false; 
+        zone.style.cursor = 'grab'; 
+    });
+    
     window.addEventListener('mousemove', e => {
         if(!isDragging || !zone.hasImage) return;
-        currentX = e.clientX - startX; currentY = e.clientY - startY;
-        checkBounds(); updateImagePosition();
+        currentX = e.clientX - startX; 
+        currentY = e.clientY - startY;
+        checkBounds(); 
+        updateImagePosition();
     });
 
     document.getElementById('btn-save-crop')?.addEventListener('click', async () => {
