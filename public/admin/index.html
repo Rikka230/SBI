@@ -7,7 +7,6 @@
     <link rel="stylesheet" href="css/admin-layout.css">
     <link rel="stylesheet" href="css/admin.css">
     <link rel="stylesheet" href="css/admin-notifications.css">
-    <link rel="stylesheet" href="css/admin-profile.css">
     
     <script>
         const urlParams = new URLSearchParams(window.location.search);
@@ -56,9 +55,6 @@
             <li class="nav-item" data-target="view-users">
                 <svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
                 <span class="nav-text">Utilisateurs</span>
-            </li>
-            <li class="nav-item" data-target="view-profile" id="nav-profile-hidden" style="display:none;">
-                <span class="nav-text">Profil Actif</span>
             </li>
             <li class="nav-item" data-target="view-formations">
                 <svg viewBox="0 0 24 24"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/></svg>
@@ -161,101 +157,8 @@
 
                     <div style="background: var(--bg-card); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color);">
                         <h3 style="margin-top: 0;">Comptes existants</h3>
-                        <div id="users-list-container" style="display: flex; flex-direction: column; gap: 0.5rem;"></div>
-                    </div>
-                </div>
-            </section>
-
-            <section id="view-profile" class="admin-view">
-                <input type="hidden" id="active-profile-id">
-                
-                <div class="profile-header-card">
-                    <div class="profile-cover"></div>
-                    <div class="profile-main-info">
-                        <div class="avatar-wrapper">
-                            <img src="https://via.placeholder.com/150/111/444?text=?" id="prof-avatar-img" alt="Avatar">
-                            <div class="online-dot" id="prof-online-dot"></div>
-                            <button class="edit-avatar-btn" id="btn-trigger-crop" title="Changer la photo">📷</button>
-                        </div>
-                        <div class="identity-zone">
-                            <h2 id="prof-name">Chargement... <span id="prof-badge-zone"></span></h2>
-                            <p style="color: var(--text-muted); margin: 0;" id="prof-status-text">Statut inconnu</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="profile-grid">
-                    <div class="profile-sidebar">
-                        
-                        <div class="gamification-box" id="prof-gamification" style="display:none;">
-                            <h4 style="margin: 0 0 0.5rem 0; color: var(--accent-blue);">Niveau <span id="prof-level">1</span></h4>
-                            <div class="xp-bar-container">
-                                <div class="xp-bar-fill" id="prof-xp-fill"></div>
+                        <div id="users-list-container" style="display: flex; flex-direction: column; gap: 0.5rem;">
                             </div>
-                            <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;"><span id="prof-xp-text">0</span> / 1000 XP</p>
-                            
-                            <div class="badges-grid">
-                                <div class="badge-slot" id="badge-bronze" title="Bronze (5 cours)">🥉</div>
-                                <div class="badge-slot" id="badge-silver" title="Argent (15 cours)">🥈</div>
-                                <div class="badge-slot" id="badge-gold" title="Or (30 cours)">🥇</div>
-                                <div class="badge-slot" id="badge-diamond" title="Diamant (50 cours)">💎</div>
-                            </div>
-                        </div>
-
-                        <div class="data-group">
-                            <h4 style="margin: 0 0 1rem 0; color: var(--text-main);">📚 Formations</h4>
-                            <div id="prof-formations-list" style="display: flex; flex-direction: column; gap: 0.5rem; color: var(--text-muted); font-size: 0.9rem;">
-                                Aucune formation assignée.
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="profile-main">
-                        <div class="profile-tabs-header">
-                            <div class="p-tab active" data-ptarget="ptab-public">Profil Public</div>
-                            <div class="p-tab" data-ptarget="ptab-private">Données Privées 🔒</div>
-                            <div class="p-tab" data-ptarget="ptab-activity">Activité Récents</div>
-                        </div>
-
-                        <div id="ptab-public" class="p-tab-content active">
-                            <div class="data-group">
-                                <label style="color: var(--text-muted); font-size: 0.85rem; font-weight: bold;">Titre professionnel / Bio</label>
-                                <textarea id="prof-bio" style="width: 100%; min-height: 100px; background: #111; color: white; border: 1px solid #333; border-radius: 4px; padding: 1rem; margin-top: 0.5rem; outline: none; font-family: inherit;" placeholder="Ex: Passionné d'art et directeur artistique..."></textarea>
-                                <button id="btn-save-public" class="action-btn" style="width:auto; margin-top: 1rem; background: var(--accent-blue); border:none; color:white;">Enregistrer le profil public</button>
-                            </div>
-                        </div>
-
-                        <div id="ptab-private" class="p-tab-content">
-                            <div class="data-group">
-                                <div class="data-row">
-                                    <span class="data-label">Email de connexion</span>
-                                    <span class="data-value" id="prof-email">...</span>
-                                </div>
-                                <div class="data-row">
-                                    <span class="data-label">Temps de connexion total</span>
-                                    <span class="data-value" style="color: var(--accent-yellow);" id="prof-time">...</span>
-                                </div>
-                            </div>
-                            <div class="data-group">
-                                <p style="color: var(--accent-red); font-size: 0.85rem; margin-top:0;">⚠️ Informations sensibles. Visibles uniquement par l'utilisateur et les Administrateurs.</p>
-                                <label style="color: var(--text-muted); font-size: 0.85rem;">Numéro de téléphone</label>
-                                <input type="text" id="prof-phone" placeholder="+33 6..." style="width: 100%; padding: 0.8rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px; margin-bottom: 1rem;">
-                                
-                                <label style="color: var(--text-muted); font-size: 0.85rem;">Adresse postale</label>
-                                <input type="text" id="prof-address" placeholder="123 rue..." style="width: 100%; padding: 0.8rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px;">
-                                
-                                <button id="btn-save-private" class="action-btn" style="width:auto; margin-top: 1rem; background: var(--accent-red); border:none; color:white;">Enregistrer les données privées</button>
-                            </div>
-                        </div>
-
-                        <div id="ptab-activity" class="p-tab-content">
-                            <div class="data-group">
-                                <h4 style="margin: 0 0 1rem 0;">Dernières actions</h4>
-                                <ul style="color: var(--text-muted); font-size: 0.9rem; padding-left: 1rem;" id="prof-activity-list">
-                                    <li>Chargement...</li>
-                                </ul>
-                            </div>
-                        </div>
                     </div>
                 </div>
             </section>
@@ -314,7 +217,7 @@
 
 <div id="edit-user-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center;">
     <div style="background: var(--bg-card); padding: 2rem; border-radius: 8px; border: 1px solid var(--border-color); width: 100%; max-width: 500px;">
-        <h3 style="margin-top: 0;">Gestion Rapide</h3>
+        <h3 style="margin-top: 0;">Modifier l'utilisateur</h3>
         <form id="edit-user-form" style="display: flex; flex-direction: column; gap: 1rem;">
             <input type="hidden" id="edit-user-id">
             <input type="text" id="edit-user-prenom" placeholder="Prénom" style="padding: 0.8rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px;">
@@ -336,32 +239,18 @@
                 <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: #ffd700; font-weight: bold;">
                     <input type="checkbox" id="edit-user-isgod"> Rôle Suprême (God Mode)
                 </label>
+                <p id="god-mode-desc" style="margin: 0.5rem 0 0 0; font-size: 0.85rem; color: #aaa;"></p>
             </div>
 
             <div style="display: flex; gap: 1rem; margin-top: 1rem;">
                 <button type="submit" style="flex: 1; padding: 1rem; background: var(--accent-green); color: #000; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">Enregistrer</button>
-                <button type="button" id="btn-open-full-profile" style="flex: 1; padding: 1rem; background: var(--accent-blue); color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Ouvrir le Profil Complet</button>
+                <button type="button" id="reset-pwd-btn" style="flex: 1; padding: 1rem; background: #444; color: white; border: none; border-radius: 4px; cursor: pointer;">Reset Mdp</button>
+                <button type="button" id="close-modal-btn" style="flex: 1; padding: 1rem; background: transparent; color: white; border: 1px solid #555; border-radius: 4px; cursor: pointer;">Annuler</button>
             </div>
-            <button type="button" id="close-modal-btn" style="width: 100%; padding: 1rem; background: transparent; color: white; border: 1px solid #555; border-radius: 4px; cursor: pointer;">Fermer</button>
         </form>
-    </div>
-</div>
-
-<div id="crop-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.9); z-index: 2000; justify-content: center; align-items: center; flex-direction: column;">
-    <div style="background: var(--bg-card); padding: 2rem; border-radius: 8px; border: 1px solid var(--border-color); text-align: center; max-width: 400px; width: 100%;">
-        <h3 style="margin-top:0;">Changer la photo</h3>
-        <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom: 1.5rem;">Glissez une image ici, ou cliquez pour en choisir une. Maintenez le clic pour la centrer.</p>
         
-        <input type="file" id="pfp-file-input" accept="image/*" style="display: none;">
-        
-        <div id="crop-zone" onclick="if(!this.hasImage) document.getElementById('pfp-file-input').click()">
-            <span id="crop-placeholder" style="position: absolute; top:50%; left:50%; transform: translate(-50%, -50%); color: #555; pointer-events: none;">Glisser / Cliquer</span>
-            <img id="crop-image" src="" style="display: none;">
-        </div>
-
-        <div style="display: flex; gap: 1rem; margin-top: 2rem;">
-            <button id="btn-save-crop" style="flex: 1; padding: 1rem; background: var(--accent-blue); color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">Appliquer</button>
-            <button id="btn-cancel-crop" style="flex: 1; padding: 1rem; background: transparent; color: white; border: 1px solid #555; border-radius: 4px; cursor: pointer;">Annuler</button>
+        <div id="delete-zone" style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #444;">
+            <button id="delete-user-btn" style="width: 100%; padding: 1rem; background: rgba(255, 74, 74, 0.1); color: var(--accent-red); border: 1px solid var(--accent-red); border-radius: 4px; font-weight: bold; cursor: pointer;">⚠️ Supprimer définitivement</button>
         </div>
     </div>
 </div>
@@ -370,7 +259,6 @@
 <script type="module" src="js/admin-core.js"></script>
 <script type="module" src="js/admin-notifications.js"></script>
 <script type="module" src="js/admin-dashboard.js"></script>
-<script type="module" src="js/admin-profile.js"></script>
 
 </body>
 </html>
