@@ -14,7 +14,7 @@ let loggedInUserId = null;
 let isOwner = false;
 let isAdmin = false;
 let isEditMode = false;
-let cropperInstance = null; // Stockage de l'instance Cropper.js
+let cropperInstance = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -234,9 +234,9 @@ function initCropperEngine() {
     const imageElement = document.getElementById('crop-image');
     if(!modal || !input || !imageElement) return;
 
-    let originalImageDataUrl = null; // Stocke la version originale redimensionnée
+    let originalImageDataUrl = null;
 
-    // Fonction de compression (Évite de dépasser la limite de 1Mo de Firestore)
+    // Compresse l'image pour l'original HD (Max 800px)
     function compressImage(file, maxWidth, callback) {
         const reader = new FileReader();
         reader.onload = function(event) {
@@ -254,7 +254,6 @@ function initCropperEngine() {
                 canvas.height = height;
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, width, height);
-                // Renvoie un webP HD optimisé
                 callback(canvas.toDataURL('image/webp', 0.9));
             };
             img.src = event.target.result;
@@ -262,72 +261,84 @@ function initCropperEngine() {
         reader.readAsDataURL(file);
     }
 
-    // Ouverture de la modale
+    // Lancement propre et blindé de Cropper.js
+    function launchCropper(src) {
+        // Détruit toute instance existante pour éviter les conflits
+        if (cropperInstance) {
+            cropperInstance.destroy();
+            cropperInstance = null;
+        }
+        
+        imageElement.crossOrigin = "anonymous";
+        imageElement.src = src;
+        
+        // Timeout ESSENTIEL : Cropper refuse de se caler si la div est encore "display: none"
+        setTimeout(() => {
+            cropperInstance = new Cropper(imageElement, {
+                aspectRatio: 1,
+                viewMode: 1,
+                dragMode: 'move',
+                autoCropArea: 1,
+                cropBoxMovable: false,
+                cropBoxResizable: false,
+                guides: false,
+                highlight: false,
+                background: true
+            });
+        }, 150);
+    }
+
+    // Ouvre la modale
     const openTrigger = document.getElementById('btn-trigger-crop');
     if(openTrigger) {
         openTrigger.addEventListener('click', () => {
             modal.style.display = 'flex';
-            // On charge l'originale si elle existe, sinon la miniature
+            
             const imageToLoad = (currentProfileData && currentProfileData.photoOriginal) 
                                 ? currentProfileData.photoOriginal 
                                 : (currentProfileData && currentProfileData.photoURL ? currentProfileData.photoURL : null);
             
-            if (imageToLoad && !cropperInstance) {
-                imageElement.crossOrigin = "anonymous";
-                imageElement.src = imageToLoad;
+            if (imageToLoad) {
                 originalImageDataUrl = imageToLoad;
-                
-                // Cropper.js : Création de l'instance
-                imageElement.onload = () => {
-                    cropperInstance = new Cropper(imageElement, {
-                        aspectRatio: 1,
-                        viewMode: 1,
-                        dragMode: 'move',
-                        autoCropArea: 1,
-                        restore: false,
-                        guides: false,
-                        center: false,
-                        highlight: false,
-                        cropBoxMovable: false,
-                        cropBoxResizable: false,
-                        toggleDragModeOnDblclick: false,
-                    });
-                };
+                launchCropper(imageToLoad);
+            } else {
+                // Pas d'image existante, on lance l'explorateur de fichiers
+                input.click();
             }
         });
     }
 
-    // Changement d'image
+    // Bouton de changement manuel
     document.getElementById('btn-upload-new')?.addEventListener('click', () => input.click());
 
-    input.onchange = (e) => {
-        if(e.target.files.length > 0) {
-            // Compresse l'image originale max 800px pour Firestore
+    // Au choix d'une nouvelle image
+    input.addEventListener('change', (e) => {
+        if(e.target.files && e.target.files.length > 0) {
+            modal.style.display = 'flex'; 
+            
+            const btnSave = document.getElementById('btn-save-crop');
+            const originalText = btnSave.textContent;
+            btnSave.textContent = "Traitement...";
+            btnSave.disabled = true;
+
             compressImage(e.target.files[0], 800, (compressedBase64) => {
                 originalImageDataUrl = compressedBase64;
-                
-                if (cropperInstance) {
-                    cropperInstance.replace(compressedBase64);
-                } else {
-                    imageElement.src = compressedBase64;
-                    cropperInstance = new Cropper(imageElement, {
-                        aspectRatio: 1,
-                        viewMode: 1,
-                        dragMode: 'move',
-                        autoCropArea: 1,
-                        cropBoxMovable: false,
-                        cropBoxResizable: false,
-                        guides: false,
-                        highlight: false
-                    });
-                }
+                launchCropper(compressedBase64);
+                input.value = ''; // Reset de l'input
+                btnSave.textContent = originalText;
+                btnSave.disabled = false;
             });
         }
-    };
+    });
 
     // Annuler
     document.getElementById('btn-cancel-crop')?.addEventListener('click', () => {
         modal.style.display = 'none';
+        if (cropperInstance) {
+            cropperInstance.destroy();
+            cropperInstance = null;
+        }
+        imageElement.src = '';
     });
 
     // Enregistrer
@@ -336,24 +347,30 @@ function initCropperEngine() {
         
         const btnSave = document.getElementById('btn-save-crop');
         btnSave.textContent = "Mise à jour...";
+        btnSave.disabled = true;
         
-        // Extrait le crop en 200x200
         const croppedCanvas = cropperInstance.getCroppedCanvas({ width: 200, height: 200 });
         const croppedWebpData = croppedCanvas.toDataURL('image/webp', 0.8);
 
         try {
-            // Sauvegarde de la miniature (photoURL) ET du fichier d'origine optimisé (photoOriginal)
             await updateDoc(doc(db, "users", currentProfileId), { 
                 photoURL: croppedWebpData,
                 photoOriginal: originalImageDataUrl
             });
             loadProfileData(currentProfileId); 
+            
             modal.style.display = 'none';
+            if (cropperInstance) {
+                cropperInstance.destroy();
+                cropperInstance = null;
+            }
+            imageElement.src = '';
         } catch(e) { 
             console.error(e);
-            alert("Erreur réseau ou fichier trop volumineux."); 
+            alert("Erreur réseau ou fichier trop lourd."); 
         } finally { 
-            btnSave.textContent = "Appliquer"; 
+            btnSave.textContent = "Appliquer";
+            btnSave.disabled = false;
         }
     });
 }
