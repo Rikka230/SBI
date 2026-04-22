@@ -63,7 +63,7 @@
                             <div class="xp-bar-container">
                                 <div class="xp-bar-fill" id="prof-xp-fill"></div>
                             </div>
-                            <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;"><span id="prof-xp">0</span> / 1000 XP</p>
+                            <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;"><span id="prof-xp-text">0</span> / 1000 XP</p>
                         </div>
 
                         <div class="data-group">
@@ -94,6 +94,10 @@
                                     <span class="data-label">Email de connexion</span>
                                     <span class="data-value" id="prof-email">...</span>
                                 </div>
+                                <div class="data-row">
+                                    <span class="data-label">Temps de connexion total</span>
+                                    <span class="data-value" style="color: var(--accent-yellow);" id="prof-time">...</span>
+                                </div>
                             </div>
                             <div class="data-group">
                                 <label style="color: var(--text-muted); font-size: 0.85rem;">Numéro de téléphone</label>
@@ -105,6 +109,16 @@
                                 <button id="btn-save-private" class="action-btn" style="width:auto; margin-top: 1rem; background: var(--accent-red); border:none; color:white;">Enregistrer les données privées</button>
                             </div>
                         </div>
+                        
+                        <div id="ptab-activity" class="p-tab-content">
+                            <div class="data-group">
+                                <h4 style="margin: 0 0 1rem 0;">Dernières actions</h4>
+                                <ul style="color: var(--text-muted); font-size: 0.9rem; padding-left: 1rem;" id="prof-activity-list">
+                                    <li>Chargement...</li>
+                                </ul>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
             </section>
@@ -113,13 +127,36 @@
 
     <admin-right-panel></admin-right-panel>
 
+    <div id="crop-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.9); z-index: 2000; justify-content: center; align-items: center; flex-direction: column;">
+        <div style="background: var(--bg-card); padding: 2rem; border-radius: 8px; border: 1px solid var(--border-color); text-align: center; max-width: 400px; width: 100%;">
+            <h3 style="margin-top:0; color: white;">Changer la photo</h3>
+            
+            <input type="file" id="pfp-file-input" accept="image/*" style="display: none;">
+            
+            <div id="crop-zone" onclick="if(!this.hasImage) document.getElementById('pfp-file-input').click()" style="border-color: var(--border-color);">
+                <span id="crop-placeholder" style="position: absolute; top:50%; left:50%; transform: translate(-50%, -50%); color: var(--text-muted); pointer-events: none;">Glisser / Cliquer</span>
+                <img id="crop-image" src="" style="display: none; cross-origin: anonymous;">
+            </div>
+
+            <div style="margin-top: 1.5rem; text-align: left; padding: 0 1rem;">
+                <label style="color: var(--text-muted); font-size: 0.8rem; display: block; margin-bottom: 0.5rem; font-weight: bold;">Zoom</label>
+                <input type="range" id="crop-zoom" min="1" max="3" step="0.05" value="1" style="width: 100%; accent-color: var(--accent-blue);">
+            </div>
+
+            <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                <button id="btn-save-crop" style="flex: 1; padding: 1rem; background: var(--accent-blue); color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">Appliquer</button>
+                <button id="btn-cancel-crop" style="flex: 1; padding: 1rem; background: transparent; color: white; border: 1px solid var(--text-muted); border-radius: 4px; cursor: pointer;">Annuler</button>
+            </div>
+        </div>
+    </div>
+
 </div> 
 
 <script type="module" src="js/admin-ui.js"></script>
 <script type="module" src="js/tracker.js"></script>
 <script type="module" src="js/admin-notifications.js"></script>
 
-<script type="module" src="js/profile-core.js"></script>
+<script type="module" src="/js/profile-core.js"></script>
 
 </body>
 </html>
