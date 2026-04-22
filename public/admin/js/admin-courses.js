@@ -109,15 +109,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('search-profs').addEventListener('input', (e) => {
         const term = e.target.value.toLowerCase();
-        document.querySelectorAll('#formation-profs-list label').forEach(lbl => {
-            lbl.style.display = lbl.textContent.toLowerCase().includes(term) ? 'flex' : 'none';
+        document.querySelectorAll('#formation-profs-list .compact-user-row').forEach(row => {
+            const nameSpan = row.querySelector('span');
+            if(nameSpan) {
+                row.style.display = nameSpan.textContent.toLowerCase().includes(term) ? 'flex' : 'none';
+            }
         });
     });
 
     document.getElementById('search-students').addEventListener('input', (e) => {
         const term = e.target.value.toLowerCase();
-        document.querySelectorAll('#formation-students-list label').forEach(lbl => {
-            lbl.style.display = lbl.textContent.toLowerCase().includes(term) ? 'flex' : 'none';
+        document.querySelectorAll('#formation-students-list .compact-user-row').forEach(row => {
+            const nameSpan = row.querySelector('span');
+            if(nameSpan) {
+                row.style.display = nameSpan.textContent.toLowerCase().includes(term) ? 'flex' : 'none';
+            }
         });
     });
 
@@ -196,7 +202,6 @@ function renderFormationsList() {
     }
 
     visibleFormations.forEach(form => {
-        // Retour au simple comptage chiffré pour les profs et les élèves
         const pCount = form.profs ? form.profs.length : 0;
         const sCount = form.students ? form.students.length : 0;
 
@@ -258,13 +263,19 @@ window.openFormationModal = function(formationId) {
 
         const name = (u.prenom || u.nom) ? `${u.prenom || ''} ${u.nom || ''}`.trim() : u.email;
 
+        // NOUVEAU : Ajout de l'icône Profil externe
         const checkboxHtml = `
-            <label class="compact-user-row">
-                <input type="checkbox" class="cb-formation-user compact-cb" data-uid="${u.id}" data-role="${u.role}" ${isChecked}>
-                <span style="font-size: 0.85rem; color: #ddd; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; width: 100%;">
-                    ${name}
-                </span>
-            </label>
+            <div class="compact-user-row" style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; padding-right: 0.5rem;">
+                <label style="display: flex; align-items: center; gap: 0.5rem; flex-grow: 1; margin: 0; cursor: pointer; overflow: hidden;">
+                    <input type="checkbox" class="cb-formation-user compact-cb" data-uid="${u.id}" data-role="${u.role}" ${isChecked}>
+                    <span style="font-size: 0.85rem; color: #ddd; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; width: 100%;">
+                        ${name}
+                    </span>
+                </label>
+                <a href="admin-profile.html?id=${u.id}" target="_blank" title="Ouvrir le profil" onclick="event.stopPropagation()" style="color: var(--text-muted); display: flex; align-items: center; justify-content: center; transition: color 0.2s;" onmouseover="this.style.color='var(--accent-blue)'" onmouseout="this.style.color='var(--text-muted)'">
+                    <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
+                </a>
+            </div>
         `;
 
         if (u.role === 'teacher') profsContainer.insertAdjacentHTML('beforeend', checkboxHtml);
@@ -550,10 +561,7 @@ async function saveCourseToFirebase() {
     if (forcePending) finalStatut = 'pending';
     else if (isActive) finalStatut = 'approved';
 
-    // On préserve le créateur original
     const finalAuteurId = courseId ? editingCourseAuthorId : currentUid;
-
-    // Détection stricte de la validation
     const isValidation = (courseId && editingCourseOriginalStatus === 'pending' && finalStatut === 'approved' && !isTeacher);
 
     try {
@@ -577,9 +585,6 @@ async function saveCourseToFirebase() {
             courseRefId = docRef.id;
             alert(forcePending ? '✅ Cours soumis pour validation !' : '✅ Nouveau cours créé !');
         }
-
-        // --- ENVOI DES NOTIFICATIONS 100% FIABLE ---
-        // On FORCE le programme à attendre que Firebase ait fini avec 'await' !
         
         if (forcePending) {
             await addDoc(collection(db, "notifications"), {
@@ -597,7 +602,7 @@ async function saveCourseToFirebase() {
                 type: 'course_approved',
                 courseId: courseRefId,
                 courseTitle: title,
-                destinataireId: editingCourseAuthorId, // Envoi direct au Prof
+                destinataireId: editingCourseAuthorId,
                 dateCreation: serverTimestamp(),
             });
         }
@@ -739,7 +744,6 @@ window.duplicateCourse = async (id) => {
     }
 };
 
-// NOUVEAU : VERROU DE SÉCURITÉ DE SUPPRESSION
 window.deleteCourse = async (id) => {
     const verification = prompt("⚠️ ATTENTION : La suppression d'un cours est définitive.\nTapez 'SUPPRIMER' en majuscules pour confirmer :");
     if (verification === 'SUPPRIMER') {
