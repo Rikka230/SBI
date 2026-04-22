@@ -3,13 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SBI Student - Mon Hub</title>
+    <title>Mon Profil - SBI Student</title>
     
     <link rel="stylesheet" href="/admin/css/admin-layout.css">
     <link rel="stylesheet" href="/admin/css/admin.css">
     <link rel="stylesheet" href="/admin/css/admin-notifications.css">
     <link rel="stylesheet" href="/student/css/student.css">
     <script src="/admin/js/components.js"></script>
+    
+    <style>
+        .profile-header { background: var(--bg-card); border-radius: 16px; border: 1px solid var(--border-color); padding: 2.5rem; display: flex; align-items: center; gap: 2rem; margin-bottom: 2.5rem; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03); position: relative; overflow: hidden; }
+        .profile-header::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 100px; background: linear-gradient(90deg, var(--accent-green), #00ffa3); opacity: 0.15; z-index: 0; }
+        .avatar-container { width: 120px; height: 120px; border-radius: 50%; border: 4px solid var(--bg-card); background: var(--bg-body); z-index: 1; overflow: hidden; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; font-weight: bold; color: var(--text-muted); position: relative; }
+        .avatar-container img { width: 100%; height: 100%; object-fit: cover; }
+        
+        .profile-info { z-index: 1; flex-grow: 1; }
+        .profile-info h1 { margin: 0 0 0.5rem 0; font-size: 2rem; color: var(--text-main); }
+        .profile-info p { margin: 0; color: var(--text-muted); font-size: 1.1rem; }
+
+        .form-group { margin-bottom: 1.5rem; }
+        .form-group label { display: block; font-weight: 600; margin-bottom: 0.5rem; color: var(--text-main); font-size: 0.95rem; }
+        
+        /* Style des inputs par défaut (Lecture seule) */
+        .prof-input { width: 100%; padding: 0.8rem 1rem; border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--text-main); font-family: inherit; font-size: 0.95rem; outline: none; transition: 0.2s; }
+        
+        /* Style des inputs quand le mode édition est activé */
+        .editing .prof-input { background: #f9fafb; border-color: var(--border-color); }
+        .editing .prof-input:focus { border-color: var(--accent-green); background: #fff; box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1); }
+        .editing .prof-input[disabled] { background: #e5e7eb; color: #9ca3af; cursor: not-allowed; border-color: transparent; }
+
+        .private-section, .edit-mode-only { display: none; }
+    </style>
 </head>
 <body class="preload">
 
@@ -25,60 +49,110 @@
 
     <main id="main-content">
         <div class="content-wrapper">
-            <h1 style="margin-top: 0; font-size: 2.2rem; font-weight: 800;">Bienvenue sur votre <span style="color: var(--accent-green);">Hub</span> 👋</h1>
-            <p style="color: var(--text-muted); font-size: 1.1rem; margin-bottom: 2.5rem;">Prêt à continuer votre apprentissage aujourd'hui ?</p>
+            
+            <div class="profile-header">
+                <div class="avatar-container" id="prof-avatar" style="cursor: default;" title="Avatar">
+                    <span>U</span>
+                </div>
 
-            <div class="hub-grid">
-                <div class="left-col" style="display: flex; flex-direction: column; gap: 2.5rem;">
-                    <div class="hub-card">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <h3 class="section-title">
-                                <span class="section-icon">
-                                    <svg width="24" height="24" fill="var(--accent-green)" viewBox="0 0 24 24"><path d="M21 6H3c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-10 7H8v3H6v-3H3v-2h3V8h2v3h3v2zm4.5 2c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm3-3c-.83 0-1.5-.67-1.5-1.5S17.67 9 18.5 9s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>
-                                </span> 
-                                Ma Progression
-                            </h3>
-                            <span style="color: var(--accent-green); font-weight: 800; font-size: 1.1rem; background: rgba(16, 185, 129, 0.1); padding: 4px 12px; border-radius: 20px;">Niveau <span id="hub-level">1</span></span>
+                <div class="profile-info">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div>
+                            <h1 id="prof-name">Chargement...</h1>
+                            <p id="prof-bio-display">Élève de la plateforme SBI</p>
+                            <div style="margin-top: 1rem; display: inline-block; background: rgba(16, 185, 129, 0.1); color: var(--accent-green); padding: 5px 15px; border-radius: 20px; font-weight: bold;">
+                                Niveau <span id="prof-level">1</span> (<span id="prof-xp">0</span> XP)
+                            </div>
                         </div>
-                        <div class="xp-bar-bg"><div class="xp-bar-fill" id="hub-xp-fill"></div></div>
-                        <p style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600; text-align: right; margin-top: 0.8rem; margin-bottom: 0;"><span id="hub-xp">0</span> / 1000 XP</p>
-                    </div>
-
-                    <div class="hub-card">
-                        <h3 class="section-title" style="margin-bottom: 1.5rem;">
-                            <span class="section-icon">
-                                <svg width="24" height="24" fill="var(--accent-green)" viewBox="0 0 24 24"><path d="M18 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 4h5v8l-2.5-1.5L6 12V4z"/></svg>
-                            </span> Mes cours récents
-                        </h3>
-                        <div id="recent-courses-list" style="min-height: 120px; display: flex; align-items: center; justify-content: center; background: #f9fafb; border-radius: 10px; border: 1px dashed #d1d5db;">
-                            <p style="color: var(--text-muted); font-style: italic; margin: 0;">Aucun cours commencé.</p>
-                        </div>
-                        <button class="action-btn" style="width: 100%; margin-top: 1.5rem; justify-content: center; background: rgba(16, 185, 129, 0.1); color: var(--accent-green); border: 1px solid rgba(16, 185, 129, 0.3); padding: 1rem; border-radius: 10px; font-weight: bold; transition: 0.3s;" onclick="window.location.href='/student/mes-cours.html'">
-                            Explorer la bibliothèque
+                        
+                        <button id="btn-toggle-edit" class="private-section" style="background: white; border: 1px solid var(--border-color); color: var(--text-main); padding: 0.5rem 1rem; border-radius: 20px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; box-shadow: 0 2px 5px rgba(0,0,0,0.05); transition: 0.2s;">
+                            ✏️ Modifier mon profil
                         </button>
                     </div>
                 </div>
+            </div>
 
-                <div class="right-col" style="display: flex; flex-direction: column; gap: 2.5rem;">
-                    <div class="hub-card" style="height: 100%; display: flex; flex-direction: column;">
-                        <h3 class="section-title">
-                            <span class="section-icon">
-                                <svg width="24" height="24" fill="var(--accent-green)" viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
-                            </span> Mes Formations
-                        </h3>
-                        <p style="font-size: 0.95rem; color: var(--text-muted); margin: 1rem 0 2rem 0; line-height: 1.5;">Plan d'étude assigné par l'équipe pédagogique.</p>
-                        <div id="assigned-formations-list" style="display: flex; flex-direction: column; gap: 0.8rem; color: var(--text-muted);">
-                            Recherche...
-                        </div>
+            <div class="student-sub-nav">
+                <div class="student-sub-nav-item active" onclick="switchTab('tab-overview')">Aperçu & Bio</div>
+                <div class="student-sub-nav-item private-section" onclick="switchTab('tab-private')">🔒 Données Privées</div>
+            </div>
+
+            <div id="tab-overview" class="student-view active">
+                <div class="hub-card">
+                    <h3 class="section-title" style="margin-bottom: 1.5rem;"><span class="section-icon">👤</span> Profil Public</h3>
+                    <div class="form-group">
+                        <label>À propos de moi (Bio)</label>
+                        <textarea id="prof-bio" class="prof-input" rows="4" placeholder="Dites-en plus sur vous..." disabled></textarea>
+                    </div>
+                    <div class="edit-mode-only" style="margin-top: 1.5rem;">
+                        <button id="btn-save-public" class="action-btn" style="width: auto; background: var(--accent-green); color: white; border: none; padding: 0.8rem 1.5rem; border-radius: 8px; font-weight: bold;">Enregistrer la bio</button>
                     </div>
                 </div>
             </div>
+
+            <div id="tab-private" class="student-view">
+                <div class="hub-card private-section">
+                    <h3 class="section-title" style="margin-bottom: 1.5rem;"><span class="section-icon">🔒</span> Données Confidentielles</h3>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.5rem;">Ces informations sont strictement confidentielles et uniquement visibles par vous et l'administration.</p>
+                    
+                    <div class="form-group">
+                        <label>Adresse E-mail de connexion</label>
+                        <input type="email" id="prof-email" class="prof-input" disabled>
+                    </div>
+                    <div class="form-group">
+                        <label>Numéro de téléphone</label>
+                        <input type="tel" id="prof-phone" class="prof-input" placeholder="Votre numéro..." disabled>
+                    </div>
+                    <div class="form-group">
+                        <label>Adresse postale</label>
+                        <input type="text" id="prof-address" class="prof-input" placeholder="Votre adresse..." disabled>
+                    </div>
+
+                    <div class="edit-mode-only" style="margin-top: 1.5rem;">
+                        <button id="btn-save-private" class="action-btn" style="width: auto; background: var(--text-main); color: white; border: none; padding: 0.8rem 1.5rem; border-radius: 8px; font-weight: bold;">Mettre à jour les données privées</button>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </main>
 </div>
 
+<div id="crop-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); z-index: 3000; justify-content: center; align-items: center; flex-direction: column;">
+    <div style="background: var(--bg-card); padding: 2rem; border-radius: 12px; border: 1px solid var(--border-color); text-align: center; max-width: 400px; width: 100%;">
+        <h3 style="margin-top:0; color: var(--text-main);">Changer la photo</h3>
+        <input type="file" id="pfp-file-input" accept="image/*" style="display: none;">
+        
+        <div id="crop-zone" onclick="if(!this.hasImage) document.getElementById('pfp-file-input').click()" style="border: 2px dashed var(--border-color); border-radius: 8px; background: #f9fafb; position: relative; width: 300px; height: 300px; margin: 0 auto; overflow: hidden; cursor: pointer;">
+            <span id="crop-placeholder" style="position: absolute; top:50%; left:50%; transform: translate(-50%, -50%); color: var(--text-muted); pointer-events: none;">Glisser / Cliquer une image</span>
+            <img id="crop-image" src="" style="display: none; cross-origin: anonymous; position: absolute; top:0; left:0;">
+        </div>
+
+        <div style="margin-top: 1.5rem; text-align: left; padding: 0 1rem;">
+            <label style="color: var(--text-muted); font-size: 0.8rem; display: block; margin-bottom: 0.5rem; font-weight: bold;">Zoom</label>
+            <input type="range" id="crop-zoom" min="1" max="3" step="0.05" value="1" style="width: 100%; accent-color: var(--accent-green);">
+        </div>
+
+        <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+            <button id="btn-save-crop" style="flex: 1; padding: 1rem; background: var(--accent-green); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">Appliquer</button>
+            <button id="btn-cancel-crop" style="flex: 1; padding: 1rem; background: transparent; color: var(--text-main); border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer;">Annuler</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    function switchTab(tabId) {
+        document.querySelectorAll('.student-sub-nav-item').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.student-view').forEach(el => el.classList.remove('active'));
+        event.currentTarget.classList.add('active');
+        document.getElementById(tabId).classList.add('active');
+    }
+</script>
+
 <script type="module" src="/admin/js/admin-ui.js"></script>
 <script type="module" src="/admin/js/tracker.js"></script>
-<script type="module" src="/student/js/student-hub.js"></script>
+
+<script type="module" src="/student/js/student-profile.js"></script>
+
 </body>
 </html>
