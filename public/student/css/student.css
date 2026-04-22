@@ -13,17 +13,15 @@
 }
 
 *, *::before, *::after { box-sizing: border-box; }
-
 body { background-color: var(--bg-body) !important; color: var(--text-main); }
 
 /* FIX : Tuer l'espace fantôme du panneau droit admin */
-.app-container { grid-template-columns: 250px 1fr !important; }
-.app-container.left-collapsed { grid-template-columns: 80px 1fr !important; }
+#app-container { grid-template-columns: 250px 1fr !important; }
+#app-container.left-collapsed { grid-template-columns: 80px 1fr !important; }
 
 #btn-toggle-panel svg { fill: var(--text-main) !important; }
 
 .content-wrapper { padding: 2.5rem 4%; max-width: 1400px; margin: 0 auto; }
-
 .hub-grid { display: grid; grid-template-columns: 2fr 1.2fr; gap: 2.5rem; margin-top: 2rem; align-items: start; }
 .hub-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px; padding: 2rem; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03); }
 
@@ -46,10 +44,15 @@ body { background-color: var(--bg-body) !important; color: var(--text-main); }
 .student-view { display: none; animation: fadeIn 0.3s; }
 .student-view.active { display: block; }
 
+/* BADGE EDITION AVATAR */
+.edit-avatar-badge { opacity: 0; transform: scale(0.8); transition: 0.2s; pointer-events: none; }
+.editing .edit-avatar-badge { opacity: 1; transform: scale(1); pointer-events: auto; }
+.editing #prof-avatar:hover .edit-avatar-badge { transform: scale(1.1); }
+
 @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
 @media (max-width: 900px) { 
-    .app-container { grid-template-columns: 1fr !important; }
+    #app-container { grid-template-columns: 1fr !important; }
     .hub-grid { grid-template-columns: 1fr; } 
     .search-bar-top { display: none; } 
     .content-wrapper { padding: 1.5rem; }
