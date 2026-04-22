@@ -31,6 +31,14 @@
 
 <div class="app-container" id="app-container">
 
+    <script>
+        if (window.innerWidth > 1024) {
+            const app = document.getElementById('app-container');
+            if (localStorage.getItem('leftPanelCollapsed') === 'true') app.classList.add('left-collapsed');
+            if (localStorage.getItem('rightPanelCollapsed') === 'true') app.classList.add('right-collapsed');
+        }
+    </script>
+
     <admin-left-panel></admin-left-panel>
 
     <header class="top-bar">
