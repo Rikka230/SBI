@@ -134,14 +134,14 @@
             
             <input type="file" id="pfp-file-input" accept="image/*" style="display: none;">
             
-            <div id="crop-zone" onclick="if(!this.hasImage) document.getElementById('pfp-file-input').click()" style="border: 2px dashed var(--border-color); border-radius: 50%; width: 300px; height: 300px; margin: 0 auto; overflow: hidden; position: relative; cursor: pointer;">
-                <span id="crop-placeholder" style="position: absolute; top:50%; left:50%; transform: translate(-50%, -50%); color: var(--text-muted); pointer-events: none;">Glisser / Cliquer</span>
+            <div id="crop-zone" style="border: 2px dashed var(--border-color); border-radius: 50%; width: 300px; height: 300px; margin: 0 auto; overflow: hidden; position: relative; cursor: grab;">
+                <span id="crop-placeholder" style="position: absolute; top:50%; left:50%; transform: translate(-50%, -50%); color: var(--text-muted); pointer-events: none;">Glisser l'image</span>
                 <img id="crop-image" src="" style="display: none; cross-origin: anonymous; position: absolute; top:0; left:0; transform-origin: top left;">
             </div>
 
             <div style="margin-top: 1.5rem; text-align: left; padding: 0 1rem;">
                 <label style="color: var(--text-muted); font-size: 0.8rem; display: block; margin-bottom: 0.5rem; font-weight: bold;">Zoom</label>
-                <input type="range" id="crop-zoom" min="1" max="3" step="0.05" value="1" style="width: 100%; accent-color: var(--accent-blue);">
+                <input type="range" id="crop-zoom" min="0.5" max="3" step="0.05" value="1" style="width: 100%; accent-color: var(--accent-blue);">
             </div>
 
             <div style="display: flex; gap: 1rem; margin-top: 2rem;">
@@ -156,7 +156,6 @@
 <script type="module" src="js/admin-ui.js"></script>
 <script type="module" src="js/tracker.js"></script>
 <script type="module" src="js/admin-notifications.js"></script>
-
 <script type="module" src="/js/profile-core.js"></script>
 
 </body>
