@@ -114,7 +114,6 @@ async function loadProfileData(uid) {
             xpEls.forEach(el => {
                 if(el) {
                     el.innerHTML = `${xp}`;
-                    // Ajout d'une icône d'édition claire pour l'admin
                     if(isAdmin) {
                         el.innerHTML = `${xp} <svg width="14" height="14" style="cursor:pointer; vertical-align:middle; fill:currentColor; opacity:0.6; margin-left:4px;" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>`;
                         el.style.cursor = 'pointer';
@@ -249,19 +248,18 @@ function initCropperEngine() {
     let startX, startY, currentX = 0, currentY = 0;
     let baseWidth = 0, baseHeight = 0, currentZoom = 1;
 
-    // Création d'un bouton d'upload clair (évite le conflit avec le drag)
+    // Création d'un bouton d'upload clair, dynamique selon le thème
     if (!document.getElementById('btn-upload-new')) {
         const uploadBtn = document.createElement('button');
         uploadBtn.id = 'btn-upload-new';
         uploadBtn.textContent = "Importer une nouvelle image";
-        uploadBtn.style.cssText = "display:block; width:100%; padding:0.8rem; background:#f3f4f6; color:var(--text-main); border:1px solid var(--border-color); border-radius:8px; margin-bottom:1rem; cursor:pointer; font-weight:bold; transition:0.2s;";
-        uploadBtn.onmouseover = () => uploadBtn.style.background = "#e5e7eb";
-        uploadBtn.onmouseout = () => uploadBtn.style.background = "#f3f4f6";
+        uploadBtn.style.cssText = "display:block; width:100%; padding:0.8rem; background: transparent; color: var(--text-main); border: 2px dashed var(--text-muted); border-radius: 8px; margin-bottom: 1rem; cursor: pointer; font-weight: bold; transition: 0.2s;";
+        uploadBtn.onmouseover = () => uploadBtn.style.background = "rgba(128,128,128,0.1)";
+        uploadBtn.onmouseout = () => uploadBtn.style.background = "transparent";
         uploadBtn.onclick = () => input.click();
         zone.parentNode.insertBefore(uploadBtn, zone);
     }
 
-    // On s'assure que la zone ne déclenche plus l'input au clic
     zone.onclick = null;
     zone.style.cursor = 'grab';
 
@@ -301,12 +299,10 @@ function initCropperEngine() {
         if (ratio > 1) { baseHeight = 300; baseWidth = 300 * ratio; } 
         else { baseWidth = 300; baseHeight = 300 / ratio; }
         
-        currentZoom = 1;
-        if(zoomSlider) zoomSlider.value = 1;
+        currentZoom = parseFloat(zoomSlider ? zoomSlider.value : 1);
         
-        // Centrage initial automatique
-        currentX = (300 - baseWidth) / 2;
-        currentY = (300 - baseHeight) / 2;
+        currentX = (300 - (baseWidth * currentZoom)) / 2;
+        currentY = (300 - (baseHeight * currentZoom)) / 2;
         
         updateImageSize();
         updateImagePosition();
@@ -320,7 +316,6 @@ function initCropperEngine() {
             const newWidth = baseWidth * newZoom;
             const newHeight = baseHeight * newZoom;
             
-            // Ajustement de X et Y pour zoomer depuis le centre et non le bord
             currentX -= (newWidth - oldWidth) / 2;
             currentY -= (newHeight - oldHeight) / 2;
             
@@ -331,19 +326,12 @@ function initCropperEngine() {
         });
     }
 
-    function updateImageSize() { 
-        img.style.width = (baseWidth * currentZoom) + 'px'; 
-        img.style.height = (baseHeight * currentZoom) + 'px'; 
-    }
-    
-    function updateImagePosition() { 
-        img.style.transform = `translate(${currentX}px, ${currentY}px)`; 
-    }
+    function updateImageSize() { img.style.width = (baseWidth * currentZoom) + 'px'; img.style.height = (baseHeight * currentZoom) + 'px'; }
+    function updateImagePosition() { img.style.transform = `translate(${currentX}px, ${currentY}px)`; }
     
     function checkBounds() {
         const minX = 300 - (baseWidth * currentZoom);
         const minY = 300 - (baseHeight * currentZoom);
-        
         if(currentX > 0) currentX = 0; 
         if(currentY > 0) currentY = 0;
         if(currentX < minX) currentX = minX; 
@@ -354,22 +342,14 @@ function initCropperEngine() {
         if(!zone.hasImage) return;
         isDragging = true;
         zone.style.cursor = 'grabbing';
-        e.preventDefault(); // Bloque le drag'n'drop natif de l'image
-        startX = e.clientX - currentX; 
-        startY = e.clientY - currentY;
+        e.preventDefault(); 
+        startX = e.clientX - currentX; startY = e.clientY - currentY;
     });
-    
-    window.addEventListener('mouseup', () => { 
-        isDragging = false; 
-        zone.style.cursor = 'grab'; 
-    });
-    
+    window.addEventListener('mouseup', () => { isDragging = false; zone.style.cursor = 'grab'; });
     window.addEventListener('mousemove', e => {
         if(!isDragging || !zone.hasImage) return;
-        currentX = e.clientX - startX; 
-        currentY = e.clientY - startY;
-        checkBounds(); 
-        updateImagePosition();
+        currentX = e.clientX - startX; currentY = e.clientY - startY;
+        checkBounds(); updateImagePosition();
     });
 
     document.getElementById('btn-save-crop')?.addEventListener('click', async () => {
