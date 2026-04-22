@@ -9,45 +9,19 @@
     <link rel="stylesheet" href="/admin/css/admin.css">
     <link rel="stylesheet" href="/admin/css/admin-notifications.css">
     <link rel="stylesheet" href="/student/css/student.css">
-    
     <script src="/admin/js/components.js"></script>
 </head>
 <body class="preload">
 
 <div class="app-container" id="app-container">
-    
     <script>
-        if (window.innerWidth > 1024) {
-            const app = document.getElementById('app-container');
-            if (localStorage.getItem('leftPanelCollapsed') === 'true') app.classList.add('left-collapsed');
+        if (window.innerWidth > 1024 && localStorage.getItem('leftPanelCollapsed') === 'true') {
+            document.getElementById('app-container').classList.add('left-collapsed');
         }
     </script>
 
     <student-left-panel></student-left-panel>
-
-    <header class="top-bar" style="border-bottom: 1px solid var(--border-color); background-color: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px);">
-        <button class="mobile-toggle left-toggle" id="btn-toggle-mobile"><svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg></button>
-        
-        <div class="search-bar-top">
-            <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
-            <input type="text" placeholder="Rechercher un cours, une ressource...">
-        </div>
-
-        <div style="display: flex; align-items: center; gap: 1.5rem; margin-left: auto; padding-right: 1rem;">
-            <div style="position: relative; cursor: pointer; padding: 5px;">
-                <svg style="width: 22px; height: 22px; fill: var(--text-muted);" viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/></svg>
-                <span class="notif-badge" id="bell-badge" style="display:none; top: 0px; right: 0px;">0</span>
-            </div>
-            
-            <div style="display: flex; align-items: center; gap: 1rem; cursor: pointer; border-left: 1px solid var(--border-color); padding-left: 1.5rem; transition: opacity 0.2s;" onclick="window.location.href='/student/mon-profil.html'" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
-                <div style="text-align: right; display: flex; flex-direction: column; justify-content: center;">
-                    <p id="top-user-name" style="margin: 0; font-weight: bold; font-size: 0.95rem; line-height: 1.2;">Chargement...</p>
-                    <p id="top-user-level" style="margin: 0; color: var(--accent-green); font-size: 0.75rem; font-weight: bold; line-height: 1.2; margin-top: 2px;">Niveau -</p>
-                </div>
-                <div id="top-user-avatar" style="width: 42px; height: 42px; border-radius: 50%; background: var(--bg-body); border: 2px solid var(--border-color); overflow: hidden; display: flex; align-items: center; justify-content: center; font-weight: bold; color: var(--text-main); flex-shrink: 0;"></div>
-            </div>
-        </div>
-    </header>
+    <student-top-bar></student-top-bar>
 
     <main id="main-content">
         <div class="content-wrapper">
@@ -55,9 +29,7 @@
             <p style="color: var(--text-muted); font-size: 1.1rem; margin-bottom: 2.5rem;">Prêt à continuer votre apprentissage aujourd'hui ?</p>
 
             <div class="hub-grid">
-                
                 <div class="left-col" style="display: flex; flex-direction: column; gap: 2.5rem;">
-                    
                     <div class="hub-card">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <h3 class="section-title">
@@ -68,9 +40,7 @@
                             </h3>
                             <span style="color: var(--accent-green); font-weight: 800; font-size: 1.1rem; background: rgba(16, 185, 129, 0.1); padding: 4px 12px; border-radius: 20px;">Niveau <span id="hub-level">1</span></span>
                         </div>
-                        <div class="xp-bar-bg">
-                            <div class="xp-bar-fill" id="hub-xp-fill"></div>
-                        </div>
+                        <div class="xp-bar-bg"><div class="xp-bar-fill" id="hub-xp-fill"></div></div>
                         <p style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600; text-align: right; margin-top: 0.8rem; margin-bottom: 0;"><span id="hub-xp">0</span> / 1000 XP</p>
                     </div>
 
@@ -78,47 +48,37 @@
                         <h3 class="section-title" style="margin-bottom: 1.5rem;">
                             <span class="section-icon">
                                 <svg width="24" height="24" fill="var(--accent-green)" viewBox="0 0 24 24"><path d="M18 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 4h5v8l-2.5-1.5L6 12V4z"/></svg>
-                            </span> 
-                            Mes cours récents
+                            </span> Mes cours récents
                         </h3>
-                        
                         <div id="recent-courses-list" style="min-height: 120px; display: flex; align-items: center; justify-content: center; background: #f9fafb; border-radius: 10px; border: 1px dashed #d1d5db;">
-                            <p style="color: var(--text-muted); font-style: italic; margin: 0;">Aucun cours commencé pour le moment.</p>
+                            <p style="color: var(--text-muted); font-style: italic; margin: 0;">Aucun cours commencé.</p>
                         </div>
-                        
-                        <button class="action-btn" style="width: 100%; margin-top: 1.5rem; justify-content: center; background: rgba(16, 185, 129, 0.1); color: var(--accent-green); border: 1px solid rgba(16, 185, 129, 0.3); padding: 1rem; border-radius: 10px; font-size: 1rem; font-weight: bold; transition: 0.3s;" onclick="window.location.href='/student/mes-cours.html'" onmouseover="this.style.background='rgba(16, 185, 129, 0.15)'" onmouseout="this.style.background='rgba(16, 185, 129, 0.1)'">
+                        <button class="action-btn" style="width: 100%; margin-top: 1.5rem; justify-content: center; background: rgba(16, 185, 129, 0.1); color: var(--accent-green); border: 1px solid rgba(16, 185, 129, 0.3); padding: 1rem; border-radius: 10px; font-weight: bold; transition: 0.3s;" onclick="window.location.href='/student/mes-cours.html'">
                             Explorer la bibliothèque
                         </button>
                     </div>
-
                 </div>
 
                 <div class="right-col" style="display: flex; flex-direction: column; gap: 2.5rem;">
-                    
                     <div class="hub-card" style="height: 100%; display: flex; flex-direction: column;">
                         <h3 class="section-title">
                             <span class="section-icon">
                                 <svg width="24" height="24" fill="var(--accent-green)" viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
-                            </span> 
-                            Mes Formations
+                            </span> Mes Formations
                         </h3>
-                        <p style="font-size: 0.95rem; color: var(--text-muted); margin-bottom: 2rem; margin-top: 1rem; line-height: 1.5;">Retrouvez ici le plan d'étude spécifique qui vous a été assigné par l'équipe pédagogique.</p>
-                        
+                        <p style="font-size: 0.95rem; color: var(--text-muted); margin: 1rem 0 2rem 0; line-height: 1.5;">Plan d'étude assigné par l'équipe pédagogique.</p>
                         <div id="assigned-formations-list" style="display: flex; flex-direction: column; gap: 0.8rem; color: var(--text-muted);">
-                            Recherche de vos modules en cours...
+                            Recherche...
                         </div>
                     </div>
-
                 </div>
             </div>
         </div>
     </main>
-
 </div>
 
 <script type="module" src="/admin/js/admin-ui.js"></script>
 <script type="module" src="/admin/js/tracker.js"></script>
 <script type="module" src="/student/js/student-hub.js"></script>
-
 </body>
 </html>
