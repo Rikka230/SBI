@@ -16,6 +16,7 @@ let activeChapterId = null;
 
 let allFormationsData = [];
 let allUsersForAccess = [];
+let allCoursesData = []; // NOUVEAU : Stockage global des cours pour extraire les Blocs
 
 let editingCourseAuthorId = null;
 let editingCourseOriginalStatus = null;
@@ -54,6 +55,19 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-add-chapter').addEventListener('click', () => createNewChapter('text'));
     document.getElementById('btn-add-quiz').addEventListener('click', () => createNewChapter('quiz'));
     
+    // NOUVEAU : Création d'un bloc manuel
+    document.getElementById('btn-add-new-bloc').addEventListener('click', () => {
+        const newBlocName = prompt("Entrez le nom du nouveau bloc :");
+        if (newBlocName && newBlocName.trim() !== "") {
+            const select = document.getElementById('course-bloc-select');
+            const option = document.createElement('option');
+            option.value = newBlocName.trim();
+            option.textContent = newBlocName.trim();
+            select.appendChild(option);
+            select.value = newBlocName.trim();
+        }
+    });
+
     const newCourseBtn = document.getElementById('btn-trigger-new-course');
     if(newCourseBtn) newCourseBtn.addEventListener('click', window.prepareNewCourse);
 
@@ -263,7 +277,6 @@ window.openFormationModal = function(formationId) {
 
         const name = (u.prenom || u.nom) ? `${u.prenom || ''} ${u.nom || ''}`.trim() : u.email;
 
-        // NOUVEAU : Ajout de l'icône Profil externe
         const checkboxHtml = `
             <div class="compact-user-row" style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; padding-right: 0.5rem;">
                 <label style="display: flex; align-items: center; gap: 0.5rem; flex-grow: 1; margin: 0; cursor: pointer; overflow: hidden;">
@@ -308,6 +321,26 @@ function renderFormationsPillsAndFilters() {
     }
 }
 
+/* =========================================================
+   NOUVEAU : GESTION DES BLOCS DÉROULANTS
+========================================================= */
+function refreshBlocsList() {
+    const select = document.getElementById('course-bloc-select');
+    const currentVal = select.value;
+    
+    // Extrait tous les blocs uniques existants de tous les cours
+    const blocsSet = new Set();
+    allCoursesData.forEach(c => { if(c.bloc) blocsSet.add(c.bloc); });
+    
+    select.innerHTML = '<option value="">-- Aucun Bloc --</option>';
+    Array.from(blocsSet).sort().forEach(bloc => {
+        const opt = document.createElement('option');
+        opt.value = bloc; opt.textContent = bloc;
+        select.appendChild(opt);
+    });
+    
+    if(currentVal && blocsSet.has(currentVal)) select.value = currentVal;
+}
 
 /* =========================================================
    2. LOGIQUE DE L'INTERFACE D'ÉDITION DE COURS
@@ -319,6 +352,7 @@ window.prepareNewCourse = function() {
 
     document.getElementById('edit-course-id').value = '';
     document.getElementById('course-title').value = '';
+    document.getElementById('course-bloc-select').value = ''; // Reset du bloc
     currentChapters = [];
     activeChapterId = null;
     document.querySelectorAll('.formation-pill').forEach(p => p.classList.remove('selected'));
@@ -463,10 +497,10 @@ function addQuizQuestion() {
                     <input type="text" class="q-opt" placeholder="Réponse 2" style="flex-grow:1; background: #222; border: 1px solid #444; padding: 0.5rem; color: white; border-radius:4px; outline:none;">
                 </label>
             </div>
-            <button type=\"button\" onclick=\"window.addOptionToQuestion(this)\" style=\"margin-top:0.8rem; background:none; border:none; color:var(--accent-blue); cursor:pointer; font-size:0.85rem;\">+ Ajouter un choix</button>
-            <div style=\"margin-top: 1.5rem; display: flex; align-items: center; gap: 1rem; border-top: 1px solid #333; padding-top: 1rem;\">
-                <span style=\"color: var(--text-muted); font-size: 0.85rem;\">Cochez <strong>les</strong> bonnes réponses.</span>
-                <input type=\"number\" class=\"q-points\" value=\"1\" min=\"1\" style=\"width: 60px; background: #222; border: 1px solid #444; padding: 0.4rem; color: white; border-radius: 4px;\"> <span style=\"color: var(--text-muted); font-size: 0.85rem;\">Point(s)</span>
+            <button type="button" onclick="window.addOptionToQuestion(this)" style="margin-top:0.8rem; background:none; border:none; color:var(--accent-blue); cursor:pointer; font-size:0.85rem;">+ Ajouter un choix</button>
+            <div style="margin-top: 1.5rem; display: flex; align-items: center; gap: 1rem; border-top: 1px solid #333; padding-top: 1rem;">
+                <span style="color: var(--text-muted); font-size: 0.85rem;">Cochez <strong>les</strong> bonnes réponses.</span>
+                <input type="number" class="q-points" value="1" min="1" style="width: 60px; background: #222; border: 1px solid #444; padding: 0.4rem; color: white; border-radius: 4px;"> <span style="color: var(--text-muted); font-size: 0.85rem;">Point(s)</span>
             </div>
         </div>
     `;
@@ -477,10 +511,10 @@ window.addOptionToQuestion = function(btn) {
     const container = btn.previousElementSibling;
     const optIndex = container.children.length;
     const html = `
-        <label style=\"display: flex; align-items: center; gap: 0.5rem; color: #aaa;\">
-            <input type=\"checkbox\" class=\"q-correct-cb\" value=\"${optIndex}\">
-            <input type=\"text\" class=\"q-opt\" placeholder=\"Nouvelle réponse\" style=\"flex-grow:1; background: #222; border: 1px solid #444; padding: 0.5rem; color: white; border-radius:4px; outline:none;\">
-            <button type=\"button\" onclick=\"this.parentElement.remove()\" style=\"background:none; border:none; color:var(--accent-red); cursor:pointer; padding: 0 5px;\">&times;</button>
+        <label style="display: flex; align-items: center; gap: 0.5rem; color: #aaa;">
+            <input type="checkbox" class="q-correct-cb" value="${optIndex}">
+            <input type="text" class="q-opt" placeholder="Nouvelle réponse" style="flex-grow:1; background: #222; border: 1px solid #444; padding: 0.5rem; color: white; border-radius:4px; outline:none;">
+            <button type="button" onclick="this.parentElement.remove()" style="background:none; border:none; color:var(--accent-red); cursor:pointer; padding: 0 5px;">&times;</button>
         </label>
     `;
     container.insertAdjacentHTML('beforeend', html);
@@ -508,24 +542,24 @@ function renderQuizBuilder(questions) {
     questions.forEach((q, index) => {
         const indices = q.correctIndices || (q.correctIndex !== undefined ? [q.correctIndex] : []);
         const optionsHTML = q.options.map((opt, i) => `
-            <label style=\"display: flex; align-items: center; gap: 0.5rem; color: #aaa;\">
-                <input type=\"checkbox\" class=\"q-correct-cb\" value=\"${i}\" ${indices.includes(i) ? 'checked' : ''}>
-                <input type=\"text\" class=\"q-opt\" value=\"${opt}\" placeholder=\"Réponse ${i+1}\" style=\"flex-grow:1; background: #222; border: 1px solid #444; padding: 0.5rem; color: white; border-radius:4px; outline:none;\">
-                ${i > 1 ? `<button type=\"button\" onclick=\"this.parentElement.remove()\" style=\"background:none; border:none; color:var(--accent-red); cursor:pointer;\">&times;</button>` : ''}
+            <label style="display: flex; align-items: center; gap: 0.5rem; color: #aaa;">
+                <input type="checkbox" class="q-correct-cb" value="${i}" ${indices.includes(i) ? 'checked' : ''}>
+                <input type="text" class="q-opt" value="${opt}" placeholder="Réponse ${i+1}" style="flex-grow:1; background: #222; border: 1px solid #444; padding: 0.5rem; color: white; border-radius:4px; outline:none;">
+                ${i > 1 ? `<button type="button" onclick="this.parentElement.remove()" style="background:none; border:none; color:var(--accent-red); cursor:pointer;">&times;</button>` : ''}
             </label>
         `).join('');
 
         const qHTML = `
-        <div class=\"quiz-question-block\" data-qindex=\"${index}\" style=\"background: #111; padding: 1.5rem; border: 1px solid #333; border-radius: 6px; position: relative;\">
-            <button onclick=\"this.parentElement.remove()\" style=\"position: absolute; right: 10px; top: 10px; background: none; border: none; color: var(--accent-red); cursor: pointer; font-size: 1.2rem;\">&times;</button>
-            <input type=\"text\" class=\"q-title\" value=\"${q.question}\" style=\"width: 100%; font-size: 1.1rem; padding: 0.8rem; background: transparent; color: white; border: none; border-bottom: 1px solid #555; outline: none; margin-bottom: 1rem;\">
-            <div class=\"q-options-container\" style=\"display: flex; flex-direction: column; gap: 0.5rem;\">
+        <div class="quiz-question-block" data-qindex="${index}" style="background: #111; padding: 1.5rem; border: 1px solid #333; border-radius: 6px; position: relative;">
+            <button onclick="this.parentElement.remove()" style="position: absolute; right: 10px; top: 10px; background: none; border: none; color: var(--accent-red); cursor: pointer; font-size: 1.2rem;">&times;</button>
+            <input type="text" class="q-title" value="${q.question}" style="width: 100%; font-size: 1.1rem; padding: 0.8rem; background: transparent; color: white; border: none; border-bottom: 1px solid #555; outline: none; margin-bottom: 1rem;">
+            <div class="q-options-container" style="display: flex; flex-direction: column; gap: 0.5rem;">
                 ${optionsHTML}
             </div>
-            <button type=\"button\" onclick=\"window.addOptionToQuestion(this)\" style=\"margin-top:0.8rem; background:none; border:none; color:var(--accent-blue); cursor:pointer; font-size:0.85rem;\">+ Ajouter un choix</button>
-            <div style=\"margin-top: 1.5rem; display: flex; align-items: center; gap: 1rem; border-top: 1px solid #333; padding-top: 1rem;\">
-                <span style=\"color: var(--text-muted); font-size: 0.85rem;\">Cochez <strong>les</strong> bonnes réponses.</span>
-                <input type=\"number\" class=\"q-points\" value=\"${q.points}\" min=\"1\" style=\"width: 60px; background: #222; border: 1px solid #444; padding: 0.4rem; color: white; border-radius: 4px;\"> <span style=\"color: var(--text-muted); font-size: 0.85rem;\">Point(s)</span>
+            <button type="button" onclick="window.addOptionToQuestion(this)" style="margin-top:0.8rem; background:none; border:none; color:var(--accent-blue); cursor:pointer; font-size:0.85rem;">+ Ajouter un choix</button>
+            <div style="margin-top: 1.5rem; display: flex; align-items: center; gap: 1rem; border-top: 1px solid #333; padding-top: 1rem;">
+                <span style="color: var(--text-muted); font-size: 0.85rem;">Cochez <strong>les</strong> bonnes réponses.</span>
+                <input type="number" class="q-points" value="${q.points}" min="1" style="width: 60px; background: #222; border: 1px solid #444; padding: 0.4rem; color: white; border-radius: 4px;"> <span style="color: var(--text-muted); font-size: 0.85rem;">Point(s)</span>
             </div>
         </div>`;
         container.insertAdjacentHTML('beforeend', qHTML);
@@ -541,6 +575,7 @@ async function saveCourseToFirebase() {
     
     const courseId = document.getElementById('edit-course-id').value;
     const title = document.getElementById('course-title').value.trim();
+    const bloc = document.getElementById('course-bloc-select').value.trim(); // NOUVEAU
     let isActive = document.getElementById('course-active').checked;
     
     const selectedPills = Array.from(document.querySelectorAll('.formation-pill.selected')).map(p => p.getAttribute('data-val'));
@@ -567,6 +602,7 @@ async function saveCourseToFirebase() {
     try {
         const courseData = {
             titre: title,
+            bloc: bloc, // SAUVEGARDE DU BLOC
             actif: isActive,
             statutValidation: finalStatut,
             formations: selectedPills,
@@ -608,7 +644,7 @@ async function saveCourseToFirebase() {
         }
         
         window.prepareNewCourse(); 
-        loadCourses();
+        await loadCourses();
         window.switchCourseTab('tab-list');
 
     } catch (error) {
@@ -626,6 +662,7 @@ async function loadCourses() {
     try {
         const querySnapshot = await getDocs(collection(db, "courses"));
         listContainer.innerHTML = '';
+        allCoursesData = [];
         
         if(querySnapshot.empty) {
             listContainer.innerHTML = '<p style="color:var(--text-muted); text-align:center;">Aucun cours.</p>';
@@ -635,6 +672,7 @@ async function loadCourses() {
         querySnapshot.forEach((docSnap) => {
             const data = docSnap.data();
             const courseId = docSnap.id;
+            allCoursesData.push({ id: courseId, ...data });
             
             let statusHtml = '';
             if (data.statutValidation === 'pending') {
@@ -648,6 +686,9 @@ async function loadCourses() {
                 const displayName = formObj ? formObj.titre : fId;
                 return `<span class="tag">📁 ${displayName}</span>`;
             }).join('') : '';
+
+            // Affichage du Bloc s'il existe
+            const blocHtml = data.bloc ? `<span style="color: var(--accent-blue); font-size: 0.8rem; border: 1px solid var(--accent-blue); padding: 2px 8px; border-radius: 12px; margin-left: 10px;">${data.bloc}</span>` : '';
 
             const nbChapitres = data.chapitres ? data.chapitres.length : 0;
             
@@ -666,6 +707,7 @@ async function loadCourses() {
                         ${statusHtml} 
                         <h3 style="margin: 0; display: flex; align-items: center;">
                             ${data.titre}
+                            ${blocHtml}
                             <span style="font-size: 0.85rem; font-weight: normal; color: var(--text-muted); font-style: italic; margin-left: 0.8rem;">
                                 par ${authorName}
                             </span>
@@ -681,6 +723,9 @@ async function loadCourses() {
             </div>`;
             listContainer.insertAdjacentHTML('beforeend', html);
         });
+
+        refreshBlocsList(); // Rafraîchit le select des blocs avec les nouvelles données
+
     } catch (error) {
         listContainer.innerHTML = '<p style="color:red; text-align:center;">Erreur système.</p>';
     }
@@ -695,6 +740,9 @@ window.editCourse = async (id) => {
             document.getElementById('edit-course-id').value = id;
             document.getElementById('course-title').value = data.titre || '';
             document.getElementById('course-active').checked = data.actif;
+            
+            // Rechargement du bloc
+            document.getElementById('course-bloc-select').value = data.bloc || '';
             
             editingCourseAuthorId = data.auteurId || currentUid;
             editingCourseOriginalStatus = data.statutValidation || 'approved';
@@ -727,6 +775,7 @@ window.duplicateCourse = async (id) => {
                 const data = docSnap.data();
                 const copyData = {
                     titre: data.titre + " (Copie)",
+                    bloc: data.bloc || "",
                     actif: false, 
                     statutValidation: "draft",
                     formations: data.formations,
