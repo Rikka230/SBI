@@ -15,7 +15,6 @@ let currentUid = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     
-    // Assignation des boutons de la barre latérale qui n'étaient pas gérés
     const logoutBtn = document.getElementById('logout-btn');
     if(logoutBtn) logoutBtn.addEventListener('click', logoutUser);
     
@@ -33,7 +32,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (user) {
             currentUid = user.uid;
 
-            // Rendre le bouton "Mon Profil" fonctionnel sur cette page
             const myProfileBtn = document.getElementById('btn-my-profile');
             if(myProfileBtn) {
                 myProfileBtn.addEventListener('click', () => {
@@ -104,14 +102,18 @@ function renderProfile(user) {
     
     document.getElementById('prof-avatar-img').src = user.photoURL || `https://ui-avatars.com/api/?name=${displayName}&background=111&color=fff&size=150`;
 
+    // CONNEXION AVEC LE TRACKER : Affichage "En Ligne" 
     const dot = document.getElementById('prof-online-dot');
     const statusText = document.getElementById('prof-status-text');
     if (user.statut === 'suspendu') {
         dot.className = 'online-dot offline';
         statusText.textContent = "Compte Suspendu";
+    } else if (user.isOnline) {
+        dot.className = 'online-dot'; // Vert par défaut
+        statusText.textContent = "En Ligne";
     } else {
-        dot.className = 'online-dot';
-        statusText.textContent = "Actif";
+        dot.className = 'online-dot offline';
+        statusText.textContent = "Hors Ligne";
     }
 
     const badgeZone = document.getElementById('prof-badge-zone');
@@ -130,7 +132,15 @@ function renderProfile(user) {
 
     document.getElementById('prof-bio').value = user.bio || '';
     document.getElementById('prof-email').textContent = user.email || 'Non renseigné';
-    document.getElementById('prof-time').textContent = user.totalConnectionTime ? `${Math.floor(user.totalConnectionTime / 60)} Heures` : '0 Heure';
+    
+    // Formatage propre du temps de connexion (Heures/Minutes)
+    if (user.totalConnectionTime) {
+        const hours = Math.floor(user.totalConnectionTime / 3600);
+        const mins = Math.floor((user.totalConnectionTime % 3600) / 60);
+        document.getElementById('prof-time').textContent = `${hours}h ${mins}m`;
+    } else {
+        document.getElementById('prof-time').textContent = '0h 0m';
+    }
     
     if(user.privateData) {
         document.getElementById('prof-phone').value = user.privateData.phone || '';
@@ -208,7 +218,35 @@ function initCropperEngine() {
     let baseHeight = 0;
     let currentZoom = 1;
 
-    btnOpen.addEventListener('click', () => { modal.style.display = 'flex'; });
+    // NOUVEAU : On charge la photo existante dans l'éditeur si elle y est !
+    btnOpen.addEventListener('click', () => { 
+        modal.style.display = 'flex'; 
+        if (currentProfileData && currentProfileData.photoURL && !zone.hasImage) {
+            img.crossOrigin = "anonymous";
+            img.src = currentProfileData.photoURL;
+            img.onload = () => {
+                zone.hasImage = true;
+                placeholder.style.display = 'none';
+                img.style.display = 'block';
+                
+                const ratio = img.naturalWidth / img.naturalHeight;
+                if (ratio > 1) { 
+                    baseHeight = 300;
+                    baseWidth = 300 * ratio;
+                } else { 
+                    baseWidth = 300;
+                    baseHeight = 300 / ratio;
+                }
+                
+                currentZoom = 1;
+                if(zoomSlider) zoomSlider.value = 1;
+                updateImageSize();
+                currentX = 0; currentY = 0;
+                updateImagePosition();
+            };
+        }
+    });
+    
     btnCancel.addEventListener('click', () => { modal.style.display = 'none'; });
 
     zone.addEventListener('dragover', e => { e.preventDefault(); zone.style.borderColor = 'var(--accent-blue)'; });
@@ -305,7 +343,6 @@ function initCropperEngine() {
         canvas.width = 200; canvas.height = 200;
         const ctx = canvas.getContext('2d');
 
-        // On calcule la taille réelle affichée avec le zoom, ramenée sur du 200px
         const ratioZoneCanvas = 200 / 300; 
         const renderW = baseWidth * currentZoom * ratioZoneCanvas;
         const renderH = baseHeight * currentZoom * ratioZoneCanvas;
