@@ -276,15 +276,13 @@ const initModalLogic = () => {
     const modal = document.getElementById('edit-user-modal');
     if(!modal) return;
 
-    // LIAISON PROFIL PLACÉE CORRECTEMENT ICI
+    // --- LIAISON VERS LA PAGE PROFIL SÉPARÉE ---
     const btnOpenProfile = document.getElementById('btn-open-full-profile');
     if (btnOpenProfile) {
         btnOpenProfile.addEventListener('click', () => {
             const userId = document.getElementById('edit-user-id').value;
-            modal.style.display = 'none'; 
-            if(typeof window.openFullProfile === 'function') {
-                window.openFullProfile(userId);
-            }
+            // Redirection directe vers la nouvelle page dédiée
+            window.location.href = `admin-profile.html?id=${userId}`;
         });
     }
     
