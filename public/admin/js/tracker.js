@@ -1,24 +1,55 @@
 /**
  * =======================================================================
- * TRACKER DE SESSION - Statut en ligne & Temps de connexion
+ * TRACKER DE SESSION - Statut en ligne, Temps & Affichage Profil Menu
  * =======================================================================
  */
 
 import { db, auth } from '/js/firebase-init.js';
-import { doc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { doc, getDoc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
 let sessionStart = Date.now();
 let activeUid = null;
 
-onAuthStateChanged(auth, (user) => {
+onAuthStateChanged(auth, async (user) => {
     if (user) {
         activeUid = user.uid;
         sessionStart = Date.now();
-        // Marquer "En Ligne" à la connexion
         updateDoc(doc(db, "users", activeUid), { isOnline: true }).catch(()=>{});
 
-        // Sauvegarde le temps toutes les minutes (60000ms) pour ne rien perdre
+        // 1. CHARGEMENT DYNAMIQUE DU PROFIL DANS LE MENU DROIT
+        try {
+            const snap = await getDoc(doc(db, "users", activeUid));
+            if(snap.exists()) {
+                const data = snap.data();
+                
+                const navName = document.getElementById('nav-name');
+                const navRole = document.getElementById('nav-role');
+                const navAvatar = document.getElementById('nav-avatar');
+                
+                // Injection du Nom
+                if(navName) navName.textContent = (data.prenom || '') + ' ' + (data.nom || '');
+                
+                // Injection du Rôle
+                if(navRole) {
+                    if(data.isGod) navRole.textContent = 'Admin Suprême';
+                    else if(data.role === 'admin') navRole.textContent = 'Administrateur';
+                    else if(data.role === 'teacher') navRole.textContent = 'Professeur';
+                    else navRole.textContent = 'Élève';
+                }
+                
+                // Injection de la Photo ou de la Première Lettre
+                if(navAvatar) {
+                    if(data.photoURL) {
+                        navAvatar.innerHTML = `<img src="${data.photoURL}" style="width:100%; height:100%; object-fit:cover;">`;
+                    } else {
+                        navAvatar.textContent = data.prenom ? data.prenom.charAt(0).toUpperCase() : 'U';
+                    }
+                }
+            }
+        } catch(e) { console.error("Erreur chargement profil panel", e); }
+
+        // 2. CHRONOMÈTRE DE CONNEXION (Toutes les minutes)
         setInterval(() => {
             if(!activeUid) return;
             const now = Date.now();
@@ -39,17 +70,14 @@ onAuthStateChanged(auth, (user) => {
     }
 });
 
-// Quand on change d'onglet ou qu'on quitte la page
 document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === 'hidden' && activeUid) {
-        // Le navigateur est masqué (hors ligne + sauvegarde des dernières secondes)
         const diffSeconds = Math.floor((Date.now() - sessionStart) / 1000);
         updateDoc(doc(db, "users", activeUid), {
             isOnline: false,
             totalConnectionTime: increment(diffSeconds)
         }).catch(()=>{});
     } else if (document.visibilityState === 'visible' && activeUid) {
-        // Retour sur la page (en ligne)
         sessionStart = Date.now();
         updateDoc(doc(db, "users", activeUid), { isOnline: true }).catch(()=>{});
     }
