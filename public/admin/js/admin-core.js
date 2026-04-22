@@ -162,7 +162,7 @@ const initUserCreation = () => {
                 statut: "actif", 
                 isGod: false, 
                 dateCreation: new Date().toISOString(),
-                formationsAcces: [] // L'élément crucial qui manquait !
+                formationsAcces: []
             });
             await secondaryAuth.signOut();
             await sendPasswordResetEmail(auth, email);
@@ -201,7 +201,6 @@ const openEditModal = (userId) => {
     roleSelect.value = targetUser.role || 'student';
     statutSelect.value = targetUser.statut || 'actif';
 
-    // Réinitialisation de base
     prenomInput.disabled = false;
     nomInput.disabled = false;
     roleSelect.disabled = false;
@@ -219,9 +218,7 @@ const openEditModal = (userId) => {
 
     const godExists = allUsersData.some(u => u.isGod === true);
 
-    // VÉRIFICATION DES SÉCURITÉS SUPRÊMES
     if (targetUser.isGod && !isCurrentUserGod) {
-        // Tu n'es pas Dieu, tu regardes Dieu = INTERDIT DE TOUCHER
         prenomInput.disabled = true; nomInput.disabled = true;
         roleSelect.disabled = true; statutSelect.disabled = true;
         if(resetPwdBtn) resetPwdBtn.style.display = 'none';
@@ -238,7 +235,6 @@ const openEditModal = (userId) => {
         }
     } 
     else if (targetUser.isGod && isCurrentUserGod) {
-        // Tu es Dieu et tu te regardes = ÉDITION OUI, SUPPRESSION NON
         if(deleteZone) deleteZone.style.display = 'none'; 
         roleSelect.disabled = true; 
         statutSelect.disabled = true; 
@@ -253,7 +249,6 @@ const openEditModal = (userId) => {
         }
     }
     else if (!targetUser.isGod && targetUser.role === 'admin') {
-        // C'est un simple Admin. Peut-on lui donner le God Mode ?
         if (!godExists && godContainer) {
             godContainer.style.display = 'block';
             if(godCheckbox) godCheckbox.disabled = false;
@@ -264,14 +259,12 @@ const openEditModal = (userId) => {
                 godDesc.innerHTML = "Aucun Suprême n'existe. Cochez pour lui <strong>donner</strong> les pouvoirs.";
             }
         } else if (isCurrentUserGod && godContainer) {
-            // Tu es Dieu, tu peux transférer ton titre
             godContainer.style.display = 'block';
             if(godCheckbox) godCheckbox.disabled = false;
             if(godDesc) godDesc.innerHTML = "⚠️ En cochant, vous lui <strong>transférez</strong> vos pouvoirs. Vous les perdrez définitivement.";
         }
     }
 
-    // Protection anti-suicide
     if (targetUser.id === currentUid && deleteZone) {
         deleteZone.style.display = 'none';
     }
@@ -280,19 +273,20 @@ const openEditModal = (userId) => {
 };
 
 const initModalLogic = () => {
+    const modal = document.getElementById('edit-user-modal');
+    if(!modal) return;
 
-    // --- NOUVEAU LIAISON PROFIL ---
+    // LIAISON PROFIL PLACÉE CORRECTEMENT ICI
     const btnOpenProfile = document.getElementById('btn-open-full-profile');
     if (btnOpenProfile) {
         btnOpenProfile.addEventListener('click', () => {
             const userId = document.getElementById('edit-user-id').value;
-            modal.style.display = 'none'; // Ferme la petite modale
-            if(window.openFullProfile) window.openFullProfile(userId); // Ouvre le grand profil
+            modal.style.display = 'none'; 
+            if(typeof window.openFullProfile === 'function') {
+                window.openFullProfile(userId);
+            }
         });
     }
-    
-    const modal = document.getElementById('edit-user-modal');
-    if(!modal) return;
     
     document.getElementById('close-modal-btn').addEventListener('click', () => modal.style.display = 'none');
     
@@ -314,17 +308,15 @@ const initModalLogic = () => {
             updates.statut = document.getElementById('edit-user-statut').value;
         }
 
-        // --- GESTION DU TRANSFERT DE POUVOIR ---
         const godCheckbox = document.getElementById('edit-user-isgod');
         const godLabelWrapper = godCheckbox ? godCheckbox.parentElement : null;
         const godExists = allUsersData.some(u => u.isGod === true);
 
-        if (godCheckbox && godCheckbox.checked && godLabelWrapper.style.display !== 'none') {
+        if (godCheckbox && godCheckbox.checked && godLabelWrapper && godLabelWrapper.style.display !== 'none') {
             if (isCurrentUserGod || !godExists) {
                 updates.isGod = true;
                 const currentGodProfile = allUsersData.find(u => u.isGod === true);
                 if (currentGodProfile && currentGodProfile.id !== targetUser.id) {
-                    // Retire le titre de l'ancien Dieu
                     await updateDoc(doc(db, "users", currentGodProfile.id), { isGod: false });
                 }
             }
@@ -342,7 +334,6 @@ const initModalLogic = () => {
         const userId = document.getElementById('edit-user-id').value;
         const targetUser = allUsersData.find(u => u.id === userId);
 
-        // --- DOUBLE SÉCURITÉ DE SUPPRESSION ---
         if (targetUser.isGod) {
             alert("❌ SÉCURITÉ : Le compte Suprême ne peut pas être supprimé !");
             return; 
