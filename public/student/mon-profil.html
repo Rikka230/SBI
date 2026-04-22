@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mon Profil - SBI Student</title>
+    
+    <link rel="stylesheet" href="/admin/css/admin-layout.css">
+    <link rel="stylesheet" href="/admin/css/admin.css">
+    <link rel="stylesheet" href="/admin/css/admin-notifications.css">
+    <link rel="stylesheet" href="/student/css/student.css">
+    
+    <script src="/admin/js/components.js"></script>
+    
+    <style>
+        .profile-header { background: var(--bg-card); border-radius: 16px; border: 1px solid var(--border-color); padding: 2.5rem; display: flex; align-items: center; gap: 2rem; margin-bottom: 2.5rem; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03); position: relative; overflow: hidden; }
+        .profile-header::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 100px; background: linear-gradient(90deg, var(--accent-green), #00ffa3); opacity: 0.15; z-index: 0; }
+        .avatar-container { width: 120px; height: 120px; border-radius: 50%; border: 4px solid var(--bg-card); background: var(--bg-body); z-index: 1; overflow: hidden; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; font-weight: bold; color: var(--text-muted); position: relative; }
+        .avatar-container img { width: 100%; height: 100%; object-fit: cover; }
+        .profile-info { z-index: 1; }
+        .profile-info h1 { margin: 0 0 0.5rem 0; font-size: 2rem; color: var(--text-main); }
+        .profile-info p { margin: 0; color: var(--text-muted); font-size: 1.1rem; }
+
+        .profile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2.5rem; align-items: start; }
+        
+        .form-group { margin-bottom: 1.5rem; }
+        .form-group label { display: block; font-weight: 600; margin-bottom: 0.5rem; color: var(--text-main); font-size: 0.95rem; }
+        .form-group input, .form-group textarea { width: 100%; padding: 0.8rem 1rem; border: 1px solid var(--border-color); border-radius: 8px; background: #f9fafb; color: var(--text-main); font-family: inherit; font-size: 0.95rem; transition: 0.2s; outline: none; }
+        .form-group input:focus, .form-group textarea:focus { border-color: var(--accent-green); background: #fff; box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1); }
+        .form-group input:disabled { background: #e5e7eb; color: #9ca3af; cursor: not-allowed; }
+
+        .private-section { display: none; } /* Caché par défaut si ce n'est pas le propriétaire */
+        .edit-buttons { display: none; } 
+    </style>
+</head>
+<body class="preload">
+
+<div class="app-container" id="app-container">
+    
+    <script>
+        if (window.innerWidth > 1024) {
+            const app = document.getElementById('app-container');
+            if (localStorage.getItem('leftPanelCollapsed') === 'true') app.classList.add('left-collapsed');
+        }
+    </script>
+
+    <student-left-panel></student-left-panel>
+
+    <header class="top-bar" style="border-bottom: 1px solid var(--border-color); background-color: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px);">
+        <button class="mobile-toggle left-toggle" id="btn-toggle-mobile"><svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg></button>
+        <div class="search-bar-top" style="visibility: hidden;"></div> </header>
+
+    <main id="main-content">
+        <div class="content-wrapper">
+            
+            <div class="profile-header">
+                <div class="avatar-container" id="prof-avatar" onclick="document.getElementById('btn-trigger-crop').click()" style="cursor: pointer;" title="Changer la photo">
+                    <span>U</span>
+                </div>
+                <button id="btn-trigger-crop" style="display:none;"></button> <div class="profile-info">
+                    <h1 id="prof-name">Chargement...</h1>
+                    <p id="prof-bio-display">Élève de la plateforme SBI</p>
+                    <div style="margin-top: 1rem; display: inline-block; background: rgba(16, 185, 129, 0.1); color: var(--accent-green); padding: 5px 15px; border-radius: 20px; font-weight: bold;">
+                        Niveau <span id="prof-level">1</span> (<span id="prof-xp">0</span> XP)
+                    </div>
+                </div>
+            </div>
+
+            <div class="profile-grid">
+                
+                <div class="hub-card">
+                    <h3 class="section-title" style="margin-bottom: 1.5rem;"><span class="section-icon">👤</span> Profil Public</h3>
+                    
+                    <div class="form-group">
+                        <label>À propos de moi (Bio)</label>
+                        <textarea id="prof-bio" rows="4" placeholder="Dites-en plus sur vous..."></textarea>
+                    </div>
+                    
+                    <div class="edit-buttons" style="margin-top: 1.5rem;">
+                        <button id="btn-save-public" class="action-btn" style="width: 100%; justify-content: center; background: var(--accent-green); color: white; border: none; padding: 1rem; border-radius: 8px; font-weight: bold; font-size: 1rem;">Mettre à jour le profil</button>
+                    </div>
+                </div>
+
+                <div class="hub-card private-section">
+                    <h3 class="section-title" style="margin-bottom: 1.5rem;"><span class="section-icon">🔒</span> Données Privées</h3>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.5rem;">Ces informations sont strictement confidentielles et uniquement visibles par vous et l'administration.</p>
+                    
+                    <div class="form-group">
+                        <label>Adresse E-mail de connexion</label>
+                        <input type="email" id="prof-email" disabled>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Numéro de téléphone</label>
+                        <input type="tel" id="prof-phone" placeholder="Votre numéro...">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Adresse postale</label>
+                        <input type="text" id="prof-address" placeholder="Votre adresse...">
+                    </div>
+
+                    <div class="edit-buttons" style="margin-top: 1.5rem;">
+                        <button id="btn-save-private" class="action-btn" style="width: 100%; justify-content: center; background: var(--text-main); color: white; border: none; padding: 1rem; border-radius: 8px; font-weight: bold; font-size: 1rem;">Sauvegarder les données privées</button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+</div>
+
+<div style="display:none;"><admin-right-panel></admin-right-panel></div>
+
+<script type="module" src="/admin/js/admin-ui.js"></script>
+<script type="module" src="/admin/js/tracker.js"></script>
+<script type="module" src="/student/js/student-profile.js"></script>
+
+</body>
+</html>
