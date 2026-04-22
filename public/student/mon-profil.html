@@ -60,11 +60,14 @@
 
                 <div class="profile-info">
                     <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                        <div>
+                        <div style="width: 100%; max-width: 400px;">
                             <h1 id="prof-name">Chargement...</h1>
                             <p id="prof-bio-display">Élève de la plateforme SBI</p>
                             <div style="margin-top: 1rem; display: inline-block; background: rgba(16, 185, 129, 0.1); color: var(--accent-green); padding: 5px 15px; border-radius: 20px; font-weight: bold;">
                                 Niveau <span id="prof-level">1</span> (<span id="prof-xp">0</span> XP)
+                            </div>
+                            <div class="xp-bar-bg" style="margin-top: 1rem;">
+                                <div class="xp-bar-fill" id="prof-xp-fill"></div>
                             </div>
                         </div>
                         
@@ -76,7 +79,7 @@
                 </div>
             </div>
 
-            <div style="display: grid; grid-template-columns: 1.2fr 2fr; gap: 2.5rem; align-items: start;">
+            <div style="display: grid; grid-template-columns: 1.2fr 2fr; gap: 2.5rem; align-items: start; width: 100%;">
                 <div style="display: flex; flex-direction: column; gap: 2.5rem;">
                     <div class="hub-card">
                         <h3 class="section-title" style="margin-bottom: 1rem;"><span class="section-icon">🏆</span> Réussites</h3>
