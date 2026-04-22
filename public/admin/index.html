@@ -7,8 +7,7 @@
     <link rel="stylesheet" href="css/admin-layout.css">
     <link rel="stylesheet" href="css/admin.css">
     <link rel="stylesheet" href="css/admin-notifications.css">
-    
-    <script>
+    <link rel="stylesheet" href="css/admin-profile.css"> <script>
         const urlParams = new URLSearchParams(window.location.search);
         const activeTab = urlParams.get('tab') || sessionStorage.getItem('activeAdminTab') || 'view-dashboard';
         sessionStorage.setItem('activeAdminTab', activeTab);
@@ -56,6 +55,9 @@
                 <svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
                 <span class="nav-text">Utilisateurs</span>
             </li>
+            <li class="nav-item" data-target="view-profile" id="nav-profile-hidden" style="display:none;">
+                <span class="nav-text">Profil Actif</span>
+            </li>
             <li class="nav-item" data-target="view-formations">
                 <svg viewBox="0 0 24 24"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/></svg>
                 <span class="nav-text">Formations</span>
@@ -81,38 +83,29 @@
 
             <section id="view-dashboard" class="admin-view">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-                    <div>
-                        <h2>Vue d'ensemble</h2>
-                        <p style="color: var(--text-muted); margin: 0;">Statistiques en direct de votre plateforme.</p>
-                    </div>
+                    <div><h2>Vue d'ensemble</h2><p style="color: var(--text-muted); margin: 0;">Statistiques en direct de votre plateforme.</p></div>
                 </div>
-
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem;">
-                    
                     <div style="background: var(--bg-card); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); display: flex; flex-direction: column; align-items: center; justify-content: center;">
                         <svg width="32" height="32" fill="var(--accent-green)" viewBox="0 0 24 24" style="margin-bottom: 10px;"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
                         <h3 id="stat-students" style="font-size: 2.5rem; margin: 0; color: white;">...</h3>
-                        <p style="color: var(--text-muted); margin: 0.5rem 0 0 0; font-weight: bold; text-transform: uppercase; font-size: 0.8rem; letter-spacing: 1px;">Étudiants Inscrits</p>
+                        <p style="color: var(--text-muted); margin: 0.5rem 0 0 0; font-weight: bold; text-transform: uppercase; font-size: 0.8rem; letter-spacing: 1px;">Étudiants</p>
                     </div>
-
                     <div style="background: var(--bg-card); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); display: flex; flex-direction: column; align-items: center; justify-content: center;">
                         <svg width="32" height="32" fill="var(--accent-blue)" viewBox="0 0 24 24" style="margin-bottom: 10px;"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
                         <h3 id="stat-teachers" style="font-size: 2.5rem; margin: 0; color: white;">...</h3>
                         <p style="color: var(--text-muted); margin: 0.5rem 0 0 0; font-weight: bold; text-transform: uppercase; font-size: 0.8rem; letter-spacing: 1px;">Professeurs</p>
                     </div>
-
                     <div style="background: var(--bg-card); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); display: flex; flex-direction: column; align-items: center; justify-content: center;">
                         <svg width="32" height="32" fill="var(--text-main)" viewBox="0 0 24 24" style="margin-bottom: 10px;"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12zM10 9h8v2h-8zm0 3h4v2h-4zm0-6h8v2h-8z"/></svg>
                         <h3 id="stat-courses" style="font-size: 2.5rem; margin: 0; color: white;">...</h3>
                         <p style="color: var(--text-muted); margin: 0.5rem 0 0 0; font-weight: bold; text-transform: uppercase; font-size: 0.8rem; letter-spacing: 1px;">Cours Créés</p>
                     </div>
-
                     <div id="card-pending" style="background: rgba(251, 188, 4, 0.05); padding: 1.5rem; border-radius: 8px; border: 1px solid rgba(251, 188, 4, 0.3); display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='rgba(251, 188, 4, 0.1)'" onmouseout="this.style.background='rgba(251, 188, 4, 0.05)'">
                         <svg width="32" height="32" fill="var(--accent-yellow)" viewBox="0 0 24 24" style="margin-bottom: 10px;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
                         <h3 id="stat-pending" style="font-size: 2.5rem; margin: 0; color: var(--accent-yellow);">...</h3>
                         <p style="color: var(--accent-yellow); margin: 0.5rem 0 0 0; font-weight: bold; text-transform: uppercase; font-size: 0.8rem; letter-spacing: 1px;">À Valider</p>
                     </div>
-
                 </div>
             </section>
 
@@ -129,55 +122,134 @@
                         </select>
                     </div>
                 </div>
-
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem;">
-                    
                     <div style="background: var(--bg-card); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); height: fit-content;">
                         <h3 style="margin-top: 0;">Créer un compte</h3>
                         <form id="create-user-form" style="display: flex; flex-direction: column; gap: 1rem;">
                             <input type="text" id="new-user-prenom" placeholder="Prénom" required style="padding: 0.8rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px;">
                             <input type="text" id="new-user-nom" placeholder="Nom" required style="padding: 0.8rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px;">
                             <input type="email" id="new-user-email" placeholder="Email" required style="padding: 0.8rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px;">
-                            
                             <div style="display: flex; gap: 0.5rem;">
                                 <input type="text" id="new-user-password" placeholder="Mot de passe" required style="flex-grow: 1; padding: 0.8rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px;">
                                 <button type="button" id="btn-regen-pwd" style="padding: 0 1rem; background: #333; color: white; border: none; border-radius: 4px; cursor: pointer;">🔄</button>
                             </div>
-
                             <select id="new-user-role" style="padding: 0.8rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px;">
                                 <option value="student">Étudiant</option>
                                 <option value="teacher">Enseignant</option>
                                 <option value="admin">Administrateur</option>
                             </select>
-                            
                             <button type="submit" style="padding: 1rem; background: var(--accent-blue); color: #000; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">Créer le compte</button>
                         </form>
                         <div id="user-creation-msg" style="display: none; margin-top: 1rem; padding: 1rem; border-radius: 4px;"></div>
                     </div>
-
                     <div style="background: var(--bg-card); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color);">
                         <h3 style="margin-top: 0;">Comptes existants</h3>
-                        <div id="users-list-container" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                        <div id="users-list-container" style="display: flex; flex-direction: column; gap: 0.5rem;"></div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="view-profile" class="admin-view">
+                <input type="hidden" id="active-profile-id">
+                
+                <div class="profile-header-card">
+                    <div class="profile-cover"></div>
+                    <div class="profile-main-info">
+                        <div class="avatar-wrapper">
+                            <img src="https://via.placeholder.com/150/111/444?text=?" id="prof-avatar-img" alt="Avatar">
+                            <div class="online-dot" id="prof-online-dot"></div>
+                            <button class="edit-avatar-btn" id="btn-trigger-crop" title="Changer la photo">📷</button>
+                        </div>
+                        <div class="identity-zone">
+                            <h2 id="prof-name">Chargement... <span id="prof-badge-zone"></span></h2>
+                            <p style="color: var(--text-muted); margin: 0;" id="prof-status-text">Statut inconnu</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="profile-grid">
+                    <div class="profile-sidebar">
+                        
+                        <div class="gamification-box" id="prof-gamification" style="display:none;">
+                            <h4 style="margin: 0 0 0.5rem 0; color: var(--accent-blue);">Niveau <span id="prof-level">1</span></h4>
+                            <div class="xp-bar-container">
+                                <div class="xp-bar-fill" id="prof-xp-fill"></div>
                             </div>
+                            <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;"><span id="prof-xp-text">0</span> / 1000 XP</p>
+                            
+                            <div class="badges-grid">
+                                <div class="badge-slot" id="badge-bronze" title="Bronze (5 cours)">🥉</div>
+                                <div class="badge-slot" id="badge-silver" title="Argent (15 cours)">🥈</div>
+                                <div class="badge-slot" id="badge-gold" title="Or (30 cours)">🥇</div>
+                                <div class="badge-slot" id="badge-diamond" title="Diamant (50 cours)">💎</div>
+                            </div>
+                        </div>
+
+                        <div class="data-group">
+                            <h4 style="margin: 0 0 1rem 0; color: var(--text-main);">📚 Formations</h4>
+                            <div id="prof-formations-list" style="display: flex; flex-direction: column; gap: 0.5rem; color: var(--text-muted); font-size: 0.9rem;">
+                                Aucune formation assignée.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="profile-main">
+                        <div class="profile-tabs-header">
+                            <div class="p-tab active" data-ptarget="ptab-public">Profil Public</div>
+                            <div class="p-tab" data-ptarget="ptab-private">Données Privées 🔒</div>
+                            <div class="p-tab" data-ptarget="ptab-activity">Activité Récents</div>
+                        </div>
+
+                        <div id="ptab-public" class="p-tab-content active">
+                            <div class="data-group">
+                                <label style="color: var(--text-muted); font-size: 0.85rem; font-weight: bold;">Titre professionnel / Bio</label>
+                                <textarea id="prof-bio" style="width: 100%; min-height: 100px; background: #111; color: white; border: 1px solid #333; border-radius: 4px; padding: 1rem; margin-top: 0.5rem; outline: none; font-family: inherit;" placeholder="Ex: Passionné d'art et directeur artistique..."></textarea>
+                                <button id="btn-save-public" class="action-btn" style="width:auto; margin-top: 1rem; background: var(--accent-blue); border:none; color:white;">Enregistrer le profil public</button>
+                            </div>
+                        </div>
+
+                        <div id="ptab-private" class="p-tab-content">
+                            <div class="data-group">
+                                <div class="data-row">
+                                    <span class="data-label">Email de connexion</span>
+                                    <span class="data-value" id="prof-email">...</span>
+                                </div>
+                                <div class="data-row">
+                                    <span class="data-label">Temps de connexion total</span>
+                                    <span class="data-value" style="color: var(--accent-yellow);" id="prof-time">...</span>
+                                </div>
+                            </div>
+                            <div class="data-group">
+                                <p style="color: var(--accent-red); font-size: 0.85rem; margin-top:0;">⚠️ Informations sensibles. Visibles uniquement par l'utilisateur et les Administrateurs.</p>
+                                <label style="color: var(--text-muted); font-size: 0.85rem;">Numéro de téléphone</label>
+                                <input type="text" id="prof-phone" placeholder="+33 6..." style="width: 100%; padding: 0.8rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px; margin-bottom: 1rem;">
+                                
+                                <label style="color: var(--text-muted); font-size: 0.85rem;">Adresse postale</label>
+                                <input type="text" id="prof-address" placeholder="123 rue..." style="width: 100%; padding: 0.8rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px;">
+                                
+                                <button id="btn-save-private" class="action-btn" style="width:auto; margin-top: 1rem; background: var(--accent-red); border:none; color:white;">Enregistrer les données privées</button>
+                            </div>
+                        </div>
+
+                        <div id="ptab-activity" class="p-tab-content">
+                            <div class="data-group">
+                                <h4 style="margin: 0 0 1rem 0;">Dernières actions</h4>
+                                <ul style="color: var(--text-muted); font-size: 0.9rem; padding-left: 1rem;" id="prof-activity-list">
+                                    <li>Chargement...</li>
+                                </ul>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>
 
             <section id="view-formations" class="admin-view">
                 <h2>Structure de Formations</h2>
-                <p style="color: var(--text-muted);">Sélectionnez le module pédagogique à gérer :</p>
-                
                 <div class="formations-grid">
                     <a href="formations-cours.html" class="formation-card">
                         <svg viewBox="0 0 24 24"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12zM10 9h8v2h-8zm0 3h4v2h-4zm0-6h8v2h-8z"/></svg>
                         <h3>C O U R S</h3>
                         <p>Vidéos, PDF, Chapitres et Quizz</p>
-                    </a>
-
-                    <a href="formations-live.html" class="formation-card live">
-                        <svg viewBox="0 0 24 24"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4zM14 13h-3v3H9v-3H6v-2h3V8h2v3h3v2z"/></svg>
-                        <h3>L I V E</h3>
-                        <p>Masterclass et Sessions en Direct</p>
                     </a>
                 </div>
             </section>
@@ -203,7 +275,7 @@
         <div class="right-section" id="profile-section">
             <div class="profile-widget">
                 <div class="avatar">A</div>
-                <div class="user-info"><p class="name">Antony</p><p class="role">Admin Suprême</p></div>
+                <div class="user-info"><p class="name">Antony</p><p class="role">Directeur Artistique</p></div>
             </div>
             <button class="action-btn" id="btn-clear-cache"><svg viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg> Rafraîchir le Cache</button>
             <button class="action-btn danger" id="logout-btn"><svg viewBox="0 0 24 24"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg> Déconnexion</button>
@@ -217,7 +289,7 @@
 
 <div id="edit-user-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center;">
     <div style="background: var(--bg-card); padding: 2rem; border-radius: 8px; border: 1px solid var(--border-color); width: 100%; max-width: 500px;">
-        <h3 style="margin-top: 0;">Modifier l'utilisateur</h3>
+        <h3 style="margin-top: 0;">Gestion Rapide</h3>
         <form id="edit-user-form" style="display: flex; flex-direction: column; gap: 1rem;">
             <input type="hidden" id="edit-user-id">
             <input type="text" id="edit-user-prenom" placeholder="Prénom" style="padding: 0.8rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px;">
@@ -239,18 +311,32 @@
                 <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: #ffd700; font-weight: bold;">
                     <input type="checkbox" id="edit-user-isgod"> Rôle Suprême (God Mode)
                 </label>
-                <p id="god-mode-desc" style="margin: 0.5rem 0 0 0; font-size: 0.85rem; color: #aaa;"></p>
             </div>
 
             <div style="display: flex; gap: 1rem; margin-top: 1rem;">
                 <button type="submit" style="flex: 1; padding: 1rem; background: var(--accent-green); color: #000; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">Enregistrer</button>
-                <button type="button" id="reset-pwd-btn" style="flex: 1; padding: 1rem; background: #444; color: white; border: none; border-radius: 4px; cursor: pointer;">Reset Mdp</button>
-                <button type="button" id="close-modal-btn" style="flex: 1; padding: 1rem; background: transparent; color: white; border: 1px solid #555; border-radius: 4px; cursor: pointer;">Annuler</button>
+                <button type="button" id="btn-open-full-profile" style="flex: 1; padding: 1rem; background: var(--accent-blue); color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Ouvrir le Profil Complet</button>
             </div>
+            <button type="button" id="close-modal-btn" style="width: 100%; padding: 1rem; background: transparent; color: white; border: 1px solid #555; border-radius: 4px; cursor: pointer;">Fermer</button>
         </form>
+    </div>
+</div>
+
+<div id="crop-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.9); z-index: 2000; justify-content: center; align-items: center; flex-direction: column;">
+    <div style="background: var(--bg-card); padding: 2rem; border-radius: 8px; border: 1px solid var(--border-color); text-align: center; max-width: 400px; width: 100%;">
+        <h3 style="margin-top:0;">Changer la photo</h3>
+        <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom: 1.5rem;">Glissez une image ici, ou cliquez pour en choisir une. Maintenez le clic pour la centrer.</p>
         
-        <div id="delete-zone" style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #444;">
-            <button id="delete-user-btn" style="width: 100%; padding: 1rem; background: rgba(255, 74, 74, 0.1); color: var(--accent-red); border: 1px solid var(--accent-red); border-radius: 4px; font-weight: bold; cursor: pointer;">⚠️ Supprimer définitivement</button>
+        <input type="file" id="pfp-file-input" accept="image/*" style="display: none;">
+        
+        <div id="crop-zone" onclick="if(!this.hasImage) document.getElementById('pfp-file-input').click()">
+            <span id="crop-placeholder" style="position: absolute; top:50%; left:50%; transform: translate(-50%, -50%); color: #555; pointer-events: none;">Glisser / Cliquer</span>
+            <img id="crop-image" src="" style="display: none;">
+        </div>
+
+        <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+            <button id="btn-save-crop" style="flex: 1; padding: 1rem; background: var(--accent-blue); color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">Appliquer</button>
+            <button id="btn-cancel-crop" style="flex: 1; padding: 1rem; background: transparent; color: white; border: 1px solid #555; border-radius: 4px; cursor: pointer;">Annuler</button>
         </div>
     </div>
 </div>
@@ -259,6 +345,5 @@
 <script type="module" src="js/admin-core.js"></script>
 <script type="module" src="js/admin-notifications.js"></script>
 <script type="module" src="js/admin-dashboard.js"></script>
-
-</body>
+<script type="module" src="js/admin-profile.js"></script> </body>
 </html>
