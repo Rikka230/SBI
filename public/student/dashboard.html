@@ -5,12 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SBI Student - Mon Hub</title>
     
-    <link rel="stylesheet" href="../css/admin-layout.css">
-    <link rel="stylesheet" href="../css/admin.css">
-    <script src="../js/components.js"></script>
+    <link rel="stylesheet" href="/css/admin-layout.css">
+    <link rel="stylesheet" href="/css/admin.css">
+    <link rel="stylesheet" href="/css/admin-notifications.css">
+    <script src="/js/components.js"></script>
     
     <style>
-        .hub-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 2rem; margin-top: 2rem; }
+        *, *::before, *::after { box-sizing: border-box; }
+        .hub-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 2rem; margin-top: 2rem; align-items: start; }
         .hub-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; }
         
         /* Barre d'XP */
@@ -18,10 +20,10 @@
         .xp-bar-fill { height: 100%; background: linear-gradient(90deg, var(--accent-green), #00ffa3); width: 0%; transition: width 1s ease-out; }
         
         /* Barre de recherche (Maquette) */
-        .search-bar-top { flex-grow: 1; max-width: 500px; position: relative; margin: 0 2rem; }
-        .search-bar-top input { width: 100%; box-sizing: border-box; padding: 0.8rem 1.5rem 0.8rem 3rem; background: #111; border: 1px solid #333; border-radius: 20px; color: white; outline: none; transition: 0.2s; }
+        .search-bar-top { flex-grow: 1; max-width: 500px; position: relative; margin-left: 1rem; }
+        .search-bar-top input { width: 100%; padding: 0.6rem 1.5rem 0.6rem 2.5rem; background: #111; border: 1px solid #333; border-radius: 20px; color: white; outline: none; transition: 0.2s; font-family: inherit; }
         .search-bar-top input:focus { border-color: var(--accent-green); }
-        .search-bar-top svg { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); fill: #666; width: 18px; height: 18px; }
+        .search-bar-top svg { position: absolute; left: 0.8rem; top: 50%; transform: translateY(-50%); fill: #666; width: 16px; height: 16px; }
         
         @media (max-width: 768px) { 
             .hub-grid { grid-template-columns: 1fr; } 
@@ -57,11 +59,11 @@
             </div>
             
             <div style="display: flex; align-items: center; gap: 0.8rem; cursor: pointer; border-left: 1px solid #333; padding-left: 1.5rem;" onclick="window.location.href='mon-profil.html'">
-                <div style="text-align: right;">
-                    <p id="top-user-name" style="margin: 0; font-weight: bold; font-size: 0.9rem;">Chargement...</p>
-                    <p id="top-user-level" style="margin: 0; color: var(--accent-green); font-size: 0.75rem;">Niveau -</p>
+                <div style="text-align: right; display: flex; flex-direction: column; justify-content: center;">
+                    <p id="top-user-name" style="margin: 0; font-weight: bold; font-size: 0.9rem; line-height: 1.2;">Chargement...</p>
+                    <p id="top-user-level" style="margin: 0; color: var(--accent-green); font-size: 0.75rem; line-height: 1.2;">Niveau -</p>
                 </div>
-                <div id="top-user-avatar" style="width: 40px; height: 40px; border-radius: 50%; background: #222; overflow: hidden; display: flex; align-items: center; justify-content: center; font-weight: bold;"></div>
+                <div id="top-user-avatar" style="width: 40px; height: 40px; border-radius: 50%; background: #222; overflow: hidden; display: flex; align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0;"></div>
             </div>
         </div>
     </header>
@@ -72,7 +74,6 @@
             <p style="color: var(--text-muted); margin-bottom: 2rem;">Reprenez votre apprentissage là où vous l'avez laissé.</p>
 
             <div class="hub-grid">
-                
                 <div class="left-col" style="display: flex; flex-direction: column; gap: 2rem;">
                     <div class="hub-card">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
@@ -112,9 +113,9 @@
 
 </div>
 
-<script type="module" src="../js/admin-ui.js"></script>
-<script type="module" src="../js/tracker.js"></script>
-<script type="module" src="js/student-hub.js"></script>
+<script type="module" src="/js/admin-ui.js"></script>
+<script type="module" src="/js/tracker.js"></script>
+<script type="module" src="/student/js/student-hub.js"></script>
 
 </body>
 </html>
