@@ -230,11 +230,20 @@
         </div>
     </div>
 </div>
-<admin-right-panel></admin-right-panel>
+</main>
+
+    <admin-right-panel></admin-right-panel>
+
+</div> <div id="edit-user-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center;">
+    <div id="delete-zone" style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #444;">
+        <button id="delete-user-btn" style="width: 100%; padding: 1rem; background: rgba(255, 74, 74, 0.1); color: var(--accent-red); border: 1px solid var(--accent-red); border-radius: 4px; font-weight: bold; cursor: pointer;">⚠️ Supprimer définitivement</button>
+    </div>
+    </div>
 </div>
+
 <script type="module" src="js/admin-ui.js"></script>
-<script type="module" src="js/tracker.js"></script>
 <script type="module" src="js/admin-core.js"></script>
+<script type="module" src="js/tracker.js"></script>
 <script type="module" src="js/admin-notifications.js"></script>
 <script type="module" src="js/admin-dashboard.js"></script>
 
