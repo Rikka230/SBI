@@ -14,16 +14,17 @@
     <style>
         .profile-header { background: var(--bg-card); border-radius: 16px; border: 1px solid var(--border-color); padding: 2.5rem; display: flex; align-items: center; gap: 2rem; margin-bottom: 2.5rem; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03); position: relative; overflow: hidden; }
         .profile-header::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 100px; background: linear-gradient(90deg, var(--accent-green), #00ffa3); opacity: 0.15; z-index: 0; }
-        .avatar-container { width: 120px; height: 120px; border-radius: 50%; border: 4px solid var(--bg-card); background: var(--bg-body); z-index: 1; overflow: hidden; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; font-weight: bold; color: var(--text-muted); position: relative; }
+        
+        /* FIX AVATAR : On sépare le wrapper (qui gère le débordement) du container (qui coupe l'image) */
+        .avatar-wrapper { position: relative; width: 120px; height: 120px; z-index: 1; }
+        .avatar-container { width: 100%; height: 100%; border-radius: 50%; border: 4px solid var(--bg-card); background: var(--bg-body); overflow: hidden; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; font-weight: bold; color: var(--text-muted); }
         .avatar-container img { width: 100%; height: 100%; object-fit: cover; }
         
         .profile-info { z-index: 1; flex-grow: 1; }
         .profile-info h1 { margin: 0 0 0.5rem 0; font-size: 2rem; color: var(--text-main); }
-        .profile-info p { margin: 0; color: var(--text-muted); font-size: 1.1rem; }
-
+        
         .form-group { margin-bottom: 1.5rem; }
         .form-group label { display: block; font-weight: 600; margin-bottom: 0.5rem; color: var(--text-main); font-size: 0.95rem; }
-        
         .prof-input { width: 100%; padding: 0.8rem 1rem; border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--text-main); font-family: inherit; font-size: 0.95rem; outline: none; transition: 0.2s; }
         
         .editing .prof-input { background: #f9fafb; border-color: var(--border-color); }
@@ -31,6 +32,11 @@
         .editing .prof-input[disabled] { background: #e5e7eb; color: #9ca3af; cursor: not-allowed; border-color: transparent; }
 
         .private-section, .edit-mode-only { display: none; }
+        
+        /* Badges de gamification (Design Light) */
+        .badges-grid { display: flex; gap: 10px; margin-top: 1rem; }
+        .badge-slot { width: 40px; height: 40px; border-radius: 50%; background: #f3f4f6; border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; opacity: 0.3; filter: grayscale(100%); transition: 0.3s; }
+        .badge-slot.unlocked { opacity: 1; filter: grayscale(0%); background: #ffffff; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-color: transparent; }
     </style>
 </head>
 <body class="preload">
@@ -49,10 +55,12 @@
         <div class="content-wrapper">
             
             <div class="profile-header">
-                <div class="avatar-container" id="prof-avatar" style="cursor: default;" title="Avatar">
-                    <span>U</span>
-                    <div class="edit-avatar-badge edit-mode-only" style="position: absolute; bottom: 5px; right: 5px; background: var(--accent-green); color: white; padding: 6px; border-radius: 50%; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
-                        <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                <div class="avatar-wrapper">
+                    <div class="avatar-container" id="prof-avatar" style="cursor: default;" title="Avatar">
+                        <span>U</span>
+                    </div>
+                    <div class="edit-avatar-badge edit-mode-only" style="position: absolute; bottom: 0; right: 0; background: var(--accent-green); color: white; padding: 8px; border-radius: 50%; box-shadow: 0 2px 5px rgba(0,0,0,0.2); cursor: pointer;" onclick="document.getElementById('pfp-file-input').click()">
+                        <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
                     </div>
                 </div>
 
@@ -66,55 +74,95 @@
                             </div>
                         </div>
                         
-                        <button id="btn-toggle-edit" class="private-section" style="background: white; border: 1px solid var(--border-color); color: var(--text-main); padding: 0.5rem 1rem; border-radius: 20px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; box-shadow: 0 2px 5px rgba(0,0,0,0.05); transition: 0.2s;">
-                            ✏️ Modifier mon profil
+                        <button id="btn-toggle-edit" class="private-section" style="background: white; border: 1px solid var(--border-color); color: var(--text-main); padding: 0.6rem 1.2rem; border-radius: 20px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; box-shadow: 0 2px 5px rgba(0,0,0,0.05); transition: 0.2s;">
+                            <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                            <span>Modifier mon profil</span>
                         </button>
                     </div>
                 </div>
             </div>
 
-            <div class="student-sub-nav">
-                <div class="student-sub-nav-item active" onclick="switchTab('tab-overview')">Aperçu & Bio</div>
-                <div class="student-sub-nav-item private-section" onclick="switchTab('tab-private')">🔒 Données Privées</div>
-            </div>
-
-            <div id="tab-overview" class="student-view active">
-                <div class="hub-card">
-                    <h3 class="section-title" style="margin-bottom: 1.5rem;">Profil Public</h3>
-                    <div class="form-group">
-                        <label>À propos de moi (Bio)</label>
-                        <textarea id="prof-bio" class="prof-input" rows="4" placeholder="Dites-en plus sur vous..." style="resize: none;" disabled></textarea>
-                    </div>
-                    <div class="edit-mode-only" style="margin-top: 1.5rem;">
-                        <button id="btn-save-public" class="action-btn" style="width: auto; background: var(--accent-green); color: white; border: none; padding: 0.8rem 1.5rem; border-radius: 8px; font-weight: bold;">Enregistrer la bio</button>
-                    </div>
-                </div>
-            </div>
-
-            <div id="tab-private" class="student-view">
-                <div class="hub-card private-section">
-                    <h3 class="section-title" style="margin-bottom: 1.5rem;">Données Confidentielles</h3>
-                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.5rem;">Ces informations sont strictement confidentielles et uniquement visibles par vous et l'administration.</p>
+            <div style="display: grid; grid-template-columns: 1.2fr 2fr; gap: 2.5rem; align-items: start;">
+                
+                <div style="display: flex; flex-direction: column; gap: 2.5rem;">
                     
-                    <div class="form-group">
-                        <label>Adresse E-mail de connexion</label>
-                        <input type="email" id="prof-email" class="prof-input" disabled>
-                    </div>
-                    <div class="form-group">
-                        <label>Numéro de téléphone</label>
-                        <input type="tel" id="prof-phone" class="prof-input" placeholder="Votre numéro..." disabled>
-                    </div>
-                    <div class="form-group">
-                        <label>Adresse postale</label>
-                        <input type="text" id="prof-address" class="prof-input" placeholder="Votre adresse..." disabled>
+                    <div class="hub-card">
+                        <h3 class="section-title" style="margin-bottom: 1rem;"><span class="section-icon">🏆</span> Réussites</h3>
+                        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0;">Débloquez des badges en complétant des cours.</p>
+                        <div class="badges-grid">
+                            <div class="badge-slot" id="badge-bronze" title="Bronze">🥉</div>
+                            <div class="badge-slot" id="badge-silver" title="Argent">🥈</div>
+                            <div class="badge-slot" id="badge-gold" title="Or">🥇</div>
+                            <div class="badge-slot" id="badge-diamond" title="Diamant">💎</div>
+                        </div>
                     </div>
 
-                    <div class="edit-mode-only" style="margin-top: 1.5rem;">
-                        <button id="btn-save-private" class="action-btn" style="width: auto; background: var(--text-main); color: white; border: none; padding: 0.8rem 1.5rem; border-radius: 8px; font-weight: bold;">Mettre à jour les données privées</button>
+                    <div class="hub-card">
+                        <h3 class="section-title" style="margin-bottom: 1rem;"><span class="section-icon">📚</span> Formations</h3>
+                        <div id="prof-formations-list" style="display: flex; flex-direction: column; gap: 0.8rem; color: var(--text-muted); font-size: 0.95rem;">
+                            Chargement...
+                        </div>
+                    </div>
+
+                </div>
+
+                <div>
+                    <div class="student-sub-nav">
+                        <div class="student-sub-nav-item active" onclick="switchTab('tab-overview')">Aperçu & Bio</div>
+                        <div class="student-sub-nav-item private-section" onclick="switchTab('tab-private')">🔒 Données Privées</div>
+                        <div class="student-sub-nav-item" onclick="switchTab('tab-activity')">Historique</div>
+                    </div>
+
+                    <div id="tab-overview" class="student-view active">
+                        <div class="hub-card">
+                            <h3 class="section-title" style="margin-bottom: 1.5rem;">Profil Public</h3>
+                            <div class="form-group">
+                                <label>À propos de moi (Bio)</label>
+                                <textarea id="prof-bio" class="prof-input" rows="5" placeholder="Dites-en plus sur vous..." style="resize: none;" disabled></textarea>
+                            </div>
+                            <div class="edit-mode-only" style="margin-top: 1.5rem;">
+                                <button id="btn-save-public" class="action-btn" style="width: auto; background: var(--accent-green); color: white; border: none; padding: 0.8rem 1.5rem; border-radius: 8px; font-weight: bold;">Enregistrer la bio</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="tab-private" class="student-view">
+                        <div class="hub-card private-section">
+                            <h3 class="section-title" style="margin-bottom: 1.5rem;">Données Confidentielles</h3>
+                            <div class="form-group">
+                                <label>Adresse E-mail de connexion</label>
+                                <input type="email" id="prof-email" class="prof-input" disabled>
+                            </div>
+                            <div class="form-group">
+                                <label>Numéro de téléphone</label>
+                                <input type="tel" id="prof-phone" class="prof-input" placeholder="Votre numéro..." disabled>
+                            </div>
+                            <div class="form-group">
+                                <label>Adresse postale</label>
+                                <input type="text" id="prof-address" class="prof-input" placeholder="Votre adresse..." disabled>
+                            </div>
+                            <div class="form-group" style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+                                <label>Temps de connexion total</label>
+                                <p id="prof-time" style="font-size: 1.2rem; font-weight: bold; color: var(--accent-green); margin: 0;">0h 0m</p>
+                            </div>
+
+                            <div class="edit-mode-only" style="margin-top: 1.5rem;">
+                                <button id="btn-save-private" class="action-btn" style="width: auto; background: var(--text-main); color: white; border: none; padding: 0.8rem 1.5rem; border-radius: 8px; font-weight: bold;">Mettre à jour les données privées</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="tab-activity" class="student-view">
+                        <div class="hub-card">
+                            <h3 class="section-title" style="margin-bottom: 1.5rem;">Activité Récente</h3>
+                            <ul style="color: var(--text-muted); font-size: 0.95rem; padding-left: 1rem; line-height: 1.8;" id="prof-activity-list">
+                                <li>Chargement...</li>
+                            </ul>
+                        </div>
                     </div>
                 </div>
-            </div>
 
+            </div>
         </div>
     </main>
 </div>
@@ -124,7 +172,7 @@
         <h3 style="margin-top:0; color: var(--text-main);">Changer la photo</h3>
         <input type="file" id="pfp-file-input" accept="image/*" style="display: none;">
         
-        <div id="crop-zone" onclick="if(!this.hasImage) document.getElementById('pfp-file-input').click()" style="border: 2px dashed var(--border-color); border-radius: 8px; background: #f9fafb; position: relative; width: 300px; height: 300px; margin: 0 auto; overflow: hidden; cursor: pointer;">
+        <div id="crop-zone" onclick="if(!this.hasImage) document.getElementById('pfp-file-input').click()" style="border: 2px dashed var(--border-color); border-radius: 50%; background: #f9fafb; position: relative; width: 300px; height: 300px; margin: 0 auto; overflow: hidden; cursor: pointer;">
             <span id="crop-placeholder" style="position: absolute; top:50%; left:50%; transform: translate(-50%, -50%); color: var(--text-muted); pointer-events: none;">Glisser / Cliquer une image</span>
             <img id="crop-image" src="" style="display: none; cross-origin: anonymous; position: absolute; top:0; left:0;">
         </div>
@@ -153,7 +201,7 @@
 <script type="module" src="/admin/js/admin-ui.js"></script>
 <script type="module" src="/admin/js/tracker.js"></script>
 
-<script type="module" src="/js/profile-core.js"></script>
+<script type="module" src="/student/js/student-profile.js"></script>
 
 </body>
 </html>
