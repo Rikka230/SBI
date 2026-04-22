@@ -8,6 +8,10 @@
     <link rel="stylesheet" href="css/admin.css">
     <link rel="stylesheet" href="css/admin-notifications.css">
     <link rel="stylesheet" href="css/admin-profile.css">
+    
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
+    
     <script src="js/components.js"></script>
 </head>
 <body class="preload">
@@ -129,22 +133,20 @@
     <admin-right-panel></admin-right-panel>
 
     <div id="crop-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.9); z-index: 2000; justify-content: center; align-items: center; flex-direction: column;">
-        <div style="background: var(--bg-card); padding: 2rem; border-radius: 8px; border: 1px solid var(--border-color); text-align: center; max-width: 400px; width: 100%;">
-            <h3 style="margin-top:0; color: white;">Changer la photo</h3>
+        <div style="background: var(--bg-card); padding: 2rem; border-radius: 8px; border: 1px solid var(--border-color); width: 90%; max-width: 500px;">
+            <h3 style="margin-top:0; color: white; text-align: center;">Ajuster la photo</h3>
             
             <input type="file" id="pfp-file-input" accept="image/*" style="display: none;">
             
-            <div id="crop-zone" style="border: 2px dashed var(--border-color); border-radius: 50%; width: 300px; height: 300px; margin: 0 auto; overflow: hidden; position: relative; cursor: grab;">
-                <span id="crop-placeholder" style="position: absolute; top:50%; left:50%; transform: translate(-50%, -50%); color: var(--text-muted); pointer-events: none;">Glisser l'image</span>
-                <img id="crop-image" src="" style="display: none; cross-origin: anonymous; position: absolute; top:0; left:0; transform-origin: top left;">
+            <div style="width: 100%; height: 350px; background: #111; overflow: hidden; margin-bottom: 1.5rem; border-radius: 4px;">
+                <img id="crop-image" src="" style="display: block; max-width: 100%;">
             </div>
 
-            <div style="margin-top: 1.5rem; text-align: left; padding: 0 1rem;">
-                <label style="color: var(--text-muted); font-size: 0.8rem; display: block; margin-bottom: 0.5rem; font-weight: bold;">Zoom</label>
-                <input type="range" id="crop-zoom" min="0.5" max="3" step="0.05" value="1" style="width: 100%; accent-color: var(--accent-blue);">
-            </div>
+            <button id="btn-upload-new" style="width: 100%; padding: 0.8rem; background: transparent; color: white; border: 2px dashed var(--text-muted); border-radius: 4px; cursor: pointer; font-weight: bold; margin-bottom: 1.5rem; transition: 0.2s;">
+                Changer d'image
+            </button>
 
-            <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+            <div style="display: flex; gap: 1rem;">
                 <button id="btn-save-crop" style="flex: 1; padding: 1rem; background: var(--accent-blue); color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">Appliquer</button>
                 <button id="btn-cancel-crop" style="flex: 1; padding: 1rem; background: transparent; color: white; border: 1px solid var(--text-muted); border-radius: 4px; cursor: pointer;">Annuler</button>
             </div>
