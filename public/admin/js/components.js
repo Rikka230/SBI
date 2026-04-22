@@ -4,7 +4,6 @@
  * =======================================================================
  */
 
-// CORRECTIF GLOBAL : Empêche le texte du menu de sauter pendant l'animation
 const styleFix = document.createElement('style');
 styleFix.textContent = `
     .nav-item { white-space: nowrap !important; overflow: hidden !important; }
@@ -50,7 +49,6 @@ class AdminLeftPanel extends HTMLElement {
         const tab = urlParams.get('tab') || sessionStorage.getItem('activeAdminTab') || 'view-dashboard';
 
         if (path.includes('admin-profile.html')) {
-            // Maintient l'onglet Utilisateur actif au lieu d'en créer un nouveau
             this.querySelector('#nav-users').classList.add('active');
         } else if (path.includes('formations-cours.html') || path.includes('formations-live.html')) {
             this.querySelector('#nav-formations').classList.add('active');
@@ -61,7 +59,6 @@ class AdminLeftPanel extends HTMLElement {
     }
 }
 customElements.define('admin-left-panel', AdminLeftPanel);
-
 
 /* --- 2. LE PANNEAU LATÉRAL DROIT (ADMIN) --- */
 class AdminRightPanel extends HTMLElement {
@@ -100,34 +97,51 @@ class AdminRightPanel extends HTMLElement {
                 </div>
             </aside>
 
-            <div id="crop-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.9); z-index: 2000; justify-content: center; align-items: center; flex-direction: column;">
+            <div id="nav-crop-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.9); z-index: 2000; justify-content: center; align-items: center; flex-direction: column;">
                 <div style="background: var(--bg-card); padding: 2rem; border-radius: 8px; border: 1px solid var(--border-color); text-align: center; max-width: 400px; width: 100%;">
                     <h3 style="margin-top:0; color: var(--text-main);">Changer la photo</h3>
-                    <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom: 1.5rem;">Glissez une image ici, ou cliquez pour en choisir une. Maintenez le clic pour la centrer.</p>
                     
-                    <input type="file" id="pfp-file-input" accept="image/*" style="display: none;">
+                    <input type="file" id="nav-pfp-file-input" accept="image/*" style="display: none;">
                     
-                    <div id="crop-zone" onclick="if(!this.hasImage) document.getElementById('pfp-file-input').click()" style="border-color: var(--border-color);">
-                        <span id="crop-placeholder" style="position: absolute; top:50%; left:50%; transform: translate(-50%, -50%); color: var(--text-muted); pointer-events: none;">Glisser / Cliquer</span>
-                        <img id="crop-image" src="" style="display: none; cross-origin: anonymous;">
+                    <div id="nav-crop-zone" onclick="document.getElementById('nav-pfp-file-input').click()" style="border-color: var(--border-color); border-radius: 50%; width: 300px; height: 300px; margin: 0 auto; overflow: hidden; position: relative; cursor: pointer; border: 2px dashed var(--border-color);">
+                        <span id="nav-crop-placeholder" style="position: absolute; top:50%; left:50%; transform: translate(-50%, -50%); color: var(--text-muted); pointer-events: none;">Glisser / Cliquer</span>
+                        <img id="nav-crop-image" src="" style="display: none; cross-origin: anonymous; position: absolute; top:0; left:0; transform-origin: top left;">
                     </div>
 
                     <div style="margin-top: 1.5rem; text-align: left; padding: 0 1rem;">
                         <label style="color: var(--text-muted); font-size: 0.8rem; display: block; margin-bottom: 0.5rem; font-weight: bold;">Zoom</label>
-                        <input type="range" id="crop-zoom" min="1" max="3" step="0.05" value="1" style="width: 100%; accent-color: var(--accent-blue);">
+                        <input type="range" id="nav-crop-zoom" min="0.5" max="3" step="0.05" value="1" style="width: 100%; accent-color: var(--accent-blue);">
                     </div>
 
                     <div style="display: flex; gap: 1rem; margin-top: 2rem;">
-                        <button id="btn-save-crop" style="flex: 1; padding: 1rem; background: var(--accent-blue); color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">Appliquer</button>
-                        <button id="btn-cancel-crop" style="flex: 1; padding: 1rem; background: transparent; color: var(--text-main); border: 1px solid var(--text-muted); border-radius: 4px; cursor: pointer;">Annuler</button>
+                        <button id="btn-nav-save-crop" style="flex: 1; padding: 1rem; background: var(--accent-blue); color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">Appliquer</button>
+                        <button id="btn-nav-cancel-crop" style="flex: 1; padding: 1rem; background: transparent; color: var(--text-main); border: 1px solid var(--text-muted); border-radius: 4px; cursor: pointer;">Annuler</button>
                     </div>
                 </div>
             </div>
         `;
+
+        // Activation garantie des boutons d'actions (Même sur admin-profile.html)
+        const logoutBtn = this.querySelector('#logout-btn');
+        if(logoutBtn) {
+            logoutBtn.addEventListener('click', async () => {
+                const { getAuth, signOut } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js");
+                const auth = getAuth();
+                signOut(auth).then(() => { window.location.href = '/login.html'; });
+            });
+        }
+
+        const cacheBtn = this.querySelector('#btn-clear-cache');
+        if(cacheBtn) {
+            cacheBtn.addEventListener('click', () => {
+                localStorage.clear();
+                sessionStorage.clear();
+                window.location.reload(true);
+            });
+        }
     }
 }
 customElements.define('admin-right-panel', AdminRightPanel);
-
 
 /* --- 3. LE PANNEAU LATÉRAL GAUCHE (ÉTUDIANT) --- */
 class StudentLeftPanel extends HTMLElement {
