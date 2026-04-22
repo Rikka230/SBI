@@ -22,6 +22,8 @@ document.addEventListener('DOMContentLoaded', () => {
     onAuthStateChanged(auth, async (user) => {
         if (user) {
             loggedInUserId = user.uid;
+            
+            // Déterminer le rôle
             const mySnap = await getDoc(doc(db, "users", loggedInUserId));
             if (mySnap.exists()) {
                 const myData = mySnap.data();
@@ -34,7 +36,12 @@ document.addEventListener('DOMContentLoaded', () => {
             await loadProfileData(currentProfileId);
             setupSecurityAndEditMode();
             setupSaveButtons();
-            initCropperEngine(); // Initialisation unique du moteur photo
+            initCropperEngine();
+
+            // Boutons spécifiques Admin
+            const myProfileBtn = document.getElementById('btn-my-profile');
+            if(myProfileBtn) myProfileBtn.addEventListener('click', () => window.location.href = `admin-profile.html?id=${loggedInUserId}`);
+
         } else {
             window.location.replace('/login.html');
         }
@@ -49,48 +56,82 @@ async function loadProfileData(uid) {
             const data = currentProfileData;
             
             // 1. IDENTITÉ
-            const displayName = `${data.prenom || ''} ${data.nom || ''}`.trim() || "Utilisateur Inconnu";
+            const displayName = `${data.prenom || ''} ${data.nom || ''}`.trim() || "Utilisateur Sans Nom";
             const nameEl = document.getElementById('prof-name');
-            if(nameEl) nameEl.innerHTML = nameEl.id === 'prof-name' && isAdmin ? `${displayName} <span id=\"prof-badge-zone\"></span>` : displayName;
-            
-            if(document.getElementById('prof-bio')) document.getElementById('prof-bio').value = data.bio || '';
-            if(document.getElementById('prof-bio-display')) document.getElementById('prof-bio-display').textContent = data.bio || 'Élève SBI';
-
-            // 2. AVATAR
-            const avatarUrl = data.photoURL || `https://ui-avatars.com/api/?name=${displayName}&background=111&color=fff&size=150`;
-            if(document.getElementById('prof-avatar-img')) document.getElementById('prof-avatar-img').src = avatarUrl;
-            if(document.getElementById('prof-avatar')) {
-                const badge = document.getElementById('prof-avatar').querySelector('.edit-avatar-badge');
-                document.getElementById('prof-avatar').innerHTML = `<img src=\"${avatarUrl}\" style=\"width:100%; height:100%; object-fit:cover;\">`;
-                if(badge) document.getElementById('prof-avatar').appendChild(badge);
-            }
-
-            // 3. XP & NIVEAU
-            const xp = data.xp || 0;
-            const level = Math.floor(xp / 100) + 1;
-            if(document.getElementById('prof-level')) document.getElementById('prof-level').textContent = level;
-            
-            const xpTarget = document.getElementById('prof-xp') || document.getElementById('prof-xp-text');
-            if(xpTarget) {
-                xpTarget.textContent = xp;
-                if(isAdmin) {
-                    xpTarget.style.cursor = 'pointer';
-                    xpTarget.classList.add('admin-xp-editable');
-                    xpTarget.onclick = async () => {
-                        const newXp = prompt(`Modifier l'XP de ${displayName} :`, xp);
-                        if (newXp !== null && !isNaN(newXp)) {
-                            await updateDoc(doc(db, "users", uid), { xp: parseInt(newXp) });
-                            loadProfileData(uid);
-                        }
-                    };
+            if(nameEl) {
+                if (document.getElementById('prof-badge-zone')) {
+                    nameEl.innerHTML = `${displayName} <span id="prof-badge-zone"></span>`;
+                } else {
+                    nameEl.textContent = displayName;
                 }
             }
+
+            if(document.getElementById('prof-bio-display')) document.getElementById('prof-bio-display').textContent = data.bio || 'Élève de la plateforme SBI';
+            if(document.getElementById('prof-bio')) document.getElementById('prof-bio').value = data.bio || '';
+
+            // 2. AVATAR UNIFIÉ
+            const avatarUrl = data.photoURL || `https://ui-avatars.com/api/?name=${displayName}&background=111&color=fff&size=150`;
+            const avatarImg = document.getElementById('prof-avatar-img');
+            if(avatarImg) avatarImg.src = avatarUrl;
+            
+            // 3. STATUT EN LIGNE (Admin Uniquement)
+            const dot = document.getElementById('prof-online-dot');
+            const statusText = document.getElementById('prof-status-text');
+            if(dot && statusText) {
+                if (data.statut === 'suspendu') {
+                    dot.className = 'online-dot offline'; statusText.textContent = "Compte Suspendu";
+                } else if (data.isOnline) {
+                    dot.className = 'online-dot'; statusText.textContent = "En Ligne";
+                } else {
+                    dot.className = 'online-dot offline'; statusText.textContent = "Hors Ligne";
+                }
+            }
+
+            // 4. BADGES DE RÔLE (Admin Uniquement)
+            const badgeZone = document.getElementById('prof-badge-zone');
+            if(badgeZone) {
+                if (data.isGod) badgeZone.innerHTML = `<span style="background:rgba(255,215,0,0.15); color:#ffd700; padding:4px 8px; border-radius:4px; font-size:0.7rem; vertical-align:middle; display:inline-flex; align-items:center; gap:4px;"><svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L9 8H3l5 5-2 7 6-4 6 4-2-7 5-5h-6z"/></svg> SUPRÊME</span>`;
+                else if (data.role === 'admin') badgeZone.innerHTML = `<span style="background:rgba(255,74,74,0.15); color:#ff4a4a; padding:4px 8px; border-radius:4px; font-size:0.7rem; vertical-align:middle;">ADMIN</span>`;
+                else if (data.role === 'teacher') badgeZone.innerHTML = `<span style="background:rgba(251,188,4,0.15); color:#fbbc04; padding:4px 8px; border-radius:4px; font-size:0.7rem; vertical-align:middle;">PROFESSEUR</span>`;
+                else badgeZone.innerHTML = `<span style="background:rgba(0,255,163,0.15); color:#00ffa3; padding:4px 8px; border-radius:4px; font-size:0.7rem; vertical-align:middle;">ÉLÈVE</span>`;
+            }
+
+            // 5. GAMIFICATION (XP Cliquable pour l'Admin)
+            const xp = data.xp || 0;
+            const level = Math.floor(xp / 100) + 1;
+            
+            if(document.getElementById('prof-level')) document.getElementById('prof-level').textContent = level;
+            
+            const xpEls = [document.getElementById('prof-xp'), document.getElementById('prof-xp-text')];
+            xpEls.forEach(el => {
+                if(el) {
+                    el.textContent = xp;
+                    if(isAdmin) {
+                        el.style.cursor = 'pointer';
+                        el.style.textDecoration = 'underline';
+                        el.title = "Cliquez pour modifier l'XP";
+                        el.onclick = async () => {
+                            const newXp = prompt(`Modifier l'XP de cet élève (Actuel : ${xp}) :`, xp);
+                            if (newXp !== null && !isNaN(newXp) && newXp.trim() !== "") {
+                                await updateDoc(doc(db, "users", uid), { xp: parseInt(newXp) });
+                                loadProfileData(uid);
+                            }
+                        };
+                    }
+                }
+            });
+
             if(document.getElementById('prof-xp-fill')) document.getElementById('prof-xp-fill').style.width = Math.min((xp / 1000) * 100, 100) + '%';
 
-            // 4. DONNÉES PRIVÉES (Si autorisé)
+            if(level >= 2 && document.getElementById('badge-bronze')) document.getElementById('badge-bronze').classList.add('unlocked');
+            if(level >= 4 && document.getElementById('badge-silver')) document.getElementById('badge-silver').classList.add('unlocked');
+            if(level >= 6 && document.getElementById('badge-gold')) document.getElementById('badge-gold').classList.add('unlocked');
+            if(level >= 10 && document.getElementById('badge-diamond')) document.getElementById('badge-diamond').classList.add('unlocked');
+
+            // 6. DONNÉES PRIVÉES ET ACTIVITÉ
             if (isOwner || isAdmin) {
-                if(document.getElementById('prof-email')) {
-                    const emailEl = document.getElementById('prof-email');
+                const emailEl = document.getElementById('prof-email');
+                if(emailEl) {
                     emailEl.tagName === 'INPUT' ? emailEl.value = data.email || '' : emailEl.textContent = data.email || '';
                 }
                 if(document.getElementById('prof-phone')) document.getElementById('prof-phone').value = data.privateData?.phone || '';
@@ -101,85 +142,192 @@ async function loadProfileData(uid) {
                     document.getElementById('prof-time').textContent = `${Math.floor(t/3600)}h ${Math.floor((t%3600)/60)}m`;
                 }
             }
+
+            if(document.getElementById('prof-activity-list')) {
+                document.getElementById('prof-activity-list').innerHTML = `<li>Création du compte : ${data.dateCreation ? new Date(data.dateCreation).toLocaleDateString() : 'Date inconnue'}</li>`;
+            }
+
             loadUserFormations(uid);
+
+        } else {
+            console.warn("Utilisateur introuvable.");
         }
-    } catch(e) { console.error(e); }
+    } catch(e) { console.error("Erreur", e); }
 }
 
 async function loadUserFormations(uid) {
     const list = document.getElementById('prof-formations-list');
     if(!list) return;
+    list.innerHTML = 'Recherche...';
     try {
         const snap = await getDocs(collection(db, "formations"));
         let res = [];
-        snap.forEach(d => { if(d.data().students?.includes(uid) || d.data().profs?.includes(uid)) res.push(d.data().titre); });
-        list.innerHTML = res.length > 0 ? res.map(t => `<div class=\"formation-item\">📁 ${t}</div>`).join('') : 'Aucune formation.';
-    } catch(e) { list.innerHTML = 'Erreur chargement.'; }
+        snap.forEach(d => { 
+            const f = d.data();
+            if(f.students?.includes(uid) || f.profs?.includes(uid)) res.push(f.titre); 
+        });
+        if (res.length > 0) {
+            if (window.location.pathname.includes('admin')) {
+                list.innerHTML = res.map(a => `<span style="color: white; display:block; margin-bottom:5px;">📁 ${a}</span>`).join('');
+            } else {
+                list.innerHTML = res.map(a => `<div style="display:flex; align-items:center; gap:8px; margin-bottom:5px;"><div style="width:8px; height:8px; background:var(--accent-green); border-radius:50%; flex-shrink:0;"></div>${a}</div>`).join('');
+            }
+        } else {
+            list.innerHTML = 'Aucune formation assignée.';
+        }
+    } catch(e) { list.innerHTML = 'Erreur.'; }
 }
 
 function setupSecurityAndEditMode() {
-    const btnEdit = document.getElementById('btn-toggle-edit');
-    if (btnEdit && isOwner) {
-        btnEdit.addEventListener('click', () => {
-            isEditMode = !isEditMode;
-            document.body.classList.toggle('editing', isEditMode);
-            btnEdit.innerHTML = isEditMode ? '❌ Quitter édition' : '✏️ Modifier mon profil';
-            ['prof-bio', 'prof-phone', 'prof-address'].forEach(id => {
-                if(document.getElementById(id)) document.getElementById(id).disabled = !isEditMode;
+    const btnToggleEdit = document.getElementById('btn-toggle-edit');
+    if (isOwner || isAdmin) {
+        document.querySelectorAll('.private-section').forEach(el => el.style.display = el.tagName === 'DIV' ? 'block' : 'inline-flex');
+        
+        if (btnToggleEdit && isOwner) {
+            btnToggleEdit.addEventListener('click', () => {
+                isEditMode = !isEditMode;
+                document.body.classList.toggle('editing', isEditMode);
+                const span = btnToggleEdit.querySelector('span');
+                
+                if (isEditMode) {
+                    if(span) span.textContent = 'Quitter édition';
+                    btnToggleEdit.style.background = 'rgba(255, 74, 74, 0.1)';
+                    btnToggleEdit.style.color = 'var(--accent-red)';
+                    btnToggleEdit.style.borderColor = 'transparent';
+                    document.querySelectorAll('.edit-mode-only').forEach(el => el.style.display = 'flex');
+                    ['prof-bio', 'prof-phone', 'prof-address'].forEach(id => { if(document.getElementById(id)) document.getElementById(id).disabled = false; });
+                } else {
+                    if(span) span.textContent = 'Modifier mon profil';
+                    btnToggleEdit.style.background = 'white';
+                    btnToggleEdit.style.color = 'var(--text-main)';
+                    btnToggleEdit.style.borderColor = 'var(--border-color)';
+                    document.querySelectorAll('.edit-mode-only').forEach(el => el.style.display = 'none');
+                    ['prof-bio', 'prof-phone', 'prof-address'].forEach(id => { if(document.getElementById(id)) document.getElementById(id).disabled = true; });
+                }
             });
-        });
+        }
+    } else {
+        ['prof-bio', 'prof-phone', 'prof-address'].forEach(id => { if(document.getElementById(id)) document.getElementById(id).disabled = true; });
     }
 }
 
 function setupSaveButtons() {
-    ['public', 'private'].forEach(type => {
-        document.getElementById(`btn-save-${type}`)?.addEventListener('click', async () => {
-            const updates = type === 'public' ? { bio: document.getElementById('prof-bio').value } 
-                : { privateData: { phone: document.getElementById('prof-phone').value, address: document.getElementById('prof-address').value } };
-            await updateDoc(doc(db, "users", currentProfileId), updates);
-            alert("Sauvegardé !");
-            loadProfileData(currentProfileId);
+    document.getElementById('btn-save-public')?.addEventListener('click', async () => {
+        if(!isOwner && !isAdmin) return;
+        await updateDoc(doc(db, "users", currentProfileId), { bio: document.getElementById('prof-bio').value });
+        alert("Profil public mis à jour !");
+        loadProfileData(currentProfileId);
+    });
+
+    document.getElementById('btn-save-private')?.addEventListener('click', async () => {
+        if(!isOwner && !isAdmin) return;
+        await updateDoc(doc(db, "users", currentProfileId), { 
+            privateData: { phone: document.getElementById('prof-phone').value, address: document.getElementById('prof-address').value } 
         });
+        alert("Données privées sécurisées !");
     });
 }
 
 function initCropperEngine() {
     const modal = document.getElementById('crop-modal');
     const input = document.getElementById('pfp-file-input');
-    if(!modal || !input) return;
+    const img = document.getElementById('crop-image');
+    const zone = document.getElementById('crop-zone');
+    const zoomSlider = document.getElementById('crop-zoom');
+    if(!modal || !input || !img || !zone) return;
 
-    const openTrigger = document.getElementById('btn-trigger-crop') || document.querySelector('.edit-avatar-badge');
-    openTrigger?.addEventListener('click', () => {
-        modal.style.display = 'flex';
-        if(currentProfileData?.photoURL) {
-            const img = document.getElementById('crop-image');
-            img.src = currentProfileData.photoURL;
-            img.style.display = 'block';
-            document.getElementById('crop-placeholder').style.display = 'none';
-        }
-    });
+    let isDragging = false;
+    let startX, startY, currentX = 0, currentY = 0;
+    let baseWidth = 0, baseHeight = 0, currentZoom = 1;
+
+    const openTrigger = document.getElementById('btn-trigger-crop');
+    if(openTrigger) {
+        openTrigger.addEventListener('click', () => {
+            modal.style.display = 'flex';
+            if (currentProfileData && currentProfileData.photoURL && !zone.hasImage) {
+                img.crossOrigin = "anonymous";
+                img.src = currentProfileData.photoURL;
+                img.onload = () => setupImage();
+            }
+        });
+    }
 
     document.getElementById('btn-cancel-crop')?.addEventListener('click', () => modal.style.display = 'none');
-    
+
     input.onchange = (e) => {
-        const reader = new FileReader();
-        reader.onload = (re) => {
-            const img = document.getElementById('crop-image');
-            img.src = re.target.result;
-            img.style.display = 'block';
-            document.getElementById('crop-placeholder').style.display = 'none';
-        };
-        reader.readAsDataURL(e.target.files[0]);
+        if(e.target.files.length > 0) {
+            modal.style.display = 'flex';
+            const reader = new FileReader();
+            reader.onload = (re) => {
+                img.src = re.target.result;
+                img.onload = () => setupImage();
+            };
+            reader.readAsDataURL(e.target.files[0]);
+        }
     };
 
+    function setupImage() {
+        zone.hasImage = true;
+        const ph = document.getElementById('crop-placeholder');
+        if(ph) ph.style.display = 'none';
+        img.style.display = 'block';
+        
+        const ratio = img.naturalWidth / img.naturalHeight;
+        if (ratio > 1) { baseHeight = 300; baseWidth = 300 * ratio; } 
+        else { baseWidth = 300; baseHeight = 300 / ratio; }
+        
+        currentZoom = 1;
+        if(zoomSlider) zoomSlider.value = 1;
+        updateImageSize();
+        currentX = 0; currentY = 0;
+        updateImagePosition();
+    }
+
+    if(zoomSlider) {
+        zoomSlider.addEventListener('input', (e) => {
+            currentZoom = parseFloat(e.target.value);
+            updateImageSize(); checkBounds(); updateImagePosition();
+        });
+    }
+
+    function updateImageSize() { img.style.width = (baseWidth * currentZoom) + 'px'; img.style.height = (baseHeight * currentZoom) + 'px'; }
+    function updateImagePosition() { img.style.transform = `translate(${currentX}px, ${currentY}px)`; }
+    function checkBounds() {
+        const boundsX = zone.clientWidth - (baseWidth * currentZoom);
+        const boundsY = zone.clientHeight - (baseHeight * currentZoom);
+        if(currentX > 0) currentX = 0; if(currentY > 0) currentY = 0;
+        if(currentX < boundsX) currentX = boundsX; if(currentY < boundsY) currentY = boundsY;
+    }
+
+    zone.addEventListener('mousedown', e => {
+        if(!zone.hasImage) return;
+        isDragging = true;
+        startX = e.clientX - currentX; startY = e.clientY - currentY;
+    });
+    window.addEventListener('mouseup', () => { isDragging = false; });
+    window.addEventListener('mousemove', e => {
+        if(!isDragging || !zone.hasImage) return;
+        currentX = e.clientX - startX; currentY = e.clientY - startY;
+        checkBounds(); updateImagePosition();
+    });
+
     document.getElementById('btn-save-crop')?.addEventListener('click', async () => {
+        if(!zone.hasImage || !currentProfileId) return;
+        const btnSave = document.getElementById('btn-save-crop');
+        btnSave.textContent = "Compression...";
+        
         const canvas = document.createElement('canvas');
         canvas.width = 200; canvas.height = 200;
-        const img = document.getElementById('crop-image');
-        canvas.getContext('2d').drawImage(img, 0, 0, 200, 200);
-        const webp = canvas.toDataURL('image/webp', 0.8);
-        await updateDoc(doc(db, "users", currentProfileId), { photoURL: webp });
-        modal.style.display = 'none';
-        loadProfileData(currentProfileId);
+        const ctx = canvas.getContext('2d');
+        const ratioZoneCanvas = 200 / 300; 
+        ctx.drawImage(img, currentX * ratioZoneCanvas, currentY * ratioZoneCanvas, baseWidth * currentZoom * ratioZoneCanvas, baseHeight * currentZoom * ratioZoneCanvas);
+        const webpData = canvas.toDataURL('image/webp', 0.8);
+
+        try {
+            await updateDoc(doc(db, "users", currentProfileId), { photoURL: webpData });
+            loadProfileData(currentProfileId); 
+            modal.style.display = 'none';
+        } catch(e) { alert("Erreur réseau."); } 
+        finally { btnSave.textContent = "Appliquer"; }
     });
 }
