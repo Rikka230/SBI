@@ -15,13 +15,13 @@
         .profile-header { background: var(--bg-card); border-radius: 16px; border: 1px solid var(--border-color); padding: 2.5rem; display: flex; align-items: center; gap: 2rem; margin-bottom: 2.5rem; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03); position: relative; overflow: hidden; }
         .profile-header::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 100px; background: linear-gradient(90deg, var(--accent-green), #00ffa3); opacity: 0.15; z-index: 0; }
         
-        /* FIX AVATAR : On sépare le wrapper (qui gère le débordement) du container (qui coupe l'image) */
+        /* AVATAR WRAPPER: Permet au badge de déborder de l'image ronde */
         .avatar-wrapper { position: relative; width: 120px; height: 120px; z-index: 1; }
         .avatar-container { width: 100%; height: 100%; border-radius: 50%; border: 4px solid var(--bg-card); background: var(--bg-body); overflow: hidden; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; font-weight: bold; color: var(--text-muted); }
         .avatar-container img { width: 100%; height: 100%; object-fit: cover; }
         
         .profile-info { z-index: 1; flex-grow: 1; }
-        .profile-info h1 { margin: 0 0 0.5rem 0; font-size: 2rem; color: var(--text-main); }
+        .profile-info h1 { margin: 0 0 0.5rem 0; font-size: 2rem; color: var(--text-main); display: flex; align-items: center; gap: 0.5rem; }
         
         .form-group { margin-bottom: 1.5rem; }
         .form-group label { display: block; font-weight: 600; margin-bottom: 0.5rem; color: var(--text-main); font-size: 0.95rem; }
@@ -59,7 +59,7 @@
                     <div class="avatar-container" id="prof-avatar" style="cursor: default;" title="Avatar">
                         <span>U</span>
                     </div>
-                    <div class="edit-avatar-badge edit-mode-only" style="position: absolute; bottom: 0; right: 0; background: var(--accent-green); color: white; padding: 8px; border-radius: 50%; box-shadow: 0 2px 5px rgba(0,0,0,0.2); cursor: pointer;" onclick="document.getElementById('pfp-file-input').click()">
+                    <div class="edit-avatar-badge edit-mode-only" style="position: absolute; bottom: 0; right: 0; background: var(--accent-green); color: white; border-radius: 50%; box-shadow: 0 2px 5px rgba(0,0,0,0.2); cursor: pointer;" onclick="document.getElementById('pfp-file-input').click()">
                         <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
                     </div>
                 </div>
@@ -201,7 +201,7 @@
 <script type="module" src="/admin/js/admin-ui.js"></script>
 <script type="module" src="/admin/js/tracker.js"></script>
 
-<script type="module" src="/student/js/student-profile.js"></script>
+<script type="module" src="/js/profile-core.js"></script>
 
 </body>
 </html>
