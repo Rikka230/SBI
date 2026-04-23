@@ -7,7 +7,7 @@
 import { db } from '/js/firebase-init.js';
 import { doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
-// Récupère toute la progression d'un élève (Ultra sécurisé)
+// Récupère toute la progression d'un élève
 export async function getUserLearningProgress(uid) {
     try {
         const snap = await getDoc(doc(db, "users", uid));
@@ -15,7 +15,6 @@ export async function getUserLearningProgress(uid) {
             const data = snap.data();
             let prog = data.learningProgress;
             
-            // Si l'objet n'existe pas ou est vide, on le reconstruit proprement
             if (!prog) prog = {};
             if (!prog.courses) prog.courses = {};
             if (!prog.formations) prog.formations = {};
@@ -29,25 +28,27 @@ export async function getUserLearningProgress(uid) {
     }
 }
 
-// Met à jour la validation d'un chapitre et l'état du cours
-export async function validateChapterProgress(uid, courseId, chapterId, isCourseFinished = false) {
+// Enregistre la progression et vérifie si le cours est 100% terminé
+export async function validateChapterProgress(uid, courseId, chapterId, totalChaptersAmount) {
     try {
         const userRef = doc(db, "users", uid);
-        let progress = await getUserLearningProgress(uid); // Utilise la version sécurisée
+        let progress = await getUserLearningProgress(uid);
 
+        // Initialisation de l'objet cours si inexistant
         if (!progress.courses[courseId]) {
             progress.courses[courseId] = { status: 'in_progress', completedChapters: [] };
         }
-
         if (!progress.courses[courseId].completedChapters) {
             progress.courses[courseId].completedChapters = [];
         }
 
+        // Ajout du chapitre s'il n'y est pas déjà
         if (!progress.courses[courseId].completedChapters.includes(chapterId)) {
             progress.courses[courseId].completedChapters.push(chapterId);
         }
 
-        if (isCourseFinished) {
+        // Vérification de la complétion totale
+        if (progress.courses[courseId].completedChapters.length >= totalChaptersAmount) {
             progress.courses[courseId].status = 'done';
             progress.courses[courseId].completedAt = Date.now();
         } else {
@@ -55,9 +56,9 @@ export async function validateChapterProgress(uid, courseId, chapterId, isCourse
         }
 
         await updateDoc(userRef, { learningProgress: progress });
-        return true;
+        return progress; // On renvoie l'objet entier pour mettre à jour l'UI en temps réel
     } catch (e) {
         console.error("Erreur sauvegarde progression", e);
-        return false;
+        return null;
     }
 }
