@@ -18,6 +18,14 @@ let timerInterval = null;
 
 const WAIT_TIME_SECONDS = 30;
 
+// Banque de SVGs
+const SVG_DONE = `<svg width="16" height="16" fill="var(--accent-green)" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>`;
+const SVG_QUIZ = `<svg width="16" height="16" fill="var(--accent-yellow)" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>`;
+const SVG_READ = `<svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M18 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 4h5v8l-2.5-1.5L6 12V4z"/></svg>`;
+const SVG_LOCK = `<svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>`;
+const SVG_TIME = `<svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24" style="margin-right: 8px;"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>`;
+const SVG_NEXT = `<svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg>`;
+
 document.addEventListener('DOMContentLoaded', () => {
     onAuthStateChanged(auth, async (user) => {
         if (user) {
@@ -88,14 +96,14 @@ function renderSidebar() {
         const prevDone = index === 0 || userProgress.courses[courseData.id].completedChapters.includes(courseData.chapitres[index-1].id);
         const isUnlocked = isAdminOrTeacher || isDone || prevDone;
 
-        const icon = isDone ? '✅' : (isUnlocked ? (chap.type === 'quiz' ? '📝' : '📖') : '🔒');
+        const icon = isDone ? SVG_DONE : (isUnlocked ? (chap.type === 'quiz' ? SVG_QUIZ : SVG_READ) : SVG_LOCK);
         
         const tab = document.createElement('div');
         tab.className = `chapter-tab ${isDone ? 'done' : ''} ${!isUnlocked ? 'locked' : ''}`;
         tab.id = `tab-chap-${index}`;
         tab.innerHTML = `
             <span class="tab-title">${index + 1}. ${chap.titre}</span>
-            <span style="font-size:1.2rem;">${icon}</span>
+            <span style="font-size:1.2rem; display:flex;">${icon}</span>
         `;
         
         if (isUnlocked) {
@@ -106,7 +114,6 @@ function renderSidebar() {
     });
 }
 
-// FIX: Le paramètre forceReload permet de passer outre le blocage "déjà sur ce chapitre"
 function loadChapter(index, forceReload = false) {
     if (index < 0 || index >= courseData.chapitres.length) return;
     if (index === currentChapterIndex && !forceReload) return; 
@@ -139,7 +146,9 @@ function loadChapter(index, forceReload = false) {
         contentHtml += `<div class="text-container ql-editor">${chap.contenu}</div>`;
     } else {
         contentHtml += `<div class="text-container">
-            <p style="color:var(--accent-yellow); font-weight: bold; font-size: 1.2rem; border-bottom: 2px solid var(--border-color); padding-bottom: 1rem;">📝 Examen de passage</p>
+            <div style="color:var(--accent-yellow); font-weight: bold; font-size: 1.2rem; border-bottom: 2px solid var(--border-color); padding-bottom: 1rem; display:flex; align-items:center; gap:10px;">
+                ${SVG_QUIZ} Examen de passage
+            </div>
             <div id="quiz-form" style="margin-top: 2rem;">`;
         
         if (chap.questions) {
@@ -165,7 +174,6 @@ function loadChapter(index, forceReload = false) {
         </div>`;
     }
 
-    // Assignation d'un ID pour cibler la barre d'action
     contentHtml += `
         <div class="action-bar" id="viewer-action-bar">
             <button id="btn-next-chapter" class="btn-validate" disabled>Préparation...</button>
@@ -186,33 +194,32 @@ function startSecurityTimer(isAlreadyDone) {
     const isLast = currentChapterIndex === courseData.chapitres.length - 1;
     const nextText = isLast ? "Terminer le cours" : "Valider l'étape et continuer";
 
-    // Si c'est un quiz, pas de timer auto-bloquant, l'élève a le temps de réfléchir
     if (courseData.chapitres[currentChapterIndex].type === 'quiz') {
         btn.disabled = false;
-        btn.textContent = "Soumettre mes réponses";
+        btn.innerHTML = `${SVG_DONE} Soumettre mes réponses`;
         btn.onclick = () => submitQuizAnswers(isLast);
         return;
     }
 
     if (isAdminOrTeacher || isAlreadyDone) {
         btn.disabled = false;
-        btn.textContent = nextText;
+        btn.innerHTML = `${nextText} ${SVG_NEXT}`;
         btn.onclick = () => validateAndNext(isLast, 0);
         return;
     }
 
     let timeLeft = WAIT_TIME_SECONDS;
-    btn.textContent = `Veuillez patienter (${timeLeft}s)...`;
+    btn.innerHTML = `${SVG_TIME} Veuillez patienter (${timeLeft}s)...`;
 
     timerInterval = setInterval(() => {
         timeLeft--;
         if (timeLeft <= 0) {
             clearInterval(timerInterval);
             btn.disabled = false;
-            btn.textContent = nextText;
+            btn.innerHTML = `${nextText} ${SVG_NEXT}`;
             btn.onclick = () => validateAndNext(isLast, 0);
         } else {
-            btn.textContent = `Veuillez patienter (${timeLeft}s)...`;
+            btn.innerHTML = `${SVG_TIME} Veuillez patienter (${timeLeft}s)...`;
         }
     }, 1000);
 }
@@ -254,40 +261,37 @@ function submitQuizAnswers(isLast) {
     const actionBar = document.getElementById('viewer-action-bar');
     resultBox.style.display = 'block';
     
+    const nextText = isLast ? "Terminer le cours" : "Valider et passer à la suite";
+
     if (allCorrect || isAdminOrTeacher) {
         resultBox.style.borderColor = "var(--accent-green)";
         resultBox.innerHTML = `
-            <h3 style="margin-top:0; color: var(--text-main); font-size: 1.5rem;">Score : ${score} / ${totalPoints} points !</h3>
+            <div style="display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:1rem;">
+                <svg width="32" height="32" fill="var(--accent-green)" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+                <h3 style="margin:0; color: var(--text-main); font-size: 1.5rem;">Score : ${score} / ${totalPoints} points !</h3>
+            </div>
             <p style="color: var(--text-muted); margin-bottom: 0;">Excellent travail. Si vous avez battu votre record, l'expérience (XP) a été ajoutée à votre profil.</p>
         `;
-        
-        const nextText = isLast ? "Terminer le cours" : "Valider et passer à la suite";
-        
-        // FIX : Ajout des deux boutons de choix une fois l'examen réussi
-        actionBar.innerHTML = `
-            <button id="btn-retry-quiz" class="btn-validate" style="background: transparent; color: var(--text-main); border: 2px solid var(--border-color); margin-right: 1rem; box-shadow: none;">Refaire le test</button>
-            <button id="btn-next-chapter" class="btn-validate">${nextText}</button>
-        `;
-        
-        document.getElementById('btn-retry-quiz').onclick = () => loadChapter(currentChapterIndex, true);
-        document.getElementById('btn-next-chapter').onclick = () => validateAndNext(isLast, score);
-        
     } else {
-        resultBox.style.borderColor = "var(--accent-red)";
+        resultBox.style.borderColor = "var(--accent-yellow)";
         resultBox.innerHTML = `
-            <h3 style="margin-top:0; color: var(--text-main); font-size: 1.5rem;">Score : ${score} / ${totalPoints} points.</h3>
-            <p style="color: var(--text-muted); margin-bottom: 0;">Certaines réponses sont incorrectes. Observez la correction puis réessayez.</p>
+            <div style="display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:1rem;">
+                <svg width="32" height="32" fill="var(--accent-yellow)" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+                <h3 style="margin:0; color: var(--text-main); font-size: 1.5rem;">Score : ${score} / ${totalPoints} points.</h3>
+            </div>
+            <p style="color: var(--text-muted); margin-bottom: 0;">Certaines réponses sont incorrectes. Observez la correction, vous pouvez réessayer ou passer à la suite.</p>
         `;
-        
-        // En cas d'erreur, seul le bouton recommencer est disponible
-        actionBar.innerHTML = `
-            <button id="btn-retry-quiz" class="btn-validate">Recommencer le test</button>
-        `;
-        document.getElementById('btn-retry-quiz').onclick = () => loadChapter(currentChapterIndex, true);
     }
+
+    // FIX : On affiche TOUJOURS les deux options, qu'on ait bon ou faux !
+    actionBar.innerHTML = `
+        <button id="btn-retry-quiz" class="btn-validate" style="background: transparent; color: var(--text-main); border: 2px solid var(--border-color); margin-right: 1rem; box-shadow: none;">Refaire le test</button>
+        <button id="btn-next-chapter" class="btn-validate">${nextText} ${SVG_NEXT}</button>
+    `;
+    document.getElementById('btn-retry-quiz').onclick = () => loadChapter(currentChapterIndex, true);
+    document.getElementById('btn-next-chapter').onclick = () => validateAndNext(isLast, score);
 }
 
-// FIX : La fonction reçoit désormais le score à transférer au compte
 async function validateAndNext(isLast, scoreEarned = 0) {
     const chapId = courseData.chapitres[currentChapterIndex].id;
     const btn = document.getElementById('btn-next-chapter');
@@ -303,7 +307,6 @@ async function validateAndNext(isLast, scoreEarned = 0) {
         renderSidebar();
 
         if (isLast) {
-            alert("🎉 Félicitations, vous avez terminé ce cours !");
             document.getElementById('btn-back-dynamic').click(); 
         } else {
             loadChapter(currentChapterIndex + 1);
