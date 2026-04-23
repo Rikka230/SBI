@@ -7,6 +7,7 @@
     --accent-green: #10b981;
     --accent-green-light: #d1fae5;
     --accent-red: #ef4444;
+    --accent-yellow: #fbbc04;
     --border-color: #e5e7eb;
 }
 
@@ -63,10 +64,10 @@ body.learning-mode {
 .tab-title { font-weight: 700; font-size: 0.95rem; color: var(--text-muted); }
 .active .tab-title { color: var(--text-main); }
 
-/* FIX IMAGE : Plus d'overflow hidden sur le conteneur, l'image gère ses limites */
+/* FIX IMAGE ET BLOC ÉCRASÉ : flex-shrink: 0 force le bloc à garder sa place */
 .media-container { 
     width: 100%; max-width: 900px; margin: 0 auto 2.5rem auto; 
-    display: flex; justify-content: center;
+    display: flex; justify-content: center; flex-shrink: 0;
 }
 .media-container img, .media-container video { 
     max-width: 100%; 
@@ -83,25 +84,28 @@ body.learning-mode {
     width: 100%; box-sizing: border-box; max-width: 900px; margin: 0 auto; 
     background: white; padding: 3rem; border-radius: 16px; 
     box-shadow: 0 4px 20px rgba(0,0,0,0.03); border: 1px solid var(--border-color);
+    flex-shrink: 0;
+    height: auto; /* Force la hauteur automatique */
 }
 
-.ql-editor { font-size: 1.15rem; line-height: 1.8; color: #374151; }
+/* FIX QUILL : Interdit le scroll interne dans l'éditeur */
+.ql-editor { font-size: 1.15rem; line-height: 1.8; color: #374151; height: auto; min-height: unset; overflow: visible; padding: 0; }
 .ql-editor h1, .ql-editor h2, .ql-editor h3 { color: var(--text-main); margin-top: 1.5em; }
 .ql-editor img { max-width: 100%; height: auto; border-radius: 8px; margin: 1rem 0; }
 
 .action-bar {
-    max-width: 900px; margin: 2rem auto; width: 100%;
+    max-width: 900px; margin: 2rem auto; width: 100%; flex-shrink: 0;
     display: flex; justify-content: flex-end; padding-top: 1rem;
 }
 
 .btn-validate {
     background: var(--accent-green); color: white; font-weight: 800; border: none; padding: 1.2rem 2.5rem; border-radius: 30px; cursor: pointer; transition: all 0.3s; font-size: 1.1rem;
-    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3); display: flex; align-items: center; justify-content: center; gap: 8px;
 }
 .btn-validate:hover:not(:disabled) { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4); }
 .btn-validate:disabled { background: #e5e7eb; color: #9ca3af; cursor: not-allowed; box-shadow: none; transform: none; }
 
-/* NOUVEAU : Styles d'Examen (QCM) */
+/* Styles d'Examen (QCM) */
 .quiz-option {
     display: flex; align-items: center; gap: 0.8rem; cursor: pointer;
     padding: 1rem; background: white; border: 2px solid var(--border-color);
@@ -114,6 +118,6 @@ body.learning-mode {
 
 .quiz-result-box {
     margin-top: 2rem; padding: 2rem; border-radius: 12px;
-    background: #f8fafc; border: 2px dashed var(--accent-green);
+    background: #f8fafc; border: 2px dashed transparent;
     text-align: center; display: none; animation: fadeIn 0.4s;
 }
