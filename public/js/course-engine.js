@@ -5,7 +5,7 @@
  */
 
 import { db } from '/js/firebase-init.js';
-import { doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 // Récupère toute la progression d'un élève
 export async function getUserLearningProgress(uid) {
@@ -28,13 +28,33 @@ export async function getUserLearningProgress(uid) {
     }
 }
 
-// Enregistre la progression et vérifie si le cours est 100% terminé
+// Déclare le cours comme "En cours" dès l'ouverture de la page
+export async function startCourseProgress(uid, courseId) {
+    try {
+        const userRef = doc(db, "users", uid);
+        let progress = await getUserLearningProgress(uid);
+
+        if (!progress.courses[courseId]) {
+            progress.courses[courseId] = { status: 'in_progress', completedChapters: [] };
+            // Utilisation de setDoc + merge pour éviter les erreurs silencieuses de Firebase
+            await setDoc(userRef, { learningProgress: progress }, { merge: true });
+        } else if (progress.courses[courseId].status === 'todo') {
+            progress.courses[courseId].status = 'in_progress';
+            await setDoc(userRef, { learningProgress: progress }, { merge: true });
+        }
+        return progress;
+    } catch (e) {
+        console.error("Erreur au démarrage du cours", e);
+        return null;
+    }
+}
+
+// Valide un chapitre et vérifie la complétion à 100%
 export async function validateChapterProgress(uid, courseId, chapterId, totalChaptersAmount) {
     try {
         const userRef = doc(db, "users", uid);
         let progress = await getUserLearningProgress(uid);
 
-        // Initialisation de l'objet cours si inexistant
         if (!progress.courses[courseId]) {
             progress.courses[courseId] = { status: 'in_progress', completedChapters: [] };
         }
@@ -55,8 +75,9 @@ export async function validateChapterProgress(uid, courseId, chapterId, totalCha
             progress.courses[courseId].status = 'in_progress';
         }
 
-        await updateDoc(userRef, { learningProgress: progress });
-        return progress; // On renvoie l'objet entier pour mettre à jour l'UI en temps réel
+        // Utilisation de setDoc + merge pour forcer l'écriture
+        await setDoc(userRef, { learningProgress: progress }, { merge: true });
+        return progress;
     } catch (e) {
         console.error("Erreur sauvegarde progression", e);
         return null;
