@@ -1,6 +1,6 @@
 /**
  * =======================================================================
- * VIEWER - Mode focus et système anti-speedrun (Timer)
+ * VIEWER - Mode focus, verrouillage linéaire et QCM
  * =======================================================================
  */
 
@@ -12,7 +12,7 @@ import { getUserLearningProgress, validateChapterProgress, startCourseProgress }
 let currentUid = null;
 let isAdminOrTeacher = false;
 let courseData = null;
-let currentChapterIndex = 0;
+let currentChapterIndex = -1; // Initialisé à -1 pour forcer le premier chargement
 let userProgress = { courses: {} };
 let timerInterval = null;
 
@@ -54,13 +54,9 @@ async function initViewer() {
     courseData = { id: cSnap.id, ...cSnap.data() };
     document.getElementById('viewer-course-title').textContent = courseData.titre;
 
-    // FIX : On déclare le cours comme "En cours" dans Firebase dès l'ouverture
     userProgress = await startCourseProgress(currentUid, courseData.id);
     
-    if (!userProgress) { // Fallback de sécurité
-        userProgress = await getUserLearningProgress(currentUid);
-    }
-    
+    if (!userProgress) userProgress = await getUserLearningProgress(currentUid);
     if (!userProgress.courses) userProgress.courses = {};
     if (!userProgress.courses[courseData.id]) {
         userProgress.courses[courseData.id] = { status: 'todo', completedChapters: [] };
@@ -70,7 +66,12 @@ async function initViewer() {
     }
 
     renderSidebar();
-    loadChapter(0);
+    
+    // On charge le premier chapitre non terminé, ou le dernier si tout est fini
+    let nextUnfinishedIndex = courseData.chapitres.findIndex(c => !userProgress.courses[courseData.id].completedChapters.includes(c.id));
+    if (nextUnfinishedIndex === -1) nextUnfinishedIndex = 0; // Si tout est fait, on ouvre le 1er
+    
+    loadChapter(nextUnfinishedIndex);
 }
 
 function renderSidebar() {
@@ -79,23 +80,35 @@ function renderSidebar() {
 
     courseData.chapitres.forEach((chap, index) => {
         const isDone = userProgress.courses[courseData.id].completedChapters.includes(chap.id);
-        const icon = isDone ? '✅' : (chap.type === 'quiz' ? '📝' : '📖');
+        
+        // FIX : Un chapitre est débloqué si c'est le 1er, si le précédent est validé, si l'actuel est déjà validé, ou si on est admin.
+        const prevDone = index === 0 || userProgress.courses[courseData.id].completedChapters.includes(courseData.chapitres[index-1].id);
+        const isUnlocked = isAdminOrTeacher || isDone || prevDone;
+
+        const icon = isDone ? '✅' : (isUnlocked ? (chap.type === 'quiz' ? '📝' : '📖') : '🔒');
         
         const tab = document.createElement('div');
-        tab.className = `chapter-tab ${isDone ? 'done' : ''}`;
+        tab.className = `chapter-tab ${isDone ? 'done' : ''} ${!isUnlocked ? 'locked' : ''}`;
         tab.id = `tab-chap-${index}`;
         tab.innerHTML = `
             <span class="tab-title">${index + 1}. ${chap.titre}</span>
             <span style="font-size:1.2rem;">${icon}</span>
         `;
         
-        tab.onclick = () => loadChapter(index);
+        // On ne permet le clic que si le chapitre est débloqué
+        if (isUnlocked) {
+            tab.onclick = () => loadChapter(index);
+        }
+        
         navList.appendChild(tab);
     });
 }
 
 function loadChapter(index) {
     if (index < 0 || index >= courseData.chapitres.length) return;
+    
+    // FIX : Si l'élève clique sur le chapitre sur lequel il est DÉJÀ, on bloque pour ne pas reset le timer
+    if (index === currentChapterIndex) return; 
     
     clearInterval(timerInterval);
     currentChapterIndex = index;
@@ -124,7 +137,30 @@ function loadChapter(index) {
         }
         contentHtml += `<div class="text-container ql-editor">${chap.contenu}</div>`;
     } else {
-        contentHtml += `<div class="text-container"><p style="color:var(--accent-yellow); font-weight: bold; font-size: 1.2rem;">📝 Examen : ${chap.questions ? chap.questions.length : 0} question(s).</p></div>`;
+        // FIX : GÉNÉRATION DU QUIZ FRONT-END
+        contentHtml += `<div class="text-container">
+            <p style="color:var(--accent-yellow); font-weight: bold; font-size: 1.2rem;">📝 Examen de passage : ${chap.questions ? chap.questions.length : 0} question(s).</p>
+            <div id="quiz-form" style="margin-top: 2rem;">`;
+        
+        if (chap.questions) {
+            chap.questions.forEach((q, qIndex) => {
+                contentHtml += `
+                <div class="quiz-question" style="margin-bottom: 2rem; padding: 1.5rem; background: var(--bg-main); border-radius: 12px; border: 1px solid var(--border-color);">
+                    <h3 style="font-size:1.1rem; color:var(--text-main); margin-top:0;">${qIndex+1}. ${q.question}</h3>
+                    <div style="display:flex; flex-direction:column; gap:0.8rem; margin-top:1rem;">`;
+                
+                q.options.forEach((opt, oIndex) => {
+                    contentHtml += `
+                        <label style="display:flex; align-items:center; gap:0.8rem; cursor:pointer; padding: 0.8rem; background: white; border: 1px solid var(--border-color); border-radius: 8px; transition: 0.2s;" onmouseover="this.style.borderColor='var(--accent-green)'" onmouseout="this.style.borderColor='var(--border-color)'">
+                            <input type="checkbox" name="q_${qIndex}" value="${oIndex}" style="width:20px; height:20px; accent-color: var(--accent-green); flex-shrink:0;">
+                            <span style="font-size:1rem; color:var(--text-main);">${opt}</span>
+                        </label>`;
+                });
+                
+                contentHtml += `</div></div>`;
+            });
+        }
+        contentHtml += `</div></div>`;
     }
 
     contentHtml += `
@@ -134,6 +170,10 @@ function loadChapter(index) {
     `;
 
     main.innerHTML = contentHtml;
+    
+    // Remonte la fenêtre tout en haut pour le nouveau chapitre
+    main.scrollTop = 0;
+    
     startSecurityTimer(isDone);
 }
 
@@ -168,12 +208,36 @@ function startSecurityTimer(isAlreadyDone) {
 }
 
 async function validateAndNext(isLast) {
-    const chapId = courseData.chapitres[currentChapterIndex].id;
+    const chap = courseData.chapitres[currentChapterIndex];
     const btn = document.getElementById('btn-next-chapter');
+    
+    // FIX : LOGIQUE DE VALIDATION DU QUIZ
+    if (chap.type === 'quiz') {
+        let allCorrect = true;
+        if (chap.questions) {
+            chap.questions.forEach((q, qIndex) => {
+                // Récupère les choix cochés
+                const selected = Array.from(document.querySelectorAll(`input[name="q_${qIndex}"]:checked`)).map(cb => parseInt(cb.value));
+                const correct = q.correctIndices || [];
+                
+                // Si la taille est différente ou qu'une valeur manque, c'est faux
+                if (selected.length !== correct.length || !selected.every(val => correct.includes(val))) {
+                    allCorrect = false;
+                }
+            });
+        }
+        
+        // Blocage si l'élève a faux
+        if (!allCorrect && !isAdminOrTeacher) {
+            alert("❌ Certaines réponses sont incorrectes. Vérifiez vos choix et réessayez !");
+            return; 
+        }
+    }
+
     btn.disabled = true;
     btn.textContent = "Validation...";
 
-    const updatedProgress = await validateChapterProgress(currentUid, courseData.id, chapId, courseData.chapitres.length);
+    const updatedProgress = await validateChapterProgress(currentUid, courseData.id, chap.id, courseData.chapitres.length);
     
     if (updatedProgress) {
         userProgress = updatedProgress; 
@@ -181,7 +245,7 @@ async function validateAndNext(isLast) {
 
         if (isLast) {
             alert("🎉 Félicitations, vous avez terminé ce cours !");
-            window.location.href = '/student/mes-cours.html';
+            window.history.back(); // Retourne automatiquement à la formation
         } else {
             loadChapter(currentChapterIndex + 1);
         }
