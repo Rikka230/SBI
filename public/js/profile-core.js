@@ -1,12 +1,13 @@
 /**
  * =======================================================================
- * PROFILE CORE - Moteur Unique (Admin & Étudiant) + CROPPER.JS
+ * PROFILE CORE - Moteur Unique (Admin & Étudiant) + CROPPER.JS + TRACKING
  * =======================================================================
  */
 
 import { db, auth } from '/js/firebase-init.js';
 import { doc, getDoc, updateDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+import { getUserLearningProgress, resetCourseProgress, updateQuizScore } from '/js/course-engine.js';
 
 let currentProfileId = null;
 let currentProfileData = null;
@@ -15,6 +16,10 @@ let isOwner = false;
 let isAdmin = false;
 let isEditMode = false;
 let cropperInstance = null;
+
+// Icônes SVG pour le suivi
+const SVG_RESET = `<svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24" style="vertical-align:middle; margin-right:4px;"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>`;
+const SVG_EDIT = `<svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24" style="vertical-align:middle; margin-right:4px;"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>`;
 
 document.addEventListener('DOMContentLoaded', () => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -108,9 +113,9 @@ async function loadProfileData(uid) {
                 if(el) {
                     el.innerHTML = `${xp}`;
                     if(isAdmin) {
-                        el.innerHTML = `${xp} <svg width="14" height="14" style="cursor:pointer; vertical-align:middle; fill:currentColor; opacity:0.6; margin-left:4px;" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>`;
+                        el.innerHTML = `${xp} ${SVG_EDIT}`;
                         el.style.cursor = 'pointer';
-                        el.title = "Cliquez pour modifier l'XP";
+                        el.title = "Cliquez pour modifier l'XP brute";
                         el.onclick = async () => {
                             const newXp = prompt(`Modifier l'XP de cet élève (Actuel : ${xp}) :`, xp);
                             if (newXp !== null && !isNaN(newXp) && newXp.trim() !== "") {
@@ -123,11 +128,6 @@ async function loadProfileData(uid) {
             });
 
             if(document.getElementById('prof-xp-fill')) document.getElementById('prof-xp-fill').style.width = Math.min((xp / 1000) * 100, 100) + '%';
-
-            if(level >= 2 && document.getElementById('badge-bronze')) document.getElementById('badge-bronze').classList.add('unlocked');
-            if(level >= 4 && document.getElementById('badge-silver')) document.getElementById('badge-silver').classList.add('unlocked');
-            if(level >= 6 && document.getElementById('badge-gold')) document.getElementById('badge-gold').classList.add('unlocked');
-            if(level >= 10 && document.getElementById('badge-diamond')) document.getElementById('badge-diamond').classList.add('unlocked');
 
             if (isOwner || isAdmin) {
                 const emailEl = document.getElementById('prof-email');
@@ -149,10 +149,137 @@ async function loadProfileData(uid) {
 
             loadUserFormations(uid);
 
+            // NOUVEAU : Chargement du Suivi Pédagogique (Seulement côté Admin)
+            if (isAdmin && document.getElementById('prof-tracking-list')) {
+                loadLearningTracking(uid);
+            }
+
         } else {
             console.warn("Utilisateur introuvable.");
         }
     } catch(e) { console.error("Erreur", e); }
+}
+
+async function loadLearningTracking(uid) {
+    const list = document.getElementById('prof-tracking-list');
+    list.innerHTML = '<p style="color: var(--text-muted); font-size: 0.9rem; font-style: italic;">Chargement du dossier...</p>';
+    
+    try {
+        const progress = await getUserLearningProgress(uid);
+        const courseIds = Object.keys(progress.courses || {});
+        
+        if (courseIds.length === 0) {
+            list.innerHTML = '<p style="color: var(--text-muted); font-size: 0.9rem;">Aucun cours commencé par cet élève.</p>';
+            return;
+        }
+
+        // On récupère les détails de tous les cours pour avoir les titres et les infos des QCM
+        const snap = await getDocs(collection(db, "courses"));
+        const allCourses = {};
+        snap.forEach(d => allCourses[d.id] = d.data());
+
+        list.innerHTML = '';
+
+        courseIds.forEach(cId => {
+            const courseData = allCourses[cId];
+            if (!courseData) return; // Le cours a été supprimé de la base de données
+
+            const pData = progress.courses[cId];
+            const completedCount = pData.completedChapters ? pData.completedChapters.length : 0;
+            const totalCount = courseData.chapitres ? courseData.chapitres.length : 0;
+            
+            let statusBadge = pData.status === 'done' 
+                ? '<span style="background: rgba(46, 213, 115, 0.1); color: var(--accent-green); padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold;">Terminé</span>'
+                : '<span style="background: rgba(251, 188, 4, 0.1); color: var(--accent-yellow); padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold;">En cours</span>';
+
+            // Affichage des notes de QCM
+            let quizHtml = '';
+            if (courseData.chapitres) {
+                courseData.chapitres.forEach(chap => {
+                    if (chap.type === 'quiz') {
+                        const totalPossible = chap.questions ? chap.questions.reduce((sum, q) => sum + (q.points || 1), 0) : 0;
+                        const scoreObtained = (pData.quizScores && pData.quizScores[chap.id] !== undefined) ? pData.quizScores[chap.id] : 0;
+                        
+                        quizHtml += `
+                            <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.2); padding: 0.5rem; border-radius: 4px; margin-top: 0.5rem;">
+                                <span style="font-size: 0.85rem; color: var(--text-muted);">${chap.titre}</span>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <span style="font-size: 0.85rem; font-weight: bold; color: ${scoreObtained === totalPossible ? 'var(--accent-green)' : 'white'};">Score: ${scoreObtained} / ${totalPossible}</span>
+                                    <button class="action-btn btn-edit-grade" data-course="${cId}" data-chapter="${chap.id}" data-current="${scoreObtained}" data-max="${totalPossible}" style="width: auto; margin: 0; padding: 4px 8px; font-size: 0.75rem; background: #333; color: white;">${SVG_EDIT} Éditer</button>
+                                </div>
+                            </div>
+                        `;
+                    }
+                });
+            }
+
+            const html = `
+                <div style="background: #111; border: 1px solid #333; border-radius: 8px; padding: 1rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+                        <div>
+                            <h5 style="margin: 0 0 0.3rem 0; color: var(--accent-blue);">${courseData.titre}</h5>
+                            ${statusBadge}
+                            <span style="font-size: 0.8rem; color: var(--text-muted); margin-left: 10px;">Étapes: ${completedCount} / ${totalCount}</span>
+                        </div>
+                        <button class="action-btn btn-reset-course danger" data-course="${cId}" style="width: auto; margin: 0; padding: 6px 10px; font-size: 0.8rem;">${SVG_RESET} Réinitialiser</button>
+                    </div>
+                    ${quizHtml}
+                </div>
+            `;
+            list.insertAdjacentHTML('beforeend', html);
+        });
+
+        // Événements de Réinitialisation
+        document.querySelectorAll('.btn-reset-course').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const cId = e.currentTarget.getAttribute('data-course');
+                if (confirm("⚠️ Réinitialiser ce cours ? L'élève perdra sa progression et l'XP liée aux QCM de ce cours. Cette action est irréversible.")) {
+                    e.currentTarget.disabled = true;
+                    e.currentTarget.textContent = "Reset...";
+                    const success = await resetCourseProgress(uid, cId);
+                    if (success) {
+                        loadProfileData(uid); // Recharge tout (y compris l'XP brute)
+                    } else {
+                        alert("Erreur lors de la réinitialisation.");
+                        e.currentTarget.disabled = false;
+                    }
+                }
+            });
+        });
+
+        // Événements d'Édition de Note
+        document.querySelectorAll('.btn-edit-grade').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const cId = e.currentTarget.getAttribute('data-course');
+                const chapId = e.currentTarget.getAttribute('data-chapter');
+                const currentScore = e.currentTarget.getAttribute('data-current');
+                const maxScore = e.currentTarget.getAttribute('data-max');
+
+                const newScoreStr = prompt(`Modifier la note (Max: ${maxScore}).\nActuelle: ${currentScore}\n\nNote : Cela modifiera automatiquement l'XP globale de l'élève !`, currentScore);
+                
+                if (newScoreStr !== null) {
+                    const newScore = parseInt(newScoreStr);
+                    if (!isNaN(newScore) && newScore >= 0 && newScore <= parseInt(maxScore)) {
+                        e.currentTarget.disabled = true;
+                        e.currentTarget.textContent = "Sauvegarde...";
+                        const success = await updateQuizScore(uid, cId, chapId, newScore);
+                        if (success) {
+                            loadProfileData(uid); 
+                        } else {
+                            alert("Erreur lors de la mise à jour.");
+                            e.currentTarget.disabled = false;
+                        }
+                    } else {
+                        alert("Note invalide.");
+                    }
+                }
+            });
+        });
+
+    } catch (err) {
+        console.error(err);
+        list.innerHTML = '<p style="color: var(--accent-red); font-size: 0.9rem;">Erreur de chargement du suivi.</p>';
+    }
 }
 
 async function loadUserFormations(uid) {
@@ -236,7 +363,6 @@ function initCropperEngine() {
 
     let originalImageDataUrl = null;
 
-    // Compresse l'image pour l'original HD (Max 800px)
     function compressImage(file, maxWidth, callback) {
         const reader = new FileReader();
         reader.onload = function(event) {
@@ -261,9 +387,7 @@ function initCropperEngine() {
         reader.readAsDataURL(file);
     }
 
-    // Lancement propre et blindé de Cropper.js
     function launchCropper(src) {
-        // Détruit toute instance existante pour éviter les conflits
         if (cropperInstance) {
             cropperInstance.destroy();
             cropperInstance = null;
@@ -272,7 +396,6 @@ function initCropperEngine() {
         imageElement.crossOrigin = "anonymous";
         imageElement.src = src;
         
-        // Timeout ESSENTIEL : Cropper refuse de se caler si la div est encore "display: none"
         setTimeout(() => {
             cropperInstance = new Cropper(imageElement, {
                 aspectRatio: 1,
@@ -288,7 +411,6 @@ function initCropperEngine() {
         }, 150);
     }
 
-    // Ouvre la modale
     const openTrigger = document.getElementById('btn-trigger-crop');
     if(openTrigger) {
         openTrigger.addEventListener('click', () => {
@@ -302,16 +424,13 @@ function initCropperEngine() {
                 originalImageDataUrl = imageToLoad;
                 launchCropper(imageToLoad);
             } else {
-                // Pas d'image existante, on lance l'explorateur de fichiers
                 input.click();
             }
         });
     }
 
-    // Bouton de changement manuel
     document.getElementById('btn-upload-new')?.addEventListener('click', () => input.click());
 
-    // Au choix d'une nouvelle image
     input.addEventListener('change', (e) => {
         if(e.target.files && e.target.files.length > 0) {
             modal.style.display = 'flex'; 
@@ -324,14 +443,13 @@ function initCropperEngine() {
             compressImage(e.target.files[0], 800, (compressedBase64) => {
                 originalImageDataUrl = compressedBase64;
                 launchCropper(compressedBase64);
-                input.value = ''; // Reset de l'input
+                input.value = ''; 
                 btnSave.textContent = originalText;
                 btnSave.disabled = false;
             });
         }
     });
 
-    // Annuler
     document.getElementById('btn-cancel-crop')?.addEventListener('click', () => {
         modal.style.display = 'none';
         if (cropperInstance) {
@@ -341,7 +459,6 @@ function initCropperEngine() {
         imageElement.src = '';
     });
 
-    // Enregistrer
     document.getElementById('btn-save-crop')?.addEventListener('click', async () => {
         if(!cropperInstance || !currentProfileId || !originalImageDataUrl) return;
         
