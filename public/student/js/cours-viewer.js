@@ -1,6 +1,6 @@
 /**
  * =======================================================================
- * VIEWER - Mode focus, verrouillage linéaire et QCM
+ * VIEWER - Mode focus, verrouillage linéaire et QCM intelligent
  * =======================================================================
  */
 
@@ -12,7 +12,7 @@ import { getUserLearningProgress, validateChapterProgress, startCourseProgress }
 let currentUid = null;
 let isAdminOrTeacher = false;
 let courseData = null;
-let currentChapterIndex = -1; // Initialisé à -1 pour forcer le premier chargement
+let currentChapterIndex = -1;
 let userProgress = { courses: {} };
 let timerInterval = null;
 
@@ -54,6 +54,13 @@ async function initViewer() {
     courseData = { id: cSnap.id, ...cSnap.data() };
     document.getElementById('viewer-course-title').textContent = courseData.titre;
 
+    // FIX RETOUR DYNAMIQUE : On récupère l'ID de la formation pour le bouton "Quitter"
+    const formId = (courseData.formations && courseData.formations.length > 0) ? courseData.formations[0] : '';
+    document.getElementById('btn-back-dynamic').onclick = (e) => {
+        e.preventDefault();
+        window.location.href = `/student/mes-cours.html?formId=${formId}`;
+    };
+
     userProgress = await startCourseProgress(currentUid, courseData.id);
     
     if (!userProgress) userProgress = await getUserLearningProgress(currentUid);
@@ -67,9 +74,8 @@ async function initViewer() {
 
     renderSidebar();
     
-    // On charge le premier chapitre non terminé, ou le dernier si tout est fini
     let nextUnfinishedIndex = courseData.chapitres.findIndex(c => !userProgress.courses[courseData.id].completedChapters.includes(c.id));
-    if (nextUnfinishedIndex === -1) nextUnfinishedIndex = 0; // Si tout est fait, on ouvre le 1er
+    if (nextUnfinishedIndex === -1) nextUnfinishedIndex = 0; 
     
     loadChapter(nextUnfinishedIndex);
 }
@@ -80,8 +86,6 @@ function renderSidebar() {
 
     courseData.chapitres.forEach((chap, index) => {
         const isDone = userProgress.courses[courseData.id].completedChapters.includes(chap.id);
-        
-        // FIX : Un chapitre est débloqué si c'est le 1er, si le précédent est validé, si l'actuel est déjà validé, ou si on est admin.
         const prevDone = index === 0 || userProgress.courses[courseData.id].completedChapters.includes(courseData.chapitres[index-1].id);
         const isUnlocked = isAdminOrTeacher || isDone || prevDone;
 
@@ -95,7 +99,6 @@ function renderSidebar() {
             <span style="font-size:1.2rem;">${icon}</span>
         `;
         
-        // On ne permet le clic que si le chapitre est débloqué
         if (isUnlocked) {
             tab.onclick = () => loadChapter(index);
         }
@@ -106,8 +109,6 @@ function renderSidebar() {
 
 function loadChapter(index) {
     if (index < 0 || index >= courseData.chapitres.length) return;
-    
-    // FIX : Si l'élève clique sur le chapitre sur lequel il est DÉJÀ, on bloque pour ne pas reset le timer
     if (index === currentChapterIndex) return; 
     
     clearInterval(timerInterval);
@@ -137,21 +138,21 @@ function loadChapter(index) {
         }
         contentHtml += `<div class="text-container ql-editor">${chap.contenu}</div>`;
     } else {
-        // FIX : GÉNÉRATION DU QUIZ FRONT-END
+        // Affichage du Quiz
         contentHtml += `<div class="text-container">
-            <p style="color:var(--accent-yellow); font-weight: bold; font-size: 1.2rem;">📝 Examen de passage : ${chap.questions ? chap.questions.length : 0} question(s).</p>
+            <p style="color:var(--accent-yellow); font-weight: bold; font-size: 1.2rem; border-bottom: 2px solid var(--border-color); padding-bottom: 1rem;">📝 Examen de passage</p>
             <div id="quiz-form" style="margin-top: 2rem;">`;
         
         if (chap.questions) {
             chap.questions.forEach((q, qIndex) => {
                 contentHtml += `
-                <div class="quiz-question" style="margin-bottom: 2rem; padding: 1.5rem; background: var(--bg-main); border-radius: 12px; border: 1px solid var(--border-color);">
+                <div class="quiz-question" style="margin-bottom: 2.5rem;">
                     <h3 style="font-size:1.1rem; color:var(--text-main); margin-top:0;">${qIndex+1}. ${q.question}</h3>
                     <div style="display:flex; flex-direction:column; gap:0.8rem; margin-top:1rem;">`;
                 
                 q.options.forEach((opt, oIndex) => {
                     contentHtml += `
-                        <label style="display:flex; align-items:center; gap:0.8rem; cursor:pointer; padding: 0.8rem; background: white; border: 1px solid var(--border-color); border-radius: 8px; transition: 0.2s;" onmouseover="this.style.borderColor='var(--accent-green)'" onmouseout="this.style.borderColor='var(--border-color)'">
+                        <label id="label_q_${qIndex}_o_${oIndex}" class="quiz-option">
                             <input type="checkbox" name="q_${qIndex}" value="${oIndex}" style="width:20px; height:20px; accent-color: var(--accent-green); flex-shrink:0;">
                             <span style="font-size:1rem; color:var(--text-main);">${opt}</span>
                         </label>`;
@@ -160,7 +161,9 @@ function loadChapter(index) {
                 contentHtml += `</div></div>`;
             });
         }
-        contentHtml += `</div></div>`;
+        contentHtml += `</div>
+            <div id="quiz-result-box" class="quiz-result-box"></div>
+        </div>`;
     }
 
     contentHtml += `
@@ -170,8 +173,6 @@ function loadChapter(index) {
     `;
 
     main.innerHTML = contentHtml;
-    
-    // Remonte la fenêtre tout en haut pour le nouveau chapitre
     main.scrollTop = 0;
     
     startSecurityTimer(isDone);
@@ -183,6 +184,22 @@ function startSecurityTimer(isAlreadyDone) {
     
     const isLast = currentChapterIndex === courseData.chapitres.length - 1;
     const nextText = isLast ? "Terminer le cours" : "Valider l'étape et continuer";
+
+    // FIX QUIZ : Si c'est un quiz, on désactive le timer et on passe en mode soumission
+    if (courseData.chapitres[currentChapterIndex].type === 'quiz') {
+        if (isAlreadyDone && !isAdminOrTeacher) {
+            btn.disabled = false;
+            btn.textContent = nextText;
+            btn.onclick = () => validateAndNext(isLast);
+            document.getElementById('quiz-result-box').innerHTML = `<h3 style="color:var(--accent-green); margin:0;">Score validé.</h3>`;
+            document.getElementById('quiz-result-box').style.display = 'block';
+        } else {
+            btn.disabled = false;
+            btn.textContent = "Soumettre mes réponses";
+            btn.onclick = () => submitQuizAnswers(isLast);
+        }
+        return;
+    }
 
     if (isAdminOrTeacher || isAlreadyDone) {
         btn.disabled = false;
@@ -207,37 +224,72 @@ function startSecurityTimer(isAlreadyDone) {
     }, 1000);
 }
 
-async function validateAndNext(isLast) {
+// FIX : Nouvelle fonction de calcul et d'affichage des scores du QCM
+function submitQuizAnswers(isLast) {
     const chap = courseData.chapitres[currentChapterIndex];
-    const btn = document.getElementById('btn-next-chapter');
+    let score = 0;
+    let totalPoints = 0;
+    let allCorrect = true;
     
-    // FIX : LOGIQUE DE VALIDATION DU QUIZ
-    if (chap.type === 'quiz') {
-        let allCorrect = true;
-        if (chap.questions) {
-            chap.questions.forEach((q, qIndex) => {
-                // Récupère les choix cochés
-                const selected = Array.from(document.querySelectorAll(`input[name="q_${qIndex}"]:checked`)).map(cb => parseInt(cb.value));
-                const correct = q.correctIndices || [];
-                
-                // Si la taille est différente ou qu'une valeur manque, c'est faux
-                if (selected.length !== correct.length || !selected.every(val => correct.includes(val))) {
-                    allCorrect = false;
-                }
-            });
+    chap.questions.forEach((q, qIndex) => {
+        const selected = Array.from(document.querySelectorAll(`input[name="q_${qIndex}"]:checked`)).map(cb => parseInt(cb.value));
+        const correct = q.correctIndices || [];
+        const pts = q.points || 1;
+        totalPoints += pts;
+        
+        const isQCorrect = (selected.length === correct.length && selected.every(val => correct.includes(val)));
+        if (isQCorrect) {
+            score += pts;
+        } else {
+            allCorrect = false;
         }
         
-        // Blocage si l'élève a faux
-        if (!allCorrect && !isAdminOrTeacher) {
-            alert("❌ Certaines réponses sont incorrectes. Vérifiez vos choix et réessayez !");
-            return; 
-        }
+        // Affichage visuel (Vert = Bonne réponse absolue, Rouge = Faux choix)
+        q.options.forEach((opt, oIndex) => {
+            const label = document.getElementById(`label_q_${qIndex}_o_${oIndex}`);
+            const checkbox = label.querySelector('input');
+            checkbox.disabled = true; 
+            label.classList.add('locked');
+            
+            if (correct.includes(oIndex)) {
+                label.classList.add('correct'); 
+            } else if (selected.includes(oIndex) && !correct.includes(oIndex)) {
+                label.classList.add('wrong'); 
+            }
+        });
+    });
+    
+    const resultBox = document.getElementById('quiz-result-box');
+    resultBox.style.display = 'block';
+    
+    if (allCorrect || isAdminOrTeacher) {
+        resultBox.style.borderColor = "var(--accent-green)";
+        resultBox.innerHTML = `
+            <h3 style="margin-top:0; color: var(--text-main); font-size: 1.5rem;">Score parfait : ${score} / ${totalPoints} points !</h3>
+            <p style="color: var(--text-muted); margin-bottom: 0;">Excellent travail. Vous pouvez passer à la suite.</p>
+        `;
+        const btn = document.getElementById('btn-next-chapter');
+        btn.textContent = isLast ? "Terminer le cours" : "Valider l'étape et continuer";
+        btn.onclick = () => validateAndNext(isLast);
+    } else {
+        resultBox.style.borderColor = "var(--accent-red)";
+        resultBox.innerHTML = `
+            <h3 style="margin-top:0; color: var(--text-main); font-size: 1.5rem;">Score : ${score} / ${totalPoints} points.</h3>
+            <p style="color: var(--text-muted); margin-bottom: 0;">Certaines réponses sont incorrectes. Observez la correction puis réessayez.</p>
+        `;
+        const btn = document.getElementById('btn-next-chapter');
+        btn.textContent = "Recommencer le test";
+        btn.onclick = () => loadChapter(currentChapterIndex); // Recharge le chapitre pour réessayer
     }
+}
 
+async function validateAndNext(isLast) {
+    const chapId = courseData.chapitres[currentChapterIndex].id;
+    const btn = document.getElementById('btn-next-chapter');
     btn.disabled = true;
     btn.textContent = "Validation...";
 
-    const updatedProgress = await validateChapterProgress(currentUid, courseData.id, chap.id, courseData.chapitres.length);
+    const updatedProgress = await validateChapterProgress(currentUid, courseData.id, chapId, courseData.chapitres.length);
     
     if (updatedProgress) {
         userProgress = updatedProgress; 
@@ -245,7 +297,7 @@ async function validateAndNext(isLast) {
 
         if (isLast) {
             alert("🎉 Félicitations, vous avez terminé ce cours !");
-            window.history.back(); // Retourne automatiquement à la formation
+            document.getElementById('btn-back-dynamic').click(); // Simule le clic sur le bouton retour
         } else {
             loadChapter(currentChapterIndex + 1);
         }
