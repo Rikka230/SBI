@@ -13,20 +13,26 @@ let currentUid = null;
 let isAdminOrTeacher = false;
 let courseData = null;
 let currentChapterIndex = 0;
-let userProgress = null;
+let userProgress = { courses: {} };
 let timerInterval = null;
 
-const WAIT_TIME_SECONDS = 30; // 30 Secondes minimum pour lire un texte. Pour une vidéo, tu pourras brancher ça sur la durée de la vidéo plus tard.
+const WAIT_TIME_SECONDS = 30;
 
 document.addEventListener('DOMContentLoaded', () => {
     onAuthStateChanged(auth, async (user) => {
         if (user) {
             currentUid = user.uid;
-            const snap = await getDoc(doc(db, "users", currentUid));
-            const uData = snap.data();
-            isAdminOrTeacher = (uData.role === 'admin' || uData.role === 'teacher' || uData.isGod);
-            
-            await initViewer();
+            try {
+                const snap = await getDoc(doc(db, "users", currentUid));
+                if (snap.exists()) {
+                    const uData = snap.data();
+                    isAdminOrTeacher = (uData.role === 'admin' || uData.role === 'teacher' || uData.isGod);
+                }
+                await initViewer();
+            } catch (e) {
+                console.error("Erreur critique :", e);
+                document.getElementById('viewer-main-content').innerHTML = '<p style="color:var(--accent-red); padding:2rem;">Erreur de connexion. Veuillez recharger.</p>';
+            }
         } else {
             window.location.replace('/login.html');
         }
@@ -40,14 +46,21 @@ async function initViewer() {
     if(!courseId) return window.location.replace('/student/mes-cours.html');
 
     const cSnap = await getDoc(doc(db, "courses", courseId));
-    if(!cSnap.exists()) return alert("Cours introuvable.");
+    if(!cSnap.exists()) {
+        document.getElementById('viewer-main-content').innerHTML = '<p style="color:var(--accent-red); padding:2rem;">Cours introuvable ou supprimé.</p>';
+        return;
+    }
     
     courseData = { id: cSnap.id, ...cSnap.data() };
     document.getElementById('viewer-course-title').textContent = courseData.titre;
 
     userProgress = await getUserLearningProgress(currentUid);
+    if (!userProgress.courses) userProgress.courses = {};
     if (!userProgress.courses[courseData.id]) {
         userProgress.courses[courseData.id] = { status: 'todo', completedChapters: [] };
+    }
+    if (!userProgress.courses[courseData.id].completedChapters) {
+        userProgress.courses[courseData.id].completedChapters = [];
     }
 
     renderSidebar();
@@ -84,7 +97,8 @@ function loadChapter(index) {
     const isDone = userProgress.courses[courseData.id].completedChapters.includes(chap.id);
     
     document.querySelectorAll('.chapter-tab').forEach(t => t.classList.remove('active'));
-    document.getElementById(`tab-chap-${index}`).classList.add('active');
+    const activeTab = document.getElementById(`tab-chap-${index}`);
+    if(activeTab) activeTab.classList.add('active');
 
     const main = document.getElementById('viewer-main-content');
     
@@ -104,11 +118,9 @@ function loadChapter(index) {
         }
         contentHtml += `<div class="text-container ql-editor">${chap.contenu}</div>`;
     } else {
-        // Mode Quiz simplfié pour le moment (à développer plus tard)
-        contentHtml += `<div class="text-container"><p style="color:var(--accent-yellow);">Examen : ${chap.questions.length} questions.</p></div>`;
+        contentHtml += `<div class="text-container"><p style="color:var(--accent-yellow);">Examen : ${chap.questions ? chap.questions.length : 0} questions.</p></div>`;
     }
 
-    // Le bouton d'action (Suivant / Valider)
     contentHtml += `
         <div class="action-bar">
             <button id="btn-next-chapter" class="btn-validate" disabled>Préparation...</button>
@@ -121,10 +133,11 @@ function loadChapter(index) {
 
 function startSecurityTimer(isAlreadyDone) {
     const btn = document.getElementById('btn-next-chapter');
+    if(!btn) return;
+    
     const isLast = currentChapterIndex === courseData.chapitres.length - 1;
     const nextText = isLast ? "Terminer le cours" : "Valider et passer à la suite";
 
-    // Bypass pour les profs/admins OU si le chapitre a déjà été validé dans le passé
     if (isAdminOrTeacher || isAlreadyDone) {
         btn.disabled = false;
         btn.textContent = nextText;
@@ -160,7 +173,7 @@ async function validateAndNext(isLast) {
         if (!userProgress.courses[courseData.id].completedChapters.includes(chapId)) {
             userProgress.courses[courseData.id].completedChapters.push(chapId);
         }
-        renderSidebar(); // Met à jour l'icône "Validé"
+        renderSidebar();
 
         if (isLast) {
             alert("🎉 Félicitations, vous avez terminé ce cours !");
