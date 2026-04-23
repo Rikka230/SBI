@@ -29,7 +29,7 @@ body.learning-mode {
 
 .btn-back-hub {
     color: var(--text-muted); text-decoration: none; display: flex; align-items: center; gap: 0.5rem; transition: 0.2s; font-weight: bold;
-    background: #f9fafb; padding: 8px 16px; border-radius: 20px; border: 1px solid var(--border-color);
+    background: #f9fafb; padding: 8px 16px; border-radius: 20px; border: 1px solid var(--border-color); cursor: pointer;
 }
 .btn-back-hub:hover { color: var(--text-main); background: #f3f4f6; transform: translateY(-1px); }
 
@@ -53,24 +53,32 @@ body.learning-mode {
     display: flex; align-items: center; justify-content: space-between;
     margin: 0.4rem 1rem; border-radius: 12px; border: 1px solid transparent;
 }
-.chapter-tab:hover { background: #f9fafb; border-color: var(--border-color); }
+.chapter-tab:hover:not(.locked) { background: #f9fafb; border-color: var(--border-color); }
 .chapter-tab.active { background: var(--accent-green-light); border-color: transparent; }
 .chapter-tab.done .tab-title { color: var(--accent-green); }
+
+/* FIX : Style des chapitres verrouillés */
+.chapter-tab.locked { opacity: 0.4; cursor: not-allowed; background: transparent; }
 
 .tab-title { font-weight: 700; font-size: 0.95rem; color: var(--text-muted); }
 .active .tab-title { color: var(--text-main); }
 
 .media-container { 
     width: 100%; max-width: 900px; margin: 0 auto 2.5rem auto; 
-    border-radius: 16px; overflow: hidden; background: white; 
+    border-radius: 16px; overflow: hidden; background: #f9fafb; 
     box-shadow: 0 10px 30px rgba(0,0,0,0.05); border: 1px solid var(--border-color); 
 }
-.media-container img, .media-container video { width: 100%; display: block; }
+
+/* FIX : Empêche la coupe des images en forçant un ratio contenu et une hauteur max */
+.media-container img, .media-container video { 
+    width: 100%; 
+    max-height: 70vh; 
+    object-fit: contain; 
+    display: block; 
+}
 
 .text-container { 
-    width: 100%; /* FIX : Force la largeur au maximum possible */
-    box-sizing: border-box; /* FIX : Empêche le padding de casser la largeur */
-    max-width: 900px; margin: 0 auto; 
+    width: 100%; box-sizing: border-box; max-width: 900px; margin: 0 auto; 
     background: white; padding: 3rem; border-radius: 16px; 
     box-shadow: 0 4px 20px rgba(0,0,0,0.03); border: 1px solid var(--border-color);
 }
