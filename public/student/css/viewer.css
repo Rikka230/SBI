@@ -6,6 +6,7 @@
     --text-muted: #6b7280;
     --accent-green: #10b981;
     --accent-green-light: #d1fae5;
+    --accent-red: #ef4444;
     --border-color: #e5e7eb;
 }
 
@@ -57,24 +58,25 @@ body.learning-mode {
 .chapter-tab.active { background: var(--accent-green-light); border-color: transparent; }
 .chapter-tab.done .tab-title { color: var(--accent-green); }
 
-/* FIX : Style des chapitres verrouillés */
 .chapter-tab.locked { opacity: 0.4; cursor: not-allowed; background: transparent; }
 
 .tab-title { font-weight: 700; font-size: 0.95rem; color: var(--text-muted); }
 .active .tab-title { color: var(--text-main); }
 
+/* FIX IMAGE : Plus d'overflow hidden sur le conteneur, l'image gère ses limites */
 .media-container { 
     width: 100%; max-width: 900px; margin: 0 auto 2.5rem auto; 
-    border-radius: 16px; overflow: hidden; background: #f9fafb; 
-    box-shadow: 0 10px 30px rgba(0,0,0,0.05); border: 1px solid var(--border-color); 
+    display: flex; justify-content: center;
 }
-
-/* FIX : Empêche la coupe des images en forçant un ratio contenu et une hauteur max */
 .media-container img, .media-container video { 
-    width: 100%; 
+    max-width: 100%; 
     max-height: 70vh; 
+    height: auto;
     object-fit: contain; 
     display: block; 
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.05); 
+    border: 1px solid var(--border-color); 
 }
 
 .text-container { 
@@ -85,6 +87,7 @@ body.learning-mode {
 
 .ql-editor { font-size: 1.15rem; line-height: 1.8; color: #374151; }
 .ql-editor h1, .ql-editor h2, .ql-editor h3 { color: var(--text-main); margin-top: 1.5em; }
+.ql-editor img { max-width: 100%; height: auto; border-radius: 8px; margin: 1rem 0; }
 
 .action-bar {
     max-width: 900px; margin: 2rem auto; width: 100%;
@@ -97,3 +100,20 @@ body.learning-mode {
 }
 .btn-validate:hover:not(:disabled) { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4); }
 .btn-validate:disabled { background: #e5e7eb; color: #9ca3af; cursor: not-allowed; box-shadow: none; transform: none; }
+
+/* NOUVEAU : Styles d'Examen (QCM) */
+.quiz-option {
+    display: flex; align-items: center; gap: 0.8rem; cursor: pointer;
+    padding: 1rem; background: white; border: 2px solid var(--border-color);
+    border-radius: 8px; transition: 0.2s;
+}
+.quiz-option:hover:not(.locked) { border-color: var(--accent-green); background: #f9fafb; }
+.quiz-option.correct { border-color: var(--accent-green); background: rgba(16, 185, 129, 0.05); }
+.quiz-option.wrong { border-color: var(--accent-red); background: rgba(239, 68, 68, 0.05); }
+.quiz-option.locked { cursor: default; }
+
+.quiz-result-box {
+    margin-top: 2rem; padding: 2rem; border-radius: 12px;
+    background: #f8fafc; border: 2px dashed var(--accent-green);
+    text-align: center; display: none; animation: fadeIn 0.4s;
+}
