@@ -5,7 +5,7 @@
  */
 
 import { db } from '/js/firebase-init.js';
-import { doc, getDoc, setDoc, increment } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { doc, getDoc, setDoc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 // Récupère toute la progression d'un élève
 export async function getUserLearningProgress(uid) {
@@ -63,18 +63,15 @@ export async function validateChapterProgress(uid, courseId, chapterId, totalCha
         let xpToAdd = 0;
         const previousScore = progress.courses[courseId].quizScores[chapterId] || 0;
 
-        // SYSTÈME ANTI-FARMING : On n'ajoute que la différence si le nouveau score est meilleur
         if (scoreEarned > previousScore) {
             xpToAdd = scoreEarned - previousScore;
             progress.courses[courseId].quizScores[chapterId] = scoreEarned;
         }
 
-        // Ajout du chapitre s'il n'y est pas déjà
         if (!progress.courses[courseId].completedChapters.includes(chapterId)) {
             progress.courses[courseId].completedChapters.push(chapterId);
         }
 
-        // Vérification de la complétion totale
         if (progress.courses[courseId].completedChapters.length >= totalChaptersAmount) {
             progress.courses[courseId].status = 'done';
             progress.courses[courseId].completedAt = Date.now();
@@ -84,7 +81,6 @@ export async function validateChapterProgress(uid, courseId, chapterId, totalCha
 
         const updates = { learningProgress: progress };
         
-        // Si on a gagné de l'XP sur le quiz, on l'ajoute au total global du profil
         if (xpToAdd > 0) {
             updates.xp = increment(xpToAdd);
         }
@@ -94,5 +90,68 @@ export async function validateChapterProgress(uid, courseId, chapterId, totalCha
     } catch (e) {
         console.error("Erreur sauvegarde progression", e);
         return null;
+    }
+}
+
+// =========================================================
+// NOUVEAU : FONCTIONS CORE D'ADMINISTRATION ET PROFESSEUR
+// =========================================================
+
+// Réinitialise un cours et déduit l'XP correspondante
+export async function resetCourseProgress(uid, courseId) {
+    try {
+        const userRef = doc(db, "users", uid);
+        let progress = await getUserLearningProgress(uid);
+
+        if (!progress.courses[courseId]) return true; // Rien à faire
+
+        // Calcul de l'XP à retirer (Somme de tous les scores de QCM de ce cours)
+        let xpToRemove = 0;
+        if (progress.courses[courseId].quizScores) {
+            Object.values(progress.courses[courseId].quizScores).forEach(score => {
+                xpToRemove += score;
+            });
+        }
+
+        // Suppression de l'entrée du cours
+        delete progress.courses[courseId];
+
+        const updates = { learningProgress: progress };
+        if (xpToRemove > 0) {
+            updates.xp = increment(-xpToRemove);
+        }
+
+        await updateDoc(userRef, updates);
+        return true;
+    } catch (e) {
+        console.error("Erreur reset progression", e);
+        return false;
+    }
+}
+
+// Modifie manuellement une note de QCM et ajuste l'XP
+export async function updateQuizScore(uid, courseId, chapterId, newScore) {
+    try {
+        const userRef = doc(db, "users", uid);
+        let progress = await getUserLearningProgress(uid);
+
+        if (!progress.courses[courseId]) return false;
+        if (!progress.courses[courseId].quizScores) progress.courses[courseId].quizScores = {};
+
+        const oldScore = progress.courses[courseId].quizScores[chapterId] || 0;
+        const xpDifference = newScore - oldScore;
+
+        progress.courses[courseId].quizScores[chapterId] = newScore;
+
+        const updates = { learningProgress: progress };
+        if (xpDifference !== 0) {
+            updates.xp = increment(xpDifference);
+        }
+
+        await updateDoc(userRef, updates);
+        return true;
+    } catch (e) {
+        console.error("Erreur update note", e);
+        return false;
     }
 }
