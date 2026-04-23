@@ -68,6 +68,8 @@ body.learning-mode {
 .media-container img, .media-container video { width: 100%; display: block; }
 
 .text-container { 
+    width: 100%; /* FIX : Force la largeur au maximum possible */
+    box-sizing: border-box; /* FIX : Empêche le padding de casser la largeur */
     max-width: 900px; margin: 0 auto; 
     background: white; padding: 3rem; border-radius: 16px; 
     box-shadow: 0 4px 20px rgba(0,0,0,0.03); border: 1px solid var(--border-color);
