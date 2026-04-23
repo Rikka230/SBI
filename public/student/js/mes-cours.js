@@ -26,11 +26,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     userData = snap.data();
                 }
                 
-                // Sécurisation de la récupération de la progression
                 userProgress = await getUserLearningProgress(currentUid);
                 if (!userProgress.courses) userProgress.courses = {};
                 
-                // 1. Mise à jour de la Top Bar
                 const name = userData.prenom || userData.nom || "Étudiant";
                 const topUserName = document.getElementById('top-user-name');
                 if (topUserName) topUserName.textContent = name;
@@ -66,6 +64,8 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('view-courses').style.display = 'none';
             document.getElementById('btn-back-formations').style.display = 'none';
             document.getElementById('view-formations').style.display = 'grid';
+            // Nettoyage de l'URL sans recharger
+            window.history.replaceState({}, document.title, window.location.pathname);
         });
     }
 });
@@ -89,6 +89,16 @@ async function loadLibraryData() {
         });
 
         renderFormationsGrid();
+
+        // FIX DYNAMIQUE : Si l'URL contient un ID de formation (quand on quitte un cours), on l'ouvre directement
+        const urlParams = new URLSearchParams(window.location.search);
+        const targetFormId = urlParams.get('formId');
+        if (targetFormId) {
+            const targetForm = assignedFormations.find(f => f.id === targetFormId || f.titre === targetFormId);
+            if (targetForm) {
+                window.openFormationCourses(targetForm.id, targetForm.titre.replace(/'/g, "\\'"));
+            }
+        }
 
     } catch (e) {
         console.error("Erreur de chargement de la bibliothèque", e);
