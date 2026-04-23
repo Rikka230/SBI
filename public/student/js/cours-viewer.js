@@ -7,7 +7,7 @@
 import { db, auth } from '/js/firebase-init.js';
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-import { getUserLearningProgress, validateChapterProgress } from '/js/course-engine.js';
+import { getUserLearningProgress, validateChapterProgress, startCourseProgress } from '/js/course-engine.js';
 
 let currentUid = null;
 let isAdminOrTeacher = false;
@@ -54,7 +54,13 @@ async function initViewer() {
     courseData = { id: cSnap.id, ...cSnap.data() };
     document.getElementById('viewer-course-title').textContent = courseData.titre;
 
-    userProgress = await getUserLearningProgress(currentUid);
+    // FIX : On déclare le cours comme "En cours" dans Firebase dès l'ouverture
+    userProgress = await startCourseProgress(currentUid, courseData.id);
+    
+    if (!userProgress) { // Fallback de sécurité
+        userProgress = await getUserLearningProgress(currentUid);
+    }
+    
     if (!userProgress.courses) userProgress.courses = {};
     if (!userProgress.courses[courseData.id]) {
         userProgress.courses[courseData.id] = { status: 'todo', completedChapters: [] };
@@ -138,7 +144,6 @@ function startSecurityTimer(isAlreadyDone) {
     const isLast = currentChapterIndex === courseData.chapitres.length - 1;
     const nextText = isLast ? "Terminer le cours" : "Valider l'étape et continuer";
 
-    // FIX : Si le chapitre est déjà validé, on active directement le bouton sans timer
     if (isAdminOrTeacher || isAlreadyDone) {
         btn.disabled = false;
         btn.textContent = nextText;
@@ -168,11 +173,9 @@ async function validateAndNext(isLast) {
     btn.disabled = true;
     btn.textContent = "Validation...";
 
-    // On passe la taille du cours pour que l'Engine calcule si on a atteint les 100%
     const updatedProgress = await validateChapterProgress(currentUid, courseData.id, chapId, courseData.chapitres.length);
     
     if (updatedProgress) {
-        // Mise à jour de la variable locale vitale
         userProgress = updatedProgress; 
         renderSidebar();
 
