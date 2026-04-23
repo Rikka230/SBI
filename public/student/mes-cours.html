@@ -48,13 +48,21 @@
 
             <div id="view-formations" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem;">
                 <div style="display:flex; align-items:center; gap:10px; color:var(--text-muted);">
-                    <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
+                    <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
                     Analyse de vos formations...
                 </div>
             </div>
 
             <div id="view-courses" style="display: none; flex-direction: column;">
-                <h2 id="current-formation-title" style="margin-top: 0; color: var(--accent-green);">...</h2>
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem;">
+                    <h2 id="current-formation-title" style="margin: 0; color: var(--accent-green);">...</h2>
+                    
+                    <div class="search-bar-top" style="margin: 0; max-width: 300px; width: 100%; display: flex;">
+                        <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+                        <input type="text" id="search-student-courses" placeholder="Rechercher un cours...">
+                    </div>
+                </div>
+                
                 <div id="courses-list-container"></div>
             </div>
 
