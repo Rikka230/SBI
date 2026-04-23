@@ -1,6 +1,6 @@
 /**
  * =======================================================================
- * VIEWER - Mode focus, verrouillage linéaire et QCM intelligent
+ * VIEWER - Mode focus, verrouillage linéaire et QCM intelligent + XP
  * =======================================================================
  */
 
@@ -54,7 +54,6 @@ async function initViewer() {
     courseData = { id: cSnap.id, ...cSnap.data() };
     document.getElementById('viewer-course-title').textContent = courseData.titre;
 
-    // FIX RETOUR DYNAMIQUE : On récupère l'ID de la formation pour le bouton "Quitter"
     const formId = (courseData.formations && courseData.formations.length > 0) ? courseData.formations[0] : '';
     document.getElementById('btn-back-dynamic').onclick = (e) => {
         e.preventDefault();
@@ -107,9 +106,10 @@ function renderSidebar() {
     });
 }
 
-function loadChapter(index) {
+// FIX: Le paramètre forceReload permet de passer outre le blocage "déjà sur ce chapitre"
+function loadChapter(index, forceReload = false) {
     if (index < 0 || index >= courseData.chapitres.length) return;
-    if (index === currentChapterIndex) return; 
+    if (index === currentChapterIndex && !forceReload) return; 
     
     clearInterval(timerInterval);
     currentChapterIndex = index;
@@ -138,7 +138,6 @@ function loadChapter(index) {
         }
         contentHtml += `<div class="text-container ql-editor">${chap.contenu}</div>`;
     } else {
-        // Affichage du Quiz
         contentHtml += `<div class="text-container">
             <p style="color:var(--accent-yellow); font-weight: bold; font-size: 1.2rem; border-bottom: 2px solid var(--border-color); padding-bottom: 1rem;">📝 Examen de passage</p>
             <div id="quiz-form" style="margin-top: 2rem;">`;
@@ -166,8 +165,9 @@ function loadChapter(index) {
         </div>`;
     }
 
+    // Assignation d'un ID pour cibler la barre d'action
     contentHtml += `
-        <div class="action-bar">
+        <div class="action-bar" id="viewer-action-bar">
             <button id="btn-next-chapter" class="btn-validate" disabled>Préparation...</button>
         </div>
     `;
@@ -179,32 +179,25 @@ function loadChapter(index) {
 }
 
 function startSecurityTimer(isAlreadyDone) {
+    const actionBar = document.getElementById('viewer-action-bar');
+    actionBar.innerHTML = `<button id="btn-next-chapter" class="btn-validate" disabled>Préparation...</button>`;
     const btn = document.getElementById('btn-next-chapter');
-    if(!btn) return;
     
     const isLast = currentChapterIndex === courseData.chapitres.length - 1;
     const nextText = isLast ? "Terminer le cours" : "Valider l'étape et continuer";
 
-    // FIX QUIZ : Si c'est un quiz, on désactive le timer et on passe en mode soumission
+    // Si c'est un quiz, pas de timer auto-bloquant, l'élève a le temps de réfléchir
     if (courseData.chapitres[currentChapterIndex].type === 'quiz') {
-        if (isAlreadyDone && !isAdminOrTeacher) {
-            btn.disabled = false;
-            btn.textContent = nextText;
-            btn.onclick = () => validateAndNext(isLast);
-            document.getElementById('quiz-result-box').innerHTML = `<h3 style="color:var(--accent-green); margin:0;">Score validé.</h3>`;
-            document.getElementById('quiz-result-box').style.display = 'block';
-        } else {
-            btn.disabled = false;
-            btn.textContent = "Soumettre mes réponses";
-            btn.onclick = () => submitQuizAnswers(isLast);
-        }
+        btn.disabled = false;
+        btn.textContent = "Soumettre mes réponses";
+        btn.onclick = () => submitQuizAnswers(isLast);
         return;
     }
 
     if (isAdminOrTeacher || isAlreadyDone) {
         btn.disabled = false;
         btn.textContent = nextText;
-        btn.onclick = () => validateAndNext(isLast);
+        btn.onclick = () => validateAndNext(isLast, 0);
         return;
     }
 
@@ -217,14 +210,13 @@ function startSecurityTimer(isAlreadyDone) {
             clearInterval(timerInterval);
             btn.disabled = false;
             btn.textContent = nextText;
-            btn.onclick = () => validateAndNext(isLast);
+            btn.onclick = () => validateAndNext(isLast, 0);
         } else {
             btn.textContent = `Veuillez patienter (${timeLeft}s)...`;
         }
     }, 1000);
 }
 
-// FIX : Nouvelle fonction de calcul et d'affichage des scores du QCM
 function submitQuizAnswers(isLast) {
     const chap = courseData.chapitres[currentChapterIndex];
     let score = 0;
@@ -244,7 +236,6 @@ function submitQuizAnswers(isLast) {
             allCorrect = false;
         }
         
-        // Affichage visuel (Vert = Bonne réponse absolue, Rouge = Faux choix)
         q.options.forEach((opt, oIndex) => {
             const label = document.getElementById(`label_q_${qIndex}_o_${oIndex}`);
             const checkbox = label.querySelector('input');
@@ -260,36 +251,52 @@ function submitQuizAnswers(isLast) {
     });
     
     const resultBox = document.getElementById('quiz-result-box');
+    const actionBar = document.getElementById('viewer-action-bar');
     resultBox.style.display = 'block';
     
     if (allCorrect || isAdminOrTeacher) {
         resultBox.style.borderColor = "var(--accent-green)";
         resultBox.innerHTML = `
-            <h3 style="margin-top:0; color: var(--text-main); font-size: 1.5rem;">Score parfait : ${score} / ${totalPoints} points !</h3>
-            <p style="color: var(--text-muted); margin-bottom: 0;">Excellent travail. Vous pouvez passer à la suite.</p>
+            <h3 style="margin-top:0; color: var(--text-main); font-size: 1.5rem;">Score : ${score} / ${totalPoints} points !</h3>
+            <p style="color: var(--text-muted); margin-bottom: 0;">Excellent travail. Si vous avez battu votre record, l'expérience (XP) a été ajoutée à votre profil.</p>
         `;
-        const btn = document.getElementById('btn-next-chapter');
-        btn.textContent = isLast ? "Terminer le cours" : "Valider l'étape et continuer";
-        btn.onclick = () => validateAndNext(isLast);
+        
+        const nextText = isLast ? "Terminer le cours" : "Valider et passer à la suite";
+        
+        // FIX : Ajout des deux boutons de choix une fois l'examen réussi
+        actionBar.innerHTML = `
+            <button id="btn-retry-quiz" class="btn-validate" style="background: transparent; color: var(--text-main); border: 2px solid var(--border-color); margin-right: 1rem; box-shadow: none;">Refaire le test</button>
+            <button id="btn-next-chapter" class="btn-validate">${nextText}</button>
+        `;
+        
+        document.getElementById('btn-retry-quiz').onclick = () => loadChapter(currentChapterIndex, true);
+        document.getElementById('btn-next-chapter').onclick = () => validateAndNext(isLast, score);
+        
     } else {
         resultBox.style.borderColor = "var(--accent-red)";
         resultBox.innerHTML = `
             <h3 style="margin-top:0; color: var(--text-main); font-size: 1.5rem;">Score : ${score} / ${totalPoints} points.</h3>
             <p style="color: var(--text-muted); margin-bottom: 0;">Certaines réponses sont incorrectes. Observez la correction puis réessayez.</p>
         `;
-        const btn = document.getElementById('btn-next-chapter');
-        btn.textContent = "Recommencer le test";
-        btn.onclick = () => loadChapter(currentChapterIndex); // Recharge le chapitre pour réessayer
+        
+        // En cas d'erreur, seul le bouton recommencer est disponible
+        actionBar.innerHTML = `
+            <button id="btn-retry-quiz" class="btn-validate">Recommencer le test</button>
+        `;
+        document.getElementById('btn-retry-quiz').onclick = () => loadChapter(currentChapterIndex, true);
     }
 }
 
-async function validateAndNext(isLast) {
+// FIX : La fonction reçoit désormais le score à transférer au compte
+async function validateAndNext(isLast, scoreEarned = 0) {
     const chapId = courseData.chapitres[currentChapterIndex].id;
     const btn = document.getElementById('btn-next-chapter');
-    btn.disabled = true;
-    btn.textContent = "Validation...";
+    if(btn) {
+        btn.disabled = true;
+        btn.textContent = "Validation...";
+    }
 
-    const updatedProgress = await validateChapterProgress(currentUid, courseData.id, chapId, courseData.chapitres.length);
+    const updatedProgress = await validateChapterProgress(currentUid, courseData.id, chapId, courseData.chapitres.length, scoreEarned);
     
     if (updatedProgress) {
         userProgress = updatedProgress; 
@@ -297,13 +304,15 @@ async function validateAndNext(isLast) {
 
         if (isLast) {
             alert("🎉 Félicitations, vous avez terminé ce cours !");
-            document.getElementById('btn-back-dynamic').click(); // Simule le clic sur le bouton retour
+            document.getElementById('btn-back-dynamic').click(); 
         } else {
             loadChapter(currentChapterIndex + 1);
         }
     } else {
         alert("Erreur réseau. Veuillez réessayer.");
-        btn.disabled = false;
-        btn.textContent = "Valider l'étape et continuer";
+        if(btn) {
+            btn.disabled = false;
+            btn.textContent = isLast ? "Terminer le cours" : "Valider l'étape et continuer";
+        }
     }
 }
