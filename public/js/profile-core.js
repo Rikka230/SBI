@@ -17,7 +17,6 @@ let isAdmin = false;
 let isEditMode = false;
 let cropperInstance = null;
 
-// Icônes SVG pour le suivi
 const SVG_RESET = `<svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24" style="vertical-align:middle; margin-right:4px;"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>`;
 const SVG_EDIT = `<svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24" style="vertical-align:middle; margin-right:4px;"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>`;
 
@@ -149,7 +148,6 @@ async function loadProfileData(uid) {
 
             loadUserFormations(uid);
 
-            // NOUVEAU : Chargement du Suivi Pédagogique (Seulement côté Admin)
             if (isAdmin && document.getElementById('prof-tracking-list')) {
                 loadLearningTracking(uid);
             }
@@ -160,39 +158,70 @@ async function loadProfileData(uid) {
     } catch(e) { console.error("Erreur", e); }
 }
 
+// FIX : Charge tous les cours (Assignés + Commencés) pour la liste de Suivi Admin
 async function loadLearningTracking(uid) {
     const list = document.getElementById('prof-tracking-list');
     list.innerHTML = '<p style="color: var(--text-muted); font-size: 0.9rem; font-style: italic;">Chargement du dossier...</p>';
     
     try {
         const progress = await getUserLearningProgress(uid);
-        const courseIds = Object.keys(progress.courses || {});
         
-        if (courseIds.length === 0) {
-            list.innerHTML = '<p style="color: var(--text-muted); font-size: 0.9rem;">Aucun cours commencé par cet élève.</p>';
+        const userSnap = await getDoc(doc(db, "users", uid));
+        const userData = userSnap.exists() ? userSnap.data() : {};
+        
+        // 1. On liste les ID des formations de cet étudiant
+        const formSnap = await getDocs(collection(db, "formations"));
+        const assignedFormIds = [];
+        const assignedFormTitles = [];
+        formSnap.forEach(d => {
+            const f = d.data();
+            if (f.students && f.students.includes(uid)) {
+                assignedFormIds.push(d.id);
+                assignedFormTitles.push(f.titre);
+            }
+        });
+
+        // 2. On récupère les cours correspondant à ces formations, ou déjà entamés
+        const courseSnap = await getDocs(collection(db, "courses"));
+        const allCourses = {};
+        const coursesToShow = new Set();
+
+        courseSnap.forEach(d => {
+            const c = d.data();
+            allCourses[d.id] = c;
+            
+            if (c.actif && c.formations && c.formations.some(f => assignedFormIds.includes(f) || assignedFormTitles.includes(f))) {
+                coursesToShow.add(d.id);
+            }
+        });
+
+        Object.keys(progress.courses || {}).forEach(cId => {
+            if (allCourses[cId]) coursesToShow.add(cId);
+        });
+
+        if (coursesToShow.size === 0) {
+            list.innerHTML = '<p style="color: var(--text-muted); font-size: 0.9rem;">Aucun cours assigné ou commencé par cet élève.</p>';
             return;
         }
 
-        // On récupère les détails de tous les cours pour avoir les titres et les infos des QCM
-        const snap = await getDocs(collection(db, "courses"));
-        const allCourses = {};
-        snap.forEach(d => allCourses[d.id] = d.data());
-
         list.innerHTML = '';
 
-        courseIds.forEach(cId => {
+        Array.from(coursesToShow).forEach(cId => {
             const courseData = allCourses[cId];
-            if (!courseData) return; // Le cours a été supprimé de la base de données
-
-            const pData = progress.courses[cId];
+            const pData = (progress.courses && progress.courses[cId]) ? progress.courses[cId] : { status: 'todo', completedChapters: [] };
+            
             const completedCount = pData.completedChapters ? pData.completedChapters.length : 0;
             const totalCount = courseData.chapitres ? courseData.chapitres.length : 0;
             
-            let statusBadge = pData.status === 'done' 
-                ? '<span style="background: rgba(46, 213, 115, 0.1); color: var(--accent-green); padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold;">Terminé</span>'
-                : '<span style="background: rgba(251, 188, 4, 0.1); color: var(--accent-yellow); padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold;">En cours</span>';
+            let statusBadge = '';
+            if (pData.status === 'done') {
+                statusBadge = '<span style="background: rgba(46, 213, 115, 0.1); color: var(--accent-green); padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold;">Terminé</span>';
+            } else if (pData.status === 'in_progress') {
+                statusBadge = '<span style="background: rgba(251, 188, 4, 0.1); color: var(--accent-yellow); padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold;">En cours</span>';
+            } else {
+                statusBadge = '<span style="background: rgba(255, 255, 255, 0.1); color: var(--text-muted); padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold;">À faire</span>';
+            }
 
-            // Affichage des notes de QCM
             let quizHtml = '';
             if (courseData.chapitres) {
                 courseData.chapitres.forEach(chap => {
@@ -204,7 +233,7 @@ async function loadLearningTracking(uid) {
                             <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.2); padding: 0.5rem; border-radius: 4px; margin-top: 0.5rem;">
                                 <span style="font-size: 0.85rem; color: var(--text-muted);">${chap.titre}</span>
                                 <div style="display: flex; align-items: center; gap: 10px;">
-                                    <span style="font-size: 0.85rem; font-weight: bold; color: ${scoreObtained === totalPossible ? 'var(--accent-green)' : 'white'};">Score: ${scoreObtained} / ${totalPossible}</span>
+                                    <span style="font-size: 0.85rem; font-weight: bold; color: ${scoreObtained === totalPossible && totalPossible > 0 ? 'var(--accent-green)' : 'white'};">Score: ${scoreObtained} / ${totalPossible}</span>
                                     <button class="action-btn btn-edit-grade" data-course="${cId}" data-chapter="${chap.id}" data-current="${scoreObtained}" data-max="${totalPossible}" style="width: auto; margin: 0; padding: 4px 8px; font-size: 0.75rem; background: #333; color: white;">${SVG_EDIT} Éditer</button>
                                 </div>
                             </div>
@@ -214,10 +243,10 @@ async function loadLearningTracking(uid) {
             }
 
             const html = `
-                <div style="background: #111; border: 1px solid #333; border-radius: 8px; padding: 1rem;">
+                <div class="tracking-item" style="background: #111; border: 1px solid #333; border-radius: 8px; padding: 1rem;">
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
                         <div>
-                            <h5 style="margin: 0 0 0.3rem 0; color: var(--accent-blue);">${courseData.titre}</h5>
+                            <h5 class="tracking-title" style="margin: 0 0 0.3rem 0; color: var(--accent-blue);">${courseData.titre}</h5>
                             ${statusBadge}
                             <span style="font-size: 0.8rem; color: var(--text-muted); margin-left: 10px;">Étapes: ${completedCount} / ${totalCount}</span>
                         </div>
@@ -229,7 +258,18 @@ async function loadLearningTracking(uid) {
             list.insertAdjacentHTML('beforeend', html);
         });
 
-        // Événements de Réinitialisation
+        // RECHERCHE DYNAMIQUE ADMIN
+        const searchInput = document.getElementById('search-tracking-admin');
+        if (searchInput) {
+            searchInput.oninput = (e) => {
+                const term = e.target.value.toLowerCase();
+                document.querySelectorAll('.tracking-item').forEach(item => {
+                    const title = item.querySelector('.tracking-title').textContent.toLowerCase();
+                    item.style.display = title.includes(term) ? 'block' : 'none';
+                });
+            };
+        }
+
         document.querySelectorAll('.btn-reset-course').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 const cId = e.currentTarget.getAttribute('data-course');
@@ -238,7 +278,7 @@ async function loadLearningTracking(uid) {
                     e.currentTarget.textContent = "Reset...";
                     const success = await resetCourseProgress(uid, cId);
                     if (success) {
-                        loadProfileData(uid); // Recharge tout (y compris l'XP brute)
+                        loadProfileData(uid); 
                     } else {
                         alert("Erreur lors de la réinitialisation.");
                         e.currentTarget.disabled = false;
@@ -247,7 +287,6 @@ async function loadLearningTracking(uid) {
             });
         });
 
-        // Événements d'Édition de Note
         document.querySelectorAll('.btn-edit-grade').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 const cId = e.currentTarget.getAttribute('data-course');
