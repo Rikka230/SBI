@@ -82,6 +82,12 @@
                         <div class="profile-tabs-header">
                             <div class="p-tab active" onclick="document.querySelectorAll('.p-tab').forEach(t=>t.classList.remove('active')); this.classList.add('active'); document.querySelectorAll('.p-tab-content').forEach(c=>c.classList.remove('active')); document.getElementById('ptab-public').classList.add('active');">Profil Public</div>
                             <div class="p-tab private-section" onclick="document.querySelectorAll('.p-tab').forEach(t=>t.classList.remove('active')); this.classList.add('active'); document.querySelectorAll('.p-tab-content').forEach(c=>c.classList.remove('active')); document.getElementById('ptab-private').classList.add('active');">Données Privées 🔒</div>
+                            <div class="p-tab" onclick="document.querySelectorAll('.p-tab').forEach(t=>t.classList.remove('active')); this.classList.add('active'); document.querySelectorAll('.p-tab-content').forEach(c=>c.classList.remove('active')); document.getElementById('ptab-activity').classList.add('active');">Activité</div>
+                            
+                            <div class="p-tab" onclick="document.querySelectorAll('.p-tab').forEach(t=>t.classList.remove('active')); this.classList.add('active'); document.querySelectorAll('.p-tab-content').forEach(c=>c.classList.remove('active')); document.getElementById('ptab-tracking').classList.add('active');">
+                                <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24" style="vertical-align:text-bottom; margin-right:4px;"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg>
+                                Suivi Pédagogique
+                            </div>
                         </div>
 
                         <div id="ptab-public" class="p-tab-content active">
@@ -121,6 +127,17 @@
                                 <ul style="color: var(--text-muted); font-size: 0.9rem; padding-left: 1rem;" id="prof-activity-list">
                                     <li>Chargement...</li>
                                 </ul>
+                            </div>
+                        </div>
+
+                        <div id="ptab-tracking" class="p-tab-content">
+                            <div class="data-group">
+                                <h4 style="margin: 0 0 1rem 0; display:flex; align-items:center; gap:8px;">
+                                    Progression détaillée 
+                                </h4>
+                                <div id="prof-tracking-list" style="display: flex; flex-direction: column; gap: 1rem;">
+                                    <p style="color: var(--text-muted); font-size: 0.9rem; font-style: italic;">Chargement du dossier pédagogique...</p>
+                                </div>
                             </div>
                         </div>
 
