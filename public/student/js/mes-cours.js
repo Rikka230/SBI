@@ -65,6 +65,32 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('btn-back-formations').style.display = 'none';
             document.getElementById('view-formations').style.display = 'grid';
             window.history.replaceState({}, document.title, window.location.pathname);
+            document.getElementById('search-student-courses').value = '';
+        });
+    }
+
+    // NOUVEAU : Moteur de recherche des cours
+    const searchInput = document.getElementById('search-student-courses');
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase();
+            const coursesItems = document.querySelectorAll('.course-item');
+            
+            coursesItems.forEach(item => {
+                const title = item.querySelector('h4').textContent.toLowerCase();
+                item.style.display = title.includes(term) ? 'flex' : 'none';
+            });
+
+            // Masquer les titres de blocs si tous leurs cours sont invisibles
+            document.querySelectorAll('.bloc-title').forEach(bloc => {
+                let hasVisible = false;
+                let nextNode = bloc.nextElementSibling;
+                while (nextNode && nextNode.classList.contains('course-item')) {
+                    if (nextNode.style.display !== 'none') hasVisible = true;
+                    nextNode = nextNode.nextElementSibling;
+                }
+                bloc.style.display = hasVisible ? 'flex' : 'none';
+            });
         });
     }
 });
@@ -142,6 +168,7 @@ window.openFormationCourses = function(formId, formTitle) {
     const container = document.getElementById('view-courses');
     const listContainer = document.getElementById('courses-list-container');
     document.getElementById('current-formation-title').textContent = formTitle;
+    document.getElementById('search-student-courses').value = ''; // Reset la recherche
     
     container.style.display = 'flex';
     listContainer.innerHTML = '';
@@ -177,7 +204,6 @@ window.openFormationCourses = function(formId, formTitle) {
                 else if (userProgress.courses[c.id].status === 'in_progress') { statusText = 'En cours'; statusClass = 'status-progress'; }
             }
 
-            // Calcul du score si c'est un cours avec QCM
             let quizHtml = '';
             let totalPossible = 0;
             let earnedScore = 0;
