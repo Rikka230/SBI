@@ -64,7 +64,6 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('view-courses').style.display = 'none';
             document.getElementById('btn-back-formations').style.display = 'none';
             document.getElementById('view-formations').style.display = 'grid';
-            // Nettoyage de l'URL sans recharger
             window.history.replaceState({}, document.title, window.location.pathname);
         });
     }
@@ -90,7 +89,6 @@ async function loadLibraryData() {
 
         renderFormationsGrid();
 
-        // FIX DYNAMIQUE : Si l'URL contient un ID de formation (quand on quitte un cours), on l'ouvre directement
         const urlParams = new URLSearchParams(window.location.search);
         const targetFormId = urlParams.get('formId');
         if (targetFormId) {
@@ -163,7 +161,12 @@ window.openFormationCourses = function(formId, formTitle) {
     });
 
     Object.keys(grouped).sort().forEach(bloc => {
-        listContainer.insertAdjacentHTML('beforeend', `<div class="bloc-title">${bloc}</div>`);
+        listContainer.insertAdjacentHTML('beforeend', `
+            <div class="bloc-title">
+                <svg width="20" height="20" fill="var(--text-muted)" viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
+                ${bloc}
+            </div>
+        `);
         
         grouped[bloc].forEach(c => {
             let statusText = 'À faire';
@@ -174,6 +177,28 @@ window.openFormationCourses = function(formId, formTitle) {
                 else if (userProgress.courses[c.id].status === 'in_progress') { statusText = 'En cours'; statusClass = 'status-progress'; }
             }
 
+            // Calcul du score si c'est un cours avec QCM
+            let quizHtml = '';
+            let totalPossible = 0;
+            let earnedScore = 0;
+            
+            if (c.chapitres) {
+                c.chapitres.forEach(chap => {
+                    if (chap.type === 'quiz' && chap.questions) {
+                        chap.questions.forEach(q => totalPossible += (q.points || 1));
+                        if (userProgress.courses[c.id]?.quizScores?.[chap.id]) {
+                            earnedScore += userProgress.courses[c.id].quizScores[chap.id];
+                        }
+                    }
+                });
+            }
+            
+            if (totalPossible > 0) {
+                const isPerfect = earnedScore === totalPossible;
+                const starSvg = isPerfect ? `<svg width="16" height="16" fill="var(--accent-yellow)" viewBox="0 0 24 24" style="vertical-align:text-bottom; margin-left:4px;"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>` : '';
+                quizHtml = `<span style="font-size: 0.85rem; color: var(--text-muted); background: #f3f4f6; padding: 4px 8px; border-radius: 6px; margin-right: 10px; font-weight: bold;">Score: ${earnedScore}/${totalPossible} ${starSvg}</span>`;
+            }
+
             const html = `
                 <div class="course-item" onclick="window.location.href='/student/cours-viewer.html?id=${c.id}'">
                     <div style="display:flex; align-items:center; gap:1rem;">
@@ -182,7 +207,10 @@ window.openFormationCourses = function(formId, formTitle) {
                         </div>
                         <h4 style="margin:0; color:var(--text-main); font-size:1.05rem;">${c.titre}</h4>
                     </div>
-                    <span class="status-badge ${statusClass}">${statusText}</span>
+                    <div style="display:flex; align-items:center;">
+                        ${quizHtml}
+                        <span class="status-badge ${statusClass}">${statusText}</span>
+                    </div>
                 </div>
             `;
             listContainer.insertAdjacentHTML('beforeend', html);
