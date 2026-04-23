@@ -80,7 +80,7 @@ function renderSidebar() {
         tab.id = `tab-chap-${index}`;
         tab.innerHTML = `
             <span class="tab-title">${index + 1}. ${chap.titre}</span>
-            <span style="font-size:0.8rem;">${icon}</span>
+            <span style="font-size:1.2rem;">${icon}</span>
         `;
         
         tab.onclick = () => loadChapter(index);
@@ -102,7 +102,7 @@ function loadChapter(index) {
 
     const main = document.getElementById('viewer-main-content');
     
-    let contentHtml = `<h1 style="margin-top:0; font-size: 2.5rem; margin-bottom: 2rem;">${chap.titre}</h1>`;
+    let contentHtml = `<h1 style="margin-top:0; font-size: 2.8rem; margin-bottom: 2rem; color: var(--text-main); font-weight: 800;">${chap.titre}</h1>`;
 
     if (chap.type === 'text') {
         if (chap.mediaType === 'video' && chap.mediaVideo) {
@@ -118,7 +118,7 @@ function loadChapter(index) {
         }
         contentHtml += `<div class="text-container ql-editor">${chap.contenu}</div>`;
     } else {
-        contentHtml += `<div class="text-container"><p style="color:var(--accent-yellow);">Examen : ${chap.questions ? chap.questions.length : 0} questions.</p></div>`;
+        contentHtml += `<div class="text-container"><p style="color:var(--accent-yellow); font-weight: bold; font-size: 1.2rem;">📝 Examen : ${chap.questions ? chap.questions.length : 0} question(s).</p></div>`;
     }
 
     contentHtml += `
@@ -136,8 +136,9 @@ function startSecurityTimer(isAlreadyDone) {
     if(!btn) return;
     
     const isLast = currentChapterIndex === courseData.chapitres.length - 1;
-    const nextText = isLast ? "Terminer le cours" : "Valider et passer à la suite";
+    const nextText = isLast ? "Terminer le cours" : "Valider l'étape et continuer";
 
+    // FIX : Si le chapitre est déjà validé, on active directement le bouton sans timer
     if (isAdminOrTeacher || isAlreadyDone) {
         btn.disabled = false;
         btn.textContent = nextText;
@@ -167,12 +168,12 @@ async function validateAndNext(isLast) {
     btn.disabled = true;
     btn.textContent = "Validation...";
 
-    const success = await validateChapterProgress(currentUid, courseData.id, chapId, isLast);
+    // On passe la taille du cours pour que l'Engine calcule si on a atteint les 100%
+    const updatedProgress = await validateChapterProgress(currentUid, courseData.id, chapId, courseData.chapitres.length);
     
-    if (success) {
-        if (!userProgress.courses[courseData.id].completedChapters.includes(chapId)) {
-            userProgress.courses[courseData.id].completedChapters.push(chapId);
-        }
+    if (updatedProgress) {
+        // Mise à jour de la variable locale vitale
+        userProgress = updatedProgress; 
         renderSidebar();
 
         if (isLast) {
@@ -184,6 +185,6 @@ async function validateAndNext(isLast) {
     } else {
         alert("Erreur réseau. Veuillez réessayer.");
         btn.disabled = false;
-        btn.textContent = "Valider et passer à la suite";
+        btn.textContent = "Valider l'étape et continuer";
     }
 }
