@@ -56,7 +56,6 @@ const enforceSecurityPolicies = async (user, userData) => {
 
     // Règle A : Éjecte les non-connectés des zones privées
     if (!user) {
-        // On vérifie si l'utilisateur essaie d'accéder au dossier teacher
         if (currentPath.includes('/admin') || currentPath.includes('/student') || currentPath.includes('/teacher/')) {
             if (!currentPath.includes('login')) {
                 window.location.replace('/login.html');
@@ -88,8 +87,9 @@ const enforceSecurityPolicies = async (user, userData) => {
             window.location.replace('/admin/index.html'); 
         } else if (userData.role === 'student' && !currentPath.includes('/student')) {
             window.location.replace('/student/dashboard.html');
-        } else if (userData.role === 'teacher' && !currentPath.includes('/teacher/teacherindex.html')) {
-            window.location.replace('/teacher/teacherindex.html');
+        } else if (userData.role === 'teacher' && !currentPath.includes('/teacher/dashboard.html')) {
+            // FIX : La redirection pointe bien vers le nouveau nom du tableau de bord prof
+            window.location.replace('/teacher/dashboard.html');
         }
     }
 };
