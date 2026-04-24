@@ -19,17 +19,13 @@ styleFix.textContent = `
     .search-result-item:hover { background: rgba(16, 185, 129, 0.05); }
     .search-result-title { font-weight: bold; font-size: 0.9rem; margin-bottom: 2px; }
     .search-result-sub { font-size: 0.75rem; color: var(--text-muted, #6b7280); }
-
-    /* FIX : Anti-chevauchement des icônes dans la recherche étudiant */
     .global-search-results svg { position: static !important; transform: none !important; flex-shrink: 0 !important; width: 18px !important; height: 18px !important; margin: 0 !important; }
 
-    /* CUSTOM SCROLLBAR GLOBALE ET ÉLÉGANTE */
+    /* CUSTOM SCROLLBAR */
     ::-webkit-scrollbar { width: 8px; height: 8px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
     ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-    
-    /* Scrollbar spécifique Admin (Sombre) */
     .admin-theme ::-webkit-scrollbar-track { background: #0a0a0c; }
     .admin-theme ::-webkit-scrollbar-thumb { background: #333; }
     .admin-theme ::-webkit-scrollbar-thumb:hover { background: #555; }
@@ -95,7 +91,7 @@ class AdminRightPanel extends HTMLElement {
                 <div class="panel-header" style="justify-content: space-between; align-items: center; padding: 0 1.5rem;">
                     <span style="font-weight: bold; font-size: 0.9rem; color: var(--text-muted); display: none;" id="notif-panel-title">NOTIFICATIONS</span>
                     <div style="display: flex; align-items: center; margin-left: auto;">
-                        <div id="notif-bell-btn" style="position: relative; cursor: pointer; display: flex; align-items: center; padding: 5px;">
+                        <div id="notif-bell-btn" style="position: relative; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px;">
                             <svg style="width: 22px; height: 22px; fill: var(--text-muted); transition: fill 0.2s;" viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/></svg>
                             <span class="notif-badge" id="bell-badge" style="display:none;">0</span>
                         </div>
@@ -219,7 +215,7 @@ class StudentTopBar extends HTMLElement {
                 <div style="display: flex; align-items: center; gap: 1.5rem; margin-left: auto; padding-right: 1rem;">
                     
                     <div style="position: relative;">
-                        <div id="notif-bell-btn" style="position: relative; cursor: pointer; padding: 5px;">
+                        <div id="notif-bell-btn" style="position: relative; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px;">
                             <svg style="width: 22px; height: 22px; fill: var(--text-muted); transition: fill 0.2s;" viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/></svg>
                             <span class="notif-badge" id="bell-badge" style="display:none;">0</span>
                         </div>
@@ -310,7 +306,7 @@ class TeacherTopBar extends HTMLElement {
                 <div style="display: flex; align-items: center; gap: 1.5rem; margin-left: auto; padding-right: 1rem;">
                     
                     <div style="position: relative;">
-                        <div id="notif-bell-btn" style="position: relative; cursor: pointer; padding: 5px;">
+                        <div id="notif-bell-btn" style="position: relative; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px;">
                             <svg style="width: 22px; height: 22px; fill: var(--text-muted); transition: fill 0.2s;" viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/></svg>
                             <span class="notif-badge" id="bell-badge" style="display:none;">0</span>
                         </div>
