@@ -4,10 +4,16 @@
     --bg-header: #ffffff;
     --text-main: #1f2937;
     --text-muted: #6b7280;
+    
+    /* Nouveau Thème Bleu SBI pour l'UI */
+    --accent-blue: #2A57FF;
+    --accent-blue-light: rgba(42, 87, 255, 0.1);
+    
+    /* Sémantique conservée EXCLUSIVEMENT pour les résultats du QCM */
     --accent-green: #10b981;
-    --accent-green-light: #d1fae5;
     --accent-red: #ef4444;
     --accent-yellow: #fbbc04;
+    
     --border-color: #e5e7eb;
 }
 
@@ -55,9 +61,10 @@ body.learning-mode {
     display: flex; align-items: center; justify-content: space-between;
     margin: 0.4rem 1rem; border-radius: 12px; border: 1px solid transparent;
 }
+/* Modifié pour utiliser le bleu au survol et à l'activation */
 .chapter-tab:hover:not(.locked) { background: #f9fafb; border-color: var(--border-color); }
-.chapter-tab.active { background: var(--accent-green-light); border-color: transparent; }
-.chapter-tab.done .tab-title { color: var(--accent-green); }
+.chapter-tab.active { background: var(--accent-blue-light); border-color: transparent; }
+.chapter-tab.done .tab-title { color: var(--accent-blue); }
 
 .chapter-tab.locked { opacity: 0.4; cursor: not-allowed; background: transparent; }
 
@@ -85,11 +92,21 @@ body.learning-mode {
     background: white; padding: 3rem; border-radius: 16px; 
     box-shadow: 0 4px 20px rgba(0,0,0,0.03); border: 1px solid var(--border-color);
     flex-shrink: 0;
-    height: auto; /* Force la hauteur automatique */
+    height: auto; 
+    /* Force la césure pour les longs mots */
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    word-break: break-word;
 }
 
 /* FIX QUILL : Interdit le scroll interne dans l'éditeur */
-.ql-editor { font-size: 1.15rem; line-height: 1.8; color: #374151; height: auto; min-height: unset; overflow: visible; padding: 0; }
+.ql-editor { 
+    font-size: 1.15rem; line-height: 1.8; color: #374151; height: auto; min-height: unset; overflow: visible; padding: 0; 
+    /* Force la césure dans l'éditeur */
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    word-break: break-word;
+}
 .ql-editor h1, .ql-editor h2, .ql-editor h3 { color: var(--text-main); margin-top: 1.5em; }
 .ql-editor img { max-width: 100%; height: auto; border-radius: 8px; margin: 1rem 0; }
 
@@ -98,11 +115,12 @@ body.learning-mode {
     display: flex; justify-content: flex-end; padding-top: 1rem;
 }
 
+/* Bouton principal passé en bleu avec l'ombre assortie */
 .btn-validate {
-    background: var(--accent-green); color: white; font-weight: 800; border: none; padding: 1.2rem 2.5rem; border-radius: 30px; cursor: pointer; transition: all 0.3s; font-size: 1.1rem;
-    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3); display: flex; align-items: center; justify-content: center; gap: 8px;
+    background: var(--accent-blue); color: white; font-weight: 800; border: none; padding: 1.2rem 2.5rem; border-radius: 30px; cursor: pointer; transition: all 0.3s; font-size: 1.1rem;
+    box-shadow: 0 4px 15px rgba(42, 87, 255, 0.3); display: flex; align-items: center; justify-content: center; gap: 8px;
 }
-.btn-validate:hover:not(:disabled) { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4); }
+.btn-validate:hover:not(:disabled) { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(42, 87, 255, 0.4); }
 .btn-validate:disabled { background: #e5e7eb; color: #9ca3af; cursor: not-allowed; box-shadow: none; transform: none; }
 
 /* Styles d'Examen (QCM) */
@@ -111,7 +129,8 @@ body.learning-mode {
     padding: 1rem; background: white; border: 2px solid var(--border-color);
     border-radius: 8px; transition: 0.2s;
 }
-.quiz-option:hover:not(.locked) { border-color: var(--accent-green); background: #f9fafb; }
+/* Survol des options du QCM passé en bleu */
+.quiz-option:hover:not(.locked) { border-color: var(--accent-blue); background: #f9fafb; }
 .quiz-option.correct { border-color: var(--accent-green); background: rgba(16, 185, 129, 0.05); }
 .quiz-option.wrong { border-color: var(--accent-red); background: rgba(239, 68, 68, 0.05); }
 .quiz-option.locked { cursor: default; }
