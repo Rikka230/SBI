@@ -20,7 +20,6 @@ let allCoursesData = [];
 
 let editingCourseAuthorId = null;
 let editingCourseOriginalStatus = null;
-let editingCourseOriginalActive = false; // NOUVEAU: Permet de savoir si on l'active pour la 1ère fois
 
 document.addEventListener('DOMContentLoaded', () => {
     
@@ -37,6 +36,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.editCourse(editId);
                 window.history.replaceState({}, document.title, window.location.pathname + "?tab=tab-editor");
             }
+            
+            // INJECTION DU BOUTON DE PRÉVISUALISATION (Généré dynamiquement pour Prof et Admin)
+            if (!document.getElementById('btn-preview-course')) {
+                const saveBtn = document.getElementById('btn-save-course');
+                if (saveBtn) {
+                    saveBtn.insertAdjacentHTML('afterend', `<button id="btn-preview-course" class="action-btn" style="width: 100%; margin-top: 1rem; background: transparent; color: var(--text-main, white); border: 1px solid var(--border-color, #333); padding: 1rem; font-size: 1rem; cursor: pointer; transition: 0.2s;">👁️ Visualiser le rendu</button>`);
+                    
+                    document.getElementById('btn-preview-course').addEventListener('click', async () => {
+                        const cId = document.getElementById('edit-course-id').value;
+                        if (!cId) {
+                            alert("⚠️ Veuillez enregistrer le cours une première fois avant de le visualiser !");
+                            return;
+                        }
+                        // Sauvegarde silencieuse (le 'true' empêche la redirection et le popup)
+                        await saveCourseToFirebase(true);
+                    });
+                }
+            }
+
         } else {
             window.location.replace('/login.html');
         }
@@ -52,7 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    document.getElementById('btn-save-course').addEventListener('click', saveCourseToFirebase);
+    document.getElementById('btn-save-course').addEventListener('click', () => saveCourseToFirebase(false));
     document.getElementById('btn-add-chapter').addEventListener('click', () => createNewChapter('text'));
     document.getElementById('btn-add-quiz').addEventListener('click', () => createNewChapter('quiz'));
     
@@ -277,7 +295,7 @@ window.openFormationModal = function(formationId) {
             <div class="compact-user-row" style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; padding-right: 0.5rem;">
                 <label style="display: flex; align-items: center; gap: 0.5rem; flex-grow: 1; margin: 0; cursor: pointer; overflow: hidden;">
                     <input type="checkbox" class="cb-formation-user compact-cb" data-uid="${u.id}" data-role="${u.role}" ${isChecked}>
-                    <span style="font-size: 0.85rem; color: #ddd; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; width: 100%;">
+                    <span style="font-size: 0.85rem; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; width: 100%;">
                         ${name}
                     </span>
                 </label>
@@ -337,11 +355,10 @@ function refreshBlocsList() {
 window.prepareNewCourse = function() {
     editingCourseAuthorId = null;
     editingCourseOriginalStatus = null;
-    editingCourseOriginalActive = false;
 
     document.getElementById('edit-course-id').value = '';
     document.getElementById('course-title').value = '';
-    document.getElementById('course-bloc-select').value = '';
+    document.getElementById('course-bloc-select').value = ''; 
     currentChapters = [];
     activeChapterId = null;
     document.querySelectorAll('.formation-pill').forEach(p => p.classList.remove('selected'));
@@ -453,16 +470,18 @@ function renderChaptersList() {
     
     currentChapters.forEach((chap, index) => {
         const isActive = chap.id === activeChapterId;
-        const bg = isActive ? 'rgba(42, 87, 255, 0.1)' : '#111';
-        const border = isActive ? '1px solid var(--accent-blue)' : '1px solid #333';
         
+        // FIX VISUEL : Utilisation des variables CSS dynamiques 
+        const bg = isActive ? 'var(--accent-blue-light, rgba(42, 87, 255, 0.1))' : 'var(--bg-card, #111)';
+        const border = isActive ? '1px solid var(--accent-blue)' : '1px solid var(--border-color, #333)';
+        let color = chap.type === 'quiz' ? 'var(--accent-yellow, #fbbc04)' : (isActive ? 'var(--accent-blue)' : 'var(--text-main, white)');
+
         let icon = chap.type === 'quiz' ? '📝 ' : `${index + 1}. `;
-        let color = chap.type === 'quiz' ? 'var(--accent-yellow)' : (isActive ? 'var(--accent-blue)' : 'white');
 
         const li = `
             <li onclick="selectChapter('${chap.id}')" style="padding: 0.8rem; background: ${bg}; border: ${border}; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; color: ${color}; font-weight: ${isActive ? 'bold' : 'normal'};">
                 <span style="flex-grow: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${icon}${chap.titre}</span>
-                <button onclick="deleteChapter('${chap.id}', event)" style="background:none; border:none; color:var(--accent-red); cursor:pointer;">&times;</button>
+                <button onclick="deleteChapter('${chap.id}', event)" style="background:none; border:none; color:var(--accent-red, #ff4a4a); cursor:pointer;">&times;</button>
             </li>
         `;
         list.insertAdjacentHTML('beforeend', li);
@@ -472,24 +491,26 @@ function renderChaptersList() {
 function addQuizQuestion() {
     const container = document.getElementById('quiz-questions-container');
     const qIndex = container.children.length;
+    
+    // FIX VISUEL : Variables CSS pour le QCM
     const qHTML = `
-        <div class="quiz-question-block" data-qindex="${qIndex}" style="background: #111; padding: 1.5rem; border: 1px solid #333; border-radius: 6px; position: relative;">
-            <button onclick="this.parentElement.remove()" style="position: absolute; right: 10px; top: 10px; background: none; border: none; color: var(--accent-red); cursor: pointer; font-size: 1.2rem;">&times;</button>
-            <input type="text" class="q-title" placeholder="Votre question..." style="width: 100%; font-size: 1.1rem; padding: 0.8rem; background: transparent; color: white; border: none; border-bottom: 1px solid #555; outline: none; margin-bottom: 1rem;">
+        <div class="quiz-question-block" data-qindex="${qIndex}" style="background: var(--bg-card, #111); padding: 1.5rem; border: 1px solid var(--border-color, #333); border-radius: 6px; position: relative;">
+            <button onclick="this.parentElement.remove()" style="position: absolute; right: 10px; top: 10px; background: none; border: none; color: var(--accent-red, #ff4a4a); cursor: pointer; font-size: 1.2rem;">&times;</button>
+            <input type="text" class="q-title" placeholder="Votre question..." style="width: 100%; font-size: 1.1rem; padding: 0.8rem; background: transparent; color: var(--text-main, white); border: none; border-bottom: 1px solid var(--border-color, #555); outline: none; margin-bottom: 1rem;">
             <div class="q-options-container" style="display: flex; flex-direction: column; gap: 0.5rem;">
-                <label style="display: flex; align-items: center; gap: 0.5rem; color: #aaa;">
+                <label style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-muted, #aaa);">
                     <input type="checkbox" class="q-correct-cb" value="0" checked>
-                    <input type="text" class="q-opt" placeholder="Réponse 1" style="flex-grow:1; background: #222; border: 1px solid #444; padding: 0.5rem; color: white; border-radius:4px; outline:none;">
+                    <input type="text" class="q-opt" placeholder="Réponse 1" style="flex-grow:1; background: var(--bg-body, #222); border: 1px solid var(--border-color, #444); padding: 0.5rem; color: var(--text-main, white); border-radius:4px; outline:none;">
                 </label>
-                <label style="display: flex; align-items: center; gap: 0.5rem; color: #aaa;">
+                <label style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-muted, #aaa);">
                     <input type="checkbox" class="q-correct-cb" value="1">
-                    <input type="text" class="q-opt" placeholder="Réponse 2" style="flex-grow:1; background: #222; border: 1px solid #444; padding: 0.5rem; color: white; border-radius:4px; outline:none;">
+                    <input type="text" class="q-opt" placeholder="Réponse 2" style="flex-grow:1; background: var(--bg-body, #222); border: 1px solid var(--border-color, #444); padding: 0.5rem; color: var(--text-main, white); border-radius:4px; outline:none;">
                 </label>
             </div>
             <button type="button" onclick="window.addOptionToQuestion(this)" style="margin-top:0.8rem; background:none; border:none; color:var(--accent-blue); cursor:pointer; font-size:0.85rem;">+ Ajouter un choix</button>
-            <div style="margin-top: 1.5rem; display: flex; align-items: center; gap: 1rem; border-top: 1px solid #333; padding-top: 1rem;">
+            <div style="margin-top: 1.5rem; display: flex; align-items: center; gap: 1rem; border-top: 1px solid var(--border-color, #333); padding-top: 1rem;">
                 <span style="color: var(--text-muted); font-size: 0.85rem;">Cochez <strong>les</strong> bonnes réponses.</span>
-                <input type="number" class="q-points" value="1" min="1" style="width: 60px; background: #222; border: 1px solid #444; padding: 0.4rem; color: white; border-radius: 4px;"> <span style="color: var(--text-muted); font-size: 0.85rem;">Point(s)</span>
+                <input type="number" class="q-points" value="1" min="1" style="width: 60px; background: var(--bg-body, #222); border: 1px solid var(--border-color, #444); padding: 0.4rem; color: var(--text-main, white); border-radius: 4px;"> <span style="color: var(--text-muted); font-size: 0.85rem;">Point(s)</span>
             </div>
         </div>
     `;
@@ -500,10 +521,10 @@ window.addOptionToQuestion = function(btn) {
     const container = btn.previousElementSibling;
     const optIndex = container.children.length;
     const html = `
-        <label style="display: flex; align-items: center; gap: 0.5rem; color: #aaa;">
+        <label style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-muted, #aaa);">
             <input type="checkbox" class="q-correct-cb" value="${optIndex}">
-            <input type="text" class="q-opt" placeholder="Nouvelle réponse" style="flex-grow:1; background: #222; border: 1px solid #444; padding: 0.5rem; color: white; border-radius:4px; outline:none;">
-            <button type="button" onclick="this.parentElement.remove()" style="background:none; border:none; color:var(--accent-red); cursor:pointer; padding: 0 5px;">&times;</button>
+            <input type="text" class="q-opt" placeholder="Nouvelle réponse" style="flex-grow:1; background: var(--bg-body, #222); border: 1px solid var(--border-color, #444); padding: 0.5rem; color: var(--text-main, white); border-radius:4px; outline:none;">
+            <button type="button" onclick="this.parentElement.remove()" style="background:none; border:none; color:var(--accent-red, #ff4a4a); cursor:pointer; padding: 0 5px;">&times;</button>
         </label>
     `;
     container.insertAdjacentHTML('beforeend', html);
@@ -531,32 +552,32 @@ function renderQuizBuilder(questions) {
     questions.forEach((q, index) => {
         const indices = q.correctIndices || (q.correctIndex !== undefined ? [q.correctIndex] : []);
         const optionsHTML = q.options.map((opt, i) => `
-            <label style="display: flex; align-items: center; gap: 0.5rem; color: #aaa;">
+            <label style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-muted, #aaa);">
                 <input type="checkbox" class="q-correct-cb" value="${i}" ${indices.includes(i) ? 'checked' : ''}>
-                <input type="text" class="q-opt" value="${opt}" placeholder="Réponse ${i+1}" style="flex-grow:1; background: #222; border: 1px solid #444; padding: 0.5rem; color: white; border-radius:4px; outline:none;">
-                ${i > 1 ? `<button type="button" onclick="this.parentElement.remove()" style="background:none; border:none; color:var(--accent-red); cursor:pointer;">&times;</button>` : ''}
+                <input type="text" class="q-opt" value="${opt}" placeholder="Réponse ${i+1}" style="flex-grow:1; background: var(--bg-body, #222); border: 1px solid var(--border-color, #444); padding: 0.5rem; color: var(--text-main, white); border-radius:4px; outline:none;">
+                ${i > 1 ? `<button type="button" onclick="this.parentElement.remove()" style="background:none; border:none; color:var(--accent-red, #ff4a4a); cursor:pointer;">&times;</button>` : ''}
             </label>
         `).join('');
 
         const qHTML = `
-        <div class="quiz-question-block" data-qindex="${index}" style="background: #111; padding: 1.5rem; border: 1px solid #333; border-radius: 6px; position: relative;">
-            <button onclick="this.parentElement.remove()" style="position: absolute; right: 10px; top: 10px; background: none; border: none; color: var(--accent-red); cursor: pointer; font-size: 1.2rem;">&times;</button>
-            <input type="text" class="q-title" value="${q.question}" style="width: 100%; font-size: 1.1rem; padding: 0.8rem; background: transparent; color: white; border: none; border-bottom: 1px solid #555; outline: none; margin-bottom: 1rem;">
+        <div class="quiz-question-block" data-qindex="${index}" style="background: var(--bg-card, #111); padding: 1.5rem; border: 1px solid var(--border-color, #333); border-radius: 6px; position: relative;">
+            <button onclick="this.parentElement.remove()" style="position: absolute; right: 10px; top: 10px; background: none; border: none; color: var(--accent-red, #ff4a4a); cursor: pointer; font-size: 1.2rem;">&times;</button>
+            <input type="text" class="q-title" value="${q.question}" style="width: 100%; font-size: 1.1rem; padding: 0.8rem; background: transparent; color: var(--text-main, white); border: none; border-bottom: 1px solid var(--border-color, #555); outline: none; margin-bottom: 1rem;">
             <div class="q-options-container" style="display: flex; flex-direction: column; gap: 0.5rem;">
                 ${optionsHTML}
             </div>
             <button type="button" onclick="window.addOptionToQuestion(this)" style="margin-top:0.8rem; background:none; border:none; color:var(--accent-blue); cursor:pointer; font-size:0.85rem;">+ Ajouter un choix</button>
-            <div style="margin-top: 1.5rem; display: flex; align-items: center; gap: 1rem; border-top: 1px solid #333; padding-top: 1rem;">
+            <div style="margin-top: 1.5rem; display: flex; align-items: center; gap: 1rem; border-top: 1px solid var(--border-color, #333); padding-top: 1rem;">
                 <span style="color: var(--text-muted); font-size: 0.85rem;">Cochez <strong>les</strong> bonnes réponses.</span>
-                <input type="number" class="q-points" value="${q.points}" min="1" style="width: 60px; background: #222; border: 1px solid #444; padding: 0.4rem; color: white; border-radius: 4px;"> <span style="color: var(--text-muted); font-size: 0.85rem;">Point(s)</span>
+                <input type="number" class="q-points" value="${q.points}" min="1" style="width: 60px; background: var(--bg-body, #222); border: 1px solid var(--border-color, #444); padding: 0.4rem; color: var(--text-main, white); border-radius: 4px;"> <span style="color: var(--text-muted); font-size: 0.85rem;">Point(s)</span>
             </div>
         </div>`;
         container.insertAdjacentHTML('beforeend', qHTML);
     });
 }
 
-// FIX: Sauvegarde et envoi intelligent des Notifications aux Étudiants
-async function saveCourseToFirebase() {
+// FIX DE LA FONCTION DE SAUVEGARDE POUR GÉRER LA PRÉVISUALISATION SILENCIEUSE
+async function saveCourseToFirebase(isPreview = false) {
     saveCurrentChapterContent(); 
     
     const courseId = document.getElementById('edit-course-id').value;
@@ -570,6 +591,7 @@ async function saveCourseToFirebase() {
     if (currentChapters.length === 0) { alert('⚠️ Ajoutez au moins une étape.'); return; }
 
     const saveBtn = document.getElementById('btn-save-course');
+    const originalSaveText = saveBtn.textContent;
     saveBtn.textContent = 'Sauvegarde...';
     saveBtn.disabled = true;
 
@@ -583,9 +605,7 @@ async function saveCourseToFirebase() {
     else if (isActive) finalStatut = 'approved';
 
     const finalAuteurId = courseId ? editingCourseAuthorId : currentUid;
-    
-    // Détection pour savoir si on vient TOUT JUSTE de rendre le cours public
-    const isNewlyPublished = (finalStatut === 'approved' && isActive && (!courseId || (!editingCourseOriginalActive || editingCourseOriginalStatus !== 'approved')));
+    const isValidation = (courseId && editingCourseOriginalStatus === 'pending' && finalStatut === 'approved' && !isTeacher);
 
     try {
         const courseData = {
@@ -602,16 +622,17 @@ async function saveCourseToFirebase() {
 
         if (courseId) {
             await updateDoc(doc(db, "courses", courseId), courseData);
-            alert(forcePending ? '✅ Modifications envoyées pour validation !' : '✅ Cours mis à jour !');
+            if (!isPreview) alert(forcePending ? '✅ Modifications envoyées pour validation !' : '✅ Cours mis à jour !');
         } else {
             courseData.dateCreation = serverTimestamp();
             const docRef = await addDoc(collection(db, "courses"), courseData);
             courseRefId = docRef.id;
-            alert(forcePending ? '✅ Cours soumis pour validation !' : '✅ Nouveau cours créé !');
+            // On associe le nouvel ID à l'éditeur pour éviter de le recréer si on reclique sur Save/Preview
+            document.getElementById('edit-course-id').value = courseRefId;
+            if (!isPreview) alert(forcePending ? '✅ Cours soumis pour validation !' : '✅ Nouveau cours créé !');
         }
         
-        // 1. Notif pour l'Admin si le prof soumet
-        if (forcePending) {
+        if (forcePending && !courseId) {
             await addDoc(collection(db, "notifications"), {
                 type: 'course_validation',
                 courseId: courseRefId,
@@ -622,8 +643,7 @@ async function saveCourseToFirebase() {
             });
         }
         
-        // 2. Notif pour le Prof si l'Admin valide son brouillon
-        if (courseId && editingCourseOriginalStatus === 'pending' && finalStatut === 'approved' && !isTeacher && editingCourseAuthorId && editingCourseAuthorId !== currentUid) {
+        if (isValidation && editingCourseAuthorId && editingCourseAuthorId !== currentUid) {
             await addDoc(collection(db, "notifications"), {
                 type: 'course_approved',
                 courseId: courseRefId,
@@ -632,40 +652,21 @@ async function saveCourseToFirebase() {
                 dateCreation: serverTimestamp(),
             });
         }
-
-        // 3. NOUVEAU : Notif DYNAMIQUE pour tous les élèves concernés si le cours passe "Public"
-        if (isNewlyPublished && selectedPills.length > 0) {
-            let targetStudents = new Set();
-            
-            // On récupère tous les élèves inscrits dans les formations liées au cours
-            selectedPills.forEach(formId => {
-                const formObj = allFormationsData.find(f => f.id === formId || f.titre === formId);
-                if (formObj && formObj.students) {
-                    formObj.students.forEach(s => targetStudents.add(s));
-                }
-            });
-
-            const studentArray = Array.from(targetStudents);
-            
-            if (studentArray.length > 0) {
-                await addDoc(collection(db, "notifications"), {
-                    type: 'new_course_published',
-                    courseId: courseRefId,
-                    courseTitle: title,
-                    targetStudents: studentArray,
-                    dateCreation: serverTimestamp(),
-                });
-            }
-        }
         
-        window.prepareNewCourse(); 
         await loadCourses();
-        window.switchCourseTab('tab-list');
+        
+        // Si c'est une preview, on n'efface pas l'éditeur et on ouvre le viewer !
+        if (isPreview) {
+            window.open(`/student/cours-viewer.html?id=${courseRefId}&preview=true`, '_blank');
+        } else {
+            window.prepareNewCourse(); 
+            window.switchCourseTab('tab-list');
+        }
 
     } catch (error) {
         alert("❌ Erreur de sauvegarde.");
     } finally {
-        saveBtn.textContent = 'Sauvegarder le Cours Complet';
+        saveBtn.textContent = originalSaveText;
         saveBtn.disabled = false;
     }
 }
@@ -691,16 +692,16 @@ async function loadCourses() {
             
             let statusHtml = '';
             if (data.statutValidation === 'pending') {
-                statusHtml = `<span style="color: var(--accent-yellow); font-weight: bold; font-size: 0.8rem;">⏳ EN ATTENTE</span>`;
+                statusHtml = `<span style="color: var(--accent-yellow, #fbbc04); font-weight: bold; font-size: 0.8rem;">⏳ EN ATTENTE</span>`;
             } else {
-                statusHtml = data.actif ? `<span style="color: var(--accent-green); font-weight: bold; font-size: 0.8rem;">● ACTIF</span>` : `<span style="color: var(--accent-red); font-weight: bold; font-size: 0.8rem;">● BROUILLON</span>`;
+                statusHtml = data.actif ? `<span style="color: var(--accent-green, #10b981); font-weight: bold; font-size: 0.8rem;">● ACTIF</span>` : `<span style="color: var(--accent-red, #ff4a4a); font-weight: bold; font-size: 0.8rem;">● BROUILLON</span>`;
             }
 
             const tagsHtml = data.formations ? data.formations.map(fId => {
                 const formObj = allFormationsData.find(f => f.id === fId || f.titre === fId); 
                 const displayName = formObj ? formObj.titre : fId;
-                return `<span class="tag">📁 ${displayName}</span>`;
-            }).join('') : '';
+                return `<span class="tag" style="background: var(--bg-body, #222); padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; border: 1px solid var(--border-color, #444);">📁 ${displayName}</span>`;
+            }).join(' ') : '';
 
             const blocHtml = data.bloc ? `<span style="color: var(--accent-blue); font-size: 0.8rem; border: 1px solid var(--accent-blue); padding: 2px 8px; border-radius: 12px; margin-left: 10px;">${data.bloc}</span>` : '';
 
@@ -715,23 +716,23 @@ async function loadCourses() {
             }
             
             const html = `
-            <div style="background: var(--bg-card); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; opacity: ${data.actif ? '1' : '0.6'};">
+            <div style="background: var(--bg-card, #111); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color, #333); display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; opacity: ${data.actif ? '1' : '0.6'};">
                 <div>
                     <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem;">
                         ${statusHtml} 
-                        <h3 style="margin: 0; display: flex; align-items: center;">
+                        <h3 style="margin: 0; display: flex; align-items: center; color: var(--text-main, white);">
                             ${data.titre}
                             ${blocHtml}
-                            <span style="font-size: 0.85rem; font-weight: normal; color: var(--text-muted); font-style: italic; margin-left: 0.8rem;">
+                            <span style="font-size: 0.85rem; font-weight: normal; color: var(--text-muted, #888); font-style: italic; margin-left: 0.8rem;">
                                 par ${authorName}
                             </span>
                         </h3>
                     </div>
-                    <div>${tagsHtml} <span style="color: var(--text-muted); font-size: 0.85rem; margin-left: 1rem;">${nbChapitres} Étape(s)</span></div>
+                    <div style="color: var(--text-main, white);">${tagsHtml} <span style="color: var(--text-muted, #888); font-size: 0.85rem; margin-left: 1rem;">${nbChapitres} Étape(s)</span></div>
                 </div>
                 <div style="display: flex; gap: 0.5rem;">
-                    <button class="action-btn" style="width: auto; margin: 0; color: var(--accent-yellow);" onclick="window.duplicateCourse('${courseId}')" title="Créer une copie">Copier</button>
-                    <button class="action-btn" style="width: auto; margin: 0; color: var(--accent-blue);" onclick="window.editCourse('${courseId}')">Éditer</button>
+                    <button class="action-btn" style="width: auto; margin: 0; color: var(--accent-yellow, #fbbc04); background: transparent; border: 1px solid var(--border-color, #333);" onclick="window.duplicateCourse('${courseId}')" title="Créer une copie">Copier</button>
+                    <button class="action-btn" style="width: auto; margin: 0; color: var(--accent-blue); background: transparent; border: 1px solid var(--border-color, #333);" onclick="window.editCourse('${courseId}')">Éditer</button>
                     <button class="action-btn danger" style="width: auto; margin: 0;" onclick="window.deleteCourse('${courseId}')">❌</button>
                 </div>
             </div>`;
@@ -754,11 +755,11 @@ window.editCourse = async (id) => {
             document.getElementById('edit-course-id').value = id;
             document.getElementById('course-title').value = data.titre || '';
             document.getElementById('course-active').checked = data.actif;
+            
             document.getElementById('course-bloc-select').value = data.bloc || '';
             
             editingCourseAuthorId = data.auteurId || currentUid;
             editingCourseOriginalStatus = data.statutValidation || 'approved';
-            editingCourseOriginalActive = data.actif || false; // Sauvegarde l'état initial
 
             document.querySelectorAll('.formation-pill').forEach(pill => {
                 const val = pill.getAttribute('data-val');
