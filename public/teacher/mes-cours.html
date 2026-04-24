@@ -54,13 +54,13 @@
                             
                             <div class="form-group">
                                 <label>Titre du cours</label>
-                                <input type="text" id="course-title" class="prof-input" style="border: 1px solid var(--border-color); background: #f9fafb;">
+                                <input type="text" id="course-title" class="prof-input">
                             </div>
                             
                             <div class="form-group">
                                 <label>Bloc (Chapitre global)</label>
                                 <div style="display:flex; gap:0.5rem;">
-                                    <select id="course-bloc-select" class="prof-input" style="border: 1px solid var(--border-color); background: #f9fafb;"></select>
+                                    <select id="course-bloc-select" class="prof-input"></select>
                                     <button id="btn-add-new-bloc" class="action-btn" style="width: auto; margin:0; padding: 0 15px; background: white; border-color: var(--border-color); color: var(--text-main);">+</button>
                                 </div>
                             </div>
@@ -70,9 +70,12 @@
                                 <div id="formations-selector" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 0.5rem;"></div>
                             </div>
 
-                            <label style="display: flex; align-items: center; gap: 8px; margin-top: 1rem; margin-bottom: 2rem; cursor: pointer; padding: 10px; background: rgba(245, 158, 11, 0.05); border-radius: 8px; border: 1px solid rgba(245, 158, 11, 0.2);">
-                                <input type="checkbox" id="course-active" style="width: 18px; height: 18px; accent-color: var(--accent-orange);">
-                                <span style="font-weight: bold; color: var(--accent-orange); font-size: 0.9rem;">Soumettre à validation (Publier)</span>
+                            <label class="toggle-container" style="display: flex; align-items: center; justify-content: space-between; margin-top: 1.5rem; margin-bottom: 2rem; cursor: pointer; padding: 15px; background: #f9fafb; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: 0 2px 5px rgba(0,0,0,0.02);">
+                                <span style="font-weight: bold; color: var(--text-main); font-size: 0.95rem;">Soumettre à validation (Publier)</span>
+                                <div class="toggle-switch">
+                                    <input type="checkbox" id="course-active" style="display: none;">
+                                    <span class="slider"></span>
+                                </div>
                             </label>
 
                             <h4 style="margin: 0 0 1rem 0; padding-top: 1.5rem; border-top: 1px solid var(--border-color); color: var(--text-main);">Étapes du cours</h4>
@@ -96,7 +99,7 @@
 
                             <div id="chapter-editor-zone" style="display: none; flex-direction: column; height: 100%;">
                                 <div style="padding: 1.5rem; border-bottom: 1px solid var(--border-color); background: #f9fafb;">
-                                    <input type="text" id="chapter-title" class="prof-input" placeholder="Titre de la leçon..." style="font-size: 1.5rem; font-weight: bold; border: none; background: transparent; padding: 0; margin-bottom: 1rem; color: var(--text-main);">
+                                    <input type="text" id="chapter-title" class="prof-input" placeholder="Titre de la leçon..." style="font-size: 1.5rem; font-weight: bold; border: none; background: transparent; padding: 0; margin-bottom: 1rem; color: var(--text-main); box-shadow: none;">
                                     
                                     <div style="display: flex; gap: 1.5rem; align-items: center;">
                                         <label style="display: flex; align-items: center; gap: 5px; font-weight: bold; cursor: pointer;"><input type="radio" name="media_type" value="image" checked style="accent-color: var(--accent-orange);"> Image</label>
@@ -105,25 +108,34 @@
                                 </div>
 
                                 <div style="padding: 1.5rem; flex-grow: 1; display: flex; flex-direction: column;">
+                                    
                                     <div id="media-image-zone" style="display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.5rem;">
-                                        <input type="file" id="chapter-image-upload" accept="image/*" style="font-size: 0.9rem;">
+                                        <div class="drag-drop-zone" id="drop-zone-image">
+                                            <svg width="32" height="32" fill="var(--text-muted)" viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+                                            <p>Glissez une image ici ou <span>cliquez pour parcourir</span></p>
+                                            <input type="file" id="chapter-image-upload" accept="image/*" style="display:none;">
+                                        </div>
                                         <input type="hidden" id="chapter-image-base64">
-                                        <img id="chapter-image-preview" style="max-width: 100%; max-height: 300px; display: none; border-radius: 8px; border: 1px solid var(--border-color); object-fit: contain;">
+                                        <img id="chapter-image-preview" style="max-width: 100%; max-height: 300px; display: none; border-radius: 8px; border: 1px solid var(--border-color); object-fit: contain; margin-top: 10px;">
                                     </div>
 
                                     <div id="media-video-zone" style="display: none; flex-direction: column; gap: 0.5rem; margin-bottom: 1.5rem;">
-                                        <input type="file" id="chapter-video-upload" accept="video/mp4,video/webm" style="font-size: 0.9rem;">
+                                        <div class="drag-drop-zone" id="drop-zone-video">
+                                            <svg width="32" height="32" fill="var(--text-muted)" viewBox="0 0 24 24"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg>
+                                            <p>Glissez une vidéo ici ou <span>cliquez pour parcourir</span></p>
+                                            <input type="file" id="chapter-video-upload" accept="video/mp4,video/webm" style="display:none;">
+                                        </div>
                                         <input type="hidden" id="chapter-video-base64">
-                                        <video id="chapter-video-preview" controls style="max-width: 100%; max-height: 300px; display: none; border-radius: 8px; border: 1px solid var(--border-color);"></video>
+                                        <video id="chapter-video-preview" controls style="max-width: 100%; max-height: 300px; display: none; border-radius: 8px; border: 1px solid var(--border-color); margin-top: 10px;"></video>
                                     </div>
 
                                     <label style="font-weight: bold; margin-bottom: 0.5rem; color: var(--text-main);">Texte de la leçon</label>
-                                    <div id="quill-editor" style="flex-grow: 1; background: white; border-radius: 0 0 8px 8px; font-size: 1.1rem;"></div>
+                                    <div id="quill-editor" style="flex-grow: 1; background: white; border-radius: 0 0 8px 8px; font-size: 1.1rem; min-height: 300px;"></div>
                                 </div>
                             </div>
 
                             <div id="quiz-editor-zone" style="display: none; flex-direction: column; padding: 1.5rem;">
-                                <input type="text" id="quiz-title" class="prof-input" placeholder="Titre de l'examen..." style="font-size: 1.5rem; font-weight: bold; border: none; border-bottom: 2px solid var(--border-color); border-radius: 0; padding: 0 0 0.5rem 0; margin-bottom: 2rem; background: transparent;">
+                                <input type="text" id="quiz-title" class="prof-input" placeholder="Titre de l'examen..." style="font-size: 1.5rem; font-weight: bold; border: none; border-bottom: 2px solid var(--border-color); border-radius: 0; padding: 0 0 0.5rem 0; margin-bottom: 2rem; background: transparent; box-shadow: none;">
                                 
                                 <div id="quiz-questions-container" style="display: flex; flex-direction: column; gap: 2rem;"></div>
                                 
