@@ -19,6 +19,17 @@ styleFix.textContent = `
     .search-result-item:hover { background: rgba(16, 185, 129, 0.05); }
     .search-result-title { font-weight: bold; font-size: 0.9rem; margin-bottom: 2px; }
     .search-result-sub { font-size: 0.75rem; color: var(--text-muted, #6b7280); }
+
+    /* CUSTOM SCROLLBAR GLOBALE ET ÉLÉGANTE */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    
+    /* Scrollbar spécifique Admin (Sombre) */
+    .admin-theme ::-webkit-scrollbar-track { background: #0a0a0c; }
+    .admin-theme ::-webkit-scrollbar-thumb { background: #333; }
+    .admin-theme ::-webkit-scrollbar-thumb:hover { background: #555; }
 `;
 document.head.appendChild(styleFix);
 
@@ -85,9 +96,9 @@ class AdminRightPanel extends HTMLElement {
                 </div>
 
                 <div style="padding: 1rem 1.5rem; border-bottom: 1px solid #333; position: relative;">
-                    <div style="position: relative;">
+                    <div style="position: relative; width: 100%;">
                         <svg viewBox="0 0 24 24" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 16px; fill: #666;"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
-                        <input type="text" class="global-search-input" placeholder="Chercher utilisateur, cours..." style="width: 100%; padding: 0.6rem 1rem 0.6rem 2rem; border-radius: 6px; background: #111; color: white; border: 1px solid #333; outline: none; font-size: 0.85rem;">
+                        <input type="text" class="global-search-input" placeholder="Chercher utilisateur, cours..." style="width: 100%; box-sizing: border-box; padding: 0.6rem 1rem 0.6rem 2.2rem; border-radius: 6px; background: #111; color: white; border: 1px solid #333; outline: none; font-size: 0.85rem;">
                         <div class="global-search-results"></div>
                     </div>
                 </div>
@@ -193,9 +204,9 @@ class StudentTopBar extends HTMLElement {
             <header class="top-bar" style="border-bottom: 1px solid var(--border-color); background-color: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px);">
                 <button class="mobile-toggle left-toggle" id="btn-toggle-mobile"><svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg></button>
                 
-                <div class="search-bar-top" style="position: relative;">
-                    <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
-                    <input type="text" class="global-search-input" placeholder="Rechercher un cours, une ressource...">
+                <div class="search-bar-top" style="position: relative; flex-grow: 1; max-width: 450px; margin-left: 2rem;">
+                    <svg viewBox="0 0 24 24" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); width: 18px; fill: var(--text-muted);"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+                    <input type="text" class="global-search-input" placeholder="Rechercher un cours, une ressource..." style="width: 100%; box-sizing: border-box; padding: 0.7rem 1.5rem 0.7rem 2.8rem; background: #f9fafb; border: 1px solid var(--border-color); border-radius: 20px; outline: none; font-size: 0.95rem; color: var(--text-main);">
                     <div class="global-search-results"></div>
                 </div>
 
