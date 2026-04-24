@@ -42,7 +42,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Gestion de l'affichage du panneau et clic à l'extérieur
     document.body.addEventListener('click', (e) => {
         const bellBtn = e.target.closest('#notif-bell-btn');
         const notifSection = document.getElementById('notifications-section');
@@ -70,7 +69,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         } else if (notifSection && notifSection.style.display === 'block' && !e.target.closest('#notifications-section')) {
-            // Fermeture si on clique ailleurs sur la page
             if (profileSection) profileSection.style.display = 'block';
             notifSection.style.display = 'none';
             if (titleNotif) titleNotif.style.display = 'none';
@@ -151,7 +149,6 @@ function renderNotificationsList(notifs) {
     notifs.sort((a,b) => (b.dateCreation?.toMillis() || 0) - (a.dateCreation?.toMillis() || 0));
 
     notifs.forEach(notif => {
-        // Protection anti-déformation (flex-shrink:0 et min-width)
         const dotIndicator = `<div style="width:8px; height:8px; min-width:8px; background:var(--accent-red, #ff4a4a); border-radius:50%; flex-shrink:0; margin-top: 5px;"></div>`;
         let titleText = ""; let bodyText = ""; let iconSvg = "";
         
@@ -160,7 +157,7 @@ function renderNotificationsList(notifs) {
             bodyText = `Le cours <strong>${notif.courseTitle}</strong> est maintenant disponible.`;
             iconSvg = `<svg width="20" height="20" style="min-width:20px; flex-shrink:0;" fill="var(--accent-blue, #2A57FF)" viewBox="0 0 24 24"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3z"/></svg>`;
         } else if (notif.type === 'course_approved') {
-            titleText = "🎉 Cours Validé !";
+            titleText = "Cours Validé !";
             bodyText = `Votre cours "<strong>${notif.courseTitle}</strong>" a été publié.`;
             iconSvg = `<svg width="20" height="20" style="min-width:20px; flex-shrink:0;" fill="var(--accent-green, #10b981)" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>`;
         } else {
@@ -187,7 +184,7 @@ function renderNotificationsList(notifs) {
     document.querySelectorAll('.notif-item').forEach(item => {
         item.addEventListener('click', async (e) => {
             e.preventDefault();
-            e.stopPropagation(); // Empêche le clic de déclencher d'autres événements inattendus
+            e.stopPropagation(); 
             
             const notifId = e.currentTarget.getAttribute('data-id');
             const notifType = e.currentTarget.getAttribute('data-type');
@@ -215,7 +212,6 @@ function renderNotificationsList(notifs) {
                 else if (currentUserProfile.role) userRole = currentUserProfile.role;
             }
 
-            // Aiguillage forcé par le TYPE de notification (contourne le God Mode)
             if (notifType === 'course_approved') {
                 showTeacherCourseActionModal(courseId, courseTitle);
             } 
@@ -244,6 +240,9 @@ function showTeacherCourseActionModal(courseId, courseTitle) {
         document.body.appendChild(modal);
     }
 
+    const eyeSvg = `<svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24" style="vertical-align: middle; margin-right: 8px;"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>`;
+    const editSvg = `<svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24" style="vertical-align: middle; margin-right: 8px;"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>`;
+
     modal.innerHTML = `
         <div style="background: var(--bg-card, #111); padding: 2.5rem 2rem; border-radius: 12px; border: 1px solid var(--border-color, #333); max-width: 420px; width: 90%; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.6); transform: translateY(20px); transition: transform 0.3s ease;">
             <div style="width: 60px; height: 60px; background: rgba(16, 185, 129, 0.15); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem auto;">
@@ -254,8 +253,12 @@ function showTeacherCourseActionModal(courseId, courseTitle) {
                 Félicitations, votre cours <strong style="color: var(--accent-orange, #f59e0b);">${courseTitle}</strong> a été validé et est désormais accessible aux élèves.
             </p>
             <div style="display: flex; flex-direction: column; gap: 0.8rem;">
-                <button id="btn-modal-view" style="width: 100%; padding: 0.9rem; background: var(--accent-blue, #2A57FF); color: white; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: background 0.2s;">👀 Visualiser le cours</button>
-                <button id="btn-modal-edit" style="width: 100%; padding: 0.9rem; background: transparent; color: var(--text-main, white); border: 1px solid var(--border-color, #444); border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'">✏️ Ouvrir dans l'éditeur</button>
+                <button id="btn-modal-view" style="width: 100%; padding: 0.9rem; background: var(--accent-blue, #2A57FF); color: white; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: background 0.2s;">
+                    ${eyeSvg} Visualiser le cours
+                </button>
+                <button id="btn-modal-edit" style="width: 100%; padding: 0.9rem; background: transparent; color: var(--text-main, white); border: 1px solid var(--border-color, #444); border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'">
+                    ${editSvg} Ouvrir dans l'éditeur
+                </button>
                 <button id="btn-modal-close" style="width: 100%; padding: 0.8rem; background: transparent; color: var(--accent-red, #ff4a4a); border: none; font-weight: bold; cursor: pointer; margin-top: 0.5rem;">Fermer</button>
             </div>
         </div>
@@ -269,7 +272,7 @@ function showTeacherCourseActionModal(courseId, courseTitle) {
 
     document.getElementById('btn-modal-view').onclick = () => {
         modal.style.display = 'none';
-        window.location.assign(`/student/cours-viewer.html?id=${courseId}`); 
+        window.open(`/teacher/cours-viewer.html?id=${courseId}&preview=true`, '_blank'); 
     };
     document.getElementById('btn-modal-edit').onclick = () => {
         modal.style.display = 'none';
