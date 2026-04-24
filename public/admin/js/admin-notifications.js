@@ -18,30 +18,39 @@ document.addEventListener('DOMContentLoaded', () => {
             const userSnap = await getDoc(doc(db, "users", currentUid));
             if(userSnap.exists()) currentUserProfile = userSnap.data();
             initNotificationsRealtime();
-            setupGlobalSearch(); // Active le moteur de recherche
+            
+            // Laisse le temps aux composants HTML personnalisés de s'afficher avant de brancher la recherche
+            setTimeout(() => setupGlobalSearch(), 500); 
         }
     });
 
-    const bellBtn = document.getElementById('notif-bell-btn');
-    const profileSection = document.getElementById('profile-section');
-    const notifSection = document.getElementById('notifications-section');
-    const titleNotif = document.getElementById('notif-panel-title');
-
-    if(bellBtn && notifSection) {
-        bellBtn.addEventListener('click', () => {
-            if(notifSection.style.display === 'none') {
-                if (profileSection) profileSection.style.display = 'none';
-                notifSection.style.display = 'block';
-                if (titleNotif) titleNotif.style.display = 'block';
-                bellBtn.querySelector('svg').style.fill = 'var(--accent-green)';
-            } else {
-                if (profileSection) profileSection.style.display = 'block';
-                notifSection.style.display = 'none';
-                if (titleNotif) titleNotif.style.display = 'none';
-                bellBtn.querySelector('svg').style.fill = 'var(--text-muted)';
+    // FIX : Délégation d'événement globale pour être sûr que le clic sur la cloche fonctionne 
+    // même si la barre HTML se charge une milliseconde trop tard.
+    document.body.addEventListener('click', (e) => {
+        const bellBtn = e.target.closest('#notif-bell-btn');
+        if (bellBtn) {
+            const notifSection = document.getElementById('notifications-section');
+            const profileSection = document.getElementById('profile-section');
+            const titleNotif = document.getElementById('notif-panel-title');
+            
+            if(notifSection) {
+                const isStudent = !window.location.pathname.includes('admin');
+                const activeColor = isStudent ? 'var(--accent-green)' : 'var(--accent-blue)';
+                
+                if(notifSection.style.display === 'none' || notifSection.style.display === '') {
+                    if (profileSection) profileSection.style.display = 'none';
+                    notifSection.style.display = 'block';
+                    if (titleNotif) titleNotif.style.display = 'block';
+                    bellBtn.querySelector('svg').style.fill = activeColor;
+                } else {
+                    if (profileSection) profileSection.style.display = 'block';
+                    notifSection.style.display = 'none';
+                    if (titleNotif) titleNotif.style.display = 'none';
+                    bellBtn.querySelector('svg').style.fill = 'var(--text-muted, #9ca3af)';
+                }
             }
-        });
-    }
+        }
+    });
 });
 
 function initNotificationsRealtime() {
@@ -53,7 +62,6 @@ function initNotificationsRealtime() {
         snapshot.forEach(docSnap => {
             const data = docSnap.data();
             
-            // Si la notif cible un étudiant spécifique (Nouveau cours)
             if (data.targetStudents && data.targetStudents.includes(currentUid)) {
                 notifs.push({ id: docSnap.id, ...data });
             }
@@ -106,7 +114,7 @@ function renderNotificationsList(notifs) {
         
         if (notif.type === 'new_course_published') {
             titleText = "Nouveau cours disponible !";
-            bodyText = `Le cours <strong>${notif.courseTitle}</strong> est maintenant disponible dans vos formations.`;
+            bodyText = `Le cours <strong>${notif.courseTitle}</strong> est maintenant disponible.`;
             iconSvg = `<svg width="20" height="20" fill="var(--accent-green)" viewBox="0 0 24 24"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3z"/></svg>`;
         } else if (notif.type === 'course_approved') {
             titleText = "🎉 Cours Validé !";
@@ -142,10 +150,7 @@ function renderNotificationsList(notifs) {
 
             try {
                 if (notifType === 'new_course_published') {
-                    // Pour un étudiant, on le retire simplement de la liste des cibles
-                    await updateDoc(doc(db, "notifications", notifId), {
-                        targetStudents: arrayRemove(currentUid)
-                    });
+                    await updateDoc(doc(db, "notifications", notifId), { targetStudents: arrayRemove(currentUid) });
                 } else {
                     await deleteDoc(doc(db, "notifications", notifId));
                 }
@@ -154,14 +159,11 @@ function renderNotificationsList(notifs) {
             const nSection = document.getElementById('notifications-section');
             if(nSection) nSection.style.display = 'none';
 
-            // Redirection intelligente
             if (notifType === 'new_course_published') {
                 window.location.assign(`/student/cours-viewer.html?id=${courseId}`);
-            } 
-            else if (currentUserProfile && currentUserProfile.role === 'teacher') {
+            } else if (currentUserProfile && currentUserProfile.role === 'teacher') {
                 alert("Génial ! Votre cours est maintenant en ligne !");
-            } 
-            else {
+            } else {
                 if(window.location.pathname.includes('formations-cours.html')) {
                     if(typeof window.editCourse === 'function') window.editCourse(courseId);
                     else window.location.assign(`formations-cours.html?edit=${courseId}`);
@@ -173,16 +175,17 @@ function renderNotificationsList(notifs) {
     });
 }
 
-// MOTEUR DE RECHERCHE GLOBAL
 function setupGlobalSearch() {
     const searchInputs = document.querySelectorAll('.global-search-input');
     
     searchInputs.forEach(input => {
+        if (input.dataset.searchAttached) return;
+        input.dataset.searchAttached = 'true';
+        
         const resultsContainer = input.nextElementSibling;
         
         input.addEventListener('focus', async () => {
             if (!window.searchDataCache) {
-                // Mise en cache des données au premier clic pour des performances instantanées
                 const [uSnap, cSnap] = await Promise.all([getDocs(collection(db, 'users')), getDocs(collection(db, 'courses'))]);
                 window.searchDataCache = { users: [], courses: [] };
                 uSnap.forEach(d => window.searchDataCache.users.push({id: d.id, ...d.data()}));
@@ -200,7 +203,6 @@ function setupGlobalSearch() {
             let html = '';
             const isStudent = currentUserProfile && currentUserProfile.role !== 'admin' && currentUserProfile.role !== 'teacher' && !currentUserProfile.isGod;
 
-            // 1. Recherche dans les Cours
             const matchedCourses = window.searchDataCache.courses.filter(c => c.titre && c.titre.toLowerCase().includes(term) && (isStudent ? c.actif : true)).slice(0, 5);
             
             if (matchedCourses.length > 0) {
@@ -218,7 +220,6 @@ function setupGlobalSearch() {
                 });
             }
 
-            // 2. Recherche dans les Utilisateurs (Admins uniquement)
             if (!isStudent) {
                 const matchedUsers = window.searchDataCache.users.filter(u => {
                     const name = `${u.prenom || ''} ${u.nom || ''}`.toLowerCase();
@@ -249,7 +250,6 @@ function setupGlobalSearch() {
             resultsContainer.style.display = 'block';
         });
         
-        // Ferme la liste si on clique en dehors
         document.addEventListener('click', (e) => {
             if (!input.contains(e.target) && !resultsContainer.contains(e.target)) {
                 resultsContainer.style.display = 'none';
