@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mon Espace - SBI Teacher</title>
+    
+    <link rel="stylesheet" href="/admin/css/admin-layout.css">
+    <link rel="stylesheet" href="/admin/css/admin.css">
+    <link rel="stylesheet" href="/admin/css/admin-notifications.css">
+    <link rel="stylesheet" href="/teacher/css/teacher.css">
+    
+    <script src="/admin/js/components.js"></script>
+</head>
+<body class="preload">
+
+<div class="app-container" id="app-container">
+    
+    <script>
+        if (window.innerWidth > 1024 && localStorage.getItem('leftPanelCollapsed') === 'true') {
+            document.getElementById('app-container').classList.add('left-collapsed');
+        }
+    </script>
+
+    <teacher-left-panel></teacher-left-panel>
+    <teacher-top-bar></teacher-top-bar>
+
+    <main id="main-content">
+        <div class="content-wrapper">
+            
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                <h1 style="margin: 0; font-size: 2.2rem; font-weight: 800; display:flex; align-items:center; gap:10px;">
+                    Mon <span style="color: var(--accent-orange);">Espace</span>
+                </h1>
+            </div>
+
+            <div class="hub-card" style="text-align: center; padding: 4rem 2rem; max-width: 800px; margin: 0 auto;">
+                <div style="width: 80px; height: 80px; background: rgba(245, 158, 11, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem auto;">
+                    <svg width="40" height="40" fill="var(--accent-orange)" viewBox="0 0 24 24"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/></svg>
+                </div>
+                
+                <h2 style="font-size: 1.8rem; color: var(--text-main); margin-bottom: 1rem;">Bienvenue sur votre tableau de bord</h2>
+                <p style="color: var(--text-muted); font-size: 1.1rem; margin-bottom: 2.5rem;">Prêt à partager votre savoir et créer du nouveau contenu pédagogique ?</p>
+                
+                <button id="btn-create-formation" class="action-btn" style="margin: 0 auto; padding: 1.2rem 2rem; font-size: 1.1rem; background: var(--accent-orange); color: white; border: none; border-radius: 30px; box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3); transition: all 0.3s;">
+                    + Créer un cours de Test (Envoi Notification)
+                </button>
+            </div>
+
+        </div>
+    </main>
+</div>
+
+<script type="module" src="/admin/js/admin-notifications.js"></script>
+<script type="module" src="/admin/js/admin-ui.js"></script>
+
+<script type="module">
+    import { db, auth } from '/js/firebase-init.js';
+    import { collection, addDoc, serverTimestamp, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+
+    let currentUid = null;
+    let currentUserProfile = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                currentUid = user.uid;
+                const userSnap = await getDoc(doc(db, "users", currentUid));
+                if (userSnap.exists()) {
+                    currentUserProfile = userSnap.data();
+                    
+                    // Remplissage dynamique du mini-profil dans la barre de navigation
+                    const displayName = `${currentUserProfile.prenom || ''} ${currentUserProfile.nom || ''}`.trim() || "Professeur";
+                    const avatarUrl = currentUserProfile.photoURL || `https://ui-avatars.com/api/?name=${displayName}&background=111&color=fff`;
+                    
+                    const topName = document.getElementById('top-user-name');
+                    if (topName) topName.textContent = displayName;
+                    
+                    const topAvatar = document.getElementById('top-user-avatar');
+                    if (topAvatar) topAvatar.innerHTML = `<img src="${avatarUrl}" style="width:100%; height:100%; object-fit:cover;">`;
+                }
+            } else {
+                window.location.replace('/login.html');
+            }
+        });
+
+        // Logique de test de notification (Brouillon de cours)
+        document.getElementById('btn-create-formation').addEventListener('click', async () => {
+            if (!currentUid) return;
+
+            const btn = document.getElementById('btn-create-formation');
+            const originalText = btn.textContent;
+            btn.textContent = "Création et envoi en cours...";
+            btn.disabled = true;
+            btn.style.opacity = "0.5";
+
+            try {
+                const testTitle = "Cours de Test Teacher";
+                
+                // 1. Création du cours en statut "pending" (en attente de validation)
+                const courseRef = await addDoc(collection(db, "courses"), {
+                    titre: testTitle,
+                    actif: false,
+                    statutValidation: "pending",
+                    formations: [], 
+                    auteurId: currentUid,
+                    chapitres: [{
+                        id: "chap_test",
+                        type: "text",
+                        titre: "Étape Générée",
+                        contenu: "<p>Ceci est un cours de test généré par le bouton pour tester la cloche de notification.</p>",
+                        mediaType: "image",
+                        mediaImage: "",
+                        mediaVideo: ""
+                    }],
+                    dateCreation: serverTimestamp()
+                });
+
+                let auteurName = "Professeur Inconnu";
+                if (currentUserProfile) {
+                    auteurName = `${currentUserProfile.prenom || ''} ${currentUserProfile.nom || ''}`.trim() || currentUserProfile.email;
+                }
+
+                // 2. Envoi de la notification aux Administrateurs
+                await addDoc(collection(db, "notifications"), {
+                    type: 'course_validation',
+                    courseId: courseRef.id,
+                    courseTitle: testTitle,
+                    auteurId: currentUid,
+                    auteurName: auteurName,
+                    dateCreation: serverTimestamp()
+                });
+
+                alert("✅ Faux cours créé ! Une notification a été envoyée aux Administrateurs.");
+                
+            } catch (error) {
+                console.error(error);
+                alert("❌ Erreur lors de la création du cours.");
+            } finally {
+                btn.textContent = originalText;
+                btn.disabled = false;
+                btn.style.opacity = "1";
+            }
+        });
+    });
+</script>
+</body>
+</html>
