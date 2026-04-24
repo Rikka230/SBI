@@ -20,6 +20,9 @@ styleFix.textContent = `
     .search-result-title { font-weight: bold; font-size: 0.9rem; margin-bottom: 2px; }
     .search-result-sub { font-size: 0.75rem; color: var(--text-muted, #6b7280); }
 
+    /* FIX : Anti-chevauchement des icônes dans la recherche étudiant */
+    .global-search-results svg { position: static !important; transform: none !important; flex-shrink: 0 !important; width: 18px !important; height: 18px !important; margin: 0 !important; }
+
     /* CUSTOM SCROLLBAR GLOBALE ET ÉLÉGANTE */
     ::-webkit-scrollbar { width: 8px; height: 8px; }
     ::-webkit-scrollbar-track { background: transparent; }
