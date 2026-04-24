@@ -42,13 +42,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // Gestion de l'affichage du panneau et clic à l'extérieur
     document.body.addEventListener('click', (e) => {
         const bellBtn = e.target.closest('#notif-bell-btn');
+        const notifSection = document.getElementById('notifications-section');
+        const profileSection = document.getElementById('profile-section');
+        const titleNotif = document.getElementById('notif-panel-title');
+        
         if (bellBtn) {
-            const notifSection = document.getElementById('notifications-section');
-            const profileSection = document.getElementById('profile-section');
-            const titleNotif = document.getElementById('notif-panel-title');
-            
             if(notifSection) {
                 let activeColor = 'var(--accent-blue)';
                 if (window.location.pathname.includes('student')) activeColor = 'var(--accent-green)'; 
@@ -58,14 +59,23 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (profileSection) profileSection.style.display = 'none';
                     notifSection.style.display = 'block';
                     if (titleNotif) titleNotif.style.display = 'block';
-                    bellBtn.querySelector('svg').style.fill = activeColor;
+                    const svg = bellBtn.querySelector('svg');
+                    if(svg) svg.style.fill = activeColor;
                 } else {
                     if (profileSection) profileSection.style.display = 'block';
                     notifSection.style.display = 'none';
                     if (titleNotif) titleNotif.style.display = 'none';
-                    bellBtn.querySelector('svg').style.fill = 'var(--text-muted, #9ca3af)';
+                    const svg = bellBtn.querySelector('svg');
+                    if(svg) svg.style.fill = 'var(--text-muted, #9ca3af)';
                 }
             }
+        } else if (notifSection && notifSection.style.display === 'block' && !e.target.closest('#notifications-section')) {
+            // Fermeture si on clique ailleurs sur la page
+            if (profileSection) profileSection.style.display = 'block';
+            notifSection.style.display = 'none';
+            if (titleNotif) titleNotif.style.display = 'none';
+            const bellIcon = document.querySelector('#notif-bell-btn svg');
+            if(bellIcon) bellIcon.style.fill = 'var(--text-muted, #9ca3af)';
         }
     });
 });
@@ -107,7 +117,7 @@ function updateRedBadges(count) {
     const bellBadge = document.getElementById('bell-badge');
     const avatarBadge = document.getElementById('avatar-badge');
     
-    if (!bellBadge && document.querySelector('teacher-top-bar, admin-top-bar')) {
+    if (!bellBadge && document.querySelector('teacher-top-bar, admin-top-bar, student-top-bar')) {
         setTimeout(() => updateRedBadges(count), 100);
         return;
     }
@@ -125,7 +135,7 @@ function updateRedBadges(count) {
 function renderNotificationsList(notifs) {
     const container = document.getElementById('notifications-list');
     
-    if (!container && document.querySelector('teacher-top-bar, admin-top-bar')) {
+    if (!container && document.querySelector('teacher-top-bar, admin-top-bar, student-top-bar')) {
         setTimeout(() => renderNotificationsList(notifs), 100);
         return;
     }
@@ -141,21 +151,22 @@ function renderNotificationsList(notifs) {
     notifs.sort((a,b) => (b.dateCreation?.toMillis() || 0) - (a.dateCreation?.toMillis() || 0));
 
     notifs.forEach(notif => {
-        const dotIndicator = `<div style="width:8px; height:8px; background:var(--accent-red, #ff4a4a); border-radius:50%; flex-shrink:0; margin-top: 5px;"></div>`;
+        // Protection anti-déformation (flex-shrink:0 et min-width)
+        const dotIndicator = `<div style="width:8px; height:8px; min-width:8px; background:var(--accent-red, #ff4a4a); border-radius:50%; flex-shrink:0; margin-top: 5px;"></div>`;
         let titleText = ""; let bodyText = ""; let iconSvg = "";
         
         if (notif.type === 'new_course_published') {
             titleText = "Nouveau cours disponible !";
             bodyText = `Le cours <strong>${notif.courseTitle}</strong> est maintenant disponible.`;
-            iconSvg = `<svg width="20" height="20" fill="var(--accent-blue, #2A57FF)" viewBox="0 0 24 24"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3z"/></svg>`;
+            iconSvg = `<svg width="20" height="20" style="min-width:20px; flex-shrink:0;" fill="var(--accent-blue, #2A57FF)" viewBox="0 0 24 24"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3z"/></svg>`;
         } else if (notif.type === 'course_approved') {
             titleText = "🎉 Cours Validé !";
             bodyText = `Votre cours "<strong>${notif.courseTitle}</strong>" a été publié.`;
-            iconSvg = `<svg width="20" height="20" fill="var(--accent-green, #10b981)" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>`;
+            iconSvg = `<svg width="20" height="20" style="min-width:20px; flex-shrink:0;" fill="var(--accent-green, #10b981)" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>`;
         } else {
             titleText = "Validation Requise";
             bodyText = `<strong>${notif.auteurName}</strong> a soumis "<strong>${notif.courseTitle}</strong>".`;
-            iconSvg = `<svg width="20" height="20" fill="var(--accent-yellow, #fbbc04)" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>`;
+            iconSvg = `<svg width="20" height="20" style="min-width:20px; flex-shrink:0;" fill="var(--accent-yellow, #fbbc04)" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>`;
         }
 
         const safeTitle = notif.courseTitle ? notif.courseTitle.replace(/"/g, '&quot;') : 'Cours';
@@ -176,6 +187,8 @@ function renderNotificationsList(notifs) {
     document.querySelectorAll('.notif-item').forEach(item => {
         item.addEventListener('click', async (e) => {
             e.preventDefault();
+            e.stopPropagation(); // Empêche le clic de déclencher d'autres événements inattendus
+            
             const notifId = e.currentTarget.getAttribute('data-id');
             const notifType = e.currentTarget.getAttribute('data-type');
             const courseId = e.currentTarget.getAttribute('data-course');
@@ -193,6 +206,8 @@ function renderNotificationsList(notifs) {
 
             const nSection = document.getElementById('notifications-section');
             if(nSection) nSection.style.display = 'none';
+            const bellIcon = document.querySelector('#notif-bell-btn svg');
+            if(bellIcon) bellIcon.style.fill = 'var(--text-muted, #9ca3af)';
 
             let userRole = 'student';
             if (currentUserProfile) {
@@ -200,16 +215,16 @@ function renderNotificationsList(notifs) {
                 else if (currentUserProfile.role) userRole = currentUserProfile.role;
             }
 
-            if (notifType === 'new_course_published') {
+            // Aiguillage forcé par le TYPE de notification (contourne le God Mode)
+            if (notifType === 'course_approved') {
+                showTeacherCourseActionModal(courseId, courseTitle);
+            } 
+            else if (notifType === 'new_course_published') {
                 if (userRole === 'teacher') window.location.assign(`/teacher/mes-cours.html?edit=${courseId}`);
                 else if (userRole === 'admin') window.location.assign(`/admin/formations-cours.html?edit=${courseId}`);
                 else window.location.assign(`/student/cours-viewer.html?id=${courseId}`);
-                
-            } else if (notifType === 'course_approved' && userRole === 'teacher') {
-                // Déclenchement de la nouvelle modale au lieu de l'alerte
-                showTeacherCourseActionModal(courseId, courseTitle);
-                
-            } else {
+            } 
+            else {
                 if(window.location.pathname.includes('formations-cours.html') && typeof window.editCourse === 'function') {
                     window.editCourse(courseId);
                 } else {
@@ -232,7 +247,7 @@ function showTeacherCourseActionModal(courseId, courseTitle) {
     modal.innerHTML = `
         <div style="background: var(--bg-card, #111); padding: 2.5rem 2rem; border-radius: 12px; border: 1px solid var(--border-color, #333); max-width: 420px; width: 90%; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.6); transform: translateY(20px); transition: transform 0.3s ease;">
             <div style="width: 60px; height: 60px; background: rgba(16, 185, 129, 0.15); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem auto;">
-                <svg width="32" height="32" fill="var(--accent-green, #10b981)" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+                <svg width="32" height="32" style="min-width:32px; flex-shrink:0;" fill="var(--accent-green, #10b981)" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
             </div>
             <h3 style="color: var(--text-main, white); margin-top: 0; font-size: 1.5rem; margin-bottom: 0.5rem;">Cours en ligne !</h3>
             <p style="color: var(--text-muted, #aaa); margin-bottom: 2rem; font-size: 0.95rem; line-height: 1.5;">
@@ -247,7 +262,6 @@ function showTeacherCourseActionModal(courseId, courseTitle) {
     `;
     
     modal.style.display = 'flex';
-    // Petits effets d'apparition fluides
     requestAnimationFrame(() => {
         modal.style.opacity = '1';
         modal.querySelector('div').style.transform = 'translateY(0)';
