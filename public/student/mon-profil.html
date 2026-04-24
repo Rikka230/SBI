@@ -17,7 +17,7 @@
     
     <style>
         .profile-header { background: var(--bg-card); border-radius: 16px; border: 1px solid var(--border-color); padding: 2.5rem; display: flex; align-items: center; gap: 2rem; margin-bottom: 2.5rem; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03); position: relative; overflow: hidden; }
-        .profile-header::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 100px; background: linear-gradient(90deg, var(--accent-green), #00ffa3); opacity: 0.15; z-index: 0; }
+        .profile-header::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 100px; background: linear-gradient(90deg, var(--accent-blue), #5B7FFF); opacity: 0.15; z-index: 0; }
         
         .avatar-wrapper { position: relative; width: 120px; height: 120px; z-index: 1; margin: 0; flex-shrink: 0; }
         
@@ -29,7 +29,7 @@
         .prof-input { width: 100%; padding: 0.8rem 1rem; border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--text-main); font-family: inherit; font-size: 0.95rem; outline: none; transition: 0.2s; }
         
         .editing .prof-input { background: #f9fafb; border-color: var(--border-color); }
-        .editing .prof-input:focus { border-color: var(--accent-green); background: #fff; box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1); }
+        .editing .prof-input:focus { border-color: var(--accent-blue); background: #fff; box-shadow: 0 0 0 3px rgba(42, 87, 255, 0.1); }
 
         .private-section, .edit-mode-only { display: none; }
         
@@ -65,7 +65,7 @@
                     <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                         <div style="width: 100%; max-width: 400px;">
                             <h1 id="prof-name">Chargement...</h1>
-                            <div style="margin-top: 0.5rem; display: inline-block; background: rgba(16, 185, 129, 0.1); color: var(--accent-green); padding: 5px 15px; border-radius: 20px; font-weight: bold;">
+                            <div style="margin-top: 0.5rem; display: inline-block; background: rgba(42, 87, 255, 0.1); color: var(--accent-blue); padding: 5px 15px; border-radius: 20px; font-weight: bold;">
                                 Niveau <span id="prof-level">1</span> (<span id="prof-xp">0</span> XP)
                             </div>
                             <div class="xp-bar-bg" style="margin-top: 1rem;">
@@ -120,7 +120,7 @@
                                 <textarea id="prof-bio" class="prof-input" rows="5" maxlength="400" placeholder="Dites-en plus sur vous... (Max 400 caractères)" disabled></textarea>
                             </div>
                             <div class="edit-mode-only" style="margin-top: 1.5rem;">
-                                <button id="btn-save-public" class="action-btn" style="width: auto; background: var(--accent-green); color: white; border: none; padding: 0.8rem 1.5rem; border-radius: 8px; font-weight: bold;">Enregistrer la bio</button>
+                                <button id="btn-save-public" class="action-btn" style="width: auto; background: var(--accent-blue); color: white; border: none; padding: 0.8rem 1.5rem; border-radius: 8px; font-weight: bold;">Enregistrer la bio</button>
                             </div>
                         </div>
                     </div>
@@ -133,7 +133,7 @@
                                 <label>Adresse E-mail</label>
                                 <div style="display: flex; gap: 1rem; align-items: center;">
                                     <input type="email" id="prof-email" class="prof-input" disabled style="flex-grow: 1;">
-                                    <button class="action-btn edit-mode-only" onclick="window.location.href='/change-email.html'" style="display: none; width: auto; margin: 0; background: transparent; color: var(--accent-green); border: 1px solid var(--accent-green); padding: 0.8rem 1.5rem; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s;" onmouseover="this.style.background='rgba(16, 185, 129, 0.1)'" onmouseout="this.style.background='transparent'">Modifier</button>
+                                    <button class="action-btn edit-mode-only" onclick="window.location.href='/change-email.html'" style="display: none; width: auto; margin: 0; background: transparent; color: var(--accent-blue); border: 1px solid var(--accent-blue); padding: 0.8rem 1.5rem; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s;" onmouseover="this.style.background='rgba(42, 87, 255, 0.1)'" onmouseout="this.style.background='transparent'">Modifier</button>
                                 </div>
                             </div>
                             
@@ -147,7 +147,7 @@
                             </div>
                             <div class="form-group" style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
                                 <label>Temps de connexion total</label>
-                                <p id="prof-time" style="font-size: 1.2rem; font-weight: bold; color: var(--accent-green); margin: 0;">0h 0m</p>
+                                <p id="prof-time" style="font-size: 1.2rem; font-weight: bold; color: var(--accent-blue); margin: 0;">0h 0m</p>
                             </div>
 
                             <div class="edit-mode-only" style="margin-top: 1.5rem;">
@@ -192,7 +192,7 @@
             Changer d'image
         </button>
         <div style="display: flex; gap: 1rem;">
-            <button id="btn-save-crop" style="flex: 1; padding: 1rem; background: var(--accent-green); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">Appliquer</button>
+            <button id="btn-save-crop" style="flex: 1; padding: 1rem; background: var(--accent-blue); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">Appliquer</button>
             <button id="btn-cancel-crop" style="flex: 1; padding: 1rem; background: transparent; color: var(--text-main); border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer;">Annuler</button>
         </div>
     </div>
