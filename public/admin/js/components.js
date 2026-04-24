@@ -246,8 +246,9 @@ class TeacherLeftPanel extends HTMLElement {
         this.innerHTML = `
             <aside id="left-panel" class="side-panel">
                 <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; padding: 0 15px; width: 100%; box-sizing: border-box;">
-                    <div class="logo-zone" style="display: flex; align-items: center; overflow: hidden; white-space: nowrap;">
-                        <span style="color: var(--accent-orange, #f59e0b); font-weight: bold;">👨‍🏫 SBI</span><span>&nbsp;Teacher</span>
+                    <div class="logo-zone" style="display: flex; align-items: center; gap: 8px; overflow: hidden; white-space: nowrap;">
+                        <svg width="24" height="24" fill="var(--accent-orange, #f59e0b)" viewBox="0 0 24 24"><path d="M12 3L1 9L5 11.18V17H3V10.09L12 5.28L21 10.09V17H19V11.18L15 9L12 3ZM12 12.72L18.82 9L12 5.28L5.18 9L12 12.72ZM17 15.99L12 18.72L7 15.99V19.72L12 21.45L17 19.72V15.99Z"/></svg>
+                        <span style="color: var(--accent-orange, #f59e0b); font-weight: bold;">SBI</span><span>&nbsp;Teacher</span>
                     </div>
                     <button id="btn-toggle-panel" style="background:none; border:none; color:var(--text-muted); cursor:pointer; padding:5px; margin:0; display:flex; align-items: center;">
                         <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" style="transition: transform 0.3s;"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z"/></svg>
