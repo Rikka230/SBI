@@ -22,7 +22,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if(userSnap.exists()) {
                 currentUserProfile = userSnap.data();
                 
-                // Remplissage global de la Top-Bar depuis n'importe quelle page
                 const displayName = `${currentUserProfile.prenom || ''} ${currentUserProfile.nom || ''}`.trim() || "Utilisateur";
                 const avatarUrl = currentUserProfile.photoURL || `https://ui-avatars.com/api/?name=${displayName}&background=111&color=fff`;
                 const userXp = currentUserProfile.xp || 0;
@@ -43,7 +42,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Gestion du clic sur la cloche pour afficher/masquer le panneau
     document.body.addEventListener('click', (e) => {
         const bellBtn = e.target.closest('#notif-bell-btn');
         if (bellBtn) {
@@ -103,13 +101,12 @@ function initNotificationsRealtime() {
 }
 
 /* =======================================================================
- * SECTION 3 : AFFICHAGE DE L'INTERFACE UTILISATEUR (UI)
+ * SECTION 3 : AFFICHAGE ET ACTIONS (LISTE ET MODALES)
  * ======================================================================= */
 function updateRedBadges(count) {
     const bellBadge = document.getElementById('bell-badge');
     const avatarBadge = document.getElementById('avatar-badge');
     
-    // Si le composant n'est pas encore dans le DOM, on patiente 100ms
     if (!bellBadge && document.querySelector('teacher-top-bar, admin-top-bar')) {
         setTimeout(() => updateRedBadges(count), 100);
         return;
@@ -128,7 +125,6 @@ function updateRedBadges(count) {
 function renderNotificationsList(notifs) {
     const container = document.getElementById('notifications-list');
     
-    // Si le composant n'est pas encore dans le DOM, on patiente 100ms
     if (!container && document.querySelector('teacher-top-bar, admin-top-bar')) {
         setTimeout(() => renderNotificationsList(notifs), 100);
         return;
@@ -162,8 +158,10 @@ function renderNotificationsList(notifs) {
             iconSvg = `<svg width="20" height="20" fill="var(--accent-yellow, #fbbc04)" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>`;
         }
 
+        const safeTitle = notif.courseTitle ? notif.courseTitle.replace(/"/g, '&quot;') : 'Cours';
+
         const html = `
-            <div class="notif-item" data-id="${notif.id}" data-type="${notif.type}" data-course="${notif.courseId}" style="display: flex; align-items: flex-start; gap: 1rem; padding: 1rem; border-bottom: 1px solid var(--border-color, #333); cursor: pointer; transition: background 0.2s; background: rgba(128, 128, 128, 0.05);">
+            <div class="notif-item" data-id="${notif.id}" data-type="${notif.type}" data-course="${notif.courseId}" data-title="${safeTitle}" style="display: flex; align-items: flex-start; gap: 1rem; padding: 1rem; border-bottom: 1px solid var(--border-color, #333); cursor: pointer; transition: background 0.2s; background: rgba(128, 128, 128, 0.05);">
                 ${dotIndicator}
                 <div style="flex-shrink:0;">${iconSvg}</div>
                 <div>
@@ -181,6 +179,7 @@ function renderNotificationsList(notifs) {
             const notifId = e.currentTarget.getAttribute('data-id');
             const notifType = e.currentTarget.getAttribute('data-type');
             const courseId = e.currentTarget.getAttribute('data-course');
+            const courseTitle = e.currentTarget.getAttribute('data-title');
             
             e.currentTarget.style.display = 'none';
 
@@ -207,8 +206,8 @@ function renderNotificationsList(notifs) {
                 else window.location.assign(`/student/cours-viewer.html?id=${courseId}`);
                 
             } else if (notifType === 'course_approved' && userRole === 'teacher') {
-                alert("Génial ! Votre cours est maintenant en ligne !");
-                window.location.assign(`/teacher/mes-cours.html?edit=${courseId}`);
+                // Déclenchement de la nouvelle modale au lieu de l'alerte
+                showTeacherCourseActionModal(courseId, courseTitle);
                 
             } else {
                 if(window.location.pathname.includes('formations-cours.html') && typeof window.editCourse === 'function') {
@@ -219,6 +218,53 @@ function renderNotificationsList(notifs) {
             }
         });
     });
+}
+
+function showTeacherCourseActionModal(courseId, courseTitle) {
+    let modal = document.getElementById('teacher-action-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'teacher-action-modal';
+        modal.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); display:flex; align-items:center; justify-content:center; z-index:9999; backdrop-filter:blur(4px); opacity:0; transition: opacity 0.3s ease;';
+        document.body.appendChild(modal);
+    }
+
+    modal.innerHTML = `
+        <div style="background: var(--bg-card, #111); padding: 2.5rem 2rem; border-radius: 12px; border: 1px solid var(--border-color, #333); max-width: 420px; width: 90%; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.6); transform: translateY(20px); transition: transform 0.3s ease;">
+            <div style="width: 60px; height: 60px; background: rgba(16, 185, 129, 0.15); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem auto;">
+                <svg width="32" height="32" fill="var(--accent-green, #10b981)" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+            </div>
+            <h3 style="color: var(--text-main, white); margin-top: 0; font-size: 1.5rem; margin-bottom: 0.5rem;">Cours en ligne !</h3>
+            <p style="color: var(--text-muted, #aaa); margin-bottom: 2rem; font-size: 0.95rem; line-height: 1.5;">
+                Félicitations, votre cours <strong style="color: var(--accent-orange, #f59e0b);">${courseTitle}</strong> a été validé et est désormais accessible aux élèves.
+            </p>
+            <div style="display: flex; flex-direction: column; gap: 0.8rem;">
+                <button id="btn-modal-view" style="width: 100%; padding: 0.9rem; background: var(--accent-blue, #2A57FF); color: white; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: background 0.2s;">👀 Visualiser le cours</button>
+                <button id="btn-modal-edit" style="width: 100%; padding: 0.9rem; background: transparent; color: var(--text-main, white); border: 1px solid var(--border-color, #444); border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'">✏️ Ouvrir dans l'éditeur</button>
+                <button id="btn-modal-close" style="width: 100%; padding: 0.8rem; background: transparent; color: var(--accent-red, #ff4a4a); border: none; font-weight: bold; cursor: pointer; margin-top: 0.5rem;">Fermer</button>
+            </div>
+        </div>
+    `;
+    
+    modal.style.display = 'flex';
+    // Petits effets d'apparition fluides
+    requestAnimationFrame(() => {
+        modal.style.opacity = '1';
+        modal.querySelector('div').style.transform = 'translateY(0)';
+    });
+
+    document.getElementById('btn-modal-view').onclick = () => {
+        modal.style.display = 'none';
+        window.location.assign(`/student/cours-viewer.html?id=${courseId}`); 
+    };
+    document.getElementById('btn-modal-edit').onclick = () => {
+        modal.style.display = 'none';
+        window.location.assign(`/teacher/mes-cours.html?edit=${courseId}`);
+    };
+    document.getElementById('btn-modal-close').onclick = () => {
+        modal.style.opacity = '0';
+        setTimeout(() => modal.style.display = 'none', 300);
+    };
 }
 
 /* =======================================================================
