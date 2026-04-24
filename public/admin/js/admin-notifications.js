@@ -31,8 +31,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const titleNotif = document.getElementById('notif-panel-title');
             
             if(notifSection) {
-                const isStudent = !window.location.pathname.includes('admin');
-                const activeColor = isStudent ? 'var(--accent-green)' : 'var(--accent-blue)';
+                let activeColor = 'var(--accent-blue)';
+                if (window.location.pathname.includes('student')) activeColor = 'var(--accent-green)';
+                if (window.location.pathname.includes('teacher')) activeColor = 'var(--accent-orange)';
                 
                 if(notifSection.style.display === 'none' || notifSection.style.display === '') {
                     if (profileSection) profileSection.style.display = 'none';
@@ -96,6 +97,7 @@ function renderNotificationsList(notifs) {
     if (!container) return;
     
     container.innerHTML = '';
+    const isStudent = currentUserProfile && currentUserProfile.role !== 'admin' && currentUserProfile.role !== 'teacher' && !currentUserProfile.isGod;
     
     if (notifs.length === 0) {
         container.innerHTML = `<p style="color:var(--text-muted); font-size:0.9rem; text-align:center; padding: 2rem;">Aucune nouvelle notification.</p>`;
@@ -123,7 +125,7 @@ function renderNotificationsList(notifs) {
         }
 
         const html = `
-            <div class="notif-item" data-id="${notif.id}" data-type="${notif.type}" data-course="${notif.courseId}" style="display: flex; align-items: flex-start; gap: 1rem; padding: 1rem; border-bottom: 1px solid var(--border-color, #333); cursor: pointer; transition: background 0.2s; background: rgba(16, 185, 129, 0.05);">
+            <div class="notif-item" data-id="${notif.id}" data-type="${notif.type}" data-course="${notif.courseId}" style="display: flex; align-items: flex-start; gap: 1rem; padding: 1rem; border-bottom: 1px solid var(--border-color, #333); cursor: pointer; transition: background 0.2s; background: rgba(128, 128, 128, 0.05);">
                 ${dotIndicator}
                 <div style="flex-shrink:0;">${iconSvg}</div>
                 <div>
@@ -196,7 +198,6 @@ function setupGlobalSearch() {
                 return;
             }
             
-            // Re-vérification au cas où le cache a été vidé
             if (!window.searchDataCache) {
                 const [uSnap, cSnap] = await Promise.all([getDocs(collection(db, 'users')), getDocs(collection(db, 'courses'))]);
                 window.searchDataCache = { users: [], courses: [] };
@@ -206,7 +207,7 @@ function setupGlobalSearch() {
             
             let html = '';
             
-            // FIX : Détection robuste du rôle pour éviter tout blocage sur la page profil
+            // Détection stricte du rôle
             let userRole = 'student';
             if (currentUserProfile) {
                 if (currentUserProfile.isGod) userRole = 'admin';
@@ -214,18 +215,20 @@ function setupGlobalSearch() {
             } else if (window.location.pathname.includes('/admin/')) {
                 userRole = 'admin';
             }
-            const isAdminOrTeacher = (userRole === 'admin' || userRole === 'teacher');
+            
+            const isAdmin = (userRole === 'admin');
 
-            // 1. Recherche de cours
-            const matchedCourses = window.searchDataCache.courses.filter(c => c.titre && c.titre.toLowerCase().includes(term) && (!isAdminOrTeacher ? c.actif : true)).slice(0, 5);
+            // 1. Recherche de cours (Seul l'admin voit les brouillons)
+            const matchedCourses = window.searchDataCache.courses.filter(c => c.titre && c.titre.toLowerCase().includes(term) && (!isAdmin ? c.actif : true)).slice(0, 5);
             
             if (matchedCourses.length > 0) {
                 html += `<div style="padding: 6px 15px; font-size: 0.75rem; color: var(--text-muted, #888); background: rgba(0,0,0,0.05); font-weight: bold;">COURS PÉDAGOGIQUES</div>`;
                 matchedCourses.forEach(c => {
-                    const link = !isAdminOrTeacher ? `/student/cours-viewer.html?id=${c.id}` : `/admin/formations-cours.html?edit=${c.id}`;
+                    // Les profs et élèves vont sur le lecteur pour éviter l'erreur de sécurité
+                    const link = isAdmin ? `/admin/formations-cours.html?edit=${c.id}` : `/student/cours-viewer.html?id=${c.id}`;
                     html += `
                         <div class="search-result-item" data-url="${link}">
-                            <svg width="18" height="18" fill="var(--accent-blue, #2A57FF)" viewBox="0 0 24 24"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3z"/></svg>
+                            <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24" style="opacity: 0.6;"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3z"/></svg>
                             <div>
                                 <div class="search-result-title">${c.titre}</div>
                             </div>
@@ -234,19 +237,25 @@ function setupGlobalSearch() {
                 });
             }
 
-            // 2. Recherche d'utilisateurs (DÉBLOQUÉ POUR TOUS)
+            // 2. Recherche d'utilisateurs
             const matchedUsers = window.searchDataCache.users.filter(u => {
                 const name = `${u.prenom || ''} ${u.nom || ''}`.toLowerCase();
-                return name.includes(term) || (isAdminOrTeacher && u.email && u.email.toLowerCase().includes(term));
+                // Seul l'admin peut chercher par adresse email
+                return name.includes(term) || (isAdmin && u.email && u.email.toLowerCase().includes(term));
             }).slice(0, 5);
 
             if (matchedUsers.length > 0) {
                 html += `<div style="padding: 6px 15px; font-size: 0.75rem; color: var(--text-muted, #888); background: rgba(0,0,0,0.05); font-weight: bold;">UTILISATEURS</div>`;
                 matchedUsers.forEach(u => {
-                    const profileLink = isAdminOrTeacher ? `/admin/admin-profile.html?id=${u.id}` : `/student/mon-profil.html?id=${u.id}`;
                     
+                    // Aiguillage strict des profils
+                    let profileLink = `/student/mon-profil.html?id=${u.id}`;
+                    if (isAdmin) profileLink = `/admin/admin-profile.html?id=${u.id}`;
+                    else if (userRole === 'teacher') profileLink = `/teacher/mon-profil.html?id=${u.id}`;
+                    
+                    // Masquage des adresses mails pour les non-admins
                     let subText = u.email;
-                    if (!isAdminOrTeacher) {
+                    if (!isAdmin) {
                         if (u.role === 'teacher') subText = 'Professeur';
                         else if (u.role === 'admin' || u.isGod) subText = 'Administration';
                         else subText = 'Élève';
@@ -254,7 +263,7 @@ function setupGlobalSearch() {
 
                     html += `
                         <div class="search-result-item" data-url="${profileLink}">
-                            <svg width="18" height="18" fill="var(--accent-green, #10b981)" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                            <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24" style="opacity: 0.6;"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
                             <div>
                                 <div class="search-result-title">${u.prenom || ''} ${u.nom || ''}</div>
                                 <div class="search-result-sub">${subText}</div>
@@ -272,7 +281,6 @@ function setupGlobalSearch() {
             resultsContainer.style.display = 'block';
         });
         
-        // FIX : Navigation ultra-robuste avec dataset (plus de "onclick" direct)
         resultsContainer.addEventListener('click', (e) => {
             const item = e.target.closest('.search-result-item');
             if (item && item.dataset.url) {
