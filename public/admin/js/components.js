@@ -51,15 +51,15 @@ class AdminLeftPanel extends HTMLElement {
                 </div>
                 
                 <ul class="nav-menu">
-                    <li class="nav-item" id="nav-dashboard" data-target="view-dashboard" onclick="if(!window.location.pathname.includes('index.html') && !window.location.pathname.endsWith('/')) window.location.href='index.html?tab=view-dashboard'">
+                    <li class="nav-item" id="nav-dashboard" data-target="view-dashboard" onclick="window.location.href='/admin/index.html?tab=view-dashboard'">
                         <svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
                         <span class="nav-text">Tableau de Bord</span>
                     </li>
-                    <li class="nav-item" id="nav-users" data-target="view-users" onclick="if(!window.location.pathname.includes('index.html') && !window.location.pathname.endsWith('/')) window.location.href='index.html?tab=view-users'">
+                    <li class="nav-item" id="nav-users" data-target="view-users" onclick="window.location.href='/admin/index.html?tab=view-users'">
                         <svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
                         <span class="nav-text">Utilisateurs</span>
                     </li>
-                    <li class="nav-item" id="nav-formations" data-target="view-formations" onclick="if(!window.location.pathname.includes('index.html') && !window.location.pathname.endsWith('/')) window.location.href='index.html?tab=view-formations'">
+                    <li class="nav-item" id="nav-formations" data-target="view-formations" onclick="window.location.href='/admin/index.html?tab=view-formations'">
                         <svg viewBox="0 0 24 24"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/></svg>
                         <span class="nav-text">Formations</span>
                     </li>
@@ -261,7 +261,7 @@ class TeacherLeftPanel extends HTMLElement {
                     </li>
                     <li class="nav-item ${window.location.pathname.includes('mes-cours.html') ? 'active' : ''}" onclick="window.location.href='/teacher/mes-cours.html'">
                         <svg viewBox="0 0 24 24"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/></svg>
-                        <span class="nav-text">Gestion des Cours</span>
+                        <span class="nav-text">Formations & Cours</span>
                     </li>
                     <li class="nav-item ${window.location.pathname.includes('mon-profil.html') ? 'active' : ''}" onclick="window.location.href='/teacher/mon-profil.html'">
                         <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
