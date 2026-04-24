@@ -33,7 +33,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const myData = mySnap.data();
                 isAdmin = (myData.role === 'admin' || myData.isGod === true);
 
-                // FIX : Mise à jour de la Top Bar indépendamment du profil visité
                 const myDisplayName = `${myData.prenom || ''} ${myData.nom || ''}`.trim() || "Étudiant";
                 const myAvatarUrl = myData.photoURL || `https://ui-avatars.com/api/?name=${myDisplayName}&background=111&color=fff`;
                 const myXp = myData.xp || 0;
@@ -75,12 +74,10 @@ async function loadProfileData(uid) {
             
             const displayName = `${data.prenom || ''} ${data.nom || ''}`.trim() || "Utilisateur Sans Nom";
             const nameEl = document.getElementById('prof-name');
+            
+            // FIX : Génération garantie de la zone du badge, même si le HTML de base l'a oublié
             if(nameEl) {
-                if (document.getElementById('prof-badge-zone')) {
-                    nameEl.innerHTML = `${displayName} <span id="prof-badge-zone"></span>`;
-                } else {
-                    nameEl.textContent = displayName;
-                }
+                nameEl.innerHTML = `${displayName} <span id="prof-badge-zone" style="margin-left: 10px; font-size: 0.45em; vertical-align: middle;"></span>`;
             }
 
             if(document.getElementById('prof-bio-display')) document.getElementById('prof-bio-display').textContent = data.bio || 'Élève de la plateforme SBI';
@@ -102,12 +99,13 @@ async function loadProfileData(uid) {
                 }
             }
 
+            // Affichage du badge (maintenant garanti)
             const badgeZone = document.getElementById('prof-badge-zone');
             if(badgeZone) {
-                if (data.isGod) badgeZone.innerHTML = `<span style="background:rgba(255,215,0,0.15); color:#ffd700; padding:4px 8px; border-radius:4px; font-size:0.7rem; vertical-align:middle; display:inline-flex; align-items:center; gap:4px;"><svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L9 8H3l5 5-2 7 6-4 6 4-2-7 5-5h-6z"/></svg> SUPRÊME</span>`;
-                else if (data.role === 'admin') badgeZone.innerHTML = `<span style="background:rgba(255,74,74,0.15); color:#ff4a4a; padding:4px 8px; border-radius:4px; font-size:0.7rem; vertical-align:middle;">ADMIN</span>`;
-                else if (data.role === 'teacher') badgeZone.innerHTML = `<span style="background:rgba(251,188,4,0.15); color:#fbbc04; padding:4px 8px; border-radius:4px; font-size:0.7rem; vertical-align:middle;">PROFESSEUR</span>`;
-                else badgeZone.innerHTML = `<span style="background:rgba(0,255,163,0.15); color:#00ffa3; padding:4px 8px; border-radius:4px; font-size:0.7rem; vertical-align:middle;">ÉLÈVE</span>`;
+                if (data.isGod) badgeZone.innerHTML = `<span style="background:rgba(255,215,0,0.15); color:#ffd700; padding:4px 8px; border-radius:4px; font-weight:bold;">SUPRÊME</span>`;
+                else if (data.role === 'admin') badgeZone.innerHTML = `<span style="background:rgba(255,74,74,0.15); color:#ff4a4a; padding:4px 8px; border-radius:4px; font-weight:bold;">ADMIN</span>`;
+                else if (data.role === 'teacher') badgeZone.innerHTML = `<span style="background:rgba(251,188,4,0.15); color:#fbbc04; padding:4px 8px; border-radius:4px; font-weight:bold;">PROFESSEUR</span>`;
+                else badgeZone.innerHTML = `<span style="background:rgba(0,255,163,0.15); color:#00ffa3; padding:4px 8px; border-radius:4px; font-weight:bold;">ÉLÈVE</span>`;
             }
 
             const xp = data.xp || 0;
