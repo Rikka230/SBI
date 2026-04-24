@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Formations & Cours - SBI Teacher</title>
+    
+    <link rel="stylesheet" href="/admin/css/admin-layout.css">
+    <link rel="stylesheet" href="/admin/css/admin.css">
+    <link rel="stylesheet" href="/teacher/css/teacher.css">
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    
+    <script src="/admin/js/components.js"></script>
+
+    <style>
+        /* Styles spécifiques pour le formateur */
+        .formation-pill { display: inline-block; padding: 6px 14px; background: #f3f4f6; border: 1px solid var(--border-color); border-radius: 20px; color: var(--text-muted); cursor: pointer; transition: 0.2s; font-size: 0.85rem; }
+        .formation-pill:hover { background: #e5e7eb; }
+        .formation-pill.selected { background: rgba(245, 158, 11, 0.1); color: var(--accent-orange); border-color: var(--accent-orange); font-weight: bold; }
+    </style>
+</head>
+<body class="preload">
+    <div class="app-container" id="app-container">
+        
+        <teacher-left-panel></teacher-left-panel>
+        <teacher-top-bar></teacher-top-bar>
+        
+        <main id="main-content">
+            <div class="content-wrapper">
+                
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                    <h1 style="margin: 0; font-size: 2.2rem; font-weight: 800;">
+                        Mes <span style="color: var(--accent-orange);">Cours</span>
+                    </h1>
+                    <button id="btn-trigger-new-course" class="action-btn" style="background: var(--accent-orange); color: white; border: none; font-weight: bold; padding: 0.8rem 1.5rem; border-radius: 8px;">
+                        + Nouveau Cours
+                    </button>
+                </div>
+                
+                <div class="student-sub-nav">
+                    <div class="student-sub-nav-item active" onclick="switchCourseTab('tab-list')">Ma Bibliothèque</div>
+                    <div class="student-sub-nav-item" onclick="switchCourseTab('tab-editor')" id="nav-tab-editor" style="display:none;">Éditeur de Cours</div>
+                </div>
+
+                <div id="tab-list" class="student-view active">
+                    <div id="courses-list-container"></div>
+                </div>
+
+                <div id="tab-editor" class="student-view">
+                    <div class="hub-grid">
+                        
+                        <div class="hub-card" style="padding: 1.5rem;">
+                            <input type="hidden" id="edit-course-id">
+                            
+                            <div class="form-group">
+                                <label>Titre du cours</label>
+                                <input type="text" id="course-title" class="prof-input" style="border: 1px solid var(--border-color); background: #f9fafb;">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Bloc (Chapitre global)</label>
+                                <div style="display:flex; gap:0.5rem;">
+                                    <select id="course-bloc-select" class="prof-input" style="border: 1px solid var(--border-color); background: #f9fafb;"></select>
+                                    <button id="btn-add-new-bloc" class="action-btn" style="width: auto; margin:0; padding: 0 15px; background: white; border-color: var(--border-color); color: var(--text-main);">+</button>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Catégories (Formations)</label>
+                                <div id="formations-selector" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 0.5rem;"></div>
+                            </div>
+
+                            <label style="display: flex; align-items: center; gap: 8px; margin-top: 1rem; margin-bottom: 2rem; cursor: pointer; padding: 10px; background: rgba(245, 158, 11, 0.05); border-radius: 8px; border: 1px solid rgba(245, 158, 11, 0.2);">
+                                <input type="checkbox" id="course-active" style="width: 18px; height: 18px; accent-color: var(--accent-orange);">
+                                <span style="font-weight: bold; color: var(--accent-orange); font-size: 0.9rem;">Soumettre à validation (Publier)</span>
+                            </label>
+
+                            <h4 style="margin: 0 0 1rem 0; padding-top: 1.5rem; border-top: 1px solid var(--border-color); color: var(--text-main);">Étapes du cours</h4>
+                            <ul id="chapters-list" style="list-style: none; padding: 0; margin: 0 0 1rem 0; display: flex; flex-direction: column; gap: 8px;"></ul>
+                            
+                            <div style="display: flex; gap: 0.5rem;">
+                                <button id="btn-add-chapter" class="action-btn" style="flex: 1; margin: 0; font-size: 0.85rem; background: white; color: var(--text-main); border-color: var(--border-color);">+ Leçon</button>
+                                <button id="btn-add-quiz" class="action-btn" style="flex: 1; margin: 0; font-size: 0.85rem; color: var(--accent-orange); border-color: rgba(245, 158, 11, 0.3); background: white;">+ Examen</button>
+                            </div>
+
+                            <button id="btn-save-course" class="action-btn" style="width: 100%; margin-top: 2.5rem; background: var(--text-main); color: white; border: none; padding: 1rem; font-size: 1rem;">
+                                Enregistrer le cours
+                            </button>
+                        </div>
+
+                        <div class="hub-card" style="padding: 0; min-height: 600px; display: flex; flex-direction: column; overflow: hidden;">
+                            
+                            <div id="no-chapter-zone" style="height: 100%; flex-grow: 1; display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-style: italic;">
+                                Sélectionnez ou ajoutez une étape à gauche.
+                            </div>
+
+                            <div id="chapter-editor-zone" style="display: none; flex-direction: column; height: 100%;">
+                                <div style="padding: 1.5rem; border-bottom: 1px solid var(--border-color); background: #f9fafb;">
+                                    <input type="text" id="chapter-title" class="prof-input" placeholder="Titre de la leçon..." style="font-size: 1.5rem; font-weight: bold; border: none; background: transparent; padding: 0; margin-bottom: 1rem; color: var(--text-main);">
+                                    
+                                    <div style="display: flex; gap: 1.5rem; align-items: center;">
+                                        <label style="display: flex; align-items: center; gap: 5px; font-weight: bold; cursor: pointer;"><input type="radio" name="media_type" value="image" checked style="accent-color: var(--accent-orange);"> Image</label>
+                                        <label style="display: flex; align-items: center; gap: 5px; font-weight: bold; cursor: pointer;"><input type="radio" name="media_type" value="video" style="accent-color: var(--accent-orange);"> Vidéo</label>
+                                    </div>
+                                </div>
+
+                                <div style="padding: 1.5rem; flex-grow: 1; display: flex; flex-direction: column;">
+                                    <div id="media-image-zone" style="display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.5rem;">
+                                        <input type="file" id="chapter-image-upload" accept="image/*" style="font-size: 0.9rem;">
+                                        <input type="hidden" id="chapter-image-base64">
+                                        <img id="chapter-image-preview" style="max-width: 100%; max-height: 300px; display: none; border-radius: 8px; border: 1px solid var(--border-color); object-fit: contain;">
+                                    </div>
+
+                                    <div id="media-video-zone" style="display: none; flex-direction: column; gap: 0.5rem; margin-bottom: 1.5rem;">
+                                        <input type="file" id="chapter-video-upload" accept="video/mp4,video/webm" style="font-size: 0.9rem;">
+                                        <input type="hidden" id="chapter-video-base64">
+                                        <video id="chapter-video-preview" controls style="max-width: 100%; max-height: 300px; display: none; border-radius: 8px; border: 1px solid var(--border-color);"></video>
+                                    </div>
+
+                                    <label style="font-weight: bold; margin-bottom: 0.5rem; color: var(--text-main);">Texte de la leçon</label>
+                                    <div id="quill-editor" style="flex-grow: 1; background: white; border-radius: 0 0 8px 8px; font-size: 1.1rem;"></div>
+                                </div>
+                            </div>
+
+                            <div id="quiz-editor-zone" style="display: none; flex-direction: column; padding: 1.5rem;">
+                                <input type="text" id="quiz-title" class="prof-input" placeholder="Titre de l'examen..." style="font-size: 1.5rem; font-weight: bold; border: none; border-bottom: 2px solid var(--border-color); border-radius: 0; padding: 0 0 0.5rem 0; margin-bottom: 2rem; background: transparent;">
+                                
+                                <div id="quiz-questions-container" style="display: flex; flex-direction: column; gap: 2rem;"></div>
+                                
+                                <button id="btn-add-question" class="action-btn" style="width: auto; align-self: flex-start; margin-top: 1.5rem; background: rgba(245, 158, 11, 0.1); color: var(--accent-orange); border: 1px dashed var(--accent-orange);">
+                                    + Ajouter une question
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display: none;">
+                    <button id="btn-create-formation"></button>
+                    <button id="close-formation-modal-btn"></button>
+                    <form id="formation-form">
+                        <input id="edit-formation-id">
+                        <input id="formation-titre">
+                    </form>
+                    <button id="delete-formation-btn"></button>
+                    <input id="search-profs">
+                    <input id="search-students">
+                    <select id="library-formation-filter"></select>
+                    <div id="formations-list-container"></div>
+                </div>
+                
+            </div>
+        </main>
+    </div>
+
+    <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
+    <script>
+        window.quill = new Quill('#quill-editor', {
+            theme: 'snow',
+            modules: {
+                toolbar: [
+                    [{ 'header': [1, 2, 3, false] }],
+                    ['bold', 'italic', 'underline', 'strike'],
+                    [{ 'color': [] }, { 'background': [] }],
+                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                    ['link', 'image', 'video'],
+                    ['clean']
+                ]
+            }
+        });
+
+        // Logique visuelle de la page
+        function switchCourseTab(tabId) {
+            document.querySelectorAll('.student-sub-nav-item').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.student-view').forEach(el => el.classList.remove('active'));
+            
+            if(tabId === 'tab-list') {
+                document.querySelector('.student-sub-nav-item:nth-child(1)').classList.add('active');
+                document.getElementById('nav-tab-editor').style.display = 'none';
+            } else {
+                document.getElementById('nav-tab-editor').style.display = 'block';
+                document.getElementById('nav-tab-editor').classList.add('active');
+            }
+            document.getElementById(tabId).classList.add('active');
+        }
+        
+        window.switchCourseTab = switchCourseTab;
+        
+        document.body.addEventListener('change', function(e) {
+            if (e.target.name === 'media_type') {
+                if (e.target.value === 'image') {
+                    document.getElementById('media-image-zone').style.display = 'flex';
+                    document.getElementById('media-video-zone').style.display = 'none';
+                } else {
+                    document.getElementById('media-image-zone').style.display = 'none';
+                    document.getElementById('media-video-zone').style.display = 'flex';
+                }
+            }
+        });
+    </script>
+    
+    <script type="module" src="/admin/js/admin-notifications.js"></script>
+    <script type="module" src="/admin/js/admin-courses.js"></script>
+</body>
+</html>
