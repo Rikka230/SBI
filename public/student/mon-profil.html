@@ -41,6 +41,12 @@
 <body class="preload">
 
 <div class="app-container" id="app-container">
+    <script>
+        if (window.innerWidth > 1024 && localStorage.getItem('leftPanelCollapsed') === 'true') {
+            document.getElementById('app-container').classList.add('left-collapsed');
+        }
+    </script>
+
     <student-left-panel></student-left-panel>
     <student-top-bar></student-top-bar>
 
@@ -59,8 +65,7 @@
                     <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                         <div style="width: 100%; max-width: 400px;">
                             <h1 id="prof-name">Chargement...</h1>
-                            <p id="prof-bio-display" style="margin: 0; color: var(--text-muted);">Élève de la plateforme SBI</p>
-                            <div style="margin-top: 1rem; display: inline-block; background: rgba(16, 185, 129, 0.1); color: var(--accent-green); padding: 5px 15px; border-radius: 20px; font-weight: bold;">
+                            <div style="margin-top: 0.5rem; display: inline-block; background: rgba(16, 185, 129, 0.1); color: var(--accent-green); padding: 5px 15px; border-radius: 20px; font-weight: bold;">
                                 Niveau <span id="prof-level">1</span> (<span id="prof-xp">0</span> XP)
                             </div>
                             <div class="xp-bar-bg" style="margin-top: 1rem;">
@@ -112,7 +117,7 @@
                             <h3 class="section-title" style="margin-bottom: 1.5rem;">Profil Public</h3>
                             <div class="form-group">
                                 <label>À propos de moi (Bio)</label>
-                                <textarea id="prof-bio" class="prof-input" rows="5" placeholder="Dites-en plus sur vous..." disabled></textarea>
+                                <textarea id="prof-bio" class="prof-input" rows="5" maxlength="400" placeholder="Dites-en plus sur vous... (Max 400 caractères)" disabled></textarea>
                             </div>
                             <div class="edit-mode-only" style="margin-top: 1.5rem;">
                                 <button id="btn-save-public" class="action-btn" style="width: auto; background: var(--accent-green); color: white; border: none; padding: 0.8rem 1.5rem; border-radius: 8px; font-weight: bold;">Enregistrer la bio</button>
