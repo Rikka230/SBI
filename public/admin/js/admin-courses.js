@@ -41,22 +41,22 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             if (!document.getElementById('btn-preview-course')) {
-                const saveBtn = document.getElementById('btn-save-course');
-                if (saveBtn) {
-                    saveBtn.insertAdjacentHTML('afterend', `<button id="btn-preview-course" class="action-btn" style="width: 100%; margin-top: 1rem; background: transparent; color: var(--text-main); border: 1px solid var(--border-color); padding: 1rem; font-size: 1rem; cursor: pointer; transition: 0.2s;">${SVG_PREVIEW} Visualiser le rendu</button>`);
+                // Ajoute le bouton de preview sous les nouveaux boutons ou le bouton principal
+                const targetBtn = document.getElementById('btn-submit-validation') || document.getElementById('btn-save-course');
+                if (targetBtn) {
+                    targetBtn.insertAdjacentHTML('afterend', `<button id="btn-preview-course" class="action-btn" style="width: 100%; margin-top: 1rem; background: transparent; color: var(--text-main); border: 1px solid var(--border-color); padding: 1rem; font-size: 1rem; cursor: pointer; transition: 0.2s; font-weight:bold;">${SVG_PREVIEW} Visualiser le rendu actuel</button>`);
                     
                     document.getElementById('btn-preview-course').addEventListener('click', async () => {
                         const cId = document.getElementById('edit-course-id').value;
                         if (!cId) {
-                            alert("⚠️ Veuillez enregistrer le cours une première fois avant de le visualiser !");
+                            alert("⚠️ Veuillez enregistrer le cours comme Brouillon une première fois avant de le visualiser !");
                             return;
                         }
-                        await saveCourseToFirebase(true);
+                        await saveCourseToFirebase('preview');
                     });
                 }
             }
 
-            // INJECTION LOGIQUE DRAG AND DROP
             setupDropZone('drop-zone-image', 'chapter-image-upload');
             setupDropZone('drop-zone-video', 'chapter-video-upload');
 
@@ -75,7 +75,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    document.getElementById('btn-save-course').addEventListener('click', () => saveCourseToFirebase(false));
+    // FIX : Écouteurs pour les NOUVEAUX boutons Brouillon / Soumettre
+    const btnDraft = document.getElementById('btn-save-draft');
+    const btnSubmit = document.getElementById('btn-submit-validation');
+    const btnSaveAdmin = document.getElementById('btn-save-course'); // Pour l'interface Admin qui garde 1 seul bouton
+
+    if(btnDraft) btnDraft.addEventListener('click', () => saveCourseToFirebase('draft'));
+    if(btnSubmit) btnSubmit.addEventListener('click', () => saveCourseToFirebase('submit'));
+    if(btnSaveAdmin) btnSaveAdmin.addEventListener('click', () => saveCourseToFirebase('admin_save'));
+
     document.getElementById('btn-add-chapter').addEventListener('click', () => createNewChapter('text'));
     document.getElementById('btn-add-quiz').addEventListener('click', () => createNewChapter('quiz'));
     
@@ -200,9 +208,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-/* =========================================================
-   LOGIQUE DRAG AND DROP
-========================================================= */
 function setupDropZone(dropZoneId, inputId) {
     const dropZone = document.getElementById(dropZoneId);
     const input = document.getElementById(inputId);
@@ -403,6 +408,15 @@ window.prepareNewCourse = function() {
     document.getElementById('chapter-editor-zone').style.display = 'none';
     document.getElementById('quiz-editor-zone').style.display = 'none';
     
+    // Reset les verrous visuels
+    document.getElementById('lock-warning-banner').style.display = 'none';
+    document.querySelectorAll('.editor-input, .editor-action-btn').forEach(el => {
+        el.disabled = false;
+        el.style.opacity = '1';
+        el.style.pointerEvents = 'auto';
+    });
+    if(window.quill) window.quill.enable(true);
+    
     renderChaptersList();
     window.switchCourseTab('tab-editor');
 };
@@ -516,7 +530,7 @@ function renderChaptersList() {
         const li = `
             <li onclick="selectChapter('${chap.id}')" style="padding: 0.8rem; background: ${bg}; border: ${border}; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; color: ${color}; font-weight: ${isActive ? 'bold' : 'normal'};">
                 <span style="flex-grow: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${icon}${chap.titre}</span>
-                <button onclick="deleteChapter('${chap.id}', event)" style="background:none; border:none; color:var(--accent-red, #ff4a4a); cursor:pointer;">&times;</button>
+                <button onclick="deleteChapter('${chap.id}', event)" class="editor-action-btn" style="background:none; border:none; color:var(--accent-red, #ff4a4a); cursor:pointer;">&times;</button>
             </li>
         `;
         list.insertAdjacentHTML('beforeend', li);
@@ -529,22 +543,22 @@ function addQuizQuestion() {
     
     const qHTML = `
         <div class="quiz-question-block" data-qindex="${qIndex}" style="background: var(--bg-card, #111); padding: 1.5rem; border: 1px solid var(--border-color, #333); border-radius: 6px; position: relative;">
-            <button onclick="this.parentElement.remove()" style="position: absolute; right: 10px; top: 10px; background: none; border: none; color: var(--accent-red, #ff4a4a); cursor: pointer; font-size: 1.2rem;">&times;</button>
-            <input type="text" class="q-title" placeholder="Votre question..." style="width: 100%; font-size: 1.1rem; padding: 0.8rem; background: transparent; color: var(--text-main, white); border: none; border-bottom: 1px solid var(--border-color, #555); outline: none; margin-bottom: 1rem;">
+            <button onclick="this.parentElement.remove()" class="editor-action-btn" style="position: absolute; right: 10px; top: 10px; background: none; border: none; color: var(--accent-red, #ff4a4a); cursor: pointer; font-size: 1.2rem;">&times;</button>
+            <input type="text" class="q-title editor-input" placeholder="Votre question..." style="width: 100%; font-size: 1.1rem; padding: 0.8rem; background: transparent; color: var(--text-main, white); border: none; border-bottom: 1px solid var(--border-color, #555); outline: none; margin-bottom: 1rem;">
             <div class="q-options-container" style="display: flex; flex-direction: column; gap: 0.5rem;">
                 <label style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-muted, #aaa);">
-                    <input type="checkbox" class="q-correct-cb" value="0" checked>
-                    <input type="text" class="q-opt" placeholder="Réponse 1" style="flex-grow:1; background: var(--bg-body, #222); border: 1px solid var(--border-color, #444); padding: 0.5rem; color: var(--text-main, white); border-radius:4px; outline:none;">
+                    <input type="checkbox" class="q-correct-cb editor-input" value="0" checked>
+                    <input type="text" class="q-opt editor-input" placeholder="Réponse 1" style="flex-grow:1; background: var(--bg-body, #222); border: 1px solid var(--border-color, #444); padding: 0.5rem; color: var(--text-main, white); border-radius:4px; outline:none;">
                 </label>
                 <label style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-muted, #aaa);">
-                    <input type="checkbox" class="q-correct-cb" value="1">
-                    <input type="text" class="q-opt" placeholder="Réponse 2" style="flex-grow:1; background: var(--bg-body, #222); border: 1px solid var(--border-color, #444); padding: 0.5rem; color: var(--text-main, white); border-radius:4px; outline:none;">
+                    <input type="checkbox" class="q-correct-cb editor-input" value="1">
+                    <input type="text" class="q-opt editor-input" placeholder="Réponse 2" style="flex-grow:1; background: var(--bg-body, #222); border: 1px solid var(--border-color, #444); padding: 0.5rem; color: var(--text-main, white); border-radius:4px; outline:none;">
                 </label>
             </div>
-            <button type="button" onclick="window.addOptionToQuestion(this)" style="margin-top:0.8rem; background:none; border:none; color:var(--accent-blue); cursor:pointer; font-size:0.85rem;">+ Ajouter un choix</button>
+            <button type="button" onclick="window.addOptionToQuestion(this)" class="editor-action-btn" style="margin-top:0.8rem; background:none; border:none; color:var(--accent-blue); cursor:pointer; font-size:0.85rem;">+ Ajouter un choix</button>
             <div style="margin-top: 1.5rem; display: flex; align-items: center; gap: 1rem; border-top: 1px solid var(--border-color, #333); padding-top: 1rem;">
                 <span style="color: var(--text-muted); font-size: 0.85rem;">Cochez <strong>les</strong> bonnes réponses.</span>
-                <input type="number" class="q-points" value="1" min="1" style="width: 60px; background: var(--bg-body, #222); border: 1px solid var(--border-color, #444); padding: 0.4rem; color: var(--text-main, white); border-radius: 4px;"> <span style="color: var(--text-muted); font-size: 0.85rem;">Point(s)</span>
+                <input type="number" class="q-points editor-input" value="1" min="1" style="width: 60px; background: var(--bg-body, #222); border: 1px solid var(--border-color, #444); padding: 0.4rem; color: var(--text-main, white); border-radius: 4px;"> <span style="color: var(--text-muted); font-size: 0.85rem;">Point(s)</span>
             </div>
         </div>
     `;
@@ -556,9 +570,9 @@ window.addOptionToQuestion = function(btn) {
     const optIndex = container.children.length;
     const html = `
         <label style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-muted, #aaa);">
-            <input type="checkbox" class="q-correct-cb" value="${optIndex}">
-            <input type="text" class="q-opt" placeholder="Nouvelle réponse" style="flex-grow:1; background: var(--bg-body, #222); border: 1px solid var(--border-color, #444); padding: 0.5rem; color: var(--text-main, white); border-radius:4px; outline:none;">
-            <button type="button" onclick="this.parentElement.remove()" style="background:none; border:none; color:var(--accent-red, #ff4a4a); cursor:pointer; padding: 0 5px;">&times;</button>
+            <input type="checkbox" class="q-correct-cb editor-input" value="${optIndex}">
+            <input type="text" class="q-opt editor-input" placeholder="Nouvelle réponse" style="flex-grow:1; background: var(--bg-body, #222); border: 1px solid var(--border-color, #444); padding: 0.5rem; color: var(--text-main, white); border-radius:4px; outline:none;">
+            <button type="button" onclick="this.parentElement.remove()" class="editor-action-btn" style="background:none; border:none; color:var(--accent-red, #ff4a4a); cursor:pointer; padding: 0 5px;">&times;</button>
         </label>
     `;
     container.insertAdjacentHTML('beforeend', html);
@@ -587,58 +601,65 @@ function renderQuizBuilder(questions) {
         const indices = q.correctIndices || (q.correctIndex !== undefined ? [q.correctIndex] : []);
         const optionsHTML = q.options.map((opt, i) => `
             <label style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-muted, #aaa);">
-                <input type="checkbox" class="q-correct-cb" value="${i}" ${indices.includes(i) ? 'checked' : ''}>
-                <input type="text" class="q-opt" value="${opt}" placeholder="Réponse ${i+1}" style="flex-grow:1; background: var(--bg-body, #222); border: 1px solid var(--border-color, #444); padding: 0.5rem; color: var(--text-main, white); border-radius:4px; outline:none;">
-                ${i > 1 ? `<button type="button" onclick="this.parentElement.remove()" style="background:none; border:none; color:var(--accent-red, #ff4a4a); cursor:pointer;">&times;</button>` : ''}
+                <input type="checkbox" class="q-correct-cb editor-input" value="${i}" ${indices.includes(i) ? 'checked' : ''}>
+                <input type="text" class="q-opt editor-input" value="${opt}" placeholder="Réponse ${i+1}" style="flex-grow:1; background: var(--bg-body, #222); border: 1px solid var(--border-color, #444); padding: 0.5rem; color: var(--text-main, white); border-radius:4px; outline:none;">
+                ${i > 1 ? `<button type="button" onclick="this.parentElement.remove()" class="editor-action-btn" style="background:none; border:none; color:var(--accent-red, #ff4a4a); cursor:pointer;">&times;</button>` : ''}
             </label>
         `).join('');
 
         const qHTML = `
         <div class="quiz-question-block" data-qindex="${index}" style="background: var(--bg-card, #111); padding: 1.5rem; border: 1px solid var(--border-color, #333); border-radius: 6px; position: relative;">
-            <button onclick="this.parentElement.remove()" style="position: absolute; right: 10px; top: 10px; background: none; border: none; color: var(--accent-red, #ff4a4a); cursor: pointer; font-size: 1.2rem;">&times;</button>
-            <input type="text" class="q-title" value="${q.question}" style="width: 100%; font-size: 1.1rem; padding: 0.8rem; background: transparent; color: var(--text-main, white); border: none; border-bottom: 1px solid var(--border-color, #555); outline: none; margin-bottom: 1rem;">
+            <button onclick="this.parentElement.remove()" class="editor-action-btn" style="position: absolute; right: 10px; top: 10px; background: none; border: none; color: var(--accent-red, #ff4a4a); cursor: pointer; font-size: 1.2rem;">&times;</button>
+            <input type="text" class="q-title editor-input" value="${q.question}" style="width: 100%; font-size: 1.1rem; padding: 0.8rem; background: transparent; color: var(--text-main, white); border: none; border-bottom: 1px solid var(--border-color, #555); outline: none; margin-bottom: 1rem;">
             <div class="q-options-container" style="display: flex; flex-direction: column; gap: 0.5rem;">
                 ${optionsHTML}
             </div>
-            <button type="button" onclick="window.addOptionToQuestion(this)" style="margin-top:0.8rem; background:none; border:none; color:var(--accent-blue); cursor:pointer; font-size:0.85rem;">+ Ajouter un choix</button>
+            <button type="button" onclick="window.addOptionToQuestion(this)" class="editor-action-btn" style="margin-top:0.8rem; background:none; border:none; color:var(--accent-blue); cursor:pointer; font-size:0.85rem;">+ Ajouter un choix</button>
             <div style="margin-top: 1.5rem; display: flex; align-items: center; gap: 1rem; border-top: 1px solid var(--border-color, #333); padding-top: 1rem;">
                 <span style="color: var(--text-muted); font-size: 0.85rem;">Cochez <strong>les</strong> bonnes réponses.</span>
-                <input type="number" class="q-points" value="${q.points}" min="1" style="width: 60px; background: var(--bg-body, #222); border: 1px solid var(--border-color, #444); padding: 0.4rem; color: var(--text-main, white); border-radius: 4px;"> <span style="color: var(--text-muted); font-size: 0.85rem;">Point(s)</span>
+                <input type="number" class="q-points editor-input" value="${q.points}" min="1" style="width: 60px; background: var(--bg-body, #222); border: 1px solid var(--border-color, #444); padding: 0.4rem; color: var(--text-main, white); border-radius: 4px;"> <span style="color: var(--text-muted); font-size: 0.85rem;">Point(s)</span>
             </div>
         </div>`;
         container.insertAdjacentHTML('beforeend', qHTML);
     });
 }
 
-async function saveCourseToFirebase(isPreview = false) {
+// FIX : Intégration des boutons Draft, Submit et Preview
+async function saveCourseToFirebase(actionType = 'admin_save') {
     saveCurrentChapterContent(); 
     
     const courseId = document.getElementById('edit-course-id').value;
     const title = document.getElementById('course-title').value.trim();
     const bloc = document.getElementById('course-bloc-select').value.trim(); 
-    let isActive = document.getElementById('course-active').checked;
     
     const selectedPills = Array.from(document.querySelectorAll('.formation-pill.selected')).map(p => p.getAttribute('data-val'));
 
     if (!title) { alert('⚠️ Veuillez entrer un Titre Global.'); return; }
     if (currentChapters.length === 0) { alert('⚠️ Ajoutez au moins une étape.'); return; }
 
-    const saveBtn = document.getElementById('btn-save-course');
-    const originalSaveText = saveBtn.textContent;
-    saveBtn.textContent = 'Sauvegarde...';
-    saveBtn.disabled = true;
-
     const isTeacher = currentUserProfile && currentUserProfile.role === 'teacher';
-    const forcePending = isTeacher; 
     
-    if (forcePending) isActive = false; 
-    
-    let finalStatut = 'draft';
-    if (forcePending) finalStatut = 'pending';
-    else if (isActive) finalStatut = 'approved';
+    // Définition du statut selon l'action cliquée
+    let finalStatut = editingCourseOriginalStatus || 'draft';
+    let isActive = false;
+
+    if (actionType === 'draft') {
+        finalStatut = 'draft';
+    } else if (actionType === 'submit') {
+        if (!confirm("⚠️ ATTENTION : Une fois soumis à validation, ce cours sera verrouillé et vous ne pourrez plus le modifier pendant la durée de l'examen.\n\nConfirmer l'envoi ?")) {
+            return;
+        }
+        finalStatut = 'pending';
+    } else if (actionType === 'admin_save') {
+        // Le bouton classique de l'admin (Garde la checkbox)
+        const activeCheckbox = document.getElementById('course-active');
+        if (activeCheckbox) isActive = activeCheckbox.checked;
+        finalStatut = isActive ? 'approved' : 'draft';
+    } else if (actionType === 'preview') {
+        // En preview, on garde le statut actuel sans rien casser
+    }
 
     const finalAuteurId = courseId ? editingCourseAuthorId : currentUid;
-    const isValidation = (courseId && editingCourseOriginalStatus === 'pending' && finalStatut === 'approved' && !isTeacher);
 
     try {
         const courseData = {
@@ -655,16 +676,17 @@ async function saveCourseToFirebase(isPreview = false) {
 
         if (courseId) {
             await updateDoc(doc(db, "courses", courseId), courseData);
-            if (!isPreview) alert(forcePending ? '✅ Modifications envoyées pour validation !' : '✅ Cours mis à jour !');
+            if (actionType !== 'preview') alert(actionType === 'submit' ? '✅ Cours envoyé pour validation !' : '✅ Cours sauvegardé !');
         } else {
             courseData.dateCreation = serverTimestamp();
             const docRef = await addDoc(collection(db, "courses"), courseData);
             courseRefId = docRef.id;
             document.getElementById('edit-course-id').value = courseRefId;
-            if (!isPreview) alert(forcePending ? '✅ Cours soumis pour validation !' : '✅ Nouveau cours créé !');
+            if (actionType !== 'preview') alert(actionType === 'submit' ? '✅ Cours envoyé pour validation !' : '✅ Brouillon créé !');
         }
         
-        if (forcePending && !courseId) {
+        // Notifications : Si on modifie ou soumet (et pas juste un brouillon invisible ou une preview)
+        if (actionType === 'submit') {
             await addDoc(collection(db, "notifications"), {
                 type: 'course_validation',
                 courseId: courseRefId,
@@ -675,19 +697,9 @@ async function saveCourseToFirebase(isPreview = false) {
             });
         }
         
-        if (isValidation && editingCourseAuthorId && editingCourseAuthorId !== currentUid) {
-            await addDoc(collection(db, "notifications"), {
-                type: 'course_approved',
-                courseId: courseRefId,
-                courseTitle: title,
-                destinataireId: editingCourseAuthorId,
-                dateCreation: serverTimestamp(),
-            });
-        }
-        
         await loadCourses();
         
-        if (isPreview) {
+        if (actionType === 'preview') {
             window.open(`/student/cours-viewer.html?id=${courseRefId}&preview=true`, '_blank');
         } else {
             window.prepareNewCourse(); 
@@ -696,9 +708,6 @@ async function saveCourseToFirebase(isPreview = false) {
 
     } catch (error) {
         alert("❌ Erreur de sauvegarde.");
-    } finally {
-        saveBtn.textContent = originalSaveText;
-        saveBtn.disabled = false;
     }
 }
 
@@ -785,7 +794,8 @@ window.editCourse = async (id) => {
             
             document.getElementById('edit-course-id').value = id;
             document.getElementById('course-title').value = data.titre || '';
-            document.getElementById('course-active').checked = data.actif;
+            const activeCb = document.getElementById('course-active');
+            if (activeCb) activeCb.checked = data.actif;
             
             document.getElementById('course-bloc-select').value = data.bloc || '';
             
@@ -804,6 +814,28 @@ window.editCourse = async (id) => {
             currentChapters = data.chapitres || [];
             window.switchCourseTab('tab-editor');
             
+            // FIX : Verrouillage visuel si le cours est en cours d'examen
+            const isTeacher = currentUserProfile && currentUserProfile.role === 'teacher';
+            const warningBanner = document.getElementById('lock-warning-banner');
+            
+            if (isTeacher && editingCourseOriginalStatus === 'pending') {
+                if (warningBanner) warningBanner.style.display = 'block';
+                document.querySelectorAll('.editor-input, .editor-action-btn').forEach(el => {
+                    el.disabled = true;
+                    el.style.opacity = '0.5';
+                    el.style.pointerEvents = 'none';
+                });
+                if(window.quill) window.quill.enable(false);
+            } else {
+                if (warningBanner) warningBanner.style.display = 'none';
+                document.querySelectorAll('.editor-input, .editor-action-btn').forEach(el => {
+                    el.disabled = false;
+                    el.style.opacity = '1';
+                    el.style.pointerEvents = 'auto';
+                });
+                if(window.quill) window.quill.enable(true);
+            }
+
             if(currentChapters.length > 0) selectChapter(currentChapters[0].id);
             else renderChaptersList();
         }
