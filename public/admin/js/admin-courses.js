@@ -42,6 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
             
+            // Bouton de prévisualisation
             if (!document.getElementById('btn-preview-course')) {
                 const targetBtn = document.getElementById('btn-submit-validation') || document.getElementById('btn-save-course');
                 if (targetBtn) {
@@ -54,6 +55,19 @@ document.addEventListener('DOMContentLoaded', () => {
                             return;
                         }
                         await saveCourseToFirebase('preview');
+                    });
+                }
+            }
+
+            // FIX FONCTIONNALITÉ : Bouton Refuser pour les Administrateurs
+            if (!document.getElementById('btn-reject-course')) {
+                const saveAdminBtn = document.getElementById('btn-save-course');
+                if (saveAdminBtn) {
+                    saveAdminBtn.insertAdjacentHTML('beforebegin', `<button id="btn-reject-course" class="action-btn danger" style="margin-right: 10px; display: none;">Refuser</button>`);
+                    document.getElementById('btn-reject-course').addEventListener('click', async () => {
+                        if(confirm("Refuser ce cours et demander des modifications au professeur ?")) {
+                            await saveCourseToFirebase('reject');
+                        }
                     });
                 }
             }
@@ -439,6 +453,7 @@ window.prepareNewCourse = function() {
     const warningBanner = document.getElementById('lock-warning-banner');
     if (warningBanner) warningBanner.style.display = 'none';
 
+    // Rendre l'éditeur interactif
     document.querySelectorAll('.editor-input, .editor-action-btn').forEach(el => {
         el.disabled = false;
         el.style.opacity = '1';
@@ -740,6 +755,16 @@ window.editCourse = async (id) => {
                 if(window.quill) window.quill.enable(true);
             }
 
+            // FIX : Affichage dynamique du bouton "Refuser" uniquement si l'Admin ouvre un cours en attente
+            const rejectBtn = document.getElementById('btn-reject-course');
+            if (rejectBtn) {
+                if ((currentUserProfile.role === 'admin' || currentUserProfile.isGod) && editingCourseOriginalStatus === 'pending') {
+                    rejectBtn.style.display = 'inline-block';
+                } else {
+                    rejectBtn.style.display = 'none';
+                }
+            }
+
             if(currentChapters.length > 0) selectChapter(currentChapters[0].id);
             else renderChaptersList();
         }
@@ -769,6 +794,7 @@ async function saveCourseToFirebase(actionType = 'admin_save') {
     let finalStatut = editingCourseOriginalStatus || 'draft';
     let isActive = false;
 
+    // Détermination propre de l'état final
     if (actionType === 'draft') {
         finalStatut = 'draft';
     } else if (actionType === 'submit') {
@@ -780,14 +806,18 @@ async function saveCourseToFirebase(actionType = 'admin_save') {
         const activeCheckbox = document.getElementById('course-active');
         if (activeCheckbox) isActive = activeCheckbox.checked;
         finalStatut = isActive ? 'approved' : 'draft';
+    } else if (actionType === 'reject') {
+        finalStatut = 'draft';
+        isActive = false;
     } else if (actionType === 'preview') {
         isActive = window.editingCourseOriginalActive || false;
     }
 
     const finalAuteurId = courseId ? editingCourseAuthorId : currentUid;
     
-    // FIX SÉCURITÉ NOTIFICATIONS : On calcule proprement si le cours bascule en ligne
-    const isPublishing = (actionType === 'admin_save' && isActive && !window.editingCourseOriginalActive);
+    // FIX FLUX : On valide que le cours PASSE du statut "en attente" à "actif" pour le publier
+    const isPublishing = (actionType === 'admin_save' && isActive && editingCourseOriginalStatus === 'pending');
+    const isRejecting = (actionType === 'reject' && editingCourseOriginalStatus === 'pending');
 
     try {
         const courseData = {
@@ -822,9 +852,9 @@ async function saveCourseToFirebase(actionType = 'admin_save') {
             });
         }
         
-        // CORRECTION MAJEURE ICI : Sécurité sur le dispatch
+        // CORRECTION MAJEURE : Dispatch précis
         if (isPublishing) {
-            
+            // 1. Notif au professeur
             if (editingCourseAuthorId && editingCourseAuthorId !== currentUid) {
                 await addDoc(collection(db, "notifications"), {
                     type: 'course_approved',
@@ -835,15 +865,14 @@ async function saveCourseToFirebase(actionType = 'admin_save') {
                 });
             }
 
+            // 2. Notifs aux étudiants
             let targetStudentsSet = new Set();
             selectedPills.forEach(formId => {
-                // Recherche tolérante par ID ou Titre
                 const formObj = allFormationsData.find(f => f.id === formId || f.titre === formId);
                 if (formObj && formObj.students) {
                     formObj.students.forEach(s => targetStudentsSet.add(s));
                 }
             });
-
             const targetStudentsArray = Array.from(targetStudentsSet);
             if (targetStudentsArray.length > 0) {
                 await addDoc(collection(db, "notifications"), {
@@ -854,20 +883,33 @@ async function saveCourseToFirebase(actionType = 'admin_save') {
                     dateCreation: serverTimestamp(),
                 });
             }
+        } else if (isRejecting) {
+            // 3. Notif de refus
+            if (editingCourseAuthorId && editingCourseAuthorId !== currentUid) {
+                await addDoc(collection(db, "notifications"), {
+                    type: 'course_rejected',
+                    courseId: courseRefId,
+                    courseTitle: title,
+                    destinataireId: editingCourseAuthorId,
+                    dateCreation: serverTimestamp(),
+                });
+            }
         }
         
         await loadCourses();
         
-        // FIX VISUALISEUSE PROFESSEUR : Le prof utilise l'URL étudiant avec le flag preview (car ton cours-viewer.js fait le filtre)
         if (actionType === 'preview') {
             window.open(`/student/cours-viewer.html?id=${courseRefId}&preview=true`, '_blank');
         } else {
-            // Confirmation visuelle immédiate pour l'Admin !
+            // Confirmation visuelle précise de l'action
             if (isPublishing) {
-                alert("✅ Le cours a été publié ! Le professeur et les élèves concernés ont été notifiés.");
+                alert("✅ Le cours a été publié ! Les notifications ont été envoyées au professeur et aux élèves.");
+            } else if (isRejecting) {
+                alert("❌ Le cours a été refusé. Le professeur a été notifié.");
             } else {
                 alert(actionType === 'submit' ? '✅ Cours envoyé pour validation !' : '✅ Cours sauvegardé !');
             }
+            
             if (typeof window.prepareNewCourse === 'function') window.prepareNewCourse(); 
             if (typeof window.switchCourseTab === 'function') window.switchCourseTab('tab-list');
         }
