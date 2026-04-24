@@ -129,3 +129,24 @@ body {
 
     .app-container.left-open #left-panel { transform: translateX(0); }
 }
+
+/* =======================================================================
+   CUSTOM SCROLLBAR (Global)
+   ======================================================================= */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #0a0a0c; /* Se fond avec le fond de l'admin */
+}
+
+::-webkit-scrollbar-thumb {
+    background: #333; /* Couleur discrète pour la jauge */
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #555; /* S'éclaire légèrement au survol */
+}
