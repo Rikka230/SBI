@@ -32,6 +32,21 @@ document.addEventListener('DOMContentLoaded', () => {
             if (mySnap.exists()) {
                 const myData = mySnap.data();
                 isAdmin = (myData.role === 'admin' || myData.isGod === true);
+
+                // FIX : Mise à jour de la Top Bar indépendamment du profil visité
+                const myDisplayName = `${myData.prenom || ''} ${myData.nom || ''}`.trim() || "Étudiant";
+                const myAvatarUrl = myData.photoURL || `https://ui-avatars.com/api/?name=${myDisplayName}&background=111&color=fff`;
+                const myXp = myData.xp || 0;
+                const myLevel = Math.floor(myXp / 100) + 1;
+
+                const topName = document.getElementById('top-user-name');
+                if (topName) topName.textContent = myDisplayName;
+                
+                const topAvatar = document.getElementById('top-user-avatar');
+                if (topAvatar) topAvatar.innerHTML = `<img src="${myAvatarUrl}" style="width:100%; height:100%; object-fit:cover;">`;
+                
+                const topLevel = document.getElementById('top-user-level');
+                if (topLevel) topLevel.textContent = `Niveau ${myLevel}`;
             }
 
             currentProfileId = targetId ? targetId : loggedInUserId;
@@ -68,17 +83,13 @@ async function loadProfileData(uid) {
                 }
             }
 
+            if(document.getElementById('prof-bio-display')) document.getElementById('prof-bio-display').textContent = data.bio || 'Élève de la plateforme SBI';
             if(document.getElementById('prof-bio')) document.getElementById('prof-bio').value = data.bio || '';
 
             const avatarUrl = data.photoURL || `https://ui-avatars.com/api/?name=${displayName}&background=111&color=fff&size=150`;
             const avatarImg = document.getElementById('prof-avatar-img');
             if(avatarImg) avatarImg.src = avatarUrl;
             
-            const topName = document.getElementById('top-user-name');
-            if (topName && isOwner) topName.textContent = displayName;
-            const topAvatar = document.getElementById('top-user-avatar');
-            if (topAvatar && isOwner) topAvatar.innerHTML = `<img src="${avatarUrl}" style="width:100%; height:100%; object-fit:cover;">`;
-
             const dot = document.getElementById('prof-online-dot');
             const statusText = document.getElementById('prof-status-text');
             if(dot && statusText) {
@@ -103,8 +114,6 @@ async function loadProfileData(uid) {
             const level = Math.floor(xp / 100) + 1;
             
             if(document.getElementById('prof-level')) document.getElementById('prof-level').textContent = level;
-            const topLevel = document.getElementById('top-user-level');
-            if (topLevel && isOwner) topLevel.textContent = `Niveau ${level}`;
             
             const xpEls = [document.getElementById('prof-xp'), document.getElementById('prof-xp-text')];
             xpEls.forEach(el => {
