@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if(userSnap.exists()) {
                 currentUserProfile = userSnap.data();
                 
-                // FIX : Remplissage global de la Top-Bar (Élève/Prof) depuis n'importe quelle page !
+                // FIX : Remplissage global de la Top-Bar depuis n'importe quelle page !
                 const displayName = `${currentUserProfile.prenom || ''} ${currentUserProfile.nom || ''}`.trim() || "Utilisateur";
                 const avatarUrl = currentUserProfile.photoURL || `https://ui-avatars.com/api/?name=${displayName}&background=111&color=fff`;
                 const userXp = currentUserProfile.xp || 0;
@@ -49,7 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if(notifSection) {
                 let activeColor = 'var(--accent-blue)';
-                if (window.location.pathname.includes('student')) activeColor = 'var(--accent-blue)'; 
+                if (window.location.pathname.includes('student')) activeColor = 'var(--accent-green)'; 
                 if (window.location.pathname.includes('teacher')) activeColor = 'var(--accent-orange)';
                 
                 if(notifSection.style.display === 'none' || notifSection.style.display === '') {
