@@ -68,7 +68,6 @@ async function loadProfileData(uid) {
                 }
             }
 
-            if(document.getElementById('prof-bio-display')) document.getElementById('prof-bio-display').textContent = data.bio || 'Élève de la plateforme SBI';
             if(document.getElementById('prof-bio')) document.getElementById('prof-bio').value = data.bio || '';
 
             const avatarUrl = data.photoURL || `https://ui-avatars.com/api/?name=${displayName}&background=111&color=fff&size=150`;
@@ -134,7 +133,6 @@ async function loadProfileData(uid) {
                     emailEl.tagName === 'INPUT' ? emailEl.value = data.email || '' : emailEl.textContent = data.email || '';
                 }
 
-                // FIX : AFFICHER LE BOUTON D'ÉDITION D'EMAIL UNIQUEMENT POUR LE PROPRIÉTAIRE
                 if (isOwner) {
                     const btnChangeAdmin = document.getElementById('btn-change-email-admin');
                     if (btnChangeAdmin) btnChangeAdmin.style.display = 'block';
