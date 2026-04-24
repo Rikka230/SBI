@@ -682,7 +682,6 @@ function renderQuizBuilder(questions) {
     });
 }
 
-// FIX ABSOLU DU CHANGEMENT D'ONGLET
 window.editCourse = async (id) => {
     try {
         const docSnap = await getDoc(doc(db, "courses", id));
@@ -786,6 +785,8 @@ async function saveCourseToFirebase(actionType = 'admin_save') {
     }
 
     const finalAuteurId = courseId ? editingCourseAuthorId : currentUid;
+    
+    // FIX SÉCURITÉ NOTIFICATIONS : On calcule proprement si le cours bascule en ligne
     const isPublishing = (actionType === 'admin_save' && isActive && !window.editingCourseOriginalActive);
 
     try {
@@ -803,13 +804,11 @@ async function saveCourseToFirebase(actionType = 'admin_save') {
 
         if (courseId) {
             await updateDoc(doc(db, "courses", courseId), courseData);
-            if (actionType !== 'preview') alert(actionType === 'submit' ? '✅ Cours envoyé pour validation !' : '✅ Cours sauvegardé !');
         } else {
             courseData.dateCreation = serverTimestamp();
             const docRef = await addDoc(collection(db, "courses"), courseData);
             courseRefId = docRef.id;
             document.getElementById('edit-course-id').value = courseRefId;
-            if (actionType !== 'preview') alert(actionType === 'submit' ? '✅ Cours envoyé pour validation !' : '✅ Brouillon créé !');
         }
         
         if (actionType === 'submit') {
@@ -823,10 +822,9 @@ async function saveCourseToFirebase(actionType = 'admin_save') {
             });
         }
         
-        // CORRECTION MAJEURE ICI : Dispatch automatique des notifications 
+        // CORRECTION MAJEURE ICI : Sécurité sur le dispatch
         if (isPublishing) {
             
-            // 1. Notification au professeur (Auteur)
             if (editingCourseAuthorId && editingCourseAuthorId !== currentUid) {
                 await addDoc(collection(db, "notifications"), {
                     type: 'course_approved',
@@ -837,10 +835,10 @@ async function saveCourseToFirebase(actionType = 'admin_save') {
                 });
             }
 
-            // 2. Notification aux étudiants (Ciblés par les formations sélectionnées)
             let targetStudentsSet = new Set();
             selectedPills.forEach(formId => {
-                const formObj = allFormationsData.find(f => f.id === formId);
+                // Recherche tolérante par ID ou Titre
+                const formObj = allFormationsData.find(f => f.id === formId || f.titre === formId);
                 if (formObj && formObj.students) {
                     formObj.students.forEach(s => targetStudentsSet.add(s));
                 }
@@ -860,9 +858,16 @@ async function saveCourseToFirebase(actionType = 'admin_save') {
         
         await loadCourses();
         
+        // FIX VISUALISEUSE PROFESSEUR : Le prof utilise l'URL étudiant avec le flag preview (car ton cours-viewer.js fait le filtre)
         if (actionType === 'preview') {
             window.open(`/student/cours-viewer.html?id=${courseRefId}&preview=true`, '_blank');
         } else {
+            // Confirmation visuelle immédiate pour l'Admin !
+            if (isPublishing) {
+                alert("✅ Le cours a été publié ! Le professeur et les élèves concernés ont été notifiés.");
+            } else {
+                alert(actionType === 'submit' ? '✅ Cours envoyé pour validation !' : '✅ Cours sauvegardé !');
+            }
             if (typeof window.prepareNewCourse === 'function') window.prepareNewCourse(); 
             if (typeof window.switchCourseTab === 'function') window.switchCourseTab('tab-list');
         }
