@@ -38,9 +38,10 @@ body { background-color: var(--bg-body) !important; color: var(--text-main); }
 .top-bar { right: 0 !important; width: calc(100% - var(--left-panel-width)) !important; }
 .app-container.left-collapsed .top-bar { width: calc(100% - var(--left-panel-mini-width)) !important; }
 
-.hub-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 2.5rem; align-items: start; width: 100%; }
+/* FIX : Grille repensée pour laisser un maximum de place à l'éditeur */
+.hub-grid { display: grid; grid-template-columns: minmax(300px, 1fr) 2.5fr; gap: 2.5rem; align-items: start; width: 100%; }
 
-/* FIX : Styles globaux pour les formulaires (Profil et Éditeur de cours) */
+/* Styles globaux pour les formulaires (Profil et Éditeur de cours) */
 .form-group { margin-bottom: 1.5rem; }
 .form-group label { display: block; font-weight: 600; margin-bottom: 0.5rem; color: var(--text-main); font-size: 0.95rem; }
 .prof-input { width: 100%; padding: 0.8rem 1rem; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-card); color: var(--text-main); font-family: inherit; font-size: 0.95rem; outline: none; transition: 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
@@ -80,6 +81,21 @@ body { background-color: var(--bg-body) !important; color: var(--text-main); }
 }
 .editing .edit-avatar-badge { opacity: 1; pointer-events: auto; }
 .edit-avatar-badge svg { width: 18px; height: 18px; flex-shrink: 0; }
+
+/* =======================================================================
+   NOUVEAUX COMPOSANTS UI MODERNES (Toggle Switch & Drag'n'Drop)
+   ======================================================================= */
+
+.toggle-switch { position: relative; width: 46px; height: 26px; flex-shrink: 0; }
+.toggle-switch .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #cbd5e1; transition: .3s; border-radius: 24px; }
+.toggle-switch .slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+.toggle-switch input:checked + .slider { background-color: var(--accent-orange); }
+.toggle-switch input:checked + .slider:before { transform: translateX(20px); }
+
+.drag-drop-zone { border: 2px dashed var(--border-color); border-radius: 12px; padding: 2rem; text-align: center; background: #f9fafb; cursor: pointer; transition: 0.2s; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.drag-drop-zone:hover, .drag-drop-zone.dragover { border-color: var(--accent-orange); background: rgba(245, 158, 11, 0.05); }
+.drag-drop-zone p { margin: 0; color: var(--text-muted); font-size: 0.9rem; }
+.drag-drop-zone span { color: var(--accent-orange); font-weight: bold; }
 
 @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
