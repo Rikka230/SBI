@@ -75,7 +75,6 @@ async function loadProfileData(uid) {
             const displayName = `${data.prenom || ''} ${data.nom || ''}`.trim() || "Utilisateur Sans Nom";
             const nameEl = document.getElementById('prof-name');
             
-            // FIX : Génération garantie de la zone du badge, même si le HTML de base l'a oublié
             if(nameEl) {
                 nameEl.innerHTML = `${displayName} <span id="prof-badge-zone" style="margin-left: 10px; font-size: 0.45em; vertical-align: middle;"></span>`;
             }
@@ -99,13 +98,13 @@ async function loadProfileData(uid) {
                 }
             }
 
-            // Affichage du badge (maintenant garanti)
             const badgeZone = document.getElementById('prof-badge-zone');
             if(badgeZone) {
                 if (data.isGod) badgeZone.innerHTML = `<span style="background:rgba(255,215,0,0.15); color:#ffd700; padding:4px 8px; border-radius:4px; font-weight:bold;">SUPRÊME</span>`;
                 else if (data.role === 'admin') badgeZone.innerHTML = `<span style="background:rgba(255,74,74,0.15); color:#ff4a4a; padding:4px 8px; border-radius:4px; font-weight:bold;">ADMIN</span>`;
                 else if (data.role === 'teacher') badgeZone.innerHTML = `<span style="background:rgba(251,188,4,0.15); color:#fbbc04; padding:4px 8px; border-radius:4px; font-weight:bold;">PROFESSEUR</span>`;
-                else badgeZone.innerHTML = `<span style="background:rgba(0,255,163,0.15); color:#00ffa3; padding:4px 8px; border-radius:4px; font-weight:bold;">ÉLÈVE</span>`;
+                /* FIX : Passage du badge Élève au Bleu SBI ! */
+                else badgeZone.innerHTML = `<span style="background:rgba(42, 87, 255, 0.15); color:#2A57FF; padding:4px 8px; border-radius:4px; font-weight:bold;">ÉLÈVE</span>`;
             }
 
             const xp = data.xp || 0;
@@ -225,7 +224,8 @@ async function loadLearningTracking(uid) {
             
             let statusBadge = '';
             if (pData.status === 'done') {
-                statusBadge = `<span style="background: ${isStudentUI ? 'rgba(16, 185, 129, 0.1)' : 'rgba(46, 213, 115, 0.1)'}; color: var(--accent-green); padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold;">Terminé</span>`;
+                /* FIX : Passage du Terminé en Bleu pour les Étudiants */
+                statusBadge = `<span style="background: ${isStudentUI ? 'rgba(42, 87, 255, 0.1)' : 'rgba(46, 213, 115, 0.1)'}; color: ${isStudentUI ? 'var(--accent-blue)' : 'var(--accent-green)'}; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold;">Terminé</span>`;
             } else if (pData.status === 'in_progress') {
                 statusBadge = '<span style="background: rgba(251, 188, 4, 0.1); color: var(--accent-yellow); padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold;">En cours</span>';
             } else {
@@ -248,7 +248,7 @@ async function loadLearningTracking(uid) {
                             <div style="display: flex; justify-content: space-between; align-items: center; background: ${isStudentUI ? '#f9fafb' : 'rgba(0,0,0,0.2)'}; padding: 0.5rem 1rem; border-radius: 6px; margin-top: 0.8rem; border: 1px solid ${isStudentUI ? 'var(--border-color)' : 'transparent'};">
                                 <span style="font-size: 0.85rem; color: var(--text-muted);">${chap.titre}</span>
                                 <div style="display: flex; align-items: center; gap: 10px;">
-                                    <span style="font-size: 0.85rem; font-weight: bold; color: ${scoreObtained === totalPossible && totalPossible > 0 ? 'var(--accent-green)' : 'var(--text-main)'};">Score: ${scoreObtained} / ${totalPossible}</span>
+                                    <span style="font-size: 0.85rem; font-weight: bold; color: ${scoreObtained === totalPossible && totalPossible > 0 ? (isStudentUI ? 'var(--accent-blue)' : 'var(--accent-green)') : 'var(--text-main)'};">Score: ${scoreObtained} / ${totalPossible}</span>
                                     ${editBtnHtml}
                                 </div>
                             </div>
@@ -359,7 +359,7 @@ async function loadUserFormations(uid) {
             if (window.location.pathname.includes('admin')) {
                 list.innerHTML = res.map(a => `<span style="color: white; display:block; margin-bottom:5px;">📁 ${a}</span>`).join('');
             } else {
-                list.innerHTML = res.map(a => `<div style="display:flex; align-items:center; gap:8px; margin-bottom:5px;"><div style="width:8px; height:8px; background:var(--accent-green); border-radius:50%; flex-shrink:0;"></div>${a}</div>`).join('');
+                list.innerHTML = res.map(a => `<div style="display:flex; align-items:center; gap:8px; margin-bottom:5px;"><div style="width:8px; height:8px; background:var(--accent-blue); border-radius:50%; flex-shrink:0;"></div>${a}</div>`).join('');
             }
         } else {
             list.innerHTML = 'Aucune formation assignée.';
