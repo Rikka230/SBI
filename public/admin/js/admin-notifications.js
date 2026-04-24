@@ -16,9 +16,26 @@ document.addEventListener('DOMContentLoaded', () => {
         if (user) {
             currentUid = user.uid;
             const userSnap = await getDoc(doc(db, "users", currentUid));
-            if(userSnap.exists()) currentUserProfile = userSnap.data();
+            if(userSnap.exists()) {
+                currentUserProfile = userSnap.data();
+                
+                // FIX : Remplissage global de la Top-Bar (Élève/Prof) depuis n'importe quelle page !
+                const displayName = `${currentUserProfile.prenom || ''} ${currentUserProfile.nom || ''}`.trim() || "Utilisateur";
+                const avatarUrl = currentUserProfile.photoURL || `https://ui-avatars.com/api/?name=${displayName}&background=111&color=fff`;
+                const userXp = currentUserProfile.xp || 0;
+                const userLevel = Math.floor(userXp / 100) + 1;
+
+                const topName = document.getElementById('top-user-name');
+                if (topName) topName.textContent = displayName;
+                
+                const topAvatar = document.getElementById('top-user-avatar');
+                if (topAvatar) topAvatar.innerHTML = `<img src="${avatarUrl}" style="width:100%; height:100%; object-fit:cover;">`;
+                
+                const topLevel = document.getElementById('top-user-level');
+                if (topLevel) topLevel.textContent = `Niveau ${userLevel}`;
+            }
+
             initNotificationsRealtime();
-            
             setTimeout(() => setupGlobalSearch(), 500); 
         }
     });
@@ -32,8 +49,8 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if(notifSection) {
                 let activeColor = 'var(--accent-blue)';
-                if (window.location.pathname.includes('student')) activeColor = 'var(--accent-blue)'; // Thème étudiant bleu
-                if (window.location.pathname.includes('teacher')) activeColor = 'var(--accent-orange)'; // Thème prof orange
+                if (window.location.pathname.includes('student')) activeColor = 'var(--accent-blue)'; 
+                if (window.location.pathname.includes('teacher')) activeColor = 'var(--accent-orange)';
                 
                 if(notifSection.style.display === 'none' || notifSection.style.display === '') {
                     if (profileSection) profileSection.style.display = 'none';
@@ -156,7 +173,6 @@ function renderNotificationsList(notifs) {
             const nSection = document.getElementById('notifications-section');
             if(nSection) nSection.style.display = 'none';
 
-            // FIX : Aiguillage propre selon le rôle de la personne qui clique
             let userRole = 'student';
             if (currentUserProfile) {
                 if (currentUserProfile.isGod) userRole = 'admin';
@@ -173,7 +189,6 @@ function renderNotificationsList(notifs) {
                 window.location.assign(`/teacher/mes-cours.html?edit=${courseId}`);
                 
             } else {
-                // Direction Admin pour validation
                 if(window.location.pathname.includes('formations-cours.html') && typeof window.editCourse === 'function') {
                     window.editCourse(courseId);
                 } else {
@@ -218,7 +233,6 @@ function setupGlobalSearch() {
             
             let html = '';
             
-            // FIX : Détection robuste du rôle
             let userRole = 'student';
             if (currentUserProfile) {
                 if (currentUserProfile.isGod) userRole = 'admin';
@@ -232,14 +246,11 @@ function setupGlobalSearch() {
             const isAdmin = (userRole === 'admin');
             const isTeacher = (userRole === 'teacher');
 
-            // 1. Recherche de cours (Admins et Profs peuvent voir les cours en attente/brouillons)
             const matchedCourses = window.searchDataCache.courses.filter(c => c.titre && c.titre.toLowerCase().includes(term) && ((!isAdmin && !isTeacher) ? c.actif : true)).slice(0, 5);
             
             if (matchedCourses.length > 0) {
                 html += `<div style="padding: 6px 15px; font-size: 0.75rem; color: var(--text-muted, #888); background: rgba(0,0,0,0.05); font-weight: bold;">COURS PÉDAGOGIQUES</div>`;
                 matchedCourses.forEach(c => {
-                    
-                    // FIX : Aiguillage des cours par rôle
                     let link = `/student/cours-viewer.html?id=${c.id}`;
                     if (isAdmin) link = `/admin/formations-cours.html?edit=${c.id}`;
                     else if (isTeacher) link = `/teacher/mes-cours.html?edit=${c.id}`;
@@ -255,7 +266,6 @@ function setupGlobalSearch() {
                 });
             }
 
-            // 2. Recherche d'utilisateurs
             const matchedUsers = window.searchDataCache.users.filter(u => {
                 const name = `${u.prenom || ''} ${u.nom || ''}`.toLowerCase();
                 return name.includes(term) || (isAdmin && u.email && u.email.toLowerCase().includes(term));
@@ -264,7 +274,6 @@ function setupGlobalSearch() {
             if (matchedUsers.length > 0) {
                 html += `<div style="padding: 6px 15px; font-size: 0.75rem; color: var(--text-muted, #888); background: rgba(0,0,0,0.05); font-weight: bold;">UTILISATEURS</div>`;
                 matchedUsers.forEach(u => {
-                    
                     let profileLink = `/student/mon-profil.html?id=${u.id}`;
                     if (isAdmin) profileLink = `/admin/admin-profile.html?id=${u.id}`;
                     else if (isTeacher) profileLink = `/teacher/mon-profil.html?id=${u.id}`;
