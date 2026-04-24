@@ -21,6 +21,9 @@ let allCoursesData = [];
 let editingCourseAuthorId = null;
 let editingCourseOriginalStatus = null;
 
+const SVG_PREVIEW = `<svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24" style="vertical-align:middle; margin-right:8px;"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>`;
+const SVG_QUIZ_LIST = `<svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24" style="vertical-align:text-bottom; margin-right:4px;"><path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>`;
+
 document.addEventListener('DOMContentLoaded', () => {
     
     onAuthStateChanged(auth, async (user) => {
@@ -36,12 +39,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.editCourse(editId);
                 window.history.replaceState({}, document.title, window.location.pathname + "?tab=tab-editor");
             }
-
-            // FIX : INJECTION DU BOUTON DE PRÉVISUALISATION
+            
             if (!document.getElementById('btn-preview-course')) {
                 const saveBtn = document.getElementById('btn-save-course');
                 if (saveBtn) {
-                    saveBtn.insertAdjacentHTML('afterend', `<button id="btn-preview-course" class="action-btn" style="width: 100%; margin-top: 1rem; background: transparent; color: var(--text-main, white); border: 1px solid var(--border-color, #333); padding: 1rem; font-size: 1rem; cursor: pointer; transition: 0.2s;">👁️ Visualiser le rendu</button>`);
+                    saveBtn.insertAdjacentHTML('afterend', `<button id="btn-preview-course" class="action-btn" style="width: 100%; margin-top: 1rem; background: transparent; color: var(--text-main); border: 1px solid var(--border-color); padding: 1rem; font-size: 1rem; cursor: pointer; transition: 0.2s;">${SVG_PREVIEW} Visualiser le rendu</button>`);
                     
                     document.getElementById('btn-preview-course').addEventListener('click', async () => {
                         const cId = document.getElementById('edit-course-id').value;
@@ -49,11 +51,14 @@ document.addEventListener('DOMContentLoaded', () => {
                             alert("⚠️ Veuillez enregistrer le cours une première fois avant de le visualiser !");
                             return;
                         }
-                        // Le paramètre "true" lance la sauvegarde silencieuse et ouvre le lecteur
                         await saveCourseToFirebase(true);
                     });
                 }
             }
+
+            // INJECTION LOGIQUE DRAG AND DROP
+            setupDropZone('drop-zone-image', 'chapter-image-upload');
+            setupDropZone('drop-zone-video', 'chapter-video-upload');
 
         } else {
             window.location.replace('/login.html');
@@ -70,7 +75,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Modification ici pour que le bouton classique ne soit PAS une prévisualisation
     document.getElementById('btn-save-course').addEventListener('click', () => saveCourseToFirebase(false));
     document.getElementById('btn-add-chapter').addEventListener('click', () => createNewChapter('text'));
     document.getElementById('btn-add-quiz').addEventListener('click', () => createNewChapter('quiz'));
@@ -196,6 +200,37 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
+/* =========================================================
+   LOGIQUE DRAG AND DROP
+========================================================= */
+function setupDropZone(dropZoneId, inputId) {
+    const dropZone = document.getElementById(dropZoneId);
+    const input = document.getElementById(inputId);
+    if (!dropZone || !input) return;
+
+    dropZone.addEventListener('click', () => input.click());
+
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('dragover');
+    });
+
+    dropZone.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            input.files = e.dataTransfer.files;
+            const event = new Event('change');
+            input.dispatchEvent(event);
+        }
+    });
+}
+
 async function loadUsersForAccess() {
     const snap = await getDocs(collection(db, "users"));
     allUsersForAccess = [];
@@ -296,7 +331,7 @@ window.openFormationModal = function(formationId) {
             <div class="compact-user-row" style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; padding-right: 0.5rem;">
                 <label style="display: flex; align-items: center; gap: 0.5rem; flex-grow: 1; margin: 0; cursor: pointer; overflow: hidden;">
                     <input type="checkbox" class="cb-formation-user compact-cb" data-uid="${u.id}" data-role="${u.role}" ${isChecked}>
-                    <span style="font-size: 0.85rem; color: var(--text-main, white); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; width: 100%;">
+                    <span style="font-size: 0.85rem; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; width: 100%;">
                         ${name}
                     </span>
                 </label>
@@ -464,7 +499,6 @@ window.deleteChapter = function(id, event) {
     }
 }
 
-// FIX VISUEL : Les couleurs "en dur" sont remplacées par les variables CSS (Clair/Sombre dynamique)
 function renderChaptersList() {
     const list = document.getElementById('chapters-list');
     if(!list) return;
@@ -477,7 +511,7 @@ function renderChaptersList() {
         const border = isActive ? '1px solid var(--accent-blue)' : '1px solid var(--border-color, #333)';
         let color = chap.type === 'quiz' ? 'var(--accent-yellow, #fbbc04)' : (isActive ? 'var(--accent-blue)' : 'var(--text-main, white)');
 
-        let icon = chap.type === 'quiz' ? '📝 ' : `${index + 1}. `;
+        let icon = chap.type === 'quiz' ? SVG_QUIZ_LIST : `${index + 1}. `;
 
         const li = `
             <li onclick="selectChapter('${chap.id}')" style="padding: 0.8rem; background: ${bg}; border: ${border}; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; color: ${color}; font-weight: ${isActive ? 'bold' : 'normal'};">
@@ -493,7 +527,6 @@ function addQuizQuestion() {
     const container = document.getElementById('quiz-questions-container');
     const qIndex = container.children.length;
     
-    // FIX VISUEL 
     const qHTML = `
         <div class="quiz-question-block" data-qindex="${qIndex}" style="background: var(--bg-card, #111); padding: 1.5rem; border: 1px solid var(--border-color, #333); border-radius: 6px; position: relative;">
             <button onclick="this.parentElement.remove()" style="position: absolute; right: 10px; top: 10px; background: none; border: none; color: var(--accent-red, #ff4a4a); cursor: pointer; font-size: 1.2rem;">&times;</button>
@@ -577,7 +610,6 @@ function renderQuizBuilder(questions) {
     });
 }
 
-// FIX : Prise en charge de la Prévisualisation Silencieuse (isPreview = true)
 async function saveCourseToFirebase(isPreview = false) {
     saveCurrentChapterContent(); 
     
@@ -655,7 +687,6 @@ async function saveCourseToFirebase(isPreview = false) {
         
         await loadCourses();
         
-        // Si Prévisualisation : Ouvre un nouvel onglet et empêche de quitter l'éditeur
         if (isPreview) {
             window.open(`/student/cours-viewer.html?id=${courseRefId}&preview=true`, '_blank');
         } else {
