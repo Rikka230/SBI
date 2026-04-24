@@ -11,6 +11,9 @@ import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/fi
 let currentUid = null;
 let currentUserProfile = null;
 
+/* =======================================================================
+ * SECTION 1 : INITIALISATION ET ÉCOUTEURS D'ÉVÉNEMENTS
+ * ======================================================================= */
 document.addEventListener('DOMContentLoaded', () => {
     onAuthStateChanged(auth, async (user) => {
         if (user) {
@@ -19,7 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if(userSnap.exists()) {
                 currentUserProfile = userSnap.data();
                 
-                // FIX : Remplissage global de la Top-Bar depuis n'importe quelle page !
+                // Remplissage global de la Top-Bar depuis n'importe quelle page
                 const displayName = `${currentUserProfile.prenom || ''} ${currentUserProfile.nom || ''}`.trim() || "Utilisateur";
                 const avatarUrl = currentUserProfile.photoURL || `https://ui-avatars.com/api/?name=${displayName}&background=111&color=fff`;
                 const userXp = currentUserProfile.xp || 0;
@@ -40,6 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // Gestion du clic sur la cloche pour afficher/masquer le panneau
     document.body.addEventListener('click', (e) => {
         const bellBtn = e.target.closest('#notif-bell-btn');
         if (bellBtn) {
@@ -68,6 +72,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
+/* =======================================================================
+ * SECTION 2 : GESTION TEMPS RÉEL DES NOTIFICATIONS
+ * ======================================================================= */
 function initNotificationsRealtime() {
     const q = query(collection(db, "notifications"));
     
@@ -95,9 +102,18 @@ function initNotificationsRealtime() {
     });
 }
 
+/* =======================================================================
+ * SECTION 3 : AFFICHAGE DE L'INTERFACE UTILISATEUR (UI)
+ * ======================================================================= */
 function updateRedBadges(count) {
     const bellBadge = document.getElementById('bell-badge');
     const avatarBadge = document.getElementById('avatar-badge');
+    
+    // Si le composant n'est pas encore dans le DOM, on patiente 100ms
+    if (!bellBadge && document.querySelector('teacher-top-bar, admin-top-bar')) {
+        setTimeout(() => updateRedBadges(count), 100);
+        return;
+    }
     
     if (count > 0) {
         const displayCount = count > 9 ? '9+' : count;
@@ -111,6 +127,12 @@ function updateRedBadges(count) {
 
 function renderNotificationsList(notifs) {
     const container = document.getElementById('notifications-list');
+    
+    // Si le composant n'est pas encore dans le DOM, on patiente 100ms
+    if (!container && document.querySelector('teacher-top-bar, admin-top-bar')) {
+        setTimeout(() => renderNotificationsList(notifs), 100);
+        return;
+    }
     if (!container) return;
     
     container.innerHTML = '';
@@ -199,6 +221,9 @@ function renderNotificationsList(notifs) {
     });
 }
 
+/* =======================================================================
+ * SECTION 4 : MOTEUR DE RECHERCHE GLOBAL
+ * ======================================================================= */
 function setupGlobalSearch() {
     const searchInputs = document.querySelectorAll('.global-search-input');
     
