@@ -43,6 +43,12 @@ body { background-color: var(--bg-body) !important; color: var(--text-main); }
     width: 100%;
 }
 
+/* FIX : Styles globaux pour les formulaires (Profil et Éditeur de cours) */
+.form-group { margin-bottom: 1.5rem; }
+.form-group label { display: block; font-weight: 600; margin-bottom: 0.5rem; color: var(--text-main); font-size: 0.95rem; }
+.prof-input { width: 100%; padding: 0.8rem 1rem; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-card); color: var(--text-main); font-family: inherit; font-size: 0.95rem; outline: none; transition: 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+.prof-input:focus { border-color: var(--accent-orange); background: #fff; box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1); }
+
 .prof-input[disabled] {
     background: transparent !important;
     color: var(--text-main) !important;
@@ -65,7 +71,6 @@ body { background-color: var(--bg-body) !important; color: var(--text-main); }
 .hub-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px; padding: 2rem; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03); }
 
 .xp-bar-bg { width: 100%; height: 10px; background: #e5e7eb; border-radius: 10px; overflow: hidden; margin-top: 1.5rem; }
-/* Dégradé adapté au Jaune-Orangé */
 .xp-bar-fill { height: 100%; background: linear-gradient(90deg, var(--accent-orange), #fbbf24); width: 0%; transition: width 1.5s cubic-bezier(0.22, 1, 0.36, 1); border-radius: 10px; }
 
 .search-bar-top { flex-grow: 1; max-width: 500px; position: relative; margin-left: 2rem; }
