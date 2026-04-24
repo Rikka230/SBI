@@ -91,11 +91,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const newBlocName = prompt("Entrez le nom du nouveau bloc :");
         if (newBlocName && newBlocName.trim() !== "") {
             const select = document.getElementById('course-bloc-select');
-            const option = document.createElement('option');
-            option.value = newBlocName.trim();
-            option.textContent = newBlocName.trim();
-            select.appendChild(option);
-            select.value = newBlocName.trim();
+            if (select) {
+                const option = document.createElement('option');
+                option.value = newBlocName.trim();
+                option.textContent = newBlocName.trim();
+                select.appendChild(option);
+                select.value = newBlocName.trim();
+            }
         }
     });
 
@@ -152,60 +154,75 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    document.getElementById('search-profs').addEventListener('input', (e) => {
-        const term = e.target.value.toLowerCase();
-        document.querySelectorAll('#formation-profs-list .compact-user-row').forEach(row => {
-            const nameSpan = row.querySelector('span');
-            if(nameSpan) {
-                row.style.display = nameSpan.textContent.toLowerCase().includes(term) ? 'flex' : 'none';
-            }
+    const searchProfs = document.getElementById('search-profs');
+    if (searchProfs) {
+        searchProfs.addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase();
+            document.querySelectorAll('#formation-profs-list .compact-user-row').forEach(row => {
+                const nameSpan = row.querySelector('span');
+                if(nameSpan) {
+                    row.style.display = nameSpan.textContent.toLowerCase().includes(term) ? 'flex' : 'none';
+                }
+            });
         });
-    });
+    }
 
-    document.getElementById('search-students').addEventListener('input', (e) => {
-        const term = e.target.value.toLowerCase();
-        document.querySelectorAll('#formation-students-list .compact-user-row').forEach(row => {
-            const nameSpan = row.querySelector('span');
-            if(nameSpan) {
-                row.style.display = nameSpan.textContent.toLowerCase().includes(term) ? 'flex' : 'none';
-            }
+    const searchStudents = document.getElementById('search-students');
+    if (searchStudents) {
+        searchStudents.addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase();
+            document.querySelectorAll('#formation-students-list .compact-user-row').forEach(row => {
+                const nameSpan = row.querySelector('span');
+                if(nameSpan) {
+                    row.style.display = nameSpan.textContent.toLowerCase().includes(term) ? 'flex' : 'none';
+                }
+            });
         });
-    });
+    }
 
-    document.getElementById('btn-create-formation').addEventListener('click', () => openFormationModal(null));
-    document.getElementById('close-formation-modal-btn').addEventListener('click', () => document.getElementById('formation-modal').style.display='none');
+    const btnCreateForm = document.getElementById('btn-create-formation');
+    if(btnCreateForm) btnCreateForm.addEventListener('click', () => openFormationModal(null));
     
-    document.getElementById('formation-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const formId = document.getElementById('edit-formation-id').value;
-        const titre = document.getElementById('formation-titre').value.trim();
-        
-        const profs = Array.from(document.querySelectorAll('.cb-formation-user[data-role="teacher"]:checked')).map(cb => cb.dataset.uid);
-        const students = Array.from(document.querySelectorAll('.cb-formation-user[data-role="student"]:checked')).map(cb => cb.dataset.uid);
+    const closeFormBtn = document.getElementById('close-formation-modal-btn');
+    if(closeFormBtn) closeFormBtn.addEventListener('click', () => document.getElementById('formation-modal').style.display='none');
+    
+    const formForm = document.getElementById('formation-form');
+    if (formForm) {
+        formForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formId = document.getElementById('edit-formation-id').value;
+            const titre = document.getElementById('formation-titre').value.trim();
+            
+            const profs = Array.from(document.querySelectorAll('.cb-formation-user[data-role="teacher"]:checked')).map(cb => cb.dataset.uid);
+            const students = Array.from(document.querySelectorAll('.cb-formation-user[data-role="student"]:checked')).map(cb => cb.dataset.uid);
 
-        const data = { titre, profs, students };
+            const data = { titre, profs, students };
 
-        try {
-            if (formId) {
-                await updateDoc(doc(db, "formations", formId), data);
-            } else {
-                data.auteurId = currentUid;
-                data.dateCreation = serverTimestamp();
-                await addDoc(collection(db, "formations"), data);
+            try {
+                if (formId) {
+                    await updateDoc(doc(db, "formations", formId), data);
+                } else {
+                    data.auteurId = currentUid;
+                    data.dateCreation = serverTimestamp();
+                    await addDoc(collection(db, "formations"), data);
+                }
+                document.getElementById('formation-modal').style.display = 'none';
+                loadFormationsCategories(); 
+            } catch(err) { alert('Erreur de sauvegarde'); }
+        });
+    }
+
+    const deleteFormBtn = document.getElementById('delete-formation-btn');
+    if (deleteFormBtn) {
+        deleteFormBtn.addEventListener('click', async () => {
+            const formId = document.getElementById('edit-formation-id').value;
+            if(confirm('DANGER : Supprimer cette catégorie ? (Les cours associés perdront leur tag).')) {
+                await deleteDoc(doc(db, "formations", formId));
+                document.getElementById('formation-modal').style.display = 'none';
+                loadFormationsCategories();
             }
-            document.getElementById('formation-modal').style.display = 'none';
-            loadFormationsCategories(); 
-        } catch(err) { alert('Erreur de sauvegarde'); }
-    });
-
-    document.getElementById('delete-formation-btn').addEventListener('click', async () => {
-        const formId = document.getElementById('edit-formation-id').value;
-        if(confirm('DANGER : Supprimer cette catégorie ? (Les cours associés perdront leur tag).')) {
-            await deleteDoc(doc(db, "formations", formId));
-            document.getElementById('formation-modal').style.display = 'none';
-            loadFormationsCategories();
-        }
-    });
+        });
+    }
 });
 
 function setupDropZone(dropZoneId, inputId) {
@@ -308,6 +325,8 @@ function renderFormationsList() {
 
 window.openFormationModal = function(formationId) {
     const modal = document.getElementById('formation-modal');
+    if (!modal) return;
+
     const profsContainer = document.getElementById('formation-profs-list');
     const studentsContainer = document.getElementById('formation-students-list');
     
@@ -340,9 +359,6 @@ window.openFormationModal = function(formationId) {
                         ${name}
                     </span>
                 </label>
-                <a href="admin-profile.html?id=${u.id}" target="_blank" title="Ouvrir le profil" onclick="event.stopPropagation()" style="color: var(--text-muted); display: flex; align-items: center; justify-content: center; transition: color 0.2s;" onmouseover="this.style.color='var(--accent-blue)'" onmouseout="this.style.color='var(--text-muted)'">
-                    <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
-                </a>
             </div>
         `;
 
@@ -378,8 +394,9 @@ function renderFormationsPillsAndFilters() {
 
 function refreshBlocsList() {
     const select = document.getElementById('course-bloc-select');
+    if (!select) return;
+
     const currentVal = select.value;
-    
     const blocsSet = new Set();
     allCoursesData.forEach(c => { if(c.bloc) blocsSet.add(c.bloc); });
     
@@ -397,8 +414,11 @@ window.prepareNewCourse = function() {
     editingCourseAuthorId = null;
     editingCourseOriginalStatus = null;
 
-    document.getElementById('edit-course-id').value = '';
-    document.getElementById('course-title').value = '';
+    const editCourseIdEl = document.getElementById('edit-course-id');
+    if(editCourseIdEl) editCourseIdEl.value = '';
+    
+    const courseTitleEl = document.getElementById('course-title');
+    if(courseTitleEl) courseTitleEl.value = '';
     
     const selectBloc = document.getElementById('course-bloc-select');
     if (selectBloc) selectBloc.value = ''; 
@@ -424,7 +444,6 @@ window.prepareNewCourse = function() {
         el.style.opacity = '1';
         el.style.pointerEvents = 'auto';
     });
-    
     if(window.quill) window.quill.enable(true);
     
     renderChaptersList();
@@ -454,15 +473,22 @@ function saveCurrentChapterContent() {
     if(!chap) return;
 
     if (chap.type === 'text') {
-        chap.titre = document.getElementById('chapter-title').value;
+        const cTitle = document.getElementById('chapter-title');
+        if(cTitle) chap.titre = cTitle.value;
+        
         const mediaChecked = document.querySelector('input[name="media_type"]:checked');
         if (mediaChecked) chap.mediaType = mediaChecked.value;
         
-        chap.mediaImage = document.getElementById('chapter-image-base64').value;
-        chap.mediaVideo = document.getElementById('chapter-video-base64').value;
+        const cImage = document.getElementById('chapter-image-base64');
+        if(cImage) chap.mediaImage = cImage.value;
+        
+        const cVideo = document.getElementById('chapter-video-base64');
+        if(cVideo) chap.mediaVideo = cVideo.value;
+        
         chap.contenu = window.quill ? window.quill.root.innerHTML : '';
     } else if (chap.type === 'quiz') {
-        chap.titre = document.getElementById('quiz-title').value;
+        const qTitle = document.getElementById('quiz-title');
+        if(qTitle) chap.titre = qTitle.value;
         chap.questions = gatherQuizQuestions(); 
     }
 }
@@ -500,15 +526,23 @@ window.selectChapter = function(id) {
             document.getElementById('media-video-zone').style.display = 'none';
         }
         
-        document.getElementById('chapter-video-base64').value = chap.mediaVideo || '';
+        const cVideoB64 = document.getElementById('chapter-video-base64');
+        if(cVideoB64) cVideoB64.value = chap.mediaVideo || '';
+        
         const vPreview = document.getElementById('chapter-video-preview');
-        if(chap.mediaVideo) { vPreview.src = chap.mediaVideo; vPreview.style.display = 'block'; } 
-        else { vPreview.style.display = 'none'; }
+        if(vPreview) {
+            if(chap.mediaVideo) { vPreview.src = chap.mediaVideo; vPreview.style.display = 'block'; } 
+            else { vPreview.style.display = 'none'; }
+        }
 
-        document.getElementById('chapter-image-base64').value = chap.mediaImage || '';
+        const cImageB64 = document.getElementById('chapter-image-base64');
+        if(cImageB64) cImageB64.value = chap.mediaImage || '';
+        
         const iPreview = document.getElementById('chapter-image-preview');
-        if(chap.mediaImage) { iPreview.src = chap.mediaImage; iPreview.style.display = 'block'; } 
-        else { iPreview.style.display = 'none'; }
+        if(iPreview) {
+            if(chap.mediaImage) { iPreview.src = chap.mediaImage; iPreview.style.display = 'block'; } 
+            else { iPreview.style.display = 'none'; }
+        }
 
         if(window.quill) {
             window.quill.setContents([]);
@@ -524,9 +558,12 @@ window.deleteChapter = function(id, event) {
         currentChapters = currentChapters.filter(c => c.id !== id);
         if(activeChapterId === id) {
             activeChapterId = null;
-            document.getElementById('no-chapter-zone').style.display = 'flex';
-            document.getElementById('chapter-editor-zone').style.display = 'none';
-            document.getElementById('quiz-editor-zone').style.display = 'none';
+            const noChapterZone = document.getElementById('no-chapter-zone');
+            if (noChapterZone) noChapterZone.style.display = 'flex';
+            const chapterEditorZone = document.getElementById('chapter-editor-zone');
+            if (chapterEditorZone) chapterEditorZone.style.display = 'none';
+            const quizEditorZone = document.getElementById('quiz-editor-zone');
+            if (quizEditorZone) quizEditorZone.style.display = 'none';
         }
         renderChaptersList();
     }
@@ -558,6 +595,7 @@ function renderChaptersList() {
 
 function addQuizQuestion() {
     const container = document.getElementById('quiz-questions-container');
+    if(!container) return;
     const qIndex = container.children.length;
     
     const qHTML = `
@@ -614,6 +652,7 @@ function gatherQuizQuestions() {
 
 function renderQuizBuilder(questions) {
     const container = document.getElementById('quiz-questions-container');
+    if(!container) return;
     container.innerHTML = '';
     
     questions.forEach((q, index) => {
@@ -643,18 +682,24 @@ function renderQuizBuilder(questions) {
     });
 }
 
+// FIX ABSOLU DU CHANGEMENT D'ONGLET
 window.editCourse = async (id) => {
     try {
         const docSnap = await getDoc(doc(db, "courses", id));
         if (docSnap.exists()) {
             const data = docSnap.data();
             
-            document.getElementById('edit-course-id').value = id;
-            document.getElementById('course-title').value = data.titre || '';
+            const editCourseIdEl = document.getElementById('edit-course-id');
+            if(editCourseIdEl) editCourseIdEl.value = id;
+            
+            const courseTitleEl = document.getElementById('course-title');
+            if(courseTitleEl) courseTitleEl.value = data.titre || '';
+            
             const activeCb = document.getElementById('course-active');
             if (activeCb) activeCb.checked = data.actif;
             
-            document.getElementById('course-bloc-select').value = data.bloc || '';
+            const selectBloc = document.getElementById('course-bloc-select');
+            if(selectBloc) selectBloc.value = data.bloc || '';
             
             editingCourseAuthorId = data.auteurId || currentUid;
             editingCourseOriginalStatus = data.statutValidation || 'approved';
@@ -671,7 +716,7 @@ window.editCourse = async (id) => {
 
             currentChapters = data.chapitres || [];
             
-            // FIX : Vérification de la présence de la fonction pour l'Admin !
+            // LA CORRECTION EST ICI : Si la fonction n'existe pas (cas de l'Admin), ça ne plante plus !
             if (typeof window.switchCourseTab === 'function') {
                 window.switchCourseTab('tab-editor');
             }
@@ -708,9 +753,15 @@ window.editCourse = async (id) => {
 async function saveCourseToFirebase(actionType = 'admin_save') {
     saveCurrentChapterContent(); 
     
-    const courseId = document.getElementById('edit-course-id').value;
-    const title = document.getElementById('course-title').value.trim();
-    const bloc = document.getElementById('course-bloc-select').value.trim(); 
+    const courseIdEl = document.getElementById('edit-course-id');
+    const titleEl = document.getElementById('course-title');
+    const selectBloc = document.getElementById('course-bloc-select');
+    
+    if(!courseIdEl || !titleEl) return;
+
+    const courseId = courseIdEl.value;
+    const title = titleEl.value.trim();
+    const bloc = selectBloc ? selectBloc.value.trim() : ''; 
     
     const selectedPills = Array.from(document.querySelectorAll('.formation-pill.selected')).map(p => p.getAttribute('data-val'));
 
@@ -797,6 +848,81 @@ async function saveCourseToFirebase(actionType = 'admin_save') {
     } catch (error) {
         console.error("Erreur de sauvegarde :", error);
         alert("❌ Erreur de sauvegarde.");
+    }
+}
+
+async function loadCourses() {
+    const listContainer = document.getElementById('courses-list-container');
+    if(!listContainer) return;
+
+    try {
+        const querySnapshot = await getDocs(collection(db, "courses"));
+        listContainer.innerHTML = '';
+        allCoursesData = [];
+        
+        if(querySnapshot.empty) {
+            listContainer.innerHTML = '<p style="color:var(--text-muted); text-align:center;">Aucun cours.</p>';
+            return;
+        }
+
+        querySnapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            const courseId = docSnap.id;
+            allCoursesData.push({ id: courseId, ...data });
+            
+            let statusHtml = '';
+            if (data.statutValidation === 'pending') {
+                statusHtml = `<span style="color: var(--accent-yellow, #fbbc04); font-weight: bold; font-size: 0.8rem;">⏳ EN ATTENTE</span>`;
+            } else {
+                statusHtml = data.actif ? `<span style="color: var(--accent-green, #10b981); font-weight: bold; font-size: 0.8rem;">● ACTIF</span>` : `<span style="color: var(--accent-red, #ff4a4a); font-weight: bold; font-size: 0.8rem;">● BROUILLON</span>`;
+            }
+
+            const tagsHtml = data.formations ? data.formations.map(fId => {
+                const formObj = allFormationsData.find(f => f.id === fId || f.titre === fId); 
+                const displayName = formObj ? formObj.titre : fId;
+                return `<span class="tag" style="background: var(--bg-body, #222); padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; border: 1px solid var(--border-color, #444);">📁 ${displayName}</span>`;
+            }).join(' ') : '';
+
+            const blocHtml = data.bloc ? `<span style="color: var(--accent-blue); font-size: 0.8rem; border: 1px solid var(--accent-blue); padding: 2px 8px; border-radius: 12px; margin-left: 10px;">${data.bloc}</span>` : '';
+
+            const nbChapitres = data.chapitres ? data.chapitres.length : 0;
+            
+            let authorName = "Système";
+            if (data.auteurId && allUsersForAccess.length > 0) {
+                const authorObj = allUsersForAccess.find(u => u.id === data.auteurId);
+                if (authorObj) {
+                    authorName = (authorObj.prenom || authorObj.nom) ? `${authorObj.prenom || ''} ${authorObj.nom || ''}`.trim() : authorObj.email;
+                }
+            }
+            
+            const html = `
+            <div style="background: var(--bg-card, #111); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color, #333); display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; opacity: ${data.actif ? '1' : '0.6'};">
+                <div>
+                    <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem;">
+                        ${statusHtml} 
+                        <h3 style="margin: 0; display: flex; align-items: center; color: var(--text-main, white);">
+                            ${data.titre}
+                            ${blocHtml}
+                            <span style="font-size: 0.85rem; font-weight: normal; color: var(--text-muted, #888); font-style: italic; margin-left: 0.8rem;">
+                                par ${authorName}
+                            </span>
+                        </h3>
+                    </div>
+                    <div style="color: var(--text-main, white);">${tagsHtml} <span style="color: var(--text-muted, #888); font-size: 0.85rem; margin-left: 1rem;">${nbChapitres} Étape(s)</span></div>
+                </div>
+                <div style="display: flex; gap: 0.5rem;">
+                    <button class="action-btn" style="width: auto; margin: 0; color: var(--accent-yellow, #fbbc04); background: transparent; border: 1px solid var(--border-color, #333);" onclick="window.duplicateCourse('${courseId}')" title="Créer une copie">Copier</button>
+                    <button class="action-btn" style="width: auto; margin: 0; color: var(--accent-blue); background: transparent; border: 1px solid var(--border-color, #333);" onclick="window.editCourse('${courseId}')">Éditer</button>
+                    <button class="action-btn danger" style="width: auto; margin: 0;" onclick="window.deleteCourse('${courseId}')">❌</button>
+                </div>
+            </div>`;
+            listContainer.insertAdjacentHTML('beforeend', html);
+        });
+
+        refreshBlocsList(); 
+
+    } catch (error) {
+        listContainer.innerHTML = '<p style="color:red; text-align:center;">Erreur système.</p>';
     }
 }
 
