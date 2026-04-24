@@ -16,10 +16,11 @@ let activeChapterId = null;
 
 let allFormationsData = [];
 let allUsersForAccess = [];
-let allCoursesData = []; // NOUVEAU : Stockage global des cours pour extraire les Blocs
+let allCoursesData = []; 
 
 let editingCourseAuthorId = null;
 let editingCourseOriginalStatus = null;
+let editingCourseOriginalActive = false; // NOUVEAU: Permet de savoir si on l'active pour la 1ère fois
 
 document.addEventListener('DOMContentLoaded', () => {
     
@@ -55,7 +56,6 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-add-chapter').addEventListener('click', () => createNewChapter('text'));
     document.getElementById('btn-add-quiz').addEventListener('click', () => createNewChapter('quiz'));
     
-    // NOUVEAU : Création d'un bloc manuel
     document.getElementById('btn-add-new-bloc').addEventListener('click', () => {
         const newBlocName = prompt("Entrez le nom du nouveau bloc :");
         if (newBlocName && newBlocName.trim() !== "") {
@@ -176,10 +176,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
-
-/* =========================================================
-   1. GESTION DES CATÉGORIES (FORMATIONS)
-========================================================= */
 
 async function loadUsersForAccess() {
     const snap = await getDocs(collection(db, "users"));
@@ -321,14 +317,10 @@ function renderFormationsPillsAndFilters() {
     }
 }
 
-/* =========================================================
-   NOUVEAU : GESTION DES BLOCS DÉROULANTS
-========================================================= */
 function refreshBlocsList() {
     const select = document.getElementById('course-bloc-select');
     const currentVal = select.value;
     
-    // Extrait tous les blocs uniques existants de tous les cours
     const blocsSet = new Set();
     allCoursesData.forEach(c => { if(c.bloc) blocsSet.add(c.bloc); });
     
@@ -342,17 +334,14 @@ function refreshBlocsList() {
     if(currentVal && blocsSet.has(currentVal)) select.value = currentVal;
 }
 
-/* =========================================================
-   2. LOGIQUE DE L'INTERFACE D'ÉDITION DE COURS
-========================================================= */
-
 window.prepareNewCourse = function() {
     editingCourseAuthorId = null;
     editingCourseOriginalStatus = null;
+    editingCourseOriginalActive = false;
 
     document.getElementById('edit-course-id').value = '';
     document.getElementById('course-title').value = '';
-    document.getElementById('course-bloc-select').value = ''; // Reset du bloc
+    document.getElementById('course-bloc-select').value = '';
     currentChapters = [];
     activeChapterId = null;
     document.querySelectorAll('.formation-pill').forEach(p => p.classList.remove('selected'));
@@ -566,16 +555,13 @@ function renderQuizBuilder(questions) {
     });
 }
 
-/* =========================================================
-   3. SAUVEGARDE ET CHARGEMENT DES COURS
-========================================================= */
-
+// FIX: Sauvegarde et envoi intelligent des Notifications aux Étudiants
 async function saveCourseToFirebase() {
     saveCurrentChapterContent(); 
     
     const courseId = document.getElementById('edit-course-id').value;
     const title = document.getElementById('course-title').value.trim();
-    const bloc = document.getElementById('course-bloc-select').value.trim(); // NOUVEAU
+    const bloc = document.getElementById('course-bloc-select').value.trim(); 
     let isActive = document.getElementById('course-active').checked;
     
     const selectedPills = Array.from(document.querySelectorAll('.formation-pill.selected')).map(p => p.getAttribute('data-val'));
@@ -597,12 +583,14 @@ async function saveCourseToFirebase() {
     else if (isActive) finalStatut = 'approved';
 
     const finalAuteurId = courseId ? editingCourseAuthorId : currentUid;
-    const isValidation = (courseId && editingCourseOriginalStatus === 'pending' && finalStatut === 'approved' && !isTeacher);
+    
+    // Détection pour savoir si on vient TOUT JUSTE de rendre le cours public
+    const isNewlyPublished = (finalStatut === 'approved' && isActive && (!courseId || (!editingCourseOriginalActive || editingCourseOriginalStatus !== 'approved')));
 
     try {
         const courseData = {
             titre: title,
-            bloc: bloc, // SAUVEGARDE DU BLOC
+            bloc: bloc,
             actif: isActive,
             statutValidation: finalStatut,
             formations: selectedPills,
@@ -622,6 +610,7 @@ async function saveCourseToFirebase() {
             alert(forcePending ? '✅ Cours soumis pour validation !' : '✅ Nouveau cours créé !');
         }
         
+        // 1. Notif pour l'Admin si le prof soumet
         if (forcePending) {
             await addDoc(collection(db, "notifications"), {
                 type: 'course_validation',
@@ -633,7 +622,8 @@ async function saveCourseToFirebase() {
             });
         }
         
-        if (isValidation && editingCourseAuthorId && editingCourseAuthorId !== currentUid) {
+        // 2. Notif pour le Prof si l'Admin valide son brouillon
+        if (courseId && editingCourseOriginalStatus === 'pending' && finalStatut === 'approved' && !isTeacher && editingCourseAuthorId && editingCourseAuthorId !== currentUid) {
             await addDoc(collection(db, "notifications"), {
                 type: 'course_approved',
                 courseId: courseRefId,
@@ -641,6 +631,31 @@ async function saveCourseToFirebase() {
                 destinataireId: editingCourseAuthorId,
                 dateCreation: serverTimestamp(),
             });
+        }
+
+        // 3. NOUVEAU : Notif DYNAMIQUE pour tous les élèves concernés si le cours passe "Public"
+        if (isNewlyPublished && selectedPills.length > 0) {
+            let targetStudents = new Set();
+            
+            // On récupère tous les élèves inscrits dans les formations liées au cours
+            selectedPills.forEach(formId => {
+                const formObj = allFormationsData.find(f => f.id === formId || f.titre === formId);
+                if (formObj && formObj.students) {
+                    formObj.students.forEach(s => targetStudents.add(s));
+                }
+            });
+
+            const studentArray = Array.from(targetStudents);
+            
+            if (studentArray.length > 0) {
+                await addDoc(collection(db, "notifications"), {
+                    type: 'new_course_published',
+                    courseId: courseRefId,
+                    courseTitle: title,
+                    targetStudents: studentArray,
+                    dateCreation: serverTimestamp(),
+                });
+            }
         }
         
         window.prepareNewCourse(); 
@@ -687,7 +702,6 @@ async function loadCourses() {
                 return `<span class="tag">📁 ${displayName}</span>`;
             }).join('') : '';
 
-            // Affichage du Bloc s'il existe
             const blocHtml = data.bloc ? `<span style="color: var(--accent-blue); font-size: 0.8rem; border: 1px solid var(--accent-blue); padding: 2px 8px; border-radius: 12px; margin-left: 10px;">${data.bloc}</span>` : '';
 
             const nbChapitres = data.chapitres ? data.chapitres.length : 0;
@@ -724,7 +738,7 @@ async function loadCourses() {
             listContainer.insertAdjacentHTML('beforeend', html);
         });
 
-        refreshBlocsList(); // Rafraîchit le select des blocs avec les nouvelles données
+        refreshBlocsList(); 
 
     } catch (error) {
         listContainer.innerHTML = '<p style="color:red; text-align:center;">Erreur système.</p>';
@@ -740,12 +754,11 @@ window.editCourse = async (id) => {
             document.getElementById('edit-course-id').value = id;
             document.getElementById('course-title').value = data.titre || '';
             document.getElementById('course-active').checked = data.actif;
-            
-            // Rechargement du bloc
             document.getElementById('course-bloc-select').value = data.bloc || '';
             
             editingCourseAuthorId = data.auteurId || currentUid;
             editingCourseOriginalStatus = data.statutValidation || 'approved';
+            editingCourseOriginalActive = data.actif || false; // Sauvegarde l'état initial
 
             document.querySelectorAll('.formation-pill').forEach(pill => {
                 const val = pill.getAttribute('data-val');
