@@ -19,13 +19,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if(userSnap.exists()) currentUserProfile = userSnap.data();
             initNotificationsRealtime();
             
-            // Laisse le temps aux composants HTML personnalisés de s'afficher avant de brancher la recherche
             setTimeout(() => setupGlobalSearch(), 500); 
         }
     });
 
-    // FIX : Délégation d'événement globale pour être sûr que le clic sur la cloche fonctionne 
-    // même si la barre HTML se charge une milliseconde trop tard.
     document.body.addEventListener('click', (e) => {
         const bellBtn = e.target.closest('#notif-bell-btn');
         if (bellBtn) {
@@ -203,6 +200,7 @@ function setupGlobalSearch() {
             let html = '';
             const isStudent = currentUserProfile && currentUserProfile.role !== 'admin' && currentUserProfile.role !== 'teacher' && !currentUserProfile.isGod;
 
+            // 1. Recherche de cours
             const matchedCourses = window.searchDataCache.courses.filter(c => c.titre && c.titre.toLowerCase().includes(term) && (isStudent ? c.actif : true)).slice(0, 5);
             
             if (matchedCourses.length > 0) {
@@ -220,26 +218,37 @@ function setupGlobalSearch() {
                 });
             }
 
-            if (!isStudent) {
-                const matchedUsers = window.searchDataCache.users.filter(u => {
-                    const name = `${u.prenom || ''} ${u.nom || ''}`.toLowerCase();
-                    return name.includes(term) || (u.email && u.email.toLowerCase().includes(term));
-                }).slice(0, 5);
+            // 2. Recherche d'utilisateurs (DÉBLOQUÉ POUR TOUS)
+            const matchedUsers = window.searchDataCache.users.filter(u => {
+                const name = `${u.prenom || ''} ${u.nom || ''}`.toLowerCase();
+                // L'admin peut chercher par email, l'élève cherche uniquement par nom/prénom
+                return name.includes(term) || (!isStudent && u.email && u.email.toLowerCase().includes(term));
+            }).slice(0, 5);
 
-                if (matchedUsers.length > 0) {
-                    html += `<div style="padding: 6px 15px; font-size: 0.75rem; color: var(--text-muted, #888); background: rgba(0,0,0,0.05); font-weight: bold;">UTILISATEURS</div>`;
-                    matchedUsers.forEach(u => {
-                        html += `
-                            <div class="search-result-item" onclick="window.location.href='/admin/admin-profile.html?id=${u.id}'">
-                                <svg width="18" height="18" fill="var(--accent-green, #10b981)" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
-                                <div>
-                                    <div class="search-result-title">${u.prenom || ''} ${u.nom || ''}</div>
-                                    <div class="search-result-sub">${u.email}</div>
-                                </div>
+            if (matchedUsers.length > 0) {
+                html += `<div style="padding: 6px 15px; font-size: 0.75rem; color: var(--text-muted, #888); background: rgba(0,0,0,0.05); font-weight: bold;">UTILISATEURS</div>`;
+                matchedUsers.forEach(u => {
+                    // Redirection adaptative selon qui fait la recherche
+                    const profileLink = isStudent ? `/student/mon-profil.html?id=${u.id}` : `/admin/admin-profile.html?id=${u.id}`;
+                    
+                    // Masquage de l'e-mail pour les étudiants (Confidentialité)
+                    let subText = u.email;
+                    if (isStudent) {
+                        if (u.role === 'teacher') subText = 'Professeur';
+                        else if (u.role === 'admin' || u.isGod) subText = 'Administration';
+                        else subText = 'Élève';
+                    }
+
+                    html += `
+                        <div class="search-result-item" onclick="window.location.href='${profileLink}'">
+                            <svg width="18" height="18" fill="var(--accent-green, #10b981)" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                            <div>
+                                <div class="search-result-title">${u.prenom || ''} ${u.nom || ''}</div>
+                                <div class="search-result-sub">${subText}</div>
                             </div>
-                        `;
-                    });
-                }
+                        </div>
+                    `;
+                });
             }
 
             if (html === '') {
