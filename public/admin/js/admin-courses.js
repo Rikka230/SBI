@@ -36,8 +36,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.editCourse(editId);
                 window.history.replaceState({}, document.title, window.location.pathname + "?tab=tab-editor");
             }
-            
-            // INJECTION DU BOUTON DE PRÉVISUALISATION (Généré dynamiquement pour Prof et Admin)
+
+            // FIX : INJECTION DU BOUTON DE PRÉVISUALISATION
             if (!document.getElementById('btn-preview-course')) {
                 const saveBtn = document.getElementById('btn-save-course');
                 if (saveBtn) {
@@ -49,7 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             alert("⚠️ Veuillez enregistrer le cours une première fois avant de le visualiser !");
                             return;
                         }
-                        // Sauvegarde silencieuse (le 'true' empêche la redirection et le popup)
+                        // Le paramètre "true" lance la sauvegarde silencieuse et ouvre le lecteur
                         await saveCourseToFirebase(true);
                     });
                 }
@@ -70,6 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // Modification ici pour que le bouton classique ne soit PAS une prévisualisation
     document.getElementById('btn-save-course').addEventListener('click', () => saveCourseToFirebase(false));
     document.getElementById('btn-add-chapter').addEventListener('click', () => createNewChapter('text'));
     document.getElementById('btn-add-quiz').addEventListener('click', () => createNewChapter('quiz'));
@@ -295,7 +296,7 @@ window.openFormationModal = function(formationId) {
             <div class="compact-user-row" style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; padding-right: 0.5rem;">
                 <label style="display: flex; align-items: center; gap: 0.5rem; flex-grow: 1; margin: 0; cursor: pointer; overflow: hidden;">
                     <input type="checkbox" class="cb-formation-user compact-cb" data-uid="${u.id}" data-role="${u.role}" ${isChecked}>
-                    <span style="font-size: 0.85rem; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; width: 100%;">
+                    <span style="font-size: 0.85rem; color: var(--text-main, white); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; width: 100%;">
                         ${name}
                     </span>
                 </label>
@@ -463,6 +464,7 @@ window.deleteChapter = function(id, event) {
     }
 }
 
+// FIX VISUEL : Les couleurs "en dur" sont remplacées par les variables CSS (Clair/Sombre dynamique)
 function renderChaptersList() {
     const list = document.getElementById('chapters-list');
     if(!list) return;
@@ -471,7 +473,6 @@ function renderChaptersList() {
     currentChapters.forEach((chap, index) => {
         const isActive = chap.id === activeChapterId;
         
-        // FIX VISUEL : Utilisation des variables CSS dynamiques 
         const bg = isActive ? 'var(--accent-blue-light, rgba(42, 87, 255, 0.1))' : 'var(--bg-card, #111)';
         const border = isActive ? '1px solid var(--accent-blue)' : '1px solid var(--border-color, #333)';
         let color = chap.type === 'quiz' ? 'var(--accent-yellow, #fbbc04)' : (isActive ? 'var(--accent-blue)' : 'var(--text-main, white)');
@@ -492,7 +493,7 @@ function addQuizQuestion() {
     const container = document.getElementById('quiz-questions-container');
     const qIndex = container.children.length;
     
-    // FIX VISUEL : Variables CSS pour le QCM
+    // FIX VISUEL 
     const qHTML = `
         <div class="quiz-question-block" data-qindex="${qIndex}" style="background: var(--bg-card, #111); padding: 1.5rem; border: 1px solid var(--border-color, #333); border-radius: 6px; position: relative;">
             <button onclick="this.parentElement.remove()" style="position: absolute; right: 10px; top: 10px; background: none; border: none; color: var(--accent-red, #ff4a4a); cursor: pointer; font-size: 1.2rem;">&times;</button>
@@ -576,7 +577,7 @@ function renderQuizBuilder(questions) {
     });
 }
 
-// FIX DE LA FONCTION DE SAUVEGARDE POUR GÉRER LA PRÉVISUALISATION SILENCIEUSE
+// FIX : Prise en charge de la Prévisualisation Silencieuse (isPreview = true)
 async function saveCourseToFirebase(isPreview = false) {
     saveCurrentChapterContent(); 
     
@@ -627,7 +628,6 @@ async function saveCourseToFirebase(isPreview = false) {
             courseData.dateCreation = serverTimestamp();
             const docRef = await addDoc(collection(db, "courses"), courseData);
             courseRefId = docRef.id;
-            // On associe le nouvel ID à l'éditeur pour éviter de le recréer si on reclique sur Save/Preview
             document.getElementById('edit-course-id').value = courseRefId;
             if (!isPreview) alert(forcePending ? '✅ Cours soumis pour validation !' : '✅ Nouveau cours créé !');
         }
@@ -655,7 +655,7 @@ async function saveCourseToFirebase(isPreview = false) {
         
         await loadCourses();
         
-        // Si c'est une preview, on n'efface pas l'éditeur et on ouvre le viewer !
+        // Si Prévisualisation : Ouvre un nouvel onglet et empêche de quitter l'éditeur
         if (isPreview) {
             window.open(`/student/cours-viewer.html?id=${courseRefId}&preview=true`, '_blank');
         } else {
