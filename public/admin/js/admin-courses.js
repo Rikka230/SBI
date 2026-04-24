@@ -37,11 +37,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const editId = urlParams.get('edit');
             if (editId) {
                 window.editCourse(editId);
-                window.history.replaceState({}, document.title, window.location.pathname + "?tab=tab-editor");
+                if (typeof window.switchCourseTab === 'function') {
+                    window.history.replaceState({}, document.title, window.location.pathname + "?tab=tab-editor");
+                }
             }
             
             if (!document.getElementById('btn-preview-course')) {
-                // Ajoute le bouton de preview sous les nouveaux boutons ou le bouton principal
                 const targetBtn = document.getElementById('btn-submit-validation') || document.getElementById('btn-save-course');
                 if (targetBtn) {
                     targetBtn.insertAdjacentHTML('afterend', `<button id="btn-preview-course" class="action-btn" style="width: 100%; margin-top: 1rem; background: transparent; color: var(--text-main); border: 1px solid var(--border-color); padding: 1rem; font-size: 1rem; cursor: pointer; transition: 0.2s; font-weight:bold;">${SVG_PREVIEW} Visualiser le rendu actuel</button>`);
@@ -75,10 +76,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // FIX : Écouteurs pour les NOUVEAUX boutons Brouillon / Soumettre
     const btnDraft = document.getElementById('btn-save-draft');
     const btnSubmit = document.getElementById('btn-submit-validation');
-    const btnSaveAdmin = document.getElementById('btn-save-course'); // Pour l'interface Admin qui garde 1 seul bouton
+    const btnSaveAdmin = document.getElementById('btn-save-course'); 
 
     if(btnDraft) btnDraft.addEventListener('click', () => saveCourseToFirebase('draft'));
     if(btnSubmit) btnSubmit.addEventListener('click', () => saveCourseToFirebase('submit'));
@@ -399,26 +399,39 @@ window.prepareNewCourse = function() {
 
     document.getElementById('edit-course-id').value = '';
     document.getElementById('course-title').value = '';
-    document.getElementById('course-bloc-select').value = ''; 
+    
+    const selectBloc = document.getElementById('course-bloc-select');
+    if (selectBloc) selectBloc.value = ''; 
+    
     currentChapters = [];
     activeChapterId = null;
     document.querySelectorAll('.formation-pill').forEach(p => p.classList.remove('selected'));
     
-    document.getElementById('no-chapter-zone').style.display = 'flex';
-    document.getElementById('chapter-editor-zone').style.display = 'none';
-    document.getElementById('quiz-editor-zone').style.display = 'none';
+    const noChapterZone = document.getElementById('no-chapter-zone');
+    if (noChapterZone) noChapterZone.style.display = 'flex';
     
-    // Reset les verrous visuels
-    document.getElementById('lock-warning-banner').style.display = 'none';
+    const chapterEditorZone = document.getElementById('chapter-editor-zone');
+    if (chapterEditorZone) chapterEditorZone.style.display = 'none';
+    
+    const quizEditorZone = document.getElementById('quiz-editor-zone');
+    if (quizEditorZone) quizEditorZone.style.display = 'none';
+    
+    const warningBanner = document.getElementById('lock-warning-banner');
+    if (warningBanner) warningBanner.style.display = 'none';
+
     document.querySelectorAll('.editor-input, .editor-action-btn').forEach(el => {
         el.disabled = false;
         el.style.opacity = '1';
         el.style.pointerEvents = 'auto';
     });
+    
     if(window.quill) window.quill.enable(true);
     
     renderChaptersList();
-    window.switchCourseTab('tab-editor');
+    
+    if (typeof window.switchCourseTab === 'function') {
+        window.switchCourseTab('tab-editor');
+    }
 };
 
 function createNewChapter(type) {
@@ -442,7 +455,9 @@ function saveCurrentChapterContent() {
 
     if (chap.type === 'text') {
         chap.titre = document.getElementById('chapter-title').value;
-        chap.mediaType = document.querySelector('input[name="media_type"]:checked').value;
+        const mediaChecked = document.querySelector('input[name="media_type"]:checked');
+        if (mediaChecked) chap.mediaType = mediaChecked.value;
+        
         chap.mediaImage = document.getElementById('chapter-image-base64').value;
         chap.mediaVideo = document.getElementById('chapter-video-base64').value;
         chap.contenu = window.quill ? window.quill.root.innerHTML : '';
@@ -458,7 +473,8 @@ window.selectChapter = function(id) {
     const chap = currentChapters.find(c => c.id === id);
     if(!chap) return;
 
-    document.getElementById('no-chapter-zone').style.display = 'none';
+    const noChapterZone = document.getElementById('no-chapter-zone');
+    if (noChapterZone) noChapterZone.style.display = 'none';
 
     if (chap.type === 'quiz') {
         document.getElementById('chapter-editor-zone').style.display = 'none';
@@ -471,12 +487,15 @@ window.selectChapter = function(id) {
         
         document.getElementById('chapter-title').value = chap.titre || '';
 
+        const mediaImageRadio = document.querySelector('input[name="media_type"][value="image"]');
+        const mediaVideoRadio = document.querySelector('input[name="media_type"][value="video"]');
+
         if(chap.mediaType === 'video') {
-            document.querySelector('input[name="media_type"][value="video"]').checked = true;
+            if (mediaVideoRadio) mediaVideoRadio.checked = true;
             document.getElementById('media-image-zone').style.display = 'none';
             document.getElementById('media-video-zone').style.display = 'flex';
         } else {
-            document.querySelector('input[name="media_type"][value="image"]').checked = true;
+            if (mediaImageRadio) mediaImageRadio.checked = true;
             document.getElementById('media-image-zone').style.display = 'flex';
             document.getElementById('media-video-zone').style.display = 'none';
         }
@@ -624,168 +643,6 @@ function renderQuizBuilder(questions) {
     });
 }
 
-// FIX : Intégration des boutons Draft, Submit et Preview
-async function saveCourseToFirebase(actionType = 'admin_save') {
-    saveCurrentChapterContent(); 
-    
-    const courseId = document.getElementById('edit-course-id').value;
-    const title = document.getElementById('course-title').value.trim();
-    const bloc = document.getElementById('course-bloc-select').value.trim(); 
-    
-    const selectedPills = Array.from(document.querySelectorAll('.formation-pill.selected')).map(p => p.getAttribute('data-val'));
-
-    if (!title) { alert('⚠️ Veuillez entrer un Titre Global.'); return; }
-    if (currentChapters.length === 0) { alert('⚠️ Ajoutez au moins une étape.'); return; }
-
-    const isTeacher = currentUserProfile && currentUserProfile.role === 'teacher';
-    
-    // Définition du statut selon l'action cliquée
-    let finalStatut = editingCourseOriginalStatus || 'draft';
-    let isActive = false;
-
-    if (actionType === 'draft') {
-        finalStatut = 'draft';
-    } else if (actionType === 'submit') {
-        if (!confirm("⚠️ ATTENTION : Une fois soumis à validation, ce cours sera verrouillé et vous ne pourrez plus le modifier pendant la durée de l'examen.\n\nConfirmer l'envoi ?")) {
-            return;
-        }
-        finalStatut = 'pending';
-    } else if (actionType === 'admin_save') {
-        // Le bouton classique de l'admin (Garde la checkbox)
-        const activeCheckbox = document.getElementById('course-active');
-        if (activeCheckbox) isActive = activeCheckbox.checked;
-        finalStatut = isActive ? 'approved' : 'draft';
-    } else if (actionType === 'preview') {
-        // En preview, on garde le statut actuel sans rien casser
-    }
-
-    const finalAuteurId = courseId ? editingCourseAuthorId : currentUid;
-
-    try {
-        const courseData = {
-            titre: title,
-            bloc: bloc,
-            actif: isActive,
-            statutValidation: finalStatut,
-            formations: selectedPills,
-            auteurId: finalAuteurId,
-            chapitres: currentChapters
-        };
-
-        let courseRefId = courseId;
-
-        if (courseId) {
-            await updateDoc(doc(db, "courses", courseId), courseData);
-            if (actionType !== 'preview') alert(actionType === 'submit' ? '✅ Cours envoyé pour validation !' : '✅ Cours sauvegardé !');
-        } else {
-            courseData.dateCreation = serverTimestamp();
-            const docRef = await addDoc(collection(db, "courses"), courseData);
-            courseRefId = docRef.id;
-            document.getElementById('edit-course-id').value = courseRefId;
-            if (actionType !== 'preview') alert(actionType === 'submit' ? '✅ Cours envoyé pour validation !' : '✅ Brouillon créé !');
-        }
-        
-        // Notifications : Si on modifie ou soumet (et pas juste un brouillon invisible ou une preview)
-        if (actionType === 'submit') {
-            await addDoc(collection(db, "notifications"), {
-                type: 'course_validation',
-                courseId: courseRefId,
-                courseTitle: title,
-                auteurId: currentUid,
-                auteurName: (currentUserProfile.prenom || '') + ' ' + (currentUserProfile.nom || ''),
-                dateCreation: serverTimestamp(),
-            });
-        }
-        
-        await loadCourses();
-        
-        if (actionType === 'preview') {
-            window.open(`/student/cours-viewer.html?id=${courseRefId}&preview=true`, '_blank');
-        } else {
-            window.prepareNewCourse(); 
-            window.switchCourseTab('tab-list');
-        }
-
-    } catch (error) {
-        alert("❌ Erreur de sauvegarde.");
-    }
-}
-
-async function loadCourses() {
-    const listContainer = document.getElementById('courses-list-container');
-    if(!listContainer) return;
-
-    try {
-        const querySnapshot = await getDocs(collection(db, "courses"));
-        listContainer.innerHTML = '';
-        allCoursesData = [];
-        
-        if(querySnapshot.empty) {
-            listContainer.innerHTML = '<p style="color:var(--text-muted); text-align:center;">Aucun cours.</p>';
-            return;
-        }
-
-        querySnapshot.forEach((docSnap) => {
-            const data = docSnap.data();
-            const courseId = docSnap.id;
-            allCoursesData.push({ id: courseId, ...data });
-            
-            let statusHtml = '';
-            if (data.statutValidation === 'pending') {
-                statusHtml = `<span style="color: var(--accent-yellow, #fbbc04); font-weight: bold; font-size: 0.8rem;">⏳ EN ATTENTE</span>`;
-            } else {
-                statusHtml = data.actif ? `<span style="color: var(--accent-green, #10b981); font-weight: bold; font-size: 0.8rem;">● ACTIF</span>` : `<span style="color: var(--accent-red, #ff4a4a); font-weight: bold; font-size: 0.8rem;">● BROUILLON</span>`;
-            }
-
-            const tagsHtml = data.formations ? data.formations.map(fId => {
-                const formObj = allFormationsData.find(f => f.id === fId || f.titre === fId); 
-                const displayName = formObj ? formObj.titre : fId;
-                return `<span class="tag" style="background: var(--bg-body, #222); padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; border: 1px solid var(--border-color, #444);">📁 ${displayName}</span>`;
-            }).join(' ') : '';
-
-            const blocHtml = data.bloc ? `<span style="color: var(--accent-blue); font-size: 0.8rem; border: 1px solid var(--accent-blue); padding: 2px 8px; border-radius: 12px; margin-left: 10px;">${data.bloc}</span>` : '';
-
-            const nbChapitres = data.chapitres ? data.chapitres.length : 0;
-            
-            let authorName = "Système";
-            if (data.auteurId && allUsersForAccess.length > 0) {
-                const authorObj = allUsersForAccess.find(u => u.id === data.auteurId);
-                if (authorObj) {
-                    authorName = (authorObj.prenom || authorObj.nom) ? `${authorObj.prenom || ''} ${authorObj.nom || ''}`.trim() : authorObj.email;
-                }
-            }
-            
-            const html = `
-            <div style="background: var(--bg-card, #111); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color, #333); display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; opacity: ${data.actif ? '1' : '0.6'};">
-                <div>
-                    <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem;">
-                        ${statusHtml} 
-                        <h3 style="margin: 0; display: flex; align-items: center; color: var(--text-main, white);">
-                            ${data.titre}
-                            ${blocHtml}
-                            <span style="font-size: 0.85rem; font-weight: normal; color: var(--text-muted, #888); font-style: italic; margin-left: 0.8rem;">
-                                par ${authorName}
-                            </span>
-                        </h3>
-                    </div>
-                    <div style="color: var(--text-main, white);">${tagsHtml} <span style="color: var(--text-muted, #888); font-size: 0.85rem; margin-left: 1rem;">${nbChapitres} Étape(s)</span></div>
-                </div>
-                <div style="display: flex; gap: 0.5rem;">
-                    <button class="action-btn" style="width: auto; margin: 0; color: var(--accent-yellow, #fbbc04); background: transparent; border: 1px solid var(--border-color, #333);" onclick="window.duplicateCourse('${courseId}')" title="Créer une copie">Copier</button>
-                    <button class="action-btn" style="width: auto; margin: 0; color: var(--accent-blue); background: transparent; border: 1px solid var(--border-color, #333);" onclick="window.editCourse('${courseId}')">Éditer</button>
-                    <button class="action-btn danger" style="width: auto; margin: 0;" onclick="window.deleteCourse('${courseId}')">❌</button>
-                </div>
-            </div>`;
-            listContainer.insertAdjacentHTML('beforeend', html);
-        });
-
-        refreshBlocsList(); 
-
-    } catch (error) {
-        listContainer.innerHTML = '<p style="color:red; text-align:center;">Erreur système.</p>';
-    }
-}
-
 window.editCourse = async (id) => {
     try {
         const docSnap = await getDoc(doc(db, "courses", id));
@@ -801,6 +658,7 @@ window.editCourse = async (id) => {
             
             editingCourseAuthorId = data.auteurId || currentUid;
             editingCourseOriginalStatus = data.statutValidation || 'approved';
+            window.editingCourseOriginalActive = data.actif === true; 
 
             document.querySelectorAll('.formation-pill').forEach(pill => {
                 const val = pill.getAttribute('data-val');
@@ -812,9 +670,12 @@ window.editCourse = async (id) => {
             });
 
             currentChapters = data.chapitres || [];
-            window.switchCourseTab('tab-editor');
             
-            // FIX : Verrouillage visuel si le cours est en cours d'examen
+            // FIX : Vérification de la présence de la fonction pour l'Admin !
+            if (typeof window.switchCourseTab === 'function') {
+                window.switchCourseTab('tab-editor');
+            }
+            
             const isTeacher = currentUserProfile && currentUserProfile.role === 'teacher';
             const warningBanner = document.getElementById('lock-warning-banner');
             
@@ -843,6 +704,101 @@ window.editCourse = async (id) => {
         alert("Impossible de charger le cours.");
     }
 };
+
+async function saveCourseToFirebase(actionType = 'admin_save') {
+    saveCurrentChapterContent(); 
+    
+    const courseId = document.getElementById('edit-course-id').value;
+    const title = document.getElementById('course-title').value.trim();
+    const bloc = document.getElementById('course-bloc-select').value.trim(); 
+    
+    const selectedPills = Array.from(document.querySelectorAll('.formation-pill.selected')).map(p => p.getAttribute('data-val'));
+
+    if (!title) { alert('⚠️ Veuillez entrer un Titre Global.'); return; }
+    if (currentChapters.length === 0) { alert('⚠️ Ajoutez au moins une étape.'); return; }
+
+    const isTeacher = currentUserProfile && currentUserProfile.role === 'teacher';
+    
+    let finalStatut = editingCourseOriginalStatus || 'draft';
+    let isActive = false;
+
+    if (actionType === 'draft') {
+        finalStatut = 'draft';
+    } else if (actionType === 'submit') {
+        if (!confirm("⚠️ ATTENTION : Une fois soumis à validation, ce cours sera verrouillé et vous ne pourrez plus le modifier pendant la durée de l'examen.\n\nConfirmer l'envoi ?")) {
+            return;
+        }
+        finalStatut = 'pending';
+    } else if (actionType === 'admin_save') {
+        const activeCheckbox = document.getElementById('course-active');
+        if (activeCheckbox) isActive = activeCheckbox.checked;
+        finalStatut = isActive ? 'approved' : 'draft';
+    } else if (actionType === 'preview') {
+        isActive = window.editingCourseOriginalActive || false;
+    }
+
+    const finalAuteurId = courseId ? editingCourseAuthorId : currentUid;
+    const isPublishing = (actionType === 'admin_save' && isActive && !window.editingCourseOriginalActive);
+
+    try {
+        const courseData = {
+            titre: title,
+            bloc: bloc,
+            actif: isActive,
+            statutValidation: finalStatut,
+            formations: selectedPills,
+            auteurId: finalAuteurId,
+            chapitres: currentChapters
+        };
+
+        let courseRefId = courseId;
+
+        if (courseId) {
+            await updateDoc(doc(db, "courses", courseId), courseData);
+            if (actionType !== 'preview') alert(actionType === 'submit' ? '✅ Cours envoyé pour validation !' : '✅ Cours sauvegardé !');
+        } else {
+            courseData.dateCreation = serverTimestamp();
+            const docRef = await addDoc(collection(db, "courses"), courseData);
+            courseRefId = docRef.id;
+            document.getElementById('edit-course-id').value = courseRefId;
+            if (actionType !== 'preview') alert(actionType === 'submit' ? '✅ Cours envoyé pour validation !' : '✅ Brouillon créé !');
+        }
+        
+        if (actionType === 'submit') {
+            await addDoc(collection(db, "notifications"), {
+                type: 'course_validation',
+                courseId: courseRefId,
+                courseTitle: title,
+                auteurId: currentUid,
+                auteurName: (currentUserProfile.prenom || '') + ' ' + (currentUserProfile.nom || ''),
+                dateCreation: serverTimestamp(),
+            });
+        }
+        
+        if (isPublishing && editingCourseAuthorId && editingCourseAuthorId !== currentUid) {
+            await addDoc(collection(db, "notifications"), {
+                type: 'course_approved',
+                courseId: courseRefId,
+                courseTitle: title,
+                destinataireId: editingCourseAuthorId,
+                dateCreation: serverTimestamp(),
+            });
+        }
+        
+        await loadCourses();
+        
+        if (actionType === 'preview') {
+            window.open(`/student/cours-viewer.html?id=${courseRefId}&preview=true`, '_blank');
+        } else {
+            if (typeof window.prepareNewCourse === 'function') window.prepareNewCourse(); 
+            if (typeof window.switchCourseTab === 'function') window.switchCourseTab('tab-list');
+        }
+
+    } catch (error) {
+        console.error("Erreur de sauvegarde :", error);
+        alert("❌ Erreur de sauvegarde.");
+    }
+}
 
 window.duplicateCourse = async (id) => {
     if(confirm("Créer une copie identique de ce cours ?")) {
