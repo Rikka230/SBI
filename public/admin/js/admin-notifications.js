@@ -32,8 +32,8 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if(notifSection) {
                 let activeColor = 'var(--accent-blue)';
-                if (window.location.pathname.includes('student')) activeColor = 'var(--accent-green)';
-                if (window.location.pathname.includes('teacher')) activeColor = 'var(--accent-orange)';
+                if (window.location.pathname.includes('student')) activeColor = 'var(--accent-blue)'; // Thème étudiant bleu
+                if (window.location.pathname.includes('teacher')) activeColor = 'var(--accent-orange)'; // Thème prof orange
                 
                 if(notifSection.style.display === 'none' || notifSection.style.display === '') {
                     if (profileSection) profileSection.style.display = 'none';
@@ -97,7 +97,6 @@ function renderNotificationsList(notifs) {
     if (!container) return;
     
     container.innerHTML = '';
-    const isStudent = currentUserProfile && currentUserProfile.role !== 'admin' && currentUserProfile.role !== 'teacher' && !currentUserProfile.isGod;
     
     if (notifs.length === 0) {
         container.innerHTML = `<p style="color:var(--text-muted); font-size:0.9rem; text-align:center; padding: 2rem;">Aucune nouvelle notification.</p>`;
@@ -113,15 +112,15 @@ function renderNotificationsList(notifs) {
         if (notif.type === 'new_course_published') {
             titleText = "Nouveau cours disponible !";
             bodyText = `Le cours <strong>${notif.courseTitle}</strong> est maintenant disponible.`;
-            iconSvg = `<svg width="20" height="20" fill="var(--accent-green)" viewBox="0 0 24 24"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3z"/></svg>`;
+            iconSvg = `<svg width="20" height="20" fill="var(--accent-blue, #2A57FF)" viewBox="0 0 24 24"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3z"/></svg>`;
         } else if (notif.type === 'course_approved') {
             titleText = "🎉 Cours Validé !";
             bodyText = `Votre cours "<strong>${notif.courseTitle}</strong>" a été publié.`;
-            iconSvg = `<svg width="20" height="20" fill="var(--accent-green)" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>`;
+            iconSvg = `<svg width="20" height="20" fill="var(--accent-green, #10b981)" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>`;
         } else {
             titleText = "Validation Requise";
             bodyText = `<strong>${notif.auteurName}</strong> a soumis "<strong>${notif.courseTitle}</strong>".`;
-            iconSvg = `<svg width="20" height="20" fill="var(--accent-yellow)" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>`;
+            iconSvg = `<svg width="20" height="20" fill="var(--accent-yellow, #fbbc04)" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>`;
         }
 
         const html = `
@@ -157,16 +156,28 @@ function renderNotificationsList(notifs) {
             const nSection = document.getElementById('notifications-section');
             if(nSection) nSection.style.display = 'none';
 
+            // FIX : Aiguillage propre selon le rôle de la personne qui clique
+            let userRole = 'student';
+            if (currentUserProfile) {
+                if (currentUserProfile.isGod) userRole = 'admin';
+                else if (currentUserProfile.role) userRole = currentUserProfile.role;
+            }
+
             if (notifType === 'new_course_published') {
-                window.location.assign(`/student/cours-viewer.html?id=${courseId}`);
-            } else if (currentUserProfile && currentUserProfile.role === 'teacher') {
+                if (userRole === 'teacher') window.location.assign(`/teacher/mes-cours.html?edit=${courseId}`);
+                else if (userRole === 'admin') window.location.assign(`/admin/formations-cours.html?edit=${courseId}`);
+                else window.location.assign(`/student/cours-viewer.html?id=${courseId}`);
+                
+            } else if (notifType === 'course_approved' && userRole === 'teacher') {
                 alert("Génial ! Votre cours est maintenant en ligne !");
+                window.location.assign(`/teacher/mes-cours.html?edit=${courseId}`);
+                
             } else {
-                if(window.location.pathname.includes('formations-cours.html')) {
-                    if(typeof window.editCourse === 'function') window.editCourse(courseId);
-                    else window.location.assign(`formations-cours.html?edit=${courseId}`);
+                // Direction Admin pour validation
+                if(window.location.pathname.includes('formations-cours.html') && typeof window.editCourse === 'function') {
+                    window.editCourse(courseId);
                 } else {
-                    window.location.assign(`formations-cours.html?edit=${courseId}`);
+                    window.location.assign(`/admin/formations-cours.html?edit=${courseId}`);
                 }
             }
         });
@@ -207,25 +218,32 @@ function setupGlobalSearch() {
             
             let html = '';
             
-            // Détection stricte du rôle
+            // FIX : Détection robuste du rôle
             let userRole = 'student';
             if (currentUserProfile) {
                 if (currentUserProfile.isGod) userRole = 'admin';
                 else if (currentUserProfile.role) userRole = currentUserProfile.role;
             } else if (window.location.pathname.includes('/admin/')) {
                 userRole = 'admin';
+            } else if (window.location.pathname.includes('/teacher/')) {
+                userRole = 'teacher';
             }
             
             const isAdmin = (userRole === 'admin');
+            const isTeacher = (userRole === 'teacher');
 
-            // 1. Recherche de cours (Seul l'admin voit les brouillons)
-            const matchedCourses = window.searchDataCache.courses.filter(c => c.titre && c.titre.toLowerCase().includes(term) && (!isAdmin ? c.actif : true)).slice(0, 5);
+            // 1. Recherche de cours (Admins et Profs peuvent voir les cours en attente/brouillons)
+            const matchedCourses = window.searchDataCache.courses.filter(c => c.titre && c.titre.toLowerCase().includes(term) && ((!isAdmin && !isTeacher) ? c.actif : true)).slice(0, 5);
             
             if (matchedCourses.length > 0) {
                 html += `<div style="padding: 6px 15px; font-size: 0.75rem; color: var(--text-muted, #888); background: rgba(0,0,0,0.05); font-weight: bold;">COURS PÉDAGOGIQUES</div>`;
                 matchedCourses.forEach(c => {
-                    // Les profs et élèves vont sur le lecteur pour éviter l'erreur de sécurité
-                    const link = isAdmin ? `/admin/formations-cours.html?edit=${c.id}` : `/student/cours-viewer.html?id=${c.id}`;
+                    
+                    // FIX : Aiguillage des cours par rôle
+                    let link = `/student/cours-viewer.html?id=${c.id}`;
+                    if (isAdmin) link = `/admin/formations-cours.html?edit=${c.id}`;
+                    else if (isTeacher) link = `/teacher/mes-cours.html?edit=${c.id}`;
+
                     html += `
                         <div class="search-result-item" data-url="${link}">
                             <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24" style="opacity: 0.6;"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3z"/></svg>
@@ -240,7 +258,6 @@ function setupGlobalSearch() {
             // 2. Recherche d'utilisateurs
             const matchedUsers = window.searchDataCache.users.filter(u => {
                 const name = `${u.prenom || ''} ${u.nom || ''}`.toLowerCase();
-                // Seul l'admin peut chercher par adresse email
                 return name.includes(term) || (isAdmin && u.email && u.email.toLowerCase().includes(term));
             }).slice(0, 5);
 
@@ -248,12 +265,10 @@ function setupGlobalSearch() {
                 html += `<div style="padding: 6px 15px; font-size: 0.75rem; color: var(--text-muted, #888); background: rgba(0,0,0,0.05); font-weight: bold;">UTILISATEURS</div>`;
                 matchedUsers.forEach(u => {
                     
-                    // Aiguillage strict des profils
                     let profileLink = `/student/mon-profil.html?id=${u.id}`;
                     if (isAdmin) profileLink = `/admin/admin-profile.html?id=${u.id}`;
-                    else if (userRole === 'teacher') profileLink = `/teacher/mon-profil.html?id=${u.id}`;
+                    else if (isTeacher) profileLink = `/teacher/mon-profil.html?id=${u.id}`;
                     
-                    // Masquage des adresses mails pour les non-admins
                     let subText = u.email;
                     if (!isAdmin) {
                         if (u.role === 'teacher') subText = 'Professeur';
