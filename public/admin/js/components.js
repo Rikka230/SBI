@@ -10,6 +10,15 @@ styleFix.textContent = `
     .nav-text { display: inline-block; transition: opacity 0.2s ease; }
     .left-collapsed .nav-text { opacity: 0; pointer-events: none; }
     .left-collapsed .nav-item { padding-left: 15px; padding-right: 15px; justify-content: center; }
+    
+    /* Styles de la recherche globale */
+    .global-search-results { position: absolute; top: calc(100% + 5px); left: 0; right: 0; background: var(--bg-card, #ffffff); z-index: 9999; border-radius: 8px; display: none; max-height: 350px; overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.1); border: 1px solid var(--border-color, #e5e7eb); }
+    .admin-theme .global-search-results { background: #1e1e1e; border-color: #333; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
+    .search-result-item { padding: 12px 15px; cursor: pointer; border-bottom: 1px solid var(--border-color, #f3f4f6); display: flex; align-items: center; gap: 12px; color: var(--text-main, #1f2937); transition: 0.2s; }
+    .admin-theme .search-result-item { border-color: #333; color: #fff; }
+    .search-result-item:hover { background: rgba(16, 185, 129, 0.05); }
+    .search-result-title { font-weight: bold; font-size: 0.9rem; margin-bottom: 2px; }
+    .search-result-sub { font-size: 0.75rem; color: var(--text-muted, #6b7280); }
 `;
 document.head.appendChild(styleFix);
 
@@ -17,7 +26,7 @@ document.head.appendChild(styleFix);
 class AdminLeftPanel extends HTMLElement {
     connectedCallback() {
         this.innerHTML = `
-            <aside id="left-panel" class="side-panel">
+            <aside id="left-panel" class="side-panel admin-theme">
                 <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; padding: 0 15px; width: 100%; box-sizing: border-box;">
                     <div class="logo-zone" style="display: flex; align-items: center; overflow: hidden; white-space: nowrap;">
                         <span style="color: var(--accent-blue); font-weight: bold;">🔥 SBI</span><span>&nbsp;Console</span>
@@ -64,7 +73,7 @@ customElements.define('admin-left-panel', AdminLeftPanel);
 class AdminRightPanel extends HTMLElement {
     connectedCallback() {
         this.innerHTML = `
-            <aside id="right-panel" class="side-panel">
+            <aside id="right-panel" class="side-panel admin-theme">
                 <div class="panel-header" style="justify-content: space-between; align-items: center; padding: 0 1.5rem;">
                     <span style="font-weight: bold; font-size: 0.9rem; color: var(--text-muted); display: none;" id="notif-panel-title">NOTIFICATIONS</span>
                     <div style="display: flex; align-items: center; margin-left: auto;">
@@ -72,6 +81,14 @@ class AdminRightPanel extends HTMLElement {
                             <svg style="width: 22px; height: 22px; fill: var(--text-muted); transition: fill 0.2s;" viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/></svg>
                             <span class="notif-badge" id="bell-badge" style="display:none;">0</span>
                         </div>
+                    </div>
+                </div>
+
+                <div style="padding: 1rem 1.5rem; border-bottom: 1px solid #333; position: relative;">
+                    <div style="position: relative;">
+                        <svg viewBox="0 0 24 24" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 16px; fill: #666;"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+                        <input type="text" class="global-search-input" placeholder="Chercher utilisateur, cours..." style="width: 100%; padding: 0.6rem 1rem 0.6rem 2rem; border-radius: 6px; background: #111; color: white; border: 1px solid #333; outline: none; font-size: 0.85rem;">
+                        <div class="global-search-results"></div>
                     </div>
                 </div>
                 
@@ -96,32 +113,8 @@ class AdminRightPanel extends HTMLElement {
                     <div id="notifications-list" style="display: flex; flex-direction: column;"></div>
                 </div>
             </aside>
-
-            <div id="nav-crop-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.9); z-index: 2000; justify-content: center; align-items: center; flex-direction: column;">
-                <div style="background: var(--bg-card); padding: 2rem; border-radius: 8px; border: 1px solid var(--border-color); text-align: center; max-width: 400px; width: 100%;">
-                    <h3 style="margin-top:0; color: var(--text-main);">Changer la photo</h3>
-                    
-                    <input type="file" id="nav-pfp-file-input" accept="image/*" style="display: none;">
-                    
-                    <div id="nav-crop-zone" onclick="document.getElementById('nav-pfp-file-input').click()" style="border-color: var(--border-color); border-radius: 50%; width: 300px; height: 300px; margin: 0 auto; overflow: hidden; position: relative; cursor: pointer; border: 2px dashed var(--border-color);">
-                        <span id="nav-crop-placeholder" style="position: absolute; top:50%; left:50%; transform: translate(-50%, -50%); color: var(--text-muted); pointer-events: none;">Glisser / Cliquer</span>
-                        <img id="nav-crop-image" src="" style="display: none; cross-origin: anonymous; position: absolute; top:0; left:0; transform-origin: top left;">
-                    </div>
-
-                    <div style="margin-top: 1.5rem; text-align: left; padding: 0 1rem;">
-                        <label style="color: var(--text-muted); font-size: 0.8rem; display: block; margin-bottom: 0.5rem; font-weight: bold;">Zoom</label>
-                        <input type="range" id="nav-crop-zoom" min="0.5" max="3" step="0.05" value="1" style="width: 100%; accent-color: var(--accent-blue);">
-                    </div>
-
-                    <div style="display: flex; gap: 1rem; margin-top: 2rem;">
-                        <button id="btn-nav-save-crop" style="flex: 1; padding: 1rem; background: var(--accent-blue); color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">Appliquer</button>
-                        <button id="btn-nav-cancel-crop" style="flex: 1; padding: 1rem; background: transparent; color: var(--text-main); border: 1px solid var(--text-muted); border-radius: 4px; cursor: pointer;">Annuler</button>
-                    </div>
-                </div>
-            </div>
         `;
 
-        // Activation garantie des boutons d'actions (Même sur admin-profile.html)
         const logoutBtn = this.querySelector('#logout-btn');
         if(logoutBtn) {
             logoutBtn.addEventListener('click', async () => {
@@ -200,15 +193,23 @@ class StudentTopBar extends HTMLElement {
             <header class="top-bar" style="border-bottom: 1px solid var(--border-color); background-color: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px);">
                 <button class="mobile-toggle left-toggle" id="btn-toggle-mobile"><svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg></button>
                 
-                <div class="search-bar-top">
+                <div class="search-bar-top" style="position: relative;">
                     <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
-                    <input type="text" placeholder="Rechercher un cours, une ressource...">
+                    <input type="text" class="global-search-input" placeholder="Rechercher un cours, une ressource...">
+                    <div class="global-search-results"></div>
                 </div>
 
                 <div style="display: flex; align-items: center; gap: 1.5rem; margin-left: auto; padding-right: 1rem;">
-                    <div style="position: relative; cursor: pointer; padding: 5px;">
-                        <svg style="width: 22px; height: 22px; fill: var(--text-muted);" viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/></svg>
-                        <span class="notif-badge" id="bell-badge" style="display:none; top: 0px; right: 0px;">0</span>
+                    
+                    <div style="position: relative;">
+                        <div id="notif-bell-btn" style="position: relative; cursor: pointer; padding: 5px;">
+                            <svg style="width: 22px; height: 22px; fill: var(--text-muted); transition: fill 0.2s;" viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/></svg>
+                            <span class="notif-badge" id="bell-badge" style="display:none; top: 0px; right: 0px;">0</span>
+                        </div>
+                        <div id="notifications-section" style="position: absolute; top: calc(100% + 10px); right: -50px; width: 320px; background: white; border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); z-index: 1000; display: none;">
+                            <div style="padding: 1rem; border-bottom: 1px solid var(--border-color); font-weight: bold; color: var(--text-main); font-size: 0.9rem;" id="notif-panel-title">VOS NOTIFICATIONS</div>
+                            <div id="notifications-list" style="display: flex; flex-direction: column; max-height: 350px; overflow-y: auto;"></div>
+                        </div>
                     </div>
                     
                     <div style="display: flex; align-items: center; gap: 1rem; cursor: pointer; border-left: 1px solid var(--border-color); padding-left: 1.5rem; transition: opacity 0.2s;" onclick="window.location.href='/student/mon-profil.html'" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
