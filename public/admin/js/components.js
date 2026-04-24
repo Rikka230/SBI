@@ -157,7 +157,7 @@ class StudentLeftPanel extends HTMLElement {
             <aside id="left-panel" class="side-panel">
                 <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; padding: 0 15px; width: 100%; box-sizing: border-box;">
                     <div class="logo-zone" style="display: flex; align-items: center; overflow: hidden; white-space: nowrap;">
-                        <span style="color: var(--accent-green); font-weight: bold;">🎓 SBI</span><span>&nbsp;Student</span>
+                        <span style="color: var(--accent-blue); font-weight: bold;">🎓 SBI</span><span>&nbsp;Student</span>
                     </div>
                     <button id="btn-toggle-panel" style="background:none; border:none; color:var(--text-muted); cursor:pointer; padding:5px; margin:0; display:flex; align-items: center;">
                         <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" style="transition: transform 0.3s;"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z"/></svg>
@@ -229,7 +229,7 @@ class StudentTopBar extends HTMLElement {
                     <div style="display: flex; align-items: center; gap: 1rem; cursor: pointer; border-left: 1px solid var(--border-color); padding-left: 1.5rem; transition: opacity 0.2s;" onclick="window.location.href='/student/mon-profil.html'" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
                         <div style="text-align: right; display: flex; flex-direction: column; justify-content: center;">
                             <p id="top-user-name" style="margin: 0; font-weight: bold; font-size: 0.95rem; line-height: 1.2;">Chargement...</p>
-                            <p id="top-user-level" style="margin: 0; color: var(--accent-green); font-size: 0.75rem; font-weight: bold; line-height: 1.2; margin-top: 2px;">Niveau -</p>
+                            <p id="top-user-level" style="margin: 0; color: var(--accent-blue); font-size: 0.75rem; font-weight: bold; line-height: 1.2; margin-top: 2px;">Niveau -</p>
                         </div>
                         <div id="top-user-avatar" style="width: 42px; height: 42px; border-radius: 50%; background: var(--bg-body); border: 2px solid var(--border-color); overflow: hidden; display: flex; align-items: center; justify-content: center; font-weight: bold; color: var(--text-main); flex-shrink: 0;"></div>
                     </div>
