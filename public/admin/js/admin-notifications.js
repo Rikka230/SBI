@@ -97,7 +97,8 @@ function initNotificationsRealtime() {
                 notifs.push({ id: docSnap.id, ...data });
             } 
             else if (currentUserProfile && (currentUserProfile.role === 'admin' || currentUserProfile.isGod)) {
-                if (data.auteurId !== currentUid && !data.targetStudents) {
+                // FIX FLUX ADMIN : Un Administrateur ne doit écouter QUE les demandes de validation
+                if (data.type === 'course_validation') {
                     notifs.push({ id: docSnap.id, ...data });
                 }
             }
@@ -122,8 +123,8 @@ function updateRedBadges(count) {
     
     if (count > 0) {
         const displayCount = count > 9 ? '9+' : count;
-        if(bellBadge) { bellBadge.textContent = displayCount; bellBadge.style.display = 'flex'; }
-        if(avatarBadge) { avatarBadge.textContent = displayCount; avatarBadge.style.display = 'flex'; }
+        if(bellBadge) { bellBadge.textContent = displayCount; bellBadge.style.display = ''; }
+        if(avatarBadge) { avatarBadge.textContent = displayCount; avatarBadge.style.display = ''; }
     } else {
         if(bellBadge) bellBadge.style.display = 'none';
         if(avatarBadge) avatarBadge.style.display = 'none';
@@ -160,6 +161,10 @@ function renderNotificationsList(notifs) {
             titleText = "Cours Validé !";
             bodyText = `Votre cours "<strong>${notif.courseTitle}</strong>" a été publié.`;
             iconSvg = `<svg width="20" height="20" style="min-width:20px; flex-shrink:0;" fill="var(--accent-green, #10b981)" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>`;
+        } else if (notif.type === 'course_rejected') {
+            titleText = "Cours Refusé";
+            bodyText = `Votre cours "<strong>${notif.courseTitle}</strong>" nécessite des modifications.`;
+            iconSvg = `<svg width="20" height="20" style="min-width:20px; flex-shrink:0;" fill="var(--accent-red, #ff4a4a)" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11H7v-2h10v2z"/></svg>`;
         } else {
             titleText = "Validation Requise";
             bodyText = `<strong>${notif.auteurName}</strong> a soumis "<strong>${notif.courseTitle}</strong>".`;
@@ -215,11 +220,13 @@ function renderNotificationsList(notifs) {
             if (notifType === 'course_approved') {
                 showTeacherCourseActionModal(courseId, courseTitle);
             } 
-            else if (notifType === 'new_course_published') {
-                // FIX REDIRECTION : L'étudiant va bien voir le cours sans le "/teacher" inventé.
+            else if (notifType === 'course_rejected') {
+                // Renvoyer le prof vers son éditeur
                 if (userRole === 'teacher') window.location.assign(`/teacher/mes-cours.html?edit=${courseId}`);
-                else if (userRole === 'admin') window.location.assign(`/admin/formations-cours.html?edit=${courseId}`);
-                else window.location.assign(`/student/cours-viewer.html?id=${courseId}`);
+                else window.location.assign(`/admin/formations-cours.html?edit=${courseId}`);
+            }
+            else if (notifType === 'new_course_published') {
+                window.location.assign(`/student/cours-viewer.html?id=${courseId}`);
             } 
             else {
                 if(window.location.pathname.includes('formations-cours.html') && typeof window.editCourse === 'function') {
@@ -271,7 +278,6 @@ function showTeacherCourseActionModal(courseId, courseTitle) {
         modal.querySelector('div').style.transform = 'translateY(0)';
     });
 
-    // FIX : La modale renvoie correctement vers /student/ avec le tag preview pour que ton JS opère le filtrage sans erreur 404
     document.getElementById('btn-modal-view').onclick = () => {
         modal.style.display = 'none';
         window.open(`/student/cours-viewer.html?id=${courseId}&preview=true`, '_blank'); 
@@ -347,7 +353,7 @@ function setupGlobalSearch() {
 
                     html += `
                         <div class="search-result-item" data-url="${link}">
-                            <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24" style="opacity: 0.6;"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3z"/></svg>
+                            <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24" style="opacity: 0.6; min-width: 18px; flex-shrink: 0;"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3z"/></svg>
                             <div>
                                 <div class="search-result-title">${c.titre}</div>
                             </div>
@@ -377,7 +383,7 @@ function setupGlobalSearch() {
 
                     html += `
                         <div class="search-result-item" data-url="${profileLink}">
-                            <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24" style="opacity: 0.6;"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                            <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24" style="opacity: 0.6; min-width: 18px; flex-shrink: 0;"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
                             <div>
                                 <div class="search-result-title">${u.prenom || ''} ${u.nom || ''}</div>
                                 <div class="search-result-sub">${subText}</div>
