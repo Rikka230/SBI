@@ -133,6 +133,13 @@ async function loadProfileData(uid) {
                 if(emailEl) {
                     emailEl.tagName === 'INPUT' ? emailEl.value = data.email || '' : emailEl.textContent = data.email || '';
                 }
+
+                // FIX : AFFICHER LE BOUTON D'ÉDITION D'EMAIL UNIQUEMENT POUR LE PROPRIÉTAIRE
+                if (isOwner) {
+                    const btnChangeAdmin = document.getElementById('btn-change-email-admin');
+                    if (btnChangeAdmin) btnChangeAdmin.style.display = 'block';
+                }
+
                 if(document.getElementById('prof-phone')) document.getElementById('prof-phone').value = data.privateData?.phone || '';
                 if(document.getElementById('prof-address')) document.getElementById('prof-address').value = data.privateData?.address || '';
                 
@@ -148,7 +155,7 @@ async function loadProfileData(uid) {
 
             loadUserFormations(uid);
 
-            if (isAdmin && document.getElementById('prof-tracking-list')) {
+            if (document.getElementById('prof-tracking-list')) {
                 loadLearningTracking(uid);
             }
 
@@ -158,7 +165,6 @@ async function loadProfileData(uid) {
     } catch(e) { console.error("Erreur", e); }
 }
 
-// FIX : Charge tous les cours (Assignés + Commencés) pour la liste de Suivi Admin
 async function loadLearningTracking(uid) {
     const list = document.getElementById('prof-tracking-list');
     list.innerHTML = '<p style="color: var(--text-muted); font-size: 0.9rem; font-style: italic;">Chargement du dossier...</p>';
@@ -169,7 +175,6 @@ async function loadLearningTracking(uid) {
         const userSnap = await getDoc(doc(db, "users", uid));
         const userData = userSnap.exists() ? userSnap.data() : {};
         
-        // 1. On liste les ID des formations de cet étudiant
         const formSnap = await getDocs(collection(db, "formations"));
         const assignedFormIds = [];
         const assignedFormTitles = [];
@@ -181,7 +186,6 @@ async function loadLearningTracking(uid) {
             }
         });
 
-        // 2. On récupère les cours correspondant à ces formations, ou déjà entamés
         const courseSnap = await getDocs(collection(db, "courses"));
         const allCourses = {};
         const coursesToShow = new Set();
@@ -200,11 +204,12 @@ async function loadLearningTracking(uid) {
         });
 
         if (coursesToShow.size === 0) {
-            list.innerHTML = '<p style="color: var(--text-muted); font-size: 0.9rem;">Aucun cours assigné ou commencé par cet élève.</p>';
+            list.innerHTML = '<p style="color: var(--text-muted); font-size: 0.9rem;">Aucun cours assigné ou commencé.</p>';
             return;
         }
 
         list.innerHTML = '';
+        const isStudentUI = !window.location.pathname.includes('admin');
 
         Array.from(coursesToShow).forEach(cId => {
             const courseData = allCourses[cId];
@@ -215,11 +220,11 @@ async function loadLearningTracking(uid) {
             
             let statusBadge = '';
             if (pData.status === 'done') {
-                statusBadge = '<span style="background: rgba(46, 213, 115, 0.1); color: var(--accent-green); padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold;">Terminé</span>';
+                statusBadge = `<span style="background: ${isStudentUI ? 'rgba(16, 185, 129, 0.1)' : 'rgba(46, 213, 115, 0.1)'}; color: var(--accent-green); padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold;">Terminé</span>`;
             } else if (pData.status === 'in_progress') {
                 statusBadge = '<span style="background: rgba(251, 188, 4, 0.1); color: var(--accent-yellow); padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold;">En cours</span>';
             } else {
-                statusBadge = '<span style="background: rgba(255, 255, 255, 0.1); color: var(--text-muted); padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold;">À faire</span>';
+                statusBadge = `<span style="background: ${isStudentUI ? '#f3f4f6' : 'rgba(255, 255, 255, 0.1)'}; color: var(--text-muted); padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold;">À faire</span>`;
             }
 
             let quizHtml = '';
@@ -229,12 +234,17 @@ async function loadLearningTracking(uid) {
                         const totalPossible = chap.questions ? chap.questions.reduce((sum, q) => sum + (q.points || 1), 0) : 0;
                         const scoreObtained = (pData.quizScores && pData.quizScores[chap.id] !== undefined) ? pData.quizScores[chap.id] : 0;
                         
+                        let editBtnHtml = '';
+                        if (isAdmin) {
+                            editBtnHtml = `<button class="action-btn btn-edit-grade" data-course="${cId}" data-chapter="${chap.id}" data-current="${scoreObtained}" data-max="${totalPossible}" style="width: auto; margin: 0; padding: 4px 8px; font-size: 0.75rem; background: #333; color: white; border: none;">${SVG_EDIT} Éditer</button>`;
+                        }
+
                         quizHtml += `
-                            <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.2); padding: 0.5rem; border-radius: 4px; margin-top: 0.5rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; background: ${isStudentUI ? '#f9fafb' : 'rgba(0,0,0,0.2)'}; padding: 0.5rem 1rem; border-radius: 6px; margin-top: 0.8rem; border: 1px solid ${isStudentUI ? 'var(--border-color)' : 'transparent'};">
                                 <span style="font-size: 0.85rem; color: var(--text-muted);">${chap.titre}</span>
                                 <div style="display: flex; align-items: center; gap: 10px;">
-                                    <span style="font-size: 0.85rem; font-weight: bold; color: ${scoreObtained === totalPossible && totalPossible > 0 ? 'var(--accent-green)' : 'white'};">Score: ${scoreObtained} / ${totalPossible}</span>
-                                    <button class="action-btn btn-edit-grade" data-course="${cId}" data-chapter="${chap.id}" data-current="${scoreObtained}" data-max="${totalPossible}" style="width: auto; margin: 0; padding: 4px 8px; font-size: 0.75rem; background: #333; color: white;">${SVG_EDIT} Éditer</button>
+                                    <span style="font-size: 0.85rem; font-weight: bold; color: ${scoreObtained === totalPossible && totalPossible > 0 ? 'var(--accent-green)' : 'var(--text-main)'};">Score: ${scoreObtained} / ${totalPossible}</span>
+                                    ${editBtnHtml}
                                 </div>
                             </div>
                         `;
@@ -242,15 +252,22 @@ async function loadLearningTracking(uid) {
                 });
             }
 
+            let resetBtnHtml = '';
+            if (isAdmin) {
+                resetBtnHtml = `<button class="action-btn btn-reset-course danger" data-course="${cId}" style="width: auto; margin: 0; padding: 6px 10px; font-size: 0.8rem;">${SVG_RESET} Réinitialiser</button>`;
+            }
+
             const html = `
-                <div class="tracking-item" style="background: #111; border: 1px solid #333; border-radius: 8px; padding: 1rem;">
+                <div class="tracking-item" style="background: ${isStudentUI ? 'white' : '#111'}; border: 1px solid ${isStudentUI ? 'var(--border-color)' : '#333'}; border-radius: 8px; padding: 1rem; box-shadow: ${isStudentUI ? '0 2px 10px rgba(0,0,0,0.02)' : 'none'};">
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
                         <div>
-                            <h5 class="tracking-title" style="margin: 0 0 0.3rem 0; color: var(--accent-blue);">${courseData.titre}</h5>
-                            ${statusBadge}
-                            <span style="font-size: 0.8rem; color: var(--text-muted); margin-left: 10px;">Étapes: ${completedCount} / ${totalCount}</span>
+                            <h5 class="tracking-title" style="margin: 0 0 0.5rem 0; color: var(--accent-blue); font-size: 1rem;">${courseData.titre}</h5>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                ${statusBadge}
+                                <span style="font-size: 0.8rem; color: var(--text-muted);">Étapes: ${completedCount} / ${totalCount}</span>
+                            </div>
                         </div>
-                        <button class="action-btn btn-reset-course danger" data-course="${cId}" style="width: auto; margin: 0; padding: 6px 10px; font-size: 0.8rem;">${SVG_RESET} Réinitialiser</button>
+                        ${resetBtnHtml}
                     </div>
                     ${quizHtml}
                 </div>
@@ -258,7 +275,6 @@ async function loadLearningTracking(uid) {
             list.insertAdjacentHTML('beforeend', html);
         });
 
-        // RECHERCHE DYNAMIQUE ADMIN
         const searchInput = document.getElementById('search-tracking-admin');
         if (searchInput) {
             searchInput.oninput = (e) => {
@@ -270,50 +286,52 @@ async function loadLearningTracking(uid) {
             };
         }
 
-        document.querySelectorAll('.btn-reset-course').forEach(btn => {
-            btn.addEventListener('click', async (e) => {
-                const cId = e.currentTarget.getAttribute('data-course');
-                if (confirm("⚠️ Réinitialiser ce cours ? L'élève perdra sa progression et l'XP liée aux QCM de ce cours. Cette action est irréversible.")) {
-                    e.currentTarget.disabled = true;
-                    e.currentTarget.textContent = "Reset...";
-                    const success = await resetCourseProgress(uid, cId);
-                    if (success) {
-                        loadProfileData(uid); 
-                    } else {
-                        alert("Erreur lors de la réinitialisation.");
-                        e.currentTarget.disabled = false;
-                    }
-                }
-            });
-        });
-
-        document.querySelectorAll('.btn-edit-grade').forEach(btn => {
-            btn.addEventListener('click', async (e) => {
-                const cId = e.currentTarget.getAttribute('data-course');
-                const chapId = e.currentTarget.getAttribute('data-chapter');
-                const currentScore = e.currentTarget.getAttribute('data-current');
-                const maxScore = e.currentTarget.getAttribute('data-max');
-
-                const newScoreStr = prompt(`Modifier la note (Max: ${maxScore}).\nActuelle: ${currentScore}\n\nNote : Cela modifiera automatiquement l'XP globale de l'élève !`, currentScore);
-                
-                if (newScoreStr !== null) {
-                    const newScore = parseInt(newScoreStr);
-                    if (!isNaN(newScore) && newScore >= 0 && newScore <= parseInt(maxScore)) {
+        if (isAdmin) {
+            document.querySelectorAll('.btn-reset-course').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    const cId = e.currentTarget.getAttribute('data-course');
+                    if (confirm("⚠️ Réinitialiser ce cours ? L'élève perdra sa progression et l'XP liée aux QCM de ce cours. Cette action est irréversible.")) {
                         e.currentTarget.disabled = true;
-                        e.currentTarget.textContent = "Sauvegarde...";
-                        const success = await updateQuizScore(uid, cId, chapId, newScore);
+                        e.currentTarget.textContent = "Reset...";
+                        const success = await resetCourseProgress(uid, cId);
                         if (success) {
                             loadProfileData(uid); 
                         } else {
-                            alert("Erreur lors de la mise à jour.");
+                            alert("Erreur lors de la réinitialisation.");
                             e.currentTarget.disabled = false;
                         }
-                    } else {
-                        alert("Note invalide.");
                     }
-                }
+                });
             });
-        });
+
+            document.querySelectorAll('.btn-edit-grade').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    const cId = e.currentTarget.getAttribute('data-course');
+                    const chapId = e.currentTarget.getAttribute('data-chapter');
+                    const currentScore = e.currentTarget.getAttribute('data-current');
+                    const maxScore = e.currentTarget.getAttribute('data-max');
+
+                    const newScoreStr = prompt(`Modifier la note (Max: ${maxScore}).\nActuelle: ${currentScore}\n\nNote : Cela modifiera automatiquement l'XP globale de l'élève !`, currentScore);
+                    
+                    if (newScoreStr !== null) {
+                        const newScore = parseInt(newScoreStr);
+                        if (!isNaN(newScore) && newScore >= 0 && newScore <= parseInt(maxScore)) {
+                            e.currentTarget.disabled = true;
+                            e.currentTarget.textContent = "Sauvegarde...";
+                            const success = await updateQuizScore(uid, cId, chapId, newScore);
+                            if (success) {
+                                loadProfileData(uid); 
+                            } else {
+                                alert("Erreur lors de la mise à jour.");
+                                e.currentTarget.disabled = false;
+                            }
+                        } else {
+                            alert("Note invalide.");
+                        }
+                    }
+                });
+            });
+        }
 
     } catch (err) {
         console.error(err);
