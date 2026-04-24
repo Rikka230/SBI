@@ -100,10 +100,15 @@
 
                         <div id="ptab-private" class="p-tab-content">
                             <div class="data-group">
-                                <div class="data-row">
+                                
+                                <div class="data-row" style="align-items: center;">
                                     <span class="data-label">Email de connexion</span>
-                                    <span class="data-value" id="prof-email">...</span>
+                                    <div style="display: flex; align-items: center; gap: 1rem;">
+                                        <span class="data-value" id="prof-email" style="margin:0;">...</span>
+                                        <button id="btn-change-email-admin" class="action-btn" onclick="window.location.href='/change-email.html'" style="display: none; width: auto; margin: 0; padding: 4px 12px; font-size: 0.8rem; background: #222; color: var(--text-main); border: 1px solid #444; transition: 0.2s;" onmouseover="this.style.background='#333'" onmouseout="this.style.background='#222'">Modifier</button>
+                                    </div>
                                 </div>
+                                
                                 <div class="data-row">
                                     <span class="data-label">Temps de connexion total</span>
                                     <span class="data-value" style="color: var(--accent-yellow);" id="prof-time">...</span>
@@ -153,17 +158,13 @@
     <div id="crop-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.9); z-index: 2000; justify-content: center; align-items: center; flex-direction: column;">
         <div style="background: var(--bg-card); padding: 2rem; border-radius: 8px; border: 1px solid var(--border-color); width: 90%; max-width: 500px;">
             <h3 style="margin-top:0; color: white; text-align: center;">Ajuster la photo</h3>
-            
             <input type="file" id="pfp-file-input" accept="image/*" style="display: none;">
-            
             <div style="width: 100%; height: 350px; background: #111; overflow: hidden; margin-bottom: 1.5rem; border-radius: 4px;">
                 <img id="crop-image" src="" style="display: block; max-width: 100%;">
             </div>
-
             <button id="btn-upload-new" style="width: 100%; padding: 0.8rem; background: transparent; color: white; border: 2px dashed var(--text-muted); border-radius: 4px; cursor: pointer; font-weight: bold; margin-bottom: 1.5rem; transition: 0.2s;">
                 Changer d'image
             </button>
-
             <div style="display: flex; gap: 1rem;">
                 <button id="btn-save-crop" style="flex: 1; padding: 1rem; background: var(--accent-blue); color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">Appliquer</button>
                 <button id="btn-cancel-crop" style="flex: 1; padding: 1rem; background: transparent; color: white; border: 1px solid var(--text-muted); border-radius: 4px; cursor: pointer;">Annuler</button>
