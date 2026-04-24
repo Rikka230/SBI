@@ -216,6 +216,7 @@ function renderNotificationsList(notifs) {
                 showTeacherCourseActionModal(courseId, courseTitle);
             } 
             else if (notifType === 'new_course_published') {
+                // FIX REDIRECTION : L'étudiant va bien voir le cours sans le "/teacher" inventé.
                 if (userRole === 'teacher') window.location.assign(`/teacher/mes-cours.html?edit=${courseId}`);
                 else if (userRole === 'admin') window.location.assign(`/admin/formations-cours.html?edit=${courseId}`);
                 else window.location.assign(`/student/cours-viewer.html?id=${courseId}`);
@@ -270,9 +271,10 @@ function showTeacherCourseActionModal(courseId, courseTitle) {
         modal.querySelector('div').style.transform = 'translateY(0)';
     });
 
+    // FIX : La modale renvoie correctement vers /student/ avec le tag preview pour que ton JS opère le filtrage sans erreur 404
     document.getElementById('btn-modal-view').onclick = () => {
         modal.style.display = 'none';
-        window.open(`/teacher/cours-viewer.html?id=${courseId}&preview=true`, '_blank'); 
+        window.open(`/student/cours-viewer.html?id=${courseId}&preview=true`, '_blank'); 
     };
     document.getElementById('btn-modal-edit').onclick = () => {
         modal.style.display = 'none';
