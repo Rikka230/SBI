@@ -239,3 +239,93 @@ class StudentTopBar extends HTMLElement {
     }
 }
 customElements.define('student-top-bar', StudentTopBar);
+
+/* --- 5. LE PANNEAU LATÉRAL GAUCHE (PROFESSEUR) --- */
+class TeacherLeftPanel extends HTMLElement {
+    connectedCallback() {
+        this.innerHTML = `
+            <aside id="left-panel" class="side-panel">
+                <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; padding: 0 15px; width: 100%; box-sizing: border-box;">
+                    <div class="logo-zone" style="display: flex; align-items: center; overflow: hidden; white-space: nowrap;">
+                        <span style="color: var(--accent-orange, #f59e0b); font-weight: bold;">👨‍🏫 SBI</span><span>&nbsp;Teacher</span>
+                    </div>
+                    <button id="btn-toggle-panel" style="background:none; border:none; color:var(--text-muted); cursor:pointer; padding:5px; margin:0; display:flex; align-items: center;">
+                        <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" style="transition: transform 0.3s;"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z"/></svg>
+                    </button>
+                </div>
+                
+                <ul class="nav-menu">
+                    <li class="nav-item ${window.location.pathname.includes('teacherindex.html') || window.location.pathname.includes('dashboard.html') ? 'active' : ''}" onclick="window.location.href='/teacher/dashboard.html'">
+                        <svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
+                        <span class="nav-text">Mon Espace</span>
+                    </li>
+                    <li class="nav-item ${window.location.pathname.includes('mes-cours.html') ? 'active' : ''}" onclick="window.location.href='/teacher/mes-cours.html'">
+                        <svg viewBox="0 0 24 24"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/></svg>
+                        <span class="nav-text">Gestion des Cours</span>
+                    </li>
+                    <li class="nav-item ${window.location.pathname.includes('mon-profil.html') ? 'active' : ''}" onclick="window.location.href='/teacher/mon-profil.html'">
+                        <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                        <span class="nav-text">Mon Profil Public</span>
+                    </li>
+                </ul>
+
+                <div style="margin-top: auto; padding: 1rem; border-top: 1px solid var(--border-color); overflow: hidden;">
+                    <button id="logout-btn-teacher" style="width: 100%; padding: 0.8rem; background: rgba(255, 74, 74, 0.05); color: var(--accent-red); border: 1px solid rgba(255, 74, 74, 0.2); border-radius: 8px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; transition: background 0.2s; white-space: nowrap;" onmouseover="this.style.background='rgba(255, 74, 74, 0.1)'" onmouseout="this.style.background='rgba(255, 74, 74, 0.05)'">
+                        <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24" style="flex-shrink: 0;"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
+                        <span class="nav-text">Déconnexion</span>
+                    </button>
+                </div>
+            </aside>
+        `;
+
+        const logoutBtn = this.querySelector('#logout-btn-teacher');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', async () => {
+                const { getAuth, signOut } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js");
+                const auth = getAuth();
+                signOut(auth).then(() => { window.location.href = '/login.html'; });
+            });
+        }
+    }
+}
+customElements.define('teacher-left-panel', TeacherLeftPanel);
+
+/* --- 6. LA BARRE SUPÉRIEURE (PROFESSEUR) --- */
+class TeacherTopBar extends HTMLElement {
+    connectedCallback() {
+        this.innerHTML = `
+            <header class="top-bar" style="border-bottom: 1px solid var(--border-color); background-color: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px);">
+                <button class="mobile-toggle left-toggle" id="btn-toggle-mobile"><svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg></button>
+                
+                <div class="search-bar-top" style="position: relative; flex-grow: 1; max-width: 450px; margin-left: 2rem;">
+                    <svg viewBox="0 0 24 24" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); width: 18px; fill: var(--text-muted);"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+                    <input type="text" class="global-search-input" placeholder="Rechercher un cours, une ressource..." style="width: 100%; box-sizing: border-box; padding: 0.7rem 1.5rem 0.7rem 2.8rem; background: #f9fafb; border: 1px solid var(--border-color); border-radius: 20px; outline: none; font-size: 0.95rem; color: var(--text-main);">
+                    <div class="global-search-results"></div>
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 1.5rem; margin-left: auto; padding-right: 1rem;">
+                    
+                    <div style="position: relative;">
+                        <div id="notif-bell-btn" style="position: relative; cursor: pointer; padding: 5px;">
+                            <svg style="width: 22px; height: 22px; fill: var(--text-muted); transition: fill 0.2s;" viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/></svg>
+                            <span class="notif-badge" id="bell-badge" style="display:none; top: 0px; right: 0px;">0</span>
+                        </div>
+                        <div id="notifications-section" style="position: absolute; top: calc(100% + 10px); right: -50px; width: 320px; background: white; border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); z-index: 1000; display: none;">
+                            <div style="padding: 1rem; border-bottom: 1px solid var(--border-color); font-weight: bold; color: var(--text-main); font-size: 0.9rem;" id="notif-panel-title">VOS NOTIFICATIONS</div>
+                            <div id="notifications-list" style="display: flex; flex-direction: column; max-height: 350px; overflow-y: auto;"></div>
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; align-items: center; gap: 1rem; cursor: pointer; border-left: 1px solid var(--border-color); padding-left: 1.5rem; transition: opacity 0.2s;" onclick="window.location.href='/teacher/mon-profil.html'" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
+                        <div style="text-align: right; display: flex; flex-direction: column; justify-content: center;">
+                            <p id="top-user-name" style="margin: 0; font-weight: bold; font-size: 0.95rem; line-height: 1.2;">Chargement...</p>
+                            <p id="top-user-level" style="margin: 0; color: var(--accent-orange, #f59e0b); font-size: 0.75rem; font-weight: bold; line-height: 1.2; margin-top: 2px;">Niveau -</p>
+                        </div>
+                        <div id="top-user-avatar" style="width: 42px; height: 42px; border-radius: 50%; background: var(--bg-body); border: 2px solid var(--border-color); overflow: hidden; display: flex; align-items: center; justify-content: center; font-weight: bold; color: var(--text-main); flex-shrink: 0;"></div>
+                    </div>
+                </div>
+            </header>
+        `;
+    }
+}
+customElements.define('teacher-top-bar', TeacherTopBar);
