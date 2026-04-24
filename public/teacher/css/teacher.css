@@ -16,6 +16,9 @@
     /* SÉCURITÉ MAGIQUE : On force les scripts existants à utiliser l'orange */
     --accent-blue: var(--accent-orange); 
     --accent-green: var(--accent-orange); 
+    
+    /* Pour l'éditeur de cours */
+    --accent-blue-light: rgba(245, 158, 11, 0.1); 
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -35,13 +38,7 @@ body { background-color: var(--bg-body) !important; color: var(--text-main); }
 .top-bar { right: 0 !important; width: calc(100% - var(--left-panel-width)) !important; }
 .app-container.left-collapsed .top-bar { width: calc(100% - var(--left-panel-mini-width)) !important; }
 
-.hub-grid {
-    display: grid;
-    grid-template-columns: 1.2fr 1fr;
-    gap: 2.5rem;
-    align-items: start;
-    width: 100%;
-}
+.hub-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 2.5rem; align-items: start; width: 100%; }
 
 /* FIX : Styles globaux pour les formulaires (Profil et Éditeur de cours) */
 .form-group { margin-bottom: 1.5rem; }
@@ -50,18 +47,7 @@ body { background-color: var(--bg-body) !important; color: var(--text-main); }
 .prof-input:focus { border-color: var(--accent-orange); background: #fff; box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1); }
 
 .prof-input[disabled] {
-    background: transparent !important;
-    color: var(--text-main) !important;
-    cursor: default !important;
-    border: none !important;
-    padding: 0 !important;
-    margin-top: 0.5rem !important;
-    resize: none;
-    font-family: inherit;
-    font-size: 1rem;
-    line-height: 1.6;
-    height: auto !important;
-    box-shadow: none !important;
+    background: transparent !important; color: var(--text-main) !important; cursor: default !important; border: none !important; padding: 0 !important; margin-top: 0.5rem !important; resize: none; font-family: inherit; font-size: 1rem; line-height: 1.6; height: auto !important; box-shadow: none !important;
 }
 
 #btn-toggle-panel svg { fill: var(--text-main) !important; }
@@ -89,14 +75,8 @@ body { background-color: var(--bg-body) !important; color: var(--text-main); }
 .student-view { display: none; animation: fadeIn 0.3s; }
 .student-view.active { display: block; }
 
-/* BADGE PHOTO ROND PARFAIT */
 .edit-avatar-badge { 
-    position: absolute; bottom: 0; right: 0; 
-    width: 36px; height: 36px; 
-    background: var(--accent-orange); color: white; 
-    border-radius: 50%; border: 3px solid var(--bg-card); 
-    display: flex; align-items: center; justify-content: center; 
-    cursor: pointer; z-index: 10; opacity: 0; pointer-events: none; transition: 0.2s; 
+    position: absolute; bottom: 0; right: 0; width: 36px; height: 36px; background: var(--accent-orange); color: white; border-radius: 50%; border: 3px solid var(--bg-card); display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 10; opacity: 0; pointer-events: none; transition: 0.2s; 
 }
 .editing .edit-avatar-badge { opacity: 1; pointer-events: auto; }
 .edit-avatar-badge svg { width: 18px; height: 18px; flex-shrink: 0; }
