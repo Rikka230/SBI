@@ -37,12 +37,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const editId = urlParams.get('edit');
             if (editId) {
                 window.editCourse(editId);
-                if (typeof window.switchCourseTab === 'function') {
-                    window.history.replaceState({}, document.title, window.location.pathname + "?tab=tab-editor");
-                }
+                window.history.replaceState({}, document.title, window.location.pathname + "?tab=tab-editor");
             }
             
             if (!document.getElementById('btn-preview-course')) {
+                // Ajoute le bouton de preview sous les nouveaux boutons ou le bouton principal
                 const targetBtn = document.getElementById('btn-submit-validation') || document.getElementById('btn-save-course');
                 if (targetBtn) {
                     targetBtn.insertAdjacentHTML('afterend', `<button id="btn-preview-course" class="action-btn" style="width: 100%; margin-top: 1rem; background: transparent; color: var(--text-main); border: 1px solid var(--border-color); padding: 1rem; font-size: 1rem; cursor: pointer; transition: 0.2s; font-weight:bold;">${SVG_PREVIEW} Visualiser le rendu actuel</button>`);
@@ -76,9 +75,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // FIX : Écouteurs pour les NOUVEAUX boutons Brouillon / Soumettre
     const btnDraft = document.getElementById('btn-save-draft');
     const btnSubmit = document.getElementById('btn-submit-validation');
-    const btnSaveAdmin = document.getElementById('btn-save-course'); 
+    const btnSaveAdmin = document.getElementById('btn-save-course'); // Pour l'interface Admin qui garde 1 seul bouton
 
     if(btnDraft) btnDraft.addEventListener('click', () => saveCourseToFirebase('draft'));
     if(btnSubmit) btnSubmit.addEventListener('click', () => saveCourseToFirebase('submit'));
@@ -393,47 +393,32 @@ function refreshBlocsList() {
     if(currentVal && blocsSet.has(currentVal)) select.value = currentVal;
 }
 
-// FIX ABSOLU : On vérifie si switchCourseTab et les éléments UI existent avant d'y toucher !
 window.prepareNewCourse = function() {
     editingCourseAuthorId = null;
     editingCourseOriginalStatus = null;
 
     document.getElementById('edit-course-id').value = '';
     document.getElementById('course-title').value = '';
-    
-    const selectBloc = document.getElementById('course-bloc-select');
-    if (selectBloc) selectBloc.value = ''; 
-    
+    document.getElementById('course-bloc-select').value = ''; 
     currentChapters = [];
     activeChapterId = null;
     document.querySelectorAll('.formation-pill').forEach(p => p.classList.remove('selected'));
     
-    const noChapterZone = document.getElementById('no-chapter-zone');
-    if (noChapterZone) noChapterZone.style.display = 'flex';
+    document.getElementById('no-chapter-zone').style.display = 'flex';
+    document.getElementById('chapter-editor-zone').style.display = 'none';
+    document.getElementById('quiz-editor-zone').style.display = 'none';
     
-    const chapterEditorZone = document.getElementById('chapter-editor-zone');
-    if (chapterEditorZone) chapterEditorZone.style.display = 'none';
-    
-    const quizEditorZone = document.getElementById('quiz-editor-zone');
-    if (quizEditorZone) quizEditorZone.style.display = 'none';
-    
-    const warningBanner = document.getElementById('lock-warning-banner');
-    if (warningBanner) warningBanner.style.display = 'none';
-
+    // Reset les verrous visuels
+    document.getElementById('lock-warning-banner').style.display = 'none';
     document.querySelectorAll('.editor-input, .editor-action-btn').forEach(el => {
         el.disabled = false;
         el.style.opacity = '1';
         el.style.pointerEvents = 'auto';
     });
-    
     if(window.quill) window.quill.enable(true);
     
     renderChaptersList();
-    
-    // Seulement pour le prof (l'admin n'a pas d'onglets !)
-    if (typeof window.switchCourseTab === 'function') {
-        window.switchCourseTab('tab-editor');
-    }
+    window.switchCourseTab('tab-editor');
 };
 
 function createNewChapter(type) {
@@ -457,9 +442,7 @@ function saveCurrentChapterContent() {
 
     if (chap.type === 'text') {
         chap.titre = document.getElementById('chapter-title').value;
-        const mediaChecked = document.querySelector('input[name="media_type"]:checked');
-        if (mediaChecked) chap.mediaType = mediaChecked.value;
-        
+        chap.mediaType = document.querySelector('input[name="media_type"]:checked').value;
         chap.mediaImage = document.getElementById('chapter-image-base64').value;
         chap.mediaVideo = document.getElementById('chapter-video-base64').value;
         chap.contenu = window.quill ? window.quill.root.innerHTML : '';
@@ -475,8 +458,7 @@ window.selectChapter = function(id) {
     const chap = currentChapters.find(c => c.id === id);
     if(!chap) return;
 
-    const noChapterZone = document.getElementById('no-chapter-zone');
-    if (noChapterZone) noChapterZone.style.display = 'none';
+    document.getElementById('no-chapter-zone').style.display = 'none';
 
     if (chap.type === 'quiz') {
         document.getElementById('chapter-editor-zone').style.display = 'none';
@@ -489,15 +471,12 @@ window.selectChapter = function(id) {
         
         document.getElementById('chapter-title').value = chap.titre || '';
 
-        const mediaImageRadio = document.querySelector('input[name="media_type"][value="image"]');
-        const mediaVideoRadio = document.querySelector('input[name="media_type"][value="video"]');
-
         if(chap.mediaType === 'video') {
-            if (mediaVideoRadio) mediaVideoRadio.checked = true;
+            document.querySelector('input[name="media_type"][value="video"]').checked = true;
             document.getElementById('media-image-zone').style.display = 'none';
             document.getElementById('media-video-zone').style.display = 'flex';
         } else {
-            if (mediaImageRadio) mediaImageRadio.checked = true;
+            document.querySelector('input[name="media_type"][value="image"]').checked = true;
             document.getElementById('media-image-zone').style.display = 'flex';
             document.getElementById('media-video-zone').style.display = 'none';
         }
@@ -645,9 +624,7 @@ function renderQuizBuilder(questions) {
     });
 }
 
-// ============================================================================
-// FIX DE L'ERREUR LORS DE LA SAUVEGARDE ET DE LA NOTIFICATION (ADMIN ET PROF)
-// ============================================================================
+// FIX : Intégration des boutons Draft, Submit et Preview
 async function saveCourseToFirebase(actionType = 'admin_save') {
     saveCurrentChapterContent(); 
     
@@ -662,6 +639,7 @@ async function saveCourseToFirebase(actionType = 'admin_save') {
 
     const isTeacher = currentUserProfile && currentUserProfile.role === 'teacher';
     
+    // Définition du statut selon l'action cliquée
     let finalStatut = editingCourseOriginalStatus || 'draft';
     let isActive = false;
 
@@ -673,16 +651,15 @@ async function saveCourseToFirebase(actionType = 'admin_save') {
         }
         finalStatut = 'pending';
     } else if (actionType === 'admin_save') {
+        // Le bouton classique de l'admin (Garde la checkbox)
         const activeCheckbox = document.getElementById('course-active');
         if (activeCheckbox) isActive = activeCheckbox.checked;
         finalStatut = isActive ? 'approved' : 'draft';
     } else if (actionType === 'preview') {
-        isActive = window.editingCourseOriginalActive || false;
+        // En preview, on garde le statut actuel sans rien casser
     }
 
     const finalAuteurId = courseId ? editingCourseAuthorId : currentUid;
-
-    const isPublishing = (actionType === 'admin_save' && isActive && !window.editingCourseOriginalActive);
 
     try {
         const courseData = {
@@ -708,6 +685,7 @@ async function saveCourseToFirebase(actionType = 'admin_save') {
             if (actionType !== 'preview') alert(actionType === 'submit' ? '✅ Cours envoyé pour validation !' : '✅ Brouillon créé !');
         }
         
+        // Notifications : Si on modifie ou soumet (et pas juste un brouillon invisible ou une preview)
         if (actionType === 'submit') {
             await addDoc(collection(db, "notifications"), {
                 type: 'course_validation',
@@ -719,28 +697,185 @@ async function saveCourseToFirebase(actionType = 'admin_save') {
             });
         }
         
-        if (isPublishing && editingCourseAuthorId && editingCourseAuthorId !== currentUid) {
-            await addDoc(collection(db, "notifications"), {
-                type: 'course_approved',
-                courseId: courseRefId,
-                courseTitle: title,
-                destinataireId: editingCourseAuthorId,
-                dateCreation: serverTimestamp(),
-            });
-        }
-        
         await loadCourses();
         
         if (actionType === 'preview') {
             window.open(`/student/cours-viewer.html?id=${courseRefId}&preview=true`, '_blank');
         } else {
-            // C'est ICI qu'il y avait l'erreur. On s'assure que la fonction des onglets existe.
-            if (typeof window.prepareNewCourse === 'function') window.prepareNewCourse(); 
-            if (typeof window.switchCourseTab === 'function') window.switchCourseTab('tab-list');
+            window.prepareNewCourse(); 
+            window.switchCourseTab('tab-list');
         }
 
     } catch (error) {
-        console.error("Erreur de sauvegarde :", error);
         alert("❌ Erreur de sauvegarde.");
     }
 }
+
+async function loadCourses() {
+    const listContainer = document.getElementById('courses-list-container');
+    if(!listContainer) return;
+
+    try {
+        const querySnapshot = await getDocs(collection(db, "courses"));
+        listContainer.innerHTML = '';
+        allCoursesData = [];
+        
+        if(querySnapshot.empty) {
+            listContainer.innerHTML = '<p style="color:var(--text-muted); text-align:center;">Aucun cours.</p>';
+            return;
+        }
+
+        querySnapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            const courseId = docSnap.id;
+            allCoursesData.push({ id: courseId, ...data });
+            
+            let statusHtml = '';
+            if (data.statutValidation === 'pending') {
+                statusHtml = `<span style="color: var(--accent-yellow, #fbbc04); font-weight: bold; font-size: 0.8rem;">⏳ EN ATTENTE</span>`;
+            } else {
+                statusHtml = data.actif ? `<span style="color: var(--accent-green, #10b981); font-weight: bold; font-size: 0.8rem;">● ACTIF</span>` : `<span style="color: var(--accent-red, #ff4a4a); font-weight: bold; font-size: 0.8rem;">● BROUILLON</span>`;
+            }
+
+            const tagsHtml = data.formations ? data.formations.map(fId => {
+                const formObj = allFormationsData.find(f => f.id === fId || f.titre === fId); 
+                const displayName = formObj ? formObj.titre : fId;
+                return `<span class="tag" style="background: var(--bg-body, #222); padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; border: 1px solid var(--border-color, #444);">📁 ${displayName}</span>`;
+            }).join(' ') : '';
+
+            const blocHtml = data.bloc ? `<span style="color: var(--accent-blue); font-size: 0.8rem; border: 1px solid var(--accent-blue); padding: 2px 8px; border-radius: 12px; margin-left: 10px;">${data.bloc}</span>` : '';
+
+            const nbChapitres = data.chapitres ? data.chapitres.length : 0;
+            
+            let authorName = "Système";
+            if (data.auteurId && allUsersForAccess.length > 0) {
+                const authorObj = allUsersForAccess.find(u => u.id === data.auteurId);
+                if (authorObj) {
+                    authorName = (authorObj.prenom || authorObj.nom) ? `${authorObj.prenom || ''} ${authorObj.nom || ''}`.trim() : authorObj.email;
+                }
+            }
+            
+            const html = `
+            <div style="background: var(--bg-card, #111); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color, #333); display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; opacity: ${data.actif ? '1' : '0.6'};">
+                <div>
+                    <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem;">
+                        ${statusHtml} 
+                        <h3 style="margin: 0; display: flex; align-items: center; color: var(--text-main, white);">
+                            ${data.titre}
+                            ${blocHtml}
+                            <span style="font-size: 0.85rem; font-weight: normal; color: var(--text-muted, #888); font-style: italic; margin-left: 0.8rem;">
+                                par ${authorName}
+                            </span>
+                        </h3>
+                    </div>
+                    <div style="color: var(--text-main, white);">${tagsHtml} <span style="color: var(--text-muted, #888); font-size: 0.85rem; margin-left: 1rem;">${nbChapitres} Étape(s)</span></div>
+                </div>
+                <div style="display: flex; gap: 0.5rem;">
+                    <button class="action-btn" style="width: auto; margin: 0; color: var(--accent-yellow, #fbbc04); background: transparent; border: 1px solid var(--border-color, #333);" onclick="window.duplicateCourse('${courseId}')" title="Créer une copie">Copier</button>
+                    <button class="action-btn" style="width: auto; margin: 0; color: var(--accent-blue); background: transparent; border: 1px solid var(--border-color, #333);" onclick="window.editCourse('${courseId}')">Éditer</button>
+                    <button class="action-btn danger" style="width: auto; margin: 0;" onclick="window.deleteCourse('${courseId}')">❌</button>
+                </div>
+            </div>`;
+            listContainer.insertAdjacentHTML('beforeend', html);
+        });
+
+        refreshBlocsList(); 
+
+    } catch (error) {
+        listContainer.innerHTML = '<p style="color:red; text-align:center;">Erreur système.</p>';
+    }
+}
+
+window.editCourse = async (id) => {
+    try {
+        const docSnap = await getDoc(doc(db, "courses", id));
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+            
+            document.getElementById('edit-course-id').value = id;
+            document.getElementById('course-title').value = data.titre || '';
+            const activeCb = document.getElementById('course-active');
+            if (activeCb) activeCb.checked = data.actif;
+            
+            document.getElementById('course-bloc-select').value = data.bloc || '';
+            
+            editingCourseAuthorId = data.auteurId || currentUid;
+            editingCourseOriginalStatus = data.statutValidation || 'approved';
+
+            document.querySelectorAll('.formation-pill').forEach(pill => {
+                const val = pill.getAttribute('data-val');
+                if(data.formations && (data.formations.includes(val) || data.formations.includes(pill.textContent))) {
+                    pill.classList.add('selected');
+                } else {
+                    pill.classList.remove('selected');
+                }
+            });
+
+            currentChapters = data.chapitres || [];
+            window.switchCourseTab('tab-editor');
+            
+            // FIX : Verrouillage visuel si le cours est en cours d'examen
+            const isTeacher = currentUserProfile && currentUserProfile.role === 'teacher';
+            const warningBanner = document.getElementById('lock-warning-banner');
+            
+            if (isTeacher && editingCourseOriginalStatus === 'pending') {
+                if (warningBanner) warningBanner.style.display = 'block';
+                document.querySelectorAll('.editor-input, .editor-action-btn').forEach(el => {
+                    el.disabled = true;
+                    el.style.opacity = '0.5';
+                    el.style.pointerEvents = 'none';
+                });
+                if(window.quill) window.quill.enable(false);
+            } else {
+                if (warningBanner) warningBanner.style.display = 'none';
+                document.querySelectorAll('.editor-input, .editor-action-btn').forEach(el => {
+                    el.disabled = false;
+                    el.style.opacity = '1';
+                    el.style.pointerEvents = 'auto';
+                });
+                if(window.quill) window.quill.enable(true);
+            }
+
+            if(currentChapters.length > 0) selectChapter(currentChapters[0].id);
+            else renderChaptersList();
+        }
+    } catch (error) {
+        alert("Impossible de charger le cours.");
+    }
+};
+
+window.duplicateCourse = async (id) => {
+    if(confirm("Créer une copie identique de ce cours ?")) {
+        try {
+            const docSnap = await getDoc(doc(db, "courses", id));
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                const copyData = {
+                    titre: data.titre + " (Copie)",
+                    bloc: data.bloc || "",
+                    actif: false, 
+                    statutValidation: "draft",
+                    formations: data.formations,
+                    auteurId: currentUid,
+                    chapitres: data.chapitres,
+                    dateCreation: serverTimestamp()
+                };
+                await addDoc(collection(db, "courses"), copyData);
+                loadCourses();
+                alert("✅ Cours dupliqué avec succès !");
+            }
+        } catch (e) {
+            alert("Erreur lors de la duplication.");
+        }
+    }
+};
+
+window.deleteCourse = async (id) => {
+    const verification = prompt("⚠️ ATTENTION : La suppression d'un cours est définitive.\nTapez 'SUPPRIMER' en majuscules pour confirmer :");
+    if (verification === 'SUPPRIMER') {
+        await deleteDoc(doc(db, "courses", id));
+        loadCourses();
+    } else if (verification !== null) {
+        alert("Suppression annulée. Vous n'avez pas tapé 'SUPPRIMER'.");
+    }
+};
