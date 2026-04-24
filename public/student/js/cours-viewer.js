@@ -11,6 +11,7 @@ import { getUserLearningProgress, validateChapterProgress, startCourseProgress }
 
 let currentUid = null;
 let isAdminOrTeacher = false;
+let isPreviewMode = false; // FIX : Détection du mode Aperçu !
 let courseData = null;
 let currentChapterIndex = -1;
 let userProgress = { courses: {} };
@@ -51,6 +52,13 @@ async function initViewer() {
     const urlParams = new URLSearchParams(window.location.search);
     const courseId = urlParams.get('id');
     
+    // FIX : Détection du mode Aperçu via l'URL
+    isPreviewMode = urlParams.get('preview') === 'true';
+    
+    if (isPreviewMode) {
+        document.body.insertAdjacentHTML('afterbegin', '<div style="background:var(--accent-orange, #f59e0b); color:white; text-align:center; padding:10px; font-weight:bold; z-index:9999; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">👁️ MODE PRÉVISUALISATION - Aucune donnée d\'apprentissage ne sera sauvegardée.</div>');
+    }
+    
     if(!courseId) return window.location.replace('/student/mes-cours.html');
 
     const cSnap = await getDoc(doc(db, "courses", courseId));
@@ -65,12 +73,16 @@ async function initViewer() {
     const formId = (courseData.formations && courseData.formations.length > 0) ? courseData.formations[0] : '';
     document.getElementById('btn-back-dynamic').onclick = (e) => {
         e.preventDefault();
-        window.location.href = `/student/mes-cours.html?formId=${formId}`;
+        if (isPreviewMode) window.close(); // Ferme simplement l'onglet si c'est un aperçu
+        else window.location.href = `/student/mes-cours.html?formId=${formId}`;
     };
 
-    userProgress = await startCourseProgress(currentUid, courseData.id);
-    
-    if (!userProgress) userProgress = await getUserLearningProgress(currentUid);
+    if (!isPreviewMode) {
+        userProgress = await startCourseProgress(currentUid, courseData.id);
+        if (!userProgress) userProgress = await getUserLearningProgress(currentUid);
+    }
+
+    // Sécurisation de l'objet progress même en preview
     if (!userProgress.courses) userProgress.courses = {};
     if (!userProgress.courses[courseData.id]) {
         userProgress.courses[courseData.id] = { status: 'todo', completedChapters: [] };
@@ -94,7 +106,7 @@ function renderSidebar() {
     courseData.chapitres.forEach((chap, index) => {
         const isDone = userProgress.courses[courseData.id].completedChapters.includes(chap.id);
         const prevDone = index === 0 || userProgress.courses[courseData.id].completedChapters.includes(courseData.chapitres[index-1].id);
-        const isUnlocked = isAdminOrTeacher || isDone || prevDone;
+        const isUnlocked = isAdminOrTeacher || isPreviewMode || isDone || prevDone;
 
         const icon = isDone ? SVG_DONE : (isUnlocked ? (chap.type === 'quiz' ? SVG_QUIZ : SVG_READ) : SVG_LOCK);
         
@@ -201,7 +213,7 @@ function startSecurityTimer(isAlreadyDone) {
         return;
     }
 
-    if (isAdminOrTeacher || isAlreadyDone) {
+    if (isAdminOrTeacher || isPreviewMode || isAlreadyDone) {
         btn.disabled = false;
         btn.innerHTML = `${nextText} ${SVG_NEXT}`;
         btn.onclick = () => validateAndNext(isLast, 0);
@@ -263,7 +275,8 @@ function submitQuizAnswers(isLast) {
     
     const nextText = isLast ? "Terminer le cours" : "Valider et passer à la suite";
 
-    if (allCorrect || isAdminOrTeacher) {
+    // En Preview ou Prof/Admin, on laisse passer même si c'est faux pour visualiser la suite
+    if (allCorrect || isAdminOrTeacher || isPreviewMode) {
         resultBox.style.borderColor = "var(--accent-green)";
         resultBox.innerHTML = `
             <div style="display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:1rem;">
@@ -283,7 +296,6 @@ function submitQuizAnswers(isLast) {
         `;
     }
 
-    // FIX : On affiche TOUJOURS les deux options, qu'on ait bon ou faux !
     actionBar.innerHTML = `
         <button id="btn-retry-quiz" class="btn-validate" style="background: transparent; color: var(--text-main); border: 2px solid var(--border-color); margin-right: 1rem; box-shadow: none;">Refaire le test</button>
         <button id="btn-next-chapter" class="btn-validate">${nextText} ${SVG_NEXT}</button>
@@ -298,6 +310,21 @@ async function validateAndNext(isLast, scoreEarned = 0) {
     if(btn) {
         btn.disabled = true;
         btn.textContent = "Validation...";
+    }
+
+    // FIX : Blocage absolu de la progression en Base de Données si mode Prévisualisation
+    if (isPreviewMode) {
+        if (!userProgress.courses[courseData.id].completedChapters.includes(chapId)) {
+            userProgress.courses[courseData.id].completedChapters.push(chapId);
+        }
+        renderSidebar();
+        if (isLast) {
+            alert("Aperçu du cours terminé ! Vous pouvez fermer cet onglet.");
+            window.close();
+        } else {
+            loadChapter(currentChapterIndex + 1);
+        }
+        return;
     }
 
     const updatedProgress = await validateChapterProgress(currentUid, courseData.id, chapId, courseData.chapitres.length, scoreEarned);
