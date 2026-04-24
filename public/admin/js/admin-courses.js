@@ -801,6 +801,8 @@ window.editCourse = async (id) => {
             
             editingCourseAuthorId = data.auteurId || currentUid;
             editingCourseOriginalStatus = data.statutValidation || 'approved';
+            // FIX : On mémorise si le cours était déjà actif AVANT modification
+            window.editingCourseOriginalActive = data.actif === true; 
 
             document.querySelectorAll('.formation-pill').forEach(pill => {
                 const val = pill.getAttribute('data-val');
@@ -812,9 +814,9 @@ window.editCourse = async (id) => {
             });
 
             currentChapters = data.chapitres || [];
-            window.switchCourseTab('tab-editor');
             
-            // FIX : Verrouillage visuel si le cours est en cours d'examen
+            if (typeof window.switchCourseTab === 'function') window.switchCourseTab('tab-editor');
+            
             const isTeacher = currentUserProfile && currentUserProfile.role === 'teacher';
             const warningBanner = document.getElementById('lock-warning-banner');
             
@@ -843,6 +845,108 @@ window.editCourse = async (id) => {
         alert("Impossible de charger le cours.");
     }
 };
+
+async function saveCourseToFirebase(actionType = 'admin_save') {
+    saveCurrentChapterContent(); 
+    
+    const courseId = document.getElementById('edit-course-id').value;
+    const title = document.getElementById('course-title').value.trim();
+    const bloc = document.getElementById('course-bloc-select').value.trim(); 
+    
+    const selectedPills = Array.from(document.querySelectorAll('.formation-pill.selected')).map(p => p.getAttribute('data-val'));
+
+    if (!title) { alert('⚠️ Veuillez entrer un Titre Global.'); return; }
+    if (currentChapters.length === 0) { alert('⚠️ Ajoutez au moins une étape.'); return; }
+
+    const isTeacher = currentUserProfile && currentUserProfile.role === 'teacher';
+    
+    let finalStatut = editingCourseOriginalStatus || 'draft';
+    let isActive = false;
+
+    if (actionType === 'draft') {
+        finalStatut = 'draft';
+    } else if (actionType === 'submit') {
+        if (!confirm("⚠️ ATTENTION : Une fois soumis à validation, ce cours sera verrouillé et vous ne pourrez plus le modifier pendant la durée de l'examen.\n\nConfirmer l'envoi ?")) {
+            return;
+        }
+        finalStatut = 'pending';
+    } else if (actionType === 'admin_save') {
+        const activeCheckbox = document.getElementById('course-active');
+        if (activeCheckbox) isActive = activeCheckbox.checked;
+        finalStatut = isActive ? 'approved' : 'draft';
+    } else if (actionType === 'preview') {
+        // En preview, on garde le statut actuel sans rien casser
+        isActive = window.editingCourseOriginalActive || false;
+    }
+
+    const finalAuteurId = courseId ? editingCourseAuthorId : currentUid;
+
+    // FIX : Détection fiable de la mise en ligne !
+    // Si l'admin a coché "Actif" alors que ça ne l'était pas avant.
+    const isPublishing = (actionType === 'admin_save' && isActive && !window.editingCourseOriginalActive);
+
+    try {
+        const courseData = {
+            titre: title,
+            bloc: bloc,
+            actif: isActive,
+            statutValidation: finalStatut,
+            formations: selectedPills,
+            auteurId: finalAuteurId,
+            chapitres: currentChapters
+        };
+
+        let courseRefId = courseId;
+
+        if (courseId) {
+            await updateDoc(doc(db, "courses", courseId), courseData);
+            if (actionType !== 'preview') alert(actionType === 'submit' ? '✅ Cours envoyé pour validation !' : '✅ Cours sauvegardé !');
+        } else {
+            courseData.dateCreation = serverTimestamp();
+            const docRef = await addDoc(collection(db, "courses"), courseData);
+            courseRefId = docRef.id;
+            document.getElementById('edit-course-id').value = courseRefId;
+            if (actionType !== 'preview') alert(actionType === 'submit' ? '✅ Cours envoyé pour validation !' : '✅ Brouillon créé !');
+        }
+        
+        // Notifications
+        if (actionType === 'submit') {
+            await addDoc(collection(db, "notifications"), {
+                type: 'course_validation',
+                courseId: courseRefId,
+                courseTitle: title,
+                auteurId: currentUid,
+                auteurName: (currentUserProfile.prenom || '') + ' ' + (currentUserProfile.nom || ''),
+                dateCreation: serverTimestamp(),
+            });
+        }
+        
+        // FIX : Notifier le prof si l'admin publie son cours !
+        if (isPublishing && editingCourseAuthorId && editingCourseAuthorId !== currentUid) {
+            await addDoc(collection(db, "notifications"), {
+                type: 'course_approved',
+                courseId: courseRefId,
+                courseTitle: title,
+                destinataireId: editingCourseAuthorId,
+                dateCreation: serverTimestamp(),
+            });
+        }
+        
+        await loadCourses();
+        
+        if (actionType === 'preview') {
+            window.open(`/student/cours-viewer.html?id=${courseRefId}&preview=true`, '_blank');
+        } else {
+            // FIX ANTI-ERREUR FANTÔME : Vérifier si la fonction existe avant de l'appeler
+            if (typeof window.prepareNewCourse === 'function') window.prepareNewCourse(); 
+            if (typeof window.switchCourseTab === 'function') window.switchCourseTab('tab-list');
+        }
+
+    } catch (error) {
+        console.error("Erreur de sauvegarde :", error);
+        alert("❌ Erreur de sauvegarde.");
+    }
+}
 
 window.duplicateCourse = async (id) => {
     if(confirm("Créer une copie identique de ce cours ?")) {
