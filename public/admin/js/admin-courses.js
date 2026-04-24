@@ -716,7 +716,6 @@ window.editCourse = async (id) => {
 
             currentChapters = data.chapitres || [];
             
-            // LA CORRECTION EST ICI : Si la fonction n'existe pas (cas de l'Admin), ça ne plante plus !
             if (typeof window.switchCourseTab === 'function') {
                 window.switchCourseTab('tab-editor');
             }
@@ -767,8 +766,6 @@ async function saveCourseToFirebase(actionType = 'admin_save') {
 
     if (!title) { alert('⚠️ Veuillez entrer un Titre Global.'); return; }
     if (currentChapters.length === 0) { alert('⚠️ Ajoutez au moins une étape.'); return; }
-
-    const isTeacher = currentUserProfile && currentUserProfile.role === 'teacher';
     
     let finalStatut = editingCourseOriginalStatus || 'draft';
     let isActive = false;
@@ -826,14 +823,39 @@ async function saveCourseToFirebase(actionType = 'admin_save') {
             });
         }
         
-        if (isPublishing && editingCourseAuthorId && editingCourseAuthorId !== currentUid) {
-            await addDoc(collection(db, "notifications"), {
-                type: 'course_approved',
-                courseId: courseRefId,
-                courseTitle: title,
-                destinataireId: editingCourseAuthorId,
-                dateCreation: serverTimestamp(),
+        // CORRECTION MAJEURE ICI : Dispatch automatique des notifications 
+        if (isPublishing) {
+            
+            // 1. Notification au professeur (Auteur)
+            if (editingCourseAuthorId && editingCourseAuthorId !== currentUid) {
+                await addDoc(collection(db, "notifications"), {
+                    type: 'course_approved',
+                    courseId: courseRefId,
+                    courseTitle: title,
+                    destinataireId: editingCourseAuthorId,
+                    dateCreation: serverTimestamp(),
+                });
+            }
+
+            // 2. Notification aux étudiants (Ciblés par les formations sélectionnées)
+            let targetStudentsSet = new Set();
+            selectedPills.forEach(formId => {
+                const formObj = allFormationsData.find(f => f.id === formId);
+                if (formObj && formObj.students) {
+                    formObj.students.forEach(s => targetStudentsSet.add(s));
+                }
             });
+
+            const targetStudentsArray = Array.from(targetStudentsSet);
+            if (targetStudentsArray.length > 0) {
+                await addDoc(collection(db, "notifications"), {
+                    type: 'new_course_published',
+                    courseId: courseRefId,
+                    courseTitle: title,
+                    targetStudents: targetStudentsArray,
+                    dateCreation: serverTimestamp(),
+                });
+            }
         }
         
         await loadCourses();
