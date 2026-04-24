@@ -103,7 +103,6 @@ async function loadProfileData(uid) {
                 if (data.isGod) badgeZone.innerHTML = `<span style="background:rgba(255,215,0,0.15); color:#ffd700; padding:4px 8px; border-radius:4px; font-weight:bold;">SUPRÊME</span>`;
                 else if (data.role === 'admin') badgeZone.innerHTML = `<span style="background:rgba(255,74,74,0.15); color:#ff4a4a; padding:4px 8px; border-radius:4px; font-weight:bold;">ADMIN</span>`;
                 else if (data.role === 'teacher') badgeZone.innerHTML = `<span style="background:rgba(251,188,4,0.15); color:#fbbc04; padding:4px 8px; border-radius:4px; font-weight:bold;">PROFESSEUR</span>`;
-                /* FIX : Passage du badge Élève au Bleu SBI ! */
                 else badgeZone.innerHTML = `<span style="background:rgba(42, 87, 255, 0.15); color:#2A57FF; padding:4px 8px; border-radius:4px; font-weight:bold;">ÉLÈVE</span>`;
             }
 
@@ -224,7 +223,6 @@ async function loadLearningTracking(uid) {
             
             let statusBadge = '';
             if (pData.status === 'done') {
-                /* FIX : Passage du Terminé en Bleu pour les Étudiants */
                 statusBadge = `<span style="background: ${isStudentUI ? 'rgba(42, 87, 255, 0.1)' : 'rgba(46, 213, 115, 0.1)'}; color: ${isStudentUI ? 'var(--accent-blue)' : 'var(--accent-green)'}; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold;">Terminé</span>`;
             } else if (pData.status === 'in_progress') {
                 statusBadge = '<span style="background: rgba(251, 188, 4, 0.1); color: var(--accent-yellow); padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold;">En cours</span>';
@@ -344,6 +342,7 @@ async function loadLearningTracking(uid) {
     }
 }
 
+// FIX : Aiguillage des Formations sous forme de liens cliquables !
 async function loadUserFormations(uid) {
     const list = document.getElementById('prof-formations-list');
     if(!list) return;
@@ -353,13 +352,15 @@ async function loadUserFormations(uid) {
         let res = [];
         snap.forEach(d => { 
             const f = d.data();
-            if(f.students?.includes(uid) || f.profs?.includes(uid)) res.push(f.titre); 
+            if(f.students?.includes(uid) || f.profs?.includes(uid)) res.push({ id: d.id, titre: f.titre }); 
         });
         if (res.length > 0) {
             if (window.location.pathname.includes('admin')) {
-                list.innerHTML = res.map(a => `<span style="color: white; display:block; margin-bottom:5px;">📁 ${a}</span>`).join('');
+                list.innerHTML = res.map(a => `<span style="color: white; display:block; margin-bottom:5px; cursor:pointer;" onclick="window.location.href='/admin/index.html?tab=view-formations'">📁 ${a.titre}</span>`).join('');
+            } else if (window.location.pathname.includes('teacher')) {
+                list.innerHTML = res.map(a => `<span style="display:flex; align-items:center; gap:8px; margin-bottom:5px; cursor:pointer; font-weight:bold; transition:0.2s;" onmouseover="this.style.color='var(--accent-orange)'" onmouseout="this.style.color='inherit'" onclick="window.location.href='/teacher/mes-cours.html'"><div style="width:8px; height:8px; background:var(--accent-orange); border-radius:50%; flex-shrink:0;"></div>${a.titre}</span>`).join('');
             } else {
-                list.innerHTML = res.map(a => `<div style="display:flex; align-items:center; gap:8px; margin-bottom:5px;"><div style="width:8px; height:8px; background:var(--accent-blue); border-radius:50%; flex-shrink:0;"></div>${a}</div>`).join('');
+                list.innerHTML = res.map(a => `<span style="display:flex; align-items:center; gap:8px; margin-bottom:5px; cursor:pointer; font-weight:bold; transition:0.2s;" onmouseover="this.style.color='var(--accent-blue)'" onmouseout="this.style.color='inherit'" onclick="window.location.href='/student/mes-cours.html'"><div style="width:8px; height:8px; background:var(--accent-blue); border-radius:50%; flex-shrink:0;"></div>${a.titre}</span>`).join('');
             }
         } else {
             list.innerHTML = 'Aucune formation assignée.';
