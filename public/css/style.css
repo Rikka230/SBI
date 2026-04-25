@@ -29,19 +29,86 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .bg-blue { background-color: var(--sbi-blue); }
 .text-italic { font-style: italic; }
 
+/* Halo bleu fixe en bas à droite */
 .fixed-bg-glow {
     position: fixed; bottom: -20vh; right: -20vw; width: 60vw; height: 60vw;
     background: radial-gradient(circle, rgba(0, 81, 255, 0.12) 0%, transparent 65%);
     z-index: 0; pointer-events: none; 
 }
 
-/* --- SECTION FOND ANIMÉ : LIGNES ET POUSSIÈRE --- */
-.sbi-bg-animations {
+/* --- SECTION FOND ANIMÉ : BRUME, LIGNES ET POUSSIÈRE --- */
+
+/* Conteneur pour ce qui reste strictement fixe (Brume + Poussière) */
+.sbi-bg-fixed {
     position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
     z-index: 0; pointer-events: none; overflow: hidden;
 }
 
-/* 1. Les Lignes (Inchouangées) */
+/* 1. NOUVEAU : La Brume (Fog) */
+.sbi-fog {
+    position: absolute; width: 150vw; height: 150vh; border-radius: 50%;
+    filter: blur(80px); opacity: 0.4; pointer-events: none;
+}
+.sbi-fog-1 {
+    top: -25%; left: -25%;
+    background: radial-gradient(circle, rgba(0, 81, 255, 0.08) 0%, transparent 60%);
+    animation: fogDrift 45s infinite alternate ease-in-out;
+}
+.sbi-fog-2 {
+    bottom: -25%; right: -25%;
+    background: radial-gradient(circle, rgba(0, 162, 255, 0.05) 0%, transparent 50%);
+    animation: fogDrift 55s infinite alternate-reverse ease-in-out;
+}
+@keyframes fogDrift {
+    0% { transform: translate(0, 0) scale(1); }
+    100% { transform: translate(5vw, 5vh) scale(1.1); }
+}
+
+/* 2. Poussière d'énergie (Attachée au fond fixe) */
+.sbi-particle {
+    position: absolute; background-color: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 0 8px 1px rgba(0, 162, 255, 0.5); opacity: 0; will-change: transform, opacity;
+}
+.sbi-particle:nth-child(3n)   { width: 4px; height: 5px; border-radius: 40% 60% 70% 30%; }
+.sbi-particle:nth-child(3n+1) { width: 5px; height: 3px; border-radius: 60% 40% 30% 70%; }
+.sbi-particle:nth-child(3n+2) { 
+    width: 14px; height: 12px; border-radius: 50% 30% 60% 40%; 
+    background-color: rgba(255, 255, 255, 0.05); box-shadow: 0 0 15px 4px rgba(0, 81, 255, 0.2); filter: blur(3px);
+}
+.sbi-particle:nth-child(8)  { top: 10%; left: 80%; animation: dustDrift1 18s infinite linear -2s; }
+.sbi-particle:nth-child(9)  { top: 40%; left: 90%; animation: dustDrift2 24s infinite linear -7s; }
+.sbi-particle:nth-child(10) { top: 30%; left: 40%; animation: dustDriftBig 28s infinite linear -11s; }
+.sbi-particle:nth-child(11) { top: 75%; left: 70%; animation: dustDrift3 20s infinite linear -4s; }
+.sbi-particle:nth-child(12) { top: 15%; left: 25%; animation: dustDrift1 22s infinite linear -9s; }
+.sbi-particle:nth-child(13) { top: 55%; left: 15%; animation: dustDriftBig 32s infinite linear -15s; }
+.sbi-particle:nth-child(14) { top: 85%; left: 20%; animation: dustDrift2 19s infinite linear -1s; }
+.sbi-particle:nth-child(15) { top: 45%; left: 60%; animation: dustDrift3 25s infinite linear -13s; }
+.sbi-particle:nth-child(16) { top: 65%; left: 50%; animation: dustDriftBig 30s infinite linear -6s; }
+.sbi-particle:nth-child(17) { top: 20%; left: 55%; animation: dustDrift1 21s infinite linear -18s; }
+.sbi-particle:nth-child(18) { top: 90%; left: 85%; animation: dustDrift2 26s infinite linear -3s; }
+.sbi-particle:nth-child(19) { top: 25%; left: 10%; animation: dustDriftBig 29s infinite linear -10s; }
+.sbi-particle:nth-child(20) { top: 5%;  left: 45%; animation: dustDrift3 17s infinite linear -5s; }
+.sbi-particle:nth-child(21) { top: 80%; left: 10%; animation: dustDrift1 23s infinite linear -12s; }
+.sbi-particle:nth-child(22) { top: 35%; left: 85%; animation: dustDriftBig 35s infinite linear -20s; }
+.sbi-particle:nth-child(23) { top: 60%; left: 30%; animation: dustDrift2 27s infinite linear -8s; }
+.sbi-particle:nth-child(24) { top: 15%; left: 95%; animation: dustDrift3 22s infinite linear -14s; }
+.sbi-particle:nth-child(25) { top: 95%; left: 40%; animation: dustDriftBig 31s infinite linear -2s; }
+.sbi-particle:nth-child(26) { top: 50%; left: 75%; animation: dustDrift1 19s infinite linear -17s; }
+.sbi-particle:nth-child(27) { top: 70%; left: 5%;  animation: dustDrift2 24s infinite linear -22s; }
+
+@keyframes dustDrift1 { 0% { transform: translate(0, 0) rotate(0deg); opacity: 0; } 20% { opacity: 0.5; } 80% { opacity: 0.5; } 100% { transform: translate(-10vw, -4vh) rotate(180deg); opacity: 0; } }
+@keyframes dustDrift2 { 0% { transform: translate(0, 0) rotate(0deg); opacity: 0; } 25% { opacity: 0.4; } 75% { opacity: 0.4; } 100% { transform: translate(-15vw, 6vh) rotate(-120deg); opacity: 0; } }
+@keyframes dustDrift3 { 0% { transform: translate(0, 0) rotate(0deg); opacity: 0; } 15% { opacity: 0.6; } 85% { opacity: 0.6; } 100% { transform: translate(-8vw, -3vh) rotate(90deg); opacity: 0; } }
+@keyframes dustDriftBig { 0% { transform: translate(0, 0) rotate(0deg) scale(1); opacity: 0; } 20% { opacity: 0.15; } 80% { opacity: 0.15; } 100% { transform: translate(-18vw, 4vh) rotate(60deg) scale(1.3); opacity: 0; } }
+
+
+/* 3. Conteneur pour le Parallaxe JS (Lignes) */
+.sbi-bg-parallax {
+    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+    z-index: 1; pointer-events: none; overflow: hidden;
+    will-change: transform;
+}
+
 .sbi-line {
     position: absolute; top: -50%; height: 50vh; 
     background: linear-gradient(to bottom, rgba(0, 162, 255, 0) 0%, rgba(255, 255, 255, 1) 50%, rgba(0, 162, 255, 0) 100%);
@@ -69,77 +136,8 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
     100% { transform: rotate(45deg) translateY(200vh); opacity: 0; }
 }
 
-/* 2. Les Particules (Modifiées : Cœurs translucides, formes cabossées, tourbillons) */
-.sbi-particle {
-    position: absolute;
-    /* Cœur presque transparent */
-    background-color: rgba(255, 255, 255, 0.15);
-    /* Le glow bleu donne la forme lumineuse */
-    box-shadow: 0 0 8px 1px rgba(0, 162, 255, 0.5);
-    opacity: 0;
-    will-change: transform, opacity;
-}
-
-/* Modificateurs de Formes "Cabossées" et Tailles via nth-child */
-/* Poussière fine et vive */
-.sbi-particle:nth-child(3n) { width: 4px; height: 5px; border-radius: 40% 60% 70% 30%; }
-.sbi-particle:nth-child(3n+1) { width: 5px; height: 3px; border-radius: 60% 40% 30% 70%; }
-/* Poussière grosse, très floue et hyper transparente (effet de proximité objectif) */
-.sbi-particle:nth-child(3n+2) { 
-    width: 14px; height: 12px; 
-    border-radius: 50% 30% 60% 40%; 
-    background-color: rgba(255, 255, 255, 0.05);
-    box-shadow: 0 0 15px 4px rgba(0, 81, 255, 0.2);
-    filter: blur(3px);
-}
-
-/* Distribution massive (27 particules) avec dérives, rotations et délais */
-.sbi-particle:nth-child(8) { top: 10%; left: 80%; animation: dustDrift1 18s infinite linear -2s; }
-.sbi-particle:nth-child(9) { top: 40%; left: 90%; animation: dustDrift2 24s infinite linear -7s; }
-.sbi-particle:nth-child(10) { top: 30%; left: 40%; animation: dustDriftBig 28s infinite linear -11s; }
-.sbi-particle:nth-child(11) { top: 75%; left: 70%; animation: dustDrift3 20s infinite linear -4s; }
-.sbi-particle:nth-child(12) { top: 15%; left: 25%; animation: dustDrift1 22s infinite linear -9s; }
-.sbi-particle:nth-child(13) { top: 55%; left: 15%; animation: dustDriftBig 32s infinite linear -15s; }
-.sbi-particle:nth-child(14) { top: 85%; left: 20%; animation: dustDrift2 19s infinite linear -1s; }
-.sbi-particle:nth-child(15) { top: 45%; left: 60%; animation: dustDrift3 25s infinite linear -13s; }
-.sbi-particle:nth-child(16) { top: 65%; left: 50%; animation: dustDriftBig 30s infinite linear -6s; }
-.sbi-particle:nth-child(17) { top: 20%; left: 55%; animation: dustDrift1 21s infinite linear -18s; }
-.sbi-particle:nth-child(18) { top: 90%; left: 85%; animation: dustDrift2 26s infinite linear -3s; }
-.sbi-particle:nth-child(19) { top: 25%; left: 10%; animation: dustDriftBig 29s infinite linear -10s; }
-.sbi-particle:nth-child(20) { top: 5%; left: 45%; animation: dustDrift3 17s infinite linear -5s; }
-.sbi-particle:nth-child(21) { top: 80%; left: 10%; animation: dustDrift1 23s infinite linear -12s; }
-.sbi-particle:nth-child(22) { top: 35%; left: 85%; animation: dustDriftBig 35s infinite linear -20s; }
-.sbi-particle:nth-child(23) { top: 60%; left: 30%; animation: dustDrift2 27s infinite linear -8s; }
-.sbi-particle:nth-child(24) { top: 15%; left: 95%; animation: dustDrift3 22s infinite linear -14s; }
-.sbi-particle:nth-child(25) { top: 95%; left: 40%; animation: dustDriftBig 31s infinite linear -2s; }
-.sbi-particle:nth-child(26) { top: 50%; left: 75%; animation: dustDrift1 19s infinite linear -17s; }
-.sbi-particle:nth-child(27) { top: 70%; left: 5%; animation: dustDrift2 24s infinite linear -22s; }
-
-/* Animations organiques : Translation + Rotation (tourbillon) + Opacité douce */
-@keyframes dustDrift1 {
-    0% { transform: translate(0, 0) rotate(0deg); opacity: 0; }
-    20% { opacity: 0.5; } 80% { opacity: 0.5; }
-    100% { transform: translate(-10vw, -4vh) rotate(180deg); opacity: 0; }
-}
-@keyframes dustDrift2 {
-    0% { transform: translate(0, 0) rotate(0deg); opacity: 0; }
-    25% { opacity: 0.4; } 75% { opacity: 0.4; }
-    100% { transform: translate(-15vw, 6vh) rotate(-120deg); opacity: 0; }
-}
-@keyframes dustDrift3 {
-    0% { transform: translate(0, 0) rotate(0deg); opacity: 0; }
-    15% { opacity: 0.6; } 85% { opacity: 0.6; }
-    100% { transform: translate(-8vw, -3vh) rotate(90deg); opacity: 0; }
-}
-/* Animation pour les gros blocs très transparents (Proximité max) */
-@keyframes dustDriftBig {
-    0% { transform: translate(0, 0) rotate(0deg) scale(1); opacity: 0; }
-    20% { opacity: 0.15; } 80% { opacity: 0.15; }
-    100% { transform: translate(-18vw, 4vh) rotate(60deg) scale(1.3); opacity: 0; }
-}
-
-/* On s'assure que le contenu reste au-dessus du fond */
-main, footer { position: relative; z-index: 1; }
+/* Le contenu du site passe en z-index 2 pour rester au-dessus des fonds */
+main, footer { position: relative; z-index: 2; }
 
 .padding-global { padding-left: 5%; padding-right: 5%; }
 .flex-between { display: flex; justify-content: space-between; align-items: flex-end; }
@@ -194,7 +192,6 @@ main, footer { position: relative; z-index: 1; }
 .hero-subtitle { font-size: 1.1rem; color: var(--text-muted); margin-bottom: 2.5rem; max-width: 450px; }
 .hero-buttons { display: flex; gap: 1.5rem; align-items: center; }
 .hero-visual { display: flex; justify-content: center; align-items: center; width: 100%; height: 100%; }
-
 .hero-large-logo {
     width: 100%; max-width: 950px; display: block; transform: translateX(-5%); filter: drop-shadow(0 0 50px rgba(0, 81, 255, 0.3));
 }
