@@ -29,10 +29,10 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .bg-blue { background-color: var(--sbi-blue); }
 .text-italic { font-style: italic; }
 
-/* Halo bleu fixe en bas à droite */
+/* Halo bleu fixe en bas à droite (Color banding corrigé) */
 .fixed-bg-glow {
     position: fixed; bottom: -20vh; right: -20vw; width: 60vw; height: 60vw;
-    background: radial-gradient(circle, rgba(0, 81, 255, 0.12) 0%, transparent 65%);
+    background: radial-gradient(circle, rgba(0, 81, 255, 0.12) 0%, rgba(0, 81, 255, 0) 65%);
     z-index: 0; pointer-events: none; 
 }
 
@@ -44,19 +44,19 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
     z-index: 0; pointer-events: none; overflow: hidden;
 }
 
-/* 1. NOUVEAU : La Brume (Fog) */
+/* 1. La Brume (Color banding corrigé, flou retiré, opacité ajustée) */
 .sbi-fog {
     position: absolute; width: 150vw; height: 150vh; border-radius: 50%;
-    filter: blur(80px); opacity: 0.4; pointer-events: none;
+    opacity: 0.6; pointer-events: none;
 }
 .sbi-fog-1 {
     top: -25%; left: -25%;
-    background: radial-gradient(circle, rgba(0, 81, 255, 0.08) 0%, transparent 60%);
+    background: radial-gradient(circle, rgba(0, 81, 255, 0.08) 0%, rgba(0, 81, 255, 0) 60%);
     animation: fogDrift 45s infinite alternate ease-in-out;
 }
 .sbi-fog-2 {
     bottom: -25%; right: -25%;
-    background: radial-gradient(circle, rgba(0, 162, 255, 0.05) 0%, transparent 50%);
+    background: radial-gradient(circle, rgba(0, 162, 255, 0.05) 0%, rgba(0, 162, 255, 0) 50%);
     animation: fogDrift 55s infinite alternate-reverse ease-in-out;
 }
 @keyframes fogDrift {
@@ -64,7 +64,7 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
     100% { transform: translate(5vw, 5vh) scale(1.1); }
 }
 
-/* 2. Poussière d'énergie (Attachée au fond fixe) */
+/* 2. Poussière d'énergie */
 .sbi-particle {
     position: absolute; background-color: rgba(255, 255, 255, 0.15);
     box-shadow: 0 0 8px 1px rgba(0, 162, 255, 0.5); opacity: 0; will-change: transform, opacity;
@@ -100,7 +100,6 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 @keyframes dustDrift2 { 0% { transform: translate(0, 0) rotate(0deg); opacity: 0; } 25% { opacity: 0.4; } 75% { opacity: 0.4; } 100% { transform: translate(-15vw, 6vh) rotate(-120deg); opacity: 0; } }
 @keyframes dustDrift3 { 0% { transform: translate(0, 0) rotate(0deg); opacity: 0; } 15% { opacity: 0.6; } 85% { opacity: 0.6; } 100% { transform: translate(-8vw, -3vh) rotate(90deg); opacity: 0; } }
 @keyframes dustDriftBig { 0% { transform: translate(0, 0) rotate(0deg) scale(1); opacity: 0; } 20% { opacity: 0.15; } 80% { opacity: 0.15; } 100% { transform: translate(-18vw, 4vh) rotate(60deg) scale(1.3); opacity: 0; } }
-
 
 /* 3. Conteneur pour le Parallaxe JS (Lignes) */
 .sbi-bg-parallax {
@@ -192,6 +191,7 @@ main, footer { position: relative; z-index: 2; }
 .hero-subtitle { font-size: 1.1rem; color: var(--text-muted); margin-bottom: 2.5rem; max-width: 450px; }
 .hero-buttons { display: flex; gap: 1.5rem; align-items: center; }
 .hero-visual { display: flex; justify-content: center; align-items: center; width: 100%; height: 100%; }
+
 .hero-large-logo {
     width: 100%; max-width: 950px; display: block; transform: translateX(-5%); filter: drop-shadow(0 0 50px rgba(0, 81, 255, 0.3));
 }
