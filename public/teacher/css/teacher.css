@@ -28,7 +28,6 @@ body { background-color: var(--bg-body) !important; color: var(--text-main); }
    ARCHITECTURE GRAPHIQUE (Grilles, Cartes, Navigation)
    ======================================================================= */
 
-/* Ta grille restaurée depuis ton Git */
 .hub-grid { display: grid; grid-template-columns: minmax(300px, 1fr) 2.5fr; gap: 2.5rem; align-items: start; width: 100%; }
 
 .hub-card {
@@ -89,15 +88,13 @@ body { background-color: var(--bg-body) !important; color: var(--text-main); }
 .course-item:hover { border-color: var(--accent-orange); background: var(--accent-blue-light); }
 .bloc-title { font-size: 1.1rem; color: var(--text-main); font-weight: bold; margin: 2rem 0 1rem 0; padding-bottom: 0.5rem; border-bottom: 2px solid var(--border-color); }
 
-/* --- BOUTONS RESTAURÉS (Fix du gros bouton rouge) --- */
+/* --- BOUTONS RESTAURÉS --- */
 .action-btn {
     background: var(--accent-orange); color: white; font-weight: bold; border: none;
     padding: 0.8rem 1.5rem; border-radius: 8px; cursor: pointer; transition: 0.2s;
     display: inline-flex; align-items: center; justify-content: center; gap: 8px;
 }
 .action-btn:hover { opacity: 0.9; transform: translateY(-2px); }
-
-/* Bouton de suppression adouci et stylisé */
 .action-btn.danger { background: rgba(239, 68, 68, 0.1); color: var(--accent-red); border: 1px solid rgba(239, 68, 68, 0.3); }
 .action-btn.danger:hover { background: var(--accent-red); color: white; }
 
@@ -118,10 +115,51 @@ body { background-color: var(--bg-body) !important; color: var(--text-main); }
 .drag-drop-zone p { margin: 0; color: var(--text-muted); font-size: 0.9rem; }
 .drag-drop-zone span { color: var(--accent-orange); font-weight: bold; }
 
-/* Editeur Quill restauré avec ses bulles */
+/* =======================================================================
+   EDITEUR QUILL (Style et INFOBULLES RESTAURÉES)
+   ======================================================================= */
 .ql-toolbar { background: #f9fafb; border-color: var(--border-color) !important; border-top-left-radius: 8px; border-top-right-radius: 8px; }
 .ql-container { border-color: var(--border-color) !important; border-bottom-left-radius: 8px; border-bottom-right-radius: 8px; font-family: 'Inter', sans-serif; font-size: 1rem; background: white; }
 .ql-editor { min-height: 250px; }
+
+/* FIX : Les fameuses "bulles d'infos" au survol des boutons */
+.ql-toolbar button { position: relative; overflow: visible !important; }
+.ql-toolbar button:hover::after {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1f2937;
+    color: white;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-family: 'Inter', sans-serif;
+    font-weight: bold;
+    white-space: nowrap;
+    z-index: 1000;
+    pointer-events: none;
+    margin-bottom: 6px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+/* Flèche sous la bulle */
+.ql-toolbar button:hover::before {
+    content: ''; position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%);
+    border-width: 6px; border-style: solid; border-color: #1f2937 transparent transparent transparent;
+    margin-bottom: -6px; z-index: 1000; pointer-events: none;
+}
+
+/* Noms des outils */
+.ql-toolbar button.ql-bold:hover::after { content: "Gras"; }
+.ql-toolbar button.ql-italic:hover::after { content: "Italique"; }
+.ql-toolbar button.ql-underline:hover::after { content: "Souligné"; }
+.ql-toolbar button.ql-strike:hover::after { content: "Barré"; }
+.ql-toolbar button.ql-list[value="ordered"]:hover::after { content: "Liste numérotée"; }
+.ql-toolbar button.ql-list[value="bullet"]:hover::after { content: "Liste à puces"; }
+.ql-toolbar button.ql-link:hover::after { content: "Insérer un lien"; }
+.ql-toolbar button.ql-image:hover::after { content: "Insérer une image"; }
+.ql-toolbar button.ql-video:hover::after { content: "Insérer une vidéo"; }
+.ql-toolbar button.ql-clean:hover::after { content: "Effacer le formatage"; }
 
 @media (max-width: 1024px) {
     .hub-grid { grid-template-columns: 1fr; }
