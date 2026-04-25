@@ -90,14 +90,14 @@ main, footer { position: relative; z-index: 1; }
 .hero-buttons { display: flex; gap: 1.5rem; align-items: center; }
 .hero-visual { display: flex; justify-content: center; align-items: center; width: 100%; height: 100%; }
 
-/* Logo encore plus gros et décalé */
 .hero-large-logo {
-    width: 100%; max-width: 950px; display: block; transform: translateX(-10%); filter: drop-shadow(0 0 50px rgba(0, 81, 255, 0.3));
+    width: 100%; max-width: 950px; display: block; transform: translateX(-5%); filter: drop-shadow(0 0 50px rgba(0, 81, 255, 0.3));
 }
 
 .features-bar {
     position: relative; z-index: 2; display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;
     border-top: 1px solid rgba(255,255,255,0.1); padding-top: 2rem; padding-bottom: 2rem; margin-top: auto;
+    background-color: transparent;
 }
 .feature-item { display: flex; align-items: flex-start; gap: 1rem; }
 .feature-icon { color: var(--sbi-blue); display: flex; align-items: center; justify-content: center; }
@@ -110,7 +110,6 @@ main, footer { position: relative; z-index: 1; }
 .section-title { font-size: clamp(2rem, 4vw, 2.5rem); line-height: 1.2; font-weight: 800; }
 .grid-parcours { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; margin-top: 3rem; }
 
-/* FIX: Suppression de l'arrondi (border-radius) pour des coins nets et éviter les bavures de fond. */
 .parcours-card {
     position: relative;
     background-color: var(--bg-card);
@@ -124,46 +123,54 @@ main, footer { position: relative; z-index: 1; }
     transition: transform 0.3s ease;
 }
 
-/* Badge en haut à gauche */
+/* NOUVEAU BADGE TRIANGLE DÉTACHÉ */
 .card-badge {
-    position: absolute; top: -1px; left: -1px; width: 40px; height: 40px;
-    background-color: var(--sbi-blue); clip-path: polygon(0 0, 100% 0, 0 100%); z-index: 10;
-}
-.card-badge::after {
-    content: ''; position: absolute; top: 6px; left: 6px; width: 4px; height: 4px;
-    background: white; transform: rotate(45deg);
+    position: absolute; 
+    top: 12px; left: 12px; /* L'espacement qui le détache des bords */
+    width: 35px; height: 35px;
+    background-color: var(--sbi-blue);
+    clip-path: polygon(0 0, 100% 0, 0 100%);
+    z-index: 10;
 }
 
-/* -- LE COIN NOIR CONSTANT (ÉTAT REPOS) -- */
-/* Tailles ajustées pour du "moitié-moitié" parfait de 18px / 18px */
+/* ANIMATION NÉON DU POINT BLANC (Pure CSS) */
+.card-badge::after {
+    content: ''; 
+    position: absolute; 
+    top: 6px; left: 6px; 
+    width: 5px; height: 5px;
+    background: #ffffff; 
+    transform: rotate(45deg);
+    /* Application de l'animation pulse */
+    animation: neonPulse 2s infinite alternate ease-in-out;
+}
+
+/* Définition du pulse de lumière */
+@keyframes neonPulse {
+    0% { 
+        opacity: 0.7; 
+        box-shadow: 0 0 3px 0px rgba(255,255,255,0.6), 0 0 6px 1px var(--sbi-blue); 
+    }
+    100% { 
+        opacity: 1; 
+        box-shadow: 0 0 8px 2px rgba(255,255,255,1), 0 0 16px 4px var(--sbi-blue); 
+    }
+}
+
+/* Le coin noir constant */
 .parcours-card::before {
-    content: '';
-    position: absolute; bottom: -1px; right: -1px;
-    width: 60px; height: 60px;
+    content: ''; position: absolute; bottom: -1px; right: -1px; width: 60px; height: 60px;
     background: linear-gradient(-45deg,
-        #040508 0%,       /* Le petit coin fond du site */
-        #040508 18px,
-        #000000 18px,     /* Le noir pur laqué */
-        #000000 36px,
-        rgba(255,255,255,0.15) 36px, /* Ligne ultra-fine et nette 1px */
-        rgba(255,255,255,0.15) 37px,
-        transparent 37px
+        #040508 0%, #040508 18px, #000000 18px, #000000 36px,
+        rgba(255,255,255,0.15) 36px, rgba(255,255,255,0.15) 37px, transparent 37px
     );
     z-index: 5; pointer-events: none;
 }
 
-/* -- LA BANDE BLEUE (ÉTAT SURVOL) -- */
+/* La bande bleue (survol) */
 .parcours-card::after {
-    content: '';
-    position: absolute; bottom: -1px; right: -1px;
-    width: 60px; height: 60px;
-    background: linear-gradient(-45deg,
-        #040508 0%,
-        #040508 18px,
-        var(--sbi-blue) 18px, /* Remplace exactement le noir laqué */
-        var(--sbi-blue) 36px,
-        transparent 36px
-    );
+    content: ''; position: absolute; bottom: -1px; right: -1px; width: 60px; height: 60px;
+    background: linear-gradient(-45deg, #040508 0%, #040508 18px, var(--sbi-blue) 18px, var(--sbi-blue) 36px, transparent 36px);
     z-index: 6; pointer-events: none; opacity: 0; transition: opacity 0.3s ease;
 }
 
