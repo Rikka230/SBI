@@ -76,47 +76,66 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
     z-index: 1000;
     border-bottom: 1px solid rgba(255,255,255,0.05);
 }
-.header-logo { height: 40px; }
+/* Adaptation du format pour qu'il s'insère bien dans la barre */
+.header-logo { height: 35px; object-fit: contain; }
 .main-nav { display: flex; gap: 2rem; }
 .nav-link { font-size: 0.9rem; font-weight: 600; color: var(--text-light); }
 .nav-link:hover { color: var(--sbi-blue); }
 .header-actions { display: flex; align-items: center; gap: 1.5rem; }
 
-/* --- SECTION 5 : HERO (100VH) --- */
+/* --- SECTION 5 : HERO (100VH) & VIDÉO --- */
 .hero-section {
     position: relative;
-    height: 100vh; /* Force la hauteur stricte pour caler à l'écran */
-    min-height: 750px; /* Sécurité pour ne pas écraser le contenu sur de très petits écrans */
+    height: 100vh;
+    min-height: 750px;
     display: flex;
     flex-direction: column;
-    padding-top: var(--header-height); 
-    background: radial-gradient(circle at 70% 50%, rgba(0, 81, 255, 0.15) 0%, transparent 60%);
+    padding-top: var(--header-height);
+    background-color: var(--bg-dark); /* Couleur de fond sous la vidéo */
+    overflow: hidden; /* Empêche la vidéo de dépasser */
 }
+
+/* Gestion de la vidéo en arrière-plan */
+.hero-video-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* Assure que la vidéo couvre tout l'espace sans se déformer */
+    z-index: 0;
+    opacity: 0.35; /* Assombrit la vidéo pour préserver le contraste du texte */
+}
+
 .hero-grid { 
     display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; align-items: center; 
-    flex: 1; /* Absorbe tout l'espace vertical disponible */
+    flex: 1;
     padding-top: 2rem;
     padding-bottom: 2rem;
+    position: relative;
+    z-index: 2; /* Place le contenu au-dessus de la vidéo */
 }
 .hero-surtitle { font-size: 0.85rem; font-weight: 800; letter-spacing: 1px; display: block; margin-bottom: 1rem; }
 .hero-title { font-size: clamp(3rem, 6vw, 5rem); line-height: 1.05; margin-bottom: 1.5rem; letter-spacing: -0.03em; }
 .hero-subtitle { font-size: 1.1rem; color: var(--text-muted); margin-bottom: 2.5rem; max-width: 450px; }
 .hero-buttons { display: flex; gap: 1.5rem; align-items: center; }
 
-.visual-circle-placeholder {
-    width: 100%; aspect-ratio: 1; max-width: 500px; margin: 0 auto;
-    border: 15px solid white; border-radius: 50%;
-    display: flex; justify-content: center; align-items: center;
-    font-size: 8rem; font-weight: 900; letter-spacing: -5px;
-    background: radial-gradient(circle, #1a2235 0%, transparent 70%);
-    box-shadow: 0 0 50px rgba(0,81,255,0.2);
+/* Styles pour le gros logo dans le visual */
+.hero-large-logo {
+    width: 100%;
+    max-width: 480px;
+    display: block;
+    margin: 0 auto;
+    filter: drop-shadow(0 0 40px rgba(0, 81, 255, 0.25)); /* Ajoute une légère aura bleue */
 }
 
 .features-bar {
+    position: relative;
+    z-index: 2; /* Au-dessus de la vidéo */
     display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;
-    border-top: 1px solid var(--border-color);
+    border-top: 1px solid rgba(255,255,255,0.1); /* Bordure adoucie pour l'overlay vidéo */
     padding-top: 2rem; padding-bottom: 2rem;
-    margin-top: auto; /* Plaque la barre tout en bas */
+    margin-top: auto;
     background-color: transparent;
 }
 .feature-item { display: flex; align-items: flex-start; gap: 1rem; }
@@ -208,7 +227,7 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 /* --- SECTION 9 : FOOTER --- */
 .site-footer { border-top: 1px solid var(--border-color); padding-top: 4rem; padding-bottom: 2rem; }
 .footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr; gap: 2rem; }
-.footer-logo { height: 40px; margin-bottom: 1rem; }
+.footer-logo { height: 40px; margin-bottom: 1rem; object-fit: contain; }
 .brand-tagline { color: var(--text-muted); font-size: 0.9rem; margin-top: 1rem; }
 .footer-links h4, .footer-social h4 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 1.5rem; color: var(--text-muted); }
 .footer-links a { display: block; font-size: 0.9rem; margin-bottom: 0.75rem; color: #fff; }
@@ -231,5 +250,7 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
     .grid-numbers { grid-template-columns: repeat(2, 1fr); gap: 2rem; }
     .newsletter-box { flex-direction: column; align-items: flex-start; }
     .footer-grid { grid-template-columns: 1fr; gap: 3rem; }
-    .hero-section { height: auto; min-height: 100vh; } /* Sur mobile, on repasse en auto si besoin */
+    .hero-section { height: auto; min-height: 100vh; }
+    /* Sur mobile, on peut cacher ou réduire le gros logo pour gagner de la place */
+    .hero-large-logo { max-width: 250px; }
 }
