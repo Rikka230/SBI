@@ -110,10 +110,10 @@ main, footer { position: relative; z-index: 2; }
 /* --- SECTION 4 : HEADER --- */
 .site-header { position: fixed; top: 0; left: 0; width: 100%; height: var(--header-height); display: flex; justify-content: space-between; align-items: center; padding: 0 5%; background: rgba(4, 5, 8, 0.85); backdrop-filter: blur(12px); z-index: 1000; border-bottom: 1px solid rgba(255,255,255,0.05); }
 
-/* NOUVEAU : Alignement Flexbox pour regrouper Logo + Brand Text */
-.header-logo-link { display: flex; align-items: center; gap: 0.75rem; }
+/* Alignement Flexbox pour regrouper Logo + Brand Text (Ajustement taille Brand) */
+.header-logo-link { display: flex; align-items: center; gap: 1rem; }
 .header-logo { height: 45px; object-fit: contain; }
-.header-brand { height: 24px; object-fit: contain; max-width: 200px; } /* Ajusté pour le format paysage */
+.header-brand { height: 34px; object-fit: contain; max-width: 300px; }
 
 .main-nav { display: flex; gap: 2rem; }
 .nav-link { font-size: 0.9rem; font-weight: 600; color: var(--text-light); }
