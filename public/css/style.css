@@ -166,26 +166,23 @@ main, footer { position: relative; z-index: 2; }
 .card-footer { display: flex; justify-content: flex-start; align-items: center; gap: 1rem; }
 .course-count { font-size: 0.85rem; color: var(--text-muted); }
 
-/* --- SECTION 7 : STATS & CITATION (NOUVEAU BLOC FONDATEUR ÉCLAT DE VERRE) --- */
+/* --- SECTION 7 : STATS & CITATION --- */
 .section-stats { padding-top: var(--space-xl); padding-bottom: var(--space-xl); background: transparent; }
 .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
 
 .founder-block { 
-    background: var(--bg-surface); border: 1px solid var(--border-color); 
-    position: relative; display: flex; align-items: center; /* Centré verticalement */
-    padding: 3rem; gap: 3rem; border-radius: 2px;
-}
-.founder-block::after { 
-    content: ''; position: absolute; bottom: 0; right: 0; width: 0; height: 0; 
-    border-bottom: 40px solid var(--sbi-blue); border-left: 40px solid transparent; 
+    /* Le fond est supprimé ici pour laisser flotter la photo */
+    position: relative; 
+    display: flex; 
+    align-items: center; 
+    gap: 3rem; 
 }
 
 .founder-img-wrapper { 
-    width: 40%; position: relative; 
-    /* Pas d'overflow hidden pour laisser flotter les éclats de verre */
+    width: 40%; 
+    position: relative; 
 }
 
-/* La photo est taillée de manière asymétrique et tranchante */
 .founder-img { 
     width: 100%; aspect-ratio: 3/4; object-fit: cover; 
     filter: grayscale(100%) contrast(1.2); 
@@ -195,11 +192,30 @@ main, footer { position: relative; z-index: 2; }
 /* Base pour les éclats de verre */
 .shard {
     position: absolute;
-    background: rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(8px); /* Effet de verre dépoli */
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(8px); 
     -webkit-backdrop-filter: blur(8px);
     border: 1px solid rgba(255, 255, 255, 0.15);
     z-index: 3;
+    overflow: hidden; /* Nécessaire pour masquer le reflet qui dépasse */
+}
+
+/* Animation fluide et optimisée du reflet sur les arêtes */
+.shard-glint {
+    position: absolute;
+    top: -50%; left: -50%;
+    width: 200%; height: 10px;
+    background: linear-gradient(to bottom, transparent, rgba(0, 162, 255, 0.8), transparent);
+    transform: rotate(45deg) translateY(-150px);
+    animation: sweepGlint 6s infinite ease-in-out;
+    pointer-events: none;
+}
+.delay-glint { animation-delay: 3s; }
+
+@keyframes sweepGlint {
+    0%, 60% { transform: rotate(45deg) translateY(-150px); opacity: 0; }
+    70% { opacity: 1; }
+    80%, 100% { transform: rotate(45deg) translateY(150px); opacity: 0; }
 }
 
 /* Éclat 1 : En haut à gauche */
@@ -209,19 +225,40 @@ main, footer { position: relative; z-index: 2; }
     animation: shardFloat 6s infinite ease-in-out;
 }
 
-/* Éclat 2 : En bas à droite (Passe derrière l'image, teinté bleu) */
+/* Éclat 2 : En bas à droite */
 .shard-2 {
     bottom: -30px; right: -10px; width: 90px; height: 70px;
-    background: rgba(0, 81, 255, 0.1); border-color: rgba(0, 81, 255, 0.3);
+    background: rgba(0, 81, 255, 0.05); border-color: rgba(0, 81, 255, 0.2);
     clip-path: polygon(0% 0%, 100% 40%, 40% 100%);
     animation: shardFloat 8s infinite ease-in-out reverse;
     z-index: -1; 
 }
 
-/* Éclat 3 : Le badge dynamique bleu flottant */
+/* Éclat 4 : En bas à gauche (NOUVEAU) */
+.shard-4 {
+    bottom: 20px; left: -30px; width: 70px; height: 50px;
+    clip-path: polygon(0 40%, 100% 0, 80% 100%);
+    animation: shardFloat 7s infinite ease-in-out 1s;
+}
+
+/* --- CARTE TEXTE SEPAREE --- */
+.quote-content { 
+    width: 60%; 
+    background: var(--bg-surface); 
+    border: 1px solid var(--border-color); 
+    padding: 3rem; 
+    border-radius: 2px;
+    position: relative; 
+}
+.quote-content::after { 
+    content: ''; position: absolute; bottom: 0; right: 0; width: 0; height: 0; 
+    border-bottom: 40px solid var(--sbi-blue); border-left: 40px solid transparent; 
+}
+
+/* Éclat 3 : Le badge bleu déplacé sur la carte texte */
 .shard-3 {
-    top: 40%; right: -25px; width: 40px; height: 40px;
-    background: var(--sbi-blue); border: none; backdrop-filter: none;
+    top: 30%; right: -20px; width: 40px; height: 40px;
+    background: var(--sbi-blue); border: none; backdrop-filter: none; overflow: visible;
     clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
     animation: shardFloat 5s infinite ease-in-out 2s;
 }
@@ -231,18 +268,50 @@ main, footer { position: relative; z-index: 2; }
     animation: neonPulse 2s infinite alternate ease-in-out;
 }
 
+/* Guillemets Holographiques / Néon */
+.quote-mark { 
+    font-size: 6rem; 
+    font-family: serif; 
+    line-height: 0; 
+    position: absolute; 
+    top: 3rem; 
+    left: -1rem; 
+    /* Effet Holographique transparent au centre */
+    color: transparent;
+    -webkit-text-stroke: 1.5px rgba(0, 81, 255, 0.6);
+    animation: holoBreath 3s infinite alternate ease-in-out;
+}
+@keyframes holoBreath {
+    0% { text-shadow: 0 0 5px rgba(0, 81, 255, 0.2); -webkit-text-stroke-color: rgba(0, 81, 255, 0.4); }
+    100% { text-shadow: 0 0 15px rgba(0, 81, 255, 0.8); -webkit-text-stroke-color: rgba(0, 162, 255, 0.9); }
+}
+
+.quote-content blockquote { font-size: 1.3rem; font-weight: 800; margin-bottom: 1rem; line-height: 1.3; margin-top: 1rem; position: relative; z-index: 2;}
+.quote-sub { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 2.5rem; position: relative; z-index: 2;}
+.quote-author { display: flex; flex-direction: column; gap: 0.5rem; }
+.quote-author span { font-size: 0.8rem; letter-spacing: 1px; color: var(--text-muted); }
+
+/* Signature cursive animée */
+.signature-text {
+    font-family: 'Great Vibes', cursive;
+    font-size: 2.8rem;
+    line-height: 1;
+    color: rgba(255, 255, 255, 0.3); /* Grisâtre de base */
+    transform: rotate(-3deg);
+    transform-origin: left;
+    animation: signNeon 4s infinite alternate ease-in-out;
+}
+@keyframes signNeon {
+    0% { color: rgba(255, 255, 255, 0.3); text-shadow: none; }
+    50% { color: rgba(255, 255, 255, 0.5); text-shadow: 0 0 5px rgba(0, 81, 255, 0.3); }
+    100% { color: rgba(255, 255, 255, 0.9); text-shadow: 0 0 10px rgba(0, 81, 255, 0.8), 0 0 20px rgba(0, 81, 255, 0.4); }
+}
+
 @keyframes shardFloat {
     0% { transform: translateY(0) rotate(0deg); }
     50% { transform: translateY(-15px) rotate(10deg); }
     100% { transform: translateY(0) rotate(0deg); }
 }
-
-.founder-block .quote-content { width: 60%; padding: 0; position: relative; }
-.quote-mark { font-size: 4rem; font-family: serif; line-height: 0; position: absolute; top: 1rem; left: -2rem; color: rgba(0, 81, 255, 0.2); }
-.founder-block blockquote { font-size: 1.3rem; font-weight: 800; margin-bottom: 1rem; line-height: 1.3; margin-top: 1rem; }
-.quote-sub { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 2rem; }
-.quote-author { display: flex; flex-direction: column; gap: 0.5rem; }
-.quote-author span { font-size: 0.8rem; letter-spacing: 1px; color: var(--text-muted); }
 
 .numbers-box { background: var(--bg-surface); border: 1px solid var(--border-color); padding: 3rem; display: flex; flex-direction: column; justify-content: space-between; }
 .grid-numbers { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-top: 1.5rem; }
