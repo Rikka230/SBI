@@ -43,15 +43,12 @@ main, footer { position: relative; z-index: 1; }
 
 /* --- SECTION 3 : BOUTONS & ICONES --- */
 .btn-primary {
-    background-color: var(--sbi-blue);
-    color: white; padding: 0.75rem 1.5rem; border-radius: 4px; font-weight: 600;
+    background-color: var(--sbi-blue); color: white; padding: 0.75rem 1.5rem; border-radius: 4px; font-weight: 600;
     display: inline-flex; align-items: center; gap: 0.5rem; transition: background 0.3s ease, transform 0.2s ease;
 }
 .btn-primary:hover { background-color: var(--sbi-blue-hover); transform: translateY(-2px); }
 
-.btn-ghost {
-    color: var(--text-light); font-weight: 600; display: inline-flex; align-items: center; gap: 0.5rem;
-}
+.btn-ghost { color: var(--text-light); font-weight: 600; display: inline-flex; align-items: center; gap: 0.5rem; }
 .btn-ghost .play-icon {
     display: inline-flex; justify-content: center; align-items: center; width: 32px; height: 32px;
     border-radius: 50%; border: 1px solid var(--text-light); color: var(--text-light);
@@ -78,15 +75,11 @@ main, footer { position: relative; z-index: 1; }
     position: relative; height: 100vh; min-height: 750px; display: flex; flex-direction: column;
     padding-top: var(--header-height); background-color: var(--bg-dark); overflow: hidden;
 }
-.hero-video-bg {
-    position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; opacity: 1; 
-}
+.hero-video-bg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; opacity: 1; }
 .hero-gradient-overlay {
     position: absolute; top: 0; left: 0; width: 60%; height: 100%;
     background: linear-gradient(to right, rgba(4, 5, 8, 0.95) 0%, rgba(4, 5, 8, 0) 100%); z-index: 1;
 }
-
-/* Grille ajustée : la colonne de droite prend un poil plus de place */
 .hero-grid { 
     display: grid; grid-template-columns: 1fr 1.2fr; gap: 2rem; align-items: center; 
     flex: 1; padding-top: 2rem; padding-bottom: 2rem; position: relative; z-index: 2; 
@@ -95,13 +88,9 @@ main, footer { position: relative; z-index: 1; }
 .hero-title { font-size: clamp(3rem, 6vw, 5rem); line-height: 1.05; margin-bottom: 1.5rem; letter-spacing: -0.03em; }
 .hero-subtitle { font-size: 1.1rem; color: var(--text-muted); margin-bottom: 2.5rem; max-width: 450px; }
 .hero-buttons { display: flex; gap: 1.5rem; align-items: center; }
-
 .hero-visual { display: flex; justify-content: center; align-items: center; width: 100%; height: 100%; }
-/* Le Logo est encore plus grand et s'immisce vers le texte */
 .hero-large-logo {
-    width: 100%; max-width: 950px; display: block; 
-    transform: translateX(-5%); 
-    filter: drop-shadow(0 0 50px rgba(0, 81, 255, 0.3));
+    width: 100%; max-width: 950px; display: block; transform: translateX(-5%); filter: drop-shadow(0 0 50px rgba(0, 81, 255, 0.3));
 }
 
 .features-bar {
@@ -113,27 +102,18 @@ main, footer { position: relative; z-index: 1; }
 .feature-item strong { display: block; font-size: 0.9rem; margin-bottom: 0.25rem; }
 .feature-item p { font-size: 0.8rem; color: var(--text-muted); }
 
-/* --- SECTION 6 : PARCOURS (EFFET COIN COUPÉ) --- */
+/* --- SECTION 6 : PARCOURS (EFFET COIN LAQUÉ/BLEU) --- */
 .section-parcours { background: transparent; padding-top: var(--space-xl); padding-bottom: var(--space-xl); }
 .section-surtitle { font-size: 0.85rem; font-weight: 800; letter-spacing: 1px; display: block; margin-bottom: 0.5rem; }
 .section-title { font-size: clamp(2rem, 4vw, 2.5rem); line-height: 1.2; font-weight: 800; }
 .grid-parcours { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; margin-top: 3rem; }
 
-/* La structure de base de la carte avec débordement bloqué */
 .parcours-card {
-    position: relative;
-    background-color: var(--bg-card);
-    background-size: cover; background-position: center;
-    border: 1px solid #1a1e29; /* Bordure discrète */
-    border-radius: 2px;
-    overflow: hidden; /* Empêche strictement toute image de dépasser */
-    aspect-ratio: 1 / 1;
-    display: flex; flex-direction: column; justify-content: flex-end;
-    cursor: pointer;
-    transition: transform 0.3s ease;
+    position: relative; background-color: var(--bg-card); background-size: cover; background-position: center;
+    border: 1px solid #1a1e29; border-radius: 2px; overflow: hidden; aspect-ratio: 1 / 1;
+    display: flex; flex-direction: column; justify-content: flex-end; cursor: pointer; transition: transform 0.3s ease;
 }
 
-/* Badge en haut à gauche */
 .card-badge {
     position: absolute; top: 0; left: 0; width: 45px; height: 45px;
     background-color: var(--sbi-blue); clip-path: polygon(0 0, 100% 0, 0 100%); z-index: 10;
@@ -143,34 +123,37 @@ main, footer { position: relative; z-index: 1; }
     background: white; transform: rotate(45deg);
 }
 
-/* -- LE COIN NOIR CONSTANT EN BAS À DROITE -- */
-/* On génère le coin de couleur sombre avec une fine ligne gris/brillante */
+/* -- LE COIN NOIR LAQUÉ CONSTANT (ÉPAISSEUR EXACTEMENT ÉGALE À LA BANDE BLEUE) -- */
 .parcours-card::before {
     content: ''; position: absolute; bottom: 0; right: 0; width: 120px; height: 120px;
-    background: linear-gradient(-45deg, var(--bg-dark) 40px, rgba(255,255,255,0.2) 40px, rgba(255,255,255,0.2) 42px, transparent 42px);
+    /* Dégradé : Coin de base (40px) -> Bande ultra noire avec reflet brillant laqué au milieu -> Fin à 52px */
+    background: linear-gradient(-45deg,
+        var(--bg-dark) 40px,
+        #000000 40px,
+        #000000 42px,
+        #2a3245 44px,   /* Éclat lumineux simulant la brillance d'un matériau laqué */
+        #000000 48px,
+        #000000 52px,
+        transparent 52px
+    );
     z-index: 5; pointer-events: none;
 }
 
 /* -- LA BANDE BLEUE QUI S'ALLUME AU SURVOL -- */
-/* On superpose la version "allumée" qui va apparaître doucement */
 .parcours-card::after {
     content: ''; position: absolute; bottom: 0; right: 0; width: 120px; height: 120px;
     background: linear-gradient(-45deg, var(--bg-dark) 40px, var(--sbi-blue) 40px, var(--sbi-blue) 52px, transparent 52px);
-    z-index: 6; pointer-events: none;
-    opacity: 0; transition: opacity 0.3s ease;
+    z-index: 6; pointer-events: none; opacity: 0; transition: opacity 0.3s ease;
 }
 
-/* Effets au survol */
 .parcours-card:hover { transform: translateY(-5px); }
-.parcours-card:hover::after { opacity: 1; /* Allume la bande bleue épaisse */ }
+.parcours-card:hover::after { opacity: 1; } /* Surcharge le noir laqué par le bleu au survol */
 
-/* Images sources Unsplash */
 .parcours-card:nth-child(1) { background-image: url('https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=800&q=80'); }
 .parcours-card:nth-child(2) { background-image: url('https://images.unsplash.com/photo-1526232761682-d26e03ac148e?auto=format&fit=crop&w=800&q=80'); }
 .parcours-card:nth-child(3) { background-image: url('https://images.unsplash.com/photo-1504450758481-7338eba7524a?auto=format&fit=crop&w=800&q=80'); }
 .parcours-card:nth-child(4) { background-image: url('https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&w=800&q=80'); }
 
-/* Overlay teinté en noir/bleu très sombre (garanti sans débordement grace à overflow:hidden parent) */
 .card-mask {
     position: absolute; top: 0; left: 0; width: 100%; height: 100%;
     background: linear-gradient(to top, rgba(4, 5, 8, 0.95) 10%, rgba(4, 5, 8, 0.4) 100%);
