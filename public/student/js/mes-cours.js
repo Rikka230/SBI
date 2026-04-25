@@ -228,7 +228,7 @@ window.openFormationCourses = function(formId, formTitle) {
             const html = `
                 <div class="course-item" onclick="window.location.href='/student/cours-viewer.html?id=${c.id}'">
                     <div style="display:flex; align-items:center; gap:1rem;">
-                        <div style="width:40px; height:40px; background:rgba(16, 185, 129, 0.1); border-radius:8px; display:flex; align-items:center; justify-content:center; color:var(--accent-green);">
+                        <div style="width:40px; height:40px; background:rgba(42, 87, 255, 0.1); border-radius:8px; display:flex; align-items:center; justify-content:center; color:var(--accent-blue);">
                             <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
                         </div>
                         <h4 style="margin:0; color:var(--text-main); font-size:1.05rem;">${c.titre}</h4>
