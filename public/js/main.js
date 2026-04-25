@@ -28,21 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
         elementsToAnimate.forEach(el => observer.observe(el));
     };
 
-    /* --- SECTION 2 : EFFET DE HOVER SUR LES CARTES --- */
-    const initCardInteractions = () => {
-        const cards = document.querySelectorAll('.parcours-card');
-        
-        cards.forEach(card => {
-            card.addEventListener('mouseenter', () => {
-                card.style.borderColor = 'rgba(0, 81, 255, 0.4)';
-            });
-            card.addEventListener('mouseleave', () => {
-                card.style.borderColor = 'var(--border-color)';
-            });
-        });
-    };
-
-    /* --- SECTION 3 : INITIALISATION GLOBALE --- */
+    /* --- SECTION 2 : INITIALISATION GLOBALE --- */
+    // Note : L'effet de survol géométrique des cartes est maintenant géré à 100% en CSS pur.
     initScrollAnimations();
-    initCardInteractions();
 });
