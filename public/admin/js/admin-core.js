@@ -59,6 +59,12 @@ const renderUsersList = (usersToRender) => {
         const displayName = (user.prenom && user.nom) ? `${user.prenom} ${user.nom}` : (user.nom || "Sans nom");
         const statusLabel = user.statut === 'suspendu' ? '<span style="color: #ff4a4a; font-weight:bold;">Suspendu</span>' : '<span style="color: #2ed573; font-weight:bold;">Actif</span>';
         
+        // NOUVEAU : Récupération du statut en ligne réel depuis la base de données
+        const isOnline = user.isOnline === true;
+        const onlineIndicator = isOnline 
+            ? '<span style="display:inline-block; min-width:8px; height:8px; background-color:#00ffa3; border-radius:50%; margin-right:8px; box-shadow: 0 0 6px #00ffa3;" title="En ligne"></span>' 
+            : '<span style="display:inline-block; min-width:8px; height:8px; background-color:#4b4b52; border-radius:50%; margin-right:8px;" title="Hors ligne"></span>';
+
         let roleBgColor = '';
         let roleTextColor = '';
         let roleText = '';
@@ -73,7 +79,6 @@ const renderUsersList = (usersToRender) => {
             roleBgColor = 'rgba(0, 255, 163, 0.15)'; roleTextColor = '#00ffa3'; roleText = 'Élève';
         }
 
-        // NOUVEAU : Ajout de la colonne Profil en vert (75px) dans la grille
         const userCardHTML = `
             <div style="background: #0a0a0c; border: 1px solid #222; border-radius: 6px; margin-bottom: 0.4rem; display: grid; grid-template-columns: 85px 1fr 1.5fr 70px 75px 75px; align-items: stretch; opacity: ${user.statut === 'suspendu' ? '0.6' : '1'}; font-size: 0.8rem; overflow: hidden;">
                 
@@ -82,7 +87,7 @@ const renderUsersList = (usersToRender) => {
                 </div>
 
                 <div style="color: white; font-weight: bold; word-break: break-word; min-width: 0; padding: 0.6rem 0.8rem; display: flex; align-items: center;">
-                    ${displayName}
+                    ${onlineIndicator} ${displayName}
                 </div>
                 
                 <div style="color: #9ca3af; word-break: break-word; min-width: 0; padding: 0.6rem 0.8rem; display: flex; align-items: center;">
