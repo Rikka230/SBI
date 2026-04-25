@@ -223,7 +223,7 @@ async function loadLearningTracking(uid) {
             
             let statusBadge = '';
             if (pData.status === 'done') {
-                statusBadge = `<span style="background: ${isStudentUI ? 'rgba(42, 87, 255, 0.1)' : 'rgba(46, 213, 115, 0.1)'}; color: ${isStudentUI ? 'var(--accent-blue)' : 'var(--accent-green)'}; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold;">Terminé</span>`;
+                statusBadge = `<span style="background: ${isStudentUI ? 'rgba(42, 87, 255, 0.1)' : 'rgba(46, 213, 115, 0.1)'}; color: ${isStudentUI ? 'var(--accent-blue)' : 'var(--accent-blue)'}; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold;">Terminé</span>`;
             } else if (pData.status === 'in_progress') {
                 statusBadge = '<span style="background: rgba(251, 188, 4, 0.1); color: var(--accent-yellow); padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold;">En cours</span>';
             } else {
@@ -246,7 +246,7 @@ async function loadLearningTracking(uid) {
                             <div style="display: flex; justify-content: space-between; align-items: center; background: ${isStudentUI ? '#f9fafb' : 'rgba(0,0,0,0.2)'}; padding: 0.5rem 1rem; border-radius: 6px; margin-top: 0.8rem; border: 1px solid ${isStudentUI ? 'var(--border-color)' : 'transparent'};">
                                 <span style="font-size: 0.85rem; color: var(--text-muted);">${chap.titre}</span>
                                 <div style="display: flex; align-items: center; gap: 10px;">
-                                    <span style="font-size: 0.85rem; font-weight: bold; color: ${scoreObtained === totalPossible && totalPossible > 0 ? (isStudentUI ? 'var(--accent-blue)' : 'var(--accent-green)') : 'var(--text-main)'};">Score: ${scoreObtained} / ${totalPossible}</span>
+                                    <span style="font-size: 0.85rem; font-weight: bold; color: ${scoreObtained === totalPossible && totalPossible > 0 ? (isStudentUI ? 'var(--accent-blue)' : 'var(--accent-blue)') : 'var(--text-main)'};">Score: ${scoreObtained} / ${totalPossible}</span>
                                     ${editBtnHtml}
                                 </div>
                             </div>
