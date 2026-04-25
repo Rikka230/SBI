@@ -5,34 +5,79 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SBI - Connexion</title>
     <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,600;0,800;0,900;1,400;1,600;1,800;1,900&display=swap" rel="stylesheet">
+    <style>
+        /* Petit ajustement spécifique pour les champs de la page login */
+        .login-input:focus { border-color: var(--sbi-blue) !important; outline: none; }
+    </style>
 </head>
-<body class="sbi-diagonal-bg">
+<body>
+
+    <div class="fixed-bg-glow"></div>
+
+    <div class="sbi-bg-fixed">
+        <div class="sbi-fog sbi-fog-1"></div>
+        <div class="sbi-fog sbi-fog-2"></div>
+
+        <div class="sbi-particle"></div><div class="sbi-particle"></div><div class="sbi-particle"></div>
+        <div class="sbi-particle"></div><div class="sbi-particle"></div><div class="sbi-particle"></div>
+        <div class="sbi-particle"></div><div class="sbi-particle"></div><div class="sbi-particle"></div>
+        <div class="sbi-particle"></div><div class="sbi-particle"></div><div class="sbi-particle"></div>
+        <div class="sbi-particle"></div><div class="sbi-particle"></div><div class="sbi-particle"></div>
+        <div class="sbi-particle"></div><div class="sbi-particle"></div><div class="sbi-particle"></div>
+        <div class="sbi-particle"></div><div class="sbi-particle"></div><div class="sbi-particle"></div>
+        <div class="sbi-particle"></div><div class="sbi-particle"></div><div class="sbi-particle"></div>
+        <div class="sbi-particle"></div><div class="sbi-particle"></div><div class="sbi-particle"></div>
+    </div>
+
+    <div class="sbi-bg-parallax" id="parallax-lines">
+        <div class="sbi-line"></div>
+        <div class="sbi-line"></div>
+        <div class="sbi-line"></div>
+        <div class="sbi-line"></div>
+        <div class="sbi-line"></div>
+        <div class="sbi-line"></div>
+        <div class="sbi-line"></div>
+    </div>
 
     <header class="site-header">
-        <div class="logo-container sbi-break-box">
-            <a href="index.html" class="logo-text" style="color: white; text-decoration: none;">SBI</a>
+        <div class="logo-container">
+            <a href="index.html">
+                <img src="assets/Logo_SBI_Tome.png" alt="SBI Logo" class="header-logo">
+            </a>
+        </div>
+        <div class="header-actions">
+            <a href="index.html" class="nav-link text-italic">Retour au site</a>
         </div>
     </header>
 
-    <main style="min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 0 5%;">
-        <div class="card fade-in" style="width: 100%; max-width: 400px; padding: 3rem 2rem;">
-            <h1 class="uppercase text-center" style="margin-bottom: 2rem;">C<span class="text-blue">O</span>NNEXION</h1>
+    <main style="min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 100px 5% 0 5%; position: relative; z-index: 2;">
+        
+        <div class="fade-in" style="width: 100%; max-width: 450px; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 2px; padding: 3.5rem 3rem; position: relative; box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
+            
+            <div style="position: absolute; top: -1px; left: -1px; width: 45px; height: 45px; background-color: var(--sbi-blue); clip-path: polygon(0 0, 100% 0, 0 100%);"></div>
+            
+            <div style="position: absolute; bottom: -1px; right: -1px; width: 60px; height: 60px; background: linear-gradient(-45deg, #040508 0%, #040508 18px, #000000 18px, #000000 36px, rgba(255,255,255,0.15) 36px, rgba(255,255,255,0.15) 37px, transparent 37px); pointer-events: none;"></div>
+
+            <h1 class="uppercase text-center text-italic" style="font-size: 2.2rem; margin-bottom: 2.5rem; letter-spacing: -1px;">C<span class="text-blue">o</span>nnexion</h1>
             
             <form id="login-form">
-                <div style="margin-bottom: 1.5rem; text-align: left;">
-                    <label for="email" style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Email</label>
-                    <input type="email" id="email" required style="width: 100%; padding: 1rem; border-radius: 4px; border: 1px solid #333; background: var(--bg-dark); color: white; font-size: 1rem;">
+                <div style="margin-bottom: 1.5rem; text-align: left; position: relative; z-index: 2;">
+                    <label for="email" class="text-italic" style="display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.85rem; font-weight: 600;">Adresse Email</label>
+                    <input type="email" id="email" class="login-input text-italic" required style="width: 100%; padding: 0.9rem 1rem; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-dark); color: white; font-size: 1rem; transition: border-color 0.3s ease;">
                 </div>
                 
-                <div style="margin-bottom: 2rem; text-align: left;">
-                    <label for="password" style="display: block; margin-bottom: 0.5rem; color: var(--text-muted);">Mot de passe</label>
-                    <input type="password" id="password" required style="width: 100%; padding: 1rem; border-radius: 4px; border: 1px solid #333; background: var(--bg-dark); color: white; font-size: 1rem;">
+                <div style="margin-bottom: 2.5rem; text-align: left; position: relative; z-index: 2;">
+                    <label for="password" class="text-italic" style="display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.85rem; font-weight: 600;">Mot de passe</label>
+                    <input type="password" id="password" class="login-input text-italic" required style="width: 100%; padding: 0.9rem 1rem; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-dark); color: white; font-size: 1rem; transition: border-color 0.3s ease;">
                 </div>
                 
-                <button type="submit" class="btn-primary btn-massive" style="width: 100%; padding: 1rem; font-size: 1rem;">Se connecter</button>
+                <button type="submit" class="btn-primary text-italic" style="width: 100%; justify-content: center; padding: 1rem; font-size: 1.1rem; position: relative; z-index: 2;">
+                    Accéder à l'espace <span style="margin-left: 8px;">→</span>
+                </button>
             </form>
             
-            <div id="error-message" style="color: #ff4a4a; margin-top: 1rem; text-align: center; display: none; font-weight: bold;"></div>
+            <div id="error-message" class="text-italic" style="color: #ff4a4a; margin-top: 1.5rem; text-align: center; display: none; font-weight: 600; font-size: 0.9rem; position: relative; z-index: 2;"></div>
         </div>
     </main>
 
