@@ -35,98 +35,107 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
     z-index: 0; pointer-events: none; 
 }
 
-/* --- SECTION FOND ANIMÉ : LIGNES ET PARTICULES --- */
+/* --- SECTION FOND ANIMÉ : LIGNES ET POUSSIÈRE --- */
 .sbi-bg-animations {
     position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
     z-index: 0; pointer-events: none; overflow: hidden;
 }
 
-/* 1. Les Lignes (Profondeur accentuée) */
+/* 1. Les Lignes (Inchouangées) */
 .sbi-line {
-    position: absolute; top: -50%;
-    height: 50vh; 
+    position: absolute; top: -50%; height: 50vh; 
     background: linear-gradient(to bottom, rgba(0, 162, 255, 0) 0%, rgba(255, 255, 255, 1) 50%, rgba(0, 162, 255, 0) 100%);
     will-change: transform, opacity; border-radius: 10px;
 }
-
-/* Premier plan (Lignes nettes, vives, rapides) */
-.sbi-line:nth-child(1), .sbi-line:nth-child(3) {
-    width: 3px; filter: drop-shadow(0 0 10px rgba(0,162,255,0.9));
-}
+.sbi-line:nth-child(1), .sbi-line:nth-child(3) { width: 3px; filter: drop-shadow(0 0 10px rgba(0,162,255,0.9)); }
 .sbi-line:nth-child(1) { left: 15%; animation: sbiShoot 14s infinite linear -2s; }
 .sbi-line:nth-child(3) { left: 65%; animation: sbiShoot 16s infinite linear -7s; }
-
-/* Plan moyen (Lignes standard, léger flou) */
-.sbi-line:nth-child(5), .sbi-line:nth-child(6) {
-    width: 2px; filter: drop-shadow(0 0 5px rgba(0,162,255,0.5)) blur(1px);
-}
+.sbi-line:nth-child(5), .sbi-line:nth-child(6) { width: 2px; filter: drop-shadow(0 0 5px rgba(0,162,255,0.5)) blur(1px); }
 .sbi-line:nth-child(5) { left: 40%; animation: sbiShoot 22s infinite linear -12s; }
 .sbi-line:nth-child(6) { left: 85%; animation: sbiShoot 25s infinite linear -4s; }
-
-/* Arrière-plan (Lignes très floues, très lentes, presque transparentes) */
-.sbi-line:nth-child(2), .sbi-line:nth-child(4), .sbi-line:nth-child(7) {
-    width: 1px; filter: blur(4px); opacity: 0.3; /* Brident la luminosité max */
-}
+.sbi-line:nth-child(2), .sbi-line:nth-child(4), .sbi-line:nth-child(7) { width: 1px; filter: blur(4px); opacity: 0.3; }
 .sbi-line:nth-child(2) { left: 25%; animation: sbiShootBg 35s infinite linear -18s; }
 .sbi-line:nth-child(4) { left: 55%; animation: sbiShootBg 40s infinite linear -9s; }
 .sbi-line:nth-child(7) { left: 8%;  animation: sbiShootBg 38s infinite linear -25s; }
 
 @keyframes sbiShoot {
     0% { transform: rotate(45deg) translateY(-150vh); opacity: 0; }
-    15% { opacity: 0.7; }
-    85% { opacity: 0.7; }
+    15% { opacity: 0.7; } 85% { opacity: 0.7; }
     100% { transform: rotate(45deg) translateY(200vh); opacity: 0; }
 }
 @keyframes sbiShootBg {
     0% { transform: rotate(45deg) translateY(-150vh); opacity: 0; }
-    20% { opacity: 0.3; } /* Opacité max plus faible pour l'arrière-plan */
-    80% { opacity: 0.3; }
+    20% { opacity: 0.3; } 80% { opacity: 0.3; }
     100% { transform: rotate(45deg) translateY(200vh); opacity: 0; }
 }
 
-/* 2. Les Particules (Poussière d'énergie) */
+/* 2. Les Particules (Modifiées : Cœurs translucides, formes cabossées, tourbillons) */
 .sbi-particle {
     position: absolute;
-    width: 3px; height: 3px;
-    background-color: #ffffff;
-    border-radius: 50%;
-    box-shadow: 0 0 6px 2px rgba(0, 162, 255, 0.8);
+    /* Cœur presque transparent */
+    background-color: rgba(255, 255, 255, 0.15);
+    /* Le glow bleu donne la forme lumineuse */
+    box-shadow: 0 0 8px 1px rgba(0, 162, 255, 0.5);
     opacity: 0;
     will-change: transform, opacity;
 }
 
-/* Distribution et animations aléatoires des particules */
-.sbi-particle:nth-child(8)  { top: 20%; left: 80%; animation: particleDrift1 12s infinite ease-in-out -2s; }
-.sbi-particle:nth-child(9)  { top: 60%; left: 90%; width: 2px; height: 2px; animation: particleDrift2 18s infinite ease-in-out -7s; }
-.sbi-particle:nth-child(10) { top: 30%; left: 40%; width: 4px; height: 4px; filter: blur(1px); animation: particleDrift1 15s infinite ease-in-out -11s; }
-.sbi-particle:nth-child(11) { top: 80%; left: 70%; animation: particleDrift3 20s infinite ease-in-out -4s; }
-.sbi-particle:nth-child(12) { top: 10%; left: 30%; width: 2px; height: 2px; animation: particleDrift2 14s infinite ease-in-out -9s; }
-.sbi-particle:nth-child(13) { top: 50%; left: 10%; filter: blur(2px); animation: particleDrift3 25s infinite ease-in-out -15s; }
-.sbi-particle:nth-child(14) { top: 85%; left: 20%; width: 4px; height: 4px; animation: particleDrift1 17s infinite ease-in-out -1s; }
-.sbi-particle:nth-child(15) { top: 40%; left: 60%; width: 2px; height: 2px; animation: particleDrift2 22s infinite ease-in-out -13s; }
-.sbi-particle:nth-child(16) { top: 70%; left: 50%; filter: blur(1px); animation: particleDrift3 19s infinite ease-in-out -6s; }
-.sbi-particle:nth-child(17) { top: 15%; left: 60%; animation: particleDrift1 16s infinite ease-in-out -18s; }
-.sbi-particle:nth-child(18) { top: 90%; left: 85%; width: 2px; height: 2px; animation: particleDrift2 21s infinite ease-in-out -3s; }
-.sbi-particle:nth-child(19) { top: 25%; left: 15%; filter: blur(2px); animation: particleDrift3 24s infinite ease-in-out -10s; }
+/* Modificateurs de Formes "Cabossées" et Tailles via nth-child */
+/* Poussière fine et vive */
+.sbi-particle:nth-child(3n) { width: 4px; height: 5px; border-radius: 40% 60% 70% 30%; }
+.sbi-particle:nth-child(3n+1) { width: 5px; height: 3px; border-radius: 60% 40% 30% 70%; }
+/* Poussière grosse, très floue et hyper transparente (effet de proximité objectif) */
+.sbi-particle:nth-child(3n+2) { 
+    width: 14px; height: 12px; 
+    border-radius: 50% 30% 60% 40%; 
+    background-color: rgba(255, 255, 255, 0.05);
+    box-shadow: 0 0 15px 4px rgba(0, 81, 255, 0.2);
+    filter: blur(3px);
+}
 
-/* Mouvements organiques (dérive vers la gauche + oscillation verticale) */
-@keyframes particleDrift1 {
-    0% { transform: translate(0, 0); opacity: 0; }
-    20% { opacity: 0.8; }
-    80% { opacity: 0.8; }
-    100% { transform: translate(-15vw, -30px); opacity: 0; }
+/* Distribution massive (27 particules) avec dérives, rotations et délais */
+.sbi-particle:nth-child(8) { top: 10%; left: 80%; animation: dustDrift1 18s infinite linear -2s; }
+.sbi-particle:nth-child(9) { top: 40%; left: 90%; animation: dustDrift2 24s infinite linear -7s; }
+.sbi-particle:nth-child(10) { top: 30%; left: 40%; animation: dustDriftBig 28s infinite linear -11s; }
+.sbi-particle:nth-child(11) { top: 75%; left: 70%; animation: dustDrift3 20s infinite linear -4s; }
+.sbi-particle:nth-child(12) { top: 15%; left: 25%; animation: dustDrift1 22s infinite linear -9s; }
+.sbi-particle:nth-child(13) { top: 55%; left: 15%; animation: dustDriftBig 32s infinite linear -15s; }
+.sbi-particle:nth-child(14) { top: 85%; left: 20%; animation: dustDrift2 19s infinite linear -1s; }
+.sbi-particle:nth-child(15) { top: 45%; left: 60%; animation: dustDrift3 25s infinite linear -13s; }
+.sbi-particle:nth-child(16) { top: 65%; left: 50%; animation: dustDriftBig 30s infinite linear -6s; }
+.sbi-particle:nth-child(17) { top: 20%; left: 55%; animation: dustDrift1 21s infinite linear -18s; }
+.sbi-particle:nth-child(18) { top: 90%; left: 85%; animation: dustDrift2 26s infinite linear -3s; }
+.sbi-particle:nth-child(19) { top: 25%; left: 10%; animation: dustDriftBig 29s infinite linear -10s; }
+.sbi-particle:nth-child(20) { top: 5%; left: 45%; animation: dustDrift3 17s infinite linear -5s; }
+.sbi-particle:nth-child(21) { top: 80%; left: 10%; animation: dustDrift1 23s infinite linear -12s; }
+.sbi-particle:nth-child(22) { top: 35%; left: 85%; animation: dustDriftBig 35s infinite linear -20s; }
+.sbi-particle:nth-child(23) { top: 60%; left: 30%; animation: dustDrift2 27s infinite linear -8s; }
+.sbi-particle:nth-child(24) { top: 15%; left: 95%; animation: dustDrift3 22s infinite linear -14s; }
+.sbi-particle:nth-child(25) { top: 95%; left: 40%; animation: dustDriftBig 31s infinite linear -2s; }
+.sbi-particle:nth-child(26) { top: 50%; left: 75%; animation: dustDrift1 19s infinite linear -17s; }
+.sbi-particle:nth-child(27) { top: 70%; left: 5%; animation: dustDrift2 24s infinite linear -22s; }
+
+/* Animations organiques : Translation + Rotation (tourbillon) + Opacité douce */
+@keyframes dustDrift1 {
+    0% { transform: translate(0, 0) rotate(0deg); opacity: 0; }
+    20% { opacity: 0.5; } 80% { opacity: 0.5; }
+    100% { transform: translate(-10vw, -4vh) rotate(180deg); opacity: 0; }
 }
-@keyframes particleDrift2 {
-    0% { transform: translate(0, 0); opacity: 0; }
-    25% { opacity: 0.5; }
-    75% { opacity: 0.5; }
-    100% { transform: translate(-20vw, 40px); opacity: 0; }
+@keyframes dustDrift2 {
+    0% { transform: translate(0, 0) rotate(0deg); opacity: 0; }
+    25% { opacity: 0.4; } 75% { opacity: 0.4; }
+    100% { transform: translate(-15vw, 6vh) rotate(-120deg); opacity: 0; }
 }
-@keyframes particleDrift3 {
-    0% { transform: translate(0, 0); opacity: 0; }
-    15% { opacity: 0.7; }
-    85% { opacity: 0.7; }
-    100% { transform: translate(-10vw, -15px); opacity: 0; }
+@keyframes dustDrift3 {
+    0% { transform: translate(0, 0) rotate(0deg); opacity: 0; }
+    15% { opacity: 0.6; } 85% { opacity: 0.6; }
+    100% { transform: translate(-8vw, -3vh) rotate(90deg); opacity: 0; }
+}
+/* Animation pour les gros blocs très transparents (Proximité max) */
+@keyframes dustDriftBig {
+    0% { transform: translate(0, 0) rotate(0deg) scale(1); opacity: 0; }
+    20% { opacity: 0.15; } 80% { opacity: 0.15; }
+    100% { transform: translate(-18vw, 4vh) rotate(60deg) scale(1.3); opacity: 0; }
 }
 
 /* On s'assure que le contenu reste au-dessus du fond */
@@ -211,9 +220,16 @@ main, footer { position: relative; z-index: 1; }
 .grid-parcours { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; margin-top: 3rem; }
 
 .parcours-card {
-    position: relative; background-color: var(--bg-card); background-size: cover; background-position: center;
-    border: 1px solid #1a1e29; overflow: hidden; aspect-ratio: 1 / 1;
-    display: flex; flex-direction: column; justify-content: flex-end; cursor: pointer; transition: transform 0.3s ease;
+    position: relative;
+    background-color: var(--bg-card);
+    background-size: cover; 
+    background-position: center;
+    border: 1px solid #1a1e29;
+    overflow: hidden;
+    aspect-ratio: 1 / 1;
+    display: flex; flex-direction: column; justify-content: flex-end;
+    cursor: pointer;
+    transition: transform 0.3s ease;
 }
 
 .card-badge {
@@ -222,7 +238,8 @@ main, footer { position: relative; z-index: 1; }
 }
 .card-badge::after {
     content: ''; position: absolute; top: 6px; left: 6px; width: 5px; height: 5px;
-    background: #ffffff; transform: rotate(45deg); animation: neonPulse 2s infinite alternate ease-in-out;
+    background: #ffffff; transform: rotate(45deg);
+    animation: neonPulse 2s infinite alternate ease-in-out;
 }
 @keyframes neonPulse {
     0% { opacity: 0.7; box-shadow: 0 0 3px 0px rgba(255,255,255,0.6), 0 0 6px 1px var(--sbi-blue); }
