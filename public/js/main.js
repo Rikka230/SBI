@@ -29,6 +29,6 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     /* --- SECTION 2 : INITIALISATION GLOBALE --- */
-    // Note : L'effet complexe de hover en coin sur les cartes est géré à 100% en CSS via pseudo-éléments (::before/::after).
+    // Note : L'effet de survol en coin asymétrique sur les cartes est maintenant entièrement pris en charge par le CSS (::before et ::after superposés).
     initScrollAnimations();
 });
