@@ -3,95 +3,246 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SBI - L'École du Management Sportif</title>
+    <title>SBI - Apprends. Progresse. Performe.</title>
     <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
 </head>
 <body>
 
     <header class="site-header">
-        <div class="logo-container sbi-break-box">
-            <span class="logo-text">SBI</span>
+        <div class="logo-container">
+            <img src="logo-placeholder.png" alt="SBI Logo" class="header-logo">
         </div>
         
         <nav class="main-nav">
-            <a href="#formations" class="nav-link">Nos Formations</a>
-            <a href="#avantages" class="nav-link">Pourquoi SBI ?</a>
+            <a href="#formations" class="nav-link">Formations</a>
+            <a href="#parcours" class="nav-link">Parcours</a>
+            <a href="#apropos" class="nav-link">À propos</a>
+            <a href="#ressources" class="nav-link">Ressources</a>
+            <a href="#live" class="nav-link">Live</a>
         </nav>
 
-        <a href="login.html" class="btn-primary btn-header">Se connecter</a>
+        <div class="header-actions">
+            <button class="btn-icon search-btn">🔍</button>
+            <a href="login.html" class="nav-link">Se connecter</a>
+            <a href="register.html" class="btn-primary">S'inscrire</a>
+        </div>
     </header>
 
     <main>
-        <section class="hero-section sbi-diagonal-bg">
-            <div class="hero-content fade-in">
-                <h1 class="sbi-title uppercase">Decouvrez le management sportif</h1>
-                <p class="hero-subtitle">Transformez votre passion pour le sport en carrière. Des formations simples, rapides et reconnues.</p>
+        <section class="hero-section">
+            <div class="hero-grid padding-global">
+                <div class="hero-content fade-in">
+                    <span class="hero-surtitle text-blue uppercase">Bienvenue sur SBI E-Learning</span>
+                    <h1 class="hero-title uppercase">
+                        Apprends.<br>
+                        Progresse.<br>
+                        <span class="text-blue">Performe.</span>
+                    </h1>
+                    <p class="hero-subtitle">Des formations conçues par des experts du sport business pour t'aider à passer au niveau supérieur.</p>
+                    
+                    <div class="hero-buttons">
+                        <a href="#formations" class="btn-primary">Découvrir les formations <span class="arrow">→</span></a>
+                        <a href="#video" class="btn-ghost"><span class="play-icon">▶</span> Voir la vidéo</a>
+                    </div>
+                </div>
                 
-                <a href="#formations" class="btn-primary btn-massive sbi-break-btn">Voir les formations</a>
+                <div class="hero-visual fade-in">
+                    <div class="visual-circle-placeholder">
+                        <span>SBI</span>
+                    </div>
+                </div>
             </div>
-            
-            <div class="hero-visual mask-gradient">
-                <img src="https://images.unsplash.com/photo-1518605368461-1ee7e53f1a30?q=80&w=1920&auto=format&fit=crop" alt="Joueur de football sur le terrain" class="hero-img">
+
+            <div class="features-bar padding-global fade-in">
+                <div class="feature-item">
+                    <span class="feature-icon">🧠</span>
+                    <div>
+                        <strong>Apprends à ton rythme</strong>
+                        <p>Formations 100% en ligne</p>
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">👤</span>
+                    <div>
+                        <strong>Experts du secteur</strong>
+                        <p>Intervenants pros & reconnus</p>
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">🏅</span>
+                    <div>
+                        <strong>Certifications</strong>
+                        <p>Valorise tes compétences</p>
+                    </div>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">💬</span>
+                    <div>
+                        <strong>Communauté active</strong>
+                        <p>Échange & progresse</p>
+                    </div>
+                </div>
             </div>
         </section>
 
-        <section id="formations" class="section-formations padding-global">
-            <div class="section-header text-center fade-in">
-                <h2 class="sbi-title uppercase">Nos formations</h2>
-                <p>Choisissez votre voie dans le monde du sport professionnel.</p>
+        <section id="parcours" class="section-parcours padding-global">
+            <div class="section-header flex-between fade-in">
+                <div>
+                    <span class="section-surtitle text-blue uppercase">Nos parcours</span>
+                    <h2 class="section-title">Choisis ton terrain.<br>Développe ton futur.</h2>
+                </div>
+                <a href="#" class="link-blue">Voir tout les parcours <span class="arrow">→</span></a>
             </div>
 
-            <div class="grid-cards">
-                <article class="card fade-in">
-                    <div class="card-icon">📊</div>
-                    <h3>Agent de Joueur</h3>
-                    <p>Apprenez à gérer la carrière des sportifs professionnels.</p>
-                    <a href="#" class="btn-secondary">Découvrir</a>
+            <div class="grid-parcours">
+                <article class="parcours-card fade-in">
+                    <div class="card-content">
+                        <h3>Marketing &<br>Communication</h3>
+                        <div class="card-footer">
+                            <span class="course-count">12 formations</span>
+                            <span class="arrow text-blue">→</span>
+                        </div>
+                    </div>
                 </article>
 
-                <article class="card fade-in">
-                    <div class="card-icon">📹</div>
-                    <h3>Analyste Vidéo</h3>
-                    <p>Maîtrisez les outils tactiques utilisés par les plus grands clubs.</p>
-                    <a href="#" class="btn-secondary">Découvrir</a>
+                <article class="parcours-card fade-in">
+                    <div class="card-content">
+                        <h3>Management<br>& Leadership</h3>
+                        <div class="card-footer">
+                            <span class="course-count">9 formations</span>
+                            <span class="arrow text-blue">→</span>
+                        </div>
+                    </div>
                 </article>
 
-                <article class="card fade-in">
-                    <div class="card-icon">🧠</div>
-                    <h3>Préparateur Mental</h3>
-                    <p>Accompagnez les athlètes vers la haute performance psychologique.</p>
-                    <a href="#" class="btn-secondary">Découvrir</a>
+                <article class="parcours-card fade-in">
+                    <div class="card-content">
+                        <h3>Événementiel<br>Sportif</h3>
+                        <div class="card-footer">
+                            <span class="course-count">8 formations</span>
+                            <span class="arrow text-blue">→</span>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="parcours-card fade-in">
+                    <div class="card-content bg-image-innov">
+                        <h3>Digital &<br>Innovation</h3>
+                        <div class="card-footer">
+                            <span class="course-count">10 formations</span>
+                            <span class="arrow text-blue">→</span>
+                        </div>
+                    </div>
                 </article>
             </div>
         </section>
 
-        <section id="avantages" class="section-avantages sbi-diagonal-bg padding-global">
-            <div class="section-header text-center fade-in">
-                <h2 class="sbi-title uppercase">Pourquoi choisir SBI ?</h2>
+        <section class="section-stats padding-global">
+            <div class="stats-grid">
+                <div class="quote-box fade-in">
+                    <div class="quote-content">
+                        <span class="quote-mark text-blue">“</span>
+                        <blockquote>Chez SBI, on forme la nouvelle génération de décideurs du sport business.</blockquote>
+                        <p class="quote-sub">Rejoins une communauté ambitieuse et construis ton avenir dans un secteur qui ne s'arrête jamais.</p>
+                        <div class="quote-author">
+                            <img src="signature-placeholder.png" alt="Signature" class="signature">
+                            <span>SBI FOUNDER</span>
+                        </div>
+                    </div>
+                    </div>
+
+                <div class="numbers-box fade-in">
+                    <span class="section-surtitle text-blue uppercase">SBI en chiffres</span>
+                    <div class="grid-numbers">
+                        <div class="number-item">
+                            <span class="num">5000+</span>
+                            <span class="label">Apprenants</span>
+                        </div>
+                        <div class="number-item">
+                            <span class="num">150+</span>
+                            <span class="label">Formations</span>
+                        </div>
+                        <div class="number-item">
+                            <span class="num">95%</span>
+                            <span class="label">Taux de satisfaction</span>
+                        </div>
+                        <div class="number-item">
+                            <span class="num">30+</span>
+                            <span class="label">Experts & intervenants</span>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <svg viewBox="0 0 500 100" class="line-chart">
+                            <path d="M0,80 L50,60 L100,70 L150,40 L200,60 L250,50 L300,70 L350,30 L400,40 L450,10 L500,0" fill="none" stroke="var(--sbi-blue)" stroke-width="2"/>
+                            <circle cx="500" cy="0" r="4" fill="var(--sbi-blue)"/>
+                        </svg>
+                    </div>
+                </div>
             </div>
-            
-            <div class="grid-avantages">
-                <div class="avantage-item fade-in">
-                    <div class="icon-large text-blue">📱</div>
-                    <h4>100% en ligne</h4>
-                    <p>Apprenez à votre rythme, d'où vous voulez, sur PC ou smartphone.</p>
+        </section>
+
+        <section class="section-newsletter padding-global fade-in">
+            <div class="newsletter-box">
+                <div class="news-text">
+                    <div class="news-icon bg-blue">✉️</div>
+                    <div>
+                        <h3>Reste dans le game.</h3>
+                        <p>Reçois nos nouveautés, conseils et contenus exclusifs.</p>
+                    </div>
                 </div>
-                <div class="avantage-item fade-in">
-                    <div class="icon-large text-blue">🤝</div>
-                    <h4>Réseau Pro</h4>
-                    <p>Des intervenants issus du monde du football professionnel.</p>
-                </div>
-                <div class="avantage-item fade-in">
-                    <div class="icon-large text-blue">🎓</div>
-                    <h4>Certifié</h4>
-                    <p>Des diplômes reconnus pour propulser votre carrière.</p>
-                </div>
+                <form class="news-form">
+                    <input type="email" placeholder="Ton email" required>
+                    <button type="submit" class="btn-primary">Je m'inscris <span class="arrow">→</span></button>
+                </form>
             </div>
         </section>
     </main>
 
-    <footer class="site-footer">
-        <p>© 2026 Sport Business Institute. Tous droits réservés.</p>
+    <footer class="site-footer padding-global">
+        <div class="footer-grid">
+            <div class="footer-brand">
+                <div class="logo-container">
+                    <img src="logo-placeholder.png" alt="SBI Logo" class="footer-logo">
+                    <span>SPORT BUSINESS<br>iNSTITUTE</span>
+                </div>
+                <p class="brand-tagline">Apprendre. Progresser. <span class="text-blue">Performer.</span></p>
+            </div>
+
+            <div class="footer-links">
+                <h4>Plateforme</h4>
+                <a href="#">Formations</a>
+                <a href="#">Parcours</a>
+                <a href="#">Live</a>
+                <a href="#">Ressources</a>
+            </div>
+
+            <div class="footer-links">
+                <h4>À propos</h4>
+                <a href="#">Qui sommes-nous ?</a>
+                <a href="#">Nos experts</a>
+                <a href="#">Carrières</a>
+                <a href="#">Contact</a>
+            </div>
+
+            <div class="footer-links">
+                <h4>Légal</h4>
+                <a href="#">Mentions légales</a>
+                <a href="#">CGU</a>
+                <a href="#">Politique de confidentialité</a>
+                <a href="#">Cookies</a>
+            </div>
+
+            <div class="footer-social">
+                <h4>Suivez-nous</h4>
+                <div class="social-icons">
+                    <a href="#">𝕏</a>
+                    <a href="#">📸</a>
+                    <a href="#">in</a>
+                    <a href="#">▶</a>
+                </div>
+            </div>
+        </div>
     </footer>
 
     <script src="js/main.js"></script>
