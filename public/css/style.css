@@ -102,18 +102,27 @@ main, footer { position: relative; z-index: 1; }
 .feature-item strong { display: block; font-size: 0.9rem; margin-bottom: 0.25rem; }
 .feature-item p { font-size: 0.8rem; color: var(--text-muted); }
 
-/* --- SECTION 6 : PARCOURS (EFFET COIN LAQUÉ/BLEU) --- */
+/* --- SECTION 6 : PARCOURS (NOUVELLE EXÉCUTION COIN LAQUÉ/BLEU) --- */
 .section-parcours { background: transparent; padding-top: var(--space-xl); padding-bottom: var(--space-xl); }
 .section-surtitle { font-size: 0.85rem; font-weight: 800; letter-spacing: 1px; display: block; margin-bottom: 0.5rem; }
 .section-title { font-size: clamp(2rem, 4vw, 2.5rem); line-height: 1.2; font-weight: 800; }
 .grid-parcours { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; margin-top: 3rem; }
 
 .parcours-card {
-    position: relative; background-color: var(--bg-card); background-size: cover; background-position: center;
-    border: 1px solid #1a1e29; border-radius: 2px; overflow: hidden; aspect-ratio: 1 / 1;
-    display: flex; flex-direction: column; justify-content: flex-end; cursor: pointer; transition: transform 0.3s ease;
+    position: relative;
+    background-color: var(--bg-card);
+    background-size: cover; 
+    background-position: center;
+    border: 1px solid rgba(255,255,255,0.05); /* Bordure ultra fine et sombre */
+    border-radius: 2px;
+    overflow: hidden; /* Empêche tout débordement des coins ou du masque noir */
+    aspect-ratio: 1 / 1;
+    display: flex; flex-direction: column; justify-content: flex-end;
+    cursor: pointer;
+    transition: transform 0.3s ease;
 }
 
+/* Badge en haut à gauche */
 .card-badge {
     position: absolute; top: 0; left: 0; width: 45px; height: 45px;
     background-color: var(--sbi-blue); clip-path: polygon(0 0, 100% 0, 0 100%); z-index: 10;
@@ -123,31 +132,50 @@ main, footer { position: relative; z-index: 1; }
     background: white; transform: rotate(45deg);
 }
 
-/* -- LE COIN NOIR LAQUÉ CONSTANT (ÉPAISSEUR EXACTEMENT ÉGALE À LA BANDE BLEUE) -- */
+/* -- LE COIN NOIR LAQUÉ CONSTANT (ÉTAT REPOS) -- */
+/* Utilisation d'un gradient absolu recouvrant la carte pour une coupure millimétrée */
 .parcours-card::before {
-    content: ''; position: absolute; bottom: 0; right: 0; width: 120px; height: 120px;
-    /* Dégradé : Coin de base (40px) -> Bande ultra noire avec reflet brillant laqué au milieu -> Fin à 52px */
-    background: linear-gradient(-45deg,
-        var(--bg-dark) 40px,
-        #000000 40px,
-        #000000 42px,
-        #2a3245 44px,   /* Éclat lumineux simulant la brillance d'un matériau laqué */
-        #000000 48px,
-        #000000 52px,
-        transparent 52px
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    /* 1. Zone image (transparent)
+       2. Arrête lumineuse ultra-fine (1px)
+       3. Bande de noir absolu laqué de 50px d'épaisseur (#000000)
+       4. Le "coin qui reste" qui reprend le noir standard du fond (#040508)
+    */
+    background: linear-gradient(135deg,
+        transparent calc(100% - 70px),
+        rgba(255, 255, 255, 0.08) calc(100% - 70px),
+        rgba(255, 255, 255, 0.08) calc(100% - 69px),
+        #000000 calc(100% - 69px),
+        #000000 calc(100% - 20px),
+        var(--bg-dark) calc(100% - 20px)
     );
-    z-index: 5; pointer-events: none;
+    z-index: 5;
+    pointer-events: none;
 }
 
-/* -- LA BANDE BLEUE QUI S'ALLUME AU SURVOL -- */
+/* -- LA BANDE BLEUE (ÉTAT SURVOL) -- */
+/* Elle remplace EXACTEMENT la bande noire absolue (de 70px à 20px) */
 .parcours-card::after {
-    content: ''; position: absolute; bottom: 0; right: 0; width: 120px; height: 120px;
-    background: linear-gradient(-45deg, var(--bg-dark) 40px, var(--sbi-blue) 40px, var(--sbi-blue) 52px, transparent 52px);
-    z-index: 6; pointer-events: none; opacity: 0; transition: opacity 0.3s ease;
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(135deg,
+        transparent calc(100% - 70px),
+        var(--sbi-blue) calc(100% - 70px),
+        var(--sbi-blue) calc(100% - 20px),
+        transparent calc(100% - 20px)
+    );
+    z-index: 6;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
 }
 
+/* Animation au survol */
 .parcours-card:hover { transform: translateY(-5px); }
-.parcours-card:hover::after { opacity: 1; } /* Surcharge le noir laqué par le bleu au survol */
+.parcours-card:hover::after { opacity: 1; }
 
 .parcours-card:nth-child(1) { background-image: url('https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=800&q=80'); }
 .parcours-card:nth-child(2) { background-image: url('https://images.unsplash.com/photo-1526232761682-d26e03ac148e?auto=format&fit=crop&w=800&q=80'); }
