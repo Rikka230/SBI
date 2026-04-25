@@ -28,8 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
         elementsToAnimate.forEach(el => observer.observe(el));
     };
 
-    /* --- SECTION 2 : EFFET DE HOVER SUR LES CARTES (Optionnel, renforce l'UX) --- */
-    // Ajoute une lueur dynamique suivant la position de la souris si nécessaire plus tard.
+    /* --- SECTION 2 : EFFET DE HOVER SUR LES CARTES --- */
     const initCardInteractions = () => {
         const cards = document.querySelectorAll('.parcours-card');
         
@@ -46,7 +45,4 @@ document.addEventListener('DOMContentLoaded', () => {
     /* --- SECTION 3 : INITIALISATION GLOBALE --- */
     initScrollAnimations();
     initCardInteractions();
-
-    // La logique de coloration de la 2ème lettre (formatSbiTitles) a été supprimée
-    // car le nouveau design utilise des mots entiers ciblés en bleu via HTML/CSS.
 });
