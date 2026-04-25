@@ -29,6 +29,5 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     /* --- SECTION 2 : INITIALISATION GLOBALE --- */
-    // Note : L'effet de survol en coin asymétrique sur les cartes est maintenant entièrement pris en charge par le CSS (::before et ::after superposés).
     initScrollAnimations();
 });
