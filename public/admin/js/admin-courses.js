@@ -758,7 +758,7 @@ window.editCourse = async (id) => {
             // FIX : Affichage dynamique du bouton "Refuser" uniquement si l'Admin ouvre un cours en attente
             const rejectBtn = document.getElementById('btn-reject-course');
             if (rejectBtn) {
-                if ((currentUserProfile.role === 'admin' || currentUserProfile.isGod) && editingCourseOriginalStatus === 'pending') {
+                if (currentUserProfile && (currentUserProfile.role === 'admin' || currentUserProfile.isGod) && editingCourseOriginalStatus === 'pending') {
                     rejectBtn.style.display = 'inline-block';
                 } else {
                     rejectBtn.style.display = 'none';
