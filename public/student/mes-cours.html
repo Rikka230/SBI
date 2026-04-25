@@ -50,10 +50,11 @@
 
             <div id="view-courses" style="display: none; flex-direction: column;">
                 <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem;">
-                    <h2 id="current-formation-title" style="margin: 0; color: var(--accent-blue);">...</h2>
                     
-                    <div class="search-bar-top" style="margin: 0; max-width: 300px; width: 100%; display: flex;">
-                        <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+                    <h1 id="current-formation-title" style="margin: 0; color: var(--accent-blue); font-size: 2.2rem; font-weight: 800;">...</h1>
+                    
+                    <div style="position: relative; margin: 0; max-width: 300px; width: 100%;">
+                        <svg viewBox="0 0 24 24" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); width: 18px; fill: var(--text-muted);"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
                         <input type="text" id="search-course-input" placeholder="Chercher un cours..." style="width: 100%; box-sizing: border-box; padding: 0.7rem 1.5rem 0.7rem 2.8rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 20px; outline: none; font-size: 0.95rem; color: var(--text-main);">
                     </div>
                 </div>
