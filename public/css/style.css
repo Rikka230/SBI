@@ -29,13 +29,14 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .bg-blue { background-color: var(--sbi-blue); }
 .text-italic { font-style: italic; }
 
+/* --- SECTION 3 : HALO DE FOND --- */
 .fixed-bg-glow {
     position: fixed; bottom: -20vh; right: -20vw; width: 60vw; height: 60vw;
     background: radial-gradient(circle, rgba(0, 81, 255, 0.12) 0%, rgba(0, 81, 255, 0) 65%);
     z-index: 0; pointer-events: none; 
 }
 
-/* --- SECTION FOND ANIMÉ : BRUME, LIGNES ET POUSSIÈRE --- */
+/* --- SECTION 4 : FOND ANIMÉ FIXE (Brume & Particules) --- */
 .sbi-bg-fixed { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 0; pointer-events: none; overflow: hidden; }
 
 .sbi-fog { position: absolute; width: 150vw; height: 150vh; border-radius: 50%; opacity: 0.6; pointer-events: none; }
@@ -73,6 +74,7 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 @keyframes dustDrift3 { 0% { transform: translate(0, 0) rotate(0deg); opacity: 0; } 15% { opacity: 0.6; } 85% { opacity: 0.6; } 100% { transform: translate(-8vw, -3vh) rotate(90deg); opacity: 0; } }
 @keyframes dustDriftBig { 0% { transform: translate(0, 0) rotate(0deg) scale(1); opacity: 0; } 20% { opacity: 0.15; } 80% { opacity: 0.15; } 100% { transform: translate(-18vw, 4vh) rotate(60deg) scale(1.3); opacity: 0; } }
 
+/* --- SECTION 5 : FOND ANIMÉ PARALLAXE (Lignes Diagonales) --- */
 .sbi-bg-parallax { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1; pointer-events: none; overflow: hidden; will-change: transform; }
 
 .sbi-line { position: absolute; top: -50%; height: 50vh; background: linear-gradient(to bottom, rgba(0, 162, 255, 0) 0%, rgba(255, 255, 255, 1) 50%, rgba(0, 162, 255, 0) 100%); will-change: transform, opacity; border-radius: 10px; }
@@ -90,14 +92,10 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 @keyframes sbiShoot { 0% { transform: rotate(45deg) translateY(-150vh); opacity: 0; } 15% { opacity: 0.7; } 85% { opacity: 0.7; } 100% { transform: rotate(45deg) translateY(200vh); opacity: 0; } }
 @keyframes sbiShootBg { 0% { transform: rotate(45deg) translateY(-150vh); opacity: 0; } 20% { opacity: 0.3; } 80% { opacity: 0.3; } 100% { transform: rotate(45deg) translateY(200vh); opacity: 0; } }
 
+/* Ordre Z-Index : Contenu au-dessus des fonds */
 main, footer { position: relative; z-index: 2; }
 
-.padding-global { padding-left: 5%; padding-right: 5%; }
-.flex-between { display: flex; justify-content: space-between; align-items: flex-end; }
-.link-blue { color: var(--sbi-blue); font-weight: 600; display: inline-flex; align-items: center; gap: 0.5rem; }
-.link-blue:hover { color: var(--text-light); }
-
-/* --- SECTION 3 : BOUTONS & ICONES --- */
+/* --- SECTION 6 : UI GENERALE (Boutons, Liens) --- */
 .btn-primary { background-color: var(--sbi-blue); color: white; padding: 0.75rem 1.5rem; border-radius: 4px; font-weight: 600; display: inline-flex; align-items: center; gap: 0.5rem; transition: background 0.3s ease, transform 0.2s ease; }
 .btn-primary:hover { background-color: var(--sbi-blue-hover); transform: translateY(-2px); }
 .btn-ghost { color: var(--text-light); font-weight: 600; display: inline-flex; align-items: center; gap: 0.5rem; }
@@ -107,7 +105,7 @@ main, footer { position: relative; z-index: 2; }
 .btn-icon { color: white; display: flex; align-items: center; justify-content: center; transition: color 0.3s ease;}
 .btn-icon:hover { color: var(--sbi-blue); }
 
-/* --- SECTION 4 : HEADER --- */
+/* --- SECTION 7 : HEADER --- */
 .site-header { position: fixed; top: 0; left: 0; width: 100%; height: var(--header-height); display: flex; justify-content: space-between; align-items: center; padding: 0 5%; background: rgba(4, 5, 8, 0.85); backdrop-filter: blur(12px); z-index: 1000; border-bottom: 1px solid rgba(255,255,255,0.05); }
 .site-header::after { content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 1px; background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%); }
 
@@ -120,7 +118,7 @@ main, footer { position: relative; z-index: 2; }
 .nav-link:hover { color: var(--sbi-blue); }
 .header-actions { display: flex; align-items: center; gap: 1.5rem; }
 
-/* --- SECTION 5 : HERO & VIDÉO --- */
+/* --- SECTION 8 : HERO & VIDÉO --- */
 .hero-section { position: relative; height: 100vh; min-height: 750px; display: flex; flex-direction: column; padding-top: var(--header-height); background-color: var(--bg-dark); overflow: hidden; }
 .hero-video-bg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; opacity: 1; }
 .hero-gradient-overlay { position: absolute; top: 0; left: 0; width: 60%; height: 100%; background: linear-gradient(to right, rgba(4, 5, 8, 0.95) 0%, rgba(4, 5, 8, 0) 100%); z-index: 1; }
@@ -140,7 +138,7 @@ main, footer { position: relative; z-index: 2; }
 .feature-item strong { display: block; font-size: 0.9rem; margin-bottom: 0.25rem; }
 .feature-item p { font-size: 0.8rem; color: var(--text-muted); }
 
-/* --- SECTION 6 : PARCOURS --- */
+/* --- SECTION 9 : PARCOURS (CARTES) --- */
 .section-parcours { background: transparent; padding-top: var(--space-xl); padding-bottom: var(--space-xl); }
 .section-surtitle { font-size: 0.85rem; font-weight: 800; letter-spacing: 1px; display: block; margin-bottom: 0.5rem; }
 .section-title { font-size: clamp(2rem, 4vw, 2.5rem); line-height: 1.2; font-weight: 800; }
@@ -149,6 +147,7 @@ main, footer { position: relative; z-index: 2; }
 .parcours-card { position: relative; background-color: var(--bg-card); background-size: cover; background-position: center; border: 1px solid #1a1e29; overflow: hidden; aspect-ratio: 1 / 1; display: flex; flex-direction: column; justify-content: flex-end; cursor: pointer; transition: transform 0.3s ease; }
 .card-badge { position: absolute; top: 12px; left: 12px; width: 35px; height: 35px; background-color: var(--sbi-blue); clip-path: polygon(0 0, 100% 0, 0 100%); z-index: 10; }
 .card-badge::after { content: ''; position: absolute; top: 6px; left: 6px; width: 5px; height: 5px; background: #ffffff; transform: rotate(45deg); animation: neonPulse 2s infinite alternate ease-in-out; }
+@keyframes neonPulse { 0% { opacity: 0.7; box-shadow: 0 0 3px 0px rgba(255,255,255,0.6), 0 0 6px 1px var(--sbi-blue); } 100% { opacity: 1; box-shadow: 0 0 8px 2px rgba(255,255,255,1), 0 0 16px 4px var(--sbi-blue); } }
 .parcours-card::before { content: ''; position: absolute; bottom: -1px; right: -1px; width: 60px; height: 60px; background: linear-gradient(-45deg, #040508 0%, #040508 18px, #000000 18px, #000000 36px, rgba(255,255,255,0.15) 36px, rgba(255,255,255,0.15) 37px, transparent 37px ); z-index: 5; pointer-events: none; }
 .parcours-card::after { content: ''; position: absolute; bottom: -1px; right: -1px; width: 60px; height: 60px; background: linear-gradient(-45deg, #040508 0%, #040508 18px, var(--sbi-blue) 18px, var(--sbi-blue) 36px, transparent 36px); z-index: 6; pointer-events: none; opacity: 0; transition: opacity 0.3s ease; }
 .parcours-card:hover { transform: translateY(-5px); }
@@ -165,41 +164,37 @@ main, footer { position: relative; z-index: 2; }
 .card-footer { display: flex; justify-content: flex-start; align-items: center; gap: 1rem; }
 .course-count { font-size: 0.85rem; color: var(--text-muted); }
 
-/* --- SECTION 7 : STATS & CITATION (NOUVEAU BLOC FONDATEUR OVERLAY) --- */
+/* --- SECTION 10 : BLOC FONDATEUR (FULL GAUCHE / ÉCLATS / LASER SWEEP) --- */
 .section-stats { padding-top: var(--space-xl); padding-bottom: var(--space-xl); background: transparent; }
 .stats-grid { display: flex; flex-direction: column; gap: 6rem; }
 
-/* Nouveau layout Flexbox pour s'assurer que la carte mord parfaitement la photo */
+/* Layout Full Gauche (Flex-start) */
 .founder-block { 
-    position: relative; 
-    display: flex; 
-    align-items: center; 
-    justify-content: center; /* Centre le groupe entier */
-    padding: 4rem 0; 
+    position: relative; display: flex; align-items: center; 
+    justify-content: flex-start; padding: 4rem 0; 
 }
 
 .founder-img-wrapper { 
-    width: 40%; 
-    max-width: 450px; 
-    position: relative; 
-    z-index: 1; 
-    /* Le clip-path encadre la photo ET l'animation de scan pour la couper proprement */
+    width: 35%; max-width: 400px; position: relative; z-index: 1; 
+}
+
+/* Wrapper interne : applique la cassure à la photo ET masque le scan lumineux pour qu'il ne déborde pas */
+.img-inner-wrapper {
+    position: relative;
     clip-path: polygon(15% 0, 100% 0, 100% 85%, 85% 100%, 0 100%, 0 15%);
     overflow: hidden;
 }
+
 .founder-img { 
     width: 100%; aspect-ratio: 3/4; object-fit: cover; 
-    filter: grayscale(100%) contrast(1.2); 
-    display: block;
+    filter: grayscale(100%) contrast(1.2); display: block;
 }
 
-/* Le "Cyber Scan" Bleu qui balaie la photo de gauche à droite */
+/* Le "Cyber Scan" Bleu qui balaie la photo à l'intérieur de la cassure */
 .edge-light {
-    position: absolute; top: 0; left: -100%;
-    width: 50%; height: 200%;
-    background: linear-gradient(to right, transparent, rgba(0, 162, 255, 0.5), transparent);
-    transform: rotate(25deg);
-    animation: cyberScan 10s infinite;
+    position: absolute; top: 0; left: -100%; width: 50%; height: 200%;
+    background: linear-gradient(to right, transparent, rgba(0, 162, 255, 0.8), transparent);
+    transform: rotate(25deg); animation: cyberScan 8s infinite;
     z-index: 2; pointer-events: none; mix-blend-mode: screen;
 }
 @keyframes cyberScan {
@@ -208,35 +203,23 @@ main, footer { position: relative; z-index: 2; }
     95%, 100% { left: 200%; opacity: 0; }
 }
 
-/* Éclats de verre lévitants */
-.shard { position: absolute; background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border: 1px solid rgba(255, 255, 255, 0.15); z-index: 3; }
+/* Éclats de verre lévitants (En DEHORS du wrapper masqué pour être visibles) */
+.shard { position: absolute; background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border: 1px solid rgba(255, 255, 255, 0.15); z-index: 3; pointer-events: none; }
 .shard-1 { top: -25px; left: -15px; width: 60px; height: 60px; clip-path: polygon(50% 0%, 100% 100%, 0% 100%); animation: shardFloat 7s infinite ease-in-out; }
 .shard-2 { bottom: -30px; right: -10px; width: 100px; height: 80px; background: rgba(0, 81, 255, 0.1); clip-path: polygon(0 0, 100% 30%, 40% 100%); animation: shardFloat 9s infinite ease-in-out reverse; z-index: -1; }
 .shard-3 { top: 30%; right: -30px; width: 45px; height: 45px; background: var(--sbi-blue); clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); animation: shardFloat 6s infinite ease-in-out 1s; border: none; }
 .shard-3::after { content: ''; position: absolute; top: 19px; left: 19px; width: 7px; height: 7px; background: #fff; transform: rotate(45deg); animation: neonPulse 2s infinite alternate ease-in-out; }
-
-/* NOUVEAU : Éclat 4 inversé (En bas à droite) */
-.shard-4 { 
-    bottom: -20px; right: -20px; width: 60px; height: 80px; 
-    clip-path: polygon(100% 0, 0 100%, 100% 100%); 
-    animation: shardFloat 8s infinite ease-in-out 2s; 
-}
+.shard-4 { bottom: -20px; left: -30px; width: 60px; height: 80px; clip-path: polygon(100% 0, 0 100%, 100% 100%); animation: shardFloat 8s infinite ease-in-out 2s; }
 
 @keyframes shardFloat { 0% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-15px) rotate(5deg); } 100% { transform: translateY(0) rotate(0deg); } }
 
-/* LA GLASS-CARD DU TEXTE : Elle vient mordre sur la photo */
+/* LA GLASS-CARD DU TEXTE : Superposée et ajustée */
 .founder-block .quote-content { 
-    width: 55%; 
-    max-width: 650px; 
-    margin-left: -5%; /* Chevauchement volontaire */
-    position: relative; 
-    z-index: 2; 
-    background: rgba(10, 14, 23, 0.55); 
-    backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); 
-    border: 1px solid rgba(255, 255, 255, 0.08); 
-    border-radius: 2px;
-    padding: 4rem 5rem; 
-    box-shadow: 0 40px 80px rgba(0,0,0,0.6), inset 0 0 40px rgba(0, 81, 255, 0.05);
+    width: 45%; max-width: 550px; margin-left: -5%; /* Laisse de l'espace à droite */
+    position: relative; z-index: 2; 
+    background: rgba(10, 14, 23, 0.55); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); 
+    border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 2px;
+    padding: 4rem 5rem; box-shadow: 0 40px 80px rgba(0,0,0,0.6), inset 0 0 40px rgba(0, 81, 255, 0.05);
 }
 
 .founder-block .quote-content::after {
@@ -258,21 +241,21 @@ main, footer { position: relative; z-index: 2; }
 .founder-block blockquote { font-size: 1.6rem; font-weight: 800; margin-bottom: 1.5rem; line-height: 1.3; }
 .quote-sub { color: var(--text-muted); font-size: 1rem; margin-bottom: 2.5rem; }
 
-/* NOUVEAU : Signature textuelle animée en néon */
+/* NOUVEAU : Signature Laser Sweep (Écriture normale avec rayon laser) */
 .quote-author { display: flex; flex-direction: column; gap: 0.5rem; }
 .quote-author span { font-size: 0.85rem; letter-spacing: 2px; color: var(--text-muted); font-weight: 600; }
 
 .animated-signature {
-    font-family: 'Great Vibes', cursive;
-    font-size: 2.8rem;
-    color: #fff;
-    text-shadow: 0 0 5px rgba(0, 162, 255, 0.4), 0 0 15px rgba(0, 81, 255, 0.6);
-    animation: signatureNeon 4s infinite alternate ease-in-out;
-    letter-spacing: 2px; line-height: 1; margin-bottom: 0.5rem;
+    font-family: var(--font-sans); font-style: italic; font-weight: 800; font-size: 1.5rem; text-transform: uppercase;
+    /* Le dégradé simule une texture grise frappée par un laser bleu pur et un coeur blanc */
+    background: linear-gradient(90deg, #8a93a6 0%, #8a93a6 40%, var(--sbi-blue) 48%, #ffffff 50%, var(--sbi-blue) 52%, #8a93a6 60%, #8a93a6 100%);
+    background-size: 300% 100%;
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    animation: laserSweep 4s infinite linear; margin-bottom: 0.5rem; line-height: 1;
 }
-@keyframes signatureNeon {
-    0% { text-shadow: 0 0 5px rgba(0, 162, 255, 0.4), 0 0 10px rgba(0, 81, 255, 0.4); color: rgba(255,255,255,0.8); }
-    100% { text-shadow: 0 0 8px rgba(0, 162, 255, 0.8), 0 0 20px rgba(0, 81, 255, 0.8), 0 0 30px var(--sbi-blue); color: #fff; }
+@keyframes laserSweep {
+    0% { background-position: 100% 0; }
+    100% { background-position: -50% 0; }
 }
 
 .numbers-box { background: var(--bg-surface); border: 1px solid var(--border-color); padding: 3rem; display: flex; flex-direction: column; justify-content: space-between; }
@@ -281,7 +264,7 @@ main, footer { position: relative; z-index: 2; }
 .number-item .label { font-size: 0.75rem; color: var(--text-muted); }
 .chart-container { margin-top: 2rem; width: 100%; height: 60px; overflow: hidden; opacity: 0.8; }
 
-/* --- SECTION 8 : NEWSLETTER --- */
+/* --- SECTION 11 : NEWSLETTER --- */
 .section-newsletter { padding-bottom: var(--space-xl); background: transparent; }
 .newsletter-box { background: var(--bg-surface); border: 1px solid var(--border-color); padding: 2.5rem 3rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 2rem; }
 .news-text { display: flex; align-items: center; gap: 1.5rem; }
@@ -292,7 +275,7 @@ main, footer { position: relative; z-index: 2; }
 .news-form input { flex: 1; background: var(--bg-dark); border: 1px solid var(--border-color); color: white; padding: 0.75rem 1rem; outline: none; }
 .news-form input:focus { border-color: var(--sbi-blue); }
 
-/* --- SECTION 9 : FOOTER --- */
+/* --- SECTION 12 : FOOTER --- */
 .site-footer { position: relative; padding-top: 4rem; padding-bottom: 2rem; background: var(--bg-dark); }
 .site-footer::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 1px; background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%); }
 
@@ -306,13 +289,12 @@ main, footer { position: relative; z-index: 2; }
 .social-icons a { color: #fff; display: flex; align-items: center; justify-content: center; transition: color 0.3s ease; }
 .social-icons a:hover { color: var(--sbi-blue); }
 
-/* --- SECTION 10 : MEDIA QUERIES --- */
+/* --- SECTION 13 : MEDIA QUERIES --- */
 @media (max-width: 1024px) {
     .grid-parcours { grid-template-columns: repeat(2, 1fr); }
     .features-bar { grid-template-columns: repeat(2, 1fr); gap: 2rem; }
     
-    /* Adaptation de la Glass Card sur mobile */
-    .founder-block { flex-direction: column; padding: 2rem 0; }
+    .founder-block { flex-direction: column; padding: 2rem 0; justify-content: center; }
     .founder-img-wrapper { width: 80%; max-width: none; margin-bottom: -10%; z-index: 1; } 
     .founder-block .quote-content { width: 100%; max-width: none; margin-left: 0; padding: 4rem 2rem; z-index: 2; }
 }
