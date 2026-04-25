@@ -5,8 +5,8 @@
  */
 
 :root {
-    --left-panel-width: 230px; /* Affiné (avant 260px) */
-    --left-panel-mini-width: 60px; /* Affiné (avant 70px) */
+    --left-panel-width: 230px;
+    --left-panel-mini-width: 60px;
     --right-panel-width: 280px;
     --header-height: 60px;
     --transition-speed: 0.3s;
@@ -60,7 +60,6 @@ body {
     justify-content: space-between;
     padding: 0 1rem;
     transition: left var(--transition-speed), right var(--transition-speed);
-    width: auto !important; /* FIX : Force la barre à combler le vide à droite */
 }
 
 .content-wrapper { padding: 2rem; max-width: 1200px; margin: 0 auto; }
@@ -79,6 +78,11 @@ body {
 @media (min-width: 1025px) {
     #main-content { margin-left: var(--left-panel-width); margin-right: var(--right-panel-width); }
     .top-bar { left: var(--left-panel-width); right: var(--right-panel-width); }
+    
+    /* FIX : Remplissage fluide de l'espace si l'utilisateur n'a pas de panneau droit (Étudiant/Prof) */
+    body.no-right-panel #main-content { margin-right: 0 !important; }
+    body.no-right-panel .top-bar { right: 0 !important; }
+
     .mobile-toggle.left-toggle { display: none !important; }
     .mobile-toggle.right-toggle { display: flex; }
 
@@ -86,25 +90,11 @@ body {
     .app-container.left-collapsed #main-content { margin-left: var(--left-panel-mini-width); }
     .app-container.left-collapsed .top-bar { left: var(--left-panel-mini-width); }
     
-    /* Rotation de la flèche et gestion du logo quand on réduit */
-    .app-container.left-collapsed .nav-text {
-        display: none !important;
-    }
-    
-    .app-container.left-collapsed .nav-item {
-        justify-content: center;
-        padding: 0.8rem 0;
-    }
-    
-    .app-container.left-collapsed .nav-item svg {
-        margin-right: 0;
-    }
-    
-    /* Quand réduit, on centre tout dans le header */
+    .app-container.left-collapsed .nav-text { display: none !important; }
+    .app-container.left-collapsed .nav-item { justify-content: center; padding: 0.8rem 0; }
+    .app-container.left-collapsed .nav-item svg { margin-right: 0; }
     .app-container.left-collapsed .panel-header { justify-content: center; padding: 0; }
     .app-container.left-collapsed #btn-toggle-panel { display: none; } 
-    .app-container.left-collapsed .nav-item { padding: 0.8rem 0; justify-content: center; }
-    .app-container.left-collapsed .nav-item svg { margin-right: 0; }
 
     .app-container.right-collapsed #right-panel { transform: translateX(100%); }
     .app-container.right-collapsed #main-content { margin-right: 0; }
