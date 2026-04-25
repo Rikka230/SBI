@@ -11,7 +11,6 @@ styleFix.textContent = `
     .left-collapsed .nav-text { opacity: 0; pointer-events: none; }
     .left-collapsed .nav-item { padding-left: 15px; padding-right: 15px; justify-content: center; }
     
-    /* Styles de la recherche globale */
     .global-search-results { position: absolute; top: calc(100% + 5px); left: 0; right: 0; background: var(--bg-card, #ffffff); z-index: 9999; border-radius: 8px; display: none; max-height: 350px; overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.1); border: 1px solid var(--border-color, #e5e7eb); }
     .admin-theme .global-search-results { background: #1e1e1e; border-color: #333; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
     .search-result-item { padding: 12px 15px; cursor: pointer; border-bottom: 1px solid var(--border-color, #f3f4f6); display: flex; align-items: center; gap: 12px; color: var(--text-main, #1f2937); transition: 0.2s; }
@@ -19,16 +18,6 @@ styleFix.textContent = `
     .search-result-item:hover { background: rgba(16, 185, 129, 0.05); }
     .search-result-title { font-weight: bold; font-size: 0.9rem; margin-bottom: 2px; }
     .search-result-sub { font-size: 0.75rem; color: var(--text-muted, #6b7280); }
-    .global-search-results svg { position: static !important; transform: none !important; flex-shrink: 0 !important; width: 18px !important; height: 18px !important; margin: 0 !important; }
-
-    /* CUSTOM SCROLLBAR */
-    ::-webkit-scrollbar { width: 8px; height: 8px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-    .admin-theme ::-webkit-scrollbar-track { background: #0a0a0c; }
-    .admin-theme ::-webkit-scrollbar-thumb { background: #333; }
-    .admin-theme ::-webkit-scrollbar-thumb:hover { background: #555; }
 `;
 document.head.appendChild(styleFix);
 
@@ -91,7 +80,7 @@ class AdminRightPanel extends HTMLElement {
                 <div class="panel-header" style="justify-content: space-between; align-items: center; padding: 0 1.5rem;">
                     <span style="font-weight: bold; font-size: 0.9rem; color: var(--text-muted); display: none;" id="notif-panel-title">NOTIFICATIONS</span>
                     <div style="display: flex; align-items: center; margin-left: auto;">
-                        <div id="notif-bell-btn" style="position: relative; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px;">
+                        <div id="notif-bell-btn" style="position: relative; cursor: pointer; display: flex; align-items: center; padding: 5px;">
                             <svg style="width: 22px; height: 22px; fill: var(--text-muted); transition: fill 0.2s;" viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/></svg>
                             <span class="notif-badge" id="bell-badge" style="display:none;">0</span>
                         </div>
@@ -123,7 +112,7 @@ class AdminRightPanel extends HTMLElement {
                 </div>
                 
                 <div class="right-section" id="notifications-section" style="display:none; padding: 0; border:none;">
-                    <div id="notifications-list" style="display: flex; flex-direction: column;"></div>
+                    <div id="notifications-list" style="display: flex; flex-direction: column; max-height: 350px; overflow-y: auto;"></div>
                 </div>
             </aside>
         `;
@@ -202,6 +191,7 @@ customElements.define('student-left-panel', StudentLeftPanel);
 /* --- 4. LA BARRE SUPÉRIEURE (ÉTUDIANT) --- */
 class StudentTopBar extends HTMLElement {
     connectedCallback() {
+        document.body.classList.add('no-right-panel'); // Protection absolue du layout
         this.innerHTML = `
             <header class="top-bar" style="border-bottom: 1px solid var(--border-color); background-color: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px);">
                 <button class="mobile-toggle left-toggle" id="btn-toggle-mobile"><svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg></button>
@@ -215,7 +205,7 @@ class StudentTopBar extends HTMLElement {
                 <div style="display: flex; align-items: center; gap: 1.5rem; margin-left: auto; padding-right: 1rem;">
                     
                     <div style="position: relative;">
-                        <div id="notif-bell-btn" style="position: relative; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px;">
+                        <div id="notif-bell-btn" style="position: relative; cursor: pointer; padding: 5px;">
                             <svg style="width: 22px; height: 22px; fill: var(--text-muted); transition: fill 0.2s;" viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/></svg>
                             <span class="notif-badge" id="bell-badge" style="display:none;">0</span>
                         </div>
@@ -293,6 +283,7 @@ customElements.define('teacher-left-panel', TeacherLeftPanel);
 /* --- 6. LA BARRE SUPÉRIEURE (PROFESSEUR) --- */
 class TeacherTopBar extends HTMLElement {
     connectedCallback() {
+        document.body.classList.add('no-right-panel'); // Protection absolue du layout
         this.innerHTML = `
             <header class="top-bar" style="border-bottom: 1px solid var(--border-color); background-color: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px);">
                 <button class="mobile-toggle left-toggle" id="btn-toggle-mobile"><svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg></button>
@@ -306,7 +297,7 @@ class TeacherTopBar extends HTMLElement {
                 <div style="display: flex; align-items: center; gap: 1.5rem; margin-left: auto; padding-right: 1rem;">
                     
                     <div style="position: relative;">
-                        <div id="notif-bell-btn" style="position: relative; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px;">
+                        <div id="notif-bell-btn" style="position: relative; cursor: pointer; padding: 5px;">
                             <svg style="width: 22px; height: 22px; fill: var(--text-muted); transition: fill 0.2s;" viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/></svg>
                             <span class="notif-badge" id="bell-badge" style="display:none;">0</span>
                         </div>
