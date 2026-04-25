@@ -6,45 +6,47 @@
 
 document.addEventListener('DOMContentLoaded', () => {
 
-    /* --- 1. DA : LA DEUXIÈME LETTRE EN BLEU --- */
-    // On cible tous les éléments portant la classe 'sbi-title'
-    const formatSbiTitles = () => {
-        const titles = document.querySelectorAll('.sbi-title');
-        
-        titles.forEach(title => {
-            const text = title.textContent.trim();
-            // Si le titre a au moins 2 caractères
-            if (text.length >= 2) {
-                // On isole le 1er caractère, on wrappe le 2ème dans un span bleu, puis on recolle le reste
-                const newHtml = text[0] + '<span class="text-blue">' + text[1] + '</span>' + text.substring(2);
-                title.innerHTML = newHtml;
-            }
-        });
-    };
-
-    /* --- 2. UX : ANIMATION D'APPARITION AU SCROLL --- */
+    /* --- SECTION 1 : ANIMATION D'APPARITION AU SCROLL (Intersection Observer) --- */
     const initScrollAnimations = () => {
         const observerOptions = {
             root: null,
             rootMargin: '0px',
-            threshold: 0.15 // Se déclenche quand 15% de l'élément est visible
+            threshold: 0.10 // Se déclenche quand 10% de l'élément est visible
         };
 
         const observer = new IntersectionObserver((entries, observer) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
                     entry.target.classList.add('visible');
-                    observer.unobserve(entry.target); // On arrête d'observer une fois affiché
+                    observer.unobserve(entry.target); // Stoppe l'observation une fois animé
                 }
             });
         }, observerOptions);
 
-        // On applique l'observateur sur toutes les classes .fade-in
+        // Applique l'observateur sur tous les éléments avec la classe .fade-in
         const elementsToAnimate = document.querySelectorAll('.fade-in');
         elementsToAnimate.forEach(el => observer.observe(el));
     };
 
-    // Initialisation
-    formatSbiTitles();
+    /* --- SECTION 2 : EFFET DE HOVER SUR LES CARTES (Optionnel, renforce l'UX) --- */
+    // Ajoute une lueur dynamique suivant la position de la souris si nécessaire plus tard.
+    const initCardInteractions = () => {
+        const cards = document.querySelectorAll('.parcours-card');
+        
+        cards.forEach(card => {
+            card.addEventListener('mouseenter', () => {
+                card.style.borderColor = 'rgba(0, 81, 255, 0.4)';
+            });
+            card.addEventListener('mouseleave', () => {
+                card.style.borderColor = 'var(--border-color)';
+            });
+        });
+    };
+
+    /* --- SECTION 3 : INITIALISATION GLOBALE --- */
     initScrollAnimations();
+    initCardInteractions();
+
+    // La logique de coloration de la 2ème lettre (formatSbiTitles) a été supprimée
+    // car le nouveau design utilise des mots entiers ciblés en bleu via HTML/CSS.
 });
