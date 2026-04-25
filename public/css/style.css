@@ -107,16 +107,9 @@ main, footer { position: relative; z-index: 2; }
 .btn-icon { color: white; display: flex; align-items: center; justify-content: center; transition: color 0.3s ease;}
 .btn-icon:hover { color: var(--sbi-blue); }
 
-/* --- SECTION 4 : HEADER (Bordure animée ajoutée) --- */
-.site-header { 
-    position: fixed; top: 0; left: 0; width: 100%; height: var(--header-height); 
-    display: flex; justify-content: space-between; align-items: center; padding: 0 5%; 
-    background: rgba(4, 5, 8, 0.85); backdrop-filter: blur(12px); z-index: 1000; 
-}
-.site-header::after {
-    content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 1px;
-    background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%);
-}
+/* --- SECTION 4 : HEADER --- */
+.site-header { position: fixed; top: 0; left: 0; width: 100%; height: var(--header-height); display: flex; justify-content: space-between; align-items: center; padding: 0 5%; background: rgba(4, 5, 8, 0.85); backdrop-filter: blur(12px); z-index: 1000; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.site-header::after { content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 1px; background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%); }
 
 .header-logo-link { display: flex; align-items: center; gap: 1rem; }
 .header-logo { height: 45px; object-fit: contain; }
@@ -139,7 +132,7 @@ main, footer { position: relative; z-index: 2; }
 .hero-visual { display: flex; justify-content: center; align-items: center; width: 100%; height: 100%; }
 .hero-large-logo { width: 100%; max-width: 950px; display: block; transform: translateX(-5%); filter: drop-shadow(0 0 50px rgba(0, 81, 255, 0.3)); }
 
-.features-bar { position: relative; z-index: 2; display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; padding-top: 2rem; padding-bottom: 2rem; margin-top: auto; background-color: transparent; }
+.features-bar { position: relative; z-index: 2; display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 2rem; padding-bottom: 2rem; margin-top: auto; background-color: transparent; }
 .features-bar::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 1px; background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%); }
 .features-bar::after { content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 1px; background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%); }
 .feature-item { display: flex; align-items: flex-start; gap: 1rem; }
@@ -173,19 +166,83 @@ main, footer { position: relative; z-index: 2; }
 .card-footer { display: flex; justify-content: flex-start; align-items: center; gap: 1rem; }
 .course-count { font-size: 0.85rem; color: var(--text-muted); }
 
-/* --- SECTION 7 : STATS & CITATION --- */
+/* --- SECTION 7 : STATS & CITATION (NOUVEAU BLOC FONDATEUR ÉCLAT DE VERRE) --- */
 .section-stats { padding-top: var(--space-xl); padding-bottom: var(--space-xl); background: transparent; }
 .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
-.founder-block { background: var(--bg-surface); border: 1px solid var(--border-color); position: relative; display: flex; align-items: stretch; overflow: hidden; }
-.founder-img-wrapper { width: 35%; position: relative; }
-.founder-img { width: 100%; height: 100%; object-fit: cover; filter: grayscale(100%) contrast(1.2); }
-.founder-block .quote-content { padding: 3rem; width: 65%; position: relative; }
-.quote-mark { font-size: 3rem; font-family: serif; line-height: 0; position: absolute; top: 3rem; left: 3rem; color: var(--sbi-blue); }
+
+.founder-block { 
+    background: var(--bg-surface); border: 1px solid var(--border-color); 
+    position: relative; display: flex; align-items: center; /* Centré verticalement */
+    padding: 3rem; gap: 3rem; border-radius: 2px;
+}
+.founder-block::after { 
+    content: ''; position: absolute; bottom: 0; right: 0; width: 0; height: 0; 
+    border-bottom: 40px solid var(--sbi-blue); border-left: 40px solid transparent; 
+}
+
+.founder-img-wrapper { 
+    width: 40%; position: relative; 
+    /* Pas d'overflow hidden pour laisser flotter les éclats de verre */
+}
+
+/* La photo est taillée de manière asymétrique et tranchante */
+.founder-img { 
+    width: 100%; aspect-ratio: 3/4; object-fit: cover; 
+    filter: grayscale(100%) contrast(1.2); 
+    clip-path: polygon(20% 0%, 100% 0, 100% 80%, 80% 100%, 0 100%, 0% 20%);
+}
+
+/* Base pour les éclats de verre */
+.shard {
+    position: absolute;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(8px); /* Effet de verre dépoli */
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    z-index: 3;
+}
+
+/* Éclat 1 : En haut à gauche */
+.shard-1 {
+    top: -20px; left: -20px; width: 60px; height: 80px;
+    clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
+    animation: shardFloat 6s infinite ease-in-out;
+}
+
+/* Éclat 2 : En bas à droite (Passe derrière l'image, teinté bleu) */
+.shard-2 {
+    bottom: -30px; right: -10px; width: 90px; height: 70px;
+    background: rgba(0, 81, 255, 0.1); border-color: rgba(0, 81, 255, 0.3);
+    clip-path: polygon(0% 0%, 100% 40%, 40% 100%);
+    animation: shardFloat 8s infinite ease-in-out reverse;
+    z-index: -1; 
+}
+
+/* Éclat 3 : Le badge dynamique bleu flottant */
+.shard-3 {
+    top: 40%; right: -25px; width: 40px; height: 40px;
+    background: var(--sbi-blue); border: none; backdrop-filter: none;
+    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+    animation: shardFloat 5s infinite ease-in-out 2s;
+}
+.shard-3::after {
+    content: ''; position: absolute; top: 17px; left: 17px; width: 6px; height: 6px;
+    background: #fff; transform: rotate(45deg);
+    animation: neonPulse 2s infinite alternate ease-in-out;
+}
+
+@keyframes shardFloat {
+    0% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-15px) rotate(10deg); }
+    100% { transform: translateY(0) rotate(0deg); }
+}
+
+.founder-block .quote-content { width: 60%; padding: 0; position: relative; }
+.quote-mark { font-size: 4rem; font-family: serif; line-height: 0; position: absolute; top: 1rem; left: -2rem; color: rgba(0, 81, 255, 0.2); }
 .founder-block blockquote { font-size: 1.3rem; font-weight: 800; margin-bottom: 1rem; line-height: 1.3; margin-top: 1rem; }
 .quote-sub { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 2rem; }
 .quote-author { display: flex; flex-direction: column; gap: 0.5rem; }
 .quote-author span { font-size: 0.8rem; letter-spacing: 1px; color: var(--text-muted); }
-.founder-block::after { content: ''; position: absolute; bottom: 0; right: 0; width: 0; height: 0; border-bottom: 40px solid var(--sbi-blue); border-left: 40px solid transparent; }
 
 .numbers-box { background: var(--bg-surface); border: 1px solid var(--border-color); padding: 3rem; display: flex; flex-direction: column; justify-content: space-between; }
 .grid-numbers { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-top: 1.5rem; }
@@ -204,12 +261,9 @@ main, footer { position: relative; z-index: 2; }
 .news-form input { flex: 1; background: var(--bg-dark); border: 1px solid var(--border-color); color: white; padding: 0.75rem 1rem; outline: none; }
 .news-form input:focus { border-color: var(--sbi-blue); }
 
-/* --- SECTION 9 : FOOTER (Bordure animée ajoutée) --- */
+/* --- SECTION 9 : FOOTER --- */
 .site-footer { position: relative; padding-top: 4rem; padding-bottom: 2rem; background: var(--bg-dark); }
-.site-footer::before {
-    content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 1px;
-    background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%);
-}
+.site-footer::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 1px; background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%); }
 
 .footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr; gap: 2rem; }
 .footer-logo { height: 80px; margin-bottom: 1rem; object-fit: contain; }
@@ -227,7 +281,7 @@ main, footer { position: relative; z-index: 2; }
     .stats-grid { grid-template-columns: 1fr; }
     .features-bar { grid-template-columns: repeat(2, 1fr); gap: 2rem; }
     .founder-block { flex-direction: column; }
-    .founder-img-wrapper { width: 100%; height: 300px; }
+    .founder-img-wrapper { width: 100%; }
     .founder-block .quote-content { width: 100%; }
 }
 @media (max-width: 768px) {
