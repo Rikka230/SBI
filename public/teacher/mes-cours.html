@@ -176,14 +176,12 @@
             }
         });
 
-        // FIX : Sécurisation du changement d'onglet
         function safeSwitchTab(tabId) {
             const currentActive = document.querySelector('.student-view.active');
             
-            // Si on veut quitter l'éditeur, on lance l'alerte
             if (currentActive && currentActive.id === 'tab-editor' && tabId !== 'tab-editor') {
                 const confirmLeave = confirm("⚠️ Attention : Les modifications non enregistrées seront perdues.\n\nAvez-vous bien cliqué sur Enregistrer avant de quitter ?");
-                if (!confirmLeave) return; // Annule le changement d'onglet
+                if (!confirmLeave) return; 
             }
             
             document.querySelectorAll('.student-sub-nav-item').forEach(el => el.classList.remove('active'));
@@ -214,6 +212,7 @@
         });
     </script>
     
+    <script type="module" src="/admin/js/admin-ui.js"></script>
     <script type="module" src="/admin/js/admin-notifications.js"></script>
     <script type="module" src="/admin/js/admin-courses.js"></script>
 </body>
