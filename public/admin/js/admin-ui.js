@@ -17,7 +17,6 @@ document.addEventListener('DOMContentLoaded', () => {
     /* --- 1. GESTION DES PANNEAUX --- */
     setTimeout(() => { document.body.classList.remove('preload'); }, 100);
 
-    // FIX : Appliquer l'état sauvegardé dès le chargement (au cas où le script HTML manque)
     if (window.innerWidth > 1024) {
         if (localStorage.getItem('leftPanelCollapsed') === 'true') appContainer.classList.add('left-collapsed');
         if (localStorage.getItem('rightPanelCollapsed') === 'true') appContainer.classList.add('right-collapsed');
@@ -33,7 +32,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (mobileToggleBtn) {
         mobileToggleBtn.addEventListener('click', () => {
             appContainer.classList.toggle('left-open');
-            appContainer.classList.remove('right-open');
         });
     }
 
@@ -44,12 +42,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 localStorage.setItem('rightPanelCollapsed', appContainer.classList.contains('right-collapsed'));
             } else {
                 appContainer.classList.toggle('right-open');
-                appContainer.classList.remove('left-open');
             }
         });
     }
 
-    document.getElementById('main-content').addEventListener('click', () => {
+    document.addEventListener('click', (e) => {
+        if (window.innerWidth <= 768 && appContainer.classList.contains('left-open')) {
+            if (!e.target.closest('#left-panel') && !e.target.closest('#btn-toggle-mobile')) {
+                appContainer.classList.remove('left-open');
+            }
+        }
+        if (window.innerWidth <= 1024 && appContainer.classList.contains('right-open')) {
+            if (!e.target.closest('#right-panel') && !e.target.closest('#btn-toggle-right')) {
+                appContainer.classList.remove('right-open');
+            }
+        }
+    });
+
+    window.addEventListener('resize', () => {
         if (window.innerWidth <= 1024) {
             appContainer.classList.remove('left-open');
             appContainer.classList.remove('right-open');
@@ -59,7 +69,6 @@ document.addEventListener('DOMContentLoaded', () => {
     /* --- 2. NAVIGATION ONGLET (SANS F5) --- */
     const savedTab = sessionStorage.getItem('activeAdminTab') || 'view-dashboard';
     
-    // FIX : Ne changer d'onglet que si on est sur une page qui possède cet onglet
     if(navItems.length > 0 && document.getElementById(savedTab)) {
         switchView(savedTab);
     }
@@ -79,7 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function switchView(targetId) {
         const activeView = document.getElementById(targetId);
-        if (!activeView) return; // Sécurité : stoppe tout si la vue n'existe pas ici (ex: Profil)
+        if (!activeView) return; 
 
         navItems.forEach(b => b.classList.remove('active'));
         views.forEach(v => v.classList.remove('active'));
