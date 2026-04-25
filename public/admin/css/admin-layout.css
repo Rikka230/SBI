@@ -79,12 +79,9 @@ body {
     #main-content { margin-left: var(--left-panel-width); margin-right: var(--right-panel-width); }
     .top-bar { left: var(--left-panel-width); right: var(--right-panel-width); }
     
-    /* FIX ABSOLU SANS JS : Remplissage de l'espace pour l'Étudiant et le Professeur */
-    body:has(student-top-bar) #main-content, 
-    body:has(teacher-top-bar) #main-content { margin-right: 0 !important; }
-    
-    body:has(student-top-bar) .top-bar, 
-    body:has(teacher-top-bar) .top-bar { right: 0 !important; }
+    /* FIX ABSOLU DU VIDE : S'active uniquement si le composant Étudiant ou Prof est chargé */
+    body.no-right-panel #main-content { margin-right: 0 !important; }
+    body.no-right-panel .top-bar { right: 0 !important; }
 
     .mobile-toggle.left-toggle { display: none !important; }
     .mobile-toggle.right-toggle { display: flex; }
@@ -123,9 +120,6 @@ body {
     .app-container.left-open #left-panel { transform: translateX(0); }
 }
 
-/* =======================================================================
-   CUSTOM SCROLLBAR (Global)
-   ======================================================================= */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: #0a0a0c; }
 ::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
