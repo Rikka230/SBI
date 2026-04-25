@@ -15,7 +15,7 @@
     --accent-orange: #f59e0b; 
     --accent-orange-light: rgba(245, 158, 11, 0.15);
     
-    /* SÉCURITÉ : Forcer l'orange sur les scripts partagés avec les autres rôles */
+    /* SÉCURITÉ : Forcer l'orange sur les scripts partagés avec l'étudiant */
     --accent-blue: var(--accent-orange) !important; 
     --accent-green: var(--accent-orange) !important; 
     
@@ -34,8 +34,15 @@ body {
 }
 
 /* =======================================================================
-   RESTAURATION DE L'ARCHITECTURE GRAPHIQUE (Cartes et Grilles)
+   ARCHITECTURE GRAPHIQUE (Grilles, Cartes, Navigation)
    ======================================================================= */
+
+/* La grille pour l'éditeur de cours */
+.hub-grid { 
+    display: grid; 
+    grid-template-columns: 1fr 2fr; 
+    gap: 2.5rem; 
+}
 
 .hub-card {
     background: var(--bg-card); 
@@ -65,7 +72,61 @@ body {
     font-size: 1.1rem; 
 }
 
-/* Éléments de la page de cours */
+/* --- ONGLETS (TABS) - LE CORRECTIF DU CRASH D'AFFICHAGE --- */
+.student-sub-nav { 
+    display: flex; 
+    gap: 1.5rem; 
+    border-bottom: 2px solid var(--border-color); 
+    margin-bottom: 2rem; 
+    overflow-x: auto; 
+}
+.student-sub-nav-item { 
+    padding-bottom: 0.8rem; 
+    cursor: pointer; 
+    color: var(--text-muted); 
+    font-weight: bold; 
+    border-bottom: 3px solid transparent; 
+    transition: 0.2s; 
+    white-space: nowrap; 
+}
+.student-sub-nav-item:hover { color: var(--text-main); }
+.student-sub-nav-item.active { 
+    color: var(--accent-orange); 
+    border-bottom-color: var(--accent-orange); 
+}
+
+/* C'est cette classe vitale que j'avais supprimée : */
+.student-view { display: none; animation: fadeIn 0.3s; }
+.student-view.active { display: flex; flex-direction: column; }
+
+@keyframes fadeIn { 
+    from { opacity: 0; transform: translateY(10px); } 
+    to { opacity: 1; transform: translateY(0); } 
+}
+
+/* --- FORMULAIRES ET PROFILS --- */
+.form-group { margin-bottom: 1.5rem; }
+.form-group label { display: block; font-weight: 600; margin-bottom: 0.5rem; color: var(--text-main); font-size: 0.95rem; }
+.prof-input { 
+    width: 100%; padding: 0.8rem 1rem; border: 1px solid var(--border-color); 
+    border-radius: 8px; background: #f9fafb; color: var(--text-main); 
+    font-family: inherit; font-size: 0.95rem; outline: none; transition: 0.2s; 
+}
+.prof-input:focus { 
+    border-color: var(--accent-orange); 
+    background: #fff; 
+    box-shadow: 0 0 0 3px var(--accent-orange-light); 
+}
+
+/* --- BARRES XP ET BADGES --- */
+.xp-bar-bg { width: 100%; height: 8px; background: #e5e7eb; border-radius: 10px; overflow: hidden; margin-top: 1rem;}
+.xp-bar-fill { height: 100%; background: var(--accent-orange) !important; width: 0%; transition: width 0.5s ease; }
+
+.badges-grid { display: flex; gap: 10px; margin-top: 1rem; }
+.badge-slot { width: 40px; height: 40px; border-radius: 50%; background: #f3f4f6; border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; opacity: 0.3; filter: grayscale(100%); transition: 0.3s; }
+.badge-slot.unlocked { opacity: 1; filter: grayscale(0%); background: #ffffff; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-color: transparent; }
+
+/* --- ÉLÉMENTS DE COURS --- */
 .course-item { 
     background: var(--bg-card); 
     border: 1px solid var(--border-color); 
@@ -78,7 +139,6 @@ body {
     cursor: pointer; 
     transition: 0.2s; 
 }
-
 .course-item:hover { 
     border-color: var(--accent-orange); 
     background: var(--accent-orange-light); 
@@ -93,10 +153,21 @@ body {
     border-bottom: 2px solid var(--border-color); 
 }
 
-/* =======================================================================
-   COMPOSANTS D'ÉDITION (Boutons, Drag&Drop, Switch)
-   ======================================================================= */
+/* --- BOUTONS --- */
+.action-btn {
+    background: var(--accent-orange); color: white; font-weight: bold; border: none; 
+    padding: 0.8rem 1.5rem; border-radius: 8px; cursor: pointer; transition: 0.2s; 
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+}
+.action-btn:hover { opacity: 0.9; transform: translateY(-2px); }
+.action-btn.danger { background: var(--accent-red); color: white; }
 
+.editor-action-btn { transition: 0.2s; opacity: 0.7; }
+.editor-action-btn:hover { opacity: 1; transform: scale(1.02); }
+
+/* =======================================================================
+   COMPOSANTS D'ÉDITION SPÉCIFIQUES (Drag&Drop, Switch, Quill)
+   ======================================================================= */
 .toggle-switch { position: relative; width: 46px; height: 26px; flex-shrink: 0; }
 .toggle-switch .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #cbd5e1; transition: .3s; border-radius: 24px; }
 .toggle-switch .slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
@@ -107,10 +178,11 @@ body {
 .drag-drop-zone:hover, .drag-drop-zone.dragover { border-color: var(--accent-orange); background: var(--accent-orange-light); }
 .drag-drop-zone p { margin: 0; color: var(--text-muted); font-size: 0.95rem; }
 
-.editor-action-btn { transition: 0.2s; opacity: 0.7; }
-.editor-action-btn:hover { opacity: 1; transform: scale(1.05); }
-
 /* Editeur Quill personnalisé */
 .ql-toolbar { background: #f9fafb; border-color: var(--border-color) !important; border-top-left-radius: 8px; border-top-right-radius: 8px; }
 .ql-container { border-color: var(--border-color) !important; border-bottom-left-radius: 8px; border-bottom-right-radius: 8px; font-family: 'Inter', sans-serif; font-size: 1rem; background: white; }
 .ql-editor { min-height: 250px; }
+
+@media (max-width: 1024px) {
+    .hub-grid { grid-template-columns: 1fr; }
+}
