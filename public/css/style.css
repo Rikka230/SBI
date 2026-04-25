@@ -13,6 +13,7 @@
     
     --space-xl: clamp(4rem, 8vw, 6rem);
     --space-md: 2rem;
+    --header-height: 80px;
 }
 
 /* --- SECTION 2 : RESET & BASE --- */
@@ -26,12 +27,12 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .uppercase { text-transform: uppercase; font-weight: 900; }
 .text-blue { color: var(--sbi-blue); }
 .bg-blue { background-color: var(--sbi-blue); }
-.padding-global { padding: var(--space-xl) 5%; }
+.padding-global { padding-left: 5%; padding-right: 5%; }
 .flex-between { display: flex; justify-content: space-between; align-items: flex-end; }
 .link-blue { color: var(--sbi-blue); font-weight: 600; display: inline-flex; align-items: center; gap: 0.5rem; }
 .link-blue:hover { color: var(--text-light); }
 
-/* --- SECTION 3 : BOUTONS --- */
+/* --- SECTION 3 : BOUTONS & ICONES --- */
 .btn-primary {
     background-color: var(--sbi-blue);
     color: white;
@@ -57,16 +58,19 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
     width: 32px; height: 32px;
     border-radius: 50%;
     border: 1px solid var(--text-light);
-    font-size: 0.8rem;
+    color: var(--text-light);
 }
 .btn-ghost:hover { color: var(--sbi-blue); }
-.btn-ghost:hover .play-icon { border-color: var(--sbi-blue); }
+.btn-ghost:hover .play-icon { border-color: var(--sbi-blue); color: var(--sbi-blue); }
+
+.btn-icon { color: white; display: flex; align-items: center; justify-content: center; transition: color 0.3s ease;}
+.btn-icon:hover { color: var(--sbi-blue); }
 
 /* --- SECTION 4 : HEADER --- */
 .site-header {
-    position: fixed; top: 0; left: 0; width: 100%;
+    position: fixed; top: 0; left: 0; width: 100%; height: var(--header-height);
     display: flex; justify-content: space-between; align-items: center;
-    padding: 1rem 5%;
+    padding: 0 5%;
     background: rgba(4, 5, 8, 0.85);
     backdrop-filter: blur(12px);
     z-index: 1000;
@@ -77,21 +81,28 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .nav-link { font-size: 0.9rem; font-weight: 600; color: var(--text-light); }
 .nav-link:hover { color: var(--sbi-blue); }
 .header-actions { display: flex; align-items: center; gap: 1.5rem; }
-.btn-icon { color: white; font-size: 1.2rem; }
 
-/* --- SECTION 5 : HERO --- */
+/* --- SECTION 5 : HERO (100VH) --- */
 .hero-section {
     position: relative;
-    padding-top: 100px; /* Offset header */
+    height: 100vh; /* Force la hauteur stricte pour caler à l'écran */
+    min-height: 750px; /* Sécurité pour ne pas écraser le contenu sur de très petits écrans */
+    display: flex;
+    flex-direction: column;
+    padding-top: var(--header-height); 
     background: radial-gradient(circle at 70% 50%, rgba(0, 81, 255, 0.15) 0%, transparent 60%);
 }
-.hero-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; align-items: center; }
+.hero-grid { 
+    display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; align-items: center; 
+    flex: 1; /* Absorbe tout l'espace vertical disponible */
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+}
 .hero-surtitle { font-size: 0.85rem; font-weight: 800; letter-spacing: 1px; display: block; margin-bottom: 1rem; }
 .hero-title { font-size: clamp(3rem, 6vw, 5rem); line-height: 1.05; margin-bottom: 1.5rem; letter-spacing: -0.03em; }
 .hero-subtitle { font-size: 1.1rem; color: var(--text-muted); margin-bottom: 2.5rem; max-width: 450px; }
 .hero-buttons { display: flex; gap: 1.5rem; align-items: center; }
 
-/* Placeholder visuel 3D */
 .visual-circle-placeholder {
     width: 100%; aspect-ratio: 1; max-width: 500px; margin: 0 auto;
     border: 15px solid white; border-radius: 50%;
@@ -101,24 +112,27 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
     box-shadow: 0 0 50px rgba(0,81,255,0.2);
 }
 
-/* Features bar */
 .features-bar {
     display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;
     border-top: 1px solid var(--border-color);
-    padding-top: 2rem; padding-bottom: 0;
+    padding-top: 2rem; padding-bottom: 2rem;
+    margin-top: auto; /* Plaque la barre tout en bas */
+    background-color: transparent;
 }
 .feature-item { display: flex; align-items: flex-start; gap: 1rem; }
-.feature-icon { font-size: 1.5rem; }
+.feature-icon { 
+    color: var(--sbi-blue); 
+    display: flex; align-items: center; justify-content: center;
+}
 .feature-item strong { display: block; font-size: 0.9rem; margin-bottom: 0.25rem; }
 .feature-item p { font-size: 0.8rem; color: var(--text-muted); }
 
 /* --- SECTION 6 : PARCOURS --- */
-.section-parcours { background: var(--bg-surface); }
+.section-parcours { background: var(--bg-surface); padding-top: var(--space-xl); padding-bottom: var(--space-xl); }
 .section-surtitle { font-size: 0.85rem; font-weight: 800; letter-spacing: 1px; display: block; margin-bottom: 0.5rem; }
 .section-title { font-size: clamp(2rem, 4vw, 2.5rem); line-height: 1.2; font-weight: 800; }
 .grid-parcours { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; margin-top: 3rem; }
 
-/* Cartes Parcours avec coin bleu CSS */
 .parcours-card {
     position: relative;
     background: var(--bg-card);
@@ -129,7 +143,6 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
     display: flex; flex-direction: column; justify-content: flex-end;
     transition: transform 0.3s ease;
 }
-/* Le triangle bleu en haut à gauche */
 .parcours-card::before {
     content: ''; position: absolute; top: 0; left: 0;
     width: 0; height: 0;
@@ -144,6 +157,7 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .course-count { font-size: 0.85rem; color: var(--text-muted); }
 
 /* --- SECTION 7 : STATS & CITATION --- */
+.section-stats { padding-top: var(--space-xl); padding-bottom: var(--space-xl); }
 .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
 
 .quote-box {
@@ -151,7 +165,6 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
     padding: 3rem; border-radius: 4px; position: relative;
     display: flex; align-items: center;
 }
-/* Triangle bleu bas-droite */
 .quote-box::after {
     content: ''; position: absolute; bottom: 0; right: 0;
     width: 0; height: 0;
@@ -175,13 +188,14 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .chart-container { margin-top: 2rem; width: 100%; height: 60px; overflow: hidden; opacity: 0.8; }
 
 /* --- SECTION 8 : NEWSLETTER --- */
+.section-newsletter { padding-bottom: var(--space-xl); }
 .newsletter-box {
     background: var(--bg-surface); border: 1px solid var(--border-color);
     border-radius: 4px; padding: 2.5rem 3rem;
     display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 2rem;
 }
 .news-text { display: flex; align-items: center; gap: 1.5rem; }
-.news-icon { width: 50px; height: 50px; display: flex; justify-content: center; align-items: center; border-radius: 4px; font-size: 1.5rem; }
+.news-icon { width: 50px; height: 50px; display: flex; justify-content: center; align-items: center; border-radius: 4px; color: white; }
 .news-text h3 { font-size: 1.5rem; margin-bottom: 0.25rem; }
 .news-text p { color: var(--text-muted); font-size: 0.9rem; }
 .news-form { display: flex; gap: 1rem; width: 100%; max-width: 400px; }
@@ -200,7 +214,7 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .footer-links a { display: block; font-size: 0.9rem; margin-bottom: 0.75rem; color: #fff; }
 .footer-links a:hover { color: var(--sbi-blue); }
 .social-icons { display: flex; gap: 1rem; }
-.social-icons a { font-size: 1.2rem; color: #fff; }
+.social-icons a { color: #fff; display: flex; align-items: center; justify-content: center; transition: color 0.3s ease; }
 .social-icons a:hover { color: var(--sbi-blue); }
 
 /* --- SECTION 10 : MEDIA QUERIES --- */
@@ -217,4 +231,5 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
     .grid-numbers { grid-template-columns: repeat(2, 1fr); gap: 2rem; }
     .newsletter-box { flex-direction: column; align-items: flex-start; }
     .footer-grid { grid-template-columns: 1fr; gap: 3rem; }
+    .hero-section { height: auto; min-height: 100vh; } /* Sur mobile, on repasse en auto si besoin */
 }
