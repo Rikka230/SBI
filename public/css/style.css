@@ -132,7 +132,7 @@ main, footer { position: relative; z-index: 2; }
 .hero-visual { display: flex; justify-content: center; align-items: center; width: 100%; height: 100%; }
 .hero-large-logo { width: 100%; max-width: 950px; display: block; transform: translateX(-5%); filter: drop-shadow(0 0 50px rgba(0, 81, 255, 0.3)); }
 
-.features-bar { position: relative; z-index: 2; display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 2rem; padding-bottom: 2rem; margin-top: auto; background-color: transparent; }
+.features-bar { position: relative; z-index: 2; display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; padding-top: 2rem; padding-bottom: 2rem; margin-top: auto; background-color: transparent; }
 .features-bar::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 1px; background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%); }
 .features-bar::after { content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 1px; background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%); }
 .feature-item { display: flex; align-items: flex-start; gap: 1rem; }
@@ -149,7 +149,6 @@ main, footer { position: relative; z-index: 2; }
 .parcours-card { position: relative; background-color: var(--bg-card); background-size: cover; background-position: center; border: 1px solid #1a1e29; overflow: hidden; aspect-ratio: 1 / 1; display: flex; flex-direction: column; justify-content: flex-end; cursor: pointer; transition: transform 0.3s ease; }
 .card-badge { position: absolute; top: 12px; left: 12px; width: 35px; height: 35px; background-color: var(--sbi-blue); clip-path: polygon(0 0, 100% 0, 0 100%); z-index: 10; }
 .card-badge::after { content: ''; position: absolute; top: 6px; left: 6px; width: 5px; height: 5px; background: #ffffff; transform: rotate(45deg); animation: neonPulse 2s infinite alternate ease-in-out; }
-@keyframes neonPulse { 0% { opacity: 0.7; box-shadow: 0 0 3px 0px rgba(255,255,255,0.6), 0 0 6px 1px var(--sbi-blue); } 100% { opacity: 1; box-shadow: 0 0 8px 2px rgba(255,255,255,1), 0 0 16px 4px var(--sbi-blue); } }
 .parcours-card::before { content: ''; position: absolute; bottom: -1px; right: -1px; width: 60px; height: 60px; background: linear-gradient(-45deg, #040508 0%, #040508 18px, #000000 18px, #000000 36px, rgba(255,255,255,0.15) 36px, rgba(255,255,255,0.15) 37px, transparent 37px ); z-index: 5; pointer-events: none; }
 .parcours-card::after { content: ''; position: absolute; bottom: -1px; right: -1px; width: 60px; height: 60px; background: linear-gradient(-45deg, #040508 0%, #040508 18px, var(--sbi-blue) 18px, var(--sbi-blue) 36px, transparent 36px); z-index: 6; pointer-events: none; opacity: 0; transition: opacity 0.3s ease; }
 .parcours-card:hover { transform: translateY(-5px); }
@@ -166,83 +165,86 @@ main, footer { position: relative; z-index: 2; }
 .card-footer { display: flex; justify-content: flex-start; align-items: center; gap: 1rem; }
 .course-count { font-size: 0.85rem; color: var(--text-muted); }
 
-/* --- SECTION 7 : STATS & CITATION (NOUVEAU BLOC FONDATEUR ÉCLAT DE VERRE) --- */
+/* --- SECTION 7 : STATS & CITATION (NOUVEAU BLOC FONDATEUR GLASS OVERLAY) --- */
 .section-stats { padding-top: var(--space-xl); padding-bottom: var(--space-xl); background: transparent; }
-.stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
 
+/* La grid est maintenant en colonne unique pour laisser toute la place au Glass Overlay */
+.stats-grid { display: flex; flex-direction: column; gap: 6rem; }
+
+/* Le bloc du fondateur : plus de fond gris ni de bordure, on est sur l'espace vide */
 .founder-block { 
-    background: var(--bg-surface); border: 1px solid var(--border-color); 
-    position: relative; display: flex; align-items: center; /* Centré verticalement */
-    padding: 3rem; gap: 3rem; border-radius: 2px;
-}
-.founder-block::after { 
-    content: ''; position: absolute; bottom: 0; right: 0; width: 0; height: 0; 
-    border-bottom: 40px solid var(--sbi-blue); border-left: 40px solid transparent; 
+    position: relative; display: flex; align-items: center; 
+    padding: 2rem 0; min-height: 600px;
 }
 
+/* L'image prend 45% de l'espace à gauche */
 .founder-img-wrapper { 
-    width: 40%; position: relative; 
-    /* Pas d'overflow hidden pour laisser flotter les éclats de verre */
+    width: 45%; max-width: 500px; position: relative; z-index: 1; 
 }
-
-/* La photo est taillée de manière asymétrique et tranchante */
 .founder-img { 
     width: 100%; aspect-ratio: 3/4; object-fit: cover; 
     filter: grayscale(100%) contrast(1.2); 
-    clip-path: polygon(20% 0%, 100% 0, 100% 80%, 80% 100%, 0 100%, 0% 20%);
+    clip-path: polygon(15% 0, 100% 0, 100% 85%, 85% 100%, 0 100%, 0 15%); 
 }
 
-/* Base pour les éclats de verre */
-.shard {
-    position: absolute;
-    background: rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(8px); /* Effet de verre dépoli */
-    -webkit-backdrop-filter: blur(8px);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    z-index: 3;
+/* Reflet lumineux bleu aléatoire sur l'arête */
+.edge-light {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    background: linear-gradient(135deg, transparent 14%, rgba(0, 162, 255, 0.8) 15%, transparent 16%);
+    clip-path: polygon(15% 0, 16% 0, 0 16%, 0 15%);
+    opacity: 0; z-index: 4;
+    animation: randomEdgeLight 12s infinite linear;
+}
+@keyframes randomEdgeLight {
+    0%, 80% { opacity: 0; transform: translate(-10px, -10px); }
+    85% { opacity: 1; transform: translate(0, 0); }
+    90% { opacity: 0; transform: translate(10px, 10px); }
+    100% { opacity: 0; }
 }
 
-/* Éclat 1 : En haut à gauche */
-.shard-1 {
-    top: -20px; left: -20px; width: 60px; height: 80px;
-    clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
-    animation: shardFloat 6s infinite ease-in-out;
+.shard { position: absolute; background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border: 1px solid rgba(255, 255, 255, 0.15); z-index: 3; }
+.shard-1 { top: -25px; left: -15px; width: 60px; height: 60px; clip-path: polygon(50% 0%, 100% 100%, 0% 100%); animation: shardFloat 7s infinite ease-in-out; }
+.shard-2 { bottom: -30px; right: -10px; width: 100px; height: 80px; background: rgba(0, 81, 255, 0.1); clip-path: polygon(0 0, 100% 30%, 40% 100%); animation: shardFloat 9s infinite ease-in-out reverse; z-index: -1; }
+.shard-3 { top: 30%; right: -30px; width: 45px; height: 45px; background: var(--sbi-blue); clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); animation: shardFloat 6s infinite ease-in-out 1s; border: none; }
+.shard-3::after { content: ''; position: absolute; top: 19px; left: 19px; width: 7px; height: 7px; background: #fff; transform: rotate(45deg); animation: neonPulse 2s infinite alternate ease-in-out; }
+.shard-4 { bottom: -10px; left: -35px; width: 50px; height: 90px; clip-path: polygon(100% 0, 0 100%, 100% 100%); animation: shardFloat 8s infinite ease-in-out 2s; }
+
+@keyframes shardFloat { 0% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-15px) rotate(5deg); } 100% { transform: translateY(0) rotate(0deg); } }
+
+/* LA GLASS-CARD : Le texte vient se superposer sur la photo */
+.founder-block .quote-content { 
+    position: absolute; right: 5%; z-index: 2; 
+    width: 60%; max-width: 700px; 
+    background: rgba(10, 14, 23, 0.55); 
+    backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); 
+    border: 1px solid rgba(255, 255, 255, 0.08); 
+    border-radius: 2px;
+    padding: 4rem 5rem; 
+    box-shadow: 0 40px 80px rgba(0,0,0,0.6), inset 0 0 40px rgba(0, 81, 255, 0.05);
 }
 
-/* Éclat 2 : En bas à droite (Passe derrière l'image, teinté bleu) */
-.shard-2 {
-    bottom: -30px; right: -10px; width: 90px; height: 70px;
-    background: rgba(0, 81, 255, 0.1); border-color: rgba(0, 81, 255, 0.3);
-    clip-path: polygon(0% 0%, 100% 40%, 40% 100%);
-    animation: shardFloat 8s infinite ease-in-out reverse;
-    z-index: -1; 
+/* Le petit néon bleu en coin bas-droite sur la glass card pour le rappel DA */
+.founder-block .quote-content::after {
+    content: ''; position: absolute; bottom: -1px; right: -1px; width: 60px; height: 60px; 
+    background: linear-gradient(-45deg, #040508 0%, #040508 18px, var(--sbi-blue) 18px, var(--sbi-blue) 36px, transparent 36px); 
+    z-index: 6; pointer-events: none;
 }
 
-/* Éclat 3 : Le badge dynamique bleu flottant */
-.shard-3 {
-    top: 40%; right: -25px; width: 40px; height: 40px;
-    background: var(--sbi-blue); border: none; backdrop-filter: none;
-    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
-    animation: shardFloat 5s infinite ease-in-out 2s;
+/* Guillemet Holographique */
+.quote-mark-hologram {
+    position: absolute; top: -1.5rem; left: 2rem; font-size: 8rem; font-family: serif; line-height: 1;
+    color: transparent; -webkit-text-stroke: 1px rgba(0, 81, 255, 0.4);
+    animation: holoBreathe 4s infinite ease-in-out; z-index: -1; pointer-events: none;
 }
-.shard-3::after {
-    content: ''; position: absolute; top: 17px; left: 17px; width: 6px; height: 6px;
-    background: #fff; transform: rotate(45deg);
-    animation: neonPulse 2s infinite alternate ease-in-out;
+@keyframes holoBreathe {
+    0%, 100% { opacity: 0.3; transform: translateY(0); filter: drop-shadow(0 0 0px var(--sbi-blue)); }
+    50% { opacity: 0.6; transform: translateY(-10px); filter: drop-shadow(0 0 15px var(--sbi-blue)); }
 }
 
-@keyframes shardFloat {
-    0% { transform: translateY(0) rotate(0deg); }
-    50% { transform: translateY(-15px) rotate(10deg); }
-    100% { transform: translateY(0) rotate(0deg); }
-}
-
-.founder-block .quote-content { width: 60%; padding: 0; position: relative; }
-.quote-mark { font-size: 4rem; font-family: serif; line-height: 0; position: absolute; top: 1rem; left: -2rem; color: rgba(0, 81, 255, 0.2); }
-.founder-block blockquote { font-size: 1.3rem; font-weight: 800; margin-bottom: 1rem; line-height: 1.3; margin-top: 1rem; }
-.quote-sub { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 2rem; }
+.founder-block blockquote { font-size: 1.6rem; font-weight: 800; margin-bottom: 1.5rem; line-height: 1.3; }
+.quote-sub { color: var(--text-muted); font-size: 1rem; margin-bottom: 2.5rem; }
 .quote-author { display: flex; flex-direction: column; gap: 0.5rem; }
-.quote-author span { font-size: 0.8rem; letter-spacing: 1px; color: var(--text-muted); }
+.quote-author span { font-size: 0.85rem; letter-spacing: 2px; color: var(--text-muted); font-weight: 600; }
 
 .numbers-box { background: var(--bg-surface); border: 1px solid var(--border-color); padding: 3rem; display: flex; flex-direction: column; justify-content: space-between; }
 .grid-numbers { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-top: 1.5rem; }
@@ -278,11 +280,12 @@ main, footer { position: relative; z-index: 2; }
 /* --- SECTION 10 : MEDIA QUERIES --- */
 @media (max-width: 1024px) {
     .grid-parcours { grid-template-columns: repeat(2, 1fr); }
-    .stats-grid { grid-template-columns: 1fr; }
     .features-bar { grid-template-columns: repeat(2, 1fr); gap: 2rem; }
-    .founder-block { flex-direction: column; }
-    .founder-img-wrapper { width: 100%; }
-    .founder-block .quote-content { width: 100%; }
+    
+    /* Adaptation de la Glass Card sur mobile */
+    .founder-block { flex-direction: column; align-items: flex-start; min-height: auto; }
+    .founder-img-wrapper { width: 80%; margin-bottom: -10%; } /* L'image passe au-dessus et on chevauche vers le bas */
+    .founder-block .quote-content { position: relative; right: auto; width: 100%; max-width: none; padding: 3rem 2rem; }
 }
 @media (max-width: 768px) {
     .main-nav { display: none; }
