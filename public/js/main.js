@@ -6,7 +6,7 @@
 
 document.addEventListener('DOMContentLoaded', () => {
 
-    /* --- SECTION 1 : ANIMATION D'APPARITION AU SCROLL (Intersection Observer) --- */
+    /* --- SECTION 1 : ANIMATION D'APPARITION AU SCROLL --- */
     const initScrollAnimations = () => {
         const observerOptions = {
             root: null,
@@ -28,6 +28,27 @@ document.addEventListener('DOMContentLoaded', () => {
         elementsToAnimate.forEach(el => observer.observe(el));
     };
 
-    /* --- SECTION 2 : INITIALISATION GLOBALE --- */
+    /* --- SECTION 2 : EFFET PARALLAXE SUR LES FAISCEAUX LUMINEUX --- */
+    const initParallax = () => {
+        const parallaxBg = document.getElementById('parallax-lines');
+        let ticking = false;
+
+        if (parallaxBg) {
+            window.addEventListener('scroll', () => {
+                if (!ticking) {
+                    window.requestAnimationFrame(() => {
+                        const scrolled = window.scrollY;
+                        // Déplace le conteneur des lignes vers le bas à 30% de la vitesse de scroll
+                        parallaxBg.style.transform = `translateY(${scrolled * 0.3}px)`;
+                        ticking = false;
+                    });
+                    ticking = true;
+                }
+            }, { passive: true });
+        }
+    };
+
+    /* --- SECTION 3 : INITIALISATION GLOBALE --- */
     initScrollAnimations();
+    initParallax();
 });
