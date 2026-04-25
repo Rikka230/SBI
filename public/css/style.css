@@ -99,6 +99,17 @@ main, footer { position: relative; z-index: 1; }
     border-top: 1px solid rgba(255,255,255,0.1); padding-top: 2rem; padding-bottom: 2rem; margin-top: auto;
     background-color: transparent;
 }
+
+/* NOUVELLE LIGNE DE DÉMARCATION EFFET FONDU (Fade-out border) EN DESSOUS */
+.features-bar::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0;
+    width: 100%; height: 1px;
+    /* Dégradé linéaire : Transparent -> Gris métallique exact des cartes -> Transparent */
+    background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%);
+}
+
 .feature-item { display: flex; align-items: flex-start; gap: 1rem; }
 .feature-icon { color: var(--sbi-blue); display: flex; align-items: center; justify-content: center; }
 .feature-item strong { display: block; font-size: 0.9rem; margin-bottom: 0.25rem; }
@@ -123,17 +134,15 @@ main, footer { position: relative; z-index: 1; }
     transition: transform 0.3s ease;
 }
 
-/* NOUVEAU BADGE TRIANGLE DÉTACHÉ */
 .card-badge {
     position: absolute; 
-    top: 12px; left: 12px; /* L'espacement qui le détache des bords */
+    top: 12px; left: 12px; 
     width: 35px; height: 35px;
     background-color: var(--sbi-blue);
     clip-path: polygon(0 0, 100% 0, 0 100%);
     z-index: 10;
 }
 
-/* ANIMATION NÉON DU POINT BLANC (Pure CSS) */
 .card-badge::after {
     content: ''; 
     position: absolute; 
@@ -141,23 +150,14 @@ main, footer { position: relative; z-index: 1; }
     width: 5px; height: 5px;
     background: #ffffff; 
     transform: rotate(45deg);
-    /* Application de l'animation pulse */
     animation: neonPulse 2s infinite alternate ease-in-out;
 }
 
-/* Définition du pulse de lumière */
 @keyframes neonPulse {
-    0% { 
-        opacity: 0.7; 
-        box-shadow: 0 0 3px 0px rgba(255,255,255,0.6), 0 0 6px 1px var(--sbi-blue); 
-    }
-    100% { 
-        opacity: 1; 
-        box-shadow: 0 0 8px 2px rgba(255,255,255,1), 0 0 16px 4px var(--sbi-blue); 
-    }
+    0% { opacity: 0.7; box-shadow: 0 0 3px 0px rgba(255,255,255,0.6), 0 0 6px 1px var(--sbi-blue); }
+    100% { opacity: 1; box-shadow: 0 0 8px 2px rgba(255,255,255,1), 0 0 16px 4px var(--sbi-blue); }
 }
 
-/* Le coin noir constant */
 .parcours-card::before {
     content: ''; position: absolute; bottom: -1px; right: -1px; width: 60px; height: 60px;
     background: linear-gradient(-45deg,
@@ -167,7 +167,6 @@ main, footer { position: relative; z-index: 1; }
     z-index: 5; pointer-events: none;
 }
 
-/* La bande bleue (survol) */
 .parcours-card::after {
     content: ''; position: absolute; bottom: -1px; right: -1px; width: 60px; height: 60px;
     background: linear-gradient(-45deg, #040508 0%, #040508 18px, var(--sbi-blue) 18px, var(--sbi-blue) 36px, transparent 36px);
