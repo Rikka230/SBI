@@ -60,6 +60,7 @@ body {
     justify-content: space-between;
     padding: 0 1rem;
     transition: left var(--transition-speed), right var(--transition-speed);
+    width: auto !important; /* FIX : Force la barre à combler le vide à droite */
 }
 
 .content-wrapper { padding: 2rem; max-width: 1200px; margin: 0 auto; }
@@ -101,7 +102,7 @@ body {
     
     /* Quand réduit, on centre tout dans le header */
     .app-container.left-collapsed .panel-header { justify-content: center; padding: 0; }
-    .app-container.left-collapsed #btn-toggle-panel { display: none; } /* Optionnel: tu peux cacher la flèche si tu préfères cliquer sur le logo mini pour rouvrir, ou la laisser */
+    .app-container.left-collapsed #btn-toggle-panel { display: none; } 
     .app-container.left-collapsed .nav-item { padding: 0.8rem 0; justify-content: center; }
     .app-container.left-collapsed .nav-item svg { margin-right: 0; }
 
@@ -109,6 +110,7 @@ body {
     .app-container.right-collapsed #main-content { margin-right: 0; }
     .app-container.right-collapsed .top-bar { right: 0; }
 }
+
 /* 2. Ecrans Moyens (Tablettes / Petits Laptops) */
 @media (max-width: 1024px) {
     #right-panel { transform: translateX(100%); }
@@ -139,14 +141,14 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-    background: #0a0a0c; /* Se fond avec le fond de l'admin */
+    background: #0a0a0c; 
 }
 
 ::-webkit-scrollbar-thumb {
-    background: #333; /* Couleur discrète pour la jauge */
+    background: #333; 
     border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: #555; /* S'éclaire légèrement au survol */
+    background: #555; 
 }
