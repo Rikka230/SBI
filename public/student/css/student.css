@@ -2,6 +2,7 @@
    THÈME ÉTUDIANT (LIGHT MODE) ET STYLES DU HUB
    ======================================================================= */
 
+/* Élément spécifique : student.css (Tout en haut du fichier) */
 :root {
     --bg-body: #f4f7f6;
     --bg-panel: #ffffff;
@@ -12,11 +13,13 @@
     --bg-header: #ffffff;
     --text-main: #1f2937;
     --text-muted: #6b7280;
-    --accent-green: #10b981;
-    --accent-green-light: #d1fae5;
+    
+    /* Remplacement des valeurs vertes par le bleu SBI */
+    --accent-green: #2A57FF; 
+    --accent-green-light: rgba(42, 87, 255, 0.15); 
+    
     --accent-red: #ef4444;
     --accent-yellow: #fbbc04;
-    --border-color: #e5e7eb;
 }
 
 body {
