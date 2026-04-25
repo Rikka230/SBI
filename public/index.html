@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SBI - Apprends. Progresse. Performe.</title>
+    <title>SBI - L'École du Management Sportif - Apprends. Progresse. Performe.</title>
     <link rel="stylesheet" href="css/style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Arial:ital,wght@0,400;0,700;0,900;1,400;1,700&display=swap" rel="stylesheet">
 </head>
 <body>
 
@@ -15,19 +15,17 @@
         </div>
         
         <nav class="main-nav">
-            <a href="#formations" class="nav-link">Formations</a>
-            <a href="#parcours" class="nav-link">Parcours</a>
-            <a href="#apropos" class="nav-link">À propos</a>
-            <a href="#ressources" class="nav-link">Ressources</a>
-            <a href="#live" class="nav-link">Live</a>
+            <a href="#formations" class="nav-link text-italic">Formations</a>
+            <a href="#avantages" class="nav-link text-italic">Pourquoi SBI ?</a>
+            <a href="#a-propos" class="nav-link text-italic">À propos</a>
+            <a href="#ressources" class="nav-link text-italic">Ressources</a>
+            <a href="#live" class="nav-link text-italic">Live</a>
         </nav>
 
         <div class="header-actions">
-            <button class="btn-icon search-btn" aria-label="Rechercher">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-            </button>
-            <a href="login.html" class="nav-link">Se connecter</a>
-            <a href="register.html" class="btn-primary">S'inscrire</a>
+            <a href="#" class="search-icon">🔍</a>
+            <a href="login.html" class="nav-link text-italic">Se connecter</a>
+            <a href="register.html" class="btn-primary btn-header text-italic">S'inscrire</a>
         </div>
     </header>
 
@@ -35,166 +33,135 @@
         <section class="hero-section">
             
             <video autoplay loop muted playsinline class="hero-video-bg">
-                <source src="assets/sbi_master.webm" type="video/webm">
-                <source src="assets/sbi.mp4" type="video/mp4">
+                <source src="assets/vid/sbi_master.webm" type="video/webm">
+                <source src="assets/vid/sbi.mp4" type="video/mp4">
             </video>
 
             <div class="hero-grid padding-global">
                 <div class="hero-content fade-in">
-                    <span class="hero-surtitle text-blue uppercase">Bienvenue sur SBI E-Learning</span>
-                    <h1 class="hero-title uppercase">
+                    <p class="hero-welcome text-blue uppercase text-italic">BIENVENUE SUR SBI E-LEARNING</p>
+                    <h1 class="sbi-title uppercase">
                         Apprends.<br>
                         Progresse.<br>
-                        <span class="text-blue">Performe.</span>
+                        PERFORME.
                     </h1>
-                    <p class="hero-subtitle">Des formations conçues par des experts du sport business pour t'aider à passer au niveau supérieur.</p>
+                    <p class="hero-subtitle text-italic">Des formations conçues par des experts du sport business pour t'aider à passer au niveau supérieur.</p>
                     
                     <div class="hero-buttons">
-                        <a href="#formations" class="btn-primary">Découvrir les formations <span class="arrow">→</span></a>
-                        <a href="#video" class="btn-ghost">
-                            <span class="play-icon">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                            </span> 
-                            Voir la vidéo
+                        <a href="#formations" class="btn-primary btn-massive text-italic">Découvrir les formations →</a>
+                        <a href="#" class="btn-video text-italic">
+                            <span class="play-icon">▶</span> Voir la vidéo
                         </a>
                     </div>
                 </div>
                 
                 <div class="hero-visual fade-in">
-                    <img src="assets/Logo_SBI_Tome.png" alt="Logo SBI" class="hero-large-logo">
+                    <div class="visual-circle-placeholder">
+                        <span>SBI</span>
+                    </div>
                 </div>
             </div>
 
-            <div class="features-bar padding-global fade-in">
+            <div class="features-bar fade-in padding-global">
                 <div class="feature-item">
-                    <div class="feature-icon">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
-                    </div>
-                    <div>
-                        <strong>Apprends à ton rythme</strong>
-                        <p>Formations 100% en ligne</p>
+                    <span class="feature-icon">🧠</span>
+                    <div class="feature-text">
+                        <strong class="text-italic">Apprends à ton rythme</strong>
+                        <p class="text-italic">Formations 100% en ligne</p>
                     </div>
                 </div>
                 <div class="feature-item">
-                    <div class="feature-icon">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><polyline points="17 11 19 13 23 9"></polyline></svg>
-                    </div>
-                    <div>
-                        <strong>Experts du secteur</strong>
-                        <p>Intervenants pros & reconnus</p>
+                    <span class="feature-icon">👤</span>
+                    <div class="feature-text">
+                        <strong class="text-italic">Experts du secteur</strong>
+                        <p class="text-italic">Intervenants pros & reconnus</p>
                     </div>
                 </div>
                 <div class="feature-item">
-                    <div class="feature-icon">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg>
-                    </div>
-                    <div>
-                        <strong>Certifications</strong>
-                        <p>Valorise tes compétences</p>
+                    <span class="feature-icon">🎓</span>
+                    <div class="feature-text">
+                        <strong class="text-italic">Certifications</strong>
+                        <p class="text-italic">Valorise tes compétences</p>
                     </div>
                 </div>
                 <div class="feature-item">
-                    <div class="feature-icon">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-                    </div>
-                    <div>
-                        <strong>Communauté active</strong>
-                        <p>Échange & progresse</p>
+                    <span class="feature-icon">💬</span>
+                    <div class="feature-text">
+                        <strong class="text-italic">Communauté active</strong>
+                        <p class="text-italic">Échange & progresse</p>
                     </div>
                 </div>
             </div>
         </section>
 
-        <section id="parcours" class="section-parcours padding-global">
+        <section id="formations" class="section-parcours padding-global">
             <div class="section-header flex-between fade-in">
                 <div>
-                    <span class="section-surtitle text-blue uppercase">Nos parcours</span>
-                    <h2 class="section-title">Choisis ton terrain.<br>Développe ton futur.</h2>
+                    <p class="section-surtitle text-blue uppercase text-italic">NOS PARCOURS</p>
+                    <h2 class="section-title uppercase text-italic">Choisis ton terrain.<br>Développe ton futur.</h2>
                 </div>
-                <a href="#" class="link-blue">Voir tous les parcours <span class="arrow">→</span></a>
+                <a href="#" class="btn-view-all text-italic">Voir tout les parcours →</a>
             </div>
 
             <div class="grid-parcours">
                 <article class="parcours-card fade-in">
+                    <div class="card-mask"></div>
                     <div class="card-content">
                         <h3>Marketing &<br>Communication</h3>
-                        <div class="card-footer">
-                            <span class="course-count">12 formations</span>
-                            <span class="arrow text-blue">→</span>
-                        </div>
+                        <p>12 formations →</p>
                     </div>
                 </article>
 
                 <article class="parcours-card fade-in">
+                    <div class="card-mask"></div>
                     <div class="card-content">
                         <h3>Management<br>& Leadership</h3>
-                        <div class="card-footer">
-                            <span class="course-count">9 formations</span>
-                            <span class="arrow text-blue">→</span>
-                        </div>
+                        <p>9 formations →</p>
                     </div>
                 </article>
 
                 <article class="parcours-card fade-in">
+                    <div class="card-mask"></div>
                     <div class="card-content">
                         <h3>Événementiel<br>Sportif</h3>
-                        <div class="card-footer">
-                            <span class="course-count">8 formations</span>
-                            <span class="arrow text-blue">→</span>
-                        </div>
+                        <p>8 formations →</p>
                     </div>
                 </article>
 
                 <article class="parcours-card fade-in">
+                    <div class="card-mask"></div>
                     <div class="card-content">
                         <h3>Digital &<br>Innovation</h3>
-                        <div class="card-footer">
-                            <span class="course-count">10 formations</span>
-                            <span class="arrow text-blue">→</span>
-                        </div>
+                        <p>10 formations →</p>
                     </div>
                 </article>
             </div>
         </section>
 
-        <section class="section-stats padding-global">
-            <div class="stats-grid">
-                <div class="quote-box fade-in">
-                    <div class="quote-content">
+        <section class="section-founder-chiffres padding-global">
+            <div class="founder-chiffres-grid">
+                <div class="founder-block fade-in">
+                    <div class="quote-container">
                         <span class="quote-mark text-blue">“</span>
-                        <blockquote>Chez SBI, on forme la nouvelle génération de décideurs du sport business.</blockquote>
-                        <p class="quote-sub">Rejoins une communauté ambitieuse et construis ton avenir dans un secteur qui ne s'arrête jamais.</p>
-                        <div class="quote-author">
-                            <img src="assets/signature-placeholder.png" alt="Signature" class="signature">
-                            <span>SBI FOUNDER</span>
-                        </div>
+                        <blockquote class="text-italic">Chez SBI, on forme la nouvelle génération de décideurs du sport business.</blockquote>
+                        <p class="text-italic">Rejoins une communauté ambitieuse et construis ton avenir dans un secteur qui ne s’arrête jamais.</p>
+                        <p class="author-name text-italic">JEAN-MARC</p>
+                        <p class="author-title text-italic">SBI FOUNDER</p>
                     </div>
+                    <img src="https://images.unsplash.com/photo-1518605368461-1ee7e53f1a30?q=80&w=1920&auto=format&fit=crop" alt="SBI Founder" class="founder-img">
                 </div>
-
-                <div class="numbers-box fade-in">
-                    <span class="section-surtitle text-blue uppercase">SBI en chiffres</span>
-                    <div class="grid-numbers">
-                        <div class="number-item">
-                            <span class="num">5000+</span>
-                            <span class="label">Apprenants</span>
-                        </div>
-                        <div class="number-item">
-                            <span class="num">150+</span>
-                            <span class="label">Formations</span>
-                        </div>
-                        <div class="number-item">
-                            <span class="num">95%</span>
-                            <span class="label">Taux de satisfaction</span>
-                        </div>
-                        <div class="number-item">
-                            <span class="num">30+</span>
-                            <span class="label">Experts & intervenants</span>
-                        </div>
+                <div class="chiffres-block fade-in">
+                    <p class="section-surtitle text-blue uppercase text-italic">SBI EN CHIFFRES</p>
+                    <div class="chiffres-grid">
+                        <div class="chiffre-item text-italic">5000+<br><span>Apprenants</span></div>
+                        <div class="chiffre-item text-italic">150+<br><span>Formations</span></div>
+                        <div class="chiffre-item text-italic">95%<br><span>Taux de satisfaction</span></div>
+                        <div class="chiffre-item text-italic">30+<br><span>Experts & intervenants</span></div>
                     </div>
-                    <div class="chart-container">
-                        <svg viewBox="0 0 500 100" class="line-chart">
-                            <path d="M0,80 L50,60 L100,70 L150,40 L200,60 L250,50 L300,70 L350,30 L400,40 L450,10 L500,0" fill="none" stroke="var(--sbi-blue)" stroke-width="2"/>
-                            <circle cx="500" cy="0" r="4" fill="var(--sbi-blue)"/>
+                    <div class="graph-visual">
+                        <svg viewBox="0 0 500 100">
+                            <polyline points="0,80 100,50 200,60 300,30 400,40 500,10" fill="none" stroke="var(--sbi-blue)" stroke-width="2"/>
+                            <circle cx="500" cy="10" r="5" fill="var(--sbi-blue)"/>
                         </svg>
                     </div>
                 </div>
@@ -202,19 +169,17 @@
         </section>
 
         <section class="section-newsletter padding-global fade-in">
-            <div class="newsletter-box">
-                <div class="news-text">
-                    <div class="news-icon bg-blue">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
-                    </div>
+            <div class="newsletter-content flex-between">
+                <div class="newsletter-text flex-start">
+                    <span class="newsletter-icon">✉️</span>
                     <div>
-                        <h3>Reste dans le game.</h3>
-                        <p>Reçois nos nouveautés, conseils et contenus exclusifs.</p>
+                        <h3 class="text-italic">Reste dans le game.</h3>
+                        <p class="text-italic">Reçois nos nouveautés, conseils et contenus exclusifs.</p>
                     </div>
                 </div>
-                <form class="news-form">
-                    <input type="email" placeholder="Ton email" required>
-                    <button type="submit" class="btn-primary">Je m'inscris <span class="arrow">→</span></button>
+                <form class="newsletter-form flex-start">
+                    <input type="email" placeholder="Ton email" required class="text-italic">
+                    <button type="submit" class="btn-primary text-italic">Je m'inscris →</button>
                 </form>
             </div>
         </section>
@@ -225,50 +190,37 @@
             <div class="footer-brand">
                 <div class="logo-container">
                     <img src="assets/Logo_SBI_Tome.png" alt="SBI Logo" class="footer-logo">
-                    <span>SPORT BUSINESS<br>iNSTITUTE</span>
                 </div>
-                <p class="brand-tagline">Apprendre. Progresser. <span class="text-blue">Performer.</span></p>
+                <p class="text-italic">Apprendre. Progresser. <span class="text-blue">PERFORME.</span></p>
             </div>
-
             <div class="footer-links">
-                <h4>Plateforme</h4>
-                <a href="#">Formations</a>
-                <a href="#">Parcours</a>
-                <a href="#">Live</a>
-                <a href="#">Ressources</a>
+                <h4>PLATEFORME</h4>
+                <a href="#" class="text-italic">Formations</a>
+                <a href="#" class="text-italic">Parcours</a>
+                <a href="#" class="text-italic">Live</a>
+                <a href="#" class="text-italic">Ressources</a>
             </div>
-
             <div class="footer-links">
-                <h4>À propos</h4>
-                <a href="#">Qui sommes-nous ?</a>
-                <a href="#">Nos experts</a>
-                <a href="#">Carrières</a>
-                <a href="#">Contact</a>
+                <h4>À PROPOS</h4>
+                <a href="#" class="text-italic">Qui sommes-nous ?</a>
+                <a href="#" class="text-italic">Nos experts</a>
+                <a href="#" class="text-italic">Carrières</a>
+                <a href="#" class="text-italic">Contact</a>
             </div>
-
             <div class="footer-links">
-                <h4>Légal</h4>
-                <a href="#">Mentions légales</a>
-                <a href="#">CGU</a>
-                <a href="#">Politique de confidentialité</a>
-                <a href="#">Cookies</a>
+                <h4>LÉGAL</h4>
+                <a href="#" class="text-italic">Mentions légales</a>
+                <a href="#" class="text-italic">CGU</a>
+                <a href="#" class="text-italic">Politique de confidentialité</a>
+                <a href="#" class="text-italic">Cookies</a>
             </div>
-
             <div class="footer-social">
-                <h4>Suivez-nous</h4>
+                <h4>SUIVEZ-NOUS</h4>
                 <div class="social-icons">
-                    <a href="#" aria-label="X (Twitter)">
-                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 22.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-                    </a>
-                    <a href="#" aria-label="Instagram">
-                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
-                    </a>
-                    <a href="#" aria-label="LinkedIn">
-                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path><rect x="2" y="9" width="4" height="12"></rect><circle cx="4" cy="4" r="2"></circle></svg>
-                    </a>
-                    <a href="#" aria-label="YouTube">
-                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33 2.78 2.78 0 0 0 1.94 2c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.33 29 29 0 0 0-.46-5.33z"></path><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"></polygon></svg>
-                    </a>
+                    <a href="#">X</a>
+                    <a href="#">📷</a>
+                    <a href="#">IN</a>
+                    <a href="#">YT</a>
                 </div>
             </div>
         </div>
