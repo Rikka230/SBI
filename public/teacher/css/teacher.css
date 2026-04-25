@@ -14,8 +14,8 @@
     --accent-orange: #f59e0b; 
     
     /* SÉCURITÉ MAGIQUE : On force les scripts existants à utiliser l'orange */
-    --accent-blue: var(--accent-orange); 
-    --accent-green: var(--accent-orange); 
+    --accent-blue: var(--accent-orange) !important; 
+    --accent-green: var(--accent-orange) !important; 
     
     /* Pour l'éditeur de cours */
     --accent-blue-light: rgba(245, 158, 11, 0.1); 
@@ -24,66 +24,8 @@
 *, *::before, *::after { box-sizing: border-box; }
 body { background-color: var(--bg-body) !important; color: var(--text-main); }
 
-@media (min-width: 1025px) {
-    #main-content {
-        margin-right: 0 !important; 
-        width: calc(100vw - var(--left-panel-width)) !important;
-        max-width: none !important;
-    }
-    .app-container.left-collapsed #main-content {
-        width: calc(100vw - var(--left-panel-mini-width)) !important;
-    }
-}
-
-.top-bar { right: 0 !important; width: calc(100% - var(--left-panel-width)) !important; }
-.app-container.left-collapsed .top-bar { width: calc(100% - var(--left-panel-mini-width)) !important; }
-
-/* FIX : Grille repensée pour laisser un maximum de place à l'éditeur */
-.hub-grid { display: grid; grid-template-columns: minmax(300px, 1fr) 2.5fr; gap: 2.5rem; align-items: start; width: 100%; }
-
-/* Styles globaux pour les formulaires (Profil et Éditeur de cours) */
-.form-group { margin-bottom: 1.5rem; }
-.form-group label { display: block; font-weight: 600; margin-bottom: 0.5rem; color: var(--text-main); font-size: 0.95rem; }
-.prof-input { width: 100%; padding: 0.8rem 1rem; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-card); color: var(--text-main); font-family: inherit; font-size: 0.95rem; outline: none; transition: 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
-.prof-input:focus { border-color: var(--accent-orange); background: #fff; box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1); }
-
-.prof-input[disabled] {
-    background: transparent !important; color: var(--text-main) !important; cursor: default !important; border: none !important; padding: 0 !important; margin-top: 0.5rem !important; resize: none; font-family: inherit; font-size: 1rem; line-height: 1.6; height: auto !important; box-shadow: none !important;
-}
-
-#btn-toggle-panel svg { fill: var(--text-main) !important; }
-
-.content-wrapper { padding: 2.5rem 4%; max-width: 1400px; margin: 0 auto; }
-
-.hub-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px; padding: 2rem; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03); }
-
-.xp-bar-bg { width: 100%; height: 10px; background: #e5e7eb; border-radius: 10px; overflow: hidden; margin-top: 1.5rem; }
-.xp-bar-fill { height: 100%; background: linear-gradient(90deg, var(--accent-orange), #fbbf24); width: 0%; transition: width 1.5s cubic-bezier(0.22, 1, 0.36, 1); border-radius: 10px; }
-
-.search-bar-top { flex-grow: 1; max-width: 500px; position: relative; margin-left: 2rem; }
-.search-bar-top input { width: 100%; padding: 0.7rem 1.5rem 0.7rem 2.8rem; background: #f9fafb; border: 1px solid var(--border-color); border-radius: 20px; color: var(--text-main); outline: none; transition: 0.2s; font-family: inherit; font-size: 0.95rem; }
-.search-bar-top input:focus { border-color: var(--accent-orange); background: #ffffff; box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1); }
-.search-bar-top svg { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); fill: var(--text-muted); width: 18px; height: 18px; }
-
-.section-title { font-size: 1.25rem; font-weight: 700; display: flex; align-items: center; gap: 0.8rem; margin: 0; color: var(--text-main); }
-.section-icon { font-size: 1.4rem; background: var(--bg-body); width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; }
-
-/* ONGLETS PROFESSEUR */
-.student-sub-nav { display: flex; gap: 2rem; border-bottom: 1px solid var(--border-color); margin-bottom: 2rem; }
-.student-sub-nav-item { padding: 1rem 0; color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; font-weight: 600; transition: all 0.2s; }
-.student-sub-nav-item:hover { color: var(--text-main); }
-.student-sub-nav-item.active { color: var(--accent-orange); border-bottom-color: var(--accent-orange); }
-.student-view { display: none; animation: fadeIn 0.3s; }
-.student-view.active { display: block; }
-
-.edit-avatar-badge { 
-    position: absolute; bottom: 0; right: 0; width: 36px; height: 36px; background: var(--accent-orange); color: white; border-radius: 50%; border: 3px solid var(--bg-card); display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 10; opacity: 0; pointer-events: none; transition: 0.2s; 
-}
-.editing .edit-avatar-badge { opacity: 1; pointer-events: auto; }
-.edit-avatar-badge svg { width: 18px; height: 18px; flex-shrink: 0; }
-
 /* =======================================================================
-   NOUVEAUX COMPOSANTS UI MODERNES (Toggle Switch & Drag'n'Drop)
+   COMPOSANTS SPÉCIFIQUES AU PROFESSEUR (Boutons, Drag&Drop)
    ======================================================================= */
 
 .toggle-switch { position: relative; width: 46px; height: 26px; flex-shrink: 0; }
@@ -94,14 +36,12 @@ body { background-color: var(--bg-body) !important; color: var(--text-main); }
 
 .drag-drop-zone { border: 2px dashed var(--border-color); border-radius: 12px; padding: 2rem; text-align: center; background: #f9fafb; cursor: pointer; transition: 0.2s; display: flex; flex-direction: column; align-items: center; gap: 10px; }
 .drag-drop-zone:hover, .drag-drop-zone.dragover { border-color: var(--accent-orange); background: rgba(245, 158, 11, 0.05); }
-.drag-drop-zone p { margin: 0; color: var(--text-muted); font-size: 0.9rem; }
-.drag-drop-zone span { color: var(--accent-orange); font-weight: bold; }
+.drag-drop-zone p { margin: 0; color: var(--text-muted); font-size: 0.95rem; }
 
-@keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+.editor-action-btn { transition: 0.2s; opacity: 0.7; }
+.editor-action-btn:hover { opacity: 1; transform: scale(1.05); }
 
-@media (max-width: 1024px) { 
-    .hub-grid { grid-template-columns: 1fr; }
-    #main-content { margin-right: 0 !important; }
-    .search-bar-top { display: none; } 
-    .content-wrapper { padding: 1.5rem; }
-}
+/* Editeur Quill personnalisé */
+.ql-toolbar { background: #f9fafb; border-color: var(--border-color) !important; border-top-left-radius: 8px; border-top-right-radius: 8px; }
+.ql-container { border-color: var(--border-color) !important; border-bottom-left-radius: 8px; border-bottom-right-radius: 8px; font-family: 'Inter', sans-serif; font-size: 1rem; background: white; }
+.ql-editor { min-height: 250px; }
