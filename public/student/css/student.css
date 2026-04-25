@@ -96,11 +96,11 @@ body.learning-mode {
 }
 .chapter-tab:hover:not(.locked) { background: #f9fafb; border-color: var(--border-color); }
 .chapter-tab.active { background: var(--accent-green-light); border-color: transparent; }
-.chapter-tab.done .tab-title { color: var(--accent-green); }
+.chapter-tab.done .tab-title { color: var(--accent-blue); }
 
 .search-bar-top { flex-grow: 1; max-width: 500px; position: relative; margin-left: 2rem; }
 .search-bar-top input { width: 100%; padding: 0.7rem 1.5rem 0.7rem 2.8rem; background: #f9fafb; border: 1px solid var(--border-color); border-radius: 20px; color: var(--text-main); outline: none; transition: 0.2s; font-family: inherit; font-size: 0.95rem; }
-.search-bar-top input:focus { border-color: var(--accent-green); background: #ffffff; box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1); }
+.search-bar-top input:focus { border-color: var(--accent-blue); background: #ffffff; box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1); }
 .search-bar-top svg { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); fill: var(--text-muted); width: 18px; height: 18px; }
 .chapter-tab.locked { opacity: 0.4; cursor: not-allowed; background: transparent; }
 
@@ -112,7 +112,7 @@ body.learning-mode {
 /* ONGLETS ÉTUDIANT */
 .student-sub-nav { display: flex; gap: 2rem; border-bottom: 1px solid var(--border-color); margin-bottom: 2rem; }
 @@ -127,21 +79,6 @@
-.student-sub-nav-item.active { color: var(--accent-green); border-bottom-color: var(--accent-green); }
+.student-sub-nav-item.active { color: var(--accent-blue); border-bottom-color: var(--accent-blue); }
 .student-view { display: none; animation: fadeIn 0.3s; }
 .student-view.active { display: block; }
 /* FIX IMAGE ET BLOC ÉCRASÉ : flex-shrink: 0 force le bloc à garder sa place */
@@ -164,10 +164,10 @@ body.learning-mode {
     .search-bar-top { display: none; } 
     .content-wrapper { padding: 1.5rem; }
 .btn-validate {
-    background: var(--accent-green); color: white; font-weight: 800; border: none; padding: 1.2rem 2.5rem; border-radius: 30px; cursor: pointer; transition: all 0.3s; font-size: 1.1rem;
-    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3); display: flex; align-items: center; justify-content: center; gap: 8px;
+    background: var(--accent-blue); color: white; font-weight: 800; border: none; padding: 1.2rem 2.5rem; border-radius: 30px; cursor: pointer; transition: all 0.3s; font-size: 1.1rem;
+    box-shadow: 0 4px 15px rgba(42, 87, 255, 0.3); display: flex; align-items: center; justify-content: center; gap: 8px;
 }
-.btn-validate:hover:not(:disabled) { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4); }
+.btn-validate:hover:not(:disabled) { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(42, 87, 255, 0.4); }
 .btn-validate:disabled { background: #e5e7eb; color: #9ca3af; cursor: not-allowed; box-shadow: none; transform: none; }
 
 /* Styles d'Examen (QCM) */
@@ -176,8 +176,8 @@ body.learning-mode {
     padding: 1rem; background: white; border: 2px solid var(--border-color);
     border-radius: 8px; transition: 0.2s;
 }
-.quiz-option:hover:not(.locked) { border-color: var(--accent-green); background: #f9fafb; }
-.quiz-option.correct { border-color: var(--accent-green); background: rgba(16, 185, 129, 0.05); }
+.quiz-option:hover:not(.locked) { border-color: var(--accent-blue); background: #f9fafb; }
+.quiz-option.correct { border-color: var(--accent-blue); background: rgba(16, 185, 129, 0.05); }
 .quiz-option.wrong { border-color: var(--accent-red); background: rgba(239, 68, 68, 0.05); }
 .quiz-option.locked { cursor: default; }
 
