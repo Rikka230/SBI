@@ -29,11 +29,48 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .bg-blue { background-color: var(--sbi-blue); }
 .text-italic { font-style: italic; }
 
+/* Halo bleu fixe en bas à droite */
 .fixed-bg-glow {
     position: fixed; bottom: -20vh; right: -20vw; width: 60vw; height: 60vw;
     background: radial-gradient(circle, rgba(0, 81, 255, 0.12) 0%, transparent 65%);
     z-index: 0; pointer-events: none; 
 }
+
+/* --- NOUVEAU : LIGNES DIAGONALES (DATA STREAM) EN ARRIÈRE-PLAN --- */
+.sbi-bg-lines {
+    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+    z-index: 0; pointer-events: none; overflow: hidden;
+}
+.sbi-line {
+    position: absolute;
+    top: -50%;
+    width: 1px;
+    height: 30vh;
+    background: linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(0, 81, 255, 0.3) 50%, rgba(255,255,255,0.6) 100%);
+    box-shadow: 0 0 8px rgba(0, 81, 255, 0.4);
+    opacity: 0;
+    will-change: transform, opacity; /* Optimisation GPU */
+}
+
+/* Positions, délais et profondeurs aléatoires pour les traits */
+.sbi-line:nth-child(1) { left: 15%; animation: sbiShoot 9s infinite linear 0s; }
+/* Effet lointain : trait plus large, plus lent, flouté */
+.sbi-line:nth-child(2) { left: 30%; width: 2px; filter: blur(2px); animation: sbiShoot 14s infinite linear 3s; }
+.sbi-line:nth-child(3) { left: 45%; animation: sbiShoot 11s infinite linear 1s; }
+.sbi-line:nth-child(4) { left: 60%; width: 2px; filter: blur(1px); animation: sbiShoot 16s infinite linear 6s; }
+.sbi-line:nth-child(5) { left: 75%; animation: sbiShoot 8s infinite linear 2s; }
+.sbi-line:nth-child(6) { left: 90%; animation: sbiShoot 12s infinite linear 5s; }
+.sbi-line:nth-child(7) { left: 5%; width: 2px; filter: blur(3px); animation: sbiShoot 18s infinite linear 4s; }
+
+/* L'animation : déplacement en diagonale (-45deg) */
+@keyframes sbiShoot {
+    0% { transform: rotate(-45deg) translateY(-100vh); opacity: 0; }
+    10% { opacity: 0.25; } /* Apparition discrète */
+    90% { opacity: 0.25; }
+    100% { transform: rotate(-45deg) translateY(200vh); opacity: 0; }
+}
+
+/* On s'assure que le contenu reste au-dessus du fond */
 main, footer { position: relative; z-index: 1; }
 
 .padding-global { padding-left: 5%; padding-right: 5%; }
@@ -89,7 +126,6 @@ main, footer { position: relative; z-index: 1; }
 .hero-subtitle { font-size: 1.1rem; color: var(--text-muted); margin-bottom: 2.5rem; max-width: 450px; }
 .hero-buttons { display: flex; gap: 1.5rem; align-items: center; }
 .hero-visual { display: flex; justify-content: center; align-items: center; width: 100%; height: 100%; }
-
 .hero-large-logo {
     width: 100%; max-width: 950px; display: block; transform: translateX(-5%); filter: drop-shadow(0 0 50px rgba(0, 81, 255, 0.3));
 }
@@ -99,17 +135,10 @@ main, footer { position: relative; z-index: 1; }
     border-top: 1px solid rgba(255,255,255,0.1); padding-top: 2rem; padding-bottom: 2rem; margin-top: auto;
     background-color: transparent;
 }
-
-/* NOUVELLE LIGNE DE DÉMARCATION EFFET FONDU (Fade-out border) EN DESSOUS */
 .features-bar::after {
-    content: '';
-    position: absolute;
-    bottom: 0; left: 0;
-    width: 100%; height: 1px;
-    /* Dégradé linéaire : Transparent -> Gris métallique exact des cartes -> Transparent */
+    content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 1px;
     background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%);
 }
-
 .feature-item { display: flex; align-items: flex-start; gap: 1rem; }
 .feature-icon { color: var(--sbi-blue); display: flex; align-items: center; justify-content: center; }
 .feature-item strong { display: block; font-size: 0.9rem; margin-bottom: 0.25rem; }
@@ -135,24 +164,14 @@ main, footer { position: relative; z-index: 1; }
 }
 
 .card-badge {
-    position: absolute; 
-    top: 12px; left: 12px; 
-    width: 35px; height: 35px;
-    background-color: var(--sbi-blue);
-    clip-path: polygon(0 0, 100% 0, 0 100%);
-    z-index: 10;
+    position: absolute; top: 12px; left: 12px; width: 35px; height: 35px;
+    background-color: var(--sbi-blue); clip-path: polygon(0 0, 100% 0, 0 100%); z-index: 10;
 }
-
 .card-badge::after {
-    content: ''; 
-    position: absolute; 
-    top: 6px; left: 6px; 
-    width: 5px; height: 5px;
-    background: #ffffff; 
-    transform: rotate(45deg);
+    content: ''; position: absolute; top: 6px; left: 6px; width: 5px; height: 5px;
+    background: #ffffff; transform: rotate(45deg);
     animation: neonPulse 2s infinite alternate ease-in-out;
 }
-
 @keyframes neonPulse {
     0% { opacity: 0.7; box-shadow: 0 0 3px 0px rgba(255,255,255,0.6), 0 0 6px 1px var(--sbi-blue); }
     100% { opacity: 1; box-shadow: 0 0 8px 2px rgba(255,255,255,1), 0 0 16px 4px var(--sbi-blue); }
@@ -166,7 +185,6 @@ main, footer { position: relative; z-index: 1; }
     );
     z-index: 5; pointer-events: none;
 }
-
 .parcours-card::after {
     content: ''; position: absolute; bottom: -1px; right: -1px; width: 60px; height: 60px;
     background: linear-gradient(-45deg, #040508 0%, #040508 18px, var(--sbi-blue) 18px, var(--sbi-blue) 36px, transparent 36px);
