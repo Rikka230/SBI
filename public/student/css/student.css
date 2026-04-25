@@ -1,5 +1,15 @@
+* =======================================================================
+   THÈME ÉTUDIANT (LIGHT MODE) ET STYLES DU HUB
+   ======================================================================= */
+
 /* --- SECTION 1 : VARIABLES & TYPOGRAPHIE --- */
 :root {
+    --bg-body: #f4f7f6;
+    --bg-panel: #ffffff;
+    --bg-card: #ffffff;
+    --border-color: #e2e8f0;
+    --text-main: #1f2937;
+    --text-muted: #6b7280;
     --bg-dark: #040508;
     --bg-surface: #0a0e17;
     --bg-card: #0d121f;
@@ -8,9 +18,103 @@
     --sbi-blue-hover: #003cc2;
     --text-light: #ffffff;
     --text-muted: #8a93a6;
-    
+
+    /* Le thème passe au Bleu SBI */
+    --accent-blue: #2A57FF;
     --font-sans: 'Inter', sans-serif;
-    
+
+    /* Sécurité : on force l'ancienne variable verte à sortir du bleu pour les autres pages */
+    --accent-green: #2A57FF; 
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+body { background-color: var(--bg-body) !important; color: var(--text-main); }
+
+/* FIX DU FANTÔME : Écrasement des marges héritées de admin-layout.css */
+@media (min-width: 1025px) {
+    #main-content {
+        margin-right: 0 !important; 
+        width: calc(100vw - var(--left-panel-width)) !important;
+        max-width: none !important;
+    }
+    .app-container.left-collapsed #main-content {
+        width: calc(100vw - var(--left-panel-mini-width)) !important;
+    }
+}
+
+.top-bar { right: 0 !important; width: calc(100% - var(--left-panel-width)) !important; }
+.app-container.left-collapsed .top-bar { width: calc(100% - var(--left-panel-mini-width)) !important; }
+
+/* FIX DU DASHBOARD : Structure de la grille interne */
+.hub-grid {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 2.5rem;
+    align-items: start;
+    width: 100%;
+}
+
+/* FIX DE LA BIO : Style fluide en mode lecture */
+.prof-input[disabled] {
+    background: transparent !important;
+    color: var(--text-main) !important;
+    cursor: default !important;
+    border: none !important;
+    padding: 0 !important;
+    margin-top: 0.5rem !important;
+    resize: none;
+    font-family: inherit;
+    font-size: 1rem;
+    line-height: 1.6;
+    height: auto !important;
+    box-shadow: none !important;
+}
+
+#btn-toggle-panel svg { fill: var(--text-main) !important; }
+
+.content-wrapper { padding: 2.5rem 4%; max-width: 1400px; margin: 0 auto; }
+
+.hub-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px; padding: 2rem; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03); }
+
+.xp-bar-bg { width: 100%; height: 10px; background: #e5e7eb; border-radius: 10px; overflow: hidden; margin-top: 1.5rem; }
+/* Dégradé mis à jour vers les tons bleus */
+.xp-bar-fill { height: 100%; background: linear-gradient(90deg, var(--accent-blue), #5B7FFF); width: 0%; transition: width 1.5s cubic-bezier(0.22, 1, 0.36, 1); border-radius: 10px; }
+
+.search-bar-top { flex-grow: 1; max-width: 500px; position: relative; margin-left: 2rem; }
+.search-bar-top input { width: 100%; padding: 0.7rem 1.5rem 0.7rem 2.8rem; background: #f9fafb; border: 1px solid var(--border-color); border-radius: 20px; color: var(--text-main); outline: none; transition: 0.2s; font-family: inherit; font-size: 0.95rem; }
+.search-bar-top input:focus { border-color: var(--accent-blue); background: #ffffff; box-shadow: 0 0 0 3px rgba(42, 87, 255, 0.1); }
+.search-bar-top svg { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); fill: var(--text-muted); width: 18px; height: 18px; }
+
+.section-title { font-size: 1.25rem; font-weight: 700; display: flex; align-items: center; gap: 0.8rem; margin: 0; color: var(--text-main); }
+.section-icon { font-size: 1.4rem; background: var(--bg-body); width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+
+/* ONGLETS ÉTUDIANT */
+.student-sub-nav { display: flex; gap: 2rem; border-bottom: 1px solid var(--border-color); margin-bottom: 2rem; }
+.student-sub-nav-item { padding: 1rem 0; color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; font-weight: 600; transition: all 0.2s; }
+.student-sub-nav-item:hover { color: var(--text-main); }
+.student-sub-nav-item.active { color: var(--accent-blue); border-bottom-color: var(--accent-blue); }
+.student-view { display: none; animation: fadeIn 0.3s; }
+.student-view.active { display: block; }
+
+/* BADGE PHOTO ROND PARFAIT */
+.edit-avatar-badge { 
+    position: absolute; bottom: 0; right: 0; 
+    width: 36px; height: 36px; 
+    background: var(--accent-blue); color: white; 
+    border-radius: 50%; border: 3px solid var(--bg-card); 
+    display: flex; align-items: center; justify-content: center; 
+    cursor: pointer; z-index: 10; opacity: 0; pointer-events: none; transition: 0.2s; 
+}
+.editing .edit-avatar-badge { opacity: 1; pointer-events: auto; }
+.edit-avatar-badge svg { width: 18px; height: 18px; flex-shrink: 0; }
+
+@keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+@media (max-width: 1024px) { 
+    .hub-grid { grid-template-columns: 1fr; }
+    #main-content { margin-right: 0 !important; }
+    .search-bar-top { display: none; } 
+    .content-wrapper { padding: 1.5rem; }
     --space-xl: clamp(4rem, 8vw, 6rem);
     --space-md: 2rem;
     --header-height: 80px; /* Ajout d'une variable pour gérer l'offset du header */
@@ -230,4 +334,3 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
     .grid-numbers { grid-template-columns: repeat(2, 1fr); gap: 2rem; }
     .newsletter-box { flex-direction: column; align-items: flex-start; }
     .footer-grid { grid-template-columns: 1fr; gap: 3rem; }
-}
