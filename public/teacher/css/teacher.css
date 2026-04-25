@@ -6,167 +6,106 @@
     --bg-body: #f4f7f6;
     --bg-panel: #ffffff;
     --bg-card: #ffffff;
-    --border-color: #e5e7eb;
-    --bg-main: #f3f4f6;
+    --border-color: #e2e8f0;
     --text-main: #1f2937;
     --text-muted: #6b7280;
-    
-    /* COULEURS IDENTITAIRES PROFESSEUR */
+
+    /* Couleur identitaire Jaune-Orangé (Amber) */
     --accent-orange: #f59e0b; 
-    --accent-orange-light: rgba(245, 158, 11, 0.15);
-    
-    /* SÉCURITÉ : Forcer l'orange sur les scripts partagés avec l'étudiant */
+
+    /* SÉCURITÉ MAGIQUE : On force les scripts existants à utiliser l'orange */
     --accent-blue: var(--accent-orange) !important; 
     --accent-green: var(--accent-orange) !important; 
-    
-    --accent-red: #ef4444;
-    --accent-yellow: #fbbc04;
+
+    /* Pour l'éditeur de cours */
+    --accent-blue-light: rgba(245, 158, 11, 0.1); 
 }
 
 *, *::before, *::after { box-sizing: border-box; }
-
-body { 
-    background-color: var(--bg-body); 
-    color: var(--text-main); 
-    font-family: 'Inter', 'Segoe UI', sans-serif;
-    margin: 0; 
-    padding: 0; 
-}
+body { background-color: var(--bg-body) !important; color: var(--text-main); }
 
 /* =======================================================================
    ARCHITECTURE GRAPHIQUE (Grilles, Cartes, Navigation)
    ======================================================================= */
 
-/* La grille pour l'éditeur de cours */
-.hub-grid { 
-    display: grid; 
-    grid-template-columns: 1fr 2fr; 
-    gap: 2.5rem; 
-}
+/* Ta grille restaurée depuis ton Git */
+.hub-grid { display: grid; grid-template-columns: minmax(300px, 1fr) 2.5fr; gap: 2.5rem; align-items: start; width: 100%; }
 
 .hub-card {
-    background: var(--bg-card); 
-    border-radius: 16px; 
+    background: var(--bg-card);
+    border-radius: 16px;
     padding: 1.8rem;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03); 
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
     border: 1px solid var(--border-color);
 }
 
-.section-title { 
-    margin-top: 0; 
-    font-size: 1.2rem; 
-    color: var(--text-main); 
-    display: flex; 
-    align-items: center; 
-    gap: 10px; 
-}
+.section-title { margin-top: 0; font-size: 1.2rem; color: var(--text-main); display: flex; align-items: center; gap: 10px; }
+.section-icon { width: 36px; height: 36px; border-radius: 10px; background: #f3f4f6; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; }
 
-.section-icon { 
-    width: 36px; 
-    height: 36px; 
-    border-radius: 10px; 
-    background: #f3f4f6; 
-    display: flex; 
-    align-items: center; 
-    justify-content: center; 
-    font-size: 1.1rem; 
-}
-
-/* --- ONGLETS (TABS) - LE CORRECTIF DU CRASH D'AFFICHAGE --- */
-.student-sub-nav { 
-    display: flex; 
-    gap: 1.5rem; 
-    border-bottom: 2px solid var(--border-color); 
-    margin-bottom: 2rem; 
-    overflow-x: auto; 
-}
-.student-sub-nav-item { 
-    padding-bottom: 0.8rem; 
-    cursor: pointer; 
-    color: var(--text-muted); 
-    font-weight: bold; 
-    border-bottom: 3px solid transparent; 
-    transition: 0.2s; 
-    white-space: nowrap; 
-}
+/* --- ONGLETS (TABS) --- */
+.student-sub-nav { display: flex; gap: 1.5rem; border-bottom: 2px solid var(--border-color); margin-bottom: 2rem; overflow-x: auto; }
+.student-sub-nav-item { padding-bottom: 0.8rem; cursor: pointer; color: var(--text-muted); font-weight: bold; border-bottom: 3px solid transparent; transition: 0.2s; white-space: nowrap; }
 .student-sub-nav-item:hover { color: var(--text-main); }
-.student-sub-nav-item.active { 
-    color: var(--accent-orange); 
-    border-bottom-color: var(--accent-orange); 
-}
+.student-sub-nav-item.active { color: var(--accent-orange); border-bottom-color: var(--accent-orange); }
 
-/* C'est cette classe vitale que j'avais supprimée : */
 .student-view { display: none; animation: fadeIn 0.3s; }
 .student-view.active { display: flex; flex-direction: column; }
 
-@keyframes fadeIn { 
-    from { opacity: 0; transform: translateY(10px); } 
-    to { opacity: 1; transform: translateY(0); } 
-}
+@keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
-/* --- FORMULAIRES ET PROFILS --- */
+/* --- FORMULAIRES --- */
 .form-group { margin-bottom: 1.5rem; }
 .form-group label { display: block; font-weight: 600; margin-bottom: 0.5rem; color: var(--text-main); font-size: 0.95rem; }
-.prof-input { 
-    width: 100%; padding: 0.8rem 1rem; border: 1px solid var(--border-color); 
-    border-radius: 8px; background: #f9fafb; color: var(--text-main); 
-    font-family: inherit; font-size: 0.95rem; outline: none; transition: 0.2s; 
+.prof-input {
+    width: 100%; padding: 0.8rem 1rem; border: 1px solid var(--border-color);
+    border-radius: 8px; background: var(--bg-card); color: var(--text-main);
+    font-family: inherit; font-size: 0.95rem; outline: none; transition: 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.02);
 }
-.prof-input:focus { 
-    border-color: var(--accent-orange); 
-    background: #fff; 
-    box-shadow: 0 0 0 3px var(--accent-orange-light); 
-}
+.prof-input:focus { border-color: var(--accent-orange); background: #fff; box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1); }
+
+.editing .edit-avatar-badge { opacity: 1; pointer-events: auto; }
+.edit-avatar-badge svg { width: 18px; height: 18px; flex-shrink: 0; }
 
 /* --- BARRES XP ET BADGES --- */
 .xp-bar-bg { width: 100%; height: 8px; background: #e5e7eb; border-radius: 10px; overflow: hidden; margin-top: 1rem;}
 .xp-bar-fill { height: 100%; background: var(--accent-orange) !important; width: 0%; transition: width 0.5s ease; }
-
 .badges-grid { display: flex; gap: 10px; margin-top: 1rem; }
 .badge-slot { width: 40px; height: 40px; border-radius: 50%; background: #f3f4f6; border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; opacity: 0.3; filter: grayscale(100%); transition: 0.3s; }
 .badge-slot.unlocked { opacity: 1; filter: grayscale(0%); background: #ffffff; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-color: transparent; }
 
 /* --- ÉLÉMENTS DE COURS --- */
-.course-item { 
-    background: var(--bg-card); 
-    border: 1px solid var(--border-color); 
-    border-radius: 8px; 
-    padding: 1rem 1.5rem; 
-    display: flex; 
-    justify-content: space-between; 
-    align-items: center; 
-    margin-bottom: 0.8rem; 
-    cursor: pointer; 
-    transition: 0.2s; 
+.course-item {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1rem 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.8rem;
+    cursor: pointer;
+    transition: 0.2s;
 }
-.course-item:hover { 
-    border-color: var(--accent-orange); 
-    background: var(--accent-orange-light); 
-}
+.course-item:hover { border-color: var(--accent-orange); background: var(--accent-blue-light); }
+.bloc-title { font-size: 1.1rem; color: var(--text-main); font-weight: bold; margin: 2rem 0 1rem 0; padding-bottom: 0.5rem; border-bottom: 2px solid var(--border-color); }
 
-.bloc-title { 
-    font-size: 1.1rem; 
-    color: var(--text-main); 
-    font-weight: bold; 
-    margin: 2rem 0 1rem 0; 
-    padding-bottom: 0.5rem; 
-    border-bottom: 2px solid var(--border-color); 
-}
-
-/* --- BOUTONS --- */
+/* --- BOUTONS RESTAURÉS (Fix du gros bouton rouge) --- */
 .action-btn {
-    background: var(--accent-orange); color: white; font-weight: bold; border: none; 
-    padding: 0.8rem 1.5rem; border-radius: 8px; cursor: pointer; transition: 0.2s; 
+    background: var(--accent-orange); color: white; font-weight: bold; border: none;
+    padding: 0.8rem 1.5rem; border-radius: 8px; cursor: pointer; transition: 0.2s;
     display: inline-flex; align-items: center; justify-content: center; gap: 8px;
 }
 .action-btn:hover { opacity: 0.9; transform: translateY(-2px); }
-.action-btn.danger { background: var(--accent-red); color: white; }
+
+/* Bouton de suppression adouci et stylisé */
+.action-btn.danger { background: rgba(239, 68, 68, 0.1); color: var(--accent-red); border: 1px solid rgba(239, 68, 68, 0.3); }
+.action-btn.danger:hover { background: var(--accent-red); color: white; }
 
 .editor-action-btn { transition: 0.2s; opacity: 0.7; }
 .editor-action-btn:hover { opacity: 1; transform: scale(1.02); }
 
 /* =======================================================================
-   COMPOSANTS D'ÉDITION SPÉCIFIQUES (Drag&Drop, Switch, Quill)
+   NOUVEAUX COMPOSANTS UI MODERNES (Toggle Switch & Drag'n'Drop)
    ======================================================================= */
 .toggle-switch { position: relative; width: 46px; height: 26px; flex-shrink: 0; }
 .toggle-switch .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #cbd5e1; transition: .3s; border-radius: 24px; }
@@ -175,14 +114,17 @@ body {
 .toggle-switch input:checked + .slider:before { transform: translateX(20px); }
 
 .drag-drop-zone { border: 2px dashed var(--border-color); border-radius: 12px; padding: 2rem; text-align: center; background: #f9fafb; cursor: pointer; transition: 0.2s; display: flex; flex-direction: column; align-items: center; gap: 10px; }
-.drag-drop-zone:hover, .drag-drop-zone.dragover { border-color: var(--accent-orange); background: var(--accent-orange-light); }
-.drag-drop-zone p { margin: 0; color: var(--text-muted); font-size: 0.95rem; }
+.drag-drop-zone:hover, .drag-drop-zone.dragover { border-color: var(--accent-orange); background: rgba(245, 158, 11, 0.05); }
+.drag-drop-zone p { margin: 0; color: var(--text-muted); font-size: 0.9rem; }
+.drag-drop-zone span { color: var(--accent-orange); font-weight: bold; }
 
-/* Editeur Quill personnalisé */
+/* Editeur Quill restauré avec ses bulles */
 .ql-toolbar { background: #f9fafb; border-color: var(--border-color) !important; border-top-left-radius: 8px; border-top-right-radius: 8px; }
 .ql-container { border-color: var(--border-color) !important; border-bottom-left-radius: 8px; border-bottom-right-radius: 8px; font-family: 'Inter', sans-serif; font-size: 1rem; background: white; }
 .ql-editor { min-height: 250px; }
 
 @media (max-width: 1024px) {
     .hub-grid { grid-template-columns: 1fr; }
+    .search-bar-top { display: none; }
+    .content-wrapper { padding: 1.5rem; }
 }
