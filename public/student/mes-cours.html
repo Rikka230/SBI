@@ -16,39 +16,34 @@
         .progress-bar-bg { width: 100%; height: 6px; background: #e5e7eb; border-radius: 10px; overflow: hidden; margin-top: 1rem; }
         .progress-bar-fill { height: 100%; background: var(--accent-blue); width: 0%; transition: width 0.5s ease; }
         
-        .bloc-title { font-size: 1.1rem; color: var(--text-main); font-weight: bold; margin: 2rem 0 1rem 0; border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem; display: flex; align-items: center; gap: 8px; }
+        .bloc-title { font-size: 1.1rem; color: var(--text-main); font-weight: bold; margin: 2rem 0 1rem 0; padding-bottom: 0.5rem; border-bottom: 2px solid var(--border-color); }
         
-        .course-item { display: flex; align-items: center; justify-content: space-between; padding: 1rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 0.8rem; cursor: pointer; transition: 0.2s; }
-        .course-item:hover { border-color: var(--accent-blue); background: rgba(16, 185, 129, 0.02); }
-        
-        .status-badge { font-size: 0.75rem; font-weight: bold; padding: 4px 10px; border-radius: 20px; display: inline-flex; align-items: center; gap: 5px; }
-        .status-done { background: rgba(42, 87, 255, 0.1); color: var(--accent-blue); }
-        .status-progress { background: rgba(251, 188, 4, 0.1); color: var(--accent-yellow); }
-        .status-todo { background: #f3f4f6; color: var(--text-muted); }
+        .course-item { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem 1.5rem; display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem; cursor: pointer; transition: 0.2s; }
+        .course-item:hover { border-color: var(--accent-blue); background: rgba(42, 87, 255, 0.02); }
+        .course-item.locked { opacity: 0.6; cursor: not-allowed; filter: grayscale(100%); }
+        .course-item.locked:hover { border-color: var(--border-color); background: var(--bg-card); }
     </style>
 </head>
 <body class="preload">
 
 <div class="app-container" id="app-container">
+    <script>
+        if (window.innerWidth > 1024 && localStorage.getItem('leftPanelCollapsed') === 'true') {
+            document.getElementById('app-container').classList.add('left-collapsed');
+        }
+    </script>
+
     <student-left-panel></student-left-panel>
     <student-top-bar></student-top-bar>
 
     <main id="main-content">
         <div class="content-wrapper">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-                <h1 style="margin: 0; font-size: 2.2rem; font-weight: 800; display:flex; align-items:center; gap:10px;">
-                    Mes <span style="color: var(--accent-blue);">Cours</span>
-                    <svg width="32" height="32" fill="var(--accent-blue)" viewBox="0 0 24 24"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/></svg>
-                </h1>
-                <button id="btn-back-formations" class="action-btn" style="display: none; width: auto; background: white; color: var(--text-main); border-color: var(--border-color);">
-                    <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24" style="margin-right:5px;"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
-                    Retour aux Formations
-                </button>
-            </div>
-
-            <div id="view-formations" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem;">
-                <div style="display:flex; align-items:center; gap:10px; color:var(--text-muted);">
-                    <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+            
+            <div id="view-formations" style="display: flex; flex-direction: column;">
+                <h1 style="margin-top: 0; font-size: 2.2rem; font-weight: 800; margin-bottom: 2rem;">Mes <span style="color: var(--accent-blue);">Formations</span></h1>
+                
+                <div id="formations-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem;">
+                    <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24" class="spinning" style="margin-right:10px;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
                     Analyse de vos formations...
                 </div>
             </div>
@@ -59,21 +54,24 @@
                     
                     <div class="search-bar-top" style="margin: 0; max-width: 300px; width: 100%; display: flex;">
                         <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
-                        <input type="text" id="search-student-courses" placeholder="Rechercher un cours dans ce dossier...">
+                        <input type="text" id="search-course-input" placeholder="Chercher un cours..." style="width: 100%; box-sizing: border-box; padding: 0.7rem 1.5rem 0.7rem 2.8rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 20px; outline: none; font-size: 0.95rem; color: var(--text-main);">
                     </div>
                 </div>
-                
-                <div id="courses-list-container"></div>
+
+                <button id="btn-back-formations" class="action-btn" style="width: auto; align-self: flex-start; background: white; color: var(--text-main); border: 1px solid var(--border-color); margin-bottom: 1.5rem;">
+                    <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24" style="margin-right: 8px;"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg> Retour aux formations
+                </button>
+
+                <div id="courses-list"></div>
             </div>
 
         </div>
     </main>
 </div>
 
-<script type="module" src="/admin/js/admin-notifications.js"></script>
-
 <script type="module" src="/admin/js/admin-ui.js"></script>
 <script type="module" src="/admin/js/tracker.js"></script>
 <script type="module" src="/student/js/mes-cours.js"></script>
+<script type="module" src="/admin/js/admin-notifications.js"></script>
 </body>
 </html>
