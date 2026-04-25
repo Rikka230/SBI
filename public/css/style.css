@@ -19,7 +19,7 @@
 /* --- SECTION 2 : RESET & BASE --- */
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html { scroll-behavior: smooth; font-family: var(--font-sans); background: var(--bg-dark); color: var(--text-light); }
-body { overflow-x: hidden; line-height: 1.5; }
+body { overflow-x: hidden; line-height: 1.5; position: relative; }
 a { text-decoration: none; color: inherit; transition: color 0.3s ease; }
 ul { list-style: none; }
 button { font-family: inherit; cursor: pointer; border: none; background: none; }
@@ -27,8 +27,22 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .uppercase { text-transform: uppercase; font-weight: 900; }
 .text-blue { color: var(--sbi-blue); }
 .bg-blue { background-color: var(--sbi-blue); }
-/* Ajout de la classe italique simple */
 .text-italic { font-style: italic; }
+
+/* Halo bleu fixe en bas à droite */
+.fixed-bg-glow {
+    position: fixed;
+    bottom: -20vh;
+    right: -20vw;
+    width: 60vw;
+    height: 60vw;
+    background: radial-gradient(circle, rgba(0, 81, 255, 0.12) 0%, transparent 65%);
+    z-index: 0; /* Reste derrière le contenu mais par-dessus le fond uni */
+    pointer-events: none; /* Empêche de bloquer les clics */
+}
+
+/* On force main et footer à passer au-dessus du halo */
+main, footer { position: relative; z-index: 1; }
 
 .padding-global { padding-left: 5%; padding-right: 5%; }
 .flex-between { display: flex; justify-content: space-between; align-items: flex-end; }
@@ -79,7 +93,6 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
     z-index: 1000;
     border-bottom: 1px solid rgba(255,255,255,0.05);
 }
-/* Le logo du header corrigé et bien aligné */
 .header-logo { height: 45px; object-fit: contain; }
 .main-nav { display: flex; gap: 2rem; }
 .nav-link { font-size: 0.9rem; font-weight: 600; color: var(--text-light); }
@@ -98,22 +111,13 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
     overflow: hidden;
 }
 
-/* Vidéo de fond : opacité revenue à 1 (100%) */
 .hero-video-bg {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    z-index: 0;
-    opacity: 1; 
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover;
+    z-index: 0; opacity: 1; 
 }
 
-/* Léger dégradé derrière le texte pour assurer la lisibilité sur la vidéo brute */
 .hero-gradient-overlay {
-    position: absolute;
-    top: 0; left: 0; width: 60%; height: 100%;
+    position: absolute; top: 0; left: 0; width: 60%; height: 100%;
     background: linear-gradient(to right, rgba(4, 5, 8, 0.9) 0%, rgba(4, 5, 8, 0) 100%);
     z-index: 1;
 }
@@ -121,64 +125,70 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .hero-grid { 
     display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; align-items: center; 
     flex: 1;
-    padding-top: 2rem;
-    padding-bottom: 2rem;
-    position: relative;
-    z-index: 2; 
+    padding-top: 2rem; padding-bottom: 2rem;
+    position: relative; z-index: 2; 
 }
 .hero-surtitle { font-size: 0.85rem; font-weight: 800; letter-spacing: 1px; display: block; margin-bottom: 1rem; }
 .hero-title { font-size: clamp(3rem, 6vw, 5rem); line-height: 1.05; margin-bottom: 1.5rem; letter-spacing: -0.03em; }
 .hero-subtitle { font-size: 1.1rem; color: var(--text-muted); margin-bottom: 2.5rem; max-width: 450px; }
 .hero-buttons { display: flex; gap: 1.5rem; align-items: center; }
 
-/* Le logo central beaucoup plus grand (jusqu'à 700px au lieu de 480px) */
+/* Le logo central est centré dans sa colonne (1fr) via flexbox */
+.hero-visual { 
+    display: flex; justify-content: center; align-items: center; 
+    width: 100%; height: 100%;
+}
 .hero-large-logo {
-    width: 100%;
-    max-width: 700px;
-    display: block;
-    margin: 0 auto;
+    width: 100%; max-width: 700px;
+    display: block; margin: 0 auto;
     filter: drop-shadow(0 0 40px rgba(0, 81, 255, 0.25));
 }
 
 .features-bar {
-    position: relative;
-    z-index: 2;
+    position: relative; z-index: 2;
     display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;
     border-top: 1px solid rgba(255,255,255,0.1);
-    padding-top: 2rem; padding-bottom: 2rem;
-    margin-top: auto;
+    padding-top: 2rem; padding-bottom: 2rem; margin-top: auto;
     background-color: transparent;
 }
 .feature-item { display: flex; align-items: flex-start; gap: 1rem; }
-.feature-icon { 
-    color: var(--sbi-blue); 
-    display: flex; align-items: center; justify-content: center;
-}
+.feature-icon { color: var(--sbi-blue); display: flex; align-items: center; justify-content: center; }
 .feature-item strong { display: block; font-size: 0.9rem; margin-bottom: 0.25rem; }
 .feature-item p { font-size: 0.8rem; color: var(--text-muted); }
 
 /* --- SECTION 6 : PARCOURS --- */
-.section-parcours { background: var(--bg-surface); padding-top: var(--space-xl); padding-bottom: var(--space-xl); }
+.section-parcours { background: transparent; padding-top: var(--space-xl); padding-bottom: var(--space-xl); }
 .section-surtitle { font-size: 0.85rem; font-weight: 800; letter-spacing: 1px; display: block; margin-bottom: 0.5rem; }
 .section-title { font-size: clamp(2rem, 4vw, 2.5rem); line-height: 1.2; font-weight: 800; }
 .grid-parcours { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; margin-top: 3rem; }
 
 .parcours-card {
     position: relative;
-    background: var(--bg-card);
+    background-color: var(--bg-card);
+    background-size: cover; background-position: center;
     border: 1px solid var(--border-color);
-    border-radius: 4px;
-    overflow: hidden;
-    height: 300px;
+    border-radius: 4px; overflow: hidden; height: 300px;
     display: flex; flex-direction: column; justify-content: flex-end;
     transition: transform 0.3s ease;
 }
+
+/* Intégration des images via URL Unsplash & Filtre DA */
+.parcours-card:nth-child(1) { background-image: url('https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=800&q=80'); }
+.parcours-card:nth-child(2) { background-image: url('https://images.unsplash.com/photo-1526232761682-d26e03ac148e?auto=format&fit=crop&w=800&q=80'); }
+.parcours-card:nth-child(3) { background-image: url('https://images.unsplash.com/photo-1504450758481-7338eba7524a?auto=format&fit=crop&w=800&q=80'); }
+.parcours-card:nth-child(4) { background-image: url('https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&w=800&q=80'); }
+
+/* Overlay teinté en bleu/noir pour la DA */
+.card-mask {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    background: linear-gradient(to top, rgba(4, 5, 8, 1) 5%, rgba(0, 81, 255, 0.3) 100%);
+    mix-blend-mode: multiply; /* Fusionne la couleur avec l'image */
+    z-index: 1;
+}
+
 .parcours-card::before {
-    content: ''; position: absolute; top: 0; left: 0;
-    width: 0; height: 0;
-    border-top: 35px solid var(--sbi-blue);
-    border-right: 35px solid transparent;
-    z-index: 2;
+    content: ''; position: absolute; top: 0; left: 0; width: 0; height: 0;
+    border-top: 35px solid var(--sbi-blue); border-right: 35px solid transparent; z-index: 3;
 }
 .parcours-card:hover { transform: translateY(-5px); border-color: rgba(0,81,255,0.5); }
 .card-content { padding: 1.5rem; position: relative; z-index: 2; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; }
@@ -187,19 +197,16 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .course-count { font-size: 0.85rem; color: var(--text-muted); }
 
 /* --- SECTION 7 : STATS & CITATION --- */
-.section-stats { padding-top: var(--space-xl); padding-bottom: var(--space-xl); }
+.section-stats { padding-top: var(--space-xl); padding-bottom: var(--space-xl); background: transparent; }
 .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
 
 .quote-box {
     background: var(--bg-surface); border: 1px solid var(--border-color);
-    padding: 3rem; border-radius: 4px; position: relative;
-    display: flex; align-items: center;
+    padding: 3rem; border-radius: 4px; position: relative; display: flex; align-items: center;
 }
 .quote-box::after {
-    content: ''; position: absolute; bottom: 0; right: 0;
-    width: 0; height: 0;
-    border-bottom: 40px solid var(--sbi-blue);
-    border-left: 40px solid transparent;
+    content: ''; position: absolute; bottom: 0; right: 0; width: 0; height: 0;
+    border-bottom: 40px solid var(--sbi-blue); border-left: 40px solid transparent;
 }
 .quote-mark { font-size: 3rem; font-family: serif; line-height: 0; position: absolute; top: 3rem; left: 3rem; }
 .quote-content { margin-left: 2rem; }
@@ -218,7 +225,7 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .chart-container { margin-top: 2rem; width: 100%; height: 60px; overflow: hidden; opacity: 0.8; }
 
 /* --- SECTION 8 : NEWSLETTER --- */
-.section-newsletter { padding-bottom: var(--space-xl); }
+.section-newsletter { padding-bottom: var(--space-xl); background: transparent; }
 .newsletter-box {
     background: var(--bg-surface); border: 1px solid var(--border-color);
     border-radius: 4px; padding: 2.5rem 3rem;
@@ -236,9 +243,10 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .news-form input:focus { border-color: var(--sbi-blue); }
 
 /* --- SECTION 9 : FOOTER --- */
-.site-footer { border-top: 1px solid var(--border-color); padding-top: 4rem; padding-bottom: 2rem; }
+.site-footer { border-top: 1px solid var(--border-color); padding-top: 4rem; padding-bottom: 2rem; background: var(--bg-dark); }
 .footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr; gap: 2rem; }
-.footer-logo { height: 40px; margin-bottom: 1rem; object-fit: contain; }
+/* Logo du footer doublé en taille */
+.footer-logo { height: 80px; margin-bottom: 1rem; object-fit: contain; }
 .brand-tagline { color: var(--text-muted); font-size: 0.9rem; margin-top: 1rem; }
 .footer-links h4, .footer-social h4 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 1.5rem; color: var(--text-muted); }
 .footer-links a { display: block; font-size: 0.9rem; margin-bottom: 0.75rem; color: #fff; }
@@ -256,7 +264,7 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 @media (max-width: 768px) {
     .main-nav { display: none; }
     .hero-grid { grid-template-columns: 1fr; text-align: center; }
-    .hero-gradient-overlay { width: 100%; } /* Dégradé sur tout l'écran en mobile */
+    .hero-gradient-overlay { width: 100%; } 
     .hero-buttons { justify-content: center; }
     .features-bar { grid-template-columns: 1fr; }
     .grid-numbers { grid-template-columns: repeat(2, 1fr); gap: 2rem; }
