@@ -29,6 +29,6 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     /* --- SECTION 2 : INITIALISATION GLOBALE --- */
-    // Note : L'effet de survol géométrique des cartes est maintenant géré à 100% en CSS pur.
+    // Note : L'effet complexe de hover en coin sur les cartes est géré à 100% en CSS via pseudo-éléments (::before/::after).
     initScrollAnimations();
 });
