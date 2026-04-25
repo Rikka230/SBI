@@ -21,8 +21,28 @@ document.addEventListener('DOMContentLoaded', () => {
             const userSnap = await getDoc(doc(db, "users", currentUid));
             if(userSnap.exists()) {
                 currentUserProfile = userSnap.data();
-                // FIX : Suppression de l'injection forcée de l'avatar sombre.
-                // L'interface de la Top-Bar est gérée nativement par les scripts spécifiques de chaque page.
+                
+                // FIX ABSOLU DU PROFIL MANQUANT :
+                // On met à jour l'interface de TOUTES les pages de la plateforme avec les bonnes informations.
+                const displayName = `${currentUserProfile.prenom || ''} ${currentUserProfile.nom || ''}`.trim() || "Utilisateur";
+                
+                // Adaptateur de couleur intelligent pour éviter le fond noir sur le thème Light Mode
+                let bgColor = "111"; let textColor = "fff";
+                if (currentUserProfile.role === 'student') { bgColor = "e5e7eb"; textColor = "2A57FF"; }
+                else if (currentUserProfile.role === 'teacher') { bgColor = "fef3c7"; textColor = "f59e0b"; }
+
+                const avatarUrl = currentUserProfile.photoURL || `https://ui-avatars.com/api/?name=${displayName}&background=${bgColor}&color=${textColor}`;
+                const userXp = currentUserProfile.xp || 0;
+                const userLevel = Math.floor(userXp / 100) + 1;
+
+                const topName = document.getElementById('top-user-name');
+                if (topName) topName.textContent = displayName;
+                
+                const topAvatar = document.getElementById('top-user-avatar');
+                if (topAvatar) topAvatar.innerHTML = `<img src="${avatarUrl}" style="width:100%; height:100%; object-fit:cover;">`;
+                
+                const topLevel = document.getElementById('top-user-level');
+                if (topLevel) topLevel.textContent = `Niveau ${userLevel}`;
             }
 
             initNotificationsRealtime();
