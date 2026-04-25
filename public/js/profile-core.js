@@ -110,6 +110,22 @@ async function loadProfileData(uid) {
             const level = Math.floor(xp / 100) + 1;
             
             if(document.getElementById('prof-level')) document.getElementById('prof-level').textContent = level;
+            const badgeBronze = document.getElementById('badge-bronze');
+            const badgeSilver = document.getElementById('badge-silver');
+            const badgeGold = document.getElementById('badge-gold');
+            const badgeDiamond = document.getElementById('badge-diamond');
+
+            // On retire la classe au cas où l'admin fait un reset d'XP
+            if(badgeBronze) badgeBronze.classList.remove('unlocked');
+            if(badgeSilver) badgeSilver.classList.remove('unlocked');
+            if(badgeGold) badgeGold.classList.remove('unlocked');
+            if(badgeDiamond) badgeDiamond.classList.remove('unlocked');
+
+            // Définition des paliers de niveau pour débloquer (Tu peux ajuster ces chiffres !)
+            if (badgeBronze && level >= 2) badgeBronze.classList.add('unlocked');  // Bronze au niveau 2 (100 XP)
+            if (badgeSilver && level >= 5) badgeSilver.classList.add('unlocked');  // Argent au niveau 5 (400 XP)
+            if (badgeGold && level >= 10) badgeGold.classList.add('unlocked');     // Or au niveau 10 (900 XP)
+            if (badgeDiamond && level >= 20) badgeDiamond.classList.add('unlocked'); // Diamant au niveau 20 (1900 XP)
             
             const xpEls = [document.getElementById('prof-xp'), document.getElementById('prof-xp-text')];
             xpEls.forEach(el => {
