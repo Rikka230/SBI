@@ -222,8 +222,9 @@ async function loadLearningTracking(uid) {
             const totalCount = courseData.chapitres ? courseData.chapitres.length : 0;
             
             let statusBadge = '';
+            // FIX COULEUR : Application systématique du bleu SBI pour le statut Terminé !
             if (pData.status === 'done') {
-                statusBadge = `<span style="background: ${isStudentUI ? 'rgba(42, 87, 255, 0.1)' : 'rgba(46, 213, 115, 0.1)'}; color: ${isStudentUI ? 'var(--accent-blue)' : 'var(--accent-blue)'}; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold;">Terminé</span>`;
+                statusBadge = `<span style="background: rgba(42, 87, 255, 0.1); color: var(--accent-blue); padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold;">Terminé</span>`;
             } else if (pData.status === 'in_progress') {
                 statusBadge = '<span style="background: rgba(251, 188, 4, 0.1); color: var(--accent-yellow); padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold;">En cours</span>';
             } else {
@@ -242,11 +243,12 @@ async function loadLearningTracking(uid) {
                             editBtnHtml = `<button class="action-btn btn-edit-grade" data-course="${cId}" data-chapter="${chap.id}" data-current="${scoreObtained}" data-max="${totalPossible}" style="width: auto; margin: 0; padding: 4px 8px; font-size: 0.75rem; background: #333; color: white; border: none;">${SVG_EDIT} Éditer</button>`;
                         }
 
+                        // FIX COULEUR : Bleu pour le score parfait
                         quizHtml += `
                             <div style="display: flex; justify-content: space-between; align-items: center; background: ${isStudentUI ? '#f9fafb' : 'rgba(0,0,0,0.2)'}; padding: 0.5rem 1rem; border-radius: 6px; margin-top: 0.8rem; border: 1px solid ${isStudentUI ? 'var(--border-color)' : 'transparent'};">
                                 <span style="font-size: 0.85rem; color: var(--text-muted);">${chap.titre}</span>
                                 <div style="display: flex; align-items: center; gap: 10px;">
-                                    <span style="font-size: 0.85rem; font-weight: bold; color: ${scoreObtained === totalPossible && totalPossible > 0 ? (isStudentUI ? 'var(--accent-blue)' : 'var(--accent-blue)') : 'var(--text-main)'};">Score: ${scoreObtained} / ${totalPossible}</span>
+                                    <span style="font-size: 0.85rem; font-weight: bold; color: ${scoreObtained === totalPossible && totalPossible > 0 ? 'var(--accent-blue)' : 'var(--text-main)'};">Score: ${scoreObtained} / ${totalPossible}</span>
                                     ${editBtnHtml}
                                 </div>
                             </div>
@@ -342,7 +344,6 @@ async function loadLearningTracking(uid) {
     }
 }
 
-// FIX : Aiguillage des Formations sous forme de liens cliquables !
 async function loadUserFormations(uid) {
     const list = document.getElementById('prof-formations-list');
     if(!list) return;
