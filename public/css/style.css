@@ -164,19 +164,21 @@ main, footer { position: relative; z-index: 2; }
 .card-footer { display: flex; justify-content: flex-start; align-items: center; gap: 1rem; }
 .course-count { font-size: 0.85rem; color: var(--text-muted); }
 
-/* --- SECTION 10 : BLOC FONDATEUR --- */
+/* --- SECTION 10 : STATS & FONDATEUR --- */
 .section-stats { padding-top: var(--space-xl); padding-bottom: var(--space-xl); background: transparent; }
-.stats-grid { display: flex; flex-direction: column; gap: 6rem; }
 
-/* Layout Full Gauche (Flex-start) en respectant les padding globaux */
+/* LA GRILLE 2 COLONNES ORIGINELLE EST RESTAURÉE ICI */
+.stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+
+/* BLOC FONDATEUR (Dans la colonne de gauche) */
 .founder-block { 
     position: relative; display: flex; align-items: center; 
-    justify-content: flex-start; padding: 4rem 0; 
+    background: transparent; border: none; padding: 2rem 0; 
 }
 
-/* Wrapper Image: prend 35%, laissant un vide à droite */
+/* L'image prend 60% de la colonne de gauche */
 .founder-img-wrapper { 
-    width: 35%; max-width: 400px; position: relative; z-index: 1; 
+    width: 60%; position: relative; z-index: 1; 
 }
 
 /* Wrapper interne : applique la cassure à la photo sans masquer les éclats extérieurs */
@@ -190,62 +192,61 @@ main, footer { position: relative; z-index: 2; }
     filter: grayscale(100%) contrast(1.2); display: block;
 }
 
-/* L'ÉCLAT DE VERRE AVEC LA LUMIÈRE SUR L'ARÊTE */
-.shard { position: absolute; background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border: 1px solid rgba(255, 255, 255, 0.15); z-index: 3; pointer-events: none; overflow: hidden; /* Pour contenir la lumière */ }
-.shard-1 { top: -25px; left: -15px; width: 60px; height: 60px; clip-path: polygon(50% 0%, 100% 100%, 0% 100%); animation: shardFloat 7s infinite ease-in-out; }
+/* ÉCLATS DE VERRE */
+.shard { position: absolute; background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border: 1px solid rgba(255, 255, 255, 0.15); z-index: 3; pointer-events: none; overflow: hidden; }
 
-/* La ligne lumineuse de 1px qui glisse sur l'arête du shard-1 */
+/* Éclat 1 avec Edge Light (En haut à gauche) */
+.shard-1 { top: -20px; left: -15px; width: 60px; height: 60px; clip-path: polygon(50% 0%, 100% 100%, 0% 100%); animation: shardFloat 7s infinite ease-in-out; }
+
 .shard-edge-light {
     position: absolute; top: 0; left: 0; width: 200%; height: 100%;
     background: linear-gradient(135deg, transparent 45%, rgba(0, 162, 255, 1) 50%, transparent 55%);
     transform: translateX(-100%);
-    animation: shardEdgeScan 12s infinite;
+    animation: shardEdgeScan 6s infinite;
     mix-blend-mode: screen;
 }
 @keyframes shardEdgeScan {
     0%, 80% { transform: translateX(-100%); opacity: 0; }
-    82% { opacity: 1; }
-    88% { opacity: 1; }
+    82%, 88% { opacity: 1; }
     90%, 100% { transform: translateX(100%); opacity: 0; }
 }
 
-.shard-2 { bottom: -30px; right: -10px; width: 100px; height: 80px; background: rgba(0, 81, 255, 0.1); clip-path: polygon(0 0, 100% 30%, 40% 100%); animation: shardFloat 9s infinite ease-in-out reverse; z-index: -1; }
+/* Éclat 2 (En bas à droite, derrière) */
+.shard-2 { bottom: -20px; right: -10px; width: 80px; height: 60px; background: rgba(0, 81, 255, 0.1); clip-path: polygon(0 0, 100% 30%, 40% 100%); animation: shardFloat 9s infinite ease-in-out reverse; z-index: -1; }
 
-/* Le retour du losange bleu avec son point lumineux */
+/* Le Losange bleu de retour (Sur la droite) */
 .shard-diamond { 
-    top: 30%; right: -25px; width: 40px; height: 40px; 
-    background: var(--sbi-blue); 
+    top: 30%; right: -20px; width: 35px; height: 35px; 
+    background: var(--sbi-blue); border: none; backdrop-filter: none; -webkit-backdrop-filter: none; 
     clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); 
-    animation: shardFloat 6s infinite ease-in-out 1s; 
-    border: none; backdrop-filter: none; -webkit-backdrop-filter: none; z-index: 4; 
-    overflow: visible; /* Pour voir le petit point blanc */
+    animation: shardFloat 6s infinite ease-in-out 1s; z-index: 4; overflow: visible; 
 }
 .shard-diamond::after { 
-    content: ''; position: absolute; top: 17px; left: 17px; width: 6px; height: 6px; 
+    content: ''; position: absolute; top: 14px; left: 14px; width: 7px; height: 7px; 
     background: #fff; transform: rotate(45deg); animation: neonPulse 2s infinite alternate ease-in-out; 
 }
 
-@keyframes shardFloat { 0% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-15px) rotate(5deg); } 100% { transform: translateY(0) rotate(0deg); } }
+@keyframes shardFloat { 0%, 100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-10px) rotate(5deg); } }
 
-/* LA GLASS-CARD DU TEXTE : Superposée et ajustée */
+/* LA GLASS-CARD DU TEXTE : Contenue dans la colonne, mord l'image */
 .founder-block .quote-content { 
-    width: 45%; max-width: 550px; margin-left: -5%; /* Chevauchement */
-    position: relative; z-index: 2; 
+    width: 55%; position: absolute; right: 0; z-index: 2; 
     background: rgba(10, 14, 23, 0.55); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); 
     border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 2px;
-    padding: 4rem 5rem; box-shadow: 0 40px 80px rgba(0,0,0,0.6), inset 0 0 40px rgba(0, 81, 255, 0.05);
+    padding: 2.5rem; box-shadow: 0 20px 40px rgba(0,0,0,0.6), inset 0 0 20px rgba(0, 81, 255, 0.05);
 }
 
+/* Le petit néon bleu en coin bas-droite sur la glass card */
 .founder-block .quote-content::after {
-    content: ''; position: absolute; bottom: -1px; right: -1px; width: 60px; height: 60px; 
-    background: linear-gradient(-45deg, #040508 0%, #040508 18px, var(--sbi-blue) 18px, var(--sbi-blue) 36px, transparent 36px); 
+    content: ''; position: absolute; bottom: -1px; right: -1px; width: 40px; height: 40px; 
+    background: linear-gradient(-45deg, #040508 0%, #040508 12px, var(--sbi-blue) 12px, var(--sbi-blue) 24px, transparent 24px); 
     z-index: 6; pointer-events: none;
 }
 
-/* Le retour des guillemets holographiques */
+/* Les guillemets holographiques à l'intérieur */
 .quote-text-container { position: relative; z-index: 2; }
 .quote-mark-hologram {
-    position: absolute; top: -2rem; left: 1rem; font-size: 8rem; font-family: serif; line-height: 1;
+    position: absolute; top: -1.5rem; left: 0.5rem; font-size: 6rem; font-family: serif; line-height: 1;
     color: transparent; -webkit-text-stroke: 1px rgba(0, 81, 255, 0.4);
     animation: holoBreathe 4s infinite ease-in-out; z-index: 1; pointer-events: none; opacity: 0.4;
 }
@@ -254,29 +255,29 @@ main, footer { position: relative; z-index: 2; }
     50% { opacity: 0.6; transform: translateY(-10px); filter: drop-shadow(0 0 15px var(--sbi-blue)); }
 }
 
-.founder-block blockquote { font-size: 1.6rem; font-weight: 800; margin-bottom: 1.5rem; line-height: 1.3; }
-.quote-sub { color: var(--text-muted); font-size: 1rem; margin-bottom: 2.5rem; }
+.founder-block blockquote { font-size: 1.1rem; font-weight: 800; margin-bottom: 1rem; line-height: 1.3; }
+.quote-sub { color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.5rem; }
 
-/* Signature Manuscrite (ultra-liée) avec Laser Sweep */
+/* NOUVEAU : Signature Manuscrite Liée (Alex Brush) + Laser Sweep */
 .quote-author { display: flex; flex-direction: column; gap: 0.5rem; position: relative; z-index: 2;}
 .quote-author span { font-size: 0.85rem; letter-spacing: 2px; color: var(--text-muted); font-weight: 600; }
 
 .animated-signature {
     font-family: 'Alex Brush', cursive;
-    font-size: 3rem; text-transform: none;
-    font-weight: normal; font-style: normal;
+    font-size: 2.8rem; text-transform: none; font-weight: normal; font-style: normal;
     background: linear-gradient(90deg, #8a93a6 0%, #8a93a6 40%, var(--sbi-blue) 48%, #ffffff 50%, var(--sbi-blue) 52%, #8a93a6 60%, #8a93a6 100%);
     background-size: 300% 100%;
     -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    animation: laserSweep 4s infinite linear; margin-bottom: 0.5rem; line-height: 1.2;
+    animation: laserSweep 4s infinite linear; margin-bottom: 0.25rem; line-height: 1;
 }
 @keyframes laserSweep {
     0% { background-position: 100% 0; }
     100% { background-position: -50% 0; }
 }
 
+/* BLOC CHIFFRES (Reste dans la colonne de droite) */
 .numbers-box { background: var(--bg-surface); border: 1px solid var(--border-color); padding: 3rem; display: flex; flex-direction: column; justify-content: space-between; }
-.grid-numbers { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-top: 1.5rem; }
+.grid-numbers { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-top: 1.5rem; }
 .number-item .num { display: block; font-size: 2rem; font-weight: 800; margin-bottom: 0.25rem; }
 .number-item .label { font-size: 0.75rem; color: var(--text-muted); }
 .chart-container { margin-top: 2rem; width: 100%; height: 60px; overflow: hidden; opacity: 0.8; }
@@ -311,9 +312,12 @@ main, footer { position: relative; z-index: 2; }
     .grid-parcours { grid-template-columns: repeat(2, 1fr); }
     .features-bar { grid-template-columns: repeat(2, 1fr); gap: 2rem; }
     
+    /* Sur tablette, la grille stats repasse en 1 colonne (l'un sous l'autre) */
+    .stats-grid { grid-template-columns: 1fr; }
     .founder-block { flex-direction: column; padding: 2rem 0; justify-content: center; }
-    .founder-img-wrapper { width: 80%; max-width: none; margin-bottom: -10%; z-index: 1; } 
-    .founder-block .quote-content { width: 100%; max-width: none; margin-left: 0; padding: 4rem 2rem; z-index: 2; }
+    .founder-img-wrapper { width: 80%; margin: 0 auto; z-index: 1; } 
+    .founder-block .quote-content { width: 80%; margin-top: -10%; position: relative; right: auto; margin-left: auto; z-index: 2; padding: 3rem 2rem; }
+    .grid-numbers { grid-template-columns: repeat(4, 1fr); }
 }
 @media (max-width: 768px) {
     .main-nav { display: none; }
