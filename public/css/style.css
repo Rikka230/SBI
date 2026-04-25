@@ -35,51 +35,98 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
     z-index: 0; pointer-events: none; 
 }
 
-/* --- LIGNES DIAGONALES (DATA STREAM) EN ARRIÈRE-PLAN --- */
-.sbi-bg-lines {
+/* --- SECTION FOND ANIMÉ : LIGNES ET PARTICULES --- */
+.sbi-bg-animations {
     position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
     z-index: 0; pointer-events: none; overflow: hidden;
 }
 
-/* Correction : 
-  1. filter: drop-shadow pour que la lumière s'estompe avec le dégradé (fini l'effet flèche coupée).
-  2. Hauteur rallongée pour un fondu plus doux.
-  3. border-radius arrondi pour des pointes organiques.
-*/
+/* 1. Les Lignes (Profondeur accentuée) */
 .sbi-line {
-    position: absolute;
-    top: -50%;
-    width: 2px;
+    position: absolute; top: -50%;
     height: 50vh; 
-    background: linear-gradient(to bottom, 
-        rgba(0, 162, 255, 0) 0%, 
-        rgba(0, 162, 255, 0.5) 35%, 
-        rgba(255, 255, 255, 1) 50%, 
-        rgba(0, 162, 255, 0.5) 65%, 
-        rgba(0, 162, 255, 0) 100%);
-    filter: drop-shadow(0 0 10px rgba(0, 162, 255, 0.9));
-    opacity: 0;
-    will-change: transform, opacity;
-    border-radius: 10px; /* Bouts arrondis */
+    background: linear-gradient(to bottom, rgba(0, 162, 255, 0) 0%, rgba(255, 255, 255, 1) 50%, rgba(0, 162, 255, 0) 100%);
+    will-change: transform, opacity; border-radius: 10px;
 }
 
-/* Correction vitesses et apparition :
-  Vitesses divisées par deux (plus lent, majestueux).
-  Délais négatifs (spawn directement sur l'écran au chargement).
-*/
-.sbi-line:nth-child(1) { left: 15%; animation: sbiShoot 22s infinite linear -5s; }
-.sbi-line:nth-child(2) { left: 30%; width: 3px; filter: drop-shadow(0 0 10px rgba(0,162,255,0.9)) blur(2px); animation: sbiShoot 28s infinite linear -14s; }
-.sbi-line:nth-child(3) { left: 45%; animation: sbiShoot 19s infinite linear -2s; }
-.sbi-line:nth-child(4) { left: 60%; width: 3px; filter: drop-shadow(0 0 10px rgba(0,162,255,0.9)) blur(1px); animation: sbiShoot 32s infinite linear -20s; }
-.sbi-line:nth-child(5) { left: 75%; animation: sbiShoot 25s infinite linear -8s; }
-.sbi-line:nth-child(6) { left: 90%; animation: sbiShoot 20s infinite linear -18s; }
-.sbi-line:nth-child(7) { left: 5%; width: 3px; filter: drop-shadow(0 0 10px rgba(0,162,255,0.9)) blur(3px); animation: sbiShoot 35s infinite linear -10s; }
+/* Premier plan (Lignes nettes, vives, rapides) */
+.sbi-line:nth-child(1), .sbi-line:nth-child(3) {
+    width: 3px; filter: drop-shadow(0 0 10px rgba(0,162,255,0.9));
+}
+.sbi-line:nth-child(1) { left: 15%; animation: sbiShoot 14s infinite linear -2s; }
+.sbi-line:nth-child(3) { left: 65%; animation: sbiShoot 16s infinite linear -7s; }
+
+/* Plan moyen (Lignes standard, léger flou) */
+.sbi-line:nth-child(5), .sbi-line:nth-child(6) {
+    width: 2px; filter: drop-shadow(0 0 5px rgba(0,162,255,0.5)) blur(1px);
+}
+.sbi-line:nth-child(5) { left: 40%; animation: sbiShoot 22s infinite linear -12s; }
+.sbi-line:nth-child(6) { left: 85%; animation: sbiShoot 25s infinite linear -4s; }
+
+/* Arrière-plan (Lignes très floues, très lentes, presque transparentes) */
+.sbi-line:nth-child(2), .sbi-line:nth-child(4), .sbi-line:nth-child(7) {
+    width: 1px; filter: blur(4px); opacity: 0.3; /* Brident la luminosité max */
+}
+.sbi-line:nth-child(2) { left: 25%; animation: sbiShootBg 35s infinite linear -18s; }
+.sbi-line:nth-child(4) { left: 55%; animation: sbiShootBg 40s infinite linear -9s; }
+.sbi-line:nth-child(7) { left: 8%;  animation: sbiShootBg 38s infinite linear -25s; }
 
 @keyframes sbiShoot {
     0% { transform: rotate(45deg) translateY(-150vh); opacity: 0; }
-    15% { opacity: 0.6; } /* Opacité max à 60% pour rester élégant */
-    85% { opacity: 0.6; }
+    15% { opacity: 0.7; }
+    85% { opacity: 0.7; }
     100% { transform: rotate(45deg) translateY(200vh); opacity: 0; }
+}
+@keyframes sbiShootBg {
+    0% { transform: rotate(45deg) translateY(-150vh); opacity: 0; }
+    20% { opacity: 0.3; } /* Opacité max plus faible pour l'arrière-plan */
+    80% { opacity: 0.3; }
+    100% { transform: rotate(45deg) translateY(200vh); opacity: 0; }
+}
+
+/* 2. Les Particules (Poussière d'énergie) */
+.sbi-particle {
+    position: absolute;
+    width: 3px; height: 3px;
+    background-color: #ffffff;
+    border-radius: 50%;
+    box-shadow: 0 0 6px 2px rgba(0, 162, 255, 0.8);
+    opacity: 0;
+    will-change: transform, opacity;
+}
+
+/* Distribution et animations aléatoires des particules */
+.sbi-particle:nth-child(8)  { top: 20%; left: 80%; animation: particleDrift1 12s infinite ease-in-out -2s; }
+.sbi-particle:nth-child(9)  { top: 60%; left: 90%; width: 2px; height: 2px; animation: particleDrift2 18s infinite ease-in-out -7s; }
+.sbi-particle:nth-child(10) { top: 30%; left: 40%; width: 4px; height: 4px; filter: blur(1px); animation: particleDrift1 15s infinite ease-in-out -11s; }
+.sbi-particle:nth-child(11) { top: 80%; left: 70%; animation: particleDrift3 20s infinite ease-in-out -4s; }
+.sbi-particle:nth-child(12) { top: 10%; left: 30%; width: 2px; height: 2px; animation: particleDrift2 14s infinite ease-in-out -9s; }
+.sbi-particle:nth-child(13) { top: 50%; left: 10%; filter: blur(2px); animation: particleDrift3 25s infinite ease-in-out -15s; }
+.sbi-particle:nth-child(14) { top: 85%; left: 20%; width: 4px; height: 4px; animation: particleDrift1 17s infinite ease-in-out -1s; }
+.sbi-particle:nth-child(15) { top: 40%; left: 60%; width: 2px; height: 2px; animation: particleDrift2 22s infinite ease-in-out -13s; }
+.sbi-particle:nth-child(16) { top: 70%; left: 50%; filter: blur(1px); animation: particleDrift3 19s infinite ease-in-out -6s; }
+.sbi-particle:nth-child(17) { top: 15%; left: 60%; animation: particleDrift1 16s infinite ease-in-out -18s; }
+.sbi-particle:nth-child(18) { top: 90%; left: 85%; width: 2px; height: 2px; animation: particleDrift2 21s infinite ease-in-out -3s; }
+.sbi-particle:nth-child(19) { top: 25%; left: 15%; filter: blur(2px); animation: particleDrift3 24s infinite ease-in-out -10s; }
+
+/* Mouvements organiques (dérive vers la gauche + oscillation verticale) */
+@keyframes particleDrift1 {
+    0% { transform: translate(0, 0); opacity: 0; }
+    20% { opacity: 0.8; }
+    80% { opacity: 0.8; }
+    100% { transform: translate(-15vw, -30px); opacity: 0; }
+}
+@keyframes particleDrift2 {
+    0% { transform: translate(0, 0); opacity: 0; }
+    25% { opacity: 0.5; }
+    75% { opacity: 0.5; }
+    100% { transform: translate(-20vw, 40px); opacity: 0; }
+}
+@keyframes particleDrift3 {
+    0% { transform: translate(0, 0); opacity: 0; }
+    15% { opacity: 0.7; }
+    85% { opacity: 0.7; }
+    100% { transform: translate(-10vw, -15px); opacity: 0; }
 }
 
 /* On s'assure que le contenu reste au-dessus du fond */
@@ -138,6 +185,7 @@ main, footer { position: relative; z-index: 1; }
 .hero-subtitle { font-size: 1.1rem; color: var(--text-muted); margin-bottom: 2.5rem; max-width: 450px; }
 .hero-buttons { display: flex; gap: 1.5rem; align-items: center; }
 .hero-visual { display: flex; justify-content: center; align-items: center; width: 100%; height: 100%; }
+
 .hero-large-logo {
     width: 100%; max-width: 950px; display: block; transform: translateX(-5%); filter: drop-shadow(0 0 50px rgba(0, 81, 255, 0.3));
 }
@@ -163,16 +211,9 @@ main, footer { position: relative; z-index: 1; }
 .grid-parcours { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; margin-top: 3rem; }
 
 .parcours-card {
-    position: relative;
-    background-color: var(--bg-card);
-    background-size: cover; 
-    background-position: center;
-    border: 1px solid #1a1e29;
-    overflow: hidden;
-    aspect-ratio: 1 / 1;
-    display: flex; flex-direction: column; justify-content: flex-end;
-    cursor: pointer;
-    transition: transform 0.3s ease;
+    position: relative; background-color: var(--bg-card); background-size: cover; background-position: center;
+    border: 1px solid #1a1e29; overflow: hidden; aspect-ratio: 1 / 1;
+    display: flex; flex-direction: column; justify-content: flex-end; cursor: pointer; transition: transform 0.3s ease;
 }
 
 .card-badge {
@@ -181,8 +222,7 @@ main, footer { position: relative; z-index: 1; }
 }
 .card-badge::after {
     content: ''; position: absolute; top: 6px; left: 6px; width: 5px; height: 5px;
-    background: #ffffff; transform: rotate(45deg);
-    animation: neonPulse 2s infinite alternate ease-in-out;
+    background: #ffffff; transform: rotate(45deg); animation: neonPulse 2s infinite alternate ease-in-out;
 }
 @keyframes neonPulse {
     0% { opacity: 0.7; box-shadow: 0 0 3px 0px rgba(255,255,255,0.6), 0 0 6px 1px var(--sbi-blue); }
