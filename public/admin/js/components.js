@@ -191,7 +191,7 @@ customElements.define('student-left-panel', StudentLeftPanel);
 /* --- 4. LA BARRE SUPÉRIEURE (ÉTUDIANT) --- */
 class StudentTopBar extends HTMLElement {
     connectedCallback() {
-        document.body.classList.add('no-right-panel'); // Protection absolue du layout
+        document.body.classList.add('no-right-panel'); // Injecte la classe protectrice
         this.innerHTML = `
             <header class="top-bar" style="border-bottom: 1px solid var(--border-color); background-color: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px);">
                 <button class="mobile-toggle left-toggle" id="btn-toggle-mobile"><svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg></button>
@@ -283,7 +283,7 @@ customElements.define('teacher-left-panel', TeacherLeftPanel);
 /* --- 6. LA BARRE SUPÉRIEURE (PROFESSEUR) --- */
 class TeacherTopBar extends HTMLElement {
     connectedCallback() {
-        document.body.classList.add('no-right-panel'); // Protection absolue du layout
+        document.body.classList.add('no-right-panel'); // Injecte la classe protectrice
         this.innerHTML = `
             <header class="top-bar" style="border-bottom: 1px solid var(--border-color); background-color: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px);">
                 <button class="mobile-toggle left-toggle" id="btn-toggle-mobile"><svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg></button>
