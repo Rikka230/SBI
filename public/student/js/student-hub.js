@@ -75,9 +75,10 @@ async function loadStudentData(uid) {
 
             if(formationsList) {
                 if (assigned.length > 0) {
+                    // FIX : Utilisation du bleu SBI pour les puces
                     formationsList.innerHTML = assigned.map(a => `
-                        <div style="padding: 1rem; background: #0a0a0c; border: 1px solid #222; border-radius: 6px; color: white; display: flex; align-items: center; gap: 0.8rem; cursor: pointer; transition: 0.2s;" onmouseover="this.style.borderColor='var(--accent-green)'" onmouseout="this.style.borderColor='#222'">
-                            <div style="width: 8px; height: 8px; background: var(--accent-green); border-radius: 50%; flex-shrink: 0;"></div>
+                        <div style="padding: 1rem; background: #0a0a0c; border: 1px solid #222; border-radius: 6px; color: white; display: flex; align-items: center; gap: 0.8rem; cursor: pointer; transition: 0.2s;" onmouseover="this.style.borderColor='var(--accent-blue)'" onmouseout="this.style.borderColor='#222'">
+                            <div style="width: 8px; height: 8px; background: var(--accent-blue); border-radius: 50%; flex-shrink: 0;"></div>
                             <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${a}</span>
                         </div>
                     `).join('');
