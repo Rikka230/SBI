@@ -21,20 +21,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const userSnap = await getDoc(doc(db, "users", currentUid));
             if(userSnap.exists()) {
                 currentUserProfile = userSnap.data();
-                
-                const displayName = `${currentUserProfile.prenom || ''} ${currentUserProfile.nom || ''}`.trim() || "Utilisateur";
-                const avatarUrl = currentUserProfile.photoURL || `https://ui-avatars.com/api/?name=${displayName}&background=111&color=fff`;
-                const userXp = currentUserProfile.xp || 0;
-                const userLevel = Math.floor(userXp / 100) + 1;
-
-                const topName = document.getElementById('top-user-name');
-                if (topName) topName.textContent = displayName;
-                
-                const topAvatar = document.getElementById('top-user-avatar');
-                if (topAvatar) topAvatar.innerHTML = `<img src="${avatarUrl}" style="width:100%; height:100%; object-fit:cover;">`;
-                
-                const topLevel = document.getElementById('top-user-level');
-                if (topLevel) topLevel.textContent = `Niveau ${userLevel}`;
+                // FIX : Suppression de l'injection forcée de l'avatar sombre.
+                // L'interface de la Top-Bar est gérée nativement par les scripts spécifiques de chaque page.
             }
 
             initNotificationsRealtime();
@@ -97,7 +85,6 @@ function initNotificationsRealtime() {
                 notifs.push({ id: docSnap.id, ...data });
             } 
             else if (currentUserProfile && (currentUserProfile.role === 'admin' || currentUserProfile.isGod)) {
-                // FIX FLUX ADMIN : Un Administrateur ne doit écouter QUE les demandes de validation
                 if (data.type === 'course_validation') {
                     notifs.push({ id: docSnap.id, ...data });
                 }
@@ -221,7 +208,6 @@ function renderNotificationsList(notifs) {
                 showTeacherCourseActionModal(courseId, courseTitle);
             } 
             else if (notifType === 'course_rejected') {
-                // Renvoyer le prof vers son éditeur
                 if (userRole === 'teacher') window.location.assign(`/teacher/mes-cours.html?edit=${courseId}`);
                 else window.location.assign(`/admin/formations-cours.html?edit=${courseId}`);
             }
