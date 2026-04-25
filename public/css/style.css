@@ -29,14 +29,13 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 .bg-blue { background-color: var(--sbi-blue); }
 .text-italic { font-style: italic; }
 
-/* --- SECTION 3 : HALO DE FOND --- */
 .fixed-bg-glow {
     position: fixed; bottom: -20vh; right: -20vw; width: 60vw; height: 60vw;
     background: radial-gradient(circle, rgba(0, 81, 255, 0.12) 0%, rgba(0, 81, 255, 0) 65%);
     z-index: 0; pointer-events: none; 
 }
 
-/* --- SECTION 4 : FOND ANIMÉ FIXE (Brume & Particules) --- */
+/* --- SECTION FOND ANIMÉ : BRUME, LIGNES ET POUSSIÈRE --- */
 .sbi-bg-fixed { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 0; pointer-events: none; overflow: hidden; }
 
 .sbi-fog { position: absolute; width: 150vw; height: 150vh; border-radius: 50%; opacity: 0.6; pointer-events: none; }
@@ -74,7 +73,6 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 @keyframes dustDrift3 { 0% { transform: translate(0, 0) rotate(0deg); opacity: 0; } 15% { opacity: 0.6; } 85% { opacity: 0.6; } 100% { transform: translate(-8vw, -3vh) rotate(90deg); opacity: 0; } }
 @keyframes dustDriftBig { 0% { transform: translate(0, 0) rotate(0deg) scale(1); opacity: 0; } 20% { opacity: 0.15; } 80% { opacity: 0.15; } 100% { transform: translate(-18vw, 4vh) rotate(60deg) scale(1.3); opacity: 0; } }
 
-/* --- SECTION 5 : FOND ANIMÉ PARALLAXE (Lignes Diagonales) --- */
 .sbi-bg-parallax { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1; pointer-events: none; overflow: hidden; will-change: transform; }
 
 .sbi-line { position: absolute; top: -50%; height: 50vh; background: linear-gradient(to bottom, rgba(0, 162, 255, 0) 0%, rgba(255, 255, 255, 1) 50%, rgba(0, 162, 255, 0) 100%); will-change: transform, opacity; border-radius: 10px; }
@@ -92,10 +90,14 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 @keyframes sbiShoot { 0% { transform: rotate(45deg) translateY(-150vh); opacity: 0; } 15% { opacity: 0.7; } 85% { opacity: 0.7; } 100% { transform: rotate(45deg) translateY(200vh); opacity: 0; } }
 @keyframes sbiShootBg { 0% { transform: rotate(45deg) translateY(-150vh); opacity: 0; } 20% { opacity: 0.3; } 80% { opacity: 0.3; } 100% { transform: rotate(45deg) translateY(200vh); opacity: 0; } }
 
-/* Ordre Z-Index : Contenu au-dessus des fonds */
 main, footer { position: relative; z-index: 2; }
 
-/* --- SECTION 6 : UI GENERALE (Boutons, Liens) --- */
+.padding-global { padding-left: 5%; padding-right: 5%; }
+.flex-between { display: flex; justify-content: space-between; align-items: flex-end; }
+.link-blue { color: var(--sbi-blue); font-weight: 600; display: inline-flex; align-items: center; gap: 0.5rem; }
+.link-blue:hover { color: var(--text-light); }
+
+/* --- SECTION 3 : BOUTONS & ICONES --- */
 .btn-primary { background-color: var(--sbi-blue); color: white; padding: 0.75rem 1.5rem; border-radius: 4px; font-weight: 600; display: inline-flex; align-items: center; gap: 0.5rem; transition: background 0.3s ease, transform 0.2s ease; }
 .btn-primary:hover { background-color: var(--sbi-blue-hover); transform: translateY(-2px); }
 .btn-ghost { color: var(--text-light); font-weight: 600; display: inline-flex; align-items: center; gap: 0.5rem; }
@@ -105,7 +107,7 @@ main, footer { position: relative; z-index: 2; }
 .btn-icon { color: white; display: flex; align-items: center; justify-content: center; transition: color 0.3s ease;}
 .btn-icon:hover { color: var(--sbi-blue); }
 
-/* --- SECTION 7 : HEADER --- */
+/* --- SECTION 4 : HEADER --- */
 .site-header { position: fixed; top: 0; left: 0; width: 100%; height: var(--header-height); display: flex; justify-content: space-between; align-items: center; padding: 0 5%; background: rgba(4, 5, 8, 0.85); backdrop-filter: blur(12px); z-index: 1000; border-bottom: 1px solid rgba(255,255,255,0.05); }
 .site-header::after { content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 1px; background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%); }
 
@@ -118,7 +120,7 @@ main, footer { position: relative; z-index: 2; }
 .nav-link:hover { color: var(--sbi-blue); }
 .header-actions { display: flex; align-items: center; gap: 1.5rem; }
 
-/* --- SECTION 8 : HERO & VIDÉO --- */
+/* --- SECTION 5 : HERO & VIDÉO --- */
 .hero-section { position: relative; height: 100vh; min-height: 750px; display: flex; flex-direction: column; padding-top: var(--header-height); background-color: var(--bg-dark); overflow: hidden; }
 .hero-video-bg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; opacity: 1; }
 .hero-gradient-overlay { position: absolute; top: 0; left: 0; width: 60%; height: 100%; background: linear-gradient(to right, rgba(4, 5, 8, 0.95) 0%, rgba(4, 5, 8, 0) 100%); z-index: 1; }
@@ -130,7 +132,7 @@ main, footer { position: relative; z-index: 2; }
 .hero-visual { display: flex; justify-content: center; align-items: center; width: 100%; height: 100%; }
 .hero-large-logo { width: 100%; max-width: 950px; display: block; transform: translateX(-5%); filter: drop-shadow(0 0 50px rgba(0, 81, 255, 0.3)); }
 
-.features-bar { position: relative; z-index: 2; display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; padding-top: 2rem; padding-bottom: 2rem; margin-top: auto; background-color: transparent; }
+.features-bar { position: relative; z-index: 2; display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 2rem; padding-bottom: 2rem; margin-top: auto; background-color: transparent; }
 .features-bar::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 1px; background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%); }
 .features-bar::after { content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 1px; background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%); }
 .feature-item { display: flex; align-items: flex-start; gap: 1rem; }
@@ -138,7 +140,7 @@ main, footer { position: relative; z-index: 2; }
 .feature-item strong { display: block; font-size: 0.9rem; margin-bottom: 0.25rem; }
 .feature-item p { font-size: 0.8rem; color: var(--text-muted); }
 
-/* --- SECTION 9 : PARCOURS (CARTES) --- */
+/* --- SECTION 6 : PARCOURS --- */
 .section-parcours { background: transparent; padding-top: var(--space-xl); padding-bottom: var(--space-xl); }
 .section-surtitle { font-size: 0.85rem; font-weight: 800; letter-spacing: 1px; display: block; margin-bottom: 0.5rem; }
 .section-title { font-size: clamp(2rem, 4vw, 2.5rem); line-height: 1.2; font-weight: 800; }
@@ -164,125 +166,91 @@ main, footer { position: relative; z-index: 2; }
 .card-footer { display: flex; justify-content: flex-start; align-items: center; gap: 1rem; }
 .course-count { font-size: 0.85rem; color: var(--text-muted); }
 
-/* --- SECTION 10 : STATS & FONDATEUR --- */
+/* --- SECTION 7 : STATS & CITATION (NOUVEAU BLOC FONDATEUR ÉCLAT DE VERRE) --- */
 .section-stats { padding-top: var(--space-xl); padding-bottom: var(--space-xl); background: transparent; }
-
-/* LA GRILLE 2 COLONNES ORIGINELLE EST RESTAURÉE ICI */
 .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
 
-/* BLOC FONDATEUR (Dans la colonne de gauche) */
 .founder-block { 
-    position: relative; display: flex; align-items: center; 
-    background: transparent; border: none; padding: 2rem 0; 
+    background: var(--bg-surface); border: 1px solid var(--border-color); 
+    position: relative; display: flex; align-items: center; /* Centré verticalement */
+    padding: 3rem; gap: 3rem; border-radius: 2px;
+}
+.founder-block::after { 
+    content: ''; position: absolute; bottom: 0; right: 0; width: 0; height: 0; 
+    border-bottom: 40px solid var(--sbi-blue); border-left: 40px solid transparent; 
 }
 
-/* L'image prend 60% de la colonne de gauche */
 .founder-img-wrapper { 
-    width: 60%; position: relative; z-index: 1; 
+    width: 40%; position: relative; 
+    /* Pas d'overflow hidden pour laisser flotter les éclats de verre */
 }
 
-/* Wrapper interne : applique la cassure à la photo sans masquer les éclats extérieurs */
-.img-inner-wrapper {
-    clip-path: polygon(15% 0, 100% 0, 100% 85%, 85% 100%, 0 100%, 0 15%);
-    overflow: hidden;
-}
-
+/* La photo est taillée de manière asymétrique et tranchante */
 .founder-img { 
     width: 100%; aspect-ratio: 3/4; object-fit: cover; 
-    filter: grayscale(100%) contrast(1.2); display: block;
+    filter: grayscale(100%) contrast(1.2); 
+    clip-path: polygon(20% 0%, 100% 0, 100% 80%, 80% 100%, 0 100%, 0% 20%);
 }
 
-/* ÉCLATS DE VERRE */
-.shard { position: absolute; background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border: 1px solid rgba(255, 255, 255, 0.15); z-index: 3; pointer-events: none; overflow: hidden; }
-
-/* Éclat 1 avec Edge Light (En haut à gauche) */
-.shard-1 { top: -20px; left: -15px; width: 60px; height: 60px; clip-path: polygon(50% 0%, 100% 100%, 0% 100%); animation: shardFloat 7s infinite ease-in-out; }
-
-.shard-edge-light {
-    position: absolute; top: 0; left: 0; width: 200%; height: 100%;
-    background: linear-gradient(135deg, transparent 45%, rgba(0, 162, 255, 1) 50%, transparent 55%);
-    transform: translateX(-100%);
-    animation: shardEdgeScan 6s infinite;
-    mix-blend-mode: screen;
-}
-@keyframes shardEdgeScan {
-    0%, 80% { transform: translateX(-100%); opacity: 0; }
-    82%, 88% { opacity: 1; }
-    90%, 100% { transform: translateX(100%); opacity: 0; }
+/* Base pour les éclats de verre */
+.shard {
+    position: absolute;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(8px); /* Effet de verre dépoli */
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    z-index: 3;
 }
 
-/* Éclat 2 (En bas à droite, derrière) */
-.shard-2 { bottom: -20px; right: -10px; width: 80px; height: 60px; background: rgba(0, 81, 255, 0.1); clip-path: polygon(0 0, 100% 30%, 40% 100%); animation: shardFloat 9s infinite ease-in-out reverse; z-index: -1; }
-
-/* Le Losange bleu de retour (Sur la droite) */
-.shard-diamond { 
-    top: 30%; right: -20px; width: 35px; height: 35px; 
-    background: var(--sbi-blue); border: none; backdrop-filter: none; -webkit-backdrop-filter: none; 
-    clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); 
-    animation: shardFloat 6s infinite ease-in-out 1s; z-index: 4; overflow: visible; 
-}
-.shard-diamond::after { 
-    content: ''; position: absolute; top: 14px; left: 14px; width: 7px; height: 7px; 
-    background: #fff; transform: rotate(45deg); animation: neonPulse 2s infinite alternate ease-in-out; 
+/* Éclat 1 : En haut à gauche */
+.shard-1 {
+    top: -20px; left: -20px; width: 60px; height: 80px;
+    clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
+    animation: shardFloat 6s infinite ease-in-out;
 }
 
-@keyframes shardFloat { 0%, 100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-10px) rotate(5deg); } }
-
-/* LA GLASS-CARD DU TEXTE : Contenue dans la colonne, mord l'image */
-.founder-block .quote-content { 
-    width: 55%; position: absolute; right: 0; z-index: 2; 
-    background: rgba(10, 14, 23, 0.55); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); 
-    border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 2px;
-    padding: 2.5rem; box-shadow: 0 20px 40px rgba(0,0,0,0.6), inset 0 0 20px rgba(0, 81, 255, 0.05);
+/* Éclat 2 : En bas à droite (Passe derrière l'image, teinté bleu) */
+.shard-2 {
+    bottom: -30px; right: -10px; width: 90px; height: 70px;
+    background: rgba(0, 81, 255, 0.1); border-color: rgba(0, 81, 255, 0.3);
+    clip-path: polygon(0% 0%, 100% 40%, 40% 100%);
+    animation: shardFloat 8s infinite ease-in-out reverse;
+    z-index: -1; 
 }
 
-/* Le petit néon bleu en coin bas-droite sur la glass card */
-.founder-block .quote-content::after {
-    content: ''; position: absolute; bottom: -1px; right: -1px; width: 40px; height: 40px; 
-    background: linear-gradient(-45deg, #040508 0%, #040508 12px, var(--sbi-blue) 12px, var(--sbi-blue) 24px, transparent 24px); 
-    z-index: 6; pointer-events: none;
+/* Éclat 3 : Le badge dynamique bleu flottant */
+.shard-3 {
+    top: 40%; right: -25px; width: 40px; height: 40px;
+    background: var(--sbi-blue); border: none; backdrop-filter: none;
+    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+    animation: shardFloat 5s infinite ease-in-out 2s;
+}
+.shard-3::after {
+    content: ''; position: absolute; top: 17px; left: 17px; width: 6px; height: 6px;
+    background: #fff; transform: rotate(45deg);
+    animation: neonPulse 2s infinite alternate ease-in-out;
 }
 
-/* Les guillemets holographiques à l'intérieur */
-.quote-text-container { position: relative; z-index: 2; }
-.quote-mark-hologram {
-    position: absolute; top: -1.5rem; left: 0.5rem; font-size: 6rem; font-family: serif; line-height: 1;
-    color: transparent; -webkit-text-stroke: 1px rgba(0, 81, 255, 0.4);
-    animation: holoBreathe 4s infinite ease-in-out; z-index: 1; pointer-events: none; opacity: 0.4;
-}
-@keyframes holoBreathe {
-    0%, 100% { opacity: 0.3; transform: translateY(0); filter: drop-shadow(0 0 0px var(--sbi-blue)); }
-    50% { opacity: 0.6; transform: translateY(-10px); filter: drop-shadow(0 0 15px var(--sbi-blue)); }
+@keyframes shardFloat {
+    0% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-15px) rotate(10deg); }
+    100% { transform: translateY(0) rotate(0deg); }
 }
 
-.founder-block blockquote { font-size: 1.1rem; font-weight: 800; margin-bottom: 1rem; line-height: 1.3; }
-.quote-sub { color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.5rem; }
+.founder-block .quote-content { width: 60%; padding: 0; position: relative; }
+.quote-mark { font-size: 4rem; font-family: serif; line-height: 0; position: absolute; top: 1rem; left: -2rem; color: rgba(0, 81, 255, 0.2); }
+.founder-block blockquote { font-size: 1.3rem; font-weight: 800; margin-bottom: 1rem; line-height: 1.3; margin-top: 1rem; }
+.quote-sub { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 2rem; }
+.quote-author { display: flex; flex-direction: column; gap: 0.5rem; }
+.quote-author span { font-size: 0.8rem; letter-spacing: 1px; color: var(--text-muted); }
 
-/* NOUVEAU : Signature Manuscrite Liée (Alex Brush) + Laser Sweep */
-.quote-author { display: flex; flex-direction: column; gap: 0.5rem; position: relative; z-index: 2;}
-.quote-author span { font-size: 0.85rem; letter-spacing: 2px; color: var(--text-muted); font-weight: 600; }
-
-.animated-signature {
-    font-family: 'Alex Brush', cursive;
-    font-size: 2.8rem; text-transform: none; font-weight: normal; font-style: normal;
-    background: linear-gradient(90deg, #8a93a6 0%, #8a93a6 40%, var(--sbi-blue) 48%, #ffffff 50%, var(--sbi-blue) 52%, #8a93a6 60%, #8a93a6 100%);
-    background-size: 300% 100%;
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    animation: laserSweep 4s infinite linear; margin-bottom: 0.25rem; line-height: 1;
-}
-@keyframes laserSweep {
-    0% { background-position: 100% 0; }
-    100% { background-position: -50% 0; }
-}
-
-/* BLOC CHIFFRES (Reste dans la colonne de droite) */
 .numbers-box { background: var(--bg-surface); border: 1px solid var(--border-color); padding: 3rem; display: flex; flex-direction: column; justify-content: space-between; }
-.grid-numbers { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-top: 1.5rem; }
+.grid-numbers { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-top: 1.5rem; }
 .number-item .num { display: block; font-size: 2rem; font-weight: 800; margin-bottom: 0.25rem; }
 .number-item .label { font-size: 0.75rem; color: var(--text-muted); }
 .chart-container { margin-top: 2rem; width: 100%; height: 60px; overflow: hidden; opacity: 0.8; }
 
-/* --- SECTION 11 : NEWSLETTER --- */
+/* --- SECTION 8 : NEWSLETTER --- */
 .section-newsletter { padding-bottom: var(--space-xl); background: transparent; }
 .newsletter-box { background: var(--bg-surface); border: 1px solid var(--border-color); padding: 2.5rem 3rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 2rem; }
 .news-text { display: flex; align-items: center; gap: 1.5rem; }
@@ -293,7 +261,7 @@ main, footer { position: relative; z-index: 2; }
 .news-form input { flex: 1; background: var(--bg-dark); border: 1px solid var(--border-color); color: white; padding: 0.75rem 1rem; outline: none; }
 .news-form input:focus { border-color: var(--sbi-blue); }
 
-/* --- SECTION 12 : FOOTER --- */
+/* --- SECTION 9 : FOOTER --- */
 .site-footer { position: relative; padding-top: 4rem; padding-bottom: 2rem; background: var(--bg-dark); }
 .site-footer::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 1px; background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%); }
 
@@ -307,17 +275,14 @@ main, footer { position: relative; z-index: 2; }
 .social-icons a { color: #fff; display: flex; align-items: center; justify-content: center; transition: color 0.3s ease; }
 .social-icons a:hover { color: var(--sbi-blue); }
 
-/* --- SECTION 13 : MEDIA QUERIES --- */
+/* --- SECTION 10 : MEDIA QUERIES --- */
 @media (max-width: 1024px) {
     .grid-parcours { grid-template-columns: repeat(2, 1fr); }
-    .features-bar { grid-template-columns: repeat(2, 1fr); gap: 2rem; }
-    
-    /* Sur tablette, la grille stats repasse en 1 colonne (l'un sous l'autre) */
     .stats-grid { grid-template-columns: 1fr; }
-    .founder-block { flex-direction: column; padding: 2rem 0; justify-content: center; }
-    .founder-img-wrapper { width: 80%; margin: 0 auto; z-index: 1; } 
-    .founder-block .quote-content { width: 80%; margin-top: -10%; position: relative; right: auto; margin-left: auto; z-index: 2; padding: 3rem 2rem; }
-    .grid-numbers { grid-template-columns: repeat(4, 1fr); }
+    .features-bar { grid-template-columns: repeat(2, 1fr); gap: 2rem; }
+    .founder-block { flex-direction: column; }
+    .founder-img-wrapper { width: 100%; }
+    .founder-block .quote-content { width: 100%; }
 }
 @media (max-width: 768px) {
     .main-nav { display: none; }
