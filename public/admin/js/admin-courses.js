@@ -3,15 +3,14 @@
  * ADMIN COURSES - Gestion des Cours, Formations et Accès
  * =======================================================================
  *
- * Étape 4.2.1 :
- * - médias de cours envoyés dans Firebase Storage
- * - Firestore stocke uniquement les URLs
- * - compatibilité avec les anciens médias base64
- * - preview locale avant sauvegarde
+ * Étape 4.2.2 :
+ * - médias sortis dans course-media-storage.js
+ * - correction upload prof grâce à captureActiveMediaInputs()
+ * - admin-courses.js allégé et plus maintenable
  * =======================================================================
  */
 
-import { db, auth, app } from '/js/firebase-init.js';
+import { db, auth } from '/js/firebase-init.js';
 import {
     collection,
     addDoc,
@@ -26,15 +25,22 @@ import {
     setDoc
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-import {
-    getStorage,
-    ref,
-    uploadBytes,
-    getDownloadURL
-} from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
 import { logoutUser } from '/js/auth.js';
-
-const storage = getStorage(app);
+import {
+    formatBytes,
+    MAX_IMAGE_FILE_BYTES,
+    setPendingImageFile,
+    setPendingVideoFile,
+    captureActiveMediaInputs,
+    restoreCurrentMediaPreview,
+    syncChapterMediaFromDom,
+    uploadPendingMediaForChapters,
+    hasPendingMedia,
+    clearAllPendingMedia,
+    clearPendingMediaForChapter,
+    validateCourseDocumentSize,
+    validateVideoFileForStorage
+} from '/admin/js/course-media-storage.js';
 
 let currentUid = null;
 let currentUserProfile = null;
@@ -49,337 +55,10 @@ let editingCourseAuthorId = null;
 let editingCourseOriginalStatus = null;
 let editingCourseOriginalActive = false;
 
-const pendingChapterMedia = new Map();
-
 const SVG_PREVIEW = `<svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24" style="vertical-align:middle; margin-right:8px;"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>`;
 const SVG_QUIZ_LIST = `<svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24" style="vertical-align:text-bottom; margin-right:4px;"><path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>`;
 
-/* -----------------------------------------------------------------------
-   MÉDIAS / FIREBASE STORAGE
-   ----------------------------------------------------------------------- */
-
-const MAX_IMAGE_FILE_BYTES = 20 * 1024 * 1024;
-const MAX_VIDEO_FILE_BYTES = 200 * 1024 * 1024;
-const MAX_COURSE_DOCUMENT_BYTES = 850 * 1024;
-
-const IMAGE_UPLOAD_ATTEMPTS = [
-    { width: 1600, quality: 0.84 },
-    { width: 1400, quality: 0.78 },
-    { width: 1200, quality: 0.72 },
-    { width: 1000, quality: 0.68 }
-];
-
-const formatBytes = (bytes) => {
-    if (!Number.isFinite(bytes)) return '0 Ko';
-
-    if (bytes < 1024) return `${bytes} o`;
-
-    const kb = bytes / 1024;
-    if (kb < 1024) return `${kb.toFixed(0)} Ko`;
-
-    return `${(kb / 1024).toFixed(2)} Mo`;
-};
-
-const estimateStringBytes = (value) => {
-    return new Blob([String(value || '')]).size;
-};
-
-const estimateObjectBytes = (value) => {
-    try {
-        return estimateStringBytes(JSON.stringify(value));
-    } catch (error) {
-        return Infinity;
-    }
-};
-
-const sanitizeStorageName = (name) => {
-    return String(name || 'media')
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^a-zA-Z0-9._-]/g, '_')
-        .replace(/_+/g, '_')
-        .slice(0, 80);
-};
-
-const getFileExtension = (file, fallback = 'bin') => {
-    const name = file?.name || '';
-    const parts = name.split('.');
-
-    if (parts.length > 1) {
-        return parts.pop().toLowerCase();
-    }
-
-    if (file?.type?.includes('webm')) return 'webm';
-    if (file?.type?.includes('mp4')) return 'mp4';
-    if (file?.type?.includes('jpeg')) return 'jpg';
-    if (file?.type?.includes('png')) return 'png';
-    if (file?.type?.includes('webp')) return 'webp';
-
-    return fallback;
-};
-
-const validateCourseDocumentSize = (courseData) => {
-    const estimatedBytes = estimateObjectBytes(courseData);
-
-    if (estimatedBytes > MAX_COURSE_DOCUMENT_BYTES) {
-        throw new Error(
-            `Ce cours est trop lourd pour Firestore : environ ${formatBytes(estimatedBytes)}. ` +
-            `Même avec Storage, le texte/quiz/données du cours dépassent la limite de sécurité.`
-        );
-    }
-};
-
-const readFileAsDataURL = (file) => {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-
-        reader.onload = (event) => resolve(event.target.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-    });
-};
-
-const loadImageFromDataURL = (dataUrl) => {
-    return new Promise((resolve, reject) => {
-        const img = new Image();
-
-        img.onload = () => resolve(img);
-        img.onerror = reject;
-        img.src = dataUrl;
-    });
-};
-
-const canvasToBlob = (canvas, type, quality) => {
-    return new Promise((resolve, reject) => {
-        canvas.toBlob((blob) => {
-            if (!blob) {
-                reject(new Error("Compression image impossible."));
-                return;
-            }
-
-            resolve(blob);
-        }, type, quality);
-    });
-};
-
-const compressImageFileToWebpBlob = async (file) => {
-    if (!file) {
-        throw new Error("Aucun fichier image sélectionné.");
-    }
-
-    if (!file.type.startsWith('image/')) {
-        throw new Error("Le fichier sélectionné n'est pas une image.");
-    }
-
-    if (file.size > MAX_IMAGE_FILE_BYTES) {
-        throw new Error(
-            `Image trop lourde : ${formatBytes(file.size)}. ` +
-            `Limite actuelle : ${formatBytes(MAX_IMAGE_FILE_BYTES)}.`
-        );
-    }
-
-    const originalDataUrl = await readFileAsDataURL(file);
-    const img = await loadImageFromDataURL(originalDataUrl);
-
-    let lastBlob = null;
-
-    for (const attempt of IMAGE_UPLOAD_ATTEMPTS) {
-        const ratio = Math.min(1, attempt.width / img.width);
-        const width = Math.max(1, Math.round(img.width * ratio));
-        const height = Math.max(1, Math.round(img.height * ratio));
-
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
-
-        const blob = await canvasToBlob(canvas, 'image/webp', attempt.quality);
-        lastBlob = blob;
-
-        if (blob.size <= 2.5 * 1024 * 1024) {
-            return blob;
-        }
-    }
-
-    return lastBlob;
-};
-
-const validateVideoFileForStorage = (file) => {
-    if (!file) {
-        throw new Error("Aucun fichier vidéo sélectionné.");
-    }
-
-    if (!file.type.startsWith('video/')) {
-        throw new Error("Le fichier sélectionné n'est pas une vidéo.");
-    }
-
-    if (file.size > MAX_VIDEO_FILE_BYTES) {
-        throw new Error(
-            `Vidéo trop lourde : ${formatBytes(file.size)}. ` +
-            `Limite actuelle : ${formatBytes(MAX_VIDEO_FILE_BYTES)}.`
-        );
-    }
-};
-
-const getPendingMedia = (chapterId) => {
-    if (!pendingChapterMedia.has(chapterId)) {
-        pendingChapterMedia.set(chapterId, {});
-    }
-
-    return pendingChapterMedia.get(chapterId);
-};
-
-const revokePreviewUrl = (url) => {
-    if (url && url.startsWith('blob:')) {
-        URL.revokeObjectURL(url);
-    }
-};
-
-const restoreCurrentMediaPreview = (type) => {
-    if (!activeChapterId) return;
-
-    const chap = currentChapters.find(c => c.id === activeChapterId);
-    if (!chap) return;
-
-    const pending = pendingChapterMedia.get(activeChapterId) || {};
-
-    if (type === 'image') {
-        const preview = document.getElementById('chapter-image-preview');
-        const hidden = document.getElementById('chapter-image-base64');
-        const src = pending.imagePreviewUrl || chap.mediaImage || '';
-
-        if (hidden) hidden.value = chap.mediaImage || '';
-
-        if (preview) {
-            if (src) {
-                preview.src = src;
-                preview.style.display = 'block';
-            } else {
-                preview.removeAttribute('src');
-                preview.style.display = 'none';
-            }
-        }
-    }
-
-    if (type === 'video') {
-        const preview = document.getElementById('chapter-video-preview');
-        const hidden = document.getElementById('chapter-video-base64');
-        const src = pending.videoPreviewUrl || chap.mediaVideo || '';
-
-        if (hidden) hidden.value = chap.mediaVideo || '';
-
-        if (preview) {
-            if (src) {
-                preview.src = src;
-                preview.style.display = 'block';
-            } else {
-                preview.removeAttribute('src');
-                preview.style.display = 'none';
-            }
-        }
-    }
-};
-
-const setPendingImageFile = (chapterId, file) => {
-    const pending = getPendingMedia(chapterId);
-
-    revokePreviewUrl(pending.imagePreviewUrl);
-
-    pending.imageFile = file;
-    pending.imagePreviewUrl = URL.createObjectURL(file);
-
-    pendingChapterMedia.set(chapterId, pending);
-};
-
-const setPendingVideoFile = (chapterId, file) => {
-    const pending = getPendingMedia(chapterId);
-
-    revokePreviewUrl(pending.videoPreviewUrl);
-
-    pending.videoFile = file;
-    pending.videoPreviewUrl = URL.createObjectURL(file);
-
-    pendingChapterMedia.set(chapterId, pending);
-};
-
-const clearPendingMediaForChapter = (chapterId) => {
-    const pending = pendingChapterMedia.get(chapterId);
-
-    if (pending) {
-        revokePreviewUrl(pending.imagePreviewUrl);
-        revokePreviewUrl(pending.videoPreviewUrl);
-    }
-
-    pendingChapterMedia.delete(chapterId);
-};
-
-const uploadImageToStorage = async (courseRefId, chapterId, file) => {
-    const compressedBlob = await compressImageFileToWebpBlob(file);
-    const cleanName = sanitizeStorageName(file.name.replace(/\.[^.]+$/, ''));
-    const fileName = `${Date.now()}_${cleanName || 'image'}.webp`;
-    const storagePath = `courses/${courseRefId}/chapters/${chapterId}/${fileName}`;
-    const fileRef = ref(storage, storagePath);
-
-    await uploadBytes(fileRef, compressedBlob, {
-        contentType: 'image/webp',
-        customMetadata: {
-            originalName: file.name || '',
-            uploadedBy: currentUid || ''
-        }
-    });
-
-    return getDownloadURL(fileRef);
-};
-
-const uploadVideoToStorage = async (courseRefId, chapterId, file) => {
-    validateVideoFileForStorage(file);
-
-    const ext = getFileExtension(file, 'mp4');
-    const cleanName = sanitizeStorageName(file.name.replace(/\.[^.]+$/, ''));
-    const fileName = `${Date.now()}_${cleanName || 'video'}.${ext}`;
-    const storagePath = `courses/${courseRefId}/chapters/${chapterId}/${fileName}`;
-    const fileRef = ref(storage, storagePath);
-
-    await uploadBytes(fileRef, file, {
-        contentType: file.type || 'video/mp4',
-        customMetadata: {
-            originalName: file.name || '',
-            uploadedBy: currentUid || ''
-        }
-    });
-
-    return getDownloadURL(fileRef);
-};
-
-const uploadPendingMediaForChapters = async (courseRefId) => {
-    const entries = Array.from(pendingChapterMedia.entries());
-
-    if (entries.length === 0) return;
-
-    for (const [chapterId, pending] of entries) {
-        const chap = currentChapters.find(c => c.id === chapterId);
-        if (!chap) continue;
-
-        if (pending.imageFile) {
-            chap.mediaImage = await uploadImageToStorage(courseRefId, chapterId, pending.imageFile);
-        }
-
-        if (pending.videoFile) {
-            chap.mediaVideo = await uploadVideoToStorage(courseRefId, chapterId, pending.videoFile);
-        }
-
-        clearPendingMediaForChapter(chapterId);
-    }
-};
-
-/* -----------------------------------------------------------------------
-   INITIALISATION
-   ----------------------------------------------------------------------- */
-
 document.addEventListener('DOMContentLoaded', () => {
-
     onAuthStateChanged(auth, async (user) => {
         if (user) {
             currentUid = user.uid;
@@ -399,45 +78,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-            if (!document.getElementById('btn-preview-course')) {
-                const targetBtn = document.getElementById('btn-submit-validation') || document.getElementById('btn-save-course');
-
-                if (targetBtn) {
-                    targetBtn.insertAdjacentHTML(
-                        'afterend',
-                        `<button id="btn-preview-course" class="action-btn" style="width: 100%; margin-top: 1rem; background: transparent; color: var(--text-main); border: 1px solid var(--border-color); padding: 1rem; font-size: 1rem; cursor: pointer; transition: 0.2s; font-weight:bold;">${SVG_PREVIEW} Visualiser le rendu actuel</button>`
-                    );
-
-                    document.getElementById('btn-preview-course').addEventListener('click', async () => {
-                        const cId = document.getElementById('edit-course-id').value;
-
-                        if (!cId) {
-                            alert("⚠️ Veuillez enregistrer le cours comme brouillon une première fois avant de le visualiser !");
-                            return;
-                        }
-
-                        await saveCourseToFirebase('preview');
-                    });
-                }
-            }
-
-            if (!document.getElementById('btn-reject-course')) {
-                const saveAdminBtn = document.getElementById('btn-save-course');
-
-                if (saveAdminBtn) {
-                    saveAdminBtn.insertAdjacentHTML(
-                        'beforebegin',
-                        `<button id="btn-reject-course" class="action-btn danger" style="margin-right: 10px; display: none;">Refuser</button>`
-                    );
-
-                    document.getElementById('btn-reject-course').addEventListener('click', async () => {
-                        if (confirm("Refuser ce cours et demander des modifications au professeur ?")) {
-                            await saveCourseToFirebase('reject');
-                        }
-                    });
-                }
-            }
-
+            setupPreviewButton();
+            setupRejectButton();
             setupDropZone('drop-zone-image', 'chapter-image-upload');
             setupDropZone('drop-zone-video', 'chapter-video-upload');
 
@@ -507,21 +149,59 @@ document.addEventListener('DOMContentLoaded', () => {
     const quizTitleInput = document.getElementById('quiz-title');
     if (quizTitleInput) quizTitleInput.addEventListener('input', updateActiveTitle);
 
-    function updateActiveTitle(e) {
-        if (activeChapterId) {
-            const chap = currentChapters.find(c => c.id === activeChapterId);
+    setupMediaInputs();
+    setupFormationSearch();
+    setupFormationModal();
+});
 
-            if (chap) {
-                chap.titre = e.target.value;
-                renderChaptersList();
-            }
+function setupPreviewButton() {
+    if (document.getElementById('btn-preview-course')) return;
+
+    const targetBtn = document.getElementById('btn-submit-validation') || document.getElementById('btn-save-course');
+
+    if (!targetBtn) return;
+
+    targetBtn.insertAdjacentHTML(
+        'afterend',
+        `<button id="btn-preview-course" class="action-btn" style="width: 100%; margin-top: 1rem; background: transparent; color: var(--text-main); border: 1px solid var(--border-color); padding: 1rem; font-size: 1rem; cursor: pointer; transition: 0.2s; font-weight:bold;">${SVG_PREVIEW} Visualiser le rendu actuel</button>`
+    );
+
+    document.getElementById('btn-preview-course').addEventListener('click', async () => {
+        const cId = document.getElementById('edit-course-id').value;
+
+        if (!cId) {
+            alert("⚠️ Veuillez enregistrer le cours comme brouillon une première fois avant de le visualiser !");
+            return;
         }
-    }
 
+        await saveCourseToFirebase('preview');
+    });
+}
+
+function setupRejectButton() {
+    if (document.getElementById('btn-reject-course')) return;
+
+    const saveAdminBtn = document.getElementById('btn-save-course');
+
+    if (!saveAdminBtn) return;
+
+    saveAdminBtn.insertAdjacentHTML(
+        'beforebegin',
+        `<button id="btn-reject-course" class="action-btn danger" style="margin-right: 10px; display: none;">Refuser</button>`
+    );
+
+    document.getElementById('btn-reject-course').addEventListener('click', async () => {
+        if (confirm("Refuser ce cours et demander des modifications au professeur ?")) {
+            await saveCourseToFirebase('reject');
+        }
+    });
+}
+
+function setupMediaInputs() {
     const imgUpload = document.getElementById('chapter-image-upload');
 
     if (imgUpload) {
-        imgUpload.addEventListener('change', async function(e) {
+        imgUpload.addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
 
@@ -532,23 +212,14 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             try {
-                if (!file.type.startsWith('image/')) {
-                    throw new Error("Le fichier sélectionné n'est pas une image.");
-                }
-
-                if (file.size > MAX_IMAGE_FILE_BYTES) {
-                    throw new Error(
-                        `Image trop lourde : ${formatBytes(file.size)}. ` +
-                        `Limite actuelle : ${formatBytes(MAX_IMAGE_FILE_BYTES)}.`
-                    );
-                }
-
                 setPendingImageFile(activeChapterId, file);
-                restoreCurrentMediaPreview('image');
+                e.target.value = '';
+
+                const chapter = currentChapters.find(c => c.id === activeChapterId);
+                restoreCurrentMediaPreview(activeChapterId, chapter);
 
             } catch (error) {
                 e.target.value = '';
-                restoreCurrentMediaPreview('image');
                 alert(`❌ ${error.message}`);
             }
         });
@@ -557,7 +228,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const vidUpload = document.getElementById('chapter-video-upload');
 
     if (vidUpload) {
-        vidUpload.addEventListener('change', async function(e) {
+        vidUpload.addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
 
@@ -570,16 +241,20 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 validateVideoFileForStorage(file);
                 setPendingVideoFile(activeChapterId, file);
-                restoreCurrentMediaPreview('video');
+                e.target.value = '';
+
+                const chapter = currentChapters.find(c => c.id === activeChapterId);
+                restoreCurrentMediaPreview(activeChapterId, chapter);
 
             } catch (error) {
                 e.target.value = '';
-                restoreCurrentMediaPreview('video');
                 alert(`❌ ${error.message}`);
             }
         });
     }
+}
 
+function setupFormationSearch() {
     const searchProfs = document.getElementById('search-profs');
 
     if (searchProfs) {
@@ -611,7 +286,9 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
     }
+}
 
+function setupFormationModal() {
     const btnCreateForm = document.getElementById('btn-create-formation');
     if (btnCreateForm) btnCreateForm.addEventListener('click', () => openFormationModal(null));
 
@@ -663,11 +340,18 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-});
+}
 
-/* -----------------------------------------------------------------------
-   UI / FORMATIONS
-   ----------------------------------------------------------------------- */
+function updateActiveTitle(e) {
+    if (activeChapterId) {
+        const chapter = currentChapters.find(c => c.id === activeChapterId);
+
+        if (chapter) {
+            chapter.titre = e.target.value;
+            renderChaptersList();
+        }
+    }
+}
 
 function setupDropZone(dropZoneId, inputId) {
     const dropZone = document.getElementById(dropZoneId);
@@ -885,21 +569,13 @@ function refreshBlocsList() {
     }
 }
 
-/* -----------------------------------------------------------------------
-   ÉDITEUR DE COURS
-   ----------------------------------------------------------------------- */
-
 window.prepareNewCourse = function() {
     editingCourseAuthorId = null;
     editingCourseOriginalStatus = null;
     editingCourseOriginalActive = false;
     window.editingCourseOriginalActive = false;
 
-    pendingChapterMedia.forEach((pending) => {
-        revokePreviewUrl(pending.imagePreviewUrl);
-        revokePreviewUrl(pending.videoPreviewUrl);
-    });
-    pendingChapterMedia.clear();
+    clearAllPendingMedia();
 
     const editCourseIdEl = document.getElementById('edit-course-id');
     if (editCourseIdEl) editCourseIdEl.value = '';
@@ -965,61 +641,59 @@ function createNewChapter(type) {
 function saveCurrentChapterContent() {
     if (!activeChapterId) return;
 
-    const chap = currentChapters.find(c => c.id === activeChapterId);
-    if (!chap) return;
+    const chapter = currentChapters.find(c => c.id === activeChapterId);
+    if (!chapter) return;
 
-    if (chap.type === 'text') {
+    if (chapter.type === 'text') {
         const cTitle = document.getElementById('chapter-title');
-        if (cTitle) chap.titre = cTitle.value;
+        if (cTitle) chapter.titre = cTitle.value;
 
         const mediaChecked = document.querySelector('input[name="media_type"]:checked');
-        if (mediaChecked) chap.mediaType = mediaChecked.value;
+        if (mediaChecked) chapter.mediaType = mediaChecked.value;
 
-        const pending = pendingChapterMedia.get(chap.id);
+        syncChapterMediaFromDom(chapter);
 
-        const cImage = document.getElementById('chapter-image-base64');
-        if (cImage && !pending?.imageFile) chap.mediaImage = cImage.value;
+        chapter.contenu = window.quill ? window.quill.root.innerHTML : '';
 
-        const cVideo = document.getElementById('chapter-video-base64');
-        if (cVideo && !pending?.videoFile) chap.mediaVideo = cVideo.value;
-
-        chap.contenu = window.quill ? window.quill.root.innerHTML : '';
-
-    } else if (chap.type === 'quiz') {
+    } else if (chapter.type === 'quiz') {
         const qTitle = document.getElementById('quiz-title');
-        if (qTitle) chap.titre = qTitle.value;
+        if (qTitle) chapter.titre = qTitle.value;
 
-        chap.questions = gatherQuizQuestions();
+        chapter.questions = gatherQuizQuestions();
     }
 }
 
 window.selectChapter = function(id) {
+    if (activeChapterId) {
+        captureActiveMediaInputs(activeChapterId);
+    }
+
     saveCurrentChapterContent();
 
     activeChapterId = id;
 
-    const chap = currentChapters.find(c => c.id === id);
-    if (!chap) return;
+    const chapter = currentChapters.find(c => c.id === id);
+    if (!chapter) return;
 
     const noChapterZone = document.getElementById('no-chapter-zone');
     if (noChapterZone) noChapterZone.style.display = 'none';
 
-    if (chap.type === 'quiz') {
+    if (chapter.type === 'quiz') {
         document.getElementById('chapter-editor-zone').style.display = 'none';
         document.getElementById('quiz-editor-zone').style.display = 'flex';
-        document.getElementById('quiz-title').value = chap.titre || '';
-        renderQuizBuilder(chap.questions || []);
+        document.getElementById('quiz-title').value = chapter.titre || '';
+        renderQuizBuilder(chapter.questions || []);
 
     } else {
         document.getElementById('quiz-editor-zone').style.display = 'none';
         document.getElementById('chapter-editor-zone').style.display = 'flex';
 
-        document.getElementById('chapter-title').value = chap.titre || '';
+        document.getElementById('chapter-title').value = chapter.titre || '';
 
         const mediaImageRadio = document.querySelector('input[name="media_type"][value="image"]');
         const mediaVideoRadio = document.querySelector('input[name="media_type"][value="video"]');
 
-        if (chap.mediaType === 'video') {
+        if (chapter.mediaType === 'video') {
             if (mediaVideoRadio) mediaVideoRadio.checked = true;
             document.getElementById('media-image-zone').style.display = 'none';
             document.getElementById('media-video-zone').style.display = 'flex';
@@ -1029,43 +703,11 @@ window.selectChapter = function(id) {
             document.getElementById('media-video-zone').style.display = 'none';
         }
 
-        const pending = pendingChapterMedia.get(chap.id) || {};
-
-        const cVideoB64 = document.getElementById('chapter-video-base64');
-        if (cVideoB64) cVideoB64.value = chap.mediaVideo || '';
-
-        const vPreview = document.getElementById('chapter-video-preview');
-        if (vPreview) {
-            const src = pending.videoPreviewUrl || chap.mediaVideo || '';
-
-            if (src) {
-                vPreview.src = src;
-                vPreview.style.display = 'block';
-            } else {
-                vPreview.removeAttribute('src');
-                vPreview.style.display = 'none';
-            }
-        }
-
-        const cImageB64 = document.getElementById('chapter-image-base64');
-        if (cImageB64) cImageB64.value = chap.mediaImage || '';
-
-        const iPreview = document.getElementById('chapter-image-preview');
-        if (iPreview) {
-            const src = pending.imagePreviewUrl || chap.mediaImage || '';
-
-            if (src) {
-                iPreview.src = src;
-                iPreview.style.display = 'block';
-            } else {
-                iPreview.removeAttribute('src');
-                iPreview.style.display = 'none';
-            }
-        }
+        restoreCurrentMediaPreview(chapter.id, chapter);
 
         if (window.quill) {
             window.quill.setContents([]);
-            window.quill.clipboard.dangerouslyPasteHTML(chap.contenu || '');
+            window.quill.clipboard.dangerouslyPasteHTML(chapter.contenu || '');
         }
     }
 
@@ -1103,28 +745,24 @@ function renderChaptersList() {
 
     list.innerHTML = '';
 
-    currentChapters.forEach((chap, index) => {
-        const isActive = chap.id === activeChapterId;
+    currentChapters.forEach((chapter, index) => {
+        const isActive = chapter.id === activeChapterId;
 
         const bg = isActive ? 'var(--accent-blue-light, rgba(42, 87, 255, 0.1))' : 'var(--bg-card, #111)';
         const border = isActive ? '1px solid var(--accent-blue)' : '1px solid var(--border-color, #333)';
-        const color = chap.type === 'quiz' ? 'var(--accent-yellow, #fbbc04)' : (isActive ? 'var(--accent-blue)' : 'var(--text-main, white)');
-        const icon = chap.type === 'quiz' ? SVG_QUIZ_LIST : `${index + 1}. `;
+        const color = chapter.type === 'quiz' ? 'var(--accent-yellow, #fbbc04)' : (isActive ? 'var(--accent-blue)' : 'var(--text-main, white)');
+        const icon = chapter.type === 'quiz' ? SVG_QUIZ_LIST : `${index + 1}. `;
 
         const li = `
-            <li onclick="selectChapter('${chap.id}')" style="padding: 0.8rem; background: ${bg}; border: ${border}; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; color: ${color}; font-weight: ${isActive ? 'bold' : 'normal'};">
-                <span style="flex-grow: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${icon}${chap.titre}</span>
-                <button onclick="deleteChapter('${chap.id}', event)" class="editor-action-btn" style="background:none; border:none; color:var(--accent-red, #ff4a4a); cursor:pointer;">&times;</button>
+            <li onclick="selectChapter('${chapter.id}')" style="padding: 0.8rem; background: ${bg}; border: ${border}; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; color: ${color}; font-weight: ${isActive ? 'bold' : 'normal'};">
+                <span style="flex-grow: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${icon}${chapter.titre}</span>
+                <button onclick="deleteChapter('${chapter.id}', event)" class="editor-action-btn" style="background:none; border:none; color:var(--accent-red, #ff4a4a); cursor:pointer;">&times;</button>
             </li>
         `;
 
         list.insertAdjacentHTML('beforeend', li);
     });
 }
-
-/* -----------------------------------------------------------------------
-   QUIZ
-   ----------------------------------------------------------------------- */
 
 function addQuizQuestion() {
     const container = document.getElementById('quiz-questions-container');
@@ -1231,10 +869,6 @@ function renderQuizBuilder(questions) {
     });
 }
 
-/* -----------------------------------------------------------------------
-   ÉDITION / SAUVEGARDE
-   ----------------------------------------------------------------------- */
-
 window.editCourse = async (id) => {
     try {
         const docSnap = await getDoc(doc(db, "courses", id));
@@ -1242,11 +876,7 @@ window.editCourse = async (id) => {
         if (docSnap.exists()) {
             const data = docSnap.data();
 
-            pendingChapterMedia.forEach((pending) => {
-                revokePreviewUrl(pending.imagePreviewUrl);
-                revokePreviewUrl(pending.videoPreviewUrl);
-            });
-            pendingChapterMedia.clear();
+            clearAllPendingMedia();
 
             const editCourseIdEl = document.getElementById('edit-course-id');
             if (editCourseIdEl) editCourseIdEl.value = id;
@@ -1281,54 +911,62 @@ window.editCourse = async (id) => {
                 window.switchCourseTab('tab-editor');
             }
 
-            const isTeacher = currentUserProfile && currentUserProfile.role === 'teacher';
-            const warningBanner = document.getElementById('lock-warning-banner');
-
-            if (isTeacher && editingCourseOriginalStatus === 'pending') {
-                if (warningBanner) warningBanner.style.display = 'block';
-
-                document.querySelectorAll('.editor-input, .editor-action-btn').forEach(el => {
-                    el.disabled = true;
-                    el.style.opacity = '0.5';
-                    el.style.pointerEvents = 'none';
-                });
-
-                if (window.quill) window.quill.enable(false);
-
-            } else {
-                if (warningBanner) warningBanner.style.display = 'none';
-
-                document.querySelectorAll('.editor-input, .editor-action-btn').forEach(el => {
-                    el.disabled = false;
-                    el.style.opacity = '1';
-                    el.style.pointerEvents = 'auto';
-                });
-
-                if (window.quill) window.quill.enable(true);
-            }
-
-            const rejectBtn = document.getElementById('btn-reject-course');
-
-            if (rejectBtn) {
-                if (
-                    currentUserProfile &&
-                    (currentUserProfile.role === 'admin' || currentUserProfile.isGod) &&
-                    editingCourseOriginalStatus === 'pending'
-                ) {
-                    rejectBtn.style.display = 'inline-block';
-                } else {
-                    rejectBtn.style.display = 'none';
-                }
-            }
+            handleEditorLockState();
+            handleRejectButtonVisibility();
 
             if (currentChapters.length > 0) selectChapter(currentChapters[0].id);
             else renderChaptersList();
         }
 
     } catch (error) {
+        console.error(error);
         alert("Impossible de charger le cours.");
     }
 };
+
+function handleEditorLockState() {
+    const isTeacher = currentUserProfile && currentUserProfile.role === 'teacher';
+    const warningBanner = document.getElementById('lock-warning-banner');
+
+    if (isTeacher && editingCourseOriginalStatus === 'pending') {
+        if (warningBanner) warningBanner.style.display = 'block';
+
+        document.querySelectorAll('.editor-input, .editor-action-btn').forEach(el => {
+            el.disabled = true;
+            el.style.opacity = '0.5';
+            el.style.pointerEvents = 'none';
+        });
+
+        if (window.quill) window.quill.enable(false);
+
+    } else {
+        if (warningBanner) warningBanner.style.display = 'none';
+
+        document.querySelectorAll('.editor-input, .editor-action-btn').forEach(el => {
+            el.disabled = false;
+            el.style.opacity = '1';
+            el.style.pointerEvents = 'auto';
+        });
+
+        if (window.quill) window.quill.enable(true);
+    }
+}
+
+function handleRejectButtonVisibility() {
+    const rejectBtn = document.getElementById('btn-reject-course');
+
+    if (!rejectBtn) return;
+
+    if (
+        currentUserProfile &&
+        (currentUserProfile.role === 'admin' || currentUserProfile.isGod) &&
+        editingCourseOriginalStatus === 'pending'
+    ) {
+        rejectBtn.style.display = 'inline-block';
+    } else {
+        rejectBtn.style.display = 'none';
+    }
+}
 
 async function resolveCourseValidationNotifications(courseId) {
     if (!courseId) return;
@@ -1364,6 +1002,10 @@ async function resolveCourseValidationNotifications(courseId) {
 }
 
 async function saveCourseToFirebase(actionType = 'admin_save') {
+    if (activeChapterId) {
+        captureActiveMediaInputs(activeChapterId);
+    }
+
     saveCurrentChapterContent();
 
     const courseIdEl = document.getElementById('edit-course-id');
@@ -1375,7 +1017,6 @@ async function saveCourseToFirebase(actionType = 'admin_save') {
     const courseId = courseIdEl.value;
     const title = titleEl.value.trim();
     const bloc = selectBloc ? selectBloc.value.trim() : '';
-
     const selectedPills = Array.from(document.querySelectorAll('.formation-pill.selected')).map(p => p.getAttribute('data-val'));
 
     if (!title) {
@@ -1443,14 +1084,14 @@ async function saveCourseToFirebase(actionType = 'admin_save') {
         if (!courseRefId) {
             newCourseRef = doc(collection(db, "courses"));
             courseRefId = newCourseRef.id;
-            document.getElementById('edit-course-id').value = courseRefId;
+            courseIdEl.value = courseRefId;
         }
 
-        const hasPendingMedia = pendingChapterMedia.size > 0;
+        const hadPendingMedia = hasPendingMedia();
 
-        if (hasPendingMedia) {
+        if (hadPendingMedia) {
             console.log("[SBI Courses] Upload médias vers Firebase Storage...");
-            await uploadPendingMediaForChapters(courseRefId);
+            await uploadPendingMediaForChapters(courseRefId, currentChapters);
         }
 
         const courseData = {
@@ -1474,70 +1115,14 @@ async function saveCourseToFirebase(actionType = 'admin_save') {
             await updateDoc(doc(db, "courses", courseRefId), courseData);
         }
 
-        if (actionType === 'submit') {
-            await addDoc(collection(db, "notifications"), {
-                type: 'course_validation',
-                courseId: courseRefId,
-                courseTitle: title,
-                auteurId: currentUid,
-                auteurName: (currentUserProfile.prenom || '') + ' ' + (currentUserProfile.nom || ''),
-                dateCreation: serverTimestamp(),
-                status: 'open',
-                dismissedBy: []
-            });
-        }
-
-        if (isPublishing) {
-            if (editingCourseAuthorId && editingCourseAuthorId !== currentUid) {
-                await addDoc(collection(db, "notifications"), {
-                    type: 'course_approved',
-                    courseId: courseRefId,
-                    courseTitle: title,
-                    destinataireId: editingCourseAuthorId,
-                    dateCreation: serverTimestamp(),
-                    dismissedBy: []
-                });
-            }
-
-            const targetStudentsSet = new Set();
-
-            selectedPills.forEach(formId => {
-                const formObj = allFormationsData.find(f => f.id === formId || f.titre === formId);
-
-                if (formObj && formObj.students) {
-                    formObj.students.forEach(s => targetStudentsSet.add(s));
-                }
-            });
-
-            const targetStudentsArray = Array.from(targetStudentsSet);
-
-            if (targetStudentsArray.length > 0) {
-                await addDoc(collection(db, "notifications"), {
-                    type: 'new_course_published',
-                    courseId: courseRefId,
-                    courseTitle: title,
-                    targetStudents: targetStudentsArray,
-                    dateCreation: serverTimestamp(),
-                    dismissedBy: []
-                });
-            }
-
-        } else if (isRejecting) {
-            if (editingCourseAuthorId && editingCourseAuthorId !== currentUid) {
-                await addDoc(collection(db, "notifications"), {
-                    type: 'course_rejected',
-                    courseId: courseRefId,
-                    courseTitle: title,
-                    destinataireId: editingCourseAuthorId,
-                    dateCreation: serverTimestamp(),
-                    dismissedBy: []
-                });
-            }
-        }
-
-        if (isPublishing || isRejecting) {
-            await resolveCourseValidationNotifications(courseRefId);
-        }
+        await handleCourseNotifications({
+            actionType,
+            courseRefId,
+            title,
+            selectedPills,
+            isPublishing,
+            isRejecting
+        });
 
         editingCourseOriginalStatus = finalStatut;
         editingCourseOriginalActive = isActive === true;
@@ -1549,15 +1134,7 @@ async function saveCourseToFirebase(actionType = 'admin_save') {
             window.open(`/student/cours-viewer.html?id=${courseRefId}&preview=true`, '_blank');
 
         } else {
-            if (isPublishing) {
-                alert("✅ Le cours a été publié ! Les notifications ont été envoyées au professeur et aux élèves.");
-            } else if (isRejecting) {
-                alert("❌ Le cours a été refusé. Le professeur a été notifié.");
-            } else if (hasPendingMedia) {
-                alert(actionType === 'submit' ? '✅ Cours envoyé pour validation ! Médias envoyés dans Storage.' : '✅ Cours sauvegardé ! Médias envoyés dans Storage.');
-            } else {
-                alert(actionType === 'submit' ? '✅ Cours envoyé pour validation !' : '✅ Cours sauvegardé !');
-            }
+            showSaveConfirmation({ actionType, isPublishing, isRejecting, hadPendingMedia });
 
             if (typeof window.prepareNewCourse === 'function') window.prepareNewCourse();
             if (typeof window.switchCourseTab === 'function') window.switchCourseTab('tab-list');
@@ -1569,9 +1146,94 @@ async function saveCourseToFirebase(actionType = 'admin_save') {
     }
 }
 
-/* -----------------------------------------------------------------------
-   LISTE COURS
-   ----------------------------------------------------------------------- */
+async function handleCourseNotifications({ actionType, courseRefId, title, selectedPills, isPublishing, isRejecting }) {
+    if (actionType === 'submit') {
+        await addDoc(collection(db, "notifications"), {
+            type: 'course_validation',
+            courseId: courseRefId,
+            courseTitle: title,
+            auteurId: currentUid,
+            auteurName: (currentUserProfile.prenom || '') + ' ' + (currentUserProfile.nom || ''),
+            dateCreation: serverTimestamp(),
+            status: 'open',
+            dismissedBy: []
+        });
+    }
+
+    if (isPublishing) {
+        if (editingCourseAuthorId && editingCourseAuthorId !== currentUid) {
+            await addDoc(collection(db, "notifications"), {
+                type: 'course_approved',
+                courseId: courseRefId,
+                courseTitle: title,
+                destinataireId: editingCourseAuthorId,
+                dateCreation: serverTimestamp(),
+                dismissedBy: []
+            });
+        }
+
+        const targetStudentsSet = new Set();
+
+        selectedPills.forEach(formId => {
+            const formObj = allFormationsData.find(f => f.id === formId || f.titre === formId);
+
+            if (formObj && formObj.students) {
+                formObj.students.forEach(s => targetStudentsSet.add(s));
+            }
+        });
+
+        const targetStudentsArray = Array.from(targetStudentsSet);
+
+        if (targetStudentsArray.length > 0) {
+            await addDoc(collection(db, "notifications"), {
+                type: 'new_course_published',
+                courseId: courseRefId,
+                courseTitle: title,
+                targetStudents: targetStudentsArray,
+                dateCreation: serverTimestamp(),
+                dismissedBy: []
+            });
+        }
+
+    } else if (isRejecting) {
+        if (editingCourseAuthorId && editingCourseAuthorId !== currentUid) {
+            await addDoc(collection(db, "notifications"), {
+                type: 'course_rejected',
+                courseId: courseRefId,
+                courseTitle: title,
+                destinataireId: editingCourseAuthorId,
+                dateCreation: serverTimestamp(),
+                dismissedBy: []
+            });
+        }
+    }
+
+    if (isPublishing || isRejecting) {
+        await resolveCourseValidationNotifications(courseRefId);
+    }
+}
+
+function showSaveConfirmation({ actionType, isPublishing, isRejecting, hadPendingMedia }) {
+    if (isPublishing) {
+        alert("✅ Le cours a été publié ! Les notifications ont été envoyées au professeur et aux élèves.");
+        return;
+    }
+
+    if (isRejecting) {
+        alert("❌ Le cours a été refusé. Le professeur a été notifié.");
+        return;
+    }
+
+    if (hadPendingMedia) {
+        alert(actionType === 'submit'
+            ? '✅ Cours envoyé pour validation ! Médias envoyés dans Storage.'
+            : '✅ Cours sauvegardé ! Médias envoyés dans Storage.'
+        );
+        return;
+    }
+
+    alert(actionType === 'submit' ? '✅ Cours envoyé pour validation !' : '✅ Cours sauvegardé !');
+}
 
 async function loadCourses() {
     const listContainer = document.getElementById('courses-list-container');
@@ -1617,18 +1279,7 @@ async function loadCourses() {
                 : '';
 
             const nbChapitres = data.chapitres ? data.chapitres.length : 0;
-
-            let authorName = "Système";
-
-            if (data.auteurId && allUsersForAccess.length > 0) {
-                const authorObj = allUsersForAccess.find(u => u.id === data.auteurId);
-
-                if (authorObj) {
-                    authorName = (authorObj.prenom || authorObj.nom)
-                        ? `${authorObj.prenom || ''} ${authorObj.nom || ''}`.trim()
-                        : authorObj.email;
-                }
-            }
+            const authorName = getAuthorName(data.auteurId);
 
             const html = `
             <div style="background: var(--bg-card, #111); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color, #333); display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; opacity: ${data.actif ? '1' : '0.6'};">
@@ -1660,6 +1311,18 @@ async function loadCourses() {
     } catch (error) {
         listContainer.innerHTML = '<p style="color:red; text-align:center;">Erreur système.</p>';
     }
+}
+
+function getAuthorName(authorId) {
+    if (!authorId || allUsersForAccess.length === 0) return "Système";
+
+    const authorObj = allUsersForAccess.find(u => u.id === authorId);
+
+    if (!authorObj) return "Système";
+
+    return (authorObj.prenom || authorObj.nom)
+        ? `${authorObj.prenom || ''} ${authorObj.nom || ''}`.trim()
+        : authorObj.email;
 }
 
 window.duplicateCourse = async (id) => {
