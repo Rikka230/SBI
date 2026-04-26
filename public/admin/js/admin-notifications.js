@@ -372,6 +372,10 @@ function renderNotificationsList(notifs) {
             titleText = "Cours Refusé";
             bodyText = `Votre cours "<strong>${notif.courseTitle}</strong>" nécessite des modifications.`;
             iconSvg = `<svg width="20" height="20" style="min-width:20px; flex-shrink:0;" fill="var(--accent-red, #ff4a4a)" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11H7v-2h10v2z"/></svg>`;
+        } else if (notif.type === 'course_deleted') {
+            titleText = "Cours supprimé";
+            bodyText = `Votre cours "<strong>${notif.courseTitle}</strong>" a été supprimé par l'administration.`;
+            iconSvg = `<svg width="20" height="20" style="min-width:20px; flex-shrink:0;" fill="var(--accent-red, #ff4a4a)" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM8 9h8v10H8V9zm7.5-5l-1-1h-5l-1 1H5v2h14V4z"/></svg>`;
         } else {
             titleText = "Validation requise";
             bodyText = `<strong>${notif.auteurName}</strong> a soumis "<strong>${notif.courseTitle}</strong>".`;
@@ -443,6 +447,8 @@ function renderNotificationsList(notifs) {
 
             if (notifType === 'course_approved') {
                 showTeacherCourseActionModal(courseId, courseTitle);
+            } else if (notifType === 'course_deleted') {
+                return;
             } else if (notifType === 'course_rejected') {
                 if (userRole === 'teacher') {
                     window.location.assign(`/teacher/mes-cours.html?edit=${courseId}`);

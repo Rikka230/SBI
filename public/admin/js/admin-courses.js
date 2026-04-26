@@ -6,7 +6,6 @@
  * Étape 5.2.4 : Query-safe consolidation.
  * =======================================================================
  */
-
 import { db, auth } from '/js/firebase-init.js';
 import {
     collection,
@@ -46,12 +45,12 @@ import {
     loadCoursesForCourseAccess,
     loadCoursesForMediaSafety
 } from '/admin/js/course-data-access.js';
-
+import { renderCourseActionButtons } from '/admin/js/course-action-buttons.js';
+import { notifyCourseDeletedIfNeeded } from '/admin/js/course-delete-notifications.js';
 let currentUid = null;
 let currentUserProfile = null;
 let currentChapters = [];
 let activeChapterId = null;
-
 let allFormationsData = [];
 let allUsersForAccess = [];
 let allCoursesData = [];
@@ -1312,6 +1311,7 @@ function shouldHideDraftForAdmin(courseData) {
     const status = courseData.statutValidation || (courseData.actif === true ? 'approved' : 'draft');
     return isAdminLikeUser() && status === 'draft' && courseData.auteurId !== currentUid && !isAdminAuthor(courseData.auteurId);
 }
+
 async function loadCourses() {
     const listContainer = document.getElementById('courses-list-container');
     if (!listContainer) return;
@@ -1358,7 +1358,8 @@ async function loadCourses() {
                 : '';
 
             const nbChapitres = data.chapitres ? data.chapitres.length : 0;
-            const authorName = getAuthorName(data.auteurId);
+            const authorName = getAuthorName(data.auteurId, data);
+            const actionButtonsHtml = renderCourseActionButtons({ courseId, courseData: data, currentUid, isAdminLike: isAdminLikeUser() });
 
             const html = `
             <div style="background: var(--bg-card, #111); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color, #333); display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; opacity: ${data.actif ? '1' : '0.6'};">
@@ -1376,9 +1377,7 @@ async function loadCourses() {
                     <div style="color: var(--text-main, white);">${tagsHtml} <span style="color: var(--text-muted, #888); font-size: 0.85rem; margin-left: 1rem;">${nbChapitres} Étape(s)</span></div>
                 </div>
                 <div style="display: flex; gap: 0.5rem;">
-                    <button class="action-btn" style="width: auto; margin: 0; color: var(--accent-yellow, #fbbc04); background: transparent; border: 1px solid var(--border-color, #333);" onclick="window.duplicateCourse('${courseId}')" title="Créer une copie">Copier</button>
-                    <button class="action-btn" style="width: auto; margin: 0; color: var(--accent-blue); background: transparent; border: 1px solid var(--border-color, #333);" onclick="window.editCourse('${courseId}')">Éditer</button>
-                    <button class="action-btn danger" style="width: auto; margin: 0;" onclick="window.deleteCourse('${courseId}')">❌</button>
+                    ${actionButtonsHtml}
                 </div>
             </div>`;
 
@@ -1393,13 +1392,11 @@ async function loadCourses() {
     }
 }
 
-function getAuthorName(authorId) {
+function getAuthorName(authorId, courseData = null) {
     if (!authorId) return "Auteur inconnu";
     const authorObj = allUsersForAccess.find(u => u.id === authorId);
-    if (!authorObj) return "Auteur introuvable";
-    return (authorObj.prenom || authorObj.nom)
-        ? `${authorObj.prenom || ''} ${authorObj.nom || ''}`.trim()
-        : (authorObj.email || "Auteur introuvable");
+    if (!authorObj) return (!isAdminLikeUser() && courseData?.auteurId !== currentUid) ? "Équipe SBI" : "Auteur introuvable";
+    return (authorObj.prenom || authorObj.nom) ? `${authorObj.prenom || ''} ${authorObj.nom || ''}`.trim() : (authorObj.email || "Auteur introuvable");
 }
 
 window.duplicateCourse = async (id) => {
@@ -1473,6 +1470,8 @@ window.deleteCourse = async (id) => {
             allCourses
         });
 
+        await notifyCourseDeletedIfNeeded({ courseId: id, courseData, currentUid });
+        await resolveCourseValidationNotifications(id);
         await deleteDoc(courseRef);
         await loadCourses();
 

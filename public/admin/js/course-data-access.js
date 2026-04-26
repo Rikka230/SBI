@@ -3,7 +3,7 @@
  * COURSE DATA ACCESS
  * =======================================================================
  *
- * Lectures Firestore adaptées au rôle :
+ * Lectures Firestore adaptées au rôle.
  *
  * Admin / isGod :
  * - users : tous
@@ -11,14 +11,14 @@
  * - courses : tous
  *
  * Teacher :
- * - users : uniquement son propre profil pour admin-courses.js
- * - formations : formations où il est dans profs[]
- * - courses : cours dont il est auteur
+ * - users : uniquement son propre profil pour éviter de polluer les accès
+ * - formations : formations où il est prof + fallback par users/{uid}.formationIds
+ * - courses : ses cours + cours actifs liés à ses formations
  *
- * Objectif :
- * - éviter les scans globaux côté professeur
- * - préparer le durcissement Firestore Rules
- * - garder admin-courses.js sous contrôle
+ * Objectifs :
+ * - garder les pages prof utilisables avec les règles 5.3 stabilisées
+ * - permettre aux profs de voir les blocs/cours actifs déjà créés par admin
+ * - conserver la séparation édition : un prof ne modifie que ses propres cours
  * =======================================================================
  */
 
@@ -26,6 +26,7 @@ import { db } from '/js/firebase-init.js';
 import {
     collection,
     doc,
+    documentId,
     getDoc,
     getDocs,
     query,
@@ -49,6 +50,28 @@ function snapToArray(snapshot) {
     return items;
 }
 
+function uniqById(items) {
+    const map = new Map();
+
+    items.forEach((item) => {
+        if (item?.id) {
+            map.set(item.id, item);
+        }
+    });
+
+    return Array.from(map.values());
+}
+
+function chunkArray(items, size = 10) {
+    const chunks = [];
+
+    for (let i = 0; i < items.length; i += size) {
+        chunks.push(items.slice(i, i + size));
+    }
+
+    return chunks;
+}
+
 async function loadCurrentUserOnly(currentUid, currentUserProfile = null) {
     if (!currentUid) return [];
 
@@ -67,6 +90,31 @@ async function loadCurrentUserOnly(currentUid, currentUserProfile = null) {
         id: snap.id,
         ...snap.data()
     }];
+}
+
+function getFormationIdsFromProfile(profile) {
+    return Array.isArray(profile?.formationIds)
+        ? profile.formationIds.filter(Boolean).map(String)
+        : [];
+}
+
+async function loadFormationsByIds(formationIds) {
+    if (!formationIds.length) return [];
+
+    const formations = [];
+    const chunks = chunkArray(formationIds, 10);
+
+    for (const chunk of chunks) {
+        const byIdsQuery = query(
+            collection(db, "formations"),
+            where(documentId(), "in", chunk)
+        );
+
+        const snap = await getDocs(byIdsQuery);
+        formations.push(...snapToArray(snap));
+    }
+
+    return formations;
 }
 
 export async function loadUsersForCourseAccess({
@@ -92,13 +140,57 @@ export async function loadFormationsForCourseAccess({
 
     if (!currentUid) return [];
 
-    const formationsQuery = query(
+    const formations = [];
+
+    const formationsByProfQuery = query(
         collection(db, "formations"),
         where("profs", "array-contains", currentUid)
     );
 
-    const snap = await getDocs(formationsQuery);
+    const byProfSnap = await getDocs(formationsByProfQuery);
+    formations.push(...snapToArray(byProfSnap));
+
+    const formationIds = getFormationIdsFromProfile(currentUserProfile);
+
+    if (formationIds.length > 0) {
+        formations.push(...await loadFormationsByIds(formationIds));
+    }
+
+    return uniqById(formations).sort((a, b) => {
+        return String(a.titre || '').localeCompare(String(b.titre || ''), 'fr', {
+            sensitivity: 'base'
+        });
+    });
+}
+
+async function loadOwnTeacherCourses(currentUid) {
+    const coursesQuery = query(
+        collection(db, "courses"),
+        where("auteurId", "==", currentUid)
+    );
+
+    const snap = await getDocs(coursesQuery);
     return snapToArray(snap);
+}
+
+async function loadActiveCoursesByFormationValues(formationValues) {
+    if (!formationValues.length) return [];
+
+    const courses = [];
+    const chunks = chunkArray(formationValues, 10);
+
+    for (const chunk of chunks) {
+        const coursesQuery = query(
+            collection(db, "courses"),
+            where("formations", "array-contains-any", chunk),
+            where("actif", "==", true)
+        );
+
+        const snap = await getDocs(coursesQuery);
+        courses.push(...snapToArray(snap));
+    }
+
+    return courses;
 }
 
 export async function loadCoursesForCourseAccess({
@@ -112,13 +204,29 @@ export async function loadCoursesForCourseAccess({
 
     if (!currentUid) return [];
 
-    const coursesQuery = query(
-        collection(db, "courses"),
-        where("auteurId", "==", currentUid)
-    );
+    const courses = [];
+    const assignedFormations = await loadFormationsForCourseAccess({
+        currentUid,
+        currentUserProfile
+    });
 
-    const snap = await getDocs(coursesQuery);
-    return snapToArray(snap);
+    const formationIds = assignedFormations.map(f => f.id).filter(Boolean).map(String);
+    const formationTitles = assignedFormations.map(f => f.titre).filter(Boolean).map(String);
+
+    courses.push(...await loadOwnTeacherCourses(currentUid));
+    courses.push(...await loadActiveCoursesByFormationValues(formationIds));
+
+    /**
+     * Compatibilité anciens cours : certains documents ont encore stocké le
+     * titre de formation au lieu de son ID dans courses/{id}.formations.
+     */
+    courses.push(...await loadActiveCoursesByFormationValues(formationTitles));
+
+    return uniqById(courses).sort((a, b) => {
+        const aDate = a.dateCreation?.toMillis ? a.dateCreation.toMillis() : 0;
+        const bDate = b.dateCreation?.toMillis ? b.dateCreation.toMillis() : 0;
+        return bDate - aDate;
+    });
 }
 
 export async function loadCoursesForMediaSafety({
@@ -130,7 +238,7 @@ export async function loadCoursesForMediaSafety({
      * un média Storage encore utilisé par un autre cours.
      *
      * Admin : vérifie tous les cours.
-     * Teacher : vérifie ses cours. Suffisant pour ses brouillons/copies.
+     * Teacher : vérifie ses cours + les cours actifs de ses formations.
      */
     return loadCoursesForCourseAccess({
         currentUid,
