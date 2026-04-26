@@ -8,6 +8,7 @@
  * - validation poids/type
  * - compression image
  * - upload Firebase Storage
+ * - suppression Storage intelligente
  * - compatibilité anciens médias base64 / nouvelles URLs Storage
  * =======================================================================
  */
@@ -17,7 +18,8 @@ import {
     getStorage,
     ref,
     uploadBytes,
-    getDownloadURL
+    getDownloadURL,
+    deleteObject
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
 
 const storage = getStorage(app);
@@ -422,4 +424,89 @@ export const uploadPendingMediaForChapters = async (courseRefId, chapters) => {
 
         clearPendingMediaForChapter(chapterId);
     }
+};
+
+/* -----------------------------------------------------------------------
+   SUPPRESSION STORAGE
+   -----------------------------------------------------------------------
+   Important :
+   - On ne supprime que les URLs Firebase Storage.
+   - On ignore les anciens médias base64.
+   - On ne supprime pas un média encore référencé par un autre cours,
+     notamment après duplication.
+   ----------------------------------------------------------------------- */
+
+const isFirebaseStorageUrl = (value) => {
+    return (
+        typeof value === 'string' &&
+        value.startsWith('https://') &&
+        value.includes('firebasestorage.googleapis.com')
+    );
+};
+
+const collectCourseStorageUrls = (courseData) => {
+    const urls = new Set();
+
+    const chapters = Array.isArray(courseData?.chapitres)
+        ? courseData.chapitres
+        : [];
+
+    chapters.forEach((chapter) => {
+        if (isFirebaseStorageUrl(chapter.mediaImage)) {
+            urls.add(chapter.mediaImage);
+        }
+
+        if (isFirebaseStorageUrl(chapter.mediaVideo)) {
+            urls.add(chapter.mediaVideo);
+        }
+    });
+
+    return urls;
+};
+
+export const deleteUnusedCourseMediaFromStorage = async ({ courseId, courseData, allCourses }) => {
+    const targetUrls = collectCourseStorageUrls(courseData);
+
+    if (targetUrls.size === 0) {
+        return {
+            deleted: 0,
+            skipped: 0,
+            failed: 0
+        };
+    }
+
+    const reusedUrls = new Set();
+
+    allCourses
+        .filter((course) => course.id !== courseId)
+        .forEach((course) => {
+            collectCourseStorageUrls(course).forEach((url) => {
+                reusedUrls.add(url);
+            });
+        });
+
+    const urlsToDelete = Array.from(targetUrls).filter((url) => !reusedUrls.has(url));
+    const skipped = targetUrls.size - urlsToDelete.length;
+
+    const results = await Promise.allSettled(
+        urlsToDelete.map(async (url) => {
+            const fileRef = ref(storage, url);
+            await deleteObject(fileRef);
+        })
+    );
+
+    const deleted = results.filter((result) => result.status === 'fulfilled').length;
+    const failed = results.filter((result) => result.status === 'rejected').length;
+
+    results.forEach((result, index) => {
+        if (result.status === 'rejected') {
+            console.warn("[SBI Storage] Suppression média impossible :", urlsToDelete[index], result.reason);
+        }
+    });
+
+    return {
+        deleted,
+        skipped,
+        failed
+    };
 };
