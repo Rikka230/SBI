@@ -2,10 +2,24 @@
  * =======================================================================
  * MES COURS - Logique de navigation Formations -> Blocs -> Cours
  * =======================================================================
+ *
+ * Étape 5.2.4B :
+ * - suppression du scan global formations/courses côté élève
+ * - formations chargées via where("students", "array-contains", uid)
+ * - cours chargés via where("formations", "array-contains-any", formationIds)
+ * - mode preview admin/isGod conservé
+ * =======================================================================
  */
 
 import { db, auth } from '/js/firebase-init.js';
-import { collection, getDocs, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import {
+    collection,
+    getDocs,
+    doc,
+    getDoc,
+    query,
+    where
+} from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import { getUserLearningProgress } from '/js/course-engine.js';
 
@@ -17,208 +31,480 @@ let userProgress = { courses: {}, formations: {} };
 
 document.addEventListener('DOMContentLoaded', () => {
     onAuthStateChanged(auth, async (user) => {
-        if (user) {
-            currentUid = user.uid;
-            
-            try {
-                const snap = await getDoc(doc(db, "users", currentUid));
-                if (snap.exists()) {
-                    userData = snap.data();
-                }
-                
-                userProgress = await getUserLearningProgress(currentUid);
-                if (!userProgress.courses) userProgress.courses = {};
-                
-                const name = userData.prenom || userData.nom || "Étudiant";
-                const topUserName = document.getElementById('top-user-name');
-                if (topUserName) topUserName.textContent = name;
-                
-                const topUserAvatar = document.getElementById('top-user-avatar');
-                if(topUserAvatar) {
-                    if(userData.photoURL) {
-                        topUserAvatar.innerHTML = `<img src="${userData.photoURL}" style="width:100%; height:100%; object-fit:cover;">`;
-                    } else {
-                        topUserAvatar.textContent = name.charAt(0).toUpperCase();
-                    }
-                }
-
-                const xp = userData.xp || 0;
-                const level = Math.floor(xp / 100) + 1;
-                const topUserLevel = document.getElementById('top-user-level');
-                if (topUserLevel) topUserLevel.textContent = `Niveau ${level}`;
-
-                await loadAssignedFormations();
-                await loadAllCourses();
-                
-            } catch (error) {
-                console.error("Erreur d'initialisation :", error);
-            }
-        } else {
+        if (!user) {
             window.location.replace('/login.html');
+            return;
+        }
+
+        currentUid = user.uid;
+
+        try {
+            await loadStudentProfile();
+            await loadStudentProgress();
+            updateTopBar();
+            updateLevel();
+
+            await loadAssignedFormations();
+            await loadAssignedCourses();
+            renderAssignedFormations();
+
+        } catch (error) {
+            console.error("Erreur d'initialisation :", error);
+            showFormationsError();
         }
     });
 
     document.getElementById('btn-back-formations')?.addEventListener('click', () => {
-        document.getElementById('view-courses').style.display = 'none';
-        document.getElementById('view-formations').style.display = 'flex';
+        const viewCourses = document.getElementById('view-courses');
+        const viewFormations = document.getElementById('view-formations');
+
+        if (viewCourses) viewCourses.style.display = 'none';
+        if (viewFormations) viewFormations.style.display = 'flex';
     });
 
     document.getElementById('search-course-input')?.addEventListener('input', (e) => {
         const term = e.target.value.toLowerCase();
+
         document.querySelectorAll('.course-item').forEach(item => {
-            const title = item.querySelector('.course-title').textContent.toLowerCase();
+            const title = item.querySelector('.course-title')?.textContent?.toLowerCase() || '';
             item.style.display = title.includes(term) ? 'flex' : 'none';
         });
     });
 });
 
+/* =======================================================================
+ * PROFIL / PROGRESSION
+ * ======================================================================= */
+
+async function loadStudentProfile() {
+    const snap = await getDoc(doc(db, "users", currentUid));
+
+    if (snap.exists()) {
+        userData = snap.data();
+    } else {
+        userData = {};
+    }
+}
+
+async function loadStudentProgress() {
+    userProgress = await getUserLearningProgress(currentUid);
+
+    if (!userProgress.courses) {
+        userProgress.courses = {};
+    }
+
+    if (!userProgress.formations) {
+        userProgress.formations = {};
+    }
+}
+
+function updateTopBar() {
+    const name = userData.prenom || userData.nom || "Étudiant";
+
+    const topUserName = document.getElementById('top-user-name');
+    if (topUserName) {
+        topUserName.textContent = name;
+    }
+
+    const topUserAvatar = document.getElementById('top-user-avatar');
+
+    if (topUserAvatar) {
+        if (userData.photoURL) {
+            topUserAvatar.innerHTML = `<img src="${userData.photoURL}" style="width:100%; height:100%; object-fit:cover;">`;
+        } else {
+            topUserAvatar.textContent = name.charAt(0).toUpperCase();
+        }
+    }
+}
+
+function updateLevel() {
+    const xp = userData.xp || 0;
+    const level = Math.floor(xp / 100) + 1;
+
+    const topUserLevel = document.getElementById('top-user-level');
+
+    if (topUserLevel) {
+        topUserLevel.textContent = `Niveau ${level}`;
+    }
+}
+
+/* =======================================================================
+ * CHARGEMENT QUERY-SAFE
+ * ======================================================================= */
+
+function isAdminPreview() {
+    return userData.role === 'admin' || userData.isGod === true;
+}
+
+function chunkArray(items, size = 10) {
+    const chunks = [];
+
+    for (let i = 0; i < items.length; i += size) {
+        chunks.push(items.slice(i, i + size));
+    }
+
+    return chunks;
+}
+
+function uniqById(items) {
+    const map = new Map();
+
+    items.forEach((item) => {
+        if (item?.id) {
+            map.set(item.id, item);
+        }
+    });
+
+    return Array.from(map.values());
+}
+
 async function loadAssignedFormations() {
     const list = document.getElementById('formations-list');
-    if(!list) return;
-    
-    try {
+    if (list) {
+        list.innerHTML = '<p style="color:var(--text-muted);">Chargement des formations...</p>';
+    }
+
+    assignedFormations = [];
+
+    if (isAdminPreview()) {
         const snap = await getDocs(collection(db, "formations"));
-        assignedFormations = [];
-        
-        snap.forEach(docSnap => {
-            const f = docSnap.data();
-            if ((f.students && f.students.includes(currentUid)) || userData.role === 'admin' || userData.isGod) {
-                assignedFormations.push({ id: docSnap.id, ...f });
-            }
+
+        snap.forEach((docSnap) => {
+            assignedFormations.push({
+                id: docSnap.id,
+                ...docSnap.data()
+            });
         });
 
-        if (assignedFormations.length === 0) {
-            list.innerHTML = '<p style="color:var(--text-muted);">Aucune formation ne vous est assignée.</p>';
-            return;
-        }
+        assignedFormations.sort(sortByTitle);
+        return;
+    }
 
-        list.innerHTML = assignedFormations.map(f => {
-            let totalCourses = 0;
-            let completedCourses = 0;
+    const assignedQuery = query(
+        collection(db, "formations"),
+        where("students", "array-contains", currentUid)
+    );
 
-            allCourses.forEach(c => {
-                if (c.formations && c.formations.includes(f.id)) {
-                    totalCourses++;
-                    if (userProgress.courses[c.id] && userProgress.courses[c.id].status === 'done') {
-                        completedCourses++;
-                    }
-                }
+    const snap = await getDocs(assignedQuery);
+
+    snap.forEach((docSnap) => {
+        assignedFormations.push({
+            id: docSnap.id,
+            ...docSnap.data()
+        });
+    });
+
+    assignedFormations.sort(sortByTitle);
+}
+
+async function loadAssignedCourses() {
+    allCourses = [];
+
+    if (isAdminPreview()) {
+        const snap = await getDocs(
+            query(
+                collection(db, "courses"),
+                where("actif", "==", true)
+            )
+        );
+
+        snap.forEach((docSnap) => {
+            allCourses.push({
+                id: docSnap.id,
+                ...docSnap.data()
             });
+        });
 
-            const progressPercent = totalCourses === 0 ? 0 : Math.round((completedCourses / totalCourses) * 100);
+        allCourses.sort(sortCourses);
+        return;
+    }
 
-            // FIX : Le SVG du dossier utilise bien le bleu SBI et l'événement onclick est réparé
-            return `
-            <div class="formation-folder" onclick="window.openFormation('${f.id}', '${f.titre.replace(/'/g, "\\'")}')">
+    const formationIds = assignedFormations
+        .map((formation) => formation.id)
+        .filter(Boolean);
+
+    if (formationIds.length === 0) {
+        allCourses = [];
+        return;
+    }
+
+    const chunks = chunkArray(formationIds, 10);
+    const courses = [];
+
+    for (const chunk of chunks) {
+        const coursesQuery = query(
+            collection(db, "courses"),
+            where("formations", "array-contains-any", chunk),
+            where("actif", "==", true)
+        );
+
+        const snap = await getDocs(coursesQuery);
+
+        snap.forEach((docSnap) => {
+            courses.push({
+                id: docSnap.id,
+                ...docSnap.data()
+            });
+        });
+    }
+
+    allCourses = uniqById(courses).sort(sortCourses);
+}
+
+/* =======================================================================
+ * RENDU FORMATIONS
+ * ======================================================================= */
+
+function renderAssignedFormations() {
+    const list = document.getElementById('formations-list');
+    if (!list) return;
+
+    if (assignedFormations.length === 0) {
+        list.innerHTML = '<p style="color:var(--text-muted);">Aucune formation ne vous est assignée.</p>';
+        return;
+    }
+
+    list.innerHTML = assignedFormations.map((formation) => {
+        const totalCourses = getCoursesForFormation(formation.id).length;
+        const completedCourses = getCompletedCoursesForFormation(formation.id);
+        const progressPercent = totalCourses === 0
+            ? 0
+            : Math.round((completedCourses / totalCourses) * 100);
+
+        return `
+            <div class="formation-folder" data-formation-id="${escapeHTML(formation.id)}" data-formation-title="${escapeHTML(formation.titre || 'Formation')}">
                 <div style="display:flex; align-items:center; gap:1rem; margin-bottom:1rem;">
                     <div style="width:48px; height:48px; background:rgba(42, 87, 255, 0.1); border-radius:12px; display:flex; align-items:center; justify-content:center; color:var(--accent-blue);">
-                        <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
+                        <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
+                        </svg>
                     </div>
-                    <h3 style="margin:0; font-size:1.1rem; color:var(--text-main);">${f.titre}</h3>
+                    <h3 style="margin:0; font-size:1.1rem; color:var(--text-main);">${escapeHTML(formation.titre || 'Formation')}</h3>
                 </div>
+
                 <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:var(--text-muted); font-weight:bold;">
                     <span>Progression</span>
                     <span>${progressPercent}%</span>
                 </div>
+
                 <div class="progress-bar-bg">
                     <div class="progress-bar-fill" style="width: ${progressPercent}%;"></div>
                 </div>
             </div>
-            `;
-        }).join('');
+        `;
+    }).join('');
 
-    } catch(e) {
-        list.innerHTML = '<p style="color:red;">Erreur lors du chargement des formations.</p>';
-    }
-}
-
-async function loadAllCourses() {
-    const snap = await getDocs(collection(db, "courses"));
-    allCourses = [];
-    snap.forEach(docSnap => {
-        const data = docSnap.data();
-        if (data.actif) {
-            allCourses.push({ id: docSnap.id, ...data });
-        }
+    document.querySelectorAll('.formation-folder').forEach((folder) => {
+        folder.addEventListener('click', () => {
+            window.openFormation(
+                folder.dataset.formationId,
+                folder.dataset.formationTitle
+            );
+        });
     });
-    loadAssignedFormations();
 }
+
+function getCoursesForFormation(formationId) {
+    return allCourses.filter((course) => {
+        return Array.isArray(course.formations) && course.formations.includes(formationId);
+    });
+}
+
+function getCompletedCoursesForFormation(formationId) {
+    return getCoursesForFormation(formationId).filter((course) => {
+        return userProgress.courses[course.id]?.status === 'done';
+    }).length;
+}
+
+/* =======================================================================
+ * RENDU COURS
+ * ======================================================================= */
 
 window.openFormation = function(formationId, formationTitre) {
-    document.getElementById('view-formations').style.display = 'none';
-    document.getElementById('view-courses').style.display = 'flex';
-    document.getElementById('current-formation-title').textContent = formationTitre;
-    document.getElementById('search-course-input').value = '';
-    
+    const viewFormations = document.getElementById('view-formations');
+    const viewCourses = document.getElementById('view-courses');
+    const title = document.getElementById('current-formation-title');
+    const searchInput = document.getElementById('search-course-input');
     const container = document.getElementById('courses-list');
+
+    if (viewFormations) viewFormations.style.display = 'none';
+    if (viewCourses) viewCourses.style.display = 'flex';
+    if (title) title.textContent = formationTitre || 'Formation';
+    if (searchInput) searchInput.value = '';
+    if (!container) return;
+
     container.innerHTML = '';
 
-    const coursesInFormation = allCourses.filter(c => c.formations && c.formations.includes(formationId));
-    
+    const coursesInFormation = getCoursesForFormation(formationId);
+
     if (coursesInFormation.length === 0) {
         container.innerHTML = '<p style="color:var(--text-muted);">Aucun cours actif dans cette formation.</p>';
         return;
     }
 
+    const coursesByBloc = groupCoursesByBloc(coursesInFormation);
+
+    Object.entries(coursesByBloc).forEach(([blocName, courses]) => {
+        container.insertAdjacentHTML('beforeend', `<div class="bloc-title">${escapeHTML(blocName)}</div>`);
+
+        courses.forEach((course) => {
+            container.insertAdjacentHTML('beforeend', buildCourseItemHTML(course));
+        });
+    });
+};
+
+function groupCoursesByBloc(courses) {
     const coursesByBloc = {};
-    coursesInFormation.forEach(c => {
-        const blocName = c.bloc || "Autres Cours";
-        if (!coursesByBloc[blocName]) coursesByBloc[blocName] = [];
-        coursesByBloc[blocName].push(c);
+
+    courses.forEach((course) => {
+        const blocName = course.bloc || "Autres Cours";
+
+        if (!coursesByBloc[blocName]) {
+            coursesByBloc[blocName] = [];
+        }
+
+        coursesByBloc[blocName].push(course);
     });
 
-    for (const [blocName, courses] of Object.entries(coursesByBloc)) {
-        container.insertAdjacentHTML('beforeend', `<div class="bloc-title">${blocName}</div>`);
-        
-        courses.forEach(c => {
-            const pData = userProgress.courses[c.id] || { status: 'todo', completedChapters: [] };
-            const isDone = pData.status === 'done';
-            const isInProgress = pData.status === 'in_progress';
-            const totalChaps = c.chapitres ? c.chapitres.length : 0;
-            const doneChaps = pData.completedChapters ? pData.completedChapters.length : 0;
+    Object.keys(coursesByBloc).forEach((blocName) => {
+        coursesByBloc[blocName].sort(sortCourses);
+    });
 
-            let statusBadge = '';
-            if (isDone) {
-                statusBadge = `<span style="background:rgba(42, 87, 255, 0.1); color:var(--accent-blue); padding:4px 8px; border-radius:4px; font-size:0.75rem; font-weight:bold;">Terminé</span>`;
-            } else if (isInProgress) {
-                statusBadge = `<span style="background:rgba(251,188,4,0.1); color:var(--accent-yellow); padding:4px 8px; border-radius:4px; font-size:0.75rem; font-weight:bold;">En cours (${doneChaps}/${totalChaps})</span>`;
-            }
+    return coursesByBloc;
+}
 
-            let quizHtml = '';
-            const hasQuiz = c.chapitres && c.chapitres.some(ch => ch.type === 'quiz');
-            if (hasQuiz && pData.quizScores) {
-                let totalPossible = 0;
-                let earnedScore = 0;
-                c.chapitres.forEach(ch => {
-                    if (ch.type === 'quiz') {
-                        ch.questions?.forEach(q => totalPossible += (q.points || 1));
-                        earnedScore += (pData.quizScores[ch.id] || 0);
-                    }
-                });
-                const starSvg = earnedScore === totalPossible && totalPossible > 0 ? `<svg width="14" height="14" fill="var(--accent-blue)" viewBox="0 0 24 24" style="vertical-align:text-bottom; margin-left:4px;"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>` : '';
-                quizHtml = `<span style="font-size: 0.85rem; color: var(--text-muted); background: #f3f4f6; padding: 4px 8px; border-radius: 6px; margin-right: 10px; font-weight: bold;">Score: ${earnedScore}/${totalPossible} ${starSvg}</span>`;
-            }
+function buildCourseItemHTML(course) {
+    const progressData = userProgress.courses[course.id] || {
+        status: 'todo',
+        completedChapters: []
+    };
 
-            // FIX : Tout est repassé en var(--accent-blue)
-            const html = `
-                <div class="course-item" onclick="window.location.href='/student/cours-viewer.html?id=${c.id}'">
-                    <div style="display:flex; align-items:center; gap:1rem;">
-                        <div style="width:40px; height:40px; background:rgba(42, 87, 255, 0.1); border-radius:8px; display:flex; align-items:center; justify-content:center; color:var(--accent-blue);">
-                            <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                        </div>
-                        <div>
-                            <div class="course-title" style="font-weight:bold; color:var(--text-main); margin-bottom:4px;">${c.titre}</div>
-                            <div style="font-size:0.8rem; color:var(--text-muted);">${totalChaps} étapes interactives</div>
-                        </div>
+    const totalChapters = Array.isArray(course.chapitres) ? course.chapitres.length : 0;
+    const doneChapters = Array.isArray(progressData.completedChapters) ? progressData.completedChapters.length : 0;
+    const statusBadge = buildStatusBadge(progressData, doneChapters, totalChapters);
+    const quizHtml = buildQuizScoreHTML(course, progressData);
+
+    return `
+        <div class="course-item" onclick="window.location.href='/student/cours-viewer.html?id=${course.id}'">
+            <div style="display:flex; align-items:center; gap:1rem;">
+                <div style="width:40px; height:40px; background:rgba(42, 87, 255, 0.1); border-radius:8px; display:flex; align-items:center; justify-content:center; color:var(--accent-blue);">
+                    <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M8 5v14l11-7z"/>
+                    </svg>
+                </div>
+
+                <div>
+                    <div class="course-title" style="font-weight:bold; color:var(--text-main); margin-bottom:4px;">
+                        ${escapeHTML(course.titre || 'Cours')}
                     </div>
-                    <div style="display:flex; align-items:center;">
-                        ${quizHtml}
-                        ${statusBadge}
-                        <svg width="24" height="24" fill="var(--text-muted)" viewBox="0 0 24 24" style="margin-left:10px;"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+                    <div style="font-size:0.8rem; color:var(--text-muted);">
+                        ${totalChapters} étapes interactives
                     </div>
                 </div>
-            `;
-            container.insertAdjacentHTML('beforeend', html);
+            </div>
+
+            <div style="display:flex; align-items:center;">
+                ${quizHtml}
+                ${statusBadge}
+                <svg width="24" height="24" fill="var(--text-muted)" viewBox="0 0 24 24" style="margin-left:10px;">
+                    <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
+                </svg>
+            </div>
+        </div>
+    `;
+}
+
+function buildStatusBadge(progressData, doneChapters, totalChapters) {
+    if (progressData.status === 'done') {
+        return `
+            <span style="background:rgba(42, 87, 255, 0.1); color:var(--accent-blue); padding:4px 8px; border-radius:4px; font-size:0.75rem; font-weight:bold;">
+                Terminé
+            </span>
+        `;
+    }
+
+    if (progressData.status === 'in_progress') {
+        return `
+            <span style="background:rgba(251,188,4,0.1); color:var(--accent-yellow); padding:4px 8px; border-radius:4px; font-size:0.75rem; font-weight:bold;">
+                En cours (${doneChapters}/${totalChapters})
+            </span>
+        `;
+    }
+
+    return '';
+}
+
+function buildQuizScoreHTML(course, progressData) {
+    const chapters = Array.isArray(course.chapitres) ? course.chapitres : [];
+    const hasQuiz = chapters.some((chapter) => chapter.type === 'quiz');
+
+    if (!hasQuiz || !progressData.quizScores) {
+        return '';
+    }
+
+    let totalPossible = 0;
+    let earnedScore = 0;
+
+    chapters.forEach((chapter) => {
+        if (chapter.type !== 'quiz') return;
+
+        const questions = Array.isArray(chapter.questions) ? chapter.questions : [];
+
+        questions.forEach((question) => {
+            totalPossible += question.points || 1;
         });
+
+        earnedScore += progressData.quizScores[chapter.id] || 0;
+    });
+
+    const starSvg = earnedScore === totalPossible && totalPossible > 0
+        ? `<svg width="14" height="14" fill="var(--accent-blue)" viewBox="0 0 24 24" style="vertical-align:text-bottom; margin-left:4px;"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>`
+        : '';
+
+    return `
+        <span style="font-size: 0.85rem; color: var(--text-muted); background: #f3f4f6; padding: 4px 8px; border-radius: 6px; margin-right: 10px; font-weight: bold;">
+            Score: ${earnedScore}/${totalPossible} ${starSvg}
+        </span>
+    `;
+}
+
+/* =======================================================================
+ * HELPERS
+ * ======================================================================= */
+
+function sortByTitle(a, b) {
+    return String(a.titre || '').localeCompare(String(b.titre || ''), 'fr', {
+        sensitivity: 'base'
+    });
+}
+
+function sortCourses(a, b) {
+    const blocCompare = String(a.bloc || '').localeCompare(String(b.bloc || ''), 'fr', {
+        sensitivity: 'base'
+    });
+
+    if (blocCompare !== 0) {
+        return blocCompare;
+    }
+
+    return String(a.titre || '').localeCompare(String(b.titre || ''), 'fr', {
+        sensitivity: 'base'
+    });
+}
+
+function escapeHTML(value) {
+    return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function showFormationsError() {
+    const list = document.getElementById('formations-list');
+
+    if (list) {
+        list.innerHTML = '<p style="color:red;">Erreur lors du chargement des formations.</p>';
     }
 }
