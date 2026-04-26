@@ -25,6 +25,10 @@
         }
 
         .login-card {
+            --login-corner-band: #000000;
+            --login-corner-separator: rgba(255, 255, 255, 0.15);
+            --login-corner-border: var(--border-color);
+
             width: 100%;
             max-width: 450px;
             background: var(--bg-surface);
@@ -51,41 +55,52 @@
         }
 
         .login-card.is-loading {
+            --login-corner-band: rgba(0, 81, 255, 0.34);
+            --login-corner-separator: rgba(255, 255, 255, 0.12);
+            --login-corner-border: rgba(0, 81, 255, 0.42);
+
             border-color: rgba(0, 81, 255, 0.42);
             box-shadow:
                 0 20px 50px rgba(0, 0, 0, 0.5),
-                0 0 28px rgba(0, 81, 255, 0.12);
+                0 0 22px rgba(0, 81, 255, 0.08);
         }
 
         .login-card.is-success {
+            --login-corner-band: var(--sbi-blue);
+            --login-corner-separator: rgba(255, 255, 255, 0.18);
+            --login-corner-border: rgba(0, 81, 255, 0.65);
+
             border-color: rgba(0, 81, 255, 0.88);
             box-shadow:
                 0 20px 50px rgba(0, 0, 0, 0.5),
-                0 0 32px rgba(0, 81, 255, 0.28);
+                0 0 26px rgba(0, 81, 255, 0.18);
         }
 
         .login-card.is-success::before {
             opacity: 1;
-            border-color: rgba(0, 81, 255, 0.5);
+            border-color: rgba(0, 81, 255, 0.42);
             animation: loginSuccessFlash 0.62s ease-out;
         }
 
         .login-card.is-error {
+            --login-corner-band: #ff4a4a;
+            --login-corner-separator: rgba(255, 255, 255, 0.16);
+            --login-corner-border: rgba(255, 74, 74, 0.55);
+
             border-color: rgba(255, 74, 74, 0.72);
             box-shadow:
                 0 20px 50px rgba(0, 0, 0, 0.5),
-                0 0 26px rgba(255, 74, 74, 0.14);
+                0 0 20px rgba(255, 74, 74, 0.10);
             animation: loginErrorShake 0.34s ease;
         }
 
         .login-card.is-error::before {
             opacity: 1;
-            border-color: rgba(255, 74, 74, 0.34);
+            border-color: rgba(255, 74, 74, 0.32);
         }
 
         /* Coin bas droit :
-           on garde la découpe interne validée
-           + seulement bordure externe droite/bas */
+           même logique que les cartes parcours, sans overlay lumineux carré */
         .login-card-cut {
             position: absolute;
             bottom: -1px;
@@ -96,75 +111,35 @@
                 -45deg,
                 #040508 0%,
                 #040508 18px,
-                #000000 18px,
-                #000000 36px,
-                rgba(255, 255, 255, 0.15) 36px,
-                rgba(255, 255, 255, 0.15) 37px,
+                var(--login-corner-band) 18px,
+                var(--login-corner-band) 36px,
+                var(--login-corner-separator) 36px,
+                var(--login-corner-separator) 37px,
                 transparent 37px
             );
             pointer-events: none;
             z-index: 2;
-            border-right: 1px solid var(--border-color);
-            border-bottom: 1px solid var(--border-color);
+            border-right: 1px solid var(--login-corner-border);
+            border-bottom: 1px solid var(--login-corner-border);
+            transition:
+                background 0.24s ease,
+                border-color 0.24s ease,
+                filter 0.24s ease;
         }
 
-        .login-card-cut::before {
+        .login-card-cut::before,
+        .login-card-cut::after {
             content: none;
             display: none;
         }
 
-        .login-card-cut::after {
-            content: '';
-            position: absolute;
-            inset: 0;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.24s ease;
-        }
-
-        .login-card.is-loading .login-card-cut::after {
-            opacity: 0.45;
-            background: linear-gradient(
-                -45deg,
-                #040508 0%,
-                #040508 18px,
-                rgba(0, 81, 255, 0.42) 18px,
-                rgba(0, 81, 255, 0.42) 36px,
-                rgba(255, 255, 255, 0.12) 36px,
-                rgba(255, 255, 255, 0.12) 37px,
-                transparent 37px
-            );
+        .login-card.is-loading .login-card-cut {
             animation: loginCornerPulse 0.9s ease-in-out infinite alternate;
         }
 
-        .login-card.is-success .login-card-cut::after {
-            opacity: 1;
-            background: linear-gradient(
-                -45deg,
-                #040508 0%,
-                #040508 18px,
-                var(--sbi-blue) 18px,
-                var(--sbi-blue) 36px,
-                rgba(255, 255, 255, 0.18) 36px,
-                rgba(255, 255, 255, 0.18) 37px,
-                transparent 37px
-            );
-            box-shadow: 0 0 22px rgba(0, 81, 255, 0.38);
-        }
-
-        .login-card.is-error .login-card-cut::after {
-            opacity: 1;
-            background: linear-gradient(
-                -45deg,
-                #040508 0%,
-                #040508 18px,
-                #ff4a4a 18px,
-                #ff4a4a 36px,
-                rgba(255, 255, 255, 0.16) 36px,
-                rgba(255, 255, 255, 0.16) 37px,
-                transparent 37px
-            );
-            box-shadow: 0 0 18px rgba(255, 74, 74, 0.24);
+        .login-card.is-success .login-card-cut,
+        .login-card.is-error .login-card-cut {
+            animation: none;
         }
 
         .login-title {
@@ -298,13 +273,11 @@
 
         @keyframes loginCornerPulse {
             0% {
-                filter: brightness(0.9);
-                box-shadow: 0 0 8px rgba(0, 81, 255, 0.12);
+                filter: brightness(0.92);
             }
 
             100% {
-                filter: brightness(1.12);
-                box-shadow: 0 0 18px rgba(0, 81, 255, 0.28);
+                filter: brightness(1.16);
             }
         }
 
@@ -314,7 +287,7 @@
             }
 
             45% {
-                box-shadow: inset 0 0 32px rgba(0, 81, 255, 0.14);
+                box-shadow: inset 0 0 24px rgba(0, 81, 255, 0.10);
             }
 
             100% {
@@ -396,7 +369,7 @@
                 C<span class="text-blue">o</span>nnexion
             </h1>
 
-            <form id="login-form" data-success-url="dashboard.html">
+            <form id="login-form">
                 <div class="login-field">
                     <label for="email" class="text-italic">Adresse Email</label>
                     <input type="email" id="email" class="login-input text-italic" required autocomplete="email">
