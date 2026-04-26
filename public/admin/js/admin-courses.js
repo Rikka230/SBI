@@ -2,6 +2,13 @@
  * =======================================================================
  * ADMIN COURSES - Gestion des Cours, Formations et Accès
  * =======================================================================
+ *
+ * Étape 4.1 :
+ * - garde-fou média avant migration Firebase Storage
+ * - images compressées et contrôlées
+ * - vidéos trop lourdes bloquées
+ * - estimation du poids final du document Firestore avant sauvegarde
+ * =======================================================================
  */
 
 import { db, auth } from '/js/firebase-init.js';
@@ -10,13 +17,13 @@ import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/fi
 import { logoutUser } from '/js/auth.js';
 
 let currentUid = null;
-let currentUserProfile = null; 
+let currentUserProfile = null;
 let currentChapters = [];
 let activeChapterId = null;
 
 let allFormationsData = [];
 let allUsersForAccess = [];
-let allCoursesData = []; 
+let allCoursesData = [];
 
 let editingCourseAuthorId = null;
 let editingCourseOriginalStatus = null;
@@ -25,48 +32,229 @@ let editingCourseOriginalActive = false;
 const SVG_PREVIEW = `<svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24" style="vertical-align:middle; margin-right:8px;"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>`;
 const SVG_QUIZ_LIST = `<svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24" style="vertical-align:text-bottom; margin-right:4px;"><path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>`;
 
+/* -----------------------------------------------------------------------
+   GARDE-FOU MÉDIA TEMPORAIRE
+   -----------------------------------------------------------------------
+   Tant que les médias sont stockés en base64 dans Firestore, il faut rester
+   sous la limite Firestore. La vraie solution sera Firebase Storage.
+   ----------------------------------------------------------------------- */
+
+const MAX_IMAGE_FILE_BYTES = 6 * 1024 * 1024;
+const MAX_IMAGE_DATA_URL_BYTES = 380 * 1024;
+const MAX_VIDEO_FILE_BYTES = 450 * 1024;
+const MAX_VIDEO_DATA_URL_BYTES = 620 * 1024;
+const MAX_COURSE_DOCUMENT_BYTES = 850 * 1024;
+
+const formatBytes = (bytes) => {
+    if (!Number.isFinite(bytes)) return '0 Ko';
+
+    if (bytes < 1024) return `${bytes} o`;
+
+    const kb = bytes / 1024;
+    if (kb < 1024) return `${kb.toFixed(0)} Ko`;
+
+    return `${(kb / 1024).toFixed(2)} Mo`;
+};
+
+const estimateStringBytes = (value) => {
+    return new Blob([String(value || '')]).size;
+};
+
+const estimateObjectBytes = (value) => {
+    try {
+        return estimateStringBytes(JSON.stringify(value));
+    } catch (error) {
+        return Infinity;
+    }
+};
+
+const clearImageInputState = () => {
+    const input = document.getElementById('chapter-image-upload');
+    const hidden = document.getElementById('chapter-image-base64');
+    const preview = document.getElementById('chapter-image-preview');
+
+    if (input) input.value = '';
+    if (hidden) hidden.value = '';
+    if (preview) {
+        preview.removeAttribute('src');
+        preview.style.display = 'none';
+    }
+};
+
+const clearVideoInputState = () => {
+    const input = document.getElementById('chapter-video-upload');
+    const hidden = document.getElementById('chapter-video-base64');
+    const preview = document.getElementById('chapter-video-preview');
+
+    if (input) input.value = '';
+    if (hidden) hidden.value = '';
+    if (preview) {
+        preview.removeAttribute('src');
+        preview.style.display = 'none';
+    }
+};
+
+const readFileAsDataURL = (file) => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+
+        reader.onload = (event) => resolve(event.target.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+};
+
+const loadImageFromDataURL = (dataUrl) => {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = dataUrl;
+    });
+};
+
+const canvasToWebpDataURL = (canvas, quality) => {
+    return canvas.toDataURL('image/webp', quality);
+};
+
+const compressImageToSafeDataURL = async (file) => {
+    if (!file) {
+        throw new Error("Aucun fichier image sélectionné.");
+    }
+
+    if (file.size > MAX_IMAGE_FILE_BYTES) {
+        throw new Error(`Image trop lourde : ${formatBytes(file.size)}. Maximum conseillé : ${formatBytes(MAX_IMAGE_FILE_BYTES)}.`);
+    }
+
+    const originalDataUrl = await readFileAsDataURL(file);
+    const img = await loadImageFromDataURL(originalDataUrl);
+
+    const attempts = [
+        { width: 1200, quality: 0.82 },
+        { width: 1000, quality: 0.76 },
+        { width: 850, quality: 0.70 },
+        { width: 720, quality: 0.64 }
+    ];
+
+    for (const attempt of attempts) {
+        const ratio = Math.min(1, attempt.width / img.width);
+        const width = Math.round(img.width * ratio);
+        const height = Math.round(img.height * ratio);
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const dataUrl = canvasToWebpDataURL(canvas, attempt.quality);
+        const dataUrlBytes = estimateStringBytes(dataUrl);
+
+        if (dataUrlBytes <= MAX_IMAGE_DATA_URL_BYTES) {
+            return dataUrl;
+        }
+    }
+
+    throw new Error(
+        `Image encore trop lourde après compression. ` +
+        `Essaie une image plus petite ou attends la migration Firebase Storage.`
+    );
+};
+
+const validateVideoFileForFirestore = async (file) => {
+    if (!file) {
+        throw new Error("Aucun fichier vidéo sélectionné.");
+    }
+
+    if (file.size > MAX_VIDEO_FILE_BYTES) {
+        throw new Error(
+            `Vidéo trop lourde : ${formatBytes(file.size)}. ` +
+            `Limite temporaire : ${formatBytes(MAX_VIDEO_FILE_BYTES)}. ` +
+            `Pour les vraies vidéos de cours, il faudra passer par Firebase Storage.`
+        );
+    }
+
+    const dataUrl = await readFileAsDataURL(file);
+    const dataUrlBytes = estimateStringBytes(dataUrl);
+
+    if (dataUrlBytes > MAX_VIDEO_DATA_URL_BYTES) {
+        throw new Error(
+            `Vidéo trop lourde après encodage : ${formatBytes(dataUrlBytes)}. ` +
+            `Limite temporaire : ${formatBytes(MAX_VIDEO_DATA_URL_BYTES)}.`
+        );
+    }
+
+    return dataUrl;
+};
+
+const validateCourseDocumentSize = (courseData) => {
+    const estimatedBytes = estimateObjectBytes(courseData);
+
+    if (estimatedBytes > MAX_COURSE_DOCUMENT_BYTES) {
+        throw new Error(
+            `Ce cours est trop lourd pour Firestore : environ ${formatBytes(estimatedBytes)}. ` +
+            `Limite de sécurité temporaire : ${formatBytes(MAX_COURSE_DOCUMENT_BYTES)}. ` +
+            `Supprime ou allège les médias, ou attends la migration Firebase Storage.`
+        );
+    }
+};
+
 document.addEventListener('DOMContentLoaded', () => {
-    
+
     onAuthStateChanged(auth, async (user) => {
-        if (user) { 
-            currentUid = user.uid; 
-            await loadUsersForAccess(); 
-            await loadFormationsCategories(); 
-            await loadCourses(); 
+        if (user) {
+            currentUid = user.uid;
+
+            await loadUsersForAccess();
+            await loadFormationsCategories();
+            await loadCourses();
 
             const urlParams = new URLSearchParams(window.location.search);
             const editId = urlParams.get('edit');
+
             if (editId) {
                 window.editCourse(editId);
+
                 if (typeof window.switchCourseTab === 'function') {
                     window.history.replaceState({}, document.title, window.location.pathname + "?tab=tab-editor");
                 }
             }
-            
-            // Bouton de prévisualisation
+
             if (!document.getElementById('btn-preview-course')) {
                 const targetBtn = document.getElementById('btn-submit-validation') || document.getElementById('btn-save-course');
+
                 if (targetBtn) {
-                    targetBtn.insertAdjacentHTML('afterend', `<button id="btn-preview-course" class="action-btn" style="width: 100%; margin-top: 1rem; background: transparent; color: var(--text-main); border: 1px solid var(--border-color); padding: 1rem; font-size: 1rem; cursor: pointer; transition: 0.2s; font-weight:bold;">${SVG_PREVIEW} Visualiser le rendu actuel</button>`);
-                    
+                    targetBtn.insertAdjacentHTML(
+                        'afterend',
+                        `<button id="btn-preview-course" class="action-btn" style="width: 100%; margin-top: 1rem; background: transparent; color: var(--text-main); border: 1px solid var(--border-color); padding: 1rem; font-size: 1rem; cursor: pointer; transition: 0.2s; font-weight:bold;">${SVG_PREVIEW} Visualiser le rendu actuel</button>`
+                    );
+
                     document.getElementById('btn-preview-course').addEventListener('click', async () => {
                         const cId = document.getElementById('edit-course-id').value;
+
                         if (!cId) {
-                            alert("⚠️ Veuillez enregistrer le cours comme Brouillon une première fois avant de le visualiser !");
+                            alert("⚠️ Veuillez enregistrer le cours comme brouillon une première fois avant de le visualiser !");
                             return;
                         }
+
                         await saveCourseToFirebase('preview');
                     });
                 }
             }
 
-            // FIX FONCTIONNALITÉ : Bouton Refuser pour les Administrateurs
             if (!document.getElementById('btn-reject-course')) {
                 const saveAdminBtn = document.getElementById('btn-save-course');
+
                 if (saveAdminBtn) {
-                    saveAdminBtn.insertAdjacentHTML('beforebegin', `<button id="btn-reject-course" class="action-btn danger" style="margin-right: 10px; display: none;">Refuser</button>`);
+                    saveAdminBtn.insertAdjacentHTML(
+                        'beforebegin',
+                        `<button id="btn-reject-course" class="action-btn danger" style="margin-right: 10px; display: none;">Refuser</button>`
+                    );
+
                     document.getElementById('btn-reject-course').addEventListener('click', async () => {
-                        if(confirm("Refuser ce cours et demander des modifications au professeur ?")) {
+                        if (confirm("Refuser ce cours et demander des modifications au professeur ?")) {
                             await saveCourseToFirebase('reject');
                         }
                     });
@@ -82,100 +270,164 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     const logoutBtn = document.getElementById('logout-btn');
-    if(logoutBtn) logoutBtn.addEventListener('click', logoutUser);
-    
+    if (logoutBtn) logoutBtn.addEventListener('click', logoutUser);
+
     const cacheBtn = document.getElementById('btn-clear-cache');
-    if(cacheBtn) cacheBtn.addEventListener('click', () => {
-        if(confirm('Vider le cache local ? Cela rechargera la page.')) {
-            localStorage.clear(); sessionStorage.clear(); window.location.reload(true);
-        }
-    });
+
+    if (cacheBtn) {
+        cacheBtn.addEventListener('click', () => {
+            if (confirm('Vider le cache local ? Cela rechargera la page.')) {
+                localStorage.clear();
+                sessionStorage.clear();
+                window.location.reload(true);
+            }
+        });
+    }
 
     const btnDraft = document.getElementById('btn-save-draft');
     const btnSubmit = document.getElementById('btn-submit-validation');
-    const btnSaveAdmin = document.getElementById('btn-save-course'); 
+    const btnSaveAdmin = document.getElementById('btn-save-course');
 
-    if(btnDraft) btnDraft.addEventListener('click', () => saveCourseToFirebase('draft'));
-    if(btnSubmit) btnSubmit.addEventListener('click', () => saveCourseToFirebase('submit'));
-    if(btnSaveAdmin) btnSaveAdmin.addEventListener('click', () => saveCourseToFirebase('admin_save'));
+    if (btnDraft) btnDraft.addEventListener('click', () => saveCourseToFirebase('draft'));
+    if (btnSubmit) btnSubmit.addEventListener('click', () => saveCourseToFirebase('submit'));
+    if (btnSaveAdmin) btnSaveAdmin.addEventListener('click', () => saveCourseToFirebase('admin_save'));
 
-    document.getElementById('btn-add-chapter').addEventListener('click', () => createNewChapter('text'));
-    document.getElementById('btn-add-quiz').addEventListener('click', () => createNewChapter('quiz'));
-    
-    document.getElementById('btn-add-new-bloc').addEventListener('click', () => {
-        const newBlocName = prompt("Entrez le nom du nouveau bloc :");
-        if (newBlocName && newBlocName.trim() !== "") {
-            const select = document.getElementById('course-bloc-select');
-            if (select) {
-                const option = document.createElement('option');
-                option.value = newBlocName.trim();
-                option.textContent = newBlocName.trim();
-                select.appendChild(option);
-                select.value = newBlocName.trim();
+    const btnAddChapter = document.getElementById('btn-add-chapter');
+    if (btnAddChapter) btnAddChapter.addEventListener('click', () => createNewChapter('text'));
+
+    const btnAddQuiz = document.getElementById('btn-add-quiz');
+    if (btnAddQuiz) btnAddQuiz.addEventListener('click', () => createNewChapter('quiz'));
+
+    const btnAddBloc = document.getElementById('btn-add-new-bloc');
+
+    if (btnAddBloc) {
+        btnAddBloc.addEventListener('click', () => {
+            const newBlocName = prompt("Entrez le nom du nouveau bloc :");
+
+            if (newBlocName && newBlocName.trim() !== "") {
+                const select = document.getElementById('course-bloc-select');
+
+                if (select) {
+                    const option = document.createElement('option');
+                    option.value = newBlocName.trim();
+                    option.textContent = newBlocName.trim();
+                    select.appendChild(option);
+                    select.value = newBlocName.trim();
+                }
             }
-        }
-    });
+        });
+    }
 
     const newCourseBtn = document.getElementById('btn-trigger-new-course');
-    if(newCourseBtn) newCourseBtn.addEventListener('click', window.prepareNewCourse);
+    if (newCourseBtn) newCourseBtn.addEventListener('click', window.prepareNewCourse);
 
     const addQuestionBtn = document.getElementById('btn-add-question');
     if (addQuestionBtn) addQuestionBtn.addEventListener('click', addQuizQuestion);
 
-    document.getElementById('chapter-title').addEventListener('input', updateActiveTitle);
+    const chapterTitle = document.getElementById('chapter-title');
+    if (chapterTitle) chapterTitle.addEventListener('input', updateActiveTitle);
+
     const quizTitleInput = document.getElementById('quiz-title');
     if (quizTitleInput) quizTitleInput.addEventListener('input', updateActiveTitle);
 
     function updateActiveTitle(e) {
-        if(activeChapterId) {
+        if (activeChapterId) {
             const chap = currentChapters.find(c => c.id === activeChapterId);
-            if(chap) { chap.titre = e.target.value; renderChaptersList(); }
+
+            if (chap) {
+                chap.titre = e.target.value;
+                renderChaptersList();
+            }
         }
     }
 
     const imgUpload = document.getElementById('chapter-image-upload');
+
     if (imgUpload) {
         imgUpload.addEventListener('change', async function(e) {
             const file = e.target.files[0];
-            if(!file) return;
-            const img = new Image();
-            img.src = URL.createObjectURL(file);
-            img.onload = () => {
-                const canvas = document.createElement('canvas');
-                const MAX_WIDTH = 1200; const scaleSize = MAX_WIDTH / img.width;
-                canvas.width = MAX_WIDTH; canvas.height = img.height * scaleSize;
-                const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                const dataUrl = canvas.toDataURL('image/webp', 0.85);
-                document.getElementById('chapter-image-base64').value = dataUrl;
-                const preview = document.getElementById('chapter-image-preview');
-                preview.src = dataUrl; preview.style.display = 'block';
-            };
+            if (!file) return;
+
+            const preview = document.getElementById('chapter-image-preview');
+            const hidden = document.getElementById('chapter-image-base64');
+
+            try {
+                if (preview) {
+                    preview.style.display = 'none';
+                    preview.removeAttribute('src');
+                }
+
+                if (hidden) {
+                    hidden.value = '';
+                }
+
+                const dataUrl = await compressImageToSafeDataURL(file);
+
+                if (hidden) {
+                    hidden.value = dataUrl;
+                }
+
+                if (preview) {
+                    preview.src = dataUrl;
+                    preview.style.display = 'block';
+                }
+
+            } catch (error) {
+                clearImageInputState();
+                alert(`❌ ${error.message}`);
+            }
         });
     }
 
     const vidUpload = document.getElementById('chapter-video-upload');
+
     if (vidUpload) {
-        vidUpload.addEventListener('change', function(e) {
+        vidUpload.addEventListener('change', async function(e) {
             const file = e.target.files[0];
-            if(!file) return;
-            if(file.size > 1048576) { alert("⚠️ Limite Firestore de 1Mo atteinte."); }
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                document.getElementById('chapter-video-base64').value = event.target.result;
-                const preview = document.getElementById('chapter-video-preview');
-                preview.src = event.target.result; preview.style.display = 'block';
-            };
-            reader.readAsDataURL(file);
+            if (!file) return;
+
+            const preview = document.getElementById('chapter-video-preview');
+            const hidden = document.getElementById('chapter-video-base64');
+
+            try {
+                if (preview) {
+                    preview.pause();
+                    preview.style.display = 'none';
+                    preview.removeAttribute('src');
+                }
+
+                if (hidden) {
+                    hidden.value = '';
+                }
+
+                const dataUrl = await validateVideoFileForFirestore(file);
+
+                if (hidden) {
+                    hidden.value = dataUrl;
+                }
+
+                if (preview) {
+                    preview.src = dataUrl;
+                    preview.style.display = 'block';
+                }
+
+            } catch (error) {
+                clearVideoInputState();
+                alert(`❌ ${error.message}`);
+            }
         });
     }
 
     const searchProfs = document.getElementById('search-profs');
+
     if (searchProfs) {
         searchProfs.addEventListener('input', (e) => {
             const term = e.target.value.toLowerCase();
+
             document.querySelectorAll('#formation-profs-list .compact-user-row').forEach(row => {
                 const nameSpan = row.querySelector('span');
-                if(nameSpan) {
+
+                if (nameSpan) {
                     row.style.display = nameSpan.textContent.toLowerCase().includes(term) ? 'flex' : 'none';
                 }
             });
@@ -183,12 +435,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const searchStudents = document.getElementById('search-students');
+
     if (searchStudents) {
         searchStudents.addEventListener('input', (e) => {
             const term = e.target.value.toLowerCase();
+
             document.querySelectorAll('#formation-students-list .compact-user-row').forEach(row => {
                 const nameSpan = row.querySelector('span');
-                if(nameSpan) {
+
+                if (nameSpan) {
                     row.style.display = nameSpan.textContent.toLowerCase().includes(term) ? 'flex' : 'none';
                 }
             });
@@ -196,18 +451,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const btnCreateForm = document.getElementById('btn-create-formation');
-    if(btnCreateForm) btnCreateForm.addEventListener('click', () => openFormationModal(null));
-    
+    if (btnCreateForm) btnCreateForm.addEventListener('click', () => openFormationModal(null));
+
     const closeFormBtn = document.getElementById('close-formation-modal-btn');
-    if(closeFormBtn) closeFormBtn.addEventListener('click', () => document.getElementById('formation-modal').style.display='none');
-    
+    if (closeFormBtn) closeFormBtn.addEventListener('click', () => document.getElementById('formation-modal').style.display = 'none');
+
     const formForm = document.getElementById('formation-form');
+
     if (formForm) {
         formForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+
             const formId = document.getElementById('edit-formation-id').value;
             const titre = document.getElementById('formation-titre').value.trim();
-            
+
             const profs = Array.from(document.querySelectorAll('.cb-formation-user[data-role="teacher"]:checked')).map(cb => cb.dataset.uid);
             const students = Array.from(document.querySelectorAll('.cb-formation-user[data-role="student"]:checked')).map(cb => cb.dataset.uid);
 
@@ -221,17 +478,23 @@ document.addEventListener('DOMContentLoaded', () => {
                     data.dateCreation = serverTimestamp();
                     await addDoc(collection(db, "formations"), data);
                 }
+
                 document.getElementById('formation-modal').style.display = 'none';
-                loadFormationsCategories(); 
-            } catch(err) { alert('Erreur de sauvegarde'); }
+                loadFormationsCategories();
+
+            } catch (err) {
+                alert('Erreur de sauvegarde');
+            }
         });
     }
 
     const deleteFormBtn = document.getElementById('delete-formation-btn');
+
     if (deleteFormBtn) {
         deleteFormBtn.addEventListener('click', async () => {
             const formId = document.getElementById('edit-formation-id').value;
-            if(confirm('DANGER : Supprimer cette catégorie ? (Les cours associés perdront leur tag).')) {
+
+            if (confirm('DANGER : Supprimer cette catégorie ? Les cours associés perdront leur tag.')) {
                 await deleteDoc(doc(db, "formations", formId));
                 document.getElementById('formation-modal').style.display = 'none';
                 loadFormationsCategories();
@@ -243,6 +506,7 @@ document.addEventListener('DOMContentLoaded', () => {
 function setupDropZone(dropZoneId, inputId) {
     const dropZone = document.getElementById(dropZoneId);
     const input = document.getElementById(inputId);
+
     if (!dropZone || !input) return;
 
     dropZone.addEventListener('click', () => input.click());
@@ -260,6 +524,7 @@ function setupDropZone(dropZoneId, inputId) {
     dropZone.addEventListener('drop', (e) => {
         e.preventDefault();
         dropZone.classList.remove('dragover');
+
         if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
             input.files = e.dataTransfer.files;
             const event = new Event('change');
@@ -271,34 +536,42 @@ function setupDropZone(dropZoneId, inputId) {
 async function loadUsersForAccess() {
     const snap = await getDocs(collection(db, "users"));
     allUsersForAccess = [];
-    snap.forEach(d => allUsersForAccess.push({id: d.id, ...d.data()}));
+
+    snap.forEach(d => allUsersForAccess.push({ id: d.id, ...d.data() }));
+
     currentUserProfile = allUsersForAccess.find(u => u.id === currentUid);
 }
 
 function getAccessibleFormations() {
     if (!currentUserProfile) return [];
-    if (currentUserProfile.role === 'admin' || currentUserProfile.isGod) return allFormationsData;
+
+    if (currentUserProfile.role === 'admin' || currentUserProfile.isGod) {
+        return allFormationsData;
+    }
+
     return allFormationsData.filter(form => form.profs && form.profs.includes(currentUid));
 }
 
 async function loadFormationsCategories() {
     const snap = await getDocs(collection(db, "formations"));
     allFormationsData = [];
-    snap.forEach(d => allFormationsData.push({id: d.id, ...d.data()}));
-    
-    renderFormationsList(); 
-    renderFormationsPillsAndFilters(); 
+
+    snap.forEach(d => allFormationsData.push({ id: d.id, ...d.data() }));
+
+    renderFormationsList();
+    renderFormationsPillsAndFilters();
 }
 
 function renderFormationsList() {
     const container = document.getElementById('formations-list-container');
-    if(!container) return;
+    if (!container) return;
+
     container.innerHTML = '';
-    
+
     const visibleFormations = getAccessibleFormations();
-    
-    if(visibleFormations.length === 0) {
-        container.innerHTML = '<p style="color:var(--text-muted); grid-column: 1/-1;">Aucune catégorie disponible pour votre compte.</p>'; 
+
+    if (visibleFormations.length === 0) {
+        container.innerHTML = '<p style="color:var(--text-muted); grid-column: 1/-1;">Aucune catégorie disponible pour votre compte.</p>';
         return;
     }
 
@@ -307,9 +580,15 @@ function renderFormationsList() {
         const sCount = form.students ? form.students.length : 0;
 
         let authorName = "Système";
+
         if (form.auteurId && allUsersForAccess.length > 0) {
             const authorObj = allUsersForAccess.find(u => u.id === form.auteurId);
-            if (authorObj) authorName = (authorObj.prenom || authorObj.nom) ? `${authorObj.prenom || ''} ${authorObj.nom || ''}`.trim() : authorObj.email;
+
+            if (authorObj) {
+                authorName = (authorObj.prenom || authorObj.nom)
+                    ? `${authorObj.prenom || ''} ${authorObj.nom || ''}`.trim()
+                    : authorObj.email;
+            }
         }
 
         const html = `
@@ -317,7 +596,7 @@ function renderFormationsList() {
                 <div style="margin-bottom: 1rem;">
                     <h3 style="margin-top: 0; margin-bottom: 0.2rem; color: var(--accent-blue);">${form.titre}</h3>
                     <p style="font-size: 0.75rem; color: #666; margin: 0 0 1rem 0; font-style: italic;">Créé par ${authorName}</p>
-                    
+
                     <p style="font-size: 0.85rem; color: var(--text-muted); margin:0; line-height: 1.4;">
                         <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24" style="vertical-align: middle; margin-right: 4px;"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
                         <span style="vertical-align: middle;">${pCount} prof(s) assigné(s)</span>
@@ -330,6 +609,7 @@ function renderFormationsList() {
                 <button class="action-btn btn-edit-formation" data-id="${form.id}" style="margin-bottom:0; justify-content:center;">Modifier les accès</button>
             </div>
         `;
+
         container.insertAdjacentHTML('beforeend', html);
     });
 
@@ -344,21 +624,23 @@ window.openFormationModal = function(formationId) {
 
     const profsContainer = document.getElementById('formation-profs-list');
     const studentsContainer = document.getElementById('formation-students-list');
-    
-    profsContainer.innerHTML = ''; studentsContainer.innerHTML = '';
+
+    profsContainer.innerHTML = '';
+    studentsContainer.innerHTML = '';
+
     document.getElementById('search-profs').value = '';
     document.getElementById('search-students').value = '';
 
-    let targetForm = formationId ? allFormationsData.find(f => f.id === formationId) : null;
-    
+    const targetForm = formationId ? allFormationsData.find(f => f.id === formationId) : null;
+
     document.getElementById('edit-formation-id').value = formationId || '';
     document.getElementById('formation-titre').value = targetForm ? targetForm.titre : '';
     document.getElementById('formation-modal-title').textContent = targetForm ? "Modifier la Catégorie" : "Créer une Catégorie";
     document.getElementById('delete-formation-zone').style.display = targetForm ? 'block' : 'none';
 
     allUsersForAccess.forEach(u => {
-        if (u.role === 'admin' || u.isGod) return; 
-        
+        if (u.role === 'admin' || u.isGod) return;
+
         const isChecked = targetForm && (
             (u.role === 'teacher' && targetForm.profs && targetForm.profs.includes(u.id)) ||
             (u.role === 'student' && targetForm.students && targetForm.students.includes(u.id))
@@ -382,25 +664,30 @@ window.openFormationModal = function(formationId) {
     });
 
     modal.style.display = 'flex';
-}
+};
 
 function renderFormationsPillsAndFilters() {
     const visibleFormations = getAccessibleFormations();
 
     const selector = document.getElementById('formations-selector');
-    if(selector) {
+
+    if (selector) {
         selector.innerHTML = '';
+
         visibleFormations.forEach(form => {
             selector.insertAdjacentHTML('beforeend', `<span class="formation-pill" data-val="${form.id}">${form.titre}</span>`);
         });
+
         document.querySelectorAll('.formation-pill').forEach(pill => {
             pill.addEventListener('click', (e) => e.target.classList.toggle('selected'));
         });
     }
 
     const filter = document.getElementById('library-formation-filter');
-    if(filter) {
+
+    if (filter) {
         filter.innerHTML = '<option value="all">Toutes les Catégories</option>';
+
         visibleFormations.forEach(form => {
             filter.insertAdjacentHTML('beforeend', `<option value="${form.id}">${form.titre}</option>`);
         });
@@ -413,16 +700,23 @@ function refreshBlocsList() {
 
     const currentVal = select.value;
     const blocsSet = new Set();
-    allCoursesData.forEach(c => { if(c.bloc) blocsSet.add(c.bloc); });
-    
+
+    allCoursesData.forEach(c => {
+        if (c.bloc) blocsSet.add(c.bloc);
+    });
+
     select.innerHTML = '<option value="">-- Aucun Bloc --</option>';
+
     Array.from(blocsSet).sort().forEach(bloc => {
         const opt = document.createElement('option');
-        opt.value = bloc; opt.textContent = bloc;
+        opt.value = bloc;
+        opt.textContent = bloc;
         select.appendChild(opt);
     });
-    
-    if(currentVal && blocsSet.has(currentVal)) select.value = currentVal;
+
+    if (currentVal && blocsSet.has(currentVal)) {
+        select.value = currentVal;
+    }
 }
 
 window.prepareNewCourse = function() {
@@ -432,40 +726,41 @@ window.prepareNewCourse = function() {
     window.editingCourseOriginalActive = false;
 
     const editCourseIdEl = document.getElementById('edit-course-id');
-    if(editCourseIdEl) editCourseIdEl.value = '';
-    
+    if (editCourseIdEl) editCourseIdEl.value = '';
+
     const courseTitleEl = document.getElementById('course-title');
-    if(courseTitleEl) courseTitleEl.value = '';
-    
+    if (courseTitleEl) courseTitleEl.value = '';
+
     const selectBloc = document.getElementById('course-bloc-select');
-    if (selectBloc) selectBloc.value = ''; 
-    
+    if (selectBloc) selectBloc.value = '';
+
     currentChapters = [];
     activeChapterId = null;
+
     document.querySelectorAll('.formation-pill').forEach(p => p.classList.remove('selected'));
-    
+
     const noChapterZone = document.getElementById('no-chapter-zone');
     if (noChapterZone) noChapterZone.style.display = 'flex';
-    
+
     const chapterEditorZone = document.getElementById('chapter-editor-zone');
     if (chapterEditorZone) chapterEditorZone.style.display = 'none';
-    
+
     const quizEditorZone = document.getElementById('quiz-editor-zone');
     if (quizEditorZone) quizEditorZone.style.display = 'none';
-    
+
     const warningBanner = document.getElementById('lock-warning-banner');
     if (warningBanner) warningBanner.style.display = 'none';
 
-    // Rendre l'éditeur interactif
     document.querySelectorAll('.editor-input, .editor-action-btn').forEach(el => {
         el.disabled = false;
         el.style.opacity = '1';
         el.style.pointerEvents = 'auto';
     });
-    if(window.quill) window.quill.enable(true);
-    
+
+    if (window.quill) window.quill.enable(true);
+
     renderChaptersList();
-    
+
     if (typeof window.switchCourseTab === 'function') {
         window.switchCourseTab('tab-editor');
     }
@@ -473,49 +768,60 @@ window.prepareNewCourse = function() {
 
 function createNewChapter(type) {
     saveCurrentChapterContent();
+
     const newId = 'chap_' + Date.now().toString();
+
     const newChap = {
         id: newId,
         type: type,
-        titre: type === 'quiz' ? `Examen` : `Leçon ${currentChapters.filter(c=>c.type==='text').length + 1}`,
+        titre: type === 'quiz' ? `Examen` : `Leçon ${currentChapters.filter(c => c.type === 'text').length + 1}`,
         contenu: '',
-        mediaType: 'image', mediaImage: '', mediaVideo: '', questions: [] 
+        mediaType: 'image',
+        mediaImage: '',
+        mediaVideo: '',
+        questions: []
     };
+
     currentChapters.push(newChap);
     selectChapter(newId);
 }
 
 function saveCurrentChapterContent() {
-    if(!activeChapterId) return;
+    if (!activeChapterId) return;
+
     const chap = currentChapters.find(c => c.id === activeChapterId);
-    if(!chap) return;
+    if (!chap) return;
 
     if (chap.type === 'text') {
         const cTitle = document.getElementById('chapter-title');
-        if(cTitle) chap.titre = cTitle.value;
-        
+        if (cTitle) chap.titre = cTitle.value;
+
         const mediaChecked = document.querySelector('input[name="media_type"]:checked');
         if (mediaChecked) chap.mediaType = mediaChecked.value;
-        
+
         const cImage = document.getElementById('chapter-image-base64');
-        if(cImage) chap.mediaImage = cImage.value;
-        
+        if (cImage) chap.mediaImage = cImage.value;
+
         const cVideo = document.getElementById('chapter-video-base64');
-        if(cVideo) chap.mediaVideo = cVideo.value;
-        
+        if (cVideo) chap.mediaVideo = cVideo.value;
+
         chap.contenu = window.quill ? window.quill.root.innerHTML : '';
+
     } else if (chap.type === 'quiz') {
         const qTitle = document.getElementById('quiz-title');
-        if(qTitle) chap.titre = qTitle.value;
-        chap.questions = gatherQuizQuestions(); 
+        if (qTitle) chap.titre = qTitle.value;
+
+        chap.questions = gatherQuizQuestions();
     }
 }
 
 window.selectChapter = function(id) {
-    saveCurrentChapterContent(); 
+    saveCurrentChapterContent();
+
     activeChapterId = id;
+
     const chap = currentChapters.find(c => c.id === id);
-    if(!chap) return;
+    if (!chap) return;
 
     const noChapterZone = document.getElementById('no-chapter-zone');
     if (noChapterZone) noChapterZone.style.display = 'none';
@@ -525,16 +831,17 @@ window.selectChapter = function(id) {
         document.getElementById('quiz-editor-zone').style.display = 'flex';
         document.getElementById('quiz-title').value = chap.titre || '';
         renderQuizBuilder(chap.questions || []);
+
     } else {
         document.getElementById('quiz-editor-zone').style.display = 'none';
         document.getElementById('chapter-editor-zone').style.display = 'flex';
-        
+
         document.getElementById('chapter-title').value = chap.titre || '';
 
         const mediaImageRadio = document.querySelector('input[name="media_type"][value="image"]');
         const mediaVideoRadio = document.querySelector('input[name="media_type"][value="video"]');
 
-        if(chap.mediaType === 'video') {
+        if (chap.mediaType === 'video') {
             if (mediaVideoRadio) mediaVideoRadio.checked = true;
             document.getElementById('media-image-zone').style.display = 'none';
             document.getElementById('media-video-zone').style.display = 'flex';
@@ -543,63 +850,80 @@ window.selectChapter = function(id) {
             document.getElementById('media-image-zone').style.display = 'flex';
             document.getElementById('media-video-zone').style.display = 'none';
         }
-        
+
         const cVideoB64 = document.getElementById('chapter-video-base64');
-        if(cVideoB64) cVideoB64.value = chap.mediaVideo || '';
-        
+        if (cVideoB64) cVideoB64.value = chap.mediaVideo || '';
+
         const vPreview = document.getElementById('chapter-video-preview');
-        if(vPreview) {
-            if(chap.mediaVideo) { vPreview.src = chap.mediaVideo; vPreview.style.display = 'block'; } 
-            else { vPreview.style.display = 'none'; }
+
+        if (vPreview) {
+            if (chap.mediaVideo) {
+                vPreview.src = chap.mediaVideo;
+                vPreview.style.display = 'block';
+            } else {
+                vPreview.style.display = 'none';
+            }
         }
 
         const cImageB64 = document.getElementById('chapter-image-base64');
-        if(cImageB64) cImageB64.value = chap.mediaImage || '';
-        
+        if (cImageB64) cImageB64.value = chap.mediaImage || '';
+
         const iPreview = document.getElementById('chapter-image-preview');
-        if(iPreview) {
-            if(chap.mediaImage) { iPreview.src = chap.mediaImage; iPreview.style.display = 'block'; } 
-            else { iPreview.style.display = 'none'; }
+
+        if (iPreview) {
+            if (chap.mediaImage) {
+                iPreview.src = chap.mediaImage;
+                iPreview.style.display = 'block';
+            } else {
+                iPreview.style.display = 'none';
+            }
         }
 
-        if(window.quill) {
+        if (window.quill) {
             window.quill.setContents([]);
             window.quill.clipboard.dangerouslyPasteHTML(chap.contenu || '');
         }
     }
+
     renderChaptersList();
-}
+};
 
 window.deleteChapter = function(id, event) {
     event.stopPropagation();
-    if(confirm('Supprimer cette étape ?')) {
+
+    if (confirm('Supprimer cette étape ?')) {
         currentChapters = currentChapters.filter(c => c.id !== id);
-        if(activeChapterId === id) {
+
+        if (activeChapterId === id) {
             activeChapterId = null;
+
             const noChapterZone = document.getElementById('no-chapter-zone');
             if (noChapterZone) noChapterZone.style.display = 'flex';
+
             const chapterEditorZone = document.getElementById('chapter-editor-zone');
             if (chapterEditorZone) chapterEditorZone.style.display = 'none';
+
             const quizEditorZone = document.getElementById('quiz-editor-zone');
             if (quizEditorZone) quizEditorZone.style.display = 'none';
         }
+
         renderChaptersList();
     }
-}
+};
 
 function renderChaptersList() {
     const list = document.getElementById('chapters-list');
-    if(!list) return;
+    if (!list) return;
+
     list.innerHTML = '';
-    
+
     currentChapters.forEach((chap, index) => {
         const isActive = chap.id === activeChapterId;
-        
+
         const bg = isActive ? 'var(--accent-blue-light, rgba(42, 87, 255, 0.1))' : 'var(--bg-card, #111)';
         const border = isActive ? '1px solid var(--accent-blue)' : '1px solid var(--border-color, #333)';
-        let color = chap.type === 'quiz' ? 'var(--accent-yellow, #fbbc04)' : (isActive ? 'var(--accent-blue)' : 'var(--text-main, white)');
-
-        let icon = chap.type === 'quiz' ? SVG_QUIZ_LIST : `${index + 1}. `;
+        const color = chap.type === 'quiz' ? 'var(--accent-yellow, #fbbc04)' : (isActive ? 'var(--accent-blue)' : 'var(--text-main, white)');
+        const icon = chap.type === 'quiz' ? SVG_QUIZ_LIST : `${index + 1}. `;
 
         const li = `
             <li onclick="selectChapter('${chap.id}')" style="padding: 0.8rem; background: ${bg}; border: ${border}; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; color: ${color}; font-weight: ${isActive ? 'bold' : 'normal'};">
@@ -607,15 +931,17 @@ function renderChaptersList() {
                 <button onclick="deleteChapter('${chap.id}', event)" class="editor-action-btn" style="background:none; border:none; color:var(--accent-red, #ff4a4a); cursor:pointer;">&times;</button>
             </li>
         `;
+
         list.insertAdjacentHTML('beforeend', li);
     });
 }
 
 function addQuizQuestion() {
     const container = document.getElementById('quiz-questions-container');
-    if(!container) return;
+    if (!container) return;
+
     const qIndex = container.children.length;
-    
+
     const qHTML = `
         <div class="quiz-question-block" data-qindex="${qIndex}" style="background: var(--bg-card, #111); padding: 1.5rem; border: 1px solid var(--border-color, #333); border-radius: 6px; position: relative;">
             <button onclick="this.parentElement.remove()" class="editor-action-btn" style="position: absolute; right: 10px; top: 10px; background: none; border: none; color: var(--accent-red, #ff4a4a); cursor: pointer; font-size: 1.2rem;">&times;</button>
@@ -633,16 +959,19 @@ function addQuizQuestion() {
             <button type="button" onclick="window.addOptionToQuestion(this)" class="editor-action-btn" style="margin-top:0.8rem; background:none; border:none; color:var(--accent-blue); cursor:pointer; font-size:0.85rem;">+ Ajouter un choix</button>
             <div style="margin-top: 1.5rem; display: flex; align-items: center; gap: 1rem; border-top: 1px solid var(--border-color, #333); padding-top: 1rem;">
                 <span style="color: var(--text-muted); font-size: 0.85rem;">Cochez <strong>les</strong> bonnes réponses.</span>
-                <input type="number" class="q-points editor-input" value="1" min="1" style="width: 60px; background: var(--bg-body, #222); border: 1px solid var(--border-color, #444); padding: 0.4rem; color: var(--text-main, white); border-radius: 4px;"> <span style="color: var(--text-muted); font-size: 0.85rem;">Point(s)</span>
+                <input type="number" class="q-points editor-input" value="1" min="1" style="width: 60px; background: var(--bg-body, #222); border: 1px solid var(--border-color, #444); padding: 0.4rem; color: var(--text-main, white); border-radius: 4px;">
+                <span style="color: var(--text-muted); font-size: 0.85rem;">Point(s)</span>
             </div>
         </div>
     `;
+
     container.insertAdjacentHTML('beforeend', qHTML);
 }
 
 window.addOptionToQuestion = function(btn) {
     const container = btn.previousElementSibling;
     const optIndex = container.children.length;
+
     const html = `
         <label style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-muted, #aaa);">
             <input type="checkbox" class="q-correct-cb editor-input" value="${optIndex}">
@@ -650,35 +979,45 @@ window.addOptionToQuestion = function(btn) {
             <button type="button" onclick="this.parentElement.remove()" class="editor-action-btn" style="background:none; border:none; color:var(--accent-red, #ff4a4a); cursor:pointer; padding: 0 5px;">&times;</button>
         </label>
     `;
+
     container.insertAdjacentHTML('beforeend', html);
-}
+};
 
 function gatherQuizQuestions() {
     const questions = [];
+
     document.querySelectorAll('.quiz-question-block').forEach((block) => {
         const title = block.querySelector('.q-title').value.trim();
         const points = parseInt(block.querySelector('.q-points').value) || 1;
         const options = Array.from(block.querySelectorAll('.q-opt')).map(inp => inp.value.trim());
         const correctIndices = Array.from(block.querySelectorAll('.q-correct-cb:checked')).map(cb => parseInt(cb.value));
 
-        if(title && options.length >= 2) {
-            questions.push({ question: title, options: options, correctIndices: correctIndices, points: points });
+        if (title && options.length >= 2) {
+            questions.push({
+                question: title,
+                options: options,
+                correctIndices: correctIndices,
+                points: points
+            });
         }
     });
+
     return questions;
 }
 
 function renderQuizBuilder(questions) {
     const container = document.getElementById('quiz-questions-container');
-    if(!container) return;
+    if (!container) return;
+
     container.innerHTML = '';
-    
+
     questions.forEach((q, index) => {
         const indices = q.correctIndices || (q.correctIndex !== undefined ? [q.correctIndex] : []);
+
         const optionsHTML = q.options.map((opt, i) => `
             <label style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-muted, #aaa);">
                 <input type="checkbox" class="q-correct-cb editor-input" value="${i}" ${indices.includes(i) ? 'checked' : ''}>
-                <input type="text" class="q-opt editor-input" value="${opt}" placeholder="Réponse ${i+1}" style="flex-grow:1; background: var(--bg-body, #222); border: 1px solid var(--border-color, #444); padding: 0.5rem; color: var(--text-main, white); border-radius:4px; outline:none;">
+                <input type="text" class="q-opt editor-input" value="${opt}" placeholder="Réponse ${i + 1}" style="flex-grow:1; background: var(--bg-body, #222); border: 1px solid var(--border-color, #444); padding: 0.5rem; color: var(--text-main, white); border-radius:4px; outline:none;">
                 ${i > 1 ? `<button type="button" onclick="this.parentElement.remove()" class="editor-action-btn" style="background:none; border:none; color:var(--accent-red, #ff4a4a); cursor:pointer;">&times;</button>` : ''}
             </label>
         `).join('');
@@ -693,9 +1032,11 @@ function renderQuizBuilder(questions) {
             <button type="button" onclick="window.addOptionToQuestion(this)" class="editor-action-btn" style="margin-top:0.8rem; background:none; border:none; color:var(--accent-blue); cursor:pointer; font-size:0.85rem;">+ Ajouter un choix</button>
             <div style="margin-top: 1.5rem; display: flex; align-items: center; gap: 1rem; border-top: 1px solid var(--border-color, #333); padding-top: 1rem;">
                 <span style="color: var(--text-muted); font-size: 0.85rem;">Cochez <strong>les</strong> bonnes réponses.</span>
-                <input type="number" class="q-points editor-input" value="${q.points}" min="1" style="width: 60px; background: var(--bg-body, #222); border: 1px solid var(--border-color, #444); padding: 0.4rem; color: var(--text-main, white); border-radius: 4px;"> <span style="color: var(--text-muted); font-size: 0.85rem;">Point(s)</span>
+                <input type="number" class="q-points editor-input" value="${q.points}" min="1" style="width: 60px; background: var(--bg-body, #222); border: 1px solid var(--border-color, #444); padding: 0.4rem; color: var(--text-main, white); border-radius: 4px;">
+                <span style="color: var(--text-muted); font-size: 0.85rem;">Point(s)</span>
             </div>
         </div>`;
+
         container.insertAdjacentHTML('beforeend', qHTML);
     });
 }
@@ -703,29 +1044,31 @@ function renderQuizBuilder(questions) {
 window.editCourse = async (id) => {
     try {
         const docSnap = await getDoc(doc(db, "courses", id));
+
         if (docSnap.exists()) {
             const data = docSnap.data();
-            
+
             const editCourseIdEl = document.getElementById('edit-course-id');
-            if(editCourseIdEl) editCourseIdEl.value = id;
-            
+            if (editCourseIdEl) editCourseIdEl.value = id;
+
             const courseTitleEl = document.getElementById('course-title');
-            if(courseTitleEl) courseTitleEl.value = data.titre || '';
-            
+            if (courseTitleEl) courseTitleEl.value = data.titre || '';
+
             const activeCb = document.getElementById('course-active');
             if (activeCb) activeCb.checked = data.actif;
-            
+
             const selectBloc = document.getElementById('course-bloc-select');
-            if(selectBloc) selectBloc.value = data.bloc || '';
-            
+            if (selectBloc) selectBloc.value = data.bloc || '';
+
             editingCourseAuthorId = data.auteurId || currentUid;
             editingCourseOriginalStatus = data.statutValidation || 'approved';
             editingCourseOriginalActive = data.actif === true;
-            window.editingCourseOriginalActive = editingCourseOriginalActive; 
+            window.editingCourseOriginalActive = editingCourseOriginalActive;
 
             document.querySelectorAll('.formation-pill').forEach(pill => {
                 const val = pill.getAttribute('data-val');
-                if(data.formations && (data.formations.includes(val) || data.formations.includes(pill.textContent))) {
+
+                if (data.formations && (data.formations.includes(val) || data.formations.includes(pill.textContent))) {
                     pill.classList.add('selected');
                 } else {
                     pill.classList.remove('selected');
@@ -733,45 +1076,55 @@ window.editCourse = async (id) => {
             });
 
             currentChapters = data.chapitres || [];
-            
+
             if (typeof window.switchCourseTab === 'function') {
                 window.switchCourseTab('tab-editor');
             }
-            
+
             const isTeacher = currentUserProfile && currentUserProfile.role === 'teacher';
             const warningBanner = document.getElementById('lock-warning-banner');
-            
+
             if (isTeacher && editingCourseOriginalStatus === 'pending') {
                 if (warningBanner) warningBanner.style.display = 'block';
+
                 document.querySelectorAll('.editor-input, .editor-action-btn').forEach(el => {
                     el.disabled = true;
                     el.style.opacity = '0.5';
                     el.style.pointerEvents = 'none';
                 });
-                if(window.quill) window.quill.enable(false);
+
+                if (window.quill) window.quill.enable(false);
+
             } else {
                 if (warningBanner) warningBanner.style.display = 'none';
+
                 document.querySelectorAll('.editor-input, .editor-action-btn').forEach(el => {
                     el.disabled = false;
                     el.style.opacity = '1';
                     el.style.pointerEvents = 'auto';
                 });
-                if(window.quill) window.quill.enable(true);
+
+                if (window.quill) window.quill.enable(true);
             }
 
-            // FIX : Affichage dynamique du bouton "Refuser" uniquement si l'Admin ouvre un cours en attente
             const rejectBtn = document.getElementById('btn-reject-course');
+
             if (rejectBtn) {
-                if (currentUserProfile && (currentUserProfile.role === 'admin' || currentUserProfile.isGod) && editingCourseOriginalStatus === 'pending') {
+                if (
+                    currentUserProfile &&
+                    (currentUserProfile.role === 'admin' || currentUserProfile.isGod) &&
+                    editingCourseOriginalStatus === 'pending'
+                ) {
                     rejectBtn.style.display = 'inline-block';
                 } else {
                     rejectBtn.style.display = 'none';
                 }
             }
 
-            if(currentChapters.length > 0) selectChapter(currentChapters[0].id);
+            if (currentChapters.length > 0) selectChapter(currentChapters[0].id);
             else renderChaptersList();
         }
+
     } catch (error) {
         alert("Impossible de charger le cours.");
     }
@@ -804,52 +1157,56 @@ async function resolveCourseValidationNotifications(courseId) {
         if (updates.length > 0) {
             await Promise.all(updates);
         }
+
     } catch (error) {
         console.warn("[SBI Courses] Impossible de résoudre les notifications de validation :", error);
     }
 }
 
 async function saveCourseToFirebase(actionType = 'admin_save') {
-    saveCurrentChapterContent(); 
-    
+    saveCurrentChapterContent();
+
     const courseIdEl = document.getElementById('edit-course-id');
     const titleEl = document.getElementById('course-title');
     const selectBloc = document.getElementById('course-bloc-select');
-    
-    if(!courseIdEl || !titleEl) return;
+
+    if (!courseIdEl || !titleEl) return;
 
     const courseId = courseIdEl.value;
     const title = titleEl.value.trim();
-    const bloc = selectBloc ? selectBloc.value.trim() : ''; 
-    
+    const bloc = selectBloc ? selectBloc.value.trim() : '';
+
     const selectedPills = Array.from(document.querySelectorAll('.formation-pill.selected')).map(p => p.getAttribute('data-val'));
 
-    if (!title) { alert('⚠️ Veuillez entrer un Titre Global.'); return; }
-    if (currentChapters.length === 0) { alert('⚠️ Ajoutez au moins une étape.'); return; }
-    
+    if (!title) {
+        alert('⚠️ Veuillez entrer un titre global.');
+        return;
+    }
+
+    if (currentChapters.length === 0) {
+        alert('⚠️ Ajoutez au moins une étape.');
+        return;
+    }
+
     let finalStatut = editingCourseOriginalStatus || 'draft';
     let isActive = editingCourseOriginalActive === true;
 
-    // Détermination propre de l'état final
     if (actionType === 'draft') {
         finalStatut = 'draft';
         isActive = false;
+
     } else if (actionType === 'submit') {
         if (!confirm("⚠️ ATTENTION : Une fois soumis à validation, ce cours sera verrouillé et vous ne pourrez plus le modifier pendant la durée de l'examen.\n\nConfirmer l'envoi ?")) {
             return;
         }
+
         finalStatut = 'pending';
         isActive = false;
+
     } else if (actionType === 'admin_save') {
         const activeCheckbox = document.getElementById('course-active');
         if (activeCheckbox) isActive = activeCheckbox.checked;
 
-        /*
-         * Important : si un admin ouvre un cours en attente puis sauvegarde
-         * sans cocher "visible", le cours reste en attente.
-         * Une simple sauvegarde ne doit pas transformer une demande de
-         * validation en brouillon fantôme.
-         */
         if (isActive) {
             finalStatut = 'approved';
         } else if (editingCourseOriginalStatus === 'pending') {
@@ -857,18 +1214,27 @@ async function saveCourseToFirebase(actionType = 'admin_save') {
         } else {
             finalStatut = 'draft';
         }
+
     } else if (actionType === 'reject') {
         finalStatut = 'draft';
         isActive = false;
+
     } else if (actionType === 'preview') {
         isActive = editingCourseOriginalActive === true;
     }
 
     const finalAuteurId = courseId ? editingCourseAuthorId : currentUid;
-    
-    // Publication = le cours passe de non visible à visible, peu importe son ancien statut.
-    const isPublishing = (actionType === 'admin_save' && isActive === true && editingCourseOriginalActive !== true);
-    const isRejecting = (actionType === 'reject' && editingCourseOriginalStatus === 'pending');
+
+    const isPublishing = (
+        actionType === 'admin_save' &&
+        isActive === true &&
+        editingCourseOriginalActive !== true
+    );
+
+    const isRejecting = (
+        actionType === 'reject' &&
+        editingCourseOriginalStatus === 'pending'
+    );
 
     try {
         const courseData = {
@@ -881,17 +1247,22 @@ async function saveCourseToFirebase(actionType = 'admin_save') {
             chapitres: currentChapters
         };
 
+        validateCourseDocumentSize(courseData);
+
         let courseRefId = courseId;
 
         if (courseId) {
             await updateDoc(doc(db, "courses", courseId), courseData);
         } else {
             courseData.dateCreation = serverTimestamp();
+
+            validateCourseDocumentSize(courseData);
+
             const docRef = await addDoc(collection(db, "courses"), courseData);
             courseRefId = docRef.id;
             document.getElementById('edit-course-id').value = courseRefId;
         }
-        
+
         if (actionType === 'submit') {
             await addDoc(collection(db, "notifications"), {
                 type: 'course_validation',
@@ -904,10 +1275,8 @@ async function saveCourseToFirebase(actionType = 'admin_save') {
                 dismissedBy: []
             });
         }
-        
-        // CORRECTION MAJEURE : Dispatch précis
+
         if (isPublishing) {
-            // 1. Notif au professeur
             if (editingCourseAuthorId && editingCourseAuthorId !== currentUid) {
                 await addDoc(collection(db, "notifications"), {
                     type: 'course_approved',
@@ -919,15 +1288,18 @@ async function saveCourseToFirebase(actionType = 'admin_save') {
                 });
             }
 
-            // 2. Notifs aux étudiants
-            let targetStudentsSet = new Set();
+            const targetStudentsSet = new Set();
+
             selectedPills.forEach(formId => {
                 const formObj = allFormationsData.find(f => f.id === formId || f.titre === formId);
+
                 if (formObj && formObj.students) {
                     formObj.students.forEach(s => targetStudentsSet.add(s));
                 }
             });
+
             const targetStudentsArray = Array.from(targetStudentsSet);
+
             if (targetStudentsArray.length > 0) {
                 await addDoc(collection(db, "notifications"), {
                     type: 'new_course_published',
@@ -938,8 +1310,8 @@ async function saveCourseToFirebase(actionType = 'admin_save') {
                     dismissedBy: []
                 });
             }
+
         } else if (isRejecting) {
-            // 3. Notif de refus
             if (editingCourseAuthorId && editingCourseAuthorId !== currentUid) {
                 await addDoc(collection(db, "notifications"), {
                     type: 'course_rejected',
@@ -951,7 +1323,7 @@ async function saveCourseToFirebase(actionType = 'admin_save') {
                 });
             }
         }
-        
+
         if (isPublishing || isRejecting) {
             await resolveCourseValidationNotifications(courseRefId);
         }
@@ -959,13 +1331,13 @@ async function saveCourseToFirebase(actionType = 'admin_save') {
         editingCourseOriginalStatus = finalStatut;
         editingCourseOriginalActive = isActive === true;
         window.editingCourseOriginalActive = editingCourseOriginalActive;
-        
+
         await loadCourses();
-        
+
         if (actionType === 'preview') {
             window.open(`/student/cours-viewer.html?id=${courseRefId}&preview=true`, '_blank');
+
         } else {
-            // Confirmation visuelle précise de l'action
             if (isPublishing) {
                 alert("✅ Le cours a été publié ! Les notifications ont été envoyées au professeur et aux élèves.");
             } else if (isRejecting) {
@@ -973,27 +1345,27 @@ async function saveCourseToFirebase(actionType = 'admin_save') {
             } else {
                 alert(actionType === 'submit' ? '✅ Cours envoyé pour validation !' : '✅ Cours sauvegardé !');
             }
-            
-            if (typeof window.prepareNewCourse === 'function') window.prepareNewCourse(); 
+
+            if (typeof window.prepareNewCourse === 'function') window.prepareNewCourse();
             if (typeof window.switchCourseTab === 'function') window.switchCourseTab('tab-list');
         }
 
     } catch (error) {
         console.error("Erreur de sauvegarde :", error);
-        alert("❌ Erreur de sauvegarde.");
+        alert(`❌ ${error.message || "Erreur de sauvegarde."}`);
     }
 }
 
 async function loadCourses() {
     const listContainer = document.getElementById('courses-list-container');
-    if(!listContainer) return;
+    if (!listContainer) return;
 
     try {
         const querySnapshot = await getDocs(collection(db, "courses"));
         listContainer.innerHTML = '';
         allCoursesData = [];
-        
-        if(querySnapshot.empty) {
+
+        if (querySnapshot.empty) {
             listContainer.innerHTML = '<p style="color:var(--text-muted); text-align:center;">Aucun cours.</p>';
             return;
         }
@@ -1001,38 +1373,51 @@ async function loadCourses() {
         querySnapshot.forEach((docSnap) => {
             const data = docSnap.data();
             const courseId = docSnap.id;
+
             allCoursesData.push({ id: courseId, ...data });
-            
+
             let statusHtml = '';
+
             if (data.statutValidation === 'pending') {
                 statusHtml = `<span style="color: var(--accent-yellow, #fbbc04); font-weight: bold; font-size: 0.8rem;">⏳ EN ATTENTE</span>`;
             } else {
-                statusHtml = data.actif ? `<span style="color: var(--accent-green, #10b981); font-weight: bold; font-size: 0.8rem;">● ACTIF</span>` : `<span style="color: var(--accent-red, #ff4a4a); font-weight: bold; font-size: 0.8rem;">● BROUILLON</span>`;
+                statusHtml = data.actif
+                    ? `<span style="color: var(--accent-green, #10b981); font-weight: bold; font-size: 0.8rem;">● ACTIF</span>`
+                    : `<span style="color: var(--accent-red, #ff4a4a); font-weight: bold; font-size: 0.8rem;">● BROUILLON</span>`;
             }
 
-            const tagsHtml = data.formations ? data.formations.map(fId => {
-                const formObj = allFormationsData.find(f => f.id === fId || f.titre === fId); 
-                const displayName = formObj ? formObj.titre : fId;
-                return `<span class="tag" style="background: var(--bg-body, #222); padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; border: 1px solid var(--border-color, #444);">📁 ${displayName}</span>`;
-            }).join(' ') : '';
+            const tagsHtml = data.formations
+                ? data.formations.map(fId => {
+                    const formObj = allFormationsData.find(f => f.id === fId || f.titre === fId);
+                    const displayName = formObj ? formObj.titre : fId;
 
-            const blocHtml = data.bloc ? `<span style="color: var(--accent-blue); font-size: 0.8rem; border: 1px solid var(--accent-blue); padding: 2px 8px; border-radius: 12px; margin-left: 10px;">${data.bloc}</span>` : '';
+                    return `<span class="tag" style="background: var(--bg-body, #222); padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; border: 1px solid var(--border-color, #444);">📁 ${displayName}</span>`;
+                }).join(' ')
+                : '';
+
+            const blocHtml = data.bloc
+                ? `<span style="color: var(--accent-blue); font-size: 0.8rem; border: 1px solid var(--accent-blue); padding: 2px 8px; border-radius: 12px; margin-left: 10px;">${data.bloc}</span>`
+                : '';
 
             const nbChapitres = data.chapitres ? data.chapitres.length : 0;
-            
+
             let authorName = "Système";
+
             if (data.auteurId && allUsersForAccess.length > 0) {
                 const authorObj = allUsersForAccess.find(u => u.id === data.auteurId);
+
                 if (authorObj) {
-                    authorName = (authorObj.prenom || authorObj.nom) ? `${authorObj.prenom || ''} ${authorObj.nom || ''}`.trim() : authorObj.email;
+                    authorName = (authorObj.prenom || authorObj.nom)
+                        ? `${authorObj.prenom || ''} ${authorObj.nom || ''}`.trim()
+                        : authorObj.email;
                 }
             }
-            
+
             const html = `
             <div style="background: var(--bg-card, #111); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color, #333); display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; opacity: ${data.actif ? '1' : '0.6'};">
                 <div>
                     <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem;">
-                        ${statusHtml} 
+                        ${statusHtml}
                         <h3 style="margin: 0; display: flex; align-items: center; color: var(--text-main, white);">
                             ${data.titre}
                             ${blocHtml}
@@ -1049,10 +1434,11 @@ async function loadCourses() {
                     <button class="action-btn danger" style="width: auto; margin: 0;" onclick="window.deleteCourse('${courseId}')">❌</button>
                 </div>
             </div>`;
+
             listContainer.insertAdjacentHTML('beforeend', html);
         });
 
-        refreshBlocsList(); 
+        refreshBlocsList();
 
     } catch (error) {
         listContainer.innerHTML = '<p style="color:red; text-align:center;">Erreur système.</p>';
@@ -1060,33 +1446,41 @@ async function loadCourses() {
 }
 
 window.duplicateCourse = async (id) => {
-    if(confirm("Créer une copie identique de ce cours ?")) {
+    if (confirm("Créer une copie identique de ce cours ?")) {
         try {
             const docSnap = await getDoc(doc(db, "courses", id));
+
             if (docSnap.exists()) {
                 const data = docSnap.data();
+
                 const copyData = {
                     titre: data.titre + " (Copie)",
                     bloc: data.bloc || "",
-                    actif: false, 
+                    actif: false,
                     statutValidation: "draft",
                     formations: data.formations,
                     auteurId: currentUid,
                     chapitres: data.chapitres,
                     dateCreation: serverTimestamp()
                 };
+
+                validateCourseDocumentSize(copyData);
+
                 await addDoc(collection(db, "courses"), copyData);
                 loadCourses();
+
                 alert("✅ Cours dupliqué avec succès !");
             }
+
         } catch (e) {
-            alert("Erreur lors de la duplication.");
+            alert(`❌ ${e.message || "Erreur lors de la duplication."}`);
         }
     }
 };
 
 window.deleteCourse = async (id) => {
     const verification = prompt("⚠️ ATTENTION : La suppression d'un cours est définitive.\nTapez 'SUPPRIMER' en majuscules pour confirmer :");
+
     if (verification === 'SUPPRIMER') {
         await deleteDoc(doc(db, "courses", id));
         loadCourses();
