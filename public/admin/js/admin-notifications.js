@@ -2,52 +2,95 @@
  * =======================================================================
  * NOTIFICATIONS & SEARCH - Écoute temps réel, Moteur de Recherche Global
  * =======================================================================
+ *
+ * Étape 3 :
+ * - écoute ciblée des notifications au lieu de lire toute la collection
+ * - notifications globales admin non destructives
+ * - système dismissedBy pour masquer une notification par utilisateur
+ * - conservation du moteur de recherche actuel
+ * =======================================================================
  */
 
 import { db, auth } from '/js/firebase-init.js';
-import { collection, query, onSnapshot, doc, deleteDoc, getDoc, getDocs, updateDoc, arrayRemove } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import {
+    collection,
+    query,
+    where,
+    onSnapshot,
+    doc,
+    getDoc,
+    getDocs,
+    updateDoc,
+    arrayUnion
+} from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
 let currentUid = null;
 let currentUserProfile = null;
 
+let notificationUnsubscribers = [];
+let notificationStreams = new Map();
+let notificationsInitializedForUid = null;
+
 /* =======================================================================
  * SECTION 1 : INITIALISATION ET ÉCOUTEURS D'ÉVÉNEMENTS
  * ======================================================================= */
+
 document.addEventListener('DOMContentLoaded', () => {
     onAuthStateChanged(auth, async (user) => {
-        if (user) {
-            currentUid = user.uid;
-            const userSnap = await getDoc(doc(db, "users", currentUid));
-            if(userSnap.exists()) {
-                currentUserProfile = userSnap.data();
-                
-                // FIX ABSOLU DU PROFIL MANQUANT :
-                // On met à jour l'interface de TOUTES les pages de la plateforme avec les bonnes informations.
-                const displayName = `${currentUserProfile.prenom || ''} ${currentUserProfile.nom || ''}`.trim() || "Utilisateur";
-                
-                // Adaptateur de couleur intelligent pour éviter le fond noir sur le thème Light Mode
-                let bgColor = "111"; let textColor = "fff";
-                if (currentUserProfile.role === 'student') { bgColor = "e5e7eb"; textColor = "2A57FF"; }
-                else if (currentUserProfile.role === 'teacher') { bgColor = "fef3c7"; textColor = "f59e0b"; }
+        cleanupNotificationListeners();
 
-                const avatarUrl = currentUserProfile.photoURL || `https://ui-avatars.com/api/?name=${displayName}&background=${bgColor}&color=${textColor}`;
-                const userXp = currentUserProfile.xp || 0;
-                const userLevel = Math.floor(userXp / 100) + 1;
+        if (!user) {
+            currentUid = null;
+            currentUserProfile = null;
+            notificationsInitializedForUid = null;
+            updateRedBadges(0);
+            renderNotificationsList([]);
+            return;
+        }
 
-                const topName = document.getElementById('top-user-name');
-                if (topName) topName.textContent = displayName;
-                
-                const topAvatar = document.getElementById('top-user-avatar');
-                if (topAvatar) topAvatar.innerHTML = `<img src="${avatarUrl}" style="width:100%; height:100%; object-fit:cover;">`;
-                
-                const topLevel = document.getElementById('top-user-level');
-                if (topLevel) topLevel.textContent = `Niveau ${userLevel}`;
+        currentUid = user.uid;
+
+        const userSnap = await getDoc(doc(db, "users", currentUid));
+
+        if (userSnap.exists()) {
+            currentUserProfile = userSnap.data();
+
+            const displayName = `${currentUserProfile.prenom || ''} ${currentUserProfile.nom || ''}`.trim() || "Utilisateur";
+
+            let bgColor = "111";
+            let textColor = "fff";
+
+            if (currentUserProfile.role === 'student') {
+                bgColor = "e5e7eb";
+                textColor = "2A57FF";
+            } else if (currentUserProfile.role === 'teacher') {
+                bgColor = "fef3c7";
+                textColor = "f59e0b";
             }
 
-            initNotificationsRealtime();
-            setTimeout(() => setupGlobalSearch(), 500); 
+            const avatarUrl = currentUserProfile.photoURL || `https://ui-avatars.com/api/?name=${displayName}&background=${bgColor}&color=${textColor}`;
+            const userXp = currentUserProfile.xp || 0;
+            const userLevel = Math.floor(userXp / 100) + 1;
+
+            const topName = document.getElementById('top-user-name');
+            if (topName) {
+                topName.textContent = displayName;
+            }
+
+            const topAvatar = document.getElementById('top-user-avatar');
+            if (topAvatar) {
+                topAvatar.innerHTML = `<img src="${avatarUrl}" style="width:100%; height:100%; object-fit:cover;">`;
+            }
+
+            const topLevel = document.getElementById('top-user-level');
+            if (topLevel) {
+                topLevel.textContent = `Niveau ${userLevel}`;
+            }
         }
+
+        initNotificationsRealtime();
+        setTimeout(() => setupGlobalSearch(), 500);
     });
 
     document.body.addEventListener('click', (e) => {
@@ -55,33 +98,66 @@ document.addEventListener('DOMContentLoaded', () => {
         const notifSection = document.getElementById('notifications-section');
         const profileSection = document.getElementById('profile-section');
         const titleNotif = document.getElementById('notif-panel-title');
-        
+
         if (bellBtn) {
-            if(notifSection) {
+            if (notifSection) {
                 let activeColor = 'var(--accent-blue)';
-                if (window.location.pathname.includes('student')) activeColor = 'var(--accent-green)'; 
-                if (window.location.pathname.includes('teacher')) activeColor = 'var(--accent-orange)';
-                
-                if(notifSection.style.display === 'none' || notifSection.style.display === '') {
-                    if (profileSection) profileSection.style.display = 'none';
+
+                if (window.location.pathname.includes('student')) {
+                    activeColor = 'var(--accent-green)';
+                }
+
+                if (window.location.pathname.includes('teacher')) {
+                    activeColor = 'var(--accent-orange)';
+                }
+
+                if (notifSection.style.display === 'none' || notifSection.style.display === '') {
+                    if (profileSection) {
+                        profileSection.style.display = 'none';
+                    }
+
                     notifSection.style.display = 'block';
-                    if (titleNotif) titleNotif.style.display = 'block';
+
+                    if (titleNotif) {
+                        titleNotif.style.display = 'block';
+                    }
+
                     const svg = bellBtn.querySelector('svg');
-                    if(svg) svg.style.fill = activeColor;
+                    if (svg) {
+                        svg.style.fill = activeColor;
+                    }
                 } else {
-                    if (profileSection) profileSection.style.display = 'block';
+                    if (profileSection) {
+                        profileSection.style.display = 'block';
+                    }
+
                     notifSection.style.display = 'none';
-                    if (titleNotif) titleNotif.style.display = 'none';
+
+                    if (titleNotif) {
+                        titleNotif.style.display = 'none';
+                    }
+
                     const svg = bellBtn.querySelector('svg');
-                    if(svg) svg.style.fill = 'var(--text-muted, #9ca3af)';
+                    if (svg) {
+                        svg.style.fill = 'var(--text-muted, #9ca3af)';
+                    }
                 }
             }
         } else if (notifSection && notifSection.style.display === 'block' && !e.target.closest('#notifications-section')) {
-            if (profileSection) profileSection.style.display = 'block';
+            if (profileSection) {
+                profileSection.style.display = 'block';
+            }
+
             notifSection.style.display = 'none';
-            if (titleNotif) titleNotif.style.display = 'none';
+
+            if (titleNotif) {
+                titleNotif.style.display = 'none';
+            }
+
             const bellIcon = document.querySelector('#notif-bell-btn svg');
-            if(bellIcon) bellIcon.style.fill = 'var(--text-muted, #9ca3af)';
+            if (bellIcon) {
+                bellIcon.style.fill = 'var(--text-muted, #9ca3af)';
+            }
         }
     });
 });
@@ -89,77 +165,209 @@ document.addEventListener('DOMContentLoaded', () => {
 /* =======================================================================
  * SECTION 2 : GESTION TEMPS RÉEL DES NOTIFICATIONS
  * ======================================================================= */
-function initNotificationsRealtime() {
-    const q = query(collection(db, "notifications"));
-    
-    onSnapshot(q, (snapshot) => {
-        const notifs = [];
 
-        snapshot.forEach(docSnap => {
-            const data = docSnap.data();
-            
-            if (data.targetStudents && data.targetStudents.includes(currentUid)) {
-                notifs.push({ id: docSnap.id, ...data });
-            }
-            else if (data.destinataireId && data.destinataireId === currentUid) {
-                notifs.push({ id: docSnap.id, ...data });
-            } 
-            else if (currentUserProfile && (currentUserProfile.role === 'admin' || currentUserProfile.isGod)) {
-                if (data.type === 'course_validation') {
-                    notifs.push({ id: docSnap.id, ...data });
+function cleanupNotificationListeners() {
+    notificationUnsubscribers.forEach((unsubscribe) => {
+        if (typeof unsubscribe === 'function') {
+            unsubscribe();
+        }
+    });
+
+    notificationUnsubscribers = [];
+    notificationStreams = new Map();
+}
+
+function isAdminLike() {
+    return currentUserProfile?.isGod === true || currentUserProfile?.role === 'admin';
+}
+
+function isNotificationDismissedForCurrentUser(notif) {
+    if (!notif || !currentUid) return true;
+    if (!Array.isArray(notif.dismissedBy)) return false;
+
+    return notif.dismissedBy.includes(currentUid);
+}
+
+function isNotificationRelevantForCurrentUser(notif) {
+    if (!notif || !currentUid) return false;
+    if (isNotificationDismissedForCurrentUser(notif)) return false;
+
+    if (notif.destinataireId && notif.destinataireId === currentUid) {
+        return true;
+    }
+
+    if (Array.isArray(notif.targetStudents) && notif.targetStudents.includes(currentUid)) {
+        return true;
+    }
+
+    if (notif.type === 'course_validation' && isAdminLike()) {
+        return true;
+    }
+
+    return false;
+}
+
+function initNotificationsRealtime() {
+    if (!currentUid || !currentUserProfile) return;
+
+    if (notificationsInitializedForUid === currentUid) {
+        return;
+    }
+
+    cleanupNotificationListeners();
+    notificationsInitializedForUid = currentUid;
+
+    const listeners = [];
+
+    listeners.push({
+        key: 'direct',
+        ref: query(
+            collection(db, "notifications"),
+            where("destinataireId", "==", currentUid)
+        )
+    });
+
+    listeners.push({
+        key: 'studentTargets',
+        ref: query(
+            collection(db, "notifications"),
+            where("targetStudents", "array-contains", currentUid)
+        )
+    });
+
+    if (isAdminLike()) {
+        listeners.push({
+            key: 'adminValidations',
+            ref: query(
+                collection(db, "notifications"),
+                where("type", "==", "course_validation")
+            )
+        });
+    }
+
+    listeners.forEach(({ key, ref }) => {
+        const unsubscribe = onSnapshot(ref, (snapshot) => {
+            const streamMap = new Map();
+
+            snapshot.forEach((docSnap) => {
+                const data = {
+                    id: docSnap.id,
+                    ...docSnap.data()
+                };
+
+                if (isNotificationRelevantForCurrentUser(data)) {
+                    streamMap.set(docSnap.id, data);
                 }
-            }
+            });
+
+            notificationStreams.set(key, streamMap);
+            renderCombinedNotifications();
+
+        }, (error) => {
+            console.error(`[SBI Notifications] Erreur écoute ${key}:`, error);
         });
 
-        updateRedBadges(notifs.length);
-        renderNotificationsList(notifs);
+        notificationUnsubscribers.push(unsubscribe);
     });
 }
 
+function getCombinedNotifications() {
+    const combinedMap = new Map();
+
+    notificationStreams.forEach((streamMap) => {
+        streamMap.forEach((notif, id) => {
+            if (isNotificationRelevantForCurrentUser(notif)) {
+                combinedMap.set(id, notif);
+            }
+        });
+    });
+
+    return Array.from(combinedMap.values()).sort((a, b) => {
+        const dateA = a.dateCreation?.toMillis ? a.dateCreation.toMillis() : 0;
+        const dateB = b.dateCreation?.toMillis ? b.dateCreation.toMillis() : 0;
+        return dateB - dateA;
+    });
+}
+
+function renderCombinedNotifications() {
+    const notifs = getCombinedNotifications();
+
+    updateRedBadges(notifs.length);
+    renderNotificationsList(notifs);
+}
+
+async function dismissNotificationForCurrentUser(notifId) {
+    if (!notifId || !currentUid) return;
+
+    try {
+        await updateDoc(doc(db, "notifications", notifId), {
+            dismissedBy: arrayUnion(currentUid)
+        });
+    } catch (error) {
+        console.error("[SBI Notifications] Impossible de masquer la notification :", error);
+    }
+}
+
 /* =======================================================================
- * SECTION 3 : AFFICHAGE ET ACTIONS (LISTE ET MODALES)
+ * SECTION 3 : AFFICHAGE ET ACTIONS
  * ======================================================================= */
+
 function updateRedBadges(count) {
     const bellBadge = document.getElementById('bell-badge');
     const avatarBadge = document.getElementById('avatar-badge');
-    
+
     if (!bellBadge && document.querySelector('teacher-top-bar, admin-top-bar, student-top-bar')) {
         setTimeout(() => updateRedBadges(count), 100);
         return;
     }
-    
+
     if (count > 0) {
         const displayCount = count > 9 ? '9+' : count;
-        if(bellBadge) { bellBadge.textContent = displayCount; bellBadge.style.display = ''; }
-        if(avatarBadge) { avatarBadge.textContent = displayCount; avatarBadge.style.display = ''; }
+
+        if (bellBadge) {
+            bellBadge.textContent = displayCount;
+            bellBadge.style.display = '';
+        }
+
+        if (avatarBadge) {
+            avatarBadge.textContent = displayCount;
+            avatarBadge.style.display = '';
+        }
     } else {
-        if(bellBadge) bellBadge.style.display = 'none';
-        if(avatarBadge) avatarBadge.style.display = 'none';
+        if (bellBadge) {
+            bellBadge.style.display = 'none';
+        }
+
+        if (avatarBadge) {
+            avatarBadge.style.display = 'none';
+        }
     }
 }
 
 function renderNotificationsList(notifs) {
     const container = document.getElementById('notifications-list');
-    
+
     if (!container && document.querySelector('teacher-top-bar, admin-top-bar, student-top-bar')) {
         setTimeout(() => renderNotificationsList(notifs), 100);
         return;
     }
+
     if (!container) return;
-    
+
     container.innerHTML = '';
-    
+
     if (notifs.length === 0) {
         container.innerHTML = `<p style="color:var(--text-muted); font-size:0.9rem; text-align:center; padding: 2rem;">Aucune nouvelle notification.</p>`;
         return;
     }
 
-    notifs.sort((a,b) => (b.dateCreation?.toMillis() || 0) - (a.dateCreation?.toMillis() || 0));
-
-    notifs.forEach(notif => {
+    notifs.forEach((notif) => {
         const dotIndicator = `<div style="width:8px; height:8px; min-width:8px; background:var(--accent-red, #ff4a4a); border-radius:50%; flex-shrink:0; margin-top: 5px;"></div>`;
-        let titleText = ""; let bodyText = ""; let iconSvg = "";
-        
+
+        let titleText = "";
+        let bodyText = "";
+        let iconSvg = "";
+
         if (notif.type === 'new_course_published') {
             titleText = "Nouveau cours disponible !";
             bodyText = `Le cours <strong>${notif.courseTitle}</strong> est maintenant disponible.`;
@@ -178,7 +386,7 @@ function renderNotificationsList(notifs) {
             iconSvg = `<svg width="20" height="20" style="min-width:20px; flex-shrink:0;" fill="var(--accent-yellow, #fbbc04)" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>`;
         }
 
-        const safeTitle = notif.courseTitle ? notif.courseTitle.replace(/"/g, '&quot;') : 'Cours';
+        const safeTitle = notif.courseTitle ? String(notif.courseTitle).replace(/"/g, '&quot;') : 'Cours';
 
         const html = `
             <div class="notif-item" data-id="${notif.id}" data-type="${notif.type}" data-course="${notif.courseId}" data-title="${safeTitle}" style="display: flex; align-items: flex-start; gap: 1rem; padding: 1rem; border-bottom: 1px solid var(--border-color, #333); cursor: pointer; transition: background 0.2s; background: rgba(128, 128, 128, 0.05);">
@@ -190,52 +398,56 @@ function renderNotificationsList(notifs) {
                 </div>
             </div>
         `;
+
         container.insertAdjacentHTML('beforeend', html);
     });
 
-    document.querySelectorAll('.notif-item').forEach(item => {
+    document.querySelectorAll('.notif-item').forEach((item) => {
         item.addEventListener('click', async (e) => {
             e.preventDefault();
-            e.stopPropagation(); 
-            
+            e.stopPropagation();
+
             const notifId = e.currentTarget.getAttribute('data-id');
             const notifType = e.currentTarget.getAttribute('data-type');
             const courseId = e.currentTarget.getAttribute('data-course');
             const courseTitle = e.currentTarget.getAttribute('data-title');
-            
+
             e.currentTarget.style.display = 'none';
 
-            try {
-                if (notifType === 'new_course_published') {
-                    await updateDoc(doc(db, "notifications", notifId), { targetStudents: arrayRemove(currentUid) });
-                } else {
-                    await deleteDoc(doc(db, "notifications", notifId));
-                }
-            } catch(err) { console.error(err); }
+            await dismissNotificationForCurrentUser(notifId);
 
             const nSection = document.getElementById('notifications-section');
-            if(nSection) nSection.style.display = 'none';
+            if (nSection) {
+                nSection.style.display = 'none';
+            }
+
             const bellIcon = document.querySelector('#notif-bell-btn svg');
-            if(bellIcon) bellIcon.style.fill = 'var(--text-muted, #9ca3af)';
+            if (bellIcon) {
+                bellIcon.style.fill = 'var(--text-muted, #9ca3af)';
+            }
 
             let userRole = 'student';
+
             if (currentUserProfile) {
-                if (currentUserProfile.isGod) userRole = 'admin';
-                else if (currentUserProfile.role) userRole = currentUserProfile.role;
+                if (currentUserProfile.isGod) {
+                    userRole = 'admin';
+                } else if (currentUserProfile.role) {
+                    userRole = currentUserProfile.role;
+                }
             }
 
             if (notifType === 'course_approved') {
                 showTeacherCourseActionModal(courseId, courseTitle);
-            } 
-            else if (notifType === 'course_rejected') {
-                if (userRole === 'teacher') window.location.assign(`/teacher/mes-cours.html?edit=${courseId}`);
-                else window.location.assign(`/admin/formations-cours.html?edit=${courseId}`);
-            }
-            else if (notifType === 'new_course_published') {
+            } else if (notifType === 'course_rejected') {
+                if (userRole === 'teacher') {
+                    window.location.assign(`/teacher/mes-cours.html?edit=${courseId}`);
+                } else {
+                    window.location.assign(`/admin/formations-cours.html?edit=${courseId}`);
+                }
+            } else if (notifType === 'new_course_published') {
                 window.location.assign(`/student/cours-viewer.html?id=${courseId}`);
-            } 
-            else {
-                if(window.location.pathname.includes('formations-cours.html') && typeof window.editCourse === 'function') {
+            } else {
+                if (window.location.pathname.includes('formations-cours.html') && typeof window.editCourse === 'function') {
                     window.editCourse(courseId);
                 } else {
                     window.location.assign(`/admin/formations-cours.html?edit=${courseId}`);
@@ -247,6 +459,7 @@ function renderNotificationsList(notifs) {
 
 function showTeacherCourseActionModal(courseId, courseTitle) {
     let modal = document.getElementById('teacher-action-modal');
+
     if (!modal) {
         modal = document.createElement('div');
         modal.id = 'teacher-action-modal';
@@ -277,8 +490,9 @@ function showTeacherCourseActionModal(courseId, courseTitle) {
             </div>
         </div>
     `;
-    
+
     modal.style.display = 'flex';
+
     requestAnimationFrame(() => {
         modal.style.opacity = '1';
         modal.querySelector('div').style.transform = 'translateY(0)';
@@ -286,76 +500,124 @@ function showTeacherCourseActionModal(courseId, courseTitle) {
 
     document.getElementById('btn-modal-view').onclick = () => {
         modal.style.display = 'none';
-        window.open(`/student/cours-viewer.html?id=${courseId}&preview=true`, '_blank'); 
+        window.open(`/student/cours-viewer.html?id=${courseId}&preview=true`, '_blank');
     };
+
     document.getElementById('btn-modal-edit').onclick = () => {
         modal.style.display = 'none';
         window.location.assign(`/teacher/mes-cours.html?edit=${courseId}`);
     };
+
     document.getElementById('btn-modal-close').onclick = () => {
         modal.style.opacity = '0';
-        setTimeout(() => modal.style.display = 'none', 300);
+        setTimeout(() => {
+            modal.style.display = 'none';
+        }, 300);
     };
 }
 
 /* =======================================================================
  * SECTION 4 : MOTEUR DE RECHERCHE GLOBAL
  * ======================================================================= */
+
 function setupGlobalSearch() {
     const searchInputs = document.querySelectorAll('.global-search-input');
-    
-    searchInputs.forEach(input => {
+
+    searchInputs.forEach((input) => {
         if (input.dataset.searchAttached) return;
+
         input.dataset.searchAttached = 'true';
-        
+
         const resultsContainer = input.nextElementSibling;
-        
+
         input.addEventListener('focus', async () => {
             if (!window.searchDataCache) {
-                const [uSnap, cSnap] = await Promise.all([getDocs(collection(db, 'users')), getDocs(collection(db, 'courses'))]);
-                window.searchDataCache = { users: [], courses: [] };
-                uSnap.forEach(d => window.searchDataCache.users.push({id: d.id, ...d.data()}));
-                cSnap.forEach(d => window.searchDataCache.courses.push({id: d.id, ...d.data()}));
+                const [uSnap, cSnap] = await Promise.all([
+                    getDocs(collection(db, 'users')),
+                    getDocs(collection(db, 'courses'))
+                ]);
+
+                window.searchDataCache = {
+                    users: [],
+                    courses: []
+                };
+
+                uSnap.forEach((d) => window.searchDataCache.users.push({
+                    id: d.id,
+                    ...d.data()
+                }));
+
+                cSnap.forEach((d) => window.searchDataCache.courses.push({
+                    id: d.id,
+                    ...d.data()
+                }));
             }
         });
 
         input.addEventListener('input', async (e) => {
             const term = e.target.value.toLowerCase().trim();
+
             if (term.length < 2) {
                 resultsContainer.style.display = 'none';
                 return;
             }
-            
+
             if (!window.searchDataCache) {
-                const [uSnap, cSnap] = await Promise.all([getDocs(collection(db, 'users')), getDocs(collection(db, 'courses'))]);
-                window.searchDataCache = { users: [], courses: [] };
-                uSnap.forEach(d => window.searchDataCache.users.push({id: d.id, ...d.data()}));
-                cSnap.forEach(d => window.searchDataCache.courses.push({id: d.id, ...d.data()}));
+                const [uSnap, cSnap] = await Promise.all([
+                    getDocs(collection(db, 'users')),
+                    getDocs(collection(db, 'courses'))
+                ]);
+
+                window.searchDataCache = {
+                    users: [],
+                    courses: []
+                };
+
+                uSnap.forEach((d) => window.searchDataCache.users.push({
+                    id: d.id,
+                    ...d.data()
+                }));
+
+                cSnap.forEach((d) => window.searchDataCache.courses.push({
+                    id: d.id,
+                    ...d.data()
+                }));
             }
-            
+
             let html = '';
-            
+
             let userRole = 'student';
+
             if (currentUserProfile) {
-                if (currentUserProfile.isGod) userRole = 'admin';
-                else if (currentUserProfile.role) userRole = currentUserProfile.role;
+                if (currentUserProfile.isGod) {
+                    userRole = 'admin';
+                } else if (currentUserProfile.role) {
+                    userRole = currentUserProfile.role;
+                }
             } else if (window.location.pathname.includes('/admin/')) {
                 userRole = 'admin';
             } else if (window.location.pathname.includes('/teacher/')) {
                 userRole = 'teacher';
             }
-            
-            const isAdmin = (userRole === 'admin');
-            const isTeacher = (userRole === 'teacher');
 
-            const matchedCourses = window.searchDataCache.courses.filter(c => c.titre && c.titre.toLowerCase().includes(term) && ((!isAdmin && !isTeacher) ? c.actif : true)).slice(0, 5);
-            
+            const isAdmin = userRole === 'admin';
+            const isTeacher = userRole === 'teacher';
+
+            const matchedCourses = window.searchDataCache.courses
+                .filter((c) => c.titre && c.titre.toLowerCase().includes(term) && ((!isAdmin && !isTeacher) ? c.actif : true))
+                .slice(0, 5);
+
             if (matchedCourses.length > 0) {
                 html += `<div style="padding: 6px 15px; font-size: 0.75rem; color: var(--text-muted, #888); background: rgba(0,0,0,0.05); font-weight: bold;">COURS PÉDAGOGIQUES</div>`;
-                matchedCourses.forEach(c => {
+
+                matchedCourses.forEach((c) => {
                     let link = `/student/cours-viewer.html?id=${c.id}`;
-                    if (isAdmin) link = `/admin/formations-cours.html?edit=${c.id}`;
-                    else if (isTeacher) link = `/teacher/mes-cours.html?edit=${c.id}`;
+
+                    if (isAdmin) {
+                        link = `/admin/formations-cours.html?edit=${c.id}`;
+                    } else if (isTeacher) {
+                        link = `/teacher/mes-cours.html?edit=${c.id}`;
+                    }
 
                     html += `
                         <div class="search-result-item" data-url="${link}">
@@ -368,23 +630,35 @@ function setupGlobalSearch() {
                 });
             }
 
-            const matchedUsers = window.searchDataCache.users.filter(u => {
-                const name = `${u.prenom || ''} ${u.nom || ''}`.toLowerCase();
-                return name.includes(term) || (isAdmin && u.email && u.email.toLowerCase().includes(term));
-            }).slice(0, 5);
+            const matchedUsers = window.searchDataCache.users
+                .filter((u) => {
+                    const name = `${u.prenom || ''} ${u.nom || ''}`.toLowerCase();
+                    return name.includes(term) || (isAdmin && u.email && u.email.toLowerCase().includes(term));
+                })
+                .slice(0, 5);
 
             if (matchedUsers.length > 0) {
                 html += `<div style="padding: 6px 15px; font-size: 0.75rem; color: var(--text-muted, #888); background: rgba(0,0,0,0.05); font-weight: bold;">UTILISATEURS</div>`;
-                matchedUsers.forEach(u => {
+
+                matchedUsers.forEach((u) => {
                     let profileLink = `/student/mon-profil.html?id=${u.id}`;
-                    if (isAdmin) profileLink = `/admin/admin-profile.html?id=${u.id}`;
-                    else if (isTeacher) profileLink = `/teacher/mon-profil.html?id=${u.id}`;
-                    
+
+                    if (isAdmin) {
+                        profileLink = `/admin/admin-profile.html?id=${u.id}`;
+                    } else if (isTeacher) {
+                        profileLink = `/teacher/mon-profil.html?id=${u.id}`;
+                    }
+
                     let subText = u.email;
+
                     if (!isAdmin) {
-                        if (u.role === 'teacher') subText = 'Professeur';
-                        else if (u.role === 'admin' || u.isGod) subText = 'Administration';
-                        else subText = 'Élève';
+                        if (u.role === 'teacher') {
+                            subText = 'Professeur';
+                        } else if (u.role === 'admin' || u.isGod) {
+                            subText = 'Administration';
+                        } else {
+                            subText = 'Élève';
+                        }
                     }
 
                     html += `
@@ -406,9 +680,10 @@ function setupGlobalSearch() {
             resultsContainer.innerHTML = html;
             resultsContainer.style.display = 'block';
         });
-        
+
         resultsContainer.addEventListener('click', (e) => {
             const item = e.target.closest('.search-result-item');
+
             if (item && item.dataset.url) {
                 window.location.assign(item.dataset.url);
             }
