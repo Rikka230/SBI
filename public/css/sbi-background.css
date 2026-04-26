@@ -1,0 +1,322 @@
+/* =========================================================
+   FOND ANIMÉ GLOBAL SBI
+   - glow bas de page attaché au document
+   - brume de profondeur
+   - poussière / particules
+   - terrain de football vertical, fin, premium
+   - terrain en parallaxe lente indépendante
+   - lasers en parallaxe plus douce
+   - grain vidéo hero
+   ========================================================= */
+
+/* Halo global attaché au document, côté bas droit */
+body::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(
+            ellipse at 100% 100%,
+            rgba(0, 81, 255, 0.18) 0%,
+            rgba(0, 81, 255, 0.095) 15%,
+            rgba(0, 81, 255, 0.04) 31%,
+            rgba(0, 81, 255, 0.01) 47%,
+            rgba(0, 81, 255, 0) 66%
+        );
+    pointer-events: none;
+    z-index: 0;
+}
+
+.sbi-background-root {
+    position: relative;
+    z-index: 0;
+    pointer-events: none;
+}
+
+.fixed-bg-glow {
+    display: none;
+}
+
+/* ---------------------------------------------------------
+   CALQUES FIXES : ambiance générale
+   --------------------------------------------------------- */
+.sbi-bg-fixed {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+/* Brumes */
+.sbi-fog {
+    position: absolute;
+    width: 112vw;
+    height: 112vh;
+    border-radius: 50%;
+    opacity: 0.2;
+    pointer-events: none;
+}
+
+.sbi-fog-1 {
+    top: -42%;
+    left: -48%;
+    background: radial-gradient(circle, rgba(0, 81, 255, 0.045) 0%, rgba(0, 81, 255, 0) 62%);
+    animation: fogDrift 45s infinite alternate ease-in-out;
+}
+
+.sbi-fog-2 {
+    bottom: -52%;
+    right: -50%;
+    background: radial-gradient(circle, rgba(0, 81, 255, 0.026) 0%, rgba(0, 81, 255, 0) 58%);
+    animation: fogDrift 55s infinite alternate-reverse ease-in-out;
+}
+
+@keyframes fogDrift {
+    0% {
+        transform: translate(0, 0) scale(1);
+    }
+    100% {
+        transform: translate(5vw, 5vh) scale(1.1);
+    }
+}
+
+/* Particules / poussière */
+.sbi-particle {
+    position: absolute;
+    background-color: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 0 8px 1px rgba(0, 162, 255, 0.5);
+    opacity: 0;
+    will-change: transform, opacity;
+}
+
+.sbi-particle:nth-child(3n) {
+    width: 4px;
+    height: 5px;
+    border-radius: 40% 60% 70% 30%;
+}
+
+.sbi-particle:nth-child(3n + 1) {
+    width: 5px;
+    height: 3px;
+    border-radius: 60% 40% 30% 70%;
+}
+
+.sbi-particle:nth-child(3n + 2) {
+    width: 14px;
+    height: 12px;
+    border-radius: 50% 30% 60% 40%;
+    background-color: rgba(255, 255, 255, 0.05);
+    box-shadow: 0 0 15px 4px rgba(0, 81, 255, 0.2);
+    filter: blur(3px);
+}
+
+.sbi-particle:nth-child(8)  { top: 10%; left: 80%; animation: dustDrift1 18s infinite linear -2s; }
+.sbi-particle:nth-child(9)  { top: 40%; left: 90%; animation: dustDrift2 24s infinite linear -7s; }
+.sbi-particle:nth-child(10) { top: 30%; left: 40%; animation: dustDriftBig 28s infinite linear -11s; }
+.sbi-particle:nth-child(11) { top: 75%; left: 70%; animation: dustDrift3 20s infinite linear -4s; }
+.sbi-particle:nth-child(12) { top: 15%; left: 25%; animation: dustDrift1 22s infinite linear -9s; }
+.sbi-particle:nth-child(13) { top: 55%; left: 15%; animation: dustDriftBig 32s infinite linear -15s; }
+.sbi-particle:nth-child(14) { top: 85%; left: 20%; animation: dustDrift2 19s infinite linear -1s; }
+.sbi-particle:nth-child(15) { top: 45%; left: 60%; animation: dustDrift3 25s infinite linear -13s; }
+.sbi-particle:nth-child(16) { top: 65%; left: 50%; animation: dustDriftBig 30s infinite linear -6s; }
+.sbi-particle:nth-child(17) { top: 20%; left: 55%; animation: dustDrift1 21s infinite linear -18s; }
+.sbi-particle:nth-child(18) { top: 90%; left: 85%; animation: dustDrift2 26s infinite linear -3s; }
+.sbi-particle:nth-child(19) { top: 25%; left: 10%; animation: dustDriftBig 29s infinite linear -10s; }
+.sbi-particle:nth-child(20) { top: 5%;  left: 45%; animation: dustDrift3 17s infinite linear -5s; }
+.sbi-particle:nth-child(21) { top: 80%; left: 10%; animation: dustDrift1 23s infinite linear -12s; }
+.sbi-particle:nth-child(22) { top: 35%; left: 85%; animation: dustDriftBig 35s infinite linear -20s; }
+.sbi-particle:nth-child(23) { top: 60%; left: 30%; animation: dustDrift2 27s infinite linear -8s; }
+.sbi-particle:nth-child(24) { top: 15%; left: 95%; animation: dustDrift3 22s infinite linear -14s; }
+.sbi-particle:nth-child(25) { top: 95%; left: 40%; animation: dustDriftBig 31s infinite linear -2s; }
+.sbi-particle:nth-child(26) { top: 50%; left: 75%; animation: dustDrift1 19s infinite linear -17s; }
+.sbi-particle:nth-child(27) { top: 70%; left: 5%;  animation: dustDrift2 24s infinite linear -22s; }
+
+@keyframes dustDrift1 {
+    0%   { transform: translate(0, 0) rotate(0deg); opacity: 0; }
+    20%  { opacity: 0.5; }
+    80%  { opacity: 0.5; }
+    100% { transform: translate(-10vw, -4vh) rotate(180deg); opacity: 0; }
+}
+
+@keyframes dustDrift2 {
+    0%   { transform: translate(0, 0) rotate(0deg); opacity: 0; }
+    25%  { opacity: 0.4; }
+    75%  { opacity: 0.4; }
+    100% { transform: translate(-15vw, 6vh) rotate(-120deg); opacity: 0; }
+}
+
+@keyframes dustDrift3 {
+    0%   { transform: translate(0, 0) rotate(0deg); opacity: 0; }
+    15%  { opacity: 0.6; }
+    85%  { opacity: 0.6; }
+    100% { transform: translate(-8vw, -3vh) rotate(90deg); opacity: 0; }
+}
+
+@keyframes dustDriftBig {
+    0%   { transform: translate(0, 0) rotate(0deg) scale(1); opacity: 0; }
+    20%  { opacity: 0.15; }
+    80%  { opacity: 0.15; }
+    100% { transform: translate(-18vw, 4vh) rotate(60deg) scale(1.3); opacity: 0; }
+}
+
+/* ---------------------------------------------------------
+   CALQUE TERRAIN : parallaxe lente indépendante
+   --------------------------------------------------------- */
+.sbi-field-parallax {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    will-change: transform;
+    transform: translate3d(0, 0, 0);
+}
+
+.sbi-football-field {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: min(72vw, 940px);
+    aspect-ratio: 680 / 1200;
+    transform: translate(-50%, -50%);
+    transform-origin: center;
+    opacity: 0.13;
+    mix-blend-mode: screen;
+    filter: drop-shadow(0 0 10px rgba(0, 81, 255, 0.09));
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 680 1200'%3E%3Cg fill='none' stroke='white' stroke-opacity='.30' stroke-width='1.05' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='34' y='34' width='612' height='1132'/%3E%3Cline x1='34' y1='600' x2='646' y2='600'/%3E%3Ccircle cx='340' cy='600' r='92'/%3E%3Crect x='190' y='34' width='300' height='165'/%3E%3Crect x='255' y='34' width='170' height='65'/%3E%3Cpath d='M259 199 A92 92 0 0 0 421 199'/%3E%3Crect x='190' y='1001' width='300' height='165'/%3E%3Crect x='255' y='1101' width='170' height='65'/%3E%3Cpath d='M259 1001 A92 92 0 0 1 421 1001'/%3E%3Cpath d='M34 72 A38 38 0 0 1 72 34'/%3E%3Cpath d='M608 34 A38 38 0 0 1 646 72'/%3E%3Cpath d='M34 1128 A38 38 0 0 0 72 1166'/%3E%3Cpath d='M608 1166 A38 38 0 0 0 646 1128'/%3E%3C/g%3E%3Cg fill='white' fill-opacity='.28'%3E%3Ccircle cx='340' cy='600' r='3'/%3E%3Ccircle cx='340' cy='150' r='3'/%3E%3Ccircle cx='340' cy='1050' r='3'/%3E%3C/g%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+}
+
+.sbi-football-field::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0.52;
+    mix-blend-mode: screen;
+    background:
+        radial-gradient(circle at 50% 50%, rgba(0, 81, 255, 0.75) 0 1.6px, rgba(0, 81, 255, 0.12) 3.4px, transparent 8px),
+        radial-gradient(circle at 50% 12.5%, rgba(255, 255, 255, 0.42) 0 1.3px, rgba(0, 81, 255, 0.12) 3.2px, transparent 7px),
+        radial-gradient(circle at 50% 87.5%, rgba(255, 255, 255, 0.42) 0 1.3px, rgba(0, 81, 255, 0.12) 3.2px, transparent 7px),
+        radial-gradient(circle at 36% 28%, rgba(0, 81, 255, 0.48) 0 1.2px, transparent 5px),
+        radial-gradient(circle at 64% 72%, rgba(0, 81, 255, 0.48) 0 1.2px, transparent 5px),
+        linear-gradient(to bottom, transparent 0%, transparent 12.4%, rgba(255, 255, 255, 0.035) 12.5%, transparent 12.6%),
+        linear-gradient(to bottom, transparent 0%, transparent 49.9%, rgba(255, 255, 255, 0.032) 50%, transparent 50.1%),
+        linear-gradient(to bottom, transparent 0%, transparent 87.4%, rgba(255, 255, 255, 0.035) 87.5%, transparent 87.6%);
+}
+
+/* ---------------------------------------------------------
+   CALQUE LASERS : parallaxe indépendante, ralentie
+   --------------------------------------------------------- */
+.sbi-bg-parallax {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    will-change: transform;
+    transform: translate3d(0, 0, 0);
+}
+
+.sbi-line {
+    position: absolute;
+    top: -150%;
+    height: 300vh;
+    background: linear-gradient(
+        to bottom,
+        transparent 0%,
+        transparent 40%,
+        rgba(0, 162, 255, 0.22) 48%,
+        rgba(255, 255, 255, 0.82) 50%,
+        rgba(0, 162, 255, 0.22) 52%,
+        transparent 60%,
+        transparent 100%
+    );
+    will-change: transform, opacity;
+    border-radius: 10px;
+}
+
+.sbi-line:nth-child(1),
+.sbi-line:nth-child(3) {
+    width: 3px;
+    filter: drop-shadow(0 0 10px rgba(0, 162, 255, 0.9));
+    z-index: 3;
+}
+
+.sbi-line:nth-child(1) { left: 15%; animation: sbiShootFront 25s infinite linear -2s; }
+.sbi-line:nth-child(3) { left: 65%; animation: sbiShootFront 28s infinite linear -7s; }
+
+.sbi-line:nth-child(5),
+.sbi-line:nth-child(6) {
+    width: 1.5px;
+    filter: drop-shadow(0 0 4px rgba(0, 162, 255, 0.55)) blur(1px);
+    z-index: 2;
+}
+
+.sbi-line:nth-child(5) { left: 40%; animation: sbiShootMid 40s infinite linear -12s; }
+.sbi-line:nth-child(6) { left: 85%; animation: sbiShootMid 45s infinite linear -4s; }
+
+.sbi-line:nth-child(2),
+.sbi-line:nth-child(4),
+.sbi-line:nth-child(7) {
+    width: 1px;
+    filter: blur(4px);
+    z-index: 1;
+}
+
+.sbi-line:nth-child(2) { left: 25%; animation: sbiShootBg 60s infinite linear -18s; }
+.sbi-line:nth-child(4) { left: 55%; animation: sbiShootBg 70s infinite linear -9s; }
+.sbi-line:nth-child(7) { left: 8%;  animation: sbiShootBg 65s infinite linear -25s; }
+
+@keyframes sbiShootFront {
+    0%   { transform: rotate(45deg) translateY(-300vh); opacity: 0; }
+    30%  { opacity: 0; }
+    50%  { opacity: 0.8; }
+    70%  { opacity: 0; }
+    100% { transform: rotate(45deg) translateY(300vh); opacity: 0; }
+}
+
+@keyframes sbiShootMid {
+    0%   { transform: rotate(45deg) translateY(-300vh); opacity: 0; }
+    30%  { opacity: 0; }
+    50%  { opacity: 0.35; }
+    70%  { opacity: 0; }
+    100% { transform: rotate(45deg) translateY(300vh); opacity: 0; }
+}
+
+@keyframes sbiShootBg {
+    0%   { transform: rotate(45deg) translateY(-300vh); opacity: 0; }
+    30%  { opacity: 0; }
+    50%  { opacity: 0.12; }
+    70%  { opacity: 0; }
+    100% { transform: rotate(45deg) translateY(300vh); opacity: 0; }
+}
+
+/* ---------------------------------------------------------
+   GRAIN VIDÉO HERO
+   --------------------------------------------------------- */
+.hero-section::after {
+    content: '';
+    position: absolute;
+    inset: -12%;
+    z-index: 1;
+    pointer-events: none;
+    opacity: 0.038;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+    background-size: 160px 160px;
+    animation: heroNoiseShift 1.15s steps(2, end) infinite;
+}
+
+@keyframes heroNoiseShift {
+    0%   { transform: translate3d(0, 0, 0); }
+    10%  { transform: translate3d(-1.4%, 0.8%, 0); }
+    20%  { transform: translate3d(1.1%, -1.2%, 0); }
+    30%  { transform: translate3d(-0.8%, -0.6%, 0); }
+    40%  { transform: translate3d(1.5%, 1.1%, 0); }
+    50%  { transform: translate3d(-1.2%, 1.4%, 0); }
+    60%  { transform: translate3d(0.9%, -0.9%, 0); }
+    70%  { transform: translate3d(-1.6%, -1.1%, 0); }
+    80%  { transform: translate3d(1.2%, 0.7%, 0); }
+    90%  { transform: translate3d(-0.6%, 1.3%, 0); }
+    100% { transform: translate3d(0, 0, 0); }
+}

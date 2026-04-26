@@ -4,41 +4,367 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SBI - Connexion</title>
+
     <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/sbi-signals.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,600;0,800;0,900;1,400;1,600;1,800;1,900&display=swap" rel="stylesheet">
+
     <style>
-        /* Petit ajustement spécifique pour les champs de la page login */
-        .login-input:focus { border-color: var(--sbi-blue) !important; outline: none; }
+        /* =========================
+           LOGIN PAGE
+           ========================= */
+
+        .login-page {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 100px 5% 0 5%;
+            position: relative;
+            z-index: 2;
+        }
+
+        .login-card {
+            width: 100%;
+            max-width: 450px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: 2px;
+            padding: 3.5rem 3rem;
+            position: relative;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+            overflow: visible;
+            transition:
+                border-color 0.28s ease,
+                box-shadow 0.28s ease,
+                transform 0.28s ease;
+        }
+
+        .login-card::before {
+            content: '';
+            position: absolute;
+            inset: -1px;
+            border: 1px solid transparent;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.28s ease;
+        }
+
+        .login-card.is-loading {
+            border-color: rgba(0, 81, 255, 0.42);
+            box-shadow:
+                0 20px 50px rgba(0, 0, 0, 0.5),
+                0 0 28px rgba(0, 81, 255, 0.12);
+        }
+
+        .login-card.is-success {
+            border-color: rgba(0, 81, 255, 0.88);
+            box-shadow:
+                0 20px 50px rgba(0, 0, 0, 0.5),
+                0 0 32px rgba(0, 81, 255, 0.28);
+        }
+
+        .login-card.is-success::before {
+            opacity: 1;
+            border-color: rgba(0, 81, 255, 0.5);
+            animation: loginSuccessFlash 0.62s ease-out;
+        }
+
+        .login-card.is-error {
+            border-color: rgba(255, 74, 74, 0.72);
+            box-shadow:
+                0 20px 50px rgba(0, 0, 0, 0.5),
+                0 0 26px rgba(255, 74, 74, 0.14);
+            animation: loginErrorShake 0.34s ease;
+        }
+
+        .login-card.is-error::before {
+            opacity: 1;
+            border-color: rgba(255, 74, 74, 0.34);
+        }
+
+        /* Coin bas droit :
+           on garde la découpe interne validée
+           + seulement bordure externe droite/bas */
+        .login-card-cut {
+            position: absolute;
+            bottom: -1px;
+            right: -1px;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(
+                -45deg,
+                #040508 0%,
+                #040508 18px,
+                #000000 18px,
+                #000000 36px,
+                rgba(255, 255, 255, 0.15) 36px,
+                rgba(255, 255, 255, 0.15) 37px,
+                transparent 37px
+            );
+            pointer-events: none;
+            z-index: 2;
+            border-right: 1px solid var(--border-color);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .login-card-cut::before {
+            content: none;
+            display: none;
+        }
+
+        .login-card-cut::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.24s ease;
+        }
+
+        .login-card.is-loading .login-card-cut::after {
+            opacity: 0.45;
+            background: linear-gradient(
+                -45deg,
+                #040508 0%,
+                #040508 18px,
+                rgba(0, 81, 255, 0.42) 18px,
+                rgba(0, 81, 255, 0.42) 36px,
+                rgba(255, 255, 255, 0.12) 36px,
+                rgba(255, 255, 255, 0.12) 37px,
+                transparent 37px
+            );
+            animation: loginCornerPulse 0.9s ease-in-out infinite alternate;
+        }
+
+        .login-card.is-success .login-card-cut::after {
+            opacity: 1;
+            background: linear-gradient(
+                -45deg,
+                #040508 0%,
+                #040508 18px,
+                var(--sbi-blue) 18px,
+                var(--sbi-blue) 36px,
+                rgba(255, 255, 255, 0.18) 36px,
+                rgba(255, 255, 255, 0.18) 37px,
+                transparent 37px
+            );
+            box-shadow: 0 0 22px rgba(0, 81, 255, 0.38);
+        }
+
+        .login-card.is-error .login-card-cut::after {
+            opacity: 1;
+            background: linear-gradient(
+                -45deg,
+                #040508 0%,
+                #040508 18px,
+                #ff4a4a 18px,
+                #ff4a4a 36px,
+                rgba(255, 255, 255, 0.16) 36px,
+                rgba(255, 255, 255, 0.16) 37px,
+                transparent 37px
+            );
+            box-shadow: 0 0 18px rgba(255, 74, 74, 0.24);
+        }
+
+        .login-title {
+            font-size: 2.2rem;
+            margin-bottom: 2.5rem;
+            letter-spacing: -1px;
+            text-align: center;
+            position: relative;
+            z-index: 2;
+        }
+
+        .login-field {
+            margin-bottom: 1.5rem;
+            text-align: left;
+            position: relative;
+            z-index: 2;
+        }
+
+        .login-field-password {
+            margin-bottom: 2.5rem;
+        }
+
+        .login-field label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .login-input {
+            width: 100%;
+            padding: 0.9rem 1rem;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-dark);
+            color: white;
+            font-size: 1rem;
+            transition:
+                border-color 0.3s ease,
+                box-shadow 0.3s ease,
+                background 0.3s ease;
+        }
+
+        .login-input:focus {
+            border-color: var(--sbi-blue) !important;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(0, 81, 255, 0.08);
+        }
+
+        .login-card.is-error .login-input {
+            border-color: rgba(255, 74, 74, 0.58);
+        }
+
+        .login-submit {
+            width: 100%;
+            justify-content: center;
+            padding: 1rem;
+            font-size: 1.1rem;
+            position: relative;
+            z-index: 2;
+        }
+
+        .login-submit[disabled] {
+            cursor: wait;
+            opacity: 0.82;
+            transform: none;
+        }
+
+        .login-submit-arrow {
+            margin-left: 8px;
+        }
+
+        #error-message {
+            color: #ff4a4a;
+            margin-top: 1.5rem;
+            text-align: center;
+            display: none;
+            font-weight: 600;
+            font-size: 0.9rem;
+            position: relative;
+            z-index: 2;
+        }
+
+        #error-message.is-visible {
+            display: block;
+        }
+
+        /* =========================
+           SIGNAL LOGIN
+           Petit losange : rejoindre SBI
+           ========================= */
+
+        .sbi-signal-login {
+            --signal-size: 30px;
+            --signal-bubble-lift: -14px;
+            --signal-pointer-y: 74%;
+
+            top: 2.15rem;
+            right: -17px;
+            flex-direction: row-reverse;
+        }
+
+        .sbi-signal-login::before {
+            left: auto;
+            right: calc(var(--signal-size) * 0.5);
+            background: linear-gradient(
+                270deg,
+                rgba(0, 81, 255, 0.62),
+                rgba(0, 81, 255, 0.22),
+                transparent
+            );
+        }
+
+        .sbi-signal-login::after {
+            left: auto;
+            right: calc(var(--signal-size) + 0.52rem);
+            top: calc(50% + var(--signal-bubble-lift) + 8px);
+            clip-path: polygon(100% 50%, 0 0, 0 100%);
+        }
+
+        .sbi-signal-login .sbi-signal-panel {
+            transform: translateX(14px) scale(0.96);
+        }
+
+        .sbi-signal-login.is-revealed .sbi-signal-panel,
+        .sbi-signal-login:hover .sbi-signal-panel,
+        .sbi-signal-login:focus-visible .sbi-signal-panel {
+            transform: translateX(0) scale(1);
+        }
+
+        @keyframes loginCornerPulse {
+            0% {
+                filter: brightness(0.9);
+                box-shadow: 0 0 8px rgba(0, 81, 255, 0.12);
+            }
+
+            100% {
+                filter: brightness(1.12);
+                box-shadow: 0 0 18px rgba(0, 81, 255, 0.28);
+            }
+        }
+
+        @keyframes loginSuccessFlash {
+            0% {
+                box-shadow: inset 0 0 0 rgba(0, 81, 255, 0);
+            }
+
+            45% {
+                box-shadow: inset 0 0 32px rgba(0, 81, 255, 0.14);
+            }
+
+            100% {
+                box-shadow: inset 0 0 0 rgba(0, 81, 255, 0);
+            }
+        }
+
+        @keyframes loginErrorShake {
+            0%, 100% {
+                transform: translateX(0);
+            }
+
+            25% {
+                transform: translateX(-4px);
+            }
+
+            50% {
+                transform: translateX(4px);
+            }
+
+            75% {
+                transform: translateX(-2px);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .login-page {
+                padding-top: 110px;
+                align-items: flex-start;
+            }
+
+            .login-card {
+                padding: 3rem 1.5rem 2.5rem;
+            }
+
+            .sbi-signal-login {
+                top: auto;
+                right: 1rem;
+                bottom: 1rem;
+            }
+
+            .sbi-signal-login .sbi-signal-panel,
+            .sbi-signal-login::after {
+                display: none;
+            }
+        }
     </style>
 </head>
+
 <body>
-
-    <div class="fixed-bg-glow"></div>
-
-    <div class="sbi-bg-fixed">
-        <div class="sbi-fog sbi-fog-1"></div>
-        <div class="sbi-fog sbi-fog-2"></div>
-
-        <div class="sbi-particle"></div><div class="sbi-particle"></div><div class="sbi-particle"></div>
-        <div class="sbi-particle"></div><div class="sbi-particle"></div><div class="sbi-particle"></div>
-        <div class="sbi-particle"></div><div class="sbi-particle"></div><div class="sbi-particle"></div>
-        <div class="sbi-particle"></div><div class="sbi-particle"></div><div class="sbi-particle"></div>
-        <div class="sbi-particle"></div><div class="sbi-particle"></div><div class="sbi-particle"></div>
-        <div class="sbi-particle"></div><div class="sbi-particle"></div><div class="sbi-particle"></div>
-        <div class="sbi-particle"></div><div class="sbi-particle"></div><div class="sbi-particle"></div>
-        <div class="sbi-particle"></div><div class="sbi-particle"></div><div class="sbi-particle"></div>
-        <div class="sbi-particle"></div><div class="sbi-particle"></div><div class="sbi-particle"></div>
-    </div>
-
-    <div class="sbi-bg-parallax" id="parallax-lines">
-        <div class="sbi-line"></div>
-        <div class="sbi-line"></div>
-        <div class="sbi-line"></div>
-        <div class="sbi-line"></div>
-        <div class="sbi-line"></div>
-        <div class="sbi-line"></div>
-        <div class="sbi-line"></div>
-    </div>
 
     <header class="site-header">
         <div class="logo-container">
@@ -47,41 +373,51 @@
                 <img src="assets/sbi_brand.png" alt="Sport Business Institute" class="header-brand">
             </a>
         </div>
+
         <div class="header-actions">
             <a href="index.html" class="nav-link text-italic">Retour au site</a>
         </div>
     </header>
 
-    <main style="min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 100px 5% 0 5%; position: relative; z-index: 2;">
-        
-        <div class="fade-in" style="width: 100%; max-width: 450px; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 2px; padding: 3.5rem 3rem; position: relative; box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
-            
-            <div class="card-badge"></div>
-            
-            <div style="position: absolute; bottom: -1px; right: -1px; width: 60px; height: 60px; background: linear-gradient(-45deg, #040508 0%, #040508 18px, #000000 18px, #000000 36px, rgba(255,255,255,0.15) 36px, rgba(255,255,255,0.15) 37px, transparent 37px); pointer-events: none;"></div>
+    <main class="login-page">
+        <div class="login-card fade-in" id="login-card">
 
-            <h1 class="uppercase text-center text-italic" style="font-size: 2.2rem; margin-bottom: 2.5rem; letter-spacing: -1px;">C<span class="text-blue">o</span>nnexion</h1>
-            
-            <form id="login-form">
-                <div style="margin-bottom: 1.5rem; text-align: left; position: relative; z-index: 2;">
-                    <label for="email" class="text-italic" style="display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.85rem; font-weight: 600;">Adresse Email</label>
-                    <input type="email" id="email" class="login-input text-italic" required style="width: 100%; padding: 0.9rem 1rem; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-dark); color: white; font-size: 1rem; transition: border-color 0.3s ease;">
+            <div class="card-badge"></div>
+            <div class="login-card-cut"></div>
+
+            <a href="contact.html" class="sbi-signal sbi-signal-login" aria-label="Nous contacter pour rejoindre SBI">
+                <span class="sbi-signal-dot" aria-hidden="true"></span>
+                <span class="sbi-signal-panel text-italic">
+                    <span class="sbi-signal-label">Pour nous rejoindre, contactez-nous</span>
+                </span>
+            </a>
+
+            <h1 class="login-title uppercase text-italic">
+                C<span class="text-blue">o</span>nnexion
+            </h1>
+
+            <form id="login-form" data-success-url="dashboard.html">
+                <div class="login-field">
+                    <label for="email" class="text-italic">Adresse Email</label>
+                    <input type="email" id="email" class="login-input text-italic" required autocomplete="email">
                 </div>
-                
-                <div style="margin-bottom: 2.5rem; text-align: left; position: relative; z-index: 2;">
-                    <label for="password" class="text-italic" style="display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.85rem; font-weight: 600;">Mot de passe</label>
-                    <input type="password" id="password" class="login-input text-italic" required style="width: 100%; padding: 0.9rem 1rem; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-dark); color: white; font-size: 1rem; transition: border-color 0.3s ease;">
+
+                <div class="login-field login-field-password">
+                    <label for="password" class="text-italic">Mot de passe</label>
+                    <input type="password" id="password" class="login-input text-italic" required autocomplete="current-password">
                 </div>
-                
-                <button type="submit" class="btn-primary text-italic" style="width: 100%; justify-content: center; padding: 1rem; font-size: 1.1rem; position: relative; z-index: 2;">
-                    Accéder à l'espace <span style="margin-left: 8px;">→</span>
+
+                <button type="submit" class="btn-primary text-italic login-submit" id="login-submit">
+                    <span class="login-submit-label">Accéder à l'espace</span>
+                    <span class="login-submit-arrow">→</span>
                 </button>
             </form>
-            
-            <div id="error-message" class="text-italic" style="color: #ff4a4a; margin-top: 1.5rem; text-align: center; display: none; font-weight: 600; font-size: 0.9rem; position: relative; z-index: 2;"></div>
+
+            <div id="error-message" class="text-italic" aria-live="polite"></div>
         </div>
     </main>
 
+    <script src="js/sbi-background.js"></script>
     <script src="js/main.js"></script>
     <script type="module" src="js/auth.js"></script>
 </body>

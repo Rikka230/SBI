@@ -4,37 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SBI - Apprends. Progresse. Performe.</title>
+
     <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/sbi-newsletter.css">
+    <link rel="stylesheet" href="css/sbi-footer.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,600;0,800;0,900;1,400;1,600;1,800;1,900&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap" rel="stylesheet">
 </head>
+
 <body>
-
-    <div class="fixed-bg-glow"></div>
-
-    <div class="sbi-bg-fixed">
-        <div class="sbi-fog sbi-fog-1"></div>
-        <div class="sbi-fog sbi-fog-2"></div>
-        <div class="sbi-particle"></div><div class="sbi-particle"></div><div class="sbi-particle"></div>
-        <div class="sbi-particle"></div><div class="sbi-particle"></div><div class="sbi-particle"></div>
-        <div class="sbi-particle"></div><div class="sbi-particle"></div><div class="sbi-particle"></div>
-        <div class="sbi-particle"></div><div class="sbi-particle"></div><div class="sbi-particle"></div>
-        <div class="sbi-particle"></div><div class="sbi-particle"></div><div class="sbi-particle"></div>
-        <div class="sbi-particle"></div><div class="sbi-particle"></div><div class="sbi-particle"></div>
-        <div class="sbi-particle"></div><div class="sbi-particle"></div><div class="sbi-particle"></div>
-        <div class="sbi-particle"></div><div class="sbi-particle"></div><div class="sbi-particle"></div>
-        <div class="sbi-particle"></div><div class="sbi-particle"></div><div class="sbi-particle"></div>
-    </div>
-
-    <div class="sbi-bg-parallax" id="parallax-lines">
-        <div class="sbi-line"></div>
-        <div class="sbi-line"></div>
-        <div class="sbi-line"></div>
-        <div class="sbi-line"></div>
-        <div class="sbi-line"></div>
-        <div class="sbi-line"></div>
-        <div class="sbi-line"></div>
-    </div>
 
     <header class="site-header">
         <div class="logo-container">
@@ -43,7 +21,7 @@
                 <img src="assets/sbi_brand.png" alt="Sport Business Institute" class="header-brand">
             </a>
         </div>
-        
+
         <nav class="main-nav">
             <a href="#formations" class="nav-link text-italic">Formations</a>
             <a href="#parcours" class="nav-link text-italic">Parcours</a>
@@ -54,8 +32,12 @@
 
         <div class="header-actions">
             <button class="btn-icon search-btn" aria-label="Rechercher">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
             </button>
+
             <a href="login.html" class="nav-link text-italic">Se connecter</a>
             <a href="#contact" class="btn-primary text-italic">Contact</a>
         </div>
@@ -73,24 +55,38 @@
             <div class="hero-grid padding-global">
                 <div class="hero-content fade-in">
                     <span class="hero-surtitle text-blue uppercase text-italic">Bienvenue sur SBI E-Learning</span>
+
+                    <a href="brochures.html" class="sbi-signal sbi-signal-hero" aria-label="Voir les brochures SBI">
+                        <span class="sbi-signal-dot" aria-hidden="true"></span>
+                        <span class="sbi-signal-panel text-italic">
+                            <span class="sbi-signal-label">Voir les brochures</span>
+                        </span>
+                    </a>
+
                     <h1 class="hero-title uppercase text-italic">
                         Apprends.<br>
                         Progresse.<br>
                         <span class="text-blue">Performe.</span>
                     </h1>
-                    <p class="hero-subtitle text-italic">Des formations conçues par des experts du sport business pour t'aider à passer au niveau supérieur.</p>
-                    
+
+                    <p class="hero-subtitle text-italic">
+                        Des formations conçues par des experts du sport business pour t'aider à passer au niveau supérieur.
+                    </p>
+
                     <div class="hero-buttons">
                         <a href="#formations" class="btn-primary text-italic">Découvrir les formations <span class="arrow">→</span></a>
+
                         <a href="#video" class="btn-ghost text-italic">
                             <span class="play-icon">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                            </span> 
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                                    <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                                </svg>
+                            </span>
                             Voir la vidéo
                         </a>
                     </div>
                 </div>
-                
+
                 <div class="hero-visual fade-in">
                     <img src="assets/Logo_SBI_Tome.png" alt="Logo SBI" class="hero-large-logo">
                 </div>
@@ -99,35 +95,57 @@
             <div class="features-bar padding-global fade-in">
                 <div class="feature-item">
                     <div class="feature-icon">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+                            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+                        </svg>
                     </div>
+
                     <div>
                         <strong class="text-italic">Apprends à ton rythme</strong>
                         <p class="text-italic">Formations 100% en ligne</p>
                     </div>
                 </div>
+
                 <div class="feature-item">
                     <div class="feature-icon">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><polyline points="17 11 19 13 23 9"></polyline></svg>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="8.5" cy="7" r="4"></circle>
+                            <polyline points="17 11 19 13 23 9"></polyline>
+                        </svg>
                     </div>
+
                     <div>
                         <strong class="text-italic">Experts du secteur</strong>
                         <p class="text-italic">Intervenants pros & reconnus</p>
                     </div>
                 </div>
+
                 <div class="feature-item">
                     <div class="feature-icon">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="8" r="7"></circle>
+                            <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline>
+                        </svg>
                     </div>
+
                     <div>
                         <strong class="text-italic">Certifications</strong>
                         <p class="text-italic">Valorise tes compétences</p>
                     </div>
                 </div>
+
                 <div class="feature-item">
                     <div class="feature-icon">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="9" cy="7" r="4"></circle>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                        </svg>
                     </div>
+
                     <div>
                         <strong class="text-italic">Communauté active</strong>
                         <p class="text-italic">Échange & progresse</p>
@@ -142,6 +160,7 @@
                     <span class="section-surtitle text-blue uppercase text-italic">Nos parcours</span>
                     <h2 class="section-title text-italic">Choisis ton terrain.<br>Développe ton futur.</h2>
                 </div>
+
                 <a href="#" class="link-blue text-italic">Voir tous les parcours <span class="arrow">→</span></a>
             </div>
 
@@ -198,59 +217,94 @@
 
         <section class="section-stats padding-global">
             <div class="stats-grid">
-                
                 <div class="founder-block fade-in">
                     <div class="founder-img-wrapper">
                         <div class="shard shard-1">
                             <div class="shard-glint"></div>
                         </div>
+
                         <div class="shard shard-2">
                             <div class="shard-glint"></div>
                         </div>
+
                         <div class="shard shard-4">
-                            <div class="shard-glint delay-glint"></div>
+                            <div class="shard-glint"></div>
                         </div>
+
                         <img src="https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=800&q=80" alt="Fondateur SBI" class="founder-img">
                     </div>
-                    
+
                     <div class="quote-content">
-                        <div class="shard shard-3"></div>
-                        
+                        <a href="fondateur.html" class="sbi-signal sbi-signal-founder" aria-label="En savoir plus sur Christophe Mongai">
+                            <span class="sbi-signal-dot" aria-hidden="true"></span>
+                            <span class="sbi-signal-panel text-italic">
+                                <span class="sbi-signal-label">En savoir plus sur le fondateur</span>
+                            </span>
+                        </a>
+
                         <span class="quote-mark">“</span>
+
                         <blockquote class="text-italic">Chez SBI, on forme la nouvelle génération de décideurs du sport business.</blockquote>
-                        <p class="quote-sub text-italic">Rejoins une communauté ambitieuse et construis ton avenir dans un secteur qui ne s'arrête jamais.</p>
+
+                        <p class="quote-sub text-italic">
+                            Rejoins une communauté ambitieuse et construis ton avenir dans un secteur qui ne s'arrête jamais.
+                        </p>
+
                         <div class="quote-author">
-                            <div class="signature-text">Christophe Monguet</div>
+                            <div class="signature-text">Christophe Mongai</div>
                             <span class="text-italic">SBI FOUNDER</span>
                         </div>
                     </div>
                 </div>
 
-                <div class="numbers-box fade-in">
-                    <span class="section-surtitle text-blue uppercase text-italic">SBI en chiffres</span>
-                    <div class="grid-numbers">
-                        <div class="number-item">
-                            <span class="num text-italic">5000+</span>
-                            <span class="label text-italic">Apprenants</span>
+                <div class="calculator-cta-box fade-in">
+                    <div class="shard shard-cta"></div>
+
+                    <div class="calculator-panel">
+                        <div class="calculator-panel-main">
+                            <span class="section-surtitle text-blue uppercase text-italic">AIDE À L'EMBAUCHE 2026</span>
+
+                            <div class="cta-main-content">
+                                <h2 class="display-amount">5 000 €<span class="asterisk">*</span></h2>
+                                <p class="cta-description text-italic">
+                                    Financez votre futur talent. C'est le montant de l'aide garantie pour l'embauche de votre apprenti en 1ère année.
+                                </p>
+                            </div>
+
+                            <div class="cta-benefits">
+                                <div class="benefit-tag benefit-tag-icon">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z"></path>
+                                    </svg>
+                                    <span>Versement automatique</span>
+                                </div>
+
+                                <div class="benefit-tag benefit-tag-icon">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                                    </svg>
+                                    <span>Zéro formalité</span>
+                                </div>
+                            </div>
+
+                            <a href="calculateur.html" class="btn-calc-neon text-italic">
+                                <span>Calculer le montant de votre aide</span>
+                                <span class="arrow">→</span>
+                            </a>
+
+                            <p class="cta-note">* Pour les entreprises de moins de 250 salariés (PME).</p>
                         </div>
-                        <div class="number-item">
-                            <span class="num text-italic">150+</span>
-                            <span class="label text-italic">Formations</span>
+
+                        <div class="calculator-panel-side" aria-hidden="true">
+                            <div class="calculator-side-icon">
+                                <svg width="104" height="104" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M18 44L64 24L110 44L64 64L18 44Z" stroke="currentColor" stroke-width="4" stroke-linejoin="round"/>
+                                    <path d="M34 53V80C34 91 47 101 64 106C81 101 94 91 94 80V53" stroke="currentColor" stroke-width="4" stroke-linejoin="round"/>
+                                    <path d="M107 47V76" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+                                    <path d="M107 76C107 76 100 84 100 92C100 97 103 100 107 100C111 100 114 97 114 92C114 84 107 76 107 76Z" stroke="currentColor" stroke-width="4" stroke-linejoin="round"/>
+                                </svg>
+                            </div>
                         </div>
-                        <div class="number-item">
-                            <span class="num text-italic">95%</span>
-                            <span class="label text-italic">Taux de satisfaction</span>
-                        </div>
-                        <div class="number-item">
-                            <span class="num text-italic">30+</span>
-                            <span class="label text-italic">Experts & intervenants</span>
-                        </div>
-                    </div>
-                    <div class="chart-container">
-                        <svg viewBox="0 0 500 100" class="line-chart">
-                            <path d="M0,80 L50,60 L100,70 L150,40 L200,60 L250,50 L300,70 L350,30 L400,40 L450,10 L500,0" fill="none" stroke="var(--sbi-blue)" stroke-width="2"/>
-                            <circle cx="500" cy="0" r="4" fill="var(--sbi-blue)"/>
-                        </svg>
                     </div>
                 </div>
             </div>
@@ -260,13 +314,18 @@
             <div class="newsletter-box">
                 <div class="news-text">
                     <div class="news-icon bg-blue">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                            <polyline points="22,6 12,13 2,6"></polyline>
+                        </svg>
                     </div>
+
                     <div>
                         <h3 class="text-italic">Reste dans le game.</h3>
                         <p class="text-italic">Reçois nos nouveautés, conseils et contenus exclusifs.</p>
                     </div>
                 </div>
+
                 <form class="news-form">
                     <input type="email" placeholder="Ton email" required class="text-italic">
                     <button type="submit" class="btn-primary text-italic">Je m'inscris <span class="arrow">→</span></button>
@@ -275,59 +334,94 @@
         </section>
     </main>
 
-    <footer class="site-footer padding-global">
-        <div class="footer-grid">
-            <div class="footer-brand">
-                <div class="logo-container">
-                    <img src="assets/Logo_SBI_Tome.png" alt="SBI Logo" class="footer-logo">
+    <footer id="contact" class="site-footer sbi-footer padding-global">
+        <div class="footer-shell">
+            <div class="footer-brand-block">
+                <a href="index.html" class="footer-logo-lockup" aria-label="Retour à l'accueil SBI">
+                    <img src="assets/Logo_SBI_Tome.png" alt="SBI Logo" class="footer-logo-mark">
+                    <img src="assets/sbi_brand.png" alt="Sport Business Institute" class="footer-logo-wordmark">
+                </a>
+
+                <p class="footer-brandline text-italic">
+                    Apprendre. Progresser. <span class="text-blue">Performer.</span>
+                </p>
+
+                <p class="footer-description text-italic">
+                    La plateforme e-learning dédiée au sport business, au management sportif et à l'innovation.
+                </p>
+            </div>
+
+            <nav class="footer-nav" aria-label="Navigation secondaire">
+                <div class="footer-column">
+                    <h4 class="text-italic">Plateforme</h4>
+                    <a href="#formations" class="text-italic">Formations</a>
+                    <a href="#parcours" class="text-italic">Parcours</a>
+                    <a href="#live" class="text-italic">Live</a>
+                    <a href="#ressources" class="text-italic">Ressources</a>
                 </div>
-                <p class="brand-tagline text-italic">Apprendre. Progresser. <span class="text-blue">Performer.</span></p>
-            </div>
 
-            <div class="footer-links">
-                <h4 class="text-italic">Plateforme</h4>
-                <a href="#" class="text-italic">Formations</a>
-                <a href="#" class="text-italic">Parcours</a>
-                <a href="#" class="text-italic">Live</a>
-                <a href="#" class="text-italic">Ressources</a>
-            </div>
+                <div class="footer-column">
+                    <h4 class="text-italic">À propos</h4>
+                    <a href="#apropos" class="text-italic">Qui sommes-nous ?</a>
+                    <a href="#" class="text-italic">Nos experts</a>
+                    <a href="#" class="text-italic">Carrières</a>
+                    <a href="#contact" class="text-italic">Contact</a>
+                </div>
 
-            <div class="footer-links">
-                <h4 class="text-italic">À propos</h4>
-                <a href="#" class="text-italic">Qui sommes-nous ?</a>
-                <a href="#" class="text-italic">Nos experts</a>
-                <a href="#" class="text-italic">Carrières</a>
-                <a href="#" class="text-italic">Contact</a>
-            </div>
+                <div class="footer-column">
+                    <h4 class="text-italic">Légal</h4>
+                    <a href="#" class="text-italic">Mentions légales</a>
+                    <a href="#" class="text-italic">CGU</a>
+                    <a href="#" class="text-italic">Politique de confidentialité</a>
+                    <a href="#" class="text-italic">Cookies</a>
+                </div>
+            </nav>
 
-            <div class="footer-links">
-                <h4 class="text-italic">Légal</h4>
-                <a href="#" class="text-italic">Mentions légales</a>
-                <a href="#" class="text-italic">CGU</a>
-                <a href="#" class="text-italic">Politique de confidentialité</a>
-                <a href="#" class="text-italic">Cookies</a>
-            </div>
+            <div class="footer-social-card">
+                <h4 class="footer-social-title text-italic">Suivez-nous</h4>
 
-            <div class="footer-social">
-                <h4 class="text-italic">Suivez-nous</h4>
                 <div class="social-icons">
                     <a href="#" aria-label="X (Twitter)">
-                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 22.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 22.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                        </svg>
                     </a>
+
                     <a href="#" aria-label="Instagram">
-                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                            <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                            <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+                        </svg>
                     </a>
+
                     <a href="#" aria-label="LinkedIn">
-                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path><rect x="2" y="9" width="4" height="12"></rect><circle cx="4" cy="4" r="2"></circle></svg>
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path>
+                            <rect x="2" y="9" width="4" height="12"></rect>
+                            <circle cx="4" cy="4" r="2"></circle>
+                        </svg>
                     </a>
+
                     <a href="#" aria-label="YouTube">
-                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33 2.78 2.78 0 0 0 1.94 2c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.33 29 29 0 0 0-.46-5.33z"></path><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"></polygon></svg>
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33 2.78 2.78 0 0 0 1.94 2c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.33 29 29 0 0 0-.46-5.33z"></path>
+                            <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"></polygon>
+                        </svg>
                     </a>
                 </div>
+
+                <a href="mailto:contact@sbi.fr" class="footer-contact-link text-italic">contact@sbi.fr</a>
             </div>
+        </div>
+
+        <div class="footer-bottom">
+            <span class="text-italic">© 2026 Sport Business Institute. Tous droits réservés.</span>
+            <span class="footer-bottom-signature text-italic">SBI E-Learning</span>
         </div>
     </footer>
 
+    <script src="js/sbi-background.js"></script>
     <script src="js/main.js"></script>
     <script type="module" src="js/firebase-init.js"></script>
 </body>

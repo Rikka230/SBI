@@ -1,0 +1,458 @@
+/* =========================================================
+   SBI SIGNALS
+   ---------------------------------------------------------
+   Petits marqueurs interactifs premium :
+   - losange SBI réutilisable
+   - micro-bulle d'information
+   - CTA secondaire discret
+   - utilisé pour brochures, fondateur, infos annexes
+   ========================================================= */
+
+/* ---------------------------------------------------------
+   BASE
+   --------------------------------------------------------- */
+.sbi-signal {
+    --signal-size: 30px;
+    --signal-blue: var(--sbi-blue);
+    --signal-panel-bg: rgba(7, 11, 19, 0.96);
+    --signal-panel-border: rgba(0, 81, 255, 0.52);
+    --signal-panel-text: #ffffff;
+
+    --signal-bubble-lift: -10px;
+    --signal-pointer-y: 68%;
+
+    position: absolute;
+    z-index: 20;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.9rem;
+    color: var(--signal-panel-text);
+    text-decoration: none;
+    pointer-events: auto;
+    isolation: isolate;
+}
+
+.sbi-signal,
+.sbi-signal * {
+    box-sizing: border-box;
+}
+
+/* ---------------------------------------------------------
+   LOSANGE
+   --------------------------------------------------------- */
+.sbi-signal-dot {
+    position: relative;
+    flex: 0 0 auto;
+    width: var(--signal-size);
+    height: var(--signal-size);
+    display: block;
+    overflow: visible;
+    transform: rotate(45deg);
+    transform-origin: center;
+    background: linear-gradient(
+        135deg,
+        rgba(0, 81, 255, 0.94) 0%,
+        rgba(0, 81, 255, 1) 48%,
+        rgba(0, 132, 255, 0.96) 100%
+    );
+    border: 1px solid rgba(255, 255, 255, 0.24);
+    box-shadow:
+        0 0 12px rgba(0, 81, 255, 0.62),
+        0 0 26px rgba(0, 81, 255, 0.32);
+    animation: sbiSignalFloat 4.6s ease-in-out infinite;
+}
+
+.sbi-signal-dot::before {
+    content: '';
+    position: absolute;
+    inset: -20px;
+    border-radius: 999px;
+    background: radial-gradient(
+        circle,
+        rgba(0, 81, 255, 0.42) 0%,
+        rgba(0, 81, 255, 0.18) 36%,
+        rgba(0, 81, 255, 0.06) 56%,
+        transparent 74%
+    );
+    transform: rotate(-45deg);
+    opacity: 0.85;
+    filter: blur(7px);
+    animation: sbiSignalAura 2.6s ease-in-out infinite alternate;
+    z-index: -2;
+}
+
+.sbi-signal-dot::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 7px;
+    height: 7px;
+    border-radius: 999px;
+    background: #ffffff;
+    transform: translate(-50%, -50%) rotate(-45deg);
+    box-shadow:
+        0 0 8px rgba(255, 255, 255, 0.98),
+        0 0 16px rgba(0, 81, 255, 0.98),
+        0 0 28px rgba(0, 81, 255, 0.65);
+    animation: sbiSignalCorePulse 1.8s ease-in-out infinite alternate;
+}
+
+/* traînée lumineuse */
+.sbi-signal::before {
+    content: '';
+    position: absolute;
+    width: 88px;
+    height: 1px;
+    top: 50%;
+    left: calc(var(--signal-size) * 0.5);
+    transform: translateY(-50%);
+    background: linear-gradient(
+        90deg,
+        rgba(0, 81, 255, 0.62),
+        rgba(0, 81, 255, 0.22),
+        transparent
+    );
+    opacity: 0.5;
+    pointer-events: none;
+    z-index: -1;
+}
+
+/* pointe de la bulle vers le losange
+   Cas standard : bulle à droite, losange à gauche, donc pointe vers la gauche */
+.sbi-signal::after {
+    content: '';
+    position: absolute;
+    left: calc(var(--signal-size) + 0.52rem);
+    top: calc(50% + var(--signal-bubble-lift) + 7px);
+    width: 12px;
+    height: 16px;
+    background: var(--signal-blue);
+    clip-path: polygon(0 50%, 100% 0, 100% 100%);
+    transform: translateY(-50%);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 21;
+    filter: drop-shadow(0 0 8px rgba(0, 81, 255, 0.55));
+    transition: opacity 0.28s ease, transform 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ---------------------------------------------------------
+   BULLE
+   --------------------------------------------------------- */
+.sbi-signal-panel {
+    position: relative;
+    top: var(--signal-bubble-lift);
+    display: inline-flex;
+    align-items: center;
+    min-width: max-content;
+    max-width: 290px;
+    padding: 0.82rem 1.2rem;
+    background: linear-gradient(
+        180deg,
+        rgba(13, 19, 33, 0.98),
+        rgba(7, 11, 19, 0.96)
+    );
+    border: 1px solid var(--signal-panel-border);
+    color: var(--signal-panel-text);
+    font-size: 0.78rem;
+    line-height: 1;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    opacity: 0;
+    transform: translateX(-14px) scale(0.96);
+    pointer-events: none;
+    clip-path: polygon(
+        0 0,
+        100% 0,
+        100% calc(100% - 12px),
+        calc(100% - 12px) 100%,
+        0 100%
+    );
+    box-shadow:
+        0 14px 32px rgba(0, 0, 0, 0.34),
+        0 0 22px rgba(0, 81, 255, 0.18);
+    transition:
+        opacity 0.38s ease,
+        transform 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+        border-color 0.32s ease,
+        box-shadow 0.32s ease;
+}
+
+/* aucune flèche textuelle */
+.sbi-signal-panel::before,
+.sbi-signal-panel::after {
+    content: none !important;
+    display: none !important;
+}
+
+.sbi-signal-panel .sbi-signal-arrow,
+.sbi-signal-panel .signal-arrow,
+.sbi-signal-panel .signal-chevron,
+.sbi-signal-panel .arrow-icon {
+    display: none !important;
+}
+
+/* ---------------------------------------------------------
+   ÉTATS D'AFFICHAGE
+   --------------------------------------------------------- */
+.sbi-signal.is-revealed .sbi-signal-panel,
+.sbi-signal:hover .sbi-signal-panel,
+.sbi-signal:focus-visible .sbi-signal-panel {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+    pointer-events: auto;
+}
+
+.sbi-signal.is-revealed::after,
+.sbi-signal:hover::after,
+.sbi-signal:focus-visible::after {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+}
+
+.sbi-signal.is-revealed .sbi-signal-panel,
+.sbi-signal:hover .sbi-signal-panel,
+.sbi-signal:focus-visible .sbi-signal-panel {
+    border-color: rgba(0, 81, 255, 0.9);
+    box-shadow:
+        0 14px 32px rgba(0, 0, 0, 0.34),
+        0 0 28px rgba(0, 81, 255, 0.24);
+}
+
+.sbi-signal.is-revealed .sbi-signal-dot,
+.sbi-signal:hover .sbi-signal-dot,
+.sbi-signal:focus-visible .sbi-signal-dot {
+    box-shadow:
+        0 0 16px rgba(0, 81, 255, 0.78),
+        0 0 32px rgba(0, 81, 255, 0.4);
+}
+
+.sbi-signal.is-attention .sbi-signal-panel {
+    animation: sbiSignalPanelAttention 0.95s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.sbi-signal.is-attention .sbi-signal-dot {
+    animation:
+        sbiSignalFloat 4.6s ease-in-out infinite,
+        sbiSignalAttentionDot 0.95s ease-out;
+}
+
+/* ---------------------------------------------------------
+   POSITION : HERO BROCHURES
+   --------------------------------------------------------- */
+.hero-content {
+    position: relative;
+}
+
+.sbi-signal-hero {
+    --signal-size: 30px;
+    --signal-bubble-lift: -12px;
+    --signal-pointer-y: 70%;
+
+    top: clamp(-1.45rem, -0.9vw, -0.95rem);
+    left: clamp(17.7rem, 27vw, 25.4rem);
+}
+
+.sbi-signal-hero .sbi-signal-panel {
+    font-size: 0.76rem;
+}
+
+/* ---------------------------------------------------------
+   POSITION : FONDATEUR
+   --------------------------------------------------------- */
+.quote-content {
+    position: relative;
+}
+
+.sbi-signal-founder {
+    --signal-size: 30px;
+    --signal-bubble-lift: -16px;
+    --signal-pointer-y: 74%;
+
+    top: 30%;
+    right: -17px;
+    flex-direction: row-reverse;
+}
+
+.sbi-signal-founder::before {
+    left: auto;
+    right: calc(var(--signal-size) * 0.5);
+    background: linear-gradient(
+        270deg,
+        rgba(0, 81, 255, 0.62),
+        rgba(0, 81, 255, 0.22),
+        transparent
+    );
+}
+
+/* pointe inversée : bulle à gauche, losange à droite, donc pointe vers la droite */
+.sbi-signal-founder::after {
+    left: auto;
+    right: calc(var(--signal-size) + 0.52rem);
+    top: calc(50% + var(--signal-bubble-lift) + 8px);
+    clip-path: polygon(100% 50%, 0 0, 0 100%);
+}
+
+.sbi-signal-founder .sbi-signal-panel {
+    transform: translateX(14px) scale(0.96);
+}
+
+.sbi-signal-founder.is-revealed .sbi-signal-panel,
+.sbi-signal-founder:hover .sbi-signal-panel,
+.sbi-signal-founder:focus-visible .sbi-signal-panel {
+    transform: translateX(0) scale(1);
+}
+
+/* ---------------------------------------------------------
+   ANIMATIONS
+   --------------------------------------------------------- */
+@keyframes sbiSignalFloat {
+    0% {
+        transform: rotate(45deg) translate3d(0, 0, 0);
+    }
+
+    50% {
+        transform: rotate(45deg) translate3d(-2px, -5px, 0);
+    }
+
+    100% {
+        transform: rotate(45deg) translate3d(0, 0, 0);
+    }
+}
+
+@keyframes sbiSignalAura {
+    0% {
+        opacity: 0.46;
+        transform: rotate(-45deg) scale(0.88);
+    }
+
+    100% {
+        opacity: 0.95;
+        transform: rotate(-45deg) scale(1.2);
+    }
+}
+
+@keyframes sbiSignalCorePulse {
+    0% {
+        opacity: 0.72;
+        transform: translate(-50%, -50%) rotate(-45deg) scale(0.72);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translate(-50%, -50%) rotate(-45deg) scale(1.1);
+    }
+}
+
+@keyframes sbiSignalPanelAttention {
+    0% {
+        opacity: 0;
+        transform: translateX(-18px) scale(0.92);
+    }
+
+    55% {
+        opacity: 1;
+        transform: translateX(4px) scale(1.02);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+    }
+}
+
+@keyframes sbiSignalAttentionDot {
+    0% {
+        box-shadow:
+            0 0 12px rgba(0, 81, 255, 0.62),
+            0 0 26px rgba(0, 81, 255, 0.32);
+    }
+
+    45% {
+        box-shadow:
+            0 0 20px rgba(0, 81, 255, 0.95),
+            0 0 38px rgba(0, 81, 255, 0.55);
+    }
+
+    100% {
+        box-shadow:
+            0 0 12px rgba(0, 81, 255, 0.62),
+            0 0 26px rgba(0, 81, 255, 0.32);
+    }
+}
+
+/* ---------------------------------------------------------
+   ACCESSIBILITÉ
+   --------------------------------------------------------- */
+.sbi-signal:focus-visible {
+    outline: none;
+}
+
+.sbi-signal:focus-visible .sbi-signal-dot {
+    outline: 2px solid rgba(255, 255, 255, 0.9);
+    outline-offset: 5px;
+}
+
+/* ---------------------------------------------------------
+   RESPONSIVE LOCAL AU COMPOSANT
+   --------------------------------------------------------- */
+@media (max-width: 991px) {
+    .sbi-signal-hero {
+        top: -1rem;
+        left: clamp(14.2rem, 48vw, 22.5rem);
+    }
+
+    .sbi-signal-panel {
+        max-width: 230px;
+        font-size: 0.72rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .sbi-signal-hero {
+        position: relative;
+        top: auto;
+        left: auto;
+        margin: 1.25rem auto 0;
+        justify-content: center;
+    }
+
+    .sbi-signal-hero .sbi-signal-panel {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+        pointer-events: auto;
+    }
+
+    .sbi-signal-hero::after {
+        opacity: 1;
+    }
+
+    .sbi-signal-founder {
+        top: auto;
+        right: 1.1rem;
+        bottom: 1.1rem;
+    }
+
+    .sbi-signal-founder .sbi-signal-panel,
+    .sbi-signal-founder::after {
+        display: none;
+    }
+}
+
+@media (max-width: 480px) {
+    .sbi-signal {
+        --signal-size: 28px;
+    }
+
+    .sbi-signal-hero {
+        width: 100%;
+    }
+
+    .sbi-signal-hero .sbi-signal-panel {
+        max-width: calc(100vw - 6rem);
+        white-space: normal;
+        line-height: 1.25;
+    }
+}

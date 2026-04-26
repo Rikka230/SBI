@@ -8,49 +8,203 @@ import { auth, db } from './firebase-init.js';
 import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
-/* --- 1.1 GESTION DU FORMULAIRE DE CONNEXION --- */
+/* --- 1.1 ELEMENTS LOGIN --- */
 const loginForm = document.getElementById('login-form');
+const loginCard = document.getElementById('login-card');
+const submitButton = document.getElementById('login-submit');
+const submitLabel = submitButton?.querySelector('.login-submit-label');
 const errorMessage = document.getElementById('error-message');
 
+let redirectInProgress = false;
+
+const setSubmitLabel = (text) => {
+    if (submitLabel) {
+        submitLabel.textContent = text;
+    }
+};
+
+const clearLoginStates = () => {
+    if (!loginCard) return;
+
+    loginCard.classList.remove('is-loading', 'is-success', 'is-error');
+};
+
+const clearLoginError = () => {
+    if (!errorMessage) return;
+
+    errorMessage.textContent = '';
+    errorMessage.style.display = 'none';
+    errorMessage.classList.remove('is-visible');
+};
+
+const showLoginError = (message) => {
+    if (!errorMessage) return;
+
+    errorMessage.textContent = message;
+    errorMessage.style.display = 'block';
+    errorMessage.classList.add('is-visible');
+};
+
+const setLoginLoading = () => {
+    clearLoginStates();
+    clearLoginError();
+
+    if (loginCard) {
+        loginCard.classList.add('is-loading');
+    }
+
+    if (submitButton) {
+        submitButton.disabled = true;
+    }
+
+    setSubmitLabel('Vérification');
+};
+
+const setLoginSuccess = () => {
+    clearLoginStates();
+    clearLoginError();
+
+    if (loginCard) {
+        loginCard.classList.add('is-success');
+    }
+
+    if (submitButton) {
+        submitButton.disabled = true;
+    }
+
+    setSubmitLabel('Connexion validée');
+};
+
+const setLoginError = (message) => {
+    clearLoginStates();
+
+    if (loginCard) {
+        loginCard.classList.add('is-error');
+    }
+
+    if (submitButton) {
+        submitButton.disabled = false;
+    }
+
+    setSubmitLabel("Accéder à l'espace");
+    showLoginError(message);
+
+    window.setTimeout(() => {
+        loginCard?.classList.remove('is-error');
+    }, 900);
+};
+
+const getFirebaseErrorMessage = (error) => {
+    const code = error?.code || '';
+
+    switch (code) {
+        case 'auth/invalid-email':
+            return "L'adresse email n'est pas valide.";
+
+        case 'auth/user-disabled':
+            return "Ce compte a été désactivé.";
+
+        case 'auth/user-not-found':
+        case 'auth/wrong-password':
+        case 'auth/invalid-credential':
+            return "Email ou mot de passe incorrect.";
+
+        case 'auth/too-many-requests':
+            return "Trop de tentatives. Réessaie un peu plus tard.";
+
+        case 'auth/network-request-failed':
+            return "Problème réseau. Vérifie ta connexion.";
+
+        default:
+            return "Email ou mot de passe incorrect.";
+    }
+};
+
+const redirectWithLoginFeedback = (targetUrl) => {
+    if (redirectInProgress) return;
+
+    redirectInProgress = true;
+
+    const currentPath = window.location.pathname;
+    const isLogin = currentPath.includes('login');
+
+    if (isLogin && loginCard) {
+        setLoginSuccess();
+
+        window.setTimeout(() => {
+            window.location.replace(targetUrl);
+        }, 650);
+
+        return;
+    }
+
+    window.location.replace(targetUrl);
+};
+
+/* --- 1.2 GESTION DU FORMULAIRE DE CONNEXION --- */
 if (loginForm) {
     loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        
-        errorMessage.style.display = 'none';
-        
-        const email = document.getElementById('email').value.trim();
-        const password = document.getElementById('password').value;
-        
+
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+
+        const email = emailInput?.value.trim();
+        const password = passwordInput?.value;
+
+        if (!email || !password) {
+            setLoginError('Renseigne ton email et ton mot de passe.');
+            return;
+        }
+
+        setLoginLoading();
+
         try {
             await signInWithEmailAndPassword(auth, email, password);
             console.log("✅ Connexion réussie");
+
+            /*
+             * La redirection reste gérée par onAuthStateChanged + Firestore,
+             * pour conserver la logique role/statut existante.
+             */
+            setLoginSuccess();
+
         } catch (error) {
             console.error("❌ Erreur de connexion :", error.code);
-            errorMessage.textContent = "Email ou mot de passe incorrect.";
-            errorMessage.style.display = 'block';
+            setLoginError(getFirebaseErrorMessage(error));
         }
     });
 }
 
-/* --- 1.2 VERIFICATION PROFIL FIRESTORE (Rôle + Statut) --- */
+/* --- 1.3 VERIFICATION PROFIL FIRESTORE (Rôle + Statut) --- */
 const fetchUserData = async (uid) => {
     try {
         const userRef = doc(db, "users", uid);
         const userSnap = await getDoc(userRef);
-        
+
         if (userSnap.exists()) {
-            return { role: userSnap.data().role, statut: userSnap.data().statut };
+            return {
+                role: userSnap.data().role,
+                statut: userSnap.data().statut
+            };
         } else {
             console.warn("⚠️ Aucun profil trouvé, attribution étudiant par défaut.");
-            return { role: "student", statut: "actif" }; 
+            return {
+                role: "student",
+                statut: "actif"
+            };
         }
     } catch (error) {
         console.error("Erreur lors de la lecture du profil :", error);
-        return { role: "student", statut: "actif" };
+
+        return {
+            role: "student",
+            statut: "actif"
+        };
     }
 };
 
-/* --- 1.3 ROUTE GUARD & REDIRECTIONS --- */
+/* --- 1.4 ROUTE GUARD & REDIRECTIONS --- */
 const enforceSecurityPolicies = async (user, userData) => {
     const currentPath = window.location.pathname;
 
@@ -61,13 +215,19 @@ const enforceSecurityPolicies = async (user, userData) => {
                 window.location.replace('/login.html');
             }
         }
-        return; 
+
+        return;
     }
 
     // Règle B : BLOCAGE DES COMPTES SUSPENDUS
     if (userData.statut === 'suspendu') {
-        alert("Votre compte a été suspendu par un administrateur.");
-        await signOut(auth); // On le déconnecte de force
+        if (currentPath.includes('login')) {
+            setLoginError("Votre compte a été suspendu par un administrateur.");
+        } else {
+            alert("Votre compte a été suspendu par un administrateur.");
+        }
+
+        await signOut(auth);
         window.location.replace('/login.html');
         return;
     }
@@ -84,17 +244,23 @@ const enforceSecurityPolicies = async (user, userData) => {
 
     if (user && (isPublicIndex || isLogin)) {
         if (userData.role === 'admin' && !currentPath.includes('/admin')) {
-            window.location.replace('/admin/index.html'); 
-        } else if (userData.role === 'student' && !currentPath.includes('/student')) {
-            window.location.replace('/student/dashboard.html');
-        } else if (userData.role === 'teacher' && !currentPath.includes('/teacher/dashboard.html')) {
-            // FIX : La redirection pointe bien vers le nouveau nom du tableau de bord prof
-            window.location.replace('/teacher/dashboard.html');
+            redirectWithLoginFeedback('/admin/index.html');
+            return;
+        }
+
+        if (userData.role === 'student' && !currentPath.includes('/student')) {
+            redirectWithLoginFeedback('/student/dashboard.html');
+            return;
+        }
+
+        if (userData.role === 'teacher' && !currentPath.includes('/teacher/dashboard.html')) {
+            redirectWithLoginFeedback('/teacher/dashboard.html');
+            return;
         }
     }
 };
 
-/* --- 1.4 OBSERVATEUR D'ETAT GLOBAL --- */
+/* --- 1.5 OBSERVATEUR D'ETAT GLOBAL --- */
 onAuthStateChanged(auth, async (user) => {
     if (user) {
         const userData = await fetchUserData(user.uid);
@@ -104,7 +270,7 @@ onAuthStateChanged(auth, async (user) => {
     }
 });
 
-/* --- 1.5 FONCTION DE DECONNEXION GLOBALE --- */
+/* --- 1.6 FONCTION DE DECONNEXION GLOBALE --- */
 export const logoutUser = () => {
     signOut(auth).then(() => {
         window.location.replace('/index.html');

@@ -1,0 +1,331 @@
+/* =========================================================
+   SBI FOOTER
+   ---------------------------------------------------------
+   Footer premium :
+   - logo + wordmark en lockup
+   - colonnes mieux alignées
+   - social card discrète
+   - responsive intégré
+   ========================================================= */
+
+.sbi-footer {
+    position: relative;
+    overflow: hidden;
+    padding-top: clamp(3.75rem, 6vw, 5rem);
+    padding-bottom: 1.8rem;
+    background:
+        radial-gradient(circle at 12% 10%, rgba(0, 81, 255, 0.055), transparent 28%),
+        linear-gradient(180deg, rgba(2, 3, 6, 0.98), rgba(2, 3, 6, 1));
+}
+
+.sbi-footer::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 5%;
+    right: 5%;
+    height: 1px;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0.14) 18%,
+        rgba(0, 81, 255, 0.34) 50%,
+        rgba(255, 255, 255, 0.14) 82%,
+        transparent 100%
+    );
+}
+
+.sbi-footer::after {
+    content: '';
+    position: absolute;
+    right: -8vw;
+    bottom: -12vw;
+    width: 34vw;
+    height: 34vw;
+    min-width: 320px;
+    min-height: 320px;
+    pointer-events: none;
+    background: radial-gradient(circle, rgba(0, 81, 255, 0.075), transparent 62%);
+    opacity: 0.72;
+}
+
+.sbi-footer .footer-shell {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: minmax(260px, 0.95fr) minmax(420px, 1.45fr) minmax(190px, 0.55fr);
+    align-items: start;
+    gap: clamp(2.5rem, 5vw, 5rem);
+}
+
+.sbi-footer .footer-brand-block {
+    max-width: 360px;
+}
+
+.sbi-footer .footer-logo-lockup {
+    display: inline-flex;
+    align-items: center;
+    gap: 1rem;
+    color: inherit;
+}
+
+.sbi-footer .footer-logo-mark {
+    width: 72px;
+    height: 72px;
+    object-fit: contain;
+    flex: 0 0 auto;
+    filter: drop-shadow(0 0 12px rgba(0, 81, 255, 0.16));
+}
+
+.sbi-footer .footer-logo-wordmark {
+    height: 42px;
+    width: auto;
+    max-width: 220px;
+    object-fit: contain;
+    opacity: 0.96;
+}
+
+.sbi-footer .footer-brandline {
+    margin-top: 1.65rem;
+    color: var(--text-muted);
+    font-size: 0.94rem;
+}
+
+.sbi-footer .footer-description {
+    margin-top: 0.85rem;
+    max-width: 310px;
+    color: rgba(138, 147, 166, 0.82);
+    font-size: 0.82rem;
+    line-height: 1.65;
+}
+
+.sbi-footer .footer-nav {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(130px, 1fr));
+    gap: clamp(1.75rem, 3vw, 3.5rem);
+    align-items: start;
+}
+
+.sbi-footer .footer-column {
+    position: relative;
+    min-width: 0;
+}
+
+.sbi-footer .footer-column h4,
+.sbi-footer .footer-social-title {
+    margin-bottom: 1.35rem;
+    color: rgba(164, 176, 204, 0.9);
+    font-size: 0.78rem;
+    font-weight: 900;
+    letter-spacing: 0.105em;
+    text-transform: uppercase;
+}
+
+.sbi-footer .footer-column h4::after,
+.sbi-footer .footer-social-title::after {
+    content: '';
+    display: block;
+    width: 28px;
+    height: 1px;
+    margin-top: 0.65rem;
+    background: linear-gradient(90deg, var(--sbi-blue), transparent);
+    opacity: 0.85;
+}
+
+.sbi-footer .footer-column a {
+    position: relative;
+    display: block;
+    width: fit-content;
+    margin-bottom: 0.78rem;
+    color: rgba(255, 255, 255, 0.88);
+    font-size: 0.88rem;
+    font-weight: 700;
+    transition:
+        color 0.28s ease,
+        transform 0.28s ease;
+}
+
+.sbi-footer .footer-column a::before {
+    content: '';
+    position: absolute;
+    left: -0.85rem;
+    top: 50%;
+    width: 5px;
+    height: 5px;
+    background: var(--sbi-blue);
+    opacity: 0;
+    transform: translateY(-50%) rotate(45deg) scale(0.7);
+    box-shadow: 0 0 10px rgba(0, 81, 255, 0.72);
+    transition:
+        opacity 0.28s ease,
+        transform 0.28s ease;
+}
+
+.sbi-footer .footer-column a:hover {
+    color: #ffffff;
+    transform: translateX(0.35rem);
+}
+
+.sbi-footer .footer-column a:hover::before {
+    opacity: 1;
+    transform: translateY(-50%) rotate(45deg) scale(1);
+}
+
+.sbi-footer .footer-social-card {
+    position: relative;
+    min-height: 160px;
+    padding: 1.3rem 1.35rem;
+    border: 1px solid rgba(26, 34, 53, 0.95);
+    background:
+        linear-gradient(180deg, rgba(9, 14, 25, 0.72), rgba(5, 8, 14, 0.72));
+    clip-path: polygon(
+        0 0,
+        100% 0,
+        100% calc(100% - 24px),
+        calc(100% - 24px) 100%,
+        0 100%
+    );
+}
+
+.sbi-footer .footer-social-card::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 0;
+    height: 0;
+    border-bottom: 24px solid var(--sbi-blue);
+    border-left: 24px solid transparent;
+    opacity: 0.92;
+}
+
+.sbi-footer .social-icons {
+    display: flex;
+    align-items: center;
+    gap: 0.95rem;
+}
+
+.sbi-footer .social-icons a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    color: rgba(255, 255, 255, 0.76);
+    border: 1px solid rgba(255, 255, 255, 0.055);
+    background: rgba(255, 255, 255, 0.015);
+    transition:
+        color 0.28s ease,
+        border-color 0.28s ease,
+        background-color 0.28s ease,
+        transform 0.28s ease;
+}
+
+.sbi-footer .social-icons a:hover {
+    color: #ffffff;
+    border-color: rgba(0, 81, 255, 0.55);
+    background: rgba(0, 81, 255, 0.08);
+    transform: translateY(-2px);
+}
+
+.sbi-footer .footer-contact-link {
+    display: inline-block;
+    margin-top: 1.25rem;
+    color: rgba(138, 147, 166, 0.9);
+    font-size: 0.82rem;
+    transition: color 0.28s ease;
+}
+
+.sbi-footer .footer-contact-link:hover {
+    color: #ffffff;
+}
+
+.sbi-footer .footer-bottom {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1.5rem;
+    margin-top: clamp(2.75rem, 5vw, 4.25rem);
+    padding-top: 1.35rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.065);
+    color: rgba(138, 147, 166, 0.78);
+    font-size: 0.78rem;
+}
+
+.sbi-footer .footer-bottom-signature {
+    color: rgba(255, 255, 255, 0.72);
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+/* ---------------------------------------------------------
+   RESPONSIVE
+   --------------------------------------------------------- */
+@media (max-width: 1180px) {
+    .sbi-footer .footer-shell {
+        grid-template-columns: 1fr;
+    }
+
+    .sbi-footer .footer-brand-block {
+        max-width: none;
+    }
+
+    .sbi-footer .footer-nav {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .sbi-footer .footer-social-card {
+        max-width: 360px;
+    }
+}
+
+@media (max-width: 768px) {
+    .sbi-footer {
+        padding-top: 3rem;
+    }
+
+    .sbi-footer .footer-logo-lockup {
+        align-items: center;
+    }
+
+    .sbi-footer .footer-logo-mark {
+        width: 58px;
+        height: 58px;
+    }
+
+    .sbi-footer .footer-logo-wordmark {
+        height: 34px;
+        max-width: 190px;
+    }
+
+    .sbi-footer .footer-nav {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+    }
+
+    .sbi-footer .footer-social-card {
+        max-width: none;
+    }
+
+    .sbi-footer .footer-bottom {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
+
+@media (max-width: 480px) {
+    .sbi-footer .footer-logo-lockup {
+        gap: 0.8rem;
+    }
+
+    .sbi-footer .footer-logo-wordmark {
+        max-width: 160px;
+    }
+
+    .sbi-footer .social-icons {
+        flex-wrap: wrap;
+    }
+}
