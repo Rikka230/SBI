@@ -1,0 +1,97 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    /* ============================================================
+       HELPERS
+       ============================================================ */
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userDocPath(uid) {
+      return /databases/(default)/documents/users/$(uid);
+    }
+
+    function hasUserDoc() {
+      return signedIn() && firestore.exists(userDocPath(request.auth.uid));
+    }
+
+    function currentUser() {
+      return firestore.get(userDocPath(request.auth.uid)).data;
+    }
+
+    function isActiveUser() {
+      return hasUserDoc()
+        && currentUser().statut != 'suspendu';
+    }
+
+    function isAdmin() {
+      return isActiveUser()
+        && (
+          currentUser().isGod == true ||
+          currentUser().role == 'admin'
+        );
+    }
+
+    function canManageAvatar(userId) {
+      return isActiveUser()
+        && (
+          request.auth.uid == userId ||
+          isAdmin()
+        );
+    }
+
+    /* ============================================================
+       MÉDIAS DES COURS
+       ============================================================
+       Chemin utilisé par le site :
+       courses/{courseId}/chapters/{chapterId}/{fileName}
+
+       Lecture : utilisateur connecté actif.
+       Upload : utilisateur connecté actif, image/vidéo, max 200 Mo.
+       Suppression : utilisateur connecté actif, logique fine gérée par l'app.
+       ============================================================ */
+    match /courses/{courseId}/chapters/{chapterId}/{fileName} {
+      allow read: if isActiveUser();
+
+      allow create, update: if isActiveUser()
+        && request.resource.size < 200 * 1024 * 1024
+        && (
+          request.resource.contentType.matches('image/.*') ||
+          request.resource.contentType.matches('video/.*')
+        );
+
+      allow delete: if isActiveUser();
+    }
+
+    /* ============================================================
+       AVATARS UTILISATEURS
+       ============================================================
+       Chemin utilisé par SBI 5.4 :
+       users/{userId}/avatar/{fileName}
+
+       - chaque utilisateur peut gérer son avatar
+       - admin/isGod peut gérer l'avatar d'un autre utilisateur
+         pour la migration automatique des anciens avatars base64
+       ============================================================ */
+    match /users/{userId}/avatar/{fileName} {
+      allow read: if isActiveUser();
+
+      allow create, update: if canManageAvatar(userId)
+        && request.resource.size < 8 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+
+      allow delete: if canManageAvatar(userId);
+    }
+
+    /* ============================================================
+       SÉCURITÉ PAR DÉFAUT
+       ============================================================ */
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

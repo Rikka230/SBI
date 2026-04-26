@@ -1,0 +1,386 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /* ============================================================
+       HELPERS
+       ============================================================ */
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userPath(uid) {
+      return /databases/$(database)/documents/users/$(uid);
+    }
+
+    function hasUserDoc() {
+      return signedIn() && exists(userPath(request.auth.uid));
+    }
+
+    function currentUser() {
+      return get(userPath(request.auth.uid)).data;
+    }
+
+    function isActiveUser() {
+      return hasUserDoc()
+        && currentUser().statut != 'suspendu';
+    }
+
+    function isGod() {
+      return isActiveUser()
+        && currentUser().isGod == true;
+    }
+
+    function isAdmin() {
+      return isActiveUser()
+        && (
+          currentUser().isGod == true ||
+          currentUser().role == 'admin'
+        );
+    }
+
+    function isTeacher() {
+      return isActiveUser()
+        && currentUser().role == 'teacher';
+    }
+
+    function isStudent() {
+      return isActiveUser()
+        && currentUser().role == 'student';
+    }
+
+    function isSelf(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function changedOnly(allowedKeys) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(allowedKeys);
+    }
+
+    function userProtectedFields() {
+      return [
+        'role',
+        'isGod',
+        'statut',
+        'dateCreation',
+        'createdAt',
+        'formationIds',
+        'formationsAcces'
+      ];
+    }
+
+    function ownUserWritableFields() {
+      return [
+        'prenom',
+        'nom',
+        'email',
+        'bio',
+        'privateData',
+        'photoURL',
+        'photoOriginal',
+        'isOnline',
+        'lastSeenAt',
+        'totalConnectionTime',
+        'learningProgress',
+        'xp',
+        'updatedAt'
+      ];
+    }
+
+    function safeOwnUserUpdate(userId) {
+      return isSelf(userId)
+        && changedOnly(ownUserWritableFields())
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(userProtectedFields());
+    }
+
+    function currentUserHasFormationIds() {
+      return currentUser().keys().hasAny(['formationIds'])
+        && currentUser().formationIds is list
+        && currentUser().formationIds.size() > 0;
+    }
+
+    function userDataHasFormationIds(userData) {
+      return userData.keys().hasAny(['formationIds'])
+        && userData.formationIds is list
+        && userData.formationIds.size() > 0;
+    }
+
+    function sharedFormationWithCurrentUser(userData) {
+      return currentUserHasFormationIds()
+        && userDataHasFormationIds(userData)
+        && userData.formationIds.hasAny(currentUser().formationIds);
+    }
+
+    function isAdminProfile(userData) {
+      return userData.isGod == true
+        || userData.role == 'admin';
+    }
+
+    function canReadUser(userId, userData) {
+      return isAdmin()
+        || isSelf(userId)
+        || (
+          isActiveUser()
+          && !isAdminProfile(userData)
+          && sharedFormationWithCurrentUser(userData)
+        );
+    }
+
+    function courseHasFormations(courseData) {
+      return courseData.keys().hasAny(['formations'])
+        && courseData.formations is list
+        && courseData.formations.size() > 0;
+    }
+
+    function courseSharedWithCurrentUser(courseData) {
+      return currentUserHasFormationIds()
+        && courseHasFormations(courseData)
+        && courseData.formations.hasAny(currentUser().formationIds);
+    }
+
+    function canReadCourse(courseData) {
+      return isAdmin()
+        || (
+          isTeacher()
+          && courseData.auteurId == request.auth.uid
+        )
+        || (
+          isActiveUser()
+          && courseData.actif == true
+          && courseSharedWithCurrentUser(courseData)
+        );
+    }
+
+    function validTeacherCourseWrite() {
+      return isTeacher()
+        && request.resource.data.auteurId == request.auth.uid
+        && request.resource.data.actif == false
+        && request.resource.data.statutValidation in ['draft', 'pending'];
+    }
+
+    function validTeacherCourseUpdate() {
+      return isTeacher()
+        && resource.data.auteurId == request.auth.uid
+        && request.resource.data.auteurId == resource.data.auteurId
+        && request.resource.data.actif == false
+        && request.resource.data.statutValidation in ['draft', 'pending'];
+    }
+
+    function currentUserHasFormationId(formationId) {
+      return currentUserHasFormationIds()
+        && formationId in currentUser().formationIds;
+    }
+
+    function isFormationStudent(formationData) {
+      return formationData.keys().hasAny(['students'])
+        && formationData.students is list
+        && request.auth.uid in formationData.students;
+    }
+
+    function isFormationTeacher(formationData) {
+      return formationData.keys().hasAny(['profs'])
+        && formationData.profs is list
+        && request.auth.uid in formationData.profs;
+    }
+
+    function canReadFormation(formationId, formationData) {
+      return isAdmin()
+        || (
+          isActiveUser()
+          && (
+            currentUserHasFormationId(formationId) ||
+            isFormationStudent(formationData) ||
+            isFormationTeacher(formationData)
+          )
+        );
+    }
+
+    function isDirectNotification() {
+      return resource.data.keys().hasAny(['destinataireId'])
+        && resource.data.destinataireId == request.auth.uid;
+    }
+
+    function isTargetStudentNotification() {
+      return resource.data.keys().hasAny(['targetStudents'])
+        && resource.data.targetStudents is list
+        && request.auth.uid in resource.data.targetStudents;
+    }
+
+    function isAdminValidationNotification() {
+      return isAdmin()
+        && resource.data.type == 'course_validation';
+    }
+
+    function canReadNotification() {
+      return isActiveUser()
+        && (
+          isAdminValidationNotification() ||
+          isDirectNotification() ||
+          isTargetStudentNotification()
+        );
+    }
+
+    function canCreateNotification() {
+      return isActiveUser()
+        && (
+          isAdmin() ||
+          (
+            isTeacher()
+            && request.resource.data.type == 'course_validation'
+            && request.resource.data.auteurId == request.auth.uid
+            && request.resource.data.status == 'open'
+          )
+        );
+    }
+
+    function canDismissNotification() {
+      return isActiveUser()
+        && changedOnly(['dismissedBy'])
+        && request.resource.data.dismissedBy is list
+        && request.auth.uid in request.resource.data.dismissedBy
+        && (
+          !resource.data.keys().hasAny(['dismissedBy']) ||
+          request.resource.data.dismissedBy.hasAll(resource.data.dismissedBy)
+        );
+    }
+
+    function canResolveNotification() {
+      return isAdmin()
+        && changedOnly(['status', 'resolvedAt', 'resolvedBy'])
+        && request.resource.data.status == 'resolved'
+        && request.resource.data.resolvedBy == request.auth.uid;
+    }
+
+    function progressBelongsToCurrentUser(progressId, progressData) {
+      return isSelf(progressId)
+        || (
+          progressData.keys().hasAny(['uid'])
+          && progressData.uid == request.auth.uid
+        )
+        || (
+          progressData.keys().hasAny(['userId'])
+          && progressData.userId == request.auth.uid
+        )
+        || (
+          progressData.keys().hasAny(['studentId'])
+          && progressData.studentId == request.auth.uid
+        );
+    }
+
+    function canReadProgressDoc(progressId, progressData) {
+      return isAdmin()
+        || (
+          isActiveUser()
+          && progressBelongsToCurrentUser(progressId, progressData)
+        );
+    }
+
+    function canWriteProgressDoc(progressId, progressData) {
+      return isAdmin()
+        || (
+          isActiveUser()
+          && progressBelongsToCurrentUser(progressId, progressData)
+        );
+    }
+
+    /* ============================================================
+       USERS
+       ============================================================ */
+
+    match /users/{userId} {
+      allow get, list: if canReadUser(userId, resource.data);
+
+      allow create: if isAdmin();
+
+      allow update: if isAdmin()
+        || safeOwnUserUpdate(userId);
+
+      allow delete: if isAdmin();
+    }
+
+    /* ============================================================
+       COURSES
+       ============================================================ */
+
+    match /courses/{courseId} {
+      allow get, list: if canReadCourse(resource.data);
+
+      allow create: if isAdmin()
+        || validTeacherCourseWrite();
+
+      allow update: if isAdmin()
+        || validTeacherCourseUpdate();
+
+      allow delete: if isAdmin()
+        || (
+          isTeacher()
+          && resource.data.auteurId == request.auth.uid
+          && resource.data.actif == false
+          && resource.data.statutValidation == 'draft'
+        );
+    }
+
+    /* ============================================================
+       FORMATIONS
+       ============================================================ */
+
+    match /formations/{formationId} {
+      allow get, list: if canReadFormation(formationId, resource.data);
+
+      allow create, update, delete: if isAdmin();
+    }
+
+    /* ============================================================
+       NOTIFICATIONS
+       ============================================================ */
+
+    match /notifications/{notificationId} {
+      allow get, list: if canReadNotification();
+
+      allow create: if canCreateNotification();
+
+      allow update: if canDismissNotification()
+        || canResolveNotification();
+
+      allow delete: if isAdmin();
+    }
+
+    /* ============================================================
+       PROGRESS / TRACKING LEGACY COLLECTIONS
+       ============================================================ */
+
+    match /progress/{progressId} {
+      allow get, list: if canReadProgressDoc(progressId, resource.data);
+      allow create: if canWriteProgressDoc(progressId, request.resource.data);
+      allow update: if canWriteProgressDoc(progressId, resource.data)
+        && canWriteProgressDoc(progressId, request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /courseProgress/{progressId} {
+      allow get, list: if canReadProgressDoc(progressId, resource.data);
+      allow create: if canWriteProgressDoc(progressId, request.resource.data);
+      allow update: if canWriteProgressDoc(progressId, resource.data)
+        && canWriteProgressDoc(progressId, request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /quizResults/{resultId} {
+      allow get, list: if canReadProgressDoc(resultId, resource.data);
+      allow create: if canWriteProgressDoc(resultId, request.resource.data);
+      allow update: if canWriteProgressDoc(resultId, resource.data)
+        && canWriteProgressDoc(resultId, request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    /* ============================================================
+       FALLBACK
+       ============================================================ */
+
+    match /{document=**} {
+      allow read, write: if isAdmin();
+    }
+  }
+}
