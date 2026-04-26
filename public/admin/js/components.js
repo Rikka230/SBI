@@ -18,6 +18,11 @@ styleFix.textContent = `
     .search-result-item:hover { background: rgba(16, 185, 129, 0.05); }
     .search-result-title { font-weight: bold; font-size: 0.9rem; margin-bottom: 2px; }
     .search-result-sub { font-size: 0.75rem; color: var(--text-muted, #6b7280); }
+    .admin-return-link { display: none !important; width: 100%; padding: 0.75rem 0.8rem; margin-bottom: 0.7rem; background: rgba(42, 87, 255, 0.08); color: var(--accent-blue, #2a57ff); border: 1px solid rgba(42, 87, 255, 0.25); border-radius: 10px; font-weight: 800; cursor: pointer; align-items: center; justify-content: center; gap: 0.5rem; transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease; white-space: nowrap; }
+    body.sbi-admin-visitor .admin-return-link { display: flex !important; }
+    .admin-return-link:hover { transform: translateY(-1px); background: rgba(42, 87, 255, 0.14); border-color: rgba(42, 87, 255, 0.45); }
+    .admin-return-link svg { width: 18px; height: 18px; fill: currentColor; flex-shrink: 0; }
+    .left-collapsed .admin-return-link { padding-left: 0.75rem; padding-right: 0.75rem; }
 `;
 document.head.appendChild(styleFix);
 
@@ -168,6 +173,10 @@ class StudentLeftPanel extends HTMLElement {
                 </ul>
 
                 <div style="margin-top: auto; padding: 1rem; border-top: 1px solid var(--border-color); overflow: hidden;">
+                    <button class="admin-return-link" type="button" onclick="window.location.href='/admin/index.html'" title="Retour au panel administrateur">
+                        <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.42-1.41L7.83 13H20v-2z"/></svg>
+                        <span class="nav-text">Retour admin</span>
+                    </button>
                     <button id="logout-btn-student" style="width: 100%; padding: 0.8rem; background: rgba(255, 74, 74, 0.05); color: var(--accent-red); border: 1px solid rgba(255, 74, 74, 0.2); border-radius: 8px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; transition: background 0.2s; white-space: nowrap;" onmouseover="this.style.background='rgba(255, 74, 74, 0.1)'" onmouseout="this.style.background='rgba(255, 74, 74, 0.05)'">
                         <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24" style="flex-shrink: 0;"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
                         <span class="nav-text">Déconnexion</span>
@@ -260,6 +269,10 @@ class TeacherLeftPanel extends HTMLElement {
                 </ul>
 
                 <div style="margin-top: auto; padding: 1rem; border-top: 1px solid var(--border-color); overflow: hidden;">
+                    <button class="admin-return-link" type="button" onclick="window.location.href='/admin/index.html'" title="Retour au panel administrateur">
+                        <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.42-1.41L7.83 13H20v-2z"/></svg>
+                        <span class="nav-text">Retour admin</span>
+                    </button>
                     <button id="logout-btn-teacher" style="width: 100%; padding: 0.8rem; background: rgba(255, 74, 74, 0.05); color: var(--accent-red); border: 1px solid rgba(255, 74, 74, 0.2); border-radius: 8px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; transition: background 0.2s; white-space: nowrap;" onmouseover="this.style.background='rgba(255, 74, 74, 0.1)'" onmouseout="this.style.background='rgba(255, 74, 74, 0.05)'">
                         <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24" style="flex-shrink: 0;"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
                         <span class="nav-text">Déconnexion</span>

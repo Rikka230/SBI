@@ -208,3 +208,23 @@
     user-select: none;
     -webkit-user-drag: none;
 }
+
+/* --- SBI 5.5 : polish édition avatar --- */
+.edit-avatar-btn {
+    outline: 2px solid rgba(42, 87, 255, 0);
+    outline-offset: 3px;
+}
+.edit-avatar-btn:hover {
+    transform: scale(1.08) translateY(-1px);
+    box-shadow: 0 8px 18px rgba(42, 87, 255, 0.35), 0 0 0 6px rgba(42, 87, 255, 0.12);
+    outline-color: rgba(42, 87, 255, 0.18);
+}
+.edit-avatar-btn:active {
+    transform: scale(0.98);
+}
+#btn-save-crop:disabled,
+#btn-upload-new:disabled {
+    opacity: 0.55;
+    cursor: not-allowed !important;
+    transform: none !important;
+}

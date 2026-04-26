@@ -166,3 +166,21 @@ body { background-color: var(--bg-body) !important; color: var(--text-main); }
     .search-bar-top { display: none; }
     .content-wrapper { padding: 1.5rem; }
 }
+
+/* --- SBI 5.5 : polish édition avatar --- */
+.edit-avatar-badge {
+    transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+}
+.edit-avatar-badge:hover {
+    transform: scale(1.08) translateY(-1px);
+    box-shadow: 0 8px 18px rgba(245, 158, 11, 0.28), 0 0 0 6px rgba(245, 158, 11, 0.12);
+}
+.edit-avatar-badge:active {
+    transform: scale(0.98);
+}
+#btn-save-crop:disabled,
+#btn-upload-new:disabled {
+    opacity: 0.55;
+    cursor: not-allowed !important;
+    transform: none !important;
+}

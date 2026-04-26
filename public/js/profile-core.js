@@ -37,6 +37,13 @@ let profilePresenceRefreshIntervalId = null;
 let latestPresenceData = null;
 
 const ONLINE_TTL_MS = 90000;
+const AVATAR_MAX_INPUT_BYTES = 20 * 1024 * 1024;
+
+const formatFileSize = (bytes) => {
+    const size = Number(bytes) || 0;
+    if (size < 1024 * 1024) return String(Math.max(1, Math.round(size / 1024))) + ' Ko';
+    return String(Math.round((size / (1024 * 1024)) * 10) / 10) + ' Mo';
+};
 
 const chunkArray = (items, size = 10) => {
     const chunks = [];
@@ -917,6 +924,53 @@ function initCropperEngine() {
     let originalImageDataUrl = null;
     let revokeCurrentCropSource = null;
     let currentCropCanExport = true;
+    let cropFeedbackElement = null;
+
+    function ensureCropFeedback() {
+        if (cropFeedbackElement) return cropFeedbackElement;
+
+        cropFeedbackElement = document.getElementById('crop-feedback');
+
+        if (!cropFeedbackElement) {
+            cropFeedbackElement = document.createElement('div');
+            cropFeedbackElement.id = 'crop-feedback';
+            cropFeedbackElement.style.cssText = 'display:none; width: min(90vw, 420px); box-sizing:border-box; margin: 0.8rem 0 0 0; padding: 0.75rem 0.9rem; border-radius: 10px; font-size: 0.88rem; line-height: 1.35; text-align: left; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.08); color: #fff;';
+
+            const cropZone = document.getElementById('crop-zone');
+            if (cropZone?.parentNode) {
+                cropZone.parentNode.insertBefore(cropFeedbackElement, cropZone.nextSibling);
+            } else {
+                modal.appendChild(cropFeedbackElement);
+            }
+        }
+
+        return cropFeedbackElement;
+    }
+
+    function setCropFeedback(message, type = 'info') {
+        const feedback = ensureCropFeedback();
+        if (!feedback) return;
+
+        const palette = {
+            info: ['rgba(42, 87, 255, 0.18)', 'rgba(42, 87, 255, 0.35)'],
+            success: ['rgba(16, 185, 129, 0.18)', 'rgba(16, 185, 129, 0.35)'],
+            warning: ['rgba(245, 158, 11, 0.18)', 'rgba(245, 158, 11, 0.35)'],
+            error: ['rgba(239, 68, 68, 0.18)', 'rgba(239, 68, 68, 0.35)']
+        }[type] || ['rgba(255,255,255,0.08)', 'rgba(255,255,255,0.12)'];
+
+        feedback.textContent = message;
+        feedback.style.display = 'block';
+        feedback.style.background = palette[0];
+        feedback.style.borderColor = palette[1];
+    }
+
+    function clearCropFeedback() {
+        const feedback = ensureCropFeedback();
+        if (!feedback) return;
+
+        feedback.textContent = '';
+        feedback.style.display = 'none';
+    }
 
     function releaseCurrentCropSource() {
         if (typeof revokeCurrentCropSource === 'function') {
@@ -938,6 +992,7 @@ function initCropperEngine() {
         imageElement.src = '';
         originalImageDataUrl = null;
         currentCropCanExport = true;
+        clearCropFeedback();
         releaseCurrentCropSource();
     }
 
@@ -955,6 +1010,7 @@ function initCropperEngine() {
         button.textContent = 'Changer l’image';
         button.disabled = true;
         button.title = "La photo actuelle vient de Firebase Storage. Elle est affichée en aperçu simple pour éviter les erreurs CORS. Clique sur “Changer d'image” pour envoyer une nouvelle image.";
+        setCropFeedback("La photo actuelle est affichée en aperçu. Pour la recadrer, clique sur “Changer d'image” et renvoie l’image depuis ton ordinateur.", 'info');
     }
 
     function compressImage(file, maxWidth, callback, onError = null) {
@@ -1070,6 +1126,7 @@ function initCropperEngine() {
         const previousUploadText = btnUpload?.textContent || "Changer d'image";
 
         modal.style.display = 'flex';
+        setCropFeedback('Chargement de la photo actuelle...', 'info');
 
         if (btnSave) {
             btnSave.textContent = 'Chargement...';
@@ -1104,13 +1161,15 @@ function initCropperEngine() {
             if (!currentCropCanExport) {
                 lockSaveForRemoteAvatar(btnSave);
             } else {
+                clearCropFeedback();
                 restoreSaveButton(btnSave, previousSaveText);
             }
         } catch (error) {
             console.warn('[SBI Profile] Avatar actuel non affichable dans le cropper :', error);
             modal.style.display = 'none';
             resetCropper();
-            alert("Impossible d'ouvrir la photo actuelle. Clique sur “Changer d'image” pour en choisir une nouvelle.");
+            modal.style.display = 'flex';
+            setCropFeedback("Impossible d'ouvrir la photo actuelle. Clique sur “Changer d'image” pour en choisir une nouvelle.", 'warning');
         } finally {
             if (btnUpload) {
                 btnUpload.textContent = previousUploadText;
@@ -1132,11 +1191,13 @@ function initCropperEngine() {
     }
 
     document.getElementById('btn-upload-new')?.addEventListener('click', () => {
+        clearCropFeedback();
         input.click();
     });
 
     input.addEventListener('change', (e) => {
         if (e.target.files && e.target.files.length > 0) {
+            const selectedFile = e.target.files[0];
             modal.style.display = 'flex';
 
             const btnSave = document.getElementById('btn-save-crop');
@@ -1148,24 +1209,40 @@ function initCropperEngine() {
                 btnSave.removeAttribute('title');
             }
 
+            if (!selectedFile.type?.startsWith('image/')) {
+                setCropFeedback('Ce fichier n’est pas une image. Choisis un fichier JPG, PNG ou WebP.', 'error');
+                input.value = '';
+                restoreSaveButton(btnSave, originalText === 'Changer l’image' ? 'Appliquer' : originalText);
+                return;
+            }
+
+            if (selectedFile.size > AVATAR_MAX_INPUT_BYTES) {
+                setCropFeedback('Image trop lourde (' + formatFileSize(selectedFile.size) + '). Compresse-la ou choisis une image de moins de ' + formatFileSize(AVATAR_MAX_INPUT_BYTES) + '.', 'warning');
+                input.value = '';
+                restoreSaveButton(btnSave, originalText === 'Changer l’image' ? 'Appliquer' : originalText);
+                return;
+            }
+
+            setCropFeedback('Préparation de l’image...', 'info');
             releaseCurrentCropSource();
             currentCropCanExport = true;
 
-            compressImage(e.target.files[0], 800, async (compressedBase64) => {
+            compressImage(selectedFile, 800, async (compressedBase64) => {
                 try {
                     originalImageDataUrl = compressedBase64;
                     currentCropCanExport = true;
                     await launchCropper(compressedBase64, { canvasSafe: true });
+                    clearCropFeedback();
                     input.value = '';
                 } catch (error) {
                     console.error(error);
-                    alert("Impossible d'afficher cette image dans l'éditeur.");
+                    setCropFeedback("Impossible d'afficher cette image dans l'éditeur. Essaie un JPG, PNG ou WebP plus léger.", 'error');
                 } finally {
                     restoreSaveButton(btnSave, originalText === 'Changer l’image' ? 'Appliquer' : originalText);
                 }
             }, (error) => {
                 console.error(error);
-                alert('Impossible de lire cette image.');
+                setCropFeedback('Impossible de lire cette image. Essaie une image JPG, PNG ou WebP plus légère.', 'error');
                 restoreSaveButton(btnSave, originalText === 'Changer l’image' ? 'Appliquer' : originalText);
             });
         }
@@ -1180,7 +1257,7 @@ function initCropperEngine() {
         if (!cropperInstance || !currentProfileId || !originalImageDataUrl) return;
 
         if (!currentCropCanExport) {
-            alert("La photo actuelle est affichée, mais elle ne peut pas être recadrée depuis Firebase Storage sans configuration CORS. Clique sur “Changer d'image” pour envoyer une nouvelle image.");
+            setCropFeedback("La photo actuelle est en aperçu. Clique sur “Changer d'image” pour envoyer une nouvelle image recadrable.", 'info');
             return;
         }
 
@@ -1188,6 +1265,7 @@ function initCropperEngine() {
 
         btnSave.textContent = 'Mise à jour...';
         btnSave.disabled = true;
+        setCropFeedback('Sauvegarde de la nouvelle photo...', 'info');
 
         try {
             const croppedCanvas = cropperInstance.getCroppedCanvas({
@@ -1213,7 +1291,7 @@ function initCropperEngine() {
             resetCropper();
         } catch (e) {
             console.error(e);
-            alert("Impossible de sauvegarder cette image. Si c'est l'avatar actuel déjà stocké dans Firebase Storage, clique sur “Changer d'image” et renvoie le fichier depuis ton ordinateur.");
+            setCropFeedback("Impossible de sauvegarder cette image. Essaie une image plus légère, puis relance l’envoi.", 'error');
         } finally {
             restoreSaveButton(btnSave, 'Appliquer');
         }

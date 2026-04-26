@@ -40,10 +40,10 @@
                 </div>
                 
                 <h2 style="font-size: 1.8rem; color: var(--text-main); margin-bottom: 1rem;">Bienvenue sur votre tableau de bord</h2>
-                <p style="color: var(--text-muted); font-size: 1.1rem; margin-bottom: 2.5rem;">Prêt à partager votre savoir et créer du nouveau contenu pédagogique ?</p>
+                <p style="color: var(--text-muted); font-size: 1.1rem; margin-bottom: 2.5rem;">Retrouvez vos formations, préparez vos cours et suivez vos contenus depuis un espace dédié.</p>
                 
-                <button id="btn-create-formation" class="action-btn" style="margin: 0 auto; padding: 1.2rem 2rem; font-size: 1.1rem; background: var(--accent-orange); color: white; border: none; border-radius: 30px; box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3); transition: all 0.3s;">
-                    + Créer un cours de Test (Envoi Notification)
+                <button class="action-btn" type="button" onclick="window.location.href='/teacher/mes-cours.html'" style="margin: 0 auto; padding: 1.2rem 2rem; font-size: 1.1rem; background: var(--accent-orange); color: white; border: none; border-radius: 30px; box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3); transition: all 0.3s;">
+                    Ouvrir mes formations & cours
                 </button>
             </div>
 
@@ -56,97 +56,36 @@
 
 <script type="module">
     import { db, auth } from '/js/firebase-init.js';
-    import { collection, addDoc, serverTimestamp, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+    import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
     import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-
-    let currentUid = null;
-    let currentUserProfile = null;
 
     document.addEventListener('DOMContentLoaded', () => {
         onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                currentUid = user.uid;
-
-                const userSnap = await getDoc(doc(db, "users", currentUid));
-
-                if (userSnap.exists()) {
-                    currentUserProfile = userSnap.data();
-                    
-                    const displayName = `${currentUserProfile.prenom || ''} ${currentUserProfile.nom || ''}`.trim() || "Professeur";
-                    const avatarUrl = currentUserProfile.photoURL || `https://ui-avatars.com/api/?name=${displayName}&background=111&color=fff`;
-                    
-                    const topName = document.getElementById('top-user-name');
-                    if (topName) topName.textContent = displayName;
-                    
-                    const topAvatar = document.getElementById('top-user-avatar');
-                    if (topAvatar) topAvatar.innerHTML = `<img src="${avatarUrl}" style="width:100%; height:100%; object-fit:cover;">`;
-                }
-            } else {
+            if (!user) {
                 window.location.replace('/login.html');
+                return;
+            }
+
+            try {
+                const userSnap = await getDoc(doc(db, "users", user.uid));
+
+                if (!userSnap.exists()) return;
+
+                const currentUserProfile = userSnap.data();
+                const displayName = `${currentUserProfile.prenom || ''} ${currentUserProfile.nom || ''}`.trim() || "Professeur";
+                const avatarUrl = currentUserProfile.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=111&color=fff`;
+                
+                const topName = document.getElementById('top-user-name');
+                if (topName) topName.textContent = displayName;
+                
+                const topAvatar = document.getElementById('top-user-avatar');
+                if (topAvatar) {
+                    topAvatar.innerHTML = `<img src="${avatarUrl}" alt="Avatar" style="width:100%; height:100%; object-fit:cover;">`;
+                }
+            } catch (error) {
+                console.warn('[SBI Teacher] Impossible de charger le résumé du profil :', error);
             }
         });
-
-        const createTestButton = document.getElementById('btn-create-formation');
-
-        if (createTestButton) {
-            createTestButton.addEventListener('click', async () => {
-                if (!currentUid) return;
-
-                const btn = document.getElementById('btn-create-formation');
-                const originalText = btn.textContent;
-
-                btn.textContent = "Création et envoi en cours...";
-                btn.disabled = true;
-                btn.style.opacity = "0.5";
-
-                try {
-                    const testTitle = "Cours de Test Teacher";
-                    
-                    const courseRef = await addDoc(collection(db, "courses"), {
-                        titre: testTitle,
-                        actif: false,
-                        statutValidation: "pending",
-                        formations: [],
-                        auteurId: currentUid,
-                        chapitres: [{
-                            id: "chap_test",
-                            type: "text",
-                            titre: "Étape Générée",
-                            contenu: "<p>Ceci est un cours de test généré par le bouton pour tester la cloche de notification.</p>",
-                            mediaType: "image",
-                            mediaImage: "",
-                            mediaVideo: ""
-                        }],
-                        dateCreation: serverTimestamp()
-                    });
-
-                    let auteurName = "Professeur Inconnu";
-
-                    if (currentUserProfile) {
-                        auteurName = `${currentUserProfile.prenom || ''} ${currentUserProfile.nom || ''}`.trim() || currentUserProfile.email;
-                    }
-
-                    await addDoc(collection(db, "notifications"), {
-                        type: 'course_validation',
-                        courseId: courseRef.id,
-                        courseTitle: testTitle,
-                        auteurId: currentUid,
-                        auteurName: auteurName,
-                        dateCreation: serverTimestamp()
-                    });
-
-                    alert("✅ Faux cours créé ! Une notification a été envoyée aux Administrateurs.");
-                    
-                } catch (error) {
-                    console.error(error);
-                    alert("❌ Erreur lors de la création du cours.");
-                } finally {
-                    btn.textContent = originalText;
-                    btn.disabled = false;
-                    btn.style.opacity = "1";
-                }
-            });
-        }
     });
 </script>
 
