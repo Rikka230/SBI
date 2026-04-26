@@ -33,7 +33,6 @@ const clearLoginError = () => {
     if (!errorMessage) return;
 
     errorMessage.textContent = '';
-    errorMessage.style.display = 'none';
     errorMessage.classList.remove('is-visible');
 };
 
@@ -41,7 +40,6 @@ const showLoginError = (message) => {
     if (!errorMessage) return;
 
     errorMessage.textContent = message;
-    errorMessage.style.display = 'block';
     errorMessage.classList.add('is-visible');
 };
 
