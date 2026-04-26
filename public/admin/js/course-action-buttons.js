@@ -12,6 +12,14 @@ function canEditCourse({ courseData, currentUid, isAdminLike }) {
     return isAdminLike || courseData?.auteurId === currentUid;
 }
 
+
+function getPreviewUrl(courseId, isAdminLike) {
+    const isTeacherArea = window.location.pathname.startsWith('/teacher/');
+    const basePath = isTeacherArea && !isAdminLike ? '/teacher/cours-viewer.html' : '/student/cours-viewer.html';
+
+    return `${basePath}?id=${encodeURIComponent(courseId)}&preview=true`;
+}
+
 function canDeleteCourse({ courseData, currentUid, isAdminLike }) {
     if (isAdminLike) return true;
 
@@ -30,7 +38,8 @@ export function renderCourseActionButtons({ courseId, courseData, currentUid, is
     if (canEditCourse({ courseData, currentUid, isAdminLike })) {
         buttons.push(`<button class="action-btn" style="width: auto; margin: 0; color: var(--accent-blue); background: transparent; border: 1px solid var(--border-color, #333);" onclick="window.editCourse('${courseId}')">Éditer</button>`);
     } else {
-        buttons.push(`<button class="action-btn" style="width: auto; margin: 0; color: var(--accent-blue); background: transparent; border: 1px solid var(--border-color, #333);" onclick="window.openCoursePreview('${courseId}')">Visualiser</button>`);
+        const previewUrl = getPreviewUrl(courseId, isAdminLike);
+        buttons.push(`<button class="action-btn" style="width: auto; margin: 0; color: var(--accent-blue); background: transparent; border: 1px solid var(--border-color, #333);" onclick="window.open('${previewUrl}', '_blank')">Visualiser</button>`);
     }
 
     if (canDeleteCourse({ courseData, currentUid, isAdminLike })) {

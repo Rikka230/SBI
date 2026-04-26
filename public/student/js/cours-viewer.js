@@ -11,6 +11,8 @@ import { getUserLearningProgress, validateChapterProgress, startCourseProgress }
 
 let currentUid = null;
 let isAdminOrTeacher = false;
+let currentUserRole = 'student';
+let currentUserIsGod = false;
 let isPreviewMode = false; // FIX : Détection du mode Aperçu !
 let courseData = null;
 let currentChapterIndex = -1;
@@ -35,7 +37,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 const snap = await getDoc(doc(db, "users", currentUid));
                 if (snap.exists()) {
                     const uData = snap.data();
-                    isAdminOrTeacher = (uData.role === 'admin' || uData.role === 'teacher' || uData.isGod);
+                    currentUserRole = uData.role || 'student';
+                    currentUserIsGod = uData.isGod === true;
+                    isAdminOrTeacher = (currentUserRole === 'admin' || currentUserRole === 'teacher' || currentUserIsGod);
                 }
                 await initViewer();
             } catch (e) {
@@ -48,6 +52,56 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
+function isTeacherViewerPage() {
+    return window.location.pathname.startsWith('/teacher/');
+}
+
+function getDefaultBackUrl(formId = '') {
+    if (isTeacherViewerPage()) {
+        return '/teacher/mes-cours.html';
+    }
+
+    if (currentUserRole === 'admin' || currentUserIsGod) {
+        return '/admin/formations-cours.html';
+    }
+
+    const query = formId ? `?formId=${encodeURIComponent(formId)}` : '';
+    return `/student/mes-cours.html${query}`;
+}
+
+function getSafeReferrerUrl() {
+    if (!document.referrer) return '';
+
+    try {
+        const referrerUrl = new URL(document.referrer);
+
+        if (referrerUrl.origin !== window.location.origin) return '';
+        if (referrerUrl.pathname.endsWith('/cours-viewer.html')) return '';
+
+        return `${referrerUrl.pathname}${referrerUrl.search}${referrerUrl.hash}`;
+    } catch (error) {
+        return '';
+    }
+}
+
+function leaveViewer(formId = '') {
+    const fallbackUrl = getSafeReferrerUrl() || getDefaultBackUrl(formId);
+
+    if (isPreviewMode && window.opener && !window.opener.closed) {
+        window.close();
+
+        setTimeout(() => {
+            if (!window.closed) {
+                window.location.href = fallbackUrl;
+            }
+        }, 150);
+
+        return;
+    }
+
+    window.location.href = fallbackUrl;
+}
+
 async function initViewer() {
     const urlParams = new URLSearchParams(window.location.search);
     const courseId = urlParams.get('id');
@@ -59,7 +113,7 @@ async function initViewer() {
         document.body.insertAdjacentHTML('afterbegin', '<div style="background:var(--accent-orange, #f59e0b); color:white; text-align:center; padding:10px; font-weight:bold; z-index:9999; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">👁️ MODE PRÉVISUALISATION - Aucune donnée d\'apprentissage ne sera sauvegardée.</div>');
     }
     
-    if(!courseId) return window.location.replace('/student/mes-cours.html');
+    if(!courseId) return window.location.replace(getDefaultBackUrl());
 
     const cSnap = await getDoc(doc(db, "courses", courseId));
     if(!cSnap.exists()) {
@@ -73,8 +127,7 @@ async function initViewer() {
     const formId = (courseData.formations && courseData.formations.length > 0) ? courseData.formations[0] : '';
     document.getElementById('btn-back-dynamic').onclick = (e) => {
         e.preventDefault();
-        if (isPreviewMode) window.close(); // Ferme simplement l'onglet si c'est un aperçu
-        else window.location.href = `/student/mes-cours.html?formId=${formId}`;
+        leaveViewer(formId);
     };
 
     if (!isPreviewMode) {
@@ -319,8 +372,9 @@ async function validateAndNext(isLast, scoreEarned = 0) {
         }
         renderSidebar();
         if (isLast) {
-            alert("Aperçu du cours terminé ! Vous pouvez fermer cet onglet.");
-            window.close();
+            alert("Aperçu du cours terminé ! Vous retournez à la liste des cours.");
+            const formId = (courseData.formations && courseData.formations.length > 0) ? courseData.formations[0] : '';
+            leaveViewer(formId);
         } else {
             loadChapter(currentChapterIndex + 1);
         }
