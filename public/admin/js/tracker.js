@@ -9,10 +9,13 @@
  * - les écrans admin / profil ne considèrent l'utilisateur en ligne que si
  *   isOnline === true ET lastSeenAt est récent.
  *
- * Cette logique évite les utilisateurs bloqués "en ligne" si l'onglet est
- * fermé brutalement et que le passage à false n'a pas le temps de partir.
+ * Sécurité :
+ * - auth.js est importé ici pour déclencher le route guard sur toutes les
+ *   pages privées qui chargent tracker.js.
  * =======================================================================
  */
+
+import '/js/auth.js';
 
 import { db, auth } from '/js/firebase-init.js';
 import {
@@ -29,8 +32,8 @@ let activeUid = null;
 let connectionSyncIntervalId = null;
 let heartbeatIntervalId = null;
 
-const CONNECTION_SYNC_INTERVAL_MS = 300000; // 5 minutes
-const PRESENCE_HEARTBEAT_INTERVAL_MS = 30000; // 30 secondes
+const CONNECTION_SYNC_INTERVAL_MS = 300000;
+const PRESENCE_HEARTBEAT_INTERVAL_MS = 30000;
 
 const clearTrackerIntervals = () => {
     if (connectionSyncIntervalId) {
@@ -165,7 +168,6 @@ onAuthStateChanged(auth, async (user) => {
     }
 });
 
-// L'utilisateur change d'onglet : on suit l'état de la fenêtre active.
 document.addEventListener("visibilitychange", () => {
     if (!activeUid) return;
 
@@ -177,7 +179,6 @@ document.addEventListener("visibilitychange", () => {
     }
 });
 
-// Best-effort : pas fiable à 100%, mais lastSeenAt + expiration corrige les cas ratés.
 window.addEventListener('pagehide', () => {
     if (!activeUid) return;
     markOffline().catch(() => {});
