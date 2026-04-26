@@ -18,6 +18,7 @@ import {
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import { getUserLearningProgress, resetCourseProgress, updateQuizScore } from '/js/course-engine.js';
 import {
+    getProfileAvatarCropSource,
     isLegacyAvatarDataUrl,
     migrateLegacyAvatarForUser,
     saveProfileAvatarToStorage
@@ -914,12 +915,43 @@ function initCropperEngine() {
     if (!modal || !input || !imageElement) return;
 
     let originalImageDataUrl = null;
+    let revokeCurrentCropSource = null;
 
-    function compressImage(file, maxWidth, callback) {
+    function releaseCurrentCropSource() {
+        if (typeof revokeCurrentCropSource === 'function') {
+            revokeCurrentCropSource();
+        }
+
+        revokeCurrentCropSource = null;
+    }
+
+    function resetCropper() {
+        if (cropperInstance) {
+            cropperInstance.destroy();
+            cropperInstance = null;
+        }
+
+        imageElement.onload = null;
+        imageElement.onerror = null;
+        imageElement.removeAttribute('crossorigin');
+        imageElement.src = '';
+        originalImageDataUrl = null;
+        releaseCurrentCropSource();
+    }
+
+    function compressImage(file, maxWidth, callback, onError = null) {
         const reader = new FileReader();
+
+        reader.onerror = () => {
+            if (typeof onError === 'function') onError(new Error('Lecture du fichier impossible.'));
+        };
 
         reader.onload = function(event) {
             const img = new Image();
+
+            img.onerror = () => {
+                if (typeof onError === 'function') onError(new Error('Image illisible.'));
+            };
 
             img.onload = function() {
                 const canvas = document.createElement('canvas');
@@ -947,45 +979,106 @@ function initCropperEngine() {
     }
 
     function launchCropper(src) {
-        if (cropperInstance) {
-            cropperInstance.destroy();
-            cropperInstance = null;
+        return new Promise((resolve, reject) => {
+            if (!src) {
+                reject(new Error('Aucune image à afficher.'));
+                return;
+            }
+
+            if (cropperInstance) {
+                cropperInstance.destroy();
+                cropperInstance = null;
+            }
+
+            imageElement.onload = null;
+            imageElement.onerror = null;
+            imageElement.src = '';
+
+            if (/^https?:\/\//i.test(src)) {
+                imageElement.crossOrigin = 'anonymous';
+            } else {
+                imageElement.removeAttribute('crossorigin');
+            }
+
+            imageElement.onload = () => {
+                window.setTimeout(() => {
+                    cropperInstance = new Cropper(imageElement, {
+                        aspectRatio: 1,
+                        viewMode: 1,
+                        dragMode: 'move',
+                        autoCropArea: 1,
+                        cropBoxMovable: false,
+                        cropBoxResizable: false,
+                        guides: false,
+                        highlight: false,
+                        background: true
+                    });
+
+                    resolve();
+                }, 50);
+            };
+
+            imageElement.onerror = () => {
+                reject(new Error("Impossible d'afficher l'avatar actuel dans l'éditeur."));
+            };
+
+            imageElement.src = src;
+        });
+    }
+
+    async function openCurrentAvatarInEditor() {
+        const btnSave = document.getElementById('btn-save-crop');
+        const btnUpload = document.getElementById('btn-upload-new');
+        const previousSaveText = btnSave?.textContent || 'Appliquer';
+        const previousUploadText = btnUpload?.textContent || "Changer d'image";
+
+        modal.style.display = 'flex';
+
+        if (btnSave) {
+            btnSave.textContent = 'Chargement...';
+            btnSave.disabled = true;
         }
 
-        imageElement.crossOrigin = "anonymous";
-        imageElement.src = src;
+        if (btnUpload) {
+            btnUpload.textContent = 'Chargement de la photo...';
+            btnUpload.disabled = true;
+        }
 
-        setTimeout(() => {
-            cropperInstance = new Cropper(imageElement, {
-                aspectRatio: 1,
-                viewMode: 1,
-                dragMode: 'move',
-                autoCropArea: 1,
-                cropBoxMovable: false,
-                cropBoxResizable: false,
-                guides: false,
-                highlight: false,
-                background: true
-            });
-        }, 150);
+        try {
+            releaseCurrentCropSource();
+
+            const avatarSource = await getProfileAvatarCropSource(currentProfileId, currentProfileData);
+
+            if (!avatarSource?.src) {
+                input.click();
+                return;
+            }
+
+            revokeCurrentCropSource = avatarSource.revoke;
+            originalImageDataUrl = avatarSource.src;
+
+            await launchCropper(avatarSource.src);
+        } catch (error) {
+            console.warn('[SBI Profile] Avatar actuel non affichable dans le cropper :', error);
+            alert("Impossible d'ouvrir la photo actuelle. Clique sur “Changer d'image” pour en choisir une nouvelle.");
+        } finally {
+            if (btnSave) {
+                btnSave.textContent = previousSaveText;
+                btnSave.disabled = false;
+            }
+
+            if (btnUpload) {
+                btnUpload.textContent = previousUploadText;
+                btnUpload.disabled = false;
+            }
+        }
     }
 
     const openTrigger = document.getElementById('btn-trigger-crop');
 
     if (openTrigger) {
         openTrigger.addEventListener('click', () => {
-            modal.style.display = 'flex';
-
-            const imageToLoad = (currentProfileData && currentProfileData.photoOriginal)
-                ? currentProfileData.photoOriginal
-                : (currentProfileData && currentProfileData.photoURL ? currentProfileData.photoURL : null);
-
-            if (imageToLoad) {
-                originalImageDataUrl = imageToLoad;
-                launchCropper(imageToLoad);
-            } else {
-                input.click();
-            }
+            openCurrentAvatarInEditor();
         });
     }
 
@@ -1000,14 +1093,26 @@ function initCropperEngine() {
             const btnSave = document.getElementById('btn-save-crop');
             const originalText = btnSave.textContent;
 
-            btnSave.textContent = "Traitement...";
+            btnSave.textContent = 'Traitement...';
             btnSave.disabled = true;
 
-            compressImage(e.target.files[0], 800, (compressedBase64) => {
-                originalImageDataUrl = compressedBase64;
-                launchCropper(compressedBase64);
-                input.value = '';
+            releaseCurrentCropSource();
 
+            compressImage(e.target.files[0], 800, async (compressedBase64) => {
+                try {
+                    originalImageDataUrl = compressedBase64;
+                    await launchCropper(compressedBase64);
+                    input.value = '';
+                } catch (error) {
+                    console.error(error);
+                    alert("Impossible d'afficher cette image dans l'éditeur.");
+                } finally {
+                    btnSave.textContent = originalText;
+                    btnSave.disabled = false;
+                }
+            }, (error) => {
+                console.error(error);
+                alert("Impossible de lire cette image.");
                 btnSave.textContent = originalText;
                 btnSave.disabled = false;
             });
@@ -1016,13 +1121,7 @@ function initCropperEngine() {
 
     document.getElementById('btn-cancel-crop')?.addEventListener('click', () => {
         modal.style.display = 'none';
-
-        if (cropperInstance) {
-            cropperInstance.destroy();
-            cropperInstance = null;
-        }
-
-        imageElement.src = '';
+        resetCropper();
     });
 
     document.getElementById('btn-save-crop')?.addEventListener('click', async () => {
@@ -1030,7 +1129,7 @@ function initCropperEngine() {
 
         const btnSave = document.getElementById('btn-save-crop');
 
-        btnSave.textContent = "Mise à jour...";
+        btnSave.textContent = 'Mise à jour...';
         btnSave.disabled = true;
 
         const croppedCanvas = cropperInstance.getCroppedCanvas({
@@ -1051,21 +1150,15 @@ function initCropperEngine() {
                 }
             );
 
-            loadProfileData(currentProfileId);
+            await loadProfileData(currentProfileId);
 
             modal.style.display = 'none';
-
-            if (cropperInstance) {
-                cropperInstance.destroy();
-                cropperInstance = null;
-            }
-
-            imageElement.src = '';
+            resetCropper();
         } catch (e) {
             console.error(e);
-            alert("Erreur réseau ou fichier trop lourd.");
+            alert('Erreur réseau ou fichier trop lourd.');
         } finally {
-            btnSave.textContent = "Appliquer";
+            btnSave.textContent = 'Appliquer';
             btnSave.disabled = false;
         }
     });

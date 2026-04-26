@@ -21,6 +21,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import {
     deleteObject,
+    getBlob,
     getDownloadURL,
     ref,
     uploadString
@@ -192,6 +193,77 @@ export const migrateLegacyAvatarForUser = async (userId, userData = {}, options 
         cleaned: isLegacyAvatarDataUrl(legacyOriginal),
         skipped: false,
         ...uploaded
+    };
+};
+
+
+export const getProfileAvatarCropSource = async (userId, userData = {}) => {
+    if (!userData || !userId) {
+        return {
+            src: null,
+            source: 'missing-profile',
+            revoke: null
+        };
+    }
+
+    if (isLegacyAvatarDataUrl(userData.photoOriginal)) {
+        return {
+            src: userData.photoOriginal,
+            source: 'legacy-original',
+            revoke: null
+        };
+    }
+
+    if (isLegacyAvatarDataUrl(userData.photoURL)) {
+        return {
+            src: userData.photoURL,
+            source: 'legacy-avatar',
+            revoke: null
+        };
+    }
+
+    if (isSafeAvatarPathForUser(userData.photoStoragePath, userId)) {
+        const avatarBlob = await getBlob(ref(storage, userData.photoStoragePath));
+        const objectUrl = URL.createObjectURL(avatarBlob);
+
+        return {
+            src: objectUrl,
+            source: 'storage-blob',
+            revoke: () => URL.revokeObjectURL(objectUrl)
+        };
+    }
+
+    if (isFirebaseStorageUrl(userData.photoURL)) {
+        try {
+            const response = await fetch(userData.photoURL, { mode: 'cors' });
+
+            if (response.ok) {
+                const avatarBlob = await response.blob();
+                const objectUrl = URL.createObjectURL(avatarBlob);
+
+                return {
+                    src: objectUrl,
+                    source: 'storage-url-blob',
+                    revoke: () => URL.revokeObjectURL(objectUrl)
+                };
+            }
+        } catch (error) {
+            console.warn('[SBI Avatar] Avatar Storage non convertible en blob, fallback URL directe :', error);
+        }
+    }
+
+    if (typeof userData.photoURL === 'string' && userData.photoURL.trim()) {
+        return {
+            src: userData.photoURL,
+            source: 'direct-url',
+            revoke: null
+        };
+    }
+
+    return {
+        src: null,
+        source: 'no-avatar',
+        revoke: null
     };
 };
 
