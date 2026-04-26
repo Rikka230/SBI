@@ -3,13 +3,13 @@
  * NOTIFICATIONS & SEARCH - Écoute temps réel, Moteur de Recherche Global
  * =======================================================================
  *
- * Étape 3.1 :
- * - notifications ciblées
+ * Étape 3.1 patch :
+ * - correction fermeture panneau notifications :
+ *   profile-section, boutons profil / refresh / déconnexion reviennent bien
+ * - modal de choix pour les élèves sur "Nouveau cours disponible"
  * - notifications admin non destructives au clic
- * - mini-modal pour les demandes de validation
  * - dismissedBy pour masquer une notification uniquement pour soi
  * - status/resolvedAt pour résoudre globalement une validation traitée
- * - conservation du moteur de recherche actuel
  * =======================================================================
  */
 
@@ -129,42 +129,18 @@ document.addEventListener('DOMContentLoaded', () => {
                         svg.style.fill = activeColor;
                     }
                 } else {
-                    if (profileSection) {
-                        profileSection.style.display = 'block';
-                    }
-
-                    notifSection.style.display = 'none';
-
-                    if (titleNotif) {
-                        titleNotif.style.display = 'none';
-                    }
-
-                    const svg = bellBtn.querySelector('svg');
-                    if (svg) {
-                        svg.style.fill = 'var(--text-muted, #9ca3af)';
-                    }
+                    closeNotificationsPanel();
                 }
             }
         } else if (
             notifSection &&
             notifSection.style.display === 'block' &&
             !e.target.closest('#notifications-section') &&
-            !e.target.closest('#sbi-validation-action-modal')
+            !e.target.closest('#sbi-validation-action-modal') &&
+            !e.target.closest('#sbi-student-course-action-modal') &&
+            !e.target.closest('#teacher-action-modal')
         ) {
-            if (profileSection) {
-                profileSection.style.display = 'block';
-            }
-
-            notifSection.style.display = 'none';
-
-            if (titleNotif) {
-                titleNotif.style.display = 'none';
-            }
-
-            const bellIcon = document.querySelector('#notif-bell-btn svg');
-            if (bellIcon) {
-                bellIcon.style.fill = 'var(--text-muted, #9ca3af)';
-            }
+            closeNotificationsPanel();
         }
     });
 });
@@ -436,6 +412,15 @@ function renderNotificationsList(notifs) {
                 return;
             }
 
+            if (notifType === 'new_course_published') {
+                showStudentCourseActionModal({
+                    notifId,
+                    courseId,
+                    courseTitle
+                });
+                return;
+            }
+
             e.currentTarget.style.display = 'none';
 
             await dismissNotificationForCurrentUser(notifId);
@@ -460,8 +445,6 @@ function renderNotificationsList(notifs) {
                 } else {
                     window.location.assign(`/admin/formations-cours.html?edit=${courseId}`);
                 }
-            } else if (notifType === 'new_course_published') {
-                window.location.assign(`/student/cours-viewer.html?id=${courseId}`);
             } else {
                 if (window.location.pathname.includes('formations-cours.html') && typeof window.editCourse === 'function') {
                     window.editCourse(courseId);
@@ -474,9 +457,20 @@ function renderNotificationsList(notifs) {
 }
 
 function closeNotificationsPanel() {
-    const nSection = document.getElementById('notifications-section');
-    if (nSection) {
-        nSection.style.display = 'none';
+    const notifSection = document.getElementById('notifications-section');
+    const profileSection = document.getElementById('profile-section');
+    const titleNotif = document.getElementById('notif-panel-title');
+
+    if (notifSection) {
+        notifSection.style.display = 'none';
+    }
+
+    if (profileSection) {
+        profileSection.style.display = 'block';
+    }
+
+    if (titleNotif) {
+        titleNotif.style.display = 'none';
     }
 
     const bellIcon = document.querySelector('#notif-bell-btn svg');
@@ -497,6 +491,23 @@ function closeValidationActionModal() {
 
     window.setTimeout(() => {
         modal.remove();
+        closeNotificationsPanel();
+    }, 220);
+}
+
+function closeStudentCourseActionModal() {
+    const modal = document.getElementById('sbi-student-course-action-modal');
+    if (!modal) return;
+
+    modal.style.opacity = '0';
+    const panel = modal.querySelector('[data-modal-panel]');
+    if (panel) {
+        panel.style.transform = 'translateY(14px) scale(0.98)';
+    }
+
+    window.setTimeout(() => {
+        modal.remove();
+        closeNotificationsPanel();
     }, 220);
 }
 
@@ -579,6 +590,79 @@ function showAdminValidationActionModal({ notifId, courseId, courseTitle, auteur
     });
 }
 
+function showStudentCourseActionModal({ notifId, courseId, courseTitle }) {
+    let modal = document.getElementById('sbi-student-course-action-modal');
+    if (modal) modal.remove();
+
+    closeNotificationsPanel();
+
+    modal = document.createElement('div');
+    modal.id = 'sbi-student-course-action-modal';
+    modal.style.cssText = 'position:fixed; inset:0; z-index:9999; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.68); backdrop-filter:blur(4px); opacity:0; transition:opacity 0.22s ease;';
+
+    modal.innerHTML = `
+        <div data-modal-panel style="width:min(92vw, 440px); background:var(--bg-card, #111); border:1px solid var(--border-color, #333); border-radius:14px; padding:2rem; box-shadow:0 18px 50px rgba(0,0,0,0.55); transform:translateY(14px) scale(0.98); transition:transform 0.22s ease;">
+            <div style="display:flex; align-items:center; gap:1rem; margin-bottom:1.25rem;">
+                <div style="width:46px; height:46px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:rgba(42,87,255,0.13); color:var(--accent-blue, #2A57FF); flex-shrink:0;">
+                    <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3z"/></svg>
+                </div>
+                <div>
+                    <h3 style="margin:0; color:var(--text-main, #fff); font-size:1.25rem;">Nouveau cours disponible</h3>
+                    <p style="margin:0.25rem 0 0; color:var(--text-muted, #9ca3af); font-size:0.86rem;">Tu peux l’ouvrir maintenant ou le garder pour plus tard.</p>
+                </div>
+            </div>
+
+            <div style="background:rgba(255,255,255,0.035); border:1px solid rgba(255,255,255,0.06); border-radius:10px; padding:1rem; margin-bottom:1.4rem;">
+                <p style="margin:0 0 0.35rem; color:var(--text-muted, #9ca3af); font-size:0.78rem; text-transform:uppercase; letter-spacing:0.08em; font-weight:bold;">Cours</p>
+                <p style="margin:0; color:var(--text-main, #fff); font-weight:800;">${courseTitle}</p>
+            </div>
+
+            <div style="display:flex; flex-direction:column; gap:0.75rem;">
+                <button id="btn-student-open-course" style="width:100%; padding:0.95rem 1rem; border:none; border-radius:8px; cursor:pointer; background:var(--accent-blue, #2A57FF); color:white; font-weight:800;">
+                    Ouvrir le cours
+                </button>
+                <button id="btn-student-later" style="width:100%; padding:0.95rem 1rem; border:1px solid var(--border-color, #333); border-radius:8px; cursor:pointer; background:transparent; color:var(--text-main, #fff); font-weight:700;">
+                    Garder pour plus tard
+                </button>
+                <button id="btn-student-dismiss" style="width:100%; padding:0.9rem 1rem; border:none; border-radius:8px; cursor:pointer; background:rgba(255,74,74,0.08); color:var(--accent-red, #ff4a4a); font-weight:800;">
+                    Masquer pour moi
+                </button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    requestAnimationFrame(() => {
+        modal.style.opacity = '1';
+        const panel = modal.querySelector('[data-modal-panel]');
+        if (panel) {
+            panel.style.transform = 'translateY(0) scale(1)';
+        }
+    });
+
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            closeStudentCourseActionModal();
+        }
+    });
+
+    document.getElementById('btn-student-open-course').addEventListener('click', async () => {
+        await dismissNotificationForCurrentUser(notifId);
+        closeStudentCourseActionModal();
+        window.location.assign(`/student/cours-viewer.html?id=${courseId}`);
+    });
+
+    document.getElementById('btn-student-later').addEventListener('click', () => {
+        closeStudentCourseActionModal();
+    });
+
+    document.getElementById('btn-student-dismiss').addEventListener('click', async () => {
+        await dismissNotificationForCurrentUser(notifId);
+        closeStudentCourseActionModal();
+    });
+}
+
 function showTeacherCourseActionModal(courseId, courseTitle) {
     let modal = document.getElementById('teacher-action-modal');
 
@@ -622,11 +706,13 @@ function showTeacherCourseActionModal(courseId, courseTitle) {
 
     document.getElementById('btn-modal-view').onclick = () => {
         modal.style.display = 'none';
+        closeNotificationsPanel();
         window.open(`/student/cours-viewer.html?id=${courseId}&preview=true`, '_blank');
     };
 
     document.getElementById('btn-modal-edit').onclick = () => {
         modal.style.display = 'none';
+        closeNotificationsPanel();
         window.location.assign(`/teacher/mes-cours.html?edit=${courseId}`);
     };
 
@@ -634,6 +720,7 @@ function showTeacherCourseActionModal(courseId, courseTitle) {
         modal.style.opacity = '0';
         setTimeout(() => {
             modal.style.display = 'none';
+            closeNotificationsPanel();
         }, 300);
     };
 }
