@@ -1182,7 +1182,11 @@ async function saveCourseToFirebase(actionType = 'admin_save') {
         await loadCourses();
 
         if (actionType === 'preview') {
-            window.open(`/student/cours-viewer.html?id=${courseRefId}&preview=true`, '_blank');
+            const viewerBasePath = currentUserProfile?.role === 'teacher' && !isAdminLikeUser()
+                ? '/teacher/cours-viewer.html'
+                : '/student/cours-viewer.html';
+
+            window.open(`${viewerBasePath}?id=${courseRefId}&preview=true`, '_blank');
 
         } else {
             showSaveConfirmation({ actionType, isPublishing, isRejecting, hadPendingMedia });

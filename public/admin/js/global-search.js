@@ -312,7 +312,7 @@ const getCourseLinkForSearchResult = (courseData, role) => {
             return `/teacher/mes-cours.html?edit=${courseData.id}`;
         }
 
-        return `/student/cours-viewer.html?id=${courseData.id}&preview=true`;
+        return `/teacher/cours-viewer.html?id=${courseData.id}&preview=true`;
     }
 
     return `/student/cours-viewer.html?id=${courseData.id}`;

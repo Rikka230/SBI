@@ -11,7 +11,9 @@ import {
     updateDoc,
     collection,
     getDocs,
-    onSnapshot
+    onSnapshot,
+    query,
+    where
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import { getUserLearningProgress, resetCourseProgress, updateQuizScore } from '/js/course-engine.js';
@@ -19,6 +21,7 @@ import { getUserLearningProgress, resetCourseProgress, updateQuizScore } from '/
 let currentProfileId = null;
 let currentProfileData = null;
 let loggedInUserId = null;
+let loggedInUserData = null;
 let isOwner = false;
 let isAdmin = false;
 let isEditMode = false;
@@ -28,6 +31,189 @@ let profilePresenceRefreshIntervalId = null;
 let latestPresenceData = null;
 
 const ONLINE_TTL_MS = 90000;
+
+const chunkArray = (items, size = 10) => {
+    const chunks = [];
+
+    for (let i = 0; i < items.length; i += size) {
+        chunks.push(items.slice(i, i + size));
+    }
+
+    return chunks;
+};
+
+const normalizeIdList = (items) => {
+    if (!Array.isArray(items)) return [];
+
+    return Array.from(new Set(
+        items
+            .filter(Boolean)
+            .map((item) => String(item).trim())
+            .filter(Boolean)
+    ));
+};
+
+const isTeacherProfile = (profile) => {
+    return profile?.role === 'teacher';
+};
+
+const sortByTitle = (a, b) => {
+    return String(a.titre || '').localeCompare(String(b.titre || ''), 'fr', {
+        sensitivity: 'base'
+    });
+};
+
+const uniqueById = (items) => {
+    const map = new Map();
+
+    items.forEach((item) => {
+        if (item?.id) map.set(item.id, item);
+    });
+
+    return Array.from(map.values());
+};
+
+const escapeHTML = (value) => {
+    return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+};
+
+const getSharedFormationIdsForProfile = (targetUserData = {}) => {
+    const targetFormationIds = normalizeIdList(targetUserData.formationIds);
+
+    if (isOwner || isAdmin) return targetFormationIds;
+
+    const viewerFormationIds = normalizeIdList(loggedInUserData?.formationIds);
+    if (!viewerFormationIds.length) return [];
+
+    const viewerSet = new Set(viewerFormationIds);
+    return targetFormationIds.filter((formationId) => viewerSet.has(formationId));
+};
+
+const fetchFormationById = async (formationId) => {
+    try {
+        const snap = await getDoc(doc(db, "formations", formationId));
+        if (!snap.exists()) return null;
+
+        return {
+            id: snap.id,
+            ...snap.data()
+        };
+    } catch (error) {
+        console.warn(`[SBI Profile] Formation inaccessible : ${formationId}`, error);
+        return null;
+    }
+};
+
+const fetchFormationsByIds = async (formationIds) => {
+    const ids = normalizeIdList(formationIds);
+    if (!ids.length) return [];
+
+    const formations = await Promise.all(ids.map((formationId) => fetchFormationById(formationId)));
+    return formations.filter(Boolean).sort(sortByTitle);
+};
+
+const fetchAssignedFormationsByMembership = async (uid, targetUserData = {}) => {
+    if (!uid) return [];
+
+    if (!isOwner && !isAdmin && !normalizeIdList(targetUserData.formationIds).length) {
+        return [];
+    }
+
+    const membershipField = isTeacherProfile(targetUserData) ? 'profs' : 'students';
+    const formationsQuery = query(
+        collection(db, "formations"),
+        where(membershipField, "array-contains", uid)
+    );
+
+    const snap = await getDocs(formationsQuery);
+    const formations = [];
+
+    snap.forEach((formationDoc) => {
+        formations.push({
+            id: formationDoc.id,
+            ...formationDoc.data()
+        });
+    });
+
+    return formations.sort(sortByTitle);
+};
+
+const fetchAssignedFormationsForUser = async (uid, targetUserData = {}) => {
+    const indexedFormationIds = getSharedFormationIdsForProfile(targetUserData);
+
+    if (indexedFormationIds.length > 0) {
+        return fetchFormationsByIds(indexedFormationIds);
+    }
+
+    return fetchAssignedFormationsByMembership(uid, targetUserData);
+};
+
+const getFormationLookupKeys = (formations) => {
+    const keys = [];
+
+    formations.forEach((formation) => {
+        if (formation.id) keys.push(String(formation.id));
+        if (formation.titre) keys.push(String(formation.titre));
+    });
+
+    return normalizeIdList(keys);
+};
+
+const fetchActiveCoursesForFormationKeys = async (formationKeys) => {
+    const keys = normalizeIdList(formationKeys);
+    if (!keys.length) return [];
+
+    const courses = [];
+    const chunks = chunkArray(keys, 10);
+
+    for (const chunk of chunks) {
+        const coursesQuery = query(
+            collection(db, "courses"),
+            where("formations", "array-contains-any", chunk),
+            where("actif", "==", true)
+        );
+
+        const snap = await getDocs(coursesQuery);
+
+        snap.forEach((courseDoc) => {
+            courses.push({
+                id: courseDoc.id,
+                ...courseDoc.data()
+            });
+        });
+    }
+
+    return uniqueById(courses);
+};
+
+const fetchCourseById = async (courseId) => {
+    try {
+        const snap = await getDoc(doc(db, "courses", courseId));
+        if (!snap.exists()) return null;
+
+        return {
+            id: snap.id,
+            ...snap.data()
+        };
+    } catch (error) {
+        console.warn(`[SBI Profile] Cours inaccessible : ${courseId}`, error);
+        return null;
+    }
+};
+
+const fetchCoursesByIds = async (courseIds) => {
+    const ids = normalizeIdList(courseIds);
+    if (!ids.length) return [];
+
+    const courses = await Promise.all(ids.map((courseId) => fetchCourseById(courseId)));
+    return courses.filter(Boolean);
+};
+
 
 const presenceToMillis = (value) => {
     if (!value) return 0;
@@ -113,6 +299,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const mySnap = await getDoc(doc(db, "users", loggedInUserId));
             if (mySnap.exists()) {
                 const myData = mySnap.data();
+                loggedInUserData = myData;
                 isAdmin = (myData.role === 'admin' || myData.isGod === true);
 
                 const myDisplayName = `${myData.prenom || ''} ${myData.nom || ''}`.trim() || "Étudiant";
@@ -301,45 +488,43 @@ async function loadLearningTracking(uid) {
 
     try {
         const progress = await getUserLearningProgress(uid);
+        const targetUserData = currentProfileData || {};
+        const assignedFormations = await fetchAssignedFormationsForUser(uid, targetUserData);
+        const formationKeys = getFormationLookupKeys(assignedFormations);
+        const activeCourses = await fetchActiveCoursesForFormationKeys(formationKeys);
 
-        const userSnap = await getDoc(doc(db, "users", uid));
-        const userData = userSnap.exists() ? userSnap.data() : {};
-
-        const formSnap = await getDocs(collection(db, "formations"));
-        const assignedFormIds = [];
-        const assignedFormTitles = [];
-
-        formSnap.forEach(d => {
-            const f = d.data();
-
-            if (f.students && f.students.includes(uid)) {
-                assignedFormIds.push(d.id);
-                assignedFormTitles.push(f.titre);
-            }
-        });
-
-        const courseSnap = await getDocs(collection(db, "courses"));
         const allCourses = {};
         const coursesToShow = new Set();
 
-        courseSnap.forEach(d => {
-            const c = d.data();
-            allCourses[d.id] = c;
-
-            if (
-                c.actif &&
-                c.formations &&
-                c.formations.some(f => assignedFormIds.includes(f) || assignedFormTitles.includes(f))
-            ) {
-                coursesToShow.add(d.id);
-            }
+        activeCourses.forEach((courseData) => {
+            allCourses[courseData.id] = courseData;
+            coursesToShow.add(courseData.id);
         });
 
-        Object.keys(progress.courses || {}).forEach(cId => {
-            if (allCourses[cId]) coursesToShow.add(cId);
+        const progressCourseIds = Object.keys(progress.courses || {});
+        const canSeeExtraProgressCourses = isOwner || isAdmin;
+
+        if (canSeeExtraProgressCourses) {
+            const missingProgressCourseIds = progressCourseIds.filter((courseId) => !allCourses[courseId]);
+            const progressCourses = await fetchCoursesByIds(missingProgressCourseIds);
+
+            progressCourses.forEach((courseData) => {
+                allCourses[courseData.id] = courseData;
+                coursesToShow.add(courseData.id);
+            });
+        } else {
+            progressCourseIds.forEach((courseId) => {
+                if (allCourses[courseId]) coursesToShow.add(courseId);
+            });
+        }
+
+        const sortedCourseIds = Array.from(coursesToShow).sort((a, b) => {
+            return String(allCourses[a]?.titre || '').localeCompare(String(allCourses[b]?.titre || ''), 'fr', {
+                sensitivity: 'base'
+            });
         });
 
-        if (coursesToShow.size === 0) {
+        if (sortedCourseIds.length === 0) {
             list.innerHTML = '<p style="color: var(--text-muted); font-size: 0.9rem;">Aucun cours assigné ou commencé.</p>';
             return;
         }
@@ -347,8 +532,9 @@ async function loadLearningTracking(uid) {
         list.innerHTML = '';
         const isStudentUI = !window.location.pathname.includes('admin');
 
-        Array.from(coursesToShow).forEach(cId => {
+        sortedCourseIds.forEach(cId => {
             const courseData = allCourses[cId];
+            if (!courseData) return;
             const pData = (progress.courses && progress.courses[cId])
                 ? progress.courses[cId]
                 : {
@@ -508,32 +694,21 @@ async function loadUserFormations(uid) {
     list.innerHTML = 'Recherche...';
 
     try {
-        const snap = await getDocs(collection(db, "formations"));
-        let res = [];
-
-        snap.forEach(d => {
-            const f = d.data();
-
-            if (f.students?.includes(uid) || f.profs?.includes(uid)) {
-                res.push({
-                    id: d.id,
-                    titre: f.titre
-                });
-            }
-        });
+        const res = await fetchAssignedFormationsForUser(uid, currentProfileData || {});
 
         if (res.length > 0) {
             if (window.location.pathname.includes('admin')) {
-                list.innerHTML = res.map(a => `<span style="color: white; display:block; margin-bottom:5px; cursor:pointer;" onclick="window.location.href='/admin/index.html?tab=view-formations'">📁 ${a.titre}</span>`).join('');
+                list.innerHTML = res.map(a => `<span style="color: white; display:block; margin-bottom:5px; cursor:pointer;" onclick="window.location.href='/admin/index.html?tab=view-formations'">📁 ${escapeHTML(a.titre || 'Formation')}</span>`).join('');
             } else if (window.location.pathname.includes('teacher')) {
-                list.innerHTML = res.map(a => `<span style="display:flex; align-items:center; gap:8px; margin-bottom:5px; cursor:pointer; font-weight:bold; transition:0.2s;" onmouseover="this.style.color='var(--accent-orange)'" onmouseout="this.style.color='inherit'" onclick="window.location.href='/teacher/mes-cours.html'"><div style="width:8px; height:8px; background:var(--accent-orange); border-radius:50%; flex-shrink:0;"></div>${a.titre}</span>`).join('');
+                list.innerHTML = res.map(a => `<span style="display:flex; align-items:center; gap:8px; margin-bottom:5px; cursor:pointer; font-weight:bold; transition:0.2s;" onmouseover="this.style.color='var(--accent-orange)'" onmouseout="this.style.color='inherit'" onclick="window.location.href='/teacher/mes-cours.html'"><div style="width:8px; height:8px; background:var(--accent-orange); border-radius:50%; flex-shrink:0;"></div>${escapeHTML(a.titre || 'Formation')}</span>`).join('');
             } else {
-                list.innerHTML = res.map(a => `<span style="display:flex; align-items:center; gap:8px; margin-bottom:5px; cursor:pointer; font-weight:bold; transition:0.2s;" onmouseover="this.style.color='var(--accent-blue)'" onmouseout="this.style.color='inherit'" onclick="window.location.href='/student/mes-cours.html'"><div style="width:8px; height:8px; background:var(--accent-blue); border-radius:50%; flex-shrink:0;"></div>${a.titre}</span>`).join('');
+                list.innerHTML = res.map(a => `<span style="display:flex; align-items:center; gap:8px; margin-bottom:5px; cursor:pointer; font-weight:bold; transition:0.2s;" onmouseover="this.style.color='var(--accent-blue)'" onmouseout="this.style.color='inherit'" onclick="window.location.href='/student/mes-cours.html'"><div style="width:8px; height:8px; background:var(--accent-blue); border-radius:50%; flex-shrink:0;"></div>${escapeHTML(a.titre || 'Formation')}</span>`).join('');
             }
         } else {
             list.innerHTML = 'Aucune formation assignée.';
         }
     } catch (e) {
+        console.error("Erreur chargement formations profil", e);
         list.innerHTML = 'Erreur.';
     }
 }
