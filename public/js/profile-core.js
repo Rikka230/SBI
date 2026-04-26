@@ -5,7 +5,14 @@
  */
 
 import { db, auth } from '/js/firebase-init.js';
-import { doc, getDoc, updateDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import {
+    doc,
+    getDoc,
+    updateDoc,
+    collection,
+    getDocs,
+    onSnapshot
+} from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import { getUserLearningProgress, resetCourseProgress, updateQuizScore } from '/js/course-engine.js';
 
@@ -16,6 +23,81 @@ let isOwner = false;
 let isAdmin = false;
 let isEditMode = false;
 let cropperInstance = null;
+let unsubscribeProfilePresence = null;
+let profilePresenceRefreshIntervalId = null;
+let latestPresenceData = null;
+
+const ONLINE_TTL_MS = 90000;
+
+const presenceToMillis = (value) => {
+    if (!value) return 0;
+    if (typeof value.toMillis === 'function') return value.toMillis();
+    if (value instanceof Date) return value.getTime();
+    if (typeof value === 'number') return value;
+    if (typeof value === 'string') {
+        const parsed = Date.parse(value);
+        return Number.isNaN(parsed) ? 0 : parsed;
+    }
+    if (typeof value.seconds === 'number') return value.seconds * 1000;
+    return 0;
+};
+
+const isUserReallyOnline = (userData) => {
+    if (!userData || userData.statut === 'suspendu') return false;
+    if (userData.isOnline !== true) return false;
+
+    const lastSeenMs = presenceToMillis(userData.lastSeenAt);
+    if (!lastSeenMs) return false;
+
+    return Date.now() - lastSeenMs <= ONLINE_TTL_MS;
+};
+
+const updateProfilePresenceStatus = (data) => {
+    const dot = document.getElementById('prof-online-dot');
+    const statusText = document.getElementById('prof-status-text');
+    if (!dot || !statusText || !data) return;
+
+    if (data.statut === 'suspendu') {
+        dot.className = 'online-dot offline';
+        statusText.textContent = "Compte Suspendu";
+        return;
+    }
+
+    if (isUserReallyOnline(data)) {
+        dot.className = 'online-dot';
+        statusText.textContent = "En Ligne";
+    } else {
+        dot.className = 'online-dot offline';
+        statusText.textContent = "Hors Ligne";
+    }
+};
+
+const startProfilePresenceListener = (uid) => {
+    if (!uid) return;
+
+    if (unsubscribeProfilePresence) {
+        unsubscribeProfilePresence();
+        unsubscribeProfilePresence = null;
+    }
+
+    if (profilePresenceRefreshIntervalId) {
+        window.clearInterval(profilePresenceRefreshIntervalId);
+        profilePresenceRefreshIntervalId = null;
+    }
+
+    unsubscribeProfilePresence = onSnapshot(doc(db, "users", uid), (snap) => {
+        if (!snap.exists()) return;
+
+        latestPresenceData = snap.data();
+        updateProfilePresenceStatus(latestPresenceData);
+    }, (error) => {
+        console.warn("Erreur écoute présence profil :", error);
+    });
+
+    profilePresenceRefreshIntervalId = window.setInterval(() => {
+        if (latestPresenceData) updateProfilePresenceStatus(latestPresenceData);
+    }, 30000);
+};
 
 const SVG_RESET = `<svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24" style="vertical-align:middle; margin-right:4px;"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>`;
 const SVG_EDIT = `<svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24" style="vertical-align:middle; margin-right:4px;"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>`;
@@ -27,7 +109,7 @@ document.addEventListener('DOMContentLoaded', () => {
     onAuthStateChanged(auth, async (user) => {
         if (user) {
             loggedInUserId = user.uid;
-            
+
             const mySnap = await getDoc(doc(db, "users", loggedInUserId));
             if (mySnap.exists()) {
                 const myData = mySnap.data();
@@ -40,24 +122,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const topName = document.getElementById('top-user-name');
                 if (topName) topName.textContent = myDisplayName;
-                
+
                 const topAvatar = document.getElementById('top-user-avatar');
                 if (topAvatar) topAvatar.innerHTML = `<img src="${myAvatarUrl}" style="width:100%; height:100%; object-fit:cover;">`;
-                
+
                 const topLevel = document.getElementById('top-user-level');
                 if (topLevel) topLevel.textContent = `Niveau ${myLevel}`;
             }
 
             currentProfileId = targetId ? targetId : loggedInUserId;
             isOwner = (currentProfileId === loggedInUserId);
-            
+
             await loadProfileData(currentProfileId);
+            startProfilePresenceListener(currentProfileId);
             setupSecurityAndEditMode();
             setupSaveButtons();
             initCropperEngine();
 
             const myProfileBtn = document.getElementById('btn-my-profile');
-            if(myProfileBtn) myProfileBtn.addEventListener('click', () => window.location.href = `admin-profile.html?id=${loggedInUserId}`);
+            if (myProfileBtn) {
+                myProfileBtn.addEventListener('click', () => {
+                    window.location.href = `admin-profile.html?id=${loggedInUserId}`;
+                });
+            }
 
         } else {
             window.location.replace('/login.html');
@@ -68,77 +155,89 @@ document.addEventListener('DOMContentLoaded', () => {
 async function loadProfileData(uid) {
     try {
         const snap = await getDoc(doc(db, "users", uid));
+
         if (snap.exists()) {
             currentProfileData = snap.data();
             const data = currentProfileData;
-            
+
             const displayName = `${data.prenom || ''} ${data.nom || ''}`.trim() || "Utilisateur Sans Nom";
             const nameEl = document.getElementById('prof-name');
-            
-            if(nameEl) {
+
+            if (nameEl) {
                 nameEl.innerHTML = `${displayName} <span id="prof-badge-zone" style="margin-left: 10px; font-size: 0.45em; vertical-align: middle;"></span>`;
             }
 
-            if(document.getElementById('prof-bio-display')) document.getElementById('prof-bio-display').textContent = data.bio || 'Élève de la plateforme SBI';
-            if(document.getElementById('prof-bio')) document.getElementById('prof-bio').value = data.bio || '';
+            if (document.getElementById('prof-bio-display')) {
+                document.getElementById('prof-bio-display').textContent = data.bio || 'Élève de la plateforme SBI';
+            }
+
+            if (document.getElementById('prof-bio')) {
+                document.getElementById('prof-bio').value = data.bio || '';
+            }
 
             const avatarUrl = data.photoURL || `https://ui-avatars.com/api/?name=${displayName}&background=111&color=fff&size=150`;
             const avatarImg = document.getElementById('prof-avatar-img');
-            if(avatarImg) avatarImg.src = avatarUrl;
-            
-            const dot = document.getElementById('prof-online-dot');
-            const statusText = document.getElementById('prof-status-text');
-            if(dot && statusText) {
-                if (data.statut === 'suspendu') {
-                    dot.className = 'online-dot offline'; statusText.textContent = "Compte Suspendu";
-                } else if (data.isOnline) {
-                    dot.className = 'online-dot'; statusText.textContent = "En Ligne";
-                } else {
-                    dot.className = 'online-dot offline'; statusText.textContent = "Hors Ligne";
-                }
-            }
+            if (avatarImg) avatarImg.src = avatarUrl;
+
+            updateProfilePresenceStatus(data);
 
             const badgeZone = document.getElementById('prof-badge-zone');
-            if(badgeZone) {
-                if (data.isGod) badgeZone.innerHTML = `<span style="background:rgba(255,215,0,0.15); color:#ffd700; padding:4px 8px; border-radius:4px; font-weight:bold;">SUPRÊME</span>`;
-                else if (data.role === 'admin') badgeZone.innerHTML = `<span style="background:rgba(255,74,74,0.15); color:#ff4a4a; padding:4px 8px; border-radius:4px; font-weight:bold;">ADMIN</span>`;
-                else if (data.role === 'teacher') badgeZone.innerHTML = `<span style="background:rgba(251,188,4,0.15); color:#fbbc04; padding:4px 8px; border-radius:4px; font-weight:bold;">PROFESSEUR</span>`;
-                else badgeZone.innerHTML = `<span style="background:rgba(42, 87, 255, 0.15); color:#2A57FF; padding:4px 8px; border-radius:4px; font-weight:bold;">ÉLÈVE</span>`;
+            if (badgeZone) {
+                if (data.isGod) {
+                    badgeZone.innerHTML = `<span style="background:rgba(255,215,0,0.15); color:#ffd700; padding:4px 8px; border-radius:4px; font-weight:bold;">SUPRÊME</span>`;
+                } else if (data.role === 'admin') {
+                    badgeZone.innerHTML = `<span style="background:rgba(255,74,74,0.15); color:#ff4a4a; padding:4px 8px; border-radius:4px; font-weight:bold;">ADMIN</span>`;
+                } else if (data.role === 'teacher') {
+                    badgeZone.innerHTML = `<span style="background:rgba(251,188,4,0.15); color:#fbbc04; padding:4px 8px; border-radius:4px; font-weight:bold;">PROFESSEUR</span>`;
+                } else {
+                    badgeZone.innerHTML = `<span style="background:rgba(42, 87, 255, 0.15); color:#2A57FF; padding:4px 8px; border-radius:4px; font-weight:bold;">ÉLÈVE</span>`;
+                }
             }
 
             const xp = data.xp || 0;
             const level = Math.floor(xp / 100) + 1;
-            
-            if(document.getElementById('prof-level')) document.getElementById('prof-level').textContent = level;
+
+            if (document.getElementById('prof-level')) {
+                document.getElementById('prof-level').textContent = level;
+            }
+
             const badgeBronze = document.getElementById('badge-bronze');
             const badgeSilver = document.getElementById('badge-silver');
             const badgeGold = document.getElementById('badge-gold');
             const badgeDiamond = document.getElementById('badge-diamond');
 
-            // On retire la classe au cas où l'admin fait un reset d'XP
-            if(badgeBronze) badgeBronze.classList.remove('unlocked');
-            if(badgeSilver) badgeSilver.classList.remove('unlocked');
-            if(badgeGold) badgeGold.classList.remove('unlocked');
-            if(badgeDiamond) badgeDiamond.classList.remove('unlocked');
+            if (badgeBronze) badgeBronze.classList.remove('unlocked');
+            if (badgeSilver) badgeSilver.classList.remove('unlocked');
+            if (badgeGold) badgeGold.classList.remove('unlocked');
+            if (badgeDiamond) badgeDiamond.classList.remove('unlocked');
 
-            // Définition des paliers de niveau pour débloquer (Tu peux ajuster ces chiffres !)
-            if (badgeBronze && level >= 2) badgeBronze.classList.add('unlocked');  // Bronze au niveau 2 (100 XP)
-            if (badgeSilver && level >= 5) badgeSilver.classList.add('unlocked');  // Argent au niveau 5 (400 XP)
-            if (badgeGold && level >= 10) badgeGold.classList.add('unlocked');     // Or au niveau 10 (900 XP)
-            if (badgeDiamond && level >= 20) badgeDiamond.classList.add('unlocked'); // Diamant au niveau 20 (1900 XP)
-            
-            const xpEls = [document.getElementById('prof-xp'), document.getElementById('prof-xp-text')];
+            if (badgeBronze && level >= 2) badgeBronze.classList.add('unlocked');
+            if (badgeSilver && level >= 5) badgeSilver.classList.add('unlocked');
+            if (badgeGold && level >= 10) badgeGold.classList.add('unlocked');
+            if (badgeDiamond && level >= 20) badgeDiamond.classList.add('unlocked');
+
+            const xpEls = [
+                document.getElementById('prof-xp'),
+                document.getElementById('prof-xp-text')
+            ];
+
             xpEls.forEach(el => {
-                if(el) {
+                if (el) {
                     el.innerHTML = `${xp}`;
-                    if(isAdmin) {
+
+                    if (isAdmin) {
                         el.innerHTML = `${xp} ${SVG_EDIT}`;
                         el.style.cursor = 'pointer';
                         el.title = "Cliquez pour modifier l'XP brute";
+
                         el.onclick = async () => {
                             const newXp = prompt(`Modifier l'XP de cet élève (Actuel : ${xp}) :`, xp);
+
                             if (newXp !== null && !isNaN(newXp) && newXp.trim() !== "") {
-                                await updateDoc(doc(db, "users", uid), { xp: parseInt(newXp) });
+                                await updateDoc(doc(db, "users", uid), {
+                                    xp: parseInt(newXp)
+                                });
+
                                 loadProfileData(uid);
                             }
                         };
@@ -146,12 +245,17 @@ async function loadProfileData(uid) {
                 }
             });
 
-            if(document.getElementById('prof-xp-fill')) document.getElementById('prof-xp-fill').style.width = Math.min((xp / 1000) * 100, 100) + '%';
+            if (document.getElementById('prof-xp-fill')) {
+                document.getElementById('prof-xp-fill').style.width = Math.min((xp / 1000) * 100, 100) + '%';
+            }
 
             if (isOwner || isAdmin) {
                 const emailEl = document.getElementById('prof-email');
-                if(emailEl) {
-                    emailEl.tagName === 'INPUT' ? emailEl.value = data.email || '' : emailEl.textContent = data.email || '';
+
+                if (emailEl) {
+                    emailEl.tagName === 'INPUT'
+                        ? emailEl.value = data.email || ''
+                        : emailEl.textContent = data.email || '';
                 }
 
                 if (isOwner) {
@@ -159,16 +263,21 @@ async function loadProfileData(uid) {
                     if (btnChangeAdmin) btnChangeAdmin.style.display = 'block';
                 }
 
-                if(document.getElementById('prof-phone')) document.getElementById('prof-phone').value = data.privateData?.phone || '';
-                if(document.getElementById('prof-address')) document.getElementById('prof-address').value = data.privateData?.address || '';
-                
-                if(document.getElementById('prof-time')) {
+                if (document.getElementById('prof-phone')) {
+                    document.getElementById('prof-phone').value = data.privateData?.phone || '';
+                }
+
+                if (document.getElementById('prof-address')) {
+                    document.getElementById('prof-address').value = data.privateData?.address || '';
+                }
+
+                if (document.getElementById('prof-time')) {
                     const t = data.totalConnectionTime || 0;
-                    document.getElementById('prof-time').textContent = `${Math.floor(t/3600)}h ${Math.floor((t%3600)/60)}m`;
+                    document.getElementById('prof-time').textContent = `${Math.floor(t / 3600)}h ${Math.floor((t % 3600) / 60)}m`;
                 }
             }
 
-            if(document.getElementById('prof-activity-list')) {
+            if (document.getElementById('prof-activity-list')) {
                 document.getElementById('prof-activity-list').innerHTML = `<li>Création du compte : ${data.dateCreation ? new Date(data.dateCreation).toLocaleDateString() : 'Date inconnue'}</li>`;
             }
 
@@ -181,24 +290,28 @@ async function loadProfileData(uid) {
         } else {
             console.warn("Utilisateur introuvable.");
         }
-    } catch(e) { console.error("Erreur", e); }
+    } catch (e) {
+        console.error("Erreur", e);
+    }
 }
 
 async function loadLearningTracking(uid) {
     const list = document.getElementById('prof-tracking-list');
     list.innerHTML = '<p style="color: var(--text-muted); font-size: 0.9rem; font-style: italic;">Chargement du dossier...</p>';
-    
+
     try {
         const progress = await getUserLearningProgress(uid);
-        
+
         const userSnap = await getDoc(doc(db, "users", uid));
         const userData = userSnap.exists() ? userSnap.data() : {};
-        
+
         const formSnap = await getDocs(collection(db, "formations"));
         const assignedFormIds = [];
         const assignedFormTitles = [];
+
         formSnap.forEach(d => {
             const f = d.data();
+
             if (f.students && f.students.includes(uid)) {
                 assignedFormIds.push(d.id);
                 assignedFormTitles.push(f.titre);
@@ -212,8 +325,12 @@ async function loadLearningTracking(uid) {
         courseSnap.forEach(d => {
             const c = d.data();
             allCourses[d.id] = c;
-            
-            if (c.actif && c.formations && c.formations.some(f => assignedFormIds.includes(f) || assignedFormTitles.includes(f))) {
+
+            if (
+                c.actif &&
+                c.formations &&
+                c.formations.some(f => assignedFormIds.includes(f) || assignedFormTitles.includes(f))
+            ) {
                 coursesToShow.add(d.id);
             }
         });
@@ -232,13 +349,18 @@ async function loadLearningTracking(uid) {
 
         Array.from(coursesToShow).forEach(cId => {
             const courseData = allCourses[cId];
-            const pData = (progress.courses && progress.courses[cId]) ? progress.courses[cId] : { status: 'todo', completedChapters: [] };
-            
+            const pData = (progress.courses && progress.courses[cId])
+                ? progress.courses[cId]
+                : {
+                    status: 'todo',
+                    completedChapters: []
+                };
+
             const completedCount = pData.completedChapters ? pData.completedChapters.length : 0;
             const totalCount = courseData.chapitres ? courseData.chapitres.length : 0;
-            
+
             let statusBadge = '';
-            // FIX COULEUR : Application systématique du bleu SBI pour le statut Terminé !
+
             if (pData.status === 'done') {
                 statusBadge = `<span style="background: rgba(42, 87, 255, 0.1); color: var(--accent-blue); padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold;">Terminé</span>`;
             } else if (pData.status === 'in_progress') {
@@ -248,18 +370,24 @@ async function loadLearningTracking(uid) {
             }
 
             let quizHtml = '';
+
             if (courseData.chapitres) {
                 courseData.chapitres.forEach(chap => {
                     if (chap.type === 'quiz') {
-                        const totalPossible = chap.questions ? chap.questions.reduce((sum, q) => sum + (q.points || 1), 0) : 0;
-                        const scoreObtained = (pData.quizScores && pData.quizScores[chap.id] !== undefined) ? pData.quizScores[chap.id] : 0;
-                        
+                        const totalPossible = chap.questions
+                            ? chap.questions.reduce((sum, q) => sum + (q.points || 1), 0)
+                            : 0;
+
+                        const scoreObtained = (pData.quizScores && pData.quizScores[chap.id] !== undefined)
+                            ? pData.quizScores[chap.id]
+                            : 0;
+
                         let editBtnHtml = '';
+
                         if (isAdmin) {
                             editBtnHtml = `<button class="action-btn btn-edit-grade" data-course="${cId}" data-chapter="${chap.id}" data-current="${scoreObtained}" data-max="${totalPossible}" style="width: auto; margin: 0; padding: 4px 8px; font-size: 0.75rem; background: #333; color: white; border: none;">${SVG_EDIT} Éditer</button>`;
                         }
 
-                        // FIX COULEUR : Bleu pour le score parfait
                         quizHtml += `
                             <div style="display: flex; justify-content: space-between; align-items: center; background: ${isStudentUI ? '#f9fafb' : 'rgba(0,0,0,0.2)'}; padding: 0.5rem 1rem; border-radius: 6px; margin-top: 0.8rem; border: 1px solid ${isStudentUI ? 'var(--border-color)' : 'transparent'};">
                                 <span style="font-size: 0.85rem; color: var(--text-muted);">${chap.titre}</span>
@@ -274,6 +402,7 @@ async function loadLearningTracking(uid) {
             }
 
             let resetBtnHtml = '';
+
             if (isAdmin) {
                 resetBtnHtml = `<button class="action-btn btn-reset-course danger" data-course="${cId}" style="width: auto; margin: 0; padding: 6px 10px; font-size: 0.8rem;">${SVG_RESET} Réinitialiser</button>`;
             }
@@ -293,13 +422,16 @@ async function loadLearningTracking(uid) {
                     ${quizHtml}
                 </div>
             `;
+
             list.insertAdjacentHTML('beforeend', html);
         });
 
         const searchInput = document.getElementById('search-tracking-admin');
+
         if (searchInput) {
             searchInput.oninput = (e) => {
                 const term = e.target.value.toLowerCase();
+
                 document.querySelectorAll('.tracking-item').forEach(item => {
                     const title = item.querySelector('.tracking-title').textContent.toLowerCase();
                     item.style.display = title.includes(term) ? 'block' : 'none';
@@ -311,12 +443,15 @@ async function loadLearningTracking(uid) {
             document.querySelectorAll('.btn-reset-course').forEach(btn => {
                 btn.addEventListener('click', async (e) => {
                     const cId = e.currentTarget.getAttribute('data-course');
+
                     if (confirm("⚠️ Réinitialiser ce cours ? L'élève perdra sa progression et l'XP liée aux QCM de ce cours. Cette action est irréversible.")) {
                         e.currentTarget.disabled = true;
                         e.currentTarget.textContent = "Reset...";
+
                         const success = await resetCourseProgress(uid, cId);
+
                         if (success) {
-                            loadProfileData(uid); 
+                            loadProfileData(uid);
                         } else {
                             alert("Erreur lors de la réinitialisation.");
                             e.currentTarget.disabled = false;
@@ -332,16 +467,22 @@ async function loadLearningTracking(uid) {
                     const currentScore = e.currentTarget.getAttribute('data-current');
                     const maxScore = e.currentTarget.getAttribute('data-max');
 
-                    const newScoreStr = prompt(`Modifier la note (Max: ${maxScore}).\nActuelle: ${currentScore}\n\nNote : Cela modifiera automatiquement l'XP globale de l'élève !`, currentScore);
-                    
+                    const newScoreStr = prompt(
+                        `Modifier la note (Max: ${maxScore}).\nActuelle: ${currentScore}\n\nNote : Cela modifiera automatiquement l'XP globale de l'élève !`,
+                        currentScore
+                    );
+
                     if (newScoreStr !== null) {
                         const newScore = parseInt(newScoreStr);
+
                         if (!isNaN(newScore) && newScore >= 0 && newScore <= parseInt(maxScore)) {
                             e.currentTarget.disabled = true;
                             e.currentTarget.textContent = "Sauvegarde...";
+
                             const success = await updateQuizScore(uid, cId, chapId, newScore);
+
                             if (success) {
-                                loadProfileData(uid); 
+                                loadProfileData(uid);
                             } else {
                                 alert("Erreur lors de la mise à jour.");
                                 e.currentTarget.disabled = false;
@@ -362,15 +503,25 @@ async function loadLearningTracking(uid) {
 
 async function loadUserFormations(uid) {
     const list = document.getElementById('prof-formations-list');
-    if(!list) return;
+    if (!list) return;
+
     list.innerHTML = 'Recherche...';
+
     try {
         const snap = await getDocs(collection(db, "formations"));
         let res = [];
-        snap.forEach(d => { 
+
+        snap.forEach(d => {
             const f = d.data();
-            if(f.students?.includes(uid) || f.profs?.includes(uid)) res.push({ id: d.id, titre: f.titre }); 
+
+            if (f.students?.includes(uid) || f.profs?.includes(uid)) {
+                res.push({
+                    id: d.id,
+                    titre: f.titre
+                });
+            }
         });
+
         if (res.length > 0) {
             if (window.location.pathname.includes('admin')) {
                 list.innerHTML = res.map(a => `<span style="color: white; display:block; margin-bottom:5px; cursor:pointer;" onclick="window.location.href='/admin/index.html?tab=view-formations'">📁 ${a.titre}</span>`).join('');
@@ -382,55 +533,92 @@ async function loadUserFormations(uid) {
         } else {
             list.innerHTML = 'Aucune formation assignée.';
         }
-    } catch(e) { list.innerHTML = 'Erreur.'; }
+    } catch (e) {
+        list.innerHTML = 'Erreur.';
+    }
 }
 
 function setupSecurityAndEditMode() {
     const btnToggleEdit = document.getElementById('btn-toggle-edit');
+
     if (isOwner || isAdmin) {
-        document.querySelectorAll('.private-section').forEach(el => el.style.display = el.tagName === 'DIV' ? 'block' : 'inline-flex');
-        
+        document.querySelectorAll('.private-section').forEach(el => {
+            el.style.display = el.tagName === 'DIV' ? 'block' : 'inline-flex';
+        });
+
         if (btnToggleEdit && isOwner) {
             btnToggleEdit.addEventListener('click', () => {
                 isEditMode = !isEditMode;
                 document.body.classList.toggle('editing', isEditMode);
+
                 const span = btnToggleEdit.querySelector('span');
-                
+
                 if (isEditMode) {
-                    if(span) span.textContent = 'Quitter édition';
+                    if (span) span.textContent = 'Quitter édition';
+
                     btnToggleEdit.style.background = 'rgba(255, 74, 74, 0.1)';
                     btnToggleEdit.style.color = 'var(--accent-red)';
                     btnToggleEdit.style.borderColor = 'transparent';
-                    document.querySelectorAll('.edit-mode-only').forEach(el => el.style.display = 'flex');
-                    ['prof-bio', 'prof-phone', 'prof-address'].forEach(id => { if(document.getElementById(id)) document.getElementById(id).disabled = false; });
+
+                    document.querySelectorAll('.edit-mode-only').forEach(el => {
+                        el.style.display = 'flex';
+                    });
+
+                    ['prof-bio', 'prof-phone', 'prof-address'].forEach(id => {
+                        if (document.getElementById(id)) {
+                            document.getElementById(id).disabled = false;
+                        }
+                    });
                 } else {
-                    if(span) span.textContent = 'Modifier mon profil';
+                    if (span) span.textContent = 'Modifier mon profil';
+
                     btnToggleEdit.style.background = 'white';
                     btnToggleEdit.style.color = 'var(--text-main)';
                     btnToggleEdit.style.borderColor = 'var(--border-color)';
-                    document.querySelectorAll('.edit-mode-only').forEach(el => el.style.display = 'none');
-                    ['prof-bio', 'prof-phone', 'prof-address'].forEach(id => { if(document.getElementById(id)) document.getElementById(id).disabled = true; });
+
+                    document.querySelectorAll('.edit-mode-only').forEach(el => {
+                        el.style.display = 'none';
+                    });
+
+                    ['prof-bio', 'prof-phone', 'prof-address'].forEach(id => {
+                        if (document.getElementById(id)) {
+                            document.getElementById(id).disabled = true;
+                        }
+                    });
                 }
             });
         }
     } else {
-        ['prof-bio', 'prof-phone', 'prof-address'].forEach(id => { if(document.getElementById(id)) document.getElementById(id).disabled = true; });
+        ['prof-bio', 'prof-phone', 'prof-address'].forEach(id => {
+            if (document.getElementById(id)) {
+                document.getElementById(id).disabled = true;
+            }
+        });
     }
 }
 
 function setupSaveButtons() {
     document.getElementById('btn-save-public')?.addEventListener('click', async () => {
-        if(!isOwner && !isAdmin) return;
-        await updateDoc(doc(db, "users", currentProfileId), { bio: document.getElementById('prof-bio').value });
+        if (!isOwner && !isAdmin) return;
+
+        await updateDoc(doc(db, "users", currentProfileId), {
+            bio: document.getElementById('prof-bio').value
+        });
+
         alert("Profil public mis à jour !");
         loadProfileData(currentProfileId);
     });
 
     document.getElementById('btn-save-private')?.addEventListener('click', async () => {
-        if(!isOwner && !isAdmin) return;
-        await updateDoc(doc(db, "users", currentProfileId), { 
-            privateData: { phone: document.getElementById('prof-phone').value, address: document.getElementById('prof-address').value } 
+        if (!isOwner && !isAdmin) return;
+
+        await updateDoc(doc(db, "users", currentProfileId), {
+            privateData: {
+                phone: document.getElementById('prof-phone').value,
+                address: document.getElementById('prof-address').value
+            }
         });
+
         alert("Données privées sécurisées !");
     });
 }
@@ -439,14 +627,17 @@ function initCropperEngine() {
     const modal = document.getElementById('crop-modal');
     const input = document.getElementById('pfp-file-input');
     const imageElement = document.getElementById('crop-image');
-    if(!modal || !input || !imageElement) return;
+
+    if (!modal || !input || !imageElement) return;
 
     let originalImageDataUrl = null;
 
     function compressImage(file, maxWidth, callback) {
         const reader = new FileReader();
+
         reader.onload = function(event) {
             const img = new Image();
+
             img.onload = function() {
                 const canvas = document.createElement('canvas');
                 let width = img.width;
@@ -456,14 +647,19 @@ function initCropperEngine() {
                     height = Math.round((height *= maxWidth / width));
                     width = maxWidth;
                 }
+
                 canvas.width = width;
                 canvas.height = height;
+
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, width, height);
+
                 callback(canvas.toDataURL('image/webp', 0.9));
             };
+
             img.src = event.target.result;
         };
+
         reader.readAsDataURL(file);
     }
 
@@ -472,10 +668,10 @@ function initCropperEngine() {
             cropperInstance.destroy();
             cropperInstance = null;
         }
-        
+
         imageElement.crossOrigin = "anonymous";
         imageElement.src = src;
-        
+
         setTimeout(() => {
             cropperInstance = new Cropper(imageElement, {
                 aspectRatio: 1,
@@ -492,14 +688,15 @@ function initCropperEngine() {
     }
 
     const openTrigger = document.getElementById('btn-trigger-crop');
-    if(openTrigger) {
+
+    if (openTrigger) {
         openTrigger.addEventListener('click', () => {
             modal.style.display = 'flex';
-            
-            const imageToLoad = (currentProfileData && currentProfileData.photoOriginal) 
-                                ? currentProfileData.photoOriginal 
-                                : (currentProfileData && currentProfileData.photoURL ? currentProfileData.photoURL : null);
-            
+
+            const imageToLoad = (currentProfileData && currentProfileData.photoOriginal)
+                ? currentProfileData.photoOriginal
+                : (currentProfileData && currentProfileData.photoURL ? currentProfileData.photoURL : null);
+
             if (imageToLoad) {
                 originalImageDataUrl = imageToLoad;
                 launchCropper(imageToLoad);
@@ -509,21 +706,25 @@ function initCropperEngine() {
         });
     }
 
-    document.getElementById('btn-upload-new')?.addEventListener('click', () => input.click());
+    document.getElementById('btn-upload-new')?.addEventListener('click', () => {
+        input.click();
+    });
 
     input.addEventListener('change', (e) => {
-        if(e.target.files && e.target.files.length > 0) {
-            modal.style.display = 'flex'; 
-            
+        if (e.target.files && e.target.files.length > 0) {
+            modal.style.display = 'flex';
+
             const btnSave = document.getElementById('btn-save-crop');
             const originalText = btnSave.textContent;
+
             btnSave.textContent = "Traitement...";
             btnSave.disabled = true;
 
             compressImage(e.target.files[0], 800, (compressedBase64) => {
                 originalImageDataUrl = compressedBase64;
                 launchCropper(compressedBase64);
-                input.value = ''; 
+                input.value = '';
+
                 btnSave.textContent = originalText;
                 btnSave.disabled = false;
             });
@@ -532,40 +733,50 @@ function initCropperEngine() {
 
     document.getElementById('btn-cancel-crop')?.addEventListener('click', () => {
         modal.style.display = 'none';
+
         if (cropperInstance) {
             cropperInstance.destroy();
             cropperInstance = null;
         }
+
         imageElement.src = '';
     });
 
     document.getElementById('btn-save-crop')?.addEventListener('click', async () => {
-        if(!cropperInstance || !currentProfileId || !originalImageDataUrl) return;
-        
+        if (!cropperInstance || !currentProfileId || !originalImageDataUrl) return;
+
         const btnSave = document.getElementById('btn-save-crop');
+
         btnSave.textContent = "Mise à jour...";
         btnSave.disabled = true;
-        
-        const croppedCanvas = cropperInstance.getCroppedCanvas({ width: 200, height: 200 });
+
+        const croppedCanvas = cropperInstance.getCroppedCanvas({
+            width: 200,
+            height: 200
+        });
+
         const croppedWebpData = croppedCanvas.toDataURL('image/webp', 0.8);
 
         try {
-            await updateDoc(doc(db, "users", currentProfileId), { 
+            await updateDoc(doc(db, "users", currentProfileId), {
                 photoURL: croppedWebpData,
                 photoOriginal: originalImageDataUrl
             });
-            loadProfileData(currentProfileId); 
-            
+
+            loadProfileData(currentProfileId);
+
             modal.style.display = 'none';
+
             if (cropperInstance) {
                 cropperInstance.destroy();
                 cropperInstance = null;
             }
+
             imageElement.src = '';
-        } catch(e) { 
+        } catch (e) {
             console.error(e);
-            alert("Erreur réseau ou fichier trop lourd."); 
-        } finally { 
+            alert("Erreur réseau ou fichier trop lourd.");
+        } finally {
             btnSave.textContent = "Appliquer";
             btnSave.disabled = false;
         }
