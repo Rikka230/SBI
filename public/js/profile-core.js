@@ -82,6 +82,51 @@ const escapeHTML = (value) => {
         .replace(/'/g, '&#039;');
 };
 
+const parseGradeInput = (value, maxScoreValue) => {
+    const raw = String(value || '').trim().replace(',', '.');
+    const maxScore = Number(maxScoreValue);
+
+    if (!raw || !Number.isFinite(maxScore) || maxScore < 0) return null;
+
+    let parsedScore = null;
+
+    if (raw.includes('/')) {
+        const parts = raw.split('/').map(part => part.trim().replace(',', '.'));
+        if (parts.length !== 2) return null;
+
+        const numerator = Number(parts[0]);
+        const denominator = Number(parts[1]);
+
+        if (!Number.isFinite(numerator) || !Number.isFinite(denominator) || denominator <= 0) {
+            return null;
+        }
+
+        parsedScore = denominator === maxScore
+            ? numerator
+            : (numerator / denominator) * maxScore;
+    } else {
+        parsedScore = Number(raw);
+    }
+
+    if (!Number.isFinite(parsedScore)) return null;
+
+    const roundedScore = Math.round(parsedScore * 100) / 100;
+
+    if (roundedScore < 0 || roundedScore > maxScore) return null;
+
+    return roundedScore;
+};
+
+const formatScore = (value) => {
+    const score = Number(value) || 0;
+    return Number.isInteger(score) ? String(score) : String(Math.round(score * 100) / 100);
+};
+
+const getCourseChapterIds = (courseData = {}) => {
+    if (!Array.isArray(courseData.chapitres)) return [];
+    return courseData.chapitres.map(chap => chap?.id).filter(Boolean);
+};
+
 const getSharedFormationIdsForProfile = (targetUserData = {}) => {
     const targetFormationIds = normalizeIdList(targetUserData.formationIds);
 
@@ -565,20 +610,22 @@ async function loadLearningTracking(uid) {
                             : 0;
 
                         const scoreObtained = (pData.quizScores && pData.quizScores[chap.id] !== undefined)
-                            ? pData.quizScores[chap.id]
+                            ? Number(pData.quizScores[chap.id]) || 0
                             : 0;
+                        const scoreDisplay = formatScore(scoreObtained);
+                        const maxScoreDisplay = formatScore(totalPossible);
 
                         let editBtnHtml = '';
 
                         if (isAdmin) {
-                            editBtnHtml = `<button class="action-btn btn-edit-grade" data-course="${cId}" data-chapter="${chap.id}" data-current="${scoreObtained}" data-max="${totalPossible}" style="width: auto; margin: 0; padding: 4px 8px; font-size: 0.75rem; background: #333; color: white; border: none;">${SVG_EDIT} Éditer</button>`;
+                            editBtnHtml = `<button class="action-btn btn-edit-grade" data-course="${cId}" data-chapter="${chap.id}" data-current="${scoreDisplay}" data-max="${totalPossible}" style="width: auto; margin: 0; padding: 4px 8px; font-size: 0.75rem; background: #333; color: white; border: none;">${SVG_EDIT} Éditer</button>`;
                         }
 
                         quizHtml += `
                             <div style="display: flex; justify-content: space-between; align-items: center; background: ${isStudentUI ? '#f9fafb' : 'rgba(0,0,0,0.2)'}; padding: 0.5rem 1rem; border-radius: 6px; margin-top: 0.8rem; border: 1px solid ${isStudentUI ? 'var(--border-color)' : 'transparent'};">
                                 <span style="font-size: 0.85rem; color: var(--text-muted);">${chap.titre}</span>
                                 <div style="display: flex; align-items: center; gap: 10px;">
-                                    <span style="font-size: 0.85rem; font-weight: bold; color: ${scoreObtained === totalPossible && totalPossible > 0 ? 'var(--accent-blue)' : 'var(--text-main)'};">Score: ${scoreObtained} / ${totalPossible}</span>
+                                    <span style="font-size: 0.85rem; font-weight: bold; color: ${scoreObtained === totalPossible && totalPossible > 0 ? 'var(--accent-blue)' : 'var(--text-main)'};">Score: ${scoreDisplay} / ${maxScoreDisplay}</span>
                                     ${editBtnHtml}
                                 </div>
                             </div>
@@ -654,18 +701,24 @@ async function loadLearningTracking(uid) {
                     const maxScore = e.currentTarget.getAttribute('data-max');
 
                     const newScoreStr = prompt(
-                        `Modifier la note (Max: ${maxScore}).\nActuelle: ${currentScore}\n\nNote : Cela modifiera automatiquement l'XP globale de l'élève !`,
+                        `Modifier la note (Max: ${formatScore(maxScore)}).
+Actuelle: ${currentScore}
+
+Tu peux écrire 1, 1.5 ou 1/2.
+Note : cela modifiera automatiquement l'XP globale de l'élève et marquera le cours comme terminé.`,
                         currentScore
                     );
 
                     if (newScoreStr !== null) {
-                        const newScore = parseInt(newScoreStr);
+                        const newScore = parseGradeInput(newScoreStr, maxScore);
 
-                        if (!isNaN(newScore) && newScore >= 0 && newScore <= parseInt(maxScore)) {
+                        if (newScore !== null) {
                             e.currentTarget.disabled = true;
                             e.currentTarget.textContent = "Sauvegarde...";
 
-                            const success = await updateQuizScore(uid, cId, chapId, newScore);
+                            const courseData = allCourses[cId] || {};
+                            const chapterIdsToComplete = getCourseChapterIds(courseData);
+                            const success = await updateQuizScore(uid, cId, chapId, newScore, chapterIdsToComplete);
 
                             if (success) {
                                 loadProfileData(uid);
@@ -674,7 +727,7 @@ async function loadLearningTracking(uid) {
                                 e.currentTarget.disabled = false;
                             }
                         } else {
-                            alert("Note invalide.");
+                            alert("Note invalide. Exemple attendu : 1 ou 1/2, sans dépasser la note maximale.");
                         }
                     }
                 });

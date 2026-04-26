@@ -129,23 +129,45 @@ export async function resetCourseProgress(uid, courseId) {
     }
 }
 
-// Modifie manuellement une note de QCM et ajuste l'XP
-export async function updateQuizScore(uid, courseId, chapterId, newScore) {
+// Modifie manuellement une note de QCM, ajuste l'XP et peut terminer le cours.
+export async function updateQuizScore(uid, courseId, chapterId, newScore, chapterIdsToComplete = []) {
     try {
         const userRef = doc(db, "users", uid);
         const progress = await getUserLearningProgress(uid);
-        const courseProgress = progress.courses?.[courseId];
+        const courseProgress = progress.courses?.[courseId] || {
+            status: 'todo',
+            completedChapters: [],
+            quizScores: {}
+        };
 
-        if (!courseProgress) return false;
         if (!courseProgress.quizScores) courseProgress.quizScores = {};
+        if (!Array.isArray(courseProgress.completedChapters)) courseProgress.completedChapters = [];
 
         const oldScore = Number(courseProgress.quizScores[chapterId]) || 0;
         const normalizedScore = Number(newScore) || 0;
         const xpDifference = normalizedScore - oldScore;
 
+        const targetChapterIds = Array.isArray(chapterIdsToComplete)
+            ? Array.from(new Set(chapterIdsToComplete.filter(Boolean)))
+            : [];
+
+        const completedChapters = targetChapterIds.length > 0
+            ? targetChapterIds
+            : Array.from(new Set([...courseProgress.completedChapters, chapterId].filter(Boolean)));
+
+        const shouldMarkDone = targetChapterIds.length > 0;
+        const now = Date.now();
+
         const updates = {
-            [`learningProgress.courses.${courseId}.quizScores.${chapterId}`]: normalizedScore
+            [`learningProgress.courses.${courseId}.quizScores.${chapterId}`]: normalizedScore,
+            [`learningProgress.courses.${courseId}.completedChapters`]: completedChapters,
+            [`learningProgress.courses.${courseId}.status`]: shouldMarkDone ? 'done' : 'in_progress',
+            [`learningProgress.courses.${courseId}.updatedAt`]: now
         };
+
+        if (shouldMarkDone) {
+            updates[`learningProgress.courses.${courseId}.completedAt`] = courseProgress.completedAt || now;
+        }
 
         if (xpDifference !== 0) {
             updates.xp = increment(xpDifference);

@@ -3,10 +3,7 @@
  * ADMIN COURSES - Gestion des Cours, Formations et Accès
  * =======================================================================
  *
- * Étape 5.2.4C :
- * - lectures Firestore adaptées au rôle via course-data-access.js
- * - prof : formations assignées + ses cours seulement
- * - admin/isGod : accès complet conservé
+ * Étape 5.2.4 : Query-safe consolidation.
  * =======================================================================
  */
 
@@ -448,16 +445,15 @@ function setupDropZone(dropZoneId, inputId) {
 }
 
 async function loadUsersForAccess() {
-    allUsersForAccess = await loadUsersForCourseAccess({
-        currentUid,
-        currentUserProfile
-    });
-
-    const loadedProfile = allUsersForAccess.find(u => u.id === currentUid);
-
-    if (loadedProfile) {
-        currentUserProfile = loadedProfile;
+    if (!currentUid) return;
+    if (!currentUserProfile) {
+        const ownSnap = await getDoc(doc(db, "users", currentUid));
+        if (ownSnap.exists()) currentUserProfile = { id: ownSnap.id, ...ownSnap.data() };
     }
+    allUsersForAccess = await loadUsersForCourseAccess({ currentUid, currentUserProfile });
+    const loadedProfile = allUsersForAccess.find(u => u.id === currentUid);
+    if (loadedProfile) currentUserProfile = loadedProfile;
+    else if (currentUserProfile) allUsersForAccess.unshift({ id: currentUid, ...currentUserProfile });
 }
 
 function getAccessibleFormations() {
@@ -1308,6 +1304,14 @@ function showSaveConfirmation({ actionType, isPublishing, isRejecting, hadPendin
     alert(actionType === 'submit' ? '✅ Cours envoyé pour validation !' : '✅ Cours sauvegardé !');
 }
 
+function isAdminAuthor(authorId) {
+    const u = allUsersForAccess.find(user => user.id === authorId);
+    return u?.isGod === true || u?.role === 'admin';
+}
+function shouldHideDraftForAdmin(courseData) {
+    const status = courseData.statutValidation || (courseData.actif === true ? 'approved' : 'draft');
+    return isAdminLikeUser() && status === 'draft' && courseData.auteurId !== currentUid && !isAdminAuthor(courseData.auteurId);
+}
 async function loadCourses() {
     const listContainer = document.getElementById('courses-list-container');
     if (!listContainer) return;
@@ -1318,6 +1322,8 @@ async function loadCourses() {
             currentUid,
             currentUserProfile
         });
+
+        if (isAdminLikeUser()) allCoursesData = allCoursesData.filter(courseData => !shouldHideDraftForAdmin(courseData));
 
         if (allCoursesData.length === 0) {
             listContainer.innerHTML = '<p style="color:var(--text-muted); text-align:center;">Aucun cours.</p>';
@@ -1388,15 +1394,12 @@ async function loadCourses() {
 }
 
 function getAuthorName(authorId) {
-    if (!authorId || allUsersForAccess.length === 0) return "Système";
-
+    if (!authorId) return "Auteur inconnu";
     const authorObj = allUsersForAccess.find(u => u.id === authorId);
-
-    if (!authorObj) return "Système";
-
+    if (!authorObj) return "Auteur introuvable";
     return (authorObj.prenom || authorObj.nom)
         ? `${authorObj.prenom || ''} ${authorObj.nom || ''}`.trim()
-        : authorObj.email;
+        : (authorObj.email || "Auteur introuvable");
 }
 
 window.duplicateCourse = async (id) => {
