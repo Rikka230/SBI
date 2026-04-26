@@ -3,10 +3,10 @@
  * NOTIFICATIONS - Écoute temps réel et actions
  * =======================================================================
  *
- * Étape 5.2.2 :
- * - la recherche globale est déplacée dans global-search.js
- * - notifications conservées telles que validées
- * - admin-notifications.js reste focalisé sur les notifications
+ * Étape 5.2.4C fix :
+ * - correction visualisation cours validé côté professeur
+ * - le bouton prof ouvre /teacher/cours-viewer.html
+ * - évite la redirection dashboard causée par la route student
  * =======================================================================
  */
 
@@ -715,7 +715,7 @@ function showTeacherCourseActionModal(courseId, courseTitle) {
     document.getElementById('btn-modal-view').onclick = () => {
         modal.style.display = 'none';
         closeNotificationsPanel();
-        window.open(`/student/cours-viewer.html?id=${courseId}&preview=true`, '_blank');
+        window.open(`/teacher/cours-viewer.html?id=${courseId}&preview=true`, '_blank');
     };
 
     document.getElementById('btn-modal-edit').onclick = () => {
