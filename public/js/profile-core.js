@@ -86,10 +86,12 @@ const parseGradeInput = (value, maxScoreValue) => {
     const raw = String(value || '').trim().replace(',', '.');
     const maxScore = Number(maxScoreValue);
 
-    if (!raw || !Number.isFinite(maxScore) || maxScore < 0) return null;
+    if (!raw) return null;
 
     let parsedScore = null;
 
+    // Saisie normale attendue : uniquement la note obtenue, ex : 1 ou 1.5.
+    // On garde le support 1/2 pour compatibilité, mais il n'est plus nécessaire.
     if (raw.includes('/')) {
         const parts = raw.split('/').map(part => part.trim().replace(',', '.'));
         if (parts.length !== 2) return null;
@@ -101,9 +103,9 @@ const parseGradeInput = (value, maxScoreValue) => {
             return null;
         }
 
-        parsedScore = denominator === maxScore
-            ? numerator
-            : (numerator / denominator) * maxScore;
+        parsedScore = Number.isFinite(maxScore) && maxScore > 0
+            ? (numerator / denominator) * maxScore
+            : numerator;
     } else {
         parsedScore = Number(raw);
     }
@@ -112,7 +114,11 @@ const parseGradeInput = (value, maxScoreValue) => {
 
     const roundedScore = Math.round(parsedScore * 100) / 100;
 
-    if (roundedScore < 0 || roundedScore > maxScore) return null;
+    if (roundedScore < 0) return null;
+
+    // Si le score max est connu, on bloque les notes impossibles.
+    // Si le score max est inconnu ou vaut 0 sur un ancien cours, on accepte la note manuelle.
+    if (Number.isFinite(maxScore) && maxScore > 0 && roundedScore > maxScore) return null;
 
     return roundedScore;
 };
@@ -120,6 +126,15 @@ const parseGradeInput = (value, maxScoreValue) => {
 const formatScore = (value) => {
     const score = Number(value) || 0;
     return Number.isInteger(score) ? String(score) : String(Math.round(score * 100) / 100);
+};
+
+const computeQuizMaxScore = (chapter = {}) => {
+    if (!Array.isArray(chapter.questions) || chapter.questions.length === 0) return 0;
+
+    return chapter.questions.reduce((sum, question) => {
+        const points = Number(question?.points);
+        return sum + (Number.isFinite(points) && points > 0 ? points : 1);
+    }, 0);
 };
 
 const getCourseChapterIds = (courseData = {}) => {
@@ -605,9 +620,7 @@ async function loadLearningTracking(uid) {
             if (courseData.chapitres) {
                 courseData.chapitres.forEach(chap => {
                     if (chap.type === 'quiz') {
-                        const totalPossible = chap.questions
-                            ? chap.questions.reduce((sum, q) => sum + (q.points || 1), 0)
-                            : 0;
+                        const totalPossible = computeQuizMaxScore(chap);
 
                         const scoreObtained = (pData.quizScores && pData.quizScores[chap.id] !== undefined)
                             ? Number(pData.quizScores[chap.id]) || 0
@@ -700,12 +713,15 @@ async function loadLearningTracking(uid) {
                     const currentScore = e.currentTarget.getAttribute('data-current');
                     const maxScore = e.currentTarget.getAttribute('data-max');
 
+                    const maxScoreLabel = Number(maxScore) > 0 ? ` / ${formatScore(maxScore)}` : '';
                     const newScoreStr = prompt(
-                        `Modifier la note (Max: ${formatScore(maxScore)}).
-Actuelle: ${currentScore}
+                        `Modifier la note.
+Actuelle : ${currentScore}${maxScoreLabel}
 
-Tu peux écrire 1, 1.5 ou 1/2.
-Note : cela modifiera automatiquement l'XP globale de l'élève et marquera le cours comme terminé.`,
+Écris uniquement la note obtenue, par exemple : 1 ou 1.5.
+Le /2 reste accepté si tu le tapes, mais il n'est pas nécessaire.
+
+Cette action ajuste l'XP globale de l'élève et marque le cours comme terminé.`,
                         currentScore
                     );
 
@@ -727,7 +743,7 @@ Note : cela modifiera automatiquement l'XP globale de l'élève et marquera le c
                                 e.currentTarget.disabled = false;
                             }
                         } else {
-                            alert("Note invalide. Exemple attendu : 1 ou 1/2, sans dépasser la note maximale.");
+                            alert("Note invalide. Écris uniquement la note obtenue, par exemple : 1 ou 1.5.");
                         }
                     }
                 });

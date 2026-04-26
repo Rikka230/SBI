@@ -5,7 +5,7 @@
  */
 
 import { db } from '/js/firebase-init.js';
-import { doc, getDoc, setDoc, updateDoc, increment, deleteField } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { doc, getDoc, setDoc, updateDoc, increment, deleteField, FieldPath } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 // Récupère toute la progression d'un élève
 export async function getUserLearningProgress(uid) {
@@ -113,15 +113,16 @@ export async function resetCourseProgress(uid, courseId) {
             });
         }
 
-        const updates = {
-            [`learningProgress.courses.${courseId}`]: deleteField()
-        };
+        const updateArgs = [
+            new FieldPath('learningProgress', 'courses', String(courseId)),
+            deleteField()
+        ];
 
         if (xpToRemove > 0) {
-            updates.xp = increment(-xpToRemove);
+            updateArgs.push('xp', increment(-xpToRemove));
         }
 
-        await updateDoc(userRef, updates);
+        await updateDoc(userRef, ...updateArgs);
         return true;
     } catch (e) {
         console.error("Erreur reset progression", e);
@@ -158,22 +159,32 @@ export async function updateQuizScore(uid, courseId, chapterId, newScore, chapte
         const shouldMarkDone = targetChapterIds.length > 0;
         const now = Date.now();
 
-        const updates = {
-            [`learningProgress.courses.${courseId}.quizScores.${chapterId}`]: normalizedScore,
-            [`learningProgress.courses.${courseId}.completedChapters`]: completedChapters,
-            [`learningProgress.courses.${courseId}.status`]: shouldMarkDone ? 'done' : 'in_progress',
-            [`learningProgress.courses.${courseId}.updatedAt`]: now
-        };
+        const safeCourseId = String(courseId);
+        const safeChapterId = String(chapterId);
+
+        const updateArgs = [
+            new FieldPath('learningProgress', 'courses', safeCourseId, 'quizScores', safeChapterId),
+            normalizedScore,
+            new FieldPath('learningProgress', 'courses', safeCourseId, 'completedChapters'),
+            completedChapters,
+            new FieldPath('learningProgress', 'courses', safeCourseId, 'status'),
+            shouldMarkDone ? 'done' : 'in_progress',
+            new FieldPath('learningProgress', 'courses', safeCourseId, 'updatedAt'),
+            now
+        ];
 
         if (shouldMarkDone) {
-            updates[`learningProgress.courses.${courseId}.completedAt`] = courseProgress.completedAt || now;
+            updateArgs.push(
+                new FieldPath('learningProgress', 'courses', safeCourseId, 'completedAt'),
+                courseProgress.completedAt || now
+            );
         }
 
         if (xpDifference !== 0) {
-            updates.xp = increment(xpDifference);
+            updateArgs.push('xp', increment(xpDifference));
         }
 
-        await updateDoc(userRef, updates);
+        await updateDoc(userRef, ...updateArgs);
         return true;
     } catch (e) {
         console.error("Erreur update note", e);
