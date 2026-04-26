@@ -39,7 +39,8 @@ import {
     clearAllPendingMedia,
     clearPendingMediaForChapter,
     validateCourseDocumentSize,
-    validateVideoFileForStorage
+    validateVideoFileForStorage,
+    deleteUnusedCourseMediaFromStorage
 } from '/admin/js/course-media-storage.js';
 
 let currentUid = null;
@@ -1359,12 +1360,69 @@ window.duplicateCourse = async (id) => {
 };
 
 window.deleteCourse = async (id) => {
-    const verification = prompt("⚠️ ATTENTION : La suppression d'un cours est définitive.\nTapez 'SUPPRIMER' en majuscules pour confirmer :");
+    const verification = prompt(
+        "⚠️ ATTENTION : La suppression d'un cours est définitive.\n" +
+        "Les médias Storage associés seront également supprimés s'ils ne sont utilisés par aucun autre cours.\n\n" +
+        "Tapez 'SUPPRIMER' en majuscules pour confirmer :"
+    );
 
-    if (verification === 'SUPPRIMER') {
-        await deleteDoc(doc(db, "courses", id));
-        loadCourses();
-    } else if (verification !== null) {
-        alert("Suppression annulée. Vous n'avez pas tapé 'SUPPRIMER'.");
+    if (verification !== 'SUPPRIMER') {
+        if (verification !== null) {
+            alert("Suppression annulée. Vous n'avez pas tapé 'SUPPRIMER'.");
+        }
+
+        return;
+    }
+
+    try {
+        const courseRef = doc(db, "courses", id);
+        const courseSnap = await getDoc(courseRef);
+
+        if (!courseSnap.exists()) {
+            alert("Ce cours n'existe plus.");
+            await loadCourses();
+            return;
+        }
+
+        const courseData = courseSnap.data();
+
+        const allCoursesSnap = await getDocs(collection(db, "courses"));
+        const allCourses = [];
+
+        allCoursesSnap.forEach((courseDoc) => {
+            allCourses.push({
+                id: courseDoc.id,
+                ...courseDoc.data()
+            });
+        });
+
+        const mediaDeleteResult = await deleteUnusedCourseMediaFromStorage({
+            courseId: id,
+            courseData,
+            allCourses
+        });
+
+        await deleteDoc(courseRef);
+        await loadCourses();
+
+        let message = "✅ Cours supprimé.";
+
+        if (mediaDeleteResult.deleted > 0) {
+            message += `\n${mediaDeleteResult.deleted} média(s) supprimé(s) de Firebase Storage.`;
+        }
+
+        if (mediaDeleteResult.skipped > 0) {
+            message += `\n${mediaDeleteResult.skipped} média(s) conservé(s), car encore utilisé(s) par un autre cours.`;
+        }
+
+        if (mediaDeleteResult.failed > 0) {
+            message += `\n⚠️ ${mediaDeleteResult.failed} média(s) n'ont pas pu être supprimé(s). Vérifie les règles Storage ou la console.`;
+        }
+
+        alert(message);
+
+    } catch (error) {
+        console.error("Erreur suppression cours :", error);
+        alert(`❌ Suppression impossible : ${error.message || "erreur inconnue."}`);
     }
 };
