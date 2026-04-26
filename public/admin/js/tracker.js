@@ -2,100 +2,183 @@
  * =======================================================================
  * TRACKER DE SESSION - Statut en ligne, Temps & Affichage Profil Menu
  * =======================================================================
+ *
+ * Présence robuste :
+ * - isOnline indique l'état demandé par l'onglet actif.
+ * - lastSeenAt est rafraîchi régulièrement avec serverTimestamp().
+ * - les écrans admin / profil ne considèrent l'utilisateur en ligne que si
+ *   isOnline === true ET lastSeenAt est récent.
+ *
+ * Cette logique évite les utilisateurs bloqués "en ligne" si l'onglet est
+ * fermé brutalement et que le passage à false n'a pas le temps de partir.
+ * =======================================================================
  */
 
 import { db, auth } from '/js/firebase-init.js';
-import { doc, getDoc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import {
+    doc,
+    getDoc,
+    updateDoc,
+    increment,
+    serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
 let sessionStart = Date.now();
 let activeUid = null;
+let connectionSyncIntervalId = null;
+let heartbeatIntervalId = null;
 
-// Optimisation : Sauvegarde toutes les 5 minutes au lieu d'1 minute.
-// Cela divise par 5 ta consommation de base de données Firebase.
-const SYNC_INTERVAL_MS = 300000; 
+const CONNECTION_SYNC_INTERVAL_MS = 300000; // 5 minutes
+const PRESENCE_HEARTBEAT_INTERVAL_MS = 30000; // 30 secondes
+
+const clearTrackerIntervals = () => {
+    if (connectionSyncIntervalId) {
+        window.clearInterval(connectionSyncIntervalId);
+        connectionSyncIntervalId = null;
+    }
+
+    if (heartbeatIntervalId) {
+        window.clearInterval(heartbeatIntervalId);
+        heartbeatIntervalId = null;
+    }
+};
+
+const getActiveUserRef = () => {
+    if (!activeUid) return null;
+    return doc(db, "users", activeUid);
+};
+
+const updateActiveUser = async (payload) => {
+    const userRef = getActiveUserRef();
+    if (!userRef) return;
+
+    try {
+        await updateDoc(userRef, payload);
+    } catch (error) {
+        console.warn("[SBI Tracker] Mise à jour présence impossible :", error);
+    }
+};
+
+const syncConnectionTime = async (extraPayload = {}) => {
+    if (!activeUid) return;
+
+    const now = Date.now();
+    const diffSeconds = Math.floor((now - sessionStart) / 1000);
+    sessionStart = now;
+
+    const payload = { ...extraPayload };
+
+    if (diffSeconds > 0) {
+        payload.totalConnectionTime = increment(diffSeconds);
+    }
+
+    if (Object.keys(payload).length > 0) {
+        await updateActiveUser(payload);
+    }
+};
+
+const markOnline = async () => {
+    if (!activeUid) return;
+
+    await updateActiveUser({
+        isOnline: true,
+        lastSeenAt: serverTimestamp()
+    });
+};
+
+const markOffline = async () => {
+    if (!activeUid) return;
+
+    await syncConnectionTime({
+        isOnline: false,
+        lastSeenAt: serverTimestamp()
+    });
+};
+
+const startTrackerIntervals = () => {
+    clearTrackerIntervals();
+
+    connectionSyncIntervalId = window.setInterval(() => {
+        if (!activeUid) return;
+        syncConnectionTime().catch(() => {});
+    }, CONNECTION_SYNC_INTERVAL_MS);
+
+    heartbeatIntervalId = window.setInterval(() => {
+        if (!activeUid) return;
+        if (document.visibilityState !== 'visible') return;
+
+        markOnline().catch(() => {});
+    }, PRESENCE_HEARTBEAT_INTERVAL_MS);
+};
+
+const hydrateNavProfile = async (uid) => {
+    try {
+        const snap = await getDoc(doc(db, "users", uid));
+        if (!snap.exists()) return;
+
+        const data = snap.data();
+
+        const navName = document.getElementById('nav-name');
+        const navRole = document.getElementById('nav-role');
+        const navAvatar = document.getElementById('nav-avatar');
+
+        if (navName) {
+            navName.textContent = `${data.prenom || ''} ${data.nom || ''}`.trim();
+        }
+
+        if (navRole) {
+            if (data.isGod) navRole.textContent = 'Admin Suprême';
+            else if (data.role === 'admin') navRole.textContent = 'Administrateur';
+            else if (data.role === 'teacher') navRole.textContent = 'Professeur';
+            else navRole.textContent = 'Élève';
+        }
+
+        if (navAvatar) {
+            if (data.photoURL) {
+                navAvatar.innerHTML = `<img src="${data.photoURL}" style="width:100%; height:100%; object-fit:cover;">`;
+            } else {
+                navAvatar.textContent = data.prenom ? data.prenom.charAt(0).toUpperCase() : 'U';
+            }
+        }
+    } catch (error) {
+        console.error("Erreur chargement profil panel", error);
+    }
+};
 
 onAuthStateChanged(auth, async (user) => {
+    clearTrackerIntervals();
+
+    if (activeUid && (!user || user.uid !== activeUid)) {
+        await markOffline();
+    }
+
     if (user) {
         activeUid = user.uid;
         sessionStart = Date.now();
-        updateDoc(doc(db, "users", activeUid), { isOnline: true }).catch(()=>{});
 
-        // 1. CHARGEMENT DYNAMIQUE DU PROFIL DANS LE MENU DROIT
-        try {
-            const snap = await getDoc(doc(db, "users", activeUid));
-            if(snap.exists()) {
-                const data = snap.data();
-                
-                const navName = document.getElementById('nav-name');
-                const navRole = document.getElementById('nav-role');
-                const navAvatar = document.getElementById('nav-avatar');
-                
-                // Injection du Nom
-                if(navName) navName.textContent = (data.prenom || '') + ' ' + (data.nom || '');
-                
-                // Injection du Rôle
-                if(navRole) {
-                    if(data.isGod) navRole.textContent = 'Admin Suprême';
-                    else if(data.role === 'admin') navRole.textContent = 'Administrateur';
-                    else if(data.role === 'teacher') navRole.textContent = 'Professeur';
-                    else navRole.textContent = 'Élève';
-                }
-                
-                // Injection de la Photo ou de la Première Lettre
-                if(navAvatar) {
-                    if(data.photoURL) {
-                        navAvatar.innerHTML = `<img src="${data.photoURL}" style="width:100%; height:100%; object-fit:cover;">`;
-                    } else {
-                        navAvatar.textContent = data.prenom ? data.prenom.charAt(0).toUpperCase() : 'U';
-                    }
-                }
-            }
-        } catch(e) { console.error("Erreur chargement profil panel", e); }
-
-        // 2. CHRONOMÈTRE DE CONNEXION (Synchronisation périodique)
-        setInterval(() => {
-            if(!activeUid) return;
-            const now = Date.now();
-            const diffSeconds = Math.floor((now - sessionStart) / 1000);
-            
-            if (diffSeconds > 0) {
-                // On met à jour le marqueur de temps AVANT l'envoi
-                sessionStart = now; 
-                updateDoc(doc(db, "users", activeUid), {
-                    totalConnectionTime: increment(diffSeconds)
-                }).catch(()=>{});
-            }
-        }, SYNC_INTERVAL_MS); 
-
+        await markOnline();
+        startTrackerIntervals();
+        hydrateNavProfile(activeUid);
     } else {
-        if (activeUid) {
-            updateDoc(doc(db, "users", activeUid), { isOnline: false }).catch(()=>{});
-            activeUid = null;
-        }
+        activeUid = null;
     }
 });
 
-// 3. SAUVEGARDE À LA FERMETURE OU AU CHANGEMENT D'ONGLET
+// L'utilisateur change d'onglet : on suit l'état de la fenêtre active.
 document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === 'hidden' && activeUid) {
-        const now = Date.now();
-        const diffSeconds = Math.floor((now - sessionStart) / 1000);
-        
-        if (diffSeconds > 0) {
-            // FIX : Indispensable de remettre le chrono à zéro ici pour éviter de compter l'intervalle en double
-            sessionStart = now; 
-            updateDoc(doc(db, "users", activeUid), {
-                isOnline: false,
-                totalConnectionTime: increment(diffSeconds)
-            }).catch(()=>{});
-        } else {
-            // Si le temps est inférieur à 1s, on passe juste hors-ligne
-            updateDoc(doc(db, "users", activeUid), { isOnline: false }).catch(()=>{});
-        }
-    } else if (document.visibilityState === 'visible' && activeUid) {
-        // L'utilisateur revient sur l'onglet, on relance le chrono
+    if (!activeUid) return;
+
+    if (document.visibilityState === 'hidden') {
+        markOffline().catch(() => {});
+    } else if (document.visibilityState === 'visible') {
         sessionStart = Date.now();
-        updateDoc(doc(db, "users", activeUid), { isOnline: true }).catch(()=>{});
+        markOnline().catch(() => {});
     }
+});
+
+// Best-effort : pas fiable à 100%, mais lastSeenAt + expiration corrige les cas ratés.
+window.addEventListener('pagehide', () => {
+    if (!activeUid) return;
+    markOffline().catch(() => {});
 });
