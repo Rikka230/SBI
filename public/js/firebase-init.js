@@ -1,18 +1,22 @@
 /**
  * =======================================================================
- * 1. CONFIGURATION & INITIALISATION FIREBASE (V9 Modulaire - Vanilla JS)
+ * CONFIGURATION & INITIALISATION FIREBASE (V9 Modulaire - Vanilla JS)
  * =======================================================================
- * Note: Intègre Firestore Local Cache et Analytics. (App Check temporairement désactivé)
+ * Note :
+ * - Firestore Local Cache actif
+ * - Analytics désactivé par défaut pour éviter les erreurs console
+ *   ERR_BLOCKED_BY_CLIENT quand un bloqueur pub/anti-tracking est présent.
+ * - Pour tester Analytics manuellement :
+ *   localStorage.setItem('SBI_ENABLE_ANALYTICS', '1') puis recharger la page.
  */
 
 // Importation native depuis le CDN Google
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-analytics.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-import { 
-    initializeFirestore, 
-    persistentLocalCache, 
-    persistentMultipleTabManager 
+import {
+    initializeFirestore,
+    persistentLocalCache,
+    persistentMultipleTabManager
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { getStorage } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
 
@@ -32,14 +36,13 @@ const firebaseConfig = {
 
 /* --- 1.2 INITIALISATION DE L'APPLICATION --- */
 const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
 
 /* --- 1.3 BOUCLIER ANTI-BOT (APP CHECK avec reCAPTCHA v3) --- */
 // DESACTIVE POUR LES TESTS : À réactiver quand la vraie clé Google reCAPTCHA sera générée
 /*
 const appCheck = initializeAppCheck(app, {
     provider: new ReCaptchaV3Provider('TA_CLE_PUBLIQUE_RECAPTCHA_V3_ICI'),
-    isTokenAutoRefreshEnabled: true 
+    isTokenAutoRefreshEnabled: true
 });
 */
 
@@ -55,8 +58,39 @@ const db = initializeFirestore(app, {
 const auth = getAuth(app);
 const storage = getStorage(app);
 
-console.log("🔥 Firebase SBI initialisé avec succès : Cache & Analytics Actifs");
+/* --- 1.6 ANALYTICS OPTIONNEL --- */
+let analytics = null;
 
-/* --- 1.6 EXPORTATION DES SERVICES --- */
+const shouldEnableAnalytics = () => {
+    try {
+        return window.localStorage.getItem('SBI_ENABLE_ANALYTICS') === '1';
+    } catch (error) {
+        return false;
+    }
+};
+
+if (shouldEnableAnalytics()) {
+    import("https://www.gstatic.com/firebasejs/10.8.1/firebase-analytics.js")
+        .then(async ({ getAnalytics, isSupported }) => {
+            const supported = typeof isSupported === 'function'
+                ? await isSupported()
+                : true;
+
+            if (!supported) {
+                console.warn('[SBI Firebase] Analytics non supporté par ce navigateur.');
+                return;
+            }
+
+            analytics = getAnalytics(app);
+            console.log('📊 Firebase Analytics SBI activé manuellement.');
+        })
+        .catch((error) => {
+            console.warn('[SBI Firebase] Analytics désactivé :', error);
+        });
+}
+
+console.log("🔥 Firebase SBI initialisé avec succès : Cache actif");
+
+/* --- 1.7 EXPORTATION DES SERVICES --- */
 // Permet d'utiliser ces variables dans main.js, admin.js, auth.js, etc.
 export { app, auth, db, storage, analytics };
