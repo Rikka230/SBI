@@ -1,142 +1,141 @@
 /* =========================================================
    SBI HOME RESPONSIVE
    ---------------------------------------------------------
-   Ajustements desktop intermédiaires pour la home.
+   Ajustements desktop pour la home.
    Objectif :
-   - éviter que le bloc "Aide à l'embauche 2026" se compresse
-   - garder la composition premium sur écrans plus étroits
-   - ne pas toucher au mobile déjà géré ailleurs
+   - garder le bloc "Aide à l'embauche" aligné avec le bloc fondateur
+   - supprimer le décalage magique qui bouge selon la largeur écran
+   - ne pas modifier le comportement mobile existant
    ========================================================= */
 
 /* ---------------------------------------------------------
-   DESKTOP INTERMÉDIAIRE
-   Entre grand écran confortable et tablette.
+   DESKTOP / LAPTOP LARGE
+   Le bloc aide reste aligné verticalement avec le bloc fondateur.
    --------------------------------------------------------- */
-@media (min-width: 1421px) and (max-width: 1760px) {
+@media (min-width: 1181px) {
     .section-stats .stats-grid {
-        grid-template-columns: minmax(540px, 0.86fr) minmax(680px, 1.14fr);
-        gap: clamp(1.4rem, 2vw, 2rem);
-        align-items: start;
+        align-items: center;
+    }
+
+    .section-stats .calculator-cta-box {
+        margin-top: 0;
+    }
+}
+
+/* ---------------------------------------------------------
+   DESKTOP INTERMÉDIAIRE
+   On garde les deux colonnes, mais on resserre proprement.
+   --------------------------------------------------------- */
+@media (min-width: 1181px) and (max-width: 1760px) {
+    .section-stats .stats-grid {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: clamp(1.5rem, 2vw, 2rem);
     }
 
     .section-stats .founder-block {
-        gap: clamp(1.5rem, 2vw, 2.4rem);
+        gap: clamp(1.5rem, 2.2vw, 2.4rem);
     }
 
     .section-stats .founder-img-wrapper {
-        flex: 0 0 min(38%, 300px);
-        width: auto;
+        width: 38%;
     }
 
-    .section-stats .founder-block .quote-content {
-        flex: 1 1 auto;
-        width: auto;
-        padding: clamp(2.1rem, 2.5vw, 3rem);
+    .section-stats .quote-content {
+        width: 62%;
+        padding: clamp(2.2rem, 2.5vw, 3rem);
     }
 
-    .calculator-cta-box {
-        margin-top: clamp(2.45rem, 3vw, 3.2rem);
+    .section-stats .calculator-panel {
+        --panel-slant: clamp(54px, 4vw, 76px);
+        grid-template-columns: minmax(0, 1fr) 32%;
+        min-height: clamp(300px, 22vw, 315px);
     }
 
-    .calculator-panel {
-        --panel-slant: 62px;
-        grid-template-columns: minmax(0, 1fr) 30%;
-        min-height: 300px;
+    .section-stats .calculator-panel-main {
+        padding:
+            clamp(1.8rem, 2vw, 2.05rem)
+            calc(clamp(1.7rem, 2vw, 2.25rem) + var(--panel-slant))
+            clamp(1.55rem, 1.8vw, 1.8rem)
+            clamp(1.7rem, 2vw, 2.25rem);
     }
 
-    .calculator-panel-main {
-        padding: 1.9rem calc(1.75rem + var(--panel-slant)) 1.65rem 1.75rem;
+    .section-stats .calculator-panel-side {
+        padding:
+            clamp(1.6rem, 2vw, 2rem)
+            clamp(1.35rem, 1.8vw, 1.8rem)
+            clamp(1.6rem, 2vw, 2rem)
+            calc(var(--panel-slant) + 1rem);
     }
 
-    .calculator-panel-side {
-        padding: 1.8rem 1.4rem 1.8rem calc(var(--panel-slant) + 1rem);
+    .section-stats .display-amount {
+        font-size: clamp(3.85rem, 4.8vw, 5.2rem);
     }
 
-    .display-amount {
-        font-size: clamp(3.8rem, 4.6vw, 4.85rem);
+    .section-stats .cta-description {
+        max-width: 520px;
+        font-size: clamp(0.92rem, 1vw, 1.02rem);
     }
 
-    .cta-description {
-        max-width: 460px;
-        font-size: 0.96rem;
-        line-height: 1.38;
+    .section-stats .cta-benefits {
+        gap: 0.7rem;
     }
 
-    .cta-benefits {
-        gap: 0.65rem;
-        margin-bottom: 1.15rem;
-    }
-
-    .benefit-tag {
-        padding: 0.68rem 0.85rem;
-        font-size: 0.68rem;
-        letter-spacing: 0.9px;
-    }
-
-    .btn-calc-neon {
-        padding: 1rem 1.25rem;
-        padding-right: 2.55rem;
+    .section-stats .benefit-tag {
+        padding: 0.7rem 0.9rem;
+        font-size: clamp(0.66rem, 0.72vw, 0.74rem);
     }
 }
 
 /* ---------------------------------------------------------
-   PETIT DESKTOP / LAPTOP
-   On empile les deux gros blocs avant qu'ils deviennent serrés.
-   Le bloc aide garde alors une largeur premium.
+   ZONE PLUS ÉTROITE MAIS ENCORE DESKTOP
+   On garde l'alignement, sans forcer l'empilement.
    --------------------------------------------------------- */
-@media (min-width: 1181px) and (max-width: 1420px) {
+@media (min-width: 1181px) and (max-width: 1450px) {
     .section-stats .stats-grid {
-        grid-template-columns: 1fr;
-        gap: 3rem;
+        grid-template-columns: minmax(0, 1.02fr) minmax(0, 0.98fr);
     }
 
     .section-stats .founder-block {
-        max-width: 980px;
+        gap: 1.35rem;
     }
 
-    .calculator-cta-box {
-        width: min(100%, 980px);
-        margin-top: 0;
-        margin-left: auto;
+    .section-stats .founder-img-wrapper {
+        width: 36%;
     }
 
-    .calculator-panel {
-        --panel-slant: 72px;
-        grid-template-columns: minmax(0, 1fr) 32%;
-        min-height: 300px;
+    .section-stats .quote-content {
+        width: 64%;
+        padding: 2rem;
     }
 
-    .calculator-panel-main {
-        padding: 2rem calc(2rem + var(--panel-slant)) 1.75rem 2rem;
+    .section-stats .calculator-panel {
+        grid-template-columns: minmax(0, 1fr) 28%;
     }
 
-    .calculator-panel-side {
-        padding: 1.8rem 1.5rem 1.8rem calc(var(--panel-slant) + 1rem);
+    .section-stats .display-amount {
+        font-size: clamp(3.55rem, 4.7vw, 4.35rem);
     }
 
-    .display-amount {
-        font-size: clamp(4rem, 6vw, 5rem);
+    .section-stats .cta-main-content {
+        margin-bottom: 1.15rem;
     }
 
-    .cta-description {
-        max-width: 520px;
+    .section-stats .cta-benefits {
+        margin-bottom: 1.1rem;
     }
 
-    .cta-benefits {
-        gap: 0.75rem;
+    .section-stats .btn-calc-neon {
+        padding-top: 1rem;
+        padding-bottom: 1rem;
     }
 }
 
 /* ---------------------------------------------------------
-   SÉCURITÉ LAPTOP LARGE
-   Garde les tags sur une ligne quand il y a encore la place.
+   TABLETTE / MOBILE
+   On laisse le CSS global faire son empilement existant.
    --------------------------------------------------------- */
-@media (min-width: 1421px) and (max-width: 1560px) {
-    .cta-benefits {
-        flex-wrap: nowrap;
-    }
-
-    .benefit-tag {
-        white-space: nowrap;
+@media (max-width: 1180px) {
+    .section-stats .stats-grid {
+        align-items: start;
     }
 }
