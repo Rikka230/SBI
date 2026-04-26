@@ -2,11 +2,25 @@
  * =======================================================================
  * 1. SECURITE ET ROLES (Authentification Vanilla JS)
  * =======================================================================
+ *
+ * Étape 2 :
+ * - Route guard renforcé pour /admin, /teacher, /student
+ * - Redirection automatique vers le bon espace selon le rôle
+ * - Conservation des effets visuels login :
+ *   loading bleu, succès bleu, erreur rouge + bulle contact
+ * =======================================================================
  */
 
 import { auth, db } from './firebase-init.js';
-import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import {
+    signInWithEmailAndPassword,
+    onAuthStateChanged,
+    signOut
+} from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+import {
+    doc,
+    getDoc
+} from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 /* --- 1.1 ELEMENTS LOGIN --- */
 const loginForm = document.getElementById('login-form');
@@ -19,6 +33,20 @@ const errorMessage = document.getElementById('error-message');
 let redirectInProgress = false;
 let loginSignalTimers = [];
 
+/* --- 1.2 CONSTANTES ROUTES --- */
+const ROLE_DASHBOARDS = {
+    admin: '/admin/index.html',
+    teacher: '/teacher/dashboard.html',
+    student: '/student/dashboard.html'
+};
+
+const PROTECTED_PATHS = {
+    admin: '/admin',
+    teacher: '/teacher',
+    student: '/student'
+};
+
+/* --- 1.3 HELPERS UI LOGIN --- */
 const setSubmitLabel = (text) => {
     if (submitLabel) {
         submitLabel.textContent = text;
@@ -127,7 +155,6 @@ const setLoginError = (message) => {
     setSubmitLabel("Accéder à l'espace");
     showLoginError(message);
 
-    /* Réouvre la bulle du losange pour guider les utilisateurs sans compte */
     revealLoginSignal(5600, 450);
 
     window.setTimeout(() => {
@@ -161,15 +188,79 @@ const getFirebaseErrorMessage = (error) => {
     }
 };
 
-const redirectWithLoginFeedback = (targetUrl) => {
+/* --- 1.4 HELPERS ROLES / ROUTES --- */
+const normalizePath = () => {
+    return window.location.pathname.toLowerCase();
+};
+
+const isLoginPage = (path = normalizePath()) => {
+    return path.includes('login');
+};
+
+const isPublicIndex = (path = normalizePath()) => {
+    return path === '/' || path === '/index.html' || path === '/index';
+};
+
+const isProtectedPath = (path = normalizePath()) => {
+    return (
+        path.startsWith(PROTECTED_PATHS.admin) ||
+        path.startsWith(PROTECTED_PATHS.teacher) ||
+        path.startsWith(PROTECTED_PATHS.student)
+    );
+};
+
+const isAdminLike = (userData) => {
+    return userData?.isGod === true || userData?.role === 'admin';
+};
+
+const getDashboardForUser = (userData) => {
+    if (isAdminLike(userData)) {
+        return ROLE_DASHBOARDS.admin;
+    }
+
+    if (userData?.role === 'teacher') {
+        return ROLE_DASHBOARDS.teacher;
+    }
+
+    return ROLE_DASHBOARDS.student;
+};
+
+const canAccessCurrentPath = (userData, path = normalizePath()) => {
+    if (!isProtectedPath(path)) {
+        return true;
+    }
+
+    if (isAdminLike(userData)) {
+        return true;
+    }
+
+    if (path.startsWith(PROTECTED_PATHS.admin)) {
+        return false;
+    }
+
+    if (path.startsWith(PROTECTED_PATHS.teacher)) {
+        return userData?.role === 'teacher';
+    }
+
+    if (path.startsWith(PROTECTED_PATHS.student)) {
+        return userData?.role === 'student';
+    }
+
+    return false;
+};
+
+const redirectTo = (targetUrl, useLoginFeedback = false) => {
     if (redirectInProgress) return;
+
+    const currentPath = normalizePath();
+
+    if (currentPath === targetUrl.toLowerCase()) {
+        return;
+    }
 
     redirectInProgress = true;
 
-    const currentPath = window.location.pathname;
-    const isLogin = currentPath.includes('login');
-
-    if (isLogin && loginCard) {
+    if (useLoginFeedback && isLoginPage(currentPath) && loginCard) {
         setLoginSuccess();
 
         window.setTimeout(() => {
@@ -182,7 +273,11 @@ const redirectWithLoginFeedback = (targetUrl) => {
     window.location.replace(targetUrl);
 };
 
-/* --- 1.2 GESTION DU FORMULAIRE DE CONNEXION --- */
+const redirectToDashboard = (userData, useLoginFeedback = false) => {
+    redirectTo(getDashboardForUser(userData), useLoginFeedback);
+};
+
+/* --- 1.5 GESTION DU FORMULAIRE DE CONNEXION --- */
 if (loginForm) {
     loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -206,7 +301,7 @@ if (loginForm) {
 
             /*
              * La redirection reste gérée par onAuthStateChanged + Firestore,
-             * pour conserver la logique role/statut existante.
+             * afin de conserver la logique role/statut.
              */
             setLoginSuccess();
 
@@ -217,92 +312,98 @@ if (loginForm) {
     });
 }
 
-/* --- 1.3 VERIFICATION PROFIL FIRESTORE (Rôle + Statut) --- */
+/* --- 1.6 VERIFICATION PROFIL FIRESTORE (Rôle + Statut) --- */
 const fetchUserData = async (uid) => {
     try {
         const userRef = doc(db, "users", uid);
         const userSnap = await getDoc(userRef);
 
         if (userSnap.exists()) {
-            return {
-                role: userSnap.data().role,
-                statut: userSnap.data().statut
-            };
-        } else {
-            console.warn("⚠️ Aucun profil trouvé, attribution étudiant par défaut.");
+            const data = userSnap.data();
 
             return {
-                role: "student",
-                statut: "actif"
+                role: data.role || "student",
+                statut: data.statut || "actif",
+                isGod: data.isGod === true
             };
         }
+
+        console.warn("⚠️ Aucun profil trouvé, attribution étudiant par défaut.");
+
+        return {
+            role: "student",
+            statut: "actif",
+            isGod: false
+        };
+
     } catch (error) {
         console.error("Erreur lors de la lecture du profil :", error);
 
         return {
             role: "student",
-            statut: "actif"
+            statut: "actif",
+            isGod: false
         };
     }
 };
 
-/* --- 1.4 ROUTE GUARD & REDIRECTIONS --- */
+/* --- 1.7 ROUTE GUARD & REDIRECTIONS --- */
 const enforceSecurityPolicies = async (user, userData) => {
-    const currentPath = window.location.pathname;
+    const currentPath = normalizePath();
 
-    // Règle A : Éjecte les non-connectés des zones privées
+    /*
+     * Règle A :
+     * Les non-connectés ne peuvent pas accéder aux espaces privés.
+     */
     if (!user) {
-        if (currentPath.includes('/admin') || currentPath.includes('/student') || currentPath.includes('/teacher/')) {
-            if (!currentPath.includes('login')) {
-                window.location.replace('/login.html');
-            }
+        if (isProtectedPath(currentPath)) {
+            redirectTo('/login.html');
         }
 
         return;
     }
 
-    // Règle B : BLOCAGE DES COMPTES SUSPENDUS
+    /*
+     * Règle B :
+     * Les comptes suspendus sont déconnectés immédiatement.
+     */
     if (userData.statut === 'suspendu') {
-        if (currentPath.includes('login')) {
+        if (isLoginPage(currentPath)) {
             setLoginError("Votre compte a été suspendu par un administrateur.");
         } else {
             alert("Votre compte a été suspendu par un administrateur.");
         }
 
         await signOut(auth);
-        window.location.replace('/login.html');
+        redirectTo('/login.html');
         return;
     }
 
-    // Règle C : Protection stricte du Dashboard Admin
-    if (currentPath.includes('/admin') && userData.role !== 'admin') {
-        window.location.replace('/login.html');
+    /*
+     * Règle C :
+     * Si un utilisateur connecté est sur login ou index,
+     * il repart vers son espace.
+     */
+    if (isPublicIndex(currentPath) || isLoginPage(currentPath)) {
+        redirectToDashboard(userData, true);
         return;
     }
 
-    // Règle D : Redirection POST-LOGIN vers le bon espace
-    const isPublicIndex = currentPath === '/' || currentPath === '/index.html' || currentPath === '/index';
-    const isLogin = currentPath.includes('login');
-
-    if (user && (isPublicIndex || isLogin)) {
-        if (userData.role === 'admin' && !currentPath.includes('/admin')) {
-            redirectWithLoginFeedback('/admin/index.html');
-            return;
-        }
-
-        if (userData.role === 'student' && !currentPath.includes('/student')) {
-            redirectWithLoginFeedback('/student/dashboard.html');
-            return;
-        }
-
-        if (userData.role === 'teacher' && !currentPath.includes('/teacher/dashboard.html')) {
-            redirectWithLoginFeedback('/teacher/dashboard.html');
-            return;
-        }
+    /*
+     * Règle D :
+     * Protection stricte des espaces.
+     *
+     * /admin   -> admin ou isGod uniquement
+     * /teacher -> teacher ou admin/isGod
+     * /student -> student ou admin/isGod
+     */
+    if (!canAccessCurrentPath(userData, currentPath)) {
+        redirectToDashboard(userData);
+        return;
     }
 };
 
-/* --- 1.5 OBSERVATEUR D'ETAT GLOBAL --- */
+/* --- 1.8 OBSERVATEUR D'ETAT GLOBAL --- */
 onAuthStateChanged(auth, async (user) => {
     if (user) {
         const userData = await fetchUserData(user.uid);
@@ -312,7 +413,7 @@ onAuthStateChanged(auth, async (user) => {
     }
 });
 
-/* --- 1.6 FONCTION DE DECONNEXION GLOBALE --- */
+/* --- 1.9 FONCTION DE DECONNEXION GLOBALE --- */
 export const logoutUser = () => {
     signOut(auth).then(() => {
         window.location.replace('/index.html');
