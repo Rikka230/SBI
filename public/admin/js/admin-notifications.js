@@ -3,13 +3,12 @@
  * NOTIFICATIONS & SEARCH - Écoute temps réel, Moteur de Recherche Global
  * =======================================================================
  *
- * Étape 3.1 patch :
- * - correction fermeture panneau notifications :
- *   profile-section, boutons profil / refresh / déconnexion reviennent bien
- * - modal de choix pour les élèves sur "Nouveau cours disponible"
- * - notifications admin non destructives au clic
- * - dismissedBy pour masquer une notification uniquement pour soi
- * - status/resolvedAt pour résoudre globalement une validation traitée
+ * Étape 3.2 :
+ * - notifications ciblées validées
+ * - recherche globale sécurisée par rôle
+ * - admin/isGod : accès complet
+ * - prof/élève : annuaire limité aux formations communes
+ * - prof/élève : aucun admin visible dans la recherche
  * =======================================================================
  */
 
@@ -726,8 +725,211 @@ function showTeacherCourseActionModal(courseId, courseTitle) {
 }
 
 /* =======================================================================
- * SECTION 4 : MOTEUR DE RECHERCHE GLOBAL
+ * SECTION 4 : MOTEUR DE RECHERCHE GLOBAL SÉCURISÉ
  * ======================================================================= */
+
+function getCurrentRole() {
+    if (currentUserProfile?.isGod === true) return 'admin';
+    if (currentUserProfile?.role) return currentUserProfile.role;
+
+    if (window.location.pathname.includes('/admin/')) return 'admin';
+    if (window.location.pathname.includes('/teacher/')) return 'teacher';
+
+    return 'student';
+}
+
+function userIsAdminLike(userData) {
+    return userData?.isGod === true || userData?.role === 'admin';
+}
+
+function getCurrentUserFormationIds() {
+    if (!window.searchDataCache || !currentUid) return [];
+
+    return window.searchDataCache.formations
+        .filter((formation) => {
+            const profs = Array.isArray(formation.profs) ? formation.profs : [];
+            const students = Array.isArray(formation.students) ? formation.students : [];
+
+            return profs.includes(currentUid) || students.includes(currentUid);
+        })
+        .map((formation) => formation.id);
+}
+
+function getCurrentUserFormationTitles() {
+    if (!window.searchDataCache || !currentUid) return [];
+
+    return window.searchDataCache.formations
+        .filter((formation) => {
+            const profs = Array.isArray(formation.profs) ? formation.profs : [];
+            const students = Array.isArray(formation.students) ? formation.students : [];
+
+            return profs.includes(currentUid) || students.includes(currentUid);
+        })
+        .map((formation) => formation.titre)
+        .filter(Boolean);
+}
+
+function isUserInCurrentSections(userData) {
+    if (!window.searchDataCache || !userData || !currentUid) return false;
+
+    if (userData.id === currentUid) return true;
+    if (userIsAdminLike(userData)) return false;
+
+    const currentFormationIds = getCurrentUserFormationIds();
+
+    return window.searchDataCache.formations.some((formation) => {
+        if (!currentFormationIds.includes(formation.id)) return false;
+
+        const profs = Array.isArray(formation.profs) ? formation.profs : [];
+        const students = Array.isArray(formation.students) ? formation.students : [];
+
+        return profs.includes(userData.id) || students.includes(userData.id);
+    });
+}
+
+function courseHasFormationIntersection(courseData, allowedFormationIds, allowedFormationTitles) {
+    if (!courseData || !Array.isArray(courseData.formations)) return false;
+
+    return courseData.formations.some((formationRef) => {
+        return allowedFormationIds.includes(formationRef) || allowedFormationTitles.includes(formationRef);
+    });
+}
+
+function isCourseVisibleForSearch(courseData, role) {
+    if (!courseData) return false;
+
+    if (role === 'admin') {
+        return true;
+    }
+
+    const allowedFormationIds = getCurrentUserFormationIds();
+    const allowedFormationTitles = getCurrentUserFormationTitles();
+
+    if (role === 'teacher') {
+        if (courseData.auteurId === currentUid) return true;
+
+        return (
+            courseData.actif === true &&
+            courseHasFormationIntersection(courseData, allowedFormationIds, allowedFormationTitles)
+        );
+    }
+
+    return (
+        courseData.actif === true &&
+        courseHasFormationIntersection(courseData, allowedFormationIds, allowedFormationTitles)
+    );
+}
+
+async function ensureSearchDataCache() {
+    if (window.searchDataCache?.ready === true) {
+        return;
+    }
+
+    const [uSnap, cSnap, fSnap] = await Promise.all([
+        getDocs(collection(db, 'users')),
+        getDocs(collection(db, 'courses')),
+        getDocs(collection(db, 'formations'))
+    ]);
+
+    window.searchDataCache = {
+        ready: true,
+        users: [],
+        courses: [],
+        formations: []
+    };
+
+    uSnap.forEach((d) => {
+        window.searchDataCache.users.push({
+            id: d.id,
+            ...d.data()
+        });
+    });
+
+    cSnap.forEach((d) => {
+        window.searchDataCache.courses.push({
+            id: d.id,
+            ...d.data()
+        });
+    });
+
+    fSnap.forEach((d) => {
+        window.searchDataCache.formations.push({
+            id: d.id,
+            ...d.data()
+        });
+    });
+}
+
+function buildCourseSearchResults(term, role) {
+    return window.searchDataCache.courses
+        .filter((course) => {
+            if (!course.titre || !course.titre.toLowerCase().includes(term)) return false;
+
+            return isCourseVisibleForSearch(course, role);
+        })
+        .slice(0, 5);
+}
+
+function buildUserSearchResults(term, role) {
+    return window.searchDataCache.users
+        .filter((userData) => {
+            const fullName = `${userData.prenom || ''} ${userData.nom || ''}`.toLowerCase();
+            const email = (userData.email || '').toLowerCase();
+
+            const matchesTerm = role === 'admin'
+                ? fullName.includes(term) || email.includes(term)
+                : fullName.includes(term);
+
+            if (!matchesTerm) return false;
+
+            if (role === 'admin') {
+                return true;
+            }
+
+            return isUserInCurrentSections(userData);
+        })
+        .slice(0, 5);
+}
+
+function getProfileLinkForSearchResult(userData, role) {
+    if (role === 'admin') {
+        return `/admin/admin-profile.html?id=${userData.id}`;
+    }
+
+    if (role === 'teacher') {
+        return `/teacher/mon-profil.html?id=${userData.id}`;
+    }
+
+    return `/student/mon-profil.html?id=${userData.id}`;
+}
+
+function getCourseLinkForSearchResult(courseData, role) {
+    if (role === 'admin') {
+        return `/admin/formations-cours.html?edit=${courseData.id}`;
+    }
+
+    if (role === 'teacher') {
+        if (courseData.auteurId === currentUid) {
+            return `/teacher/mes-cours.html?edit=${courseData.id}`;
+        }
+
+        return `/student/cours-viewer.html?id=${courseData.id}&preview=true`;
+    }
+
+    return `/student/cours-viewer.html?id=${courseData.id}`;
+}
+
+function getUserSearchSubText(userData, role) {
+    if (role === 'admin') {
+        return userData.email || '';
+    }
+
+    if (userData.role === 'teacher') {
+        return 'Professeur';
+    }
+
+    return 'Élève';
+}
 
 function setupGlobalSearch() {
     const searchInputs = document.querySelectorAll('.global-search-input');
@@ -740,27 +942,7 @@ function setupGlobalSearch() {
         const resultsContainer = input.nextElementSibling;
 
         input.addEventListener('focus', async () => {
-            if (!window.searchDataCache) {
-                const [uSnap, cSnap] = await Promise.all([
-                    getDocs(collection(db, 'users')),
-                    getDocs(collection(db, 'courses'))
-                ]);
-
-                window.searchDataCache = {
-                    users: [],
-                    courses: []
-                };
-
-                uSnap.forEach((d) => window.searchDataCache.users.push({
-                    id: d.id,
-                    ...d.data()
-                }));
-
-                cSnap.forEach((d) => window.searchDataCache.courses.push({
-                    id: d.id,
-                    ...d.data()
-                }));
-            }
+            await ensureSearchDataCache();
         });
 
         input.addEventListener('input', async (e) => {
@@ -771,110 +953,44 @@ function setupGlobalSearch() {
                 return;
             }
 
-            if (!window.searchDataCache) {
-                const [uSnap, cSnap] = await Promise.all([
-                    getDocs(collection(db, 'users')),
-                    getDocs(collection(db, 'courses'))
-                ]);
+            await ensureSearchDataCache();
 
-                window.searchDataCache = {
-                    users: [],
-                    courses: []
-                };
+            const role = getCurrentRole();
 
-                uSnap.forEach((d) => window.searchDataCache.users.push({
-                    id: d.id,
-                    ...d.data()
-                }));
-
-                cSnap.forEach((d) => window.searchDataCache.courses.push({
-                    id: d.id,
-                    ...d.data()
-                }));
-            }
+            const matchedCourses = buildCourseSearchResults(term, role);
+            const matchedUsers = buildUserSearchResults(term, role);
 
             let html = '';
-
-            let userRole = 'student';
-
-            if (currentUserProfile) {
-                if (currentUserProfile.isGod) {
-                    userRole = 'admin';
-                } else if (currentUserProfile.role) {
-                    userRole = currentUserProfile.role;
-                }
-            } else if (window.location.pathname.includes('/admin/')) {
-                userRole = 'admin';
-            } else if (window.location.pathname.includes('/teacher/')) {
-                userRole = 'teacher';
-            }
-
-            const isAdmin = userRole === 'admin';
-            const isTeacher = userRole === 'teacher';
-
-            const matchedCourses = window.searchDataCache.courses
-                .filter((c) => c.titre && c.titre.toLowerCase().includes(term) && ((!isAdmin && !isTeacher) ? c.actif : true))
-                .slice(0, 5);
 
             if (matchedCourses.length > 0) {
                 html += `<div style="padding: 6px 15px; font-size: 0.75rem; color: var(--text-muted, #888); background: rgba(0,0,0,0.05); font-weight: bold;">COURS PÉDAGOGIQUES</div>`;
 
-                matchedCourses.forEach((c) => {
-                    let link = `/student/cours-viewer.html?id=${c.id}`;
-
-                    if (isAdmin) {
-                        link = `/admin/formations-cours.html?edit=${c.id}`;
-                    } else if (isTeacher) {
-                        link = `/teacher/mes-cours.html?edit=${c.id}`;
-                    }
+                matchedCourses.forEach((course) => {
+                    const link = getCourseLinkForSearchResult(course, role);
 
                     html += `
                         <div class="search-result-item" data-url="${link}">
                             <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24" style="opacity: 0.6; min-width: 18px; flex-shrink: 0;"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3z"/></svg>
                             <div>
-                                <div class="search-result-title">${c.titre}</div>
+                                <div class="search-result-title">${course.titre}</div>
                             </div>
                         </div>
                     `;
                 });
             }
 
-            const matchedUsers = window.searchDataCache.users
-                .filter((u) => {
-                    const name = `${u.prenom || ''} ${u.nom || ''}`.toLowerCase();
-                    return name.includes(term) || (isAdmin && u.email && u.email.toLowerCase().includes(term));
-                })
-                .slice(0, 5);
-
             if (matchedUsers.length > 0) {
                 html += `<div style="padding: 6px 15px; font-size: 0.75rem; color: var(--text-muted, #888); background: rgba(0,0,0,0.05); font-weight: bold;">UTILISATEURS</div>`;
 
-                matchedUsers.forEach((u) => {
-                    let profileLink = `/student/mon-profil.html?id=${u.id}`;
-
-                    if (isAdmin) {
-                        profileLink = `/admin/admin-profile.html?id=${u.id}`;
-                    } else if (isTeacher) {
-                        profileLink = `/teacher/mon-profil.html?id=${u.id}`;
-                    }
-
-                    let subText = u.email;
-
-                    if (!isAdmin) {
-                        if (u.role === 'teacher') {
-                            subText = 'Professeur';
-                        } else if (u.role === 'admin' || u.isGod) {
-                            subText = 'Administration';
-                        } else {
-                            subText = 'Élève';
-                        }
-                    }
+                matchedUsers.forEach((userData) => {
+                    const profileLink = getProfileLinkForSearchResult(userData, role);
+                    const subText = getUserSearchSubText(userData, role);
 
                     html += `
                         <div class="search-result-item" data-url="${profileLink}">
                             <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24" style="opacity: 0.6; min-width: 18px; flex-shrink: 0;"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
                             <div>
-                                <div class="search-result-title">${u.prenom || ''} ${u.nom || ''}</div>
+                                <div class="search-result-title">${userData.prenom || ''} ${userData.nom || ''}</div>
                                 <div class="search-result-sub">${subText}</div>
                             </div>
                         </div>
