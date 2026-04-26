@@ -3,10 +3,10 @@
  * ADMIN COURSES - Gestion des Cours, Formations et Accès
  * =======================================================================
  *
- * Étape 5.2.1 :
- * - ajout index users.formationIds
- * - synchronisation automatique après modification des formations
- * - préparation des requêtes Firestore query-safe
+ * Étape 5.2.4C :
+ * - lectures Firestore adaptées au rôle via course-data-access.js
+ * - prof : formations assignées + ses cours seulement
+ * - admin/isGod : accès complet conservé
  * =======================================================================
  */
 
@@ -43,6 +43,12 @@ import {
 import {
     syncUserFormationIndexesFromData
 } from '/admin/js/user-formation-index.js';
+import {
+    loadUsersForCourseAccess,
+    loadFormationsForCourseAccess,
+    loadCoursesForCourseAccess,
+    loadCoursesForMediaSafety
+} from '/admin/js/course-data-access.js';
 
 let currentUid = null;
 let currentUserProfile = null;
@@ -425,12 +431,16 @@ function setupDropZone(dropZoneId, inputId) {
 }
 
 async function loadUsersForAccess() {
-    const snap = await getDocs(collection(db, "users"));
-    allUsersForAccess = [];
+    allUsersForAccess = await loadUsersForCourseAccess({
+        currentUid,
+        currentUserProfile
+    });
 
-    snap.forEach(d => allUsersForAccess.push({ id: d.id, ...d.data() }));
+    const loadedProfile = allUsersForAccess.find(u => u.id === currentUid);
 
-    currentUserProfile = allUsersForAccess.find(u => u.id === currentUid);
+    if (loadedProfile) {
+        currentUserProfile = loadedProfile;
+    }
 }
 
 function getAccessibleFormations() {
@@ -444,10 +454,10 @@ function getAccessibleFormations() {
 }
 
 async function loadFormationsCategories() {
-    const snap = await getDocs(collection(db, "formations"));
-    allFormationsData = [];
-
-    snap.forEach(d => allFormationsData.push({ id: d.id, ...d.data() }));
+    allFormationsData = await loadFormationsForCourseAccess({
+        currentUid,
+        currentUserProfile
+    });
 
     renderFormationsList();
     renderFormationsPillsAndFilters();
@@ -1281,20 +1291,20 @@ async function loadCourses() {
     if (!listContainer) return;
 
     try {
-        const querySnapshot = await getDocs(collection(db, "courses"));
         listContainer.innerHTML = '';
-        allCoursesData = [];
+        allCoursesData = await loadCoursesForCourseAccess({
+            currentUid,
+            currentUserProfile
+        });
 
-        if (querySnapshot.empty) {
+        if (allCoursesData.length === 0) {
             listContainer.innerHTML = '<p style="color:var(--text-muted); text-align:center;">Aucun cours.</p>';
+            refreshBlocsList();
             return;
         }
 
-        querySnapshot.forEach((docSnap) => {
-            const data = docSnap.data();
-            const courseId = docSnap.id;
-
-            allCoursesData.push({ id: courseId, ...data });
+        allCoursesData.forEach((data) => {
+            const courseId = data.id;
 
             let statusHtml = '';
 
@@ -1350,6 +1360,7 @@ async function loadCourses() {
         refreshBlocsList();
 
     } catch (error) {
+        console.error("[SBI Courses] Erreur chargement cours :", error);
         listContainer.innerHTML = '<p style="color:red; text-align:center;">Erreur système.</p>';
     }
 }
@@ -1426,14 +1437,9 @@ window.deleteCourse = async (id) => {
 
         const courseData = courseSnap.data();
 
-        const allCoursesSnap = await getDocs(collection(db, "courses"));
-        const allCourses = [];
-
-        allCoursesSnap.forEach((courseDoc) => {
-            allCourses.push({
-                id: courseDoc.id,
-                ...courseDoc.data()
-            });
+        const allCourses = await loadCoursesForMediaSafety({
+            currentUid,
+            currentUserProfile
         });
 
         const mediaDeleteResult = await deleteUnusedCourseMediaFromStorage({
