@@ -3,18 +3,38 @@
  * ADMIN COURSES - Gestion des Cours, Formations et Accès
  * =======================================================================
  *
- * Étape 4.1 :
- * - garde-fou média avant migration Firebase Storage
- * - images compressées et contrôlées
- * - vidéos trop lourdes bloquées
- * - estimation du poids final du document Firestore avant sauvegarde
+ * Étape 4.2.1 :
+ * - médias de cours envoyés dans Firebase Storage
+ * - Firestore stocke uniquement les URLs
+ * - compatibilité avec les anciens médias base64
+ * - preview locale avant sauvegarde
  * =======================================================================
  */
 
-import { db, auth } from '/js/firebase-init.js';
-import { collection, addDoc, getDocs, doc, deleteDoc, updateDoc, serverTimestamp, getDoc, query, where } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { db, auth, app } from '/js/firebase-init.js';
+import {
+    collection,
+    addDoc,
+    getDocs,
+    doc,
+    deleteDoc,
+    updateDoc,
+    serverTimestamp,
+    getDoc,
+    query,
+    where,
+    setDoc
+} from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+import {
+    getStorage,
+    ref,
+    uploadBytes,
+    getDownloadURL
+} from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
 import { logoutUser } from '/js/auth.js';
+
+const storage = getStorage(app);
 
 let currentUid = null;
 let currentUserProfile = null;
@@ -29,21 +49,25 @@ let editingCourseAuthorId = null;
 let editingCourseOriginalStatus = null;
 let editingCourseOriginalActive = false;
 
+const pendingChapterMedia = new Map();
+
 const SVG_PREVIEW = `<svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24" style="vertical-align:middle; margin-right:8px;"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>`;
 const SVG_QUIZ_LIST = `<svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24" style="vertical-align:text-bottom; margin-right:4px;"><path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>`;
 
 /* -----------------------------------------------------------------------
-   GARDE-FOU MÉDIA TEMPORAIRE
-   -----------------------------------------------------------------------
-   Tant que les médias sont stockés en base64 dans Firestore, il faut rester
-   sous la limite Firestore. La vraie solution sera Firebase Storage.
+   MÉDIAS / FIREBASE STORAGE
    ----------------------------------------------------------------------- */
 
-const MAX_IMAGE_FILE_BYTES = 6 * 1024 * 1024;
-const MAX_IMAGE_DATA_URL_BYTES = 380 * 1024;
-const MAX_VIDEO_FILE_BYTES = 450 * 1024;
-const MAX_VIDEO_DATA_URL_BYTES = 620 * 1024;
+const MAX_IMAGE_FILE_BYTES = 20 * 1024 * 1024;
+const MAX_VIDEO_FILE_BYTES = 200 * 1024 * 1024;
 const MAX_COURSE_DOCUMENT_BYTES = 850 * 1024;
+
+const IMAGE_UPLOAD_ATTEMPTS = [
+    { width: 1600, quality: 0.84 },
+    { width: 1400, quality: 0.78 },
+    { width: 1200, quality: 0.72 },
+    { width: 1000, quality: 0.68 }
+];
 
 const formatBytes = (bytes) => {
     if (!Number.isFinite(bytes)) return '0 Ko';
@@ -68,29 +92,40 @@ const estimateObjectBytes = (value) => {
     }
 };
 
-const clearImageInputState = () => {
-    const input = document.getElementById('chapter-image-upload');
-    const hidden = document.getElementById('chapter-image-base64');
-    const preview = document.getElementById('chapter-image-preview');
-
-    if (input) input.value = '';
-    if (hidden) hidden.value = '';
-    if (preview) {
-        preview.removeAttribute('src');
-        preview.style.display = 'none';
-    }
+const sanitizeStorageName = (name) => {
+    return String(name || 'media')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-zA-Z0-9._-]/g, '_')
+        .replace(/_+/g, '_')
+        .slice(0, 80);
 };
 
-const clearVideoInputState = () => {
-    const input = document.getElementById('chapter-video-upload');
-    const hidden = document.getElementById('chapter-video-base64');
-    const preview = document.getElementById('chapter-video-preview');
+const getFileExtension = (file, fallback = 'bin') => {
+    const name = file?.name || '';
+    const parts = name.split('.');
 
-    if (input) input.value = '';
-    if (hidden) hidden.value = '';
-    if (preview) {
-        preview.removeAttribute('src');
-        preview.style.display = 'none';
+    if (parts.length > 1) {
+        return parts.pop().toLowerCase();
+    }
+
+    if (file?.type?.includes('webm')) return 'webm';
+    if (file?.type?.includes('mp4')) return 'mp4';
+    if (file?.type?.includes('jpeg')) return 'jpg';
+    if (file?.type?.includes('png')) return 'png';
+    if (file?.type?.includes('webp')) return 'webp';
+
+    return fallback;
+};
+
+const validateCourseDocumentSize = (courseData) => {
+    const estimatedBytes = estimateObjectBytes(courseData);
+
+    if (estimatedBytes > MAX_COURSE_DOCUMENT_BYTES) {
+        throw new Error(
+            `Ce cours est trop lourd pour Firestore : environ ${formatBytes(estimatedBytes)}. ` +
+            `Même avec Storage, le texte/quiz/données du cours dépassent la limite de sécurité.`
+        );
     }
 };
 
@@ -114,33 +149,44 @@ const loadImageFromDataURL = (dataUrl) => {
     });
 };
 
-const canvasToWebpDataURL = (canvas, quality) => {
-    return canvas.toDataURL('image/webp', quality);
+const canvasToBlob = (canvas, type, quality) => {
+    return new Promise((resolve, reject) => {
+        canvas.toBlob((blob) => {
+            if (!blob) {
+                reject(new Error("Compression image impossible."));
+                return;
+            }
+
+            resolve(blob);
+        }, type, quality);
+    });
 };
 
-const compressImageToSafeDataURL = async (file) => {
+const compressImageFileToWebpBlob = async (file) => {
     if (!file) {
         throw new Error("Aucun fichier image sélectionné.");
     }
 
+    if (!file.type.startsWith('image/')) {
+        throw new Error("Le fichier sélectionné n'est pas une image.");
+    }
+
     if (file.size > MAX_IMAGE_FILE_BYTES) {
-        throw new Error(`Image trop lourde : ${formatBytes(file.size)}. Maximum conseillé : ${formatBytes(MAX_IMAGE_FILE_BYTES)}.`);
+        throw new Error(
+            `Image trop lourde : ${formatBytes(file.size)}. ` +
+            `Limite actuelle : ${formatBytes(MAX_IMAGE_FILE_BYTES)}.`
+        );
     }
 
     const originalDataUrl = await readFileAsDataURL(file);
     const img = await loadImageFromDataURL(originalDataUrl);
 
-    const attempts = [
-        { width: 1200, quality: 0.82 },
-        { width: 1000, quality: 0.76 },
-        { width: 850, quality: 0.70 },
-        { width: 720, quality: 0.64 }
-    ];
+    let lastBlob = null;
 
-    for (const attempt of attempts) {
+    for (const attempt of IMAGE_UPLOAD_ATTEMPTS) {
         const ratio = Math.min(1, attempt.width / img.width);
-        const width = Math.round(img.width * ratio);
-        const height = Math.round(img.height * ratio);
+        const width = Math.max(1, Math.round(img.width * ratio));
+        const height = Math.max(1, Math.round(img.height * ratio));
 
         const canvas = document.createElement('canvas');
         canvas.width = width;
@@ -149,57 +195,188 @@ const compressImageToSafeDataURL = async (file) => {
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0, width, height);
 
-        const dataUrl = canvasToWebpDataURL(canvas, attempt.quality);
-        const dataUrlBytes = estimateStringBytes(dataUrl);
+        const blob = await canvasToBlob(canvas, 'image/webp', attempt.quality);
+        lastBlob = blob;
 
-        if (dataUrlBytes <= MAX_IMAGE_DATA_URL_BYTES) {
-            return dataUrl;
+        if (blob.size <= 2.5 * 1024 * 1024) {
+            return blob;
         }
     }
 
-    throw new Error(
-        `Image encore trop lourde après compression. ` +
-        `Essaie une image plus petite ou attends la migration Firebase Storage.`
-    );
+    return lastBlob;
 };
 
-const validateVideoFileForFirestore = async (file) => {
+const validateVideoFileForStorage = (file) => {
     if (!file) {
         throw new Error("Aucun fichier vidéo sélectionné.");
+    }
+
+    if (!file.type.startsWith('video/')) {
+        throw new Error("Le fichier sélectionné n'est pas une vidéo.");
     }
 
     if (file.size > MAX_VIDEO_FILE_BYTES) {
         throw new Error(
             `Vidéo trop lourde : ${formatBytes(file.size)}. ` +
-            `Limite temporaire : ${formatBytes(MAX_VIDEO_FILE_BYTES)}. ` +
-            `Pour les vraies vidéos de cours, il faudra passer par Firebase Storage.`
-        );
-    }
-
-    const dataUrl = await readFileAsDataURL(file);
-    const dataUrlBytes = estimateStringBytes(dataUrl);
-
-    if (dataUrlBytes > MAX_VIDEO_DATA_URL_BYTES) {
-        throw new Error(
-            `Vidéo trop lourde après encodage : ${formatBytes(dataUrlBytes)}. ` +
-            `Limite temporaire : ${formatBytes(MAX_VIDEO_DATA_URL_BYTES)}.`
-        );
-    }
-
-    return dataUrl;
-};
-
-const validateCourseDocumentSize = (courseData) => {
-    const estimatedBytes = estimateObjectBytes(courseData);
-
-    if (estimatedBytes > MAX_COURSE_DOCUMENT_BYTES) {
-        throw new Error(
-            `Ce cours est trop lourd pour Firestore : environ ${formatBytes(estimatedBytes)}. ` +
-            `Limite de sécurité temporaire : ${formatBytes(MAX_COURSE_DOCUMENT_BYTES)}. ` +
-            `Supprime ou allège les médias, ou attends la migration Firebase Storage.`
+            `Limite actuelle : ${formatBytes(MAX_VIDEO_FILE_BYTES)}.`
         );
     }
 };
+
+const getPendingMedia = (chapterId) => {
+    if (!pendingChapterMedia.has(chapterId)) {
+        pendingChapterMedia.set(chapterId, {});
+    }
+
+    return pendingChapterMedia.get(chapterId);
+};
+
+const revokePreviewUrl = (url) => {
+    if (url && url.startsWith('blob:')) {
+        URL.revokeObjectURL(url);
+    }
+};
+
+const restoreCurrentMediaPreview = (type) => {
+    if (!activeChapterId) return;
+
+    const chap = currentChapters.find(c => c.id === activeChapterId);
+    if (!chap) return;
+
+    const pending = pendingChapterMedia.get(activeChapterId) || {};
+
+    if (type === 'image') {
+        const preview = document.getElementById('chapter-image-preview');
+        const hidden = document.getElementById('chapter-image-base64');
+        const src = pending.imagePreviewUrl || chap.mediaImage || '';
+
+        if (hidden) hidden.value = chap.mediaImage || '';
+
+        if (preview) {
+            if (src) {
+                preview.src = src;
+                preview.style.display = 'block';
+            } else {
+                preview.removeAttribute('src');
+                preview.style.display = 'none';
+            }
+        }
+    }
+
+    if (type === 'video') {
+        const preview = document.getElementById('chapter-video-preview');
+        const hidden = document.getElementById('chapter-video-base64');
+        const src = pending.videoPreviewUrl || chap.mediaVideo || '';
+
+        if (hidden) hidden.value = chap.mediaVideo || '';
+
+        if (preview) {
+            if (src) {
+                preview.src = src;
+                preview.style.display = 'block';
+            } else {
+                preview.removeAttribute('src');
+                preview.style.display = 'none';
+            }
+        }
+    }
+};
+
+const setPendingImageFile = (chapterId, file) => {
+    const pending = getPendingMedia(chapterId);
+
+    revokePreviewUrl(pending.imagePreviewUrl);
+
+    pending.imageFile = file;
+    pending.imagePreviewUrl = URL.createObjectURL(file);
+
+    pendingChapterMedia.set(chapterId, pending);
+};
+
+const setPendingVideoFile = (chapterId, file) => {
+    const pending = getPendingMedia(chapterId);
+
+    revokePreviewUrl(pending.videoPreviewUrl);
+
+    pending.videoFile = file;
+    pending.videoPreviewUrl = URL.createObjectURL(file);
+
+    pendingChapterMedia.set(chapterId, pending);
+};
+
+const clearPendingMediaForChapter = (chapterId) => {
+    const pending = pendingChapterMedia.get(chapterId);
+
+    if (pending) {
+        revokePreviewUrl(pending.imagePreviewUrl);
+        revokePreviewUrl(pending.videoPreviewUrl);
+    }
+
+    pendingChapterMedia.delete(chapterId);
+};
+
+const uploadImageToStorage = async (courseRefId, chapterId, file) => {
+    const compressedBlob = await compressImageFileToWebpBlob(file);
+    const cleanName = sanitizeStorageName(file.name.replace(/\.[^.]+$/, ''));
+    const fileName = `${Date.now()}_${cleanName || 'image'}.webp`;
+    const storagePath = `courses/${courseRefId}/chapters/${chapterId}/${fileName}`;
+    const fileRef = ref(storage, storagePath);
+
+    await uploadBytes(fileRef, compressedBlob, {
+        contentType: 'image/webp',
+        customMetadata: {
+            originalName: file.name || '',
+            uploadedBy: currentUid || ''
+        }
+    });
+
+    return getDownloadURL(fileRef);
+};
+
+const uploadVideoToStorage = async (courseRefId, chapterId, file) => {
+    validateVideoFileForStorage(file);
+
+    const ext = getFileExtension(file, 'mp4');
+    const cleanName = sanitizeStorageName(file.name.replace(/\.[^.]+$/, ''));
+    const fileName = `${Date.now()}_${cleanName || 'video'}.${ext}`;
+    const storagePath = `courses/${courseRefId}/chapters/${chapterId}/${fileName}`;
+    const fileRef = ref(storage, storagePath);
+
+    await uploadBytes(fileRef, file, {
+        contentType: file.type || 'video/mp4',
+        customMetadata: {
+            originalName: file.name || '',
+            uploadedBy: currentUid || ''
+        }
+    });
+
+    return getDownloadURL(fileRef);
+};
+
+const uploadPendingMediaForChapters = async (courseRefId) => {
+    const entries = Array.from(pendingChapterMedia.entries());
+
+    if (entries.length === 0) return;
+
+    for (const [chapterId, pending] of entries) {
+        const chap = currentChapters.find(c => c.id === chapterId);
+        if (!chap) continue;
+
+        if (pending.imageFile) {
+            chap.mediaImage = await uploadImageToStorage(courseRefId, chapterId, pending.imageFile);
+        }
+
+        if (pending.videoFile) {
+            chap.mediaVideo = await uploadVideoToStorage(courseRefId, chapterId, pending.videoFile);
+        }
+
+        clearPendingMediaForChapter(chapterId);
+    }
+};
+
+/* -----------------------------------------------------------------------
+   INITIALISATION
+   ----------------------------------------------------------------------- */
 
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -348,32 +525,30 @@ document.addEventListener('DOMContentLoaded', () => {
             const file = e.target.files[0];
             if (!file) return;
 
-            const preview = document.getElementById('chapter-image-preview');
-            const hidden = document.getElementById('chapter-image-base64');
+            if (!activeChapterId) {
+                alert("Sélectionne une étape avant d'ajouter une image.");
+                e.target.value = '';
+                return;
+            }
 
             try {
-                if (preview) {
-                    preview.style.display = 'none';
-                    preview.removeAttribute('src');
+                if (!file.type.startsWith('image/')) {
+                    throw new Error("Le fichier sélectionné n'est pas une image.");
                 }
 
-                if (hidden) {
-                    hidden.value = '';
+                if (file.size > MAX_IMAGE_FILE_BYTES) {
+                    throw new Error(
+                        `Image trop lourde : ${formatBytes(file.size)}. ` +
+                        `Limite actuelle : ${formatBytes(MAX_IMAGE_FILE_BYTES)}.`
+                    );
                 }
 
-                const dataUrl = await compressImageToSafeDataURL(file);
-
-                if (hidden) {
-                    hidden.value = dataUrl;
-                }
-
-                if (preview) {
-                    preview.src = dataUrl;
-                    preview.style.display = 'block';
-                }
+                setPendingImageFile(activeChapterId, file);
+                restoreCurrentMediaPreview('image');
 
             } catch (error) {
-                clearImageInputState();
+                e.target.value = '';
+                restoreCurrentMediaPreview('image');
                 alert(`❌ ${error.message}`);
             }
         });
@@ -386,33 +561,20 @@ document.addEventListener('DOMContentLoaded', () => {
             const file = e.target.files[0];
             if (!file) return;
 
-            const preview = document.getElementById('chapter-video-preview');
-            const hidden = document.getElementById('chapter-video-base64');
+            if (!activeChapterId) {
+                alert("Sélectionne une étape avant d'ajouter une vidéo.");
+                e.target.value = '';
+                return;
+            }
 
             try {
-                if (preview) {
-                    preview.pause();
-                    preview.style.display = 'none';
-                    preview.removeAttribute('src');
-                }
-
-                if (hidden) {
-                    hidden.value = '';
-                }
-
-                const dataUrl = await validateVideoFileForFirestore(file);
-
-                if (hidden) {
-                    hidden.value = dataUrl;
-                }
-
-                if (preview) {
-                    preview.src = dataUrl;
-                    preview.style.display = 'block';
-                }
+                validateVideoFileForStorage(file);
+                setPendingVideoFile(activeChapterId, file);
+                restoreCurrentMediaPreview('video');
 
             } catch (error) {
-                clearVideoInputState();
+                e.target.value = '';
+                restoreCurrentMediaPreview('video');
                 alert(`❌ ${error.message}`);
             }
         });
@@ -502,6 +664,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+/* -----------------------------------------------------------------------
+   UI / FORMATIONS
+   ----------------------------------------------------------------------- */
 
 function setupDropZone(dropZoneId, inputId) {
     const dropZone = document.getElementById(dropZoneId);
@@ -719,11 +885,21 @@ function refreshBlocsList() {
     }
 }
 
+/* -----------------------------------------------------------------------
+   ÉDITEUR DE COURS
+   ----------------------------------------------------------------------- */
+
 window.prepareNewCourse = function() {
     editingCourseAuthorId = null;
     editingCourseOriginalStatus = null;
     editingCourseOriginalActive = false;
     window.editingCourseOriginalActive = false;
+
+    pendingChapterMedia.forEach((pending) => {
+        revokePreviewUrl(pending.imagePreviewUrl);
+        revokePreviewUrl(pending.videoPreviewUrl);
+    });
+    pendingChapterMedia.clear();
 
     const editCourseIdEl = document.getElementById('edit-course-id');
     if (editCourseIdEl) editCourseIdEl.value = '';
@@ -799,11 +975,13 @@ function saveCurrentChapterContent() {
         const mediaChecked = document.querySelector('input[name="media_type"]:checked');
         if (mediaChecked) chap.mediaType = mediaChecked.value;
 
+        const pending = pendingChapterMedia.get(chap.id);
+
         const cImage = document.getElementById('chapter-image-base64');
-        if (cImage) chap.mediaImage = cImage.value;
+        if (cImage && !pending?.imageFile) chap.mediaImage = cImage.value;
 
         const cVideo = document.getElementById('chapter-video-base64');
-        if (cVideo) chap.mediaVideo = cVideo.value;
+        if (cVideo && !pending?.videoFile) chap.mediaVideo = cVideo.value;
 
         chap.contenu = window.quill ? window.quill.root.innerHTML : '';
 
@@ -851,16 +1029,20 @@ window.selectChapter = function(id) {
             document.getElementById('media-video-zone').style.display = 'none';
         }
 
+        const pending = pendingChapterMedia.get(chap.id) || {};
+
         const cVideoB64 = document.getElementById('chapter-video-base64');
         if (cVideoB64) cVideoB64.value = chap.mediaVideo || '';
 
         const vPreview = document.getElementById('chapter-video-preview');
-
         if (vPreview) {
-            if (chap.mediaVideo) {
-                vPreview.src = chap.mediaVideo;
+            const src = pending.videoPreviewUrl || chap.mediaVideo || '';
+
+            if (src) {
+                vPreview.src = src;
                 vPreview.style.display = 'block';
             } else {
+                vPreview.removeAttribute('src');
                 vPreview.style.display = 'none';
             }
         }
@@ -869,12 +1051,14 @@ window.selectChapter = function(id) {
         if (cImageB64) cImageB64.value = chap.mediaImage || '';
 
         const iPreview = document.getElementById('chapter-image-preview');
-
         if (iPreview) {
-            if (chap.mediaImage) {
-                iPreview.src = chap.mediaImage;
+            const src = pending.imagePreviewUrl || chap.mediaImage || '';
+
+            if (src) {
+                iPreview.src = src;
                 iPreview.style.display = 'block';
             } else {
+                iPreview.removeAttribute('src');
                 iPreview.style.display = 'none';
             }
         }
@@ -892,6 +1076,8 @@ window.deleteChapter = function(id, event) {
     event.stopPropagation();
 
     if (confirm('Supprimer cette étape ?')) {
+        clearPendingMediaForChapter(id);
+
         currentChapters = currentChapters.filter(c => c.id !== id);
 
         if (activeChapterId === id) {
@@ -935,6 +1121,10 @@ function renderChaptersList() {
         list.insertAdjacentHTML('beforeend', li);
     });
 }
+
+/* -----------------------------------------------------------------------
+   QUIZ
+   ----------------------------------------------------------------------- */
 
 function addQuizQuestion() {
     const container = document.getElementById('quiz-questions-container');
@@ -1041,12 +1231,22 @@ function renderQuizBuilder(questions) {
     });
 }
 
+/* -----------------------------------------------------------------------
+   ÉDITION / SAUVEGARDE
+   ----------------------------------------------------------------------- */
+
 window.editCourse = async (id) => {
     try {
         const docSnap = await getDoc(doc(db, "courses", id));
 
         if (docSnap.exists()) {
             const data = docSnap.data();
+
+            pendingChapterMedia.forEach((pending) => {
+                revokePreviewUrl(pending.imagePreviewUrl);
+                revokePreviewUrl(pending.videoPreviewUrl);
+            });
+            pendingChapterMedia.clear();
 
             const editCourseIdEl = document.getElementById('edit-course-id');
             if (editCourseIdEl) editCourseIdEl.value = id;
@@ -1237,6 +1437,22 @@ async function saveCourseToFirebase(actionType = 'admin_save') {
     );
 
     try {
+        let courseRefId = courseId;
+        let newCourseRef = null;
+
+        if (!courseRefId) {
+            newCourseRef = doc(collection(db, "courses"));
+            courseRefId = newCourseRef.id;
+            document.getElementById('edit-course-id').value = courseRefId;
+        }
+
+        const hasPendingMedia = pendingChapterMedia.size > 0;
+
+        if (hasPendingMedia) {
+            console.log("[SBI Courses] Upload médias vers Firebase Storage...");
+            await uploadPendingMediaForChapters(courseRefId);
+        }
+
         const courseData = {
             titre: title,
             bloc: bloc,
@@ -1249,18 +1465,13 @@ async function saveCourseToFirebase(actionType = 'admin_save') {
 
         validateCourseDocumentSize(courseData);
 
-        let courseRefId = courseId;
-
-        if (courseId) {
-            await updateDoc(doc(db, "courses", courseId), courseData);
+        if (newCourseRef) {
+            await setDoc(newCourseRef, {
+                ...courseData,
+                dateCreation: serverTimestamp()
+            });
         } else {
-            courseData.dateCreation = serverTimestamp();
-
-            validateCourseDocumentSize(courseData);
-
-            const docRef = await addDoc(collection(db, "courses"), courseData);
-            courseRefId = docRef.id;
-            document.getElementById('edit-course-id').value = courseRefId;
+            await updateDoc(doc(db, "courses", courseRefId), courseData);
         }
 
         if (actionType === 'submit') {
@@ -1342,6 +1553,8 @@ async function saveCourseToFirebase(actionType = 'admin_save') {
                 alert("✅ Le cours a été publié ! Les notifications ont été envoyées au professeur et aux élèves.");
             } else if (isRejecting) {
                 alert("❌ Le cours a été refusé. Le professeur a été notifié.");
+            } else if (hasPendingMedia) {
+                alert(actionType === 'submit' ? '✅ Cours envoyé pour validation ! Médias envoyés dans Storage.' : '✅ Cours sauvegardé ! Médias envoyés dans Storage.');
             } else {
                 alert(actionType === 'submit' ? '✅ Cours envoyé pour validation !' : '✅ Cours sauvegardé !');
             }
@@ -1355,6 +1568,10 @@ async function saveCourseToFirebase(actionType = 'admin_save') {
         alert(`❌ ${error.message || "Erreur de sauvegarde."}`);
     }
 }
+
+/* -----------------------------------------------------------------------
+   LISTE COURS
+   ----------------------------------------------------------------------- */
 
 async function loadCourses() {
     const listContainer = document.getElementById('courses-list-container');
