@@ -195,8 +195,6 @@ export const migrateLegacyAvatarForUser = async (userId, userData = {}, options 
     };
 };
 
-
-export const getProfileAvatarCropSource = async (userId, userData = {}) => {
 export const getProfileAvatarCropSource = async (userId, userData = {}) => {
     if (!userData || !userId) {
         return {
@@ -228,6 +226,20 @@ export const getProfileAvatarCropSource = async (userId, userData = {}) => {
         };
     }
 
+    if (typeof userData.photoURL === 'string' && userData.photoURL.trim()) {
+        const cleanUrl = userData.photoURL.trim();
+        const isRemote = /^https?:\/\//i.test(cleanUrl);
+
+        return {
+            src: cleanUrl,
+            source: isFirebaseStorageUrl(cleanUrl) ? 'storage-download-url' : 'direct-url',
+            revoke: null,
+            canvasSafe: !isRemote,
+            remoteUrl: isRemote,
+            needsCorsForCanvas: isRemote
+        };
+    }
+
     if (isSafeAvatarPathForUser(userData.photoStoragePath, userId)) {
         try {
             const downloadURL = await getDownloadURL(ref(storage, userData.photoStoragePath));
@@ -245,19 +257,6 @@ export const getProfileAvatarCropSource = async (userId, userData = {}) => {
         }
     }
 
-    if (typeof userData.photoURL === 'string' && userData.photoURL.trim()) {
-        const isRemote = /^https?:\/\//i.test(userData.photoURL.trim());
-
-        return {
-            src: userData.photoURL.trim(),
-            source: isFirebaseStorageUrl(userData.photoURL) ? 'storage-download-url' : 'direct-url',
-            revoke: null,
-            canvasSafe: !isRemote,
-            remoteUrl: isRemote,
-            needsCorsForCanvas: isRemote
-        };
-    }
-
     return {
         src: null,
         source: 'no-avatar',
@@ -266,6 +265,8 @@ export const getProfileAvatarCropSource = async (userId, userData = {}) => {
         remoteUrl: false
     };
 };
+
+export const scanLegacyStorageUsage = async () => {
     const [usersSnap, coursesSnap] = await Promise.all([
         getDocs(collection(db, 'users')),
         getDocs(collection(db, 'courses'))
