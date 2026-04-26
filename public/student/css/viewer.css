@@ -1,3 +1,25 @@
+/* =========================================================
+   AUTH GUARD ANTI-FLASH - VIEWER
+   ---------------------------------------------------------
+   Le viewer étudiant n'utilise pas .app-container.
+   On masque donc son interface tant que auth.js n'a pas validé le rôle.
+   ========================================================= */
+
+body:not(.auth-ready) .viewer-header,
+body:not(.auth-ready) .viewer-body {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+body.auth-ready .viewer-header,
+body.auth-ready .viewer-body {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transition: opacity 0.18s ease;
+}
+
 :root {
     --bg-main: #f3f4f6;
     --bg-sidebar: #ffffff;
