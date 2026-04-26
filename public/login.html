@@ -34,7 +34,7 @@
             background: var(--bg-surface);
             border: 1px solid var(--border-color);
             border-radius: 2px;
-            padding: 3.5rem 3rem;
+            padding: 3.5rem 3rem 2.55rem;
             position: relative;
             box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
             overflow: visible;
@@ -99,8 +99,7 @@
             border-color: rgba(255, 74, 74, 0.32);
         }
 
-        /* Coin bas droit :
-           même logique que les cartes parcours, sans overlay lumineux carré */
+        /* Coin bas droit : même logique que les cartes parcours, sans overlay lumineux carré */
         .login-card-cut {
             position: absolute;
             bottom: -1px;
@@ -213,19 +212,27 @@
             margin-left: 8px;
         }
 
+        /* Zone réservée : la carte ne change plus de taille */
         #error-message {
-            color: #ff4a4a;
-            margin-top: 1.5rem;
+            min-height: 1.25rem;
+            margin-top: 1.15rem;
             text-align: center;
-            display: none;
             font-weight: 600;
             font-size: 0.9rem;
+            line-height: 1.25;
+            color: #ff4a4a;
+            opacity: 0;
+            visibility: hidden;
             position: relative;
             z-index: 2;
+            transition:
+                opacity 0.22s ease,
+                visibility 0.22s ease;
         }
 
         #error-message.is-visible {
-            display: block;
+            opacity: 1;
+            visibility: visible;
         }
 
         /* =========================
@@ -320,7 +327,7 @@
             }
 
             .login-card {
-                padding: 3rem 1.5rem 2.5rem;
+                padding: 3rem 1.5rem 2.1rem;
             }
 
             .sbi-signal-login {
