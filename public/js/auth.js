@@ -11,16 +11,54 @@ import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-
 /* --- 1.1 ELEMENTS LOGIN --- */
 const loginForm = document.getElementById('login-form');
 const loginCard = document.getElementById('login-card');
+const loginSignal = document.querySelector('.sbi-signal-login');
 const submitButton = document.getElementById('login-submit');
 const submitLabel = submitButton?.querySelector('.login-submit-label');
 const errorMessage = document.getElementById('error-message');
 
 let redirectInProgress = false;
+let loginSignalTimers = [];
 
 const setSubmitLabel = (text) => {
     if (submitLabel) {
         submitLabel.textContent = text;
     }
+};
+
+const clearLoginSignalTimers = () => {
+    loginSignalTimers.forEach(timer => window.clearTimeout(timer));
+    loginSignalTimers = [];
+};
+
+const hideLoginSignal = () => {
+    if (!loginSignal) return;
+
+    clearLoginSignalTimers();
+    loginSignal.classList.remove('is-revealed', 'is-attention');
+};
+
+const revealLoginSignal = (duration = 5400, delay = 300) => {
+    if (!loginSignal) return;
+
+    clearLoginSignalTimers();
+
+    const openTimer = window.setTimeout(() => {
+        loginSignal.classList.add('is-revealed', 'is-attention');
+
+        const attentionTimer = window.setTimeout(() => {
+            loginSignal.classList.remove('is-attention');
+        }, 1100);
+
+        const closeTimer = window.setTimeout(() => {
+            if (!loginSignal.matches(':hover') && !loginSignal.matches(':focus-within')) {
+                loginSignal.classList.remove('is-revealed', 'is-attention');
+            }
+        }, duration);
+
+        loginSignalTimers.push(attentionTimer, closeTimer);
+    }, delay);
+
+    loginSignalTimers.push(openTimer);
 };
 
 const clearLoginStates = () => {
@@ -46,6 +84,7 @@ const showLoginError = (message) => {
 const setLoginLoading = () => {
     clearLoginStates();
     clearLoginError();
+    hideLoginSignal();
 
     if (loginCard) {
         loginCard.classList.add('is-loading');
@@ -61,6 +100,7 @@ const setLoginLoading = () => {
 const setLoginSuccess = () => {
     clearLoginStates();
     clearLoginError();
+    hideLoginSignal();
 
     if (loginCard) {
         loginCard.classList.add('is-success');
@@ -86,6 +126,9 @@ const setLoginError = (message) => {
 
     setSubmitLabel("Accéder à l'espace");
     showLoginError(message);
+
+    /* Réouvre la bulle du losange pour guider les utilisateurs sans compte */
+    revealLoginSignal(5600, 450);
 
     window.setTimeout(() => {
         loginCard?.classList.remove('is-error');
@@ -187,6 +230,7 @@ const fetchUserData = async (uid) => {
             };
         } else {
             console.warn("⚠️ Aucun profil trouvé, attribution étudiant par défaut.");
+
             return {
                 role: "student",
                 statut: "actif"
