@@ -5,7 +5,7 @@
  */
 
 import { db, auth } from '/js/firebase-init.js';
-import { collection, addDoc, getDocs, doc, deleteDoc, updateDoc, serverTimestamp, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { collection, addDoc, getDocs, doc, deleteDoc, updateDoc, serverTimestamp, getDoc, query, where } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import { logoutUser } from '/js/auth.js';
 
@@ -20,6 +20,7 @@ let allCoursesData = [];
 
 let editingCourseAuthorId = null;
 let editingCourseOriginalStatus = null;
+let editingCourseOriginalActive = false;
 
 const SVG_PREVIEW = `<svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24" style="vertical-align:middle; margin-right:8px;"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>`;
 const SVG_QUIZ_LIST = `<svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24" style="vertical-align:text-bottom; margin-right:4px;"><path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>`;
@@ -427,6 +428,8 @@ function refreshBlocsList() {
 window.prepareNewCourse = function() {
     editingCourseAuthorId = null;
     editingCourseOriginalStatus = null;
+    editingCourseOriginalActive = false;
+    window.editingCourseOriginalActive = false;
 
     const editCourseIdEl = document.getElementById('edit-course-id');
     if(editCourseIdEl) editCourseIdEl.value = '';
@@ -717,7 +720,8 @@ window.editCourse = async (id) => {
             
             editingCourseAuthorId = data.auteurId || currentUid;
             editingCourseOriginalStatus = data.statutValidation || 'approved';
-            window.editingCourseOriginalActive = data.actif === true; 
+            editingCourseOriginalActive = data.actif === true;
+            window.editingCourseOriginalActive = editingCourseOriginalActive; 
 
             document.querySelectorAll('.formation-pill').forEach(pill => {
                 const val = pill.getAttribute('data-val');
@@ -773,6 +777,38 @@ window.editCourse = async (id) => {
     }
 };
 
+async function resolveCourseValidationNotifications(courseId) {
+    if (!courseId) return;
+
+    try {
+        const validationQuery = query(
+            collection(db, "notifications"),
+            where("type", "==", "course_validation")
+        );
+
+        const snapshot = await getDocs(validationQuery);
+        const updates = [];
+
+        snapshot.forEach((notifDoc) => {
+            const data = notifDoc.data();
+
+            if (data.courseId === courseId && data.status !== 'resolved') {
+                updates.push(updateDoc(doc(db, "notifications", notifDoc.id), {
+                    status: 'resolved',
+                    resolvedAt: serverTimestamp(),
+                    resolvedBy: currentUid
+                }));
+            }
+        });
+
+        if (updates.length > 0) {
+            await Promise.all(updates);
+        }
+    } catch (error) {
+        console.warn("[SBI Courses] Impossible de résoudre les notifications de validation :", error);
+    }
+}
+
 async function saveCourseToFirebase(actionType = 'admin_save') {
     saveCurrentChapterContent(); 
     
@@ -792,31 +828,46 @@ async function saveCourseToFirebase(actionType = 'admin_save') {
     if (currentChapters.length === 0) { alert('⚠️ Ajoutez au moins une étape.'); return; }
     
     let finalStatut = editingCourseOriginalStatus || 'draft';
-    let isActive = false;
+    let isActive = editingCourseOriginalActive === true;
 
     // Détermination propre de l'état final
     if (actionType === 'draft') {
         finalStatut = 'draft';
+        isActive = false;
     } else if (actionType === 'submit') {
         if (!confirm("⚠️ ATTENTION : Une fois soumis à validation, ce cours sera verrouillé et vous ne pourrez plus le modifier pendant la durée de l'examen.\n\nConfirmer l'envoi ?")) {
             return;
         }
         finalStatut = 'pending';
+        isActive = false;
     } else if (actionType === 'admin_save') {
         const activeCheckbox = document.getElementById('course-active');
         if (activeCheckbox) isActive = activeCheckbox.checked;
-        finalStatut = isActive ? 'approved' : 'draft';
+
+        /*
+         * Important : si un admin ouvre un cours en attente puis sauvegarde
+         * sans cocher "visible", le cours reste en attente.
+         * Une simple sauvegarde ne doit pas transformer une demande de
+         * validation en brouillon fantôme.
+         */
+        if (isActive) {
+            finalStatut = 'approved';
+        } else if (editingCourseOriginalStatus === 'pending') {
+            finalStatut = 'pending';
+        } else {
+            finalStatut = 'draft';
+        }
     } else if (actionType === 'reject') {
         finalStatut = 'draft';
         isActive = false;
     } else if (actionType === 'preview') {
-        isActive = window.editingCourseOriginalActive || false;
+        isActive = editingCourseOriginalActive === true;
     }
 
     const finalAuteurId = courseId ? editingCourseAuthorId : currentUid;
     
-    // FIX FLUX : On valide que le cours PASSE du statut "en attente" à "actif" pour le publier
-    const isPublishing = (actionType === 'admin_save' && isActive && editingCourseOriginalStatus === 'pending');
+    // Publication = le cours passe de non visible à visible, peu importe son ancien statut.
+    const isPublishing = (actionType === 'admin_save' && isActive === true && editingCourseOriginalActive !== true);
     const isRejecting = (actionType === 'reject' && editingCourseOriginalStatus === 'pending');
 
     try {
@@ -849,6 +900,8 @@ async function saveCourseToFirebase(actionType = 'admin_save') {
                 auteurId: currentUid,
                 auteurName: (currentUserProfile.prenom || '') + ' ' + (currentUserProfile.nom || ''),
                 dateCreation: serverTimestamp(),
+                status: 'open',
+                dismissedBy: []
             });
         }
         
@@ -862,6 +915,7 @@ async function saveCourseToFirebase(actionType = 'admin_save') {
                     courseTitle: title,
                     destinataireId: editingCourseAuthorId,
                     dateCreation: serverTimestamp(),
+                    dismissedBy: []
                 });
             }
 
@@ -881,6 +935,7 @@ async function saveCourseToFirebase(actionType = 'admin_save') {
                     courseTitle: title,
                     targetStudents: targetStudentsArray,
                     dateCreation: serverTimestamp(),
+                    dismissedBy: []
                 });
             }
         } else if (isRejecting) {
@@ -892,9 +947,18 @@ async function saveCourseToFirebase(actionType = 'admin_save') {
                     courseTitle: title,
                     destinataireId: editingCourseAuthorId,
                     dateCreation: serverTimestamp(),
+                    dismissedBy: []
                 });
             }
         }
+        
+        if (isPublishing || isRejecting) {
+            await resolveCourseValidationNotifications(courseRefId);
+        }
+
+        editingCourseOriginalStatus = finalStatut;
+        editingCourseOriginalActive = isActive === true;
+        window.editingCourseOriginalActive = editingCourseOriginalActive;
         
         await loadCourses();
         
