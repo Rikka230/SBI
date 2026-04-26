@@ -954,7 +954,7 @@ function initCropperEngine() {
 
         button.textContent = 'Changer l’image';
         button.disabled = true;
-        button.title = "La photo actuelle vient de Firebase Storage. Elle est affichée, mais le navigateur bloque son recadrage sans configuration CORS. Clique sur “Changer d'image” pour envoyer une nouvelle image.";
+        button.title = "La photo actuelle vient de Firebase Storage. Elle est affichée en aperçu simple pour éviter les erreurs CORS. Clique sur “Changer d'image” pour envoyer une nouvelle image.";
     }
 
     function compressImage(file, maxWidth, callback, onError = null) {
@@ -1025,6 +1025,13 @@ function initCropperEngine() {
                 window.clearTimeout(timeoutId);
 
                 window.setTimeout(() => {
+                    currentCropCanExport = options.canvasSafe !== false;
+
+                    if (!currentCropCanExport) {
+                        resolve({ canvasSafe: false, previewOnly: true });
+                        return;
+                    }
+
                     cropperInstance = new Cropper(imageElement, {
                         aspectRatio: 1,
                         viewMode: 1,
@@ -1038,8 +1045,7 @@ function initCropperEngine() {
                         checkCrossOrigin: false
                     });
 
-                    currentCropCanExport = options.canvasSafe !== false;
-                    resolve({ canvasSafe: currentCropCanExport });
+                    resolve({ canvasSafe: true, previewOnly: false });
                 }, 50);
             };
 
