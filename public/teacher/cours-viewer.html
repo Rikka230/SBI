@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mode Apprentissage</title>
+    <link rel="stylesheet" href="/student/css/viewer.css">
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet"> 
+</head>
+<body class="learning-mode">
+
+    <header class="viewer-header">
+        <a href="#" id="btn-back-dynamic" class="btn-back-hub">
+            <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+            Quitter la leçon
+        </a>
+        <h2 id="viewer-course-title" style="margin: 0; font-size: 1.2rem; color: var(--text-main);">Chargement...</h2>
+        <div style="width: 140px;"></div>
+    </header>
+
+    <div class="viewer-body">
+        
+        <main class="viewer-main" id="viewer-main-content">
+            <div style="text-align:center; margin-top: 20vh; color: var(--text-muted); font-size: 1.2rem; font-weight: bold;">
+                ⏳ Préparation de votre leçon...
+            </div>
+        </main>
+
+        <aside class="viewer-sidebar">
+            <div style="padding: 1.5rem; border-bottom: 1px solid var(--border-color); background: var(--bg-sidebar);">
+                <h3 style="margin: 0; color: var(--text-main); font-size: 1.2rem;">Programme du cours</h3>
+            </div>
+            <div id="chapters-nav-list" style="display: flex; flex-direction: column; padding: 1rem 0;"></div>
+        </aside>
+
+    </div>
+
+<script type="module" src="/admin/js/tracker.js"></script>
+<script type="module" src="/student/js/cours-viewer.js"></script>
+</body>
+</html>
