@@ -140,58 +140,83 @@
             <section id="view-settings" class="admin-view fade-in">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
                     <div>
-                        <h2 style="margin: 0; color: white;">Serveur & Vidéos</h2>
-                        <p style="color: var(--text-muted); margin: 5px 0 0 0;">Analyse de la base de données et de la bande passante</p>
+                        <h2 style="margin: 0; color: white;">Serveur & Stockage</h2>
+                        <p style="color: var(--text-muted); margin: 5px 0 0 0;">Nettoyage des anciens contenus base64 et suivi Firebase Storage.</p>
                     </div>
                     <button id="btn-refresh-server-stats" class="action-btn" style="width:auto; margin:0; background: var(--bg-card); border: 1px solid #333;">🔄 Rafraîchir les données</button>
                 </div>
 
-                <div class="stats-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
-                    
+                <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 2rem;">
                     <div class="stat-card" style="background: #111; border: 1px solid #333; padding: 2rem; border-radius: 12px;">
                         <h3 style="color: var(--text-muted); margin: 0 0 1.5rem 0; font-size: 1rem; display: flex; align-items: center; gap: 10px;">
                             <svg width="20" height="20" fill="var(--accent-blue)" viewBox="0 0 24 24"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.06-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.73,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.06,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 C13.96,21.59,14.15,21.76,14.4,21.76h3.84c0.24,0,0.43-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.49-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/></svg>
-                            Stockage Firestore (Base64)
+                            Nettoyage Firestore / Storage
                         </h3>
-                        
-                        <div style="display: flex; align-items: baseline; gap: 15px; margin-bottom: 0.5rem;">
-                            <span id="firebase-size-display" style="font-size: 2.5rem; font-weight: 800; color: white;">Calcul...</span>
-                            <span id="firebase-status-badge" style="color: var(--accent-green); font-weight: bold; background: rgba(16, 185, 129, 0.1); padding: 4px 8px; border-radius: 4px;">Analyse en cours</span>
+
+                        <div style="display: flex; align-items: baseline; gap: 15px; margin-bottom: 0.5rem; flex-wrap: wrap;">
+                            <span id="storage-size-display" style="font-size: 2.5rem; font-weight: 800; color: white;">Analyse...</span>
+                            <span id="storage-status-badge" style="color: var(--accent-yellow); font-weight: bold; background: rgba(251, 188, 4, 0.1); padding: 4px 8px; border-radius: 4px;">Analyse en cours</span>
                         </div>
-                        
+
                         <p style="color: #888; font-size: 0.9rem; margin-bottom: 1.5rem;">
-                            Ce poids correspond au stockage brut de vos cours. Limite conseillée avant ralentissements : <strong style="color:white;">~500 Mo</strong>.
+                            Estimation des anciens contenus base64 encore stockés dans Firestore. Les nouveaux avatars et médias doivent vivre dans Firebase Storage.
                         </p>
 
-                        <div style="width: 100%; height: 8px; background: #333; border-radius: 4px; overflow: hidden; margin-bottom: 2rem;">
-                            <div id="firebase-gauge" style="height: 100%; width: 0%; background: var(--accent-green); transition: 1s;"></div>
+                        <div style="width: 100%; height: 8px; background: #333; border-radius: 4px; overflow: hidden; margin-bottom: 1.5rem;">
+                            <div id="storage-gauge" style="height: 100%; width: 0%; background: var(--accent-green); transition: 1s;"></div>
                         </div>
 
-                        <div id="firebase-alert-zone" style="display: none; padding: 1.5rem; background: rgba(255, 74, 74, 0.05); border: 1px dashed var(--accent-red); border-radius: 8px;">
-                            <h4 style="margin: 0 0 0.5rem 0; color: var(--accent-red);">⚠️ Limite d'Équilibre Atteinte</h4>
-                            <p style="margin: 0; color: #aaa; font-size: 0.9rem;">Votre base de données devient très lourde. La facture Firebase de bande passante va commencer à s'envoler. Il est temps de transférer les vidéos sur Vimeo.</p>
+                        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; margin-bottom: 1.5rem;">
+                            <div style="background:#0b0b0d; border:1px solid #222; border-radius:8px; padding:0.85rem;">
+                                <div style="color:#888; font-size:0.75rem; text-transform:uppercase;">Avatars base64</div>
+                                <strong id="storage-legacy-avatars" style="font-size:1.4rem; color:white;">...</strong>
+                            </div>
+                            <div style="background:#0b0b0d; border:1px solid #222; border-radius:8px; padding:0.85rem;">
+                                <div style="color:#888; font-size:0.75rem; text-transform:uppercase;">photoOriginal</div>
+                                <strong id="storage-legacy-originals" style="font-size:1.4rem; color:white;">...</strong>
+                            </div>
+                            <div style="background:#0b0b0d; border:1px solid #222; border-radius:8px; padding:0.85rem;">
+                                <div style="color:#888; font-size:0.75rem; text-transform:uppercase;">Avatars Storage</div>
+                                <strong id="storage-storage-avatars" style="font-size:1.4rem; color:white;">...</strong>
+                            </div>
+                            <div style="background:#0b0b0d; border:1px solid #222; border-radius:8px; padding:0.85rem;">
+                                <div style="color:#888; font-size:0.75rem; text-transform:uppercase;">Médias Storage</div>
+                                <strong id="storage-course-storage-media" style="font-size:1.4rem; color:white;">...</strong>
+                            </div>
                         </div>
+
+                        <div id="storage-alert-zone" style="display: none; padding: 1.25rem; background: rgba(255, 74, 74, 0.05); border: 1px dashed var(--accent-red); border-radius: 8px; margin-bottom: 1.5rem;"></div>
+
+                        <button id="btn-migrate-legacy-avatars" class="action-btn" style="width: 100%; justify-content: center; background: var(--accent-blue); color: #000; font-weight: 800;">
+                            Migrer les anciens avatars
+                        </button>
+                        <p id="storage-migration-log" style="min-height: 22px; color:#aaa; font-size:0.85rem; margin:0.75rem 0 0 0;"></p>
                     </div>
 
                     <div class="stat-card" style="background: #111; border: 1px solid #333; padding: 2rem; border-radius: 12px; display: flex; flex-direction: column;">
                         <h3 style="color: var(--text-muted); margin: 0 0 1.5rem 0; font-size: 1rem; display: flex; align-items: center; gap: 10px;">
-                            <svg width="20" height="20" fill="var(--accent-blue)" viewBox="0 0 24 24"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg>
-                            Migration vers Vimeo Pro
+                            <svg width="20" height="20" fill="var(--accent-blue)" viewBox="0 0 24 24"><path d="M4 4h16v12H5.17L4 17.17V4zm0-2c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2H4z"/></svg>
+                            État des médias de cours
                         </h3>
-                        
-                        <p style="color: #aaa; line-height: 1.6; margin-bottom: 1.5rem;">
-                            Préparez votre plateforme pour une croissance massive avec une bande passante illimitée et un système Anti-Piratage (vidéos in-téléchargeables).
-                        </p>
-                        
-                        <ul style="color: #ddd; margin: 0 0 2rem 0; padding-left: 1.2rem; line-height: 1.8; font-size: 0.95rem;">
-                            <li><strong>Étape 1 :</strong> Créez un compte <em>Vimeo Pro</em>.</li>
-                            <li><strong>Étape 2 :</strong> Dans les paramètres Vimeo, bloquez l'intégration pour qu'elle ne fonctionne <strong>que</strong> sur l'URL de votre plateforme.</li>
-                            <li><strong>Étape 3 :</strong> Contactez le support développeur pour remplacer l'upload Firebase par un champ "Lien Vimeo" et basculer le lecteur étudiant sur l'iFrame sécurisée.</li>
-                        </ul>
 
-                        <button class="action-btn" style="margin-top: auto; justify-content: center; opacity: 0.5; cursor: not-allowed;" title="Fonctionnalité prévue pour la Phase 2">
-                            🔒 Activer l'intégration Vimeo (Bientôt disponible)
-                        </button>
+                        <p style="color: #aaa; line-height: 1.6; margin-bottom: 1.5rem;">
+                            Les nouvelles images de cours sont déjà envoyées vers Firebase Storage. Les anciennes images base64 restent compatibles, mais doivent être surveillées.
+                        </p>
+
+                        <div style="display:flex; flex-direction:column; gap:0.75rem; margin-bottom:1.5rem;">
+                            <div style="display:flex; justify-content:space-between; gap:1rem; padding:0.85rem; background:#0b0b0d; border:1px solid #222; border-radius:8px;">
+                                <span style="color:#aaa;">Images de cours base64</span>
+                                <strong id="storage-course-base64-images" style="color:white;">...</strong>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; gap:1rem; padding:0.85rem; background:#0b0b0d; border:1px solid #222; border-radius:8px;">
+                                <span style="color:#aaa;">Vidéos de cours base64</span>
+                                <strong id="storage-course-base64-videos" style="color:white;">...</strong>
+                            </div>
+                        </div>
+
+                        <div style="padding: 1.25rem; border-radius: 8px; background: rgba(42,87,255,0.08); border: 1px solid rgba(42,87,255,0.25); color: #bbb; font-size: 0.92rem; line-height: 1.6;">
+                            <strong style="color:white;">SBI 5.4 :</strong> les vidéos anciennes ne sont pas migrées ici. Le chantier actuel nettoie les avatars et surveille les images restantes sans toucher au moteur de cours.
+                        </div>
                     </div>
                 </div>
             </section>
@@ -249,77 +274,7 @@
 <script type="module" src="js/admin-notifications.js"></script>
 <script type="module" src="js/admin-dashboard.js"></script>
 
-<script type="module">
-    import { db } from '/js/firebase-init.js';
-    import { collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
-
-    async function calculateDatabaseWeight() {
-        const sizeDisplay = document.getElementById('firebase-size-display');
-        const badge = document.getElementById('firebase-status-badge');
-        const gauge = document.getElementById('firebase-gauge');
-        const alertZone = document.getElementById('firebase-alert-zone');
-        
-        if(!sizeDisplay) return;
-
-        try {
-            sizeDisplay.textContent = "Calcul...";
-            let totalBytes = 0;
-            const coursesSnap = await getDocs(collection(db, "courses"));
-            
-            coursesSnap.forEach(doc => {
-                const data = doc.data();
-                if (data.chapitres) {
-                    data.chapitres.forEach(chap => {
-                        if (chap.mediaImage) totalBytes += chap.mediaImage.length * 0.75;
-                        if (chap.mediaVideo) totalBytes += chap.mediaVideo.length * 0.75;
-                        if (chap.contenu) totalBytes += chap.contenu.length;
-                    });
-                }
-            });
-
-            const totalMB = (totalBytes / (1024 * 1024)).toFixed(2);
-            sizeDisplay.textContent = totalMB + " Mo";
-            
-            const limitMB = 500;
-            const percentage = Math.min((totalMB / limitMB) * 100, 100);
-            
-            if(gauge) gauge.style.width = percentage + '%';
-
-            if (totalMB < (limitMB * 0.5)) {
-                if(badge) { badge.textContent = "Optimal"; badge.style.color = "var(--accent-green)"; badge.style.background = "rgba(16, 185, 129, 0.1)"; }
-                if(gauge) gauge.style.background = "var(--accent-green)";
-                if(alertZone) alertZone.style.display = 'none';
-            } 
-            else if (totalMB < limitMB) {
-                if(badge) { badge.textContent = "Attention"; badge.style.color = "var(--accent-yellow)"; badge.style.background = "rgba(251, 188, 4, 0.1)"; }
-                if(gauge) gauge.style.background = "var(--accent-yellow)";
-                if(alertZone) alertZone.style.display = 'none';
-            } 
-            else {
-                if(badge) { badge.textContent = "Critique"; badge.style.color = "var(--accent-red)"; badge.style.background = "rgba(255, 74, 74, 0.1)"; }
-                if(gauge) gauge.style.background = "var(--accent-red)";
-                if(alertZone) alertZone.style.display = 'block';
-            }
-        } catch (error) {
-            console.error("Erreur Firestore:", error);
-            if(sizeDisplay) sizeDisplay.textContent = "Erreur";
-        }
-    }
-
-    const btnRefresh = document.getElementById('btn-refresh-server-stats');
-    if (btnRefresh) btnRefresh.addEventListener('click', calculateDatabaseWeight);
-    
-    const observer = new MutationObserver((mutations) => {
-        mutations.forEach((mutation) => {
-            if (mutation.target.style.display === 'block' && mutation.target.id === 'view-settings') {
-                calculateDatabaseWeight();
-            }
-        });
-    });
-    
-    const settingsView = document.getElementById('view-settings');
-    if (settingsView) observer.observe(settingsView, { attributes: true, attributeFilter: ['style'] });
-</script>
+<script type="module" src="js/storage-diagnostics.js"></script>
 
 </body>
 </html>

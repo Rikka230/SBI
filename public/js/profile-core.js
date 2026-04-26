@@ -17,6 +17,11 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import { getUserLearningProgress, resetCourseProgress, updateQuizScore } from '/js/course-engine.js';
+import {
+    isLegacyAvatarDataUrl,
+    migrateLegacyAvatarForUser,
+    saveProfileAvatarToStorage
+} from '/js/avatar-storage.js';
 
 let currentProfileId = null;
 let currentProfileData = null;
@@ -345,6 +350,38 @@ const startProfilePresenceListener = (uid) => {
     }, 30000);
 };
 
+
+const maybeMigrateVisibleLegacyAvatar = async (uid, data, avatarImg = null) => {
+    if (!uid || !data) return;
+    if (!isLegacyAvatarDataUrl(data.photoURL) && !isLegacyAvatarDataUrl(data.photoOriginal)) return;
+    if (!isOwner && !isAdmin) return;
+
+    try {
+        const migrated = await migrateLegacyAvatarForUser(uid, data, {
+            migratedFrom: isAdmin && !isOwner ? 'admin-profile-view' : 'profile-view'
+        });
+
+        if (migrated?.downloadURL) {
+            currentProfileData = {
+                ...currentProfileData,
+                photoURL: migrated.downloadURL,
+                photoStoragePath: migrated.storagePath
+            };
+
+            if (avatarImg) avatarImg.src = migrated.downloadURL;
+
+            const displayName = `${data.prenom || ''} ${data.nom || ''}`.trim() || 'Utilisateur SBI';
+            const topAvatar = document.getElementById('top-user-avatar');
+
+            if (isOwner && topAvatar) {
+                topAvatar.innerHTML = `<img src="${migrated.downloadURL}" alt="${escapeHTML(displayName)}" style="width:100%; height:100%; object-fit:cover;">`;
+            }
+        }
+    } catch (error) {
+        console.warn('[SBI Profile] Migration avatar legacy ignorée :', error);
+    }
+};
+
 const SVG_RESET = `<svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24" style="vertical-align:middle; margin-right:4px;"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>`;
 const SVG_EDIT = `<svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24" style="vertical-align:middle; margin-right:4px;"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>`;
 
@@ -425,6 +462,8 @@ async function loadProfileData(uid) {
             const avatarUrl = data.photoURL || `https://ui-avatars.com/api/?name=${displayName}&background=111&color=fff&size=150`;
             const avatarImg = document.getElementById('prof-avatar-img');
             if (avatarImg) avatarImg.src = avatarUrl;
+
+            maybeMigrateVisibleLegacyAvatar(uid, data, avatarImg);
 
             updateProfilePresenceStatus(data);
 
@@ -1002,10 +1041,15 @@ function initCropperEngine() {
         const croppedWebpData = croppedCanvas.toDataURL('image/webp', 0.8);
 
         try {
-            await updateDoc(doc(db, "users", currentProfileId), {
-                photoURL: croppedWebpData,
-                photoOriginal: originalImageDataUrl
-            });
+            await saveProfileAvatarToStorage(
+                currentProfileId,
+                croppedWebpData,
+                currentProfileData?.photoStoragePath || null,
+                {
+                    prefix: 'avatar',
+                    migratedFrom: 'profile-cropper'
+                }
+            );
 
             loadProfileData(currentProfileId);
 
