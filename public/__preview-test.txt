@@ -1,0 +1,6 @@
+SBI preview deployment test
+
+This file is intentionally harmless.
+It was created on the avatar-profile-test branch to trigger a Vercel Preview Deployment.
+
+If the GitHub + Vercel workflow is working, this branch should produce a preview URL before any real code changes are made.
