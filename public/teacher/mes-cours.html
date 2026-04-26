@@ -7,6 +7,7 @@
     
     <link rel="stylesheet" href="/admin/css/admin-layout.css">
     <link rel="stylesheet" href="/admin/css/admin.css">
+    <link rel="stylesheet" href="/admin/css/admin-notifications.css">
     <link rel="stylesheet" href="/teacher/css/teacher.css">
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
     
@@ -187,13 +188,14 @@
             document.querySelectorAll('.student-sub-nav-item').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.student-view').forEach(el => el.classList.remove('active'));
             
-            if(tabId === 'tab-list') {
+            if (tabId === 'tab-list') {
                 document.querySelector('.student-sub-nav-item:nth-child(1)').classList.add('active');
                 document.getElementById('nav-tab-editor').style.display = 'none';
             } else {
                 document.getElementById('nav-tab-editor').style.display = 'block';
                 document.getElementById('nav-tab-editor').classList.add('active');
             }
+
             document.getElementById(tabId).classList.add('active');
         }
         
@@ -212,10 +214,9 @@
         });
     </script>
     
-<script type="module" src="/admin/js/admin-ui.js"></script>
+    <script type="module" src="/admin/js/admin-ui.js"></script>
     <script type="module" src="/admin/js/admin-notifications.js"></script>
     <script type="module" src="/admin/js/admin-courses.js"></script>
-    
     <script type="module" src="/admin/js/tracker.js"></script>
 </body>
 </html>
