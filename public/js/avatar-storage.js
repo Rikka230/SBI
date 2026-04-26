@@ -21,7 +21,6 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import {
     deleteObject,
-    getBlob,
     getDownloadURL,
     ref,
     uploadString
@@ -198,11 +197,14 @@ export const migrateLegacyAvatarForUser = async (userId, userData = {}, options 
 
 
 export const getProfileAvatarCropSource = async (userId, userData = {}) => {
+export const getProfileAvatarCropSource = async (userId, userData = {}) => {
     if (!userData || !userId) {
         return {
             src: null,
             source: 'missing-profile',
-            revoke: null
+            revoke: null,
+            canvasSafe: false,
+            remoteUrl: false
         };
     }
 
@@ -210,7 +212,9 @@ export const getProfileAvatarCropSource = async (userId, userData = {}) => {
         return {
             src: userData.photoOriginal,
             source: 'legacy-original',
-            revoke: null
+            revoke: null,
+            canvasSafe: true,
+            remoteUrl: false
         };
     }
 
@@ -218,56 +222,50 @@ export const getProfileAvatarCropSource = async (userId, userData = {}) => {
         return {
             src: userData.photoURL,
             source: 'legacy-avatar',
-            revoke: null
+            revoke: null,
+            canvasSafe: true,
+            remoteUrl: false
         };
     }
 
     if (isSafeAvatarPathForUser(userData.photoStoragePath, userId)) {
-        const avatarBlob = await getBlob(ref(storage, userData.photoStoragePath));
-        const objectUrl = URL.createObjectURL(avatarBlob);
-
-        return {
-            src: objectUrl,
-            source: 'storage-blob',
-            revoke: () => URL.revokeObjectURL(objectUrl)
-        };
-    }
-
-    if (isFirebaseStorageUrl(userData.photoURL)) {
         try {
-            const response = await fetch(userData.photoURL, { mode: 'cors' });
+            const downloadURL = await getDownloadURL(ref(storage, userData.photoStoragePath));
 
-            if (response.ok) {
-                const avatarBlob = await response.blob();
-                const objectUrl = URL.createObjectURL(avatarBlob);
-
-                return {
-                    src: objectUrl,
-                    source: 'storage-url-blob',
-                    revoke: () => URL.revokeObjectURL(objectUrl)
-                };
-            }
+            return {
+                src: downloadURL,
+                source: 'storage-path-url',
+                revoke: null,
+                canvasSafe: false,
+                remoteUrl: true,
+                needsCorsForCanvas: true
+            };
         } catch (error) {
-            console.warn('[SBI Avatar] Avatar Storage non convertible en blob, fallback URL directe :', error);
+            console.warn('[SBI Avatar] URL Storage avatar impossible à récupérer :', userData.photoStoragePath, error);
         }
     }
 
     if (typeof userData.photoURL === 'string' && userData.photoURL.trim()) {
+        const isRemote = /^https?:\/\//i.test(userData.photoURL.trim());
+
         return {
-            src: userData.photoURL,
-            source: 'direct-url',
-            revoke: null
+            src: userData.photoURL.trim(),
+            source: isFirebaseStorageUrl(userData.photoURL) ? 'storage-download-url' : 'direct-url',
+            revoke: null,
+            canvasSafe: !isRemote,
+            remoteUrl: isRemote,
+            needsCorsForCanvas: isRemote
         };
     }
 
     return {
         src: null,
         source: 'no-avatar',
-        revoke: null
+        revoke: null,
+        canvasSafe: false,
+        remoteUrl: false
     };
 };
-
-export const scanLegacyStorageUsage = async () => {
     const [usersSnap, coursesSnap] = await Promise.all([
         getDocs(collection(db, 'users')),
         getDocs(collection(db, 'courses'))

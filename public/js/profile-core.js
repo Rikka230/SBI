@@ -916,6 +916,7 @@ function initCropperEngine() {
 
     let originalImageDataUrl = null;
     let revokeCurrentCropSource = null;
+    let currentCropCanExport = true;
 
     function releaseCurrentCropSource() {
         if (typeof revokeCurrentCropSource === 'function') {
@@ -936,7 +937,24 @@ function initCropperEngine() {
         imageElement.removeAttribute('crossorigin');
         imageElement.src = '';
         originalImageDataUrl = null;
+        currentCropCanExport = true;
         releaseCurrentCropSource();
+    }
+
+    function restoreSaveButton(button, text = 'Appliquer') {
+        if (!button) return;
+
+        button.textContent = text;
+        button.disabled = false;
+        button.removeAttribute('title');
+    }
+
+    function lockSaveForRemoteAvatar(button) {
+        if (!button) return;
+
+        button.textContent = 'Changer l’image';
+        button.disabled = true;
+        button.title = "La photo actuelle vient de Firebase Storage. Elle est affichée, mais le navigateur bloque son recadrage sans configuration CORS. Clique sur “Changer d'image” pour envoyer une nouvelle image.";
     }
 
     function compressImage(file, maxWidth, callback, onError = null) {
@@ -978,7 +996,7 @@ function initCropperEngine() {
         reader.readAsDataURL(file);
     }
 
-    function launchCropper(src) {
+    function launchCropper(src, options = {}) {
         return new Promise((resolve, reject) => {
             if (!src) {
                 reject(new Error('Aucune image à afficher.'));
@@ -990,17 +1008,22 @@ function initCropperEngine() {
                 cropperInstance = null;
             }
 
-            imageElement.onload = null;
-            imageElement.onerror = null;
-            imageElement.src = '';
+            let finished = false;
+            const timeoutId = window.setTimeout(() => {
+                if (finished) return;
 
-            if (/^https?:\/\//i.test(src)) {
-                imageElement.crossOrigin = 'anonymous';
-            } else {
-                imageElement.removeAttribute('crossorigin');
-            }
+                finished = true;
+                imageElement.onload = null;
+                imageElement.onerror = null;
+                reject(new Error("Chargement de l'image trop long."));
+            }, 10000);
 
             imageElement.onload = () => {
+                if (finished) return;
+
+                finished = true;
+                window.clearTimeout(timeoutId);
+
                 window.setTimeout(() => {
                     cropperInstance = new Cropper(imageElement, {
                         aspectRatio: 1,
@@ -1011,17 +1034,25 @@ function initCropperEngine() {
                         cropBoxResizable: false,
                         guides: false,
                         highlight: false,
-                        background: true
+                        background: true,
+                        checkCrossOrigin: false
                     });
 
-                    resolve();
+                    currentCropCanExport = options.canvasSafe !== false;
+                    resolve({ canvasSafe: currentCropCanExport });
                 }, 50);
             };
 
             imageElement.onerror = () => {
-                reject(new Error("Impossible d'afficher l'avatar actuel dans l'éditeur."));
+                if (finished) return;
+
+                finished = true;
+                window.clearTimeout(timeoutId);
+                reject(new Error("Impossible d'afficher l'image dans l'éditeur."));
             };
 
+            imageElement.removeAttribute('crossorigin');
+            imageElement.src = '';
             imageElement.src = src;
         });
     }
@@ -1037,6 +1068,7 @@ function initCropperEngine() {
         if (btnSave) {
             btnSave.textContent = 'Chargement...';
             btnSave.disabled = true;
+            btnSave.removeAttribute('title');
         }
 
         if (btnUpload) {
@@ -1050,26 +1082,37 @@ function initCropperEngine() {
             const avatarSource = await getProfileAvatarCropSource(currentProfileId, currentProfileData);
 
             if (!avatarSource?.src) {
+                modal.style.display = 'none';
                 input.click();
                 return;
             }
 
             revokeCurrentCropSource = avatarSource.revoke;
             originalImageDataUrl = avatarSource.src;
+            currentCropCanExport = avatarSource.canvasSafe !== false;
 
-            await launchCropper(avatarSource.src);
+            await launchCropper(avatarSource.src, {
+                canvasSafe: currentCropCanExport
+            });
+
+            if (!currentCropCanExport) {
+                lockSaveForRemoteAvatar(btnSave);
+            } else {
+                restoreSaveButton(btnSave, previousSaveText);
+            }
         } catch (error) {
             console.warn('[SBI Profile] Avatar actuel non affichable dans le cropper :', error);
+            modal.style.display = 'none';
+            resetCropper();
             alert("Impossible d'ouvrir la photo actuelle. Clique sur “Changer d'image” pour en choisir une nouvelle.");
         } finally {
-            if (btnSave) {
-                btnSave.textContent = previousSaveText;
-                btnSave.disabled = false;
-            }
-
             if (btnUpload) {
                 btnUpload.textContent = previousUploadText;
                 btnUpload.disabled = false;
+            }
+
+            if (btnSave && currentCropCanExport) {
+                restoreSaveButton(btnSave, previousSaveText);
             }
         }
     }
@@ -1091,30 +1134,33 @@ function initCropperEngine() {
             modal.style.display = 'flex';
 
             const btnSave = document.getElementById('btn-save-crop');
-            const originalText = btnSave.textContent;
+            const originalText = btnSave?.textContent || 'Appliquer';
 
-            btnSave.textContent = 'Traitement...';
-            btnSave.disabled = true;
+            if (btnSave) {
+                btnSave.textContent = 'Traitement...';
+                btnSave.disabled = true;
+                btnSave.removeAttribute('title');
+            }
 
             releaseCurrentCropSource();
+            currentCropCanExport = true;
 
             compressImage(e.target.files[0], 800, async (compressedBase64) => {
                 try {
                     originalImageDataUrl = compressedBase64;
-                    await launchCropper(compressedBase64);
+                    currentCropCanExport = true;
+                    await launchCropper(compressedBase64, { canvasSafe: true });
                     input.value = '';
                 } catch (error) {
                     console.error(error);
                     alert("Impossible d'afficher cette image dans l'éditeur.");
                 } finally {
-                    btnSave.textContent = originalText;
-                    btnSave.disabled = false;
+                    restoreSaveButton(btnSave, originalText === 'Changer l’image' ? 'Appliquer' : originalText);
                 }
             }, (error) => {
                 console.error(error);
-                alert("Impossible de lire cette image.");
-                btnSave.textContent = originalText;
-                btnSave.disabled = false;
+                alert('Impossible de lire cette image.');
+                restoreSaveButton(btnSave, originalText === 'Changer l’image' ? 'Appliquer' : originalText);
             });
         }
     });
@@ -1127,19 +1173,24 @@ function initCropperEngine() {
     document.getElementById('btn-save-crop')?.addEventListener('click', async () => {
         if (!cropperInstance || !currentProfileId || !originalImageDataUrl) return;
 
+        if (!currentCropCanExport) {
+            alert("La photo actuelle est affichée, mais elle ne peut pas être recadrée depuis Firebase Storage sans configuration CORS. Clique sur “Changer d'image” pour envoyer une nouvelle image.");
+            return;
+        }
+
         const btnSave = document.getElementById('btn-save-crop');
 
         btnSave.textContent = 'Mise à jour...';
         btnSave.disabled = true;
 
-        const croppedCanvas = cropperInstance.getCroppedCanvas({
-            width: 200,
-            height: 200
-        });
-
-        const croppedWebpData = croppedCanvas.toDataURL('image/webp', 0.8);
-
         try {
+            const croppedCanvas = cropperInstance.getCroppedCanvas({
+                width: 200,
+                height: 200
+            });
+
+            const croppedWebpData = croppedCanvas.toDataURL('image/webp', 0.8);
+
             await saveProfileAvatarToStorage(
                 currentProfileId,
                 croppedWebpData,
@@ -1156,10 +1207,9 @@ function initCropperEngine() {
             resetCropper();
         } catch (e) {
             console.error(e);
-            alert('Erreur réseau ou fichier trop lourd.');
+            alert("Impossible de sauvegarder cette image. Si c'est l'avatar actuel déjà stocké dans Firebase Storage, clique sur “Changer d'image” et renvoie le fichier depuis ton ordinateur.");
         } finally {
-            btnSave.textContent = 'Appliquer';
-            btnSave.disabled = false;
+            restoreSaveButton(btnSave, 'Appliquer');
         }
     });
 }
