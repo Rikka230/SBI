@@ -21,6 +21,25 @@ body {
     width: 100vw;
 }
 
+/* ---------------------------------------------------------
+   AUTH GUARD ANTI-FLASH
+   ---------------------------------------------------------
+   Les interfaces privées sont cachées par défaut.
+   auth.js ajoute body.auth-ready seulement après validation du rôle.
+   --------------------------------------------------------- */
+body:not(.auth-ready) .app-container {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+body.auth-ready .app-container {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transition: opacity 0.18s ease;
+}
+
 .app-container {
     display: flex;
     width: 100%;
