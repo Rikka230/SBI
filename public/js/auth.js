@@ -3,11 +3,15 @@
  * 1. SECURITE ET ROLES (Authentification Vanilla JS)
  * =======================================================================
  *
- * Étape 2 :
- * - Route guard renforcé pour /admin, /teacher, /student
- * - Redirection automatique vers le bon espace selon le rôle
- * - Conservation des effets visuels login :
- *   loading bleu, succès bleu, erreur rouge + bulle contact
+ * Route guard renforcé :
+ * - /admin    → admin ou isGod uniquement
+ * - /teacher  → teacher, admin ou isGod
+ * - /student  → student, admin ou isGod
+ *
+ * Anti-flash :
+ * - Les interfaces privées sont masquées par CSS tant que body n'a pas
+ *   la classe .auth-ready.
+ * - auth.js ajoute .auth-ready uniquement après validation du rôle.
  * =======================================================================
  */
 
@@ -46,7 +50,18 @@ const PROTECTED_PATHS = {
     student: '/student'
 };
 
-/* --- 1.3 HELPERS UI LOGIN --- */
+/* --- 1.3 ANTI-FLASH UI --- */
+const releasePrivateInterface = () => {
+    document.body.classList.remove('auth-redirecting');
+    document.body.classList.add('auth-ready');
+};
+
+const lockPrivateInterface = () => {
+    document.body.classList.remove('auth-ready');
+    document.body.classList.add('auth-redirecting');
+};
+
+/* --- 1.4 HELPERS UI LOGIN --- */
 const setSubmitLabel = (text) => {
     if (submitLabel) {
         submitLabel.textContent = text;
@@ -188,7 +203,7 @@ const getFirebaseErrorMessage = (error) => {
     }
 };
 
-/* --- 1.4 HELPERS ROLES / ROUTES --- */
+/* --- 1.5 HELPERS ROLES / ROUTES --- */
 const normalizePath = () => {
     return window.location.pathname.toLowerCase();
 };
@@ -255,10 +270,12 @@ const redirectTo = (targetUrl, useLoginFeedback = false) => {
     const currentPath = normalizePath();
 
     if (currentPath === targetUrl.toLowerCase()) {
+        releasePrivateInterface();
         return;
     }
 
     redirectInProgress = true;
+    lockPrivateInterface();
 
     if (useLoginFeedback && isLoginPage(currentPath) && loginCard) {
         setLoginSuccess();
@@ -277,7 +294,7 @@ const redirectToDashboard = (userData, useLoginFeedback = false) => {
     redirectTo(getDashboardForUser(userData), useLoginFeedback);
 };
 
-/* --- 1.5 GESTION DU FORMULAIRE DE CONNEXION --- */
+/* --- 1.6 GESTION DU FORMULAIRE DE CONNEXION --- */
 if (loginForm) {
     loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -312,7 +329,7 @@ if (loginForm) {
     });
 }
 
-/* --- 1.6 VERIFICATION PROFIL FIRESTORE (Rôle + Statut) --- */
+/* --- 1.7 VERIFICATION PROFIL FIRESTORE (Rôle + Statut) --- */
 const fetchUserData = async (uid) => {
     try {
         const userRef = doc(db, "users", uid);
@@ -347,7 +364,7 @@ const fetchUserData = async (uid) => {
     }
 };
 
-/* --- 1.7 ROUTE GUARD & REDIRECTIONS --- */
+/* --- 1.8 ROUTE GUARD & REDIRECTIONS --- */
 const enforceSecurityPolicies = async (user, userData) => {
     const currentPath = normalizePath();
 
@@ -358,8 +375,10 @@ const enforceSecurityPolicies = async (user, userData) => {
     if (!user) {
         if (isProtectedPath(currentPath)) {
             redirectTo('/login.html');
+            return;
         }
 
+        releasePrivateInterface();
         return;
     }
 
@@ -401,9 +420,16 @@ const enforceSecurityPolicies = async (user, userData) => {
         redirectToDashboard(userData);
         return;
     }
+
+    /*
+     * Règle E :
+     * Ici seulement, l'utilisateur est autorisé.
+     * On peut révéler l'interface.
+     */
+    releasePrivateInterface();
 };
 
-/* --- 1.8 OBSERVATEUR D'ETAT GLOBAL --- */
+/* --- 1.9 OBSERVATEUR D'ETAT GLOBAL --- */
 onAuthStateChanged(auth, async (user) => {
     if (user) {
         const userData = await fetchUserData(user.uid);
@@ -413,8 +439,10 @@ onAuthStateChanged(auth, async (user) => {
     }
 });
 
-/* --- 1.9 FONCTION DE DECONNEXION GLOBALE --- */
+/* --- 1.10 FONCTION DE DECONNEXION GLOBALE --- */
 export const logoutUser = () => {
+    lockPrivateInterface();
+
     signOut(auth).then(() => {
         window.location.replace('/index.html');
     }).catch((error) => {
