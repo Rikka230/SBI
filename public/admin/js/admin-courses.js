@@ -216,8 +216,25 @@ function setupPreviewButton() {
             return;
         }
 
+        if (shouldOpenPreviewWithoutSaving()) {
+            openCoursePreview(cId);
+            return;
+        }
+
         await saveCourseToFirebase('preview');
     });
+}
+
+function getCourseViewerBasePath() {
+    return currentUserProfile?.role === 'teacher' && !isAdminLikeUser() ? '/teacher/cours-viewer.html' : '/student/cours-viewer.html';
+}
+
+function openCoursePreview(courseId) {
+    if (courseId) window.open(`${getCourseViewerBasePath()}?id=${courseId}&preview=true`, '_blank');
+}
+
+function shouldOpenPreviewWithoutSaving() {
+    return currentUserProfile?.role === 'teacher' && !isAdminLikeUser() && editingCourseOriginalStatus && editingCourseOriginalStatus !== 'draft';
 }
 
 function setupRejectButton() {
@@ -1070,6 +1087,11 @@ async function saveCourseToFirebase(actionType = 'admin_save') {
     const bloc = selectBloc ? selectBloc.value.trim() : '';
     const selectedPills = Array.from(document.querySelectorAll('.formation-pill.selected')).map(p => p.getAttribute('data-val'));
 
+    if (actionType === 'preview' && shouldOpenPreviewWithoutSaving()) {
+        openCoursePreview(courseId);
+        return;
+    }
+
     if (!title) {
         alert('⚠️ Veuillez entrer un titre global.');
         return;
@@ -1182,11 +1204,7 @@ async function saveCourseToFirebase(actionType = 'admin_save') {
         await loadCourses();
 
         if (actionType === 'preview') {
-            const viewerBasePath = currentUserProfile?.role === 'teacher' && !isAdminLikeUser()
-                ? '/teacher/cours-viewer.html'
-                : '/student/cours-viewer.html';
-
-            window.open(`${viewerBasePath}?id=${courseRefId}&preview=true`, '_blank');
+            openCoursePreview(courseRefId);
 
         } else {
             showSaveConfirmation({ actionType, isPublishing, isRejecting, hadPendingMedia });

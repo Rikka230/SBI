@@ -5,7 +5,7 @@
  */
 
 import { db } from '/js/firebase-init.js';
-import { doc, getDoc, setDoc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { doc, getDoc, setDoc, updateDoc, increment, deleteField } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 // Récupère toute la progression d'un élève
 export async function getUserLearningProgress(uid) {
@@ -101,22 +101,22 @@ export async function validateChapterProgress(uid, courseId, chapterId, totalCha
 export async function resetCourseProgress(uid, courseId) {
     try {
         const userRef = doc(db, "users", uid);
-        let progress = await getUserLearningProgress(uid);
+        const progress = await getUserLearningProgress(uid);
+        const courseProgress = progress.courses?.[courseId];
 
-        if (!progress.courses[courseId]) return true; // Rien à faire
+        if (!courseProgress) return true;
 
-        // Calcul de l'XP à retirer (Somme de tous les scores de QCM de ce cours)
         let xpToRemove = 0;
-        if (progress.courses[courseId].quizScores) {
-            Object.values(progress.courses[courseId].quizScores).forEach(score => {
-                xpToRemove += score;
+        if (courseProgress.quizScores) {
+            Object.values(courseProgress.quizScores).forEach(score => {
+                xpToRemove += Number(score) || 0;
             });
         }
 
-        // Suppression de l'entrée du cours
-        delete progress.courses[courseId];
+        const updates = {
+            [`learningProgress.courses.${courseId}`]: deleteField()
+        };
 
-        const updates = { learningProgress: progress };
         if (xpToRemove > 0) {
             updates.xp = increment(-xpToRemove);
         }
@@ -133,17 +133,20 @@ export async function resetCourseProgress(uid, courseId) {
 export async function updateQuizScore(uid, courseId, chapterId, newScore) {
     try {
         const userRef = doc(db, "users", uid);
-        let progress = await getUserLearningProgress(uid);
+        const progress = await getUserLearningProgress(uid);
+        const courseProgress = progress.courses?.[courseId];
 
-        if (!progress.courses[courseId]) return false;
-        if (!progress.courses[courseId].quizScores) progress.courses[courseId].quizScores = {};
+        if (!courseProgress) return false;
+        if (!courseProgress.quizScores) courseProgress.quizScores = {};
 
-        const oldScore = progress.courses[courseId].quizScores[chapterId] || 0;
-        const xpDifference = newScore - oldScore;
+        const oldScore = Number(courseProgress.quizScores[chapterId]) || 0;
+        const normalizedScore = Number(newScore) || 0;
+        const xpDifference = normalizedScore - oldScore;
 
-        progress.courses[courseId].quizScores[chapterId] = newScore;
+        const updates = {
+            [`learningProgress.courses.${courseId}.quizScores.${chapterId}`]: normalizedScore
+        };
 
-        const updates = { learningProgress: progress };
         if (xpDifference !== 0) {
             updates.xp = increment(xpDifference);
         }
