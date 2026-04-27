@@ -23,12 +23,19 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import { waitForSbiTopbar } from '/admin/js/components/ready.js';
+import { getUserLearningProgress } from '/js/course-engine.js';
+import {
+    courseBelongsToFormation as sharedCourseBelongsToFormation,
+    loadAssignedFormationsForUser,
+    loadCoursesForUser
+} from '/js/learning-access.js';
 
 const state = {
     uid: null,
     userData: {},
     formations: [],
-    courses: []
+    courses: [],
+    progress: { courses: {}, formations: {} }
 };
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -106,6 +113,7 @@ async function loadStudentData(uid) {
     updateTopBar(state.userData);
     updateGamification(state.userData);
 
+    state.progress = await getUserLearningProgress(uid);
     state.formations = await fetchAssignedFormations(uid, state.userData);
     state.courses = await fetchAssignedCourses(state.formations, state.userData);
 
@@ -214,90 +222,23 @@ function updateContinueLearningCard() {
 }
 
 async function fetchAssignedFormations(uid, userData) {
-    const isAdminPreview = userData.role === 'admin' || userData.isGod === true;
-
-    if (isAdminPreview) {
-        const allSnap = await safeGetDocs(collection(db, 'formations'), 'toutes les formations admin preview');
-        return allSnap ? snapToArray(allSnap).sort(sortByTitle) : [];
-    }
-
-    const byIds = await loadFormationsByIds(userData.formationIds || []);
-    const byTitles = await loadFormationsByTitles(userData.formationsAcces || []);
-    const byMembership = await loadFormationsByMembership(uid);
-
-    return uniqById([...byIds, ...byTitles, ...byMembership]).sort(sortByTitle);
-}
-
-async function loadFormationsByIds(formationIds) {
-    const ids = normalizeList(formationIds);
-    if (!ids.length) return [];
-
-    const formations = [];
-
-    for (const chunk of chunkArray(ids, 10)) {
-        const q = query(collection(db, 'formations'), where(documentId(), 'in', chunk));
-        const snap = await safeGetDocs(q, 'formations étudiant par IDs');
-        if (snap) formations.push(...snapToArray(snap));
-    }
-
-    return formations;
-}
-
-async function loadFormationsByTitles(titles) {
-    const safeTitles = normalizeList(titles);
-    if (!safeTitles.length) return [];
-
-    const formations = [];
-
-    for (const chunk of chunkArray(safeTitles, 10)) {
-        const q = query(collection(db, 'formations'), where('titre', 'in', chunk));
-        const snap = await safeGetDocs(q, 'formations étudiant par titres legacy');
-        if (snap) formations.push(...snapToArray(snap));
-    }
-
-    return formations;
-}
-
-async function loadFormationsByMembership(uid) {
-    const q = query(collection(db, 'formations'), where('students', 'array-contains', uid));
-    const snap = await safeGetDocs(q, 'formations étudiant par students[]');
-    return snap ? snapToArray(snap) : [];
+    return loadAssignedFormationsForUser({
+        uid,
+        userData,
+        role: 'student'
+    });
 }
 
 async function fetchAssignedCourses(formations, userData) {
-    const isAdminPreview = userData.role === 'admin' || userData.isGod === true;
-
-    if (isAdminPreview) {
-        const snap = await safeGetDocs(query(collection(db, 'courses'), where('actif', '==', true)), 'cours actifs admin preview');
-        return snap ? snapToArray(snap).sort(sortCourses) : [];
-    }
-
-    const formationIds = formations.map((formation) => formation.id).filter(Boolean);
-    const formationTitles = formations.map((formation) => formation.titre).filter(Boolean);
-
-    const byIds = await loadCoursesByFormationValues(formationIds);
-    const byTitles = await loadCoursesByFormationValues(formationTitles);
-
-    return uniqById([...byIds, ...byTitles]).sort(sortCourses);
-}
-
-async function loadCoursesByFormationValues(values) {
-    const safeValues = normalizeList(values);
-    if (!safeValues.length) return [];
-
-    const courses = [];
-
-    for (const chunk of chunkArray(safeValues, 10)) {
-        const q = query(
-            collection(db, 'courses'),
-            where('formations', 'array-contains-any', chunk),
-            where('actif', '==', true)
-        );
-        const snap = await safeGetDocs(q, 'cours dashboard étudiant par formations');
-        if (snap) courses.push(...snapToArray(snap));
-    }
-
-    return courses;
+    return loadCoursesForUser({
+        uid: state.uid,
+        userData,
+        role: 'student',
+        formations,
+        progress: state.progress,
+        includeProgress: true,
+        activeOnly: true
+    });
 }
 
 function countCoursesForFormation(formation) {
@@ -305,16 +246,7 @@ function countCoursesForFormation(formation) {
 }
 
 function courseBelongsToFormation(course, formation) {
-    if (!Array.isArray(course.formations)) return false;
-
-    const courseValues = normalizeList(course.formations);
-    const formationId = formation.id ? String(formation.id).trim() : '';
-    const formationTitle = formation.titre ? String(formation.titre).trim() : '';
-
-    return Boolean(
-        (formationId && courseValues.includes(formationId)) ||
-        (formationTitle && courseValues.includes(formationTitle))
-    );
+    return sharedCourseBelongsToFormation(course, formation, state.formations);
 }
 
 async function safeGetDocs(queryRef, label) {

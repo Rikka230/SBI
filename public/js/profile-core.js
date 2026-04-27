@@ -19,6 +19,13 @@ import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/fi
 import { waitForSbiTopbar } from '/admin/js/components/ready.js';
 import { getUserLearningProgress, resetCourseProgress, updateQuizScore } from '/js/course-engine.js';
 import {
+    getFormationLookupKeys as getSharedFormationLookupKeys,
+    loadAssignedFormationsForUser as loadSharedAssignedFormationsForUser,
+    loadCoursesForUser as loadSharedCoursesForUser,
+    normalizeList as normalizeSharedList,
+    roleOf as sharedRoleOf
+} from '/js/learning-access.js';
+import {
     getProfileAvatarCropSource,
     isLegacyAvatarDataUrl,
     migrateLegacyAvatarForUser,
@@ -252,19 +259,34 @@ const fetchAssignedFormationsByMembership = async (uid, targetUserData = {}) => 
 };
 
 const fetchAssignedFormationsForUser = async (uid, targetUserData = {}) => {
-    const indexedFormationIds = getSharedFormationIdsForProfile(targetUserData);
+    const targetRole = sharedRoleOf(targetUserData, targetUserData.role || 'student');
+    const targetFormations = await loadSharedAssignedFormationsForUser({
+        uid,
+        userData: targetUserData,
+        role: targetRole
+    });
 
-    const [idFormations, titleFormations, membershipFormations] = await Promise.all([
-        fetchFormationsByIds(indexedFormationIds),
-        fetchFormationsByTitles(targetUserData.formationsAcces || []),
-        fetchAssignedFormationsByMembership(uid, targetUserData)
-    ]);
+    if (isOwner || isAdmin) {
+        return targetFormations.sort(sortByTitle);
+    }
 
-    return uniqueById([
-        ...idFormations,
-        ...titleFormations,
-        ...membershipFormations
-    ]).sort(sortByTitle);
+    // Pour un prof/élève qui consulte un autre profil, on ne montre que les
+    // formations partagées avec le viewer. Si le viewer n'a pas encore son
+    // index users/{uid}.formationIds synchronisé, on utilise aussi membership.
+    const viewerRole = sharedRoleOf(loggedInUserData || {}, loggedInUserData?.role || 'student');
+    const viewerFormations = await loadSharedAssignedFormationsForUser({
+        uid: loggedInUserId,
+        userData: loggedInUserData || {},
+        role: viewerRole
+    });
+
+    const viewerKeys = new Set(getSharedFormationLookupKeys(viewerFormations));
+    const shared = targetFormations.filter((formation) => {
+        const formationKeys = normalizeSharedList([formation.id, formation.titre]);
+        return formationKeys.some((key) => viewerKeys.has(key));
+    });
+
+    return shared.sort(sortByTitle);
 };
 
 const getFormationLookupKeys = (formations) => {
@@ -685,8 +707,15 @@ async function loadLearningTracking(uid) {
         const progress = await getUserLearningProgress(uid);
         const targetUserData = currentProfileData || {};
         const assignedFormations = await fetchAssignedFormationsForUser(uid, targetUserData);
-        const formationKeys = getFormationLookupKeys(assignedFormations);
-        const activeCourses = await fetchActiveCoursesForFormationKeys(formationKeys);
+        const activeCourses = await loadSharedCoursesForUser({
+            uid,
+            userData: targetUserData,
+            role: sharedRoleOf(targetUserData, targetUserData.role || 'student'),
+            formations: assignedFormations,
+            progress,
+            includeProgress: true,
+            activeOnly: true
+        });
 
         const allCourses = {};
         const coursesToShow = new Set();

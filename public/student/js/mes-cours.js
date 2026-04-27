@@ -24,6 +24,11 @@ import {
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import { waitForSbiTopbar } from '/admin/js/components/ready.js';
 import { getUserLearningProgress } from '/js/course-engine.js';
+import {
+    courseBelongsToFormation as sharedCourseBelongsToFormation,
+    loadAssignedFormationsForUser,
+    loadCoursesForUser
+} from '/js/learning-access.js';
 
 let currentUid = null;
 let userData = {};
@@ -304,29 +309,11 @@ async function loadAssignedFormations() {
         list.innerHTML = '<p style="color:var(--text-muted);">Chargement des formations...</p>';
     }
 
-    assignedFormations = [];
-
-    if (isAdminPreview()) {
-        const snap = await safeGetDocs(collection(db, "formations"), 'toutes les formations admin');
-
-        if (snap) {
-            snap.forEach((docSnap) => {
-                assignedFormations.push({
-                    id: docSnap.id,
-                    ...docSnap.data()
-                });
-            });
-        }
-
-        assignedFormations.sort(sortByTitle);
-        return;
-    }
-
-    assignedFormations = uniqById([
-        ...await loadFormationsByIds(userData.formationIds || []),
-        ...await loadFormationsByTitles(userData.formationsAcces || []),
-        ...await loadFormationsByMembership()
-    ]).sort(sortByTitle);
+    assignedFormations = await loadAssignedFormationsForUser({
+        uid: currentUid,
+        userData,
+        role: isAdminPreview() ? 'admin' : 'student'
+    });
 }
 
 async function loadActiveCoursesByFormationValues(formationValues) {
@@ -361,44 +348,15 @@ async function loadActiveCoursesByFormationValues(formationValues) {
 }
 
 async function loadAssignedCourses() {
-    allCourses = [];
-
-    if (isAdminPreview()) {
-        const snap = await safeGetDocs(
-            query(
-                collection(db, "courses"),
-                where("actif", "==", true)
-            ),
-            'cours actifs admin preview'
-        );
-
-        if (snap) {
-            snap.forEach((docSnap) => {
-                allCourses.push({
-                    id: docSnap.id,
-                    ...docSnap.data()
-                });
-            });
-        }
-
-        allCourses.sort(sortCourses);
-        return;
-    }
-
-    const formationIds = assignedFormations
-        .map((formation) => formation.id)
-        .filter(Boolean);
-
-    const formationTitles = assignedFormations
-        .map((formation) => formation.titre)
-        .filter(Boolean);
-
-    const courses = [];
-
-    courses.push(...await loadActiveCoursesByFormationValues(formationIds));
-    courses.push(...await loadActiveCoursesByFormationValues(formationTitles));
-
-    allCourses = uniqById(courses).sort(sortCourses);
+    allCourses = await loadCoursesForUser({
+        uid: currentUid,
+        userData,
+        role: isAdminPreview() ? 'admin' : 'student',
+        formations: assignedFormations,
+        progress: userProgress,
+        includeProgress: true,
+        activeOnly: !isAdminPreview()
+    });
 }
 
 /* =======================================================================
@@ -456,18 +414,7 @@ function renderAssignedFormations() {
 }
 
 function courseBelongsToFormation(course, formation) {
-    if (!course || !formation || !Array.isArray(course.formations)) {
-        return false;
-    }
-
-    const formationValues = normalizeFormationValues(course.formations);
-    const formationId = formation.id ? String(formation.id).trim() : '';
-    const formationTitle = formation.titre ? String(formation.titre).trim() : '';
-
-    return (
-        (formationId && formationValues.includes(formationId)) ||
-        (formationTitle && formationValues.includes(formationTitle))
-    );
+    return sharedCourseBelongsToFormation(course, formation, assignedFormations);
 }
 
 function getCoursesForFormation(formation) {

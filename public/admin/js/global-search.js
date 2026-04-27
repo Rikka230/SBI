@@ -3,20 +3,22 @@
  * GLOBAL SEARCH
  * =======================================================================
  *
- * 6.7E.1 : recherche query-safe.
- * Une requête Firestore refusée ne fait plus tomber toute la recherche.
+ * 6.7E.2 : recherche pédagogique robuste.
+ * - prof -> recherche élèves de ses formations ;
+ * - élève -> recherche profs de ses formations ;
+ * - cours -> récupérés par formation + progression ;
+ * - une requête Firestore refusée ne bloque plus la recherche entière.
  * =======================================================================
  */
 
-import { db } from '/js/firebase-init.js';
 import {
-    collection,
-    getDocs,
-    doc,
-    getDoc,
-    query,
-    where
-} from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+    getUserProfile,
+    isAdminLike,
+    loadAssignedFormationsForUser,
+    loadCoursesForUser,
+    loadSearchUsersForRole,
+    roleOf
+} from '/js/learning-access.js';
 
 let activeSearchContext = {
     currentUid: null,
@@ -37,222 +39,116 @@ const escapeHTML = (value) => String(value || '')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
 
-const normalizeList = (items) => {
-    if (!Array.isArray(items)) return [];
-    return Array.from(new Set(items.map((item) => String(item || '').trim()).filter(Boolean)));
-};
-
-const chunkArray = (items, size = 10) => {
-    const chunks = [];
-    for (let i = 0; i < items.length; i += size) chunks.push(items.slice(i, i + size));
-    return chunks;
-};
-
-const uniqById = (items) => {
-    const map = new Map();
-    items.forEach((item) => { if (item?.id) map.set(item.id, item); });
-    return Array.from(map.values());
-};
-
-const snapToArray = (snapshot) => {
-    const items = [];
-    snapshot?.forEach((docSnap) => items.push({ id: docSnap.id, ...docSnap.data() }));
-    return items;
-};
-
-async function safeGetDocs(queryRef, label = 'requête Firestore') {
-    try {
-        return await getDocs(queryRef);
-    } catch (error) {
-        console.warn(`[SBI Search] ${label} ignorée :`, error);
-        return null;
-    }
-}
-
-const getCurrentRole = () => {
-    const profile = activeSearchContext.currentUserProfile;
+function getCurrentRole() {
+    const profile = activeSearchContext.currentUserProfile || {};
     if (profile?.isGod === true) return 'admin';
-    if (profile?.role) return profile.role;
+    if (profile?.role) return roleOf(profile);
     if (window.location.pathname.includes('/admin/')) return 'admin';
     if (window.location.pathname.includes('/teacher/')) return 'teacher';
     return 'student';
-};
+}
 
-const isAdminLikeUser = (userData) => userData?.isGod === true || userData?.role === 'admin';
-
-async function refreshCurrentProfileIfNeeded() {
+async function refreshCurrentProfile() {
     const { currentUid } = activeSearchContext;
-    if (!currentUid) return activeSearchContext.currentUserProfile || {};
-
     let profile = activeSearchContext.currentUserProfile || {};
 
-    if (!Array.isArray(profile.formationIds) || !Array.isArray(profile.formationsAcces) || !profile.role) {
-        try {
-            const freshSnap = await getDoc(doc(db, "users", currentUid));
-            if (freshSnap.exists()) {
-                profile = { ...profile, ...freshSnap.data() };
-                activeSearchContext.currentUserProfile = profile;
-            }
-        } catch (error) {
-            console.warn("[SBI Search] Impossible de rafraîchir le profil :", error);
-        }
+    if (!currentUid) return profile;
+
+    if (!profile.role || !Array.isArray(profile.formationIds) || !Array.isArray(profile.formationsAcces)) {
+        const fresh = await getUserProfile(currentUid);
+        if (fresh) profile = { ...profile, ...fresh };
     }
 
+    activeSearchContext.currentUserProfile = profile;
     return profile;
 }
 
-async function loadMembershipFormations(uid, role) {
-    if (!uid) return [];
-
-    const fieldName = role === 'teacher' ? 'profs' : 'students';
-    const formationsQuery = query(collection(db, "formations"), where(fieldName, "array-contains", uid));
-    const snap = await safeGetDocs(formationsQuery, `formations par ${fieldName}`);
-    return snap ? snapToArray(snap) : [];
-}
-
-async function getFormationLookupKeysFromProfile() {
-    const { currentUid } = activeSearchContext;
-    const role = getCurrentRole();
-    const profile = await refreshCurrentProfileIfNeeded();
-
-    const keys = [
-        ...normalizeList(profile.formationIds),
-        ...normalizeList(profile.formationsAcces)
-    ];
-
-    const membershipFormations = await loadMembershipFormations(currentUid, role);
-    membershipFormations.forEach((formation) => {
-        if (formation.id) keys.push(String(formation.id));
-        if (formation.titre) keys.push(String(formation.titre));
-    });
-
-    return normalizeList(keys);
-}
-
 async function buildSearchCacheKey() {
+    const profile = await refreshCurrentProfile();
     const role = getCurrentRole();
-    const formationKeys = await getFormationLookupKeysFromProfile();
     return JSON.stringify({
         uid: activeSearchContext.currentUid,
         role,
-        formationKeys: formationKeys.slice().sort()
+        formationIds: [...(profile.formationIds || [])].sort(),
+        formationsAcces: [...(profile.formationsAcces || [])].sort()
     });
-}
-
-async function loadAdminSearchData() {
-    const [usersSnap, coursesSnap] = await Promise.all([
-        safeGetDocs(collection(db, "users"), 'utilisateurs admin'),
-        safeGetDocs(collection(db, "courses"), 'cours admin')
-    ]);
-
-    return {
-        users: usersSnap ? snapToArray(usersSnap) : [],
-        courses: coursesSnap ? snapToArray(coursesSnap) : []
-    };
-}
-
-async function loadRestrictedUsers(formationKeys) {
-    const formationIdsOnly = normalizeList(formationKeys).filter((value) => !value.includes(' '));
-    if (!formationIdsOnly.length) return [];
-
-    const users = [];
-
-    for (const chunk of chunkArray(formationIdsOnly, 10)) {
-        const usersQuery = query(collection(db, "users"), where("formationIds", "array-contains-any", chunk));
-        const snap = await safeGetDocs(usersQuery, 'utilisateurs par formations partagées');
-        if (!snap) continue;
-
-        snap.forEach((userDoc) => {
-            const data = { id: userDoc.id, ...userDoc.data() };
-            if (!isAdminLikeUser(data)) users.push(data);
-        });
-    }
-
-    return uniqById(users);
-}
-
-async function loadRestrictedCourses(formationKeys, role) {
-    const courses = [];
-    const keys = normalizeList(formationKeys);
-
-    for (const chunk of chunkArray(keys, 10)) {
-        const coursesQuery = query(
-            collection(db, "courses"),
-            where("formations", "array-contains-any", chunk),
-            where("actif", "==", true)
-        );
-
-        const snap = await safeGetDocs(coursesQuery, 'cours par formations partagées');
-        if (snap) courses.push(...snapToArray(snap));
-    }
-
-    if (role === 'teacher' && activeSearchContext.currentUid) {
-        const ownCoursesQuery = query(collection(db, "courses"), where("auteurId", "==", activeSearchContext.currentUid));
-        const ownSnap = await safeGetDocs(ownCoursesQuery, 'cours propres professeur');
-        if (ownSnap) courses.push(...snapToArray(ownSnap));
-    }
-
-    return uniqById(courses);
 }
 
 async function ensureSearchDataCache() {
     const key = await buildSearchCacheKey();
     if (searchCache.ready && searchCache.key === key) return;
 
+    const profile = await refreshCurrentProfile();
     const role = getCurrentRole();
+    const uid = activeSearchContext.currentUid;
 
-    if (role === 'admin') {
-        const data = await loadAdminSearchData();
-        searchCache = { key, ready: true, users: data.users, courses: data.courses };
-        return;
-    }
+    const formations = await loadAssignedFormationsForUser({
+        uid,
+        userData: profile,
+        role
+    });
 
-    const formationKeys = await getFormationLookupKeysFromProfile();
     const [users, courses] = await Promise.all([
-        loadRestrictedUsers(formationKeys),
-        loadRestrictedCourses(formationKeys, role)
+        loadSearchUsersForRole({ uid, userData: profile, role, formations }),
+        loadCoursesForUser({ uid, userData: profile, role, formations, includeProgress: true, activeOnly: true })
     ]);
 
-    searchCache = { key, ready: true, users, courses };
+    searchCache = {
+        key,
+        ready: true,
+        users,
+        courses
+    };
 }
 
-const userMatchesSearchTerm = (userData, term, role) => {
+function userMatchesSearchTerm(userData, term, role) {
     const fullName = `${userData.prenom || ''} ${userData.nom || ''}`.toLowerCase();
     const email = String(userData.email || '').toLowerCase();
-    return role === 'admin' ? fullName.includes(term) || email.includes(term) : fullName.includes(term);
-};
+    return role === 'admin'
+        ? fullName.includes(term) || email.includes(term)
+        : fullName.includes(term);
+}
 
-const courseMatchesSearchTerm = (courseData, term) => String(courseData.titre || '').toLowerCase().includes(term);
+function courseMatchesSearchTerm(courseData, term) {
+    return String(courseData.titre || '').toLowerCase().includes(term);
+}
 
-const buildUserSearchResults = (term, role) => searchCache.users
-    .filter((userData) => userMatchesSearchTerm(userData, term, role))
-    .filter((userData) => role === 'admin' || !isAdminLikeUser(userData))
-    .slice(0, 6);
+function buildUserSearchResults(term, role) {
+    return searchCache.users
+        .filter((userData) => userMatchesSearchTerm(userData, term, role))
+        .filter((userData) => role === 'admin' || !isAdminLike(userData))
+        .slice(0, 8);
+}
 
-const buildCourseSearchResults = (term) => searchCache.courses
-    .filter((courseData) => courseMatchesSearchTerm(courseData, term))
-    .slice(0, 6);
+function buildCourseSearchResults(term) {
+    return searchCache.courses
+        .filter((courseData) => courseMatchesSearchTerm(courseData, term))
+        .slice(0, 8);
+}
 
-const getProfileLinkForSearchResult = (userData, role) => {
+function getProfileLinkForSearchResult(userData, role) {
     if (role === 'admin') return `/admin/admin-profile.html?id=${userData.id}`;
-    if (role === 'teacher') return `/teacher/mon-profil.html?id=${userData.id}`;
-    return `/student/mon-profil.html?id=${userData.id}`;
-};
 
-const getCourseLinkForSearchResult = (courseData, role) => {
+    const targetRole = roleOf(userData, userData.role);
+    if (targetRole === 'teacher') return `/teacher/mon-profil.html?id=${userData.id}`;
+    return `/student/mon-profil.html?id=${userData.id}`;
+}
+
+function getCourseLinkForSearchResult(courseData, role) {
     if (role === 'admin') return `/admin/formations-cours.html?edit=${courseData.id}`;
     if (role === 'teacher') {
         if (courseData.auteurId === activeSearchContext.currentUid) return `/teacher/mes-cours.html?edit=${courseData.id}`;
         return `/teacher/cours-viewer.html?id=${courseData.id}&preview=true`;
     }
     return `/student/cours-viewer.html?id=${courseData.id}`;
-};
+}
 
-const getUserSearchSubText = (userData, role) => {
+function getUserSearchSubText(userData, role) {
     if (role === 'admin') return userData.email || '';
-    if (userData.role === 'teacher') return 'Professeur';
+    const targetRole = roleOf(userData, userData.role);
+    if (targetRole === 'teacher') return 'Professeur';
     return 'Élève';
-};
+}
 
 function renderSearchResults({ container, term, users, courses, role }) {
     let html = '';
@@ -264,7 +160,7 @@ function renderSearchResults({ container, term, users, courses, role }) {
             html += `
                 <div class="search-result-item" data-url="${link}">
                     <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24" style="opacity:.6;min-width:18px;flex-shrink:0;"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3z"/></svg>
-                    <div><div class="search-result-title">${escapeHTML(course.titre)}</div></div>
+                    <div><div class="search-result-title">${escapeHTML(course.titre || 'Cours')}</div></div>
                 </div>`;
         });
     }
