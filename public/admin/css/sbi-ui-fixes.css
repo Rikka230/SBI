@@ -22,6 +22,16 @@ html body.sbi-internal-ui .top-bar,
 html body.sbi-internal-ui .sbi-assistant {
     opacity: 1 !important;
     visibility: visible !important;
+    transition: none !important;
+}
+
+html body.sbi-page-exiting.sbi-internal-ui .side-panel,
+html body.sbi-page-exiting.sbi-internal-ui .top-bar,
+html body.sbi-page-exiting.sbi-internal-ui .sbi-assistant {
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: none !important;
+    pointer-events: auto !important;
 }
 
 html body.sbi-internal-ui .sbi-assistant:not(.is-open):not(.is-peeking):hover .sbi-assistant__panel,
