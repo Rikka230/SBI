@@ -24,7 +24,6 @@ export function injectPanelStyles() {
 
     .course-delete-icon-btn svg { display: block; width: 18px; height: 18px; fill: currentColor; }
 
-    .left-collapsed #left-panel .admin-return-link,
     .left-collapsed #left-panel #logout-btn-student,
     .left-collapsed #left-panel #logout-btn-teacher {
       width: 46px !important;
@@ -41,15 +40,37 @@ export function injectPanelStyles() {
       overflow: hidden !important;
     }
 
-    .left-collapsed #left-panel .admin-return-link .nav-text,
+    body.sbi-admin-visitor.left-collapsed #left-panel .admin-return-link {
+      width: 46px !important;
+      min-width: 46px !important;
+      height: 46px !important;
+      padding: 0 !important;
+      margin-left: auto !important;
+      margin-right: auto !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      gap: 0 !important;
+      border-radius: 12px !important;
+      overflow: hidden !important;
+    }
+
+    body:not(.sbi-admin-visitor) #left-panel .admin-return-link,
+    body:not(.sbi-admin-visitor).left-collapsed #left-panel .admin-return-link {
+      display: none !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+    }
+
     .left-collapsed #left-panel #logout-btn-student .nav-text,
-    .left-collapsed #left-panel #logout-btn-teacher .nav-text {
+    .left-collapsed #left-panel #logout-btn-teacher .nav-text,
+    body.sbi-admin-visitor.left-collapsed #left-panel .admin-return-link .nav-text {
       display: none !important;
     }
 
-    .left-collapsed #left-panel .admin-return-link svg,
     .left-collapsed #left-panel #logout-btn-student svg,
-    .left-collapsed #left-panel #logout-btn-teacher svg {
+    .left-collapsed #left-panel #logout-btn-teacher svg,
+    body.sbi-admin-visitor.left-collapsed #left-panel .admin-return-link svg {
       width: 20px !important;
       height: 20px !important;
       margin: 0 !important;
