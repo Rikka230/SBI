@@ -3,11 +3,10 @@
  * MES COURS - Logique de navigation Formations -> Blocs -> Cours
  * =======================================================================
  *
- * Étape 5.2.4B :
- * - suppression du scan global formations/courses côté élève
+ * Patch accès cours :
  * - formations chargées via where("students", "array-contains", uid)
- * - cours chargés via where("formations", "array-contains-any", formationIds)
- * - mode preview admin/isGod conservé
+ * - cours chargés via IDs de formation + titres legacy
+ * - affichage compatible si courses/{id}.formations contient encore un titre
  * =======================================================================
  */
 
@@ -158,6 +157,19 @@ function uniqById(items) {
     return Array.from(map.values());
 }
 
+function normalizeFormationValues(values) {
+    if (!Array.isArray(values)) return [];
+
+    return Array.from(
+        new Set(
+            values
+                .filter(Boolean)
+                .map(value => String(value).trim())
+                .filter(Boolean)
+        )
+    );
+}
+
 async function loadAssignedFormations() {
     const list = document.getElementById('formations-list');
     if (list) {
@@ -197,6 +209,36 @@ async function loadAssignedFormations() {
     assignedFormations.sort(sortByTitle);
 }
 
+async function loadActiveCoursesByFormationValues(formationValues) {
+    const safeValues = normalizeFormationValues(formationValues);
+
+    if (safeValues.length === 0) {
+        return [];
+    }
+
+    const courses = [];
+    const chunks = chunkArray(safeValues, 10);
+
+    for (const chunk of chunks) {
+        const coursesQuery = query(
+            collection(db, "courses"),
+            where("formations", "array-contains-any", chunk),
+            where("actif", "==", true)
+        );
+
+        const snap = await getDocs(coursesQuery);
+
+        snap.forEach((docSnap) => {
+            courses.push({
+                id: docSnap.id,
+                ...docSnap.data()
+            });
+        });
+    }
+
+    return courses;
+}
+
 async function loadAssignedCourses() {
     allCourses = [];
 
@@ -223,30 +265,14 @@ async function loadAssignedCourses() {
         .map((formation) => formation.id)
         .filter(Boolean);
 
-    if (formationIds.length === 0) {
-        allCourses = [];
-        return;
-    }
+    const formationTitles = assignedFormations
+        .map((formation) => formation.titre)
+        .filter(Boolean);
 
-    const chunks = chunkArray(formationIds, 10);
     const courses = [];
 
-    for (const chunk of chunks) {
-        const coursesQuery = query(
-            collection(db, "courses"),
-            where("formations", "array-contains-any", chunk),
-            where("actif", "==", true)
-        );
-
-        const snap = await getDocs(coursesQuery);
-
-        snap.forEach((docSnap) => {
-            courses.push({
-                id: docSnap.id,
-                ...docSnap.data()
-            });
-        });
-    }
+    courses.push(...await loadActiveCoursesByFormationValues(formationIds));
+    courses.push(...await loadActiveCoursesByFormationValues(formationTitles));
 
     allCourses = uniqById(courses).sort(sortCourses);
 }
@@ -265,8 +291,8 @@ function renderAssignedFormations() {
     }
 
     list.innerHTML = assignedFormations.map((formation) => {
-        const totalCourses = getCoursesForFormation(formation.id).length;
-        const completedCourses = getCompletedCoursesForFormation(formation.id);
+        const totalCourses = getCoursesForFormation(formation).length;
+        const completedCourses = getCompletedCoursesForFormation(formation);
         const progressPercent = totalCourses === 0
             ? 0
             : Math.round((completedCourses / totalCourses) * 100);
@@ -296,22 +322,36 @@ function renderAssignedFormations() {
 
     document.querySelectorAll('.formation-folder').forEach((folder) => {
         folder.addEventListener('click', () => {
-            window.openFormation(
-                folder.dataset.formationId,
-                folder.dataset.formationTitle
-            );
+            const formation = assignedFormations.find((item) => item.id === folder.dataset.formationId);
+            window.openFormation(formation || {
+                id: folder.dataset.formationId,
+                titre: folder.dataset.formationTitle
+            });
         });
     });
 }
 
-function getCoursesForFormation(formationId) {
-    return allCourses.filter((course) => {
-        return Array.isArray(course.formations) && course.formations.includes(formationId);
-    });
+function courseBelongsToFormation(course, formation) {
+    if (!course || !formation || !Array.isArray(course.formations)) {
+        return false;
+    }
+
+    const formationValues = normalizeFormationValues(course.formations);
+    const formationId = formation.id ? String(formation.id).trim() : '';
+    const formationTitle = formation.titre ? String(formation.titre).trim() : '';
+
+    return (
+        (formationId && formationValues.includes(formationId)) ||
+        (formationTitle && formationValues.includes(formationTitle))
+    );
 }
 
-function getCompletedCoursesForFormation(formationId) {
-    return getCoursesForFormation(formationId).filter((course) => {
+function getCoursesForFormation(formation) {
+    return allCourses.filter((course) => courseBelongsToFormation(course, formation));
+}
+
+function getCompletedCoursesForFormation(formation) {
+    return getCoursesForFormation(formation).filter((course) => {
         return userProgress.courses[course.id]?.status === 'done';
     }).length;
 }
@@ -320,7 +360,14 @@ function getCompletedCoursesForFormation(formationId) {
  * RENDU COURS
  * ======================================================================= */
 
-window.openFormation = function(formationId, formationTitre) {
+window.openFormation = function(formationOrId, formationTitre = '') {
+    const formation = typeof formationOrId === 'object'
+        ? formationOrId
+        : assignedFormations.find((item) => item.id === formationOrId) || {
+            id: formationOrId,
+            titre: formationTitre
+        };
+
     const viewFormations = document.getElementById('view-formations');
     const viewCourses = document.getElementById('view-courses');
     const title = document.getElementById('current-formation-title');
@@ -329,13 +376,13 @@ window.openFormation = function(formationId, formationTitre) {
 
     if (viewFormations) viewFormations.style.display = 'none';
     if (viewCourses) viewCourses.style.display = 'flex';
-    if (title) title.textContent = formationTitre || 'Formation';
+    if (title) title.textContent = formation.titre || 'Formation';
     if (searchInput) searchInput.value = '';
     if (!container) return;
 
     container.innerHTML = '';
 
-    const coursesInFormation = getCoursesForFormation(formationId);
+    const coursesInFormation = getCoursesForFormation(formation);
 
     if (coursesInFormation.length === 0) {
         container.innerHTML = '<p style="color:var(--text-muted);">Aucun cours actif dans cette formation.</p>';
