@@ -18,6 +18,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const navItems = document.querySelectorAll('.nav-item[data-target]');
     const views = document.querySelectorAll('.admin-view');
 
+    initSpaceTheme();
+    initAssistantPrototype();
     initAdminVisitorShortcut();
 
     /* --- 1. GESTION DES PANNEAUX --- */
@@ -107,6 +109,105 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+function initSpaceTheme() {
+    const path = window.location.pathname.toLowerCase();
+
+    document.body.classList.add('sbi-dashboard-redesign');
+
+    if (path.startsWith('/teacher/')) {
+        document.body.classList.add('sbi-teacher-space');
+        return;
+    }
+
+    if (path.startsWith('/student/')) {
+        document.body.classList.add('sbi-student-space');
+        return;
+    }
+
+    if (path.startsWith('/admin/')) {
+        document.body.classList.add('sbi-admin-space');
+    }
+}
+
+function initAssistantPrototype() {
+    if (document.querySelector('.sbi-assistant')) return;
+
+    const path = window.location.pathname.toLowerCase();
+    const isAdmin = path.startsWith('/admin/');
+    const isTeacher = path.startsWith('/teacher/');
+    const isStudent = path.startsWith('/student/');
+
+    if (!isAdmin && !isTeacher && !isStudent) return;
+
+    const config = isTeacher
+        ? {
+            eyebrow: 'Assistant prof',
+            title: 'Besoin d’un repère ?',
+            text: 'Je peux guider les actions importantes de l’espace professeur : cours, validation, suivi et notifications.',
+            primary: 'Voir mes cours',
+            primaryUrl: '/teacher/mes-cours.html',
+            badge: '1'
+        }
+        : isStudent
+            ? {
+                eyebrow: 'Assistant élève',
+                title: 'Continue ton parcours',
+                text: 'Tes notifications, tes cours et ta progression resteront accessibles ici sans surcharger l’écran.',
+                primary: 'Mes cours',
+                primaryUrl: '/student/mes-cours.html',
+                badge: '1'
+            }
+            : {
+                eyebrow: 'Assistant admin',
+                title: 'Cockpit SBI',
+                text: 'Accède rapidement aux signaux utiles : validations, notifications et points de contrôle plateforme.',
+                primary: 'À valider',
+                primaryUrl: '/admin/index.html?tab=view-dashboard',
+                badge: '1'
+            };
+
+    const assistant = document.createElement('div');
+    assistant.className = 'sbi-assistant';
+    assistant.innerHTML = `
+        <button class="sbi-assistant__trigger" type="button" aria-label="Ouvrir l’assistant SBI">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 22 12 12 22 2 12 12 2Zm0 5.2 4.8 4.8-4.8 4.8L7.2 12 12 7.2Z"/></svg>
+            <span class="sbi-assistant__badge">${config.badge}</span>
+        </button>
+        <div class="sbi-assistant__panel" role="dialog" aria-label="Assistant SBI">
+            <p class="sbi-assistant__eyebrow">${config.eyebrow}</p>
+            <h3 class="sbi-assistant__title">${config.title}</h3>
+            <p class="sbi-assistant__text">${config.text}</p>
+            <div class="sbi-assistant__actions">
+                <button class="sbi-assistant__action" type="button" data-assistant-primary>${config.primary}</button>
+                <button class="sbi-assistant__action secondary" type="button" data-assistant-close>Fermer</button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(assistant);
+
+    const trigger = assistant.querySelector('.sbi-assistant__trigger');
+    const closeBtn = assistant.querySelector('[data-assistant-close]');
+    const primaryBtn = assistant.querySelector('[data-assistant-primary]');
+
+    trigger?.addEventListener('click', () => {
+        assistant.classList.toggle('is-open');
+    });
+
+    closeBtn?.addEventListener('click', () => {
+        assistant.classList.remove('is-open');
+    });
+
+    primaryBtn?.addEventListener('click', () => {
+        window.location.href = config.primaryUrl;
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            assistant.classList.remove('is-open');
+        }
+    });
+}
 
 function initAdminVisitorShortcut() {
     const path = window.location.pathname;
