@@ -286,6 +286,16 @@ service cloud.firestore {
     }
 
     /* ============================================================
+       PUBLIC SITE SETTINGS
+       ============================================================ */
+
+    match /settings/siteIndex {
+      allow get: if true;
+      allow list: if false;
+      allow create, update, delete: if isAdmin();
+    }
+
+    /* ============================================================
        USERS
        ============================================================ */
 
