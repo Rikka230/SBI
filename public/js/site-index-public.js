@@ -10,6 +10,15 @@ const DEFAULTS = {
   founderImageUrl: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=800&q=80'
 };
 
+function ensureFounderCleanStyles() {
+  const href = '/css/sbi-founder-image-clean.css';
+  if (document.querySelector(`link[href="${href}"]`)) return;
+  const link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = href;
+  document.head.appendChild(link);
+}
+
 function applyImage(selector, url) {
   if (!url) return;
   document.querySelectorAll(selector).forEach((img) => {
@@ -57,6 +66,7 @@ function applyHeroVideo(settings) {
 }
 
 function applySettings(settings) {
+  ensureFounderCleanStyles();
   applyHeroVideo(settings);
   applyImage('.hero-large-logo', settings.heroLogoUrl || DEFAULTS.heroLogoUrl);
   applyImage('.header-logo, .footer-logo-mark', settings.headerLogoUrl || DEFAULTS.headerLogoUrl);
@@ -70,6 +80,7 @@ async function initSiteIndexMedia() {
     const settings = snap.exists() ? { ...DEFAULTS, ...snap.data() } : DEFAULTS;
     applySettings(settings);
   } catch (error) {
+    ensureFounderCleanStyles();
     console.warn('[SBI Index] Médias dynamiques indisponibles, fallback local conservé.', error);
   }
 }
