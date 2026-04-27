@@ -163,54 +163,33 @@ Fichiers consolidés :
 - `public/js/profile-core.js`
 
 
-## Étape 6.8 : découpe admin-ui.js
+## Étape 6.9 - Découpe profile-core.js
 
-Statut : patch ZIP préparé.
+Statut : patch préparé.
 
-Objectif : remplacer `public/admin/js/admin-ui.js` par un point d'entrée léger et séparer les responsabilités UI.
+Objectif : transformer `public/js/profile-core.js` en orchestrateur léger.
 
 Nouveaux modules :
 
-- `public/admin/js/admin-ui/theme.js`
-  - charge les styles internes ;
-  - pose les classes de rôle admin/student/teacher ;
-  - active le redesign dashboard.
+- `public/js/profile/profile-utils.js`
+- `public/js/profile/profile-topbar.js`
+- `public/js/profile/profile-presence.js`
+- `public/js/profile/profile-formations.js`
+- `public/js/profile/profile-render.js`
+- `public/js/profile/profile-tracking.js`
+- `public/js/profile/profile-edit.js`
+- `public/js/profile/profile-avatar-cropper.js`
 
-- `public/admin/js/admin-ui/panels.js`
-  - gère les panneaux gauche/droit ;
-  - gère les états mobile ;
-  - gère les onglets admin sans reload.
+Points conservés :
 
-- `public/admin/js/admin-ui/admin-media-nav.js`
-  - injecte l'entrée Gestion Accueil dans le panel admin.
+- affichage topbar nom/avatar/niveau ;
+- profil public ;
+- données privées propriétaire/admin ;
+- édition bio/téléphone/adresse ;
+- badges XP ;
+- formations assignées avec les fallbacks learning-access ;
+- suivi cours/quiz avec reset et édition de note admin ;
+- présence en ligne ;
+- cropper avatar + Storage + migration anciens avatars base64.
 
-- `public/admin/js/admin-ui/assistant.js`
-  - crée et branche l'assistant ;
-  - corrige le HTML du panneau assistant ;
-  - affiche l'intro une seule fois par session ;
-  - synchronise le badge notification.
-
-- `public/admin/js/admin-ui/admin-visitor.js`
-  - affiche le raccourci retour admin pour admin/isGod dans les espaces student/teacher.
-
-- `public/admin/js/admin-ui/emoji-scrubber.js`
-  - nettoie les emojis résiduels sans toucher aux SVG.
-
-- `public/admin/js/admin-ui/component-polish.js`
-  - charge le polish visuel non bloquant.
-
-Fichier allégé :
-
-- `public/admin/js/admin-ui.js`
-  - attend les composants ;
-  - orchestre les modules ;
-  - garde un anti page blanche en cas d'erreur.
-
-À tester après remplacement :
-
-- admin dashboard + onglets internes ;
-- admin Gestion Accueil ;
-- admin profil ;
-- student dashboard / mes cours / profil ;
-- teacher dashboard / mes cours / profil ;
-- assistant, notifications, logout, panel collapse.
+Fichier critique : `profile-core.js` devient un point d'entrée de coordination.
