@@ -1,14 +1,27 @@
 /* SBI 6.2-bis safe fixes: no component rewrite */
 
-html body.preload #app-container {
+html body.preload #main-content {
     opacity: 0 !important;
-    visibility: hidden !important;
+    transform: translateY(8px) scale(0.998);
 }
 
-html body:not(.preload) #app-container {
+html body:not(.preload) #main-content {
     opacity: 1;
-    visibility: visible;
-    transition: opacity 0.18s ease;
+    transform: translateY(0) scale(1);
+    transition: opacity 0.22s ease, transform 0.22s ease;
+}
+
+html body.sbi-page-exiting #main-content {
+    opacity: 0 !important;
+    transform: translateY(8px) scale(0.998) !important;
+    transition: opacity 0.16s ease, transform 0.16s ease !important;
+}
+
+html body.sbi-internal-ui .side-panel,
+html body.sbi-internal-ui .top-bar,
+html body.sbi-internal-ui .sbi-assistant {
+    opacity: 1 !important;
+    visibility: visible !important;
 }
 
 html body.sbi-internal-ui .sbi-assistant:not(.is-open):not(.is-peeking):hover .sbi-assistant__panel,
