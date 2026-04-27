@@ -1,7 +1,7 @@
 SBI preview deployment test
 
 Branch: avatar-profile-test
-Marker: 6.2-bis-visible-check
-Updated from ChatGPT after rollback and safe fixes.
+Marker: firebase-preview-auto-trigger-6.5
+Updated from ChatGPT to trigger Firebase Hosting Preview deployment.
 
-If you open this file on the Vercel Preview URL and do not see this marker, you are not looking at the latest deployed preview.
+If you open this file on the Firebase Preview URL and do not see this marker, you are not looking at the latest deployed preview.
