@@ -390,6 +390,46 @@ const maybeMigrateVisibleLegacyAvatar = async (uid, data, avatarImg = null) => {
     }
 };
 
+async function waitForSbiComponents() {
+    if (window.__SBI_COMPONENTS_READY === true) {
+        await waitForElements(['top-user-name', 'top-user-avatar'], 1200);
+        return;
+    }
+
+    if (window.SBI_COMPONENTS_READY && typeof window.SBI_COMPONENTS_READY.then === 'function') {
+        await Promise.race([
+            window.SBI_COMPONENTS_READY.catch(() => {}),
+            sleep(1500)
+        ]);
+    } else {
+        await new Promise((resolve) => {
+            const timeout = window.setTimeout(resolve, 1500);
+            window.addEventListener('sbi:components-ready', () => {
+                window.clearTimeout(timeout);
+                resolve();
+            }, { once: true });
+        });
+    }
+
+    await waitForElements(['top-user-name', 'top-user-avatar'], 1200);
+}
+
+async function waitForElements(ids, timeoutMs = 1200) {
+    const start = Date.now();
+
+    while (Date.now() - start < timeoutMs) {
+        const ready = ids.every((id) => document.getElementById(id));
+        if (ready) return true;
+        await sleep(50);
+    }
+
+    return false;
+}
+
+function sleep(ms) {
+    return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
 const SVG_RESET = `<svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24" style="vertical-align:middle; margin-right:4px;"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>`;
 const SVG_EDIT = `<svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24" style="vertical-align:middle; margin-right:4px;"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>`;
 
@@ -400,6 +440,7 @@ document.addEventListener('DOMContentLoaded', () => {
     onAuthStateChanged(auth, async (user) => {
         if (user) {
             loggedInUserId = user.uid;
+            await waitForSbiComponents();
 
             const mySnap = await getDoc(doc(db, "users", loggedInUserId));
             if (mySnap.exists()) {
@@ -441,6 +482,8 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             window.location.replace('/login.html');
         }
+
+        document.body.classList.remove('preload');
     });
 });
 

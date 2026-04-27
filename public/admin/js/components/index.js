@@ -8,5 +8,6 @@ registerAdminPanels();
 registerStudentPanels();
 registerTeacherPanels();
 
-window.__SBI_COMPONENTS_READY = true;
-window.dispatchEvent(new CustomEvent('sbi:components-ready'));
+// Le vrai signal public est dispatché par /admin/js/components.js
+// après DOMContentLoaded + requestAnimationFrame.
+window.__SBI_COMPONENTS_MODULES_LOADED = true;

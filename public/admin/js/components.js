@@ -7,8 +7,9 @@
  * classique. On garde donc ce fichier comme point d’entrée non-module,
  * puis on charge les vrais composants depuis /admin/js/components/index.js.
  *
- * Important 6.7D.1 : les composants sont maintenant chargés en import
- * dynamique. Les scripts de page peuvent attendre window.SBI_COMPONENTS_READY.
+ * 6.7D.2 : le signal ready attend maintenant que le DOM soit disponible.
+ * Ça évite le race-condition où dashboard fonctionne, mais mes-cours/profil
+ * écrivent dans une topbar qui n'est pas encore montée.
  */
 
 (function bootstrapSbiComponents(){
@@ -17,14 +18,21 @@
     document.body?.classList?.add('sbi-preload-timeout');
   };
 
+  const waitDomReady = () => {
+    if (document.readyState !== 'loading') return Promise.resolve();
+    return new Promise((resolve) => document.addEventListener('DOMContentLoaded', resolve, { once: true }));
+  };
+
   const notifyReady = () => {
     window.__SBI_COMPONENTS_READY = true;
     window.dispatchEvent(new CustomEvent('sbi:components-ready'));
   };
 
-  const failSafe = window.setTimeout(releasePreload, 1200);
+  const failSafe = window.setTimeout(releasePreload, 1500);
 
   window.SBI_COMPONENTS_READY = import('/admin/js/components/index.js')
+    .then(waitDomReady)
+    .then(() => new Promise((resolve) => requestAnimationFrame(resolve)))
     .then(() => {
       window.clearTimeout(failSafe);
       notifyReady();

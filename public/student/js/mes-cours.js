@@ -40,6 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
         currentUid = user.uid;
 
         try {
+            await waitForSbiComponents();
             await loadStudentProfile();
             await loadStudentProgress();
             updateTopBar();
@@ -52,6 +53,8 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.error("Erreur d'initialisation :", error);
             showFormationsError();
+        } finally {
+            document.body.classList.remove('preload');
         }
     });
 
@@ -72,6 +75,46 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 });
+
+async function waitForSbiComponents() {
+    if (window.__SBI_COMPONENTS_READY === true) {
+        await waitForElements(['top-user-name', 'top-user-avatar'], 1200);
+        return;
+    }
+
+    if (window.SBI_COMPONENTS_READY && typeof window.SBI_COMPONENTS_READY.then === 'function') {
+        await Promise.race([
+            window.SBI_COMPONENTS_READY.catch(() => {}),
+            sleep(1500)
+        ]);
+    } else {
+        await new Promise((resolve) => {
+            const timeout = window.setTimeout(resolve, 1500);
+            window.addEventListener('sbi:components-ready', () => {
+                window.clearTimeout(timeout);
+                resolve();
+            }, { once: true });
+        });
+    }
+
+    await waitForElements(['top-user-name', 'top-user-avatar'], 1200);
+}
+
+async function waitForElements(ids, timeoutMs = 1200) {
+    const start = Date.now();
+
+    while (Date.now() - start < timeoutMs) {
+        const ready = ids.every((id) => document.getElementById(id));
+        if (ready) return true;
+        await sleep(50);
+    }
+
+    return false;
+}
+
+function sleep(ms) {
+    return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
 
 /* =======================================================================
  * PROFIL / PROGRESSION
