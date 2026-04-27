@@ -21,6 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initSpaceTheme();
     initAssistantPrototype();
     initAdminVisitorShortcut();
+    initEmojiScrubber();
 
     /* --- 1. GESTION DES PANNEAUX --- */
     setTimeout(() => { document.body.classList.remove('preload'); }, 100);
@@ -118,7 +119,8 @@ function initSpaceTheme() {
         '/teacher/dashboard.html'
     ]);
 
-    injectInternalThemeStylesheet();
+    injectInternalThemeStylesheet('/admin/css/sbi-internal-theme.css');
+    injectInternalThemeStylesheet('/admin/css/sbi-ui-polish.css');
     document.body.classList.add('sbi-internal-ui');
 
     if (dashboardPaths.has(path)) {
@@ -142,9 +144,7 @@ function initSpaceTheme() {
     }
 }
 
-function injectInternalThemeStylesheet() {
-    const themeHref = '/admin/css/sbi-internal-theme.css';
-
+function injectInternalThemeStylesheet(themeHref) {
     if (document.querySelector(`link[href="${themeHref}"]`)) return;
 
     const link = document.createElement('link');
@@ -170,7 +170,7 @@ function initAssistantPrototype() {
             text: 'Tes cours, validations et notifications importantes resteront accessibles ici sans charger l’interface.',
             primary: 'Voir mes cours',
             primaryUrl: '/teacher/mes-cours.html',
-            badge: '1'
+            badge: '0'
         }
         : isStudent
             ? {
@@ -179,7 +179,7 @@ function initAssistantPrototype() {
                 text: 'Tes cours, ta progression et tes signaux utiles seront regroupés ici au fil des prochaines étapes.',
                 primary: 'Mes cours',
                 primaryUrl: '/student/mes-cours.html',
-                badge: '1'
+                badge: '0'
             }
             : {
                 eyebrow: 'Assistant admin',
@@ -187,7 +187,7 @@ function initAssistantPrototype() {
                 text: 'Un point d’accès rapide pour les validations, notifications et futurs contrôles plateforme.',
                 primary: 'À valider',
                 primaryUrl: '/admin/index.html?tab=view-dashboard',
-                badge: '1'
+                badge: '0'
             };
 
     const assistant = document.createElement('div');
@@ -203,8 +203,10 @@ function initAssistantPrototype() {
             <p class="sbi-assistant__text">${config.text}</p>
             <div class="sbi-assistant__actions">
                 <button class="sbi-assistant__action" type="button" data-assistant-primary>${config.primary}</button>
+                <button class="sbi-assistant__action secondary" type="button" data-assistant-notifications>Notifications</button>
                 <button class="sbi-assistant__action secondary" type="button" data-assistant-close>Fermer</button>
             </div>
+            <div class="sbi-assistant__notification-host" data-assistant-notification-host></div>
         </div>
     `;
 
@@ -213,19 +215,33 @@ function initAssistantPrototype() {
     const trigger = assistant.querySelector('.sbi-assistant__trigger');
     const closeBtn = assistant.querySelector('[data-assistant-close]');
     const primaryBtn = assistant.querySelector('[data-assistant-primary]');
+    const notificationsBtn = assistant.querySelector('[data-assistant-notifications]');
 
     const setOpen = (isOpen) => {
         assistant.classList.toggle('is-open', isOpen);
         trigger?.setAttribute('aria-expanded', String(isOpen));
     };
 
+    const toggleNotifications = () => {
+        prepareAssistantNotificationHost();
+        assistant.classList.toggle('is-notification-mode');
+        setOpen(true);
+    };
+
     trigger?.addEventListener('click', (event) => {
         event.stopPropagation();
+        prepareAssistantNotificationHost();
         setOpen(!assistant.classList.contains('is-open'));
     });
 
     closeBtn?.addEventListener('click', () => {
+        assistant.classList.remove('is-notification-mode');
         setOpen(false);
+    });
+
+    notificationsBtn?.addEventListener('click', (event) => {
+        event.stopPropagation();
+        toggleNotifications();
     });
 
     primaryBtn?.addEventListener('click', () => {
@@ -244,6 +260,9 @@ function initAssistantPrototype() {
         }
     });
 
+    initAssistantNotificationSync();
+    initAssistantWander();
+
     window.setTimeout(() => {
         assistant.classList.add('is-peeking', 'is-attention');
 
@@ -251,6 +270,152 @@ function initAssistantPrototype() {
             assistant.classList.remove('is-peeking', 'is-attention');
         }, 3600);
     }, 1300);
+}
+
+function prepareAssistantNotificationHost() {
+    const assistant = document.querySelector('.sbi-assistant');
+    const host = assistant?.querySelector('[data-assistant-notification-host]');
+    const notificationsSection = document.getElementById('notifications-section');
+
+    if (!host || !notificationsSection || host.contains(notificationsSection)) return;
+
+    host.appendChild(notificationsSection);
+}
+
+function initAssistantNotificationSync() {
+    const assistant = document.querySelector('.sbi-assistant');
+    const badge = assistant?.querySelector('.sbi-assistant__badge');
+    if (!assistant || !badge) return;
+
+    let lastCount = 0;
+    let initialized = false;
+
+    const syncBadge = () => {
+        const bellBadge = document.getElementById('bell-badge');
+        const rawValue = bellBadge?.textContent?.trim() || '0';
+        const visible = Boolean(bellBadge) && bellBadge.style.display !== 'none' && rawValue !== '0';
+        const numericValue = rawValue === '9+' ? 10 : Number.parseInt(rawValue, 10) || 0;
+
+        badge.textContent = rawValue;
+        assistant.classList.toggle('has-notifications', visible && numericValue > 0);
+
+        if (initialized && numericValue > lastCount) {
+            assistant.classList.add('has-new-notification');
+            playAssistantNotificationTone();
+            window.setTimeout(() => assistant.classList.remove('has-new-notification'), 950);
+        }
+
+        lastCount = numericValue;
+        initialized = true;
+    };
+
+    const observer = new MutationObserver(syncBadge);
+    document.body.addEventListener('click', () => window.setTimeout(syncBadge, 0));
+
+    const startObserving = () => {
+        const bellBadge = document.getElementById('bell-badge');
+        if (!bellBadge) {
+            window.setTimeout(startObserving, 150);
+            return;
+        }
+
+        observer.observe(bellBadge, {
+            attributes: true,
+            childList: true,
+            characterData: true,
+            subtree: true,
+            attributeFilter: ['style']
+        });
+
+        syncBadge();
+    };
+
+    startObserving();
+}
+
+function playAssistantNotificationTone() {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (!window.AudioContext && !window.webkitAudioContext) return;
+
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    const audioContext = new AudioContextClass();
+
+    if (audioContext.state === 'suspended') return;
+
+    const gain = audioContext.createGain();
+    gain.gain.setValueAtTime(0.0001, audioContext.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.035, audioContext.currentTime + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 0.18);
+    gain.connect(audioContext.destination);
+
+    const oscillator = audioContext.createOscillator();
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(880, audioContext.currentTime);
+    oscillator.frequency.exponentialRampToValueAtTime(1320, audioContext.currentTime + 0.09);
+    oscillator.connect(gain);
+    oscillator.start();
+    oscillator.stop(audioContext.currentTime + 0.2);
+}
+
+function initAssistantWander() {
+    const assistant = document.querySelector('.sbi-assistant');
+    if (!assistant || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    const scheduleWander = () => {
+        const delay = 18000 + Math.random() * 18000;
+
+        window.setTimeout(() => {
+            if (!assistant.classList.contains('is-open')) {
+                assistant.classList.add('is-wandering');
+                window.setTimeout(() => assistant.classList.remove('is-wandering'), 1500);
+            }
+
+            scheduleWander();
+        }, delay);
+    };
+
+    scheduleWander();
+}
+
+function initEmojiScrubber() {
+    const emojiRegex = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu;
+    const root = document.getElementById('app-container') || document.body;
+
+    const cleanTextNode = (node) => {
+        if (!node.nodeValue || !emojiRegex.test(node.nodeValue)) return;
+        node.nodeValue = node.nodeValue.replace(emojiRegex, '').replace(/\s{2,}/g, ' ');
+    };
+
+    const cleanElement = (element) => {
+        const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, {
+            acceptNode(node) {
+                const parent = node.parentElement;
+                if (!parent) return NodeFilter.FILTER_REJECT;
+                if (parent.closest('script, style, svg')) return NodeFilter.FILTER_REJECT;
+                return NodeFilter.FILTER_ACCEPT;
+            }
+        });
+
+        const textNodes = [];
+        while (walker.nextNode()) textNodes.push(walker.currentNode);
+        textNodes.forEach(cleanTextNode);
+    };
+
+    cleanElement(root);
+
+    const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            mutation.addedNodes.forEach((node) => {
+                if (node.nodeType === Node.TEXT_NODE) {
+                    cleanTextNode(node);
+                } else if (node.nodeType === Node.ELEMENT_NODE) {
+                    cleanElement(node);
+                }
+            });
+        });
+    });
+
+    observer.observe(root, { childList: true, subtree: true });
 }
 
 function initAdminVisitorShortcut() {
