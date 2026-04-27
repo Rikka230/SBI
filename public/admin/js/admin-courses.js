@@ -938,14 +938,22 @@ async function saveCourseToFirebase(actionType = 'admin_save') {
             await updateDoc(doc(db, "courses", courseRefId), courseData);
         }
 
-        await handleCourseNotifications({
-            actionType,
-            courseRefId,
-            title,
-            selectedPills,
-            isPublishing,
-            isRejecting
-        });
+        try {
+            await handleCourseNotifications({
+                actionType,
+                courseRefId,
+                title,
+                selectedPills,
+                isPublishing,
+                isRejecting,
+                currentUid,
+                currentUserProfile,
+                editingCourseAuthorId: finalAuteurId,
+                allFormationsData
+            });
+        } catch (notificationError) {
+            console.warn("[SBI Courses] Cours sauvegardé, mais notification non envoyée :", notificationError);
+        }
 
         editingCourseOriginalStatus = finalStatut;
         editingCourseOriginalActive = isActive === true;

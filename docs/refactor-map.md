@@ -278,3 +278,12 @@ Points à tester :
 - visualisation preview ;
 - duplication cours ;
 - suppression cours + médias Storage.
+
+
+## Étape 7.0.1 - Correctif publication cours
+
+- Correction du passage de contexte vers `handleCourseNotifications`.
+- Une erreur de notification ne bloque plus la sauvegarde d'un cours déjà enregistré.
+- La notification élève `new_course_published` retrouve les élèves via les formations sélectionnées.
+- Le toolbar Quill conserve la sélection avant de changer la taille de texte.
+- Les notifications émettent `sbi:notifications-updated` pour fiabiliser le bip assistant sur vraie nouvelle notification.

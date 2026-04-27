@@ -10,6 +10,48 @@ import {
     where
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
+function normalizeId(value) {
+    return value ? String(value).trim() : '';
+}
+
+function getDisplayName(profile = {}) {
+    return `${profile.prenom || ''} ${profile.nom || ''}`.trim() || 'Professeur';
+}
+
+function courseFormationMatches(formation, selectedValue) {
+    const safeValue = normalizeId(selectedValue);
+    if (!formation || !safeValue) return false;
+
+    return normalizeId(formation.id) === safeValue
+        || normalizeId(formation.titre) === safeValue;
+}
+
+function getTargetStudentsFromFormations(selectedPills = [], allFormationsData = []) {
+    const targetStudents = new Set();
+
+    selectedPills.forEach((formationValue) => {
+        const formation = allFormationsData.find((item) => courseFormationMatches(item, formationValue));
+        const students = Array.isArray(formation?.students) ? formation.students : [];
+
+        students.forEach((studentId) => {
+            const safeStudentId = normalizeId(studentId);
+            if (safeStudentId) targetStudents.add(safeStudentId);
+        });
+    });
+
+    return Array.from(targetStudents);
+}
+
+async function safeAddNotification(payload, label) {
+    try {
+        await addDoc(collection(db, "notifications"), payload);
+        return true;
+    } catch (error) {
+        console.warn(`[SBI Notifications] ${label} non envoyée :`, error);
+        return false;
+    }
+}
+
 export async function resolveCourseValidationNotifications({ courseId, currentUid }) {
     if (!courseId) return;
 
@@ -29,7 +71,7 @@ export async function resolveCourseValidationNotifications({ courseId, currentUi
                 updates.push(updateDoc(doc(db, "notifications", notifDoc.id), {
                     status: 'resolved',
                     resolvedAt: serverTimestamp(),
-                    resolvedBy: currentUid
+                    resolvedBy: currentUid || null
                 }));
             }
         });
@@ -44,66 +86,68 @@ export async function handleCourseNotifications({
     actionType,
     courseRefId,
     title,
-    selectedPills,
-    isPublishing,
-    isRejecting,
-    currentUid,
-    currentUserProfile,
-    editingCourseAuthorId,
-    allFormationsData
-}) {
+    selectedPills = [],
+    isPublishing = false,
+    isRejecting = false,
+    currentUid = null,
+    currentUserProfile = {},
+    editingCourseAuthorId = null,
+    allFormationsData = []
+} = {}) {
+    if (!courseRefId) return;
+
     if (actionType === 'submit') {
-        await addDoc(collection(db, "notifications"), {
+        await safeAddNotification({
             type: 'course_validation',
             courseId: courseRefId,
             courseTitle: title,
             auteurId: currentUid,
-            auteurName: (currentUserProfile.prenom || '') + ' ' + (currentUserProfile.nom || ''),
+            auteurName: getDisplayName(currentUserProfile),
             dateCreation: serverTimestamp(),
             status: 'open',
             dismissedBy: []
-        });
+        }, 'Demande de validation');
     }
 
     if (isPublishing) {
         if (editingCourseAuthorId && editingCourseAuthorId !== currentUid) {
-            await addDoc(collection(db, "notifications"), {
+            await safeAddNotification({
                 type: 'course_approved',
                 courseId: courseRefId,
                 courseTitle: title,
                 destinataireId: editingCourseAuthorId,
                 dateCreation: serverTimestamp(),
                 dismissedBy: []
-            });
+            }, 'Notification prof cours validé');
         }
 
-        const targetStudentsSet = new Set();
-        selectedPills.forEach(formId => {
-            const formObj = allFormationsData.find(f => f.id === formId || f.titre === formId);
-            if (formObj && formObj.students) formObj.students.forEach(studentId => targetStudentsSet.add(studentId));
-        });
+        const targetStudentsArray = getTargetStudentsFromFormations(selectedPills, allFormationsData);
 
-        const targetStudentsArray = Array.from(targetStudentsSet);
         if (targetStudentsArray.length > 0) {
-            await addDoc(collection(db, "notifications"), {
+            await safeAddNotification({
                 type: 'new_course_published',
                 courseId: courseRefId,
                 courseTitle: title,
                 targetStudents: targetStudentsArray,
                 dateCreation: serverTimestamp(),
                 dismissedBy: []
+            }, 'Notification élèves nouveau cours');
+        } else {
+            console.info('[SBI Notifications] Aucun élève cible trouvé pour le cours publié.', {
+                courseRefId,
+                selectedPills
             });
         }
     } else if (isRejecting) {
         if (editingCourseAuthorId && editingCourseAuthorId !== currentUid) {
-            await addDoc(collection(db, "notifications"), {
+            await safeAddNotification({
                 type: 'course_rejected',
                 courseId: courseRefId,
                 courseTitle: title,
                 destinataireId: editingCourseAuthorId,
                 dateCreation: serverTimestamp(),
                 dismissedBy: []
-            });
+            }, 'Notification prof cours refusé');
         }
     }
 

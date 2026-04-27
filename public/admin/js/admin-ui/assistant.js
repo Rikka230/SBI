@@ -1,4 +1,5 @@
 const NOTIFICATION_SOUND_KEY = 'sbi-assistant-last-sounded-count-v3';
+const NOTIFICATION_IDS_KEY = 'sbi-assistant-seen-notification-ids-v1';
 let assistantAudioUnlocked = false;
 let assistantAudioContext = null;
 
@@ -140,6 +141,30 @@ function prepareAssistantNotificationHost() {
     host.appendChild(notificationsSection);
 }
 
+function getSeenNotificationIds() {
+    try {
+        return JSON.parse(localStorage.getItem(NOTIFICATION_IDS_KEY) || '[]');
+    } catch {
+        return [];
+    }
+}
+
+function setSeenNotificationIds(ids = []) {
+    try {
+        localStorage.setItem(NOTIFICATION_IDS_KEY, JSON.stringify(Array.from(new Set(ids)).slice(-80)));
+    } catch {
+        // Ignore storage quota or private mode.
+    }
+}
+
+function triggerAssistantNewNotification(assistant) {
+    if (!assistant) return;
+
+    assistant.classList.add('has-new-notification');
+    playAssistantNotificationTone();
+    window.setTimeout(() => assistant.classList.remove('has-new-notification'), 950);
+}
+
 function initAssistantNotificationSync(assistant) {
     const badge = assistant?.querySelector('.sbi-assistant__badge');
     if (!assistant || !badge) return;
@@ -200,6 +225,25 @@ function initAssistantNotificationSync(assistant) {
 
         syncBadge();
     };
+
+    window.addEventListener('sbi:notifications-updated', (event) => {
+        const ids = Array.isArray(event.detail?.ids) ? event.detail.ids.filter(Boolean) : [];
+        const count = Number(event.detail?.count || 0);
+
+        if (count <= 0) {
+            setSeenNotificationIds([]);
+            return;
+        }
+
+        const seenIds = getSeenNotificationIds();
+        const newIds = ids.filter((id) => !seenIds.includes(id));
+
+        setSeenNotificationIds(ids);
+
+        if (initialized && newIds.length > 0 && document.visibilityState === 'visible') {
+            triggerAssistantNewNotification(assistant);
+        }
+    });
 
     startObserving();
 }

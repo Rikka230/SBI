@@ -305,20 +305,53 @@
     });
 
     document.addEventListener("DOMContentLoaded", function() {
+        const toolbarOptions = [
+            [{ 'size': ['small', false, 'large', 'huge'] }],
+            ['bold', 'italic', 'underline', 'strike'],
+            [{ 'color': [] }, { 'background': [] }],
+            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+            [{ 'align': [] }],
+            ['link', 'clean']
+        ];
+
+        let lastQuillSelection = null;
+
         window.quill = new Quill('#course-editor', {
             theme: 'snow',
             placeholder: 'Rédigez le contenu de la leçon ici...',
             modules: {
-                toolbar: [
-                    [{ 'size': ['small', false, 'large', 'huge'] }], 
-                    ['bold', 'italic', 'underline', 'strike'],
-                    [{ 'color': [] }, { 'background': [] }],
-                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                    [{ 'align': [] }],
-                    ['link', 'clean']
-                ]
+                toolbar: {
+                    container: toolbarOptions,
+                    handlers: {
+                        size: function(value) {
+                            const quill = this.quill;
+                            const range = quill.getSelection() || lastQuillSelection;
+
+                            if (range && range.length > 0) {
+                                quill.formatText(range.index, range.length, 'size', value || false, 'user');
+                                quill.setSelection(range.index, range.length, 'silent');
+                                lastQuillSelection = range;
+                                return;
+                            }
+
+                            quill.format('size', value || false, 'user');
+                        }
+                    }
+                }
             }
         });
+
+        window.quill.on('selection-change', function(range) {
+            if (range) lastQuillSelection = range;
+        });
+
+        const toolbar = window.quill.getModule('toolbar')?.container;
+        if (toolbar) {
+            toolbar.addEventListener('mousedown', function() {
+                const range = window.quill.getSelection();
+                if (range) lastQuillSelection = range;
+            }, true);
+        }
 
         const tooltips = [
             ['.ql-size .ql-picker-label', 'Taille du texte'], ['button.ql-bold', 'Gras'], ['button.ql-italic', 'Italique'],
@@ -327,7 +360,7 @@
             ['button.ql-list[value="bullet"]', 'Liste à puces'], ['.ql-align .ql-picker-label', 'Alignement'],
             ['button.ql-link', 'Insérer un lien'], ['button.ql-clean', 'Effacer le formatage']
         ];
-        
+
         tooltips.forEach(([selector, title]) => {
             const el = document.querySelector('.ql-toolbar ' + selector);
             if (el) el.setAttribute('title', title);

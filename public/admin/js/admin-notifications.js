@@ -309,6 +309,14 @@ function renderCombinedNotifications() {
 
     updateRedBadges(notifs.length);
     renderNotificationsList(notifs);
+
+    window.dispatchEvent(new CustomEvent('sbi:notifications-updated', {
+        detail: {
+            count: notifs.length,
+            ids: notifs.map((notif) => notif.id).filter(Boolean),
+            types: notifs.map((notif) => notif.type).filter(Boolean)
+        }
+    }));
 }
 
 async function dismissNotificationForCurrentUser(notifId) {
