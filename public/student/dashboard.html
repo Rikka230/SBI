@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="/admin/css/admin.css">
     <link rel="stylesheet" href="/admin/css/admin-notifications.css">
     <link rel="stylesheet" href="/student/css/student.css">
-    <script src="/admin/js/components.js"></script>
+    <script src="/admin/js/components-clean.js"></script>
 </head>
 <body class="preload">
 
@@ -25,7 +25,7 @@
 
     <main id="main-content">
         <div class="content-wrapper">
-            <h1 style="margin-top: 0; font-size: 2.2rem; font-weight: 800;">Bienvenue sur votre <span style="color: var(--accent-blue);">Hub</span> 👋</h1>
+            <h1 style="margin-top: 0; font-size: 2.2rem; font-weight: 800;">Bienvenue sur votre <span style="color: var(--accent-blue);">Hub</span></h1>
             <p style="color: var(--text-muted); margin-bottom: 2rem; font-size: 1.1rem;">Voici un résumé de votre progression et de vos tâches.</p>
 
             <div class="hub-grid" style="display: grid; grid-template-columns: 2fr 1fr; gap: 2.5rem;">
@@ -45,7 +45,7 @@
 
                     <div class="hub-card">
                         <h3 class="section-title">
-                            <span class="section-icon">🚀</span> Objectif du Niveau Suivant
+                            <span class="section-icon"><svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2 3 7v6c0 5 3.8 9.7 9 11 5.2-1.3 9-6 9-11V7l-9-5zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg></span> Objectif du Niveau Suivant
                         </h3>
                         <div class="xp-bar-bg">
                             <div class="xp-bar-fill" id="hub-xp-fill"></div>
@@ -55,7 +55,8 @@
 
                     <div class="hub-card" style="background: linear-gradient(135deg, var(--accent-blue), #5B7FFF); color: white; border: none;">
                         <h3 style="margin-top: 0; display: flex; align-items: center; gap: 10px; font-size: 1.4rem;">
-                            📚 Continuer d'apprendre
+                            <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 10H10v-2h8v2zm0-4H10V6h8v2zm-8 6h5v2h-5v-2z"/></svg>
+                            Continuer d'apprendre
                         </h3>
                         <p style="opacity: 0.9; margin-bottom: 1.5rem; line-height: 1.5;">Vous avez des cours en attente dans votre bibliothèque. Ne perdez pas le rythme !</p>
                         <button class="action-btn" style="background: white; color: var(--accent-blue); border: none; padding: 0.8rem 1.5rem; font-weight: bold; border-radius: 8px; cursor: pointer; transition: 0.2s;" onclick="window.location.href='/student/mes-cours.html'">
