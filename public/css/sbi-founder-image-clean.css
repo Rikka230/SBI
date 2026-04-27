@@ -9,3 +9,12 @@
     content: none !important;
     display: none !important;
 }
+
+.founder-img:not([data-loaded-from-storage="true"]) {
+    opacity: 0;
+}
+
+.founder-img[data-loaded-from-storage="true"] {
+    opacity: 1;
+    transition: opacity 0.28s ease;
+}
