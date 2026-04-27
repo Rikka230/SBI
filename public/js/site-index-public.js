@@ -1,13 +1,13 @@
 import { db } from '/js/firebase-init.js';
 import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
 
-const DEFAULTS = {
-  heroVideoWebmUrl: '/assets/sbi_master.webm',
-  heroVideoMp4Url: '/assets/sbi.mp4',
-  heroLogoUrl: '/assets/Logo_SBI_Tome.png',
-  headerLogoUrl: '/assets/Logo_SBI_Tome.png',
-  brandLogoUrl: '/assets/sbi_brand.png',
-  founderImageUrl: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=800&q=80'
+const EMPTY_MEDIA = {
+  heroVideoWebmUrl: '',
+  heroVideoMp4Url: '',
+  heroLogoUrl: '',
+  headerLogoUrl: '',
+  brandLogoUrl: '',
+  founderImageUrl: ''
 };
 
 function ensureFounderCleanStyles() {
@@ -24,6 +24,7 @@ function applyImage(selector, url) {
   document.querySelectorAll(selector).forEach((img) => {
     if (img instanceof HTMLImageElement && img.src !== url) {
       img.src = url;
+      img.dataset.loadedFromStorage = url.includes('firebasestorage.googleapis.com') ? 'true' : 'false';
     }
   });
 }
@@ -32,8 +33,10 @@ function applyHeroVideo(settings) {
   const video = document.querySelector('.hero-video-bg');
   if (!(video instanceof HTMLVideoElement)) return;
 
-  const webmUrl = settings.heroVideoWebmUrl || DEFAULTS.heroVideoWebmUrl;
-  const mp4Url = settings.heroVideoMp4Url || DEFAULTS.heroVideoMp4Url;
+  const webmUrl = settings.heroVideoWebmUrl || '';
+  const mp4Url = settings.heroVideoMp4Url || '';
+
+  if (!webmUrl && !mp4Url) return;
 
   const currentSources = Array.from(video.querySelectorAll('source')).map((source) => source.getAttribute('src')).join('|');
   const nextSources = `${webmUrl}|${mp4Url}`;
@@ -68,20 +71,23 @@ function applyHeroVideo(settings) {
 function applySettings(settings) {
   ensureFounderCleanStyles();
   applyHeroVideo(settings);
-  applyImage('.hero-large-logo', settings.heroLogoUrl || DEFAULTS.heroLogoUrl);
-  applyImage('.header-logo, .footer-logo-mark', settings.headerLogoUrl || DEFAULTS.headerLogoUrl);
-  applyImage('.header-brand, .footer-logo-wordmark', settings.brandLogoUrl || DEFAULTS.brandLogoUrl);
-  applyImage('.founder-img', settings.founderImageUrl || DEFAULTS.founderImageUrl);
+  applyImage('.hero-large-logo', settings.heroLogoUrl);
+  applyImage('.header-logo, .footer-logo-mark', settings.headerLogoUrl);
+  applyImage('.header-brand, .footer-logo-wordmark', settings.brandLogoUrl);
+  applyImage('.founder-img', settings.founderImageUrl);
+  document.body.classList.add('is-site-index-media-ready');
 }
 
 async function initSiteIndexMedia() {
+  ensureFounderCleanStyles();
+
   try {
     const snap = await getDoc(doc(db, 'settings', 'siteIndex'));
-    const settings = snap.exists() ? { ...DEFAULTS, ...snap.data() } : DEFAULTS;
+    const settings = snap.exists() ? { ...EMPTY_MEDIA, ...snap.data() } : EMPTY_MEDIA;
     applySettings(settings);
   } catch (error) {
-    ensureFounderCleanStyles();
-    console.warn('[SBI Index] Médias dynamiques indisponibles, fallback local conservé.', error);
+    document.body.classList.add('is-site-index-media-ready');
+    console.warn('[SBI Index] Médias dynamiques indisponibles. Aucun fallback lourd local chargé.', error);
   }
 }
 
