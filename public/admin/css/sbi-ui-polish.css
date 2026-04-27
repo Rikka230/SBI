@@ -1,0 +1,16 @@
+/* SBI INTERNAL UI POLISH - 6.1 */
+
+body.sbi-internal-ui .sbi-assistant__badge {
+    top: -6px;
+    right: -8px;
+    min-width: 18px;
+    height: 18px;
+    border-radius: 2px 2px 8px 2px;
+    opacity: 0;
+    scale: 0.74;
+}
+
+body.sbi-internal-ui .sbi-assistant.has-notifications .sbi-assistant__badge {
+    opacity: 1;
+    scale: 1;
+}
