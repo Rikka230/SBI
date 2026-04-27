@@ -1,6 +1,7 @@
 SBI preview deployment test
 
-This file is intentionally harmless.
-It was created on the avatar-profile-test branch to trigger a Vercel Preview Deployment.
+Branch: avatar-profile-test
+Marker: 6.2-bis-visible-check
+Updated from ChatGPT after rollback and safe fixes.
 
-If the GitHub + Vercel workflow is working, this branch should produce a preview URL before any real code changes are made.
+If you open this file on the Vercel Preview URL and do not see this marker, you are not looking at the latest deployed preview.
