@@ -1,16 +1,103 @@
 /* SBI INTERNAL UI POLISH - 6.1 */
 
+body.sbi-internal-ui {
+    --sbi-panel-line: color-mix(in srgb, var(--space-accent, var(--sbi-blue)) 34%, transparent);
+}
+
+body.sbi-internal-ui #notif-bell-btn {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    opacity: 0 !important;
+    overflow: hidden !important;
+    pointer-events: none !important;
+    transform: scale(0) !important;
+}
+
 body.sbi-internal-ui .sbi-assistant__badge {
     top: -6px;
     right: -8px;
     min-width: 18px;
     height: 18px;
+    padding: 0 5px;
     border-radius: 2px 2px 8px 2px;
+    background: linear-gradient(135deg, #ff3b3b, #ff745c);
+    transform: rotate(-4deg);
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.9), 0 0 18px rgba(255, 59, 59, 0.42);
     opacity: 0;
     scale: 0.74;
+    transition: opacity 0.2s ease, scale 0.2s ease, transform 0.2s ease;
+}
+
+body.sbi-admin-space .sbi-assistant__badge {
+    box-shadow: 0 0 0 2px rgba(5, 8, 18, 0.92), 0 0 18px rgba(255, 59, 59, 0.42);
 }
 
 body.sbi-internal-ui .sbi-assistant.has-notifications .sbi-assistant__badge {
     opacity: 1;
     scale: 1;
+}
+
+body.sbi-internal-ui .sbi-assistant.has-new-notification .sbi-assistant__dot {
+    animation: sbiInternalAssistantFloat 4.6s ease-in-out infinite, sbiAssistantNotifyWiggle 0.86s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+body.sbi-internal-ui .sbi-assistant.is-wandering .sbi-assistant__dot {
+    animation: sbiInternalAssistantFloat 4.6s ease-in-out infinite, sbiAssistantWander 1.35s ease-in-out;
+}
+
+.sbi-assistant__notification-host {
+    display: none;
+    margin-top: 0.85rem;
+    border-top: 1px solid rgba(127, 139, 164, 0.18);
+    padding-top: 0.75rem;
+}
+
+.sbi-assistant.is-notification-mode .sbi-assistant__notification-host {
+    display: block;
+}
+
+.sbi-assistant__notification-host #notifications-section {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    max-width: none !important;
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+}
+
+.sbi-assistant__notification-host #notif-panel-title {
+    display: block !important;
+    margin: 0 0 0.65rem 0;
+    padding: 0 !important;
+    border: 0 !important;
+    color: var(--assistant-accent, var(--sbi-blue)) !important;
+    font-size: 0.68rem !important;
+    line-height: 1 !important;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 900 !important;
+    font-style: italic;
+}
+
+.sbi-assistant__notification-host #notifications-list {
+    max-height: min(360px, 46vh) !important;
+    overflow-y: auto;
+}
+
+@keyframes sbiAssistantNotifyWiggle {
+    0% { transform: rotate(45deg) translate3d(0, 0, 0) scale(1); }
+    18% { transform: rotate(62deg) translate3d(-1px, -3px, 0) scale(1.08); }
+    42% { transform: rotate(30deg) translate3d(2px, -6px, 0) scale(0.98); }
+    66% { transform: rotate(51deg) translate3d(-2px, -3px, 0) scale(1.04); }
+    100% { transform: rotate(45deg) translate3d(0, 0, 0) scale(1); }
+}
+
+@keyframes sbiAssistantWander {
+    0% { transform: rotate(45deg) translate3d(0, 0, 0); }
+    28% { transform: rotate(45deg) translate3d(-5px, -8px, 0); }
+    55% { transform: rotate(88deg) translate3d(-2px, -5px, 0); }
+    100% { transform: rotate(45deg) translate3d(0, 0, 0); }
 }
