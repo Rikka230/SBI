@@ -18,6 +18,7 @@
     <style>
         .profile-header { background: var(--bg-card); border-radius: 16px; border: 1px solid var(--border-color); padding: 2.5rem; display: flex; align-items: center; gap: 2rem; margin-bottom: 2.5rem; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03); position: relative; overflow: hidden; }
         .profile-header::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 100px; background: linear-gradient(90deg, var(--accent-orange), #fcd34d); opacity: 0.15; z-index: 0; }
+        .profile-header::after { content: ''; position: absolute; right: 2rem; top: 2rem; width: 170px; height: 170px; border: 1px solid rgba(245, 158, 11, 0.16); transform: rotate(45deg); pointer-events: none; }
         
         .avatar-wrapper { position: relative; width: 120px; height: 120px; z-index: 1; margin: 0; flex-shrink: 0; }
         
@@ -32,6 +33,54 @@
         .editing .prof-input:focus { border-color: var(--accent-orange); background: #fff; box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1); }
 
         .private-section, .edit-mode-only { display: none; }
+
+        .sbi-profile-section-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 9px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--accent-orange);
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid rgba(245, 158, 11, 0.2);
+            box-shadow: 0 0 16px rgba(245, 158, 11, 0.12);
+            flex-shrink: 0;
+        }
+
+        .sbi-profile-section-icon svg {
+            width: 17px;
+            height: 17px;
+            fill: currentColor;
+        }
+
+        .student-sub-nav-item svg {
+            width: 14px;
+            height: 14px;
+            fill: currentColor;
+            vertical-align: text-bottom;
+            margin-right: 4px;
+        }
+
+        .sbi-coach-card {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .sbi-coach-card::after {
+            content: '';
+            position: absolute;
+            inset: auto -20px -42px auto;
+            width: 120px;
+            height: 120px;
+            border: 1px solid rgba(245, 158, 11, 0.12);
+            transform: rotate(45deg);
+            pointer-events: none;
+        }
+
+        @media (max-width: 760px) {
+            .profile-header { flex-direction: column; align-items: flex-start; padding: 1.5rem; }
+        }
     </style>
 </head>
 <body class="preload">
@@ -80,8 +129,13 @@
             <div style="display: grid; grid-template-columns: 1.2fr 2fr; gap: 2.5rem; align-items: start; width: 100%;">
                 
                 <div style="display: flex; flex-direction: column; gap: 2.5rem;">
-                    <div class="hub-card">
-                        <h3 class="section-title" style="margin-bottom: 1rem;"><span class="section-icon">📚</span> Mes Formations</h3>
+                    <div class="hub-card sbi-coach-card">
+                        <h3 class="section-title" style="margin-bottom: 1rem;">
+                            <span class="sbi-profile-section-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24"><path d="M12 3 1 9l11 6 9-4.91V17h2V9L12 3zm0 2.28L18.82 9 12 12.72 5.18 9 12 5.28zM5 12.27V17l7 4 7-4v-4.73L12 16l-7-3.73z"/></svg>
+                            </span>
+                            Mes Formations
+                        </h3>
                         <div id="prof-formations-list" style="display: flex; flex-direction: column; gap: 0.8rem; color: var(--text-muted); font-size: 0.95rem;">
                             Chargement...
                         </div>
@@ -91,10 +145,13 @@
                 <div>
                     <div class="student-sub-nav">
                         <div class="student-sub-nav-item active" onclick="switchTab('tab-overview')">Aperçu & Bio</div>
-                        <div class="student-sub-nav-item private-section" onclick="switchTab('tab-private')">🔒 Données Privées</div>
+                        <div class="student-sub-nav-item private-section" onclick="switchTab('tab-private')">
+                            <svg fill="currentColor" viewBox="0 0 24 24"><path d="M12 17a2 2 0 0 0 2-2c0-.74-.4-1.38-1-1.72V12a1 1 0 0 0-2 0v1.28A2 2 0 0 0 12 17zm6-8h-1V7A5 5 0 0 0 7 7v2H6c-1.1 0-2 .9-2 2v9c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-9c0-1.1-.9-2-2-2zM9 7a3 3 0 0 1 6 0v2H9V7zm9 13H6v-9h12v9z"/></svg>
+                            Données Privées
+                        </div>
                         <div class="student-sub-nav-item" onclick="switchTab('tab-activity')">Historique</div>
                         <div class="student-sub-nav-item" onclick="switchTab('tab-tracking')">
-                            <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24" style="vertical-align:text-bottom; margin-right:4px;"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg> 
+                            <svg fill="currentColor" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg> 
                             Mon Suivi
                         </div>
                     </div>
@@ -194,9 +251,10 @@
     }
 </script>
 
-    <script type="module" src="/admin/js/admin-ui.js"></script>
-    <script type="module" src="/admin/js/admin-notifications.js"></script>
-    <script type="module" src="/admin/js/tracker.js"></script>
-    <script type="module" src="/js/profile-core.js"></script>
+<script type="module" src="/admin/js/admin-notifications.js"></script>
+<script src="/admin/js/sbi-safe-fixes.js"></script>
+<script type="module" src="/admin/js/admin-ui.js"></script>
+<script type="module" src="/admin/js/tracker.js"></script>
+<script type="module" src="/js/profile-core.js"></script>
 </body>
 </html>
