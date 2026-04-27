@@ -45,40 +45,54 @@ function makePreview(item, url) {
   return `<img src="${src}" alt="${item.label}" loading="lazy">`;
 }
 
+function cardTemplate(item) {
+  const currentUrl = state.settings[item.key] || item.source;
+  const fromStorage = isStorageUrl(currentUrl);
+  return `
+    <article class="site-media-card" data-key="${item.key}">
+      <div class="site-media-card__head">
+        <div>
+          <h2>${item.label}</h2>
+          <small>${fromStorage ? 'Source actuelle : Firebase Storage' : 'Source actuelle : fallback local/externe'}</small>
+        </div>
+        <span class="site-media-kind">${item.kind}</span>
+      </div>
+      <div class="site-media-preview ${item.logo ? 'logo-preview' : ''}">
+        ${makePreview(item, currentUrl)}
+      </div>
+      <div class="site-media-url">${currentUrl}</div>
+      <div class="site-media-actions">
+        <label class="site-media-btn secondary">
+          Remplacer le fichier
+          <input type="file" data-upload="${item.key}" accept="${item.type === 'video' ? 'video/*' : 'image/*'}" hidden>
+        </label>
+      </div>
+      <div class="site-media-progress"><span data-progress="${item.key}"></span></div>
+    </article>
+  `;
+}
+
 function renderCards() {
   const grid = $('#site-index-grid');
   if (!grid) return;
-  grid.innerHTML = MEDIA.map((item) => {
-    const currentUrl = state.settings[item.key] || item.source;
-    const fromStorage = isStorageUrl(currentUrl);
-    return `
-      <article class="site-media-card" data-key="${item.key}">
-        <div class="site-media-card__head">
-          <div>
-            <h2>${item.label}</h2>
-            <small>${fromStorage ? 'Source actuelle : Firebase Storage' : 'Source actuelle : fallback local/externe'}</small>
-          </div>
-          <span class="site-media-kind">${item.kind}</span>
-        </div>
-        <div class="site-media-preview ${item.logo ? 'logo-preview' : ''}">
-          ${makePreview(item, currentUrl)}
-        </div>
-        <div class="site-media-url">${currentUrl}</div>
-        <div class="site-media-actions">
-          <button class="site-media-btn" type="button" data-transfer="${item.key}">Transférer vers Storage</button>
-          <label class="site-media-btn secondary">
-            Upload fichier
-            <input type="file" data-upload="${item.key}" accept="${item.type === 'video' ? 'video/*' : 'image/*'}" hidden>
-          </label>
-          <button class="site-media-btn secondary" type="button" data-use-fallback="${item.key}">Utiliser fallback</button>
-        </div>
-        <div class="site-media-progress"><span data-progress="${item.key}"></span></div>
-      </article>
-    `;
-  }).join('');
+  grid.innerHTML = MEDIA.map(cardTemplate).join('');
 }
 
-async function saveSettings(patch) {
+function refreshCard(key) {
+  const item = MEDIA.find((entry) => entry.key === key);
+  const oldCard = document.querySelector(`[data-key="${key}"]`);
+  if (!item || !oldCard) {
+    renderCards();
+    return;
+  }
+
+  const template = document.createElement('template');
+  template.innerHTML = cardTemplate(item).trim();
+  const newCard = template.content.firstElementChild;
+  oldCard.replaceWith(newCard);
+}
+
+async function saveSettings(patch, changedKey = null) {
   if (!state.user) throw new Error('Non connecté');
   state.settings = { ...state.settings, ...patch };
   await setDoc(SETTINGS_REF, {
@@ -86,18 +100,13 @@ async function saveSettings(patch) {
     updatedAt: serverTimestamp(),
     updatedBy: state.user.uid
   }, { merge: true });
-  renderCards();
+
+  if (changedKey) refreshCard(changedKey);
 }
 
 function setProgress(key, value) {
   const bar = document.querySelector(`[data-progress="${key}"]`);
   if (bar) bar.style.width = `${Math.max(0, Math.min(100, value))}%`;
-}
-
-async function fetchBlob(url) {
-  const response = await fetch(url, { cache: 'no-cache' });
-  if (!response.ok) throw new Error(`Impossible de récupérer ${url}`);
-  return response.blob();
 }
 
 async function uploadBlob(item, blob, fileNameSuffix = '') {
@@ -116,22 +125,6 @@ async function uploadBlob(item, blob, fileNameSuffix = '') {
   });
 }
 
-async function transferItem(key) {
-  const item = MEDIA.find((entry) => entry.key === key);
-  if (!item) return;
-  try {
-    status(`Transfert de ${item.label}...`);
-    setProgress(key, 4);
-    const blob = await fetchBlob(item.source);
-    const url = await uploadBlob(item, blob);
-    await saveSettings({ [item.key]: url });
-    status(`${item.label} transféré vers Firebase Storage.`, 'ok');
-  } catch (error) {
-    console.error(error);
-    status(`Erreur transfert : ${item.label}.`, 'error');
-  }
-}
-
 async function uploadItem(key, file) {
   const item = MEDIA.find((entry) => entry.key === key);
   if (!item || !file) return;
@@ -139,7 +132,7 @@ async function uploadItem(key, file) {
     status(`Upload de ${item.label}...`);
     const suffix = item.storagePath.endsWith('founder-image') ? `-${Date.now()}-${file.name.replace(/[^a-z0-9.\-_]/gi, '-')}` : '';
     const url = await uploadBlob(item, file, suffix);
-    await saveSettings({ [item.key]: url });
+    await saveSettings({ [item.key]: url }, item.key);
     status(`${item.label} mis à jour.`, 'ok');
   } catch (error) {
     console.error(error);
@@ -147,21 +140,7 @@ async function uploadItem(key, file) {
   }
 }
 
-async function useFallback(key) {
-  const item = MEDIA.find((entry) => entry.key === key);
-  if (!item) return;
-  await saveSettings({ [item.key]: item.source });
-  status(`${item.label} repassé sur fallback.`, 'ok');
-}
-
 function bindEvents() {
-  document.addEventListener('click', (event) => {
-    const transfer = event.target.closest('[data-transfer]');
-    const fallback = event.target.closest('[data-use-fallback]');
-    if (transfer) transferItem(transfer.dataset.transfer);
-    if (fallback) useFallback(fallback.dataset.useFallback);
-  });
-
   document.addEventListener('change', (event) => {
     const input = event.target.closest('[data-upload]');
     if (!input) return;
