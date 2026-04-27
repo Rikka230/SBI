@@ -19,12 +19,23 @@ concurrency:
 
 jobs:
   deploy_preview:
-    name: Deploy preview channel
+    name: Deploy Firebase preview channel
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Verify Firebase service account secret
+        shell: bash
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_SBI_WEB_4F6B4 }}
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "::error title=Firebase secret missing::Le secret GitHub FIREBASE_SERVICE_ACCOUNT_SBI_WEB_4F6B4 est absent. Ajoute le JSON du service account Firebase dans Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+          echo "Firebase service account secret found."
 
       - name: Compute Firebase preview channel
         id: channel
