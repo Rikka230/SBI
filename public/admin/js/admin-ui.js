@@ -23,6 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initAssistantPrototype();
     initAdminVisitorShortcut();
     initEmojiScrubber();
+    initSafeComponentPolish();
 
     /* --- 1. GESTION DES PANNEAUX --- */
     setTimeout(() => { document.body.classList.remove('preload'); }, 100);
@@ -173,6 +174,12 @@ function initAdminMediaNav() {
     };
 
     window.setTimeout(inject, 80);
+}
+
+function initSafeComponentPolish() {
+    import('/admin/js/sbi-component-polish.js').catch((error) => {
+        console.warn('[SBI UI] Component polish désactivé :', error);
+    });
 }
 
 function injectInternalThemeStylesheet(themeHref) {
