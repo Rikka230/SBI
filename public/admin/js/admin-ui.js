@@ -111,8 +111,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function initSpaceTheme() {
     const path = window.location.pathname.toLowerCase();
+    const dashboardPaths = new Set([
+        '/admin/index.html',
+        '/admin/',
+        '/student/dashboard.html',
+        '/teacher/dashboard.html'
+    ]);
 
-    document.body.classList.add('sbi-dashboard-redesign');
+    injectInternalThemeStylesheet();
+    document.body.classList.add('sbi-internal-ui');
+
+    if (dashboardPaths.has(path)) {
+        document.body.classList.add('sbi-dashboard-page', 'sbi-dashboard-redesign');
+    } else {
+        document.body.classList.remove('sbi-dashboard-page');
+    }
 
     if (path.startsWith('/teacher/')) {
         document.body.classList.add('sbi-teacher-space');
@@ -129,6 +142,17 @@ function initSpaceTheme() {
     }
 }
 
+function injectInternalThemeStylesheet() {
+    const themeHref = '/admin/css/sbi-internal-theme.css';
+
+    if (document.querySelector(`link[href="${themeHref}"]`)) return;
+
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = themeHref;
+    document.head.appendChild(link);
+}
+
 function initAssistantPrototype() {
     if (document.querySelector('.sbi-assistant')) return;
 
@@ -142,8 +166,8 @@ function initAssistantPrototype() {
     const config = isTeacher
         ? {
             eyebrow: 'Assistant prof',
-            title: 'Besoin d’un repère ?',
-            text: 'Je peux guider les actions importantes de l’espace professeur : cours, validation, suivi et notifications.',
+            title: 'Repère coach',
+            text: 'Tes cours, validations et notifications importantes resteront accessibles ici sans charger l’interface.',
             primary: 'Voir mes cours',
             primaryUrl: '/teacher/mes-cours.html',
             badge: '1'
@@ -152,7 +176,7 @@ function initAssistantPrototype() {
             ? {
                 eyebrow: 'Assistant élève',
                 title: 'Continue ton parcours',
-                text: 'Tes notifications, tes cours et ta progression resteront accessibles ici sans surcharger l’écran.',
+                text: 'Tes cours, ta progression et tes signaux utiles seront regroupés ici au fil des prochaines étapes.',
                 primary: 'Mes cours',
                 primaryUrl: '/student/mes-cours.html',
                 badge: '1'
@@ -160,7 +184,7 @@ function initAssistantPrototype() {
             : {
                 eyebrow: 'Assistant admin',
                 title: 'Cockpit SBI',
-                text: 'Accède rapidement aux signaux utiles : validations, notifications et points de contrôle plateforme.',
+                text: 'Un point d’accès rapide pour les validations, notifications et futurs contrôles plateforme.',
                 primary: 'À valider',
                 primaryUrl: '/admin/index.html?tab=view-dashboard',
                 badge: '1'
@@ -169,8 +193,8 @@ function initAssistantPrototype() {
     const assistant = document.createElement('div');
     assistant.className = 'sbi-assistant';
     assistant.innerHTML = `
-        <button class="sbi-assistant__trigger" type="button" aria-label="Ouvrir l’assistant SBI">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 22 12 12 22 2 12 12 2Zm0 5.2 4.8 4.8-4.8 4.8L7.2 12 12 7.2Z"/></svg>
+        <button class="sbi-assistant__trigger" type="button" aria-label="Ouvrir l’assistant SBI" aria-expanded="false">
+            <span class="sbi-assistant__dot" aria-hidden="true"></span>
             <span class="sbi-assistant__badge">${config.badge}</span>
         </button>
         <div class="sbi-assistant__panel" role="dialog" aria-label="Assistant SBI">
@@ -190,23 +214,43 @@ function initAssistantPrototype() {
     const closeBtn = assistant.querySelector('[data-assistant-close]');
     const primaryBtn = assistant.querySelector('[data-assistant-primary]');
 
-    trigger?.addEventListener('click', () => {
-        assistant.classList.toggle('is-open');
+    const setOpen = (isOpen) => {
+        assistant.classList.toggle('is-open', isOpen);
+        trigger?.setAttribute('aria-expanded', String(isOpen));
+    };
+
+    trigger?.addEventListener('click', (event) => {
+        event.stopPropagation();
+        setOpen(!assistant.classList.contains('is-open'));
     });
 
     closeBtn?.addEventListener('click', () => {
-        assistant.classList.remove('is-open');
+        setOpen(false);
     });
 
     primaryBtn?.addEventListener('click', () => {
         window.location.href = config.primaryUrl;
     });
 
-    document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape') {
-            assistant.classList.remove('is-open');
+    document.addEventListener('click', (event) => {
+        if (!assistant.contains(event.target)) {
+            setOpen(false);
         }
     });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            setOpen(false);
+        }
+    });
+
+    window.setTimeout(() => {
+        assistant.classList.add('is-peeking', 'is-attention');
+
+        window.setTimeout(() => {
+            assistant.classList.remove('is-peeking', 'is-attention');
+        }, 3600);
+    }, 1300);
 }
 
 function initAdminVisitorShortcut() {
