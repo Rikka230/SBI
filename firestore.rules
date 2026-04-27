@@ -32,6 +32,12 @@ service cloud.firestore {
         && currentUser().statut != 'suspendu';
     }
 
+    function hasAnyRole(roles) {
+      return isActiveUser()
+        && currentUser().keys().hasAny(['role'])
+        && currentUser().role in roles;
+    }
+
     function isGod() {
       return isActiveUser()
         && currentUser().isGod == true;
@@ -46,13 +52,11 @@ service cloud.firestore {
     }
 
     function isTeacher() {
-      return isActiveUser()
-        && currentUser().role == 'teacher';
+      return hasAnyRole(['teacher', 'prof', 'professeur', 'enseignant']);
     }
 
     function isStudent() {
-      return isActiveUser()
-        && currentUser().role == 'student';
+      return hasAnyRole(['student', 'eleve', 'élève', 'etudiant', 'étudiant']);
     }
 
     function isSelf(uid) {
@@ -241,6 +245,7 @@ service cloud.firestore {
 
     function currentUserHasFormationAccess(formationTitle) {
       return currentUserHasFormationsAcces()
+        && formationTitle is string
         && formationTitle in currentUser().formationsAcces;
     }
 
@@ -258,15 +263,7 @@ service cloud.firestore {
 
     function canReadFormation(formationId, formationData) {
       return isAdmin()
-        || (
-          isActiveUser()
-          && (
-            currentUserHasFormationId(formationId) ||
-            currentUserHasFormationAccess(formationData.titre) ||
-            isFormationStudent(formationData) ||
-            isFormationTeacher(formationData)
-          )
-        );
+        || isActiveUser();
     }
 
     function isDirectNotification() {
