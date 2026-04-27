@@ -8,7 +8,31 @@ import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-
  * =======================================================================
  */
 
-document.addEventListener('DOMContentLoaded', () => {
+async function waitForSbiComponents() {
+    if (window.__SBI_COMPONENTS_READY === true) return;
+    if (window.SBI_COMPONENTS_READY && typeof window.SBI_COMPONENTS_READY.then === 'function') {
+        try {
+            await Promise.race([
+                window.SBI_COMPONENTS_READY,
+                new Promise((resolve) => window.setTimeout(resolve, 1200))
+            ]);
+            return;
+        } catch (error) {
+            console.warn('[SBI UI] Composants non bloquants indisponibles :', error);
+        }
+    }
+
+    await new Promise((resolve) => {
+        const timeout = window.setTimeout(resolve, 1200);
+        window.addEventListener('sbi:components-ready', () => {
+            window.clearTimeout(timeout);
+            resolve();
+        }, { once: true });
+    });
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+    await waitForSbiComponents();
     const appContainer = document.getElementById('app-container');
 
     const desktopToggleBtn = document.getElementById('btn-toggle-panel');

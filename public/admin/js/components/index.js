@@ -9,3 +9,4 @@ registerStudentPanels();
 registerTeacherPanels();
 
 window.__SBI_COMPONENTS_READY = true;
+window.dispatchEvent(new CustomEvent('sbi:components-ready'));
