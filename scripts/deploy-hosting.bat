@@ -1,11 +1,11 @@
 @echo off
 setlocal
 
-title SBI - Firebase Hosting Deploy
+title SBI - Firebase Hosting Deploy MAIN LIVE
 
 echo.
 echo ========================================
-echo   SBI - Firebase Hosting Deploy LIVE
+echo   SBI - Firebase Hosting Deploy MAIN LIVE
 echo ========================================
 echo.
 
@@ -18,7 +18,19 @@ if errorlevel 1 (
   exit /b 1
 )
 
-echo [SECURITE] Ce script deploie le Hosting LIVE Firebase.
+for /f "delims=" %%B in ('git branch --show-current') do set BRANCH=%%B
+
+echo [INFO] Branche locale : %BRANCH%
+if /I not "%BRANCH%"=="main" (
+  echo.
+  echo [STOP] Le deploy LIVE est autorise uniquement depuis main.
+  echo Pour une branche de travail, utilise scripts\deploy-preview.bat.
+  echo.
+  pause
+  exit /b 1
+)
+
+echo [SECURITE] Ce script deploie le Hosting LIVE Firebase depuis main.
 echo Il ne deploie PAS Firestore rules ni Storage rules.
 echo.
 set /p CONFIRM=Ecris DEPLOY pour confirmer : 
@@ -38,7 +50,7 @@ if errorlevel 1 (
 )
 
 echo.
-echo [OK] Hosting LIVE deploye.
+echo [OK] Hosting LIVE deploye depuis main.
 echo.
 pause
 endlocal
