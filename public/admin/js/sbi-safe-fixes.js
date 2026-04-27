@@ -1,6 +1,6 @@
 (function(){
   const css='/admin/css/sbi-ui-fixes.css';
-  const key='sbi-assistant-last-notified-count';
+  const key='sbi-assistant-last-notified-count-v2';
 
   function addCss(){
     if(document.querySelector('link[href="'+css+'"]')) return;
@@ -37,13 +37,16 @@
     const raw=(bell.textContent||'0').trim();
     const count=raw==='9+'?10:(parseInt(raw,10)||0);
     const visible=bell.style.display!=='none'&&count>0;
-    const old=parseInt(sessionStorage.getItem(key)||'0',10)||0;
+    const old=parseInt(localStorage.getItem(key)||'0',10)||0;
     badge.textContent=raw;
     a.classList.toggle('has-notifications',visible);
     if(visible&&count>old&&document.visibilityState==='visible'){
-      sessionStorage.setItem(key,String(count));
+      localStorage.setItem(key,String(count));
       a.classList.add('has-new-notification');
       setTimeout(()=>a.classList.remove('has-new-notification'),1000);
+    }
+    if(!visible&&old!==0){
+      localStorage.setItem(key,'0');
     }
   }
 
