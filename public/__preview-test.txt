@@ -1,7 +1,7 @@
 SBI preview deployment test
 
 Branch: avatar-profile-test
-Marker: firebase-preview-auto-trigger-6.5
-Updated from ChatGPT to trigger Firebase Hosting Preview deployment.
+Marker: firebase-preview-auto-trigger-secret-ready-6.5
+Updated from ChatGPT after GitHub Firebase service account secret setup.
 
 If you open this file on the Firebase Preview URL and do not see this marker, you are not looking at the latest deployed preview.
