@@ -193,3 +193,14 @@ Points conservés :
 - cropper avatar + Storage + migration anciens avatars base64.
 
 Fichier critique : `profile-core.js` devient un point d'entrée de coordination.
+
+
+## Patch 6.9.1
+
+Objectif : stabilisation post-découpe profil.
+
+- Correction upload avatar élève/prof : fallback `photoURL` si les rules Firestore déployées ne permettent pas encore les nouveaux champs Storage.
+- Ajout des champs avatar Storage dans `firestore.rules` : `photoStoragePath`, `avatarUpdatedAt`, `avatarStorageVersion`, `avatarCleanupAt`.
+- Gel des animations parasites du dashboard admin qui pouvaient donner une impression de déplacement droite/gauche des cartes.
+
+Action requise après remplacement : déployer les rules Firestore pour activer la sauvegarde complète des métadonnées avatar.

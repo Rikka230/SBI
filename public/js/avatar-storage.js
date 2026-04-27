@@ -131,22 +131,58 @@ export const uploadAvatarDataUrl = async (userId, dataUrl, options = {}) => {
     };
 };
 
-export const saveProfileAvatarToStorage = async (userId, dataUrl, previousStoragePath = null, options = {}) => {
-    const uploaded = await uploadAvatarDataUrl(userId, dataUrl, options);
+const isPermissionError = (error) => {
+    return error?.code === 'permission-denied' || /permission/i.test(String(error?.message || ''));
+};
 
-    await updateDoc(doc(db, 'users', userId), {
+const updateUserAvatarDocument = async (userId, uploaded) => {
+    const fullPayload = {
         photoURL: uploaded.downloadURL,
         photoStoragePath: uploaded.storagePath,
         photoOriginal: deleteField(),
         avatarUpdatedAt: serverTimestamp(),
         avatarStorageVersion: 1
-    });
+    };
+
+    try {
+        await updateDoc(doc(db, 'users', userId), fullPayload);
+        return { fullMetadataSaved: true, fallbackSaved: false };
+    } catch (error) {
+        if (!isPermissionError(error)) throw error;
+
+        /**
+         * Compatibilité rules anciennes : avant 6.9.1, les profils élève/prof
+         * pouvaient modifier photoURL/photoOriginal/updatedAt, mais pas encore
+         * photoStoragePath/avatarUpdatedAt/avatarStorageVersion.
+         *
+         * On sauvegarde donc au minimum l'URL Storage pour ne pas bloquer
+         * l'utilisateur. Après déploiement de firestore.rules 6.9.1, la
+         * sauvegarde complète des métadonnées repassera automatiquement.
+         */
+        console.warn('[SBI Avatar] Metadata Storage complète refusée, fallback photoURL utilisé. Pense à déployer firestore.rules 6.9.1.', error);
+
+        await updateDoc(doc(db, 'users', userId), {
+            photoURL: uploaded.downloadURL,
+            photoOriginal: deleteField(),
+            updatedAt: serverTimestamp()
+        });
+
+        return { fullMetadataSaved: false, fallbackSaved: true };
+    }
+};
+
+export const saveProfileAvatarToStorage = async (userId, dataUrl, previousStoragePath = null, options = {}) => {
+    const uploaded = await uploadAvatarDataUrl(userId, dataUrl, options);
+    const updateResult = await updateUserAvatarDocument(userId, uploaded);
 
     if (previousStoragePath && previousStoragePath !== uploaded.storagePath) {
         await deletePreviousAvatarFromStorage(userId, previousStoragePath);
     }
 
-    return uploaded;
+    return {
+        ...uploaded,
+        ...updateResult
+    };
 };
 
 export const migrateLegacyAvatarForUser = async (userId, userData = {}, options = {}) => {
