@@ -179,6 +179,12 @@ service cloud.firestore {
         );
     }
 
+    function courseTargetedToCurrentUser(courseData) {
+      return courseData.keys().hasAny(['targetStudents'])
+        && courseData.targetStudents is list
+        && request.auth.uid in courseData.targetStudents;
+    }
+
     function formationDocHasCurrentUser(formationId) {
       return signedIn()
         && formationId is string
@@ -222,6 +228,7 @@ service cloud.firestore {
           && courseData.actif == true
           && (
             courseSharedWithCurrentUser(courseData)
+            || courseTargetedToCurrentUser(courseData)
             || courseLinkedToReadableFormation(courseData)
           )
         );
@@ -388,7 +395,8 @@ service cloud.firestore {
        ============================================================ */
 
     match /courses/{courseId} {
-      allow get, list: if canReadCourse(resource.data);
+      allow get: if canReadCourse(resource.data);
+      allow list: if isActiveUser();
 
       allow create: if isAdmin()
         || validTeacherCourseWrite();
@@ -420,7 +428,8 @@ service cloud.firestore {
        ============================================================ */
 
     match /notifications/{notificationId} {
-      allow get, list: if canReadNotification();
+      allow get: if canReadNotification();
+      allow list: if isActiveUser();
 
       allow create: if canCreateNotification();
 

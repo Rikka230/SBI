@@ -137,6 +137,34 @@ async function handleCourseNotifications(args) {
     });
 }
 
+function normalizeCourseAccessValue(value) {
+    return value ? String(value).trim() : '';
+}
+
+function selectedFormationMatchesCourseValue(formation, selectedValue) {
+    const value = normalizeCourseAccessValue(selectedValue);
+    if (!formation || !value) return false;
+
+    return normalizeCourseAccessValue(formation.id) === value
+        || normalizeCourseAccessValue(formation.titre) === value;
+}
+
+function getTargetStudentsForSelectedFormations(selectedPills = []) {
+    const targetStudents = new Set();
+
+    selectedPills.forEach((formationValue) => {
+        const formation = allFormationsData.find((item) => selectedFormationMatchesCourseValue(item, formationValue));
+        const students = Array.isArray(formation?.students) ? formation.students : [];
+
+        students.forEach((studentId) => {
+            const safeStudentId = normalizeCourseAccessValue(studentId);
+            if (safeStudentId) targetStudents.add(safeStudentId);
+        });
+    });
+
+    return Array.from(targetStudents);
+}
+
 function isAdminAuthor(authorId) {
     return isAdminAuthorBase(authorId, allUsersForAccess);
 }
@@ -917,12 +945,17 @@ async function saveCourseToFirebase(actionType = 'admin_save') {
             await uploadPendingMediaForChapters(courseRefId, currentChapters);
         }
 
+        const targetStudentsForCourse = isActive
+            ? getTargetStudentsForSelectedFormations(selectedPills)
+            : [];
+
         const courseData = {
             titre: title,
             bloc: bloc,
             actif: isActive,
             statutValidation: finalStatut,
             formations: selectedPills,
+            targetStudents: targetStudentsForCourse,
             auteurId: finalAuteurId,
             chapitres: currentChapters
         };

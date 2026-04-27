@@ -316,6 +316,15 @@
 
         let lastQuillSelection = null;
 
+        function rememberQuillSelection(range) {
+            if (range && range.length > 0) {
+                lastQuillSelection = {
+                    index: range.index,
+                    length: range.length
+                };
+            }
+        }
+
         window.quill = new Quill('#course-editor', {
             theme: 'snow',
             placeholder: 'Rédigez le contenu de la leçon ici...',
@@ -325,16 +334,22 @@
                     handlers: {
                         size: function(value) {
                             const quill = this.quill;
-                            const range = quill.getSelection() || lastQuillSelection;
+                            const currentRange = quill.getSelection();
+                            const range = currentRange && currentRange.length > 0
+                                ? currentRange
+                                : lastQuillSelection;
 
                             if (range && range.length > 0) {
+                                quill.focus();
+                                quill.setSelection(range.index, range.length, 'silent');
                                 quill.formatText(range.index, range.length, 'size', value || false, 'user');
                                 quill.setSelection(range.index, range.length, 'silent');
-                                lastQuillSelection = range;
+                                rememberQuillSelection(range);
                                 return;
                             }
 
-                            quill.format('size', value || false, 'user');
+                            // Sans sélection explicite, on ne modifie pas toute la ligne.
+                            // La taille SBI s'applique uniquement au texte sélectionné.
                         }
                     }
                 }
@@ -342,15 +357,16 @@
         });
 
         window.quill.on('selection-change', function(range) {
-            if (range) lastQuillSelection = range;
+            rememberQuillSelection(range);
         });
 
         const toolbar = window.quill.getModule('toolbar')?.container;
         if (toolbar) {
-            toolbar.addEventListener('mousedown', function() {
-                const range = window.quill.getSelection();
-                if (range) lastQuillSelection = range;
-            }, true);
+            ['mousedown', 'pointerdown', 'touchstart'].forEach((eventName) => {
+                toolbar.addEventListener(eventName, function() {
+                    rememberQuillSelection(window.quill.getSelection());
+                }, true);
+            });
         }
 
         const tooltips = [

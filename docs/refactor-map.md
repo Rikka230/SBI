@@ -287,3 +287,14 @@ Points à tester :
 - La notification élève `new_course_published` retrouve les élèves via les formations sélectionnées.
 - Le toolbar Quill conserve la sélection avant de changer la taille de texte.
 - Les notifications émettent `sbi:notifications-updated` pour fiabiliser le bip assistant sur vraie nouvelle notification.
+
+## Étape 7.0.2 - Correctif sélection Quill + publication cours
+
+Objectifs :
+
+- la taille Quill s'applique uniquement au texte sélectionné, pas à toute la ligne ;
+- les cours publiés stockent `targetStudents` pour sécuriser l'accès élève ;
+- les élèves peuvent récupérer les cours publiés via `targetStudents` en fallback ;
+- les listes Firestore `courses` et `notifications` restent listables par utilisateur actif pour éviter les blocages query-safe en preview.
+
+Après installation, redéployer les Firestore Rules.

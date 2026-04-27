@@ -261,6 +261,14 @@ export async function fetchCoursesByIds(courseIds, { progressLinked = false } = 
   return uniqById(courses.filter(Boolean));
 }
 
+export async function fetchCoursesTargetingUser(uid) {
+  if (!uid) return [];
+
+  const q = query(collection(db, 'courses'), where('targetStudents', 'array-contains', uid));
+  const snap = await safeGetDocs(q, 'cours ciblant l’utilisateur');
+  return snap ? snapToArray(snap).filter((course) => isCourseVisible(course)) : [];
+}
+
 export async function fetchCoursesByFormationKeys(formationKeys, { activeOnly = true } = {}) {
   const keys = normalizeList(formationKeys);
   if (!keys.length) return [];
@@ -316,6 +324,9 @@ export async function loadCoursesForUser({
 
   const formationKeys = getFormationLookupKeys(formations);
   const byFormation = await fetchCoursesByFormationKeys(formationKeys, { activeOnly });
+  const byTargetStudent = safeRole === 'student' && uid
+    ? await fetchCoursesTargetingUser(uid)
+    : [];
 
   let progressCourses = [];
   if (includeProgress && uid) {
@@ -330,7 +341,7 @@ export async function loadCoursesForUser({
     if (ownSnap) byFormation.push(...snapToArray(ownSnap));
   }
 
-  return uniqById([...byFormation, ...progressCourses])
+  return uniqById([...byFormation, ...byTargetStudent, ...progressCourses])
     .filter((course) => isCourseVisible(course, { allowProgress: includeProgress }))
     .sort(sortCourses);
 }
