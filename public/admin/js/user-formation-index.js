@@ -8,16 +8,18 @@
  * formations/{formationId}
  *   profs: [...]
  *   students: [...]
+ *   titre: "Nom de formation"
  *
  * devient :
  *
  * users/{uid}
- *   formationIds: [...]
+ *   formationIds: [formationId]
+ *   formationsAcces: [titre]
  *
  * Objectif :
- * - préparer les requêtes Firestore "query-safe"
- * - éviter de charger tous les users côté front plus tard
  * - garder une source de vérité claire : les documents formations
+ * - réparer les accès prof/élève même si les rules ou anciens cours utilisent
+ *   encore l'ancien champ formationsAcces ou les titres de formation
  * =======================================================================
  */
 
@@ -29,25 +31,41 @@ import {
     updateDoc
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
-const normalizeIds = (value) => {
+const normalizeValues = (value) => {
     if (!Array.isArray(value)) return [];
 
     return Array.from(
         new Set(
             value
                 .filter(Boolean)
-                .map((item) => String(item))
+                .map((item) => String(item).trim())
+                .filter(Boolean)
         )
-    ).sort();
+    ).sort((a, b) => a.localeCompare(b, 'fr', { sensitivity: 'base' }));
 };
 
 const arraysEqual = (a, b) => {
-    const arrA = normalizeIds(a);
-    const arrB = normalizeIds(b);
+    const arrA = normalizeValues(a);
+    const arrB = normalizeValues(b);
 
     if (arrA.length !== arrB.length) return false;
 
     return arrA.every((value, index) => value === arrB[index]);
+};
+
+const ensureIndexEntry = (index, uid) => {
+    if (!uid) return null;
+
+    const safeUid = String(uid);
+
+    if (!index.has(safeUid)) {
+        index.set(safeUid, {
+            ids: new Set(),
+            titles: new Set()
+        });
+    }
+
+    return index.get(safeUid);
 };
 
 const buildFormationIndexByUser = (formations = [], users = []) => {
@@ -55,7 +73,7 @@ const buildFormationIndexByUser = (formations = [], users = []) => {
 
     users.forEach((user) => {
         if (!user?.id) return;
-        index.set(user.id, new Set());
+        ensureIndexEntry(index, user.id);
     });
 
     formations.forEach((formation) => {
@@ -63,15 +81,15 @@ const buildFormationIndexByUser = (formations = [], users = []) => {
 
         const profs = Array.isArray(formation.profs) ? formation.profs : [];
         const students = Array.isArray(formation.students) ? formation.students : [];
+        const formationId = String(formation.id);
+        const formationTitle = formation.titre ? String(formation.titre).trim() : '';
 
         [...profs, ...students].forEach((uid) => {
-            if (!uid) return;
+            const entry = ensureIndexEntry(index, uid);
+            if (!entry) return;
 
-            if (!index.has(uid)) {
-                index.set(uid, new Set());
-            }
-
-            index.get(uid).add(formation.id);
+            entry.ids.add(formationId);
+            if (formationTitle) entry.titles.add(formationTitle);
         });
     });
 
@@ -88,16 +106,24 @@ export const syncUserFormationIndexesFromData = async ({
     users.forEach((user) => {
         if (!user?.id) return;
 
-        const nextFormationIds = normalizeIds(Array.from(index.get(user.id) || []));
-        const currentFormationIds = normalizeIds(user.formationIds || []);
+        const entry = index.get(String(user.id)) || { ids: new Set(), titles: new Set() };
+        const nextFormationIds = normalizeValues(Array.from(entry.ids));
+        const nextFormationsAcces = normalizeValues(Array.from(entry.titles));
 
-        if (arraysEqual(currentFormationIds, nextFormationIds)) {
+        const currentFormationIds = normalizeValues(user.formationIds || []);
+        const currentFormationsAcces = normalizeValues(user.formationsAcces || []);
+
+        const needsFormationIdsUpdate = !arraysEqual(currentFormationIds, nextFormationIds);
+        const needsFormationsAccesUpdate = !arraysEqual(currentFormationsAcces, nextFormationsAcces);
+
+        if (!needsFormationIdsUpdate && !needsFormationsAccesUpdate) {
             return;
         }
 
         updates.push(
             updateDoc(doc(db, "users", user.id), {
-                formationIds: nextFormationIds
+                formationIds: nextFormationIds,
+                formationsAcces: nextFormationsAcces
             })
         );
     });
