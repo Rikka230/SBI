@@ -1,0 +1,54 @@
+name: Firebase Hosting Preview
+
+on:
+  push:
+    branches-ignore:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+
+concurrency:
+  group: firebase-preview-${{ github.event.pull_request.number || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  deploy_preview:
+    name: Deploy preview channel
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Compute Firebase preview channel
+        id: channel
+        shell: bash
+        run: |
+          RAW_NAME="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
+          CHANNEL_ID=$(echo "$RAW_NAME" \
+            | tr '[:upper:]' '[:lower:]' \
+            | sed -E 's#[^a-z0-9-]+#-#g' \
+            | sed -E 's#^-+##; s#-+$##' \
+            | cut -c1-63)
+
+          if [ -z "$CHANNEL_ID" ]; then
+            CHANNEL_ID="preview"
+          fi
+
+          echo "channel_id=$CHANNEL_ID" >> "$GITHUB_OUTPUT"
+          echo "Preview channel: $CHANNEL_ID"
+
+      - name: Deploy to Firebase Hosting preview
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_SBI_WEB_4F6B4 }}
+          projectId: sbi-web-4f6b4
+          channelId: ${{ steps.channel.outputs.channel_id }}
+          expires: 7d
