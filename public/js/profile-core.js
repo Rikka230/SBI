@@ -16,6 +16,7 @@ import {
     where
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+import { waitForSbiTopbar } from '/admin/js/components/ready.js';
 import { getUserLearningProgress, resetCourseProgress, updateQuizScore } from '/js/course-engine.js';
 import {
     getProfileAvatarCropSource,
@@ -440,7 +441,7 @@ document.addEventListener('DOMContentLoaded', () => {
     onAuthStateChanged(auth, async (user) => {
         if (user) {
             loggedInUserId = user.uid;
-            await waitForSbiComponents();
+            await waitForSbiTopbar();
 
             const mySnap = await getDoc(doc(db, "users", loggedInUserId));
             if (mySnap.exists()) {

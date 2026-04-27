@@ -4,12 +4,11 @@
  * =======================================================================
  *
  * Les pages existantes chargent encore ce fichier avec une balise script
- * classique. On garde donc ce fichier comme point d’entrée non-module,
- * puis on charge les vrais composants depuis /admin/js/components/index.js.
+ * classique. On garde ce point d'entrée non-module, puis on charge les
+ * vrais composants depuis /admin/js/components/index.js.
  *
- * 6.7D.2 : le signal ready attend maintenant que le DOM soit disponible.
- * Ça évite le race-condition où dashboard fonctionne, mais mes-cours/profil
- * écrivent dans une topbar qui n'est pas encore montée.
+ * 6.7E : le signal ready attend DOMContentLoaded + définition des tags +
+ * présence réelle des panels/topbars attendus pour la page courante.
  */
 
 (function bootstrapSbiComponents(){
@@ -18,29 +17,33 @@
     document.body?.classList?.add('sbi-preload-timeout');
   };
 
-  const waitDomReady = () => {
-    if (document.readyState !== 'loading') return Promise.resolve();
-    return new Promise((resolve) => document.addEventListener('DOMContentLoaded', resolve, { once: true }));
-  };
-
   const notifyReady = () => {
     window.__SBI_COMPONENTS_READY = true;
     window.dispatchEvent(new CustomEvent('sbi:components-ready'));
   };
 
-  const failSafe = window.setTimeout(releasePreload, 1500);
+  const failSafe = window.setTimeout(() => {
+    notifyReady();
+    releasePreload();
+  }, 2200);
 
   window.SBI_COMPONENTS_READY = import('/admin/js/components/index.js')
-    .then(waitDomReady)
-    .then(() => new Promise((resolve) => requestAnimationFrame(resolve)))
-    .then(() => {
+    .then(async (module) => {
+      if (module?.waitForExpectedComponents) {
+        await module.waitForExpectedComponents(1800);
+      }
+
+      await new Promise((resolve) => requestAnimationFrame(resolve));
       window.clearTimeout(failSafe);
       notifyReady();
       releasePreload();
+      return true;
     })
     .catch((error) => {
       console.error('[SBI Components] Chargement modulaire impossible :', error);
+      window.clearTimeout(failSafe);
       notifyReady();
       releasePreload();
+      return false;
     });
 })();

@@ -1,6 +1,7 @@
 import { auth, db } from '/js/firebase-init.js';
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { waitForSbiComponents as waitForComponentsReady } from '/admin/js/components/ready.js';
 
 /**
  * =======================================================================
@@ -8,31 +9,8 @@ import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-
  * =======================================================================
  */
 
-async function waitForSbiComponents() {
-    if (window.__SBI_COMPONENTS_READY === true) return;
-    if (window.SBI_COMPONENTS_READY && typeof window.SBI_COMPONENTS_READY.then === 'function') {
-        try {
-            await Promise.race([
-                window.SBI_COMPONENTS_READY,
-                new Promise((resolve) => window.setTimeout(resolve, 1200))
-            ]);
-            return;
-        } catch (error) {
-            console.warn('[SBI UI] Composants non bloquants indisponibles :', error);
-        }
-    }
-
-    await new Promise((resolve) => {
-        const timeout = window.setTimeout(resolve, 1200);
-        window.addEventListener('sbi:components-ready', () => {
-            window.clearTimeout(timeout);
-            resolve();
-        }, { once: true });
-    });
-}
-
 document.addEventListener('DOMContentLoaded', async () => {
-    await waitForSbiComponents();
+    await waitForComponentsReady();
     const appContainer = document.getElementById('app-container');
 
     const desktopToggleBtn = document.getElementById('btn-toggle-panel');
@@ -52,13 +30,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     /* --- 1. GESTION DES PANNEAUX --- */
     setTimeout(() => { document.body.classList.remove('preload'); }, 100);
 
-    if (window.innerWidth > 1024) {
+    if (appContainer && window.innerWidth > 1024) {
         if (localStorage.getItem('leftPanelCollapsed') === 'true') appContainer.classList.add('left-collapsed');
         if (localStorage.getItem('rightPanelCollapsed') === 'true') appContainer.classList.add('right-collapsed');
     }
 
     if (desktopToggleBtn) {
         desktopToggleBtn.addEventListener('click', () => {
+            if (!appContainer) return;
             appContainer.classList.toggle('left-collapsed');
             localStorage.setItem('leftPanelCollapsed', appContainer.classList.contains('left-collapsed'));
         });
@@ -66,12 +45,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (mobileToggleBtn) {
         mobileToggleBtn.addEventListener('click', () => {
+            if (!appContainer) return;
             appContainer.classList.toggle('left-open');
         });
     }
 
     if (rightToggleBtn) {
         rightToggleBtn.addEventListener('click', () => {
+            if (!appContainer) return;
             if (window.innerWidth > 1024) {
                 appContainer.classList.toggle('right-collapsed');
                 localStorage.setItem('rightPanelCollapsed', appContainer.classList.contains('right-collapsed'));
@@ -82,12 +63,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     document.addEventListener('click', (e) => {
-        if (window.innerWidth <= 768 && appContainer.classList.contains('left-open')) {
+        if (appContainer && window.innerWidth <= 768 && appContainer.classList.contains('left-open')) {
             if (!e.target.closest('#left-panel') && !e.target.closest('#btn-toggle-mobile')) {
                 appContainer.classList.remove('left-open');
             }
         }
-        if (window.innerWidth <= 1024 && appContainer.classList.contains('right-open')) {
+        if (appContainer && window.innerWidth <= 1024 && appContainer.classList.contains('right-open')) {
             if (!e.target.closest('#right-panel') && !e.target.closest('#btn-toggle-right')) {
                 appContainer.classList.remove('right-open');
             }
@@ -95,14 +76,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     window.addEventListener('resize', () => {
-        if (window.innerWidth <= 1024) {
+        if (appContainer && window.innerWidth <= 1024) {
             appContainer.classList.remove('left-open');
             appContainer.classList.remove('right-open');
         }
     });
     
     /* --- 2. NAVIGATION ONGLET (SANS F5) --- */
-    const savedTab = sessionStorage.getItem('activeAdminTab') || 'view-dashboard';
+    const savedTab = new URLSearchParams(window.location.search).get('tab') || sessionStorage.getItem('activeAdminTab') || 'view-dashboard';
     
     if(navItems.length > 0 && document.getElementById(savedTab)) {
         switchView(savedTab);
@@ -111,11 +92,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     navItems.forEach(btn => {
         btn.addEventListener('click', (e) => {
             const targetId = e.currentTarget.getAttribute('data-target');
-            if(targetId && document.getElementById(targetId)) {
+            const href = e.currentTarget.getAttribute('data-href') || (targetId ? `/admin/index.html?tab=${targetId}` : '/admin/index.html');
+
+            if (targetId && document.getElementById(targetId)) {
+                e.preventDefault();
                 switchView(targetId);
+                const url = new URL(window.location.href);
+                url.pathname = '/admin/index.html';
+                url.searchParams.set('tab', targetId);
+                window.history.replaceState({ sbiTab: targetId }, '', url.pathname + url.search);
+            } else if (href) {
+                window.location.href = href;
             }
             
-            if (window.innerWidth <= 768) {
+            if (appContainer && window.innerWidth <= 768) {
                 appContainer.classList.remove('left-open');
             }
         });

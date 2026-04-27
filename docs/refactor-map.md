@@ -129,3 +129,36 @@ Règle logique actuelle :
 - compatibilité anciens cours : `courses.formations` peut contenir un ID ou un titre.
 
 Ne pas casser cette compatibilité tant que la base n'est pas migrée proprement.
+
+## Étape 6.7E : stabilisation components / panels / topbars
+
+Statut : patch ZIP préparé.
+
+Objectifs :
+
+- signal central `SBI_COMPONENTS_READY` plus fiable ;
+- attente réelle des panels/topbars avant injection Firebase ;
+- événements `sbi:component-mounted` et `sbi:topbar-ready` ;
+- admin nav sans reload inutile sur `/admin/index.html` ;
+- navigation admin vers onglets depuis pages admin externes conservée ;
+- profils/topbars student/teacher/admin synchronisés via helper partagé ;
+- anti page blanche conservé.
+
+Fichier ajouté :
+
+- `public/admin/js/components/ready.js`
+
+Fichiers consolidés :
+
+- `public/admin/js/components.js`
+- `public/admin/js/components/index.js`
+- `public/admin/js/components/admin-panels.js`
+- `public/admin/js/components/student-panels.js`
+- `public/admin/js/components/teacher-panels.js`
+- `public/admin/js/admin-ui.js`
+- `public/admin/js/admin-notifications.js`
+- `public/student/js/student-hub.js`
+- `public/student/js/mes-cours.js`
+- `public/teacher/js/teacher-dashboard.js`
+- `public/js/profile-core.js`
+

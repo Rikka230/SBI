@@ -1,9 +1,10 @@
 import { ICONS, brand, defineOnce } from './shared-icons.js';
 import { clearCacheAndReload, signOutToLogin } from './shared-actions.js';
+import { dispatchComponentMounted } from './ready.js';
 
 function adminNavItem({ id, target, label, icon }) {
   return `
-    <li class="nav-item" id="${id}" data-target="${target}" onclick="window.location.href='/admin/index.html?tab=${target}'">
+    <li class="nav-item" id="${id}" data-target="${target}" data-href="/admin/index.html?tab=${target}">
       ${icon}
       <span class="nav-text">${label}</span>
     </li>
@@ -12,6 +13,9 @@ function adminNavItem({ id, target, label, icon }) {
 
 export class AdminLeftPanel extends HTMLElement {
   connectedCallback() {
+    if (this.dataset.rendered === 'true') return;
+    this.dataset.rendered = 'true';
+
     this.innerHTML = `
       <aside id="left-panel" class="side-panel admin-theme">
         <div class="panel-header" style="display:flex; justify-content:space-between; align-items:center; padding:0 15px; width:100%; box-sizing:border-box;">
@@ -39,14 +43,22 @@ export class AdminLeftPanel extends HTMLElement {
       this.querySelector('#nav-users')?.classList.add('active');
     } else if (path.includes('formations-cours.html') || path.includes('formations-live.html')) {
       this.querySelector('#nav-formations')?.classList.add('active');
+    } else if (path.includes('site-index-settings.html')) {
+      // Le lien Gestion Accueil est injecté ensuite par admin-ui pour conserver
+      // l'ancien comportement. On évite de marquer un autre onglet actif ici.
     } else {
       this.querySelector(`[data-target="${tab}"]`)?.classList.add('active');
     }
+
+    dispatchComponentMounted('admin-left-panel', this);
   }
 }
 
 export class AdminRightPanel extends HTMLElement {
   connectedCallback() {
+    if (this.dataset.rendered === 'true') return;
+    this.dataset.rendered = 'true';
+
     this.innerHTML = `
       <aside id="right-panel" class="side-panel admin-theme">
         <div class="panel-header" style="justify-content:space-between; align-items:center; padding:0 1.5rem;">
@@ -91,6 +103,11 @@ export class AdminRightPanel extends HTMLElement {
 
     this.querySelector('#logout-btn')?.addEventListener('click', signOutToLogin);
     this.querySelector('#btn-clear-cache')?.addEventListener('click', clearCacheAndReload);
+    this.querySelector('#btn-my-profile')?.addEventListener('click', () => {
+      window.location.href = '/admin/admin-profile.html';
+    });
+
+    dispatchComponentMounted('admin-right-panel', this);
   }
 }
 

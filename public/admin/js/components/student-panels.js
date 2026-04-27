@@ -1,8 +1,11 @@
 import { ICONS, brand, defineOnce } from './shared-icons.js';
+import { dispatchComponentMounted } from './ready.js';
 import { signOutToLogin } from './shared-actions.js';
 
 export class StudentLeftPanel extends HTMLElement {
   connectedCallback() {
+    if (this.dataset.rendered === 'true') return;
+    this.dataset.rendered = 'true';
     const path = window.location.pathname;
     this.innerHTML = `
       <aside id="left-panel" class="side-panel">
@@ -30,11 +33,14 @@ export class StudentLeftPanel extends HTMLElement {
       </aside>
     `;
     this.querySelector('#logout-btn-student')?.addEventListener('click', signOutToLogin);
+    dispatchComponentMounted('student-left-panel', this);
   }
 }
 
 export class StudentTopBar extends HTMLElement {
   connectedCallback() {
+    if (this.dataset.rendered === 'true') return;
+    this.dataset.rendered = 'true';
     document.body.classList.add('no-right-panel');
     this.innerHTML = `
       <header class="top-bar" style="border-bottom:1px solid var(--border-color); background-color:rgba(255,255,255,.95); backdrop-filter:blur(10px);">
@@ -62,6 +68,7 @@ export class StudentTopBar extends HTMLElement {
         </div>
       </header>
     `;
+    dispatchComponentMounted('student-top-bar', this);
   }
 }
 

@@ -22,6 +22,7 @@ import {
     arrayUnion
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+import { waitForSbiTopbar } from '/admin/js/components/ready.js';
 import { setupGlobalSearch, clearGlobalSearchCache } from '/admin/js/global-search.js';
 
 let currentUid = null;
@@ -50,6 +51,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         currentUid = user.uid;
+
+        await waitForSbiTopbar();
 
         const userSnap = await getDoc(doc(db, "users", currentUid));
 

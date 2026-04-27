@@ -22,6 +22,7 @@ import {
     where
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+import { waitForSbiTopbar } from '/admin/js/components/ready.js';
 import { getUserLearningProgress } from '/js/course-engine.js';
 
 let currentUid = null;
@@ -40,7 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
         currentUid = user.uid;
 
         try {
-            await waitForSbiComponents();
+            await waitForSbiTopbar();
             await loadStudentProfile();
             await loadStudentProgress();
             updateTopBar();

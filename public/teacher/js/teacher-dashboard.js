@@ -8,6 +8,7 @@
 import { db, auth } from '/js/firebase-init.js';
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+import { waitForSbiTopbar } from '/admin/js/components/ready.js';
 
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initTeacherDashboard);
@@ -23,7 +24,7 @@ function initTeacherDashboard() {
         }
 
         try {
-            await waitForSbiComponents();
+            await waitForSbiTopbar();
             const userSnap = await getDoc(doc(db, 'users', user.uid));
             if (!userSnap.exists()) return;
 
