@@ -121,6 +121,7 @@ function initSpaceTheme() {
 
     injectInternalThemeStylesheet('/admin/css/sbi-internal-theme.css');
     injectInternalThemeStylesheet('/admin/css/sbi-ui-polish.css');
+    injectInternalThemeStylesheet('/admin/css/sbi-ui-fixes.css');
     document.body.classList.add('sbi-internal-ui');
 
     if (dashboardPaths.has(path)) {
@@ -234,8 +235,10 @@ function initAssistantPrototype() {
         setOpen(!assistant.classList.contains('is-open'));
     });
 
-    closeBtn?.addEventListener('click', () => {
-        assistant.classList.remove('is-notification-mode');
+    closeBtn?.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        assistant.classList.remove('is-notification-mode', 'is-peeking');
         setOpen(false);
     });
 
@@ -301,7 +304,6 @@ function initAssistantNotificationSync() {
 
         if (initialized && numericValue > lastCount) {
             assistant.classList.add('has-new-notification');
-            playAssistantNotificationTone();
             window.setTimeout(() => assistant.classList.remove('has-new-notification'), 950);
         }
 
@@ -334,27 +336,7 @@ function initAssistantNotificationSync() {
 }
 
 function playAssistantNotificationTone() {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    if (!window.AudioContext && !window.webkitAudioContext) return;
-
-    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-    const audioContext = new AudioContextClass();
-
-    if (audioContext.state === 'suspended') return;
-
-    const gain = audioContext.createGain();
-    gain.gain.setValueAtTime(0.0001, audioContext.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.035, audioContext.currentTime + 0.012);
-    gain.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 0.18);
-    gain.connect(audioContext.destination);
-
-    const oscillator = audioContext.createOscillator();
-    oscillator.type = 'sine';
-    oscillator.frequency.setValueAtTime(880, audioContext.currentTime);
-    oscillator.frequency.exponentialRampToValueAtTime(1320, audioContext.currentTime + 0.09);
-    oscillator.connect(gain);
-    oscillator.start();
-    oscillator.stop(audioContext.currentTime + 0.2);
+    return;
 }
 
 function initAssistantWander() {
