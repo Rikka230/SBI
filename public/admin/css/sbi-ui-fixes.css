@@ -1,10 +1,11 @@
-/* SBI 6.2-bis safe fixes: no component rewrite */
+/* SBI 6.7C - UI failsafes and safe polish */
 
 html body.preload #main-content {
-    opacity: 0 !important;
+    opacity: 0;
     transform: translateY(8px) scale(0.998);
 }
 
+html body.preload.sbi-preload-timeout #main-content,
 html body:not(.preload) #main-content {
     opacity: 1;
     transform: translateY(0) scale(1);
@@ -103,6 +104,31 @@ body.sbi-internal-ui .sbi-assistant__notification-host .notif-item,
 body.sbi-internal-ui .sbi-assistant__notification-host [class*="notif"] {
     border-radius: 0 !important;
     clip-path: polygon(0 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%);
+}
+
+.sbi-polish-mark {
+    width: 20px;
+    height: 20px;
+    fill: currentColor;
+    filter: drop-shadow(0 0 10px rgba(42, 87, 255, 0.28));
+    flex: 0 0 auto;
+}
+
+.sbi-polish-brand-main {
+    font-weight: 950;
+    letter-spacing: -0.04em;
+    font-style: italic;
+}
+
+.sbi-polish-brand-sub {
+    color: var(--text-main, #fff);
+    font-weight: 850;
+    letter-spacing: -0.03em;
+    font-style: italic;
+}
+
+.logo-zone[data-sbi-polish-brand="true"] {
+    gap: 0.42rem;
 }
 
 @keyframes sbiAssistantBadgeFloat {
