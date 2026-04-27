@@ -48,10 +48,40 @@ export function snapToArray(snapshot) {
   return items;
 }
 
+function isDebugAccessEnabled() {
+  try {
+    return localStorage.getItem('sbiDebugAccess') === 'true';
+  } catch {
+    return false;
+  }
+}
+
+function isExpectedAccessError(error) {
+  const code = String(error?.code || '').toLowerCase();
+  const message = String(error?.message || '').toLowerCase();
+  return (
+    code.includes('permission-denied') ||
+    code.includes('failed-precondition') ||
+    message.includes('missing or insufficient permissions') ||
+    message.includes('permission') ||
+    message.includes('index')
+  );
+}
+
+function reportOptionalAccess(label, error, suffix = 'ignorée') {
+  if (isDebugAccessEnabled()) {
+    console.debug(`[SBI Learning Access] ${label} ${suffix} :`, error);
+  }
+}
+
 export async function safeGetDoc(docRef, label = 'document Firestore') {
   try {
     return await getDoc(docRef);
   } catch (error) {
+    if (isExpectedAccessError(error)) {
+      reportOptionalAccess(label, error, 'inaccessible');
+      return null;
+    }
     console.warn(`[SBI Learning Access] ${label} inaccessible :`, error);
     return null;
   }
@@ -61,6 +91,10 @@ export async function safeGetDocs(queryRef, label = 'requête Firestore') {
   try {
     return await getDocs(queryRef);
   } catch (error) {
+    if (isExpectedAccessError(error)) {
+      reportOptionalAccess(label, error, 'ignorée');
+      return null;
+    }
     console.warn(`[SBI Learning Access] ${label} ignorée :`, error);
     return null;
   }

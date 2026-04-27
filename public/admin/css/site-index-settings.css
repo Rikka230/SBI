@@ -213,3 +213,17 @@
         grid-template-columns: 1fr;
     }
 }
+
+/* SBI 6.9.3 - aucun fallback local lourd dans Gestion Accueil */
+.site-media-empty-preview {
+  width: 100%;
+  min-height: 220px;
+  display: grid;
+  place-items: center;
+  border: 1px dashed rgba(148, 163, 184, 0.24);
+  background: rgba(5, 8, 18, 0.45);
+  color: #8f9ab3;
+  font-size: 0.85rem;
+  font-weight: 800;
+  text-align: center;
+}

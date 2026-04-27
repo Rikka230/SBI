@@ -204,3 +204,21 @@ Objectif : stabilisation post-découpe profil.
 - Gel des animations parasites du dashboard admin qui pouvaient donner une impression de déplacement droite/gauche des cartes.
 
 Action requise après remplacement : déployer les rules Firestore pour activer la sauvegarde complète des métadonnées avatar.
+
+## Étape 6.9.3 - Console cleanup ciblé
+
+Objectif : nettoyer les faux signaux rouges après 6.9 sans changer la logique métier.
+
+- Les permissions Firestore optionnelles dans `learning-access.js` passent en debug silencieux.
+- Le suivi profil ne log plus chaque cours inaccessible en warning attendu.
+- Les erreurs notification attendues liées aux écoutes non autorisées sont silencieuses.
+- Les fallbacks avatar Storage restent fonctionnels mais ne polluent plus la console.
+- Gestion Accueil ne tente plus de charger les anciens médias locaux supprimés (`sbi_master.webm`, `sbi.mp4`).
+- Le cropper affiche une vraie prévisualisation simple pour les avatars Storage distants au lieu d'un cadre vide.
+- La grille spark du dashboard admin respire sans translation latérale.
+
+Pour réactiver les logs détaillés :
+
+```js
+localStorage.setItem('sbiDebugAccess', 'true')
+```

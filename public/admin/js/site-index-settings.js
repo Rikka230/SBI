@@ -6,12 +6,12 @@ import { ref, uploadBytesResumable, getDownloadURL } from 'https://www.gstatic.c
 const SETTINGS_REF = doc(db, 'settings', 'siteIndex');
 
 const DEFAULTS = {
-  heroVideoWebmUrl: '/assets/sbi_master.webm',
-  heroVideoMp4Url: '/assets/sbi.mp4',
-  heroLogoUrl: '/assets/Logo_SBI_Tome.png',
-  headerLogoUrl: '/assets/Logo_SBI_Tome.png',
-  brandLogoUrl: '/assets/sbi_brand.png',
-  founderImageUrl: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=800&q=80'
+  heroVideoWebmUrl: '',
+  heroVideoMp4Url: '',
+  heroLogoUrl: '',
+  headerLogoUrl: '',
+  brandLogoUrl: '',
+  founderImageUrl: ''
 };
 
 const MEDIA = [
@@ -25,6 +25,25 @@ const MEDIA = [
 const state = { user: null, settings: { ...DEFAULTS } };
 
 function $(selector) { return document.querySelector(selector); }
+function isLegacyLocalMediaUrl(value) {
+  if (typeof value !== 'string') return false;
+  const url = value.trim();
+  return (
+    url === '/assets/sbi_master.webm' ||
+    url === '/assets/sbi.mp4' ||
+    url === '/assets/fondateur-photo.jpg' ||
+    url.includes('images.unsplash.com/photo-1560250097')
+  );
+}
+
+function sanitizeSettings(raw = {}) {
+  const clean = { ...DEFAULTS, ...raw };
+  Object.keys(clean).forEach((key) => {
+    if (isLegacyLocalMediaUrl(clean[key])) clean[key] = '';
+  });
+  return clean;
+}
+
 
 function status(message, tone = 'neutral') {
   const el = $('#site-index-status');
@@ -38,15 +57,25 @@ function isStorageUrl(value) {
 }
 
 function makePreview(item, url) {
-  const src = url || item.source;
+  const src = url && !isLegacyLocalMediaUrl(url) ? url : '';
+
+  if (!src) {
+    return `
+      <div class="site-media-empty-preview">
+        <span>Aucun média Storage configuré</span>
+      </div>
+    `;
+  }
+
   if (item.type === 'video') {
     return `<video src="${src}" muted playsinline controls preload="metadata"></video>`;
   }
+
   return `<img src="${src}" alt="${item.label}" loading="lazy">`;
 }
 
 function cardTemplate(item) {
-  const currentUrl = state.settings[item.key] || item.source;
+  const currentUrl = state.settings[item.key] && !isLegacyLocalMediaUrl(state.settings[item.key]) ? state.settings[item.key] : '';
   const fromStorage = isStorageUrl(currentUrl);
   return `
     <article class="site-media-card" data-key="${item.key}">
@@ -151,7 +180,7 @@ function bindEvents() {
 
 async function loadSettings() {
   const snap = await getDoc(SETTINGS_REF);
-  state.settings = snap.exists() ? { ...DEFAULTS, ...snap.data() } : { ...DEFAULTS };
+  state.settings = snap.exists() ? sanitizeSettings(snap.data()) : { ...DEFAULTS };
   renderCards();
 }
 

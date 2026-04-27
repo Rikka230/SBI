@@ -10,6 +10,25 @@ const EMPTY_MEDIA = {
   founderImageUrl: ''
 };
 
+function isLegacyLocalMediaUrl(value) {
+  if (typeof value !== 'string') return false;
+  const url = value.trim();
+  return (
+    url === '/assets/sbi_master.webm' ||
+    url === '/assets/sbi.mp4' ||
+    url === '/assets/fondateur-photo.jpg' ||
+    url.includes('images.unsplash.com/photo-1560250097')
+  );
+}
+
+function sanitizeSettings(raw = {}) {
+  const clean = { ...EMPTY_MEDIA, ...raw };
+  Object.keys(clean).forEach((key) => {
+    if (isLegacyLocalMediaUrl(clean[key])) clean[key] = '';
+  });
+  return clean;
+}
+
 function ensureFounderCleanStyles() {
   const href = '/css/sbi-founder-image-clean.css';
   if (document.querySelector(`link[href="${href}"]`)) return;
@@ -83,7 +102,7 @@ async function initSiteIndexMedia() {
 
   try {
     const snap = await getDoc(doc(db, 'settings', 'siteIndex'));
-    const settings = snap.exists() ? { ...EMPTY_MEDIA, ...snap.data() } : EMPTY_MEDIA;
+    const settings = snap.exists() ? sanitizeSettings(snap.data()) : EMPTY_MEDIA;
     applySettings(settings);
   } catch (error) {
     document.body.classList.add('is-site-index-media-ready');

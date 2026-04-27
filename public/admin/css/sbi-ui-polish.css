@@ -293,3 +293,10 @@ body.sbi-internal-ui::after {
         font-size: 9px;
     }
 }
+
+/* SBI 6.9.3 - Spark breathing only, no lateral motion */
+@keyframes sbiAdminGridSpark {
+    0%, 100% { opacity: 0.08; transform: none; }
+    42% { opacity: 0.16; transform: none; }
+    68% { opacity: 0.11; transform: none; }
+}

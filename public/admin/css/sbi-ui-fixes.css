@@ -174,3 +174,17 @@ body.sbi-admin-space.sbi-dashboard-page .stat-card,
 body.sbi-admin-space.sbi-dashboard-page #card-pending {
     translate: none !important;
 }
+
+/* SBI 6.9.3 - hard freeze dashboard transforms */
+body.sbi-admin-space.sbi-dashboard-page #main-content,
+body.sbi-admin-space.sbi-dashboard-page #view-dashboard,
+body.sbi-admin-space.sbi-dashboard-page #view-dashboard * {
+    transform-style: flat !important;
+}
+
+body.sbi-admin-space.sbi-dashboard-page #view-dashboard .dashboard-card,
+body.sbi-admin-space.sbi-dashboard-page #view-dashboard [class*="card"],
+body.sbi-admin-space.sbi-dashboard-page #view-dashboard [class*="stat"] {
+    transform: none !important;
+    translate: none !important;
+}

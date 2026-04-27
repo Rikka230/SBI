@@ -30,6 +30,20 @@ let currentUserProfile = null;
 
 let notificationUnsubscribers = [];
 let notificationStreams = new Map();
+
+function isDebugNotificationsEnabled() {
+    try {
+        return localStorage.getItem('sbiDebugAccess') === 'true';
+    } catch {
+        return false;
+    }
+}
+
+function isExpectedNotificationAccessError(error) {
+    const code = String(error?.code || '').toLowerCase();
+    const message = String(error?.message || '').toLowerCase();
+    return code.includes('permission-denied') || message.includes('missing or insufficient permissions') || message.includes('permission');
+}
 let notificationsInitializedForUid = null;
 
 /* =======================================================================
@@ -259,6 +273,12 @@ function initNotificationsRealtime() {
             renderCombinedNotifications();
 
         }, (error) => {
+            if (isExpectedNotificationAccessError(error)) {
+                notificationStreams.set(key, new Map());
+                renderCombinedNotifications();
+                if (isDebugNotificationsEnabled()) console.debug(`[SBI Notifications] Écoute ${key} indisponible :`, error);
+                return;
+            }
             console.error(`[SBI Notifications] Erreur écoute ${key}:`, error);
         });
 

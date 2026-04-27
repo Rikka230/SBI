@@ -41,6 +41,38 @@ export function initProfileAvatarCropper({ context, reloadProfile }) {
   let revokeCurrentCropSource = null;
   let currentCropCanExport = true;
   let cropFeedbackElement = null;
+  const resetImageElementStyles = () => {
+    imageElement.style.position = '';
+    imageElement.style.top = '';
+    imageElement.style.left = '';
+    imageElement.style.width = '';
+    imageElement.style.height = '';
+    imageElement.style.maxWidth = '100%';
+    imageElement.style.maxHeight = '';
+    imageElement.style.objectFit = '';
+    imageElement.style.transform = '';
+  };
+
+  const showRemoteAvatarPreview = (src) => {
+    if (!src) return;
+    if (cropperInstance) {
+      cropperInstance.destroy();
+      cropperInstance = null;
+    }
+
+    imageElement.onload = null;
+    imageElement.onerror = null;
+    imageElement.removeAttribute('crossorigin');
+    imageElement.src = src;
+    imageElement.style.position = 'static';
+    imageElement.style.display = 'block';
+    imageElement.style.width = '100%';
+    imageElement.style.height = '350px';
+    imageElement.style.maxWidth = '100%';
+    imageElement.style.objectFit = 'contain';
+    imageElement.style.transform = 'none';
+  };
+
 
   const ensureCropFeedback = () => {
     if (cropFeedbackElement) return cropFeedbackElement;
@@ -94,6 +126,7 @@ export function initProfileAvatarCropper({ context, reloadProfile }) {
     imageElement.onerror = null;
     imageElement.removeAttribute('crossorigin');
     imageElement.src = '';
+    resetImageElementStyles();
     originalImageDataUrl = null;
     currentCropCanExport = true;
     clearCropFeedback();
@@ -166,6 +199,7 @@ export function initProfileAvatarCropper({ context, reloadProfile }) {
       window.setTimeout(() => {
         currentCropCanExport = options.canvasSafe !== false;
         if (!currentCropCanExport) {
+          showRemoteAvatarPreview(src);
           resolve({ canvasSafe: false, previewOnly: true });
           return;
         }
@@ -193,6 +227,7 @@ export function initProfileAvatarCropper({ context, reloadProfile }) {
     };
 
     imageElement.removeAttribute('crossorigin');
+    resetImageElementStyles();
     imageElement.src = '';
     imageElement.src = src;
   });
@@ -230,8 +265,10 @@ export function initProfileAvatarCropper({ context, reloadProfile }) {
       currentCropCanExport = avatarSource.canvasSafe !== false;
       await launchCropper(avatarSource.src, { canvasSafe: currentCropCanExport });
 
-      if (!currentCropCanExport) lockSaveForRemoteAvatar(btnSave);
-      else {
+      if (!currentCropCanExport) {
+        showRemoteAvatarPreview(avatarSource.src);
+        lockSaveForRemoteAvatar(btnSave);
+      } else {
         clearCropFeedback();
         restoreSaveButton(btnSave, previousSaveText);
       }

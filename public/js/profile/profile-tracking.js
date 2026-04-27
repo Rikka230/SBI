@@ -14,12 +14,30 @@ import {
   uniqueById
 } from './profile-utils.js';
 
+function isDebugProfileAccessEnabled() {
+  try {
+    return localStorage.getItem('sbiDebugAccess') === 'true';
+  } catch {
+    return false;
+  }
+}
+
+function isExpectedProfileAccessError(error) {
+  const code = String(error?.code || '').toLowerCase();
+  const message = String(error?.message || '').toLowerCase();
+  return code.includes('permission-denied') || message.includes('missing or insufficient permissions') || message.includes('permission');
+}
+
 async function fetchCourseById(db, courseId) {
   try {
     const snap = await getDoc(doc(db, 'courses', courseId));
     if (!snap.exists()) return null;
     return { id: snap.id, ...snap.data() };
   } catch (error) {
+    if (isExpectedProfileAccessError(error)) {
+      if (isDebugProfileAccessEnabled()) console.debug(`[SBI Profile] Cours inaccessible : ${courseId}`, error);
+      return null;
+    }
     console.warn(`[SBI Profile] Cours inaccessible : ${courseId}`, error);
     return null;
   }
@@ -100,6 +118,11 @@ export async function renderLearningTracking({ db, uid, context, reloadProfile }
     bindTrackingSearch();
     if (context.isAdmin) bindAdminTrackingActions({ db, uid, allCourses, reloadProfile });
   } catch (error) {
+    if (isExpectedProfileAccessError(error)) {
+      if (isDebugProfileAccessEnabled()) console.debug('[SBI Profile] Suivi partiellement inaccessible :', error);
+      list.innerHTML = '<p style="color: var(--text-muted); font-size: 0.9rem;">Aucun cours accessible pour ce profil.</p>';
+      return;
+    }
     console.error(error);
     list.innerHTML = '<p style="color: var(--accent-red); font-size: 0.9rem;">Erreur de chargement du suivi.</p>';
   }
