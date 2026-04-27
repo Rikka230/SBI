@@ -1,0 +1,145 @@
+/* SBI 6.6 - Admin management pages polish */
+
+body.sbi-admin-space #view-users,
+body.sbi-admin-space #view-settings,
+body.sbi-admin-space .site-index-shell {
+    position: relative;
+}
+
+body.sbi-admin-space #view-users > div:first-child,
+body.sbi-admin-space #view-settings > div:first-child,
+body.sbi-admin-space .site-index-hero {
+    position: relative;
+    overflow: hidden;
+    padding: 1.25rem 1.35rem !important;
+    border: 1px solid rgba(42, 87, 255, 0.28) !important;
+    background: linear-gradient(135deg, rgba(42, 87, 255, 0.12), rgba(255, 255, 255, 0.025)) !important;
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%);
+    box-shadow: 0 18px 45px rgba(0,0,0,0.18);
+}
+
+body.sbi-admin-space #view-users > div:first-child::after,
+body.sbi-admin-space #view-settings > div:first-child::after,
+body.sbi-admin-space .site-index-hero::after {
+    content: '';
+    position: absolute;
+    right: 1.4rem;
+    top: 50%;
+    width: 76px;
+    height: 76px;
+    border: 1px solid rgba(42, 87, 255, 0.18);
+    transform: translateY(-50%) rotate(45deg);
+    pointer-events: none;
+}
+
+body.sbi-admin-space #view-users > div:first-child h2,
+body.sbi-admin-space .site-index-hero h1 {
+    margin: 0;
+    color: #fff !important;
+    font-size: clamp(1.55rem, 2.6vw, 2.15rem);
+    font-weight: 950;
+    letter-spacing: -0.045em;
+    font-style: italic;
+}
+
+body.sbi-admin-space .site-index-hero p,
+body.sbi-admin-space #view-users > div:first-child p,
+body.sbi-admin-space #view-settings > div:first-child p {
+    color: #aeb8d2 !important;
+}
+
+body.sbi-admin-space #search-user,
+body.sbi-admin-space #filter-role {
+    min-height: 42px;
+    border: 1px solid rgba(148, 163, 184, 0.18) !important;
+    background: rgba(5, 8, 18, 0.72) !important;
+    color: #fff !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.035);
+}
+
+body.sbi-admin-space #search-user::placeholder { color: #64748b; }
+
+body.sbi-admin-space #view-users > div:nth-of-type(2) { gap: 1.25rem !important; }
+
+body.sbi-admin-space #view-users > div:nth-of-type(2) > div,
+body.sbi-admin-space .site-media-card {
+    position: relative;
+    overflow: hidden;
+    border-radius: 0 !important;
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%);
+    border: 1px solid rgba(148, 163, 184, 0.14) !important;
+    background: linear-gradient(145deg, rgba(13, 19, 39, 0.94), rgba(8, 12, 24, 0.98)) !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 18px 45px rgba(0,0,0,0.22) !important;
+}
+
+body.sbi-admin-space #view-users > div:nth-of-type(2) > div::after,
+body.sbi-admin-space .site-media-card::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 38px;
+    height: 38px;
+    background: var(--accent-blue);
+    clip-path: polygon(100% 0, 100% 100%, 0 100%);
+    opacity: 0.75;
+    pointer-events: none;
+}
+
+body.sbi-admin-space #view-users h3,
+body.sbi-admin-space .site-media-card h2 {
+    color: #fff !important;
+    font-weight: 950;
+    letter-spacing: -0.03em;
+}
+
+body.sbi-admin-space #view-users h3::before,
+body.sbi-admin-space .site-media-card h2::before {
+    content: '';
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    margin-right: 0.55rem;
+    background: var(--accent-blue);
+    clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+    box-shadow: 0 0 14px rgba(42, 87, 255, 0.42);
+}
+
+body.sbi-admin-space #create-user-form input,
+body.sbi-admin-space #create-user-form select,
+body.sbi-admin-space #edit-user-form input,
+body.sbi-admin-space #edit-user-form select {
+    min-height: 44px;
+    border: 1px solid rgba(148, 163, 184, 0.18) !important;
+    background: rgba(5, 8, 18, 0.72) !important;
+    color: #fff !important;
+}
+
+body.sbi-admin-space #create-user-form button[type='submit'],
+body.sbi-admin-space #edit-user-form button[type='submit'] {
+    background: var(--accent-blue) !important;
+    color: #fff !important;
+    font-weight: 950 !important;
+    border: 1px solid rgba(255,255,255,0.18) !important;
+}
+
+body.sbi-admin-space #users-list-container > * {
+    border-radius: 0 !important;
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 11px), calc(100% - 11px) 100%, 0 100%);
+    border: 1px solid rgba(148, 163, 184, 0.14) !important;
+    background: rgba(5, 8, 18, 0.66) !important;
+}
+
+body.sbi-admin-space .site-index-shell { gap: 1.35rem; }
+
+body.sbi-admin-space .site-media-preview {
+    border-color: rgba(42, 87, 255, 0.16) !important;
+    background: radial-gradient(circle at 50% 35%, rgba(42, 87, 255, 0.15), transparent 42%), #050816 !important;
+}
+
+body.sbi-admin-space .site-media-btn {
+    background: rgba(42, 87, 255, 0.10) !important;
+    border-color: rgba(42, 87, 255, 0.32) !important;
+    color: #fff !important;
+    font-weight: 950 !important;
+}
