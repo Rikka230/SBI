@@ -229,6 +229,27 @@ body.sbi-admin-space.sbi-dashboard-page #main-content::after {
     mask-image: radial-gradient(circle at 52% 28%, black 0%, transparent 72%);
 }
 
+body.sbi-internal-ui::after {
+    content: 'SBI UI 6.2-bis · avatar-profile-test';
+    position: fixed;
+    left: 12px;
+    bottom: 10px;
+    z-index: 2147483000;
+    padding: 6px 9px;
+    border: 1px solid color-mix(in srgb, var(--space-accent, var(--sbi-blue)) 46%, transparent);
+    background: rgba(5, 8, 18, 0.84);
+    color: #ffffff;
+    font-size: 10px;
+    line-height: 1;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    pointer-events: none;
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 7px), calc(100% - 7px) 100%, 0 100%);
+    box-shadow: 0 0 18px color-mix(in srgb, var(--space-accent, var(--sbi-blue)) 20%, transparent);
+    opacity: 0.9;
+}
+
 @keyframes sbiAssistantNotifyWiggle {
     0% { transform: rotate(45deg) translate3d(0, 0, 0) scale(1); }
     18% { transform: rotate(62deg) translate3d(-1px, -3px, 0) scale(1.08); }
@@ -264,5 +285,11 @@ body.sbi-admin-space.sbi-dashboard-page #main-content::after {
 @media (max-width: 768px) {
     body.sbi-admin-space.sbi-dashboard-page #main-content::after {
         inset: 60px 0 0 0;
+    }
+
+    body.sbi-internal-ui::after {
+        left: 8px;
+        bottom: 8px;
+        font-size: 9px;
     }
 }
