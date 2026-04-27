@@ -3,16 +3,18 @@
  * MES COURS - Logique de navigation Formations -> Blocs -> Cours
  * =======================================================================
  *
- * Patch accès cours :
- * - formations chargées via where("students", "array-contains", uid)
- * - cours chargés via IDs de formation + titres legacy
- * - affichage compatible si courses/{id}.formations contient encore un titre
+ * Patch accès cours 6.7B :
+ * - priorité à users/{uid}.formationIds, plus stable avec des rules strictes
+ * - fallback formationsAcces legacy par titre
+ * - fallback membership where("students", "array-contains", uid)
+ * - les erreurs permission/index ne font plus tomber toute la page
  * =======================================================================
  */
 
 import { db, auth } from '/js/firebase-init.js';
 import {
     collection,
+    documentId,
     getDocs,
     doc,
     getDoc,
@@ -170,6 +172,88 @@ function normalizeFormationValues(values) {
     );
 }
 
+async function safeGetDocs(queryRef, label = 'requête Firestore') {
+    try {
+        return await getDocs(queryRef);
+    } catch (error) {
+        console.warn(`[SBI Student Access] ${label} ignorée :`, error);
+        return null;
+    }
+}
+
+async function loadFormationsByIds(formationIds) {
+    const safeIds = normalizeFormationValues(formationIds);
+    if (!safeIds.length) return [];
+
+    const formations = [];
+
+    for (const chunk of chunkArray(safeIds, 10)) {
+        const byIdsQuery = query(
+            collection(db, "formations"),
+            where(documentId(), "in", chunk)
+        );
+
+        const snap = await safeGetDocs(byIdsQuery, 'formations par IDs');
+        if (!snap) continue;
+
+        snap.forEach((docSnap) => {
+            formations.push({
+                id: docSnap.id,
+                ...docSnap.data()
+            });
+        });
+    }
+
+    return formations;
+}
+
+async function loadFormationsByTitles(formationTitles) {
+    const safeTitles = normalizeFormationValues(formationTitles);
+    if (!safeTitles.length) return [];
+
+    const formations = [];
+
+    for (const chunk of chunkArray(safeTitles, 10)) {
+        const byTitleQuery = query(
+            collection(db, "formations"),
+            where("titre", "in", chunk)
+        );
+
+        const snap = await safeGetDocs(byTitleQuery, 'formations par titres legacy');
+        if (!snap) continue;
+
+        snap.forEach((docSnap) => {
+            formations.push({
+                id: docSnap.id,
+                ...docSnap.data()
+            });
+        });
+    }
+
+    return formations;
+}
+
+async function loadFormationsByMembership() {
+    const assignedQuery = query(
+        collection(db, "formations"),
+        where("students", "array-contains", currentUid)
+    );
+
+    const snap = await safeGetDocs(assignedQuery, 'formations par students');
+    if (!snap) return [];
+
+    const formations = [];
+
+    snap.forEach((docSnap) => {
+        formations.push({
+            id: docSnap.id,
+            ...docSnap.data()
+        });
+    });
+
+    return formations;
+}
+
 async function loadAssignedFormations() {
     const list = document.getElementById('formations-list');
     if (list) {
@@ -179,34 +263,26 @@ async function loadAssignedFormations() {
     assignedFormations = [];
 
     if (isAdminPreview()) {
-        const snap = await getDocs(collection(db, "formations"));
+        const snap = await safeGetDocs(collection(db, "formations"), 'toutes les formations admin');
 
-        snap.forEach((docSnap) => {
-            assignedFormations.push({
-                id: docSnap.id,
-                ...docSnap.data()
+        if (snap) {
+            snap.forEach((docSnap) => {
+                assignedFormations.push({
+                    id: docSnap.id,
+                    ...docSnap.data()
+                });
             });
-        });
+        }
 
         assignedFormations.sort(sortByTitle);
         return;
     }
 
-    const assignedQuery = query(
-        collection(db, "formations"),
-        where("students", "array-contains", currentUid)
-    );
-
-    const snap = await getDocs(assignedQuery);
-
-    snap.forEach((docSnap) => {
-        assignedFormations.push({
-            id: docSnap.id,
-            ...docSnap.data()
-        });
-    });
-
-    assignedFormations.sort(sortByTitle);
+    assignedFormations = uniqById([
+        ...await loadFormationsByIds(userData.formationIds || []),
+        ...await loadFormationsByTitles(userData.formationsAcces || []),
+        ...await loadFormationsByMembership()
+    ]).sort(sortByTitle);
 }
 
 async function loadActiveCoursesByFormationValues(formationValues) {
@@ -226,7 +302,8 @@ async function loadActiveCoursesByFormationValues(formationValues) {
             where("actif", "==", true)
         );
 
-        const snap = await getDocs(coursesQuery);
+        const snap = await safeGetDocs(coursesQuery, 'cours actifs par formation');
+        if (!snap) continue;
 
         snap.forEach((docSnap) => {
             courses.push({
@@ -243,19 +320,22 @@ async function loadAssignedCourses() {
     allCourses = [];
 
     if (isAdminPreview()) {
-        const snap = await getDocs(
+        const snap = await safeGetDocs(
             query(
                 collection(db, "courses"),
                 where("actif", "==", true)
-            )
+            ),
+            'cours actifs admin preview'
         );
 
-        snap.forEach((docSnap) => {
-            allCourses.push({
-                id: docSnap.id,
-                ...docSnap.data()
+        if (snap) {
+            snap.forEach((docSnap) => {
+                allCourses.push({
+                    id: docSnap.id,
+                    ...docSnap.data()
+                });
             });
-        });
+        }
 
         allCourses.sort(sortCourses);
         return;
