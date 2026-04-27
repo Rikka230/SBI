@@ -39,5 +39,11 @@
     ],
     "cleanUrls": false,
     "trailingSlash": false
+  },
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "storage": {
+    "rules": "storage.rules"
   }
 }
