@@ -1,11 +1,11 @@
 @echo off
-setlocal
+setlocal enabledelayedexpansion
 
-title SBI - Firebase Preview Deploy
+title SBI - Firebase Preview Deploy Branch
 
 echo.
 echo ========================================
-echo   SBI - Firebase Preview Deploy
+echo   SBI - Firebase Preview Deploy BRANCH
 echo ========================================
 echo.
 
@@ -18,13 +18,17 @@ if errorlevel 1 (
   exit /b 1
 )
 
-set CHANNEL=avatar-profile-test
+for /f "delims=" %%B in ('git branch --show-current') do set BRANCH=%%B
+if "%BRANCH%"=="" set BRANCH=preview
 
-echo [INFO] Branche locale :
-git branch --show-current
+set CHANNEL=%BRANCH:/=-%
+set CHANNEL=%CHANNEL:_=-%
+set CHANNEL=%CHANNEL:.=-%
 
+echo [INFO] Branche locale : %BRANCH%
+echo [INFO] Channel Firebase : %CHANNEL%
 echo.
-echo [INFO] Deploy preview Firebase Hosting channel : %CHANNEL%
+echo [INFO] Deploy preview Firebase Hosting...
 firebase hosting:channel:deploy %CHANNEL% --expires 7d --project sbi-web-4f6b4
 
 if errorlevel 1 (
@@ -35,7 +39,7 @@ if errorlevel 1 (
 )
 
 echo.
-echo [OK] Preview Firebase deployee.
+echo [OK] Preview Firebase deployee pour la branche %BRANCH%.
 echo Copie l'URL affichee au-dessus.
 echo.
 pause
