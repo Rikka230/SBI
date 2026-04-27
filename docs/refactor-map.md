@@ -222,3 +222,59 @@ Pour réactiver les logs détaillés :
 ```js
 localStorage.setItem('sbiDebugAccess', 'true')
 ```
+
+
+## Étape 7.0 - Découpe admin-courses.js
+
+Statut : patch préparé.
+
+Objectif : réduire le fichier critique `public/admin/js/admin-courses.js` sans changer le comportement métier.
+
+Résultat :
+
+- `admin-courses.js` passe d'environ 1498 lignes à environ 1149 lignes.
+- Les blocs les plus autonomes sont déplacés dans `public/admin/js/courses/`.
+- La création/édition/suppression de cours reste orchestrée par `admin-courses.js`.
+
+Nouveaux modules :
+
+- `public/admin/js/courses/course-icons.js`
+  - icônes SVG utilisées par l'éditeur de cours.
+
+- `public/admin/js/courses/course-quiz-builder.js`
+  - ajout question quiz ;
+  - ajout option ;
+  - collecte des questions ;
+  - rendu du builder quiz.
+
+- `public/admin/js/courses/course-formations-ui.js`
+  - rendu des formations accessibles ;
+  - modal d'assignation prof/élève ;
+  - pills formations ;
+  - filtre bibliothèque ;
+  - liste blocs.
+
+- `public/admin/js/courses/course-save-feedback.js`
+  - messages de sauvegarde ;
+  - auteur affiché ;
+  - filtrage brouillons admin.
+
+- `public/admin/js/courses/course-notifications.js`
+  - notifications validation ;
+  - notifications publication ;
+  - notifications refus ;
+  - résolution des notifications de validation.
+
+Points à tester :
+
+- admin : création formation ;
+- admin : modification accès formation ;
+- prof/admin : création cours texte ;
+- prof/admin : création cours quiz ;
+- brouillon ;
+- soumission validation ;
+- publication admin ;
+- refus admin ;
+- visualisation preview ;
+- duplication cours ;
+- suppression cours + médias Storage.
