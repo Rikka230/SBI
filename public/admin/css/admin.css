@@ -1,3 +1,7 @@
+@import url('/admin/css/sbi-internal-theme.css');
+@import url('/admin/css/sbi-ui-polish.css');
+@import url('/admin/css/sbi-ui-fixes.css');
+
 /**
  * =======================================================================
  * ADMIN THEME - Design Firebase & Couleurs (A-Z)
