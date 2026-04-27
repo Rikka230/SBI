@@ -15,6 +15,10 @@ service cloud.firestore {
       return /databases/$(database)/documents/users/$(uid);
     }
 
+    function formationPath(formationId) {
+      return /databases/$(database)/documents/formations/$(formationId);
+    }
+
     function hasUserDoc() {
       return signedIn() && exists(userPath(request.auth.uid));
     }
@@ -101,16 +105,35 @@ service cloud.firestore {
         && currentUser().formationIds.size() > 0;
     }
 
+    function currentUserHasFormationsAcces() {
+      return currentUser().keys().hasAny(['formationsAcces'])
+        && currentUser().formationsAcces is list
+        && currentUser().formationsAcces.size() > 0;
+    }
+
     function userDataHasFormationIds(userData) {
       return userData.keys().hasAny(['formationIds'])
         && userData.formationIds is list
         && userData.formationIds.size() > 0;
     }
 
+    function userDataHasFormationsAcces(userData) {
+      return userData.keys().hasAny(['formationsAcces'])
+        && userData.formationsAcces is list
+        && userData.formationsAcces.size() > 0;
+    }
+
     function sharedFormationWithCurrentUser(userData) {
-      return currentUserHasFormationIds()
-        && userDataHasFormationIds(userData)
-        && userData.formationIds.hasAny(currentUser().formationIds);
+      return (
+          currentUserHasFormationIds()
+          && userDataHasFormationIds(userData)
+          && userData.formationIds.hasAny(currentUser().formationIds)
+        )
+        || (
+          currentUserHasFormationsAcces()
+          && userDataHasFormationsAcces(userData)
+          && userData.formationsAcces.hasAny(currentUser().formationsAcces)
+        );
     }
 
     function isAdminProfile(userData) {
@@ -135,9 +158,49 @@ service cloud.firestore {
     }
 
     function courseSharedWithCurrentUser(courseData) {
-      return currentUserHasFormationIds()
-        && courseHasFormations(courseData)
-        && courseData.formations.hasAny(currentUser().formationIds);
+      return courseHasFormations(courseData)
+        && (
+          (
+            currentUserHasFormationIds()
+            && courseData.formations.hasAny(currentUser().formationIds)
+          )
+          || (
+            currentUserHasFormationsAcces()
+            && courseData.formations.hasAny(currentUser().formationsAcces)
+          )
+        );
+    }
+
+    function formationDocHasCurrentUser(formationId) {
+      return signedIn()
+        && formationId is string
+        && exists(formationPath(formationId))
+        && (
+          (
+            get(formationPath(formationId)).data.keys().hasAny(['students'])
+            && get(formationPath(formationId)).data.students is list
+            && request.auth.uid in get(formationPath(formationId)).data.students
+          )
+          || (
+            get(formationPath(formationId)).data.keys().hasAny(['profs'])
+            && get(formationPath(formationId)).data.profs is list
+            && request.auth.uid in get(formationPath(formationId)).data.profs
+          )
+        );
+    }
+
+    function courseFormationAtAllowsCurrentUser(courseData, index) {
+      return courseHasFormations(courseData)
+        && courseData.formations.size() > index
+        && formationDocHasCurrentUser(courseData.formations[index]);
+    }
+
+    function courseLinkedToReadableFormation(courseData) {
+      return courseFormationAtAllowsCurrentUser(courseData, 0)
+        || courseFormationAtAllowsCurrentUser(courseData, 1)
+        || courseFormationAtAllowsCurrentUser(courseData, 2)
+        || courseFormationAtAllowsCurrentUser(courseData, 3)
+        || courseFormationAtAllowsCurrentUser(courseData, 4);
     }
 
     function canReadCourse(courseData) {
@@ -149,7 +212,10 @@ service cloud.firestore {
         || (
           isActiveUser()
           && courseData.actif == true
-          && courseSharedWithCurrentUser(courseData)
+          && (
+            courseSharedWithCurrentUser(courseData)
+            || courseLinkedToReadableFormation(courseData)
+          )
         );
     }
 
@@ -173,6 +239,11 @@ service cloud.firestore {
         && formationId in currentUser().formationIds;
     }
 
+    function currentUserHasFormationAccess(formationTitle) {
+      return currentUserHasFormationsAcces()
+        && formationTitle in currentUser().formationsAcces;
+    }
+
     function isFormationStudent(formationData) {
       return formationData.keys().hasAny(['students'])
         && formationData.students is list
@@ -191,6 +262,7 @@ service cloud.firestore {
           isActiveUser()
           && (
             currentUserHasFormationId(formationId) ||
+            currentUserHasFormationAccess(formationData.titre) ||
             isFormationStudent(formationData) ||
             isFormationTeacher(formationData)
           )
