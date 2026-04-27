@@ -87,6 +87,148 @@ body.sbi-internal-ui .sbi-assistant.is-wandering .sbi-assistant__dot {
     overflow-y: auto;
 }
 
+body.sbi-internal-ui .logo-zone {
+    position: relative;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 0.62rem !important;
+    min-width: 0;
+}
+
+body.sbi-internal-ui .logo-zone::before {
+    content: '';
+    width: 18px;
+    height: 18px;
+    flex: 0 0 auto;
+    background: linear-gradient(135deg, var(--space-accent, var(--sbi-blue)), color-mix(in srgb, var(--space-accent, var(--sbi-blue)) 62%, #ffffff));
+    clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+    box-shadow: 0 0 14px color-mix(in srgb, var(--space-accent, var(--sbi-blue)) 42%, transparent);
+}
+
+body.sbi-internal-ui .logo-zone svg {
+    display: none !important;
+}
+
+body.sbi-internal-ui .logo-zone span {
+    color: inherit !important;
+}
+
+body.sbi-internal-ui .logo-zone span:first-of-type {
+    font-size: 0 !important;
+    line-height: 1 !important;
+}
+
+body.sbi-internal-ui .logo-zone span:first-of-type::after {
+    content: 'SBI';
+    display: inline-block;
+    color: var(--space-accent, var(--sbi-blue));
+    font-size: 0.9rem;
+    line-height: 1;
+    font-weight: 950;
+    letter-spacing: 0.08em;
+    font-style: italic;
+}
+
+body.sbi-internal-ui .logo-zone span:nth-of-type(2) {
+    font-size: 0 !important;
+    line-height: 1 !important;
+}
+
+body.sbi-admin-space .logo-zone span:nth-of-type(2)::after,
+body.sbi-student-space .logo-zone span:nth-of-type(2)::after,
+body.sbi-teacher-space .logo-zone span:nth-of-type(2)::after {
+    display: inline-block;
+    color: var(--text-main, #ffffff);
+    font-size: 0.68rem;
+    line-height: 1;
+    font-weight: 850;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    opacity: 0.82;
+}
+
+body.sbi-admin-space .logo-zone span:nth-of-type(2)::after { content: 'Console'; }
+body.sbi-student-space .logo-zone span:nth-of-type(2)::after { content: 'Student'; }
+body.sbi-teacher-space .logo-zone span:nth-of-type(2)::after { content: 'Teacher'; }
+
+body.sbi-student-space .logo-zone span:nth-of-type(2)::after,
+body.sbi-teacher-space .logo-zone span:nth-of-type(2)::after {
+    color: var(--sbi-ink, #101827);
+}
+
+body.sbi-internal-ui .side-panel {
+    overflow: hidden;
+}
+
+body.sbi-internal-ui .side-panel::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    pointer-events: none;
+    opacity: 0.62;
+    background: linear-gradient(180deg, transparent 0%, var(--sbi-panel-line) 18%, rgba(255,255,255,0.18) 48%, var(--sbi-panel-line) 72%, transparent 100%);
+    filter: drop-shadow(0 0 8px color-mix(in srgb, var(--space-accent, var(--sbi-blue)) 36%, transparent));
+}
+
+body.sbi-internal-ui #left-panel::before { right: 0; }
+body.sbi-internal-ui #right-panel::before { left: 0; }
+
+body.sbi-internal-ui .panel-header::before {
+    content: '';
+    position: absolute;
+    left: 18px;
+    right: 18px;
+    bottom: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--sbi-panel-line), transparent);
+    opacity: 0.72;
+    pointer-events: none;
+}
+
+body.sbi-internal-ui .profile-widget .avatar,
+body.sbi-internal-ui #top-user-avatar,
+body.sbi-internal-ui #nav-avatar {
+    border-radius: 12px !important;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--space-accent, var(--sbi-blue)) 22%, transparent), 0 10px 24px rgba(15, 23, 42, 0.12);
+}
+
+body.sbi-internal-ui .user-info .name,
+body.sbi-internal-ui #top-user-name {
+    letter-spacing: -0.02em;
+    font-weight: 900 !important;
+}
+
+body.sbi-internal-ui .user-info .role,
+body.sbi-internal-ui #top-user-level {
+    color: var(--space-accent, var(--sbi-blue)) !important;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-size: 0.68rem !important;
+    font-weight: 900 !important;
+}
+
+body.sbi-admin-space.sbi-dashboard-page #main-content::before {
+    animation: sbiAdminGridBreath 6.5s ease-in-out infinite alternate;
+}
+
+body.sbi-admin-space.sbi-dashboard-page #main-content::after {
+    content: '';
+    position: fixed;
+    inset: 60px 280px 0 230px;
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.12;
+    background:
+        radial-gradient(circle at 22% 18%, rgba(255,255,255,0.72) 0 1px, transparent 2px),
+        radial-gradient(circle at 72% 38%, rgba(42,87,255,0.72) 0 1px, transparent 2px),
+        radial-gradient(circle at 54% 78%, rgba(255,255,255,0.52) 0 1px, transparent 2px);
+    background-size: 260px 220px, 320px 260px, 380px 300px;
+    animation: sbiAdminGridSpark 9s ease-in-out infinite;
+    mask-image: radial-gradient(circle at 52% 28%, black 0%, transparent 72%);
+}
+
 @keyframes sbiAssistantNotifyWiggle {
     0% { transform: rotate(45deg) translate3d(0, 0, 0) scale(1); }
     18% { transform: rotate(62deg) translate3d(-1px, -3px, 0) scale(1.08); }
@@ -100,4 +242,27 @@ body.sbi-internal-ui .sbi-assistant.is-wandering .sbi-assistant__dot {
     28% { transform: rotate(45deg) translate3d(-5px, -8px, 0); }
     55% { transform: rotate(88deg) translate3d(-2px, -5px, 0); }
     100% { transform: rotate(45deg) translate3d(0, 0, 0); }
+}
+
+@keyframes sbiAdminGridBreath {
+    0% { opacity: 0.12; filter: drop-shadow(0 0 0 rgba(42,87,255,0)); }
+    100% { opacity: 0.24; filter: drop-shadow(0 0 10px rgba(42,87,255,0.16)); }
+}
+
+@keyframes sbiAdminGridSpark {
+    0%, 100% { opacity: 0.08; transform: translate3d(0, 0, 0); }
+    42% { opacity: 0.16; transform: translate3d(10px, -4px, 0); }
+    68% { opacity: 0.11; transform: translate3d(-6px, 3px, 0); }
+}
+
+@media (max-width: 1024px) {
+    body.sbi-admin-space.sbi-dashboard-page #main-content::after {
+        inset: 60px 0 0 230px;
+    }
+}
+
+@media (max-width: 768px) {
+    body.sbi-admin-space.sbi-dashboard-page #main-content::after {
+        inset: 60px 0 0 0;
+    }
 }
