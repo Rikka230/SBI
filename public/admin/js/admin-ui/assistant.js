@@ -1,3 +1,7 @@
+const NOTIFICATION_SOUND_KEY = 'sbi-assistant-last-sounded-count-v3';
+let assistantAudioUnlocked = false;
+let assistantAudioContext = null;
+
 export function initAssistantPrototype() {
     if (document.querySelector('.sbi-assistant')) return;
 
@@ -7,6 +11,8 @@ export function initAssistantPrototype() {
     const isStudent = path.startsWith('/student/');
 
     if (!isAdmin && !isTeacher && !isStudent) return;
+
+    primeAssistantAudioOnGesture();
 
     const config = getAssistantConfig({ isAdmin, isTeacher, isStudent });
     const assistant = document.createElement('div');
@@ -138,25 +144,40 @@ function initAssistantNotificationSync(assistant) {
     const badge = assistant?.querySelector('.sbi-assistant__badge');
     if (!assistant || !badge) return;
 
-    let lastCount = 0;
     let initialized = false;
+    const bootAt = Date.now();
 
     const syncBadge = () => {
         const bellBadge = document.getElementById('bell-badge');
         const rawValue = bellBadge?.textContent?.trim() || '0';
         const visible = Boolean(bellBadge) && bellBadge.style.display !== 'none' && rawValue !== '0';
         const numericValue = rawValue === '9+' ? 10 : Number.parseInt(rawValue, 10) || 0;
+        const storedValue = Number.parseInt(localStorage.getItem(NOTIFICATION_SOUND_KEY) || '0', 10) || 0;
 
         badge.textContent = rawValue;
         assistant.classList.toggle('has-notifications', visible && numericValue > 0);
 
-        if (initialized && numericValue > lastCount) {
+        if (!initialized) {
+            initialized = true;
+            if (numericValue > storedValue) {
+                localStorage.setItem(NOTIFICATION_SOUND_KEY, String(numericValue));
+            }
+            return;
+        }
+
+        const bootSettled = Date.now() - bootAt > 1800;
+        const isNewNotification = visible && numericValue > storedValue;
+
+        if (isNewNotification && bootSettled && document.visibilityState === 'visible') {
+            localStorage.setItem(NOTIFICATION_SOUND_KEY, String(numericValue));
             assistant.classList.add('has-new-notification');
+            playAssistantNotificationTone();
             window.setTimeout(() => assistant.classList.remove('has-new-notification'), 950);
         }
 
-        lastCount = numericValue;
-        initialized = true;
+        if (!visible && storedValue !== 0) {
+            localStorage.setItem(NOTIFICATION_SOUND_KEY, '0');
+        }
     };
 
     const observer = new MutationObserver(syncBadge);
@@ -181,6 +202,58 @@ function initAssistantNotificationSync(assistant) {
     };
 
     startObserving();
+}
+
+function primeAssistantAudioOnGesture() {
+    if (window.__SBI_ASSISTANT_AUDIO_PRIMED === true) return;
+    window.__SBI_ASSISTANT_AUDIO_PRIMED = true;
+
+    const unlock = () => {
+        assistantAudioUnlocked = true;
+        try {
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            if (AudioContextClass && !assistantAudioContext) {
+                assistantAudioContext = new AudioContextClass();
+                assistantAudioContext.resume?.().catch?.(() => {});
+            }
+        } catch (error) {
+            assistantAudioContext = null;
+        }
+    };
+
+    window.addEventListener('pointerdown', unlock, { once: true, passive: true });
+    window.addEventListener('keydown', unlock, { once: true });
+}
+
+function playAssistantNotificationTone() {
+    if (!assistantAudioUnlocked) return;
+
+    try {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        const ctx = assistantAudioContext || (AudioContextClass ? new AudioContextClass() : null);
+        if (!ctx) return;
+        assistantAudioContext = ctx;
+        ctx.resume?.().catch?.(() => {});
+
+        const now = ctx.currentTime;
+        const gain = ctx.createGain();
+        const osc = ctx.createOscillator();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, now);
+        osc.frequency.exponentialRampToValueAtTime(1320, now + 0.08);
+
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.exponentialRampToValueAtTime(0.045, now + 0.018);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.2);
+    } catch (error) {
+        console.warn('[SBI Assistant] Son de notification indisponible :', error);
+    }
 }
 
 function initAssistantWander(assistant) {

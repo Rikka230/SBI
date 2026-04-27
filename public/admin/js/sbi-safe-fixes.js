@@ -1,26 +1,7 @@
 (function(){
   const css='/admin/css/sbi-ui-fixes.css';
   const key='sbi-assistant-last-notified-count-v2';
-
-  window.__SBI_ASSISTANT_AUDIO_DISABLED=true;
-
-  const NativeAudioContext=window.AudioContext;
-  const NativeWebkitAudioContext=window.webkitAudioContext;
-  function SilentAssistantAudioContext(){
-    this.state='suspended';
-    this.currentTime=0;
-  }
-  SilentAssistantAudioContext.prototype.createGain=function(){return {gain:{setValueAtTime:function(){},exponentialRampToValueAtTime:function(){}},connect:function(){}};};
-  SilentAssistantAudioContext.prototype.createOscillator=function(){return {type:'sine',frequency:{setValueAtTime:function(){},exponentialRampToValueAtTime:function(){}},connect:function(){},start:function(){},stop:function(){}};};
-  SilentAssistantAudioContext.prototype.close=function(){return Promise.resolve();};
-  window.AudioContext=SilentAssistantAudioContext;
-  window.webkitAudioContext=SilentAssistantAudioContext;
-
-  function restoreAudioContext(){
-    if(NativeAudioContext) window.AudioContext=NativeAudioContext;
-    if(NativeWebkitAudioContext) window.webkitAudioContext=NativeWebkitAudioContext;
-  }
-  window.addEventListener('load',function(){setTimeout(restoreAudioContext,2500);},{once:true});
+  window.__SBI_ASSISTANT_AUDIO_DISABLED=false;
 
   function addCss(){
     if(document.querySelector('link[href="'+css+'"]')) return;
