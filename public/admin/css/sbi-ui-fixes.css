@@ -34,19 +34,29 @@ html body.sbi-page-exiting.sbi-internal-ui .sbi-assistant {
     pointer-events: auto !important;
 }
 
-html body.sbi-internal-ui .sbi-assistant:not(.is-open):not(.is-peeking):hover .sbi-assistant__panel,
-html body.sbi-internal-ui .sbi-assistant:not(.is-open):not(.is-peeking):focus-within .sbi-assistant__panel,
-html body.sbi-internal-ui .sbi-assistant:not(.is-open):not(.is-peeking) .sbi-assistant__panel {
+html body.sbi-internal-ui .sbi-assistant:not(.is-open):hover .sbi-assistant__panel,
+html body.sbi-internal-ui .sbi-assistant:not(.is-open):focus-within .sbi-assistant__panel,
+html body.sbi-internal-ui .sbi-assistant:not(.is-open) .sbi-assistant__panel,
+html body.sbi-internal-ui .sbi-assistant.is-peeking:not(.is-open) .sbi-assistant__panel {
     opacity: 0 !important;
     transform: translateX(12px) scale(0.96) !important;
     pointer-events: none !important;
 }
 
-html body.sbi-internal-ui .sbi-assistant.is-open .sbi-assistant__panel,
-html body.sbi-internal-ui .sbi-assistant.is-peeking .sbi-assistant__panel {
+html body.sbi-internal-ui .sbi-assistant.is-open .sbi-assistant__panel {
     opacity: 1 !important;
     transform: translateX(0) scale(1) !important;
     pointer-events: auto !important;
+}
+
+body.sbi-admin-space #view-dashboard,
+body.sbi-admin-space #view-dashboard > div,
+body.sbi-admin-space #view-dashboard > div:nth-of-type(2) {
+    animation: none !important;
+}
+
+body.sbi-admin-space #view-dashboard > div:nth-of-type(2) {
+    transform: none !important;
 }
 
 body.sbi-internal-ui .sbi-assistant__trigger {
