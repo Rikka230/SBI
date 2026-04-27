@@ -1,0 +1,206 @@
+/* SBI 6.4B - Admin cockpit cleanup */
+
+body.sbi-admin-space {
+    --sbi-admin-line: rgba(42, 87, 255, 0.28);
+    --sbi-admin-soft-line: rgba(148, 163, 184, 0.14);
+}
+
+body.sbi-admin-space .page-title {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.65rem;
+    color: #fff;
+    font-size: 0 !important;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+body.sbi-admin-space .page-title::before {
+    content: '';
+    width: 16px;
+    height: 16px;
+    background: linear-gradient(135deg, var(--accent-blue), #9bb4ff);
+    clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+    box-shadow: 0 0 16px rgba(42, 87, 255, 0.42);
+}
+
+body.sbi-admin-space .page-title::after {
+    content: 'SBI ADMIN CORE';
+    font-size: 0.76rem;
+    font-weight: 950;
+    line-height: 1;
+    color: #fff;
+}
+
+body.sbi-admin-space #view-dashboard > div:first-child {
+    position: relative;
+    padding: 1.2rem 1.35rem;
+    border: 1px solid var(--sbi-admin-line);
+    background: linear-gradient(135deg, rgba(42,87,255,0.12), rgba(255,255,255,0.025));
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%);
+    box-shadow: 0 18px 45px rgba(0,0,0,0.18);
+}
+
+body.sbi-admin-space #view-dashboard h2,
+body.sbi-admin-space #view-users h2,
+body.sbi-admin-space #view-formations h2,
+body.sbi-admin-space #view-settings h2 {
+    margin-top: 0;
+    font-size: clamp(1.45rem, 2.4vw, 2rem);
+    font-weight: 950;
+    letter-spacing: -0.04em;
+    color: #fff !important;
+}
+
+body.sbi-admin-space #view-dashboard h2::before,
+body.sbi-admin-space #view-users h2::before,
+body.sbi-admin-space #view-formations h2::before,
+body.sbi-admin-space #view-settings h2::before {
+    content: '';
+    display: inline-block;
+    width: 11px;
+    height: 11px;
+    margin-right: 0.65rem;
+    background: var(--accent-blue);
+    clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+    box-shadow: 0 0 14px rgba(42, 87, 255, 0.5);
+    vertical-align: 0.05em;
+}
+
+body.sbi-admin-space #view-dashboard > div:nth-of-type(2) > div,
+body.sbi-admin-space .stat-card,
+body.sbi-admin-space #view-users > div:nth-of-type(2) > div,
+body.sbi-admin-space #edit-user-modal > div {
+    border-radius: 0 !important;
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%);
+    border: 1px solid var(--sbi-admin-soft-line) !important;
+    background: linear-gradient(145deg, rgba(13, 19, 39, 0.94), rgba(8, 12, 24, 0.98)) !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 18px 45px rgba(0,0,0,0.22);
+}
+
+body.sbi-admin-space #view-dashboard > div:nth-of-type(2) > div:hover,
+body.sbi-admin-space .stat-card:hover,
+body.sbi-admin-space #view-users > div:nth-of-type(2) > div:hover {
+    border-color: rgba(42, 87, 255, 0.38) !important;
+    transform: translateY(-2px);
+    transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 22px 56px rgba(0,0,0,0.26), 0 0 32px rgba(42,87,255,0.08);
+}
+
+body.sbi-admin-space #view-dashboard h3[id^='stat-'] {
+    color: #fff !important;
+    text-shadow: 0 0 18px rgba(42,87,255,0.16);
+}
+
+body.sbi-admin-space input,
+body.sbi-admin-space select,
+body.sbi-admin-space textarea {
+    border-radius: 0 !important;
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 9px), calc(100% - 9px) 100%, 0 100%);
+}
+
+body.sbi-admin-space #btn-regen-pwd,
+body.sbi-admin-space #btn-refresh-server-stats,
+body.sbi-admin-space #delete-user-btn,
+body.sbi-admin-space button[type='submit'],
+body.sbi-admin-space #reset-pwd-btn,
+body.sbi-admin-space #close-modal-btn {
+    border-radius: 0 !important;
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 11px), calc(100% - 11px) 100%, 0 100%);
+    transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
+}
+
+body.sbi-admin-space #btn-regen-pwd:hover,
+body.sbi-admin-space #btn-refresh-server-stats:hover,
+body.sbi-admin-space #delete-user-btn:hover,
+body.sbi-admin-space button[type='submit']:hover,
+body.sbi-admin-space #reset-pwd-btn:hover,
+body.sbi-admin-space #close-modal-btn:hover {
+    transform: translateY(-1px);
+}
+
+body.sbi-admin-space #btn-regen-pwd {
+    width: 48px;
+    min-width: 48px;
+    font-size: 0 !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    background: linear-gradient(145deg, #111827, #0b1020) !important;
+    border: 1px solid rgba(42,87,255,0.34) !important;
+}
+
+body.sbi-admin-space #btn-regen-pwd::before,
+body.sbi-admin-space #btn-refresh-server-stats::before,
+body.sbi-admin-space #delete-user-btn::before {
+    content: '';
+    width: 18px;
+    height: 18px;
+    display: inline-block;
+    flex: 0 0 auto;
+    margin-right: 0.55rem;
+    background: currentColor;
+}
+
+body.sbi-admin-space #btn-regen-pwd::before {
+    margin-right: 0;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M17.7 6.3A8 8 0 1 0 19.7 14h-2.1A6 6 0 1 1 12 6c1.7 0 3.1.7 4.2 1.8L13 11h8V3l-3.3 3.3z'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+body.sbi-admin-space #btn-refresh-server-stats::before {
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M17.7 6.3A8 8 0 1 0 19.7 14h-2.1A6 6 0 1 1 12 6c1.7 0 3.1.7 4.2 1.8L13 11h8V3l-3.3 3.3z'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+body.sbi-admin-space #delete-user-btn::before {
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2 1 21h22L12 2zm1 16h-2v-2h2v2zm0-4h-2v-4h2v4z'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+body.sbi-admin-space #btn-refresh-server-stats {
+    color: #fff !important;
+    border-color: rgba(42,87,255,0.36) !important;
+    background: rgba(42,87,255,0.08) !important;
+}
+
+body.sbi-admin-space #delete-user-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+body.sbi-admin-space .formation-card {
+    border-radius: 0 !important;
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 22px), calc(100% - 22px) 100%, 0 100%);
+    background: linear-gradient(145deg, rgba(13, 19, 39, 0.95), rgba(8, 12, 24, 0.98)) !important;
+    border-color: rgba(42,87,255,0.28) !important;
+}
+
+body.sbi-admin-space .formation-card:hover {
+    border-color: rgba(42,87,255,0.7) !important;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.32), 0 0 34px rgba(42,87,255,0.12) !important;
+}
+
+body.sbi-admin-space .formation-card.live {
+    border-color: rgba(255,74,74,0.26) !important;
+}
+
+body.sbi-admin-space .formation-card.live:hover {
+    border-color: rgba(255,74,74,0.56) !important;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.32), 0 0 34px rgba(255,74,74,0.1) !important;
+}
+
+body.sbi-admin-space #god-mode-container {
+    border-radius: 0 !important;
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 11px), calc(100% - 11px) 100%, 0 100%);
+}
+
+body.sbi-admin-space #edit-user-modal h3::before {
+    content: '';
+    display: inline-block;
+    width: 11px;
+    height: 11px;
+    margin-right: 0.55rem;
+    background: var(--accent-blue);
+    clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+}
