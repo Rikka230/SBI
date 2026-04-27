@@ -83,7 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const topAvatar = document.getElementById('top-user-avatar');
             if (topAvatar) {
-                topAvatar.innerHTML = `<img src="${avatarUrl}" style="width:100%; height:100%; object-fit:cover;">`;
+                topAvatar.innerHTML = `<img src="${avatarUrl}" style="width:100%; height:100%; object-fit:cover;" onerror="this.remove(); this.parentElement.textContent='${displayName.charAt(0).toUpperCase()}';">`;
             }
 
             const topLevel = document.getElementById('top-user-level');

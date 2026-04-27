@@ -84,7 +84,7 @@ function updateTeacherTopbar(profile) {
 
     const topAvatar = document.getElementById('top-user-avatar');
     if (topAvatar) {
-        topAvatar.innerHTML = `<img src="${escapeAttr(avatarUrl)}" alt="Avatar" style="width:100%; height:100%; object-fit:cover;">`;
+        topAvatar.innerHTML = `<img src="${escapeAttr(avatarUrl)}" alt="Avatar" style="width:100%; height:100%; object-fit:cover;" onerror="this.remove(); this.parentElement.textContent='${escapeAttr(displayName.charAt(0).toUpperCase())}';">`;
     }
 }
 

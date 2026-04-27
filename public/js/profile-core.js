@@ -191,6 +191,34 @@ const fetchFormationsByIds = async (formationIds) => {
     return formations.filter(Boolean).sort(sortByTitle);
 };
 
+const fetchFormationsByTitles = async (formationTitles) => {
+    const titles = normalizeIdList(formationTitles);
+    if (!titles.length) return [];
+
+    const formations = [];
+
+    for (const chunk of chunkArray(titles, 10)) {
+        try {
+            const formationsQuery = query(
+                collection(db, "formations"),
+                where("titre", "in", chunk)
+            );
+
+            const snap = await getDocs(formationsQuery);
+            snap.forEach((formationDoc) => {
+                formations.push({
+                    id: formationDoc.id,
+                    ...formationDoc.data()
+                });
+            });
+        } catch (error) {
+            console.warn('[SBI Profile] Formations par titres legacy indisponibles :', error);
+        }
+    }
+
+    return uniqueById(formations).sort(sortByTitle);
+};
+
 const fetchAssignedFormationsByMembership = async (uid, targetUserData = {}) => {
     if (!uid) return [];
 
@@ -199,32 +227,44 @@ const fetchAssignedFormationsByMembership = async (uid, targetUserData = {}) => 
     }
 
     const membershipField = isTeacherProfile(targetUserData) ? 'profs' : 'students';
-    const formationsQuery = query(
-        collection(db, "formations"),
-        where(membershipField, "array-contains", uid)
-    );
 
-    const snap = await getDocs(formationsQuery);
-    const formations = [];
+    try {
+        const formationsQuery = query(
+            collection(db, "formations"),
+            where(membershipField, "array-contains", uid)
+        );
 
-    snap.forEach((formationDoc) => {
-        formations.push({
-            id: formationDoc.id,
-            ...formationDoc.data()
+        const snap = await getDocs(formationsQuery);
+        const formations = [];
+
+        snap.forEach((formationDoc) => {
+            formations.push({
+                id: formationDoc.id,
+                ...formationDoc.data()
+            });
         });
-    });
 
-    return formations.sort(sortByTitle);
+        return formations.sort(sortByTitle);
+    } catch (error) {
+        console.warn(`[SBI Profile] Formations par ${membershipField} indisponibles :`, error);
+        return [];
+    }
 };
 
 const fetchAssignedFormationsForUser = async (uid, targetUserData = {}) => {
     const indexedFormationIds = getSharedFormationIdsForProfile(targetUserData);
 
-    if (indexedFormationIds.length > 0) {
-        return fetchFormationsByIds(indexedFormationIds);
-    }
+    const [idFormations, titleFormations, membershipFormations] = await Promise.all([
+        fetchFormationsByIds(indexedFormationIds),
+        fetchFormationsByTitles(targetUserData.formationsAcces || []),
+        fetchAssignedFormationsByMembership(uid, targetUserData)
+    ]);
 
-    return fetchAssignedFormationsByMembership(uid, targetUserData);
+    return uniqueById([
+        ...idFormations,
+        ...titleFormations,
+        ...membershipFormations
+    ]).sort(sortByTitle);
 };
 
 const getFormationLookupKeys = (formations) => {
@@ -246,20 +286,24 @@ const fetchActiveCoursesForFormationKeys = async (formationKeys) => {
     const chunks = chunkArray(keys, 10);
 
     for (const chunk of chunks) {
-        const coursesQuery = query(
-            collection(db, "courses"),
-            where("formations", "array-contains-any", chunk),
-            where("actif", "==", true)
-        );
+        try {
+            const coursesQuery = query(
+                collection(db, "courses"),
+                where("formations", "array-contains-any", chunk),
+                where("actif", "==", true)
+            );
 
-        const snap = await getDocs(coursesQuery);
+            const snap = await getDocs(coursesQuery);
 
-        snap.forEach((courseDoc) => {
-            courses.push({
-                id: courseDoc.id,
-                ...courseDoc.data()
+            snap.forEach((courseDoc) => {
+                courses.push({
+                    id: courseDoc.id,
+                    ...courseDoc.data()
+                });
             });
-        });
+        } catch (error) {
+            console.warn('[SBI Profile] Cours actifs par formation indisponibles :', error);
+        }
     }
 
     return uniqueById(courses);
@@ -458,7 +502,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (topName) topName.textContent = myDisplayName;
 
                 const topAvatar = document.getElementById('top-user-avatar');
-                if (topAvatar) topAvatar.innerHTML = `<img src="${myAvatarUrl}" style="width:100%; height:100%; object-fit:cover;">`;
+                if (topAvatar) topAvatar.innerHTML = `<img src="${myAvatarUrl}" style="width:100%; height:100%; object-fit:cover;" onerror="this.remove(); this.parentElement.textContent='${myDisplayName.charAt(0).toUpperCase()}';">`;
 
                 const topLevel = document.getElementById('top-user-level');
                 if (topLevel) topLevel.textContent = `Niveau ${myLevel}`;
@@ -858,7 +902,7 @@ async function loadUserFormations(uid) {
 
         if (res.length > 0) {
             if (window.location.pathname.includes('admin')) {
-                list.innerHTML = res.map(a => `<span style="color: white; display:block; margin-bottom:5px; cursor:pointer;" onclick="window.location.href='/admin/index.html?tab=view-formations'">📁 ${escapeHTML(a.titre || 'Formation')}</span>`).join('');
+                list.innerHTML = res.map(a => `<span style="color: white; display:flex; align-items:center; gap:8px; margin-bottom:5px; cursor:pointer;" onclick="window.location.href='/admin/index.html?tab=view-formations'"><span style="width:8px; height:8px; background:var(--accent-blue); transform:rotate(45deg); flex-shrink:0;"></span>${escapeHTML(a.titre || 'Formation')}</span>`).join('');
             } else if (window.location.pathname.includes('teacher')) {
                 list.innerHTML = res.map(a => `<span style="display:flex; align-items:center; gap:8px; margin-bottom:5px; cursor:pointer; font-weight:bold; transition:0.2s;" onmouseover="this.style.color='var(--accent-orange)'" onmouseout="this.style.color='inherit'" onclick="window.location.href='/teacher/mes-cours.html'"><div style="width:8px; height:8px; background:var(--accent-orange); border-radius:50%; flex-shrink:0;"></div>${escapeHTML(a.titre || 'Formation')}</span>`).join('');
             } else {
@@ -869,7 +913,7 @@ async function loadUserFormations(uid) {
         }
     } catch (e) {
         console.error("Erreur chargement formations profil", e);
-        list.innerHTML = 'Erreur.';
+        list.innerHTML = 'Aucune formation affichable pour le moment.';
     }
 }
 

@@ -124,7 +124,7 @@ function updateTopBar(userData) {
     const topUserAvatar = document.getElementById('top-user-avatar');
     if (topUserAvatar) {
         if (userData.photoURL) {
-            topUserAvatar.innerHTML = `<img src="${escapeAttr(userData.photoURL)}" alt="Avatar" style="width:100%; height:100%; object-fit:cover;">`;
+            topUserAvatar.innerHTML = `<img src="${escapeAttr(userData.photoURL)}" alt="Avatar" style="width:100%; height:100%; object-fit:cover;" onerror="this.remove(); this.parentElement.textContent='${escapeAttr(name.charAt(0).toUpperCase())}';">`;
         } else {
             topUserAvatar.textContent = name.charAt(0).toUpperCase();
         }
