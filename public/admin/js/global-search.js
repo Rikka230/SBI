@@ -129,8 +129,16 @@ function buildCourseSearchResults(term) {
 function getProfileLinkForSearchResult(userData, role) {
     if (role === 'admin') return `/admin/admin-profile.html?id=${userData.id}`;
 
-    const targetRole = roleOf(userData, userData.role);
-    if (targetRole === 'teacher') return `/teacher/mon-profil.html?id=${userData.id}`;
+    /**
+     * Important : un élève n'a pas le droit d'entrer dans /teacher/* et un prof
+     * n'a pas le droit d'entrer dans /student/*. Les pages rôle déclenchent
+     * donc un guard qui renvoie au dashboard.
+     *
+     * Pour consulter un profil depuis la recherche, on reste dans l'espace du
+     * viewer et on passe seulement l'id du profil cible. profile-core.js sait
+     * afficher un autre utilisateur via ?id=.
+     */
+    if (role === 'teacher') return `/teacher/mon-profil.html?id=${userData.id}`;
     return `/student/mon-profil.html?id=${userData.id}`;
 }
 
