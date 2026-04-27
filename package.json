@@ -1,0 +1,18 @@
+{
+  "name": "sbi-web",
+  "version": "6.4.0-preview",
+  "private": true,
+  "description": "SBI e-learning web app deployed with Firebase Hosting.",
+  "scripts": {
+    "deploy": "firebase deploy --only hosting",
+    "deploy:hosting": "firebase deploy --only hosting",
+    "preview": "firebase hosting:channel:deploy preview --expires 7d",
+    "preview:branch": "firebase hosting:channel:deploy %npm_config_channel% --expires 7d",
+    "firebase:login": "firebase login",
+    "firebase:projects": "firebase projects:list",
+    "firebase:target": "firebase use sbi-web-4f6b4"
+  },
+  "devDependencies": {
+    "firebase-tools": "latest"
+  }
+}
