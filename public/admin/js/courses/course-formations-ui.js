@@ -83,13 +83,19 @@ export function renderFormationsList(state) {
     });
 
     document.querySelectorAll('.btn-edit-formation').forEach(btn => {
-        btn.addEventListener('click', e => state.openFormationModal(e.target.dataset.id));
+        btn.addEventListener('click', e => {
+            e.preventDefault();
+            state.openFormationModal(e.currentTarget.dataset.id);
+        });
     });
 }
 
 export function openFormationModal(state, formationId) {
     const modal = document.getElementById('formation-modal');
-    if (!modal) return;
+    if (!modal) {
+        console.warn('[SBI Courses] Modal #formation-modal introuvable. Vérifier injection PJAX du node route.');
+        return;
+    }
 
     const profsContainer = document.getElementById('formation-profs-list');
     const studentsContainer = document.getElementById('formation-students-list');

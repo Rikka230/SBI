@@ -1,5 +1,5 @@
 /**
- * SBI 8.0L - Route registry
+ * SBI 8.0M.2 - Route registry
  *
  * Admin shell :
  * - admin index tabs
@@ -262,6 +262,7 @@ async function mountAdminCourses({ url }) {
 
   applyBodyRouteClassesFromDocument(doc, ['sbi-course-editor-page', 'sbi-admin-surface']);
   replaceMainFromDocument(doc);
+  const cleanupFormationModal = replaceRouteNodeFromDocument(doc, '#formation-modal');
   updateAdminChromeFromDocument(doc, 'Formations & Cours - SBI Admin');
   setLeftNavActive('nav-formations');
   updateUrlContext(url);
@@ -287,6 +288,7 @@ async function mountAdminCourses({ url }) {
     window.__SBI_APP_SHELL_MOUNTING_COURSE_EDITOR = false;
   }
 
+  if (typeof cleanupFormationModal === 'function') registerCleanup(cleanupFormationModal, 'admin-course-formation-modal');
   if (typeof cleanupTabs === 'function') registerCleanup(cleanupTabs, 'admin-course-tabs');
   if (typeof cleanupMediaSwitch === 'function') registerCleanup(cleanupMediaSwitch, 'admin-course-media-switch');
   if (typeof cleanupQuill === 'function') registerCleanup(cleanupQuill, 'admin-course-quill');
@@ -432,6 +434,7 @@ async function mountTeacherCourses({ url }) {
 
   applyBodyRouteClassesFromDocument(doc, ['sbi-course-editor-page', 'sbi-teacher-surface', 'no-right-panel']);
   replaceMainFromDocument(doc);
+  const cleanupFormationModal = replaceRouteNodeFromDocument(doc, '#formation-modal');
   updateAdminChromeFromDocument(doc, 'Formations & Cours - SBI Teacher');
   setLeftNavActive('/teacher/mes-cours.html');
   updateUrlContext(url);
@@ -457,6 +460,7 @@ async function mountTeacherCourses({ url }) {
     window.__SBI_APP_SHELL_MOUNTING_COURSE_EDITOR = false;
   }
 
+  if (typeof cleanupFormationModal === 'function') registerCleanup(cleanupFormationModal, 'teacher-course-formation-modal');
   if (typeof cleanupTabs === 'function') registerCleanup(cleanupTabs, 'teacher-course-tabs');
   if (typeof cleanupMediaSwitch === 'function') registerCleanup(cleanupMediaSwitch, 'teacher-course-media-switch');
   if (typeof cleanupQuill === 'function') registerCleanup(cleanupQuill, 'teacher-course-quill');

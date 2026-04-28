@@ -314,14 +314,55 @@ async function fetchCoursesByArrayField(fieldName, formationKeys, { activeOnly =
   return courses;
 }
 
+
+async function fetchCoursesByScalarField(fieldName, formationKeys, { activeOnly = true } = {}) {
+  const keys = normalizeList(formationKeys);
+  if (!fieldName || !keys.length) return [];
+
+  const courses = [];
+
+  for (const chunk of chunkArray(keys, 10)) {
+    const scalarQuery = query(collection(db, 'courses'), where(fieldName, 'in', chunk));
+    const snap = await safeGetDocs(scalarQuery, `cours par champ ${fieldName}`);
+
+    if (!snap) continue;
+
+    const items = snapToArray(snap)
+      .filter((course) => !activeOnly || isCourseVisible(course));
+
+    courses.push(...items);
+  }
+
+  return courses;
+}
+
+async function fetchCoursesByClientScan(formations = [], { activeOnly = true } = {}) {
+  const snap = await safeGetDocs(collection(db, 'courses'), 'fallback scan cours par formations legacy');
+  if (!snap) return [];
+
+  const allCourses = snapToArray(snap);
+  return allCourses
+    .filter((course) => !activeOnly || isCourseVisible(course))
+    .filter((course) => formations.some((formation) => courseBelongsToFormation(course, formation, formations)));
+}
+
 export async function fetchCoursesByFormationKeys(formationKeys, { activeOnly = true } = {}) {
   const keys = normalizeList(formationKeys);
   if (!keys.length) return [];
 
   const courseGroups = await Promise.all([
     fetchCoursesByArrayField('formations', keys, { activeOnly }),
+    fetchCoursesByArrayField('formationIds', keys, { activeOnly }),
+    fetchCoursesByArrayField('formationsIds', keys, { activeOnly }),
     fetchCoursesByArrayField('targetFormationIds', keys, { activeOnly }),
-    fetchCoursesByArrayField('targetFormationTitles', keys, { activeOnly })
+    fetchCoursesByArrayField('targetFormationTitles', keys, { activeOnly }),
+    fetchCoursesByScalarField('formationId', keys, { activeOnly }),
+    fetchCoursesByScalarField('formation', keys, { activeOnly }),
+    fetchCoursesByScalarField('formationTitre', keys, { activeOnly }),
+    fetchCoursesByScalarField('formationTitle', keys, { activeOnly }),
+    fetchCoursesByScalarField('formationName', keys, { activeOnly }),
+    fetchCoursesByScalarField('formationNom', keys, { activeOnly }),
+    fetchCoursesByScalarField('formationRef', keys, { activeOnly })
   ]);
 
   return uniqById(courseGroups.flat());
@@ -346,6 +387,7 @@ export async function loadCoursesForUser({
 
   const formationKeys = getFormationLookupKeys(formations);
   const byFormation = await fetchCoursesByFormationKeys(formationKeys, { activeOnly });
+  const byClientScan = await fetchCoursesByClientScan(formations, { activeOnly });
   const byTargetStudent = safeRole === 'student' && uid
     ? await fetchCoursesTargetingUser(uid)
     : [];
@@ -363,7 +405,7 @@ export async function loadCoursesForUser({
     if (ownSnap) byFormation.push(...snapToArray(ownSnap));
   }
 
-  return uniqById([...byFormation, ...byTargetStudent, ...progressCourses])
+  return uniqById([...byFormation, ...byClientScan, ...byTargetStudent, ...progressCourses])
     .filter((course) => isCourseVisible(course, { allowProgress: includeProgress }))
     .sort(sortCourses);
 }
