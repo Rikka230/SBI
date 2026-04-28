@@ -10,6 +10,9 @@ const EMPTY_MEDIA = {
   founderImageUrl: ''
 };
 
+const MEDIA_CACHE_KEY = 'sbi:siteIndexMedia:v1';
+const MEDIA_CACHE_TTL_MS = 5 * 60 * 1000;
+
 function isLegacyLocalMediaUrl(value) {
   if (typeof value !== 'string') return false;
   const url = value.trim();
@@ -27,6 +30,46 @@ function sanitizeSettings(raw = {}) {
     if (isLegacyLocalMediaUrl(clean[key])) clean[key] = '';
   });
   return clean;
+}
+
+function settingsSignature(settings) {
+  return JSON.stringify({
+    heroVideoWebmUrl: settings.heroVideoWebmUrl || '',
+    heroVideoMp4Url: settings.heroVideoMp4Url || '',
+    heroLogoUrl: settings.heroLogoUrl || '',
+    headerLogoUrl: settings.headerLogoUrl || '',
+    brandLogoUrl: settings.brandLogoUrl || '',
+    founderImageUrl: settings.founderImageUrl || ''
+  });
+}
+
+function readCachedSettings() {
+  try {
+    const raw = sessionStorage.getItem(MEDIA_CACHE_KEY);
+    if (!raw) return null;
+
+    const cached = JSON.parse(raw);
+    if (!cached?.savedAt || Date.now() - cached.savedAt > MEDIA_CACHE_TTL_MS) {
+      sessionStorage.removeItem(MEDIA_CACHE_KEY);
+      return null;
+    }
+
+    return sanitizeSettings(cached.settings || {});
+  } catch (error) {
+    sessionStorage.removeItem(MEDIA_CACHE_KEY);
+    return null;
+  }
+}
+
+function writeCachedSettings(settings) {
+  try {
+    sessionStorage.setItem(MEDIA_CACHE_KEY, JSON.stringify({
+      savedAt: Date.now(),
+      settings: sanitizeSettings(settings)
+    }));
+  } catch (error) {
+    // Cache opportuniste uniquement. Ne bloque jamais l'index public.
+  }
 }
 
 function ensureFounderCleanStyles() {
@@ -100,13 +143,26 @@ function applySettings(settings) {
 async function initSiteIndexMedia() {
   ensureFounderCleanStyles();
 
+  const cachedSettings = readCachedSettings();
+  if (cachedSettings) {
+    applySettings(cachedSettings);
+  }
+
   try {
     const snap = await getDoc(doc(db, 'settings', 'siteIndex'));
     const settings = snap.exists() ? sanitizeSettings(snap.data()) : EMPTY_MEDIA;
-    applySettings(settings);
+    writeCachedSettings(settings);
+
+    if (!cachedSettings || settingsSignature(cachedSettings) !== settingsSignature(settings)) {
+      applySettings(settings);
+    } else {
+      document.body.classList.add('is-site-index-media-ready');
+    }
   } catch (error) {
     document.body.classList.add('is-site-index-media-ready');
-    console.warn('[SBI Index] Médias dynamiques indisponibles. Aucun fallback lourd local chargé.', error);
+    if (!cachedSettings) {
+      console.warn('[SBI Index] Médias dynamiques indisponibles. Aucun fallback lourd local chargé.', error);
+    }
   }
 }
 

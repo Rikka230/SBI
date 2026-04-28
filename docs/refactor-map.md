@@ -465,3 +465,30 @@ localStorage.setItem('sbiDebugAccess', 'true')
 ```
 
 Action requise après remplacement : déployer Firestore Rules + Storage Rules avec le batch rules.
+
+## Étape 7.4 - Performance / médias / cache / merge readiness
+
+Statut : patch préparé.
+
+Objectifs :
+
+- améliorer la visibilité du fond index/login sur écrans peu contrastés ;
+- optimiser les logos de la page login avec WebP + fallback PNG ;
+- réduire légèrement les éléments animés du fond sans changer la direction artistique ;
+- ajouter un cache session court pour les médias dynamiques de l'index ;
+- ajuster les headers Firebase Hosting pour limiter les revalidations inutiles ;
+- renforcer l'audit local des assets lourds ;
+- préparer une checklist avant merge `main`.
+
+Fichiers principaux :
+
+- `public/css/sbi-background.css`
+- `public/css/style.css`
+- `public/js/sbi-background.js`
+- `public/js/site-index-public.js`
+- `public/login.html`
+- `firebase.json`
+- `scripts/audit-heavy-assets.bat`
+- `docs/merge-readiness-checklist.md`
+
+Aucune modification Firestore Rules ou Storage Rules dans ce patch.

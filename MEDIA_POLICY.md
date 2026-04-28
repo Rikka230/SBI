@@ -75,3 +75,17 @@ scripts\audit-heavy-assets.bat
 ```
 
 Ce script liste les fichiers potentiellement trop lourds dans `public`.
+
+## Note 7.4
+
+Les logos statiques de la page login utilisent maintenant WebP en priorité avec fallback PNG.
+
+Objectif : garder une compatibilité navigateur large tout en réduisant le poids réel chargé sur les navigateurs modernes.
+
+Pour les futurs visuels d'interface dans `public/assets` :
+
+```txt
+préférer WebP ou AVIF quand possible
+conserver PNG/JPG uniquement si nécessaire comme fallback
+éviter les images > 600 Ko sans raison forte
+```

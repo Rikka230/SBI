@@ -349,8 +349,14 @@
     <header class="site-header">
         <div class="logo-container">
             <a href="index.html" class="header-logo-link">
-                <img src="assets/Logo_SBI_Tome.png" alt="SBI Logo" class="header-logo">
-                <img src="assets/sbi_brand.png" alt="Sport Business Institute" class="header-brand">
+                <picture>
+                    <source srcset="assets/Logo_SBI_Tome.webp" type="image/webp">
+                    <img src="assets/Logo_SBI_Tome.png" alt="SBI Logo" class="header-logo" width="45" height="45" decoding="async" fetchpriority="high">
+                </picture>
+                <picture>
+                    <source srcset="assets/sbi_brand.webp" type="image/webp">
+                    <img src="assets/sbi_brand.png" alt="Sport Business Institute" class="header-brand" width="140" height="34" decoding="async" fetchpriority="high">
+                </picture>
             </a>
         </div>
 
