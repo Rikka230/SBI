@@ -1,3 +1,32 @@
+function getAdminTabFromLocation() {
+    const tabFromUrl = new URLSearchParams(window.location.search).get('tab');
+    return tabFromUrl || sessionStorage.getItem('activeAdminTab') || 'view-dashboard';
+}
+
+function getAdminTabUrl(targetId) {
+    return `/admin/index.html?tab=${encodeURIComponent(targetId)}`;
+}
+
+function updateAdminTabUrl(targetId, mode = 'push') {
+    if (!window.location.pathname.toLowerCase().startsWith('/admin/')) return;
+
+    const nextUrl = getAdminTabUrl(targetId);
+    const currentUrl = window.location.pathname + window.location.search;
+
+    if (currentUrl === nextUrl) {
+        window.history.replaceState({ sbiTab: targetId }, '', nextUrl);
+        return;
+    }
+
+    const state = { sbiTab: targetId };
+
+    if (mode === 'replace') {
+        window.history.replaceState(state, '', nextUrl);
+    } else {
+        window.history.pushState(state, '', nextUrl);
+    }
+}
+
 export function initPanelControls() {
     const appContainer = document.getElementById('app-container');
     const desktopToggleBtn = document.getElementById('btn-toggle-panel');
@@ -58,21 +87,24 @@ export function initAdminTabs() {
     const navItems = document.querySelectorAll('.nav-item[data-target]');
     const views = document.querySelectorAll('.admin-view');
     const appContainer = document.getElementById('app-container');
+    const hasAdminViews = navItems.length > 0 && views.length > 0;
 
-    const savedTab = new URLSearchParams(window.location.search).get('tab') || sessionStorage.getItem('activeAdminTab') || 'view-dashboard';
+    if (!hasAdminViews) return;
 
-    if (navItems.length > 0 && document.getElementById(savedTab)) {
-        switchView(savedTab, { replaceUrl: false });
+    const initialTab = getAdminTabFromLocation();
+
+    if (document.getElementById(initialTab)) {
+        switchView(initialTab, { historyMode: 'replace' });
     }
 
     navItems.forEach((button) => {
         button.addEventListener('click', (event) => {
             const targetId = event.currentTarget.getAttribute('data-target');
-            const href = event.currentTarget.getAttribute('data-href') || (targetId ? `/admin/index.html?tab=${targetId}` : '/admin/index.html');
+            const href = event.currentTarget.getAttribute('data-href') || (targetId ? getAdminTabUrl(targetId) : '/admin/index.html');
 
             if (targetId && document.getElementById(targetId)) {
                 event.preventDefault();
-                switchView(targetId, { replaceUrl: true });
+                switchView(targetId, { historyMode: 'push' });
             } else if (href) {
                 window.location.href = href;
             }
@@ -83,24 +115,38 @@ export function initAdminTabs() {
         });
     });
 
-    function switchView(targetId, { replaceUrl = true } = {}) {
+    window.addEventListener('popstate', (event) => {
+        const targetId = event.state?.sbiTab || getAdminTabFromLocation();
+        if (targetId && document.getElementById(targetId)) {
+            switchView(targetId, { updateUrl: false });
+        }
+    });
+
+    function switchView(targetId, { updateUrl = true, historyMode = 'push' } = {}) {
         const activeView = document.getElementById(targetId);
         if (!activeView) return;
 
-        navItems.forEach((button) => button.classList.remove('active'));
-        views.forEach((view) => view.classList.remove('active'));
+        navItems.forEach((button) => {
+            const isActive = button.getAttribute('data-target') === targetId;
+            button.classList.toggle('active', isActive);
+            if (isActive) {
+                button.setAttribute('aria-current', 'page');
+            } else {
+                button.removeAttribute('aria-current');
+            }
+        });
 
-        const activeButton = document.querySelector(`.nav-item[data-target="${targetId}"]`);
-        activeButton?.classList.add('active');
+        views.forEach((view) => view.classList.remove('active'));
         activeView.classList.add('active');
 
         sessionStorage.setItem('activeAdminTab', targetId);
 
-        if (replaceUrl && window.location.pathname.toLowerCase().startsWith('/admin/')) {
-            const url = new URL(window.location.href);
-            url.pathname = '/admin/index.html';
-            url.searchParams.set('tab', targetId);
-            window.history.replaceState({ sbiTab: targetId }, '', url.pathname + url.search);
+        if (updateUrl) {
+            updateAdminTabUrl(targetId, historyMode);
         }
+
+        window.dispatchEvent(new CustomEvent('sbi:admin-tab-changed', {
+            detail: { tab: targetId }
+        }));
     }
 }

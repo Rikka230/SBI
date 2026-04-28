@@ -379,3 +379,36 @@ Principe :
 - écoute déléguée sur liens internes et éléments `data-sbi-href` ;
 - menus student / teacher sans `onclick` inline pour préparer une navigation plus propre ;
 - pas de modification des viewers, de l'auth, des notifications, de Firestore, de Storage ou des rules.
+
+## Étape 7.2A - Navigation progressive légère
+
+Statut : validé.
+
+Objectif : préparer une navigation interne plus fluide sans réactiver le shell PJAX.
+
+Fichier ajouté :
+
+- `public/js/sbi-navigation-transitions.js`
+
+Principes :
+
+- transition visuelle courte sur les liens internes standards ;
+- fermeture automatique des panneaux mobiles avant changement de page ;
+- support clavier `Entrée` / `Espace` sur les éléments `data-sbi-href` ;
+- aucune interception des viewers, de l'auth, de la progression, de Firestore ou Storage.
+
+## Étape 7.2B - États actifs et historique admin
+
+Statut : patch préparé.
+
+Objectif : consolider la navigation déjà validée sans activer de PJAX complet.
+
+Changements :
+
+- synchronisation automatique de l'état actif des liens de navigation après injection des panels ;
+- ajout de `aria-current="page"` sur l'item actif ;
+- gestion plus propre de l'historique navigateur pour les onglets admin ;
+- support retour / suivant navigateur entre les vues admin internes ;
+- conservation de la navigation classique entre pages.
+
+Aucune modification rules.

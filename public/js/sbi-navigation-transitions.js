@@ -1,9 +1,9 @@
 /**
- * SBI 7.2A - Navigation progressive légère
+ * SBI 7.2B - Navigation progressive légère + synchronisation active
  *
  * Ce module ne remplace pas le routeur et ne fait pas de PJAX complet.
- * Il ajoute une transition visuelle sûre sur les navigations internes standards,
- * sans toucher à l'auth, aux notifications, à la progression ou aux viewers.
+ * Il ajoute une transition visuelle sûre sur les navigations internes standards
+ * et synchronise l'état actif des panneaux après injection des composants.
  */
 
 const NAV_DELAY_MS = 110;
@@ -12,6 +12,7 @@ const LEAVING_CLASS = 'sbi-navigating-out';
 
 let initialized = false;
 let navigating = false;
+let syncScheduled = false;
 
 function injectNavigationStyles() {
   if (document.getElementById('sbi-navigation-transition-style')) return;
@@ -65,6 +66,11 @@ function injectNavigationStyles() {
       border-color: rgba(245, 158, 11, 0.22);
     }
 
+    #left-panel .nav-item[aria-current="page"],
+    #left-panel .admin-return-link[aria-current="page"] {
+      cursor: default;
+    }
+
     @media (prefers-reduced-motion: reduce) {
       html.${READY_CLASS} body:not(.preload) #main-content,
       html.${READY_CLASS} body:not(.preload) .content-wrapper {
@@ -95,6 +101,25 @@ function normalizeHref(rawHref) {
   }
 }
 
+function normalizePath(pathname) {
+  if (!pathname) return '/';
+  const cleanPath = pathname.replace(/\/+$/, '') || '/';
+  if (cleanPath === '/admin') return '/admin/index.html';
+  if (cleanPath === '/student') return '/student/dashboard.html';
+  if (cleanPath === '/teacher') return '/teacher/dashboard.html';
+  return cleanPath;
+}
+
+function isAdminIndexPath(pathname = window.location.pathname) {
+  const path = normalizePath(pathname).toLowerCase();
+  return path === '/admin/index.html' || path === '/admin/';
+}
+
+function getActiveAdminTab() {
+  const tabFromUrl = new URLSearchParams(window.location.search).get('tab');
+  return tabFromUrl || sessionStorage.getItem('activeAdminTab') || 'view-dashboard';
+}
+
 function isSameDocumentHashNavigation(url) {
   const current = new URL(window.location.href);
   return url.origin === current.origin
@@ -104,9 +129,25 @@ function isSameDocumentHashNavigation(url) {
     && url.hash !== current.hash;
 }
 
+function isEquivalentCurrentUrl(url) {
+  if (!url || url.origin !== window.location.origin) return false;
+
+  const currentPath = normalizePath(window.location.pathname);
+  const targetPath = normalizePath(url.pathname);
+
+  if (currentPath !== targetPath) return false;
+
+  const targetTab = url.searchParams?.get('tab');
+  if (isAdminIndexPath(currentPath) && targetTab) {
+    return getActiveAdminTab() === targetTab;
+  }
+
+  return url.search === window.location.search || !url.search;
+}
+
 function isEligibleInternalUrl(url) {
   if (!url || url.origin !== window.location.origin) return false;
-  if (url.href === window.location.href) return false;
+  if (isEquivalentCurrentUrl(url)) return false;
   if (isSameDocumentHashNavigation(url)) return false;
   return true;
 }
@@ -142,6 +183,7 @@ function closeMobilePanels() {
 
 function markNavigationStart(url) {
   navigating = true;
+  sessionStorage.setItem('sbi:lastNavigationSource', window.location.pathname + window.location.search + window.location.hash);
   sessionStorage.setItem('sbi:lastNavigationTarget', url.pathname + url.search + url.hash);
   document.body.classList.add(LEAVING_CLASS);
   document.body.setAttribute('aria-busy', 'true');
@@ -183,11 +225,68 @@ function handleKeyboardNavigation(event) {
   navigateWithTransition(url);
 }
 
+function setCurrentState(element, isCurrent) {
+  element.classList.toggle('active', isCurrent);
+  if (isCurrent) {
+    element.setAttribute('aria-current', 'page');
+  } else {
+    element.removeAttribute('aria-current');
+  }
+}
+
+function navItemMatchesCurrent(item) {
+  const currentPath = normalizePath(window.location.pathname);
+
+  const target = item.getAttribute('data-target');
+  if (target && isAdminIndexPath(currentPath)) {
+    return getActiveAdminTab() === target;
+  }
+
+  const rawHref = item.getAttribute('data-sbi-href') || item.getAttribute('href');
+  const url = normalizeHref(rawHref);
+  if (!url || url.origin !== window.location.origin) return false;
+
+  const targetPath = normalizePath(url.pathname);
+
+  if (targetPath !== currentPath) return false;
+
+  const targetTab = url.searchParams.get('tab');
+  if (targetTab && isAdminIndexPath(currentPath)) {
+    return getActiveAdminTab() === targetTab;
+  }
+
+  return true;
+}
+
+function syncNavigationStateNow() {
+  syncScheduled = false;
+
+  const navItems = document.querySelectorAll(
+    '#left-panel .nav-item[data-sbi-href], #left-panel .nav-item[data-target], #left-panel .admin-return-link[data-sbi-href]'
+  );
+
+  navItems.forEach((item) => {
+    setCurrentState(item, navItemMatchesCurrent(item));
+  });
+
+  const title = document.querySelector('#left-panel .nav-item.active .nav-text')?.textContent?.trim();
+  if (title) {
+    document.body.dataset.sbiActiveSection = title;
+  }
+}
+
+function scheduleNavigationSync() {
+  if (syncScheduled) return;
+  syncScheduled = true;
+  window.requestAnimationFrame(syncNavigationStateNow);
+}
+
 function markPageReady() {
   window.requestAnimationFrame(() => {
     document.documentElement.classList.add(READY_CLASS);
     document.body.classList.remove(LEAVING_CLASS);
     document.body.removeAttribute('aria-busy');
+    scheduleNavigationSync();
   });
 }
 
@@ -198,6 +297,8 @@ export function initSbiNavigationTransitions() {
   injectNavigationStyles();
   document.addEventListener('click', handleDocumentClick);
   document.addEventListener('keydown', handleKeyboardNavigation);
+  window.addEventListener('sbi:component-mounted', scheduleNavigationSync);
+  window.addEventListener('sbi:admin-tab-changed', scheduleNavigationSync);
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', markPageReady, { once: true });
@@ -209,5 +310,6 @@ export function initSbiNavigationTransitions() {
     navigating = false;
     document.body.classList.remove(LEAVING_CLASS);
     document.body.removeAttribute('aria-busy');
+    scheduleNavigationSync();
   });
 }
