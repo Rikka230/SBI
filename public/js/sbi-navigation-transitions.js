@@ -1,9 +1,8 @@
 /**
- * SBI 7.2C - Navigation progressive légère + synchronisation active
+ * SBI 8.0G.1 - Navigation progressive + synchronisation active PJAX
  *
- * Ce module ne remplace pas le routeur et ne fait pas de PJAX complet.
- * Il ajoute une transition visuelle sûre sur les navigations internes standards
- * et synchronise l'état actif des panneaux après injection des composants.
+ * Ce module garde les transitions légères des navigations classiques
+ * et recalcule l'état actif des panels après chaque navigation PJAX.
  */
 
 const NAV_DELAY_MS = 110;
@@ -88,6 +87,14 @@ function injectNavigationStyles() {
   document.head.appendChild(style);
 }
 
+function getEffectiveUrl() {
+  try {
+    return new URL(window.SBI_APP_SHELL_CURRENT_URL || window.location.href, window.location.origin);
+  } catch {
+    return new URL(window.location.href);
+  }
+}
+
 function normalizeHref(rawHref) {
   if (!rawHref || typeof rawHref !== 'string') return null;
   const href = rawHref.trim();
@@ -96,7 +103,7 @@ function normalizeHref(rawHref) {
 
   try {
     return new URL(href, window.location.href);
-  } catch (error) {
+  } catch {
     return null;
   }
 }
@@ -117,17 +124,18 @@ function normalizePath(pathname) {
   return cleanPath;
 }
 
-function isAdminIndexPath(pathname = window.location.pathname) {
+function isAdminIndexPath(pathname = getEffectiveUrl().pathname) {
   const path = normalizePath(pathname).toLowerCase();
   return path === '/admin/index.html' || path === '/admin/';
 }
 
 function getActiveAdminTab() {
-  const tabFromUrl = new URLSearchParams(window.location.search).get('tab');
+  const effectiveUrl = getEffectiveUrl();
+  const tabFromUrl = effectiveUrl.searchParams.get('tab');
   return tabFromUrl || sessionStorage.getItem('activeAdminTab') || 'view-dashboard';
 }
 
-function getAdminExternalMatchId(pathname = window.location.pathname) {
+function getAdminExternalMatchId(pathname = getEffectiveUrl().pathname) {
   const path = normalizePath(pathname).toLowerCase();
 
   if (path.endsWith('/admin/admin-profile.html')) return 'nav-users';
@@ -140,7 +148,7 @@ function getAdminExternalMatchId(pathname = window.location.pathname) {
 }
 
 function isSameDocumentHashNavigation(url) {
-  const current = new URL(window.location.href);
+  const current = getEffectiveUrl();
   return url.origin === current.origin
     && url.pathname === current.pathname
     && url.search === current.search
@@ -151,7 +159,8 @@ function isSameDocumentHashNavigation(url) {
 function isEquivalentCurrentUrl(url) {
   if (!url || url.origin !== window.location.origin) return false;
 
-  const currentPath = normalizePath(window.location.pathname);
+  const current = getEffectiveUrl();
+  const currentPath = normalizePath(current.pathname);
   const targetPath = normalizePath(url.pathname);
 
   if (currentPath !== targetPath) return false;
@@ -161,7 +170,7 @@ function isEquivalentCurrentUrl(url) {
     return getActiveAdminTab() === targetTab;
   }
 
-  return url.search === window.location.search || !url.search;
+  return url.search === current.search || !url.search;
 }
 
 function isEligibleInternalUrl(url) {
@@ -202,7 +211,8 @@ function closeMobilePanels() {
 
 function markNavigationStart(url) {
   navigating = true;
-  sessionStorage.setItem('sbi:lastNavigationSource', window.location.pathname + window.location.search + window.location.hash);
+  const current = getEffectiveUrl();
+  sessionStorage.setItem('sbi:lastNavigationSource', current.pathname + current.search + current.hash);
   sessionStorage.setItem('sbi:lastNavigationTarget', url.pathname + url.search + url.hash);
   document.body.classList.add(LEAVING_CLASS);
   document.body.setAttribute('aria-busy', 'true');
@@ -254,7 +264,8 @@ function setCurrentState(element, isCurrent) {
 }
 
 function navItemMatchesCurrent(item) {
-  const currentPath = normalizePath(window.location.pathname);
+  const effectiveUrl = getEffectiveUrl();
+  const currentPath = normalizePath(effectiveUrl.pathname);
   const externalMatchId = getAdminExternalMatchId(currentPath);
 
   if (externalMatchId) {
@@ -314,6 +325,16 @@ function markPageReady() {
   });
 }
 
+function handleAppShellNavigated() {
+  navigating = false;
+  document.body.classList.remove(LEAVING_CLASS);
+  document.body.removeAttribute('aria-busy');
+
+  window.requestAnimationFrame(() => {
+    scheduleNavigationSync();
+  });
+}
+
 export function initSbiNavigationTransitions() {
   if (initialized) return;
   initialized = true;
@@ -324,6 +345,7 @@ export function initSbiNavigationTransitions() {
   window.addEventListener('sbi:component-mounted', scheduleNavigationSync);
   window.addEventListener('sbi:navigation-mutated', scheduleNavigationSync);
   window.addEventListener('sbi:admin-tab-changed', scheduleNavigationSync);
+  window.addEventListener('sbi:app-shell:navigated', handleAppShellNavigated);
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', markPageReady, { once: true });

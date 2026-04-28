@@ -7,7 +7,7 @@ Base : `main` après merge 7.4.2
 
 Le PJAX complet ne doit pas être appliqué en bloc. Cette branche pose un app shell progressif avec fallback reload.
 
-## État 8.0G
+## État 8.0G.1
 
 Le PJAX est activé par défaut sur la branche labo.
 
@@ -57,13 +57,13 @@ Teacher :
 - `/teacher/dashboard.html`
 - `/teacher/mon-profil.html`
 
-## 8.0G
+## 8.0G.1
 
-- Ajout du shell teacher léger.
-- `teacher-dashboard.js` expose `mountTeacherDashboard()` avec cleanup.
-- Navigation fluide entre Mon Espace et Mon Profil.
-- `teacher/mes-cours.html` reste volontairement hors PJAX car il contient Quill + éditeur + `admin-courses.js`.
-- Version actuelle : `SBI 8.0G - PJAX APP SHELL TEST`.
+- Correction globale de l'état actif du menu latéral après navigation PJAX.
+- `sbi-navigation-transitions.js` écoute désormais `sbi:app-shell:navigated`.
+- La synchronisation lit aussi `window.SBI_APP_SHELL_CURRENT_URL`, pas seulement `window.location`.
+- Corrige le cas prof où Mon Espace restait sélectionné après passage sur Mon Profil.
+- Version actuelle : `SBI 8.0G.1 - PJAX APP SHELL TEST`.
 
 ## Règles de sécurité
 

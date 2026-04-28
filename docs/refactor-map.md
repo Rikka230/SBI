@@ -1,6 +1,6 @@
 # SBI Refactor Map
 
-Version chantier : 8.0G
+Version chantier : 8.0G.1
 Branche de travail : `pjax-app-shell-test`
 Branche stable : `main`
 
@@ -17,23 +17,6 @@ Priorités :
 5. refonte visuelle cohérente par rôle ;
 6. médias lourds hors repo, pilotés par Storage/Firestore ;
 7. navigation PJAX progressive avec fallback reload.
-
-## Note ZIP 8.0F.2
-
-Le ZIP de contrôle reçu contenait bien la version `8.0F.2`.
-
-Dossier local parasite détecté dans le ZIP :
-
-- `SBI-8.0F-pjax-student-shell-patch/`
-
-À supprimer localement avant les prochains ZIP complets si présent dans le dossier projet.
-
-## Module à ne pas réactiver sans test
-
-- `public/admin/js/sbi-internal-shell.js`
-  - tentative shell/PJAX partielle.
-  - statut : désactivé.
-  - raison : probable contribution à une page blanche étudiant.
 
 ## Étapes PJAX
 
@@ -78,7 +61,7 @@ Statut : validé.
 
 ### 8.0F - Student shell
 
-Statut : validé globalement.
+Statut : validé.
 
 - Routes PJAX pour `/student/dashboard.html` et `/student/mes-cours.html`.
 - Viewer de cours laissé hors PJAX.
@@ -88,22 +71,26 @@ Statut : validé globalement.
 Statut : validé.
 
 - Injection des blocs `<style>` du document cible.
-- Corrige les styles inline de `/student/mes-cours.html`.
 
 ### 8.0G - Teacher shell léger
 
+Statut : validé avec remarque active nav.
+
+- Routes PJAX pour `/teacher/dashboard.html` et `/teacher/mon-profil.html`.
+- `teacher/mes-cours.html` reste hors PJAX.
+
+### 8.0G.1 - Active nav sync PJAX
+
 Statut : patch préparé.
 
-Objectif : fluidifier l'espace prof sans toucher à l'éditeur.
+Objectif : corriger la sélection active des menus après navigation PJAX.
 
 Changements :
 
-- Routes PJAX pour `/teacher/dashboard.html` et `/teacher/mon-profil.html`.
-- `teacher-dashboard.js` devient montable via `mountTeacherDashboard()`.
-- Profil prof monté via `profile-core.js`.
-- CropperJS chargé si nécessaire.
-- `teacher/mes-cours.html` reste hors PJAX pour éviter de toucher à Quill, à l'éditeur, aux uploads et à `admin-courses.js`.
-- Version centralisée passée en `8.0G`.
+- `sbi-navigation-transitions.js` écoute `sbi:app-shell:navigated`.
+- La synchronisation utilise `window.SBI_APP_SHELL_CURRENT_URL` en plus de `window.location`.
+- Correction globale admin / student / teacher.
+- Version centralisée passée en `8.0G.1`.
 
 Pages encore hors PJAX :
 
