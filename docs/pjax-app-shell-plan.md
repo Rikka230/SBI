@@ -7,36 +7,36 @@ Base : `main` après merge 7.4.2
 
 Le PJAX complet ne doit pas être appliqué en bloc. Cette branche pose un app shell progressif avec fallback reload.
 
-## État 8.0E
+## État 8.0F
 
-Depuis 8.0E, le PJAX est activé par défaut sur la branche labo.
+Le PJAX est activé par défaut sur la branche labo.
 
 ## Interrupteurs de secours
 
 Désactiver PJAX :
 
 ```js
-localStorage.setItem('sbiPjaxDisabled', 'true')
-location.reload()
+window.SBI_DISABLE_PJAX()
 ```
 
 Ou :
 
 ```js
-window.SBI_DISABLE_PJAX()
+localStorage.setItem('sbiPjaxDisabled', 'true')
+location.reload()
 ```
 
 Réactiver PJAX :
 
 ```js
-localStorage.removeItem('sbiPjaxDisabled')
-location.reload()
+window.SBI_ENABLE_PJAX()
 ```
 
 Ou :
 
 ```js
-window.SBI_ENABLE_PJAX()
+localStorage.removeItem('sbiPjaxDisabled')
+location.reload()
 ```
 
 Via URL :
@@ -54,31 +54,31 @@ localStorage.setItem('sbiPjaxDebug', 'true')
 
 ## Version badge
 
-Depuis 8.0C, l'encart de version est piloté par :
+L'encart de version est piloté par :
 
 - `public/js/sbi-version.js`
 - `public/js/sbi-version-badge.js`
 
-À chaque patch, mettre à jour `SBI_VERSION` pour confirmer visuellement la build chargée dans Firebase Preview.
-
 ## Routes PJAX actuellement actives
+
+Admin :
 
 - `/admin/index.html?tab=...`
 - `/admin/site-index-settings.html`
 - `/admin/admin-profile.html`
 
-## 8.0D.1
+Student :
 
-- Cache DOM de l'index admin avant départ vers Profil ou Gestion Accueil.
-- Restauration du vrai DOM de l'index admin au retour.
-- Objectif : retour instantané sur l'onglet Utilisateurs, sans attendre le prochain refresh Firestore.
+- `/student/dashboard.html`
+- `/student/mes-cours.html`
 
-## 8.0E
+## 8.0F
 
-- PJAX activé par défaut.
-- Suppression de l'obligation de coller `localStorage.setItem('sbiPjaxEnabled', 'true')`.
-- Ajout d'un kill switch propre via `sbiPjaxDisabled`.
-- Version actuelle : `SBI 8.0E - PJAX APP SHELL TEST`.
+- Ajout des routes student dashboard et mes cours.
+- `student-hub.js` expose `mountStudentHub()` avec cleanup.
+- `mes-cours.js` expose `mountStudentCourses()` avec cleanup.
+- Le viewer `/student/cours-viewer.html` reste en navigation classique.
+- Version actuelle : `SBI 8.0F - PJAX APP SHELL TEST`.
 
 ## Règles de sécurité
 

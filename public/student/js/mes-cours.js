@@ -3,24 +3,13 @@
  * MES COURS - Logique de navigation Formations -> Blocs -> Cours
  * =======================================================================
  *
- * Patch accès cours 6.7B :
- * - priorité à users/{uid}.formationIds, plus stable avec des rules strictes
- * - fallback formationsAcces legacy par titre
- * - fallback membership where("students", "array-contains", uid)
- * - les erreurs permission/index ne font plus tomber toute la page
+ * 8.0F : devient montable via mountStudentCourses() pour le shell PJAX.
+ * Le viewer de cours reste en navigation classique.
  * =======================================================================
  */
 
 import { db, auth } from '/js/firebase-init.js';
-import {
-    collection,
-    documentId,
-    getDocs,
-    doc,
-    getDoc,
-    query,
-    where
-} from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import { waitForSbiTopbar } from '/admin/js/components/ready.js';
 import { getUserLearningProgress } from '/js/course-engine.js';
@@ -35,9 +24,31 @@ let userData = {};
 let allCourses = [];
 let assignedFormations = [];
 let userProgress = { courses: {}, formations: {} };
+let activeCleanup = null;
 
-document.addEventListener('DOMContentLoaded', () => {
-    onAuthStateChanged(auth, async (user) => {
+function resetState() {
+    currentUid = null;
+    userData = {};
+    allCourses = [];
+    assignedFormations = [];
+    userProgress = { courses: {}, formations: {} };
+}
+
+export function mountStudentCourses() {
+    activeCleanup?.({ reason: 'remount' });
+    resetState();
+
+    let disposed = false;
+    let unsubscribeAuth = null;
+    const cleanups = [];
+
+    const addCleanup = (cleanup) => {
+        if (typeof cleanup === 'function') cleanups.push(cleanup);
+    };
+
+    unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
+        if (disposed) return;
+
         if (!user) {
             window.location.replace('/login.html');
             return;
@@ -55,7 +66,7 @@ document.addEventListener('DOMContentLoaded', () => {
             await loadAssignedFormations();
             await loadAssignedCourses();
             renderAssignedFormations();
-
+            bindStudentCoursesEvents(addCleanup);
         } catch (error) {
             console.error("Erreur d'initialisation :", error);
             showFormationsError();
@@ -64,103 +75,78 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    document.getElementById('btn-back-formations')?.addEventListener('click', () => {
-        const viewCourses = document.getElementById('view-courses');
-        const viewFormations = document.getElementById('view-formations');
-
-        if (viewCourses) viewCourses.style.display = 'none';
-        if (viewFormations) viewFormations.style.display = 'flex';
-    });
-
-    document.getElementById('search-course-input')?.addEventListener('input', (e) => {
-        const term = e.target.value.toLowerCase();
-
-        document.querySelectorAll('.course-item').forEach(item => {
-            const title = item.querySelector('.course-title')?.textContent?.toLowerCase() || '';
-            item.style.display = title.includes(term) ? 'flex' : 'none';
+    const cleanup = () => {
+        disposed = true;
+        unsubscribeAuth?.();
+        cleanups.splice(0, cleanups.length).forEach((fn) => {
+            try { fn(); } catch {}
         });
-    });
-});
+        if (activeCleanup === cleanup) activeCleanup = null;
+    };
 
-async function waitForSbiComponents() {
-    if (window.__SBI_COMPONENTS_READY === true) {
-        await waitForElements(['top-user-name', 'top-user-avatar'], 1200);
-        return;
-    }
-
-    if (window.SBI_COMPONENTS_READY && typeof window.SBI_COMPONENTS_READY.then === 'function') {
-        await Promise.race([
-            window.SBI_COMPONENTS_READY.catch(() => {}),
-            sleep(1500)
-        ]);
-    } else {
-        await new Promise((resolve) => {
-            const timeout = window.setTimeout(resolve, 1500);
-            window.addEventListener('sbi:components-ready', () => {
-                window.clearTimeout(timeout);
-                resolve();
-            }, { once: true });
-        });
-    }
-
-    await waitForElements(['top-user-name', 'top-user-avatar'], 1200);
+    activeCleanup = cleanup;
+    return cleanup;
 }
 
-async function waitForElements(ids, timeoutMs = 1200) {
-    const start = Date.now();
+function bindStudentCoursesEvents(addCleanup) {
+    const backButton = document.getElementById('btn-back-formations');
+    const searchInput = document.getElementById('search-course-input');
 
-    while (Date.now() - start < timeoutMs) {
-        const ready = ids.every((id) => document.getElementById(id));
-        if (ready) return true;
-        await sleep(50);
+    if (backButton && backButton.dataset.sbiBound !== 'true') {
+        backButton.dataset.sbiBound = 'true';
+
+        const handler = () => {
+            const viewCourses = document.getElementById('view-courses');
+            const viewFormations = document.getElementById('view-formations');
+
+            if (viewCourses) viewCourses.style.display = 'none';
+            if (viewFormations) viewFormations.style.display = 'flex';
+        };
+
+        backButton.addEventListener('click', handler);
+        addCleanup(() => backButton.removeEventListener('click', handler));
     }
 
-    return false;
-}
+    if (searchInput && searchInput.dataset.sbiBound !== 'true') {
+        searchInput.dataset.sbiBound = 'true';
 
-function sleep(ms) {
-    return new Promise((resolve) => window.setTimeout(resolve, ms));
-}
+        const handler = (event) => {
+            const term = event.target.value.toLowerCase();
 
-/* =======================================================================
- * PROFIL / PROGRESSION
- * ======================================================================= */
+            document.querySelectorAll('.course-item').forEach(item => {
+                const title = item.querySelector('.course-title')?.textContent?.toLowerCase() || '';
+                item.style.display = title.includes(term) ? 'flex' : 'none';
+            });
+        };
+
+        searchInput.addEventListener('input', handler);
+        addCleanup(() => searchInput.removeEventListener('input', handler));
+    }
+}
 
 async function loadStudentProfile() {
     const snap = await getDoc(doc(db, "users", currentUid));
-
-    if (snap.exists()) {
-        userData = snap.data();
-    } else {
-        userData = {};
-    }
+    userData = snap.exists() ? snap.data() : {};
 }
 
 async function loadStudentProgress() {
     userProgress = await getUserLearningProgress(currentUid);
 
-    if (!userProgress.courses) {
-        userProgress.courses = {};
-    }
-
-    if (!userProgress.formations) {
-        userProgress.formations = {};
-    }
+    if (!userProgress.courses) userProgress.courses = {};
+    if (!userProgress.formations) userProgress.formations = {};
 }
 
 function updateTopBar() {
     const name = userData.prenom || userData.nom || "Étudiant";
 
     const topUserName = document.getElementById('top-user-name');
-    if (topUserName) {
-        topUserName.textContent = name;
-    }
+    if (topUserName) topUserName.textContent = name;
 
     const topUserAvatar = document.getElementById('top-user-avatar');
 
     if (topUserAvatar) {
         if (userData.photoURL) {
-            topUserAvatar.innerHTML = `<img src="${userData.photoURL}" style="width:100%; height:100%; object-fit:cover;">`;
+            topUserAvatar.innerHTML = `<img src="${escapeAttr(userData.photoURL)}" style="width:100%; height:100%; object-fit:cover;">`;
         } else {
             topUserAvatar.textContent = name.charAt(0).toUpperCase();
         }
@@ -172,179 +158,22 @@ function updateLevel() {
     const level = Math.floor(xp / 100) + 1;
 
     const topUserLevel = document.getElementById('top-user-level');
-
-    if (topUserLevel) {
-        topUserLevel.textContent = `Niveau ${level}`;
-    }
+    if (topUserLevel) topUserLevel.textContent = `Niveau ${level}`;
 }
-
-/* =======================================================================
- * CHARGEMENT QUERY-SAFE
- * ======================================================================= */
 
 function isAdminPreview() {
     return userData.role === 'admin' || userData.isGod === true;
 }
 
-function chunkArray(items, size = 10) {
-    const chunks = [];
-
-    for (let i = 0; i < items.length; i += size) {
-        chunks.push(items.slice(i, i + size));
-    }
-
-    return chunks;
-}
-
-function uniqById(items) {
-    const map = new Map();
-
-    items.forEach((item) => {
-        if (item?.id) {
-            map.set(item.id, item);
-        }
-    });
-
-    return Array.from(map.values());
-}
-
-function normalizeFormationValues(values) {
-    if (!Array.isArray(values)) return [];
-
-    return Array.from(
-        new Set(
-            values
-                .filter(Boolean)
-                .map(value => String(value).trim())
-                .filter(Boolean)
-        )
-    );
-}
-
-async function safeGetDocs(queryRef, label = 'requête Firestore') {
-    try {
-        return await getDocs(queryRef);
-    } catch (error) {
-        console.warn(`[SBI Student Access] ${label} ignorée :`, error);
-        return null;
-    }
-}
-
-async function loadFormationsByIds(formationIds) {
-    const safeIds = normalizeFormationValues(formationIds);
-    if (!safeIds.length) return [];
-
-    const formations = [];
-
-    for (const chunk of chunkArray(safeIds, 10)) {
-        const byIdsQuery = query(
-            collection(db, "formations"),
-            where(documentId(), "in", chunk)
-        );
-
-        const snap = await safeGetDocs(byIdsQuery, 'formations par IDs');
-        if (!snap) continue;
-
-        snap.forEach((docSnap) => {
-            formations.push({
-                id: docSnap.id,
-                ...docSnap.data()
-            });
-        });
-    }
-
-    return formations;
-}
-
-async function loadFormationsByTitles(formationTitles) {
-    const safeTitles = normalizeFormationValues(formationTitles);
-    if (!safeTitles.length) return [];
-
-    const formations = [];
-
-    for (const chunk of chunkArray(safeTitles, 10)) {
-        const byTitleQuery = query(
-            collection(db, "formations"),
-            where("titre", "in", chunk)
-        );
-
-        const snap = await safeGetDocs(byTitleQuery, 'formations par titres legacy');
-        if (!snap) continue;
-
-        snap.forEach((docSnap) => {
-            formations.push({
-                id: docSnap.id,
-                ...docSnap.data()
-            });
-        });
-    }
-
-    return formations;
-}
-
-async function loadFormationsByMembership() {
-    const assignedQuery = query(
-        collection(db, "formations"),
-        where("students", "array-contains", currentUid)
-    );
-
-    const snap = await safeGetDocs(assignedQuery, 'formations par students');
-    if (!snap) return [];
-
-    const formations = [];
-
-    snap.forEach((docSnap) => {
-        formations.push({
-            id: docSnap.id,
-            ...docSnap.data()
-        });
-    });
-
-    return formations;
-}
-
 async function loadAssignedFormations() {
     const list = document.getElementById('formations-list');
-    if (list) {
-        list.innerHTML = '<p style="color:var(--text-muted);">Chargement des formations...</p>';
-    }
+    if (list) list.innerHTML = '<p style="color:var(--text-muted);">Chargement des formations...</p>';
 
     assignedFormations = await loadAssignedFormationsForUser({
         uid: currentUid,
         userData,
         role: isAdminPreview() ? 'admin' : 'student'
     });
-}
-
-async function loadActiveCoursesByFormationValues(formationValues) {
-    const safeValues = normalizeFormationValues(formationValues);
-
-    if (safeValues.length === 0) {
-        return [];
-    }
-
-    const courses = [];
-    const chunks = chunkArray(safeValues, 10);
-
-    for (const chunk of chunks) {
-        const coursesQuery = query(
-            collection(db, "courses"),
-            where("formations", "array-contains-any", chunk),
-            where("actif", "==", true)
-        );
-
-        const snap = await safeGetDocs(coursesQuery, 'cours actifs par formation');
-        if (!snap) continue;
-
-        snap.forEach((docSnap) => {
-            courses.push({
-                id: docSnap.id,
-                ...docSnap.data()
-            });
-        });
-    }
-
-    return courses;
 }
 
 async function loadAssignedCourses() {
@@ -359,10 +188,6 @@ async function loadAssignedCourses() {
     });
 }
 
-/* =======================================================================
- * RENDU FORMATIONS
- * ======================================================================= */
-
 function renderAssignedFormations() {
     const list = document.getElementById('formations-list');
     if (!list) return;
@@ -375,12 +200,10 @@ function renderAssignedFormations() {
     list.innerHTML = assignedFormations.map((formation) => {
         const totalCourses = getCoursesForFormation(formation).length;
         const completedCourses = getCompletedCoursesForFormation(formation);
-        const progressPercent = totalCourses === 0
-            ? 0
-            : Math.round((completedCourses / totalCourses) * 100);
+        const progressPercent = totalCourses === 0 ? 0 : Math.round((completedCourses / totalCourses) * 100);
 
         return `
-            <div class="formation-folder" data-formation-id="${escapeHTML(formation.id)}" data-formation-title="${escapeHTML(formation.titre || 'Formation')}">
+            <div class="formation-folder" data-formation-id="${escapeAttr(formation.id)}" data-formation-title="${escapeAttr(formation.titre || 'Formation')}">
                 <div style="display:flex; align-items:center; gap:1rem; margin-bottom:1rem;">
                     <div style="width:48px; height:48px; background:rgba(42, 87, 255, 0.1); border-radius:12px; display:flex; align-items:center; justify-content:center; color:var(--accent-blue);">
                         <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
@@ -413,12 +236,8 @@ function renderAssignedFormations() {
     });
 }
 
-function courseBelongsToFormation(course, formation) {
-    return sharedCourseBelongsToFormation(course, formation, assignedFormations);
-}
-
 function getCoursesForFormation(formation) {
-    return allCourses.filter((course) => courseBelongsToFormation(course, formation));
+    return allCourses.filter((course) => sharedCourseBelongsToFormation(course, formation, assignedFormations));
 }
 
 function getCompletedCoursesForFormation(formation) {
@@ -426,10 +245,6 @@ function getCompletedCoursesForFormation(formation) {
         return userProgress.courses[course.id]?.status === 'done';
     }).length;
 }
-
-/* =======================================================================
- * RENDU COURS
- * ======================================================================= */
 
 window.openFormation = function(formationOrId, formationTitre = '') {
     const formation = typeof formationOrId === 'object'
@@ -476,11 +291,7 @@ function groupCoursesByBloc(courses) {
 
     courses.forEach((course) => {
         const blocName = course.bloc || "Autres Cours";
-
-        if (!coursesByBloc[blocName]) {
-            coursesByBloc[blocName] = [];
-        }
-
+        if (!coursesByBloc[blocName]) coursesByBloc[blocName] = [];
         coursesByBloc[blocName].push(course);
     });
 
@@ -503,12 +314,10 @@ function buildCourseItemHTML(course) {
     const quizHtml = buildQuizScoreHTML(course, progressData);
 
     return `
-        <div class="course-item" onclick="window.location.href='/student/cours-viewer.html?id=${course.id}'">
+        <div class="course-item" onclick="window.location.href='/student/cours-viewer.html?id=${course.id}'" data-sbi-no-pjax="true">
             <div style="display:flex; align-items:center; gap:1rem;">
                 <div style="width:40px; height:40px; background:rgba(42, 87, 255, 0.1); border-radius:8px; display:flex; align-items:center; justify-content:center; color:var(--accent-blue);">
-                    <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M8 5v14l11-7z"/>
-                    </svg>
+                    <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
                 </div>
 
                 <div>
@@ -534,19 +343,11 @@ function buildCourseItemHTML(course) {
 
 function buildStatusBadge(progressData, doneChapters, totalChapters) {
     if (progressData.status === 'done') {
-        return `
-            <span style="background:rgba(42, 87, 255, 0.1); color:var(--accent-blue); padding:4px 8px; border-radius:4px; font-size:0.75rem; font-weight:bold;">
-                Terminé
-            </span>
-        `;
+        return `<span style="background:rgba(42, 87, 255, 0.1); color:var(--accent-blue); padding:4px 8px; border-radius:4px; font-size:0.75rem; font-weight:bold;">Terminé</span>`;
     }
 
     if (progressData.status === 'in_progress') {
-        return `
-            <span style="background:rgba(251,188,4,0.1); color:var(--accent-yellow); padding:4px 8px; border-radius:4px; font-size:0.75rem; font-weight:bold;">
-                En cours (${doneChapters}/${totalChapters})
-            </span>
-        `;
+        return `<span style="background:rgba(251,188,4,0.1); color:var(--accent-yellow); padding:4px 8px; border-radius:4px; font-size:0.75rem; font-weight:bold;">En cours (${doneChapters}/${totalChapters})</span>`;
     }
 
     return '';
@@ -556,9 +357,7 @@ function buildQuizScoreHTML(course, progressData) {
     const chapters = Array.isArray(course.chapitres) ? course.chapitres : [];
     const hasQuiz = chapters.some((chapter) => chapter.type === 'quiz');
 
-    if (!hasQuiz || !progressData.quizScores) {
-        return '';
-    }
+    if (!hasQuiz || !progressData.quizScores) return '';
 
     let totalPossible = 0;
     let earnedScore = 0;
@@ -567,7 +366,6 @@ function buildQuizScoreHTML(course, progressData) {
         if (chapter.type !== 'quiz') return;
 
         const questions = Array.isArray(chapter.questions) ? chapter.questions : [];
-
         questions.forEach((question) => {
             totalPossible += question.points || 1;
         });
@@ -579,35 +377,13 @@ function buildQuizScoreHTML(course, progressData) {
         ? `<svg width="14" height="14" fill="var(--accent-blue)" viewBox="0 0 24 24" style="vertical-align:text-bottom; margin-left:4px;"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>`
         : '';
 
-    return `
-        <span style="font-size: 0.85rem; color: var(--text-muted); background: #f3f4f6; padding: 4px 8px; border-radius: 6px; margin-right: 10px; font-weight: bold;">
-            Score: ${earnedScore}/${totalPossible} ${starSvg}
-        </span>
-    `;
-}
-
-/* =======================================================================
- * HELPERS
- * ======================================================================= */
-
-function sortByTitle(a, b) {
-    return String(a.titre || '').localeCompare(String(b.titre || ''), 'fr', {
-        sensitivity: 'base'
-    });
+    return `<span style="font-size: 0.85rem; color: var(--text-muted); background: #f3f4f6; padding: 4px 8px; border-radius: 6px; margin-right: 10px; font-weight: bold;">Score: ${earnedScore}/${totalPossible} ${starSvg}</span>`;
 }
 
 function sortCourses(a, b) {
-    const blocCompare = String(a.bloc || '').localeCompare(String(b.bloc || ''), 'fr', {
-        sensitivity: 'base'
-    });
-
-    if (blocCompare !== 0) {
-        return blocCompare;
-    }
-
-    return String(a.titre || '').localeCompare(String(b.titre || ''), 'fr', {
-        sensitivity: 'base'
-    });
+    const blocCompare = String(a.bloc || '').localeCompare(String(b.bloc || ''), 'fr', { sensitivity: 'base' });
+    if (blocCompare !== 0) return blocCompare;
+    return String(a.titre || '').localeCompare(String(b.titre || ''), 'fr', { sensitivity: 'base' });
 }
 
 function escapeHTML(value) {
@@ -619,10 +395,23 @@ function escapeHTML(value) {
         .replace(/'/g, '&#039;');
 }
 
+function escapeAttr(value) {
+    return escapeHTML(value).replace(/`/g, '&#096;');
+}
+
 function showFormationsError() {
     const list = document.getElementById('formations-list');
+    if (list) list.innerHTML = '<p style="color:red;">Erreur lors du chargement des formations.</p>';
+}
 
-    if (list) {
-        list.innerHTML = '<p style="color:red;">Erreur lors du chargement des formations.</p>';
-    }
+function autoMountStudentCourses() {
+    if (window.__SBI_APP_SHELL_MOUNTING_STUDENT_COURSES) return;
+    if (!document.getElementById('formations-list')) return;
+    mountStudentCourses();
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', autoMountStudentCourses, { once: true });
+} else {
+    autoMountStudentCourses();
 }

@@ -3,24 +3,12 @@
  * STUDENT HUB - Tableau de bord étudiant
  * =======================================================================
  *
- * Patch 6.7D.1 :
- * - attend les Web Components avant d'écrire dans la topbar ;
- * - accès formations robuste : formationIds, formationsAcces, students[] ;
- * - accès cours dashboard par ID de formation + titre legacy ;
- * - aucune erreur Firestore ne doit déconnecter visuellement le dashboard.
+ * 8.0F : devient montable via mountStudentHub() pour le shell PJAX.
  * =======================================================================
  */
 
 import { db, auth } from '/js/firebase-init.js';
-import {
-    collection,
-    doc,
-    documentId,
-    getDoc,
-    getDocs,
-    query,
-    where
-} from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import { waitForSbiTopbar } from '/admin/js/components/ready.js';
 import { getUserLearningProgress } from '/js/course-engine.js';
@@ -38,8 +26,31 @@ const state = {
     progress: { courses: {}, formations: {} }
 };
 
-document.addEventListener('DOMContentLoaded', () => {
-    onAuthStateChanged(auth, async (user) => {
+let activeCleanup = null;
+
+function resetState() {
+    state.uid = null;
+    state.userData = {};
+    state.formations = [];
+    state.courses = [];
+    state.progress = { courses: {}, formations: {} };
+}
+
+export function mountStudentHub() {
+    activeCleanup?.({ reason: 'remount' });
+    resetState();
+
+    let disposed = false;
+    let unsubscribeAuth = null;
+    const cleanups = [];
+
+    const addCleanup = (cleanup) => {
+        if (typeof cleanup === 'function') cleanups.push(cleanup);
+    };
+
+    unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
+        if (disposed) return;
+
         if (!user) {
             window.location.replace('/login.html');
             return;
@@ -50,6 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             await waitForSbiTopbar();
             await loadStudentData(user.uid);
+            bindHubActions(addCleanup);
         } catch (error) {
             console.error('[SBI Student Hub] Erreur de chargement :', error);
             renderFormationError();
@@ -57,46 +69,39 @@ document.addEventListener('DOMContentLoaded', () => {
             document.body.classList.remove('preload');
         }
     });
-});
 
-async function waitForSbiComponents() {
-    if (window.__SBI_COMPONENTS_READY === true) {
-        await waitForElements(['top-user-name', 'top-user-avatar'], 1000);
-        return;
-    }
-
-    if (window.SBI_COMPONENTS_READY && typeof window.SBI_COMPONENTS_READY.then === 'function') {
-        await Promise.race([
-            window.SBI_COMPONENTS_READY.catch(() => {}),
-            sleep(1200)
-        ]);
-    } else {
-        await new Promise((resolve) => {
-            const timeout = window.setTimeout(resolve, 1200);
-            window.addEventListener('sbi:components-ready', () => {
-                window.clearTimeout(timeout);
-                resolve();
-            }, { once: true });
+    const cleanup = () => {
+        disposed = true;
+        unsubscribeAuth?.();
+        cleanups.splice(0, cleanups.length).forEach((fn) => {
+            try { fn(); } catch {}
         });
-    }
+        if (activeCleanup === cleanup) activeCleanup = null;
+    };
 
-    await waitForElements(['top-user-name', 'top-user-avatar'], 1200);
+    activeCleanup = cleanup;
+    return cleanup;
 }
 
-async function waitForElements(ids, timeoutMs = 1200) {
-    const start = Date.now();
+function bindHubActions(addCleanup) {
+    const exploreButton = Array.from(document.querySelectorAll('button'))
+        .find((button) => button.textContent?.includes('Explorer la bibliothèque'));
 
-    while (Date.now() - start < timeoutMs) {
-        const ready = ids.every((id) => document.getElementById(id));
-        if (ready) return true;
-        await sleep(50);
+    if (exploreButton && exploreButton.dataset.sbiHubBound !== 'true') {
+        exploreButton.dataset.sbiHubBound = 'true';
+        exploreButton.removeAttribute('onclick');
+        exploreButton.setAttribute('data-sbi-href', '/student/mes-cours.html');
+
+        const handler = () => {
+            window.SBI_APP_SHELL?.navigate?.(new URL('/student/mes-cours.html', window.location.origin), {
+                historyMode: 'push',
+                source: 'student-hub-cta'
+            }) || (window.location.href = '/student/mes-cours.html');
+        };
+
+        exploreButton.addEventListener('click', handler);
+        addCleanup(() => exploreButton.removeEventListener('click', handler));
     }
-
-    return false;
-}
-
-function sleep(ms) {
-    return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
 async function loadStudentData(uid) {
@@ -114,8 +119,20 @@ async function loadStudentData(uid) {
     updateGamification(state.userData);
 
     state.progress = await getUserLearningProgress(uid);
-    state.formations = await fetchAssignedFormations(uid, state.userData);
-    state.courses = await fetchAssignedCourses(state.formations, state.userData);
+    state.formations = await loadAssignedFormationsForUser({
+        uid,
+        userData: state.userData,
+        role: 'student'
+    });
+    state.courses = await loadCoursesForUser({
+        uid: state.uid,
+        userData: state.userData,
+        role: 'student',
+        formations: state.formations,
+        progress: state.progress,
+        includeProgress: true,
+        activeOnly: true
+    });
 
     renderAssignedFormations();
     updateContinueLearningCard();
@@ -125,9 +142,7 @@ function updateTopBar(userData) {
     const name = `${userData.prenom || ''} ${userData.nom || ''}`.trim() || userData.displayName || 'Étudiant';
 
     const topUserName = document.getElementById('top-user-name');
-    if (topUserName) {
-        topUserName.textContent = name;
-    }
+    if (topUserName) topUserName.textContent = name;
 
     const topUserAvatar = document.getElementById('top-user-avatar');
     if (topUserAvatar) {
@@ -145,25 +160,17 @@ function updateGamification(userData) {
     const percent = Math.min((xp / 1000) * 100, 100);
 
     const topUserLevel = document.getElementById('top-user-level');
-    if (topUserLevel) {
-        topUserLevel.textContent = `Niveau ${level}`;
-    }
+    if (topUserLevel) topUserLevel.textContent = `Niveau ${level}`;
 
     const hubLevel = document.getElementById('hub-level');
-    if (hubLevel) {
-        hubLevel.textContent = String(level);
-    }
+    if (hubLevel) hubLevel.textContent = String(level);
 
     const hubXp = document.getElementById('hub-xp');
-    if (hubXp) {
-        hubXp.textContent = String(xp);
-    }
+    if (hubXp) hubXp.textContent = String(xp);
 
     window.setTimeout(() => {
         const xpFill = document.getElementById('hub-xp-fill');
-        if (xpFill) {
-            xpFill.style.width = `${percent}%`;
-        }
+        if (xpFill) xpFill.style.width = `${percent}%`;
     }, 250);
 }
 
@@ -182,7 +189,7 @@ function renderAssignedFormations() {
 
     formationsList.innerHTML = state.formations.map((formation) => {
         const title = escapeHTML(formation.titre || 'Formation');
-        const count = countCoursesForFormation(formation);
+        const count = state.courses.filter((course) => sharedCourseBelongsToFormation(course, formation, state.formations)).length;
         const courseLabel = count > 1 ? `${count} cours actifs` : count === 1 ? '1 cours actif' : 'Aucun cours actif';
 
         return `
@@ -200,7 +207,10 @@ function renderAssignedFormations() {
         button.addEventListener('mouseenter', () => { button.style.borderColor = 'var(--accent-blue)'; });
         button.addEventListener('mouseleave', () => { button.style.borderColor = '#222'; });
         button.addEventListener('click', () => {
-            window.location.href = '/student/mes-cours.html';
+            window.SBI_APP_SHELL?.navigate?.(new URL('/student/mes-cours.html', window.location.origin), {
+                historyMode: 'push',
+                source: 'student-hub-formation'
+            }) || (window.location.href = '/student/mes-cours.html');
         });
     });
 }
@@ -219,105 +229,6 @@ function updateContinueLearningCard() {
     card.textContent = courseCount > 1
         ? `Vous avez ${courseCount} cours actifs dans votre bibliothèque. Ne perdez pas le rythme !`
         : "Vous avez 1 cours actif dans votre bibliothèque. Ne perdez pas le rythme !";
-}
-
-async function fetchAssignedFormations(uid, userData) {
-    return loadAssignedFormationsForUser({
-        uid,
-        userData,
-        role: 'student'
-    });
-}
-
-async function fetchAssignedCourses(formations, userData) {
-    return loadCoursesForUser({
-        uid: state.uid,
-        userData,
-        role: 'student',
-        formations,
-        progress: state.progress,
-        includeProgress: true,
-        activeOnly: true
-    });
-}
-
-function countCoursesForFormation(formation) {
-    return state.courses.filter((course) => courseBelongsToFormation(course, formation)).length;
-}
-
-function courseBelongsToFormation(course, formation) {
-    return sharedCourseBelongsToFormation(course, formation, state.formations);
-}
-
-function isDebugStudentAccessEnabled() {
-    try {
-        return localStorage.getItem('sbiDebugAccess') === 'true';
-    } catch {
-        return false;
-    }
-}
-
-function isExpectedStudentAccessError(error) {
-    const code = String(error?.code || '').toLowerCase();
-    const message = String(error?.message || '').toLowerCase();
-    return code.includes('permission-denied')
-        || code.includes('failed-precondition')
-        || message.includes('missing or insufficient permissions')
-        || message.includes('permission')
-        || message.includes('index');
-}
-
-async function safeGetDocs(queryRef, label) {
-    try {
-        return await getDocs(queryRef);
-    } catch (error) {
-        if (isExpectedStudentAccessError(error)) {
-            if (isDebugStudentAccessEnabled()) console.debug(`[SBI Student Hub] ${label} ignoré :`, error);
-            return null;
-        }
-
-        console.warn(`[SBI Student Hub] ${label} ignoré :`, error);
-        return null;
-    }
-}
-
-function snapToArray(snapshot) {
-    const items = [];
-    snapshot.forEach((docSnap) => {
-        items.push({ id: docSnap.id, ...docSnap.data() });
-    });
-    return items;
-}
-
-function normalizeList(values) {
-    if (!Array.isArray(values)) return [];
-    return Array.from(new Set(values.map((value) => String(value || '').trim()).filter(Boolean)));
-}
-
-function chunkArray(items, size = 10) {
-    const chunks = [];
-    for (let index = 0; index < items.length; index += size) {
-        chunks.push(items.slice(index, index + size));
-    }
-    return chunks;
-}
-
-function uniqById(items) {
-    const map = new Map();
-    items.forEach((item) => {
-        if (item?.id) map.set(item.id, item);
-    });
-    return Array.from(map.values());
-}
-
-function sortByTitle(a, b) {
-    return String(a.titre || '').localeCompare(String(b.titre || ''), 'fr', { sensitivity: 'base' });
-}
-
-function sortCourses(a, b) {
-    const blocCompare = String(a.bloc || '').localeCompare(String(b.bloc || ''), 'fr', { sensitivity: 'base' });
-    if (blocCompare !== 0) return blocCompare;
-    return String(a.titre || '').localeCompare(String(b.titre || ''), 'fr', { sensitivity: 'base' });
 }
 
 function escapeHTML(value) {
@@ -342,4 +253,16 @@ function renderFormationError() {
             Impossible de charger vos formations pour le moment.
         </p>
     `;
+}
+
+function autoMountStudentHub() {
+    if (window.__SBI_APP_SHELL_MOUNTING_STUDENT_HUB) return;
+    if (!document.getElementById('assigned-formations-list')) return;
+    mountStudentHub();
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', autoMountStudentHub, { once: true });
+} else {
+    autoMountStudentHub();
 }

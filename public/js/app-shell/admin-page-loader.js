@@ -1,8 +1,7 @@
 /**
- * SBI 8.0D.1 - Admin page loader
+ * SBI 8.0F - App shell page loader
  *
- * Charge une page admin externe dans le shell sans rechargement complet.
- * Ajoute un cache DOM pour restaurer rapidement l'index admin au retour.
+ * Charge les pages internes explicitement migrées dans le shell sans reload complet.
  */
 
 const loadedStyleHrefs = new Set(
@@ -22,8 +21,10 @@ const ROUTE_BODY_CLASSES = new Set([
   'sbi-admin-surface',
   'sbi-student-surface',
   'sbi-teacher-surface',
+  'sbi-course-editor-page',
   'sbi-dashboard-page',
-  'sbi-dashboard-redesign'
+  'sbi-dashboard-redesign',
+  'no-right-panel'
 ]);
 
 export async function fetchAdminDocument(url) {
@@ -154,7 +155,7 @@ export function replaceRouteNodeFromDocument(doc, selector, mountSelector = '#ap
   };
 }
 
-export function updateAdminChromeFromDocument(doc, fallbackTitle = 'SBI Admin') {
+export function updateAdminChromeFromDocument(doc, fallbackTitle = 'SBI') {
   const incomingTitle = doc.querySelector('title')?.textContent?.trim();
   const incomingPageTitle = doc.querySelector('.top-bar .page-title');
 
@@ -170,11 +171,30 @@ export function updateAdminChromeFromDocument(doc, fallbackTitle = 'SBI Admin') 
   }
 }
 
-export function setLeftNavActive(activeId) {
+function resolveComparableHref(rawHref) {
+  if (!rawHref) return '';
+  try {
+    const url = new URL(rawHref, window.location.origin);
+    return `${url.pathname}${url.search}`;
+  } catch {
+    return String(rawHref || '');
+  }
+}
+
+export function setLeftNavActive(activeTarget) {
   const items = document.querySelectorAll('#left-panel .nav-item, #left-panel .admin-return-link');
+  const target = String(activeTarget || '').trim();
+  const targetComparable = resolveComparableHref(target);
 
   items.forEach((item) => {
-    const isActive = item.id === activeId;
+    const itemHref = item.getAttribute('data-sbi-href') || item.getAttribute('data-href') || item.getAttribute('href') || '';
+    const isActive = Boolean(target) && (
+      item.id === target ||
+      itemHref === target ||
+      resolveComparableHref(itemHref) === targetComparable ||
+      resolveComparableHref(itemHref).startsWith(targetComparable + '?')
+    );
+
     item.classList.toggle('active', isActive);
 
     if (isActive) {

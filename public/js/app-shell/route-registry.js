@@ -1,10 +1,14 @@
 /**
- * SBI 8.0D.1 - Route registry
+ * SBI 8.0F - Route registry
  *
- * 8.0A : onglets admin déjà présents dans le DOM.
- * 8.0B : Gestion Accueil.
- * 8.0D : Mon Profil admin.
- * 8.0D.1 : cache DOM admin index pour retour instantané sur Utilisateurs.
+ * Admin shell :
+ * - admin index tabs
+ * - Gestion Accueil
+ * - Mon Profil
+ *
+ * Student shell :
+ * - Mon Hub
+ * - Mes Cours
  */
 
 import { registerCleanup } from './view-lifecycle.js';
@@ -51,6 +55,18 @@ function isAdminProfile(url) {
   return normalizePath(url.pathname).toLowerCase() === '/admin/admin-profile.html';
 }
 
+function isStudentDashboard(url) {
+  return normalizePath(url.pathname).toLowerCase() === '/student/dashboard.html';
+}
+
+function isStudentCourses(url) {
+  return normalizePath(url.pathname).toLowerCase() === '/student/mes-cours.html';
+}
+
+function isStudentShellRoute(url) {
+  return isStudentDashboard(url) || isStudentCourses(url);
+}
+
 function getCurrentUrl() {
   return new URL(window.SBI_APP_SHELL_CURRENT_URL || window.location.href, window.location.origin);
 }
@@ -64,6 +80,12 @@ function isAdminShellContext() {
   return path === '/admin/index.html'
     || path === '/admin/site-index-settings.html'
     || path === '/admin/admin-profile.html';
+}
+
+function isStudentShellContext() {
+  const path = getCurrentPath();
+  return path === '/student/dashboard.html'
+    || path === '/student/mes-cours.html';
 }
 
 function isCurrentAdminIndex() {
@@ -113,7 +135,7 @@ async function mountAdminIndex({ url, source = 'app-shell' }) {
   }
 
   window.SBI_ADMIN_TABS?.switchTo?.(tab, { updateUrl: false, source });
-  setLeftNavActive(null);
+  setLeftNavActive('');
   updateUrlContext(url);
 
   return { viewKey: `admin:${tab}` };
@@ -182,8 +204,68 @@ async function mountAdminProfile({ url }) {
   return { viewKey: 'admin:profile' };
 }
 
+async function mountStudentPage({ url }) {
+  const doc = await fetchAdminDocument(url);
+  const isDashboard = isStudentDashboard(url);
+
+  ensureDocumentStyles(doc, url.href);
+  applyBodyRouteClassesFromDocument(doc, ['no-right-panel']);
+  replaceMainFromDocument(doc);
+  updateAdminChromeFromDocument(doc, isDashboard ? 'SBI Student - Mon Hub' : 'Mes Cours - SBI Student');
+  setLeftNavActive(isDashboard ? '/student/dashboard.html' : '/student/mes-cours.html');
+  updateUrlContext(url);
+
+  if (isDashboard) {
+    window.__SBI_APP_SHELL_MOUNTING_STUDENT_HUB = true;
+
+    try {
+      const module = await import('/student/js/student-hub.js');
+      const cleanup = module.mountStudentHub?.({ source: 'pjax-student-dashboard' });
+
+      if (typeof cleanup === 'function') {
+        registerCleanup(cleanup, 'student-hub');
+      }
+    } finally {
+      window.__SBI_APP_SHELL_MOUNTING_STUDENT_HUB = false;
+    }
+
+    return { viewKey: 'student:dashboard' };
+  }
+
+  window.__SBI_APP_SHELL_MOUNTING_STUDENT_COURSES = true;
+
+  try {
+    const module = await import('/student/js/mes-cours.js');
+    const cleanup = module.mountStudentCourses?.({ source: 'pjax-student-courses' });
+
+    if (typeof cleanup === 'function') {
+      registerCleanup(cleanup, 'student-courses');
+    }
+  } finally {
+    window.__SBI_APP_SHELL_MOUNTING_STUDENT_COURSES = false;
+  }
+
+  return { viewKey: 'student:courses' };
+}
+
 export function createRouteRegistry() {
   const routes = [];
+
+  routes.push({
+    id: 'student-dashboard',
+    canHandle(url) {
+      return isStudentDashboard(url) && isStudentShellContext();
+    },
+    mount: mountStudentPage
+  });
+
+  routes.push({
+    id: 'student-courses',
+    canHandle(url) {
+      return isStudentCourses(url) && isStudentShellContext();
+    },
+    mount: mountStudentPage
+  });
 
   routes.push({
     id: 'admin-profile',

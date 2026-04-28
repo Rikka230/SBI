@@ -1,6 +1,6 @@
 # SBI Refactor Map
 
-Version chantier : 8.0E
+Version chantier : 8.0F
 Branche de travail : `pjax-app-shell-test`
 Branche stable : `main`
 
@@ -47,8 +47,6 @@ Statut : validé.
 
 Statut : validé.
 
-- `public/js/sbi-version.js`.
-- `public/js/sbi-version-badge.js`.
 - Badge version fiable pour Firebase Preview.
 
 ### 8.0D - Admin shell : Mon Profil
@@ -58,7 +56,6 @@ Statut : validé.
 - Route PJAX pour `/admin/admin-profile.html`.
 - `profile-core.js` compatible `mountProfileCore()`.
 - Cleanup présence/auth profil.
-- CropperJS chargé si nécessaire.
 
 ### 8.0D.1 - Cache retour Utilisateurs
 
@@ -66,26 +63,28 @@ Statut : validé.
 
 - Cache du DOM réel de `#main-content` quand l'utilisateur quitte `/admin/index.html`.
 - Restauration de ce DOM au retour vers `/admin/index.html`.
-- Conservation des cartes utilisateurs déjà rendues et de leurs listeners.
 
 ### 8.0E - PJAX activé par défaut
 
+Statut : validé.
+
+- PJAX activé par défaut sur `pjax-app-shell-test`.
+- Kill switch `window.SBI_DISABLE_PJAX()`.
+
+### 8.0F - Student shell
+
 Statut : patch préparé.
 
-Objectif : arrêter l'activation manuelle via console.
+Objectif : fluidifier l'espace étudiant.
 
 Changements :
 
-- PJAX activé par défaut sur `pjax-app-shell-test`.
-- Kill switch :
-  - `localStorage.setItem('sbiPjaxDisabled', 'true')`
-  - `window.SBI_DISABLE_PJAX()`
-  - URL `?sbiPjax=0`
-- Réactivation :
-  - `localStorage.removeItem('sbiPjaxDisabled')`
-  - `window.SBI_ENABLE_PJAX()`
-  - URL `?sbiPjax=1`
-- Version centralisée passée en `8.0E`.
+- Routes PJAX pour `/student/dashboard.html` et `/student/mes-cours.html`.
+- `student-hub.js` devient montable via `mountStudentHub()`.
+- `mes-cours.js` devient montable via `mountStudentCourses()`.
+- Navigation Hub <-> Mes Cours sans reload complet.
+- Viewer de cours laissé hors PJAX via fallback classique.
+- Version centralisée passée en `8.0F`.
 
 Pages encore hors PJAX :
 
@@ -93,4 +92,4 @@ Pages encore hors PJAX :
 - viewer ;
 - Quill ;
 - quiz ;
-- pages student / teacher.
+- teacher.
