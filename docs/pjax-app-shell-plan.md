@@ -27,6 +27,15 @@ Debug :
 localStorage.setItem('sbiPjaxDebug', 'true')
 ```
 
+## Version badge
+
+Depuis 8.0C, l'encart de version est piloté par :
+
+- `public/js/sbi-version.js`
+- `public/js/sbi-version-badge.js`
+
+À chaque patch, mettre à jour `SBI_VERSION` pour confirmer visuellement la build chargée dans Firebase Preview.
+
 ## 8.0A
 
 - Ajout du dossier `public/js/app-shell/`.
@@ -46,12 +55,20 @@ localStorage.setItem('sbiPjaxDebug', 'true')
 - Retour vers `/admin/index.html?tab=...` géré par le shell ou fallback reload si contexte invalide.
 - Les pages sensibles restent hors PJAX.
 
+## 8.0C
+
+- Ajout d'une version centralisée.
+- Remplacement de l'ancien badge CSS figé.
+- Badge affiché sur les espaces internes admin / student / teacher.
+- Version actuelle : `SBI 8.0C - PJAX APP SHELL TEST`.
+
 ## Prochaines étapes
 
-- 8.0C : ajouter skeleton loaders et extraction de vues admin.
-- 8.0D : student shell.
-- 8.0E : teacher shell.
-- 8.0F : éditeurs, viewers, Quill, progression.
+- 8.0D : Admin profil dans le shell.
+- 8.0E : Admin formations simples.
+- 8.0F : student shell.
+- 8.0G : teacher shell.
+- 8.1 : éditeurs, viewers, Quill, progression.
 
 ## Règles de sécurité
 
