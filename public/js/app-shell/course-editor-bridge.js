@@ -1,5 +1,5 @@
 /**
- * SBI 8.0K.3 - Course editor bridge
+ * SBI 8.0K.4 - Course editor bridge
  *
  * Prépare et monte les éléments que les scripts inline ne relancent pas
  * en navigation PJAX : Quill, onglets éditeur et switch image/vidéo.
@@ -38,7 +38,8 @@ export async function loadQuillIfNeeded(loadScriptOnce) {
 }
 
 function injectQuillTooltipStyles() {
-  if (document.getElementById(TOOLTIP_STYLE_ID)) return;
+  const previousStyle = document.getElementById(TOOLTIP_STYLE_ID);
+  if (previousStyle) previousStyle.remove();
 
   const style = document.createElement('style');
   style.id = TOOLTIP_STYLE_ID;
@@ -46,6 +47,12 @@ function injectQuillTooltipStyles() {
     .ql-toolbar .sbi-quill-tooltip-anchor,
     .ql-toolbar .ql-picker.sbi-quill-tooltip-anchor {
       position: relative;
+    }
+
+    .ql-toolbar .sbi-quill-tooltip-anchor::before,
+    .ql-toolbar .sbi-quill-tooltip-anchor::after {
+      content: none !important;
+      display: none !important;
     }
 
     .sbi-quill-tooltip-portal {
@@ -92,15 +99,6 @@ function injectQuillTooltipStyles() {
       border-top: 1px solid rgba(15, 23, 42, 0.08);
     }
 
-    .sbi-quill-tooltip-portal[data-placement="top"]::before {
-      top: auto;
-      bottom: -5px;
-      border-left: 0;
-      border-top: 0;
-      border-right: 1px solid rgba(15, 23, 42, 0.08);
-      border-bottom: 1px solid rgba(15, 23, 42, 0.08);
-    }
-
     @media (max-width: 768px) {
       .sbi-quill-tooltip-portal {
         display: none !important;
@@ -133,30 +131,29 @@ function positionTooltip(target, portal) {
 
   const rect = target.getBoundingClientRect();
   const spacing = 10;
+  const viewportPadding = 10;
 
   portal.style.left = '0px';
   portal.style.top = '0px';
   portal.classList.add('is-visible');
 
   const tooltipRect = portal.getBoundingClientRect();
-  const viewportPadding = 10;
 
   let left = rect.left + (rect.width / 2);
   let top = rect.bottom + spacing;
-  let placement = 'bottom';
-
-  if (top + tooltipRect.height > window.innerHeight - viewportPadding) {
-    top = rect.top - tooltipRect.height - spacing;
-    placement = 'top';
-  }
 
   const minLeft = viewportPadding + (tooltipRect.width / 2);
   const maxLeft = window.innerWidth - viewportPadding - (tooltipRect.width / 2);
   left = Math.max(minLeft, Math.min(maxLeft, left));
 
-  top = Math.max(viewportPadding, Math.min(window.innerHeight - tooltipRect.height - viewportPadding, top));
+  /**
+   * 8.0K.4 :
+   * On force toujours l'affichage en dessous de l'outil.
+   * Même si la page est basse, on ne bascule plus au-dessus.
+   */
+  top = Math.max(viewportPadding, top);
 
-  portal.dataset.placement = placement;
+  portal.dataset.placement = 'bottom';
   portal.style.left = `${left}px`;
   portal.style.top = `${top}px`;
 }
@@ -247,10 +244,19 @@ function setToolbarLabel(toolbar, selector, label, cleanups) {
   });
 }
 
+function resetQuillNativeTitles(toolbar) {
+  if (!toolbar) return;
+
+  toolbar.querySelectorAll('[title]').forEach((element) => {
+    element.removeAttribute('title');
+  });
+}
+
 function applyQuillToolbarTooltips(toolbar, cleanups = []) {
   if (!toolbar) return;
 
   injectQuillTooltipStyles();
+  resetQuillNativeTitles(toolbar);
 
   setToolbarLabel(toolbar, '.ql-size', 'Taille du texte', cleanups);
   setToolbarLabel(toolbar, '.ql-bold', 'Gras', cleanups);
