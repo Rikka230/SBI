@@ -1,5 +1,5 @@
 /**
- * SBI 7.2B - Navigation progressive légère + synchronisation active
+ * SBI 7.2C - Navigation progressive légère + synchronisation active
  *
  * Ce module ne remplace pas le routeur et ne fait pas de PJAX complet.
  * Il ajoute une transition visuelle sûre sur les navigations internes standards
@@ -101,6 +101,13 @@ function normalizeHref(rawHref) {
   }
 }
 
+function getRawHref(trigger) {
+  if (!trigger) return null;
+  return trigger.getAttribute('data-sbi-href')
+    || trigger.getAttribute('data-href')
+    || trigger.getAttribute('href');
+}
+
 function normalizePath(pathname) {
   if (!pathname) return '/';
   const cleanPath = pathname.replace(/\/+$/, '') || '/';
@@ -118,6 +125,18 @@ function isAdminIndexPath(pathname = window.location.pathname) {
 function getActiveAdminTab() {
   const tabFromUrl = new URLSearchParams(window.location.search).get('tab');
   return tabFromUrl || sessionStorage.getItem('activeAdminTab') || 'view-dashboard';
+}
+
+function getAdminExternalMatchId(pathname = window.location.pathname) {
+  const path = normalizePath(pathname).toLowerCase();
+
+  if (path.endsWith('/admin/admin-profile.html')) return 'nav-users';
+  if (path.endsWith('/admin/formations-cours.html')) return 'nav-formations';
+  if (path.endsWith('/admin/formations-live.html')) return 'nav-formations';
+  if (path.endsWith('/admin/site-index-settings.html')) return 'nav-site-index';
+  if (path.endsWith('/admin/repair-access.html')) return 'nav-users';
+
+  return null;
 }
 
 function isSameDocumentHashNavigation(url) {
@@ -153,13 +172,13 @@ function isEligibleInternalUrl(url) {
 }
 
 function getNavigationIntent(event) {
-  const trigger = event.target?.closest?.('a[href], [data-sbi-href]');
+  const trigger = event.target?.closest?.('a[href], [data-sbi-href], [data-href]');
   if (!trigger) return null;
   if (trigger.closest('[data-sbi-no-transition="true"]')) return null;
   if (trigger.matches('a[download]')) return null;
   if (trigger.matches('a[target]') && trigger.getAttribute('target') !== '_self') return null;
 
-  const rawHref = trigger.getAttribute('data-sbi-href') || trigger.getAttribute('href');
+  const rawHref = getRawHref(trigger);
   const url = normalizeHref(rawHref);
   if (!isEligibleInternalUrl(url)) return null;
 
@@ -215,10 +234,10 @@ function handleKeyboardNavigation(event) {
   if (navigating || event.defaultPrevented) return;
   if (event.key !== 'Enter' && event.key !== ' ') return;
 
-  const trigger = event.target?.closest?.('[data-sbi-href]');
+  const trigger = event.target?.closest?.('[data-sbi-href], [data-href]');
   if (!trigger || trigger.closest('[data-sbi-no-transition="true"]')) return;
 
-  const url = normalizeHref(trigger.getAttribute('data-sbi-href'));
+  const url = normalizeHref(getRawHref(trigger));
   if (!isEligibleInternalUrl(url)) return;
 
   event.preventDefault();
@@ -236,13 +255,18 @@ function setCurrentState(element, isCurrent) {
 
 function navItemMatchesCurrent(item) {
   const currentPath = normalizePath(window.location.pathname);
+  const externalMatchId = getAdminExternalMatchId(currentPath);
+
+  if (externalMatchId) {
+    return item.id === externalMatchId;
+  }
 
   const target = item.getAttribute('data-target');
   if (target && isAdminIndexPath(currentPath)) {
     return getActiveAdminTab() === target;
   }
 
-  const rawHref = item.getAttribute('data-sbi-href') || item.getAttribute('href');
+  const rawHref = getRawHref(item);
   const url = normalizeHref(rawHref);
   if (!url || url.origin !== window.location.origin) return false;
 
@@ -262,7 +286,7 @@ function syncNavigationStateNow() {
   syncScheduled = false;
 
   const navItems = document.querySelectorAll(
-    '#left-panel .nav-item[data-sbi-href], #left-panel .nav-item[data-target], #left-panel .admin-return-link[data-sbi-href]'
+    '#left-panel .nav-item[data-sbi-href], #left-panel .nav-item[data-href], #left-panel .nav-item[data-target], #left-panel .admin-return-link[data-sbi-href]'
   );
 
   navItems.forEach((item) => {
@@ -298,6 +322,7 @@ export function initSbiNavigationTransitions() {
   document.addEventListener('click', handleDocumentClick);
   document.addEventListener('keydown', handleKeyboardNavigation);
   window.addEventListener('sbi:component-mounted', scheduleNavigationSync);
+  window.addEventListener('sbi:navigation-mutated', scheduleNavigationSync);
   window.addEventListener('sbi:admin-tab-changed', scheduleNavigationSync);
 
   if (document.readyState === 'loading') {

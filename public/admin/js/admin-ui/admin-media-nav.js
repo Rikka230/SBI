@@ -1,14 +1,24 @@
+function emitNavigationMutation() {
+    window.dispatchEvent(new CustomEvent('sbi:navigation-mutated'));
+}
+
 export function initAdminMediaNav() {
     if (!window.location.pathname.toLowerCase().startsWith('/admin/')) return;
 
     const inject = () => {
         const menu = document.querySelector('#left-panel .nav-menu');
-        if (!menu || document.getElementById('nav-site-index')) return;
+        if (!menu) return;
+
+        if (document.getElementById('nav-site-index')) {
+            emitNavigationMutation();
+            return;
+        }
 
         const item = document.createElement('li');
         item.className = `nav-item ${window.location.pathname.includes('site-index-settings.html') ? 'active' : ''}`;
         item.id = 'nav-site-index';
         item.setAttribute('data-sbi-href', '/admin/site-index-settings.html');
+        item.setAttribute('data-href', '/admin/site-index-settings.html');
         item.setAttribute('role', 'link');
         item.setAttribute('tabindex', '0');
         item.innerHTML = `
@@ -22,6 +32,8 @@ export function initAdminMediaNav() {
         } else {
             menu.appendChild(item);
         }
+
+        emitNavigationMutation();
     };
 
     window.setTimeout(inject, 80);

@@ -412,3 +412,31 @@ Changements :
 - conservation de la navigation classique entre pages.
 
 Aucune modification rules.
+
+
+## Étape 7.2B.1 - Correctif navigation Gestion Accueil
+
+Statut : validé.
+
+Objectif : corriger le retour depuis la page externe `Gestion Accueil` vers les onglets admin.
+
+- Les onglets admin gardent une cible `data-sbi-href` externe vers `/admin/index.html?tab=...`.
+- Depuis `Gestion Accueil`, Tableau de Bord, Utilisateurs, Formations et Serveur & Vidéos restent cliquables.
+- Aucun changement auth, Firestore, Storage, progression ou rules.
+
+## Étape 7.2C - Consolidation navigation externe
+
+Statut : patch préparé.
+
+Objectif : consolider les états actifs quand on navigue sur des pages admin externes, sans activer de PJAX complet.
+
+Changements :
+
+- Les pages externes admin gardent le bon item actif après synchronisation globale.
+- `admin-profile.html` reste rattaché à Utilisateurs.
+- `formations-cours.html` et `formations-live.html` restent rattachées à Formations.
+- `site-index-settings.html` reste rattachée à Gestion Accueil.
+- Le lien Gestion Accueil notifie la couche navigation après injection différée.
+- Compatibilité renforcée avec `data-href` et `data-sbi-href`.
+
+Aucune modification rules.
