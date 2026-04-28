@@ -3,7 +3,7 @@
 Branche expérimentale : `pjax-app-shell-test`
 Base : `main` après merge 7.4.2
 
-## État 8.0J
+## État 8.0K
 
 Le PJAX est activé par défaut sur la branche labo.
 
@@ -24,8 +24,8 @@ window.SBI_ENABLE_PJAX()
 ## Diagnostics console
 
 ```js
-window.SBI_PJAX_CHECK('/student/mes-cours.html')
 window.SBI_PJAX_CHECK('/teacher/mes-cours.html')
+window.SBI_PJAX_CHECK('/admin/formations-cours.html')
 window.SBI_PJAX_ROUTES()
 ```
 
@@ -46,21 +46,23 @@ Student :
 Teacher :
 
 - `/teacher/dashboard.html`
+- `/teacher/mes-cours.html`
 - `/teacher/mon-profil.html`
 
-## 8.0J
+## 8.0K
 
-- Préparation de l'éditeur de cours pour une future migration PJAX.
-- `admin-courses.js` expose désormais `mountAdminCourses()`.
-- Le montage classique au chargement de page est conservé.
-- Ajout de `public/js/app-shell/course-editor-bridge.js`.
-- Les routes éditeur restent protégées en reload classique dans ce patch.
-- Version actuelle : `SBI 8.0J - PJAX APP SHELL TEST`.
+- Activation PJAX de `/teacher/mes-cours.html`.
+- Chargement Quill avant montage de l'éditeur.
+- Initialisation Quill via `course-editor-bridge.js`.
+- Réactivation des onglets Ma Bibliothèque / Éditeur de Cours côté shell.
+- Réactivation du switch Image / Vidéo côté shell.
+- Montage de `admin-courses.js` via `mountAdminCourses()`.
+- `/admin/formations-cours.html` reste protégé en reload classique.
+- Version actuelle : `SBI 8.0K - PJAX APP SHELL TEST`.
 
 ## Routes encore protégées
 
 - `/admin/formations-cours.html`
-- `/teacher/mes-cours.html`
 - `/student/cours-viewer.html`
 - `/teacher/cours-viewer.html`
 - `/admin/cours-viewer.html`
@@ -68,5 +70,5 @@ Teacher :
 ## Règles de sécurité
 
 - Ne pas réactiver `sbi-internal-shell.js`.
-- Chaque route migrée doit fournir un démontage propre.
-- Les pages éditeur, viewer, quiz et Quill restent en reload classique tant qu’elles n’ont pas leur lifecycle dédié.
+- Une erreur routeur doit retomber en reload classique.
+- Les pages viewer/progression restent en reload classique tant qu’elles n’ont pas leur lifecycle dédié.

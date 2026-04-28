@@ -1,6 +1,6 @@
 # SBI Refactor Map
 
-Version chantier : 8.0J
+Version chantier : 8.0K
 Branche de travail : `pjax-app-shell-test`
 Branche stable : `main`
 
@@ -19,32 +19,38 @@ Branche stable : `main`
 - 8.0H : profil étudiant.
 - 8.0H.1 : polish profil.
 - 8.0I.1 : diagnostics clean.
+- 8.0J : foundation éditeur cours montable.
 
-## 8.0J - Course editor mount foundation
+## 8.0K - Teacher course editor PJAX
 
 Statut : patch préparé.
 
-Objectif : préparer l'éditeur cours avant de l'activer en PJAX.
+Objectif : activer une première route éditeur en PJAX, uniquement côté prof.
 
 Changements :
 
-- `public/admin/js/admin-courses.js` expose `mountAdminCourses()`.
-- Le montage automatique classique reste conservé.
-- Les listeners principaux peuvent maintenant être nettoyés lors d'un futur unmount PJAX.
-- Ajout de `public/js/app-shell/course-editor-bridge.js` pour préparer :
-  - chargement Quill,
-  - onglets éditeur,
-  - switch image/vidéo.
-- Les routes éditeur restent en reload classique pour ce patch.
+- `/teacher/mes-cours.html` passe en PJAX.
+- `/admin/formations-cours.html` reste en reload classique.
+- `route-guards.js` retire `/teacher/mes-cours.html` des hard reload.
+- `route-registry.js` ajoute la route `teacher-courses`.
+- `course-editor-bridge.js` initialise Quill et les interactions inline non rejouées par PJAX.
+- `admin-courses.js` est inclus avec `mountAdminCourses()` pour garantir le montage propre.
 
-Pourquoi cette étape :
+Points à tester :
 
-- `/teacher/mes-cours.html` et `/admin/formations-cours.html` contiennent Quill, uploads, validations et logique de cours.
-- Il faut d'abord rendre le moteur montable avant de le charger dans le shell.
+- dashboard prof → formations & cours ;
+- formations & cours → dashboard prof ;
+- bouton Nouveau Cours ;
+- onglets Ma Bibliothèque / Éditeur ;
+- Quill sélection partielle taille texte ;
+- switch image/vidéo ;
+- ouvrir un brouillon ;
+- sauvegarder brouillon léger ;
+- soumettre à validation si besoin sur un test.
 
 Pages encore hors PJAX :
 
-- éditeur cours admin/prof ;
-- viewer ;
-- Quill ;
-- quiz.
+- éditeur cours admin ;
+- viewer étudiant/prof/admin ;
+- progression viewer ;
+- quiz runtime.

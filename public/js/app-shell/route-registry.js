@@ -1,5 +1,5 @@
 /**
- * SBI 8.0H - Route registry
+ * SBI 8.0K - Route registry
  *
  * Admin shell :
  * - admin index tabs
@@ -13,6 +13,7 @@
  *
  * Teacher shell :
  * - Mon Espace
+ * - Mes Cours
  * - Mon Profil
  */
 
@@ -31,6 +32,13 @@ import {
   loadScriptOnce
 } from './admin-page-loader.js';
 import { initAdminTabs } from '/admin/js/admin-ui/panels.js';
+import {
+  loadQuillIfNeeded,
+  initCourseEditorQuill,
+  installCourseEditorTabs,
+  installMediaTypeSwitch,
+  hasCourseEditorDom
+} from './course-editor-bridge.js';
 
 const CROPPER_SCRIPT = 'https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js';
 const ADMIN_INDEX_CACHE_KEY = 'admin:index-main';
@@ -76,6 +84,10 @@ function isTeacherDashboard(url) {
   return normalizePath(url.pathname).toLowerCase() === '/teacher/dashboard.html';
 }
 
+function isTeacherCourses(url) {
+  return normalizePath(url.pathname).toLowerCase() === '/teacher/mes-cours.html';
+}
+
 function isTeacherProfile(url) {
   return normalizePath(url.pathname).toLowerCase() === '/teacher/mon-profil.html';
 }
@@ -105,6 +117,7 @@ function isStudentShellContext() {
 function isTeacherShellContext() {
   const path = getCurrentPath();
   return path === '/teacher/dashboard.html'
+    || path === '/teacher/mes-cours.html'
     || path === '/teacher/mon-profil.html';
 }
 
@@ -261,13 +274,8 @@ async function mountAdminProfile({ url }) {
     window.__SBI_APP_SHELL_MOUNTING_PROFILE = false;
   }
 
-  if (typeof cleanupCropModal === 'function') {
-    registerCleanup(cleanupCropModal, 'admin-profile-crop-modal');
-  }
-
-  if (typeof cleanupTabs === 'function') {
-    registerCleanup(cleanupTabs, 'admin-profile-tabs');
-  }
+  if (typeof cleanupCropModal === 'function') registerCleanup(cleanupCropModal, 'admin-profile-crop-modal');
+  if (typeof cleanupTabs === 'function') registerCleanup(cleanupTabs, 'admin-profile-tabs');
 
   return { viewKey: 'admin:profile' };
 }
@@ -290,9 +298,7 @@ async function mountStudentPage({ url }) {
       const module = await import('/student/js/student-hub.js');
       const cleanup = module.mountStudentHub?.({ source: 'pjax-student-dashboard' });
 
-      if (typeof cleanup === 'function') {
-        registerCleanup(cleanup, 'student-hub');
-      }
+      if (typeof cleanup === 'function') registerCleanup(cleanup, 'student-hub');
     } finally {
       window.__SBI_APP_SHELL_MOUNTING_STUDENT_HUB = false;
     }
@@ -306,9 +312,7 @@ async function mountStudentPage({ url }) {
     const module = await import('/student/js/mes-cours.js');
     const cleanup = module.mountStudentCourses?.({ source: 'pjax-student-courses' });
 
-    if (typeof cleanup === 'function') {
-      registerCleanup(cleanup, 'student-courses');
-    }
+    if (typeof cleanup === 'function') registerCleanup(cleanup, 'student-courses');
   } finally {
     window.__SBI_APP_SHELL_MOUNTING_STUDENT_COURSES = false;
   }
@@ -336,20 +340,13 @@ async function mountStudentProfile({ url }) {
     const module = await import('/js/profile-core.js');
     const cleanupProfile = module.mountProfileCore?.({ source: 'pjax-student-profile' });
 
-    if (typeof cleanupProfile === 'function') {
-      registerCleanup(cleanupProfile, 'student-profile-core');
-    }
+    if (typeof cleanupProfile === 'function') registerCleanup(cleanupProfile, 'student-profile-core');
   } finally {
     window.__SBI_APP_SHELL_MOUNTING_PROFILE = false;
   }
 
-  if (typeof cleanupCropModal === 'function') {
-    registerCleanup(cleanupCropModal, 'student-profile-crop-modal');
-  }
-
-  if (typeof cleanupTabs === 'function') {
-    registerCleanup(cleanupTabs, 'student-profile-tabs');
-  }
+  if (typeof cleanupCropModal === 'function') registerCleanup(cleanupCropModal, 'student-profile-crop-modal');
+  if (typeof cleanupTabs === 'function') registerCleanup(cleanupTabs, 'student-profile-tabs');
 
   return { viewKey: 'student:profile' };
 }
@@ -370,14 +367,52 @@ async function mountTeacherDashboard({ url }) {
     const module = await import('/teacher/js/teacher-dashboard.js');
     const cleanup = module.mountTeacherDashboard?.({ source: 'pjax-teacher-dashboard' });
 
-    if (typeof cleanup === 'function') {
-      registerCleanup(cleanup, 'teacher-dashboard');
-    }
+    if (typeof cleanup === 'function') registerCleanup(cleanup, 'teacher-dashboard');
   } finally {
     window.__SBI_APP_SHELL_MOUNTING_TEACHER_DASHBOARD = false;
   }
 
   return { viewKey: 'teacher:dashboard' };
+}
+
+async function mountTeacherCourses({ url }) {
+  const doc = await fetchAdminDocument(url);
+
+  await ensureDocumentStyles(doc, url.href);
+  await loadQuillIfNeeded(loadScriptOnce);
+
+  applyBodyRouteClassesFromDocument(doc, ['sbi-course-editor-page', 'sbi-teacher-surface', 'no-right-panel']);
+  replaceMainFromDocument(doc);
+  updateAdminChromeFromDocument(doc, 'Formations & Cours - SBI Teacher');
+  setLeftNavActive('/teacher/mes-cours.html');
+  updateUrlContext(url);
+
+  if (!hasCourseEditorDom(document)) {
+    throw new Error('DOM éditeur cours introuvable après injection PJAX.');
+  }
+
+  const cleanupTabs = installCourseEditorTabs();
+  const cleanupMediaSwitch = installMediaTypeSwitch();
+  const cleanupQuill = initCourseEditorQuill();
+
+  window.__SBI_APP_SHELL_MOUNTING_COURSE_EDITOR = true;
+
+  try {
+    const module = await import('/admin/js/admin-courses.js');
+    const cleanupCourses = module.mountAdminCourses?.({ source: 'pjax-teacher-courses' });
+
+    if (typeof cleanupCourses === 'function') {
+      registerCleanup(cleanupCourses, 'teacher-course-editor');
+    }
+  } finally {
+    window.__SBI_APP_SHELL_MOUNTING_COURSE_EDITOR = false;
+  }
+
+  if (typeof cleanupTabs === 'function') registerCleanup(cleanupTabs, 'teacher-course-tabs');
+  if (typeof cleanupMediaSwitch === 'function') registerCleanup(cleanupMediaSwitch, 'teacher-course-media-switch');
+  if (typeof cleanupQuill === 'function') registerCleanup(cleanupQuill, 'teacher-course-quill');
+
+  return { viewKey: 'teacher:courses' };
 }
 
 async function mountTeacherProfile({ url }) {
@@ -400,20 +435,13 @@ async function mountTeacherProfile({ url }) {
     const module = await import('/js/profile-core.js');
     const cleanupProfile = module.mountProfileCore?.({ source: 'pjax-teacher-profile' });
 
-    if (typeof cleanupProfile === 'function') {
-      registerCleanup(cleanupProfile, 'teacher-profile-core');
-    }
+    if (typeof cleanupProfile === 'function') registerCleanup(cleanupProfile, 'teacher-profile-core');
   } finally {
     window.__SBI_APP_SHELL_MOUNTING_PROFILE = false;
   }
 
-  if (typeof cleanupCropModal === 'function') {
-    registerCleanup(cleanupCropModal, 'teacher-profile-crop-modal');
-  }
-
-  if (typeof cleanupTabs === 'function') {
-    registerCleanup(cleanupTabs, 'teacher-profile-tabs');
-  }
+  if (typeof cleanupCropModal === 'function') registerCleanup(cleanupCropModal, 'teacher-profile-crop-modal');
+  if (typeof cleanupTabs === 'function') registerCleanup(cleanupTabs, 'teacher-profile-tabs');
 
   return { viewKey: 'teacher:profile' };
 }
@@ -427,6 +455,14 @@ export function createRouteRegistry() {
       return isTeacherDashboard(url) && isTeacherShellContext();
     },
     mount: mountTeacherDashboard
+  });
+
+  routes.push({
+    id: 'teacher-courses',
+    canHandle(url) {
+      return isTeacherCourses(url) && isTeacherShellContext();
+    },
+    mount: mountTeacherCourses
   });
 
   routes.push({

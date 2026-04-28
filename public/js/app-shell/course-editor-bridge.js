@@ -1,8 +1,8 @@
 /**
- * SBI 8.0J - Course editor bridge
+ * SBI 8.0K - Course editor bridge
  *
- * Prépare la future migration PJAX de l'éditeur cours.
- * Ne force aucune route en PJAX pour l'instant.
+ * Prépare et monte les éléments que les scripts inline ne relancent pas
+ * en navigation PJAX : Quill, onglets éditeur et switch image/vidéo.
  */
 
 const QUILL_SCRIPT = 'https://cdn.quilljs.com/1.3.6/quill.min.js';
@@ -21,11 +21,12 @@ export function hasCourseEditorDom(root = document) {
 }
 
 export function isQuillReady() {
-  return Boolean(window.Quill && window.quill);
+  return Boolean(window.Quill && window.quill && window.quill.root?.isConnected);
 }
 
 export async function loadQuillIfNeeded(loadScriptOnce) {
   if (window.Quill) return window.Quill;
+
   if (typeof loadScriptOnce !== 'function') {
     throw new Error('loadScriptOnce manquant pour charger Quill.');
   }
@@ -34,7 +35,88 @@ export async function loadQuillIfNeeded(loadScriptOnce) {
   return window.Quill;
 }
 
+export function initCourseEditorQuill() {
+  const editor = document.getElementById('quill-editor');
+  if (!editor) return () => {};
+
+  if (!window.Quill) {
+    throw new Error('Quill non chargé.');
+  }
+
+  if (window.quill && window.quill.root?.isConnected && window.quill.container?.contains(editor.querySelector('.ql-editor'))) {
+    return () => {};
+  }
+
+  let lastQuillSelection = null;
+  const toolbarCleanups = [];
+
+  const toolbarOptions = [
+    [{ size: ['small', false, 'large', 'huge'] }],
+    ['bold', 'italic', 'underline', 'strike'],
+    [{ color: [] }, { background: [] }],
+    [{ list: 'ordered' }, { list: 'bullet' }],
+    ['link', 'image', 'video'],
+    ['clean']
+  ];
+
+  function rememberQuillSelection(range) {
+    if (range && range.length > 0) {
+      lastQuillSelection = {
+        index: range.index,
+        length: range.length
+      };
+    }
+  }
+
+  window.quill = new window.Quill('#quill-editor', {
+    theme: 'snow',
+    modules: {
+      toolbar: {
+        container: toolbarOptions,
+        handlers: {
+          size(value) {
+            const quill = this.quill;
+            const currentRange = quill.getSelection();
+            const range = currentRange && currentRange.length > 0
+              ? currentRange
+              : lastQuillSelection;
+
+            if (range && range.length > 0) {
+              quill.focus();
+              quill.setSelection(range.index, range.length, 'silent');
+              quill.formatText(range.index, range.length, 'size', value || false, 'user');
+              quill.setSelection(range.index, range.length, 'silent');
+              rememberQuillSelection(range);
+            }
+          }
+        }
+      }
+    }
+  });
+
+  window.quill.on('selection-change', rememberQuillSelection);
+
+  const toolbar = window.quill.getModule('toolbar')?.container;
+  if (toolbar) {
+    ['mousedown', 'pointerdown', 'touchstart'].forEach((eventName) => {
+      const handler = () => rememberQuillSelection(window.quill?.getSelection?.());
+      toolbar.addEventListener(eventName, handler, true);
+      toolbarCleanups.push(() => toolbar.removeEventListener(eventName, handler, true));
+    });
+  }
+
+  return () => {
+    toolbarCleanups.splice(0, toolbarCleanups.length).forEach((cleanup) => cleanup());
+
+    if (window.quill && !window.quill.root?.isConnected) {
+      window.quill = null;
+    }
+  };
+}
+
 export function installCourseEditorTabs() {
+  const cleanups = [];
+
   window.safeSwitchTab = function safeSwitchTab(tabId) {
     const currentActive = document.querySelector('.student-view.active');
 
@@ -71,8 +153,13 @@ export function installCourseEditorTabs() {
     if (!tabId) return;
 
     item.removeAttribute('onclick');
-    item.addEventListener('click', () => window.safeSwitchTab(tabId));
+
+    const handler = () => window.safeSwitchTab(tabId);
+    item.addEventListener('click', handler);
+    cleanups.push(() => item.removeEventListener('click', handler));
   });
+
+  return () => cleanups.splice(0, cleanups.length).forEach((cleanup) => cleanup());
 }
 
 export function installMediaTypeSwitch() {
