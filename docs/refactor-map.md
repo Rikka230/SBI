@@ -1,51 +1,40 @@
 # SBI Refactor Map
 
-Version chantier : 8.0M.3
+Version chantier : 8.0M.4
 Branche de travail : `pjax-app-shell-test`
 
-## 8.0M.3 - Viewer syntax & student course recovery
+## 8.0M.4 - Student course recovery opened notifications
 
 Statut : patch préparé.
 
-## Bug 1 : viewer bloqué
+## Problème
 
-Symptôme :
+Le cours M3 apparaît, donc le pipeline neuf fonctionne.
+Le cours M2 reste invisible, probablement car il a été créé/ouvert pendant l'état viewer cassé :
 
-- écran `Préparation de votre leçon...`,
-- console : `Uncaught SyntaxError: missing ) after argument list`,
-- fichier : `cours-viewer.js`.
+- notification existante ;
+- notification potentiellement marquée comme lue ;
+- pas forcément de progression créée ;
+- ciblage formation potentiellement incomplet.
 
-Correction :
+## Changements
 
-- remplacement de la chaîne HTML preview par un template literal sécurisé.
+### `public/student/js/mes-cours.js`
 
-## Bug 2 : cours notifié mais absent de Mes Cours
-
-Symptôme :
-
-- l'élève reçoit la notification,
-- le clic notification ouvre le viewer,
-- mais le cours n'apparaît pas dans la liste Mes Cours.
-
-Correction :
-
-- `mes-cours.js` récupère aussi les cours liés aux notifications.
-- Les cours directs/non classés dans une formation visible sont affichés dans un dossier `Cours assignés`.
-- Ajout de `window.SBI_STUDENT_COURSES_DEBUG()` pour inspecter :
-  - formations visibles,
+- Le fallback de récupération par notifications n'ignore plus les notifications présentes dans `dismissedBy`.
+- Les notifications résolues restent exclues.
+- Les erreurs Firestore attendues sur `targetStudents` passent en `console.info`.
+- `window.SBI_STUDENT_COURSES_DEBUG()` affiche :
+  - formations assignées,
   - cours chargés,
-  - cours directs.
+  - cours directs,
+  - dossiers rendus.
 
 ## Points à tester
 
 - Élève → Mes Cours :
-  - vérifier présence du dossier `Cours assignés` si le cours n'est pas rangé dans une formation visible.
-- Notification nouveau cours :
-  - cliquer,
-  - le viewer doit charger.
-- Viewer :
-  - timer,
-  - contenu,
-  - bouton quitter.
+  - le cours M2 devrait réapparaître soit dans sa formation, soit dans `Cours assignés`.
 - Console :
   - `window.SBI_STUDENT_COURSES_DEBUG()`.
+- Viewer :
+  - le cours M2 doit ouvrir si visible.

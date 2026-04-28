@@ -2,36 +2,32 @@
 
 Branche expérimentale : `pjax-app-shell-test`
 
-## État 8.0M.3
+## État 8.0M.4
 
-Patch bugfix prioritaire.
+Patch bugfix après validation partielle de 8.0M.3.
 
-## Corrections
+## Constats
 
-### Viewer
+- Le viewer refonctionne.
+- Le cours créé en 8.0M.3 apparaît bien.
+- Un cours créé pendant l'état cassé 8.0M.2 peut rester invisible si sa notification a déjà été ouverte.
 
-- Correction d'une SyntaxError dans `public/student/js/cours-viewer.js`.
-- La bannière preview n'utilise plus une chaîne avec apostrophe mal échappée.
-- Le viewer doit de nouveau dépasser l'écran `Préparation de votre leçon...`.
+## Correction
 
 ### Mes Cours élève
 
-- Ajout d'un fallback par notifications :
-  - notifications `destinataireId`,
-  - notifications `targetStudents`.
-- Si un cours est notifié à l'élève mais ne remonte pas dans une formation visible, il apparaît dans un dossier :
-  - `Cours assignés`.
-- Ajout diagnostic :
-  - `window.SBI_STUDENT_COURSES_DEBUG()`.
+- Les notifications déjà ouvertes/lues peuvent désormais servir au fallback de récupération.
+- Le fallback ne filtre plus `dismissedBy`.
+- Les notifications `resolved` restent ignorées.
+- Le warning Firestore attendu sur `targetStudents` est remplacé par un `console.info`.
+- Le debug affiche aussi les dossiers rendus.
 
-## Routes viewer
+## Diagnostic
 
-Les viewers restent protégés en reload classique :
-
-- `/student/cours-viewer.html`
-- `/teacher/cours-viewer.html`
-- `/admin/cours-viewer.html`
+```js
+window.SBI_STUDENT_COURSES_DEBUG()
+```
 
 ## Version
 
-`SBI 8.0M.3 - PJAX APP SHELL TEST`
+`SBI 8.0M.4 - PJAX APP SHELL TEST`

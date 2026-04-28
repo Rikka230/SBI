@@ -215,13 +215,30 @@ async function loadNotificationLinkedCourses() {
             snap.forEach((docSnap) => {
                 const notif = docSnap.data() || {};
                 if (notif.status === 'resolved' || notif.resolvedAt) return;
-                if (Array.isArray(notif.dismissedBy) && notif.dismissedBy.includes(currentUid)) return;
 
+                /**
+                 * 8.0M.4 :
+                 * On ne filtre plus dismissedBy ici.
+                 *
+                 * Raison :
+                 * si l'élève a cliqué une notification pendant que le viewer était cassé,
+                 * la notification peut être marquée comme lue alors que le cours n'a jamais été
+                 * ajouté proprement à sa progression. Elle reste malgré tout une preuve utile
+                 * que le cours lui a été assigné.
+                 */
                 const courseId = String(notif.courseId || '').trim();
                 if (courseId) courseIds.add(courseId);
             });
         } catch (error) {
-            console.warn(`[SBI Student Courses] Notifications ${label} non utilisables pour récupérer les cours :`, error);
+            const code = String(error?.code || '').toLowerCase();
+            const message = String(error?.message || '').toLowerCase();
+            const isPermissionLimit = code.includes('permission-denied') || message.includes('permission');
+
+            if (isPermissionLimit) {
+                console.info(`[SBI Student Courses] Notifications ${label} non lisibles avec les règles Firestore actuelles. Récupération ignorée.`);
+            } else {
+                console.warn(`[SBI Student Courses] Notifications ${label} non utilisables pour récupérer les cours :`, error);
+            }
         }
     }
 
@@ -518,12 +535,18 @@ window.SBI_STUDENT_COURSES_DEBUG = function() {
         directCourses: getDirectAssignedCoursesWithoutVisibleFormation().map((course) => ({
             id: course.id,
             titre: course.titre
+        })),
+        renderedFolders: getFormationCardsToRender().map((formation) => ({
+            id: formation.id,
+            titre: formation.titre,
+            direct: formation.__directCourses === true
         }))
     };
 
     console.table(payload.assignedFormations);
     console.table(payload.allCourses);
     console.table(payload.directCourses);
+    console.table(payload.renderedFolders);
     return payload;
 };
 
