@@ -159,17 +159,56 @@ function getAuthorName(authorId, courseData = null) {
 }
 
 
-document.addEventListener('DOMContentLoaded', () => {
-    onAuthStateChanged(auth, async (user) => {
+
+let activeAdminCoursesCleanup = null;
+
+function resetAdminCoursesStateForMount() {
+    currentUid = null;
+    currentUserProfile = null;
+    currentChapters = [];
+    activeChapterId = null;
+    allFormationsData = [];
+    allUsersForAccess = [];
+    allCoursesData = [];
+    editingCourseAuthorId = null;
+    editingCourseOriginalStatus = null;
+    editingCourseOriginalActive = false;
+    formationIndexSyncedOnce = false;
+    clearAllPendingMedia();
+}
+
+function bindCourseEvent(target, eventName, handler, cleanups, options = undefined) {
+    if (!target || typeof target.addEventListener !== 'function') return;
+    target.addEventListener(eventName, handler, options);
+    cleanups.push(() => target.removeEventListener(eventName, handler, options));
+}
+
+export function mountAdminCourses({ source = 'standard' } = {}) {
+    activeAdminCoursesCleanup?.({ reason: 'remount' });
+    resetAdminCoursesStateForMount();
+
+    let disposed = false;
+    const cleanups = [];
+
+    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
+        if (disposed) return;
+
         if (user) {
             currentUid = user.uid;
 
             await loadUsersForAccess();
-            await loadFormationsCategories();
-            await loadCourses();
-            await syncFormationIndexesIfAllowedOnce();
+            if (disposed) return;
 
-            const urlParams = new URLSearchParams(window.location.search);
+            await loadFormationsCategories();
+            if (disposed) return;
+
+            await loadCourses();
+            if (disposed) return;
+
+            await syncFormationIndexesIfAllowedOnce();
+            if (disposed) return;
+
+            const urlParams = new URLSearchParams(window.SBI_APP_SHELL_CURRENT_URL || window.location.href);
             const editId = urlParams.get('edit');
 
             if (editId) {
@@ -185,76 +224,103 @@ document.addEventListener('DOMContentLoaded', () => {
             setupDropZone('drop-zone-image', 'chapter-image-upload');
             setupDropZone('drop-zone-video', 'chapter-video-upload');
 
+            window.dispatchEvent(new CustomEvent('sbi:course-editor-mounted', {
+                detail: { source, uid: currentUid }
+            }));
+
         } else {
             window.location.replace('/login.html');
         }
     });
 
+    cleanups.push(() => unsubscribeAuth?.());
+
     const logoutBtn = document.getElementById('logout-btn');
-    if (logoutBtn) logoutBtn.addEventListener('click', logoutUser);
+    bindCourseEvent(logoutBtn, 'click', logoutUser, cleanups);
 
     const cacheBtn = document.getElementById('btn-clear-cache');
-
-    if (cacheBtn) {
-        cacheBtn.addEventListener('click', () => {
-            if (confirm('Vider le cache local ? Cela rechargera la page.')) {
-                localStorage.clear();
-                sessionStorage.clear();
-                window.location.reload(true);
-            }
-        });
-    }
+    bindCourseEvent(cacheBtn, 'click', () => {
+        if (confirm('Vider le cache local ? Cela rechargera la page.')) {
+            localStorage.clear();
+            sessionStorage.clear();
+            window.location.reload(true);
+        }
+    }, cleanups);
 
     const btnDraft = document.getElementById('btn-save-draft');
     const btnSubmit = document.getElementById('btn-submit-validation');
     const btnSaveAdmin = document.getElementById('btn-save-course');
 
-    if (btnDraft) btnDraft.addEventListener('click', () => saveCourseToFirebase('draft'));
-    if (btnSubmit) btnSubmit.addEventListener('click', () => saveCourseToFirebase('submit'));
-    if (btnSaveAdmin) btnSaveAdmin.addEventListener('click', () => saveCourseToFirebase('admin_save'));
+    bindCourseEvent(btnDraft, 'click', () => saveCourseToFirebase('draft'), cleanups);
+    bindCourseEvent(btnSubmit, 'click', () => saveCourseToFirebase('submit'), cleanups);
+    bindCourseEvent(btnSaveAdmin, 'click', () => saveCourseToFirebase('admin_save'), cleanups);
 
     const btnAddChapter = document.getElementById('btn-add-chapter');
-    if (btnAddChapter) btnAddChapter.addEventListener('click', () => createNewChapter('text'));
+    bindCourseEvent(btnAddChapter, 'click', () => createNewChapter('text'), cleanups);
 
     const btnAddQuiz = document.getElementById('btn-add-quiz');
-    if (btnAddQuiz) btnAddQuiz.addEventListener('click', () => createNewChapter('quiz'));
+    bindCourseEvent(btnAddQuiz, 'click', () => createNewChapter('quiz'), cleanups);
 
     const btnAddBloc = document.getElementById('btn-add-new-bloc');
+    bindCourseEvent(btnAddBloc, 'click', () => {
+        const newBlocName = prompt("Entrez le nom du nouveau bloc :");
 
-    if (btnAddBloc) {
-        btnAddBloc.addEventListener('click', () => {
-            const newBlocName = prompt("Entrez le nom du nouveau bloc :");
+        if (newBlocName && newBlocName.trim() !== "") {
+            const select = document.getElementById('course-bloc-select');
 
-            if (newBlocName && newBlocName.trim() !== "") {
-                const select = document.getElementById('course-bloc-select');
-
-                if (select) {
-                    const option = document.createElement('option');
-                    option.value = newBlocName.trim();
-                    option.textContent = newBlocName.trim();
-                    select.appendChild(option);
-                    select.value = newBlocName.trim();
-                }
+            if (select) {
+                const option = document.createElement('option');
+                option.value = newBlocName.trim();
+                option.textContent = newBlocName.trim();
+                select.appendChild(option);
+                select.value = newBlocName.trim();
             }
-        });
-    }
+        }
+    }, cleanups);
 
     const newCourseBtn = document.getElementById('btn-trigger-new-course');
-    if (newCourseBtn) newCourseBtn.addEventListener('click', window.prepareNewCourse);
+    bindCourseEvent(newCourseBtn, 'click', window.prepareNewCourse, cleanups);
 
     const addQuestionBtn = document.getElementById('btn-add-question');
-    if (addQuestionBtn) addQuestionBtn.addEventListener('click', addQuizQuestion);
+    bindCourseEvent(addQuestionBtn, 'click', addQuizQuestion, cleanups);
 
     const chapterTitle = document.getElementById('chapter-title');
-    if (chapterTitle) chapterTitle.addEventListener('input', updateActiveTitle);
+    bindCourseEvent(chapterTitle, 'input', updateActiveTitle, cleanups);
 
     const quizTitleInput = document.getElementById('quiz-title');
-    if (quizTitleInput) quizTitleInput.addEventListener('input', updateActiveTitle);
+    bindCourseEvent(quizTitleInput, 'input', updateActiveTitle, cleanups);
 
     setupMediaInputs();
     setupFormationSearch();
     setupFormationModal();
-});
+
+    const cleanup = () => {
+        disposed = true;
+        cleanups.splice(0, cleanups.length).forEach((fn) => {
+            try { fn(); } catch {}
+        });
+
+        if (activeAdminCoursesCleanup === cleanup) {
+            activeAdminCoursesCleanup = null;
+        }
+    };
+
+    activeAdminCoursesCleanup = cleanup;
+    return cleanup;
+}
+
+function autoMountAdminCourses() {
+    if (window.__SBI_APP_SHELL_MOUNTING_COURSE_EDITOR) return;
+    if (!document.getElementById('courses-list-container') && !document.getElementById('course-title')) return;
+    mountAdminCourses({ source: 'auto' });
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', autoMountAdminCourses, { once: true });
+} else {
+    autoMountAdminCourses();
+}
+
 
 function isAdminLikeUser() {
     return currentUserProfile?.isGod === true || currentUserProfile?.role === 'admin';
