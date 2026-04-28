@@ -1,6 +1,6 @@
 # SBI Refactor Map
 
-Version chantier : 8.0M
+Version chantier : 8.0M.1
 Branche de travail : `pjax-app-shell-test`
 Branche stable : `main`
 
@@ -25,38 +25,39 @@ Branche stable : `main`
 - 8.0L : admin course editor PJAX.
 - 8.0L.1 : admin editor tabs polish.
 - 8.0L.2 : admin chrome harmonization.
+- 8.0M : viewer bridge foundation.
 
-## 8.0M - Viewer bridge foundation
+## 8.0M.1 - Viewer mountable core
 
 Statut : patch préparé.
 
-Objectif : préparer la migration viewer sans l'activer.
+Objectif : rendre le viewer montable sans activer le PJAX viewer.
 
 Changements :
 
-- Ajout de `public/js/app-shell/course-viewer-bridge.js`.
-- Ajout de helpers :
-  - `isCourseViewerUrl()`,
-  - `getViewerRoleFromUrl()`,
-  - `getViewerRouteStatus()`,
-  - `createViewerLifecyclePlan()`.
-- Diagnostics disponibles :
-  - `window.SBI_VIEWER_STATUS('/student/cours-viewer.html?id=test')`,
-  - `window.SBI_VIEWER_ROUTES()`.
-- `admin-ui.js` installe les diagnostics viewer.
+- `cours-viewer.js` expose `mountCourseViewer({ source })`.
+- Auto-mount conservé pour les navigations classiques.
+- `activeViewerCleanup` évite les doubles montages.
+- `cleanup()` :
+  - coupe le timer de sécurité,
+  - désabonne `onAuthStateChanged`,
+  - nettoie le bouton retour.
+- Le viewer utilise `getEffectiveViewerUrl()` pour compatibilité future shell.
+- Les bannières preview sont marquées `data-sbi-viewer-banner`.
 - Les routes viewer restent protégées en reload classique.
 
-Pourquoi ne pas activer tout de suite :
+Points à tester :
 
-- le viewer actuel démarre sur `DOMContentLoaded` ;
-- il utilise `onAuthStateChanged` directement ;
-- il gère un `timerInterval` ;
-- il sauvegarde la progression Firestore ;
-- il porte le runtime quiz ;
-- il utilise une redirection dynamique de sortie.
+- ouvrir un cours étudiant classique ;
+- vérifier progression / timer ;
+- passer un quiz ;
+- quitter la leçon ;
+- ouvrir un aperçu prof/admin ;
+- vérifier que `window.SBI_VIEWER_STATUS()` indique toujours `reload-protected`.
 
-Prochaine étape possible :
+Pages encore hors PJAX :
 
-- 8.0M.1 : rendre `/student/js/cours-viewer.js` montable sans changer le comportement reload.
-- 8.0N : activer d'abord le viewer preview prof/admin en PJAX.
-- 8.0N+ : activer le viewer étudiant seulement après validation du preview.
+- viewer étudiant/prof/admin ;
+- progression viewer ;
+- quiz runtime ;
+- live.
