@@ -1,6 +1,6 @@
 # SBI Refactor Map
 
-Version chantier : 8.0F.2
+Version chantier : 8.0G
 Branche de travail : `pjax-app-shell-test`
 Branche stable : `main`
 
@@ -18,6 +18,16 @@ Priorités :
 6. médias lourds hors repo, pilotés par Storage/Firestore ;
 7. navigation PJAX progressive avec fallback reload.
 
+## Note ZIP 8.0F.2
+
+Le ZIP de contrôle reçu contenait bien la version `8.0F.2`.
+
+Dossier local parasite détecté dans le ZIP :
+
+- `SBI-8.0F-pjax-student-shell-patch/`
+
+À supprimer localement avant les prochains ZIP complets si présent dans le dossier projet.
+
 ## Module à ne pas réactiver sans test
 
 - `public/admin/js/sbi-internal-shell.js`
@@ -33,14 +43,12 @@ Statut : validé.
 
 - Routeur expérimental.
 - Fallback reload complet pour toute route non migrée.
-- Première route sûre limitée aux onglets admin déjà montés.
 
 ### 8.0B - Admin shell : Gestion Accueil
 
 Statut : validé.
 
 - Route PJAX pour `/admin/site-index-settings.html`.
-- Refactor `site-index-settings.js` en fonction montable avec cleanup.
 
 ### 8.0C - Version badge centralisé
 
@@ -60,7 +68,6 @@ Statut : validé.
 Statut : validé.
 
 - Cache du DOM réel de `#main-content` quand l'utilisateur quitte `/admin/index.html`.
-- Restauration de ce DOM au retour vers `/admin/index.html`.
 
 ### 8.0E - PJAX activé par défaut
 
@@ -74,34 +81,33 @@ Statut : validé.
 Statut : validé globalement.
 
 - Routes PJAX pour `/student/dashboard.html` et `/student/mes-cours.html`.
-- `student-hub.js` montable via `mountStudentHub()`.
-- `mes-cours.js` montable via `mountStudentCourses()`.
 - Viewer de cours laissé hors PJAX.
-
-### 8.0F.1 - CSS guard PJAX
-
-Statut : insuffisant.
-
-- Attendait les fichiers CSS `<link>`.
-- Ne couvrait pas les styles inline `<style>` dans le `<head>`.
 
 ### 8.0F.2 - Inline style guard PJAX
 
+Statut : validé.
+
+- Injection des blocs `<style>` du document cible.
+- Corrige les styles inline de `/student/mes-cours.html`.
+
+### 8.0G - Teacher shell léger
+
 Statut : patch préparé.
 
-Objectif : corriger le style incomplet sur le premier passage vers Mes Cours.
+Objectif : fluidifier l'espace prof sans toucher à l'éditeur.
 
 Changements :
 
-- `ensureDocumentStyles()` injecte maintenant les blocs `<style>` du document cible.
-- Les styles inline sont dédupliqués via clé de hash.
-- Corrige notamment `.formation-folder`, `.course-item`, `.progress-bar-bg`.
-- Version centralisée passée en `8.0F.2`.
+- Routes PJAX pour `/teacher/dashboard.html` et `/teacher/mon-profil.html`.
+- `teacher-dashboard.js` devient montable via `mountTeacherDashboard()`.
+- Profil prof monté via `profile-core.js`.
+- CropperJS chargé si nécessaire.
+- `teacher/mes-cours.html` reste hors PJAX pour éviter de toucher à Quill, à l'éditeur, aux uploads et à `admin-courses.js`.
+- Version centralisée passée en `8.0G`.
 
 Pages encore hors PJAX :
 
-- éditeur cours ;
+- éditeur cours admin/prof ;
 - viewer ;
 - Quill ;
-- quiz ;
-- teacher.
+- quiz.

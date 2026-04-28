@@ -1,5 +1,5 @@
 /**
- * SBI 8.0F.1 - Route registry
+ * SBI 8.0G - Route registry
  *
  * Admin shell :
  * - admin index tabs
@@ -10,7 +10,9 @@
  * - Mon Hub
  * - Mes Cours
  *
- * 8.0F.1 : attend les styles avant replaceMainFromDocument().
+ * Teacher shell :
+ * - Mon Espace
+ * - Mon Profil
  */
 
 import { registerCleanup } from './view-lifecycle.js';
@@ -65,6 +67,14 @@ function isStudentCourses(url) {
   return normalizePath(url.pathname).toLowerCase() === '/student/mes-cours.html';
 }
 
+function isTeacherDashboard(url) {
+  return normalizePath(url.pathname).toLowerCase() === '/teacher/dashboard.html';
+}
+
+function isTeacherProfile(url) {
+  return normalizePath(url.pathname).toLowerCase() === '/teacher/mon-profil.html';
+}
+
 function getCurrentUrl() {
   return new URL(window.SBI_APP_SHELL_CURRENT_URL || window.location.href, window.location.origin);
 }
@@ -84,6 +94,12 @@ function isStudentShellContext() {
   const path = getCurrentPath();
   return path === '/student/dashboard.html'
     || path === '/student/mes-cours.html';
+}
+
+function isTeacherShellContext() {
+  const path = getCurrentPath();
+  return path === '/teacher/dashboard.html'
+    || path === '/teacher/mon-profil.html';
 }
 
 function isCurrentAdminIndex() {
@@ -246,8 +262,83 @@ async function mountStudentPage({ url }) {
   return { viewKey: 'student:courses' };
 }
 
+async function mountTeacherDashboard({ url }) {
+  const doc = await fetchAdminDocument(url);
+
+  await ensureDocumentStyles(doc, url.href);
+  applyBodyRouteClassesFromDocument(doc, ['no-right-panel']);
+  replaceMainFromDocument(doc);
+  updateAdminChromeFromDocument(doc, 'Mon Espace - SBI Teacher');
+  setLeftNavActive('/teacher/dashboard.html');
+  updateUrlContext(url);
+
+  window.__SBI_APP_SHELL_MOUNTING_TEACHER_DASHBOARD = true;
+
+  try {
+    const module = await import('/teacher/js/teacher-dashboard.js');
+    const cleanup = module.mountTeacherDashboard?.({ source: 'pjax-teacher-dashboard' });
+
+    if (typeof cleanup === 'function') {
+      registerCleanup(cleanup, 'teacher-dashboard');
+    }
+  } finally {
+    window.__SBI_APP_SHELL_MOUNTING_TEACHER_DASHBOARD = false;
+  }
+
+  return { viewKey: 'teacher:dashboard' };
+}
+
+async function mountTeacherProfile({ url }) {
+  const doc = await fetchAdminDocument(url);
+
+  await ensureDocumentStyles(doc, url.href);
+  await loadScriptOnce(CROPPER_SCRIPT, { globalName: 'Cropper' });
+
+  applyBodyRouteClassesFromDocument(doc, ['sbi-profile-page', 'sbi-teacher-surface', 'no-right-panel']);
+  replaceMainFromDocument(doc);
+  const cleanupCropModal = replaceRouteNodeFromDocument(doc, '#crop-modal');
+  updateAdminChromeFromDocument(doc, 'Mon Profil - SBI Teacher');
+  setLeftNavActive('/teacher/mon-profil.html');
+  updateUrlContext(url);
+
+  window.__SBI_APP_SHELL_MOUNTING_PROFILE = true;
+
+  try {
+    const module = await import('/js/profile-core.js');
+    const cleanupProfile = module.mountProfileCore?.({ source: 'pjax-teacher-profile' });
+
+    if (typeof cleanupProfile === 'function') {
+      registerCleanup(cleanupProfile, 'teacher-profile-core');
+    }
+  } finally {
+    window.__SBI_APP_SHELL_MOUNTING_PROFILE = false;
+  }
+
+  if (typeof cleanupCropModal === 'function') {
+    registerCleanup(cleanupCropModal, 'teacher-profile-crop-modal');
+  }
+
+  return { viewKey: 'teacher:profile' };
+}
+
 export function createRouteRegistry() {
   const routes = [];
+
+  routes.push({
+    id: 'teacher-dashboard',
+    canHandle(url) {
+      return isTeacherDashboard(url) && isTeacherShellContext();
+    },
+    mount: mountTeacherDashboard
+  });
+
+  routes.push({
+    id: 'teacher-profile',
+    canHandle(url) {
+      return isTeacherProfile(url) && isTeacherShellContext();
+    },
+    mount: mountTeacherProfile
+  });
 
   routes.push({
     id: 'student-dashboard',

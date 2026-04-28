@@ -7,7 +7,7 @@ Base : `main` après merge 7.4.2
 
 Le PJAX complet ne doit pas être appliqué en bloc. Cette branche pose un app shell progressif avec fallback reload.
 
-## État 8.0F.2
+## État 8.0G
 
 Le PJAX est activé par défaut sur la branche labo.
 
@@ -52,12 +52,18 @@ Student :
 - `/student/dashboard.html`
 - `/student/mes-cours.html`
 
-## 8.0F.2
+Teacher :
 
-- Injection des blocs `<style>` du document cible.
-- Corrige les styles inline de `/student/mes-cours.html`, notamment `.formation-folder`, `.course-item`, `.progress-bar-bg`.
-- Conserve l'attente des fichiers CSS `<link>`.
-- Version actuelle : `SBI 8.0F.2 - PJAX APP SHELL TEST`.
+- `/teacher/dashboard.html`
+- `/teacher/mon-profil.html`
+
+## 8.0G
+
+- Ajout du shell teacher léger.
+- `teacher-dashboard.js` expose `mountTeacherDashboard()` avec cleanup.
+- Navigation fluide entre Mon Espace et Mon Profil.
+- `teacher/mes-cours.html` reste volontairement hors PJAX car il contient Quill + éditeur + `admin-courses.js`.
+- Version actuelle : `SBI 8.0G - PJAX APP SHELL TEST`.
 
 ## Règles de sécurité
 

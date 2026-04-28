@@ -1,8 +1,9 @@
 /**
- * SBI 6.7D.1 - Teacher dashboard data bridge
+ * SBI 8.0G - Teacher dashboard data bridge
  *
  * Le topbar teacher est rendu par Web Components chargés dynamiquement.
  * Ce fichier attend leur disponibilité avant d'injecter les infos Firestore.
+ * 8.0G : compatible montage PJAX via mountTeacherDashboard().
  */
 
 import { db, auth } from '/js/firebase-init.js';
@@ -10,14 +11,15 @@ import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import { waitForSbiTopbar } from '/admin/js/components/ready.js';
 
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initTeacherDashboard);
-} else {
-    initTeacherDashboard();
-}
+let activeCleanup = null;
 
-function initTeacherDashboard() {
-    onAuthStateChanged(auth, async (user) => {
+export function mountTeacherDashboard() {
+    activeCleanup?.({ reason: 'remount' });
+
+    let disposed = false;
+    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
+        if (disposed) return;
+
         if (!user) {
             window.location.replace('/login.html');
             return;
@@ -26,7 +28,7 @@ function initTeacherDashboard() {
         try {
             await waitForSbiTopbar();
             const userSnap = await getDoc(doc(db, 'users', user.uid));
-            if (!userSnap.exists()) return;
+            if (!userSnap.exists() || disposed) return;
 
             updateTeacherTopbar(userSnap.data() || {});
         } catch (error) {
@@ -35,41 +37,26 @@ function initTeacherDashboard() {
             document.body.classList.remove('preload');
         }
     });
+
+    const cleanup = () => {
+        disposed = true;
+        unsubscribeAuth?.();
+        if (activeCleanup === cleanup) activeCleanup = null;
+    };
+
+    activeCleanup = cleanup;
+    bindTeacherDashboardLinks(cleanup);
+    return cleanup;
 }
 
-async function waitForSbiComponents() {
-    if (window.__SBI_COMPONENTS_READY === true) {
-        await waitForElements(['top-user-name', 'top-user-avatar'], 1000);
-        return;
-    }
+function bindTeacherDashboardLinks() {
+    document.querySelectorAll('a.sbi-dashboard-primary-link, a.sbi-dashboard-secondary-link').forEach((link) => {
+        if (link.dataset.sbiTeacherDashboardBound === 'true') return;
+        link.dataset.sbiTeacherDashboardBound = 'true';
 
-    if (window.SBI_COMPONENTS_READY && typeof window.SBI_COMPONENTS_READY.then === 'function') {
-        await Promise.race([
-            window.SBI_COMPONENTS_READY.catch(() => {}),
-            sleep(1200)
-        ]);
-    } else {
-        await new Promise((resolve) => {
-            const timeout = window.setTimeout(resolve, 1200);
-            window.addEventListener('sbi:components-ready', () => {
-                window.clearTimeout(timeout);
-                resolve();
-            }, { once: true });
-        });
-    }
-
-    await waitForElements(['top-user-name', 'top-user-avatar'], 1200);
-}
-
-async function waitForElements(ids, timeoutMs = 1200) {
-    const start = Date.now();
-
-    while (Date.now() - start < timeoutMs) {
-        if (ids.every((id) => document.getElementById(id))) return true;
-        await sleep(50);
-    }
-
-    return false;
+        const href = link.getAttribute('href');
+        if (href) link.setAttribute('data-sbi-href', href);
+    });
 }
 
 function updateTeacherTopbar(profile) {
@@ -88,10 +75,6 @@ function updateTeacherTopbar(profile) {
     }
 }
 
-function sleep(ms) {
-    return new Promise((resolve) => window.setTimeout(resolve, ms));
-}
-
 function escapeAttr(value) {
     return String(value || '')
         .replace(/&/g, '&amp;')
@@ -100,4 +83,16 @@ function escapeAttr(value) {
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;')
         .replace(/`/g, '&#096;');
+}
+
+function autoMountTeacherDashboard() {
+    if (window.__SBI_APP_SHELL_MOUNTING_TEACHER_DASHBOARD) return;
+    if (!document.querySelector('.sbi-teacher-dashboard')) return;
+    mountTeacherDashboard();
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', autoMountTeacherDashboard, { once: true });
+} else {
+    autoMountTeacherDashboard();
 }
