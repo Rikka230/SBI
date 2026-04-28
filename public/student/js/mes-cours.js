@@ -9,14 +9,24 @@
  */
 
 import { db, auth } from '/js/firebase-init.js';
-import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import {
+    collection,
+    doc,
+    getDoc,
+    getDocs,
+    query,
+    where
+} from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import { waitForSbiTopbar } from '/admin/js/components/ready.js';
 import { getUserLearningProgress } from '/js/course-engine.js';
 import {
     courseBelongsToFormation as sharedCourseBelongsToFormation,
+    fetchCoursesByIds,
+    isCourseVisible,
     loadAssignedFormationsForUser,
-    loadCoursesForUser
+    loadCoursesForUser,
+    uniqById
 } from '/js/learning-access.js';
 
 let currentUid = null;
@@ -177,7 +187,7 @@ async function loadAssignedFormations() {
 }
 
 async function loadAssignedCourses() {
-    allCourses = await loadCoursesForUser({
+    const coursesFromAccess = await loadCoursesForUser({
         uid: currentUid,
         userData,
         role: isAdminPreview() ? 'admin' : 'student',
@@ -186,18 +196,62 @@ async function loadAssignedCourses() {
         includeProgress: true,
         activeOnly: !isAdminPreview()
     });
+
+    const coursesFromNotifications = await loadNotificationLinkedCourses();
+
+    allCourses = uniqById([...coursesFromAccess, ...coursesFromNotifications])
+        .filter((course) => isAdminPreview() || isCourseVisible(course, { allowProgress: true }));
+}
+
+async function loadNotificationLinkedCourses() {
+    if (!currentUid || isAdminPreview()) return [];
+
+    const courseIds = new Set();
+
+    async function collectFromQuery(queryRef, label) {
+        try {
+            const snap = await getDocs(queryRef);
+
+            snap.forEach((docSnap) => {
+                const notif = docSnap.data() || {};
+                if (notif.status === 'resolved' || notif.resolvedAt) return;
+                if (Array.isArray(notif.dismissedBy) && notif.dismissedBy.includes(currentUid)) return;
+
+                const courseId = String(notif.courseId || '').trim();
+                if (courseId) courseIds.add(courseId);
+            });
+        } catch (error) {
+            console.warn(`[SBI Student Courses] Notifications ${label} non utilisables pour récupérer les cours :`, error);
+        }
+    }
+
+    await Promise.all([
+        collectFromQuery(
+            query(collection(db, 'notifications'), where('destinataireId', '==', currentUid)),
+            'directes'
+        ),
+        collectFromQuery(
+            query(collection(db, 'notifications'), where('targetStudents', 'array-contains', currentUid)),
+            'targetStudents'
+        )
+    ]);
+
+    const courses = await fetchCoursesByIds(Array.from(courseIds));
+    return courses.map((course) => ({ ...course, __notificationLinked: true }));
 }
 
 function renderAssignedFormations() {
     const list = document.getElementById('formations-list');
     if (!list) return;
 
-    if (assignedFormations.length === 0) {
+    const formationCards = getFormationCardsToRender();
+
+    if (formationCards.length === 0) {
         list.innerHTML = '<p style="color:var(--text-muted);">Aucune formation ne vous est assignée.</p>';
         return;
     }
 
-    list.innerHTML = assignedFormations.map((formation) => {
+    list.innerHTML = formationCards.map((formation) => {
         const totalCourses = getCoursesForFormation(formation).length;
         const completedCourses = getCompletedCoursesForFormation(formation);
         const progressPercent = totalCourses === 0 ? 0 : Math.round((completedCourses / totalCourses) * 100);
@@ -227,7 +281,7 @@ function renderAssignedFormations() {
 
     document.querySelectorAll('.formation-folder').forEach((folder) => {
         folder.addEventListener('click', () => {
-            const formation = assignedFormations.find((item) => item.id === folder.dataset.formationId);
+            const formation = getFormationCardsToRender().find((item) => item.id === folder.dataset.formationId);
             window.openFormation(formation || {
                 id: folder.dataset.formationId,
                 titre: folder.dataset.formationTitle
@@ -236,7 +290,43 @@ function renderAssignedFormations() {
     });
 }
 
+function getFormationCardsToRender() {
+    const directCourses = getDirectAssignedCoursesWithoutVisibleFormation();
+    const cards = [...assignedFormations];
+
+    if (directCourses.length > 0) {
+        cards.push({
+            id: '__direct_assigned_courses',
+            titre: 'Cours assignés',
+            __directCourses: true
+        });
+    }
+
+    return cards;
+}
+
+function getDirectAssignedCoursesWithoutVisibleFormation() {
+    return allCourses.filter((course) => {
+        const isDirectlyLinked = course.__targetedToUser === true
+            || course.__notificationLinked === true
+            || course.__progressLinked === true
+            || (Array.isArray(course.targetStudents) && course.targetStudents.includes(currentUid));
+
+        if (!isDirectlyLinked) return false;
+
+        const belongsToVisibleFormation = assignedFormations.some((formation) => {
+            return sharedCourseBelongsToFormation(course, formation, assignedFormations);
+        });
+
+        return !belongsToVisibleFormation;
+    });
+}
+
 function getCoursesForFormation(formation) {
+    if (formation?.__directCourses === true) {
+        return getDirectAssignedCoursesWithoutVisibleFormation();
+    }
+
     return allCourses.filter((course) => sharedCourseBelongsToFormation(course, formation, assignedFormations));
 }
 
@@ -403,6 +493,39 @@ function showFormationsError() {
     const list = document.getElementById('formations-list');
     if (list) list.innerHTML = '<p style="color:red;">Erreur lors du chargement des formations.</p>';
 }
+
+
+window.SBI_STUDENT_COURSES_DEBUG = function() {
+    const payload = {
+        uid: currentUid,
+        assignedFormations: assignedFormations.map((formation) => ({
+            id: formation.id,
+            titre: formation.titre
+        })),
+        allCourses: allCourses.map((course) => ({
+            id: course.id,
+            titre: course.titre,
+            actif: course.actif,
+            statutValidation: course.statutValidation,
+            formations: course.formations || [],
+            targetFormationIds: course.targetFormationIds || [],
+            targetFormationTitles: course.targetFormationTitles || [],
+            targetStudents: course.targetStudents || [],
+            notificationLinked: course.__notificationLinked === true,
+            targetedToUser: course.__targetedToUser === true,
+            progressLinked: course.__progressLinked === true
+        })),
+        directCourses: getDirectAssignedCoursesWithoutVisibleFormation().map((course) => ({
+            id: course.id,
+            titre: course.titre
+        }))
+    };
+
+    console.table(payload.assignedFormations);
+    console.table(payload.allCourses);
+    console.table(payload.directCourses);
+    return payload;
+};
 
 function autoMountStudentCourses() {
     if (window.__SBI_APP_SHELL_MOUNTING_STUDENT_COURSES) return;

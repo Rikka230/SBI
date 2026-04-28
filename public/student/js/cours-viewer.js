@@ -193,7 +193,7 @@ async function initViewer() {
     isPreviewMode = urlParams.get('preview') === 'true';
 
     if (isPreviewMode && !document.querySelector('.sbi-preview-banner[data-sbi-viewer-banner="true"]')) {
-        document.body.insertAdjacentHTML('afterbegin', '<div class="sbi-preview-banner" data-sbi-viewer-banner="true">MODE PRÉVISUALISATION - Aucune donnée d\\'apprentissage ne sera sauvegardée.</div>');
+        document.body.insertAdjacentHTML('afterbegin', `<div class="sbi-preview-banner" data-sbi-viewer-banner="true">MODE PRÉVISUALISATION - Aucune donnée d'apprentissage ne sera sauvegardée.</div>`);
     }
 
     if(!courseId) return window.location.replace(getDefaultBackUrl());

@@ -2,39 +2,27 @@
 
 Branche expérimentale : `pjax-app-shell-test`
 
-## État 8.0M.2
+## État 8.0M.3
 
-Patch bugfix prioritaire après 8.0M.1.
+Patch bugfix prioritaire.
 
 ## Corrections
 
-### Accès élève aux cours
+### Viewer
 
-La récupération des cours assignés est renforcée :
+- Correction d'une SyntaxError dans `public/student/js/cours-viewer.js`.
+- La bannière preview n'utilise plus une chaîne avec apostrophe mal échappée.
+- Le viewer doit de nouveau dépasser l'écran `Préparation de votre leçon...`.
 
-- support des champs array :
-  - `formations`
-  - `formationIds`
-  - `formationsIds`
-  - `targetFormationIds`
-  - `targetFormationTitles`
-- support des champs scalaires legacy :
-  - `formationId`
-  - `formation`
-  - `formationTitre`
-  - `formationTitle`
-  - `formationName`
-  - `formationNom`
-  - `formationRef`
-- fallback scan client si les requêtes ciblées ne ramènent pas les anciens cours.
+### Mes Cours élève
 
-### Panel d'assignation des formations
-
-- Le modal `#formation-modal` est maintenant réinjecté en PJAX pour :
-  - `/admin/formations-cours.html`
-  - `/teacher/mes-cours.html`
-- Les boutons `Modifier les accès` utilisent `currentTarget`.
-- Si le modal manque, un warning console apparaît au lieu d'un clic silencieux.
+- Ajout d'un fallback par notifications :
+  - notifications `destinataireId`,
+  - notifications `targetStudents`.
+- Si un cours est notifié à l'élève mais ne remonte pas dans une formation visible, il apparaît dans un dossier :
+  - `Cours assignés`.
+- Ajout diagnostic :
+  - `window.SBI_STUDENT_COURSES_DEBUG()`.
 
 ## Routes viewer
 
@@ -46,4 +34,4 @@ Les viewers restent protégés en reload classique :
 
 ## Version
 
-`SBI 8.0M.2 - PJAX APP SHELL TEST`
+`SBI 8.0M.3 - PJAX APP SHELL TEST`

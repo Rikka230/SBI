@@ -1,51 +1,51 @@
 # SBI Refactor Map
 
-Version chantier : 8.0M.2
+Version chantier : 8.0M.3
 Branche de travail : `pjax-app-shell-test`
 
-## 8.0M.2 - Access recovery & formation modal guard
+## 8.0M.3 - Viewer syntax & student course recovery
 
 Statut : patch préparé.
 
-Objectif : corriger deux régressions constatées après les derniers tests :
+## Bug 1 : viewer bloqué
 
-1. Élève qui ne voit qu'une partie de ses cours.
-2. Panel d'assignation formation qui clique dans le vide côté admin.
+Symptôme :
 
-## Changements
+- écran `Préparation de votre leçon...`,
+- console : `Uncaught SyntaxError: missing ) after argument list`,
+- fichier : `cours-viewer.js`.
 
-### `public/js/learning-access.js`
+Correction :
 
-- Ajout `fetchCoursesByScalarField()`.
-- Ajout `fetchCoursesByClientScan()`.
-- `fetchCoursesByFormationKeys()` couvre désormais les champs legacy/scalaires.
-- `loadCoursesForUser()` ajoute un fallback client-side quand les champs de formation des anciens cours ne matchent pas les requêtes modernes.
+- remplacement de la chaîne HTML preview par un template literal sécurisé.
 
-### `public/js/app-shell/route-registry.js`
+## Bug 2 : cours notifié mais absent de Mes Cours
 
-- `#formation-modal` est réinjecté via `replaceRouteNodeFromDocument()` pour :
-  - `mountAdminCourses()`
-  - `mountTeacherCourses()`
+Symptôme :
 
-### `public/admin/js/courses/course-formations-ui.js`
+- l'élève reçoit la notification,
+- le clic notification ouvre le viewer,
+- mais le cours n'apparaît pas dans la liste Mes Cours.
 
-- Les boutons `Modifier les accès` utilisent `e.currentTarget`.
-- Warning explicite si `#formation-modal` manque.
+Correction :
+
+- `mes-cours.js` récupère aussi les cours liés aux notifications.
+- Les cours directs/non classés dans une formation visible sont affichés dans un dossier `Cours assignés`.
+- Ajout de `window.SBI_STUDENT_COURSES_DEBUG()` pour inspecter :
+  - formations visibles,
+  - cours chargés,
+  - cours directs.
 
 ## Points à tester
 
 - Élève → Mes Cours :
-  - vérifier toutes les formations/cours attendus.
-- Admin → Formations & Cours :
-  - bouton Modifier les accès ouvre bien le modal.
-  - assigner/désassigner un élève.
-  - sauvegarder.
-- Revenir côté élève :
-  - vérifier que les cours sont visibles.
+  - vérifier présence du dossier `Cours assignés` si le cours n'est pas rangé dans une formation visible.
+- Notification nouveau cours :
+  - cliquer,
+  - le viewer doit charger.
+- Viewer :
+  - timer,
+  - contenu,
+  - bouton quitter.
 - Console :
-  - pas d'erreur silencieuse.
-  - warning uniquement si modal absent.
-
-## Note
-
-Le viewer n'est pas modifié par ce patch.
+  - `window.SBI_STUDENT_COURSES_DEBUG()`.
