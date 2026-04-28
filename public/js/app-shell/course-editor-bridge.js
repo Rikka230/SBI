@@ -1,5 +1,5 @@
 /**
- * SBI 8.0L - Course editor bridge
+ * SBI 8.0L.1 - Course editor bridge
  *
  * Prépare et monte les éléments que les scripts inline ne relancent pas
  * en navigation PJAX : Quill, onglets éditeur et switch image/vidéo.
@@ -375,45 +375,93 @@ export function initCourseEditorQuill() {
 
 export function installCourseEditorTabs() {
   const cleanups = [];
+  const tabNavSelector = '.student-sub-nav-item, .sub-nav-item';
+  const tabViewSelector = '.student-view, .course-section';
+
+  function getTabButton(tabId) {
+    return document.getElementById(`nav-${tabId}`)
+      || document.querySelector(`${tabNavSelector}[data-sbi-course-tab="${tabId}"]`);
+  }
+
+  function getTabView(tabId) {
+    return document.getElementById(tabId);
+  }
+
+  function switchToTab(tabId, { confirmLeave = true } = {}) {
+    if (!tabId) return;
+
+    const currentActive = document.querySelector(`${tabViewSelector}.active`);
+
+    if (confirmLeave && currentActive && currentActive.id === 'tab-editor' && tabId !== 'tab-editor') {
+      const confirmLeaveEditor = confirm("Attention : les modifications non enregistrées seront perdues.\n\nAvez-vous bien cliqué sur Enregistrer avant de quitter ?");
+      if (!confirmLeaveEditor) return;
+    }
+
+    document.querySelectorAll(tabNavSelector).forEach((el) => el.classList.remove('active'));
+    document.querySelectorAll(tabViewSelector).forEach((el) => el.classList.remove('active'));
+
+    const targetButton = getTabButton(tabId);
+    const targetView = getTabView(tabId);
+
+    if (targetButton) {
+      targetButton.style.display = '';
+      targetButton.classList.add('active');
+    }
+
+    if (targetView) {
+      targetView.classList.add('active');
+    }
+
+    /**
+     * Le teacher masque l'onglet éditeur avant création/édition.
+     * L'admin le garde visible. On respecte les deux comportements.
+     */
+    const navEditor = document.getElementById('nav-tab-editor');
+    if (navEditor && tabId === 'tab-list' && navEditor.dataset.sbiInitiallyHidden === 'true') {
+      navEditor.style.display = 'none';
+    }
+
+    if (navEditor && tabId === 'tab-editor') {
+      navEditor.style.display = '';
+    }
+
+    window.requestAnimationFrame(() => {
+      targetView?.scrollIntoView?.({
+        block: 'start',
+        behavior: 'smooth'
+      });
+    });
+  }
 
   window.safeSwitchTab = function safeSwitchTab(tabId) {
-    const currentActive = document.querySelector('.student-view.active');
-
-    if (currentActive && currentActive.id === 'tab-editor' && tabId !== 'tab-editor') {
-      const confirmLeave = confirm("Attention : les modifications non enregistrées seront perdues.\n\nAvez-vous bien cliqué sur Enregistrer avant de quitter ?");
-      if (!confirmLeave) return;
-    }
-
-    document.querySelectorAll('.student-sub-nav-item').forEach((el) => el.classList.remove('active'));
-    document.querySelectorAll('.student-view').forEach((el) => el.classList.remove('active'));
-
-    if (tabId === 'tab-list') {
-      document.querySelector('.student-sub-nav-item:nth-child(1)')?.classList.add('active');
-      const navEditor = document.getElementById('nav-tab-editor');
-      if (navEditor) navEditor.style.display = 'none';
-    } else {
-      const navEditor = document.getElementById('nav-tab-editor');
-      if (navEditor) {
-        navEditor.style.display = 'block';
-        navEditor.classList.add('active');
-      }
-    }
-
-    document.getElementById(tabId)?.classList.add('active');
+    switchToTab(tabId, { confirmLeave: true });
   };
 
-  window.switchCourseTab = window.safeSwitchTab;
+  window.switchCourseTab = function switchCourseTab(tabId) {
+    switchToTab(tabId, { confirmLeave: true });
+  };
 
-  document.querySelectorAll('.student-sub-nav-item[onclick*="safeSwitchTab"]').forEach((item) => {
+  document.querySelectorAll(tabNavSelector).forEach((item) => {
+    if (item.dataset.sbiCourseTabsBound === 'true') return;
+
     const inline = item.getAttribute('onclick') || '';
-    const match = inline.match(/safeSwitchTab\(['"]([^'"]+)['"]\)/);
-    const tabId = match?.[1];
+    const match = inline.match(/(?:safeSwitchTab|switchCourseTab)\(['"]([^'"]+)['"]\)/);
+    const tabId = match?.[1]
+      || item.id?.replace(/^nav-/, '')
+      || item.dataset.sbiCourseTab;
 
     if (!tabId) return;
 
+    item.dataset.sbiCourseTab = tabId;
+    item.dataset.sbiCourseTabsBound = 'true';
+
+    if (item.id === 'nav-tab-editor' && getComputedStyle(item).display === 'none') {
+      item.dataset.sbiInitiallyHidden = 'true';
+    }
+
     item.removeAttribute('onclick');
 
-    const handler = () => window.safeSwitchTab(tabId);
+    const handler = () => switchToTab(tabId, { confirmLeave: true });
     item.addEventListener('click', handler);
     cleanups.push(() => item.removeEventListener('click', handler));
   });

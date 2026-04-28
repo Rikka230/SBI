@@ -392,3 +392,96 @@
         width: 100%;
     }
 }
+
+
+/* =======================================================================
+   SBI 8.0L.1 - Harmonisation sous-menus admin / profils / éditeur
+   -----------------------------------------------------------------------
+   Couche visuelle uniquement. Corrige les anciens onglets en barres plates.
+   ======================================================================= */
+
+.sbi-profile-page .student-sub-nav,
+.sbi-profile-page .profile-tabs-header,
+.sbi-course-editor-page .sub-nav,
+.sbi-course-editor-page .student-sub-nav {
+    display: flex !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+    gap: 0.35rem !important;
+    padding: 0.35rem !important;
+    margin: 0 0 1.75rem 0 !important;
+    border-bottom: none !important;
+    border-radius: 999px !important;
+    background: color-mix(in srgb, var(--bg-card) 82%, var(--sbi-role-accent) 8%) !important;
+    border: 1px solid color-mix(in srgb, var(--sbi-role-accent) 16%, var(--border-color)) !important;
+    box-shadow: 0 12px 34px rgba(15, 23, 42, 0.06) !important;
+}
+
+.sbi-admin-surface.sbi-profile-page .student-sub-nav,
+.sbi-admin-surface.sbi-profile-page .profile-tabs-header,
+.sbi-admin-surface.sbi-course-editor-page .sub-nav {
+    background: color-mix(in srgb, #070a14 86%, var(--sbi-role-accent) 10%) !important;
+    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.24) !important;
+}
+
+.sbi-profile-page .student-sub-nav-item,
+.sbi-profile-page .p-tab,
+.sbi-course-editor-page .sub-nav-item,
+.sbi-course-editor-page .student-sub-nav-item {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-height: 42px !important;
+    padding: 0.78rem 1.05rem !important;
+    border: 0 !important;
+    border-bottom: none !important;
+    border-radius: 999px !important;
+    color: var(--text-muted) !important;
+    background: transparent !important;
+    font-weight: 900 !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+    transition: color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease !important;
+}
+
+.sbi-profile-page .student-sub-nav-item:hover,
+.sbi-profile-page .p-tab:hover,
+.sbi-course-editor-page .sub-nav-item:hover,
+.sbi-course-editor-page .student-sub-nav-item:hover {
+    color: var(--text-main) !important;
+    background: color-mix(in srgb, var(--sbi-role-accent) 10%, transparent) !important;
+}
+
+.sbi-profile-page .student-sub-nav-item.active,
+.sbi-profile-page .p-tab.active,
+.sbi-course-editor-page .sub-nav-item.active,
+.sbi-course-editor-page .student-sub-nav-item.active {
+    color: #fff !important;
+    background: var(--sbi-role-accent) !important;
+    box-shadow: 0 10px 24px var(--sbi-role-glow) !important;
+    transform: translateY(-1px) !important;
+}
+
+.sbi-course-editor-page .course-section,
+.sbi-course-editor-page .student-view {
+    scroll-margin-top: 96px;
+}
+
+@media (max-width: 860px) {
+    .sbi-profile-page .student-sub-nav,
+    .sbi-profile-page .profile-tabs-header,
+    .sbi-course-editor-page .sub-nav,
+    .sbi-course-editor-page .student-sub-nav {
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        border-radius: 18px !important;
+        scrollbar-width: thin;
+    }
+
+    .sbi-profile-page .student-sub-nav-item,
+    .sbi-profile-page .p-tab,
+    .sbi-course-editor-page .sub-nav-item,
+    .sbi-course-editor-page .student-sub-nav-item {
+        flex: 0 0 auto !important;
+    }
+}

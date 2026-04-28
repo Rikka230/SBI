@@ -1,5 +1,5 @@
 /**
- * SBI 8.0L - Route guards PJAX
+ * SBI 8.0L.1 - Route guards PJAX
  *
  * Les routes sensibles restent en reload classique tant qu'elles n'ont pas
  * un lifecycle dédié testé.
@@ -10,7 +10,6 @@ const HARD_RELOAD_PATHS = new Map([
   ['/teacher/cours-viewer.html', 'viewer prof / progression / preview'],
   ['/admin/cours-viewer.html', 'viewer admin / preview'],
   ['/admin/formations-live.html', 'live / médias / logique non migrée'],
-  ['/admin/repair-access.html', 'outil maintenance accès'],
   ['/change-email.html', 'flux sécurité email'],
   ['/login.html', 'authentification'],
   ['/index.html', 'index public']

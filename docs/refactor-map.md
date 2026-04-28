@@ -1,18 +1,8 @@
 # SBI Refactor Map
 
-Version chantier : 8.0L
+Version chantier : 8.0L.1
 Branche de travail : `pjax-app-shell-test`
 Branche stable : `main`
-
-## Check ZIP 8.0K.4
-
-Le ZIP actuel reçu est bien en version :
-
-```txt
-SBI 8.0K.4 - PJAX APP SHELL TEST
-```
-
-Aucun dossier parasite `SBI-*` détecté à la racine du ZIP.
 
 ## Étapes PJAX validées
 
@@ -32,36 +22,40 @@ Aucun dossier parasite `SBI-*` détecté à la racine du ZIP.
 - 8.0J : foundation éditeur cours montable.
 - 8.0K : teacher course editor PJAX.
 - 8.0K.4 : Quill tooltip single bottom.
+- 8.0L : admin course editor PJAX.
 
-## 8.0L - Admin course editor PJAX
+## 8.0L.1 - Admin editor tabs polish
 
-Statut : patch préparé.
+Statut : patch préparé + suppression ciblée faite sur GitHub.
 
-Objectif : activer l'éditeur cours admin dans le shell.
+Objectif : corriger les retours admin après activation PJAX de l'éditeur cours.
 
 Changements :
 
-- `/admin/formations-cours.html` passe en PJAX.
-- `route-guards.js` retire `/admin/formations-cours.html` des hard reload.
-- `route-registry.js` ajoute la route `admin-courses`.
-- `course-editor-bridge.js` devient compatible avec :
-  - `#quill-editor`,
-  - `#course-editor`.
-- L'éditeur admin utilise maintenant le même montage propre que l'éditeur prof.
-- Les tooltips Quill 8.0K.4 restent conservés.
+- Harmonisation CSS des barres de sous-navigation :
+  - profil admin,
+  - profil prof/élève si classes legacy présentes,
+  - éditeur cours admin,
+  - éditeur cours prof.
+- `installCourseEditorTabs()` devient compatible avec :
+  - `.student-sub-nav-item` / `.student-view`,
+  - `.sub-nav-item` / `.course-section`.
+- `window.switchCourseTab()` fonctionne proprement côté admin.
+- `window.safeSwitchTab()` reste compatible côté teacher.
+- Nouveau cours / Edit bascule maintenant vers la vraie vue éditeur au lieu d'afficher l'éditeur en bas de liste.
+- Suppression directe GitHub :
+  - `public/admin/repair-access.html`.
+- `route-guards.js` ne référence plus `repair-access.html`.
 
 Points à tester :
 
-- admin index → Formations & Cours ;
-- Formations & Cours → Utilisateurs ;
-- Formations & Cours → Gestion Accueil ;
-- bouton Nouveau Cours ;
-- onglets Ma Bibliothèque / Éditeur ;
-- Quill sélection partielle taille texte ;
-- tooltips Quill ;
-- switch image/vidéo ;
-- ouvrir un cours/brouillon existant ;
-- sauvegarde brouillon léger.
+- admin → Formations & Cours ;
+- cliquer Nouveau Cours ;
+- l'onglet Éditeur doit être actif ;
+- l'éditeur doit apparaître comme une vue, pas sous la liste ;
+- éditer un cours existant ;
+- vérifier les barres profil/admin ;
+- vérifier que `window.SBI_PJAX_CHECK('/admin/repair-access.html')` indique route non migrée/reload ou 404 si ouverte directement.
 
 Pages encore hors PJAX :
 

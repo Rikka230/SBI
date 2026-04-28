@@ -3,7 +3,7 @@
 Branche expérimentale : `pjax-app-shell-test`
 Base : `main` après merge 7.4.2
 
-## État 8.0L
+## État 8.0L.1
 
 Le PJAX est activé par défaut sur la branche labo.
 
@@ -19,15 +19,6 @@ Réactiver PJAX :
 
 ```js
 window.SBI_ENABLE_PJAX()
-```
-
-## Diagnostics console
-
-```js
-window.SBI_PJAX_CHECK('/admin/formations-cours.html')
-window.SBI_PJAX_CHECK('/teacher/mes-cours.html')
-window.SBI_PJAX_CHECK('/student/cours-viewer.html?id=test')
-window.SBI_PJAX_ROUTES()
 ```
 
 ## Routes PJAX actuellement actives
@@ -51,17 +42,17 @@ Teacher :
 - `/teacher/mes-cours.html`
 - `/teacher/mon-profil.html`
 
-## 8.0L
+## 8.0L.1
 
-- Activation PJAX de `/admin/formations-cours.html`.
-- Le bridge éditeur supporte maintenant les deux IDs :
-  - `#quill-editor` côté teacher.
-  - `#course-editor` côté admin.
-- Chargement Quill avant montage de l'éditeur admin.
-- Initialisation Quill via `course-editor-bridge.js`.
-- Montage de `admin-courses.js` via `mountAdminCourses()`.
-- `/student/cours-viewer.html`, `/teacher/cours-viewer.html` et `/admin/cours-viewer.html` restent protégés en reload classique.
-- Version actuelle : `SBI 8.0L - PJAX APP SHELL TEST`.
+- Harmonisation visuelle des sous-menus admin/profil/éditeur.
+- Correction du switch `Nouveau Cours` / `Edit` côté admin.
+- Le shell gère maintenant les deux modèles d'onglets :
+  - `.student-sub-nav-item` / `.student-view`
+  - `.sub-nav-item` / `.course-section`
+- Après ouverture éditeur, la vue active remonte proprement au début de l'éditeur.
+- `repair-access.html` est supprimé directement de la branche `pjax-app-shell-test`.
+- `repair-access.html` est retiré des routes protégées.
+- Version actuelle : `SBI 8.0L.1 - PJAX APP SHELL TEST`.
 
 ## Routes encore protégées
 
@@ -69,4 +60,3 @@ Teacher :
 - `/teacher/cours-viewer.html`
 - `/admin/cours-viewer.html`
 - `/admin/formations-live.html`
-- `/admin/repair-access.html`
