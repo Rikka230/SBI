@@ -3,7 +3,7 @@
 Branche expérimentale : `pjax-app-shell-test`
 Base : `main` après merge 7.4.2
 
-## État 8.0K.2
+## État 8.0K.3
 
 Le PJAX est activé par défaut sur la branche labo.
 
@@ -41,18 +41,13 @@ Teacher :
 - `/teacher/mes-cours.html`
 - `/teacher/mon-profil.html`
 
-## 8.0K.2
+## 8.0K.3
 
-- Remplacement des bulles natives navigateur par des tooltips stylisés SBI.
-- Suppression du rendu rectangle gris via retrait de `title`.
-- Conservation des labels accessibilité `aria-label`.
-- Tooltips ajoutés sur :
-  - Couleur du caractère.
-  - Surlignage du caractère.
-  - Taille du texte.
-  - Boutons principaux Quill.
+- Les tooltips Quill sont désormais rendus dans un portail global fixé au body.
+- Les bulles ne sont plus coupées par la toolbar ou un parent en `overflow`.
+- Les labels accessibilité `aria-label` sont conservés.
 - Aucun changement sur la logique PJAX, sauvegarde ou publication.
-- Version actuelle : `SBI 8.0K.2 - PJAX APP SHELL TEST`.
+- Version actuelle : `SBI 8.0K.3 - PJAX APP SHELL TEST`.
 
 ## Routes encore protégées
 
