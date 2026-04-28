@@ -1,5 +1,5 @@
 /**
- * SBI 8.0G - Route registry
+ * SBI 8.0H - Route registry
  *
  * Admin shell :
  * - admin index tabs
@@ -9,6 +9,7 @@
  * Student shell :
  * - Mon Hub
  * - Mes Cours
+ * - Mon Profil
  *
  * Teacher shell :
  * - Mon Espace
@@ -67,6 +68,10 @@ function isStudentCourses(url) {
   return normalizePath(url.pathname).toLowerCase() === '/student/mes-cours.html';
 }
 
+function isStudentProfile(url) {
+  return normalizePath(url.pathname).toLowerCase() === '/student/mon-profil.html';
+}
+
 function isTeacherDashboard(url) {
   return normalizePath(url.pathname).toLowerCase() === '/teacher/dashboard.html';
 }
@@ -93,7 +98,8 @@ function isAdminShellContext() {
 function isStudentShellContext() {
   const path = getCurrentPath();
   return path === '/student/dashboard.html'
-    || path === '/student/mes-cours.html';
+    || path === '/student/mes-cours.html'
+    || path === '/student/mon-profil.html';
 }
 
 function isTeacherShellContext() {
@@ -126,6 +132,49 @@ function notifyAdminIndexRestored(tab) {
   window.dispatchEvent(new CustomEvent('sbi:admin-index-restored', {
     detail: { tab }
   }));
+}
+
+function bindProfileTabs() {
+  const root = document.querySelector('#main-content');
+  if (!root) return () => {};
+
+  const boundItems = [];
+
+  function switchProfileTab(tabId, trigger = null) {
+    if (!tabId) return;
+
+    root.querySelectorAll('.student-sub-nav-item').forEach((item) => {
+      item.classList.toggle('active', item === trigger || item.dataset.sbiProfileTab === tabId);
+    });
+
+    root.querySelectorAll('.student-view').forEach((view) => {
+      view.classList.toggle('active', view.id === tabId);
+    });
+  }
+
+  window.switchTab = (tabId, trigger = null) => {
+    const activeTrigger = trigger || window.event?.currentTarget || null;
+    switchProfileTab(tabId, activeTrigger);
+  };
+
+  root.querySelectorAll('.student-sub-nav-item[onclick*="switchTab"]').forEach((item) => {
+    const inline = item.getAttribute('onclick') || '';
+    const match = inline.match(/switchTab\(['"]([^'"]+)['"]\)/);
+    const tabId = match?.[1];
+
+    if (!tabId) return;
+
+    item.dataset.sbiProfileTab = tabId;
+    item.removeAttribute('onclick');
+
+    const handler = () => switchProfileTab(tabId, item);
+    item.addEventListener('click', handler);
+    boundItems.push([item, handler]);
+  });
+
+  return () => {
+    boundItems.forEach(([item, handler]) => item.removeEventListener('click', handler));
+  };
 }
 
 async function mountAdminIndex({ url, source = 'app-shell' }) {
@@ -194,6 +243,7 @@ async function mountAdminProfile({ url }) {
   applyBodyRouteClassesFromDocument(doc, ['sbi-profile-page', 'sbi-admin-surface']);
   replaceMainFromDocument(doc);
   const cleanupCropModal = replaceRouteNodeFromDocument(doc, '#crop-modal');
+  const cleanupTabs = bindProfileTabs();
   updateAdminChromeFromDocument(doc, 'Profil Complet - SBI Console');
   setLeftNavActive('nav-users');
   updateUrlContext(url);
@@ -213,6 +263,10 @@ async function mountAdminProfile({ url }) {
 
   if (typeof cleanupCropModal === 'function') {
     registerCleanup(cleanupCropModal, 'admin-profile-crop-modal');
+  }
+
+  if (typeof cleanupTabs === 'function') {
+    registerCleanup(cleanupTabs, 'admin-profile-tabs');
   }
 
   return { viewKey: 'admin:profile' };
@@ -262,6 +316,44 @@ async function mountStudentPage({ url }) {
   return { viewKey: 'student:courses' };
 }
 
+async function mountStudentProfile({ url }) {
+  const doc = await fetchAdminDocument(url);
+
+  await ensureDocumentStyles(doc, url.href);
+  await loadScriptOnce(CROPPER_SCRIPT, { globalName: 'Cropper' });
+
+  applyBodyRouteClassesFromDocument(doc, ['sbi-profile-page', 'sbi-student-surface', 'no-right-panel']);
+  replaceMainFromDocument(doc);
+  const cleanupCropModal = replaceRouteNodeFromDocument(doc, '#crop-modal');
+  const cleanupTabs = bindProfileTabs();
+  updateAdminChromeFromDocument(doc, 'Mon Profil - SBI Student');
+  setLeftNavActive('/student/mon-profil.html');
+  updateUrlContext(url);
+
+  window.__SBI_APP_SHELL_MOUNTING_PROFILE = true;
+
+  try {
+    const module = await import('/js/profile-core.js');
+    const cleanupProfile = module.mountProfileCore?.({ source: 'pjax-student-profile' });
+
+    if (typeof cleanupProfile === 'function') {
+      registerCleanup(cleanupProfile, 'student-profile-core');
+    }
+  } finally {
+    window.__SBI_APP_SHELL_MOUNTING_PROFILE = false;
+  }
+
+  if (typeof cleanupCropModal === 'function') {
+    registerCleanup(cleanupCropModal, 'student-profile-crop-modal');
+  }
+
+  if (typeof cleanupTabs === 'function') {
+    registerCleanup(cleanupTabs, 'student-profile-tabs');
+  }
+
+  return { viewKey: 'student:profile' };
+}
+
 async function mountTeacherDashboard({ url }) {
   const doc = await fetchAdminDocument(url);
 
@@ -297,6 +389,7 @@ async function mountTeacherProfile({ url }) {
   applyBodyRouteClassesFromDocument(doc, ['sbi-profile-page', 'sbi-teacher-surface', 'no-right-panel']);
   replaceMainFromDocument(doc);
   const cleanupCropModal = replaceRouteNodeFromDocument(doc, '#crop-modal');
+  const cleanupTabs = bindProfileTabs();
   updateAdminChromeFromDocument(doc, 'Mon Profil - SBI Teacher');
   setLeftNavActive('/teacher/mon-profil.html');
   updateUrlContext(url);
@@ -316,6 +409,10 @@ async function mountTeacherProfile({ url }) {
 
   if (typeof cleanupCropModal === 'function') {
     registerCleanup(cleanupCropModal, 'teacher-profile-crop-modal');
+  }
+
+  if (typeof cleanupTabs === 'function') {
+    registerCleanup(cleanupTabs, 'teacher-profile-tabs');
   }
 
   return { viewKey: 'teacher:profile' };
@@ -338,6 +435,14 @@ export function createRouteRegistry() {
       return isTeacherProfile(url) && isTeacherShellContext();
     },
     mount: mountTeacherProfile
+  });
+
+  routes.push({
+    id: 'student-profile',
+    canHandle(url) {
+      return isStudentProfile(url) && isStudentShellContext();
+    },
+    mount: mountStudentProfile
   });
 
   routes.push({

@@ -1,6 +1,6 @@
 # SBI Refactor Map
 
-Version chantier : 8.0G.1
+Version chantier : 8.0H
 Branche de travail : `pjax-app-shell-test`
 Branche stable : `main`
 
@@ -74,23 +74,31 @@ Statut : validé.
 
 ### 8.0G - Teacher shell léger
 
-Statut : validé avec remarque active nav.
+Statut : validé.
 
 - Routes PJAX pour `/teacher/dashboard.html` et `/teacher/mon-profil.html`.
 - `teacher/mes-cours.html` reste hors PJAX.
 
 ### 8.0G.1 - Active nav sync PJAX
 
+Statut : validé.
+
+- Synchronisation active globale admin / student / teacher après navigation PJAX.
+
+### 8.0H - Student profile shell
+
 Statut : patch préparé.
 
-Objectif : corriger la sélection active des menus après navigation PJAX.
+Objectif : raccorder le profil élève au shell.
 
 Changements :
 
-- `sbi-navigation-transitions.js` écoute `sbi:app-shell:navigated`.
-- La synchronisation utilise `window.SBI_APP_SHELL_CURRENT_URL` en plus de `window.location`.
-- Correction globale admin / student / teacher.
-- Version centralisée passée en `8.0G.1`.
+- Route PJAX pour `/student/mon-profil.html`.
+- Profil étudiant monté via `profile-core.js`.
+- CropperJS chargé si nécessaire.
+- Modal cropper injecté et nettoyé au changement de route.
+- Onglets internes du profil rebondés côté shell pour éviter la dépendance au script inline.
+- Version centralisée passée en `8.0H`.
 
 Pages encore hors PJAX :
 
