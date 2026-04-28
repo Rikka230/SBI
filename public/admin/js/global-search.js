@@ -39,6 +39,34 @@ const escapeHTML = (value) => String(value || '')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
 
+
+function isDebugSearchEnabled() {
+    try {
+        return localStorage.getItem('sbiDebugAccess') === 'true';
+    } catch {
+        return false;
+    }
+}
+
+function isExpectedSearchAccessError(error) {
+    const code = String(error?.code || '').toLowerCase();
+    const message = String(error?.message || '').toLowerCase();
+    return code.includes('permission-denied')
+        || code.includes('failed-precondition')
+        || message.includes('missing or insufficient permissions')
+        || message.includes('permission')
+        || message.includes('index');
+}
+
+function reportSearchLimit(label, error) {
+    if (isExpectedSearchAccessError(error)) {
+        if (isDebugSearchEnabled()) console.debug(`[SBI Search] ${label} :`, error);
+        return;
+    }
+
+    console.warn(`[SBI Search] ${label} :`, error);
+}
+
 function getCurrentRole() {
     const profile = activeSearchContext.currentUserProfile || {};
     if (profile?.isGod === true) return 'admin';
@@ -206,7 +234,7 @@ export function setupGlobalSearch({ currentUid, currentUserProfile } = {}) {
 
         input.addEventListener('focus', async () => {
             try { await ensureSearchDataCache(); }
-            catch (error) { console.warn('[SBI Search] Préchargement limité :', error); }
+            catch (error) { reportSearchLimit('Préchargement limité', error); }
         });
 
         input.addEventListener('input', async (e) => {
@@ -231,7 +259,7 @@ export function setupGlobalSearch({ currentUid, currentUserProfile } = {}) {
                     role
                 });
             } catch (error) {
-                console.warn('[SBI Search] Recherche limitée :', error);
+                reportSearchLimit('Recherche limitée', error);
                 resultsContainer.innerHTML = `<div style="padding:15px;color:var(--text-muted,#888);text-align:center;font-size:.85rem;">Recherche temporairement limitée.</div>`;
                 resultsContainer.style.display = 'block';
             }

@@ -82,10 +82,33 @@ function normalizeList(values) {
     ));
 }
 
+function isDebugAccessEnabled() {
+    try {
+        return localStorage.getItem('sbiDebugAccess') === 'true';
+    } catch {
+        return false;
+    }
+}
+
+function isExpectedAccessError(error) {
+    const code = String(error?.code || '').toLowerCase();
+    const message = String(error?.message || '').toLowerCase();
+    return code.includes('permission-denied')
+        || code.includes('failed-precondition')
+        || message.includes('missing or insufficient permissions')
+        || message.includes('permission')
+        || message.includes('index');
+}
+
 async function safeGetDocs(queryRef, label = 'requête Firestore') {
     try {
         return await getDocs(queryRef);
     } catch (error) {
+        if (isExpectedAccessError(error)) {
+            if (isDebugAccessEnabled()) console.debug(`[SBI Access] ${label} ignorée :`, error);
+            return null;
+        }
+
         console.warn(`[SBI Access] ${label} ignorée :`, error);
         return null;
     }

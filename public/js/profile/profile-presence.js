@@ -46,6 +46,22 @@ export function updateProfilePresenceStatus(data) {
   }
 }
 
+function isDebugProfilePresenceEnabled() {
+  try {
+    return localStorage.getItem('sbiDebugAccess') === 'true';
+  } catch {
+    return false;
+  }
+}
+
+function isExpectedPresenceAccessError(error) {
+  const code = String(error?.code || '').toLowerCase();
+  const message = String(error?.message || '').toLowerCase();
+  return code.includes('permission-denied')
+    || message.includes('missing or insufficient permissions')
+    || message.includes('permission');
+}
+
 export function startProfilePresenceListener(db, uid) {
   if (!uid) return;
 
@@ -56,6 +72,11 @@ export function startProfilePresenceListener(db, uid) {
     latestPresenceData = snap.data();
     updateProfilePresenceStatus(latestPresenceData);
   }, (error) => {
+    if (isExpectedPresenceAccessError(error)) {
+      if (isDebugProfilePresenceEnabled()) console.debug('[SBI Profile] Écoute présence limitée :', error);
+      return;
+    }
+
     console.warn('Erreur écoute présence profil :', error);
   });
 

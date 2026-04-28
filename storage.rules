@@ -44,6 +44,24 @@ service firebase.storage {
         );
     }
 
+    function courseDocPath(courseId) {
+      return /databases/(default)/documents/courses/$(courseId);
+    }
+
+    function courseDocExists(courseId) {
+      return courseId is string
+        && firestore.exists(courseDocPath(courseId));
+    }
+
+    function canManageCourseMedia(courseId) {
+      return isAdmin()
+        || (
+          isActiveUser()
+          && courseDocExists(courseId)
+          && firestore.get(courseDocPath(courseId)).data.auteurId == request.auth.uid
+        );
+    }
+
     /* ============================================================
        MÉDIAS PUBLICS INDEX / LANDING
        ============================================================
@@ -79,14 +97,21 @@ service firebase.storage {
     match /courses/{courseId}/chapters/{chapterId}/{fileName} {
       allow read: if isActiveUser();
 
-      allow create, update: if isActiveUser()
+      allow create: if isActiveUser()
         && request.resource.size < 200 * 1024 * 1024
         && (
           request.resource.contentType.matches('image/.*') ||
           request.resource.contentType.matches('video/.*')
         );
 
-      allow delete: if isActiveUser();
+      allow update: if canManageCourseMedia(courseId)
+        && request.resource.size < 200 * 1024 * 1024
+        && (
+          request.resource.contentType.matches('image/.*') ||
+          request.resource.contentType.matches('video/.*')
+        );
+
+      allow delete: if canManageCourseMedia(courseId);
     }
 
     /* ============================================================

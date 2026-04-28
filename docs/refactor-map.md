@@ -440,3 +440,28 @@ Changements :
 - Compatibilité renforcée avec `data-href` et `data-sbi-href`.
 
 Aucune modification rules.
+
+## Étape 7.3 - Audit sécurité/rules + nettoyage warnings
+
+Statut : patch préparé.
+
+Objectif : durcir les accès sans casser les flux validés.
+
+Changements rules :
+
+- `courses` : les lectures en liste repassent par `canReadCourse(resource.data)` au lieu d'un accès large à tout utilisateur actif.
+- `courses` : compatibilité ajoutée pour les cours ciblés via `targetFormationIds` et `targetFormationTitles`.
+- `formations` : les élèves/profs ne listent plus toutes les formations, seulement celles liées à leur profil ou membership.
+- `notifications` : les lectures en liste repassent par `canReadNotification()` au lieu d'un accès large à tout utilisateur actif.
+- `storage.rules` : la suppression et la mise à jour des médias de cours sont limitées à l'admin ou à l'auteur du cours.
+
+Nettoyage console :
+
+- les erreurs attendues `permission-denied` / index manquant dans les accès optionnels passent en debug silencieux.
+- Debug réactivable avec :
+
+```js
+localStorage.setItem('sbiDebugAccess', 'true')
+```
+
+Action requise après remplacement : déployer Firestore Rules + Storage Rules avec le batch rules.
