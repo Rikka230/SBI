@@ -7,7 +7,7 @@ Base : `main` après merge 7.4.2
 
 Le PJAX complet ne doit pas être appliqué en bloc. Cette branche pose un app shell progressif avec fallback reload.
 
-## État 8.0F.1
+## État 8.0F.2
 
 Le PJAX est activé par défaut sur la branche labo.
 
@@ -39,13 +39,6 @@ localStorage.removeItem('sbiPjaxDisabled')
 location.reload()
 ```
 
-Via URL :
-
-```txt
-?sbiPjax=0  désactive
-?sbiPjax=1  réactive
-```
-
 ## Routes PJAX actuellement actives
 
 Admin :
@@ -59,12 +52,12 @@ Student :
 - `/student/dashboard.html`
 - `/student/mes-cours.html`
 
-## 8.0F.1
+## 8.0F.2
 
-- Ajout d'un garde CSS avant injection de contenu PJAX.
-- Les styles de la page cible sont attendus avant `replaceMainFromDocument()`.
-- Corrige le flash occasionnel où `/student/mes-cours.html` pouvait apparaître sans son CSS au premier passage.
-- Version actuelle : `SBI 8.0F.1 - PJAX APP SHELL TEST`.
+- Injection des blocs `<style>` du document cible.
+- Corrige les styles inline de `/student/mes-cours.html`, notamment `.formation-folder`, `.course-item`, `.progress-bar-bg`.
+- Conserve l'attente des fichiers CSS `<link>`.
+- Version actuelle : `SBI 8.0F.2 - PJAX APP SHELL TEST`.
 
 ## Règles de sécurité
 

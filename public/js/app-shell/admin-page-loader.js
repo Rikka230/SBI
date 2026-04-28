@@ -1,13 +1,20 @@
 /**
- * SBI 8.0F.1 - App shell page loader
+ * SBI 8.0F.2 - App shell page loader
  *
  * Charge les pages internes explicitement migrées dans le shell sans reload complet.
  * 8.0F.1 : attend les CSS des pages avant d'injecter le contenu PJAX.
+ * 8.0F.2 : injecte aussi les blocs <style> du document cible.
  */
 
 const loadedStyleHrefs = new Set(
   Array.from(document.querySelectorAll('link[rel="stylesheet"][href]'))
     .map((link) => new URL(link.getAttribute('href'), window.location.href).href)
+);
+
+const loadedInlineStyleKeys = new Set(
+  Array.from(document.querySelectorAll('style[data-sbi-pjax-inline-style]'))
+    .map((style) => style.getAttribute('data-sbi-pjax-inline-style'))
+    .filter(Boolean)
 );
 
 const styleLoadPromises = new Map();
@@ -29,6 +36,37 @@ const ROUTE_BODY_CLASSES = new Set([
   'sbi-dashboard-redesign',
   'no-right-panel'
 ]);
+
+function makeInlineStyleKey(cssText, baseUrl) {
+  const source = `${baseUrl || window.location.pathname}::${cssText || ''}`;
+  let hash = 0;
+
+  for (let index = 0; index < source.length; index += 1) {
+    hash = ((hash << 5) - hash) + source.charCodeAt(index);
+    hash |= 0;
+  }
+
+  return `style-${Math.abs(hash)}`;
+}
+
+function ensureInlineDocumentStyles(doc, baseUrl = window.location.href) {
+  const styles = Array.from(doc.querySelectorAll('head style, style[data-sbi-pjax-keep="true"]'));
+
+  styles.forEach((style) => {
+    const cssText = style.textContent || '';
+    if (!cssText.trim()) return;
+
+    const key = makeInlineStyleKey(cssText, baseUrl);
+    if (loadedInlineStyleKeys.has(key)) return;
+
+    const nextStyle = document.createElement('style');
+    nextStyle.textContent = cssText;
+    nextStyle.setAttribute('data-sbi-pjax-inline-style', key);
+    nextStyle.setAttribute('data-sbi-pjax-source', new URL(baseUrl, window.location.href).pathname);
+    document.head.appendChild(nextStyle);
+    loadedInlineStyleKeys.add(key);
+  });
+}
 
 function waitForStylesheet(link, href, timeoutMs = 2500) {
   if (!link || link.sheet) {
@@ -81,6 +119,8 @@ export async function fetchAdminDocument(url) {
 }
 
 export async function ensureDocumentStyles(doc, baseUrl = window.location.href) {
+  ensureInlineDocumentStyles(doc, baseUrl);
+
   const links = Array.from(doc.querySelectorAll('link[rel="stylesheet"][href]'));
   const waits = [];
 

@@ -1,6 +1,6 @@
 # SBI Refactor Map
 
-Version chantier : 8.0F.1
+Version chantier : 8.0F.2
 Branche de travail : `pjax-app-shell-test`
 Branche stable : `main`
 
@@ -41,7 +41,6 @@ Statut : validé.
 
 - Route PJAX pour `/admin/site-index-settings.html`.
 - Refactor `site-index-settings.js` en fonction montable avec cleanup.
-- Retour vers `/admin/index.html?tab=...`.
 
 ### 8.0C - Version badge centralisé
 
@@ -55,7 +54,6 @@ Statut : validé.
 
 - Route PJAX pour `/admin/admin-profile.html`.
 - `profile-core.js` compatible `mountProfileCore()`.
-- Cleanup présence/auth profil.
 
 ### 8.0D.1 - Cache retour Utilisateurs
 
@@ -82,16 +80,23 @@ Statut : validé globalement.
 
 ### 8.0F.1 - CSS guard PJAX
 
+Statut : insuffisant.
+
+- Attendait les fichiers CSS `<link>`.
+- Ne couvrait pas les styles inline `<style>` dans le `<head>`.
+
+### 8.0F.2 - Inline style guard PJAX
+
 Statut : patch préparé.
 
-Objectif : stabiliser le premier passage vers les pages student.
+Objectif : corriger le style incomplet sur le premier passage vers Mes Cours.
 
 Changements :
 
-- `ensureDocumentStyles()` devient asynchrone.
-- Les routes attendent les CSS avant d'injecter le nouveau `#main-content`.
-- Corrige le cas rare où la page Mes Cours pouvait s'afficher avant que son CSS ne soit appliqué.
-- Version centralisée passée en `8.0F.1`.
+- `ensureDocumentStyles()` injecte maintenant les blocs `<style>` du document cible.
+- Les styles inline sont dédupliqués via clé de hash.
+- Corrige notamment `.formation-folder`, `.course-item`, `.progress-bar-bg`.
+- Version centralisée passée en `8.0F.2`.
 
 Pages encore hors PJAX :
 
