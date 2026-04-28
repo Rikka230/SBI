@@ -9,6 +9,7 @@ import { initSafeComponentPolish } from '/admin/js/admin-ui/component-polish.js'
 import { initSbiNavigationTransitions } from '/js/sbi-navigation-transitions.js';
 import { initSbiAppShell } from '/js/app-shell/app-shell.js';
 import { initSbiVersionBadge } from '/js/sbi-version-badge.js';
+import { installViewerDiagnostics } from '/js/app-shell/course-viewer-bridge.js';
 
 /**
  * =======================================================================
@@ -17,6 +18,7 @@ import { initSbiVersionBadge } from '/js/sbi-version-badge.js';
  *
  * 6.8 : admin-ui.js ne porte plus la logique complète.
  * Il orchestre uniquement les modules UI sûrs.
+ * 8.0M : diagnostics viewer installés sans activer le viewer en PJAX.
  */
 
 async function initAdminUi() {
@@ -27,6 +29,7 @@ async function initAdminUi() {
         initSbiNavigationTransitions();
         initSbiAppShell();
         initSbiVersionBadge();
+        installViewerDiagnostics();
         initAdminMediaNav();
         initAssistantPrototype();
         initAdminVisitorShortcut();

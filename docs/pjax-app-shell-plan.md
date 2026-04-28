@@ -3,7 +3,7 @@
 Branche expérimentale : `pjax-app-shell-test`
 Base : `main` après merge 7.4.2
 
-## État 8.0L.2
+## État 8.0M
 
 Le PJAX est activé par défaut sur la branche labo.
 
@@ -42,19 +42,37 @@ Teacher :
 - `/teacher/mes-cours.html`
 - `/teacher/mon-profil.html`
 
-## 8.0L.2
-
-- Harmonisation du chrome admin.
-- Le style des panneaux gauche/droit/topbar n'est plus réservé au dashboard.
-- Formations & Cours admin récupère le même look cockpit que Dashboard / Profil.
-- Gestion médias / Stockage dans l'index admin garde aussi le chrome admin.
-- `theme.js` lit maintenant l'URL effective du shell PJAX quand disponible.
-- Ajout de `/admin/css/sbi-admin-chrome-harmonization.css`.
-- Version actuelle : `SBI 8.0L.2 - PJAX APP SHELL TEST`.
-
-## Routes encore protégées
+## Routes viewer encore protégées
 
 - `/student/cours-viewer.html`
 - `/teacher/cours-viewer.html`
 - `/admin/cours-viewer.html`
-- `/admin/formations-live.html`
+
+## Diagnostics viewer
+
+```js
+window.SBI_VIEWER_STATUS('/student/cours-viewer.html?id=test')
+window.SBI_VIEWER_STATUS('/teacher/cours-viewer.html?id=test&preview=true')
+window.SBI_VIEWER_ROUTES()
+```
+
+## 8.0M
+
+- Ajout de `public/js/app-shell/course-viewer-bridge.js`.
+- Ajout des diagnostics viewer :
+  - `window.SBI_VIEWER_STATUS()`
+  - `window.SBI_VIEWER_ROUTES()`
+- Le viewer reste protégé en reload classique.
+- Aucun changement sur progression, quiz, vidéo ou tracking.
+- Version actuelle : `SBI 8.0M - PJAX APP SHELL TEST`.
+
+## Plan avant activation PJAX viewer
+
+À faire avant activation :
+
+- exporter `mountCourseViewer()` depuis `/student/js/cours-viewer.js` ;
+- retourner un `cleanup()` pour stopper `timerInterval` ;
+- isoler les listeners quiz par chapitre ;
+- sécuriser `leaveViewer()` dans le shell ;
+- fallback reload au moindre souci progression/quiz ;
+- activer d’abord le viewer prof/admin preview, puis le viewer étudiant.
