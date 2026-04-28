@@ -3,7 +3,7 @@
 Branche expérimentale : `pjax-app-shell-test`
 Base : `main` après merge 7.4.2
 
-## État 8.0K.4
+## État 8.0L
 
 Le PJAX est activé par défaut sur la branche labo.
 
@@ -21,12 +21,22 @@ Réactiver PJAX :
 window.SBI_ENABLE_PJAX()
 ```
 
+## Diagnostics console
+
+```js
+window.SBI_PJAX_CHECK('/admin/formations-cours.html')
+window.SBI_PJAX_CHECK('/teacher/mes-cours.html')
+window.SBI_PJAX_CHECK('/student/cours-viewer.html?id=test')
+window.SBI_PJAX_ROUTES()
+```
+
 ## Routes PJAX actuellement actives
 
 Admin :
 
 - `/admin/index.html?tab=...`
 - `/admin/site-index-settings.html`
+- `/admin/formations-cours.html`
 - `/admin/admin-profile.html`
 
 Student :
@@ -41,18 +51,22 @@ Teacher :
 - `/teacher/mes-cours.html`
 - `/teacher/mon-profil.html`
 
-## 8.0K.4
+## 8.0L
 
-- Un seul tooltip Quill visible.
-- Les anciens pseudo-tooltips sont neutralisés.
-- Le tooltip portal s'affiche toujours sous l'outil.
-- Le fallback au-dessus est supprimé.
-- Les `title` natifs sont retirés à chaque montage.
-- Version actuelle : `SBI 8.0K.4 - PJAX APP SHELL TEST`.
+- Activation PJAX de `/admin/formations-cours.html`.
+- Le bridge éditeur supporte maintenant les deux IDs :
+  - `#quill-editor` côté teacher.
+  - `#course-editor` côté admin.
+- Chargement Quill avant montage de l'éditeur admin.
+- Initialisation Quill via `course-editor-bridge.js`.
+- Montage de `admin-courses.js` via `mountAdminCourses()`.
+- `/student/cours-viewer.html`, `/teacher/cours-viewer.html` et `/admin/cours-viewer.html` restent protégés en reload classique.
+- Version actuelle : `SBI 8.0L - PJAX APP SHELL TEST`.
 
 ## Routes encore protégées
 
-- `/admin/formations-cours.html`
 - `/student/cours-viewer.html`
 - `/teacher/cours-viewer.html`
 - `/admin/cours-viewer.html`
+- `/admin/formations-live.html`
+- `/admin/repair-access.html`

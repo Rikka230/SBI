@@ -1,9 +1,10 @@
 /**
- * SBI 8.0K - Route registry
+ * SBI 8.0L - Route registry
  *
  * Admin shell :
  * - admin index tabs
  * - Gestion Accueil
+ * - Formations & Cours
  * - Mon Profil
  *
  * Student shell :
@@ -64,6 +65,10 @@ function isAdminSiteIndex(url) {
   return normalizePath(url.pathname).toLowerCase() === '/admin/site-index-settings.html';
 }
 
+function isAdminCourses(url) {
+  return normalizePath(url.pathname).toLowerCase() === '/admin/formations-cours.html';
+}
+
 function isAdminProfile(url) {
   return normalizePath(url.pathname).toLowerCase() === '/admin/admin-profile.html';
 }
@@ -104,6 +109,7 @@ function isAdminShellContext() {
   const path = getCurrentPath();
   return path === '/admin/index.html'
     || path === '/admin/site-index-settings.html'
+    || path === '/admin/formations-cours.html'
     || path === '/admin/admin-profile.html';
 }
 
@@ -243,6 +249,49 @@ async function mountSiteIndex({ url }) {
   }
 
   return { viewKey: 'admin:site-index-settings' };
+}
+
+
+async function mountAdminCourses({ url }) {
+  maybeCacheAdminIndexMain('leave-for-admin-courses');
+
+  const doc = await fetchAdminDocument(url);
+
+  await ensureDocumentStyles(doc, url.href);
+  await loadQuillIfNeeded(loadScriptOnce);
+
+  applyBodyRouteClassesFromDocument(doc, ['sbi-course-editor-page', 'sbi-admin-surface']);
+  replaceMainFromDocument(doc);
+  updateAdminChromeFromDocument(doc, 'Formations & Cours - SBI Admin');
+  setLeftNavActive('nav-formations');
+  updateUrlContext(url);
+
+  if (!hasCourseEditorDom(document)) {
+    throw new Error('DOM éditeur cours admin introuvable après injection PJAX.');
+  }
+
+  const cleanupTabs = installCourseEditorTabs();
+  const cleanupMediaSwitch = installMediaTypeSwitch();
+  const cleanupQuill = initCourseEditorQuill();
+
+  window.__SBI_APP_SHELL_MOUNTING_COURSE_EDITOR = true;
+
+  try {
+    const module = await import('/admin/js/admin-courses.js');
+    const cleanupCourses = module.mountAdminCourses?.({ source: 'pjax-admin-courses' });
+
+    if (typeof cleanupCourses === 'function') {
+      registerCleanup(cleanupCourses, 'admin-course-editor');
+    }
+  } finally {
+    window.__SBI_APP_SHELL_MOUNTING_COURSE_EDITOR = false;
+  }
+
+  if (typeof cleanupTabs === 'function') registerCleanup(cleanupTabs, 'admin-course-tabs');
+  if (typeof cleanupMediaSwitch === 'function') registerCleanup(cleanupMediaSwitch, 'admin-course-media-switch');
+  if (typeof cleanupQuill === 'function') registerCleanup(cleanupQuill, 'admin-course-quill');
+
+  return { viewKey: 'admin:courses' };
 }
 
 async function mountAdminProfile({ url }) {
@@ -495,6 +544,14 @@ export function createRouteRegistry() {
       return isStudentCourses(url) && isStudentShellContext();
     },
     mount: mountStudentPage
+  });
+
+  routes.push({
+    id: 'admin-courses',
+    canHandle(url) {
+      return isAdminCourses(url) && isAdminShellContext();
+    },
+    mount: mountAdminCourses
   });
 
   routes.push({

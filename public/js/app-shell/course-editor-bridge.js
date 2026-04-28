@@ -1,5 +1,5 @@
 /**
- * SBI 8.0K.4 - Course editor bridge
+ * SBI 8.0L - Course editor bridge
  *
  * Prépare et monte les éléments que les scripts inline ne relancent pas
  * en navigation PJAX : Quill, onglets éditeur et switch image/vidéo.
@@ -8,15 +8,22 @@
 const QUILL_SCRIPT = 'https://cdn.quilljs.com/1.3.6/quill.min.js';
 const TOOLTIP_STYLE_ID = 'sbi-quill-tooltip-style';
 const TOOLTIP_PORTAL_ID = 'sbi-quill-tooltip-portal';
+const EDITOR_SELECTORS = ['#quill-editor', '#course-editor'];
 
 export const COURSE_EDITOR_ROUTES = {
   admin: '/admin/formations-cours.html',
   teacher: '/teacher/mes-cours.html'
 };
 
+function getCourseEditorElement(root = document) {
+  return EDITOR_SELECTORS
+    .map((selector) => root.querySelector(selector))
+    .find(Boolean) || null;
+}
+
 export function hasCourseEditorDom(root = document) {
   return Boolean(
-    root.querySelector('#quill-editor')
+    getCourseEditorElement(root)
     && root.querySelector('#courses-list-container')
     && root.querySelector('#btn-trigger-new-course')
   );
@@ -276,8 +283,10 @@ function applyQuillToolbarTooltips(toolbar, cleanups = []) {
 }
 
 export function initCourseEditorQuill() {
-  const editor = document.getElementById('quill-editor');
+  const editor = getCourseEditorElement(document);
   if (!editor) return () => {};
+
+  const editorSelector = editor.id ? `#${editor.id}` : '#quill-editor';
 
   if (!window.Quill) {
     throw new Error('Quill non chargé.');
@@ -315,7 +324,7 @@ export function initCourseEditorQuill() {
     }
   }
 
-  window.quill = new window.Quill('#quill-editor', {
+  window.quill = new window.Quill(editorSelector, {
     theme: 'snow',
     modules: {
       toolbar: {

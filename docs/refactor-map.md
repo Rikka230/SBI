@@ -1,8 +1,18 @@
 # SBI Refactor Map
 
-Version chantier : 8.0K.4
+Version chantier : 8.0L
 Branche de travail : `pjax-app-shell-test`
 Branche stable : `main`
+
+## Check ZIP 8.0K.4
+
+Le ZIP actuel reçu est bien en version :
+
+```txt
+SBI 8.0K.4 - PJAX APP SHELL TEST
+```
+
+Aucun dossier parasite `SBI-*` détecté à la racine du ZIP.
 
 ## Étapes PJAX validées
 
@@ -21,28 +31,41 @@ Branche stable : `main`
 - 8.0I.1 : diagnostics clean.
 - 8.0J : foundation éditeur cours montable.
 - 8.0K : teacher course editor PJAX.
-- 8.0K.1 : labels Quill.
-- 8.0K.2 : styled tooltips Quill.
-- 8.0K.3 : tooltip portal.
+- 8.0K.4 : Quill tooltip single bottom.
 
-## 8.0K.4 - Quill tooltip single bottom
+## 8.0L - Admin course editor PJAX
 
 Statut : patch préparé.
 
-Objectif : corriger le double affichage haut/bas des tooltips Quill.
+Objectif : activer l'éditeur cours admin dans le shell.
 
 Changements :
 
-- Réinjection forcée du style tooltip pour écraser les anciens styles.
-- Neutralisation des pseudo-tooltips sur `.sbi-quill-tooltip-anchor`.
-- Positionnement toujours sous l'outil.
-- Suppression du placement automatique au-dessus.
-- Retrait des `title` natifs à chaque montage.
-- Aucun changement logique sur les contenus, uploads, sauvegardes ou publication.
+- `/admin/formations-cours.html` passe en PJAX.
+- `route-guards.js` retire `/admin/formations-cours.html` des hard reload.
+- `route-registry.js` ajoute la route `admin-courses`.
+- `course-editor-bridge.js` devient compatible avec :
+  - `#quill-editor`,
+  - `#course-editor`.
+- L'éditeur admin utilise maintenant le même montage propre que l'éditeur prof.
+- Les tooltips Quill 8.0K.4 restent conservés.
+
+Points à tester :
+
+- admin index → Formations & Cours ;
+- Formations & Cours → Utilisateurs ;
+- Formations & Cours → Gestion Accueil ;
+- bouton Nouveau Cours ;
+- onglets Ma Bibliothèque / Éditeur ;
+- Quill sélection partielle taille texte ;
+- tooltips Quill ;
+- switch image/vidéo ;
+- ouvrir un cours/brouillon existant ;
+- sauvegarde brouillon léger.
 
 Pages encore hors PJAX :
 
-- éditeur cours admin ;
 - viewer étudiant/prof/admin ;
 - progression viewer ;
-- quiz runtime.
+- quiz runtime ;
+- live.
