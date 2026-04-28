@@ -1,6 +1,6 @@
 # SBI Refactor Map
 
-Version chantier : 8.0H.1
+Version chantier : 8.0I
 Branche de travail : `pjax-app-shell-test`
 Branche stable : `main`
 
@@ -85,25 +85,32 @@ Statut : validé.
 
 ### 8.0H - Student profile shell
 
-Statut : validé avec remarques polish.
+Statut : validé.
 
 - Route PJAX pour `/student/mon-profil.html`.
-- Profil étudiant monté via `profile-core.js`.
 
 ### 8.0H.1 - Profile PJAX polish
 
+Statut : validé.
+
+- Données privées révélées plus tôt.
+- Avatar topbar rafraîchi après modification.
+
+### 8.0I - Route guard & diagnostics
+
 Statut : patch préparé.
 
-Objectif : lisser les petits défauts profil.
+Objectif : consolider les routes avant d'approcher les zones sensibles.
 
 Changements :
 
-- Les droits owner/admin sont appliqués dès que le contexte profil est connu.
-- L'onglet Données Privées ne dépend plus de la fin du chargement formations/suivi.
-- Le bouton privé garde son comportement correct en sub-nav.
-- Après changement d'avatar, la topbar est rafraîchie immédiatement si l'utilisateur modifie son propre profil.
-- Le profil visible est aussi mis à jour immédiatement avec la nouvelle URL Storage.
-- Version centralisée passée en `8.0H.1`.
+- Ajout de `public/js/app-shell/route-guards.js`.
+- Protection explicite des routes sensibles en reload classique.
+- Diagnostic console :
+  - `window.SBI_PJAX_STATUS('/url')`
+  - `window.SBI_PJAX_ROUTES()`
+- Événement fallback : `sbi:app-shell:fallback`.
+- Version centralisée passée en `8.0I`.
 
 Pages encore hors PJAX :
 

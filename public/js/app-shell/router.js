@@ -1,12 +1,13 @@
 /**
- * SBI 8.0B - Router expérimental
+ * SBI 8.0I - Router expérimental
  *
- * Désactivé par défaut et limité aux routes explicitement connues.
- * Toute route inconnue retombe en navigation classique.
+ * Le routeur ne traite que les routes explicitement migrées.
+ * Les routes sensibles sont protégées par route-guards.js.
  */
 
 import { runViewCleanups, setActiveViewKey } from './view-lifecycle.js';
 import { startShellTransition, endShellTransition } from './transitions.js';
+import { getRouteDecision } from './route-guards.js';
 
 function normalizeHref(rawHref) {
   if (!rawHref || typeof rawHref !== 'string') return null;
@@ -42,12 +43,32 @@ function closeMobilePanels() {
 export function createRouter({ registry, debug = false } = {}) {
   let navigating = false;
 
+  function routeStatus(url) {
+    return getRouteDecision(url, registry);
+  }
+
   function canHandle(url) {
-    if (!url || url.origin !== window.location.origin) return false;
-    return Boolean(registry?.canHandle?.(url));
+    return routeStatus(url).mode === 'pjax';
+  }
+
+  function logFallback(decision, source = 'unknown') {
+    window.dispatchEvent(new CustomEvent('sbi:app-shell:fallback', {
+      detail: { ...decision, source }
+    }));
+
+    if (debug) {
+      console.info('[SBI AppShell] Fallback reload:', decision.reason, decision.href);
+    }
   }
 
   async function navigate(url, { historyMode = 'push', source = 'programmatic' } = {}) {
+    const decision = routeStatus(url);
+
+    if (decision.mode !== 'pjax') {
+      logFallback(decision, source);
+      return false;
+    }
+
     const route = registry?.find?.(url);
     if (!route || navigating) return false;
 
@@ -94,7 +115,12 @@ export function createRouter({ registry, debug = false } = {}) {
     if (trigger.matches('a[target]') && trigger.getAttribute('target') !== '_self') return;
 
     const url = normalizeHref(getRawHref(trigger));
-    if (!canHandle(url)) return;
+    const decision = routeStatus(url);
+
+    if (decision.mode !== 'pjax') {
+      logFallback(decision, 'click');
+      return;
+    }
 
     event.preventDefault();
     event.stopImmediatePropagation();
@@ -109,7 +135,12 @@ export function createRouter({ registry, debug = false } = {}) {
     if (!trigger || trigger.closest('[data-sbi-no-pjax="true"]')) return;
 
     const url = normalizeHref(getRawHref(trigger));
-    if (!canHandle(url)) return;
+    const decision = routeStatus(url);
+
+    if (decision.mode !== 'pjax') {
+      logFallback(decision, 'keyboard');
+      return;
+    }
 
     event.preventDefault();
     event.stopImmediatePropagation();
@@ -118,8 +149,10 @@ export function createRouter({ registry, debug = false } = {}) {
 
   function handlePopState(event) {
     const url = new URL(window.location.href);
+    const decision = routeStatus(url);
 
-    if (!canHandle(url)) {
+    if (decision.mode !== 'pjax') {
+      logFallback(decision, 'popstate');
       if (event.state?.sbiAppShell || document.body.dataset.sbiPjax === 'enabled') {
         window.location.assign(url.href);
       }
@@ -135,5 +168,5 @@ export function createRouter({ registry, debug = false } = {}) {
     window.addEventListener('popstate', handlePopState);
   }
 
-  return { attach, navigate, canHandle };
+  return { attach, navigate, canHandle, routeStatus };
 }

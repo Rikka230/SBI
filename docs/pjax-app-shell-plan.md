@@ -7,7 +7,7 @@ Base : `main` après merge 7.4.2
 
 Le PJAX complet ne doit pas être appliqué en bloc. Cette branche pose un app shell progressif avec fallback reload.
 
-## État 8.0H.1
+## État 8.0I
 
 Le PJAX est activé par défaut sur la branche labo.
 
@@ -39,6 +39,28 @@ localStorage.removeItem('sbiPjaxDisabled')
 location.reload()
 ```
 
+## Diagnostics
+
+Savoir si une URL passe en PJAX ou reload :
+
+```js
+window.SBI_PJAX_STATUS('/student/mes-cours.html')
+window.SBI_PJAX_STATUS('/student/cours-viewer.html?id=xxx')
+```
+
+Lister les routes :
+
+```js
+window.SBI_PJAX_ROUTES()
+```
+
+Activer les logs :
+
+```js
+localStorage.setItem('sbiPjaxDebug', 'true')
+location.reload()
+```
+
 ## Routes PJAX actuellement actives
 
 Admin :
@@ -58,13 +80,26 @@ Teacher :
 - `/teacher/dashboard.html`
 - `/teacher/mon-profil.html`
 
-## 8.0H.1
+## Routes protégées en reload classique
 
-- Les droits owner/admin du profil sont appliqués plus tôt.
-- L'onglet Données Privées n'apparaît plus avec un pop tardif après le chargement du suivi.
-- Après modification de l'avatar, la topbar est rafraîchie immédiatement pour le propriétaire du profil.
-- Événement ajouté : `sbi:profile-avatar-updated`.
-- Version actuelle : `SBI 8.0H.1 - PJAX APP SHELL TEST`.
+- `/admin/formations-cours.html`
+- `/teacher/mes-cours.html`
+- `/student/cours-viewer.html`
+- `/teacher/cours-viewer.html`
+- `/admin/cours-viewer.html`
+- `/admin/formations-live.html`
+- `/admin/repair-access.html`
+- `/change-email.html`
+- `/login.html`
+
+## 8.0I
+
+- Ajout de `public/js/app-shell/route-guards.js`.
+- Ajout d'un diagnostic `window.SBI_PJAX_STATUS()`.
+- Ajout d'un listing `window.SBI_PJAX_ROUTES()`.
+- Le routeur émet `sbi:app-shell:fallback` quand une route reste en reload classique.
+- Les zones sensibles sont protégées explicitement.
+- Version actuelle : `SBI 8.0I - PJAX APP SHELL TEST`.
 
 ## Règles de sécurité
 

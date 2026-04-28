@@ -1,5 +1,5 @@
 /**
- * SBI 8.0E - App shell foundation
+ * SBI 8.0I - App shell foundation
  *
  * Le PJAX est activé par défaut sur la branche labo.
  *
@@ -18,6 +18,7 @@ import { injectAppShellStyles, markAppShellReady } from './transitions.js';
 import { initRoutePreload } from './preload.js';
 import { registerCleanup, createAbortController } from './view-lifecycle.js';
 import { createListenerBag, disposeAllListenerBags } from './firebase-listeners.js';
+import { listHardReloadRoutes } from './route-guards.js';
 
 const DISABLED_FLAG = 'sbiPjaxDisabled';
 const LEGACY_ENABLED_FLAG = 'sbiPjaxEnabled';
@@ -63,6 +64,16 @@ function installEmergencySwitches(api) {
     window.location.reload();
   };
 
+  window.SBI_PJAX_STATUS = (href = window.location.href) => {
+    const url = new URL(href, window.location.href);
+    return api.routeStatus(url);
+  };
+
+  window.SBI_PJAX_ROUTES = () => ({
+    migrated: api.routes,
+    hardReload: api.hardReloadRoutes
+  });
+
   window.SBI_APP_SHELL = api;
 }
 
@@ -94,8 +105,10 @@ export function initSbiAppShell() {
     disabled: !enabled,
     disableFlag: DISABLED_FLAG,
     routes: registry.list(),
+    hardReloadRoutes: listHardReloadRoutes(),
     navigate: router.navigate,
     canHandle: router.canHandle,
+    routeStatus: router.routeStatus,
     registerCleanup,
     createAbortController,
     createListenerBag,
@@ -122,9 +135,13 @@ export function initSbiAppShell() {
   initRoutePreload({ router });
 
   window.dispatchEvent(new CustomEvent('sbi:app-shell:ready', {
-    detail: { routes: api.routes }
+    detail: { routes: api.routes, hardReloadRoutes: api.hardReloadRoutes }
   }));
 
-  if (debug) console.info('[SBI AppShell] Activé par défaut:', api.routes);
+  if (debug) {
+    console.info('[SBI AppShell] Activé par défaut:', api.routes);
+    console.info('[SBI AppShell] Routes reload protégées:', api.hardReloadRoutes);
+  }
+
   return api;
 }
