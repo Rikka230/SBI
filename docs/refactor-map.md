@@ -1,6 +1,6 @@
 # SBI Refactor Map
 
-Version chantier : 8.0C
+Version chantier : 8.0D
 Branche de travail : `pjax-app-shell-test`
 Branche stable : `main`
 
@@ -147,17 +147,9 @@ Changements :
 - Nettoyage des listeners de Gestion Accueil au changement de vue.
 - Fallback reload conservé si la route ou le montage échoue.
 
-Pages encore hors PJAX :
-
-- éditeur cours ;
-- viewer ;
-- Quill ;
-- quiz ;
-- pages student / teacher.
-
 ## Étape 8.0C - Version badge centralisé
 
-Statut : patch préparé.
+Statut : validé.
 
 Objectif : remplacer l'ancien badge figé par un badge version fiable.
 
@@ -176,8 +168,26 @@ Version affichée :
 SBI 8.0C - PJAX APP SHELL TEST
 ```
 
-Règle de travail :
+## Étape 8.0D - Admin shell : Mon Profil
 
-- À chaque patch, mettre à jour `public/js/sbi-version.js`.
-- Le badge permet de vérifier si Firebase Preview affiche bien la dernière build.
-- `main` reste intouchable tant que la branche PJAX n'est pas validée séparément.
+Statut : patch préparé.
+
+Objectif : migrer `/admin/admin-profile.html` dans le shell.
+
+Changements :
+
+- Route PJAX `admin-profile`.
+- `profile-core.js` devient compatible montage direct via `mountProfileCore()`.
+- Cleanup auth/presence du profil au changement de route.
+- Chargement du script CropperJS si nécessaire.
+- Injection du modal cropper depuis la page profil.
+- Profil admin rattaché à l'onglet Utilisateurs.
+- Version centralisée passée en `8.0D`.
+
+Pages encore hors PJAX :
+
+- éditeur cours ;
+- viewer ;
+- Quill ;
+- quiz ;
+- pages student / teacher.

@@ -1,19 +1,25 @@
 /**
- * SBI 8.0B - Route registry
+ * SBI 8.0D - Route registry
  *
  * 8.0A : onglets admin déjà présents dans le DOM.
- * 8.0B : première vraie page externe admin, Gestion Accueil.
+ * 8.0B : Gestion Accueil.
+ * 8.0D : Mon Profil admin.
  */
 
 import { registerCleanup } from './view-lifecycle.js';
 import {
   fetchAdminDocument,
   ensureDocumentStyles,
+  applyBodyRouteClassesFromDocument,
   replaceMainFromDocument,
+  replaceRouteNodeFromDocument,
   updateAdminChromeFromDocument,
-  setLeftNavActive
+  setLeftNavActive,
+  loadScriptOnce
 } from './admin-page-loader.js';
 import { initAdminTabs } from '/admin/js/admin-ui/panels.js';
+
+const CROPPER_SCRIPT = 'https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js';
 
 function normalizePath(pathname) {
   if (!pathname) return '/';
@@ -36,9 +42,20 @@ function isAdminSiteIndex(url) {
   return normalizePath(url.pathname).toLowerCase() === '/admin/site-index-settings.html';
 }
 
+function isAdminProfile(url) {
+  return normalizePath(url.pathname).toLowerCase() === '/admin/admin-profile.html';
+}
+
+function getCurrentPath() {
+  const currentUrl = new URL(window.SBI_APP_SHELL_CURRENT_URL || window.location.href, window.location.origin);
+  return normalizePath(currentUrl.pathname).toLowerCase();
+}
+
 function isAdminShellContext() {
-  const path = normalizePath(window.location.pathname).toLowerCase();
-  return path === '/admin/index.html' || path === '/admin/site-index-settings.html';
+  const path = getCurrentPath();
+  return path === '/admin/index.html'
+    || path === '/admin/site-index-settings.html'
+    || path === '/admin/admin-profile.html';
 }
 
 function hasAdminTabApi() {
@@ -53,9 +70,12 @@ async function mountAdminIndex({ url, source = 'app-shell' }) {
   if (!hasAdminTabApi() || !window.SBI_ADMIN_TABS.has?.(getAdminTabFromUrl(url))) {
     const doc = await fetchAdminDocument(url);
     ensureDocumentStyles(doc, url.href);
+    applyBodyRouteClassesFromDocument(doc, ['sbi-dashboard-page', 'sbi-dashboard-redesign']);
     replaceMainFromDocument(doc);
     updateAdminChromeFromDocument(doc, 'SBI Admin');
     initAdminTabs();
+  } else {
+    applyBodyRouteClassesFromDocument(document.implementation.createHTMLDocument(''), ['sbi-dashboard-page', 'sbi-dashboard-redesign']);
   }
 
   const tab = getAdminTabFromUrl(url);
@@ -69,6 +89,7 @@ async function mountSiteIndex({ url }) {
   const doc = await fetchAdminDocument(url);
 
   ensureDocumentStyles(doc, url.href);
+  applyBodyRouteClassesFromDocument(doc);
   replaceMainFromDocument(doc);
   updateAdminChromeFromDocument(doc, 'Gestion Accueil');
   setLeftNavActive('nav-site-index');
@@ -90,8 +111,43 @@ async function mountSiteIndex({ url }) {
   return { viewKey: 'admin:site-index-settings' };
 }
 
+async function mountAdminProfile({ url }) {
+  const doc = await fetchAdminDocument(url);
+
+  ensureDocumentStyles(doc, url.href);
+  await loadScriptOnce(CROPPER_SCRIPT, { globalName: 'Cropper' });
+
+  applyBodyRouteClassesFromDocument(doc, ['sbi-profile-page', 'sbi-admin-surface']);
+  replaceMainFromDocument(doc);
+  const cleanupCropModal = replaceRouteNodeFromDocument(doc, '#crop-modal');
+  updateAdminChromeFromDocument(doc, 'Profil Complet - SBI Console');
+  setLeftNavActive('nav-users');
+  updateUrlContext(url);
+
+  const module = await import('/js/profile-core.js');
+  const cleanupProfile = module.mountProfileCore?.({ source: 'pjax-admin-profile' });
+
+  if (typeof cleanupCropModal === 'function') {
+    registerCleanup(cleanupCropModal, 'admin-profile-crop-modal');
+  }
+
+  if (typeof cleanupProfile === 'function') {
+    registerCleanup(cleanupProfile, 'admin-profile-core');
+  }
+
+  return { viewKey: 'admin:profile' };
+}
+
 export function createRouteRegistry() {
   const routes = [];
+
+  routes.push({
+    id: 'admin-profile',
+    canHandle(url) {
+      return isAdminProfile(url) && isAdminShellContext();
+    },
+    mount: mountAdminProfile
+  });
 
   routes.push({
     id: 'admin-site-index',
@@ -128,6 +184,7 @@ export function createRouteRegistry() {
       const tab = getAdminTabFromUrl(url);
       window.SBI_ADMIN_TABS.switchTo(tab, { updateUrl: false, source: 'app-shell' });
       document.title = 'SBI Console - Administration';
+      applyBodyRouteClassesFromDocument(document.implementation.createHTMLDocument(''), ['sbi-dashboard-page', 'sbi-dashboard-redesign']);
       updateUrlContext(url);
       return { viewKey: `admin:${tab}` };
     }

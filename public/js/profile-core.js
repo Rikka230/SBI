@@ -4,7 +4,7 @@
  * =======================================================================
  *
  * 6.9 : découpe du moteur monolithique en modules lisibles.
- * Ce fichier ne porte plus la logique lourde : il orchestre les modules.
+ * 8.0D : export mountProfileCore() pour montage PJAX avec cleanup.
  * =======================================================================
  */
 
@@ -31,8 +31,24 @@ const context = {
   isEditMode: false
 };
 
+let activeCleanup = null;
+
+function resetContext() {
+  context.currentProfileId = null;
+  context.currentProfileData = null;
+  context.loggedInUserId = null;
+  context.loggedInUserData = null;
+  context.isOwner = false;
+  context.isAdmin = false;
+  context.isEditMode = false;
+}
+
+function getCurrentProfileUrl() {
+  return new URL(window.SBI_APP_SHELL_CURRENT_URL || window.location.href, window.location.origin);
+}
+
 function resolveTargetProfileId(loggedInUserId) {
-  const urlParams = new URLSearchParams(window.location.search);
+  const urlParams = getCurrentProfileUrl().searchParams;
   return urlParams.get('id') || loggedInUserId;
 }
 
@@ -112,8 +128,16 @@ async function bootstrapProfile(user) {
   bindProfileShortcuts();
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  onAuthStateChanged(auth, async (user) => {
+export function mountProfileCore() {
+  activeCleanup?.({ reason: 'remount' });
+  resetContext();
+
+  let disposed = false;
+  let unsubscribeAuth = null;
+
+  unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
+    if (disposed) return;
+
     if (!user) {
       window.location.replace('/login.html');
       return;
@@ -127,7 +151,29 @@ document.addEventListener('DOMContentLoaded', () => {
       document.body.classList.add('sbi-preload-timeout');
     }
   });
-});
+
+  const cleanup = () => {
+    disposed = true;
+    stopProfilePresenceListener();
+    unsubscribeAuth?.();
+    if (activeCleanup === cleanup) activeCleanup = null;
+  };
+
+  activeCleanup = cleanup;
+  return cleanup;
+}
+
+function autoMountProfileCore() {
+  if (window.__SBI_APP_SHELL_MOUNTING_PROFILE) return;
+  if (!document.getElementById('prof-avatar-img')) return;
+  mountProfileCore();
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', autoMountProfileCore, { once: true });
+} else {
+  autoMountProfileCore();
+}
 
 window.addEventListener('beforeunload', () => {
   stopProfilePresenceListener();

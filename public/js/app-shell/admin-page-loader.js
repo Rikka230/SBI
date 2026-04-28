@@ -1,5 +1,5 @@
 /**
- * SBI 8.0B - Admin page loader
+ * SBI 8.0D - Admin page loader
  *
  * Charge une page admin externe dans le shell sans rechargement complet.
  * Les routes restent explicitement listées dans route-registry.js.
@@ -9,6 +9,20 @@ const loadedStyleHrefs = new Set(
   Array.from(document.querySelectorAll('link[rel="stylesheet"][href]'))
     .map((link) => new URL(link.getAttribute('href'), window.location.href).href)
 );
+
+const loadedScriptSrcs = new Set(
+  Array.from(document.querySelectorAll('script[src]'))
+    .map((script) => new URL(script.getAttribute('src'), window.location.href).href)
+);
+
+const ROUTE_BODY_CLASSES = new Set([
+  'sbi-profile-page',
+  'sbi-admin-surface',
+  'sbi-student-surface',
+  'sbi-teacher-surface',
+  'sbi-dashboard-page',
+  'sbi-dashboard-redesign'
+]);
 
 export async function fetchAdminDocument(url) {
   const response = await fetch(url.href, {
@@ -40,6 +54,19 @@ export function ensureDocumentStyles(doc, baseUrl = window.location.href) {
   });
 }
 
+export function applyBodyRouteClassesFromDocument(doc, extraClasses = []) {
+  ROUTE_BODY_CLASSES.forEach((className) => document.body.classList.remove(className));
+
+  const incomingClasses = Array.from(doc.body?.classList || []);
+  incomingClasses.forEach((className) => {
+    if (ROUTE_BODY_CLASSES.has(className)) {
+      document.body.classList.add(className);
+    }
+  });
+
+  extraClasses.filter(Boolean).forEach((className) => document.body.classList.add(className));
+}
+
 export function replaceMainFromDocument(doc) {
   const currentMain = document.querySelector('#main-content');
   const incomingMain = doc.querySelector('#main-content');
@@ -57,19 +84,36 @@ export function replaceMainFromDocument(doc) {
   return currentMain;
 }
 
+export function replaceRouteNodeFromDocument(doc, selector, mountSelector = '#app-container') {
+  const incoming = doc.querySelector(selector);
+  const current = document.querySelector(selector);
+  current?.remove();
+
+  if (!incoming) return () => {};
+
+  const mount = document.querySelector(mountSelector) || document.body;
+  const cloned = incoming.cloneNode(true);
+  cloned.setAttribute('data-sbi-pjax-route-node', 'true');
+  mount.appendChild(cloned);
+
+  return () => {
+    if (cloned.isConnected) cloned.remove();
+  };
+}
+
 export function updateAdminChromeFromDocument(doc, fallbackTitle = 'SBI Admin') {
   const incomingTitle = doc.querySelector('title')?.textContent?.trim();
-  const incomingPageTitle = doc.querySelector('.top-bar .page-title')?.textContent?.trim();
+  const incomingPageTitle = doc.querySelector('.top-bar .page-title');
 
-  if (incomingTitle) {
-    document.title = incomingTitle;
-  } else {
-    document.title = fallbackTitle;
-  }
+  document.title = incomingTitle || fallbackTitle;
 
   const pageTitle = document.querySelector('.top-bar .page-title');
   if (pageTitle) {
-    pageTitle.textContent = incomingPageTitle || fallbackTitle;
+    if (incomingPageTitle) {
+      pageTitle.replaceChildren(...Array.from(incomingPageTitle.childNodes).map((node) => node.cloneNode(true)));
+    } else {
+      pageTitle.textContent = fallbackTitle;
+    }
   }
 }
 
@@ -88,4 +132,29 @@ export function setLeftNavActive(activeId) {
   });
 
   window.dispatchEvent(new CustomEvent('sbi:navigation-mutated'));
+}
+
+export function loadScriptOnce(src, { globalName = null, baseUrl = window.location.href } = {}) {
+  if (globalName && window[globalName]) return Promise.resolve(window[globalName]);
+
+  const url = new URL(src, baseUrl).href;
+  if (loadedScriptSrcs.has(url)) return Promise.resolve(globalName ? window[globalName] : true);
+
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = url;
+    script.async = true;
+    script.setAttribute('data-sbi-pjax-script', 'true');
+
+    script.onload = () => {
+      loadedScriptSrcs.add(url);
+      resolve(globalName ? window[globalName] : true);
+    };
+
+    script.onerror = () => {
+      reject(new Error(`Script impossible à charger : ${url}`));
+    };
+
+    document.head.appendChild(script);
+  });
 }

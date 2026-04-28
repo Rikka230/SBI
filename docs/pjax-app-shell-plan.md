@@ -62,9 +62,17 @@ Depuis 8.0C, l'encart de version est piloté par :
 - Badge affiché sur les espaces internes admin / student / teacher.
 - Version actuelle : `SBI 8.0C - PJAX APP SHELL TEST`.
 
+## 8.0D
+
+- Route PJAX ajoutée pour `/admin/admin-profile.html`.
+- `profile-core.js` expose `mountProfileCore()` avec cleanup.
+- Le cropper avatar charge son script externe si nécessaire.
+- Le modal cropper est injecté et retiré proprement au changement de route.
+- Le profil admin reste rattaché à l'onglet Utilisateurs.
+- Version actuelle : `SBI 8.0D - PJAX APP SHELL TEST`.
+
 ## Prochaines étapes
 
-- 8.0D : Admin profil dans le shell.
 - 8.0E : Admin formations simples.
 - 8.0F : student shell.
 - 8.0G : teacher shell.
