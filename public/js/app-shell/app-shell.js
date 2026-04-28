@@ -1,5 +1,5 @@
 /**
- * SBI 8.0I - App shell foundation
+ * SBI 8.0I.1 - App shell foundation
  *
  * Le PJAX est activé par défaut sur la branche labo.
  *
@@ -51,6 +51,34 @@ function consumeQueryToggles() {
   }
 }
 
+function printRouteStatus(api, href = window.location.href) {
+  const url = new URL(href, window.location.href);
+  const status = api.routeStatus(url);
+
+  console.table([{
+    url: status.href,
+    mode: status.mode,
+    route: status.route || '-',
+    reason: status.reason
+  }]);
+
+  return status;
+}
+
+function printRouteHelp(api) {
+  const payload = {
+    enabled: api.enabled,
+    current: api.routeStatus(new URL(window.location.href)),
+    migratedRoutes: api.routes,
+    protectedReloadRoutes: api.hardReloadRoutes
+  };
+
+  console.info('[SBI PJAX] Diagnostic disponible.');
+  console.info('Utilise window.SBI_PJAX_CHECK("/url") pour tester une URL.');
+  console.info('Utilise window.SBI_PJAX_ROUTES() pour lister les routes.');
+  return payload;
+}
+
 function installEmergencySwitches(api) {
   window.SBI_ENABLE_PJAX = () => {
     setFlag(DISABLED_FLAG, false);
@@ -69,10 +97,19 @@ function installEmergencySwitches(api) {
     return api.routeStatus(url);
   };
 
-  window.SBI_PJAX_ROUTES = () => ({
-    migrated: api.routes,
-    hardReload: api.hardReloadRoutes
-  });
+  window.SBI_PJAX_CHECK = (href = window.location.href) => printRouteStatus(api, href);
+
+  window.SBI_PJAX_ROUTES = () => {
+    const data = {
+      migrated: api.routes,
+      hardReload: api.hardReloadRoutes
+    };
+    console.table(api.routes.map((route) => ({ mode: 'pjax', route })));
+    console.table(api.hardReloadRoutes.map((item) => ({ mode: 'reload', path: item.path, reason: item.reason })));
+    return data;
+  };
+
+  window.SBI_PJAX_HELP = () => printRouteHelp(api);
 
   window.SBI_APP_SHELL = api;
 }
@@ -118,6 +155,7 @@ export function initSbiAppShell() {
   installEmergencySwitches(api);
 
   document.body.dataset.sbiPjax = enabled ? 'enabled' : 'disabled';
+  document.body.dataset.sbiPjaxRoutes = api.routes.join(',');
 
   if (!enabled) {
     if (debug) {
@@ -138,10 +176,7 @@ export function initSbiAppShell() {
     detail: { routes: api.routes, hardReloadRoutes: api.hardReloadRoutes }
   }));
 
-  if (debug) {
-    console.info('[SBI AppShell] Activé par défaut:', api.routes);
-    console.info('[SBI AppShell] Routes reload protégées:', api.hardReloadRoutes);
-  }
+  if (debug) printRouteHelp(api);
 
   return api;
 }

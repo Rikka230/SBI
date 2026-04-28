@@ -1,8 +1,8 @@
 /**
- * SBI 8.0I - Router expérimental
+ * SBI 8.0I.1 - Router expérimental
  *
  * Le routeur ne traite que les routes explicitement migrées.
- * Les routes sensibles sont protégées par route-guards.js.
+ * Les routes non PJAX sont laissées à la navigation classique.
  */
 
 import { runViewCleanups, setActiveViewKey } from './view-lifecycle.js';
@@ -51,13 +51,13 @@ export function createRouter({ registry, debug = false } = {}) {
     return routeStatus(url).mode === 'pjax';
   }
 
-  function logFallback(decision, source = 'unknown') {
+  function emitFallback(decision, source = 'unknown') {
     window.dispatchEvent(new CustomEvent('sbi:app-shell:fallback', {
       detail: { ...decision, source }
     }));
 
     if (debug) {
-      console.info('[SBI AppShell] Fallback reload:', decision.reason, decision.href);
+      console.info('[SBI AppShell] Navigation classique:', decision.reason, decision.href);
     }
   }
 
@@ -65,7 +65,7 @@ export function createRouter({ registry, debug = false } = {}) {
     const decision = routeStatus(url);
 
     if (decision.mode !== 'pjax') {
-      logFallback(decision, source);
+      emitFallback(decision, source);
       return false;
     }
 
@@ -91,7 +91,7 @@ export function createRouter({ registry, debug = false } = {}) {
         detail: { route: route.id, href: url.href, source }
       }));
 
-      if (debug) console.info('[SBI AppShell] Navigation:', route.id, url.href);
+      if (debug) console.info('[SBI AppShell] Navigation PJAX:', route.id, url.href);
       return true;
     } catch (error) {
       console.warn('[SBI AppShell] Navigation échouée, fallback reload:', error);
@@ -117,8 +117,13 @@ export function createRouter({ registry, debug = false } = {}) {
     const url = normalizeHref(getRawHref(trigger));
     const decision = routeStatus(url);
 
+    /**
+     * 8.0I.1 :
+     * Si la route n'est pas migrée, le routeur ne touche pas au clic.
+     * La navigation classique ou la transition legacy fait le travail.
+     */
     if (decision.mode !== 'pjax') {
-      logFallback(decision, 'click');
+      if (debug) emitFallback(decision, 'click');
       return;
     }
 
@@ -138,7 +143,7 @@ export function createRouter({ registry, debug = false } = {}) {
     const decision = routeStatus(url);
 
     if (decision.mode !== 'pjax') {
-      logFallback(decision, 'keyboard');
+      if (debug) emitFallback(decision, 'keyboard');
       return;
     }
 
@@ -152,7 +157,7 @@ export function createRouter({ registry, debug = false } = {}) {
     const decision = routeStatus(url);
 
     if (decision.mode !== 'pjax') {
-      logFallback(decision, 'popstate');
+      emitFallback(decision, 'popstate');
       if (event.state?.sbiAppShell || document.body.dataset.sbiPjax === 'enabled') {
         window.location.assign(url.href);
       }
