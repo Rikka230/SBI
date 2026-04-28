@@ -1,13 +1,16 @@
 /**
- * SBI 8.0F - App shell page loader
+ * SBI 8.0F.1 - App shell page loader
  *
  * Charge les pages internes explicitement migrées dans le shell sans reload complet.
+ * 8.0F.1 : attend les CSS des pages avant d'injecter le contenu PJAX.
  */
 
 const loadedStyleHrefs = new Set(
   Array.from(document.querySelectorAll('link[rel="stylesheet"][href]'))
     .map((link) => new URL(link.getAttribute('href'), window.location.href).href)
 );
+
+const styleLoadPromises = new Map();
 
 const loadedScriptSrcs = new Set(
   Array.from(document.querySelectorAll('script[src]'))
@@ -27,6 +30,42 @@ const ROUTE_BODY_CLASSES = new Set([
   'no-right-panel'
 ]);
 
+function waitForStylesheet(link, href, timeoutMs = 2500) {
+  if (!link || link.sheet) {
+    loadedStyleHrefs.add(href);
+    return Promise.resolve();
+  }
+
+  if (styleLoadPromises.has(href)) {
+    return styleLoadPromises.get(href);
+  }
+
+  const promise = new Promise((resolve) => {
+    let done = false;
+
+    const finish = () => {
+      if (done) return;
+      done = true;
+      window.clearTimeout(timeoutId);
+      loadedStyleHrefs.add(href);
+      resolve();
+    };
+
+    const timeoutId = window.setTimeout(finish, timeoutMs);
+
+    link.addEventListener('load', finish, { once: true });
+    link.addEventListener('error', finish, { once: true });
+  });
+
+  styleLoadPromises.set(href, promise);
+  return promise;
+}
+
+function findExistingStyleLink(href) {
+  return Array.from(document.querySelectorAll('link[rel="stylesheet"][href]'))
+    .find((link) => new URL(link.getAttribute('href'), window.location.href).href === href) || null;
+}
+
 export async function fetchAdminDocument(url) {
   const response = await fetch(url.href, {
     credentials: 'same-origin',
@@ -41,20 +80,29 @@ export async function fetchAdminDocument(url) {
   return new DOMParser().parseFromString(html, 'text/html');
 }
 
-export function ensureDocumentStyles(doc, baseUrl = window.location.href) {
+export async function ensureDocumentStyles(doc, baseUrl = window.location.href) {
   const links = Array.from(doc.querySelectorAll('link[rel="stylesheet"][href]'));
+  const waits = [];
 
   links.forEach((link) => {
     const href = new URL(link.getAttribute('href'), baseUrl).href;
-    if (loadedStyleHrefs.has(href)) return;
+    const existing = findExistingStyleLink(href);
+
+    if (existing) {
+      waits.push(waitForStylesheet(existing, href));
+      return;
+    }
 
     const nextLink = document.createElement('link');
     nextLink.rel = 'stylesheet';
     nextLink.href = href;
     nextLink.setAttribute('data-sbi-pjax-style', 'true');
+
+    waits.push(waitForStylesheet(nextLink, href));
     document.head.appendChild(nextLink);
-    loadedStyleHrefs.add(href);
   });
+
+  await Promise.allSettled(waits);
 }
 
 export function applyBodyRouteClassesFromDocument(doc, extraClasses = []) {

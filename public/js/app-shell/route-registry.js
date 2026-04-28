@@ -1,5 +1,5 @@
 /**
- * SBI 8.0F - Route registry
+ * SBI 8.0F.1 - Route registry
  *
  * Admin shell :
  * - admin index tabs
@@ -9,6 +9,8 @@
  * Student shell :
  * - Mon Hub
  * - Mes Cours
+ *
+ * 8.0F.1 : attend les styles avant replaceMainFromDocument().
  */
 
 import { registerCleanup } from './view-lifecycle.js';
@@ -61,10 +63,6 @@ function isStudentDashboard(url) {
 
 function isStudentCourses(url) {
   return normalizePath(url.pathname).toLowerCase() === '/student/mes-cours.html';
-}
-
-function isStudentShellRoute(url) {
-  return isStudentDashboard(url) || isStudentCourses(url);
 }
 
 function getCurrentUrl() {
@@ -125,7 +123,7 @@ async function mountAdminIndex({ url, source = 'app-shell' }) {
     notifyAdminIndexRestored(tab);
   } else if (!hasAdminTabApi() || !window.SBI_ADMIN_TABS.has?.(tab)) {
     const doc = await fetchAdminDocument(url);
-    ensureDocumentStyles(doc, url.href);
+    await ensureDocumentStyles(doc, url.href);
     applyBodyRouteClassesFromDocument(doc, ['sbi-dashboard-page', 'sbi-dashboard-redesign']);
     replaceMainFromDocument(doc);
     updateAdminChromeFromDocument(doc, 'SBI Admin');
@@ -146,7 +144,7 @@ async function mountSiteIndex({ url }) {
 
   const doc = await fetchAdminDocument(url);
 
-  ensureDocumentStyles(doc, url.href);
+  await ensureDocumentStyles(doc, url.href);
   applyBodyRouteClassesFromDocument(doc);
   replaceMainFromDocument(doc);
   updateAdminChromeFromDocument(doc, 'Gestion Accueil');
@@ -174,7 +172,7 @@ async function mountAdminProfile({ url }) {
 
   const doc = await fetchAdminDocument(url);
 
-  ensureDocumentStyles(doc, url.href);
+  await ensureDocumentStyles(doc, url.href);
   await loadScriptOnce(CROPPER_SCRIPT, { globalName: 'Cropper' });
 
   applyBodyRouteClassesFromDocument(doc, ['sbi-profile-page', 'sbi-admin-surface']);
@@ -208,7 +206,7 @@ async function mountStudentPage({ url }) {
   const doc = await fetchAdminDocument(url);
   const isDashboard = isStudentDashboard(url);
 
-  ensureDocumentStyles(doc, url.href);
+  await ensureDocumentStyles(doc, url.href);
   applyBodyRouteClassesFromDocument(doc, ['no-right-panel']);
   replaceMainFromDocument(doc);
   updateAdminChromeFromDocument(doc, isDashboard ? 'SBI Student - Mon Hub' : 'Mes Cours - SBI Student');

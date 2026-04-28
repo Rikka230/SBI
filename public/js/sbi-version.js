@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0F',
+  version: '8.0F.1',
   branch: 'pjax-app-shell-test',
   channel: 'PJAX APP SHELL TEST',
-  stage: 'Student shell routes',
+  stage: 'PJAX CSS guard',
   updatedAt: '2026-04-28',
-  label: 'SBI 8.0F - PJAX APP SHELL TEST'
+  label: 'SBI 8.0F.1 - PJAX APP SHELL TEST'
 };
 
 export function getSbiVersionLabel() {

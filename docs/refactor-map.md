@@ -1,6 +1,6 @@
 # SBI Refactor Map
 
-Version chantier : 8.0F
+Version chantier : 8.0F.1
 Branche de travail : `pjax-app-shell-test`
 Branche stable : `main`
 
@@ -73,18 +73,25 @@ Statut : validé.
 
 ### 8.0F - Student shell
 
+Statut : validé globalement.
+
+- Routes PJAX pour `/student/dashboard.html` et `/student/mes-cours.html`.
+- `student-hub.js` montable via `mountStudentHub()`.
+- `mes-cours.js` montable via `mountStudentCourses()`.
+- Viewer de cours laissé hors PJAX.
+
+### 8.0F.1 - CSS guard PJAX
+
 Statut : patch préparé.
 
-Objectif : fluidifier l'espace étudiant.
+Objectif : stabiliser le premier passage vers les pages student.
 
 Changements :
 
-- Routes PJAX pour `/student/dashboard.html` et `/student/mes-cours.html`.
-- `student-hub.js` devient montable via `mountStudentHub()`.
-- `mes-cours.js` devient montable via `mountStudentCourses()`.
-- Navigation Hub <-> Mes Cours sans reload complet.
-- Viewer de cours laissé hors PJAX via fallback classique.
-- Version centralisée passée en `8.0F`.
+- `ensureDocumentStyles()` devient asynchrone.
+- Les routes attendent les CSS avant d'injecter le nouveau `#main-content`.
+- Corrige le cas rare où la page Mes Cours pouvait s'afficher avant que son CSS ne soit appliqué.
+- Version centralisée passée en `8.0F.1`.
 
 Pages encore hors PJAX :
 
