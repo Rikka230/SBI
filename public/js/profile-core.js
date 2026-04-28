@@ -5,6 +5,7 @@
  *
  * 6.9 : découpe du moteur monolithique en modules lisibles.
  * 8.0D : export mountProfileCore() pour montage PJAX avec cleanup.
+ * 8.0H.1 : droits profil appliqués plus tôt pour éviter le pop visuel.
  * =======================================================================
  */
 
@@ -32,6 +33,9 @@ const context = {
 };
 
 let activeCleanup = null;
+let securityPrepared = false;
+let saveButtonsPrepared = false;
+let avatarCropperPrepared = false;
 
 function resetContext() {
   context.currentProfileId = null;
@@ -41,6 +45,11 @@ function resetContext() {
   context.isOwner = false;
   context.isAdmin = false;
   context.isEditMode = false;
+  securityPrepared = false;
+  saveButtonsPrepared = false;
+  avatarCropperPrepared = false;
+  document.body.classList.remove('editing');
+  document.body.classList.remove('sbi-profile-permissions-ready');
 }
 
 function getCurrentProfileUrl() {
@@ -56,6 +65,26 @@ async function loadLoggedInUserData(uid) {
   const snap = await getDoc(doc(db, 'users', uid));
   if (!snap.exists()) return {};
   return snap.data();
+}
+
+function prepareProfileControlsEarly() {
+  if (securityPrepared) return;
+
+  setupSecurityAndEditMode({ context });
+  securityPrepared = true;
+  document.body.classList.add('sbi-profile-permissions-ready');
+}
+
+function prepareProfileActionButtons() {
+  if (!saveButtonsPrepared) {
+    setupSaveButtons({ db, context, reloadProfile: loadProfileData });
+    saveButtonsPrepared = true;
+  }
+
+  if (!avatarCropperPrepared) {
+    initProfileAvatarCropper({ context, reloadProfile: loadProfileData });
+    avatarCropperPrepared = true;
+  }
 }
 
 async function loadProfileData(uid) {
@@ -77,6 +106,9 @@ async function loadProfileData(uid) {
       context,
       reloadProfile: loadProfileData
     });
+
+    prepareProfileControlsEarly();
+    prepareProfileActionButtons();
 
     await renderUserFormations({ uid, context });
 
@@ -120,11 +152,17 @@ async function bootstrapProfile(user) {
   context.currentProfileId = resolveTargetProfileId(context.loggedInUserId);
   context.isOwner = context.currentProfileId === context.loggedInUserId;
 
+  /**
+   * Avant 8.0H.1, les sections privées étaient révélées après le rendu
+   * complet du profil, formations et suivi inclus. En PJAX, cela créait
+   * un petit pop visuel sur l'onglet Données Privées.
+   *
+   * On applique donc les droits dès que le contexte owner/admin est connu.
+   */
+  prepareProfileControlsEarly();
+
   await loadProfileData(context.currentProfileId);
   startProfilePresenceListener(db, context.currentProfileId);
-  setupSecurityAndEditMode({ context });
-  setupSaveButtons({ db, context, reloadProfile: loadProfileData });
-  initProfileAvatarCropper({ context, reloadProfile: loadProfileData });
   bindProfileShortcuts();
 }
 

@@ -7,7 +7,7 @@ Base : `main` après merge 7.4.2
 
 Le PJAX complet ne doit pas être appliqué en bloc. Cette branche pose un app shell progressif avec fallback reload.
 
-## État 8.0H
+## État 8.0H.1
 
 Le PJAX est activé par défaut sur la branche labo.
 
@@ -58,14 +58,13 @@ Teacher :
 - `/teacher/dashboard.html`
 - `/teacher/mon-profil.html`
 
-## 8.0H
+## 8.0H.1
 
-- Ajout de la route PJAX `/student/mon-profil.html`.
-- Profil étudiant monté via `profile-core.js`.
-- CropperJS chargé si nécessaire.
-- Modal cropper injecté et nettoyé au changement de route.
-- Onglets internes de profil rebondés côté shell.
-- Version actuelle : `SBI 8.0H - PJAX APP SHELL TEST`.
+- Les droits owner/admin du profil sont appliqués plus tôt.
+- L'onglet Données Privées n'apparaît plus avec un pop tardif après le chargement du suivi.
+- Après modification de l'avatar, la topbar est rafraîchie immédiatement pour le propriétaire du profil.
+- Événement ajouté : `sbi:profile-avatar-updated`.
+- Version actuelle : `SBI 8.0H.1 - PJAX APP SHELL TEST`.
 
 ## Règles de sécurité
 

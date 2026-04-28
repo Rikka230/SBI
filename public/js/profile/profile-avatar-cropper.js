@@ -365,10 +365,34 @@ export function initProfileAvatarCropper({ context, reloadProfile }) {
     try {
       const croppedCanvas = cropperInstance.getCroppedCanvas({ width: 200, height: 200 });
       const croppedWebpData = croppedCanvas.toDataURL('image/webp', 0.8);
-      await saveProfileAvatarToStorage(context.currentProfileId, croppedWebpData, context.currentProfileData?.photoStoragePath || null, {
+      const uploadedAvatar = await saveProfileAvatarToStorage(context.currentProfileId, croppedWebpData, context.currentProfileData?.photoStoragePath || null, {
         prefix: 'avatar',
         migratedFrom: 'profile-cropper'
       });
+
+      context.currentProfileData = {
+        ...context.currentProfileData,
+        photoURL: uploadedAvatar.downloadURL,
+        photoStoragePath: uploadedAvatar.storagePath
+      };
+
+      if (context.isOwner && uploadedAvatar.downloadURL) {
+        hydrateOwnerAvatarInTopbar(uploadedAvatar.downloadURL, getDisplayName(context.currentProfileData));
+      }
+
+      const visibleAvatar = document.getElementById('prof-avatar-img');
+      if (visibleAvatar && uploadedAvatar.downloadURL) {
+        visibleAvatar.src = uploadedAvatar.downloadURL;
+      }
+
+      window.dispatchEvent(new CustomEvent('sbi:profile-avatar-updated', {
+        detail: {
+          uid: context.currentProfileId,
+          photoURL: uploadedAvatar.downloadURL,
+          isOwner: context.isOwner
+        }
+      }));
+
       await reloadProfile(context.currentProfileId);
       modal.style.display = 'none';
       resetCropper();

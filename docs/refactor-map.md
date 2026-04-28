@@ -1,6 +1,6 @@
 # SBI Refactor Map
 
-Version chantier : 8.0H
+Version chantier : 8.0H.1
 Branche de travail : `pjax-app-shell-test`
 Branche stable : `main`
 
@@ -64,7 +64,6 @@ Statut : validé.
 Statut : validé.
 
 - Routes PJAX pour `/student/dashboard.html` et `/student/mes-cours.html`.
-- Viewer de cours laissé hors PJAX.
 
 ### 8.0F.2 - Inline style guard PJAX
 
@@ -77,7 +76,6 @@ Statut : validé.
 Statut : validé.
 
 - Routes PJAX pour `/teacher/dashboard.html` et `/teacher/mon-profil.html`.
-- `teacher/mes-cours.html` reste hors PJAX.
 
 ### 8.0G.1 - Active nav sync PJAX
 
@@ -87,18 +85,25 @@ Statut : validé.
 
 ### 8.0H - Student profile shell
 
-Statut : patch préparé.
-
-Objectif : raccorder le profil élève au shell.
-
-Changements :
+Statut : validé avec remarques polish.
 
 - Route PJAX pour `/student/mon-profil.html`.
 - Profil étudiant monté via `profile-core.js`.
-- CropperJS chargé si nécessaire.
-- Modal cropper injecté et nettoyé au changement de route.
-- Onglets internes du profil rebondés côté shell pour éviter la dépendance au script inline.
-- Version centralisée passée en `8.0H`.
+
+### 8.0H.1 - Profile PJAX polish
+
+Statut : patch préparé.
+
+Objectif : lisser les petits défauts profil.
+
+Changements :
+
+- Les droits owner/admin sont appliqués dès que le contexte profil est connu.
+- L'onglet Données Privées ne dépend plus de la fin du chargement formations/suivi.
+- Le bouton privé garde son comportement correct en sub-nav.
+- Après changement d'avatar, la topbar est rafraîchie immédiatement si l'utilisateur modifie son propre profil.
+- Le profil visible est aussi mis à jour immédiatement avec la nouvelle URL Storage.
+- Version centralisée passée en `8.0H.1`.
 
 Pages encore hors PJAX :
 

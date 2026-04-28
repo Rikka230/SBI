@@ -1,12 +1,26 @@
 import { doc, updateDoc } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
 
+function showElementForProfileAccess(el) {
+  if (!el) return;
+
+  if (el.classList.contains('student-sub-nav-item')) {
+    el.style.display = 'flex';
+    return;
+  }
+
+  if (el.tagName === 'BUTTON') {
+    el.style.display = 'inline-flex';
+    return;
+  }
+
+  el.style.display = el.tagName === 'DIV' ? 'block' : 'inline-flex';
+}
+
 export function setupSecurityAndEditMode({ context }) {
   const btnToggleEdit = document.getElementById('btn-toggle-edit');
 
   if (context.isOwner || context.isAdmin) {
-    document.querySelectorAll('.private-section').forEach((el) => {
-      el.style.display = el.tagName === 'DIV' ? 'block' : 'inline-flex';
-    });
+    document.querySelectorAll('.private-section').forEach(showElementForProfileAccess);
 
     if (btnToggleEdit && context.isOwner && btnToggleEdit.dataset.bound !== 'true') {
       btnToggleEdit.dataset.bound = 'true';
