@@ -1,11 +1,12 @@
 /**
- * SBI 8.0K.1 - Course editor bridge
+ * SBI 8.0K.2 - Course editor bridge
  *
  * Prépare et monte les éléments que les scripts inline ne relancent pas
  * en navigation PJAX : Quill, onglets éditeur et switch image/vidéo.
  */
 
 const QUILL_SCRIPT = 'https://cdn.quilljs.com/1.3.6/quill.min.js';
+const TOOLTIP_STYLE_ID = 'sbi-quill-tooltip-style';
 
 export const COURSE_EDITOR_ROUTES = {
   admin: '/admin/formations-cours.html',
@@ -35,31 +36,140 @@ export async function loadQuillIfNeeded(loadScriptOnce) {
   return window.Quill;
 }
 
+function injectQuillTooltipStyles() {
+  if (document.getElementById(TOOLTIP_STYLE_ID)) return;
+
+  const style = document.createElement('style');
+  style.id = TOOLTIP_STYLE_ID;
+  style.textContent = `
+    .ql-toolbar .sbi-quill-tooltip-anchor,
+    .ql-toolbar .ql-picker.sbi-quill-tooltip-anchor {
+      position: relative;
+    }
+
+    .ql-toolbar .sbi-quill-tooltip-anchor::after,
+    .ql-toolbar .sbi-quill-tooltip-anchor::before {
+      position: absolute;
+      left: 50%;
+      z-index: 80;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transform: translate(-50%, 8px);
+      transition: opacity 140ms ease, transform 140ms ease, visibility 140ms ease;
+    }
+
+    .ql-toolbar .sbi-quill-tooltip-anchor::after {
+      content: attr(data-sbi-tooltip);
+      top: calc(100% + 10px);
+      min-width: max-content;
+      max-width: 220px;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid rgba(15, 23, 42, 0.10);
+      background: rgba(15, 23, 42, 0.94);
+      color: #ffffff;
+      font-size: 11px;
+      line-height: 1.1;
+      font-weight: 800;
+      letter-spacing: 0.01em;
+      white-space: nowrap;
+      box-shadow: 0 16px 34px rgba(15, 23, 42, 0.20);
+      backdrop-filter: blur(12px);
+    }
+
+    .ql-toolbar .sbi-quill-tooltip-anchor::before {
+      content: '';
+      top: calc(100% + 5px);
+      width: 9px;
+      height: 9px;
+      background: rgba(15, 23, 42, 0.94);
+      transform: translate(-50%, 8px) rotate(45deg);
+      border-left: 1px solid rgba(15, 23, 42, 0.08);
+      border-top: 1px solid rgba(15, 23, 42, 0.08);
+    }
+
+    .ql-toolbar .sbi-quill-tooltip-anchor:hover::after,
+    .ql-toolbar .sbi-quill-tooltip-anchor:hover::before,
+    .ql-toolbar .sbi-quill-tooltip-anchor:focus-visible::after,
+    .ql-toolbar .sbi-quill-tooltip-anchor:focus-visible::before,
+    .ql-toolbar .ql-picker.sbi-quill-tooltip-anchor:hover::after,
+    .ql-toolbar .ql-picker.sbi-quill-tooltip-anchor:hover::before,
+    .ql-toolbar .ql-picker.sbi-quill-tooltip-anchor:focus-within::after,
+    .ql-toolbar .ql-picker.sbi-quill-tooltip-anchor:focus-within::before {
+      opacity: 1;
+      visibility: visible;
+      transform: translate(-50%, 0);
+    }
+
+    .ql-toolbar .sbi-quill-tooltip-anchor:hover::before,
+    .ql-toolbar .sbi-quill-tooltip-anchor:focus-visible::before,
+    .ql-toolbar .ql-picker.sbi-quill-tooltip-anchor:hover::before,
+    .ql-toolbar .ql-picker.sbi-quill-tooltip-anchor:focus-within::before {
+      transform: translate(-50%, 0) rotate(45deg);
+    }
+
+    .ql-toolbar .ql-picker.sbi-quill-tooltip-anchor .ql-picker-label {
+      outline: none;
+    }
+
+    .ql-toolbar .ql-picker.sbi-quill-tooltip-anchor::after {
+      top: calc(100% + 12px);
+    }
+
+    .ql-toolbar .ql-picker.sbi-quill-tooltip-anchor::before {
+      top: calc(100% + 7px);
+    }
+
+    @media (max-width: 768px) {
+      .ql-toolbar .sbi-quill-tooltip-anchor::after {
+        display: none;
+      }
+
+      .ql-toolbar .sbi-quill-tooltip-anchor::before {
+        display: none;
+      }
+    }
+  `;
+
+  document.head.appendChild(style);
+}
+
+function decorateTooltipElement(element, label) {
+  if (!element) return;
+
+  element.removeAttribute('title');
+  element.setAttribute('aria-label', label);
+  element.setAttribute('data-sbi-tooltip', label);
+  element.classList.add('sbi-quill-tooltip-anchor');
+
+  if (element.tagName === 'BUTTON') {
+    element.setAttribute('type', 'button');
+  }
+}
+
 function setToolbarLabel(toolbar, selector, label) {
   const elements = toolbar.querySelectorAll(selector);
 
   elements.forEach((element) => {
-    element.setAttribute('title', label);
-    element.setAttribute('aria-label', label);
+    decorateTooltipElement(element, label);
 
     if (element.tagName === 'SELECT') {
-      element.setAttribute('data-sbi-tooltip', label);
       const picker = element.nextElementSibling?.classList?.contains('ql-picker')
         ? element.nextElementSibling
         : null;
 
       if (picker) {
-        picker.setAttribute('title', label);
-        picker.setAttribute('aria-label', label);
-        picker.setAttribute('data-sbi-tooltip', label);
+        decorateTooltipElement(picker, label);
       }
     }
   });
 }
 
 function applyQuillToolbarTooltips(toolbar) {
-  if (!toolbar || toolbar.dataset.sbiTooltipsReady === 'true') return;
-  toolbar.dataset.sbiTooltipsReady = 'true';
+  if (!toolbar) return;
+
+  injectQuillTooltipStyles();
 
   setToolbarLabel(toolbar, '.ql-size', 'Taille du texte');
   setToolbarLabel(toolbar, '.ql-bold', 'Gras');
@@ -74,6 +184,8 @@ function applyQuillToolbarTooltips(toolbar) {
   setToolbarLabel(toolbar, '.ql-image', 'Insérer une image');
   setToolbarLabel(toolbar, '.ql-video', 'Insérer une vidéo');
   setToolbarLabel(toolbar, '.ql-clean', 'Nettoyer la mise en forme');
+
+  toolbar.dataset.sbiTooltipsReady = 'true';
 }
 
 export function initCourseEditorQuill() {

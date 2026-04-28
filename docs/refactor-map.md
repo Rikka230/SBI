@@ -1,6 +1,6 @@
 # SBI Refactor Map
 
-Version chantier : 8.0K.1
+Version chantier : 8.0K.2
 Branche de travail : `pjax-app-shell-test`
 Branche stable : `main`
 
@@ -21,20 +21,21 @@ Branche stable : `main`
 - 8.0I.1 : diagnostics clean.
 - 8.0J : foundation éditeur cours montable.
 - 8.0K : teacher course editor PJAX.
+- 8.0K.1 : labels Quill.
 
-## 8.0K.1 - Quill toolbar tooltips
+## 8.0K.2 - Quill styled tooltips
 
 Statut : patch préparé.
 
-Objectif : compléter les aides visuelles de l'éditeur Quill.
+Objectif : corriger l'apparence des bulles Quill.
 
 Changements :
 
-- Ajout de `title` et `aria-label` sur les contrôles Quill.
-- Ajout spécifique :
-  - `Couleur du caractère` sur `.ql-color`.
-  - `Surlignage du caractère` sur `.ql-background`.
-- Les labels sont aussi posés sur les pickers Quill générés.
+- Remplacement du tooltip navigateur natif par un tooltip custom.
+- Ajout d'un style injecté `sbi-quill-tooltip-style`.
+- Retrait des attributs `title` pour éviter le rectangle gris.
+- Conservation des `aria-label`.
+- Les pickers Quill reçoivent aussi le tooltip stylisé.
 - Aucun changement logique sur les contenus, uploads, sauvegardes ou publication.
 
 Pages encore hors PJAX :
