@@ -3,7 +3,7 @@
 Branche expérimentale : `pjax-app-shell-test`
 Base : `main` après merge 7.4.2
 
-## État 8.0I.1
+## État 8.0J
 
 Le PJAX est activé par défaut sur la branche labo.
 
@@ -23,30 +23,10 @@ window.SBI_ENABLE_PJAX()
 
 ## Diagnostics console
 
-Tester une URL avec affichage lisible :
-
 ```js
 window.SBI_PJAX_CHECK('/student/mes-cours.html')
-window.SBI_PJAX_CHECK('/student/cours-viewer.html?id=test')
-```
-
-Lister les routes :
-
-```js
+window.SBI_PJAX_CHECK('/teacher/mes-cours.html')
 window.SBI_PJAX_ROUTES()
-```
-
-Aide :
-
-```js
-window.SBI_PJAX_HELP()
-```
-
-Activer les logs détaillés :
-
-```js
-localStorage.setItem('sbiPjaxDebug', 'true')
-location.reload()
 ```
 
 ## Routes PJAX actuellement actives
@@ -68,31 +48,25 @@ Teacher :
 - `/teacher/dashboard.html`
 - `/teacher/mon-profil.html`
 
-## Routes protégées en reload classique
+## 8.0J
+
+- Préparation de l'éditeur de cours pour une future migration PJAX.
+- `admin-courses.js` expose désormais `mountAdminCourses()`.
+- Le montage classique au chargement de page est conservé.
+- Ajout de `public/js/app-shell/course-editor-bridge.js`.
+- Les routes éditeur restent protégées en reload classique dans ce patch.
+- Version actuelle : `SBI 8.0J - PJAX APP SHELL TEST`.
+
+## Routes encore protégées
 
 - `/admin/formations-cours.html`
 - `/teacher/mes-cours.html`
 - `/student/cours-viewer.html`
 - `/teacher/cours-viewer.html`
 - `/admin/cours-viewer.html`
-- `/admin/formations-live.html`
-- `/admin/repair-access.html`
-- `/change-email.html`
-- `/login.html`
 
-## 8.0I.1
+## Règles de sécurité
 
-- Le routeur ne touche plus aux clics non PJAX.
-- Les diagnostics sont plus lisibles via `SBI_PJAX_CHECK`.
-- Les routes protégées restent en reload classique, sans interception parasite du routeur.
-- Version actuelle : `SBI 8.0I.1 - PJAX APP SHELL TEST`.
-
-## Nettoyage manuel recommandé
-
-Supprimer à la racine du repo si présent :
-
-```txt
-SBI-8.0F-pjax-student-shell-patch/
-```
-
-Ce dossier vient d'un ancien ZIP patch décompressé et ne doit pas rester dans la branche.
+- Ne pas réactiver `sbi-internal-shell.js`.
+- Chaque route migrée doit fournir un démontage propre.
+- Les pages éditeur, viewer, quiz et Quill restent en reload classique tant qu’elles n’ont pas leur lifecycle dédié.

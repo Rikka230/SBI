@@ -1,56 +1,46 @@
 # SBI Refactor Map
 
-Version chantier : 8.0I.1
+Version chantier : 8.0J
 Branche de travail : `pjax-app-shell-test`
 Branche stable : `main`
 
-## Nettoyage manuel recommandé
+## Étapes PJAX validées
 
-Le ZIP reçu contient un dossier parasite à la racine :
+- 8.0A : foundation.
+- 8.0B : Gestion Accueil admin.
+- 8.0C : badge version centralisé.
+- 8.0D : profil admin.
+- 8.0D.1 : cache retour utilisateurs.
+- 8.0E : PJAX activé par défaut.
+- 8.0F : student dashboard / mes cours.
+- 8.0F.2 : inline style guard.
+- 8.0G : teacher dashboard / profil.
+- 8.0G.1 : active nav sync.
+- 8.0H : profil étudiant.
+- 8.0H.1 : polish profil.
+- 8.0I.1 : diagnostics clean.
 
-```txt
-SBI-8.0F-pjax-student-shell-patch/
-```
-
-À supprimer de la branche si visible sur GitHub. Ce dossier vient d'un ancien patch dézippé et ne fait pas partie du site.
-
-## Étapes PJAX
-
-### 8.0A à 8.0H.1
-
-Statut : validé.
-
-- Admin shell : index tabs, Gestion Accueil, profil.
-- Student shell : dashboard, mes cours, profil.
-- Teacher shell : dashboard, profil.
-- PJAX activé par défaut.
-- Active nav sync.
-- Inline style guard.
-- Profile polish.
-
-### 8.0I - Route guard & diagnostics
-
-Statut : retour utilisateur mitigé.
-
-- Routes sensibles protégées.
-- Diagnostics présents mais pas assez visibles.
-- Impression de reloads parasites sur les routes volontairement protégées.
-
-### 8.0I.1 - Diagnostics cleanup
+## 8.0J - Course editor mount foundation
 
 Statut : patch préparé.
 
-Objectif : garder la sécurité sans confusion.
+Objectif : préparer l'éditeur cours avant de l'activer en PJAX.
 
 Changements :
 
-- Le routeur ne touche plus aux clics non PJAX.
-- Les routes non migrées restent entièrement en navigation classique.
-- Diagnostic lisible :
-  - `window.SBI_PJAX_CHECK('/url')`
-  - `window.SBI_PJAX_ROUTES()`
-  - `window.SBI_PJAX_HELP()`
-- Version centralisée passée en `8.0I.1`.
+- `public/admin/js/admin-courses.js` expose `mountAdminCourses()`.
+- Le montage automatique classique reste conservé.
+- Les listeners principaux peuvent maintenant être nettoyés lors d'un futur unmount PJAX.
+- Ajout de `public/js/app-shell/course-editor-bridge.js` pour préparer :
+  - chargement Quill,
+  - onglets éditeur,
+  - switch image/vidéo.
+- Les routes éditeur restent en reload classique pour ce patch.
+
+Pourquoi cette étape :
+
+- `/teacher/mes-cours.html` et `/admin/formations-cours.html` contiennent Quill, uploads, validations et logique de cours.
+- Il faut d'abord rendre le moteur montable avant de le charger dans le shell.
 
 Pages encore hors PJAX :
 
