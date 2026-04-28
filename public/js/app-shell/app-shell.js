@@ -1,8 +1,15 @@
 /**
- * SBI 8.0A - App shell foundation
+ * SBI 8.0E - App shell foundation
  *
- * Désactivé par défaut. À activer uniquement sur la branche labo avec :
- * localStorage.setItem('sbiPjaxEnabled', 'true')
+ * Le PJAX est activé par défaut sur la branche labo.
+ *
+ * Désactivation de secours :
+ * localStorage.setItem('sbiPjaxDisabled', 'true')
+ * location.reload()
+ *
+ * Réactivation :
+ * localStorage.removeItem('sbiPjaxDisabled')
+ * location.reload()
  */
 
 import { createRouteRegistry } from './route-registry.js';
@@ -12,6 +19,9 @@ import { initRoutePreload } from './preload.js';
 import { registerCleanup, createAbortController } from './view-lifecycle.js';
 import { createListenerBag, disposeAllListenerBags } from './firebase-listeners.js';
 
+const DISABLED_FLAG = 'sbiPjaxDisabled';
+const LEGACY_ENABLED_FLAG = 'sbiPjaxEnabled';
+
 let initialized = false;
 
 function readFlag(name) {
@@ -19,19 +29,51 @@ function readFlag(name) {
   catch { return false; }
 }
 
+function setFlag(name, value) {
+  try {
+    if (value) localStorage.setItem(name, 'true');
+    else localStorage.removeItem(name);
+  } catch {}
+}
+
 function consumeQueryToggles() {
   const params = new URLSearchParams(window.location.search);
+
   if (params.get('sbiPjax') === '1') {
-    localStorage.setItem('sbiPjaxEnabled', 'true');
+    setFlag(DISABLED_FLAG, false);
+    setFlag(LEGACY_ENABLED_FLAG, true);
   }
+
   if (params.get('sbiPjax') === '0') {
-    localStorage.removeItem('sbiPjaxEnabled');
+    setFlag(DISABLED_FLAG, true);
+    setFlag(LEGACY_ENABLED_FLAG, false);
   }
+}
+
+function installEmergencySwitches(api) {
+  window.SBI_ENABLE_PJAX = () => {
+    setFlag(DISABLED_FLAG, false);
+    setFlag(LEGACY_ENABLED_FLAG, true);
+    window.location.reload();
+  };
+
+  window.SBI_DISABLE_PJAX = () => {
+    setFlag(DISABLED_FLAG, true);
+    setFlag(LEGACY_ENABLED_FLAG, false);
+    window.location.reload();
+  };
+
+  window.SBI_APP_SHELL = api;
 }
 
 export function isSbiAppShellEnabled() {
   consumeQueryToggles();
-  return readFlag('sbiPjaxEnabled');
+
+  if (readFlag(DISABLED_FLAG)) {
+    return false;
+  }
+
+  return true;
 }
 
 export function initSbiAppShell() {
@@ -48,6 +90,9 @@ export function initSbiAppShell() {
 
   const api = {
     enabled,
+    defaultEnabled: true,
+    disabled: !enabled,
+    disableFlag: DISABLED_FLAG,
     routes: registry.list(),
     navigate: router.navigate,
     canHandle: router.canHandle,
@@ -57,21 +102,29 @@ export function initSbiAppShell() {
     disposeAllListenerBags
   };
 
-  window.SBI_APP_SHELL = api;
+  installEmergencySwitches(api);
+
+  document.body.dataset.sbiPjax = enabled ? 'enabled' : 'disabled';
 
   if (!enabled) {
-    if (debug) console.info('[SBI AppShell] Présent mais désactivé. Active avec localStorage.sbiPjaxEnabled=true');
+    if (debug) {
+      console.info('[SBI AppShell] Désactivé par sbiPjaxDisabled=true. Réactive avec window.SBI_ENABLE_PJAX().');
+    }
+
+    window.dispatchEvent(new CustomEvent('sbi:app-shell:disabled', {
+      detail: { routes: api.routes }
+    }));
+
     return api;
   }
 
   router.attach();
   initRoutePreload({ router });
-  document.body.dataset.sbiPjax = 'enabled';
 
   window.dispatchEvent(new CustomEvent('sbi:app-shell:ready', {
     detail: { routes: api.routes }
   }));
 
-  if (debug) console.info('[SBI AppShell] Activé:', api.routes);
+  if (debug) console.info('[SBI AppShell] Activé par défaut:', api.routes);
   return api;
 }
