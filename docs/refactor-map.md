@@ -492,3 +492,31 @@ Fichiers principaux :
 - `docs/merge-readiness-checklist.md`
 
 Aucune modification Firestore Rules ou Storage Rules dans ce patch.
+
+
+## Étape 8.0A - App shell foundation PJAX expérimental
+
+Statut : patch préparé sur branche `pjax-app-shell-test`.
+
+Objectif : poser les rails du vrai app shell sans remplacer toute la navigation.
+
+Fichiers ajoutés :
+
+- `public/js/app-shell/app-shell.js`
+- `public/js/app-shell/router.js`
+- `public/js/app-shell/route-registry.js`
+- `public/js/app-shell/view-lifecycle.js`
+- `public/js/app-shell/firebase-listeners.js`
+- `public/js/app-shell/transitions.js`
+- `public/js/app-shell/preload.js`
+- `docs/pjax-app-shell-plan.md`
+
+Principes :
+
+- routeur désactivé par défaut ;
+- activation locale avec `localStorage.setItem('sbiPjaxEnabled', 'true')` ;
+- fallback reload complet pour toute route non migrée ;
+- première route sûre limitée aux onglets admin déjà montés ;
+- aucune migration des viewers, éditeurs, Quill, notifications lourdes ou flux Firebase critiques.
+
+Ne pas merger dans `main` tant que la branche PJAX n'est pas validée séparément.

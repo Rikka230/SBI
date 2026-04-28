@@ -7,6 +7,7 @@ import { initAdminVisitorShortcut } from '/admin/js/admin-ui/admin-visitor.js';
 import { initEmojiScrubber } from '/admin/js/admin-ui/emoji-scrubber.js';
 import { initSafeComponentPolish } from '/admin/js/admin-ui/component-polish.js';
 import { initSbiNavigationTransitions } from '/js/sbi-navigation-transitions.js';
+import { initSbiAppShell } from '/js/app-shell/app-shell.js';
 
 /**
  * =======================================================================
@@ -23,6 +24,7 @@ async function initAdminUi() {
 
         initSpaceTheme();
         initSbiNavigationTransitions();
+        initSbiAppShell();
         initAdminMediaNav();
         initAssistantPrototype();
         initAdminVisitorShortcut();

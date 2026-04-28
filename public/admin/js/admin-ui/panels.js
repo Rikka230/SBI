@@ -91,40 +91,9 @@ export function initAdminTabs() {
 
     if (!hasAdminViews) return;
 
-    const initialTab = getAdminTabFromLocation();
-
-    if (document.getElementById(initialTab)) {
-        switchView(initialTab, { historyMode: 'replace' });
-    }
-
-    navItems.forEach((button) => {
-        button.addEventListener('click', (event) => {
-            const targetId = event.currentTarget.getAttribute('data-target');
-            const href = event.currentTarget.getAttribute('data-href') || (targetId ? getAdminTabUrl(targetId) : '/admin/index.html');
-
-            if (targetId && document.getElementById(targetId)) {
-                event.preventDefault();
-                switchView(targetId, { historyMode: 'push' });
-            } else if (href) {
-                window.location.href = href;
-            }
-
-            if (appContainer && window.innerWidth <= 768) {
-                appContainer.classList.remove('left-open');
-            }
-        });
-    });
-
-    window.addEventListener('popstate', (event) => {
-        const targetId = event.state?.sbiTab || getAdminTabFromLocation();
-        if (targetId && document.getElementById(targetId)) {
-            switchView(targetId, { updateUrl: false });
-        }
-    });
-
-    function switchView(targetId, { updateUrl = true, historyMode = 'push' } = {}) {
+    const switchView = (targetId, { updateUrl = true, historyMode = 'push', source = 'admin-tabs' } = {}) => {
         const activeView = document.getElementById(targetId);
-        if (!activeView) return;
+        if (!activeView) return false;
 
         navItems.forEach((button) => {
             const isActive = button.getAttribute('data-target') === targetId;
@@ -146,7 +115,48 @@ export function initAdminTabs() {
         }
 
         window.dispatchEvent(new CustomEvent('sbi:admin-tab-changed', {
-            detail: { tab: targetId }
+            detail: { tab: targetId, source }
         }));
+
+        return true;
+    };
+
+    window.SBI_ADMIN_TABS = {
+        switchTo: switchView,
+        getActive: getAdminTabFromLocation,
+        getUrl: getAdminTabUrl,
+        has: (targetId) => Boolean(targetId && document.getElementById(targetId))
+    };
+
+    const initialTab = getAdminTabFromLocation();
+
+    if (document.getElementById(initialTab)) {
+        switchView(initialTab, { historyMode: 'replace', source: 'initial' });
     }
+
+    navItems.forEach((button) => {
+        button.addEventListener('click', (event) => {
+            const targetId = event.currentTarget.getAttribute('data-target');
+            const href = event.currentTarget.getAttribute('data-href') || (targetId ? getAdminTabUrl(targetId) : '/admin/index.html');
+
+            if (targetId && document.getElementById(targetId)) {
+                event.preventDefault();
+                switchView(targetId, { historyMode: 'push', source: 'click' });
+            } else if (href) {
+                window.location.href = href;
+            }
+
+            if (appContainer && window.innerWidth <= 768) {
+                appContainer.classList.remove('left-open');
+            }
+        });
+    });
+
+    window.addEventListener('popstate', (event) => {
+        if (event.state?.sbiAppShell) return;
+        const targetId = event.state?.sbiTab || getAdminTabFromLocation();
+        if (targetId && document.getElementById(targetId)) {
+            switchView(targetId, { updateUrl: false, source: 'popstate' });
+        }
+    });
 }
