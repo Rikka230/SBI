@@ -42,6 +42,11 @@ function getTargetStudentsFromFormations(selectedPills = [], allFormationsData =
     return Array.from(targetStudents);
 }
 
+function normalizeAudienceList(items = []) {
+    if (!Array.isArray(items)) return [];
+    return Array.from(new Set(items.map((item) => normalizeId(item)).filter(Boolean)));
+}
+
 async function safeAddNotification(payload, label) {
     try {
         await addDoc(collection(db, "notifications"), payload);
@@ -87,6 +92,9 @@ export async function handleCourseNotifications({
     courseRefId,
     title,
     selectedPills = [],
+    targetStudentsForCourse = [],
+    targetFormationIds = [],
+    targetFormationTitles = [],
     isPublishing = false,
     isRejecting = false,
     currentUid = null,
@@ -121,21 +129,30 @@ export async function handleCourseNotifications({
             }, 'Notification prof cours validé');
         }
 
-        const targetStudentsArray = getTargetStudentsFromFormations(selectedPills, allFormationsData);
+        const targetStudentsArray = normalizeAudienceList(targetStudentsForCourse).length > 0
+            ? normalizeAudienceList(targetStudentsForCourse)
+            : getTargetStudentsFromFormations(selectedPills, allFormationsData);
+        const safeTargetFormationIds = normalizeAudienceList(targetFormationIds);
+        const safeTargetFormationTitles = normalizeAudienceList(targetFormationTitles);
 
         if (targetStudentsArray.length > 0) {
-            await safeAddNotification({
+            await Promise.all(targetStudentsArray.map((studentId) => safeAddNotification({
                 type: 'new_course_published',
                 courseId: courseRefId,
                 courseTitle: title,
-                targetStudents: targetStudentsArray,
+                destinataireId: studentId,
+                targetStudents: [studentId],
+                targetFormationIds: safeTargetFormationIds,
+                targetFormationTitles: safeTargetFormationTitles,
                 dateCreation: serverTimestamp(),
                 dismissedBy: []
-            }, 'Notification élèves nouveau cours');
+            }, `Notification élève nouveau cours ${studentId}`)));
         } else {
             console.info('[SBI Notifications] Aucun élève cible trouvé pour le cours publié.', {
                 courseRefId,
-                selectedPills
+                selectedPills,
+                targetFormationIds: safeTargetFormationIds,
+                targetFormationTitles: safeTargetFormationTitles
             });
         }
     } else if (isRejecting) {

@@ -72,6 +72,7 @@ import {
     resolveCourseValidationNotifications as resolveCourseValidationNotificationsService,
     handleCourseNotifications as handleCourseNotificationsService
 } from '/admin/js/courses/course-notifications.js';
+import { getCourseTargetingSnapshot } from '/admin/js/courses/course-targeting.js';
 let currentUid = null;
 let currentUserProfile = null;
 let currentChapters = [];
@@ -135,34 +136,6 @@ async function handleCourseNotifications(args) {
         editingCourseAuthorId,
         allFormationsData
     });
-}
-
-function normalizeCourseAccessValue(value) {
-    return value ? String(value).trim() : '';
-}
-
-function selectedFormationMatchesCourseValue(formation, selectedValue) {
-    const value = normalizeCourseAccessValue(selectedValue);
-    if (!formation || !value) return false;
-
-    return normalizeCourseAccessValue(formation.id) === value
-        || normalizeCourseAccessValue(formation.titre) === value;
-}
-
-function getTargetStudentsForSelectedFormations(selectedPills = []) {
-    const targetStudents = new Set();
-
-    selectedPills.forEach((formationValue) => {
-        const formation = allFormationsData.find((item) => selectedFormationMatchesCourseValue(item, formationValue));
-        const students = Array.isArray(formation?.students) ? formation.students : [];
-
-        students.forEach((studentId) => {
-            const safeStudentId = normalizeCourseAccessValue(studentId);
-            if (safeStudentId) targetStudents.add(safeStudentId);
-        });
-    });
-
-    return Array.from(targetStudents);
 }
 
 function isAdminAuthor(authorId) {
@@ -945,9 +918,12 @@ async function saveCourseToFirebase(actionType = 'admin_save') {
             await uploadPendingMediaForChapters(courseRefId, currentChapters);
         }
 
-        const targetStudentsForCourse = isActive
-            ? getTargetStudentsForSelectedFormations(selectedPills)
-            : [];
+        const courseTargeting = getCourseTargetingSnapshot(selectedPills, allFormationsData, {
+            includeStudents: isActive
+        });
+        const targetFormationIds = courseTargeting.targetFormationIds;
+        const targetFormationTitles = courseTargeting.targetFormationTitles;
+        const targetStudentsForCourse = courseTargeting.targetStudents;
 
         const courseData = {
             titre: title,
@@ -955,6 +931,8 @@ async function saveCourseToFirebase(actionType = 'admin_save') {
             actif: isActive,
             statutValidation: finalStatut,
             formations: selectedPills,
+            targetFormationIds,
+            targetFormationTitles,
             targetStudents: targetStudentsForCourse,
             auteurId: finalAuteurId,
             chapitres: currentChapters
@@ -977,6 +955,9 @@ async function saveCourseToFirebase(actionType = 'admin_save') {
                 courseRefId,
                 title,
                 selectedPills,
+                targetStudentsForCourse,
+                targetFormationIds,
+                targetFormationTitles,
                 isPublishing,
                 isRejecting,
                 currentUid,

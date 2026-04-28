@@ -197,6 +197,8 @@ function getCourseFormationValues(course = {}) {
   if (Array.isArray(course.formations)) values.push(...course.formations);
   if (Array.isArray(course.formationIds)) values.push(...course.formationIds);
   if (Array.isArray(course.formationsIds)) values.push(...course.formationsIds);
+  if (Array.isArray(course.targetFormationIds)) values.push(...course.targetFormationIds);
+  if (Array.isArray(course.targetFormationTitles)) values.push(...course.targetFormationTitles);
 
   [
     course.formationId,
@@ -225,9 +227,14 @@ export function courseBelongsToFormation(course = {}, formation = {}, allFormati
     );
   }
 
-  // Filet de sécurité : un cours issu de la progression d'un élève sans champ
-  // formation exploitable reste affichable si l'élève n'a qu'une formation.
-  if (course.__progressLinked === true && Array.isArray(allFormations) && allFormations.length === 1) {
+  // Filet de sécurité : un cours issu du ciblage direct ou de la progression
+  // reste affichable dans la seule formation connue de l'élève si aucun champ
+  // formation exploitable n'a été sauvegardé sur l'ancien document.
+  if (
+    (course.__targetedToUser === true || course.__progressLinked === true) &&
+    Array.isArray(allFormations) &&
+    allFormations.length === 1
+  ) {
     return allFormations[0]?.id === formation?.id;
   }
 
@@ -266,12 +273,16 @@ export async function fetchCoursesTargetingUser(uid) {
 
   const q = query(collection(db, 'courses'), where('targetStudents', 'array-contains', uid));
   const snap = await safeGetDocs(q, 'cours ciblant l’utilisateur');
-  return snap ? snapToArray(snap).filter((course) => isCourseVisible(course)) : [];
+  return snap
+    ? snapToArray(snap)
+      .filter((course) => isCourseVisible(course))
+      .map((course) => ({ ...course, __targetedToUser: true }))
+    : [];
 }
 
-export async function fetchCoursesByFormationKeys(formationKeys, { activeOnly = true } = {}) {
+async function fetchCoursesByArrayField(fieldName, formationKeys, { activeOnly = true } = {}) {
   const keys = normalizeList(formationKeys);
-  if (!keys.length) return [];
+  if (!fieldName || !keys.length) return [];
 
   const courses = [];
 
@@ -281,17 +292,15 @@ export async function fetchCoursesByFormationKeys(formationKeys, { activeOnly = 
     if (activeOnly) {
       const activeQuery = query(
         collection(db, 'courses'),
-        where('formations', 'array-contains-any', chunk),
+        where(fieldName, 'array-contains-any', chunk),
         where('actif', '==', true)
       );
-      snap = await safeGetDocs(activeQuery, 'cours actifs par formation');
+      snap = await safeGetDocs(activeQuery, `cours actifs par ${fieldName}`);
     }
 
-    // Fallback si l'index composite n'existe pas, si les rules refusent le combo,
-    // ou si le cours est validé autrement que par actif === true.
     if (!snap) {
-      const fallbackQuery = query(collection(db, 'courses'), where('formations', 'array-contains-any', chunk));
-      snap = await safeGetDocs(fallbackQuery, 'cours par formation sans filtre actif');
+      const fallbackQuery = query(collection(db, 'courses'), where(fieldName, 'array-contains-any', chunk));
+      snap = await safeGetDocs(fallbackQuery, `cours par ${fieldName} sans filtre actif`);
     }
 
     if (!snap) continue;
@@ -302,7 +311,20 @@ export async function fetchCoursesByFormationKeys(formationKeys, { activeOnly = 
     courses.push(...items);
   }
 
-  return uniqById(courses);
+  return courses;
+}
+
+export async function fetchCoursesByFormationKeys(formationKeys, { activeOnly = true } = {}) {
+  const keys = normalizeList(formationKeys);
+  if (!keys.length) return [];
+
+  const courseGroups = await Promise.all([
+    fetchCoursesByArrayField('formations', keys, { activeOnly }),
+    fetchCoursesByArrayField('targetFormationIds', keys, { activeOnly }),
+    fetchCoursesByArrayField('targetFormationTitles', keys, { activeOnly })
+  ]);
+
+  return uniqById(courseGroups.flat());
 }
 
 export async function loadCoursesForUser({
