@@ -3,8 +3,10 @@ import { clearCacheAndReload, signOutToLogin } from './shared-actions.js';
 import { dispatchComponentMounted } from './ready.js';
 
 function adminNavItem({ id, target, label, icon }) {
+  const href = `/admin/index.html?tab=${target}`;
+
   return `
-    <li class="nav-item" id="${id}" data-target="${target}" data-href="/admin/index.html?tab=${target}">
+    <li class="nav-item" id="${id}" data-target="${target}" data-href="${href}" data-sbi-href="${href}" role="link" tabindex="0">
       ${icon}
       <span class="nav-text">${label}</span>
     </li>
