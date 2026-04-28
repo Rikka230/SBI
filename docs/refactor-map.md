@@ -298,3 +298,47 @@ Objectifs :
 - les listes Firestore `courses` et `notifications` restent listables par utilisateur actif pour éviter les blocages query-safe en preview.
 
 Après installation, redéployer les Firestore Rules.
+
+## Étape 7.0.3 - Correctif Quill prof + diffusion élèves
+
+Statut : validé.
+
+Objectifs :
+
+- Quill côté professeur applique la taille uniquement sur la sélection texte active.
+- La publication admin recalcule les élèves ciblés à partir des formations du cours.
+- Les cours publiés stockent `targetStudents`, `targetFormationIds` et `targetFormationTitles`.
+- Les notifications élèves sont créées explicitement par élève ciblé.
+- La lecture élève retrouve les cours via formation ou `targetStudents`.
+
+Aucun redéploiement rules nécessaire pour ce patch.
+
+## Étape 7.1 - Harmonisation UI profils / éditeur / visualiseuse
+
+Statut : patch préparé.
+
+Objectif : homogénéiser les surfaces internes sans toucher aux flux métier.
+
+Fichier ajouté :
+
+- `public/css/sbi-7-1-harmonization.css`
+
+Pages harmonisées :
+
+- profils admin / teacher / student ;
+- éditeur cours admin ;
+- éditeur cours teacher ;
+- visualiseuse student / teacher.
+
+Principes conservés :
+
+- admin : dark cockpit premium bleu SBI ;
+- student : light pédagogique bleu SBI ;
+- teacher : light coach orange sport ;
+- aucun changement auth, Firestore, Storage, progression, notifications ou rules.
+
+Micro-nettoyage inclus :
+
+- retrait d'emojis d'interface restants sur les pages touchées ;
+- remplacement de petits pictogrammes texte par SVG ou libellés propres ;
+- bannière de prévisualisation viewer alignée avec la nouvelle couche UI.
