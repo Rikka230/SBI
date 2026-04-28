@@ -342,3 +342,40 @@ Micro-nettoyage inclus :
 - retrait d'emojis d'interface restants sur les pages touchées ;
 - remplacement de petits pictogrammes texte par SVG ou libellés propres ;
 - bannière de prévisualisation viewer alignée avec la nouvelle couche UI.
+
+## Étape 7.1.1 - Correctif avatars profils
+
+Statut : validé.
+
+Objectif : corriger les défauts visuels apparus après l'harmonisation profils.
+
+- Suppression du fond carré parasite autour des avatars student / teacher.
+- Badge d'édition avatar repositionné et unifié.
+- Aucun changement auth, Storage, cropper ou données profil.
+
+## Étape 7.2A - Navigation interne progressive
+
+Statut : patch préparé.
+
+Objectif : poser une première couche de navigation fluide sans activer de PJAX complet.
+
+Fichier ajouté :
+
+- `public/js/sbi-navigation-transitions.js`
+
+Fichiers raccordés :
+
+- `public/admin/js/admin-ui.js`
+- `public/admin/js/components/admin-panels.js`
+- `public/admin/js/components/student-panels.js`
+- `public/admin/js/components/teacher-panels.js`
+- `public/admin/js/admin-ui/admin-media-nav.js`
+- `public/admin/js/site-index-nav.js`
+
+Principe :
+
+- navigation interne standard conservée via `window.location` ;
+- transition visuelle légère avant changement de page ;
+- écoute déléguée sur liens internes et éléments `data-sbi-href` ;
+- menus student / teacher sans `onclick` inline pour préparer une navigation plus propre ;
+- pas de modification des viewers, de l'auth, des notifications, de Firestore, de Storage ou des rules.

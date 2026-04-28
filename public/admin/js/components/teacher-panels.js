@@ -18,12 +18,12 @@ export class TeacherLeftPanel extends HTMLElement {
           </button>
         </div>
         <ul class="nav-menu">
-          <li class="nav-item ${path.includes('teacherindex.html') || path.includes('dashboard.html') ? 'active' : ''}" onclick="window.location.href='/teacher/dashboard.html'">${ICONS.dashboard}<span class="nav-text">Mon Espace</span></li>
-          <li class="nav-item ${path.includes('mes-cours.html') ? 'active' : ''}" onclick="window.location.href='/teacher/mes-cours.html'">${ICONS.formations}<span class="nav-text">Formations & Cours</span></li>
-          <li class="nav-item ${path.includes('mon-profil.html') ? 'active' : ''}" onclick="window.location.href='/teacher/mon-profil.html'">${ICONS.profile}<span class="nav-text">Mon Profil Public</span></li>
+          <li class="nav-item ${path.includes('teacherindex.html') || path.includes('dashboard.html') ? 'active' : ''}" data-sbi-href="/teacher/dashboard.html" role="link" tabindex="0">${ICONS.dashboard}<span class="nav-text">Mon Espace</span></li>
+          <li class="nav-item ${path.includes('mes-cours.html') ? 'active' : ''}" data-sbi-href="/teacher/mes-cours.html" role="link" tabindex="0">${ICONS.formations}<span class="nav-text">Formations & Cours</span></li>
+          <li class="nav-item ${path.includes('mon-profil.html') ? 'active' : ''}" data-sbi-href="/teacher/mon-profil.html" role="link" tabindex="0">${ICONS.profile}<span class="nav-text">Mon Profil Public</span></li>
         </ul>
         <div style="margin-top:auto; padding:1rem; border-top:1px solid var(--border-color); overflow:hidden;">
-          <button class="admin-return-link" type="button" onclick="window.location.href='/admin/index.html'" title="Retour au panel administrateur">
+          <button class="admin-return-link" type="button" data-sbi-href="/admin/index.html" title="Retour au panel administrateur">
             ${ICONS.back}<span class="nav-text">Retour admin</span>
           </button>
           <button id="logout-btn-teacher" class="action-btn danger" style="width:100%; justify-content:center; gap:.5rem;">
@@ -58,7 +58,7 @@ export class TeacherTopBar extends HTMLElement {
               <div id="notifications-list" style="display:flex; flex-direction:column; max-height:350px; overflow-y:auto;"></div>
             </div>
           </div>
-          <div style="display:flex; align-items:center; gap:1rem; cursor:pointer; border-left:1px solid var(--border-color); padding-left:1.5rem; transition:opacity .2s;" onclick="window.location.href='/teacher/mon-profil.html'">
+          <div style="display:flex; align-items:center; gap:1rem; cursor:pointer; border-left:1px solid var(--border-color); padding-left:1.5rem; transition:opacity .2s;" data-sbi-href="/teacher/mon-profil.html" role="link" tabindex="0">
             <div style="text-align:right; display:flex; flex-direction:column; justify-content:center;">
               <p id="top-user-name" style="margin:0; font-weight:bold; font-size:.95rem; line-height:1.2;">Chargement...</p>
               <p id="top-user-level" style="margin:0; color:var(--accent-orange, #f97316); font-size:.75rem; font-weight:bold; line-height:1.2; margin-top:2px;">Coach SBI</p>

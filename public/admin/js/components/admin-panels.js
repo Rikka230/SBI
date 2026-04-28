@@ -88,7 +88,7 @@ export class AdminRightPanel extends HTMLElement {
             </div>
           </div>
 
-          <button class="action-btn" id="btn-my-profile" style="color:var(--accent-blue); border-color:rgba(42,87,255,.3);">
+          <button class="action-btn" id="btn-my-profile" type="button" data-sbi-href="/admin/admin-profile.html" style="color:var(--accent-blue); border-color:rgba(42,87,255,.3);">
             ${ICONS.profile} Mon Profil
           </button>
           <button class="action-btn" id="btn-clear-cache">${ICONS.refresh} Rafraîchir le Cache</button>
@@ -103,10 +103,6 @@ export class AdminRightPanel extends HTMLElement {
 
     this.querySelector('#logout-btn')?.addEventListener('click', signOutToLogin);
     this.querySelector('#btn-clear-cache')?.addEventListener('click', clearCacheAndReload);
-    this.querySelector('#btn-my-profile')?.addEventListener('click', () => {
-      window.location.href = '/admin/admin-profile.html';
-    });
-
     dispatchComponentMounted('admin-right-panel', this);
   }
 }
