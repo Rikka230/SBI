@@ -1,6 +1,6 @@
 # SBI Refactor Map
 
-Version chantier : 8.0K
+Version chantier : 8.0K.1
 Branche de travail : `pjax-app-shell-test`
 Branche stable : `main`
 
@@ -20,33 +20,22 @@ Branche stable : `main`
 - 8.0H.1 : polish profil.
 - 8.0I.1 : diagnostics clean.
 - 8.0J : foundation éditeur cours montable.
+- 8.0K : teacher course editor PJAX.
 
-## 8.0K - Teacher course editor PJAX
+## 8.0K.1 - Quill toolbar tooltips
 
 Statut : patch préparé.
 
-Objectif : activer une première route éditeur en PJAX, uniquement côté prof.
+Objectif : compléter les aides visuelles de l'éditeur Quill.
 
 Changements :
 
-- `/teacher/mes-cours.html` passe en PJAX.
-- `/admin/formations-cours.html` reste en reload classique.
-- `route-guards.js` retire `/teacher/mes-cours.html` des hard reload.
-- `route-registry.js` ajoute la route `teacher-courses`.
-- `course-editor-bridge.js` initialise Quill et les interactions inline non rejouées par PJAX.
-- `admin-courses.js` est inclus avec `mountAdminCourses()` pour garantir le montage propre.
-
-Points à tester :
-
-- dashboard prof → formations & cours ;
-- formations & cours → dashboard prof ;
-- bouton Nouveau Cours ;
-- onglets Ma Bibliothèque / Éditeur ;
-- Quill sélection partielle taille texte ;
-- switch image/vidéo ;
-- ouvrir un brouillon ;
-- sauvegarder brouillon léger ;
-- soumettre à validation si besoin sur un test.
+- Ajout de `title` et `aria-label` sur les contrôles Quill.
+- Ajout spécifique :
+  - `Couleur du caractère` sur `.ql-color`.
+  - `Surlignage du caractère` sur `.ql-background`.
+- Les labels sont aussi posés sur les pickers Quill générés.
+- Aucun changement logique sur les contenus, uploads, sauvegardes ou publication.
 
 Pages encore hors PJAX :
 

@@ -1,5 +1,5 @@
 /**
- * SBI 8.0K - Course editor bridge
+ * SBI 8.0K.1 - Course editor bridge
  *
  * Prépare et monte les éléments que les scripts inline ne relancent pas
  * en navigation PJAX : Quill, onglets éditeur et switch image/vidéo.
@@ -35,6 +35,47 @@ export async function loadQuillIfNeeded(loadScriptOnce) {
   return window.Quill;
 }
 
+function setToolbarLabel(toolbar, selector, label) {
+  const elements = toolbar.querySelectorAll(selector);
+
+  elements.forEach((element) => {
+    element.setAttribute('title', label);
+    element.setAttribute('aria-label', label);
+
+    if (element.tagName === 'SELECT') {
+      element.setAttribute('data-sbi-tooltip', label);
+      const picker = element.nextElementSibling?.classList?.contains('ql-picker')
+        ? element.nextElementSibling
+        : null;
+
+      if (picker) {
+        picker.setAttribute('title', label);
+        picker.setAttribute('aria-label', label);
+        picker.setAttribute('data-sbi-tooltip', label);
+      }
+    }
+  });
+}
+
+function applyQuillToolbarTooltips(toolbar) {
+  if (!toolbar || toolbar.dataset.sbiTooltipsReady === 'true') return;
+  toolbar.dataset.sbiTooltipsReady = 'true';
+
+  setToolbarLabel(toolbar, '.ql-size', 'Taille du texte');
+  setToolbarLabel(toolbar, '.ql-bold', 'Gras');
+  setToolbarLabel(toolbar, '.ql-italic', 'Italique');
+  setToolbarLabel(toolbar, '.ql-underline', 'Souligner');
+  setToolbarLabel(toolbar, '.ql-strike', 'Barrer');
+  setToolbarLabel(toolbar, '.ql-color', 'Couleur du caractère');
+  setToolbarLabel(toolbar, '.ql-background', 'Surlignage du caractère');
+  setToolbarLabel(toolbar, '.ql-list[value="ordered"]', 'Liste numérotée');
+  setToolbarLabel(toolbar, '.ql-list[value="bullet"]', 'Liste à puces');
+  setToolbarLabel(toolbar, '.ql-link', 'Ajouter un lien');
+  setToolbarLabel(toolbar, '.ql-image', 'Insérer une image');
+  setToolbarLabel(toolbar, '.ql-video', 'Insérer une vidéo');
+  setToolbarLabel(toolbar, '.ql-clean', 'Nettoyer la mise en forme');
+}
+
 export function initCourseEditorQuill() {
   const editor = document.getElementById('quill-editor');
   if (!editor) return () => {};
@@ -44,6 +85,8 @@ export function initCourseEditorQuill() {
   }
 
   if (window.quill && window.quill.root?.isConnected && window.quill.container?.contains(editor.querySelector('.ql-editor'))) {
+    const existingToolbar = window.quill.getModule('toolbar')?.container;
+    applyQuillToolbarTooltips(existingToolbar);
     return () => {};
   }
 
@@ -98,6 +141,8 @@ export function initCourseEditorQuill() {
 
   const toolbar = window.quill.getModule('toolbar')?.container;
   if (toolbar) {
+    applyQuillToolbarTooltips(toolbar);
+
     ['mousedown', 'pointerdown', 'touchstart'].forEach((eventName) => {
       const handler = () => rememberQuillSelection(window.quill?.getSelection?.());
       toolbar.addEventListener(eventName, handler, true);

@@ -3,7 +3,7 @@
 Branche expérimentale : `pjax-app-shell-test`
 Base : `main` après merge 7.4.2
 
-## État 8.0K
+## État 8.0K.1
 
 Le PJAX est activé par défaut sur la branche labo.
 
@@ -49,16 +49,15 @@ Teacher :
 - `/teacher/mes-cours.html`
 - `/teacher/mon-profil.html`
 
-## 8.0K
+## 8.0K.1
 
-- Activation PJAX de `/teacher/mes-cours.html`.
-- Chargement Quill avant montage de l'éditeur.
-- Initialisation Quill via `course-editor-bridge.js`.
-- Réactivation des onglets Ma Bibliothèque / Éditeur de Cours côté shell.
-- Réactivation du switch Image / Vidéo côté shell.
-- Montage de `admin-courses.js` via `mountAdminCourses()`.
-- `/admin/formations-cours.html` reste protégé en reload classique.
-- Version actuelle : `SBI 8.0K - PJAX APP SHELL TEST`.
+- Ajout des bulles d'information sur la toolbar Quill.
+- Labels ajoutés aux boutons principaux de l'éditeur.
+- Ajout clair pour :
+  - Couleur du caractère.
+  - Surlignage du caractère.
+- Aucun changement sur la logique PJAX, sauvegarde ou publication.
+- Version actuelle : `SBI 8.0K.1 - PJAX APP SHELL TEST`.
 
 ## Routes encore protégées
 
@@ -66,9 +65,3 @@ Teacher :
 - `/student/cours-viewer.html`
 - `/teacher/cours-viewer.html`
 - `/admin/cours-viewer.html`
-
-## Règles de sécurité
-
-- Ne pas réactiver `sbi-internal-shell.js`.
-- Une erreur routeur doit retomber en reload classique.
-- Les pages viewer/progression restent en reload classique tant qu’elles n’ont pas leur lifecycle dédié.
