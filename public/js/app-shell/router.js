@@ -1,8 +1,8 @@
 /**
- * SBI 8.0A - Router expérimental
+ * SBI 8.0B - Router expérimental
  *
- * Le routeur est désactivé par défaut et ne prend en charge que les routes
- * explicitement connues. Tout le reste retombe en navigation classique.
+ * Désactivé par défaut et limité aux routes explicitement connues.
+ * Toute route inconnue retombe en navigation classique.
  */
 
 import { runViewCleanups, setActiveViewKey } from './view-lifecycle.js';
@@ -116,9 +116,16 @@ export function createRouter({ registry, debug = false } = {}) {
     navigate(url, { historyMode: 'push', source: 'keyboard' });
   }
 
-  function handlePopState() {
+  function handlePopState(event) {
     const url = new URL(window.location.href);
-    if (!canHandle(url)) return;
+
+    if (!canHandle(url)) {
+      if (event.state?.sbiAppShell || document.body.dataset.sbiPjax === 'enabled') {
+        window.location.assign(url.href);
+      }
+      return;
+    }
+
     navigate(url, { historyMode: 'none', source: 'popstate' });
   }
 

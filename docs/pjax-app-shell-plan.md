@@ -37,9 +37,17 @@ localStorage.setItem('sbiPjaxDebug', 'true')
 - Première route sûre : onglets admin déjà présents dans le DOM.
 - Aucune migration des éditeurs, viewers, Quill ou notifications lourdes.
 
+## 8.0B
+
+- Première vraie page admin externe migrée dans le shell : `Gestion Accueil`.
+- Chargement PJAX du contenu `#main-content`.
+- Injection sûre des styles de la page externe si nécessaires.
+- Refactor de `site-index-settings.js` en `mountSiteIndexSettings()` avec cleanup.
+- Retour vers `/admin/index.html?tab=...` géré par le shell ou fallback reload si contexte invalide.
+- Les pages sensibles restent hors PJAX.
+
 ## Prochaines étapes
 
-- 8.0B : migrer une vraie page admin externe simple dans le shell.
 - 8.0C : ajouter skeleton loaders et extraction de vues admin.
 - 8.0D : student shell.
 - 8.0E : teacher shell.
@@ -51,3 +59,4 @@ localStorage.setItem('sbiPjaxDebug', 'true')
 - Chaque route migrée doit fournir un démontage propre.
 - Une erreur routeur doit retomber en reload classique.
 - Les listeners Firestore doivent être enregistrés dans un listener bag.
+- Les pages éditeur, viewer, quiz et Quill restent en reload classique tant qu’elles n’ont pas leur lifecycle dédié.

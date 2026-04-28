@@ -520,3 +520,26 @@ Principes :
 - aucune migration des viewers, éditeurs, Quill, notifications lourdes ou flux Firebase critiques.
 
 Ne pas merger dans `main` tant que la branche PJAX n'est pas validée séparément.
+
+## Étape 8.0B - Admin shell : Gestion Accueil
+
+Statut : patch préparé sur branche `pjax-app-shell-test`.
+
+Objectif : migrer une première vraie page admin externe dans le shell, sans toucher aux pages sensibles.
+
+Changements :
+
+- Ajout d'un loader de page admin externe : `public/js/app-shell/admin-page-loader.js`.
+- Route PJAX pour `/admin/site-index-settings.html`.
+- Route de retour vers `/admin/index.html?tab=...` avec restauration des onglets admin.
+- Refactor de `public/admin/js/site-index-settings.js` en fonction `mountSiteIndexSettings()` avec cleanup.
+- Nettoyage des listeners de Gestion Accueil au changement de vue.
+- Fallback reload conservé si la route ou le montage échoue.
+
+Pages encore hors PJAX :
+
+- éditeur cours ;
+- viewer ;
+- Quill ;
+- quiz ;
+- pages student / teacher.

@@ -1,5 +1,6 @@
 function getAdminTabFromLocation() {
-    const tabFromUrl = new URLSearchParams(window.location.search).get('tab');
+    const currentUrl = new URL(window.SBI_APP_SHELL_CURRENT_URL || window.location.href, window.location.origin);
+    const tabFromUrl = currentUrl.searchParams.get('tab');
     return tabFromUrl || sessionStorage.getItem('activeAdminTab') || 'view-dashboard';
 }
 
@@ -84,12 +85,16 @@ export function initPanelControls() {
 }
 
 export function initAdminTabs() {
+    window.SBI_ADMIN_TABS?.destroy?.();
+
     const navItems = document.querySelectorAll('.nav-item[data-target]');
     const views = document.querySelectorAll('.admin-view');
     const appContainer = document.getElementById('app-container');
     const hasAdminViews = navItems.length > 0 && views.length > 0;
 
     if (!hasAdminViews) return;
+
+    const cleanups = [];
 
     const switchView = (targetId, { updateUrl = true, historyMode = 'push', source = 'admin-tabs' } = {}) => {
         const activeView = document.getElementById(targetId);
@@ -121,13 +126,6 @@ export function initAdminTabs() {
         return true;
     };
 
-    window.SBI_ADMIN_TABS = {
-        switchTo: switchView,
-        getActive: getAdminTabFromLocation,
-        getUrl: getAdminTabUrl,
-        has: (targetId) => Boolean(targetId && document.getElementById(targetId))
-    };
-
     const initialTab = getAdminTabFromLocation();
 
     if (document.getElementById(initialTab)) {
@@ -135,7 +133,7 @@ export function initAdminTabs() {
     }
 
     navItems.forEach((button) => {
-        button.addEventListener('click', (event) => {
+        const onClick = (event) => {
             const targetId = event.currentTarget.getAttribute('data-target');
             const href = event.currentTarget.getAttribute('data-href') || (targetId ? getAdminTabUrl(targetId) : '/admin/index.html');
 
@@ -149,14 +147,30 @@ export function initAdminTabs() {
             if (appContainer && window.innerWidth <= 768) {
                 appContainer.classList.remove('left-open');
             }
-        });
+        };
+
+        button.addEventListener('click', onClick);
+        cleanups.push(() => button.removeEventListener('click', onClick));
     });
 
-    window.addEventListener('popstate', (event) => {
+    const onPopState = (event) => {
         if (event.state?.sbiAppShell) return;
         const targetId = event.state?.sbiTab || getAdminTabFromLocation();
         if (targetId && document.getElementById(targetId)) {
             switchView(targetId, { updateUrl: false, source: 'popstate' });
         }
-    });
+    };
+
+    window.addEventListener('popstate', onPopState);
+    cleanups.push(() => window.removeEventListener('popstate', onPopState));
+
+    window.SBI_ADMIN_TABS = {
+        switchTo: switchView,
+        getActive: getAdminTabFromLocation,
+        getUrl: getAdminTabUrl,
+        has: (targetId) => Boolean(targetId && document.getElementById(targetId)),
+        destroy() {
+            cleanups.splice(0, cleanups.length).forEach((cleanup) => cleanup());
+        }
+    };
 }
