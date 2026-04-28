@@ -36,6 +36,14 @@ let presenceRefreshIntervalId = null;
 
 const ONLINE_TTL_MS = 90000;
 
+const runAfterPaint = (callback) => {
+    window.requestAnimationFrame(() => window.setTimeout(callback, 0));
+};
+
+const showAdminMessage = (message) => {
+    window.alert(message);
+};
+
 const presenceToMillis = (value) => {
     if (!value) return 0;
     if (typeof value.toMillis === 'function') return value.toMillis();
@@ -165,7 +173,7 @@ const renderUsersList = (usersToRender) => {
         if (user.isGod) {
             roleBgColor = 'rgba(255, 215, 0, 0.15)';
             roleTextColor = '#ffd700';
-            roleText = '👑 Suprême';
+            roleText = 'Suprême';
         } else if (user.role === 'admin') {
             roleBgColor = 'rgba(255, 74, 74, 0.15)';
             roleTextColor = '#ff4a4a';
@@ -281,14 +289,14 @@ const initUserCreation = () => {
             await sendPasswordResetEmail(auth, email);
 
             msgBox.style.color = "var(--accent-green)";
-            msgBox.textContent = `✅ Compte créé pour ${prenom} ! Email envoyé.`;
+            msgBox.textContent = `Compte créé pour ${prenom}. Email envoyé.`;
 
             form.reset();
             pwdInput.value = generateRandomPassword();
             fetchUsers();
         } catch (error) {
             msgBox.style.color = "var(--accent-red)";
-            msgBox.textContent = "❌ Erreur : " + error.message;
+            msgBox.textContent = "Erreur : " + error.message;
         }
     });
 };
@@ -352,7 +360,7 @@ const openEditModal = (userId) => {
             if (godLabelWrapper) godLabelWrapper.style.display = 'none';
             if (godDesc) {
                 godDesc.style.marginTop = '0';
-                godDesc.innerHTML = "<span style='color: #ffd700; font-size: 1.1rem; font-weight: bold;'>👑 Cet utilisateur est l'Administrateur Suprême (Lecture seule).</span>";
+                godDesc.innerHTML = "<span style='color: #ffd700; font-size: 1.1rem; font-weight: bold;'>Cet utilisateur est l'Administrateur Suprême (Lecture seule).</span>";
             }
         }
     } else if (targetUser.isGod && isCurrentUserGod) {
@@ -366,7 +374,7 @@ const openEditModal = (userId) => {
             if (godLabelWrapper) godLabelWrapper.style.display = 'none';
             if (godDesc) {
                 godDesc.style.marginTop = '0';
-                godDesc.innerHTML = "<span style='color: #ffd700; font-size: 1.1rem; font-weight: bold;'>👑 Vous êtes l'Administrateur Suprême de la plateforme.</span>";
+                godDesc.innerHTML = "<span style='color: #ffd700; font-size: 1.1rem; font-weight: bold;'>Vous êtes l'Administrateur Suprême de la plateforme.</span>";
             }
         }
     } else if (!targetUser.isGod && targetUser.role === 'admin') {
@@ -382,7 +390,7 @@ const openEditModal = (userId) => {
         } else if (isCurrentUserGod && godContainer) {
             godContainer.style.display = 'block';
             if (godCheckbox) godCheckbox.disabled = false;
-            if (godDesc) godDesc.innerHTML = "⚠️ En cochant, vous lui <strong>transférez</strong> vos pouvoirs. Vous les perdrez définitivement.";
+            if (godDesc) godDesc.innerHTML = "Attention : en cochant, vous lui <strong>transférez</strong> vos pouvoirs. Vous les perdrez définitivement.";
         }
     }
 
@@ -406,7 +414,7 @@ const initModalLogic = () => {
         const targetUser = allUsersData.find(u => u.id === userId);
 
         if (targetUser.isGod && !isCurrentUserGod) {
-            alert("❌ Accès refusé : Vous ne pouvez pas modifier le profil de l'Administrateur Suprême.");
+            showAdminMessage("Accès refusé : vous ne pouvez pas modifier le profil de l'Administrateur Suprême.");
             return;
         }
 
@@ -445,34 +453,47 @@ const initModalLogic = () => {
             modal.style.display = 'none';
             fetchUsers();
         } catch (error) {
-            alert("Erreur de sauvegarde.");
+            showAdminMessage("Erreur de sauvegarde.");
         }
     });
 
-    document.getElementById('delete-user-btn').addEventListener('click', async () => {
-        const userId = document.getElementById('edit-user-id').value;
-        const targetUser = allUsersData.find(u => u.id === userId);
+    document.getElementById('delete-user-btn').addEventListener('click', (event) => {
+        event.preventDefault();
 
-        if (targetUser.isGod) {
-            alert("❌ SÉCURITÉ : Le compte Suprême ne peut pas être supprimé !");
-            return;
-        }
+        const deleteBtn = event.currentTarget;
+        deleteBtn.disabled = true;
+        deleteBtn.style.opacity = '0.65';
 
-        if (targetUser.id === currentUid) {
-            alert("❌ SÉCURITÉ : Vous ne pouvez pas supprimer votre propre compte.");
-            return;
-        }
-
-        if (confirm("DANGER ABSOLU : Supprimer définitivement ?")) {
+        runAfterPaint(async () => {
             try {
+                const userId = document.getElementById('edit-user-id').value;
+                const targetUser = allUsersData.find(u => u.id === userId);
+
+                if (!targetUser) return;
+
+                if (targetUser.isGod) {
+                    showAdminMessage("Sécurité : le compte Suprême ne peut pas être supprimé.");
+                    return;
+                }
+
+                if (targetUser.id === currentUid) {
+                    showAdminMessage("Sécurité : vous ne pouvez pas supprimer votre propre compte.");
+                    return;
+                }
+
+                if (!window.confirm("DANGER ABSOLU : supprimer définitivement cet utilisateur ?")) return;
+
                 const deleteUserAccount = httpsCallable(functionsInstance, 'deleteUserAccount');
                 await deleteUserAccount({ uid: userId });
                 modal.style.display = 'none';
                 fetchUsers();
             } catch (error) {
-                alert("❌ Erreur serveur.");
+                showAdminMessage("Erreur serveur pendant la suppression.");
+            } finally {
+                deleteBtn.disabled = false;
+                deleteBtn.style.opacity = '';
             }
-        }
+        });
     });
 
     document.getElementById('reset-pwd-btn').addEventListener('click', async () => {
@@ -480,9 +501,9 @@ const initModalLogic = () => {
 
         try {
             await sendPasswordResetEmail(auth, userEmail);
-            alert(`✅ E-mail de réinitialisation envoyé à ${userEmail}`);
+            showAdminMessage(`E-mail de réinitialisation envoyé à ${userEmail}`);
         } catch (error) {
-            alert("❌ Impossible d'envoyer l'e-mail.");
+            showAdminMessage("Impossible d'envoyer l'e-mail.");
         }
     });
 };
@@ -495,7 +516,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (currentUid) {
                 window.location.href = `admin-profile.html?id=${currentUid}`;
             } else {
-                alert("Veuillez patienter, chargement de l'utilisateur en cours...");
+                showAdminMessage("Veuillez patienter, chargement de l'utilisateur en cours...");
             }
         });
     }

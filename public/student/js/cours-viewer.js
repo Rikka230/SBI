@@ -110,7 +110,7 @@ async function initViewer() {
     isPreviewMode = urlParams.get('preview') === 'true';
     
     if (isPreviewMode) {
-        document.body.insertAdjacentHTML('afterbegin', '<div style="background:var(--accent-orange, #f59e0b); color:white; text-align:center; padding:10px; font-weight:bold; z-index:9999; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">👁️ MODE PRÉVISUALISATION - Aucune donnée d\'apprentissage ne sera sauvegardée.</div>');
+        document.body.insertAdjacentHTML('afterbegin', '<div class="sbi-preview-banner">MODE PRÉVISUALISATION - Aucune donnée d\'apprentissage ne sera sauvegardée.</div>');
     }
     
     if(!courseId) return window.location.replace(getDefaultBackUrl());

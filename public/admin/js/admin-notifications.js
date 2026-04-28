@@ -22,6 +22,7 @@ import {
     arrayUnion
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+import { waitForSbiTopbar } from '/admin/js/components/ready.js';
 import { setupGlobalSearch, clearGlobalSearchCache } from '/admin/js/global-search.js';
 
 let currentUid = null;
@@ -29,6 +30,20 @@ let currentUserProfile = null;
 
 let notificationUnsubscribers = [];
 let notificationStreams = new Map();
+
+function isDebugNotificationsEnabled() {
+    try {
+        return localStorage.getItem('sbiDebugAccess') === 'true';
+    } catch {
+        return false;
+    }
+}
+
+function isExpectedNotificationAccessError(error) {
+    const code = String(error?.code || '').toLowerCase();
+    const message = String(error?.message || '').toLowerCase();
+    return code.includes('permission-denied') || message.includes('missing or insufficient permissions') || message.includes('permission');
+}
 let notificationsInitializedForUid = null;
 
 /* =======================================================================
@@ -50,6 +65,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         currentUid = user.uid;
+
+        await waitForSbiTopbar();
 
         const userSnap = await getDoc(doc(db, "users", currentUid));
 
@@ -80,7 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const topAvatar = document.getElementById('top-user-avatar');
             if (topAvatar) {
-                topAvatar.innerHTML = `<img src="${avatarUrl}" style="width:100%; height:100%; object-fit:cover;">`;
+                topAvatar.innerHTML = `<img src="${avatarUrl}" style="width:100%; height:100%; object-fit:cover;" onerror="this.remove(); this.parentElement.textContent='${displayName.charAt(0).toUpperCase()}';">`;
             }
 
             const topLevel = document.getElementById('top-user-level');
@@ -256,6 +273,12 @@ function initNotificationsRealtime() {
             renderCombinedNotifications();
 
         }, (error) => {
+            if (isExpectedNotificationAccessError(error)) {
+                notificationStreams.set(key, new Map());
+                renderCombinedNotifications();
+                if (isDebugNotificationsEnabled()) console.debug(`[SBI Notifications] Écoute ${key} indisponible :`, error);
+                return;
+            }
             console.error(`[SBI Notifications] Erreur écoute ${key}:`, error);
         });
 
@@ -286,6 +309,14 @@ function renderCombinedNotifications() {
 
     updateRedBadges(notifs.length);
     renderNotificationsList(notifs);
+
+    window.dispatchEvent(new CustomEvent('sbi:notifications-updated', {
+        detail: {
+            count: notifs.length,
+            ids: notifs.map((notif) => notif.id).filter(Boolean),
+            types: notifs.map((notif) => notif.type).filter(Boolean)
+        }
+    }));
 }
 
 async function dismissNotificationForCurrentUser(notifId) {

@@ -1,136 +1,49 @@
-import { auth, db } from '/js/firebase-init.js';
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { waitForSbiComponents as waitForComponentsReady } from '/admin/js/components/ready.js';
+import { initSpaceTheme } from '/admin/js/admin-ui/theme.js';
+import { initPanelControls, initAdminTabs } from '/admin/js/admin-ui/panels.js';
+import { initAdminMediaNav } from '/admin/js/admin-ui/admin-media-nav.js';
+import { initAssistantPrototype } from '/admin/js/admin-ui/assistant.js';
+import { initAdminVisitorShortcut } from '/admin/js/admin-ui/admin-visitor.js';
+import { initEmojiScrubber } from '/admin/js/admin-ui/emoji-scrubber.js';
+import { initSafeComponentPolish } from '/admin/js/admin-ui/component-polish.js';
+import { initSbiNavigationTransitions } from '/js/sbi-navigation-transitions.js';
 
 /**
  * =======================================================================
- * ADMIN UI - Gestion Visuelle et Navigation (A-Z)
+ * ADMIN UI - Point d'entrée modulaire
  * =======================================================================
+ *
+ * 6.8 : admin-ui.js ne porte plus la logique complète.
+ * Il orchestre uniquement les modules UI sûrs.
  */
 
-document.addEventListener('DOMContentLoaded', () => {
-    const appContainer = document.getElementById('app-container');
+async function initAdminUi() {
+    try {
+        await waitForComponentsReady();
 
-    const desktopToggleBtn = document.getElementById('btn-toggle-panel');
-    const mobileToggleBtn = document.getElementById('btn-toggle-mobile');
-    const rightToggleBtn = document.getElementById('btn-toggle-right');
-
-    const navItems = document.querySelectorAll('.nav-item[data-target]');
-    const views = document.querySelectorAll('.admin-view');
-
-    initAdminVisitorShortcut();
-
-    /* --- 1. GESTION DES PANNEAUX --- */
-    setTimeout(() => { document.body.classList.remove('preload'); }, 100);
-
-    if (window.innerWidth > 1024) {
-        if (localStorage.getItem('leftPanelCollapsed') === 'true') appContainer.classList.add('left-collapsed');
-        if (localStorage.getItem('rightPanelCollapsed') === 'true') appContainer.classList.add('right-collapsed');
+        initSpaceTheme();
+        initSbiNavigationTransitions();
+        initAdminMediaNav();
+        initAssistantPrototype();
+        initAdminVisitorShortcut();
+        initEmojiScrubber();
+        initSafeComponentPolish();
+        initPanelControls();
+        initAdminTabs();
+    } catch (error) {
+        console.error('[SBI UI] Initialisation partielle après erreur :', error);
+        document.body.classList.remove('preload');
+        document.body.classList.add('sbi-preload-timeout');
+    } finally {
+        window.setTimeout(() => {
+            document.body.classList.remove('preload');
+            document.body.classList.add('sbi-preload-timeout');
+        }, 120);
     }
+}
 
-    if (desktopToggleBtn) {
-        desktopToggleBtn.addEventListener('click', () => {
-            appContainer.classList.toggle('left-collapsed');
-            localStorage.setItem('leftPanelCollapsed', appContainer.classList.contains('left-collapsed'));
-        });
-    }
-
-    if (mobileToggleBtn) {
-        mobileToggleBtn.addEventListener('click', () => {
-            appContainer.classList.toggle('left-open');
-        });
-    }
-
-    if (rightToggleBtn) {
-        rightToggleBtn.addEventListener('click', () => {
-            if (window.innerWidth > 1024) {
-                appContainer.classList.toggle('right-collapsed');
-                localStorage.setItem('rightPanelCollapsed', appContainer.classList.contains('right-collapsed'));
-            } else {
-                appContainer.classList.toggle('right-open');
-            }
-        });
-    }
-
-    document.addEventListener('click', (e) => {
-        if (window.innerWidth <= 768 && appContainer.classList.contains('left-open')) {
-            if (!e.target.closest('#left-panel') && !e.target.closest('#btn-toggle-mobile')) {
-                appContainer.classList.remove('left-open');
-            }
-        }
-        if (window.innerWidth <= 1024 && appContainer.classList.contains('right-open')) {
-            if (!e.target.closest('#right-panel') && !e.target.closest('#btn-toggle-right')) {
-                appContainer.classList.remove('right-open');
-            }
-        }
-    });
-
-    window.addEventListener('resize', () => {
-        if (window.innerWidth <= 1024) {
-            appContainer.classList.remove('left-open');
-            appContainer.classList.remove('right-open');
-        }
-    });
-    
-    /* --- 2. NAVIGATION ONGLET (SANS F5) --- */
-    const savedTab = sessionStorage.getItem('activeAdminTab') || 'view-dashboard';
-    
-    if(navItems.length > 0 && document.getElementById(savedTab)) {
-        switchView(savedTab);
-    }
-
-    navItems.forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const targetId = e.currentTarget.getAttribute('data-target');
-            if(targetId && document.getElementById(targetId)) {
-                switchView(targetId);
-            }
-            
-            if (window.innerWidth <= 768) {
-                appContainer.classList.remove('left-open');
-            }
-        });
-    });
-
-    function switchView(targetId) {
-        const activeView = document.getElementById(targetId);
-        if (!activeView) return; 
-
-        navItems.forEach(b => b.classList.remove('active'));
-        views.forEach(v => v.classList.remove('active'));
-
-        const activeBtn = document.querySelector(`.nav-item[data-target="${targetId}"]`);
-        if (activeBtn) activeBtn.classList.add('active');
-        activeView.classList.add('active');
-
-        sessionStorage.setItem('activeAdminTab', targetId);
-    }
-});
-
-
-function initAdminVisitorShortcut() {
-    const path = window.location.pathname;
-    const isRoleSpace = path.startsWith('/teacher/') || path.startsWith('/student/');
-
-    if (!isRoleSpace || !document.querySelector('.admin-return-link')) {
-        document.body.classList.remove('sbi-admin-visitor');
-        return;
-    }
-
-    onAuthStateChanged(auth, async (user) => {
-        if (!user) {
-            document.body.classList.remove('sbi-admin-visitor');
-            return;
-        }
-
-        try {
-            const userSnap = await getDoc(doc(db, 'users', user.uid));
-            const userData = userSnap.exists() ? userSnap.data() : null;
-            const canReturnToAdmin = userData?.isGod === true || userData?.role === 'admin';
-            document.body.classList.toggle('sbi-admin-visitor', canReturnToAdmin);
-        } catch (error) {
-            console.warn('[SBI UI] Impossible de vérifier le raccourci admin :', error);
-            document.body.classList.remove('sbi-admin-visitor');
-        }
-    });
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initAdminUi);
+} else {
+    initAdminUi();
 }

@@ -4,10 +4,10 @@
 
 /* --- SECTION 1 : VARIABLES & TYPOGRAPHIE --- */
 :root {
-    --bg-dark: #020306;
-    --bg-surface: #070b13;
-    --bg-card: #090e19;
-    --border-color: #1a2235;
+    --bg-dark: #050913;
+    --bg-surface: #0a1120;
+    --bg-card: #0d1526;
+    --border-color: #26324c;
     --sbi-blue: #0051ff;
     --sbi-blue-hover: #003cc2;
     --text-light: #ffffff;

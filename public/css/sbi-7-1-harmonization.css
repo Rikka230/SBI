@@ -1,0 +1,394 @@
+/* =======================================================================
+   SBI 7.1 - Harmonisation profils / éditeur cours / visualiseuse
+   -----------------------------------------------------------------------
+   Couche visuelle non-métier : aucun accès, aucune auth, aucune donnée.
+   ======================================================================= */
+
+.sbi-admin-surface {
+    --sbi-role-accent: var(--accent-blue, #2A57FF);
+    --sbi-role-soft: rgba(42, 87, 255, 0.14);
+    --sbi-role-glow: rgba(42, 87, 255, 0.24);
+    --sbi-role-line: rgba(42, 87, 255, 0.32);
+    --sbi-card-shadow: 0 22px 70px rgba(0, 0, 0, 0.34);
+}
+
+.sbi-student-surface {
+    --sbi-role-accent: var(--accent-blue, #2A57FF);
+    --sbi-role-soft: rgba(42, 87, 255, 0.10);
+    --sbi-role-glow: rgba(42, 87, 255, 0.16);
+    --sbi-role-line: rgba(42, 87, 255, 0.22);
+    --sbi-card-shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
+}
+
+.sbi-teacher-surface {
+    --sbi-role-accent: var(--accent-orange, #f59e0b);
+    --sbi-role-soft: rgba(245, 158, 11, 0.12);
+    --sbi-role-glow: rgba(245, 158, 11, 0.18);
+    --sbi-role-line: rgba(245, 158, 11, 0.28);
+    --sbi-card-shadow: 0 18px 45px rgba(120, 53, 15, 0.10);
+}
+
+.sbi-profile-page #main-content,
+.sbi-course-editor-page #main-content {
+    position: relative;
+    isolation: isolate;
+}
+
+.sbi-profile-page #main-content::before,
+.sbi-course-editor-page #main-content::before,
+.sbi-course-viewer-page .viewer-main::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+        radial-gradient(circle at 12% 8%, var(--sbi-role-soft), transparent 32%),
+        radial-gradient(circle at 86% 18%, rgba(255, 255, 255, 0.07), transparent 28%),
+        linear-gradient(135deg, rgba(255, 255, 255, 0.02), transparent 52%);
+}
+
+.sbi-student-surface #main-content::before,
+.sbi-teacher-surface #main-content::before,
+.sbi-student-surface.sbi-course-viewer-page .viewer-main::before,
+.sbi-teacher-surface.sbi-course-viewer-page .viewer-main::before {
+    background:
+        radial-gradient(circle at 10% 6%, var(--sbi-role-soft), transparent 30%),
+        radial-gradient(circle at 90% 12%, rgba(15, 23, 42, 0.045), transparent 28%),
+        linear-gradient(145deg, rgba(255, 255, 255, 0.52), transparent 55%);
+}
+
+.sbi-profile-page .content-wrapper,
+.sbi-course-editor-page .content-wrapper {
+    width: min(100%, 1480px);
+    margin-inline: auto;
+}
+
+.sbi-profile-page .profile-header,
+.sbi-profile-page .profile-header-card,
+.sbi-profile-page .hub-card,
+.sbi-profile-page .data-group,
+.sbi-profile-page .gamification-box,
+.sbi-course-editor-page .hub-card,
+.sbi-course-editor-page #tab-list > div:first-child,
+.sbi-course-editor-page #tab-tracking > div,
+.sbi-course-editor-page #chapter-editor-zone,
+.sbi-course-editor-page #quiz-editor-zone {
+    border-radius: 22px !important;
+    border-color: color-mix(in srgb, var(--sbi-role-accent) 18%, var(--border-color)) !important;
+    box-shadow: var(--sbi-card-shadow) !important;
+}
+
+.sbi-profile-page .profile-header,
+.sbi-profile-page .profile-header-card {
+    overflow: hidden;
+}
+
+.sbi-profile-page .profile-header::before {
+    height: 100% !important;
+    opacity: 0.12 !important;
+    background:
+        linear-gradient(135deg, var(--sbi-role-accent), transparent 58%),
+        radial-gradient(circle at 90% 12%, var(--sbi-role-glow), transparent 34%) !important;
+}
+
+.sbi-profile-page .profile-header::after {
+    width: 210px !important;
+    height: 210px !important;
+    border-color: var(--sbi-role-line) !important;
+    opacity: 0.8;
+}
+
+.sbi-profile-page .profile-cover {
+    height: 170px;
+    background:
+        linear-gradient(135deg, rgba(42, 87, 255, 0.20), rgba(42, 87, 255, 0.03)),
+        radial-gradient(circle at 82% 26%, rgba(255, 255, 255, 0.12), transparent 34%),
+        var(--bg-dark) !important;
+}
+
+.sbi-profile-page .profile-main-info {
+    align-items: center;
+}
+
+.sbi-profile-page .avatar-wrapper {
+    box-shadow: 0 16px 34px var(--sbi-role-glow);
+}
+
+.sbi-profile-page .profile-grid,
+.sbi-profile-page .profile-header + div[style*='grid-template-columns'] {
+    grid-template-columns: minmax(280px, 0.85fr) minmax(0, 2fr) !important;
+    gap: 1.75rem !important;
+}
+
+.sbi-profile-page .profile-tabs-header,
+.sbi-course-editor-page .sub-nav,
+.sbi-course-editor-page .student-sub-nav {
+    gap: 0.35rem !important;
+    padding: 0.35rem !important;
+    border-bottom: none !important;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--bg-card) 82%, var(--sbi-role-accent) 8%);
+    border: 1px solid color-mix(in srgb, var(--sbi-role-accent) 16%, var(--border-color));
+    box-shadow: 0 12px 34px rgba(15, 23, 42, 0.06);
+}
+
+.sbi-profile-page .p-tab,
+.sbi-course-editor-page .sub-nav-item,
+.sbi-course-editor-page .student-sub-nav-item {
+    border-bottom: none !important;
+    border-radius: 999px;
+    padding: 0.78rem 1.05rem !important;
+}
+
+.sbi-profile-page .p-tab.active,
+.sbi-course-editor-page .sub-nav-item.active,
+.sbi-course-editor-page .student-sub-nav-item.active {
+    color: #fff !important;
+    background: var(--sbi-role-accent);
+    box-shadow: 0 10px 24px var(--sbi-role-glow);
+}
+
+.sbi-profile-page .prof-input,
+.sbi-profile-page textarea,
+.sbi-profile-page input[type='text'],
+.sbi-course-editor-page .prof-input,
+.sbi-course-editor-page input[type='text'],
+.sbi-course-editor-page select,
+.sbi-course-editor-page textarea {
+    border-radius: 14px !important;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, transform 0.2s ease;
+}
+
+.sbi-profile-page .prof-input:focus,
+.sbi-profile-page textarea:focus,
+.sbi-profile-page input[type='text']:focus,
+.sbi-course-editor-page .prof-input:focus,
+.sbi-course-editor-page input[type='text']:focus,
+.sbi-course-editor-page select:focus,
+.sbi-course-editor-page textarea:focus {
+    border-color: var(--sbi-role-accent) !important;
+    box-shadow: 0 0 0 4px var(--sbi-role-soft) !important;
+}
+
+.sbi-profile-page .action-btn,
+.sbi-course-editor-page .action-btn,
+.sbi-course-editor-page button {
+    border-radius: 14px !important;
+}
+
+.sbi-course-editor-page .formation-pill {
+    border-radius: 999px !important;
+    padding: 0.55rem 0.95rem !important;
+}
+
+.sbi-course-editor-page .formation-pill.selected {
+    box-shadow: 0 8px 20px var(--sbi-role-glow);
+}
+
+.sbi-course-editor-page #tab-editor > div[style*='grid-template-columns'] {
+    grid-template-columns: minmax(0, 1.55fr) minmax(320px, 0.75fr) !important;
+    align-items: start;
+}
+
+.sbi-teacher-surface.sbi-course-editor-page .hub-grid {
+    grid-template-columns: minmax(300px, 0.76fr) minmax(0, 1.8fr) !important;
+    gap: 1.75rem !important;
+}
+
+.sbi-course-editor-page .drag-drop-zone,
+.sbi-course-editor-page .upload-zone,
+.sbi-course-editor-page #no-chapter-zone {
+    border-radius: 18px !important;
+    border-color: color-mix(in srgb, var(--sbi-role-accent) 18%, var(--border-color)) !important;
+    background: color-mix(in srgb, var(--bg-card) 88%, var(--sbi-role-accent) 6%) !important;
+}
+
+.sbi-course-editor-page .drag-drop-zone:hover,
+.sbi-course-editor-page .upload-zone:hover {
+    transform: translateY(-1px);
+    border-color: var(--sbi-role-accent) !important;
+    box-shadow: 0 12px 30px var(--sbi-role-glow);
+}
+
+.sbi-course-editor-page .ql-toolbar.ql-snow {
+    border-radius: 16px 16px 0 0 !important;
+    border-color: color-mix(in srgb, var(--sbi-role-accent) 18%, var(--border-color)) !important;
+}
+
+.sbi-course-editor-page .ql-container.ql-snow,
+.sbi-course-editor-page #course-editor,
+.sbi-course-editor-page #quill-editor {
+    border-radius: 0 0 18px 18px !important;
+    border-color: color-mix(in srgb, var(--sbi-role-accent) 18%, var(--border-color)) !important;
+}
+
+.sbi-course-editor-page .ql-editor {
+    min-height: 320px;
+}
+
+.sbi-course-editor-page #lock-warning-banner,
+.sbi-course-editor-page .sbi-warning-text {
+    border-radius: 16px !important;
+    border: 1px solid rgba(239, 68, 68, 0.34) !important;
+    background: rgba(239, 68, 68, 0.08) !important;
+}
+
+.sbi-course-viewer-page {
+    --sbi-viewer-max: 920px;
+}
+
+.sbi-course-viewer-page .viewer-header {
+    height: 76px;
+    padding-inline: clamp(1rem, 3vw, 2.4rem);
+    background: color-mix(in srgb, var(--bg-header) 88%, var(--sbi-role-accent) 5%) !important;
+    border-bottom-color: color-mix(in srgb, var(--sbi-role-accent) 18%, var(--border-color)) !important;
+    box-shadow: 0 14px 38px rgba(15, 23, 42, 0.08) !important;
+}
+
+.sbi-course-viewer-page .btn-back-hub {
+    border-radius: 999px !important;
+    border-color: color-mix(in srgb, var(--sbi-role-accent) 18%, var(--border-color)) !important;
+}
+
+.sbi-course-viewer-page .btn-back-hub:hover {
+    color: var(--sbi-role-accent) !important;
+    box-shadow: 0 10px 24px var(--sbi-role-glow);
+}
+
+.sbi-course-viewer-page .viewer-body {
+    height: calc(100vh - 76px);
+}
+
+.sbi-course-viewer-page .viewer-main {
+    position: relative;
+    padding: clamp(1.4rem, 4vw, 3.4rem) !important;
+}
+
+.sbi-course-viewer-page .viewer-sidebar {
+    width: 340px;
+    border-left-color: color-mix(in srgb, var(--sbi-role-accent) 16%, var(--border-color)) !important;
+}
+
+.sbi-course-viewer-page .chapter-tab {
+    border-radius: 16px !important;
+    margin: 0.45rem 1rem !important;
+}
+
+.sbi-course-viewer-page .chapter-tab.active {
+    background: var(--sbi-role-soft) !important;
+    border-color: var(--sbi-role-line) !important;
+    box-shadow: 0 10px 24px var(--sbi-role-glow);
+}
+
+.sbi-course-viewer-page .chapter-tab.done .tab-title,
+.sbi-course-viewer-page .active .tab-title {
+    color: var(--sbi-role-accent) !important;
+}
+
+.sbi-course-viewer-page .media-container,
+.sbi-course-viewer-page .text-container,
+.sbi-course-viewer-page .action-bar {
+    max-width: var(--sbi-viewer-max) !important;
+}
+
+.sbi-course-viewer-page .text-container,
+.sbi-course-viewer-page .media-container img,
+.sbi-course-viewer-page .media-container video,
+.sbi-course-viewer-page .quiz-result-box {
+    border-radius: 24px !important;
+    border-color: color-mix(in srgb, var(--sbi-role-accent) 14%, var(--border-color)) !important;
+    box-shadow: 0 18px 52px rgba(15, 23, 42, 0.10) !important;
+}
+
+.sbi-course-viewer-page .btn-validate {
+    border-radius: 999px !important;
+    background: var(--sbi-role-accent) !important;
+    box-shadow: 0 14px 30px var(--sbi-role-glow) !important;
+}
+
+.sbi-course-viewer-page .btn-validate:disabled {
+    background: #e5e7eb !important;
+    box-shadow: none !important;
+}
+
+.sbi-course-viewer-page .quiz-option {
+    border-radius: 16px !important;
+}
+
+.sbi-preview-banner {
+    background: var(--sbi-role-accent, #f59e0b);
+    color: #fff;
+    text-align: center;
+    padding: 0.75rem 1rem;
+    font-weight: 900;
+    letter-spacing: 0.04em;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+@media (max-width: 1180px) {
+    .sbi-profile-page .profile-grid,
+    .sbi-profile-page .profile-header + div[style*='grid-template-columns'],
+    .sbi-course-editor-page #tab-editor > div[style*='grid-template-columns'],
+    .sbi-teacher-surface.sbi-course-editor-page .hub-grid {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+@media (max-width: 860px) {
+    .sbi-profile-page .profile-header,
+    .sbi-profile-page .profile-main-info {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .sbi-profile-page .profile-tabs-header,
+    .sbi-course-editor-page .sub-nav,
+    .sbi-course-editor-page .student-sub-nav {
+        border-radius: 18px;
+        overflow-x: auto;
+    }
+
+    .sbi-course-viewer-page .viewer-header {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+        height: auto;
+        min-height: 84px;
+        align-items: start;
+        padding-block: 0.9rem;
+    }
+
+    .sbi-course-viewer-page .viewer-header > div[style*='width'] {
+        display: none;
+    }
+
+    .sbi-course-viewer-page .viewer-body {
+        flex-direction: column;
+        height: calc(100vh - 112px);
+    }
+
+    .sbi-course-viewer-page .viewer-sidebar {
+        order: -1;
+        width: 100%;
+        max-height: 34vh;
+        border-left: none;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .sbi-course-viewer-page .viewer-main {
+        padding: 1rem !important;
+    }
+
+    .sbi-course-viewer-page .text-container {
+        padding: 1.35rem !important;
+    }
+
+    .sbi-course-viewer-page .action-bar {
+        justify-content: stretch !important;
+    }
+
+    .sbi-course-viewer-page .btn-validate {
+        width: 100%;
+    }
+}

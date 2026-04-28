@@ -29,6 +29,24 @@ import {
 const AVATAR_FOLDER = 'avatar';
 const AVATAR_MAX_DATA_URL_BYTES = 8 * 1024 * 1024;
 
+function isDebugAvatarEnabled() {
+    try {
+        return localStorage.getItem('sbiDebugAccess') === 'true';
+    } catch {
+        return false;
+    }
+}
+
+function isStorageObjectNotFound(error) {
+    const code = String(error?.code || '').toLowerCase();
+    const message = String(error?.message || '').toLowerCase();
+    return code.includes('object-not-found') || message.includes('object-not-found') || message.includes('not found');
+}
+
+function debugAvatar(message, ...args) {
+    if (isDebugAvatarEnabled()) console.debug(message, ...args);
+}
+
 export const isLegacyAvatarDataUrl = (value) => {
     return typeof value === 'string' && /^data:image\//i.test(value.trim());
 };
@@ -100,6 +118,10 @@ export const deletePreviousAvatarFromStorage = async (userId, previousStoragePat
         await deleteObject(ref(storage, previousStoragePath));
         return { deleted: true, skipped: false };
     } catch (error) {
+        if (isStorageObjectNotFound(error) || isPermissionError(error)) {
+            debugAvatar('[SBI Avatar] Ancien avatar Storage non supprimé :', previousStoragePath, error);
+            return { deleted: false, skipped: true, error };
+        }
         console.warn('[SBI Avatar] Ancien avatar Storage non supprimé :', previousStoragePath, error);
         return { deleted: false, skipped: false, error };
     }
@@ -131,22 +153,58 @@ export const uploadAvatarDataUrl = async (userId, dataUrl, options = {}) => {
     };
 };
 
-export const saveProfileAvatarToStorage = async (userId, dataUrl, previousStoragePath = null, options = {}) => {
-    const uploaded = await uploadAvatarDataUrl(userId, dataUrl, options);
+const isPermissionError = (error) => {
+    return error?.code === 'permission-denied' || /permission/i.test(String(error?.message || ''));
+};
 
-    await updateDoc(doc(db, 'users', userId), {
+const updateUserAvatarDocument = async (userId, uploaded) => {
+    const fullPayload = {
         photoURL: uploaded.downloadURL,
         photoStoragePath: uploaded.storagePath,
         photoOriginal: deleteField(),
         avatarUpdatedAt: serverTimestamp(),
         avatarStorageVersion: 1
-    });
+    };
+
+    try {
+        await updateDoc(doc(db, 'users', userId), fullPayload);
+        return { fullMetadataSaved: true, fallbackSaved: false };
+    } catch (error) {
+        if (!isPermissionError(error)) throw error;
+
+        /**
+         * Compatibilité rules anciennes : avant 6.9.1, les profils élève/prof
+         * pouvaient modifier photoURL/photoOriginal/updatedAt, mais pas encore
+         * photoStoragePath/avatarUpdatedAt/avatarStorageVersion.
+         *
+         * On sauvegarde donc au minimum l'URL Storage pour ne pas bloquer
+         * l'utilisateur. Après déploiement de firestore.rules 6.9.1, la
+         * sauvegarde complète des métadonnées repassera automatiquement.
+         */
+        debugAvatar('[SBI Avatar] Metadata Storage complète refusée, fallback photoURL utilisé.', error);
+
+        await updateDoc(doc(db, 'users', userId), {
+            photoURL: uploaded.downloadURL,
+            photoOriginal: deleteField(),
+            updatedAt: serverTimestamp()
+        });
+
+        return { fullMetadataSaved: false, fallbackSaved: true };
+    }
+};
+
+export const saveProfileAvatarToStorage = async (userId, dataUrl, previousStoragePath = null, options = {}) => {
+    const uploaded = await uploadAvatarDataUrl(userId, dataUrl, options);
+    const updateResult = await updateUserAvatarDocument(userId, uploaded);
 
     if (previousStoragePath && previousStoragePath !== uploaded.storagePath) {
         await deletePreviousAvatarFromStorage(userId, previousStoragePath);
     }
 
-    return uploaded;
+    return {
+        ...uploaded,
+        ...updateResult
+    };
 };
 
 export const migrateLegacyAvatarForUser = async (userId, userData = {}, options = {}) => {
@@ -253,7 +311,11 @@ export const getProfileAvatarCropSource = async (userId, userData = {}) => {
                 needsCorsForCanvas: true
             };
         } catch (error) {
-            console.warn('[SBI Avatar] URL Storage avatar impossible à récupérer :', userData.photoStoragePath, error);
+            if (isStorageObjectNotFound(error) || isPermissionError(error)) {
+                debugAvatar('[SBI Avatar] URL Storage avatar impossible à récupérer :', userData.photoStoragePath, error);
+            } else {
+                console.warn('[SBI Avatar] URL Storage avatar impossible à récupérer :', userData.photoStoragePath, error);
+            }
         }
     }
 

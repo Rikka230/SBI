@@ -3,17 +3,18 @@
  * MES COURS - Logique de navigation Formations -> Blocs -> Cours
  * =======================================================================
  *
- * Étape 5.2.4B :
- * - suppression du scan global formations/courses côté élève
- * - formations chargées via where("students", "array-contains", uid)
- * - cours chargés via where("formations", "array-contains-any", formationIds)
- * - mode preview admin/isGod conservé
+ * Patch accès cours 6.7B :
+ * - priorité à users/{uid}.formationIds, plus stable avec des rules strictes
+ * - fallback formationsAcces legacy par titre
+ * - fallback membership where("students", "array-contains", uid)
+ * - les erreurs permission/index ne font plus tomber toute la page
  * =======================================================================
  */
 
 import { db, auth } from '/js/firebase-init.js';
 import {
     collection,
+    documentId,
     getDocs,
     doc,
     getDoc,
@@ -21,7 +22,13 @@ import {
     where
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+import { waitForSbiTopbar } from '/admin/js/components/ready.js';
 import { getUserLearningProgress } from '/js/course-engine.js';
+import {
+    courseBelongsToFormation as sharedCourseBelongsToFormation,
+    loadAssignedFormationsForUser,
+    loadCoursesForUser
+} from '/js/learning-access.js';
 
 let currentUid = null;
 let userData = {};
@@ -39,6 +46,7 @@ document.addEventListener('DOMContentLoaded', () => {
         currentUid = user.uid;
 
         try {
+            await waitForSbiTopbar();
             await loadStudentProfile();
             await loadStudentProgress();
             updateTopBar();
@@ -51,6 +59,8 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.error("Erreur d'initialisation :", error);
             showFormationsError();
+        } finally {
+            document.body.classList.remove('preload');
         }
     });
 
@@ -71,6 +81,46 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 });
+
+async function waitForSbiComponents() {
+    if (window.__SBI_COMPONENTS_READY === true) {
+        await waitForElements(['top-user-name', 'top-user-avatar'], 1200);
+        return;
+    }
+
+    if (window.SBI_COMPONENTS_READY && typeof window.SBI_COMPONENTS_READY.then === 'function') {
+        await Promise.race([
+            window.SBI_COMPONENTS_READY.catch(() => {}),
+            sleep(1500)
+        ]);
+    } else {
+        await new Promise((resolve) => {
+            const timeout = window.setTimeout(resolve, 1500);
+            window.addEventListener('sbi:components-ready', () => {
+                window.clearTimeout(timeout);
+                resolve();
+            }, { once: true });
+        });
+    }
+
+    await waitForElements(['top-user-name', 'top-user-avatar'], 1200);
+}
+
+async function waitForElements(ids, timeoutMs = 1200) {
+    const start = Date.now();
+
+    while (Date.now() - start < timeoutMs) {
+        const ready = ids.every((id) => document.getElementById(id));
+        if (ready) return true;
+        await sleep(50);
+    }
+
+    return false;
+}
+
+function sleep(ms) {
+    return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
 
 /* =======================================================================
  * PROFIL / PROGRESSION
@@ -158,78 +208,123 @@ function uniqById(items) {
     return Array.from(map.values());
 }
 
+function normalizeFormationValues(values) {
+    if (!Array.isArray(values)) return [];
+
+    return Array.from(
+        new Set(
+            values
+                .filter(Boolean)
+                .map(value => String(value).trim())
+                .filter(Boolean)
+        )
+    );
+}
+
+async function safeGetDocs(queryRef, label = 'requête Firestore') {
+    try {
+        return await getDocs(queryRef);
+    } catch (error) {
+        console.warn(`[SBI Student Access] ${label} ignorée :`, error);
+        return null;
+    }
+}
+
+async function loadFormationsByIds(formationIds) {
+    const safeIds = normalizeFormationValues(formationIds);
+    if (!safeIds.length) return [];
+
+    const formations = [];
+
+    for (const chunk of chunkArray(safeIds, 10)) {
+        const byIdsQuery = query(
+            collection(db, "formations"),
+            where(documentId(), "in", chunk)
+        );
+
+        const snap = await safeGetDocs(byIdsQuery, 'formations par IDs');
+        if (!snap) continue;
+
+        snap.forEach((docSnap) => {
+            formations.push({
+                id: docSnap.id,
+                ...docSnap.data()
+            });
+        });
+    }
+
+    return formations;
+}
+
+async function loadFormationsByTitles(formationTitles) {
+    const safeTitles = normalizeFormationValues(formationTitles);
+    if (!safeTitles.length) return [];
+
+    const formations = [];
+
+    for (const chunk of chunkArray(safeTitles, 10)) {
+        const byTitleQuery = query(
+            collection(db, "formations"),
+            where("titre", "in", chunk)
+        );
+
+        const snap = await safeGetDocs(byTitleQuery, 'formations par titres legacy');
+        if (!snap) continue;
+
+        snap.forEach((docSnap) => {
+            formations.push({
+                id: docSnap.id,
+                ...docSnap.data()
+            });
+        });
+    }
+
+    return formations;
+}
+
+async function loadFormationsByMembership() {
+    const assignedQuery = query(
+        collection(db, "formations"),
+        where("students", "array-contains", currentUid)
+    );
+
+    const snap = await safeGetDocs(assignedQuery, 'formations par students');
+    if (!snap) return [];
+
+    const formations = [];
+
+    snap.forEach((docSnap) => {
+        formations.push({
+            id: docSnap.id,
+            ...docSnap.data()
+        });
+    });
+
+    return formations;
+}
+
 async function loadAssignedFormations() {
     const list = document.getElementById('formations-list');
     if (list) {
         list.innerHTML = '<p style="color:var(--text-muted);">Chargement des formations...</p>';
     }
 
-    assignedFormations = [];
-
-    if (isAdminPreview()) {
-        const snap = await getDocs(collection(db, "formations"));
-
-        snap.forEach((docSnap) => {
-            assignedFormations.push({
-                id: docSnap.id,
-                ...docSnap.data()
-            });
-        });
-
-        assignedFormations.sort(sortByTitle);
-        return;
-    }
-
-    const assignedQuery = query(
-        collection(db, "formations"),
-        where("students", "array-contains", currentUid)
-    );
-
-    const snap = await getDocs(assignedQuery);
-
-    snap.forEach((docSnap) => {
-        assignedFormations.push({
-            id: docSnap.id,
-            ...docSnap.data()
-        });
+    assignedFormations = await loadAssignedFormationsForUser({
+        uid: currentUid,
+        userData,
+        role: isAdminPreview() ? 'admin' : 'student'
     });
-
-    assignedFormations.sort(sortByTitle);
 }
 
-async function loadAssignedCourses() {
-    allCourses = [];
+async function loadActiveCoursesByFormationValues(formationValues) {
+    const safeValues = normalizeFormationValues(formationValues);
 
-    if (isAdminPreview()) {
-        const snap = await getDocs(
-            query(
-                collection(db, "courses"),
-                where("actif", "==", true)
-            )
-        );
-
-        snap.forEach((docSnap) => {
-            allCourses.push({
-                id: docSnap.id,
-                ...docSnap.data()
-            });
-        });
-
-        allCourses.sort(sortCourses);
-        return;
+    if (safeValues.length === 0) {
+        return [];
     }
 
-    const formationIds = assignedFormations
-        .map((formation) => formation.id)
-        .filter(Boolean);
-
-    if (formationIds.length === 0) {
-        allCourses = [];
-        return;
-    }
-
-    const chunks = chunkArray(formationIds, 10);
     const courses = [];
+    const chunks = chunkArray(safeValues, 10);
 
     for (const chunk of chunks) {
         const coursesQuery = query(
@@ -238,7 +333,8 @@ async function loadAssignedCourses() {
             where("actif", "==", true)
         );
 
-        const snap = await getDocs(coursesQuery);
+        const snap = await safeGetDocs(coursesQuery, 'cours actifs par formation');
+        if (!snap) continue;
 
         snap.forEach((docSnap) => {
             courses.push({
@@ -248,7 +344,19 @@ async function loadAssignedCourses() {
         });
     }
 
-    allCourses = uniqById(courses).sort(sortCourses);
+    return courses;
+}
+
+async function loadAssignedCourses() {
+    allCourses = await loadCoursesForUser({
+        uid: currentUid,
+        userData,
+        role: isAdminPreview() ? 'admin' : 'student',
+        formations: assignedFormations,
+        progress: userProgress,
+        includeProgress: true,
+        activeOnly: !isAdminPreview()
+    });
 }
 
 /* =======================================================================
@@ -265,8 +373,8 @@ function renderAssignedFormations() {
     }
 
     list.innerHTML = assignedFormations.map((formation) => {
-        const totalCourses = getCoursesForFormation(formation.id).length;
-        const completedCourses = getCompletedCoursesForFormation(formation.id);
+        const totalCourses = getCoursesForFormation(formation).length;
+        const completedCourses = getCompletedCoursesForFormation(formation);
         const progressPercent = totalCourses === 0
             ? 0
             : Math.round((completedCourses / totalCourses) * 100);
@@ -296,22 +404,25 @@ function renderAssignedFormations() {
 
     document.querySelectorAll('.formation-folder').forEach((folder) => {
         folder.addEventListener('click', () => {
-            window.openFormation(
-                folder.dataset.formationId,
-                folder.dataset.formationTitle
-            );
+            const formation = assignedFormations.find((item) => item.id === folder.dataset.formationId);
+            window.openFormation(formation || {
+                id: folder.dataset.formationId,
+                titre: folder.dataset.formationTitle
+            });
         });
     });
 }
 
-function getCoursesForFormation(formationId) {
-    return allCourses.filter((course) => {
-        return Array.isArray(course.formations) && course.formations.includes(formationId);
-    });
+function courseBelongsToFormation(course, formation) {
+    return sharedCourseBelongsToFormation(course, formation, assignedFormations);
 }
 
-function getCompletedCoursesForFormation(formationId) {
-    return getCoursesForFormation(formationId).filter((course) => {
+function getCoursesForFormation(formation) {
+    return allCourses.filter((course) => courseBelongsToFormation(course, formation));
+}
+
+function getCompletedCoursesForFormation(formation) {
+    return getCoursesForFormation(formation).filter((course) => {
         return userProgress.courses[course.id]?.status === 'done';
     }).length;
 }
@@ -320,7 +431,14 @@ function getCompletedCoursesForFormation(formationId) {
  * RENDU COURS
  * ======================================================================= */
 
-window.openFormation = function(formationId, formationTitre) {
+window.openFormation = function(formationOrId, formationTitre = '') {
+    const formation = typeof formationOrId === 'object'
+        ? formationOrId
+        : assignedFormations.find((item) => item.id === formationOrId) || {
+            id: formationOrId,
+            titre: formationTitre
+        };
+
     const viewFormations = document.getElementById('view-formations');
     const viewCourses = document.getElementById('view-courses');
     const title = document.getElementById('current-formation-title');
@@ -329,13 +447,13 @@ window.openFormation = function(formationId, formationTitre) {
 
     if (viewFormations) viewFormations.style.display = 'none';
     if (viewCourses) viewCourses.style.display = 'flex';
-    if (title) title.textContent = formationTitre || 'Formation';
+    if (title) title.textContent = formation.titre || 'Formation';
     if (searchInput) searchInput.value = '';
     if (!container) return;
 
     container.innerHTML = '';
 
-    const coursesInFormation = getCoursesForFormation(formationId);
+    const coursesInFormation = getCoursesForFormation(formation);
 
     if (coursesInFormation.length === 0) {
         container.innerHTML = '<p style="color:var(--text-muted);">Aucun cours actif dans cette formation.</p>';

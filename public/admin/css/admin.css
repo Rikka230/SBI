@@ -1,3 +1,9 @@
+@import url('/admin/css/sbi-internal-theme.css');
+@import url('/admin/css/sbi-ui-polish.css');
+@import url('/admin/css/sbi-ui-fixes.css');
+@import url('/admin/css/sbi-admin-cockpit.css');
+@import url('/admin/css/sbi-admin-management-polish.css');
+
 /**
  * =======================================================================
  * ADMIN THEME - Design Firebase & Couleurs (A-Z)
@@ -245,35 +251,6 @@ input[type="checkbox"]:not(.q-correct-cb):not(.compact-cb):checked {
 input[type="checkbox"]:not(.q-correct-cb):not(.compact-cb):checked::after {
     transform: translateX(20px);
     background: var(--accent-blue);
-}
-
-/* 2. Checkbox carrées classiques pour les réponses du QCM */
-input[type="checkbox"].q-correct-cb {
-    appearance: none;
-    -webkit-appearance: none;
-    width: 22px;
-    height: 22px;
-    background: #222;
-    border: 2px solid #555;
-    border-radius: 4px;
-    cursor: pointer;
-    position: relative;
-    transition: 0.2s;
-    flex-shrink: 0;
-}
-input[type="checkbox"].q-correct-cb:checked {
-    background: var(--accent-green);
-    border-color: var(--accent-green);
-}
-input[type="checkbox"].q-correct-cb:checked::after {
-    content: '✔';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    color: #000;
-    font-weight: bold;
-    font-size: 14px;
 }
 
 /* 2. Checkbox carrées classiques pour les réponses du QCM */

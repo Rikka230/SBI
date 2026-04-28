@@ -82,15 +82,25 @@ if (shouldEnableAnalytics()) {
             }
 
             analytics = getAnalytics(app);
-            console.log('📊 Firebase Analytics SBI activé manuellement.');
+            console.log('Firebase Analytics SBI activé manuellement.');
         })
         .catch((error) => {
             console.warn('[SBI Firebase] Analytics désactivé :', error);
         });
 }
 
-console.log("🔥 Firebase SBI initialisé avec succès : Cache actif");
+/* --- 1.7 MÉDIAS DYNAMIQUES INDEX PUBLIC --- */
+const path = window.location.pathname.toLowerCase();
+const isPublicIndex = path === '/' || path.endsWith('/index.html') || path === '/index.html';
 
-/* --- 1.7 EXPORTATION DES SERVICES --- */
+if (isPublicIndex) {
+    import('/js/site-index-public.js').catch((error) => {
+        console.warn('[SBI Index] Configuration médias dynamique indisponible :', error);
+    });
+}
+
+console.log("Firebase SBI initialisé avec succès : Cache actif");
+
+/* --- 1.8 EXPORTATION DES SERVICES --- */
 // Permet d'utiliser ces variables dans main.js, admin.js, auth.js, etc.
 export { app, auth, db, storage, analytics };

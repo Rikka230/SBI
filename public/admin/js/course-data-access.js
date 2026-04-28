@@ -12,13 +12,12 @@
  *
  * Teacher :
  * - users : uniquement son propre profil pour éviter de polluer les accès
- * - formations : formations où il est prof + fallback par users/{uid}.formationIds
+ * - formations : formationIds + formationsAcces legacy + formations où il est prof
  * - courses : ses cours + cours actifs liés à ses formations
  *
- * Objectifs :
- * - garder les pages prof utilisables avec les règles 5.3 stabilisées
- * - permettre aux profs de voir les blocs/cours actifs déjà créés par admin
- * - conserver la séparation édition : un prof ne modifie que ses propres cours
+ * Important 6.7B : les requêtes membership peuvent être refusées selon les
+ * rules actives ou les index Firestore. Elles ne doivent plus faire tomber
+ * toute la page : on privilégie les IDs déjà synchronisés sur users/{uid}.
  * =======================================================================
  */
 
@@ -72,6 +71,49 @@ function chunkArray(items, size = 10) {
     return chunks;
 }
 
+function normalizeList(values) {
+    if (!Array.isArray(values)) return [];
+
+    return Array.from(new Set(
+        values
+            .filter(Boolean)
+            .map((value) => String(value).trim())
+            .filter(Boolean)
+    ));
+}
+
+function isDebugAccessEnabled() {
+    try {
+        return localStorage.getItem('sbiDebugAccess') === 'true';
+    } catch {
+        return false;
+    }
+}
+
+function isExpectedAccessError(error) {
+    const code = String(error?.code || '').toLowerCase();
+    const message = String(error?.message || '').toLowerCase();
+    return code.includes('permission-denied')
+        || code.includes('failed-precondition')
+        || message.includes('missing or insufficient permissions')
+        || message.includes('permission')
+        || message.includes('index');
+}
+
+async function safeGetDocs(queryRef, label = 'requête Firestore') {
+    try {
+        return await getDocs(queryRef);
+    } catch (error) {
+        if (isExpectedAccessError(error)) {
+            if (isDebugAccessEnabled()) console.debug(`[SBI Access] ${label} ignorée :`, error);
+            return null;
+        }
+
+        console.warn(`[SBI Access] ${label} ignorée :`, error);
+        return null;
+    }
+}
+
 async function loadCurrentUserOnly(currentUid, currentUserProfile = null) {
     if (!currentUid) return [];
 
@@ -93,16 +135,19 @@ async function loadCurrentUserOnly(currentUid, currentUserProfile = null) {
 }
 
 function getFormationIdsFromProfile(profile) {
-    return Array.isArray(profile?.formationIds)
-        ? profile.formationIds.filter(Boolean).map(String)
-        : [];
+    return normalizeList(profile?.formationIds);
+}
+
+function getFormationTitlesFromProfile(profile) {
+    return normalizeList(profile?.formationsAcces);
 }
 
 async function loadFormationsByIds(formationIds) {
-    if (!formationIds.length) return [];
+    const safeIds = normalizeList(formationIds);
+    if (!safeIds.length) return [];
 
     const formations = [];
-    const chunks = chunkArray(formationIds, 10);
+    const chunks = chunkArray(safeIds, 10);
 
     for (const chunk of chunks) {
         const byIdsQuery = query(
@@ -110,11 +155,43 @@ async function loadFormationsByIds(formationIds) {
             where(documentId(), "in", chunk)
         );
 
-        const snap = await getDocs(byIdsQuery);
-        formations.push(...snapToArray(snap));
+        const snap = await safeGetDocs(byIdsQuery, 'formations par IDs');
+        if (snap) formations.push(...snapToArray(snap));
     }
 
     return formations;
+}
+
+async function loadFormationsByTitles(formationTitles) {
+    const safeTitles = normalizeList(formationTitles);
+    if (!safeTitles.length) return [];
+
+    const formations = [];
+    const chunks = chunkArray(safeTitles, 10);
+
+    for (const chunk of chunks) {
+        const byTitlesQuery = query(
+            collection(db, "formations"),
+            where("titre", "in", chunk)
+        );
+
+        const snap = await safeGetDocs(byTitlesQuery, 'formations par titres legacy');
+        if (snap) formations.push(...snapToArray(snap));
+    }
+
+    return formations;
+}
+
+async function loadFormationsByMembership(fieldName, currentUid) {
+    if (!currentUid) return [];
+
+    const formationsByMemberQuery = query(
+        collection(db, "formations"),
+        where(fieldName, "array-contains", currentUid)
+    );
+
+    const snap = await safeGetDocs(formationsByMemberQuery, `formations par ${fieldName}`);
+    return snap ? snapToArray(snap) : [];
 }
 
 export async function loadUsersForCourseAccess({
@@ -141,20 +218,14 @@ export async function loadFormationsForCourseAccess({
     if (!currentUid) return [];
 
     const formations = [];
-
-    const formationsByProfQuery = query(
-        collection(db, "formations"),
-        where("profs", "array-contains", currentUid)
-    );
-
-    const byProfSnap = await getDocs(formationsByProfQuery);
-    formations.push(...snapToArray(byProfSnap));
-
     const formationIds = getFormationIdsFromProfile(currentUserProfile);
+    const formationTitles = getFormationTitlesFromProfile(currentUserProfile);
 
-    if (formationIds.length > 0) {
-        formations.push(...await loadFormationsByIds(formationIds));
-    }
+    // Priorité aux index users/{uid} : c'est le chemin le plus compatible avec
+    // les rules strictes, car il évite de dépendre d'une requête membership.
+    formations.push(...await loadFormationsByIds(formationIds));
+    formations.push(...await loadFormationsByTitles(formationTitles));
+    formations.push(...await loadFormationsByMembership('profs', currentUid));
 
     return uniqById(formations).sort((a, b) => {
         return String(a.titre || '').localeCompare(String(b.titre || ''), 'fr', {
@@ -169,15 +240,16 @@ async function loadOwnTeacherCourses(currentUid) {
         where("auteurId", "==", currentUid)
     );
 
-    const snap = await getDocs(coursesQuery);
-    return snapToArray(snap);
+    const snap = await safeGetDocs(coursesQuery, 'cours auteur prof');
+    return snap ? snapToArray(snap) : [];
 }
 
 async function loadActiveCoursesByFormationValues(formationValues) {
-    if (!formationValues.length) return [];
+    const safeValues = normalizeList(formationValues);
+    if (!safeValues.length) return [];
 
     const courses = [];
-    const chunks = chunkArray(formationValues, 10);
+    const chunks = chunkArray(safeValues, 10);
 
     for (const chunk of chunks) {
         const coursesQuery = query(
@@ -186,8 +258,8 @@ async function loadActiveCoursesByFormationValues(formationValues) {
             where("actif", "==", true)
         );
 
-        const snap = await getDocs(coursesQuery);
-        courses.push(...snapToArray(snap));
+        const snap = await safeGetDocs(coursesQuery, 'cours actifs par formation');
+        if (snap) courses.push(...snapToArray(snap));
     }
 
     return courses;

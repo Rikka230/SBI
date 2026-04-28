@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestion Accueil - SBI Admin</title>
+    <link rel="stylesheet" href="css/admin-layout.css">
+    <link rel="stylesheet" href="css/admin.css">
+    <link rel="stylesheet" href="css/admin-notifications.css">
+    <link rel="stylesheet" href="css/site-index-settings.css">
+    <script src="js/components.js"></script>
+</head>
+<body class="preload">
+<div class="app-container" id="app-container">
+    <script>
+        if (window.innerWidth > 1024) {
+            const app = document.getElementById('app-container');
+            if (localStorage.getItem('leftPanelCollapsed') === 'true') app.classList.add('left-collapsed');
+            if (localStorage.getItem('rightPanelCollapsed') === 'true') app.classList.add('right-collapsed');
+        }
+    </script>
+
+    <admin-left-panel></admin-left-panel>
+
+    <header class="top-bar">
+        <button class="mobile-toggle left-toggle" id="btn-toggle-mobile"><svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg></button>
+        <span class="page-title" style="font-weight: 600;">Gestion Accueil</span>
+        <button class="mobile-toggle right-toggle" id="btn-toggle-right" style="position: relative;">
+            <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+            <span class="notif-badge" id="avatar-badge" style="display:none; top: 0; right: 0;">0</span>
+        </button>
+    </header>
+
+    <main id="main-content">
+        <div class="content-wrapper site-index-shell">
+            <section class="site-index-hero">
+                <span class="site-index-kicker">Accueil public</span>
+                <h1>Gestion des médias de l’index</h1>
+                <p>
+                    Prévisualise les médias actuellement affichés sur la landing page, transfère les fichiers lourds vers Firebase Storage, puis laisse l’index utiliser les URLs Storage. WebM + MP4 restent recommandés pour la vidéo hero : WebM pour l’optimisation, MP4 comme fallback compatibilité.
+                </p>
+            </section>
+
+            <p id="site-index-status" class="site-index-status">Chargement des médias actuels...</p>
+            <section id="site-index-grid" class="site-index-grid" aria-label="Médias de l’accueil SBI"></section>
+        </div>
+    </main>
+
+    <admin-right-panel></admin-right-panel>
+</div>
+
+<script type="module" src="js/admin-ui.js"></script>
+<script type="module" src="js/admin-notifications.js"></script>
+<script type="module" src="js/tracker.js"></script>
+<script type="module" src="js/site-index-settings.js"></script>
+</body>
+</html>

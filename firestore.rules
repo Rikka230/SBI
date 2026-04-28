@@ -15,6 +15,10 @@ service cloud.firestore {
       return /databases/$(database)/documents/users/$(uid);
     }
 
+    function formationPath(formationId) {
+      return /databases/$(database)/documents/formations/$(formationId);
+    }
+
     function hasUserDoc() {
       return signedIn() && exists(userPath(request.auth.uid));
     }
@@ -26,6 +30,12 @@ service cloud.firestore {
     function isActiveUser() {
       return hasUserDoc()
         && currentUser().statut != 'suspendu';
+    }
+
+    function hasAnyRole(roles) {
+      return isActiveUser()
+        && currentUser().keys().hasAny(['role'])
+        && currentUser().role in roles;
     }
 
     function isGod() {
@@ -42,13 +52,11 @@ service cloud.firestore {
     }
 
     function isTeacher() {
-      return isActiveUser()
-        && currentUser().role == 'teacher';
+      return hasAnyRole(['teacher', 'prof', 'professeur', 'enseignant']);
     }
 
     function isStudent() {
-      return isActiveUser()
-        && currentUser().role == 'student';
+      return hasAnyRole(['student', 'eleve', 'élève', 'etudiant', 'étudiant']);
     }
 
     function isSelf(uid) {
@@ -80,6 +88,10 @@ service cloud.firestore {
         'privateData',
         'photoURL',
         'photoOriginal',
+        'photoStoragePath',
+        'avatarUpdatedAt',
+        'avatarStorageVersion',
+        'avatarCleanupAt',
         'isOnline',
         'lastSeenAt',
         'totalConnectionTime',
@@ -101,16 +113,35 @@ service cloud.firestore {
         && currentUser().formationIds.size() > 0;
     }
 
+    function currentUserHasFormationsAcces() {
+      return currentUser().keys().hasAny(['formationsAcces'])
+        && currentUser().formationsAcces is list
+        && currentUser().formationsAcces.size() > 0;
+    }
+
     function userDataHasFormationIds(userData) {
       return userData.keys().hasAny(['formationIds'])
         && userData.formationIds is list
         && userData.formationIds.size() > 0;
     }
 
+    function userDataHasFormationsAcces(userData) {
+      return userData.keys().hasAny(['formationsAcces'])
+        && userData.formationsAcces is list
+        && userData.formationsAcces.size() > 0;
+    }
+
     function sharedFormationWithCurrentUser(userData) {
-      return currentUserHasFormationIds()
-        && userDataHasFormationIds(userData)
-        && userData.formationIds.hasAny(currentUser().formationIds);
+      return (
+          currentUserHasFormationIds()
+          && userDataHasFormationIds(userData)
+          && userData.formationIds.hasAny(currentUser().formationIds)
+        )
+        || (
+          currentUserHasFormationsAcces()
+          && userDataHasFormationsAcces(userData)
+          && userData.formationsAcces.hasAny(currentUser().formationsAcces)
+        );
     }
 
     function isAdminProfile(userData) {
@@ -134,10 +165,86 @@ service cloud.firestore {
         && courseData.formations.size() > 0;
     }
 
+    function courseHasTargetFormationIds(courseData) {
+      return courseData.keys().hasAny(['targetFormationIds'])
+        && courseData.targetFormationIds is list
+        && courseData.targetFormationIds.size() > 0;
+    }
+
+    function courseHasTargetFormationTitles(courseData) {
+      return courseData.keys().hasAny(['targetFormationTitles'])
+        && courseData.targetFormationTitles is list
+        && courseData.targetFormationTitles.size() > 0;
+    }
+
+    function courseSharedByFormationsField(courseData) {
+      return courseHasFormations(courseData)
+        && (
+          (
+            currentUserHasFormationIds()
+            && courseData.formations.hasAny(currentUser().formationIds)
+          )
+          || (
+            currentUserHasFormationsAcces()
+            && courseData.formations.hasAny(currentUser().formationsAcces)
+          )
+        );
+    }
+
+    function courseSharedByTargetFormationIds(courseData) {
+      return courseHasTargetFormationIds(courseData)
+        && currentUserHasFormationIds()
+        && courseData.targetFormationIds.hasAny(currentUser().formationIds);
+    }
+
+    function courseSharedByTargetFormationTitles(courseData) {
+      return courseHasTargetFormationTitles(courseData)
+        && currentUserHasFormationsAcces()
+        && courseData.targetFormationTitles.hasAny(currentUser().formationsAcces);
+    }
+
     function courseSharedWithCurrentUser(courseData) {
-      return currentUserHasFormationIds()
-        && courseHasFormations(courseData)
-        && courseData.formations.hasAny(currentUser().formationIds);
+      return courseSharedByFormationsField(courseData)
+        || courseSharedByTargetFormationIds(courseData)
+        || courseSharedByTargetFormationTitles(courseData);
+    }
+
+    function courseTargetedToCurrentUser(courseData) {
+      return courseData.keys().hasAny(['targetStudents'])
+        && courseData.targetStudents is list
+        && request.auth.uid in courseData.targetStudents;
+    }
+
+    function formationDocHasCurrentUser(formationId) {
+      return signedIn()
+        && formationId is string
+        && exists(formationPath(formationId))
+        && (
+          (
+            get(formationPath(formationId)).data.keys().hasAny(['students'])
+            && get(formationPath(formationId)).data.students is list
+            && request.auth.uid in get(formationPath(formationId)).data.students
+          )
+          || (
+            get(formationPath(formationId)).data.keys().hasAny(['profs'])
+            && get(formationPath(formationId)).data.profs is list
+            && request.auth.uid in get(formationPath(formationId)).data.profs
+          )
+        );
+    }
+
+    function courseFormationAtAllowsCurrentUser(courseData, index) {
+      return courseHasFormations(courseData)
+        && courseData.formations.size() > index
+        && formationDocHasCurrentUser(courseData.formations[index]);
+    }
+
+    function courseLinkedToReadableFormation(courseData) {
+      return courseFormationAtAllowsCurrentUser(courseData, 0)
+        || courseFormationAtAllowsCurrentUser(courseData, 1)
+        || courseFormationAtAllowsCurrentUser(courseData, 2)
+        || courseFormationAtAllowsCurrentUser(courseData, 3)
+        || courseFormationAtAllowsCurrentUser(courseData, 4);
     }
 
     function canReadCourse(courseData) {
@@ -149,7 +256,11 @@ service cloud.firestore {
         || (
           isActiveUser()
           && courseData.actif == true
-          && courseSharedWithCurrentUser(courseData)
+          && (
+            courseSharedWithCurrentUser(courseData)
+            || courseTargetedToCurrentUser(courseData)
+            || courseLinkedToReadableFormation(courseData)
+          )
         );
     }
 
@@ -173,6 +284,12 @@ service cloud.firestore {
         && formationId in currentUser().formationIds;
     }
 
+    function currentUserHasFormationAccess(formationTitle) {
+      return currentUserHasFormationsAcces()
+        && formationTitle is string
+        && formationTitle in currentUser().formationsAcces;
+    }
+
     function isFormationStudent(formationData) {
       return formationData.keys().hasAny(['students'])
         && formationData.students is list
@@ -190,9 +307,13 @@ service cloud.firestore {
         || (
           isActiveUser()
           && (
-            currentUserHasFormationId(formationId) ||
-            isFormationStudent(formationData) ||
-            isFormationTeacher(formationData)
+            isFormationStudent(formationData)
+            || isFormationTeacher(formationData)
+            || currentUserHasFormationId(formationId)
+            || (
+              formationData.keys().hasAny(['titre'])
+              && currentUserHasFormationAccess(formationData.titre)
+            )
           )
         );
     }
@@ -286,6 +407,16 @@ service cloud.firestore {
     }
 
     /* ============================================================
+       PUBLIC SITE SETTINGS
+       ============================================================ */
+
+    match /settings/siteIndex {
+      allow get: if true;
+      allow list: if false;
+      allow create, update, delete: if isAdmin();
+    }
+
+    /* ============================================================
        USERS
        ============================================================ */
 
@@ -305,7 +436,8 @@ service cloud.firestore {
        ============================================================ */
 
     match /courses/{courseId} {
-      allow get, list: if canReadCourse(resource.data);
+      allow get: if canReadCourse(resource.data);
+      allow list: if canReadCourse(resource.data);
 
       allow create: if isAdmin()
         || validTeacherCourseWrite();
@@ -337,7 +469,8 @@ service cloud.firestore {
        ============================================================ */
 
     match /notifications/{notificationId} {
-      allow get, list: if canReadNotification();
+      allow get: if canReadNotification();
+      allow list: if canReadNotification();
 
       allow create: if canCreateNotification();
 

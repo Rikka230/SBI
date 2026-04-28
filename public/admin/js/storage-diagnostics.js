@@ -70,7 +70,7 @@ const renderDiagnostics = (stats) => {
             alertZone.style.borderColor = 'rgba(16,185,129,.35)';
             alertZone.style.background = 'rgba(16,185,129,.06)';
             alertZone.innerHTML = `
-                <h4 style="margin: 0 0 0.5rem 0; color: var(--accent-green);">✅ Firestore léger</h4>
+                <h4 style="margin: 0 0 0.5rem 0; color: var(--accent-green);">Firestore léger</h4>
                 <p style="margin: 0; color: #aaa; font-size: 0.9rem;">Aucun ancien contenu base64 lourd détecté dans les avatars ou médias de cours.</p>
             `;
         }
@@ -90,7 +90,7 @@ const renderDiagnostics = (stats) => {
             alertZone.style.borderColor = 'var(--accent-red)';
             alertZone.style.background = 'rgba(255, 74, 74, 0.05)';
             alertZone.innerHTML = `
-                <h4 style="margin: 0 0 0.5rem 0; color: var(--accent-red);">⚠️ Base64 trop présent</h4>
+                <h4 style="margin: 0 0 0.5rem 0; color: var(--accent-red);">Base64 trop présent</h4>
                 <p style="margin: 0; color: #aaa; font-size: 0.9rem;">Les avatars ou médias anciens alourdissent encore Firestore. Lance la migration des avatars, puis vérifie les images de cours restantes.</p>
             `;
         }

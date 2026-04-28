@@ -1,0 +1,885 @@
+/* =======================================================================
+   SBI INTERNAL THEME - Dashboard-only visual iteration
+   -----------------------------------------------------------------------
+   Scope volontaire :
+   - panels internes
+   - dashboards admin / student / teacher
+   - assistant global persistant
+   Ne doit pas refaire la landing page publique.
+   ======================================================================= */
+
+:root {
+    --sbi-blue: #2A57FF;
+    --sbi-blue-deep: #1237c9;
+    --sbi-orange: #f97316;
+    --sbi-orange-deep: #ea580c;
+    --sbi-ink: #101827;
+    --sbi-muted: #667085;
+    --sbi-soft-line: rgba(16, 24, 40, 0.1);
+    --sbi-admin-bg: #050812;
+    --sbi-admin-panel: rgba(9, 14, 27, 0.96);
+    --sbi-admin-card: rgba(255, 255, 255, 0.07);
+    --sbi-admin-line: rgba(255, 255, 255, 0.12);
+    --sbi-cut-button: polygon(0 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%);
+    --sbi-cut-card: polygon(0 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%);
+    --sbi-panel-cut: polygon(0 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%);
+    --sbi-card-shadow: 0 24px 70px rgba(15, 23, 42, 0.08);
+}
+
+body.sbi-internal-ui {
+    font-family: 'Inter', 'Segoe UI', sans-serif;
+}
+
+body.sbi-dashboard-page.sbi-dashboard-redesign {
+    --sbi-cut: var(--sbi-cut-button) !important;
+}
+
+body.sbi-internal-ui #main-content {
+    position: relative;
+    isolation: isolate;
+}
+
+body.sbi-internal-ui .content-wrapper {
+    position: relative;
+    z-index: 1;
+}
+
+/* -----------------------------------------------------------------------
+   Panels : modernisation contrôlée sans casser le layout rétractable
+   ----------------------------------------------------------------------- */
+
+body.sbi-internal-ui .side-panel,
+body.sbi-internal-ui .top-bar {
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+}
+
+body.sbi-internal-ui .panel-header {
+    position: relative;
+    overflow: hidden;
+}
+
+body.sbi-internal-ui .panel-header::after {
+    content: '';
+    position: absolute;
+    inset: auto 14px 0 14px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, currentColor, transparent);
+    opacity: 0.12;
+    pointer-events: none;
+}
+
+body.sbi-internal-ui .nav-menu {
+    padding: 0.75rem 0.65rem;
+}
+
+body.sbi-internal-ui .nav-item {
+    position: relative;
+    margin: 0.24rem 0;
+    padding: 0.78rem 0.9rem !important;
+    border-left: 0 !important;
+    border-radius: 0 !important;
+    clip-path: var(--sbi-panel-cut);
+    transition:
+        color 0.22s ease,
+        background 0.22s ease,
+        transform 0.22s ease,
+        box-shadow 0.22s ease !important;
+}
+
+body.sbi-internal-ui .nav-item svg {
+    flex: 0 0 auto;
+    margin-right: 12px !important;
+    transition: transform 0.22s ease, filter 0.22s ease;
+}
+
+body.sbi-internal-ui .nav-item:hover {
+    transform: translateX(2px);
+}
+
+body.sbi-internal-ui .nav-item:hover svg,
+body.sbi-internal-ui .nav-item.active svg {
+    transform: translateY(-1px);
+    filter: drop-shadow(0 0 8px currentColor);
+}
+
+body.sbi-internal-ui .nav-item::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 14px;
+    height: 14px;
+    background: currentColor;
+    clip-path: polygon(100% 0, 100% 100%, 0 100%);
+    opacity: 0;
+    transition: opacity 0.22s ease;
+    pointer-events: none;
+}
+
+body.sbi-internal-ui .nav-item.active::after,
+body.sbi-internal-ui .nav-item:hover::after {
+    opacity: 0.5;
+}
+
+body.sbi-internal-ui .action-btn,
+body.sbi-internal-ui .admin-return-link,
+body.sbi-internal-ui #logout-btn-student {
+    border-radius: 0 !important;
+    clip-path: var(--sbi-cut-button);
+}
+
+body.sbi-internal-ui .global-search-input {
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+body.sbi-internal-ui .global-search-input:focus {
+    border-color: color-mix(in srgb, var(--space-accent, var(--sbi-blue)) 52%, transparent) !important;
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--space-accent, var(--sbi-blue)) 13%, transparent) !important;
+}
+
+/* -----------------------------------------------------------------------
+   Admin dark cockpit
+   ----------------------------------------------------------------------- */
+
+body.sbi-admin-space {
+    --space-accent: var(--sbi-blue);
+}
+
+body.sbi-admin-space.sbi-dashboard-page {
+    background:
+        radial-gradient(circle at 18% 8%, rgba(42, 87, 255, 0.24), transparent 32%),
+        radial-gradient(circle at 90% 0%, rgba(255, 255, 255, 0.065), transparent 24%),
+        linear-gradient(135deg, #050812 0%, #0a1020 48%, #05070d 100%) !important;
+}
+
+body.sbi-admin-space.sbi-dashboard-page #main-content::before {
+    content: '';
+    position: fixed;
+    inset: 60px 280px 0 230px;
+    pointer-events: none;
+    opacity: 0.18;
+    background-image:
+        linear-gradient(rgba(255,255,255,0.08) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.08) 1px, transparent 1px);
+    background-size: 72px 72px;
+    mask-image: radial-gradient(circle at 50% 22%, black 0%, transparent 72%);
+    z-index: 0;
+}
+
+body.sbi-admin-space.sbi-dashboard-page .side-panel,
+body.sbi-admin-space.sbi-dashboard-page .top-bar {
+    background: var(--sbi-admin-panel) !important;
+    border-color: var(--sbi-admin-line) !important;
+    box-shadow: 0 20px 70px rgba(0, 0, 0, 0.28);
+}
+
+body.sbi-admin-space.sbi-dashboard-page .nav-item:hover {
+    background: rgba(42, 87, 255, 0.1) !important;
+    color: #ffffff !important;
+}
+
+body.sbi-admin-space.sbi-dashboard-page .nav-item.active {
+    background: rgba(42, 87, 255, 0.18) !important;
+    color: var(--sbi-blue) !important;
+    box-shadow: inset 0 0 0 1px rgba(42, 87, 255, 0.22);
+}
+
+body.sbi-admin-space.sbi-dashboard-page #view-dashboard h2 {
+    color: #ffffff !important;
+    font-size: clamp(1.8rem, 2.4vw, 2.55rem);
+    letter-spacing: -0.04em;
+    margin: 0 0 0.25rem 0;
+    font-style: italic;
+}
+
+body.sbi-admin-space.sbi-dashboard-page #view-dashboard > div:first-child p {
+    color: #aeb8d2 !important;
+}
+
+body.sbi-admin-space.sbi-dashboard-page #view-dashboard > div:nth-child(2) {
+    gap: 1.15rem !important;
+}
+
+body.sbi-admin-space.sbi-dashboard-page #view-dashboard [style*="background: var(--bg-card)"],
+body.sbi-admin-space.sbi-dashboard-page #card-pending {
+    position: relative;
+    min-height: 182px;
+    padding: 1.45rem !important;
+    overflow: hidden;
+    border-radius: 0 !important;
+    clip-path: var(--sbi-cut-card);
+    background:
+        linear-gradient(145deg, rgba(255,255,255,0.09), rgba(255,255,255,0.035)) !important;
+    border: 1px solid rgba(255,255,255,0.12) !important;
+    box-shadow: 0 26px 70px rgba(0,0,0,0.28);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    transition: transform 0.24s ease, border-color 0.24s ease, box-shadow 0.24s ease;
+}
+
+body.sbi-admin-space.sbi-dashboard-page #view-dashboard [style*="background: var(--bg-card)"]::before,
+body.sbi-admin-space.sbi-dashboard-page #card-pending::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(circle at 50% 0%, rgba(42, 87, 255, 0.18), transparent 48%),
+        linear-gradient(120deg, rgba(255,255,255,0.12), transparent 35%);
+    opacity: 0.65;
+    pointer-events: none;
+}
+
+body.sbi-admin-space.sbi-dashboard-page #view-dashboard [style*="background: var(--bg-card)"]::after,
+body.sbi-admin-space.sbi-dashboard-page #card-pending::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 42px;
+    height: 42px;
+    background: var(--space-accent, var(--sbi-blue));
+    clip-path: polygon(100% 0, 100% 100%, 0 100%);
+    opacity: 0.92;
+    pointer-events: none;
+}
+
+body.sbi-admin-space.sbi-dashboard-page #view-dashboard [style*="background: var(--bg-card)"]:hover,
+body.sbi-admin-space.sbi-dashboard-page #card-pending:hover {
+    transform: translateY(-4px);
+    border-color: rgba(42, 87, 255, 0.42) !important;
+    box-shadow: 0 32px 82px rgba(0,0,0,0.34), 0 0 24px rgba(42,87,255,0.13);
+}
+
+body.sbi-admin-space.sbi-dashboard-page #view-dashboard svg {
+    position: relative;
+    z-index: 1;
+    filter: drop-shadow(0 0 14px color-mix(in srgb, currentColor 38%, transparent));
+}
+
+body.sbi-admin-space.sbi-dashboard-page #view-dashboard [id^="stat-"] {
+    position: relative;
+    z-index: 1;
+    color: #ffffff !important;
+    text-shadow: 0 0 28px rgba(42, 87, 255, 0.28);
+    font-style: italic;
+}
+
+body.sbi-admin-space.sbi-dashboard-page #view-dashboard p {
+    position: relative;
+    z-index: 1;
+    color: #aeb8d2 !important;
+}
+
+body.sbi-admin-space.sbi-dashboard-page #card-pending {
+    --space-accent: #f59e0b;
+}
+
+body.sbi-admin-space.sbi-dashboard-page #card-pending p,
+body.sbi-admin-space.sbi-dashboard-page #card-pending h3 {
+    color: #ffd38a !important;
+}
+
+/* -----------------------------------------------------------------------
+   Student / Teacher light spaces
+   ----------------------------------------------------------------------- */
+
+body.sbi-student-space {
+    --space-accent: var(--sbi-blue);
+    --space-accent-deep: var(--sbi-blue-deep);
+    --space-accent-soft: rgba(42, 87, 255, 0.11);
+    --space-accent-pale: #eef3ff;
+}
+
+body.sbi-teacher-space {
+    --space-accent: var(--sbi-orange);
+    --space-accent-deep: var(--sbi-orange-deep);
+    --space-accent-soft: rgba(249, 115, 22, 0.13);
+    --space-accent-pale: #fff4e8;
+}
+
+body.sbi-student-space.sbi-dashboard-page,
+body.sbi-teacher-space.sbi-dashboard-page {
+    color: var(--sbi-ink);
+    background:
+        radial-gradient(circle at 12% 0%, var(--space-accent-soft), transparent 30%),
+        radial-gradient(circle at 88% 8%, rgba(255,255,255,0.85), transparent 28%),
+        linear-gradient(180deg, #ffffff 0%, color-mix(in srgb, var(--space-accent-pale) 62%, #ffffff) 100%) !important;
+}
+
+body.sbi-student-space.sbi-dashboard-page #main-content::before,
+body.sbi-teacher-space.sbi-dashboard-page #main-content::before {
+    content: '';
+    position: fixed;
+    top: 96px;
+    right: 34px;
+    width: min(22vw, 250px);
+    aspect-ratio: 1;
+    border: 1px solid color-mix(in srgb, var(--space-accent) 18%, transparent);
+    background: linear-gradient(135deg, var(--space-accent-soft), rgba(255,255,255,0));
+    clip-path: polygon(44% 0, 100% 38%, 82% 100%, 13% 86%, 0 22%);
+    opacity: 0.42;
+    pointer-events: none;
+    z-index: 0;
+}
+
+body.sbi-student-space.sbi-dashboard-page .side-panel,
+body.sbi-teacher-space.sbi-dashboard-page .side-panel,
+body.sbi-student-space.sbi-dashboard-page .top-bar,
+body.sbi-teacher-space.sbi-dashboard-page .top-bar {
+    background: rgba(255,255,255,0.92) !important;
+    border-color: rgba(16,24,40,0.09) !important;
+    box-shadow: 0 16px 45px rgba(15,23,42,0.055);
+}
+
+body.sbi-student-space.sbi-dashboard-page .nav-item,
+body.sbi-teacher-space.sbi-dashboard-page .nav-item {
+    color: #667085 !important;
+}
+
+body.sbi-student-space.sbi-dashboard-page .nav-item:hover,
+body.sbi-teacher-space.sbi-dashboard-page .nav-item:hover {
+    background: var(--space-accent-soft) !important;
+    color: var(--space-accent-deep) !important;
+}
+
+body.sbi-student-space.sbi-dashboard-page .nav-item.active,
+body.sbi-teacher-space.sbi-dashboard-page .nav-item.active {
+    background: var(--space-accent-soft) !important;
+    color: var(--space-accent) !important;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--space-accent) 18%, transparent);
+}
+
+body.sbi-student-space.sbi-dashboard-page h1,
+body.sbi-teacher-space.sbi-dashboard-page h1 {
+    letter-spacing: -0.045em;
+    font-style: italic;
+}
+
+body.sbi-student-space.sbi-dashboard-page .hub-grid,
+body.sbi-teacher-space.sbi-dashboard-page .hub-grid {
+    position: relative;
+    z-index: 1;
+}
+
+body.sbi-student-space.sbi-dashboard-page .hub-card,
+body.sbi-teacher-space.sbi-dashboard-page .hub-card,
+.sbi-dashboard-hero,
+.sbi-teacher-mini-card {
+    position: relative;
+    overflow: hidden;
+    border-radius: 18px !important;
+    background: rgba(255,255,255,0.9) !important;
+    border: 1px solid rgba(16,24,40,0.08) !important;
+    box-shadow: var(--sbi-card-shadow) !important;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    transition: transform 0.24s ease, border-color 0.24s ease, box-shadow 0.24s ease;
+}
+
+body.sbi-student-space.sbi-dashboard-page .hub-card::after,
+body.sbi-teacher-space.sbi-dashboard-page .hub-card::after,
+.sbi-dashboard-hero::after,
+.sbi-teacher-mini-card::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 34px;
+    height: 34px;
+    background: var(--space-accent);
+    clip-path: polygon(100% 0, 100% 100%, 0 100%);
+    opacity: 0.72;
+    pointer-events: none;
+}
+
+body.sbi-student-space.sbi-dashboard-page .hub-card::before,
+body.sbi-teacher-space.sbi-dashboard-page .hub-card::before,
+.sbi-dashboard-hero::before,
+.sbi-teacher-mini-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(120deg, color-mix(in srgb, var(--space-accent) 10%, transparent), transparent 42%);
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+body.sbi-student-space.sbi-dashboard-page .hub-card:hover,
+body.sbi-teacher-space.sbi-dashboard-page .hub-card:hover,
+.sbi-teacher-mini-card:hover {
+    transform: translateY(-3px);
+    border-color: color-mix(in srgb, var(--space-accent) 32%, transparent) !important;
+    box-shadow: 0 28px 86px rgba(15,23,42,0.12) !important;
+}
+
+body.sbi-student-space.sbi-dashboard-page .hub-card > *,
+body.sbi-teacher-space.sbi-dashboard-page .hub-card > *,
+.sbi-dashboard-hero > *,
+.sbi-teacher-mini-card > * {
+    position: relative;
+    z-index: 1;
+}
+
+body.sbi-student-space.sbi-dashboard-page .section-icon,
+body.sbi-teacher-space.sbi-dashboard-page .section-icon {
+    background: var(--space-accent-pale) !important;
+    color: var(--space-accent) !important;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--space-accent) 16%, transparent);
+}
+
+body.sbi-student-space.sbi-dashboard-page .xp-bar-bg,
+body.sbi-teacher-space.sbi-dashboard-page .xp-bar-bg {
+    background: rgba(16, 24, 40, 0.08) !important;
+    height: 11px;
+}
+
+body.sbi-student-space.sbi-dashboard-page .xp-bar-fill,
+body.sbi-teacher-space.sbi-dashboard-page .xp-bar-fill {
+    background: linear-gradient(90deg, var(--space-accent), color-mix(in srgb, var(--space-accent) 58%, #ffffff)) !important;
+    box-shadow: 0 0 20px color-mix(in srgb, var(--space-accent) 28%, transparent);
+}
+
+body.sbi-student-space.sbi-dashboard-page #main-content .action-btn,
+body.sbi-teacher-space.sbi-dashboard-page #main-content .action-btn,
+.sbi-dashboard-primary-link {
+    background: var(--space-accent) !important;
+    color: #ffffff !important;
+    border: 1px solid color-mix(in srgb, var(--space-accent) 68%, #ffffff) !important;
+    border-radius: 0 !important;
+    clip-path: var(--sbi-cut-button);
+    box-shadow: 0 18px 38px color-mix(in srgb, var(--space-accent) 24%, transparent) !important;
+    font-weight: 900 !important;
+}
+
+body.sbi-student-space.sbi-dashboard-page #main-content .action-btn:hover,
+body.sbi-teacher-space.sbi-dashboard-page #main-content .action-btn:hover,
+.sbi-dashboard-primary-link:hover {
+    transform: translateY(-2px);
+    filter: brightness(0.98);
+}
+
+body.sbi-student-space.sbi-dashboard-page .hub-card[style*="linear-gradient"] {
+    background: linear-gradient(135deg, var(--sbi-blue), #6f8bff) !important;
+    color: #ffffff !important;
+    border: 0 !important;
+}
+
+body.sbi-student-space.sbi-dashboard-page .hub-card[style*="linear-gradient"] .action-btn {
+    background: #ffffff !important;
+    color: var(--sbi-blue) !important;
+    border: 1px solid rgba(255,255,255,0.62) !important;
+    box-shadow: 0 18px 38px rgba(9, 20, 80, 0.18) !important;
+}
+
+/* -----------------------------------------------------------------------
+   Teacher dashboard enrichi
+   ----------------------------------------------------------------------- */
+
+.sbi-teacher-dashboard {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.sbi-dashboard-hero {
+    padding: clamp(2rem, 4vw, 3.2rem);
+}
+
+.sbi-dashboard-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin-bottom: 0.95rem;
+    color: var(--space-accent);
+    font-size: 0.78rem;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-style: italic;
+}
+
+.sbi-dashboard-title {
+    margin: 0;
+    max-width: 760px;
+    font-size: clamp(2rem, 4.5vw, 3.45rem);
+    line-height: 0.98;
+    letter-spacing: -0.06em;
+    font-style: italic;
+    color: var(--sbi-ink);
+}
+
+.sbi-dashboard-title span {
+    color: var(--space-accent);
+}
+
+.sbi-dashboard-lead {
+    max-width: 680px;
+    margin: 1rem 0 1.5rem 0;
+    color: var(--sbi-muted);
+    font-size: 1.05rem;
+    line-height: 1.65;
+}
+
+.sbi-dashboard-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.8rem;
+}
+
+.sbi-dashboard-primary-link,
+.sbi-dashboard-secondary-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.55rem;
+    min-height: 46px;
+    padding: 0.8rem 1.25rem;
+    text-decoration: none;
+    transition: transform 0.22s ease, box-shadow 0.22s ease, background 0.22s ease;
+}
+
+.sbi-dashboard-secondary-link {
+    color: var(--sbi-ink);
+    border: 1px solid rgba(16,24,40,0.12);
+    background: rgba(255,255,255,0.72);
+    clip-path: var(--sbi-cut-button);
+    font-weight: 900;
+}
+
+.sbi-dashboard-secondary-link:hover {
+    transform: translateY(-2px);
+    border-color: color-mix(in srgb, var(--space-accent) 32%, transparent);
+}
+
+.sbi-teacher-action-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.sbi-teacher-mini-card {
+    padding: 1.35rem;
+    min-height: 178px;
+}
+
+.sbi-teacher-mini-card__icon {
+    width: 42px;
+    height: 42px;
+    display: grid;
+    place-items: center;
+    margin-bottom: 1rem;
+    color: var(--space-accent);
+    background: var(--space-accent-pale);
+    border-radius: 12px;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--space-accent) 16%, transparent);
+}
+
+.sbi-teacher-mini-card h3 {
+    margin: 0 0 0.45rem 0;
+    color: var(--sbi-ink);
+    font-size: 1.05rem;
+}
+
+.sbi-teacher-mini-card p {
+    margin: 0;
+    color: var(--sbi-muted);
+    line-height: 1.55;
+    font-size: 0.92rem;
+}
+
+/* -----------------------------------------------------------------------
+   Assistant global : version alignée avec le signal public
+   ----------------------------------------------------------------------- */
+
+.sbi-assistant {
+    --assistant-accent: var(--space-accent, var(--sbi-blue));
+    --assistant-glow: color-mix(in srgb, var(--assistant-accent) 38%, transparent);
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    z-index: 3000;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-family: 'Inter', 'Segoe UI', sans-serif;
+    pointer-events: auto;
+    isolation: isolate;
+}
+
+.sbi-assistant__trigger {
+    position: relative;
+    width: 36px !important;
+    height: 36px !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    color: #ffffff;
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    clip-path: none !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+}
+
+.sbi-assistant__dot {
+    position: relative;
+    width: 30px;
+    height: 30px;
+    display: block;
+    transform: rotate(45deg);
+    background: linear-gradient(135deg, var(--assistant-accent), color-mix(in srgb, var(--assistant-accent) 68%, #ffffff));
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    box-shadow:
+        0 0 12px color-mix(in srgb, var(--assistant-accent) 62%, transparent),
+        0 0 26px color-mix(in srgb, var(--assistant-accent) 34%, transparent);
+    animation: sbiInternalAssistantFloat 4.6s ease-in-out infinite;
+}
+
+.sbi-assistant__dot::before {
+    content: '';
+    position: absolute;
+    inset: -19px;
+    border-radius: 999px;
+    background: radial-gradient(circle, var(--assistant-glow) 0%, color-mix(in srgb, var(--assistant-accent) 18%, transparent) 38%, transparent 72%);
+    transform: rotate(-45deg);
+    filter: blur(7px);
+    opacity: 0.78;
+    z-index: -1;
+    animation: sbiInternalAssistantAura 2.7s ease-in-out infinite alternate;
+}
+
+.sbi-assistant__dot::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 7px;
+    height: 7px;
+    border-radius: 999px;
+    background: #ffffff;
+    transform: translate(-50%, -50%) rotate(-45deg);
+    box-shadow:
+        0 0 8px rgba(255,255,255,0.98),
+        0 0 16px color-mix(in srgb, var(--assistant-accent) 92%, transparent),
+        0 0 28px color-mix(in srgb, var(--assistant-accent) 58%, transparent);
+    animation: sbiInternalAssistantCore 1.8s ease-in-out infinite alternate;
+}
+
+.sbi-assistant::before {
+    content: '';
+    position: absolute;
+    right: 18px;
+    bottom: 17px;
+    width: 78px;
+    height: 1px;
+    transform: translateX(-30px);
+    background: linear-gradient(270deg, color-mix(in srgb, var(--assistant-accent) 60%, transparent), color-mix(in srgb, var(--assistant-accent) 20%, transparent), transparent);
+    opacity: 0.48;
+    pointer-events: none;
+    z-index: -1;
+}
+
+.sbi-assistant__badge {
+    position: absolute;
+    top: -3px;
+    right: -3px;
+    min-width: 17px;
+    height: 17px;
+    display: grid;
+    place-items: center;
+    border-radius: 999px;
+    background: #ff3b3b;
+    color: #ffffff;
+    font-size: 0.62rem;
+    font-weight: 900;
+    box-shadow: 0 0 0 2px rgba(255,255,255,0.88), 0 0 16px rgba(255,59,59,0.35);
+    transform: rotate(0deg);
+}
+
+.sbi-assistant__panel {
+    position: absolute;
+    right: 48px;
+    bottom: 4px;
+    width: min(300px, calc(100vw - 86px));
+    padding: 0.95rem 1.05rem;
+    border-radius: 0 !important;
+    background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(248,250,255,0.96)) !important;
+    border: 1px solid color-mix(in srgb, var(--assistant-accent) 38%, rgba(16,24,40,0.12)) !important;
+    color: var(--sbi-ink) !important;
+    clip-path: var(--sbi-cut-button);
+    box-shadow: 0 18px 46px rgba(15, 23, 42, 0.18), 0 0 24px color-mix(in srgb, var(--assistant-accent) 15%, transparent) !important;
+    opacity: 0;
+    transform: translateX(12px) scale(0.96) !important;
+    pointer-events: none;
+    transition: opacity 0.26s ease, transform 0.26s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+body.sbi-admin-space .sbi-assistant__panel {
+    background: linear-gradient(180deg, rgba(13, 19, 33, 0.98), rgba(7, 11, 19, 0.96)) !important;
+    color: #ffffff !important;
+    border-color: rgba(42, 87, 255, 0.52) !important;
+    box-shadow: 0 18px 46px rgba(0,0,0,0.34), 0 0 24px rgba(42,87,255,0.16) !important;
+}
+
+.sbi-assistant.is-open .sbi-assistant__panel,
+.sbi-assistant.is-peeking .sbi-assistant__panel,
+.sbi-assistant:hover .sbi-assistant__panel,
+.sbi-assistant:focus-within .sbi-assistant__panel {
+    opacity: 1;
+    transform: translateX(0) scale(1) !important;
+    pointer-events: auto;
+}
+
+.sbi-assistant__eyebrow {
+    margin: 0 0 0.32rem 0;
+    color: var(--assistant-accent) !important;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.68rem;
+    font-weight: 900;
+    font-style: italic;
+}
+
+.sbi-assistant__title {
+    margin: 0 0 0.38rem 0;
+    font-size: 0.98rem;
+    font-weight: 900;
+    line-height: 1.15;
+}
+
+.sbi-assistant__text {
+    margin: 0 0 0.85rem 0;
+    color: var(--sbi-muted) !important;
+    font-size: 0.82rem;
+    line-height: 1.5;
+}
+
+body.sbi-admin-space .sbi-assistant__text {
+    color: #aeb8d2 !important;
+}
+
+.sbi-assistant__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+}
+
+.sbi-assistant__action {
+    width: auto !important;
+    min-height: 34px;
+    margin: 0 !important;
+    border: 1px solid color-mix(in srgb, var(--assistant-accent) 58%, transparent) !important;
+    background: var(--assistant-accent) !important;
+    color: #ffffff !important;
+    padding: 0.55rem 0.72rem;
+    font-weight: 900;
+    font-size: 0.75rem;
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%) !important;
+    cursor: pointer;
+    transition: transform 0.18s ease, filter 0.18s ease;
+}
+
+.sbi-assistant__action:hover {
+    transform: translateY(-1px);
+    filter: brightness(0.98);
+}
+
+.sbi-assistant__action.secondary {
+    background: transparent !important;
+    color: inherit !important;
+    border-color: rgba(127, 139, 164, 0.28) !important;
+}
+
+.sbi-assistant.is-attention .sbi-assistant__dot {
+    animation:
+        sbiInternalAssistantFloat 4.6s ease-in-out infinite,
+        sbiInternalAssistantAttention 0.95s ease-out;
+}
+
+@keyframes sbiInternalAssistantFloat {
+    0% { transform: rotate(45deg) translate3d(0, 0, 0); }
+    50% { transform: rotate(45deg) translate3d(-2px, -5px, 0); }
+    100% { transform: rotate(45deg) translate3d(0, 0, 0); }
+}
+
+@keyframes sbiInternalAssistantAura {
+    0% { opacity: 0.46; transform: rotate(-45deg) scale(0.88); }
+    100% { opacity: 0.95; transform: rotate(-45deg) scale(1.18); }
+}
+
+@keyframes sbiInternalAssistantCore {
+    0% { opacity: 0.72; transform: translate(-50%, -50%) rotate(-45deg) scale(0.72); }
+    100% { opacity: 1; transform: translate(-50%, -50%) rotate(-45deg) scale(1.1); }
+}
+
+@keyframes sbiInternalAssistantAttention {
+    0% {
+        box-shadow:
+            0 0 12px color-mix(in srgb, var(--assistant-accent) 62%, transparent),
+            0 0 26px color-mix(in srgb, var(--assistant-accent) 34%, transparent);
+    }
+    45% {
+        box-shadow:
+            0 0 20px color-mix(in srgb, var(--assistant-accent) 92%, transparent),
+            0 0 38px color-mix(in srgb, var(--assistant-accent) 54%, transparent);
+    }
+    100% {
+        box-shadow:
+            0 0 12px color-mix(in srgb, var(--assistant-accent) 62%, transparent),
+            0 0 26px color-mix(in srgb, var(--assistant-accent) 34%, transparent);
+    }
+}
+
+@media (max-width: 1024px) {
+    body.sbi-admin-space.sbi-dashboard-page #main-content::before {
+        inset: 60px 0 0 230px;
+    }
+
+    .sbi-teacher-action-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    body.sbi-dashboard-page .content-wrapper {
+        padding: 1.25rem !important;
+    }
+
+    body.sbi-student-space.sbi-dashboard-page #main-content::before,
+    body.sbi-teacher-space.sbi-dashboard-page #main-content::before {
+        width: 190px;
+        right: -62px;
+        opacity: 0.22;
+    }
+
+    .sbi-dashboard-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .sbi-dashboard-primary-link,
+    .sbi-dashboard-secondary-link {
+        width: 100%;
+    }
+
+    .sbi-assistant {
+        right: 16px;
+        bottom: 16px;
+    }
+
+    .sbi-assistant__panel {
+        right: 0;
+        bottom: 48px;
+        width: min(300px, calc(100vw - 32px));
+        transform: translateY(10px) scale(0.96) !important;
+    }
+
+    .sbi-assistant.is-open .sbi-assistant__panel,
+    .sbi-assistant.is-peeking .sbi-assistant__panel,
+    .sbi-assistant:hover .sbi-assistant__panel,
+    .sbi-assistant:focus-within .sbi-assistant__panel {
+        transform: translateY(0) scale(1) !important;
+    }
+}
