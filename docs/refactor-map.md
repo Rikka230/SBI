@@ -1,6 +1,6 @@
 # SBI Refactor Map
 
-Version chantier : 8.0L.1
+Version chantier : 8.0L.2
 Branche de travail : `pjax-app-shell-test`
 Branche stable : `main`
 
@@ -23,39 +23,36 @@ Branche stable : `main`
 - 8.0K : teacher course editor PJAX.
 - 8.0K.4 : Quill tooltip single bottom.
 - 8.0L : admin course editor PJAX.
+- 8.0L.1 : admin editor tabs polish.
 
-## 8.0L.1 - Admin editor tabs polish
+## 8.0L.2 - Admin chrome harmonization
 
-Statut : patch préparé + suppression ciblée faite sur GitHub.
+Statut : patch préparé.
 
-Objectif : corriger les retours admin après activation PJAX de l'éditeur cours.
+Objectif : aligner les panneaux gauche/droit/topbar des pages admin avec la référence Dashboard / Profil.
 
 Changements :
 
-- Harmonisation CSS des barres de sous-navigation :
-  - profil admin,
-  - profil prof/élève si classes legacy présentes,
-  - éditeur cours admin,
-  - éditeur cours prof.
-- `installCourseEditorTabs()` devient compatible avec :
-  - `.student-sub-nav-item` / `.student-view`,
-  - `.sub-nav-item` / `.course-section`.
-- `window.switchCourseTab()` fonctionne proprement côté admin.
-- `window.safeSwitchTab()` reste compatible côté teacher.
-- Nouveau cours / Edit bascule maintenant vers la vraie vue éditeur au lieu d'afficher l'éditeur en bas de liste.
-- Suppression directe GitHub :
-  - `public/admin/repair-access.html`.
-- `route-guards.js` ne référence plus `repair-access.html`.
+- Ajout de `public/admin/css/sbi-admin-chrome-harmonization.css`.
+- `theme.js` injecte cette couche visuelle.
+- Le style cockpit admin s'applique à tout `body.sbi-admin-space.sbi-internal-ui`, pas seulement au dashboard.
+- Les panneaux Formations & Cours admin récupèrent :
+  - fond cockpit sombre,
+  - bordures SBI,
+  - nav active bleue,
+  - widget profil harmonisé,
+  - topbar harmonisée.
+- La vue médias/stockage de l'index admin reçoit aussi une couche visuelle plus cohérente.
+- `theme.js` lit `window.SBI_APP_SHELL_CURRENT_URL` pour rester fiable en PJAX.
 
 Points à tester :
 
-- admin → Formations & Cours ;
-- cliquer Nouveau Cours ;
-- l'onglet Éditeur doit être actif ;
-- l'éditeur doit apparaître comme une vue, pas sous la liste ;
-- éditer un cours existant ;
-- vérifier les barres profil/admin ;
-- vérifier que `window.SBI_PJAX_CHECK('/admin/repair-access.html')` indique route non migrée/reload ou 404 si ouverte directement.
+- Dashboard admin : panneaux inchangés.
+- Profil admin : panneaux inchangés.
+- Formations & Cours admin : panneaux identiques au style cockpit.
+- Index admin > Serveur & Stockage / médias : panneaux et cartes cohérents.
+- Gestion Accueil : panneau gauche/droit cohérents.
+- Côté student/teacher : vérifier qu'on ne casse pas leur style clair/orange.
 
 Pages encore hors PJAX :
 

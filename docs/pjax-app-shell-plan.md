@@ -3,7 +3,7 @@
 Branche expérimentale : `pjax-app-shell-test`
 Base : `main` après merge 7.4.2
 
-## État 8.0L.1
+## État 8.0L.2
 
 Le PJAX est activé par défaut sur la branche labo.
 
@@ -42,17 +42,15 @@ Teacher :
 - `/teacher/mes-cours.html`
 - `/teacher/mon-profil.html`
 
-## 8.0L.1
+## 8.0L.2
 
-- Harmonisation visuelle des sous-menus admin/profil/éditeur.
-- Correction du switch `Nouveau Cours` / `Edit` côté admin.
-- Le shell gère maintenant les deux modèles d'onglets :
-  - `.student-sub-nav-item` / `.student-view`
-  - `.sub-nav-item` / `.course-section`
-- Après ouverture éditeur, la vue active remonte proprement au début de l'éditeur.
-- `repair-access.html` est supprimé directement de la branche `pjax-app-shell-test`.
-- `repair-access.html` est retiré des routes protégées.
-- Version actuelle : `SBI 8.0L.1 - PJAX APP SHELL TEST`.
+- Harmonisation du chrome admin.
+- Le style des panneaux gauche/droit/topbar n'est plus réservé au dashboard.
+- Formations & Cours admin récupère le même look cockpit que Dashboard / Profil.
+- Gestion médias / Stockage dans l'index admin garde aussi le chrome admin.
+- `theme.js` lit maintenant l'URL effective du shell PJAX quand disponible.
+- Ajout de `/admin/css/sbi-admin-chrome-harmonization.css`.
+- Version actuelle : `SBI 8.0L.2 - PJAX APP SHELL TEST`.
 
 ## Routes encore protégées
 

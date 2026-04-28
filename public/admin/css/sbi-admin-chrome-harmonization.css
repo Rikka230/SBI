@@ -1,0 +1,187 @@
+/* =======================================================================
+   SBI 8.0L.2 - Admin chrome harmonization
+   -----------------------------------------------------------------------
+   Objectif :
+   - appliquer le look Dashboard/Profil aux panneaux admin partout ;
+   - ne pas limiter le cockpit aux seules routes dashboard ;
+   - couvrir Formations & Cours, Gestion Index / Médias / Stockage.
+   ======================================================================= */
+
+body.sbi-admin-space.sbi-internal-ui {
+    --space-accent: var(--sbi-blue, #2A57FF);
+    background:
+        radial-gradient(circle at 18% 8%, rgba(42, 87, 255, 0.20), transparent 32%),
+        radial-gradient(circle at 90% 0%, rgba(255, 255, 255, 0.055), transparent 24%),
+        linear-gradient(135deg, #050812 0%, #0a1020 48%, #05070d 100%) !important;
+}
+
+body.sbi-admin-space.sbi-internal-ui #main-content {
+    background:
+        radial-gradient(circle at 14% 4%, rgba(42, 87, 255, 0.08), transparent 28%),
+        linear-gradient(135deg, rgba(255, 255, 255, 0.018), transparent 54%) !important;
+}
+
+body.sbi-admin-space.sbi-internal-ui .side-panel,
+body.sbi-admin-space.sbi-internal-ui .top-bar {
+    background: var(--sbi-admin-panel, rgba(9, 14, 27, 0.96)) !important;
+    border-color: var(--sbi-admin-line, rgba(255, 255, 255, 0.12)) !important;
+    box-shadow: 0 20px 70px rgba(0, 0, 0, 0.28) !important;
+}
+
+body.sbi-admin-space.sbi-internal-ui #left-panel,
+body.sbi-admin-space.sbi-internal-ui #right-panel {
+    color: #ffffff;
+}
+
+body.sbi-admin-space.sbi-internal-ui .panel-header {
+    color: #ffffff !important;
+    border-bottom-color: var(--sbi-admin-line, rgba(255, 255, 255, 0.12)) !important;
+}
+
+body.sbi-admin-space.sbi-internal-ui .panel-header::after {
+    opacity: 0.18 !important;
+}
+
+body.sbi-admin-space.sbi-internal-ui .nav-item {
+    color: #aeb8d2 !important;
+}
+
+body.sbi-admin-space.sbi-internal-ui .nav-item:hover {
+    background: rgba(42, 87, 255, 0.10) !important;
+    color: #ffffff !important;
+}
+
+body.sbi-admin-space.sbi-internal-ui .nav-item.active,
+body.sbi-admin-space.sbi-internal-ui .nav-item[aria-current="page"] {
+    background: rgba(42, 87, 255, 0.18) !important;
+    color: var(--sbi-blue, #2A57FF) !important;
+    box-shadow: inset 0 0 0 1px rgba(42, 87, 255, 0.22) !important;
+}
+
+body.sbi-admin-space.sbi-internal-ui .nav-item.active::after,
+body.sbi-admin-space.sbi-internal-ui .nav-item[aria-current="page"]::after,
+body.sbi-admin-space.sbi-internal-ui .nav-item:hover::after {
+    opacity: 0.72 !important;
+}
+
+body.sbi-admin-space.sbi-internal-ui .right-section {
+    border-bottom-color: var(--sbi-admin-line, rgba(255, 255, 255, 0.12)) !important;
+}
+
+body.sbi-admin-space.sbi-internal-ui .profile-widget {
+    padding: 0.85rem;
+    border: 1px solid rgba(255, 255, 255, 0.095);
+    background: rgba(255, 255, 255, 0.045);
+    clip-path: var(--sbi-panel-cut, polygon(0 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%));
+}
+
+body.sbi-admin-space.sbi-internal-ui .profile-widget .avatar,
+body.sbi-admin-space.sbi-internal-ui #top-user-avatar,
+body.sbi-admin-space.sbi-internal-ui #nav-avatar {
+    background: linear-gradient(135deg, var(--sbi-blue, #2A57FF), #6f8bff) !important;
+    color: #ffffff !important;
+    border-radius: 12px !important;
+    box-shadow:
+        inset 0 0 0 1px rgba(255, 255, 255, 0.20),
+        0 10px 24px rgba(42, 87, 255, 0.18) !important;
+}
+
+body.sbi-admin-space.sbi-internal-ui .user-info .name,
+body.sbi-admin-space.sbi-internal-ui #top-user-name {
+    color: #ffffff !important;
+}
+
+body.sbi-admin-space.sbi-internal-ui .user-info .role,
+body.sbi-admin-space.sbi-internal-ui #top-user-level {
+    color: var(--sbi-blue, #2A57FF) !important;
+}
+
+body.sbi-admin-space.sbi-internal-ui #right-panel .action-btn,
+body.sbi-admin-space.sbi-internal-ui .admin-return-link {
+    background: rgba(255, 255, 255, 0.035) !important;
+    border-color: rgba(255, 255, 255, 0.10) !important;
+    color: #ffffff !important;
+}
+
+body.sbi-admin-space.sbi-internal-ui #right-panel .action-btn:hover,
+body.sbi-admin-space.sbi-internal-ui .admin-return-link:hover {
+    background: rgba(42, 87, 255, 0.12) !important;
+    border-color: rgba(42, 87, 255, 0.32) !important;
+    color: #ffffff !important;
+}
+
+body.sbi-admin-space.sbi-internal-ui #right-panel .action-btn.danger {
+    color: #ff7575 !important;
+    border-color: rgba(255, 74, 74, 0.34) !important;
+}
+
+body.sbi-admin-space.sbi-internal-ui #right-panel .action-btn.danger:hover {
+    background: rgba(255, 74, 74, 0.10) !important;
+}
+
+body.sbi-admin-space.sbi-internal-ui .top-bar {
+    color: #ffffff !important;
+}
+
+body.sbi-admin-space.sbi-internal-ui .top-bar .page-title,
+body.sbi-admin-space.sbi-internal-ui .top-bar .page-title a {
+    color: #ffffff !important;
+}
+
+body.sbi-admin-space.sbi-internal-ui .top-bar .page-title a {
+    opacity: 0.76;
+}
+
+body.sbi-admin-space.sbi-internal-ui .mobile-toggle {
+    color: #ffffff !important;
+}
+
+/* Les vues internes de l'index admin ne doivent pas perdre le cockpit. */
+body.sbi-admin-space.sbi-internal-ui #view-settings,
+body.sbi-admin-space.sbi-internal-ui #view-formations,
+body.sbi-admin-space.sbi-internal-ui #view-users {
+    color: #ffffff;
+}
+
+/* Harmonisation douce des cartes Média/Stockage dans l'index admin. */
+body.sbi-admin-space.sbi-internal-ui #view-settings .stat-card,
+body.sbi-admin-space.sbi-internal-ui #view-settings [style*="background: #111"] {
+    background:
+        linear-gradient(145deg, rgba(255,255,255,0.08), rgba(255,255,255,0.035)) !important;
+    border-color: rgba(255,255,255,0.12) !important;
+    box-shadow: 0 22px 64px rgba(0,0,0,0.24) !important;
+}
+
+body.sbi-admin-space.sbi-internal-ui #view-settings [style*="background:#0b0b0d"],
+body.sbi-admin-space.sbi-internal-ui #view-settings [style*="background: #0b0b0d"] {
+    background: rgba(255, 255, 255, 0.045) !important;
+    border-color: rgba(255,255,255,0.10) !important;
+}
+
+/* Même hors dashboard-page, le fond admin garde le filet technique SBI. */
+body.sbi-admin-space.sbi-internal-ui:not(.sbi-dashboard-page) #main-content::after {
+    content: '';
+    position: fixed;
+    inset: 60px 280px 0 230px;
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.08;
+    background:
+        radial-gradient(circle at 22% 18%, rgba(255,255,255,0.72) 0 1px, transparent 2px),
+        radial-gradient(circle at 72% 38%, rgba(42,87,255,0.72) 0 1px, transparent 2px),
+        radial-gradient(circle at 54% 78%, rgba(255,255,255,0.52) 0 1px, transparent 2px);
+    background-size: 260px 220px, 320px 260px, 380px 300px;
+    mask-image: radial-gradient(circle at 52% 28%, black 0%, transparent 72%);
+}
+
+@media (max-width: 1024px) {
+    body.sbi-admin-space.sbi-internal-ui:not(.sbi-dashboard-page) #main-content::after {
+        inset: 60px 0 0 230px;
+    }
+}
+
+@media (max-width: 768px) {
+    body.sbi-admin-space.sbi-internal-ui:not(.sbi-dashboard-page) #main-content::after {
+        inset: 60px 0 0 0;
+    }
+}
