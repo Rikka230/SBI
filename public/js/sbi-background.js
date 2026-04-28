@@ -16,8 +16,8 @@
 document.addEventListener('DOMContentLoaded', () => {
     if (document.querySelector('[data-sbi-background]')) return;
 
-    const particleCount = 34;
-    const lineCount = 14;
+    const particleCount = 46;
+    const lineCount = 20;
 
     const backgroundRoot = document.createElement('div');
     backgroundRoot.setAttribute('data-sbi-background', '');

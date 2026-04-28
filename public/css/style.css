@@ -4,10 +4,10 @@
 
 /* --- SECTION 1 : VARIABLES & TYPOGRAPHIE --- */
 :root {
-    --bg-dark: #020306;
-    --bg-surface: #070b13;
-    --bg-card: #090e19;
-    --border-color: #1a2235;
+    --bg-dark: #050913;
+    --bg-surface: #0a1120;
+    --bg-card: #0d1526;
+    --border-color: #26324c;
     --sbi-blue: #0051ff;
     --sbi-blue-hover: #003cc2;
     --text-light: #ffffff;
@@ -154,12 +154,6 @@ footer {
     align-items: center;
     gap: 1rem;
 }
-
-.header-logo-link picture {
-    display: inline-flex;
-    align-items: center;
-    line-height: 0;
-}
 .header-logo { height: 45px; object-fit: contain; }
 .header-brand {
     height: 34px;
@@ -189,7 +183,7 @@ footer {
     display: flex;
     flex-direction: column;
     padding-top: var(--header-height);
-    background-color: rgba(2, 3, 6, 0.76);
+    background-color: var(--bg-dark);
     overflow: hidden;
 }
 
@@ -212,7 +206,7 @@ footer {
     left: 0;
     width: 60%;
     height: 100%;
-    background: linear-gradient(to right, rgba(4, 5, 8, 0.88) 0%, rgba(4, 5, 8, 0.12) 62%, rgba(4, 5, 8, 0) 100%);
+    background: linear-gradient(to right, rgba(4, 5, 8, 0.95) 0%, rgba(4, 5, 8, 0) 100%);
     z-index: 1;
 }
 
