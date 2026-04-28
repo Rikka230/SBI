@@ -9,7 +9,6 @@
     <link rel="stylesheet" href="/admin/css/admin.css">
     <link rel="stylesheet" href="/admin/css/admin-notifications.css">
     <link rel="stylesheet" href="/student/css/student.css">
-    <link rel="stylesheet" href="/css/sbi-7-1-harmonization.css">
     
     <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
@@ -21,7 +20,11 @@
         .profile-header::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 100px; background: linear-gradient(90deg, var(--accent-blue), #5B7FFF); opacity: 0.15; z-index: 0; }
         .profile-header::after { content: ''; position: absolute; right: 2rem; top: 2rem; width: 170px; height: 170px; border: 1px solid rgba(42, 87, 255, 0.14); transform: rotate(45deg); pointer-events: none; }
         
-        .avatar-wrapper { position: relative; width: 120px; height: 120px; z-index: 1; margin: 0; flex-shrink: 0; }
+        .avatar-wrapper { position: relative; width: 120px; height: 120px; z-index: 1; margin: 0; flex-shrink: 0; border-radius: 50%; }
+        .avatar-wrapper img { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 50%; background: transparent !important; }
+        .edit-avatar-badge { position: absolute; left: 4px; bottom: 4px; width: 36px; height: 36px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: var(--accent-blue); color: #fff; border: 3px solid var(--bg-card); box-shadow: 0 8px 18px rgba(15, 23, 42, 0.16); cursor: pointer; z-index: 3; }
+        .edit-avatar-badge svg { width: 17px; height: 17px; display: block; }
+        .edit-avatar-badge:hover { transform: scale(1.05); }
         
         .profile-info { z-index: 1; flex-grow: 1; }
         .profile-info h1 { margin: 0 0 0.5rem 0; font-size: 2rem; color: var(--text-main); display: flex; align-items: center; gap: 0.5rem; }
@@ -126,7 +129,7 @@
         }
     </style>
 </head>
-<body class="preload sbi-profile-page sbi-student-surface">
+<body class="preload">
 
 <div class="app-container" id="app-container">
     <script>
@@ -143,7 +146,7 @@
             
             <div class="profile-header">
                 <div class="avatar-wrapper">
-                    <img id="prof-avatar-img" src="" style="width: 100%; height: 100%; border-radius: 50%; border: 4px solid var(--bg-card); background: var(--bg-body); object-fit: cover;">
+                    <img id="prof-avatar-img" src="" style="width: 100%; height: 100%; border-radius: 50%; border: 4px solid var(--bg-card); background: transparent; object-fit: cover; display:block;">
                     <div id="btn-trigger-crop" class="edit-avatar-badge edit-mode-only" title="Modifier la photo">
                         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
                     </div>
