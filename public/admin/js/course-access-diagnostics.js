@@ -1,17 +1,18 @@
 /**
  * =======================================================================
- * COURSE ACCESS DIAGNOSTICS - SBI 8.0M.5
+ * COURSE ACCESS DIAGNOSTICS - SBI 8.0M.6
  * =======================================================================
  * Outil admin pour repérer les cours fantômes sans toucher au viewer :
  * - scan lecture seule formations / users / courses ;
  * - comparaison formations -> users.formationIds / formationsAcces ;
  * - repérage des ciblages cours fragiles ou legacy ;
- * - bouton séparé pour relancer la réparation existante des index users.
+ * - réparation séparée des index users ;
+ * - réparation ciblée des targetStudents des cours VISIBLES uniquement.
  * =======================================================================
  */
 
 import { auth, db } from '/js/firebase-init.js';
-import { collection, doc, getDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { collection, doc, getDoc, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import { syncAllUserFormationIndexes } from '/admin/js/user-formation-index.js';
 
@@ -26,8 +27,10 @@ const IDS = {
     users: 'course-access-users-mismatch',
     courses: 'course-access-courses-issues',
     formations: 'course-access-formations-issues',
+    repairableTargets: 'course-access-targets-repairable',
     scan: 'btn-course-access-scan',
-    repair: 'btn-course-access-repair'
+    repair: 'btn-course-access-repair',
+    repairTargets: 'btn-course-access-repair-targets'
 };
 
 const ARRAY_FIELDS = ['formations', 'formationIds', 'formationsIds', 'targetFormationIds', 'targetFormationTitles'];
@@ -226,6 +229,14 @@ function expectedStudentsFromFormations(formations = []) {
     return list(students);
 }
 
+function formationIdsFromFormations(formations = []) {
+    return list(formations.map((formation) => formation.id));
+}
+
+function formationTitlesFromFormations(formations = []) {
+    return list(formations.map((formation) => formation.titre));
+}
+
 function analyze(data) {
     const usersById = new Map(data.users.map((user) => [user.id, user]));
     const expectedAccess = buildExpectedAccess(data.formations, data.users);
@@ -233,6 +244,7 @@ function analyze(data) {
     const userMismatches = [];
     const formationIssues = [];
     const courseIssues = [];
+    const courseTargetRepairCandidates = [];
     const unassignedUsers = [];
 
     data.users.forEach((user) => {
@@ -286,6 +298,9 @@ function analyze(data) {
         const formations = findFormationMatches(keys, formationLookup);
         const targetStudents = list(course.targetStudents);
         const expectedStudents = expectedStudentsFromFormations(formations);
+        const expectedFormationIds = formationIdsFromFormations(formations);
+        const expectedFormationTitles = formationTitlesFromFormations(formations);
+        const visible = isVisibleCourse(course);
 
         if (keys.length === 0 && targetStudents.length === 0) {
             courseIssues.push({
@@ -301,7 +316,7 @@ function analyze(data) {
             });
         }
 
-        if (!isVisibleCourse(course)) {
+        if (!visible) {
             courseIssues.push({
                 level: 'info',
                 title: labelCourse(course),
@@ -309,19 +324,32 @@ function analyze(data) {
             });
         }
 
-        if (formations.length > 0 && expectedStudents.length > 0 && !sameList(targetStudents, expectedStudents)) {
-            courseIssues.push({
-                level: 'warning',
-                title: labelCourse(course),
-                message: `targetStudents désynchronisé : ${targetStudents.length} actuel(s), ${expectedStudents.length} attendu(s).`
-            });
+        if (formations.length > 0 && !sameList(targetStudents, expectedStudents)) {
+            if (visible) {
+                courseIssues.push({
+                    level: 'warning',
+                    title: labelCourse(course),
+                    message: `Cours visible avec targetStudents désynchronisé : ${targetStudents.length} actuel(s), ${expectedStudents.length} attendu(s).`
+                });
+
+                courseTargetRepairCandidates.push({
+                    course,
+                    title: labelCourse(course),
+                    currentStudents: targetStudents,
+                    expectedStudents,
+                    expectedFormationIds,
+                    expectedFormationTitles
+                });
+            }
         }
 
         if (list(course.formations).length > 0 && list(course.targetFormationIds).length === 0) {
             courseIssues.push({
-                level: 'info',
+                level: visible ? 'warning' : 'info',
                 title: labelCourse(course),
-                message: 'Ciblage encore porté par le champ legacy formations, sans targetFormationIds.'
+                message: visible
+                    ? 'Cours visible encore porté par le champ legacy formations, sans targetFormationIds.'
+                    : 'Brouillon/inactif encore porté par le champ legacy formations, sans targetFormationIds.'
             });
         }
     });
@@ -336,6 +364,7 @@ function analyze(data) {
         userMismatches,
         formationIssues,
         courseIssues,
+        courseTargetRepairCandidates,
         unassignedUsers
     };
 }
@@ -357,23 +386,40 @@ function issueBlock(title, items, renderer, limit = 8) {
 
 function render(report) {
     const total = report.userMismatches.length + report.formationIssues.length + report.courseIssues.length;
+    const actionable = report.userMismatches.length + report.courseTargetRepairCandidates.length;
     const summary = el(IDS.summary);
     const details = el(IDS.details);
 
     setMetric(IDS.users, report.userMismatches.length);
     setMetric(IDS.courses, report.courseIssues.length);
     setMetric(IDS.formations, report.formationIssues.length);
-    setBadge(total ? (total >= 5 ? 'À vérifier' : 'Surveillance') : 'OK', total ? (total >= 5 ? 'warning' : 'idle') : 'success');
+    setMetric(IDS.repairableTargets, report.courseTargetRepairCandidates.length);
+    setBadge(actionable ? 'Action possible' : (total ? 'Surveillance' : 'OK'), actionable ? 'warning' : (total ? 'idle' : 'success'));
 
     if (summary) {
+        const targetText = report.courseTargetRepairCandidates.length
+            ? ` ${report.courseTargetRepairCandidates.length} cours visible(s) réparable(s) côté targetStudents.`
+            : '';
+
         summary.textContent = total
-            ? `Scan terminé : ${report.counts.users} utilisateur(s), ${report.counts.formations} formation(s), ${report.counts.courses} cours. ${total} point(s) à vérifier.`
+            ? `Scan terminé : ${report.counts.users} utilisateur(s), ${report.counts.formations} formation(s), ${report.counts.courses} cours. ${total} point(s) à vérifier.${targetText}`
             : `Scan terminé : ${report.counts.users} utilisateur(s), ${report.counts.formations} formation(s), ${report.counts.courses} cours. Aucun écart critique détecté.`;
     }
 
     if (!details) return;
 
     details.innerHTML = [
+        issueBlock(
+            'Actions possibles sur cours visibles',
+            report.courseTargetRepairCandidates,
+            (item) => `
+                <div style="color:#aaa; font-size:.88rem; line-height:1.45; border-left:3px solid var(--accent-yellow); padding-left:.75rem;">
+                    <strong style="color:white;">${esc(item.title)}</strong><br>
+                    targetStudents actuels : ${esc(item.currentStudents.join(', ') || 'vide')}<br>
+                    targetStudents attendus : ${esc(item.expectedStudents.join(', ') || 'vide')}
+                </div>
+            `
+        ),
         issueBlock(
             'Index utilisateurs désynchronisés',
             report.userMismatches,
@@ -468,6 +514,65 @@ async function runFormationIndexRepair() {
     }
 }
 
+async function runCourseTargetStudentsRepair() {
+    const repairButton = el(IDS.repairTargets);
+    const summary = el(IDS.summary);
+
+    setButton(repairButton, true, { loading: 'Analyse...', idle: 'Réparer targetStudents actifs' });
+    setBadge('Analyse...', 'idle');
+    if (summary) summary.textContent = 'Analyse des cours visibles réparables...';
+
+    try {
+        await assertAdmin();
+        const report = analyze(await loadData());
+        lastReport = report;
+        window.SBI_ACCESS_REPORT = lastReport;
+        render(report);
+
+        const candidates = report.courseTargetRepairCandidates || [];
+        if (!candidates.length) {
+            setBadge('Aucune action', 'success');
+            if (summary) summary.textContent = 'Aucun cours visible avec targetStudents désynchronisé. Rien à réparer.';
+            return { updated: 0, skipped: report.counts.courses };
+        }
+
+        const confirmed = window.confirm(
+            `Réparer targetStudents pour ${candidates.length} cours visible(s) ?\n\n` +
+            'Cette action met à jour uniquement les cours visibles dont les formations sont reconnues.\n' +
+            'Champs écrits : targetStudents, targetFormationIds, targetFormationTitles.\n' +
+            'Les brouillons et cours inactifs ne sont pas modifiés.'
+        );
+
+        if (!confirmed) return null;
+
+        setButton(repairButton, true, { loading: 'Réparation...', idle: 'Réparer targetStudents actifs' });
+        setBadge('Réparation...', 'warning');
+        if (summary) summary.textContent = `Réparation de ${candidates.length} cours visible(s) en cours...`;
+
+        const batch = writeBatch(db);
+        candidates.forEach((item) => {
+            batch.update(doc(db, 'courses', item.course.id), {
+                targetStudents: item.expectedStudents,
+                targetFormationIds: item.expectedFormationIds,
+                targetFormationTitles: item.expectedFormationTitles
+            });
+        });
+
+        await batch.commit();
+
+        if (summary) summary.textContent = `Réparation terminée : ${candidates.length} cours visible(s) mis à jour. Nouveau scan lancé.`;
+        await runAccessDiagnostic();
+        return { updated: candidates.length };
+    } catch (error) {
+        console.error('[SBI Access Diagnostic] Réparation targetStudents impossible :', error);
+        setBadge('Erreur', 'error');
+        if (summary) summary.textContent = error?.message || 'Erreur pendant la réparation targetStudents.';
+        throw error;
+    } finally {
+        setButton(repairButton, false, { loading: 'Réparation...', idle: 'Réparer targetStudents actifs' });
+    }
+}
+
 function bindUi() {
     const root = el(IDS.root);
     if (!root || root.dataset.sbiCourseAccessDiagnosticsBound === 'true') return;
@@ -475,6 +580,7 @@ function bindUi() {
     root.dataset.sbiCourseAccessDiagnosticsBound = 'true';
     el(IDS.scan)?.addEventListener('click', runAccessDiagnostic);
     el(IDS.repair)?.addEventListener('click', runFormationIndexRepair);
+    el(IDS.repairTargets)?.addEventListener('click', runCourseTargetStudentsRepair);
 }
 
 export function initCourseAccessDiagnostics() {
@@ -483,6 +589,7 @@ export function initCourseAccessDiagnostics() {
 
     window.SBI_ACCESS_DIAGNOSTIC = runAccessDiagnostic;
     window.SBI_ACCESS_REPAIR = runFormationIndexRepair;
+    window.SBI_ACCESS_REPAIR_COURSE_TARGETS = runCourseTargetStudentsRepair;
     window.SBI_ACCESS_REPORT = lastReport;
 
     bindUi();
