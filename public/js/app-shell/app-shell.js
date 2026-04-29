@@ -1,5 +1,5 @@
 /**
- * SBI 8.0M.10 - App shell foundation
+ * SBI 8.0M.11 - App shell foundation
  *
  * Le PJAX est activé par défaut sur la branche labo.
  *
@@ -22,6 +22,21 @@ import { listHardReloadRoutes } from './route-guards.js';
 
 const DISABLED_FLAG = 'sbiPjaxDisabled';
 const LEGACY_ENABLED_FLAG = 'sbiPjaxEnabled';
+
+const PRE_PR_FORBIDDEN_FILES = [
+  {
+    path: '/admin/repair-access.html',
+    reason: 'ancienne page de réparation supprimée, ne doit pas revenir dans GitHub'
+  },
+  {
+    path: '/admin/cours-viewer.html',
+    reason: 'trace du test viewer PJAX 8.0M.7 rejeté, supprimée après rollback 8.0M.8'
+  },
+  {
+    path: '/student/css/viewer-pjax.css',
+    reason: 'CSS expérimental viewer PJAX 8.0M.7 rejeté, supprimé après rollback 8.0M.8'
+  }
+];
 
 let initialized = false;
 
@@ -256,6 +271,130 @@ function printAudit(api) {
   };
 }
 
+async function checkStaticPath(path) {
+  const href = new URL(path, window.location.origin);
+  href.searchParams.set('sbiPrePr', Date.now().toString(36));
+
+  const requestOptions = { cache: 'no-store', credentials: 'same-origin' };
+  let response = null;
+
+  try {
+    response = await fetch(href.href, { ...requestOptions, method: 'HEAD' });
+
+    if (response.status === 405 || response.status === 501) {
+      response = await fetch(href.href, { ...requestOptions, method: 'GET' });
+    }
+
+    const absent = response.status === 404 || response.status === 410;
+
+    return {
+      path,
+      status: response.status,
+      state: absent ? 'absent' : 'present',
+      ok: absent,
+      href: href.href
+    };
+  } catch (error) {
+    return {
+      path,
+      status: 'fetch-error',
+      state: 'unknown',
+      ok: false,
+      href: href.href,
+      error: error?.message || String(error)
+    };
+  }
+}
+
+async function buildPrePrFileRows() {
+  const checks = await Promise.all(
+    PRE_PR_FORBIDDEN_FILES.map(async (item) => {
+      const result = await checkStaticPath(item.path);
+
+      return {
+        path: item.path,
+        expected: 'absent',
+        state: result.state,
+        status: result.status,
+        verdict: result.ok ? 'OK absent' : result.state === 'unknown' ? 'À vérifier' : 'ALERTE présent',
+        reason: item.reason,
+        href: result.href,
+        error: result.error || ''
+      };
+    })
+  );
+
+  return checks;
+}
+
+async function printPrePrFileAudit() {
+  const rows = await buildPrePrFileRows();
+  const alerts = rows.filter((row) => row.verdict.startsWith('ALERTE'));
+  const unknown = rows.filter((row) => row.verdict === 'À vérifier');
+
+  console.info('[SBI PRE-PR] Fichiers obsolètes / expérimentaux à garder absents');
+  console.table(rows.map((row) => ({
+    path: row.path,
+    expected: row.expected,
+    state: row.state,
+    status: row.status,
+    verdict: row.verdict,
+    reason: row.reason
+  })));
+
+  if (alerts.length) {
+    console.warn('[SBI PRE-PR] Fichiers à supprimer avant PR.', alerts);
+  } else if (unknown.length) {
+    console.warn('[SBI PRE-PR] Certains fichiers n’ont pas pu être vérifiés automatiquement.', unknown);
+  } else {
+    console.info('[SBI PRE-PR] Nettoyage fichiers : OK. Aucun fichier obsolète détecté.');
+  }
+
+  return { rows, alerts, unknown, ok: alerts.length === 0 && unknown.length === 0 };
+}
+
+function buildPrePrSummary(routeAudit, fileAudit) {
+  const pjaxAlerts = routeAudit?.alertRows?.length || 0;
+  const viewerOk = Boolean(routeAudit?.protectedViewerOk);
+  const fileAlerts = fileAudit?.alerts?.length || 0;
+  const fileUnknown = fileAudit?.unknown?.length || 0;
+  const ok = pjaxAlerts === 0 && viewerOk && fileAlerts === 0 && fileUnknown === 0;
+
+  return {
+    version: window.SBI_VERSION?.label || document.querySelector('[data-sbi-version-badge]')?.textContent?.trim() || 'version non exposée',
+    shellArea: routeAudit?.context?.area || 'unknown',
+    pjaxAlerts,
+    viewerReloadProtected: viewerOk,
+    forbiddenFilesPresent: fileAlerts,
+    forbiddenFilesUnknown: fileUnknown,
+    readyForPrReview: ok,
+    verdict: ok ? 'OK pré-PR' : 'À corriger avant PR'
+  };
+}
+
+async function printPrePrCheck(api) {
+  console.info('[SBI PRE-PR] Check rapide avant nettoyage / PR');
+
+  const routeAudit = printAudit(api);
+  const fileAudit = await printPrePrFileAudit();
+  const summary = buildPrePrSummary(routeAudit, fileAudit);
+
+  console.info('[SBI PRE-PR] Résumé');
+  console.table([summary]);
+
+  if (summary.readyForPrReview) {
+    console.info('[SBI PRE-PR] OK : shell stable, viewers protégés, fichiers obsolètes absents.');
+  } else {
+    console.warn('[SBI PRE-PR] À vérifier avant PR.', summary);
+  }
+
+  return {
+    summary,
+    routeAudit,
+    fileAudit
+  };
+}
+
 function installEmergencySwitches(api) {
   window.SBI_ENABLE_PJAX = () => {
     setFlag(DISABLED_FLAG, false);
@@ -302,6 +441,9 @@ function installEmergencySwitches(api) {
   };
 
   window.SBI_PJAX_AUDIT = () => printAudit(api);
+
+  window.SBI_PRE_PR_FILES = () => printPrePrFileAudit();
+  window.SBI_PRE_PR_CHECK = () => printPrePrCheck(api);
 
   window.SBI_APP_SHELL = api;
 }

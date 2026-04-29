@@ -1,10 +1,10 @@
 /**
- * SBI 8.0M.9 - Course viewer bridge foundation
+ * SBI 8.0M.11 - Course viewer bridge foundation
  *
  * Ce fichier prépare la future migration PJAX du viewer de cours.
  *
  * IMPORTANT :
- * En 8.0M.9, aucune route viewer n'est activée en PJAX.
+ * En 8.0M.11, aucune route viewer n'est activée en PJAX.
  * Le viewer reste volontairement en navigation classique.
  *
  * Raisons :
@@ -128,7 +128,7 @@ export function installViewerDiagnostics() {
 
 export function createViewerLifecyclePlan() {
   return {
-    targetPatch: 'post-8.0M.9',
+    targetPatch: 'post-8.0M.11',
     currentMode: 'reload-protected',
     rejectedPatch: COURSE_VIEWER_LAST_REJECTED_EXPERIMENT,
     nextSafeStrategy: 'fullscreen-route-only',
