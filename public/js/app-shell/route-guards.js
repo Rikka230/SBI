@@ -1,18 +1,23 @@
 /**
- * SBI 8.0L.1 - Route guards PJAX
+ * SBI 8.0M.7 - Route guards PJAX
  *
- * Les routes sensibles restent en reload classique tant qu'elles n'ont pas
- * un lifecycle dédié testé.
+ * Les routes sensibles restent en reload classique par défaut.
+ * Exception contrôlée : viewer preview admin/prof autorisé en PJAX uniquement avec preview=true.
  */
 
 const HARD_RELOAD_PATHS = new Map([
   ['/student/cours-viewer.html', 'viewer étudiant / progression / quiz / vidéo'],
-  ['/teacher/cours-viewer.html', 'viewer prof / progression / preview'],
-  ['/admin/cours-viewer.html', 'viewer admin / preview'],
+  ['/teacher/cours-viewer.html', 'viewer prof réel sans preview'],
+  ['/admin/cours-viewer.html', 'viewer admin réel sans preview'],
   ['/admin/formations-live.html', 'live / médias / logique non migrée'],
   ['/change-email.html', 'flux sécurité email'],
   ['/login.html', 'authentification'],
   ['/index.html', 'index public']
+]);
+
+const PJAX_VIEWER_PREVIEW_PATHS = new Set([
+  '/teacher/cours-viewer.html',
+  '/admin/cours-viewer.html'
 ]);
 
 const HARD_RELOAD_PREFIXES = [
@@ -40,10 +45,23 @@ function isFileDownload(url) {
   return /\.(pdf|zip|rar|7z|mp4|webm|mov|jpg|jpeg|png|webp|gif|svg|json|csv|xlsx?)$/i.test(pathname);
 }
 
+function isPjaxPreviewViewerException(url) {
+  if (!url) return false;
+  const pathname = normalizePath(url.pathname).toLowerCase();
+
+  return PJAX_VIEWER_PREVIEW_PATHS.has(pathname)
+    && url.searchParams.get('preview') === 'true'
+    && Boolean(url.searchParams.get('id'));
+}
+
 function getHardReloadReason(url) {
   if (!sameOrigin(url)) return 'origine externe';
 
   const pathname = normalizePath(url.pathname).toLowerCase();
+
+  if (isPjaxPreviewViewerException(url)) {
+    return null;
+  }
 
   if (HARD_RELOAD_PATHS.has(pathname)) {
     return HARD_RELOAD_PATHS.get(pathname);
@@ -107,4 +125,12 @@ export function getRouteDecision(url, registry = null) {
 
 export function listHardReloadRoutes() {
   return Array.from(HARD_RELOAD_PATHS.entries()).map(([path, reason]) => ({ path, reason }));
+}
+
+export function listPjaxViewerPreviewRoutes() {
+  return Array.from(PJAX_VIEWER_PREVIEW_PATHS).map((path) => ({
+    path,
+    mode: 'pjax-preview-only',
+    condition: 'preview=true + id présent'
+  }));
 }

@@ -3,8 +3,8 @@
  * VIEWER - Mode focus, verrouillage linéaire et QCM intelligent + XP
  * =======================================================================
  *
- * 8.0M.1 : le viewer devient montable/démontable.
- * IMPORTANT : les routes viewer restent encore protégées en reload classique.
+ * 8.0M.7 : preview admin/prof compatible PJAX.
+ * IMPORTANT : le viewer élève réel reste protégé en reload classique.
  * =======================================================================
  */
 
@@ -168,6 +168,24 @@ function getSafeReferrerUrl() {
     }
 }
 
+function navigateWithAppShellIfPossible(targetUrl) {
+    try {
+        const api = window.SBI_APP_SHELL;
+        if (!api || api.enabled === false || typeof api.canHandle !== 'function' || typeof api.navigate !== 'function') {
+            return false;
+        }
+
+        const url = new URL(targetUrl, window.location.origin);
+        if (!api.canHandle(url)) return false;
+
+        api.navigate(url, { historyMode: 'push', source: 'course-viewer-leave' });
+        return true;
+    } catch (error) {
+        console.warn('[SBI Viewer] Retour PJAX impossible, fallback reload :', error);
+        return false;
+    }
+}
+
 function leaveViewer(formId = '') {
     const fallbackUrl = getSafeReferrerUrl() || getDefaultBackUrl(formId);
 
@@ -180,6 +198,10 @@ function leaveViewer(formId = '') {
             }
         }, 150);
 
+        return;
+    }
+
+    if (isPreviewMode && navigateWithAppShellIfPossible(fallbackUrl)) {
         return;
     }
 

@@ -1,0 +1,355 @@
+/* =======================================================================
+   SBI 8.0M.7 - Viewer preview inside PJAX shell
+   -----------------------------------------------------------------------
+   CSS volontairement scopé : ne modifie pas :root et ne casse pas le chrome
+   admin/prof après retour depuis la preview.
+   ======================================================================= */
+
+body.sbi-viewer-preview-shell #main-content {
+    overflow: hidden;
+}
+
+body.sbi-viewer-preview-shell .top-bar {
+    z-index: 60;
+}
+
+.sbi-pjax-course-viewer {
+    --viewer-bg-main: #f3f4f6;
+    --viewer-bg-sidebar: #ffffff;
+    --viewer-bg-header: #ffffff;
+    --viewer-text-main: #1f2937;
+    --viewer-text-muted: #6b7280;
+    --viewer-accent-blue: #2A57FF;
+    --viewer-accent-blue-light: rgba(42, 87, 255, 0.1);
+    --viewer-accent-green: #10b981;
+    --viewer-accent-red: #ef4444;
+    --viewer-accent-yellow: #fbbc04;
+    --viewer-border-color: #e5e7eb;
+
+    --bg-main: var(--viewer-bg-main);
+    --bg-sidebar: var(--viewer-bg-sidebar);
+    --bg-header: var(--viewer-bg-header);
+    --text-main: var(--viewer-text-main);
+    --text-muted: var(--viewer-text-muted);
+    --accent-blue: var(--viewer-accent-blue);
+    --accent-blue-light: var(--viewer-accent-blue-light);
+    --accent-green: var(--viewer-accent-green);
+    --accent-red: var(--viewer-accent-red);
+    --accent-yellow: var(--viewer-accent-yellow);
+    --border-color: var(--viewer-border-color);
+
+    height: calc(100vh - var(--header-height, 56px));
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    background: var(--viewer-bg-main);
+    color: var(--viewer-text-main);
+    font-family: 'Inter', 'Segoe UI', sans-serif;
+    overflow: hidden;
+}
+
+body:not(.auth-ready) .sbi-pjax-course-viewer .viewer-header,
+body:not(.auth-ready) .sbi-pjax-course-viewer .viewer-body {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+body.auth-ready .sbi-pjax-course-viewer .viewer-header,
+body.auth-ready .sbi-pjax-course-viewer .viewer-body {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transition: opacity 0.18s ease;
+}
+
+.sbi-pjax-course-viewer .viewer-header {
+    height: 70px;
+    min-height: 70px;
+    background: var(--viewer-bg-header);
+    border-bottom: 1px solid var(--viewer-border-color);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 2rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
+    z-index: 10;
+}
+
+.sbi-pjax-course-viewer .btn-back-hub {
+    color: var(--viewer-text-muted);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: 0.2s;
+    font-weight: 800;
+    background: #f9fafb;
+    padding: 8px 16px;
+    border-radius: 20px;
+    border: 1px solid var(--viewer-border-color);
+    cursor: pointer;
+}
+
+.sbi-pjax-course-viewer .btn-back-hub:hover {
+    color: var(--viewer-text-main);
+    background: #f3f4f6;
+    transform: translateY(-1px);
+}
+
+.sbi-pjax-course-viewer .viewer-body {
+    display: flex;
+    height: calc(100% - 70px);
+    width: 100%;
+    min-height: 0;
+}
+
+.sbi-pjax-course-viewer .viewer-main {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    padding: 3rem;
+    scroll-behavior: smooth;
+    min-width: 0;
+}
+
+.sbi-pjax-course-viewer .viewer-sidebar {
+    width: 320px;
+    min-width: 280px;
+    background: var(--viewer-bg-sidebar);
+    border-left: 1px solid var(--viewer-border-color);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    box-shadow: -2px 0 10px rgba(0, 0, 0, 0.02);
+    z-index: 5;
+}
+
+.sbi-pjax-course-viewer .chapter-tab {
+    padding: 1.2rem 1.5rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 0.4rem 1rem;
+    border-radius: 12px;
+    border: 1px solid transparent;
+}
+
+.sbi-pjax-course-viewer .chapter-tab:hover:not(.locked) {
+    background: #f9fafb;
+    border-color: var(--viewer-border-color);
+}
+
+.sbi-pjax-course-viewer .chapter-tab.active {
+    background: var(--viewer-accent-blue-light);
+    border-color: transparent;
+}
+
+.sbi-pjax-course-viewer .chapter-tab.done .tab-title {
+    color: var(--viewer-accent-blue);
+}
+
+.sbi-pjax-course-viewer .chapter-tab.locked {
+    opacity: 0.4;
+    cursor: not-allowed;
+    background: transparent;
+}
+
+.sbi-pjax-course-viewer .tab-title {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--viewer-text-muted);
+}
+
+.sbi-pjax-course-viewer .active .tab-title {
+    color: var(--viewer-text-main);
+}
+
+.sbi-pjax-course-viewer .media-container {
+    width: 100%;
+    max-width: 900px;
+    margin: 0 auto 2.5rem auto;
+    display: flex;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.sbi-pjax-course-viewer .media-container img,
+.sbi-pjax-course-viewer .media-container video {
+    max-width: 100%;
+    max-height: 70vh;
+    height: auto;
+    object-fit: contain;
+    display: block;
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+    border: 1px solid var(--viewer-border-color);
+}
+
+.sbi-pjax-course-viewer .text-container {
+    width: 100%;
+    box-sizing: border-box;
+    max-width: 900px;
+    margin: 0 auto;
+    background: #ffffff;
+    padding: 3rem;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+    border: 1px solid var(--viewer-border-color);
+    flex-shrink: 0;
+    height: auto;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    word-break: break-word;
+}
+
+.sbi-pjax-course-viewer .ql-editor {
+    font-size: 1.15rem;
+    line-height: 1.8;
+    color: #374151;
+    height: auto;
+    min-height: unset;
+    overflow: visible;
+    padding: 0;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    word-break: break-word;
+}
+
+.sbi-pjax-course-viewer .ql-editor h1,
+.sbi-pjax-course-viewer .ql-editor h2,
+.sbi-pjax-course-viewer .ql-editor h3 {
+    color: var(--viewer-text-main);
+    margin-top: 1.5em;
+}
+
+.sbi-pjax-course-viewer .ql-editor img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    margin: 1rem 0;
+}
+
+.sbi-pjax-course-viewer .action-bar {
+    max-width: 900px;
+    margin: 2rem auto;
+    width: 100%;
+    flex-shrink: 0;
+    display: flex;
+    justify-content: flex-end;
+    padding-top: 1rem;
+}
+
+.sbi-pjax-course-viewer .btn-validate {
+    background: var(--viewer-accent-blue);
+    color: white;
+    font-weight: 800;
+    border: none;
+    padding: 1.2rem 2.5rem;
+    border-radius: 30px;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 1.1rem;
+    box-shadow: 0 4px 15px rgba(42, 87, 255, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.sbi-pjax-course-viewer .btn-validate:hover:not(:disabled) {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(42, 87, 255, 0.4);
+}
+
+.sbi-pjax-course-viewer .btn-validate:disabled {
+    background: #e5e7eb;
+    color: #9ca3af;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+}
+
+.sbi-pjax-course-viewer .quiz-option {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    cursor: pointer;
+    padding: 1rem;
+    background: #ffffff;
+    border: 2px solid var(--viewer-border-color);
+    border-radius: 8px;
+    transition: 0.2s;
+}
+
+.sbi-pjax-course-viewer .quiz-option:hover:not(.locked) {
+    border-color: var(--viewer-accent-blue);
+    background: #f9fafb;
+}
+
+.sbi-pjax-course-viewer .quiz-option.correct {
+    border-color: var(--viewer-accent-green);
+    background: rgba(16, 185, 129, 0.05);
+}
+
+.sbi-pjax-course-viewer .quiz-option.wrong {
+    border-color: var(--viewer-accent-red);
+    background: rgba(239, 68, 68, 0.05);
+}
+
+.sbi-pjax-course-viewer .quiz-option.locked {
+    cursor: default;
+}
+
+.sbi-pjax-course-viewer .quiz-result-box {
+    margin-top: 2rem;
+    padding: 2rem;
+    border-radius: 12px;
+    background: #f8fafc;
+    border: 2px dashed transparent;
+    text-align: center;
+    display: none;
+}
+
+@media (max-width: 900px) {
+    body.sbi-viewer-preview-shell #main-content {
+        overflow-y: auto;
+    }
+
+    .sbi-pjax-course-viewer {
+        height: auto;
+        min-height: calc(100vh - var(--header-height, 56px));
+        overflow: visible;
+    }
+
+    .sbi-pjax-course-viewer .viewer-body {
+        flex-direction: column;
+        height: auto;
+    }
+
+    .sbi-pjax-course-viewer .viewer-sidebar {
+        width: 100%;
+        min-width: 0;
+        border-left: none;
+        border-top: 1px solid var(--viewer-border-color);
+        max-height: 280px;
+        order: -1;
+    }
+
+    .sbi-pjax-course-viewer .viewer-main {
+        padding: 1.5rem;
+    }
+
+    .sbi-pjax-course-viewer .viewer-header {
+        padding: 0 1rem;
+        gap: 1rem;
+    }
+
+    .sbi-pjax-course-viewer .viewer-header h2 {
+        font-size: 1rem !important;
+        text-align: center;
+    }
+}

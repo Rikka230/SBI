@@ -1,19 +1,8 @@
 /**
- * SBI 8.0M - Course viewer bridge foundation
+ * SBI 8.0M.7 - Course viewer bridge
  *
- * Ce fichier prépare la future migration PJAX du viewer de cours.
- *
- * IMPORTANT :
- * En 8.0M, aucune route viewer n'est activée en PJAX.
- * Le viewer reste volontairement en navigation classique.
- *
- * Raisons :
- * - progression Firestore,
- * - timers de sécurité,
- * - quiz runtime,
- * - vidéo,
- * - back dynamique,
- * - preview admin/prof.
+ * Le viewer élève réel reste en reload classique.
+ * Les previews admin/prof peuvent être montées en PJAX uniquement avec preview=true.
  */
 
 export const COURSE_VIEWER_ROUTES = {
@@ -32,6 +21,11 @@ export const COURSE_VIEWER_SENSITIVE_AREAS = [
   'dynamic-back',
   'preview-mode',
   'video-media'
+];
+
+export const COURSE_VIEWER_PJAX_PREVIEW_ROUTES = [
+  COURSE_VIEWER_ROUTES.teacher,
+  COURSE_VIEWER_ROUTES.admin
 ];
 
 export function normalizeViewerPath(pathname = window.location.pathname) {
@@ -65,18 +59,68 @@ export function getViewerRoleFromUrl(urlLike = window.location.href) {
   }
 }
 
+export function isViewerPreviewUrl(urlLike = window.location.href) {
+  try {
+    const url = new URL(urlLike, window.location.origin);
+    return url.searchParams.get('preview') === 'true';
+  } catch {
+    return false;
+  }
+}
+
+export function canPjaxCourseViewerPreview(urlLike = window.location.href) {
+  try {
+    const url = new URL(urlLike, window.location.origin);
+    const path = normalizeViewerPath(url.pathname);
+
+    return COURSE_VIEWER_PJAX_PREVIEW_ROUTES.includes(path)
+      && url.searchParams.get('preview') === 'true'
+      && Boolean(url.searchParams.get('id'));
+  } catch {
+    return false;
+  }
+}
+
 export function getViewerRouteStatus(urlLike = window.location.href) {
   const isViewer = isCourseViewerUrl(urlLike);
+  const role = isViewer ? getViewerRoleFromUrl(urlLike) : 'none';
+  const preview = isViewer ? isViewerPreviewUrl(urlLike) : false;
+  const pjaxReady = isViewer ? canPjaxCourseViewerPreview(urlLike) : false;
+
+  if (!isViewer) {
+    return {
+      isViewer: false,
+      role,
+      preview,
+      pjaxReady: false,
+      mode: 'not-viewer',
+      reason: 'URL hors viewer.',
+      sensitiveAreas: []
+    };
+  }
+
+  if (pjaxReady) {
+    return {
+      isViewer: true,
+      role,
+      preview,
+      pjaxReady: true,
+      mode: 'pjax-preview-only',
+      reason: 'Preview admin/prof autorisée en PJAX. Le viewer élève réel reste protégé.',
+      sensitiveAreas: ['preview-mode', 'video-media', 'quiz-runtime', 'dynamic-back']
+    };
+  }
 
   return {
-    isViewer,
-    role: isViewer ? getViewerRoleFromUrl(urlLike) : 'none',
+    isViewer: true,
+    role,
+    preview,
     pjaxReady: false,
-    mode: isViewer ? 'reload-protected' : 'not-viewer',
-    reason: isViewer
-      ? 'Viewer encore protégé : progression, timer, quiz et vidéo nécessitent un lifecycle dédié.'
-      : 'URL hors viewer.',
-    sensitiveAreas: isViewer ? [...COURSE_VIEWER_SENSITIVE_AREAS] : []
+    mode: 'reload-protected',
+    reason: role === 'student'
+      ? 'Viewer élève réel protégé : progression, timer, quiz et vidéo restent en reload classique.'
+      : 'Viewer admin/prof protégé sauf preview=true avec id.',
+    sensitiveAreas: [...COURSE_VIEWER_SENSITIVE_AREAS]
   };
 }
 
@@ -88,6 +132,7 @@ export function installViewerDiagnostics() {
       url: new URL(href, window.location.href).href,
       viewer: status.isViewer,
       role: status.role,
+      preview: status.preview,
       mode: status.mode,
       pjaxReady: status.pjaxReady,
       reason: status.reason
@@ -104,7 +149,8 @@ export function installViewerDiagnostics() {
     const routes = Object.entries(COURSE_VIEWER_ROUTES).map(([role, path]) => ({
       role,
       path,
-      mode: 'reload-protected'
+      mode: COURSE_VIEWER_PJAX_PREVIEW_ROUTES.includes(path) ? 'pjax-preview-only' : 'reload-protected',
+      condition: COURSE_VIEWER_PJAX_PREVIEW_ROUTES.includes(path) ? 'preview=true + id présent' : 'toujours reload'
     }));
 
     console.table(routes);
@@ -114,16 +160,17 @@ export function installViewerDiagnostics() {
 
 export function createViewerLifecyclePlan() {
   return {
-    targetPatch: '8.0M+',
-    currentMode: 'reload-protected',
-    requiredBeforePjax: [
-      'export mountCourseViewer() depuis /student/js/cours-viewer.js',
-      'retourner cleanup() pour clearInterval(timerInterval)',
-      'remplacer DOMContentLoaded auto par autoMount désactivable',
-      'déporter leaveViewer() pour compatibilité shell',
-      'isoler quiz listeners par chapitre',
-      'rendre preview mode non destructif en PJAX',
-      'ajouter fallback reload au moindre échec progress/quiz'
+    targetPatch: '8.0M.7+',
+    currentMode: 'preview-pjax-only',
+    enabledNow: [
+      'preview admin en PJAX via /admin/cours-viewer.html?id=...&preview=true',
+      'preview prof en PJAX via /teacher/cours-viewer.html?id=...&preview=true',
+      'fallback reload au moindre échec de montage'
+    ],
+    stillProtected: [
+      'viewer élève réel /student/cours-viewer.html',
+      'progression Firestore réelle hors preview',
+      'routes viewer sans preview=true'
     ]
   };
 }
