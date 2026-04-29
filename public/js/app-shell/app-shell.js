@@ -1,5 +1,5 @@
 /**
- * SBI 8.0M.9 - App shell foundation
+ * SBI 8.0M.10 - App shell foundation
  *
  * Le PJAX est activé par défaut sur la branche labo.
  *
@@ -110,47 +110,107 @@ function getShellContext(api) {
   };
 }
 
-function buildRouteAuditRows(api) {
-  const probes = [
-    { group: 'admin', path: '/admin/index.html?tab=view-dashboard', expected: 'pjax-if-admin-shell' },
-    { group: 'admin', path: '/admin/index.html?tab=view-users', expected: 'pjax-if-admin-shell' },
-    { group: 'admin', path: '/admin/site-index-settings.html', expected: 'pjax-if-admin-shell' },
-    { group: 'admin', path: '/admin/formations-cours.html', expected: 'pjax-if-admin-shell' },
-    { group: 'admin', path: '/admin/admin-profile.html', expected: 'pjax-if-admin-shell' },
-    { group: 'student', path: '/student/dashboard.html', expected: 'pjax-if-student-shell' },
-    { group: 'student', path: '/student/mes-cours.html', expected: 'pjax-if-student-shell' },
-    { group: 'student', path: '/student/mon-profil.html', expected: 'pjax-if-student-shell' },
-    { group: 'teacher', path: '/teacher/dashboard.html', expected: 'pjax-if-teacher-shell' },
-    { group: 'teacher', path: '/teacher/mes-cours.html', expected: 'pjax-if-teacher-shell' },
-    { group: 'teacher', path: '/teacher/mon-profil.html', expected: 'pjax-if-teacher-shell' },
-    { group: 'protected', path: '/student/cours-viewer.html?id=test', expected: 'reload' },
-    { group: 'protected', path: '/teacher/cours-viewer.html?id=test&preview=true', expected: 'reload' },
-    { group: 'protected', path: '/admin/cours-viewer.html?id=test&preview=true', expected: 'reload' },
-    { group: 'protected', path: '/admin/formations-live.html', expected: 'reload' },
-    { group: 'protected', path: '/login.html', expected: 'reload' },
-    { group: 'public', path: '/index.html', expected: 'reload' }
+function getPjaxProbeDefinitions() {
+  return [
+    { group: 'admin', path: '/admin/index.html?tab=view-dashboard', label: 'Admin dashboard' },
+    { group: 'admin', path: '/admin/index.html?tab=view-users', label: 'Admin utilisateurs' },
+    { group: 'admin', path: '/admin/site-index-settings.html', label: 'Admin gestion accueil' },
+    { group: 'admin', path: '/admin/formations-cours.html', label: 'Admin formations & cours' },
+    { group: 'admin', path: '/admin/admin-profile.html', label: 'Admin profil' },
+    { group: 'student', path: '/student/dashboard.html', label: 'Student dashboard' },
+    { group: 'student', path: '/student/mes-cours.html', label: 'Student mes cours' },
+    { group: 'student', path: '/student/mon-profil.html', label: 'Student profil' },
+    { group: 'teacher', path: '/teacher/dashboard.html', label: 'Teacher dashboard' },
+    { group: 'teacher', path: '/teacher/mes-cours.html', label: 'Teacher formations & cours' },
+    { group: 'teacher', path: '/teacher/mon-profil.html', label: 'Teacher profil' },
+    { group: 'protected', path: '/student/cours-viewer.html?id=test', label: 'Viewer étudiant réel' },
+    { group: 'protected', path: '/teacher/cours-viewer.html?id=test&preview=true', label: 'Viewer prof preview' },
+    { group: 'protected', path: '/admin/cours-viewer.html?id=test&preview=true', label: 'Viewer admin preview' },
+    { group: 'protected', path: '/admin/formations-live.html', label: 'Live / médias' },
+    { group: 'protected', path: '/login.html', label: 'Authentification' },
+    { group: 'public', path: '/index.html', label: 'Index public' }
   ];
+}
 
-  return probes.map((probe) => {
+function getExpectedModeForProbe(probe, context) {
+  if (probe.group === 'protected' || probe.group === 'public') {
+    return {
+      expected: 'reload',
+      note: probe.path.includes('/cours-viewer.html')
+        ? 'viewer protégé depuis rollback 8.0M.8'
+        : 'route non migrée volontairement'
+    };
+  }
+
+  if (probe.group === context.area) {
+    return {
+      expected: 'pjax',
+      note: `route ${probe.group} testée dans son shell`
+    };
+  }
+
+  return {
+    expected: 'reload',
+    note: `hors contexte actuel (${context.area || 'unknown'})`
+  };
+}
+
+function getAuditVerdict(probe, decision, expectedInfo) {
+  if (decision.mode === expectedInfo.expected) {
+    if (probe.group === 'protected' || probe.group === 'public') return 'OK protégé';
+    if (expectedInfo.note.startsWith('hors contexte')) return 'OK hors contexte';
+    return 'OK PJAX';
+  }
+
+  if (probe.path.includes('/cours-viewer.html') && decision.mode !== 'reload') {
+    return 'ALERTE viewer';
+  }
+
+  return 'ALERTE';
+}
+
+function buildRouteAuditRows(api) {
+  const context = getShellContext(api);
+
+  return getPjaxProbeDefinitions().map((probe) => {
     const url = new URL(probe.path, window.location.origin);
     const decision = api.routeStatus(url);
+    const expectedInfo = getExpectedModeForProbe(probe, context);
 
     return {
       group: probe.group,
+      label: probe.label,
       path: probe.path,
-      expected: probe.expected,
+      expectedNow: expectedInfo.expected,
       mode: decision.mode,
+      verdict: getAuditVerdict(probe, decision, expectedInfo),
+      note: expectedInfo.note,
       route: decision.route || '-',
       reason: decision.reason
     };
   });
 }
 
+function summarizeAuditRows(rows) {
+  return {
+    total: rows.length,
+    okPjax: rows.filter((row) => row.verdict === 'OK PJAX').length,
+    okProtected: rows.filter((row) => row.verdict === 'OK protégé').length,
+    okOutOfContext: rows.filter((row) => row.verdict === 'OK hors contexte').length,
+    alerts: rows.filter((row) => row.verdict.startsWith('ALERTE')).length
+  };
+}
+
 function printAudit(api) {
   const context = getShellContext(api);
   const rows = buildRouteAuditRows(api);
+  const summary = summarizeAuditRows(rows);
+  const alertRows = rows.filter((row) => row.verdict.startsWith('ALERTE'));
   const protectedViewerRows = rows.filter((row) => row.path.includes('/cours-viewer.html'));
   const unsafeViewerRows = protectedViewerRows.filter((row) => row.mode !== 'reload');
+  const currentShellRows = rows.filter((row) => row.group === context.area);
+  const protectedRows = rows.filter((row) => row.group === 'protected' || row.group === 'public');
+  const outOfContextRows = rows.filter((row) => ['admin', 'student', 'teacher'].includes(row.group) && row.group !== context.area);
 
   console.info('[SBI PJAX] Contexte shell courant');
   console.table([{
@@ -162,8 +222,17 @@ function printAudit(api) {
     viewKey: context.currentViewKey || '-'
   }]);
 
-  console.info('[SBI PJAX] Audit routes migrées / protégées');
-  console.table(rows);
+  console.info('[SBI PJAX] Résumé audit contextualisé');
+  console.table([summary]);
+
+  console.info(`[SBI PJAX] Routes ${context.area} attendues en PJAX dans le shell courant`);
+  console.table(currentShellRows);
+
+  console.info('[SBI PJAX] Routes protégées attendues en reload');
+  console.table(protectedRows);
+
+  console.info('[SBI PJAX] Routes hors contexte : reload normal depuis ce shell');
+  console.table(outOfContextRows);
 
   if (unsafeViewerRows.length) {
     console.warn('[SBI PJAX] Alerte : un viewer est annoncé PJAX alors qu’il doit rester protégé.', unsafeViewerRows);
@@ -171,11 +240,19 @@ function printAudit(api) {
     console.info('[SBI PJAX] Viewer protégé : OK. Les viewers restent en reload classique.');
   }
 
+  if (alertRows.length) {
+    console.warn('[SBI PJAX] Alertes audit à vérifier.', alertRows);
+  } else {
+    console.info('[SBI PJAX] Audit contextualisé : OK. Les reload hors contexte sont normaux.');
+  }
+
   return {
     context,
     rows,
+    summary,
     protectedViewerOk: unsafeViewerRows.length === 0,
-    unsafeViewerRows
+    unsafeViewerRows,
+    alertRows
   };
 }
 
