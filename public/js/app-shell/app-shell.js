@@ -1,5 +1,5 @@
 /**
- * SBI 8.0I.1 - App shell foundation
+ * SBI 8.0M.9 - App shell foundation
  *
  * Le PJAX est activé par défaut sur la branche labo.
  *
@@ -79,6 +79,106 @@ function printRouteHelp(api) {
   return payload;
 }
 
+function getShellContext(api) {
+  const effectiveUrl = new URL(window.SBI_APP_SHELL_CURRENT_URL || window.location.href, window.location.origin);
+  const path = effectiveUrl.pathname.replace(/\/+$/, '') || '/';
+  const app = document.getElementById('app-container');
+  const leftActive = document.querySelector('#left-panel .nav-item.active, #left-panel .admin-return-link.active');
+  const pageTitle = document.querySelector('.top-bar .page-title');
+
+  let area = 'unknown';
+  if (path.startsWith('/admin/')) area = 'admin';
+  else if (path.startsWith('/student/')) area = 'student';
+  else if (path.startsWith('/teacher/')) area = 'teacher';
+  else if (path === '/' || path === '/index.html') area = 'public';
+
+  return {
+    enabled: api.enabled,
+    area,
+    path,
+    href: effectiveUrl.href,
+    routeDecision: api.routeStatus(effectiveUrl),
+    title: document.title,
+    pageTitle: pageTitle?.textContent?.trim() || '',
+    activeNav: leftActive?.id || leftActive?.getAttribute('href') || leftActive?.getAttribute('data-sbi-href') || '',
+    bodyClasses: Array.from(document.body.classList),
+    noRightPanel: document.body.classList.contains('no-right-panel'),
+    leftPanelOpen: app?.classList.contains('left-open') || false,
+    rightPanelOpen: app?.classList.contains('right-open') || false,
+    currentViewKey: window.SBI_APP_SHELL_ACTIVE_VIEW || null,
+    shellUrl: window.SBI_APP_SHELL_CURRENT_URL || window.location.href
+  };
+}
+
+function buildRouteAuditRows(api) {
+  const probes = [
+    { group: 'admin', path: '/admin/index.html?tab=view-dashboard', expected: 'pjax-if-admin-shell' },
+    { group: 'admin', path: '/admin/index.html?tab=view-users', expected: 'pjax-if-admin-shell' },
+    { group: 'admin', path: '/admin/site-index-settings.html', expected: 'pjax-if-admin-shell' },
+    { group: 'admin', path: '/admin/formations-cours.html', expected: 'pjax-if-admin-shell' },
+    { group: 'admin', path: '/admin/admin-profile.html', expected: 'pjax-if-admin-shell' },
+    { group: 'student', path: '/student/dashboard.html', expected: 'pjax-if-student-shell' },
+    { group: 'student', path: '/student/mes-cours.html', expected: 'pjax-if-student-shell' },
+    { group: 'student', path: '/student/mon-profil.html', expected: 'pjax-if-student-shell' },
+    { group: 'teacher', path: '/teacher/dashboard.html', expected: 'pjax-if-teacher-shell' },
+    { group: 'teacher', path: '/teacher/mes-cours.html', expected: 'pjax-if-teacher-shell' },
+    { group: 'teacher', path: '/teacher/mon-profil.html', expected: 'pjax-if-teacher-shell' },
+    { group: 'protected', path: '/student/cours-viewer.html?id=test', expected: 'reload' },
+    { group: 'protected', path: '/teacher/cours-viewer.html?id=test&preview=true', expected: 'reload' },
+    { group: 'protected', path: '/admin/cours-viewer.html?id=test&preview=true', expected: 'reload' },
+    { group: 'protected', path: '/admin/formations-live.html', expected: 'reload' },
+    { group: 'protected', path: '/login.html', expected: 'reload' },
+    { group: 'public', path: '/index.html', expected: 'reload' }
+  ];
+
+  return probes.map((probe) => {
+    const url = new URL(probe.path, window.location.origin);
+    const decision = api.routeStatus(url);
+
+    return {
+      group: probe.group,
+      path: probe.path,
+      expected: probe.expected,
+      mode: decision.mode,
+      route: decision.route || '-',
+      reason: decision.reason
+    };
+  });
+}
+
+function printAudit(api) {
+  const context = getShellContext(api);
+  const rows = buildRouteAuditRows(api);
+  const protectedViewerRows = rows.filter((row) => row.path.includes('/cours-viewer.html'));
+  const unsafeViewerRows = protectedViewerRows.filter((row) => row.mode !== 'reload');
+
+  console.info('[SBI PJAX] Contexte shell courant');
+  console.table([{
+    enabled: context.enabled,
+    area: context.area,
+    path: context.path,
+    activeNav: context.activeNav || '-',
+    noRightPanel: context.noRightPanel,
+    viewKey: context.currentViewKey || '-'
+  }]);
+
+  console.info('[SBI PJAX] Audit routes migrées / protégées');
+  console.table(rows);
+
+  if (unsafeViewerRows.length) {
+    console.warn('[SBI PJAX] Alerte : un viewer est annoncé PJAX alors qu’il doit rester protégé.', unsafeViewerRows);
+  } else {
+    console.info('[SBI PJAX] Viewer protégé : OK. Les viewers restent en reload classique.');
+  }
+
+  return {
+    context,
+    rows,
+    protectedViewerOk: unsafeViewerRows.length === 0,
+    unsafeViewerRows
+  };
+}
+
 function installEmergencySwitches(api) {
   window.SBI_ENABLE_PJAX = () => {
     setFlag(DISABLED_FLAG, false);
@@ -110,6 +210,21 @@ function installEmergencySwitches(api) {
   };
 
   window.SBI_PJAX_HELP = () => printRouteHelp(api);
+
+  window.SBI_PJAX_CONTEXT = () => {
+    const context = getShellContext(api);
+    console.table([{
+      enabled: context.enabled,
+      area: context.area,
+      path: context.path,
+      activeNav: context.activeNav || '-',
+      noRightPanel: context.noRightPanel,
+      viewKey: context.currentViewKey || '-'
+    }]);
+    return context;
+  };
+
+  window.SBI_PJAX_AUDIT = () => printAudit(api);
 
   window.SBI_APP_SHELL = api;
 }

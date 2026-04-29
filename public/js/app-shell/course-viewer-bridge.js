@@ -1,10 +1,10 @@
 /**
- * SBI 8.0M - Course viewer bridge foundation
+ * SBI 8.0M.9 - Course viewer bridge foundation
  *
  * Ce fichier prépare la future migration PJAX du viewer de cours.
  *
  * IMPORTANT :
- * En 8.0M, aucune route viewer n'est activée en PJAX.
+ * En 8.0M.9, aucune route viewer n'est activée en PJAX.
  * Le viewer reste volontairement en navigation classique.
  *
  * Raisons :
@@ -14,12 +14,23 @@
  * - vidéo,
  * - back dynamique,
  * - preview admin/prof.
+ *
+ * Note 8.0M.7 : test viewer preview PJAX rejeté.
+ * Conclusion : le viewer ne doit pas être injecté dans le shell actuel ;
+ * future migration uniquement en route plein écran dédiée.
  */
 
 export const COURSE_VIEWER_ROUTES = {
   student: '/student/cours-viewer.html',
   teacher: '/teacher/cours-viewer.html',
   admin: '/admin/cours-viewer.html'
+};
+
+export const COURSE_VIEWER_LAST_REJECTED_EXPERIMENT = {
+  patch: '8.0M.7',
+  reason: 'Injection viewer dans shell admin rejetée : chrome persistant, largeur cassée, layout non plein écran.',
+  rollback: '8.0M.8',
+  nextSafeStrategy: 'fullscreen-route-only'
 };
 
 export const COURSE_VIEWER_SENSITIVE_AREAS = [
@@ -73,6 +84,8 @@ export function getViewerRouteStatus(urlLike = window.location.href) {
     role: isViewer ? getViewerRoleFromUrl(urlLike) : 'none',
     pjaxReady: false,
     mode: isViewer ? 'reload-protected' : 'not-viewer',
+    safeNextStrategy: isViewer ? COURSE_VIEWER_LAST_REJECTED_EXPERIMENT.nextSafeStrategy : 'none',
+    lastRejectedExperiment: isViewer ? { ...COURSE_VIEWER_LAST_REJECTED_EXPERIMENT } : null,
     reason: isViewer
       ? 'Viewer encore protégé : progression, timer, quiz et vidéo nécessitent un lifecycle dédié.'
       : 'URL hors viewer.',
@@ -90,6 +103,7 @@ export function installViewerDiagnostics() {
       role: status.role,
       mode: status.mode,
       pjaxReady: status.pjaxReady,
+      safeNextStrategy: status.safeNextStrategy,
       reason: status.reason
     }]);
 
@@ -114,8 +128,10 @@ export function installViewerDiagnostics() {
 
 export function createViewerLifecyclePlan() {
   return {
-    targetPatch: '8.0M+',
+    targetPatch: 'post-8.0M.9',
     currentMode: 'reload-protected',
+    rejectedPatch: COURSE_VIEWER_LAST_REJECTED_EXPERIMENT,
+    nextSafeStrategy: 'fullscreen-route-only',
     requiredBeforePjax: [
       'export mountCourseViewer() depuis /student/js/cours-viewer.js',
       'retourner cleanup() pour clearInterval(timerInterval)',
@@ -123,6 +139,8 @@ export function createViewerLifecyclePlan() {
       'déporter leaveViewer() pour compatibilité shell',
       'isoler quiz listeners par chapitre',
       'rendre preview mode non destructif en PJAX',
+      'créer une route plein écran qui masque totalement left-panel/right-panel/topbar',
+      'interdire l’injection viewer dans #main-content du shell admin/prof/student',
       'ajouter fallback reload au moindre échec progress/quiz'
     ]
   };
