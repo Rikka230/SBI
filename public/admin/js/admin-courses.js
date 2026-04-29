@@ -383,22 +383,11 @@ function setupPreviewButton() {
 }
 
 function getCourseViewerBasePath() {
-    if (currentUserProfile?.role === "teacher" && !isAdminLikeUser()) return "/teacher/cours-viewer.html";
-    return "/admin/cours-viewer.html";
+    return currentUserProfile?.role === 'teacher' && !isAdminLikeUser() ? '/teacher/cours-viewer.html' : '/student/cours-viewer.html';
 }
 
-async function openCoursePreview(courseId) {
-    if (!courseId) return;
-
-    const url = new URL(`${getCourseViewerBasePath()}?id=${encodeURIComponent(courseId)}&preview=true`, window.location.origin);
-    const appShell = window.SBI_APP_SHELL;
-
-    if (appShell?.enabled !== false && typeof appShell?.canHandle === "function" && appShell.canHandle(url)) {
-        await appShell.navigate(url, { historyMode: "push", source: "course-preview-button" });
-        return;
-    }
-
-    window.open(url.href, "_blank");
+function openCoursePreview(courseId) {
+    if (courseId) window.open(`${getCourseViewerBasePath()}?id=${courseId}&preview=true`, '_blank');
 }
 
 function shouldOpenPreviewWithoutSaving() {

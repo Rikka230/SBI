@@ -1,5 +1,5 @@
 /**
- * SBI 8.0M.7 - Route registry
+ * SBI 8.0M.2 - Route registry
  *
  * Admin shell :
  * - admin index tabs
@@ -40,43 +40,9 @@ import {
   installMediaTypeSwitch,
   hasCourseEditorDom
 } from './course-editor-bridge.js';
-import { canPjaxCourseViewerPreview, getViewerRoleFromUrl } from './course-viewer-bridge.js';
 
 const CROPPER_SCRIPT = 'https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js';
-const QUILL_SNOW_CSS = 'https://cdn.quilljs.com/1.3.6/quill.snow.css';
-const VIEWER_PJAX_CSS = '/student/css/viewer-pjax.css';
 const ADMIN_INDEX_CACHE_KEY = 'admin:index-main';
-
-function ensureStylesheet(href) {
-  if (!href) return Promise.resolve();
-
-  const absoluteHref = new URL(href, window.location.href).href;
-  const existing = Array.from(document.querySelectorAll('link[rel="stylesheet"][href]'))
-    .find((link) => new URL(link.getAttribute('href'), window.location.href).href === absoluteHref);
-
-  if (existing) return Promise.resolve();
-
-  return new Promise((resolve) => {
-    const link = document.createElement('link');
-    let done = false;
-
-    const finish = () => {
-      if (done) return;
-      done = true;
-      window.clearTimeout(timeoutId);
-      resolve();
-    };
-
-    const timeoutId = window.setTimeout(finish, 2500);
-
-    link.rel = 'stylesheet';
-    link.href = absoluteHref;
-    link.setAttribute('data-sbi-pjax-style', 'true');
-    link.addEventListener('load', finish, { once: true });
-    link.addEventListener('error', finish, { once: true });
-    document.head.appendChild(link);
-  });
-}
 
 function normalizePath(pathname) {
   if (!pathname) return '/';
@@ -131,16 +97,6 @@ function isTeacherProfile(url) {
   return normalizePath(url.pathname).toLowerCase() === '/teacher/mon-profil.html';
 }
 
-function isAdminViewerPreview(url) {
-  return normalizePath(url.pathname).toLowerCase() === '/admin/cours-viewer.html'
-    && canPjaxCourseViewerPreview(url);
-}
-
-function isTeacherViewerPreview(url) {
-  return normalizePath(url.pathname).toLowerCase() === '/teacher/cours-viewer.html'
-    && canPjaxCourseViewerPreview(url);
-}
-
 function getCurrentUrl() {
   return new URL(window.SBI_APP_SHELL_CURRENT_URL || window.location.href, window.location.origin);
 }
@@ -154,8 +110,7 @@ function isAdminShellContext() {
   return path === '/admin/index.html'
     || path === '/admin/site-index-settings.html'
     || path === '/admin/formations-cours.html'
-    || path === '/admin/admin-profile.html'
-    || path === '/admin/cours-viewer.html';
+    || path === '/admin/admin-profile.html';
 }
 
 function isStudentShellContext() {
@@ -169,8 +124,7 @@ function isTeacherShellContext() {
   const path = getCurrentPath();
   return path === '/teacher/dashboard.html'
     || path === '/teacher/mes-cours.html'
-    || path === '/teacher/mon-profil.html'
-    || path === '/teacher/cours-viewer.html';
+    || path === '/teacher/mon-profil.html';
 }
 
 function isCurrentAdminIndex() {
@@ -514,69 +468,6 @@ async function mountTeacherCourses({ url }) {
   return { viewKey: 'teacher:courses' };
 }
 
-async function mountCourseViewerPreview({ url, source = 'app-shell' }) {
-  if (!canPjaxCourseViewerPreview(url)) {
-    throw new Error('Viewer preview PJAX refusé : preview=true et id sont requis.');
-  }
-
-  const role = getViewerRoleFromUrl(url.href);
-  if (role !== 'teacher' && role !== 'admin') {
-    throw new Error('Viewer preview PJAX réservé aux espaces admin/prof.');
-  }
-
-  if (role === 'admin') maybeCacheAdminIndexMain('leave-for-admin-viewer-preview');
-
-  const doc = await fetchAdminDocument(url);
-  await Promise.allSettled([
-    ensureStylesheet(QUILL_SNOW_CSS),
-    ensureStylesheet(VIEWER_PJAX_CSS)
-  ]);
-
-  const incomingHeader = doc.querySelector('.viewer-header');
-  const incomingBody = doc.querySelector('.viewer-body');
-  const currentMain = document.querySelector('#main-content');
-
-  if (!incomingHeader || !incomingBody || !currentMain) {
-    throw new Error('DOM viewer introuvable après chargement preview PJAX.');
-  }
-
-  applyBodyRouteClassesFromDocument(doc, [
-    'sbi-course-viewer-page',
-    'sbi-viewer-preview-shell',
-    role === 'admin' ? 'sbi-admin-surface' : 'sbi-teacher-surface',
-    'no-right-panel'
-  ]);
-
-  const viewerRoot = document.createElement('section');
-  viewerRoot.className = 'sbi-pjax-course-viewer';
-  viewerRoot.setAttribute('data-sbi-viewer-role', role);
-  viewerRoot.setAttribute('data-sbi-viewer-preview', 'true');
-  viewerRoot.append(
-    incomingHeader.cloneNode(true),
-    incomingBody.cloneNode(true)
-  );
-
-  currentMain.replaceChildren(viewerRoot);
-  updateAdminChromeFromDocument(doc, role === 'admin' ? 'Prévisualisation cours - SBI Admin' : 'Prévisualisation cours - SBI Teacher');
-  setLeftNavActive(role === 'admin' ? 'nav-formations' : '/teacher/mes-cours.html');
-  updateUrlContext(url);
-
-  window.__SBI_APP_SHELL_MOUNTING_COURSE_VIEWER = true;
-
-  try {
-    const module = await import('/student/js/cours-viewer.js');
-    const cleanupViewer = module.mountCourseViewer?.({ source: `pjax-${role}-viewer-preview` });
-
-    if (typeof cleanupViewer === 'function') {
-      registerCleanup(cleanupViewer, `${role}-course-viewer-preview`);
-    }
-  } finally {
-    window.__SBI_APP_SHELL_MOUNTING_COURSE_VIEWER = false;
-  }
-
-  return { viewKey: `${role}:viewer-preview` };
-}
-
 async function mountTeacherProfile({ url }) {
   const doc = await fetchAdminDocument(url);
 
@@ -610,22 +501,6 @@ async function mountTeacherProfile({ url }) {
 
 export function createRouteRegistry() {
   const routes = [];
-
-  routes.push({
-    id: 'admin-viewer-preview',
-    canHandle(url) {
-      return isAdminViewerPreview(url) && isAdminShellContext();
-    },
-    mount: mountCourseViewerPreview
-  });
-
-  routes.push({
-    id: 'teacher-viewer-preview',
-    canHandle(url) {
-      return isTeacherViewerPreview(url) && isTeacherShellContext();
-    },
-    mount: mountCourseViewerPreview
-  });
 
   routes.push({
     id: 'teacher-dashboard',
