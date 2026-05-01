@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.1 - Public app shell foundation
+ * SBI 8.0P.2 - Public app shell boot fallback
  *
  * Shell public très prudent :
  * - navigation fluide des ancres de l'index ;
@@ -8,7 +8,7 @@
  * - espaces admin/student/teacher et auth toujours protégés en reload.
  */
 
-const PUBLIC_SHELL_VERSION = '8.0P.1';
+const PUBLIC_SHELL_VERSION = '8.0P.2';
 const DISABLED_FLAG = 'sbiPublicShellDisabled';
 const READY_CLASS = 'sbi-public-shell-ready';
 const SCROLLING_CLASS = 'sbi-public-shell-scrolling';
@@ -505,9 +505,11 @@ function attachListeners() {
   activePopCleanup = () => window.removeEventListener('popstate', onPop);
 }
 
-export function initSbiPublicAppShell() {
+function initSbiPublicAppShell() {
+  if (window.__SBI_PUBLIC_SHELL_INIT_DONE__ && window.SBI_PUBLIC_SHELL) return window.SBI_PUBLIC_SHELL;
   if (initialized) return apiInstance;
   initialized = true;
+  window.__SBI_PUBLIC_SHELL_INIT_DONE__ = true;
 
   const enabled = !safeReadFlag(DISABLED_FLAG);
   apiInstance = installApi();
@@ -547,7 +549,7 @@ export function initSbiPublicAppShell() {
   return apiInstance;
 }
 
-export function destroySbiPublicAppShell() {
+function destroySbiPublicAppShell() {
   activeObserver?.disconnect?.();
   activeObserver = null;
   activeClickCleanup?.();
@@ -558,3 +560,24 @@ export function destroySbiPublicAppShell() {
   activePopCleanup = null;
   initialized = false;
 }
+
+window.initSbiPublicAppShell = initSbiPublicAppShell;
+window.destroySbiPublicAppShell = destroySbiPublicAppShell;
+
+function bootSbiPublicShellOnce() {
+  try {
+    const path = window.location.pathname.toLowerCase();
+    const isIndex = path === '/' || path === '/index.html' || path.endsWith('/index.html');
+    if (!isIndex) return;
+    initSbiPublicAppShell();
+  } catch (error) {
+    console.warn('[SBI Public Shell] Boot classique indisponible, navigation classique conservée :', error);
+  }
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', bootSbiPublicShellOnce, { once: true });
+} else {
+  bootSbiPublicShellOnce();
+}
+

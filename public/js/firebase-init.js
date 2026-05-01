@@ -98,11 +98,24 @@ if (isPublicIndex) {
         console.warn('[SBI Index] Configuration médias dynamique indisponible :', error);
     });
 
-    import('/js/public-app-shell.js')
-        .then((module) => module.initSbiPublicAppShell?.())
-        .catch((error) => {
-            console.warn('[SBI Public Shell] Initialisation indisponible, navigation classique conservée :', error);
-        });
+    if (typeof window.initSbiPublicAppShell === 'function') {
+        window.initSbiPublicAppShell();
+    } else {
+        import('/js/public-app-shell.js')
+            .then((module) => {
+                if (typeof module.initSbiPublicAppShell === 'function') {
+                    module.initSbiPublicAppShell();
+                    return;
+                }
+
+                if (typeof window.initSbiPublicAppShell === 'function') {
+                    window.initSbiPublicAppShell();
+                }
+            })
+            .catch((error) => {
+                console.warn('[SBI Public Shell] Initialisation indisponible, navigation classique conservée :', error);
+            });
+    }
 }
 
 console.log("Firebase SBI initialisé avec succès : Cache actif");
