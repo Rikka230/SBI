@@ -13,7 +13,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap" rel="stylesheet">
 </head>
 
-<body>
+<body data-sbi-public-page="home">
 
     <header class="site-header">
         <div class="logo-container">
@@ -44,8 +44,8 @@
         </div>
     </header>
 
-    <main>
-        <section class="hero-section">
+    <main id="public-main" data-sbi-public-shell-root>
+        <section id="video" class="hero-section" data-sbi-public-section="hero video">
             <video muted playsinline class="hero-video-bg" preload="none" data-site-media="hero-video" aria-hidden="true"></video>
 
             <div class="hero-gradient-overlay"></div>
@@ -152,14 +152,15 @@
             </div>
         </section>
 
-        <section id="parcours" class="section-parcours padding-global">
+        <section id="formations" class="section-parcours padding-global" data-sbi-public-section="formations parcours">
+            <span id="parcours" class="sbi-anchor-sentinel" aria-hidden="true"></span>
             <div class="section-header flex-between fade-in">
                 <div>
                     <span class="section-surtitle text-blue uppercase text-italic">Nos parcours</span>
                     <h2 class="section-title text-italic">Choisis ton terrain.<br>Développe ton futur.</h2>
                 </div>
 
-                <a href="#" class="link-blue text-italic">Voir tous les parcours <span class="arrow">→</span></a>
+                <a href="#formations" class="link-blue text-italic">Voir tous les parcours <span class="arrow">→</span></a>
             </div>
 
             <div class="grid-parcours">
@@ -213,7 +214,8 @@
             </div>
         </section>
 
-        <section class="section-stats padding-global">
+        <section id="apropos" class="section-stats padding-global" data-sbi-public-section="apropos live">
+            <span id="live" class="sbi-anchor-sentinel" aria-hidden="true"></span>
             <div class="stats-grid">
                 <div class="founder-block fade-in">
                     <div class="founder-img-wrapper">
@@ -281,7 +283,7 @@
             </div>
         </section>
 
-        <section class="section-newsletter padding-global fade-in">
+        <section id="ressources" class="section-newsletter padding-global fade-in" data-sbi-public-section="ressources">
             <div class="newsletter-box">
                 <div class="news-text">
                     <div class="news-icon bg-blue">

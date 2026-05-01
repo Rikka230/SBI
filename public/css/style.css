@@ -1274,3 +1274,39 @@ footer {
 }
 
 .social-icons a:hover { color: var(--sbi-blue); }
+
+/* --- SBI 8.0P.1 : shell public / ancres propres --- */
+[id] {
+    scroll-margin-top: calc(var(--header-height) + 24px);
+}
+
+.sbi-anchor-sentinel {
+    display: block;
+    position: relative;
+    width: 1px;
+    height: 1px;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    visibility: hidden;
+    pointer-events: none;
+    scroll-margin-top: calc(var(--header-height) + 24px);
+}
+
+.main-nav .nav-link.is-active,
+.header-actions .nav-link.is-active,
+.footer-nav a.is-active {
+    color: var(--sbi-blue);
+}
+
+.main-nav .nav-link.is-active {
+    text-shadow: 0 0 18px rgba(0, 81, 255, 0.42);
+}
+
+html.sbi-public-shell-ready body[data-sbi-public-shell="enabled"] .site-header {
+    will-change: backdrop-filter;
+}
+
+body.sbi-public-shell-scrolling {
+    cursor: progress;
+}
