@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.3 - Public index/login app shell
+ * SBI 8.0P.4 - Public index/login persistent chrome
  *
  * Shell public prudent :
  * - navigation fluide des ancres de l'index ;
@@ -8,7 +8,7 @@
  * - espaces admin/student/teacher et viewers toujours protégés en reload.
  */
 
-const PUBLIC_SHELL_VERSION = '8.0P.3';
+const PUBLIC_SHELL_VERSION = '8.0P.4';
 const DISABLED_FLAG = 'sbiPublicShellDisabled';
 const READY_CLASS = 'sbi-public-shell-ready';
 const SCROLLING_CLASS = 'sbi-public-shell-scrolling';
@@ -356,6 +356,31 @@ function sanitizeBodyFragment(nextDocument) {
   return template.content;
 }
 
+function preservePublicLogoContainer(nextFragment) {
+  const currentLogoContainer = document.querySelector('.site-header .logo-container');
+  const nextLogoContainer = nextFragment.querySelector?.('.site-header .logo-container');
+
+  if (!currentLogoContainer || !nextLogoContainer) return false;
+
+  const hasReusableLogo = currentLogoContainer.querySelector('img, picture, svg');
+  if (!hasReusableLogo) return false;
+
+  currentLogoContainer.dataset.sbiPublicChromePreserved = 'true';
+  nextLogoContainer.replaceWith(currentLogoContainer);
+  return true;
+}
+
+function renderBodyFragment(nextFragment) {
+  const preservedLogo = preservePublicLogoContainer(nextFragment);
+  document.body.replaceChildren(nextFragment);
+
+  if (preservedLogo) {
+    window.dispatchEvent(new CustomEvent('sbi:public-shell:chrome-preserved', {
+      detail: { preserved: ['.site-header .logo-container'] }
+    }));
+  }
+}
+
 function syncBodyAttributes(nextDocument, pageId, enabled) {
   const nextClassName = nextDocument.body?.className || '';
   document.body.className = nextClassName;
@@ -421,7 +446,7 @@ async function renderPublicPage(url, decision, { historyMode = 'push', behavior 
 
       const fragment = sanitizeBodyFragment(nextDocument);
       syncBodyAttributes(nextDocument, targetPageId, enabled);
-      document.body.replaceChildren(fragment);
+      renderBodyFragment(fragment);
       document.documentElement.classList.add(READY_CLASS);
       document.body.dataset.sbiPublicShell = enabled ? 'enabled' : 'disabled';
 
@@ -657,6 +682,7 @@ function printAudit() {
     ok: rows.filter((row) => row.verdict === 'OK').length,
     alerts: rows.filter((row) => row.verdict === 'ALERTE').length,
     loginPjaxEnabled: classifyPublicRoute(new URL('/login.html', window.location.origin)).mode === 'public-shell',
+    persistentLogoEnabled: Boolean(document.querySelector('.site-header .logo-container[data-sbi-public-chrome-preserved="true"]')),
     viewerReloadProtected: classifyPublicRoute(new URL('/student/cours-viewer.html?id=test', window.location.origin)).mode === 'reload'
   };
 
