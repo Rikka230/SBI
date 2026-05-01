@@ -4,10 +4,14 @@
  * =======================================================================
  */
 
-document.addEventListener('DOMContentLoaded', () => {
+(function () {
+    const initScrollAnimations = (root = document) => {
+        const elementsToAnimate = root.querySelectorAll('.fade-in');
+        if (!elementsToAnimate.length || !('IntersectionObserver' in window)) {
+            elementsToAnimate.forEach((el) => el.classList.add('visible'));
+            return;
+        }
 
-    /* --- SECTION 1 : ANIMATION D'APPARITION AU SCROLL --- */
-    const initScrollAnimations = () => {
         const observerOptions = {
             root: null,
             rootMargin: '0px',
@@ -23,21 +27,28 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }, observerOptions);
 
-        const elementsToAnimate = document.querySelectorAll('.fade-in');
-        elementsToAnimate.forEach(el => observer.observe(el));
+        elementsToAnimate.forEach((el) => {
+            if (el.dataset.sbiFadeBound === 'true') return;
+            el.dataset.sbiFadeBound = 'true';
+            observer.observe(el);
+        });
     };
 
-    /* --- SECTION 2 : EFFET PARALLAXE SUR LES FONDS --- */
     const initParallax = () => {
-        const parallaxLines = document.getElementById('parallax-lines');
-        const parallaxField = document.getElementById('parallax-field');
+        if (window.__SBI_PUBLIC_PARALLAX_BOUND__) {
+            window.dispatchEvent(new Event('sbi:public-parallax:refresh'));
+            return;
+        }
+
+        window.__SBI_PUBLIC_PARALLAX_BOUND__ = true;
 
         const lineSpeed = 0.12;
         const fieldSpeed = 0.045;
-
         let ticking = false;
 
         const updateParallax = () => {
+            const parallaxLines = document.getElementById('parallax-lines');
+            const parallaxField = document.getElementById('parallax-field');
             const scrolled = window.scrollY;
 
             if (parallaxLines) {
@@ -58,12 +69,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }, { passive: true });
 
+        window.addEventListener('sbi:public-parallax:refresh', updateParallax);
         updateParallax();
     };
 
-    /* --- SECTION 3 : SIGNALS INTERACTIFS SBI --- */
-    const initSignals = () => {
-        const signals = document.querySelectorAll('.sbi-signal');
+    const initSignals = (root = document) => {
+        const signals = root.querySelectorAll('.sbi-signal');
         if (!signals.length) return;
 
         const visibleState = new WeakMap();
@@ -108,36 +119,46 @@ document.addEventListener('DOMContentLoaded', () => {
             addSignalTimer(signal, openTimer);
         };
 
-        const signalObserver = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                const signal = entry.target;
-                const wasVisible = visibleState.get(signal) === true;
+        const signalObserver = 'IntersectionObserver' in window
+            ? new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    const signal = entry.target;
+                    const wasVisible = visibleState.get(signal) === true;
 
-                if (entry.isIntersecting && !wasVisible) {
-                    visibleState.set(signal, true);
+                    if (entry.isIntersecting && !wasVisible) {
+                        visibleState.set(signal, true);
 
-                    const isHeroSignal = signal.classList.contains('sbi-signal-hero');
-                    const delay = isHeroSignal ? 1900 : 1500;
-                    const duration = isHeroSignal ? 3900 : 3700;
+                        const isHeroSignal = signal.classList.contains('sbi-signal-hero');
+                        const isLoginSignal = signal.classList.contains('sbi-signal-login');
+                        const delay = isHeroSignal ? 1900 : (isLoginSignal ? 500 : 1500);
+                        const duration = isHeroSignal ? 3900 : (isLoginSignal ? 5400 : 3700);
 
-                    revealSignal(signal, duration, delay);
-                }
+                        revealSignal(signal, duration, delay);
+                    }
 
-                if (!entry.isIntersecting && wasVisible) {
-                    visibleState.set(signal, false);
-                    signal.classList.remove('is-revealed', 'is-attention');
-                    clearSignalTimers(signal);
-                }
-            });
-        }, {
-            root: null,
-            rootMargin: '-10% 0px -20% 0px',
-            threshold: 0.4
-        });
+                    if (!entry.isIntersecting && wasVisible) {
+                        visibleState.set(signal, false);
+                        signal.classList.remove('is-revealed', 'is-attention');
+                        clearSignalTimers(signal);
+                    }
+                });
+            }, {
+                root: null,
+                rootMargin: '-10% 0px -20% 0px',
+                threshold: 0.4
+            })
+            : null;
 
         signals.forEach(signal => {
+            if (signal.dataset.sbiSignalBound === 'true') return;
+            signal.dataset.sbiSignalBound = 'true';
             visibleState.set(signal, false);
-            signalObserver.observe(signal);
+
+            if (signalObserver) {
+                signalObserver.observe(signal);
+            } else {
+                revealSignal(signal, 3600, 650);
+            }
 
             signal.addEventListener('mouseenter', () => {
                 clearSignalTimers(signal);
@@ -159,8 +180,18 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
-    /* --- SECTION 4 : INITIALISATION GLOBALE --- */
-    initScrollAnimations();
-    initParallax();
-    initSignals();
-});
+    const initPublicFrontOffice = (root = document) => {
+        initScrollAnimations(root);
+        initParallax();
+        initSignals(root);
+        return true;
+    };
+
+    window.SBI_MAIN_INIT = initPublicFrontOffice;
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => initPublicFrontOffice(document), { once: true });
+    } else {
+        initPublicFrontOffice(document);
+    }
+})();

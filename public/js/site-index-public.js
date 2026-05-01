@@ -166,8 +166,12 @@ async function initSiteIndexMedia() {
   }
 }
 
+window.SBI_INIT_SITE_INDEX_MEDIA = initSiteIndexMedia;
+
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initSiteIndexMedia);
 } else {
   initSiteIndexMedia();
 }
+
+export { initSiteIndexMedia };

@@ -1,20 +1,22 @@
 /**
- * SBI 8.0P.2 - Public app shell boot fallback
+ * SBI 8.0P.3 - Public index/login app shell
  *
- * Shell public très prudent :
+ * Shell public prudent :
  * - navigation fluide des ancres de l'index ;
- * - logo/header vers le haut sans reload ;
+ * - liaison PJAX entre index public et login ;
  * - liens inconnus / pages non migrées laissés en navigation classique ;
- * - espaces admin/student/teacher et auth toujours protégés en reload.
+ * - espaces admin/student/teacher et viewers toujours protégés en reload.
  */
 
-const PUBLIC_SHELL_VERSION = '8.0P.2';
+const PUBLIC_SHELL_VERSION = '8.0P.3';
 const DISABLED_FLAG = 'sbiPublicShellDisabled';
 const READY_CLASS = 'sbi-public-shell-ready';
 const SCROLLING_CLASS = 'sbi-public-shell-scrolling';
+const LOADING_CLASS = 'sbi-public-shell-loading';
 const ACTIVE_CLASS = 'is-active';
 
 const PUBLIC_INDEX_PATHS = new Set(['/', '/index.html']);
+const PUBLIC_LOGIN_PATHS = new Set(['/login.html']);
 
 const PROTECTED_PATH_PREFIXES = [
   ['/admin/', 'espace admin protégé par son shell interne'],
@@ -27,7 +29,6 @@ const PROTECTED_PATH_PREFIXES = [
 ];
 
 const PROTECTED_PATHS = new Map([
-  ['/login.html', 'authentification'],
   ['/change-email.html', 'flux sécurité email'],
   ['/password-reset.html', 'flux sécurité mot de passe'],
   ['/student/cours-viewer.html', 'viewer étudiant / progression / quiz / vidéo'],
@@ -44,6 +45,7 @@ let activeKeyboardCleanup = null;
 let activePopCleanup = null;
 let activeScrollTimer = null;
 let activeSectionIds = [];
+let pageTransitionPromise = null;
 
 function safeReadFlag(name) {
   try { return localStorage.getItem(name) === 'true'; }
@@ -58,13 +60,32 @@ function safeSetFlag(name, value) {
 }
 
 function normalizePath(pathname = '/') {
-  const clean = String(pathname || '/').replace(/\/+/g, '/').replace(/\/+$/, '') || '/';
+  const clean = String(pathname || '/')
+    .replace(/\/+/g, '/')
+    .replace(/\/+$/, '') || '/';
+
   if (clean === '/index') return '/index.html';
+  if (clean === '/login') return '/login.html';
   return clean;
 }
 
 function isPublicIndexPath(pathname = window.location.pathname) {
   return PUBLIC_INDEX_PATHS.has(normalizePath(pathname));
+}
+
+function isPublicLoginPath(pathname = window.location.pathname) {
+  return PUBLIC_LOGIN_PATHS.has(normalizePath(pathname));
+}
+
+function getPublicPageId(pathname = window.location.pathname) {
+  if (isPublicIndexPath(pathname)) return 'home';
+  if (isPublicLoginPath(pathname)) return 'login';
+  return 'external';
+}
+
+function isPublicShellBootPath(pathname = window.location.pathname) {
+  const pageId = getPublicPageId(pathname);
+  return pageId === 'home' || pageId === 'login';
 }
 
 function isDownloadPath(pathname = '') {
@@ -111,7 +132,8 @@ function getAnchorTarget(hash = '') {
   if (!id) return null;
 
   if (window.CSS?.escape) {
-    return document.getElementById(id) || document.querySelector(`[data-sbi-public-section~="${CSS.escape(id)}"]`);
+    return document.getElementById(id)
+      || document.querySelector(`[data-sbi-public-section~="${CSS.escape(id)}"]`);
   }
 
   return document.getElementById(id);
@@ -135,19 +157,31 @@ function classifyPublicRoute(rawUrl) {
   const url = rawUrl instanceof URL ? rawUrl : normalizeHref(rawUrl);
 
   if (!url) {
-    return { mode: 'ignore', route: null, reason: 'URL ignorée', href: '' };
+    return { mode: 'ignore', page: null, route: null, reason: 'URL ignorée', href: '' };
   }
 
   const protectedReason = getProtectedReason(url);
   if (protectedReason) {
-    return { mode: 'reload', route: null, reason: protectedReason, href: url.href };
+    return { mode: 'reload', page: null, route: null, reason: protectedReason, href: url.href };
   }
 
   const path = normalizePath(url.pathname).toLowerCase();
 
+  if (isPublicLoginPath(path)) {
+    return {
+      mode: 'public-shell',
+      page: 'login',
+      route: 'public-login',
+      reason: 'login public migré en shell',
+      href: url.href,
+      targetId: ''
+    };
+  }
+
   if (!isPublicIndexPath(path)) {
     return {
       mode: 'reload',
+      page: null,
       route: null,
       reason: 'page publique non migrée, fallback reload',
       href: url.href
@@ -157,30 +191,36 @@ function classifyPublicRoute(rawUrl) {
   if (!url.hash) {
     return {
       mode: 'public-shell',
+      page: 'home',
       route: 'public-home-top',
-      reason: 'index public déjà chargé',
+      reason: 'index public migré en shell',
       href: url.href,
       targetId: ''
     };
   }
 
-  const target = getAnchorTarget(url.hash);
-  if (!target) {
+  const currentPageId = getPublicPageId(window.location.pathname);
+  const target = currentPageId === 'home' ? getAnchorTarget(url.hash) : null;
+  const targetId = decodeHash(url.hash);
+
+  if (currentPageId === 'home' && !target) {
     return {
       mode: 'ignore',
+      page: 'home',
       route: null,
       reason: 'ancre absente, navigation neutralisée',
       href: url.href,
-      targetId: decodeHash(url.hash)
+      targetId
     };
   }
 
   return {
     mode: 'public-shell',
+    page: 'home',
     route: 'public-home-anchor',
-    reason: 'ancre publique migrée',
+    reason: currentPageId === 'home' ? 'ancre publique migrée' : 'index public migré avec ancre différée',
     href: url.href,
-    targetId: target.id || decodeHash(url.hash)
+    targetId
   };
 }
 
@@ -272,6 +312,155 @@ function setActiveLinks(targetId = '') {
   });
 }
 
+function pageFetchUrl(url) {
+  const cleanPath = isPublicLoginPath(url.pathname) ? '/login.html' : '/index.html';
+  return `${cleanPath}${url.search || ''}`;
+}
+
+function syncHeadAssets(nextDocument, pageId) {
+  const stylesheetSelector = 'link[rel="stylesheet"], link[rel="preload"][as="style"]';
+  nextDocument.querySelectorAll(stylesheetSelector).forEach((link) => {
+    const href = link.getAttribute('href');
+    if (!href) return;
+
+    const absoluteHref = new URL(href, window.location.origin).href;
+    const exists = Array.from(document.head.querySelectorAll(stylesheetSelector))
+      .some((current) => {
+        const currentHref = current.getAttribute('href');
+        return currentHref && new URL(currentHref, window.location.origin).href === absoluteHref;
+      });
+
+    if (!exists) {
+      document.head.appendChild(link.cloneNode(true));
+    }
+  });
+
+  nextDocument.querySelectorAll('style').forEach((style, index) => {
+    const key = `sbi-public-shell-inline-${pageId}-${index}`;
+    let targetStyle = document.head.querySelector(`style[data-sbi-public-shell-style="${key}"]`);
+
+    if (!targetStyle) {
+      targetStyle = document.createElement('style');
+      targetStyle.dataset.sbiPublicShellStyle = key;
+      document.head.appendChild(targetStyle);
+    }
+
+    targetStyle.textContent = style.textContent || '';
+  });
+}
+
+function sanitizeBodyFragment(nextDocument) {
+  const template = document.createElement('template');
+  template.innerHTML = nextDocument.body.innerHTML;
+  template.content.querySelectorAll('script').forEach((script) => script.remove());
+  return template.content;
+}
+
+function syncBodyAttributes(nextDocument, pageId, enabled) {
+  const nextClassName = nextDocument.body?.className || '';
+  document.body.className = nextClassName;
+  document.body.dataset.sbiPublicPage = pageId;
+  document.body.dataset.sbiPublicShell = enabled ? 'enabled' : 'disabled';
+}
+
+async function runPageInitializers(pageId) {
+  try {
+    if (typeof window.SBI_MAIN_INIT === 'function') {
+      window.SBI_MAIN_INIT(document);
+    }
+  } catch (error) {
+    console.warn('[SBI Public Shell] Init front public indisponible :', error);
+  }
+
+  if (pageId === 'home') {
+    try {
+      const mediaModule = await import('/js/site-index-public.js');
+      const initMedia = mediaModule.initSiteIndexMedia || window.SBI_INIT_SITE_INDEX_MEDIA;
+      if (typeof initMedia === 'function') await initMedia();
+    } catch (error) {
+      console.warn('[SBI Public Shell] Médias index indisponibles après PJAX :', error);
+    }
+  }
+
+  if (pageId === 'login') {
+    try {
+      const authModule = await import('/js/auth.js');
+      const initAuth = authModule.initSbiAuthPage || window.SBI_INIT_AUTH_PAGE;
+      if (typeof initAuth === 'function') await initAuth();
+    } catch (error) {
+      console.warn('[SBI Public Shell] Auth login indisponible après PJAX :', error);
+    }
+  }
+}
+
+async function renderPublicPage(url, decision, { historyMode = 'push', behavior = 'smooth', source = 'click' } = {}) {
+  if (pageTransitionPromise) return pageTransitionPromise;
+
+  pageTransitionPromise = (async () => {
+    const enabled = !safeReadFlag(DISABLED_FLAG);
+    const targetPageId = decision.page || getPublicPageId(url.pathname);
+
+    document.body.classList.add(LOADING_CLASS);
+    document.body.setAttribute('aria-busy', 'true');
+
+    try {
+      const response = await fetch(pageFetchUrl(url), {
+        method: 'GET',
+        credentials: 'same-origin',
+        headers: { 'X-SBI-Public-Shell': PUBLIC_SHELL_VERSION }
+      });
+
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+      const html = await response.text();
+      const nextDocument = new DOMParser().parseFromString(html, 'text/html');
+      if (!nextDocument.body) throw new Error('Document HTML invalide');
+
+      syncHeadAssets(nextDocument, targetPageId);
+      document.title = nextDocument.title || document.title;
+
+      const fragment = sanitizeBodyFragment(nextDocument);
+      syncBodyAttributes(nextDocument, targetPageId, enabled);
+      document.body.replaceChildren(fragment);
+      document.documentElement.classList.add(READY_CLASS);
+      document.body.dataset.sbiPublicShell = enabled ? 'enabled' : 'disabled';
+
+      updateHistoryForUrl(url, historyMode);
+      window.SBI_PUBLIC_SHELL_CURRENT_URL = url.href;
+
+      activeObserver?.disconnect?.();
+      activeObserver = null;
+      await runPageInitializers(targetPageId);
+      observeActiveSections();
+
+      if (targetPageId === 'home') {
+        const target = decision.targetId ? getAnchorTarget(`#${decision.targetId}`) : null;
+        scrollToTarget(target, behavior);
+        setActiveLinks(decision.targetId || '');
+      } else {
+        scrollToTarget(null, behavior);
+        setActiveLinks('');
+      }
+
+      window.dispatchEvent(new CustomEvent('sbi:public-shell:navigated', {
+        detail: { ...decision, source, pjax: true }
+      }));
+
+      return true;
+    } catch (error) {
+      console.warn('[SBI Public Shell] Fallback reload après erreur PJAX :', error);
+      window.location.assign(url.href);
+      return false;
+    } finally {
+      document.body.classList.remove(LOADING_CLASS);
+      document.body.removeAttribute('aria-busy');
+      pageTransitionPromise = null;
+    }
+  })();
+
+  return pageTransitionPromise;
+}
+
 function navigatePublic(url, { historyMode = 'push', behavior = 'smooth', source = 'click' } = {}) {
   const decision = classifyPublicRoute(url);
 
@@ -279,16 +468,31 @@ function navigatePublic(url, { historyMode = 'push', behavior = 'smooth', source
     return false;
   }
 
-  const target = decision.targetId ? getAnchorTarget(`#${decision.targetId}`) : null;
-  scrollToTarget(target, behavior);
-  updateHistoryForUrl(url, historyMode);
-  setActiveLinks(decision.targetId || '');
+  const currentPageId = getPublicPageId(window.location.pathname);
+  const samePage = currentPageId === decision.page;
 
-  window.SBI_PUBLIC_SHELL_CURRENT_URL = url.href;
-  window.dispatchEvent(new CustomEvent('sbi:public-shell:navigated', {
-    detail: { ...decision, source }
-  }));
+  if (decision.page === 'home' && samePage) {
+    const target = decision.targetId ? getAnchorTarget(`#${decision.targetId}`) : null;
+    scrollToTarget(target, behavior);
+    updateHistoryForUrl(url, historyMode);
+    setActiveLinks(decision.targetId || '');
 
+    window.SBI_PUBLIC_SHELL_CURRENT_URL = url.href;
+    window.dispatchEvent(new CustomEvent('sbi:public-shell:navigated', {
+      detail: { ...decision, source, pjax: false }
+    }));
+
+    return true;
+  }
+
+  if (decision.page === 'login' && samePage) {
+    scrollToTarget(null, behavior);
+    updateHistoryForUrl(url, historyMode);
+    window.SBI_PUBLIC_SHELL_CURRENT_URL = url.href;
+    return true;
+  }
+
+  renderPublicPage(url, decision, { historyMode, behavior, source });
   return true;
 }
 
@@ -327,7 +531,7 @@ function handleKeyboardNavigation(event) {
 }
 
 function handlePopState() {
-  if (!isPublicIndexPath(window.location.pathname)) return;
+  if (!isPublicShellBootPath(window.location.pathname)) return;
 
   const url = new URL(window.location.href);
   const decision = classifyPublicRoute(url);
@@ -383,7 +587,7 @@ function printStatus() {
   const status = {
     version: PUBLIC_SHELL_VERSION,
     enabled: !safeReadFlag(DISABLED_FLAG),
-    page: isPublicIndexPath(currentUrl.pathname) ? 'public-index' : 'outside-public-index',
+    page: getPublicPageId(currentUrl.pathname),
     href: currentUrl.href,
     decision: classifyPublicRoute(currentUrl),
     sections: activeSectionIds,
@@ -406,6 +610,7 @@ function printCheck(href = window.location.href) {
   const decision = classifyPublicRoute(new URL(href, window.location.href));
   console.table([{
     href: decision.href,
+    page: decision.page || '-',
     mode: decision.mode,
     route: decision.route || '-',
     targetId: decision.targetId || '-',
@@ -416,15 +621,15 @@ function printCheck(href = window.location.href) {
 
 function printRoutes() {
   const routes = [
-    { path: '/', mode: 'public-shell', reason: 'haut de l’index public' },
-    { path: '/index.html#formations', mode: 'public-shell', reason: 'ancre formations' },
-    { path: '/index.html#parcours', mode: 'public-shell', reason: 'alias parcours conservé' },
-    { path: '/index.html#apropos', mode: 'public-shell', reason: 'ancre à propos' },
-    { path: '/index.html#ressources', mode: 'public-shell', reason: 'ancre ressources' },
-    { path: '/index.html#contact', mode: 'public-shell', reason: 'ancre footer contact' },
-    { path: '/login.html', mode: 'reload', reason: 'authentification protégée' },
-    { path: '/admin/index.html', mode: 'reload', reason: 'shell admin séparé' },
-    { path: '/student/cours-viewer.html?id=test', mode: 'reload', reason: 'viewer protégé' }
+    { path: '/', mode: 'public-shell', page: 'home', reason: 'haut de l’index public' },
+    { path: '/index.html#formations', mode: 'public-shell', page: 'home', reason: 'ancre formations' },
+    { path: '/index.html#parcours', mode: 'public-shell', page: 'home', reason: 'alias parcours conservé' },
+    { path: '/index.html#apropos', mode: 'public-shell', page: 'home', reason: 'ancre à propos' },
+    { path: '/index.html#ressources', mode: 'public-shell', page: 'home', reason: 'ancre ressources' },
+    { path: '/index.html#contact', mode: 'public-shell', page: 'home', reason: 'ancre footer contact' },
+    { path: '/login.html', mode: 'public-shell', page: 'login', reason: 'connexion migrée dans le shell public' },
+    { path: '/admin/index.html', mode: 'reload', page: '-', reason: 'shell admin séparé' },
+    { path: '/student/cours-viewer.html?id=test', mode: 'reload', page: '-', reason: 'viewer protégé' }
   ];
 
   console.table(routes);
@@ -435,11 +640,12 @@ function printAudit() {
   const routes = printRoutes();
   const rows = routes.map((route) => {
     const decision = classifyPublicRoute(new URL(route.path, window.location.origin));
-    const ok = decision.mode === route.mode;
+    const ok = decision.mode === route.mode && (route.page === '-' || decision.page === route.page);
 
     return {
       path: route.path,
       expected: route.mode,
+      page: decision.page || '-',
       mode: decision.mode,
       verdict: ok ? 'OK' : 'ALERTE',
       reason: decision.reason
@@ -450,6 +656,7 @@ function printAudit() {
     total: rows.length,
     ok: rows.filter((row) => row.verdict === 'OK').length,
     alerts: rows.filter((row) => row.verdict === 'ALERTE').length,
+    loginPjaxEnabled: classifyPublicRoute(new URL('/login.html', window.location.origin)).mode === 'public-shell',
     viewerReloadProtected: classifyPublicRoute(new URL('/student/cours-viewer.html?id=test', window.location.origin)).mode === 'reload'
   };
 
@@ -492,6 +699,8 @@ function installApi() {
 }
 
 function attachListeners() {
+  if (activeClickCleanup || activeKeyboardCleanup || activePopCleanup) return;
+
   const onClick = (event) => handleDocumentClick(event);
   const onKeydown = (event) => handleKeyboardNavigation(event);
   const onPop = () => handlePopState();
@@ -516,11 +725,12 @@ function initSbiPublicAppShell() {
 
   document.documentElement.classList.add(READY_CLASS);
   document.body.dataset.sbiPublicShell = enabled ? 'enabled' : 'disabled';
+  document.body.dataset.sbiPublicPage = document.body.dataset.sbiPublicPage || getPublicPageId(window.location.pathname);
   window.SBI_PUBLIC_SHELL_CURRENT_URL = window.location.href;
 
-  if (!enabled || !isPublicIndexPath(window.location.pathname)) {
+  if (!enabled || !isPublicShellBootPath(window.location.pathname)) {
     window.dispatchEvent(new CustomEvent('sbi:public-shell:disabled', {
-      detail: { enabled, reason: enabled ? 'hors index public' : 'kill switch actif' }
+      detail: { enabled, reason: enabled ? 'hors route publique migrée' : 'kill switch actif' }
     }));
     return apiInstance;
   }
@@ -528,7 +738,7 @@ function initSbiPublicAppShell() {
   attachListeners();
   observeActiveSections();
 
-  if (window.location.hash) {
+  if (window.location.hash && getPublicPageId(window.location.pathname) === 'home') {
     const initialUrl = new URL(window.location.href);
     const decision = classifyPublicRoute(initialUrl);
     if (decision.mode === 'public-shell') {
@@ -543,7 +753,7 @@ function initSbiPublicAppShell() {
   }
 
   window.dispatchEvent(new CustomEvent('sbi:public-shell:ready', {
-    detail: { version: PUBLIC_SHELL_VERSION, sections: activeSectionIds }
+    detail: { version: PUBLIC_SHELL_VERSION, page: getPublicPageId(window.location.pathname), sections: activeSectionIds }
   }));
 
   return apiInstance;
@@ -559,6 +769,7 @@ function destroySbiPublicAppShell() {
   activeKeyboardCleanup = null;
   activePopCleanup = null;
   initialized = false;
+  window.__SBI_PUBLIC_SHELL_INIT_DONE__ = false;
 }
 
 window.initSbiPublicAppShell = initSbiPublicAppShell;
@@ -566,9 +777,7 @@ window.destroySbiPublicAppShell = destroySbiPublicAppShell;
 
 function bootSbiPublicShellOnce() {
   try {
-    const path = window.location.pathname.toLowerCase();
-    const isIndex = path === '/' || path === '/index.html' || path.endsWith('/index.html');
-    if (!isIndex) return;
+    if (!isPublicShellBootPath(window.location.pathname)) return;
     initSbiPublicAppShell();
   } catch (error) {
     console.warn('[SBI Public Shell] Boot classique indisponible, navigation classique conservée :', error);
@@ -580,4 +789,3 @@ if (document.readyState === 'loading') {
 } else {
   bootSbiPublicShellOnce();
 }
-
