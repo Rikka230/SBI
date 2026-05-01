@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.4',
+  version: '8.0P.5',
   branch: 'public-pjax-app-shell',
   channel: 'PUBLIC PJAX APP SHELL',
-  stage: 'Public index/login PJAX bridge with persistent header logo chrome',
+  stage: 'Public pages foundation without live public route',
   updatedAt: '2026-05-02',
-  label: 'SBI 8.0P.4 - PUBLIC INDEX LOGIN PERSISTENT CHROME'
+  label: 'SBI 8.0P.5 - PUBLIC PAGES FOUNDATION'
 };
 
 export function getSbiVersionLabel() {

@@ -1,19 +1,30 @@
 /**
- * SBI 8.0P.4 - Public index/login persistent chrome
+ * SBI 8.0P.5 - Public pages foundation
  *
  * Shell public prudent :
  * - navigation fluide des ancres de l'index ;
- * - liaison PJAX entre index public et login ;
+ * - liaison PJAX entre index public, login et pages publiques ;
  * - liens inconnus / pages non migrées laissés en navigation classique ;
  * - espaces admin/student/teacher et viewers toujours protégés en reload.
  */
 
-const PUBLIC_SHELL_VERSION = '8.0P.4';
+const PUBLIC_SHELL_VERSION = '8.0P.5';
 const DISABLED_FLAG = 'sbiPublicShellDisabled';
 const READY_CLASS = 'sbi-public-shell-ready';
 const SCROLLING_CLASS = 'sbi-public-shell-scrolling';
 const LOADING_CLASS = 'sbi-public-shell-loading';
 const ACTIVE_CLASS = 'is-active';
+
+const PUBLIC_PAGE_DEFINITIONS = new Map([
+  ['/', { page: 'home', route: 'public-home-top', fetchPath: '/index.html', reason: 'index public migré en shell' }],
+  ['/index.html', { page: 'home', route: 'public-home-top', fetchPath: '/index.html', reason: 'index public migré en shell' }],
+  ['/login.html', { page: 'login', route: 'public-login', fetchPath: '/login.html', reason: 'connexion migrée dans le shell public' }],
+  ['/formations.html', { page: 'formations', route: 'public-formations', fetchPath: '/formations.html', reason: 'page formations publique migrée' }],
+  ['/parcours.html', { page: 'parcours', route: 'public-parcours', fetchPath: '/parcours.html', reason: 'page parcours publique migrée' }],
+  ['/a-propos.html', { page: 'apropos', route: 'public-apropos', fetchPath: '/a-propos.html', reason: 'page à propos publique migrée' }],
+  ['/ressources.html', { page: 'ressources', route: 'public-ressources', fetchPath: '/ressources.html', reason: 'page ressources publique migrée' }],
+  ['/contact.html', { page: 'contact', route: 'public-contact', fetchPath: '/contact.html', reason: 'page contact publique migrée' }]
+]);
 
 const PUBLIC_INDEX_PATHS = new Set(['/', '/index.html']);
 const PUBLIC_LOGIN_PATHS = new Set(['/login.html']);
@@ -77,15 +88,16 @@ function isPublicLoginPath(pathname = window.location.pathname) {
   return PUBLIC_LOGIN_PATHS.has(normalizePath(pathname));
 }
 
+function getPublicRouteDefinition(pathname = window.location.pathname) {
+  return PUBLIC_PAGE_DEFINITIONS.get(normalizePath(pathname).toLowerCase()) || null;
+}
+
 function getPublicPageId(pathname = window.location.pathname) {
-  if (isPublicIndexPath(pathname)) return 'home';
-  if (isPublicLoginPath(pathname)) return 'login';
-  return 'external';
+  return getPublicRouteDefinition(pathname)?.page || 'external';
 }
 
 function isPublicShellBootPath(pathname = window.location.pathname) {
-  const pageId = getPublicPageId(pathname);
-  return pageId === 'home' || pageId === 'login';
+  return Boolean(getPublicRouteDefinition(pathname));
 }
 
 function isDownloadPath(pathname = '') {
@@ -166,19 +178,9 @@ function classifyPublicRoute(rawUrl) {
   }
 
   const path = normalizePath(url.pathname).toLowerCase();
+  const definition = PUBLIC_PAGE_DEFINITIONS.get(path);
 
-  if (isPublicLoginPath(path)) {
-    return {
-      mode: 'public-shell',
-      page: 'login',
-      route: 'public-login',
-      reason: 'login public migré en shell',
-      href: url.href,
-      targetId: ''
-    };
-  }
-
-  if (!isPublicIndexPath(path)) {
+  if (!definition) {
     return {
       mode: 'reload',
       page: null,
@@ -188,27 +190,38 @@ function classifyPublicRoute(rawUrl) {
     };
   }
 
-  if (!url.hash) {
+  if (definition.page === 'home') {
+    if (!url.hash) {
+      return {
+        mode: 'public-shell',
+        page: 'home',
+        route: definition.route,
+        reason: definition.reason,
+        href: url.href,
+        targetId: ''
+      };
+    }
+
+    const currentPageId = getPublicPageId(window.location.pathname);
+    const target = currentPageId === 'home' ? getAnchorTarget(url.hash) : null;
+    const targetId = decodeHash(url.hash);
+
+    if (currentPageId === 'home' && !target) {
+      return {
+        mode: 'ignore',
+        page: 'home',
+        route: null,
+        reason: 'ancre absente, navigation neutralisée',
+        href: url.href,
+        targetId
+      };
+    }
+
     return {
       mode: 'public-shell',
       page: 'home',
-      route: 'public-home-top',
-      reason: 'index public migré en shell',
-      href: url.href,
-      targetId: ''
-    };
-  }
-
-  const currentPageId = getPublicPageId(window.location.pathname);
-  const target = currentPageId === 'home' ? getAnchorTarget(url.hash) : null;
-  const targetId = decodeHash(url.hash);
-
-  if (currentPageId === 'home' && !target) {
-    return {
-      mode: 'ignore',
-      page: 'home',
-      route: null,
-      reason: 'ancre absente, navigation neutralisée',
+      route: 'public-home-anchor',
+      reason: currentPageId === 'home' ? 'ancre publique migrée' : 'index public migré avec ancre différée',
       href: url.href,
       targetId
     };
@@ -216,11 +229,11 @@ function classifyPublicRoute(rawUrl) {
 
   return {
     mode: 'public-shell',
-    page: 'home',
-    route: 'public-home-anchor',
-    reason: currentPageId === 'home' ? 'ancre publique migrée' : 'index public migré avec ancre différée',
+    page: definition.page,
+    route: definition.route,
+    reason: definition.reason,
     href: url.href,
-    targetId
+    targetId: decodeHash(url.hash)
   };
 }
 
@@ -298,13 +311,32 @@ function updateHistoryForUrl(url, mode = 'push') {
   else window.history.pushState(state, '', next);
 }
 
-function setActiveLinks(targetId = '') {
-  const normalized = targetId ? `#${targetId}` : '';
-  const links = document.querySelectorAll('.main-nav a[href^="#"], .header-actions a[href^="#"], .footer-nav a[href^="#"]');
+function setActiveLinks(targetId = '', pageId = getPublicPageId(window.location.pathname)) {
+  const normalizedHash = targetId ? `#${targetId}` : '';
+  const currentPath = normalizePath(window.location.pathname).toLowerCase();
+  const currentDefinition = getPublicRouteDefinition(window.location.pathname);
+  const links = document.querySelectorAll('.main-nav a[href], .header-actions a[href], .footer-nav a[href]');
 
   links.forEach((link) => {
     const href = link.getAttribute('href') || '';
-    const isActive = Boolean(normalized && href === normalized);
+    const url = normalizeHref(href);
+    let isActive = false;
+
+    if (url) {
+      const linkPath = normalizePath(url.pathname).toLowerCase();
+      const linkDefinition = PUBLIC_PAGE_DEFINITIONS.get(linkPath);
+
+      if (pageId === 'home' && normalizedHash && PUBLIC_INDEX_PATHS.has(linkPath) && url.hash === normalizedHash) {
+        isActive = true;
+      } else if (linkDefinition && currentDefinition) {
+        isActive = linkDefinition.page === currentDefinition.page && linkDefinition.page !== 'home';
+      } else if (normalizedHash && href === normalizedHash) {
+        isActive = true;
+      } else {
+        isActive = linkPath === currentPath && linkPath !== '/index.html' && linkPath !== '/';
+      }
+    }
+
     link.classList.toggle(ACTIVE_CLASS, isActive);
 
     if (isActive) link.setAttribute('aria-current', 'page');
@@ -313,7 +345,8 @@ function setActiveLinks(targetId = '') {
 }
 
 function pageFetchUrl(url) {
-  const cleanPath = isPublicLoginPath(url.pathname) ? '/login.html' : '/index.html';
+  const definition = getPublicRouteDefinition(url.pathname) || PUBLIC_PAGE_DEFINITIONS.get('/index.html');
+  const cleanPath = definition?.fetchPath || '/index.html';
   return `${cleanPath}${url.search || ''}`;
 }
 
@@ -370,13 +403,31 @@ function preservePublicLogoContainer(nextFragment) {
   return true;
 }
 
+function preservePublicPersistentNodes(nextFragment) {
+  const preserved = [];
+
+  if (preservePublicLogoContainer(nextFragment)) {
+    preserved.push('.site-header .logo-container');
+  }
+
+  const currentBackground = document.querySelector('[data-sbi-background]');
+  const nextBackground = nextFragment.querySelector?.('[data-sbi-background]');
+
+  if (currentBackground && !nextBackground) {
+    nextFragment.prepend(currentBackground);
+    preserved.push('[data-sbi-background]');
+  }
+
+  return preserved;
+}
+
 function renderBodyFragment(nextFragment) {
-  const preservedLogo = preservePublicLogoContainer(nextFragment);
+  const preserved = preservePublicPersistentNodes(nextFragment);
   document.body.replaceChildren(nextFragment);
 
-  if (preservedLogo) {
+  if (preserved.length) {
     window.dispatchEvent(new CustomEvent('sbi:public-shell:chrome-preserved', {
-      detail: { preserved: ['.site-header .logo-container'] }
+      detail: { preserved }
     }));
   }
 }
@@ -397,14 +448,12 @@ async function runPageInitializers(pageId) {
     console.warn('[SBI Public Shell] Init front public indisponible :', error);
   }
 
-  if (pageId === 'home') {
-    try {
-      const mediaModule = await import('/js/site-index-public.js');
-      const initMedia = mediaModule.initSiteIndexMedia || window.SBI_INIT_SITE_INDEX_MEDIA;
-      if (typeof initMedia === 'function') await initMedia();
-    } catch (error) {
-      console.warn('[SBI Public Shell] Médias index indisponibles après PJAX :', error);
-    }
+  try {
+    const mediaModule = await import('/js/site-index-public.js');
+    const initMedia = mediaModule.initSiteIndexMedia || window.SBI_INIT_SITE_INDEX_MEDIA;
+    if (typeof initMedia === 'function') await initMedia();
+  } catch (error) {
+    console.warn('[SBI Public Shell] Médias publics indisponibles après PJAX :', error);
   }
 
   if (pageId === 'login') {
@@ -458,14 +507,9 @@ async function renderPublicPage(url, decision, { historyMode = 'push', behavior 
       await runPageInitializers(targetPageId);
       observeActiveSections();
 
-      if (targetPageId === 'home') {
-        const target = decision.targetId ? getAnchorTarget(`#${decision.targetId}`) : null;
-        scrollToTarget(target, behavior);
-        setActiveLinks(decision.targetId || '');
-      } else {
-        scrollToTarget(null, behavior);
-        setActiveLinks('');
-      }
+      const target = decision.targetId ? getAnchorTarget(`#${decision.targetId}`) : null;
+      scrollToTarget(target, behavior);
+      setActiveLinks(decision.targetId || '', targetPageId);
 
       window.dispatchEvent(new CustomEvent('sbi:public-shell:navigated', {
         detail: { ...decision, source, pjax: true }
@@ -496,24 +540,17 @@ function navigatePublic(url, { historyMode = 'push', behavior = 'smooth', source
   const currentPageId = getPublicPageId(window.location.pathname);
   const samePage = currentPageId === decision.page;
 
-  if (decision.page === 'home' && samePage) {
+  if (samePage) {
     const target = decision.targetId ? getAnchorTarget(`#${decision.targetId}`) : null;
     scrollToTarget(target, behavior);
     updateHistoryForUrl(url, historyMode);
-    setActiveLinks(decision.targetId || '');
+    setActiveLinks(decision.targetId || '', decision.page);
 
     window.SBI_PUBLIC_SHELL_CURRENT_URL = url.href;
     window.dispatchEvent(new CustomEvent('sbi:public-shell:navigated', {
       detail: { ...decision, source, pjax: false }
     }));
 
-    return true;
-  }
-
-  if (decision.page === 'login' && samePage) {
-    scrollToTarget(null, behavior);
-    updateHistoryForUrl(url, historyMode);
-    window.SBI_PUBLIC_SHELL_CURRENT_URL = url.href;
     return true;
   }
 
@@ -647,14 +684,16 @@ function printCheck(href = window.location.href) {
 function printRoutes() {
   const routes = [
     { path: '/', mode: 'public-shell', page: 'home', reason: 'haut de l’index public' },
-    { path: '/index.html#formations', mode: 'public-shell', page: 'home', reason: 'ancre formations' },
-    { path: '/index.html#parcours', mode: 'public-shell', page: 'home', reason: 'alias parcours conservé' },
-    { path: '/index.html#apropos', mode: 'public-shell', page: 'home', reason: 'ancre à propos' },
-    { path: '/index.html#ressources', mode: 'public-shell', page: 'home', reason: 'ancre ressources' },
-    { path: '/index.html#contact', mode: 'public-shell', page: 'home', reason: 'ancre footer contact' },
+    { path: '/index.html#video', mode: 'public-shell', page: 'home', reason: 'ancre vidéo index conservée' },
+    { path: '/formations.html', mode: 'public-shell', page: 'formations', reason: 'page formations publique' },
+    { path: '/parcours.html', mode: 'public-shell', page: 'parcours', reason: 'page parcours publique' },
+    { path: '/a-propos.html', mode: 'public-shell', page: 'apropos', reason: 'page à propos publique' },
+    { path: '/ressources.html', mode: 'public-shell', page: 'ressources', reason: 'page ressources publique' },
+    { path: '/contact.html', mode: 'public-shell', page: 'contact', reason: 'page contact publique' },
     { path: '/login.html', mode: 'public-shell', page: 'login', reason: 'connexion migrée dans le shell public' },
     { path: '/admin/index.html', mode: 'reload', page: '-', reason: 'shell admin séparé' },
-    { path: '/student/cours-viewer.html?id=test', mode: 'reload', page: '-', reason: 'viewer protégé' }
+    { path: '/student/cours-viewer.html?id=test', mode: 'reload', page: '-', reason: 'viewer protégé' },
+    { path: '/admin/formations-live.html', mode: 'reload', page: '-', reason: 'live admin protégé, aucune page live publique' }
   ];
 
   console.table(routes);
@@ -681,8 +720,11 @@ function printAudit() {
     total: rows.length,
     ok: rows.filter((row) => row.verdict === 'OK').length,
     alerts: rows.filter((row) => row.verdict === 'ALERTE').length,
+    publicPagesEnabled: ['/formations.html', '/parcours.html', '/a-propos.html', '/ressources.html', '/contact.html']
+      .every((path) => classifyPublicRoute(new URL(path, window.location.origin)).mode === 'public-shell'),
     loginPjaxEnabled: classifyPublicRoute(new URL('/login.html', window.location.origin)).mode === 'public-shell',
-    persistentLogoEnabled: Boolean(document.querySelector('.site-header .logo-container[data-sbi-public-chrome-preserved="true"]')),
+    livePublicRemoved: classifyPublicRoute(new URL('/live.html', window.location.origin)).mode === 'reload',
+    persistentLogoEnabled: Boolean(document.querySelector('.site-header .logo-container')),
     viewerReloadProtected: classifyPublicRoute(new URL('/student/cours-viewer.html?id=test', window.location.origin)).mode === 'reload'
   };
 
@@ -764,7 +806,7 @@ function initSbiPublicAppShell() {
   attachListeners();
   observeActiveSections();
 
-  if (window.location.hash && getPublicPageId(window.location.pathname) === 'home') {
+  if (window.location.hash) {
     const initialUrl = new URL(window.location.href);
     const decision = classifyPublicRoute(initialUrl);
     if (decision.mode === 'public-shell') {
@@ -775,7 +817,7 @@ function initSbiPublicAppShell() {
       }));
     }
   } else {
-    setActiveLinks('');
+    setActiveLinks('', getPublicPageId(window.location.pathname));
   }
 
   window.dispatchEvent(new CustomEvent('sbi:public-shell:ready', {
