@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.7',
+  version: '8.0P.8',
   branch: 'public-pjax-app-shell',
   channel: 'PUBLIC PJAX APP SHELL',
-  stage: 'Qualiopi trust block copy cleanup on public index',
+  stage: 'Public homepage responsive foundation',
   updatedAt: '2026-05-06',
-  label: 'SBI 8.0P.7 - QUALIOPI TRUST BLOCK COPY CLEANUP'
+  label: 'SBI 8.0P.8 - PUBLIC HOMEPAGE RESPONSIVE FOUNDATION'
 };
 
 export function getSbiVersionLabel() {
