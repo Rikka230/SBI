@@ -12,7 +12,7 @@ const EMPTY_MEDIA = {
 
 const MEDIA_CACHE_KEY = 'sbi:siteIndexMedia:v1';
 const MEDIA_CACHE_TTL_MS = 5 * 60 * 1000;
-const QUALIOPI_CSS_HREF = '/css/sbi-qualiopi.css?v=8.0P.6';
+const QUALIOPI_CSS_HREF = '/css/sbi-qualiopi.css?v=8.0P.7';
 const QUALIOPI_SECTION_ID = 'qualiopi';
 
 function isLegacyLocalMediaUrl(value) {
@@ -125,13 +125,14 @@ function ensureQualiopiTrustBlock() {
     <div class="qualiopi-shell">
       <div class="qualiopi-copy">
         <span class="section-surtitle text-blue uppercase text-italic">Certification qualité</span>
-        <h2 id="qualiopi-title" class="qualiopi-title text-italic">Un repère officiel pour avancer avec confiance.</h2>
-        <p class="qualiopi-lead text-italic">SBI affiche sa certification dans un bloc institutionnel dédié, séparé des offres de formation, pour garder une lecture claire et conforme.</p>
-        <div class="qualiopi-proof-list" aria-label="Points de réassurance Qualiopi">
-          <span class="qualiopi-proof-item text-italic">Processus certifié</span>
-          <span class="qualiopi-proof-item text-italic">Apprentissage</span>
-          <span class="qualiopi-proof-item text-italic">Repère qualité</span>
-        </div>
+        <h2 id="qualiopi-title" class="qualiopi-title text-italic">SBI est certifié Qualiopi.</h2>
+        <p class="qualiopi-lead text-italic">
+          La certification qualité a été délivrée au titre de la catégorie d’action suivante :
+          <strong>Actions de formation par apprentissage</strong>.
+        </p>
+        <p class="qualiopi-note text-italic">
+          Cette certification atteste du processus qualité mis en œuvre dans le cadre des actions de formation par apprentissage.
+        </p>
       </div>
 
       <figure class="qualiopi-card" aria-label="Certification Qualiopi SBI">
