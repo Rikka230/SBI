@@ -139,3 +139,259 @@
         align-items: start;
     }
 }
+
+/* ---------------------------------------------------------
+   DESKTOP ART DIRECTION LOCK
+   Image reference: portrait / founder quote / hiring-aid panel
+   stay as three distinct sport-tech panels on desktop.
+   --------------------------------------------------------- */
+@media (min-width: 1181px) {
+    .section-stats {
+        padding-top: clamp(4.5rem, 7vw, 7.25rem);
+        padding-bottom: clamp(4.5rem, 7vw, 7.25rem);
+        background:
+            radial-gradient(circle at 8% 85%, rgba(0, 81, 255, 0.12), transparent 28%),
+            linear-gradient(180deg, rgba(2, 5, 11, 0.08), rgba(2, 5, 11, 0.28));
+    }
+
+    .section-stats .stats-grid {
+        display: grid;
+        grid-template-columns:
+            minmax(220px, 0.72fr)
+            minmax(300px, 1.05fr)
+            minmax(520px, 1.88fr);
+        gap: clamp(1.1rem, 1.8vw, 1.75rem);
+        align-items: center;
+        max-width: 1720px;
+        margin-right: auto;
+        margin-left: auto;
+    }
+
+    .section-stats .founder-block {
+        display: contents;
+    }
+
+    .section-stats .founder-img-wrapper {
+        grid-column: 1;
+        width: 100%;
+        max-width: clamp(235px, 18vw, 340px);
+        justify-self: end;
+    }
+
+    .section-stats .founder-img {
+        display: block;
+        width: 100%;
+        height: clamp(320px, 23vw, 420px);
+        aspect-ratio: auto;
+        object-position: center top;
+        filter: grayscale(100%) contrast(1.12) brightness(0.82);
+    }
+
+    .section-stats .quote-content {
+        grid-column: 2;
+        width: 100%;
+        max-width: none;
+        min-height: 0;
+        padding: clamp(1.75rem, 2vw, 2.35rem);
+        align-self: center;
+        justify-self: center;
+        background:
+            linear-gradient(180deg, rgba(9, 14, 27, 0.96), rgba(6, 10, 20, 0.96));
+        border-color: rgba(116, 180, 255, 0.28);
+        box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.035),
+            0 18px 44px rgba(0, 0, 0, 0.18);
+    }
+
+    .section-stats .quote-mark {
+        top: 2.15rem;
+        left: -0.56rem;
+        color: rgba(0, 81, 255, 0.72);
+        text-shadow: 0 0 18px rgba(0, 81, 255, 0.28);
+    }
+
+    .section-stats .quote-content blockquote {
+        max-width: 100%;
+        font-size: clamp(0.98rem, 1.08vw, 1.15rem);
+        line-height: 1.2;
+        margin-top: 0.2rem;
+        margin-bottom: 0.9rem;
+    }
+
+    .section-stats .quote-sub {
+        max-width: 100%;
+        margin-bottom: clamp(1rem, 1.4vw, 1.55rem);
+        font-size: clamp(0.74rem, 0.76vw, 0.84rem);
+        line-height: 1.48;
+    }
+
+    .section-stats .signature-text {
+        font-size: clamp(2rem, 2.35vw, 2.75rem);
+    }
+
+    .section-stats .sbi-signal-founder {
+        top: 50%;
+        right: -17px;
+    }
+
+    .section-stats .calculator-cta-box {
+        grid-column: 3;
+        width: 100%;
+        margin-top: 0;
+        align-self: center;
+    }
+
+    .section-stats .calculator-panel {
+        --panel-slant: clamp(44px, 4vw, 76px);
+        grid-template-columns: minmax(0, 1fr) minmax(150px, 33%);
+        min-height: clamp(280px, 19vw, 340px);
+        height: auto;
+        max-height: none;
+    }
+
+    .section-stats .calculator-panel-main {
+        padding:
+            clamp(1.35rem, 1.65vw, 2rem)
+            calc(clamp(1.25rem, 1.45vw, 1.85rem) + var(--panel-slant))
+            clamp(1.2rem, 1.45vw, 1.65rem)
+            clamp(1.35rem, 1.65vw, 2rem);
+    }
+
+    .section-stats .calculator-panel-side {
+        padding:
+            clamp(1.45rem, 1.8vw, 2rem)
+            clamp(1.15rem, 1.45vw, 1.8rem)
+            clamp(1.45rem, 1.8vw, 2rem)
+            calc(var(--panel-slant) + 0.8rem);
+    }
+
+    .section-stats .display-amount {
+        white-space: nowrap;
+        font-size: clamp(3.4rem, 4.45vw, 5.2rem);
+    }
+
+    .section-stats .cta-description {
+        max-width: 560px;
+        font-size: clamp(0.86rem, 0.94vw, 1.02rem);
+        line-height: 1.38;
+    }
+
+    .section-stats .cta-main-content {
+        margin-bottom: clamp(0.8rem, 1vw, 1.05rem);
+    }
+
+    .section-stats .cta-benefits {
+        gap: 0.55rem;
+        margin-bottom: clamp(0.75rem, 0.9vw, 1rem);
+    }
+
+    .section-stats .benefit-tag {
+        min-height: 0;
+        padding: 0.62rem 0.84rem;
+        font-size: clamp(0.58rem, 0.66vw, 0.74rem);
+    }
+
+    .section-stats .btn-calc-neon {
+        width: min(100%, 520px);
+        padding: clamp(0.86rem, 1vw, 1.08rem) 1.25rem;
+        padding-right: 2.45rem;
+        font-size: clamp(0.84rem, 0.9vw, 0.98rem);
+        clip-path: polygon(0 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%);
+    }
+
+    .section-stats .cta-note {
+        margin-top: 0.7rem;
+        font-size: 0.68rem;
+    }
+
+    .section-stats .calculator-side-icon svg {
+        width: clamp(76px, 6.5vw, 112px);
+        height: clamp(76px, 6.5vw, 112px);
+    }
+}
+
+@media (min-width: 1181px) and (max-width: 1450px) {
+    .section-stats .stats-grid {
+        grid-template-columns:
+            minmax(205px, 0.68fr)
+            minmax(275px, 1fr)
+            minmax(500px, 1.85fr);
+        gap: clamp(0.9rem, 1.35vw, 1.35rem);
+    }
+
+    .section-stats .founder-img-wrapper {
+        max-width: clamp(230px, 19vw, 300px);
+    }
+
+    .section-stats .founder-img {
+        height: clamp(320px, 25vw, 365px);
+    }
+
+    .section-stats .quote-content {
+        max-width: none;
+        padding: clamp(1.45rem, 1.7vw, 1.85rem);
+    }
+
+    .section-stats .quote-content blockquote {
+        font-size: clamp(0.96rem, 1.18vw, 1.08rem);
+    }
+
+    .section-stats .calculator-panel {
+        --panel-slant: clamp(40px, 3.6vw, 58px);
+        grid-template-columns: minmax(0, 1fr) minmax(136px, 30%);
+        min-height: clamp(282px, 22vw, 322px);
+        height: auto;
+    }
+
+    .section-stats .calculator-panel-main {
+        padding:
+            clamp(1.15rem, 1.4vw, 1.5rem)
+            calc(clamp(0.95rem, 1.2vw, 1.35rem) + var(--panel-slant))
+            clamp(1rem, 1.2vw, 1.3rem)
+            clamp(1.15rem, 1.4vw, 1.5rem);
+    }
+
+    .section-stats .calculator-panel-side {
+        padding-left: calc(var(--panel-slant) + 0.55rem);
+    }
+
+    .section-stats .display-amount {
+        font-size: clamp(3rem, 4.3vw, 3.9rem);
+    }
+
+    .section-stats .cta-description {
+        font-size: clamp(0.76rem, 0.98vw, 0.88rem);
+        line-height: 1.32;
+    }
+
+    .section-stats .cta-main-content {
+        margin-bottom: clamp(0.62rem, 0.8vw, 0.85rem);
+    }
+
+    .section-stats .cta-benefits {
+        gap: 0.5rem;
+        margin-bottom: clamp(0.62rem, 0.85vw, 0.9rem);
+    }
+
+    .section-stats .benefit-tag {
+        padding: 0.55rem 0.68rem;
+        font-size: clamp(0.54rem, 0.62vw, 0.62rem);
+    }
+
+    .section-stats .btn-calc-neon {
+        width: min(100%, 440px);
+        padding-top: 0.78rem;
+        padding-bottom: 0.78rem;
+        font-size: clamp(0.76rem, 0.88vw, 0.88rem);
+    }
+
+    .section-stats .cta-note {
+        margin-top: 0.55rem;
+        font-size: 0.62rem;
+    }
+
+    .section-stats .calculator-side-icon svg {
+        width: clamp(68px, 6vw, 86px);
+        height: clamp(68px, 6vw, 86px);
+    }
+}

@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.5 - Public pages foundation
+ * SBI 8.0P.9 - Public pages foundation
  *
  * Shell public prudent :
  * - navigation fluide des ancres de l'index ;
@@ -8,7 +8,7 @@
  * - espaces admin/student/teacher et viewers toujours protégés en reload.
  */
 
-const PUBLIC_SHELL_VERSION = '8.0P.5';
+const PUBLIC_SHELL_VERSION = '8.0P.9';
 const DISABLED_FLAG = 'sbiPublicShellDisabled';
 const READY_CLASS = 'sbi-public-shell-ready';
 const SCROLLING_CLASS = 'sbi-public-shell-scrolling';
@@ -23,6 +23,7 @@ const PUBLIC_PAGE_DEFINITIONS = new Map([
   ['/parcours.html', { page: 'parcours', route: 'public-parcours', fetchPath: '/parcours.html', reason: 'page parcours publique migrée' }],
   ['/a-propos.html', { page: 'apropos', route: 'public-apropos', fetchPath: '/a-propos.html', reason: 'page à propos publique migrée' }],
   ['/ressources.html', { page: 'ressources', route: 'public-ressources', fetchPath: '/ressources.html', reason: 'page ressources publique migrée' }],
+  ['/calculateur.html', { page: 'calculator', route: 'public-calculator', fetchPath: '/calculateur.html', reason: 'page calculateur aide publique migrée' }],
   ['/contact.html', { page: 'contact', route: 'public-contact', fetchPath: '/contact.html', reason: 'page contact publique migrée' }]
 ]);
 
@@ -465,6 +466,16 @@ async function runPageInitializers(pageId) {
       console.warn('[SBI Public Shell] Auth login indisponible après PJAX :', error);
     }
   }
+
+  if (pageId === 'calculator') {
+    try {
+      const calculatorModule = await import('/js/sbi-aide-calculator.js');
+      const initCalculator = calculatorModule.initSbiAidCalculator || window.SBI_INIT_AID_CALCULATOR;
+      if (typeof initCalculator === 'function') initCalculator(document);
+    } catch (error) {
+      console.warn('[SBI Public Shell] Calculateur aide indisponible après PJAX :', error);
+    }
+  }
 }
 
 async function renderPublicPage(url, decision, { historyMode = 'push', behavior = 'smooth', source = 'click' } = {}) {
@@ -689,6 +700,7 @@ function printRoutes() {
     { path: '/parcours.html', mode: 'public-shell', page: 'parcours', reason: 'page parcours publique' },
     { path: '/a-propos.html', mode: 'public-shell', page: 'apropos', reason: 'page à propos publique' },
     { path: '/ressources.html', mode: 'public-shell', page: 'ressources', reason: 'page ressources publique' },
+    { path: '/calculateur.html', mode: 'public-shell', page: 'calculator', reason: 'page calculateur aide publique' },
     { path: '/contact.html', mode: 'public-shell', page: 'contact', reason: 'page contact publique' },
     { path: '/login.html', mode: 'public-shell', page: 'login', reason: 'connexion migrée dans le shell public' },
     { path: '/admin/index.html', mode: 'reload', page: '-', reason: 'shell admin séparé' },
@@ -720,7 +732,7 @@ function printAudit() {
     total: rows.length,
     ok: rows.filter((row) => row.verdict === 'OK').length,
     alerts: rows.filter((row) => row.verdict === 'ALERTE').length,
-    publicPagesEnabled: ['/formations.html', '/parcours.html', '/a-propos.html', '/ressources.html', '/contact.html']
+    publicPagesEnabled: ['/formations.html', '/parcours.html', '/a-propos.html', '/ressources.html', '/calculateur.html', '/contact.html']
       .every((path) => classifyPublicRoute(new URL(path, window.location.origin)).mode === 'public-shell'),
     loginPjaxEnabled: classifyPublicRoute(new URL('/login.html', window.location.origin)).mode === 'public-shell',
     livePublicRemoved: classifyPublicRoute(new URL('/live.html', window.location.origin)).mode === 'reload',

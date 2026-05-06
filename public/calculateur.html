@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculateur d'aide à l'embauche - Sport Business Institute</title>
+
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/sbi-newsletter.css">
+    <link rel="stylesheet" href="css/sbi-footer.css">
+    <link rel="stylesheet" href="css/sbi-home-responsive.css">
+    <link rel="stylesheet" href="css/sbi-mobile.css">
+    <link rel="stylesheet" href="css/sbi-calculator.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,600;0,800;0,900;1,400;1,600;1,800;1,900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap" rel="stylesheet">
+</head>
+
+<body data-sbi-public-page="calculator">
+
+    <header class="site-header">
+        <div class="logo-container">
+            <a href="index.html" class="header-logo-link">
+                <img src="assets/Logo_SBI_Tome.png" alt="SBI Logo" class="header-logo" data-site-media="header-logo">
+                <img src="assets/sbi_brand.png" alt="Sport Business Institute" class="header-brand" data-site-media="brand-logo">
+            </a>
+        </div>
+
+        <nav class="main-nav">
+            <a href="formations.html" class="nav-link text-italic">Formations</a>
+            <a href="parcours.html" class="nav-link text-italic">Parcours</a>
+            <a href="a-propos.html" class="nav-link text-italic">À propos</a>
+            <a href="ressources.html" class="nav-link text-italic">Ressources</a>
+        </nav>
+
+        <div class="header-actions">
+            <button class="btn-icon search-btn" aria-label="Rechercher">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+            </button>
+
+            <a href="login.html" class="nav-link text-italic">Se connecter</a>
+            <a href="contact.html" class="btn-primary text-italic">Contact</a>
+        </div>
+
+        <button class="mobile-menu-toggle" type="button" aria-label="Ouvrir le menu">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
+    </header>
+
+    <main id="public-main" class="aid-calc-page" data-sbi-public-shell-root>
+        <section class="aid-calc-hero padding-global" data-sbi-public-section="calculator">
+            <div class="aid-calc-background" aria-hidden="true">
+                <span class="aid-calc-diagonal aid-calc-diagonal-1"></span>
+                <span class="aid-calc-diagonal aid-calc-diagonal-2"></span>
+                <span class="aid-calc-diagonal aid-calc-diagonal-3"></span>
+                <span class="aid-calc-shard aid-calc-shard-left"></span>
+                <span class="aid-calc-shard aid-calc-shard-right"></span>
+            </div>
+
+            <div class="aid-calc-hero-copy fade-in">
+                <span class="section-surtitle text-blue uppercase text-italic">Calculateur d'aide à l'embauche</span>
+                <h1 class="aid-calc-title uppercase text-italic">Calculez votre<br>aide à l'embauche<span>.</span></h1>
+                <p class="aid-calc-subtitle text-italic">Estimez en quelques secondes le montant potentiel de l'aide liée au recrutement d'un apprenti chez SBI.</p>
+
+                <ul class="aid-calc-proof-list" aria-label="Informations de calcul">
+                    <li>
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 10L12 4 2 10l10 6 10-6Z"></path><path d="M6 12v5c2 2 10 2 12 0v-5"></path></svg>
+                        <span>Formation SBI : Bac / RNCP Niveau 4</span>
+                    </li>
+                    <li>
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 8v4"></path><path d="M12 16h.01"></path></svg>
+                        <span>Estimation indicative selon les informations saisies.</span>
+                    </li>
+                </ul>
+
+                <div class="aid-calc-hero-actions">
+                    <a href="#simulateur" class="btn-primary text-italic">Lancer l'estimation <span class="arrow">→</span></a>
+                    <a href="mailto:contact@sbi.fr?subject=Accompagnement%20alternance%20SBI" class="btn-ghost text-italic">Être accompagné</a>
+                </div>
+            </div>
+        </section>
+
+        <section id="simulateur" class="aid-calc-workspace padding-global sbi-aide-calculator" data-sbi-public-section="simulateur">
+            <div class="aid-calc-form-card fade-in">
+                <form class="aid-calc-form" novalidate>
+                    <section class="aid-calc-step" aria-labelledby="company-step-title">
+                        <div class="aid-calc-step-head">
+                            <span class="aid-calc-step-index">1</span>
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21h18"></path><path d="M5 21V7l8-4v18"></path><path d="M19 21V11l-6-4"></path><path d="M9 9h1"></path><path d="M9 13h1"></path><path d="M9 17h1"></path></svg>
+                            <h2 id="company-step-title" class="text-italic">Votre entreprise</h2>
+                        </div>
+
+                        <div class="aid-calc-segmented" role="group" aria-label="Taille de l'entreprise">
+                            <button type="button" class="aid-calc-segment is-active" data-field="companySize" data-value="under_250" aria-pressed="true">Moins de 250 salariés</button>
+                            <button type="button" class="aid-calc-segment" data-field="companySize" data-value="over_250" aria-pressed="false">250 salariés et plus</button>
+                        </div>
+                    </section>
+
+                    <section class="aid-calc-step" aria-labelledby="contract-step-title">
+                        <div class="aid-calc-step-head">
+                            <span class="aid-calc-step-index">2</span>
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h7l4 4v14H7z"></path><path d="M14 3v5h4"></path><path d="M10 13h5"></path><path d="M10 17h5"></path></svg>
+                            <h2 id="contract-step-title" class="text-italic">Le contrat</h2>
+                        </div>
+
+                        <div class="aid-calc-segmented" role="group" aria-label="Type de contrat">
+                            <button type="button" class="aid-calc-segment is-active" data-field="contractType" data-value="apprentissage" aria-pressed="true">Apprentissage</button>
+                            <button type="button" class="aid-calc-segment" data-field="contractType" data-value="professionnalisation" aria-pressed="false">Professionnalisation</button>
+                        </div>
+
+                        <div class="aid-calc-date-grid">
+                            <label class="aid-calc-field">
+                                <span>Date de signature</span>
+                                <input type="date" name="signatureDate" data-aid-field="signatureDate">
+                            </label>
+                            <label class="aid-calc-field">
+                                <span>Début du contrat</span>
+                                <input type="date" name="contractStartDate" data-aid-field="contractStartDate">
+                            </label>
+                            <label class="aid-calc-field">
+                                <span>Fin prévue</span>
+                                <input type="date" name="contractEndDate" data-aid-field="contractEndDate">
+                            </label>
+                        </div>
+                    </section>
+
+                    <section class="aid-calc-step" aria-labelledby="training-step-title">
+                        <div class="aid-calc-step-head">
+                            <span class="aid-calc-step-index">3</span>
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 10 12 4 2 10l10 6 10-6Z"></path><path d="M6 12v5c2 2 10 2 12 0v-5"></path></svg>
+                            <h2 id="training-step-title" class="text-italic">Formation concernée</h2>
+                        </div>
+
+                        <label class="aid-calc-field aid-calc-locked-field">
+                            <span class="sr-only">Formation concernée verrouillée</span>
+                            <input type="text" value="Bac / RNCP Niveau 4" readonly aria-readonly="true">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="10" rx="2"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3"></path></svg>
+                        </label>
+                    </section>
+
+                    <section class="aid-calc-step" aria-labelledby="apprentice-step-title">
+                        <div class="aid-calc-step-head">
+                            <span class="aid-calc-step-index">4</span>
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="4"></circle><path d="M5.5 21a6.5 6.5 0 0 1 13 0"></path></svg>
+                            <h2 id="apprentice-step-title" class="text-italic">L'apprenti</h2>
+                        </div>
+
+                        <div class="aid-calc-inline-choice">
+                            <span>Situation de handicap :</span>
+                            <div class="aid-calc-segmented aid-calc-segmented-small" role="group" aria-label="Situation de handicap">
+                                <button type="button" class="aid-calc-segment" data-field="isDisabledApprentice" data-value="yes" aria-pressed="false">Oui</button>
+                                <button type="button" class="aid-calc-segment is-active" data-field="isDisabledApprentice" data-value="no" aria-pressed="true">Non</button>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="aid-calc-step" aria-labelledby="days-step-title">
+                        <div class="aid-calc-step-head">
+                            <span class="aid-calc-step-index aid-calc-step-index-muted">5</span>
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>
+                            <div>
+                                <h2 id="days-step-title" class="text-italic">Jours non exécutés <span>(optionnel)</span></h2>
+                                <p>Nombre de jours d'absence ou non travaillés à déduire du calcul.</p>
+                            </div>
+                        </div>
+
+                        <label class="aid-calc-days-field">
+                            <input type="number" name="nonExecutedDays" data-aid-field="nonExecutedDays" value="0" min="0" step="1" inputmode="numeric">
+                            <span>jours</span>
+                        </label>
+                    </section>
+
+                    <p class="aid-calc-soft-error" data-aid-error role="status"></p>
+
+                    <button type="submit" class="aid-calc-submit text-italic">Calculer mon estimation <span>→</span></button>
+                </form>
+            </div>
+
+            <aside class="aid-calc-result-card fade-in" aria-live="polite" aria-labelledby="aid-result-title">
+                <div class="aid-calc-result-head">
+                    <span class="aid-calc-result-icon" aria-hidden="true">€</span>
+                    <div>
+                        <span id="aid-result-title" class="aid-calc-result-label">Montant estimé</span>
+                        <strong class="aid-calc-result-amount text-italic" data-aid-result-amount>5 000 €</strong>
+                    </div>
+                </div>
+
+                <p class="aid-calc-result-summary text-italic" data-aid-result-summary>Estimation pour une entreprise de moins de 250 salariés recrutant un apprenti en formation SBI Bac / Niveau 4.</p>
+
+                <div class="aid-calc-result-metrics">
+                    <div>
+                        <span>Base d'aide :</span>
+                        <strong data-aid-base>5 000 €</strong>
+                    </div>
+                    <div>
+                        <span>Prorata :</span>
+                        <strong data-aid-ratio>100 %</strong>
+                    </div>
+                    <div>
+                        <span>Statut :</span>
+                        <strong class="is-eligible" data-aid-status>Éligible</strong>
+                    </div>
+                </div>
+
+                <div class="aid-calc-handicap-note">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="5" r="2"></circle><path d="M9 7v6h5l3 5"></path><path d="M7 13a5 5 0 1 0 5 5"></path></svg>
+                    <span>Apprenti en situation de handicap : <strong>jusqu'à 6 000 €</strong></span>
+                </div>
+
+                <div class="aid-calc-legal-note">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 8v4"></path><path d="M12 16h.01"></path></svg>
+                    <span>Ce simulateur fournit une estimation indicative.<br>Il ne remplace pas l'instruction officielle du dossier.</span>
+                </div>
+
+                <a href="mailto:contact@sbi.fr?subject=Estimation%20aide%20%C3%A0%20l'embauche%20SBI" class="aid-calc-result-cta text-italic" data-aid-contact-link>Recevoir mon estimation <span>→</span></a>
+            </aside>
+        </section>
+
+        <section class="aid-calc-support-grid padding-global">
+            <article class="aid-calc-support-card aid-calc-benefits-card fade-in">
+                <div class="aid-calc-benefit">
+                    <span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z"></path></svg></span>
+                    <div>
+                        <h2 class="text-italic">Versement automatique</h2>
+                        <p>L'aide est versée directement chaque mois à votre entreprise.</p>
+                    </div>
+                </div>
+                <div class="aid-calc-benefit">
+                    <span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"></path></svg></span>
+                    <div>
+                        <h2 class="text-italic">Zéro formalité</h2>
+                        <p>SBI s'occupe de toutes les démarches administratives.</p>
+                    </div>
+                </div>
+                <div class="aid-calc-benefit">
+                    <span><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="4"></circle><path d="M5.5 21a6.5 6.5 0 0 1 13 0"></path></svg></span>
+                    <div>
+                        <h2 class="text-italic">Accompagnement SBI</h2>
+                        <p>Nos experts restent à vos côtés avant, pendant et après.</p>
+                    </div>
+                </div>
+            </article>
+
+            <article class="aid-calc-support-card aid-calc-advisor-card fade-in">
+                <span class="aid-calc-advisor-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><path d="M4 13a8 8 0 0 1 16 0"></path><path d="M4 13v4a2 2 0 0 0 2 2h2v-8H6a2 2 0 0 0-2 2Z"></path><path d="M20 13v4a2 2 0 0 1-2 2h-2v-8h2a2 2 0 0 1 2 2Z"></path></svg>
+                </span>
+                <div>
+                    <h2 class="text-italic">Besoin d'aide ?</h2>
+                    <p>Un conseiller SBI vous accompagne à chaque étape de votre recrutement en alternance.</p>
+                </div>
+                <a href="mailto:contact@sbi.fr?subject=Parler%20%C3%A0%20un%20conseiller%20SBI" class="aid-calc-advisor-cta text-italic">Parler à un conseiller <span>→</span></a>
+            </article>
+        </section>
+    </main>
+
+    <footer id="contact" class="site-footer sbi-footer padding-global">
+        <div class="footer-shell">
+            <div class="footer-brand-block">
+                <a href="index.html" class="footer-logo-lockup" aria-label="Retour à l'accueil SBI">
+                    <img src="assets/Logo_SBI_Tome.png" alt="SBI Logo" class="footer-logo-mark" data-site-media="footer-logo">
+                    <img src="assets/sbi_brand.png" alt="Sport Business Institute" class="footer-logo-wordmark" data-site-media="footer-brand-logo">
+                </a>
+
+                <p class="footer-brandline text-italic">Apprendre. Progresser. <span class="text-blue">Performer.</span></p>
+                <p class="footer-description text-italic">La plateforme e-learning dédiée au sport business, au management sportif et à l'innovation.</p>
+            </div>
+
+            <nav class="footer-nav" aria-label="Navigation secondaire">
+                <div class="footer-column">
+                    <h4 class="text-italic">Plateforme</h4>
+                    <a href="formations.html" class="text-italic">Formations</a>
+                    <a href="parcours.html" class="text-italic">Parcours</a>
+                    <a href="ressources.html" class="text-italic">Ressources</a>
+                </div>
+
+                <div class="footer-column">
+                    <h4 class="text-italic">À propos</h4>
+                    <a href="a-propos.html" class="text-italic">Qui sommes-nous ?</a>
+                    <a href="a-propos.html#experts" class="text-italic">Nos experts</a>
+                    <a href="a-propos.html#carrieres" class="text-italic">Carrières</a>
+                    <a href="contact.html" class="text-italic">Contact</a>
+                </div>
+
+                <div class="footer-column">
+                    <h4 class="text-italic">Légal</h4>
+                    <a href="#" class="text-italic">Mentions légales</a>
+                    <a href="#" class="text-italic">CGU</a>
+                    <a href="#" class="text-italic">Politique de confidentialité</a>
+                    <a href="#" class="text-italic">Cookies</a>
+                </div>
+            </nav>
+
+            <div class="footer-social-card">
+                <h4 class="footer-social-title text-italic">Suivez-nous</h4>
+                <div class="social-icons">
+                    <a href="#" aria-label="X (Twitter)"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 22.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a>
+                    <a href="#" aria-label="Instagram"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg></a>
+                    <a href="#" aria-label="LinkedIn"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path><rect x="2" y="9" width="4" height="12"></rect><circle cx="4" cy="4" r="2"></circle></svg></a>
+                    <a href="#" aria-label="YouTube"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33 2.78 2.78 0 0 0 1.94 2c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.33 29 29 0 0 0-.46-5.33z"></path><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"></polygon></svg></a>
+                </div>
+                <a href="mailto:contact@sbi.fr" class="footer-contact-link text-italic">contact@sbi.fr</a>
+            </div>
+        </div>
+
+        <div class="footer-bottom">
+            <span class="text-italic">© 2026 Sport Business Institute. Tous droits réservés.</span>
+            <span class="footer-bottom-signature text-italic">SBI E-Learning</span>
+        </div>
+    </footer>
+
+    <script src="js/sbi-background.js"></script>
+    <script src="js/main.js?v=8.0P.9"></script>
+    <script type="module" src="js/sbi-aide-calculator.js?v=8.0P.9"></script>
+    <script src="js/public-app-shell.js?v=8.0P.9"></script>
+    <script type="module" src="js/firebase-init.js"></script>
+</body>
+</html>
