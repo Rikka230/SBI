@@ -12,6 +12,8 @@ const EMPTY_MEDIA = {
 
 const MEDIA_CACHE_KEY = 'sbi:siteIndexMedia:v1';
 const MEDIA_CACHE_TTL_MS = 5 * 60 * 1000;
+const QUALIOPI_CSS_HREF = '/css/sbi-qualiopi.css?v=8.0P.6';
+const QUALIOPI_SECTION_ID = 'qualiopi';
 
 function isLegacyLocalMediaUrl(value) {
   if (typeof value !== 'string') return false;
@@ -81,6 +83,89 @@ function ensureFounderCleanStyles() {
   document.head.appendChild(link);
 }
 
+function ensureQualiopiStyles() {
+  const alreadyLoaded = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
+    .some((link) => {
+      const href = link.getAttribute('href') || '';
+      return href.includes('/css/sbi-qualiopi.css');
+    });
+
+  if (alreadyLoaded) return;
+
+  const link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = QUALIOPI_CSS_HREF;
+  link.dataset.sbiQualiopiStyles = 'true';
+  document.head.appendChild(link);
+}
+
+function isHomePageReady() {
+  const path = window.location.pathname.toLowerCase();
+  return Boolean(
+    document.querySelector('[data-sbi-public-section~="apropos"], .section-stats') &&
+    (document.body?.dataset?.sbiPublicPage === 'home' || path === '/' || path.endsWith('/index.html'))
+  );
+}
+
+function ensureQualiopiTrustBlock() {
+  if (!isHomePageReady()) return null;
+
+  ensureQualiopiStyles();
+
+  const existing = document.getElementById(QUALIOPI_SECTION_ID);
+  if (existing) return existing;
+
+  const section = document.createElement('section');
+  section.id = QUALIOPI_SECTION_ID;
+  section.className = 'section-qualiopi padding-global';
+  section.dataset.sbiPublicSection = 'qualiopi certification';
+  section.setAttribute('aria-labelledby', 'qualiopi-title');
+
+  section.innerHTML = `
+    <div class="qualiopi-shell">
+      <div class="qualiopi-copy">
+        <span class="section-surtitle text-blue uppercase text-italic">Certification qualité</span>
+        <h2 id="qualiopi-title" class="qualiopi-title text-italic">Un repère officiel pour avancer avec confiance.</h2>
+        <p class="qualiopi-lead text-italic">SBI affiche sa certification dans un bloc institutionnel dédié, séparé des offres de formation, pour garder une lecture claire et conforme.</p>
+        <div class="qualiopi-proof-list" aria-label="Points de réassurance Qualiopi">
+          <span class="qualiopi-proof-item text-italic">Processus certifié</span>
+          <span class="qualiopi-proof-item text-italic">Apprentissage</span>
+          <span class="qualiopi-proof-item text-italic">Repère qualité</span>
+        </div>
+      </div>
+
+      <figure class="qualiopi-card" aria-label="Certification Qualiopi SBI">
+        <div class="qualiopi-logo-frame">
+          <img src="/assets/logo-qualiopi-cfa.png" alt="Qualiopi processus certifié République Française" loading="lazy" decoding="async">
+        </div>
+        <figcaption class="qualiopi-caption text-italic">
+          La certification qualité a été délivrée au titre de la catégorie d’action suivante : <strong>Actions de formation par apprentissage</strong>.
+        </figcaption>
+      </figure>
+    </div>
+  `;
+
+  const newsletter = document.querySelector('#ressources.section-newsletter, .section-newsletter');
+  const stats = document.querySelector('#apropos.section-stats, .section-stats');
+
+  if (newsletter?.parentNode) {
+    newsletter.parentNode.insertBefore(section, newsletter);
+  } else if (stats?.parentNode) {
+    stats.insertAdjacentElement('afterend', section);
+  } else {
+    document.querySelector('main')?.appendChild(section);
+  }
+
+  window.requestAnimationFrame(() => {
+    section.classList.add('is-ready');
+    if (typeof window.SBI_PUBLIC_SHELL?.refreshSections === 'function') {
+      window.SBI_PUBLIC_SHELL.refreshSections();
+    }
+  });
+
+  return section;
+}
+
 function applyImage(selector, url) {
   if (!url) return;
   document.querySelectorAll(selector).forEach((img) => {
@@ -132,6 +217,7 @@ function applyHeroVideo(settings) {
 
 function applySettings(settings) {
   ensureFounderCleanStyles();
+  ensureQualiopiTrustBlock();
   applyHeroVideo(settings);
   applyImage('.hero-large-logo', settings.heroLogoUrl);
   applyImage('.header-logo, .footer-logo-mark', settings.headerLogoUrl);
@@ -142,6 +228,7 @@ function applySettings(settings) {
 
 async function initSiteIndexMedia() {
   ensureFounderCleanStyles();
+  ensureQualiopiTrustBlock();
 
   const cachedSettings = readCachedSettings();
   if (cachedSettings) {
@@ -156,9 +243,11 @@ async function initSiteIndexMedia() {
     if (!cachedSettings || settingsSignature(cachedSettings) !== settingsSignature(settings)) {
       applySettings(settings);
     } else {
+      ensureQualiopiTrustBlock();
       document.body.classList.add('is-site-index-media-ready');
     }
   } catch (error) {
+    ensureQualiopiTrustBlock();
     document.body.classList.add('is-site-index-media-ready');
     if (!cachedSettings) {
       console.warn('[SBI Index] Médias dynamiques indisponibles. Aucun fallback lourd local chargé.', error);
@@ -167,6 +256,7 @@ async function initSiteIndexMedia() {
 }
 
 window.SBI_INIT_SITE_INDEX_MEDIA = initSiteIndexMedia;
+window.SBI_ENSURE_QUALIOPI_HOME_BLOCK = ensureQualiopiTrustBlock;
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initSiteIndexMedia);
@@ -174,4 +264,4 @@ if (document.readyState === 'loading') {
   initSiteIndexMedia();
 }
 
-export { initSiteIndexMedia };
+export { initSiteIndexMedia, ensureQualiopiTrustBlock };
