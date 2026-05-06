@@ -117,7 +117,7 @@ function ensureQualiopiTrustBlock() {
 
   const section = document.createElement('section');
   section.id = QUALIOPI_SECTION_ID;
-  section.className = 'section-qualiopi padding-global';
+  section.className = 'section-qualiopi sbi-qualiopi-section padding-global';
   section.dataset.sbiPublicSection = 'qualiopi certification';
   section.setAttribute('aria-labelledby', 'qualiopi-title');
 
@@ -137,7 +137,7 @@ function ensureQualiopiTrustBlock() {
 
       <figure class="qualiopi-card" aria-label="Certification Qualiopi SBI">
         <div class="qualiopi-logo-frame">
-          <img src="/assets/logo-qualiopi-cfa.png" alt="Qualiopi processus certifié République Française" loading="lazy" decoding="async">
+          <img src="/assets/logo-qualiopi-cfa.png" alt="Qualiopi processus certifié République Française" loading="lazy" decoding="async" width="1280" height="502">
         </div>
         <figcaption class="qualiopi-caption text-italic">
           La certification qualité a été délivrée au titre de la catégorie d’action suivante : <strong>Actions de formation par apprentissage</strong>.
