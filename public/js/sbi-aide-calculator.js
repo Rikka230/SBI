@@ -1,4 +1,4 @@
-const SBI_AID_CALCULATOR_VERSION = '8.0P.10c';
+const SBI_AID_CALCULATOR_VERSION = '8.0P.10d';
 const SBI_RNCP_LEVEL = 4;
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 

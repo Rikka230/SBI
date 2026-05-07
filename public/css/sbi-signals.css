@@ -420,12 +420,26 @@
     }
 
     .sbi-signal-hero .sbi-signal-panel {
+        opacity: 0;
+        transform: translateX(-10px) scale(0.96);
+        pointer-events: none;
+    }
+
+    .sbi-signal-hero::after {
+        opacity: 0;
+    }
+
+    .sbi-signal-hero.is-revealed .sbi-signal-panel,
+    .sbi-signal-hero:hover .sbi-signal-panel,
+    .sbi-signal-hero:focus-visible .sbi-signal-panel {
         opacity: 1;
         transform: translateX(0) scale(1);
         pointer-events: auto;
     }
 
-    .sbi-signal-hero::after {
+    .sbi-signal-hero.is-revealed::after,
+    .sbi-signal-hero:hover::after,
+    .sbi-signal-hero:focus-visible::after {
         opacity: 1;
     }
 

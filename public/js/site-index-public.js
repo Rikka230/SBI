@@ -9,7 +9,7 @@ const EMPTY_MEDIA = {
 
 const MEDIA_CACHE_KEY = 'sbi:siteIndexMedia:v1';
 const MEDIA_CACHE_TTL_MS = 5 * 60 * 1000;
-const QUALIOPI_CSS_HREF = '/css/sbi-qualiopi.css?v=8.0P.10c';
+const QUALIOPI_CSS_HREF = '/css/sbi-qualiopi.css?v=8.0P.10d';
 const QUALIOPI_SECTION_ID = 'qualiopi';
 const LOCAL_BRAND_MEDIA = {
   logo: '/assets/Logo_SBI_Tome.webp',
@@ -92,7 +92,7 @@ function writeCachedSettings(settings) {
 
 function ensureFounderCleanStyles() {
   const cssPath = '/css/sbi-founder-image-clean.css';
-  const href = `${cssPath}?v=8.0P.10c`;
+  const href = `${cssPath}?v=8.0P.10d`;
   const existing = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
     .find((link) => (link.getAttribute('href') || '').includes(cssPath));
 

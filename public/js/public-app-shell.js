@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.10c - Public mobile performance safe pass
+ * SBI 8.0P.10d - Public mobile performance safe pass
  *
  * Shell public prudent :
  * - navigation fluide des ancres de l'index ;
@@ -8,7 +8,7 @@
  * - espaces admin/student/teacher et viewers toujours protégés en reload.
  */
 
-const PUBLIC_SHELL_VERSION = '8.0P.10c';
+const PUBLIC_SHELL_VERSION = '8.0P.10d';
 const DISABLED_FLAG = 'sbiPublicShellDisabled';
 const READY_CLASS = 'sbi-public-shell-ready';
 const SCROLLING_CLASS = 'sbi-public-shell-scrolling';
@@ -20,7 +20,6 @@ const PUBLIC_PAGE_DEFINITIONS = new Map([
   ['/index.html', { page: 'home', route: 'public-home-top', fetchPath: '/index.html', reason: 'index public migré en shell' }],
   ['/login.html', { page: 'login', route: 'public-login', fetchPath: '/login.html', reason: 'connexion migrée dans le shell public' }],
   ['/formations.html', { page: 'formations', route: 'public-formations', fetchPath: '/formations.html', reason: 'page formations publique migrée' }],
-  ['/parcours.html', { page: 'parcours', route: 'public-parcours', fetchPath: '/parcours.html', reason: 'page parcours publique migrée' }],
   ['/a-propos.html', { page: 'apropos', route: 'public-apropos', fetchPath: '/a-propos.html', reason: 'page à propos publique migrée' }],
   ['/ressources.html', { page: 'ressources', route: 'public-ressources', fetchPath: '/ressources.html', reason: 'page ressources publique migrée' }],
   ['/calculateur.html', { page: 'calculator', route: 'public-calculator', fetchPath: '/calculateur.html', reason: 'page calculateur aide publique migrée' }],
@@ -451,7 +450,7 @@ async function runPageInitializers(pageId) {
 
   if (pageId === 'home') {
     try {
-      const mediaModule = await import('/js/site-index-public.js?v=8.0P.10c');
+      const mediaModule = await import('/js/site-index-public.js?v=8.0P.10d');
       const initMedia = mediaModule.initSiteIndexMedia || window.SBI_INIT_SITE_INDEX_MEDIA;
       if (typeof initMedia === 'function') await initMedia();
     } catch (error) {
@@ -471,7 +470,7 @@ async function runPageInitializers(pageId) {
 
   if (pageId === 'calculator') {
     try {
-      const calculatorModule = await import('/js/sbi-aide-calculator.js?v=8.0P.10c');
+      const calculatorModule = await import('/js/sbi-aide-calculator.js?v=8.0P.10d');
       const initCalculator = calculatorModule.initSbiAidCalculator || window.SBI_INIT_AID_CALCULATOR;
       if (typeof initCalculator === 'function') initCalculator(document);
     } catch (error) {
@@ -481,7 +480,7 @@ async function runPageInitializers(pageId) {
 
   if (['formations', 'parcours', 'apropos', 'ressources', 'contact'].includes(pageId)) {
     try {
-      const publicPagesModule = await import('/js/sbi-public-pages.js?v=8.0P.10c');
+      const publicPagesModule = await import('/js/sbi-public-pages.js?v=8.0P.10d');
       const initPublicPages = publicPagesModule.initSbiPublicPages || window.SBI_INIT_PUBLIC_PAGES;
       if (typeof initPublicPages === 'function') initPublicPages(document);
     } catch (error) {
@@ -709,7 +708,6 @@ function printRoutes() {
     { path: '/', mode: 'public-shell', page: 'home', reason: 'haut de l’index public' },
     { path: '/index.html#video', mode: 'public-shell', page: 'home', reason: 'ancre vidéo index conservée' },
     { path: '/formations.html', mode: 'public-shell', page: 'formations', reason: 'page formations publique' },
-    { path: '/parcours.html', mode: 'public-shell', page: 'parcours', reason: 'page parcours publique' },
     { path: '/a-propos.html', mode: 'public-shell', page: 'apropos', reason: 'page à propos publique' },
     { path: '/ressources.html', mode: 'public-shell', page: 'ressources', reason: 'page ressources publique' },
     { path: '/calculateur.html', mode: 'public-shell', page: 'calculator', reason: 'page calculateur aide publique' },
@@ -744,7 +742,7 @@ function printAudit() {
     total: rows.length,
     ok: rows.filter((row) => row.verdict === 'OK').length,
     alerts: rows.filter((row) => row.verdict === 'ALERTE').length,
-    publicPagesEnabled: ['/formations.html', '/parcours.html', '/a-propos.html', '/ressources.html', '/calculateur.html', '/contact.html']
+    publicPagesEnabled: ['/formations.html', '/a-propos.html', '/ressources.html', '/calculateur.html', '/contact.html']
       .every((path) => classifyPublicRoute(new URL(path, window.location.origin)).mode === 'public-shell'),
     loginPjaxEnabled: classifyPublicRoute(new URL('/login.html', window.location.origin)).mode === 'public-shell',
     livePublicRemoved: classifyPublicRoute(new URL('/live.html', window.location.origin)).mode === 'reload',

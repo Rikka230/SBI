@@ -96,7 +96,6 @@ const publicShellPaths = new Set([
     '/index.html',
     '/login.html',
     '/formations.html',
-    '/parcours.html',
     '/a-propos.html',
     '/ressources.html',
     '/contact.html'

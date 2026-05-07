@@ -184,7 +184,7 @@
         height: clamp(320px, 23vw, 420px);
         aspect-ratio: auto;
         object-position: center top;
-        filter: grayscale(100%) contrast(1.12) brightness(0.82);
+        filter: none;
     }
 
     .section-stats .quote-content {
@@ -394,4 +394,10 @@
         width: clamp(68px, 6vw, 86px);
         height: clamp(68px, 6vw, 86px);
     }
+}
+
+
+/* SBI 8.0P.10d - founder natural image override */
+.section-stats .founder-img {
+    filter: none !important;
 }
