@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.40',
+  version: '8.0P.41',
   branch: 'public-pjax-app-shell',
   channel: 'PUBLIC PJAX APP SHELL',
   stage: 'Index hero PJAX fade and calculator stylesheet-ready render',
   updatedAt: '2026-05-08',
-  label: 'SBI 8.0P.40 - DESKTOP HERO BAND SPACING AND LOGO CONTAINMENT'
+  label: 'SBI 8.0P.41 - DESKTOP HERO BAND TRANSPARENCY AND LOGO CLEARANCE'
 };
 
 export function getSbiVersionLabel() {

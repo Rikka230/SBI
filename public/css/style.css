@@ -1459,3 +1459,32 @@ footer {
         justify-self: auto;
     }
 }
+
+
+/* =========================================================
+   SBI 8.0P.41 - Desktop hero band transparency + logo safe clearance
+   PC only: keeps the centered full-width band, removes its fill,
+   and keeps the hero logo clear of the band on shorter desktop screens.
+   ========================================================= */
+@media (min-width: 1025px) {
+    .hero-large-logo {
+        width: min(100%, 950px, calc(100vh - var(--header-height) - clamp(12.75rem, 20vh, 15.25rem)));
+        max-width: min(950px, calc(100vh - var(--header-height) - clamp(12.75rem, 20vh, 15.25rem)));
+        height: auto;
+        object-fit: contain;
+    }
+
+    .hero-section > .features-bar {
+        background: transparent;
+        background-color: transparent;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+    }
+}
+
+@media (min-width: 1025px) and (max-width: 1380px) {
+    .hero-large-logo {
+        width: min(100%, 860px, calc(100vh - var(--header-height) - clamp(12.5rem, 22vh, 15.5rem)));
+        max-width: min(860px, calc(100vh - var(--header-height) - clamp(12.5rem, 22vh, 15.5rem)));
+    }
+}
