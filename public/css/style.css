@@ -1352,8 +1352,8 @@ footer {
 
 
 /* =========================================================
-   SBI 8.0P.38 - Desktop hero feature band centering/visibility
-   PC only: keeps hero content/video/logo untouched, isolates the lower band.
+   SBI 8.0P.39 - Desktop hero feature band full-width alignment
+   PC only: keeps hero content/video/logo untouched, aligns the band itself.
    ========================================================= */
 @media (min-width: 1025px) {
     .hero-section > .features-bar {
@@ -1364,30 +1364,44 @@ footer {
         width: 100%;
         max-width: none;
         margin: 0;
-        z-index: 3;
+        z-index: 4;
         flex: 0 0 auto;
-        grid-template-columns: repeat(4, max-content);
-        justify-content: center;
-        justify-items: start;
-        gap: 0 clamp(3.5rem, 10vw, 14rem);
-        padding-left: clamp(2rem, 5vw, 6rem);
-        padding-right: clamp(2rem, 5vw, 6rem);
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        justify-content: stretch;
+        justify-items: center;
+        gap: 0 clamp(1rem, 2.1vw, 2.75rem);
+        padding-left: 5%;
+        padding-right: 5%;
+        background: linear-gradient(180deg, rgba(4, 5, 8, 0.88) 0%, rgba(4, 5, 8, 0.97) 100%);
     }
 
     .hero-section > .features-bar .feature-item {
         width: max-content;
+        max-width: 100%;
+    }
+
+    .hero-section > .features-bar .feature-item:first-child {
+        justify-self: start;
+    }
+
+    .hero-section > .features-bar .feature-item:last-child {
+        justify-self: end;
     }
 }
 
 @media (min-width: 1025px) and (max-width: 1380px) {
     .hero-section > .features-bar {
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        justify-content: stretch;
-        justify-items: center;
-        gap: 0 clamp(1rem, 2vw, 2rem);
+        gap: 0 clamp(0.75rem, 1.4vw, 1.5rem);
+        padding-left: clamp(2rem, 4vw, 4rem);
+        padding-right: clamp(2rem, 4vw, 4rem);
     }
 
     .hero-section > .features-bar .feature-item {
         width: auto;
+    }
+
+    .hero-section > .features-bar .feature-item:first-child,
+    .hero-section > .features-bar .feature-item:last-child {
+        justify-self: center;
     }
 }
