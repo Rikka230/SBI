@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.11',
+  version: '8.0P.12',
   branch: 'public-pjax-app-shell',
   channel: 'PUBLIC PJAX APP SHELL',
-  stage: 'Hero video Firebase recovery and founder HD responsive fix',
+  stage: 'Founder card mobile unclipping and shard cleanup',
   updatedAt: '2026-05-07',
-  label: 'SBI 8.0P.11 - HERO VIDEO FIREBASE RECOVERY + FOUNDER HD RESPONSIVE FIX'
+  label: 'SBI 8.0P.12 - FOUNDER CARD MOBILE UNCLIPPING + SHARD CLEANUP'
 };
 
 export function getSbiVersionLabel() {

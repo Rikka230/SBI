@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.11 - Public media recovery and founder HD pass
+ * SBI 8.0P.12 - Public media recovery and founder HD pass
  *
  * Shell public prudent :
  * - navigation fluide des ancres de l'index ;
@@ -8,7 +8,7 @@
  * - espaces admin/student/teacher et viewers toujours protégés en reload.
  */
 
-const PUBLIC_SHELL_VERSION = '8.0P.11';
+const PUBLIC_SHELL_VERSION = '8.0P.12';
 const DISABLED_FLAG = 'sbiPublicShellDisabled';
 const READY_CLASS = 'sbi-public-shell-ready';
 const SCROLLING_CLASS = 'sbi-public-shell-scrolling';
@@ -450,7 +450,7 @@ async function runPageInitializers(pageId) {
 
   if (pageId === 'home') {
     try {
-      const mediaModule = await import('/js/site-index-public.js?v=8.0P.11');
+      const mediaModule = await import('/js/site-index-public.js?v=8.0P.12');
       const initMedia = mediaModule.initSiteIndexMedia || window.SBI_INIT_SITE_INDEX_MEDIA;
       if (typeof initMedia === 'function') await initMedia({ forceRefresh: false });
     } catch (error) {
@@ -470,7 +470,7 @@ async function runPageInitializers(pageId) {
 
   if (pageId === 'calculator') {
     try {
-      const calculatorModule = await import('/js/sbi-aide-calculator.js?v=8.0P.11');
+      const calculatorModule = await import('/js/sbi-aide-calculator.js?v=8.0P.12');
       const initCalculator = calculatorModule.initSbiAidCalculator || window.SBI_INIT_AID_CALCULATOR;
       if (typeof initCalculator === 'function') initCalculator(document);
     } catch (error) {
@@ -480,7 +480,7 @@ async function runPageInitializers(pageId) {
 
   if (['formations', 'parcours', 'apropos', 'ressources', 'contact'].includes(pageId)) {
     try {
-      const publicPagesModule = await import('/js/sbi-public-pages.js?v=8.0P.11');
+      const publicPagesModule = await import('/js/sbi-public-pages.js?v=8.0P.12');
       const initPublicPages = publicPagesModule.initSbiPublicPages || window.SBI_INIT_PUBLIC_PAGES;
       if (typeof initPublicPages === 'function') initPublicPages(document);
     } catch (error) {

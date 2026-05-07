@@ -1,4 +1,4 @@
-const SITE_INDEX_MEDIA_VERSION = '8.0P.11';
+const SITE_INDEX_MEDIA_VERSION = '8.0P.12';
 
 const EMPTY_MEDIA = {
   heroVideoWebmUrl: '',

@@ -1,14 +1,15 @@
-/* SBI 8.0P.11 - Founder HD image recovery and natural portrait lock */
+/* SBI 8.0P.12 - Founder card cleanup, outside shards and mobile block recovery */
 
 .founder-img-wrapper {
-    overflow: hidden;
+    position: relative;
+    overflow: visible;
     isolation: isolate;
-    background:
-        radial-gradient(circle at 50% 8%, rgba(0, 81, 255, 0.14), transparent 42%),
-        linear-gradient(180deg, rgba(10, 16, 28, 0.94), rgba(4, 7, 14, 0.98));
+    background: transparent;
 }
 
 .founder-img {
+    position: relative;
+    z-index: 2;
     display: block;
     width: 100% !important;
     max-width: none !important;
@@ -20,12 +21,37 @@
     transform: none !important;
     image-rendering: auto;
     opacity: 1;
+    clip-path: polygon(50px 0, 100% 0, 100% calc(100% - 50px), calc(100% - 50px) 100%, 0 100%, 0 50px);
+    box-shadow:
+        0 22px 44px rgba(0, 0, 0, 0.22),
+        0 0 0 1px rgba(116, 180, 255, 0.14);
+    background: rgba(3, 8, 18, 0.92);
 }
 
 .founder-img-wrapper::before,
 .founder-img-wrapper::after {
     content: none !important;
     display: none !important;
+}
+
+.founder-img-wrapper .shard {
+    z-index: 1;
+    pointer-events: none;
+}
+
+.founder-img-wrapper .shard-1 {
+    top: -26px;
+    left: -34px;
+}
+
+.founder-img-wrapper .shard-2 {
+    right: -34px;
+    bottom: -24px;
+}
+
+.founder-img-wrapper .shard-4 {
+    left: -42px;
+    bottom: 18px;
 }
 
 .founder-img:not([data-loaded-from-storage="true"]):not([data-loaded-from-local="true"]):not([src*="/assets/fondateur-photo.jpg"]):not([src*="assets/fondateur-photo.jpg"]) {
@@ -38,10 +64,6 @@
 .founder-img[src*="assets/fondateur-photo.jpg"] {
     opacity: 1;
     transition: opacity 0.28s ease;
-}
-
-.founder-img[data-loaded-from-storage="true"] {
-    background-color: rgba(3, 8, 18, 0.92);
 }
 
 @media (min-width: 1181px) {
@@ -75,6 +97,29 @@
     }
 }
 
+@media (max-width: 768px) {
+    .section-stats .stats-grid,
+    .section-stats .founder-block,
+    .section-stats .calculator-cta-box {
+        min-width: 0;
+        overflow: visible;
+    }
+
+    .section-stats .quote-content,
+    .section-stats .calculator-panel {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
+    }
+
+    .section-stats .founder-img-wrapper,
+    .founder-img-wrapper {
+        width: min(88vw, 380px) !important;
+        max-width: 380px;
+    }
+}
+
 @media (max-width: 560px) {
     .section-stats .founder-img-wrapper,
     .founder-img-wrapper {
@@ -86,5 +131,20 @@
     .section-stats .founder-img,
     .founder-img {
         object-position: center top !important;
+    }
+
+    .founder-img-wrapper .shard-1 {
+        top: -18px;
+        left: -18px;
+    }
+
+    .founder-img-wrapper .shard-2 {
+        right: -18px;
+        bottom: -16px;
+    }
+
+    .founder-img-wrapper .shard-4 {
+        left: -20px;
+        bottom: 14px;
     }
 }

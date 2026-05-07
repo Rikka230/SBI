@@ -872,15 +872,20 @@
 
 
 @media (max-width: 768px) {
-    /* SBI 8.0P.10e - raccord mobile stats/qualiopi sans bande parasite */
+    /* SBI 8.0P.12 - on supprime le raccord trop agressif qui coupait le bas des blocs */
     .section-stats {
-        padding-bottom: 0.85rem !important;
+        overflow: visible !important;
+        padding-bottom: 1.65rem !important;
         margin-bottom: 0 !important;
+    }
+
+    .section-stats .stats-grid {
+        gap: 1.35rem;
     }
 
     .section-stats + .section-qualiopi,
     .section-stats + .sbi-qualiopi-section {
-        margin-top: -0.65rem !important;
-        padding-top: 0.9rem !important;
+        margin-top: 0 !important;
+        padding-top: 1.25rem !important;
     }
 }
