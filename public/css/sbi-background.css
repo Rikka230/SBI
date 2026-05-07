@@ -28,11 +28,10 @@ body::before {
 }
 
 
-/* SBI 8.0P.26 - cone light ancré au bas du document, pas au viewport */
 /* Cone light doux en bas à gauche pour déboucher le fond */
 body::after {
     content: '';
-    position: absolute;
+    position: fixed;
     left: -16vw;
     bottom: -18vh;
     width: min(54vw, 760px);
