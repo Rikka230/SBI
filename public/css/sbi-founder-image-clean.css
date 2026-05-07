@@ -1,7 +1,25 @@
-/* SBI 8.0P.10d - Founder image clean display */
+/* SBI 8.0P.11 - Founder HD image recovery and natural portrait lock */
+
+.founder-img-wrapper {
+    overflow: hidden;
+    isolation: isolate;
+    background:
+        radial-gradient(circle at 50% 8%, rgba(0, 81, 255, 0.14), transparent 42%),
+        linear-gradient(180deg, rgba(10, 16, 28, 0.94), rgba(4, 7, 14, 0.98));
+}
 
 .founder-img {
+    display: block;
+    width: 100% !important;
+    max-width: none !important;
+    height: 100% !important;
+    min-height: 100%;
+    object-fit: cover !important;
+    object-position: center top !important;
     filter: none !important;
+    transform: none !important;
+    image-rendering: auto;
+    opacity: 1;
 }
 
 .founder-img-wrapper::before,
@@ -20,4 +38,53 @@
 .founder-img[src*="assets/fondateur-photo.jpg"] {
     opacity: 1;
     transition: opacity 0.28s ease;
+}
+
+.founder-img[data-loaded-from-storage="true"] {
+    background-color: rgba(3, 8, 18, 0.92);
+}
+
+@media (min-width: 1181px) {
+    .section-stats .founder-img-wrapper {
+        min-height: clamp(390px, 28vw, 540px);
+    }
+
+    .section-stats .founder-img {
+        height: clamp(390px, 28vw, 540px) !important;
+    }
+}
+
+@media (max-width: 1180px) {
+    .section-stats .founder-block {
+        align-items: center;
+    }
+
+    .section-stats .founder-img-wrapper,
+    .founder-img-wrapper {
+        width: min(86vw, 430px) !important;
+        max-width: 430px;
+        aspect-ratio: 3 / 4;
+        margin-right: auto;
+        margin-left: auto;
+    }
+
+    .section-stats .founder-img,
+    .founder-img {
+        height: 100% !important;
+        aspect-ratio: auto !important;
+    }
+}
+
+@media (max-width: 560px) {
+    .section-stats .founder-img-wrapper,
+    .founder-img-wrapper {
+        width: min(88vw, 350px) !important;
+        max-width: 350px;
+        aspect-ratio: 3 / 4;
+    }
+
+    .section-stats .founder-img,
+    .founder-img {
+        object-position: center top !important;
+    }
 }

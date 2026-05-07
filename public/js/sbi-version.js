@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.10e',
+  version: '8.0P.11',
   branch: 'public-pjax-app-shell',
   channel: 'PUBLIC PJAX APP SHELL',
-  stage: 'Public founder quality and section seam fixes',
+  stage: 'Hero video Firebase recovery and founder HD responsive fix',
   updatedAt: '2026-05-07',
-  label: 'SBI 8.0P.10e - PUBLIC FOUNDER QUALITY AND SECTION SEAM FIXES'
+  label: 'SBI 8.0P.11 - HERO VIDEO FIREBASE RECOVERY + FOUNDER HD RESPONSIVE FIX'
 };
 
 export function getSbiVersionLabel() {
