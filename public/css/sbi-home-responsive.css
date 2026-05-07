@@ -401,3 +401,41 @@
 .section-stats .founder-img {
     filter: none !important;
 }
+
+/* SBI 8.0P.33 - Desktop wide layout trim
+   Scope volontairement limité au desktop large : on aligne la zone fondateur/aide
+   sur la largeur utile des blocs formations, sans toucher aux breakpoints mobile/tablette. */
+@media (min-width: 1761px) {
+    .section-stats .stats-grid {
+        width: 100%;
+        max-width: none;
+        grid-template-columns:
+            minmax(420px, 560px)
+            minmax(400px, 520px)
+            minmax(620px, 1fr);
+        gap: clamp(1.35rem, 1.65vw, 2rem);
+    }
+
+    .section-stats .founder-img-wrapper {
+        justify-self: start;
+        width: 100%;
+        max-width: min(100%, clamp(430px, 24vw, 560px));
+    }
+
+    .section-stats .founder-img {
+        height: clamp(500px, 27vw, 640px);
+    }
+
+    .section-stats .quote-content {
+        justify-self: stretch;
+    }
+
+    .section-stats .calculator-cta-box {
+        justify-self: stretch;
+        width: 100%;
+    }
+
+    .section-stats .calculator-panel {
+        min-height: clamp(330px, 18vw, 380px);
+    }
+}

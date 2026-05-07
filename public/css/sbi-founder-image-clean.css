@@ -155,3 +155,15 @@
         bottom: 28px;
     }
 }
+
+/* SBI 8.0P.33 - Desktop only: allow the founder image to scale with the widened grid.
+   No mobile/tablet selectors changed. */
+@media (min-width: 1761px) {
+    .section-stats .founder-img-wrapper {
+        min-height: clamp(500px, 27vw, 640px);
+    }
+
+    .section-stats .founder-img {
+        height: clamp(500px, 27vw, 640px) !important;
+    }
+}

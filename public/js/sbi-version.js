@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.32',
+  version: '8.0P.33',
   branch: 'public-pjax-app-shell',
   channel: 'PUBLIC PJAX APP SHELL',
-  stage: 'Restore Qualiopi top border color after light layer fix',
+  stage: 'Desktop wide stats grid alignment without mobile changes',
   updatedAt: '2026-05-08',
-  label: 'SBI 8.0P.32 - QUALIOPI TOP BORDER COLOR FIX'
+  label: 'SBI 8.0P.33 - DESKTOP STATS WIDTH ALIGNMENT'
 };
 
 export function getSbiVersionLabel() {
