@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.25',
+  version: '8.0P.26',
   branch: 'public-pjax-app-shell',
   channel: 'PUBLIC PJAX APP SHELL',
-  stage: 'Restore P23 mobile diagonals and fix Qualiopi desktop light clipping',
+  stage: 'Rebuild Qualiopi as continuous transparent section over global bottom lights',
   updatedAt: '2026-05-07',
-  label: 'SBI 8.0P.25 - RESTORE DIAGONALS + QUALIOPI LIGHT CLIP FIX'
+  label: 'SBI 8.0P.26 - REBUILD QUALIOPI CONTINUOUS BACKGROUND LIGHTS'
 };
 
 export function getSbiVersionLabel() {

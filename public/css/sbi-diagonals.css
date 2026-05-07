@@ -675,3 +675,16 @@ main {
         isolation: auto;
     }
 }
+
+
+/* SBI 8.0P.26 - desktop only: Qualiopi must not create a stacking slab over the global lights.
+   Do not change mobile diagonal line geometry. */
+@media (min-width: 769px) {
+    .section-qualiopi,
+    .sbi-qualiopi-section {
+        z-index: auto !important;
+        isolation: auto !important;
+        overflow: visible !important;
+        background: transparent !important;
+    }
+}
