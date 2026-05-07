@@ -1,5 +1,5 @@
 /* =======================================================================
- * SBI 8.0P.17 - Bloc Qualiopi index public
+ * SBI 8.0P.18 - Bloc Qualiopi index public
  * Usage institutionnel : logo conserve tel quel, texte sobre, sans badges.
  * ======================================================================= */
 
@@ -12,6 +12,40 @@
     background: transparent;
 }
 
+.section-qualiopi::before,
+.section-qualiopi::after {
+    content: "";
+    position: absolute;
+    z-index: 0;
+    pointer-events: none;
+    width: clamp(280px, 28vw, 470px);
+    height: clamp(180px, 18vw, 300px);
+    bottom: clamp(-36px, -2.8vw, -20px);
+    opacity: 0.95;
+}
+
+.section-qualiopi::before {
+    left: clamp(-44px, -2.8vw, -12px);
+    background: radial-gradient(
+        ellipse at 0% 100%,
+        rgba(0, 81, 255, 0.30) 0%,
+        rgba(0, 81, 255, 0.16) 28%,
+        rgba(0, 81, 255, 0.06) 52%,
+        transparent 76%
+    );
+}
+
+.section-qualiopi::after {
+    right: clamp(-58px, -3.8vw, -18px);
+    background: radial-gradient(
+        ellipse at 100% 100%,
+        rgba(0, 81, 255, 0.26) 0%,
+        rgba(0, 81, 255, 0.14) 28%,
+        rgba(226, 0, 26, 0.04) 48%,
+        transparent 76%
+    );
+}
+
 .qualiopi-shell {
     position: relative;
     isolation: isolate;
@@ -20,26 +54,11 @@
     gap: clamp(2rem, 5vw, 5rem);
     align-items: center;
     min-height: 300px;
-    overflow: hidden;
+    overflow: visible;
     padding: clamp(2rem, 4vw, 3.15rem);
     border: 1px solid rgba(0, 81, 255, 0.30);
     border-radius: 2px;
-    background:
-        radial-gradient(
-            ellipse 420px 245px at 0% 100%,
-            rgba(0, 81, 255, 0.28) 0%,
-            rgba(0, 81, 255, 0.13) 30%,
-            rgba(0, 81, 255, 0.045) 55%,
-            transparent 78%
-        ),
-        radial-gradient(
-            ellipse 420px 245px at 100% 100%,
-            rgba(0, 81, 255, 0.24) 0%,
-            rgba(0, 81, 255, 0.11) 30%,
-            rgba(226, 0, 26, 0.045) 54%,
-            transparent 78%
-        ),
-        linear-gradient(135deg, rgba(9, 15, 28, 0.985), rgba(4, 7, 14, 0.985));
+    background: linear-gradient(135deg, rgba(9, 15, 28, 0.985), rgba(4, 7, 14, 0.985));
     box-shadow:
         inset 0 1px 0 rgba(255, 255, 255, 0.04),
         0 22px 62px rgba(0, 0, 0, 0.28),
@@ -204,9 +223,28 @@
         padding-bottom: 3rem;
     }
 
+    .section-qualiopi::before,
+    .section-qualiopi::after {
+        width: 240px;
+        height: 150px;
+        bottom: -12px;
+        opacity: 0.72;
+    }
+
+    .section-qualiopi::before {
+        left: -24px;
+    }
+
+    .section-qualiopi::after {
+        right: -24px;
+    }
+
     .qualiopi-shell {
         gap: 1.5rem;
         padding: 1.45rem;
+        overflow: hidden;
+        background:
+            linear-gradient(135deg, rgba(9, 15, 28, 0.985), rgba(4, 7, 14, 0.985));
     }
 
     .qualiopi-title {
@@ -219,16 +257,6 @@
 
     .qualiopi-caption {
         font-size: 0.76rem;
-    }
-}
-
-@media (max-width: 720px) {
-    .qualiopi-shell {
-        overflow: hidden;
-        background:
-            radial-gradient(ellipse 260px 175px at 0% 100%, rgba(0, 81, 255, 0.20), transparent 72%),
-            radial-gradient(ellipse 260px 175px at 100% 100%, rgba(0, 81, 255, 0.16), transparent 72%),
-            linear-gradient(135deg, rgba(9, 15, 28, 0.985), rgba(4, 7, 14, 0.985));
     }
 
     .qualiopi-card {
