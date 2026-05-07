@@ -211,7 +211,7 @@ main {
     .section-newsletter::after {
         left: -17vw;
         width: 134vw;
-        height: 46px;
+        height: 34px;
         --sbi-diagonal-spark-y: 50%;
         opacity: var(--sbi-diagonal-mobile-opacity, 0.46);
         filter: drop-shadow(0 0 10px rgba(0, 81, 255, 0.5));
@@ -385,7 +385,7 @@ main {
         z-index: 20;
         top: 1px;
         pointer-events: none;
-        transform: rotate(var(--sbi-diagonal-overlay-angle, -5deg));
+        transform: rotate(-5deg);
         mix-blend-mode: screen;
     }
 }
@@ -480,10 +480,10 @@ main {
     position: absolute;
     left: -20vw;
     width: 140vw;
-    height: 46px;
+    height: 34px;
     pointer-events: none;
     opacity: var(--sbi-diagonal-overlay-opacity, 0.54);
-    transform: rotate(var(--sbi-diagonal-overlay-angle, -5deg));
+    transform: rotate(-5deg);
     transform-origin: center;
     mix-blend-mode: screen;
     background:
@@ -625,23 +625,55 @@ main {
     }
 }
 
-/* SBI 8.0P.23 - alignement mobile des lignes diagonales avec les coupures de blocs */
-@media (max-width: 768px) {
+
+/* SBI 8.0P.24 - desktop lower-page corner lights drawn on main background
+   so the glow stays in the bottom corners of the Qualiopi/newsletter area
+   and is no longer cut by section-local stacking/clipping. */
+@media (min-width: 769px) {
     main {
         position: relative;
+        isolation: isolate;
     }
 
-    .sbi-diagonal-overlay {
-        display: block;
-        overflow: visible;
-        z-index: 80;
+    main::after {
+        content: "";
+        position: absolute;
+        left: -7vw;
+        right: -7vw;
+        bottom: clamp(3.2rem, 5vw, 5.4rem);
+        height: clamp(18rem, 25vw, 24rem);
+        z-index: 0;
+        pointer-events: none;
+        opacity: 0.96;
+        mix-blend-mode: screen;
+        background:
+            radial-gradient(
+                ellipse 560px 300px at 4% 100%,
+                rgba(0, 81, 255, 0.16) 0%,
+                rgba(0, 81, 255, 0.085) 28%,
+                rgba(0, 81, 255, 0.03) 48%,
+                transparent 72%
+            ),
+            radial-gradient(
+                ellipse 560px 300px at 96% 100%,
+                rgba(0, 81, 255, 0.15) 0%,
+                rgba(0, 81, 255, 0.08) 28%,
+                rgba(226, 0, 26, 0.028) 48%,
+                transparent 72%
+            );
+        filter: blur(1px);
     }
 
-    .sbi-diagonal-overlay__line {
-        left: -24vw;
-        width: 148vw;
-        height: 46px !important;
-        transform: rotate(var(--sbi-diagonal-overlay-angle, -5deg)) !important;
-        transform-origin: 50% 50%;
+    .section-qualiopi,
+    .sbi-qualiopi-section,
+    .section-newsletter {
+        z-index: 1;
+        background: transparent;
+    }
+
+    .section-newsletter::before,
+    .section-newsletter::after {
+        content: none !important;
+        display: none !important;
     }
 }

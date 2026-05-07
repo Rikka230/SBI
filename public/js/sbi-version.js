@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.23',
+  version: '8.0P.24',
   branch: 'public-pjax-app-shell',
   channel: 'PUBLIC PJAX APP SHELL',
-  stage: 'Mobile diagonal overlay alignment fix',
+  stage: 'Desktop lower-page corner lights moved to main background layer',
   updatedAt: '2026-05-07',
-  label: 'SBI 8.0P.23 - MOBILE DIAGONAL ALIGNMENT FIX'
+  label: 'SBI 8.0P.24 - DESKTOP LOWER-PAGE CORNER LIGHTS FIX'
 };
 
 export function getSbiVersionLabel() {
