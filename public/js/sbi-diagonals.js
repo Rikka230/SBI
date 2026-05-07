@@ -1,5 +1,5 @@
 (function () {
-    const DIAGONALS_VERSION = '8.0P.23';
+    const DIAGONALS_VERSION = '8.0P.25';
     const mobileQuery = window.matchMedia('(max-width: 768px)');
 
     const sectionSelectors = [

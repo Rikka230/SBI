@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.24',
+  version: '8.0P.25',
   branch: 'public-pjax-app-shell',
   channel: 'PUBLIC PJAX APP SHELL',
-  stage: 'Desktop lower-page corner lights moved to main background layer',
+  stage: 'Restore P23 mobile diagonals and fix Qualiopi desktop light clipping',
   updatedAt: '2026-05-07',
-  label: 'SBI 8.0P.24 - DESKTOP LOWER-PAGE CORNER LIGHTS FIX'
+  label: 'SBI 8.0P.25 - RESTORE DIAGONALS + QUALIOPI LIGHT CLIP FIX'
 };
 
 export function getSbiVersionLabel() {
