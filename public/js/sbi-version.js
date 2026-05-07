@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.22',
+  version: '8.0P.23',
   branch: 'public-pjax-app-shell',
   channel: 'PUBLIC PJAX APP SHELL',
-  stage: 'Footer lights anchored below Qualiopi without touching media boot',
+  stage: 'Mobile diagonal overlay alignment fix',
   updatedAt: '2026-05-07',
-  label: 'SBI 8.0P.22 - FOOTER LIGHTS POSITION FIX'
+  label: 'SBI 8.0P.23 - MOBILE DIAGONAL ALIGNMENT FIX'
 };
 
 export function getSbiVersionLabel() {
