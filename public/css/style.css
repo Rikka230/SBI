@@ -1315,3 +1315,27 @@ footer {
 }
 
 .social-icons a:hover { color: var(--sbi-blue); }
+
+/* =========================================================
+   SBI 8.0P.36 - PJAX page fade, chrome/header preserved
+   ========================================================= */
+@media (prefers-reduced-motion: no-preference) and (min-width: 769px) {
+    html.sbi-public-shell-ready body[data-sbi-public-shell="enabled"] [data-sbi-public-shell-root] {
+        opacity: 1;
+        transform: translateY(0);
+        transition: opacity 150ms ease, transform 170ms ease;
+        will-change: opacity, transform;
+    }
+
+    html.sbi-public-shell-ready body[data-sbi-public-shell="enabled"].sbi-public-shell-loading [data-sbi-public-shell-root] {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+}
+
+@media (prefers-reduced-motion: reduce), (max-width: 768px) {
+    html.sbi-public-shell-ready body[data-sbi-public-shell="enabled"] [data-sbi-public-shell-root] {
+        transition: none;
+    }
+}
+

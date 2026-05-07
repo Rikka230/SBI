@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.35',
+  version: '8.0P.36',
   branch: 'public-pjax-app-shell',
   channel: 'PUBLIC PJAX APP SHELL',
-  stage: 'Public index Firebase media rehydrated after PJAX return',
+  stage: 'Public shell browser back render fix and soft page fades',
   updatedAt: '2026-05-08',
-  label: 'SBI 8.0P.35 - PUBLIC INDEX MEDIA PJAX REHYDRATE'
+  label: 'SBI 8.0P.36 - PUBLIC SHELL BACK/FADES FIX'
 };
 
 export function getSbiVersionLabel() {

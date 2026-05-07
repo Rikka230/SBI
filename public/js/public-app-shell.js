@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.35 - Public index media rehydrate after PJAX
+ * SBI 8.0P.36 - Browser back render fix and soft PJAX fades
  *
  * Shell public prudent :
  * - navigation fluide des ancres de l'index ;
@@ -8,7 +8,7 @@
  * - espaces admin/student/teacher et viewers toujours protégés en reload.
  */
 
-const PUBLIC_SHELL_VERSION = '8.0P.35';
+const PUBLIC_SHELL_VERSION = '8.0P.36';
 const DISABLED_FLAG = 'sbiPublicShellDisabled';
 const READY_CLASS = 'sbi-public-shell-ready';
 const SCROLLING_CLASS = 'sbi-public-shell-scrolling';
@@ -94,6 +94,29 @@ function getPublicRouteDefinition(pathname = window.location.pathname) {
 
 function getPublicPageId(pathname = window.location.pathname) {
   return getPublicRouteDefinition(pathname)?.page || 'external';
+}
+
+function getRenderedPublicPageId() {
+  return document.body?.dataset?.sbiPublicPage || getPublicPageId(window.location.pathname);
+}
+
+function prefersReducedMotion() {
+  return Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches);
+}
+
+function waitForPublicShellFade() {
+  if (prefersReducedMotion()) return Promise.resolve();
+  return new Promise((resolve) => window.setTimeout(resolve, 110));
+}
+
+function isPublicShellRootReady() {
+  return Boolean(document.querySelector('[data-sbi-public-shell-root]'));
+}
+
+function isRenderedPageDifferentFromUrl(url) {
+  const decision = classifyPublicRoute(url);
+  if (decision.mode !== 'public-shell') return false;
+  return getRenderedPublicPageId() !== decision.page;
 }
 
 function isPublicShellBootPath(pathname = window.location.pathname) {
@@ -450,7 +473,7 @@ async function runPageInitializers(pageId) {
 
   if (pageId === 'home') {
     try {
-      const mediaModule = await import('/js/site-index-public.js?v=8.0P.35');
+      const mediaModule = await import('/js/site-index-public.js?v=8.0P.36');
       const initMedia = mediaModule.initSiteIndexMedia || window.SBI_INIT_SITE_INDEX_MEDIA;
       if (typeof initMedia === 'function') await initMedia({ forceRefresh: false });
     } catch (error) {
@@ -499,6 +522,10 @@ async function renderPublicPage(url, decision, { historyMode = 'push', behavior 
     document.body.classList.add(LOADING_CLASS);
     document.body.setAttribute('aria-busy', 'true');
 
+    if (isPublicShellRootReady()) {
+      await waitForPublicShellFade();
+    }
+
     try {
       const response = await fetch(pageFetchUrl(url), {
         method: 'GET',
@@ -546,8 +573,10 @@ async function renderPublicPage(url, decision, { historyMode = 'push', behavior 
       window.location.assign(url.href);
       return false;
     } finally {
-      document.body.classList.remove(LOADING_CLASS);
-      document.body.removeAttribute('aria-busy');
+      window.requestAnimationFrame(() => {
+        document.body.classList.remove(LOADING_CLASS);
+        document.body.removeAttribute('aria-busy');
+      });
       pageTransitionPromise = null;
     }
   })();
@@ -562,7 +591,7 @@ function navigatePublic(url, { historyMode = 'push', behavior = 'smooth', source
     return false;
   }
 
-  const currentPageId = getPublicPageId(window.location.pathname);
+  const currentPageId = getRenderedPublicPageId();
   const samePage = currentPageId === decision.page;
 
   if (samePage) {
@@ -624,6 +653,11 @@ function handlePopState() {
   const decision = classifyPublicRoute(url);
   if (decision.mode !== 'public-shell') return;
 
+  if (isRenderedPageDifferentFromUrl(url)) {
+    renderPublicPage(url, decision, { historyMode: 'replace', behavior: 'auto', source: 'popstate' });
+    return;
+  }
+
   navigatePublic(url, { historyMode: 'replace', behavior: 'auto', source: 'popstate' });
 }
 
@@ -675,6 +709,7 @@ function printStatus() {
     version: PUBLIC_SHELL_VERSION,
     enabled: !safeReadFlag(DISABLED_FLAG),
     page: getPublicPageId(currentUrl.pathname),
+    renderedPage: getRenderedPublicPageId(),
     href: currentUrl.href,
     decision: classifyPublicRoute(currentUrl),
     sections: activeSectionIds,
@@ -685,6 +720,7 @@ function printStatus() {
     version: status.version,
     enabled: status.enabled,
     page: status.page,
+    renderedPage: status.renderedPage,
     mode: status.decision.mode,
     route: status.decision.route || '-',
     reason: status.decision.reason
