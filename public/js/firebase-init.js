@@ -90,7 +90,7 @@ if (shouldEnableAnalytics()) {
 }
 
 /* --- 1.7 MÉDIAS DYNAMIQUES & SHELL PUBLIC --- */
-const SBI_PUBLIC_BOOT_VERSION = '8.0P.13';
+const SBI_PUBLIC_BOOT_VERSION = '8.0P.21';
 const path = window.location.pathname.toLowerCase().replace(/\/+$/, '') || '/';
 const publicShellPaths = new Set([
     '/',

@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.19',
+  version: '8.0P.21',
   branch: 'public-pjax-app-shell',
   channel: 'PUBLIC PJAX APP SHELL',
-  stage: 'Desktop light layer moved below into Qualiopi-newsletter underlay',
+  stage: 'Restore direct Firebase media boot for hero video and HD logos',
   updatedAt: '2026-05-07',
-  label: 'SBI 8.0P.19 - QUALIOPI/NEWSLETTER UNDERLAY LIGHT FIX'
+  label: 'SBI 8.0P.21 - RESTORE FIREBASE MEDIA BOOT'
 };
 
 export function getSbiVersionLabel() {
