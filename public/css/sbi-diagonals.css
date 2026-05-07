@@ -576,9 +576,7 @@ main {
     }
 }
 
-
-
-/* SBI 8.0P.19 - desktop background light layer moved under Qualiopi + newsletter area */
+/* SBI 8.0P.22 - desktop footer lights anchored to newsletter/footer, never above Qualiopi */
 @media (min-width: 769px) {
     .section-stats::after {
         content: none !important;
@@ -587,6 +585,7 @@ main {
 
     .section-qualiopi,
     .sbi-qualiopi-section {
+        overflow: hidden !important;
         z-index: 3;
     }
 
@@ -596,27 +595,45 @@ main {
         overflow: visible !important;
     }
 
-    .section-newsletter::before {
+    .section-newsletter::before,
+    .section-newsletter::after {
         content: "" !important;
         display: block !important;
         position: absolute;
-        left: -6vw;
-        right: -6vw;
-        top: calc(-100% - 3.25rem);
-        bottom: -2.25rem;
+        top: auto !important;
+        bottom: calc(var(--space-xl) * -0.22);
         z-index: 0;
+        width: clamp(390px, 34vw, 640px);
+        height: clamp(210px, 18vw, 330px);
         pointer-events: none;
         opacity: 0.92;
         mix-blend-mode: screen;
-        background:
-            radial-gradient(ellipse 500px 255px at 8% 90%, rgba(0, 81, 255, 0.15) 0%, rgba(0, 81, 255, 0.08) 30%, rgba(0, 81, 255, 0.03) 48%, transparent 72%),
-            radial-gradient(ellipse 540px 270px at 94% 90%, rgba(0, 81, 255, 0.14) 0%, rgba(0, 81, 255, 0.075) 30%, rgba(226, 0, 26, 0.03) 48%, transparent 72%);
-        filter: blur(1px);
+        filter: blur(0.8px);
+        transform: none !important;
+    }
+
+    .section-newsletter::before {
+        left: clamp(-150px, -7vw, -70px) !important;
+        right: auto !important;
+        background: radial-gradient(
+            ellipse at 0% 100%,
+            rgba(0, 81, 255, 0.16) 0%,
+            rgba(0, 81, 255, 0.085) 30%,
+            rgba(0, 81, 255, 0.032) 52%,
+            transparent 76%
+        ) !important;
     }
 
     .section-newsletter::after {
-        content: none !important;
-        display: none !important;
+        right: clamp(-150px, -7vw, -70px) !important;
+        left: auto !important;
+        background: radial-gradient(
+            ellipse at 100% 100%,
+            rgba(0, 81, 255, 0.15) 0%,
+            rgba(0, 81, 255, 0.08) 30%,
+            rgba(226, 0, 26, 0.03) 50%,
+            transparent 76%
+        ) !important;
     }
 
     .section-newsletter > * {

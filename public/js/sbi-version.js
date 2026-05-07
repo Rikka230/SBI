@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.21',
+  version: '8.0P.22',
   branch: 'public-pjax-app-shell',
   channel: 'PUBLIC PJAX APP SHELL',
-  stage: 'Restore direct Firebase media boot for hero video and HD logos',
+  stage: 'Footer lights anchored below Qualiopi without touching media boot',
   updatedAt: '2026-05-07',
-  label: 'SBI 8.0P.21 - RESTORE FIREBASE MEDIA BOOT'
+  label: 'SBI 8.0P.22 - FOOTER LIGHTS POSITION FIX'
 };
 
 export function getSbiVersionLabel() {
