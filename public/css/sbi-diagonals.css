@@ -211,7 +211,7 @@ main {
     .section-newsletter::after {
         left: -17vw;
         width: 134vw;
-        height: 34px;
+        height: 46px;
         --sbi-diagonal-spark-y: 50%;
         opacity: var(--sbi-diagonal-mobile-opacity, 0.46);
         filter: drop-shadow(0 0 10px rgba(0, 81, 255, 0.5));
@@ -316,8 +316,17 @@ main {
     .section-qualiopi,
     .sbi-qualiopi-section,
     .section-newsletter {
-        margin-top: -34px;
-        clip-path: polygon(0 34px, 100% 0, 100% 100%, 0 100%);
+        --sbi-section-cut: 34px;
+        margin-top: calc(var(--sbi-section-cut) * -1);
+        clip-path: polygon(
+            0 var(--sbi-section-cut),
+            100% 0,
+            100% calc(100% - var(--sbi-section-cut)),
+            0 100%
+        );
+        background:
+            radial-gradient(circle at 92% 18%, rgba(0, 81, 255, 0.12), transparent 42%),
+            linear-gradient(180deg, rgba(5, 11, 21, 0.96), rgba(2, 5, 11, 0.98)) !important;
     }
 
     .section-parcours {
@@ -343,23 +352,28 @@ main {
 
     .section-parcours {
         padding-top: calc(var(--space-xl) + 34px);
+        padding-bottom: calc(var(--space-xl) + 34px);
     }
 
     .section-why-sbi {
         padding-top: 5.4rem;
+        padding-bottom: 4.8rem;
     }
 
     .section-stats {
         padding-top: 4.2rem;
+        padding-bottom: 4.8rem;
     }
 
     .section-qualiopi,
     .sbi-qualiopi-section {
         padding-top: 4.6rem;
+        padding-bottom: 4.6rem;
     }
 
     .section-newsletter {
         padding-top: 4.6rem;
+        padding-bottom: 4.6rem;
     }
 
     .section-parcours::before,
@@ -371,7 +385,7 @@ main {
         z-index: 20;
         top: 1px;
         pointer-events: none;
-        transform: rotate(-5deg);
+        transform: rotate(var(--sbi-diagonal-overlay-angle, -5deg));
         mix-blend-mode: screen;
     }
 }
@@ -466,10 +480,10 @@ main {
     position: absolute;
     left: -20vw;
     width: 140vw;
-    height: 34px;
+    height: 46px;
     pointer-events: none;
     opacity: var(--sbi-diagonal-overlay-opacity, 0.54);
-    transform: rotate(-5deg);
+    transform: rotate(var(--sbi-diagonal-overlay-angle, -5deg));
     transform-origin: center;
     mix-blend-mode: screen;
     background:
@@ -519,5 +533,216 @@ main {
 @media (prefers-reduced-motion: reduce) {
     .sbi-diagonal-overlay__line {
         animation: none;
+    }
+}
+
+/* SBI 8.0P.10f - continuité lumineuse stats -> Qualiopi sans déplacer les blocs */
+@media (min-width: 769px) {
+    .section-stats,
+    .section-qualiopi,
+    .sbi-qualiopi-section {
+        overflow: visible !important;
+    }
+
+    .section-stats {
+        z-index: 4;
+    }
+
+    .section-qualiopi,
+    .sbi-qualiopi-section {
+        z-index: 3;
+    }
+
+    .section-stats::after {
+        content: "";
+        position: absolute;
+        left: -5vw;
+        right: -5vw;
+        bottom: calc(var(--space-xl) * -0.85);
+        height: calc(var(--space-xl) + 9rem);
+        z-index: 0;
+        pointer-events: none;
+        background:
+            radial-gradient(ellipse at 12% 36%, rgba(0, 81, 255, 0.12), rgba(0, 81, 255, 0.04) 34%, transparent 68%),
+            radial-gradient(ellipse at 82% 42%, rgba(0, 81, 255, 0.10), rgba(0, 81, 255, 0.035) 30%, transparent 64%),
+            linear-gradient(180deg, rgba(5, 9, 19, 0), rgba(5, 9, 19, 0.28) 44%, rgba(5, 9, 19, 0));
+        opacity: 0.72;
+        mix-blend-mode: screen;
+    }
+
+    .section-stats > * {
+        position: relative;
+        z-index: 2;
+    }
+}
+
+
+
+/* SBI 8.0P.19 - desktop background light layer moved under Qualiopi + newsletter area */
+@media (min-width: 769px) {
+    .section-stats::after {
+        content: none !important;
+        display: none !important;
+    }
+
+    .section-qualiopi,
+    .sbi-qualiopi-section {
+        z-index: 3;
+    }
+
+    .section-newsletter {
+        position: relative;
+        z-index: 2;
+        overflow: visible !important;
+    }
+
+    .section-newsletter::before {
+        content: "" !important;
+        display: block !important;
+        position: absolute;
+        left: -6vw;
+        right: -6vw;
+        top: calc(-100% - 3.25rem);
+        bottom: -2.25rem;
+        z-index: 0;
+        pointer-events: none;
+        opacity: 0.92;
+        mix-blend-mode: screen;
+        background:
+            radial-gradient(ellipse 500px 255px at 8% 90%, rgba(0, 81, 255, 0.15) 0%, rgba(0, 81, 255, 0.08) 30%, rgba(0, 81, 255, 0.03) 48%, transparent 72%),
+            radial-gradient(ellipse 540px 270px at 94% 90%, rgba(0, 81, 255, 0.14) 0%, rgba(0, 81, 255, 0.075) 30%, rgba(226, 0, 26, 0.03) 48%, transparent 72%);
+        filter: blur(1px);
+    }
+
+    .section-newsletter::after {
+        content: none !important;
+        display: none !important;
+    }
+
+    .section-newsletter > * {
+        position: relative;
+        z-index: 1;
+    }
+}
+
+/* SBI 8.0P.23 - alignement mobile des lignes diagonales avec les coupures de blocs */
+@media (max-width: 768px) {
+    main {
+        position: relative;
+    }
+
+    .sbi-diagonal-overlay {
+        display: block;
+        overflow: visible;
+        z-index: 80;
+    }
+
+    .sbi-diagonal-overlay__line {
+        left: -24vw;
+        width: 148vw;
+        height: 46px !important;
+        transform: rotate(var(--sbi-diagonal-overlay-angle, -5deg)) !important;
+        transform-origin: 50% 50%;
+    }
+}
+
+
+/* SBI 8.0P.25 - restore P23 mobile diagonals and clean desktop light parasites
+   Mobile overlay stays exactly on the P23 logic. Desktop only: kill the rogue
+   light above Qualiopi, keep the existing bottom-page background lights untouched,
+   and let Qualiopi stop clipping the right-side diffusion. */
+@media (min-width: 769px) {
+    main::after {
+        content: none !important;
+        display: none !important;
+    }
+
+    .section-stats::after,
+    .section-newsletter::before,
+    .section-newsletter::after {
+        content: none !important;
+        display: none !important;
+    }
+
+    .section-qualiopi,
+    .sbi-qualiopi-section,
+    .section-newsletter {
+        overflow: visible !important;
+    }
+
+    .section-qualiopi,
+    .sbi-qualiopi-section {
+        isolation: auto;
+    }
+}
+
+/* SBI 8.0P.28 - fond Qualiopi/newsletter : une seule source de vérité.
+   Desktop uniquement : on neutralise les anciens pseudo-calques lumineux de
+   section, en particulier .section-newsletter::before et .section-stats::after.
+   Les deux halos de bas de page restent portés par body::before/body::after
+   dans sbi-background.css. Mobile non touché : diagonales P23 conservées. */
+@media (min-width: 769px) {
+    .section-stats::after,
+    .section-qualiopi::before,
+    .section-qualiopi::after,
+    .sbi-qualiopi-section::before,
+    .sbi-qualiopi-section::after,
+    .section-newsletter::before,
+    .section-newsletter::after {
+        content: none !important;
+        display: none !important;
+        background: none !important;
+        filter: none !important;
+    }
+
+    .section-stats,
+    .section-qualiopi,
+    .sbi-qualiopi-section,
+    .section-newsletter {
+        overflow: visible !important;
+    }
+
+    .section-qualiopi,
+    .sbi-qualiopi-section,
+    .section-newsletter {
+        isolation: auto;
+    }
+}
+
+/* SBI 8.0P.31 - desktop Qualiopi/footer light continuity
+   The Qualiopi insert must not create a separate background slab above the
+   bottom-page lights. Mobile diagonal overlay remains untouched. */
+@media (min-width: 769px) {
+    main {
+        overflow: visible !important;
+    }
+
+    .section-stats,
+    .section-qualiopi,
+    .sbi-qualiopi-section,
+    .section-newsletter {
+        background: transparent !important;
+        overflow: visible !important;
+        isolation: auto !important;
+        z-index: auto;
+    }
+
+    .section-stats::after,
+    .section-qualiopi::before,
+    .section-qualiopi::after,
+    .sbi-qualiopi-section::before,
+    .sbi-qualiopi-section::after,
+    .section-newsletter::before,
+    .section-newsletter::after {
+        content: none !important;
+        display: none !important;
+    }
+
+    .section-stats > *,
+    .section-qualiopi > *,
+    .sbi-qualiopi-section > *,
+    .section-newsletter > * {
+        position: relative;
+        z-index: 1;
     }
 }

@@ -5,13 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SBI - Apprends. Progresse. Performe.</title>
 
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/style.css?v=8.0P.42">
     <link rel="stylesheet" href="css/sbi-newsletter.css">
     <link rel="stylesheet" href="css/sbi-footer.css">
-    <link rel="stylesheet" href="css/sbi-home-responsive.css">
-    <link rel="stylesheet" href="css/sbi-mobile.css">
-    <link rel="stylesheet" href="css/sbi-qualiopi.css">
-    <link rel="stylesheet" href="css/sbi-diagonals.css">
+    <link rel="stylesheet" href="css/sbi-home-responsive.css?v=8.0P.34">
+    <link rel="stylesheet" href="css/sbi-founder-image-clean.css?v=8.0P.34">
+    <link rel="stylesheet" href="css/sbi-mobile.css?v=8.0P.21">
+    <link rel="stylesheet" href="css/sbi-qualiopi.css?v=8.0P.32">
+    <link rel="stylesheet" href="css/sbi-diagonals.css?v=8.0P.31">
     <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,600;0,800;0,900;1,400;1,600;1,800;1,900&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap" rel="stylesheet">
 </head>
@@ -21,17 +22,16 @@
     <header class="site-header">
         <div class="logo-container">
             <a href="index.html" class="header-logo-link">
-                <img src="assets/Logo_SBI_Tome.png" alt="SBI Logo" class="header-logo" data-site-media="header-logo">
-                <img src="assets/sbi_brand.png" alt="Sport Business Institute" class="header-brand" data-site-media="brand-logo">
+                <img src="assets/Logo_SBI_Tome.webp" alt="SBI Logo" class="header-logo" data-site-media="header-logo">
+                <img src="assets/sbi_brand.webp" alt="Sport Business Institute" class="header-brand" data-site-media="brand-logo">
             </a>
         </div>
 
         <nav class="main-nav">
-            <a href="#formations" class="nav-link text-italic">Formations</a>
-            <a href="#parcours" class="nav-link text-italic">Parcours</a>
-            <a href="#apropos" class="nav-link text-italic">À propos</a>
-            <a href="#ressources" class="nav-link text-italic">Ressources</a>
-            <a href="#live" class="nav-link text-italic">Live</a>
+            <a href="formations.html" class="nav-link text-italic">Formations</a>
+            <a href="calculateur.html" class="nav-link text-italic">Calculateur</a>
+            <a href="a-propos.html" class="nav-link text-italic">À propos</a>
+            <a href="ressources.html" class="nav-link text-italic">Ressources</a>
         </nav>
 
         <div class="header-actions">
@@ -43,7 +43,7 @@
             </button>
 
             <a href="login.html" class="nav-link text-italic">Se connecter</a>
-            <a href="#contact" class="btn-primary text-italic">Contact</a>
+            <a href="contact.html" class="btn-primary text-italic">Contact</a>
         </div>
 
         <button class="mobile-menu-toggle" type="button" aria-label="Ouvrir le menu">
@@ -53,7 +53,7 @@
         </button>
     </header>
 
-    <main>
+    <main id="public-main" class="sbi-home-page" data-sbi-public-shell-root>
         <section class="hero-section">
             <video muted playsinline class="hero-video-bg" preload="none" data-site-media="hero-video" aria-hidden="true"></video>
 
@@ -63,7 +63,7 @@
                 <div class="hero-content fade-in">
                     <span class="hero-surtitle text-blue uppercase text-italic">Bienvenue sur SBI E-Learning</span>
 
-                    <a href="brochures.html" class="sbi-signal sbi-signal-hero" aria-label="Voir les brochures SBI">
+                    <a href="ressources.html" class="sbi-signal sbi-signal-hero" aria-label="Voir les brochures SBI">
                         <span class="sbi-signal-dot" aria-hidden="true"></span>
                         <span class="sbi-signal-panel text-italic">
                             <span class="sbi-signal-label">Voir les brochures</span>
@@ -81,7 +81,7 @@
                     </p>
 
                     <div class="hero-buttons">
-                        <a href="#formations" class="btn-primary text-italic">Découvrir les formations <span class="arrow">→</span></a>
+                        <a href="formations.html" class="btn-primary text-italic">Découvrir les formations <span class="arrow">→</span></a>
 
                         <a href="#video" class="btn-ghost text-italic">
                             <span class="play-icon">
@@ -95,7 +95,7 @@
                 </div>
 
                 <div class="hero-visual fade-in">
-                    <img src="assets/Logo_SBI_Tome.png" alt="Logo SBI" class="hero-large-logo" data-site-media="hero-logo">
+                    <img src="assets/Logo_SBI_Tome.webp" alt="Logo SBI" class="hero-large-logo" data-site-media="hero-logo">
                 </div>
             </div>
 
@@ -161,14 +161,14 @@
             </div>
         </section>
 
-        <section id="parcours" class="section-parcours padding-global">
+        <section id="formations" class="section-parcours padding-global">
             <div class="section-header flex-between fade-in">
                 <div>
-                    <span class="section-surtitle text-blue uppercase text-italic">Nos parcours</span>
-                    <h2 class="section-title text-italic">Choisis ton terrain.<br>Développe ton futur.</h2>
+                    <span class="section-surtitle text-blue uppercase text-italic">Nos formations</span>
+                    <h2 class="section-title text-italic">Choisis ta formation.<br>Développe ton futur.</h2>
                 </div>
 
-                <a href="#" class="link-blue text-italic">Voir tous les parcours <span class="arrow">→</span></a>
+                <a href="formations.html" class="link-blue text-italic">Voir toutes les formations <span class="arrow">→</span></a>
             </div>
 
             <div class="grid-parcours">
@@ -299,7 +299,7 @@
                         <div class="shard shard-1"><div class="shard-glint"></div></div>
                         <div class="shard shard-2"><div class="shard-glint"></div></div>
                         <div class="shard shard-4"><div class="shard-glint"></div></div>
-                        <img src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" alt="Fondateur SBI" class="founder-img" data-site-media="founder-image">
+                        <img src="assets/fondateur-photo.jpg" alt="Fondateur SBI" class="founder-img" data-site-media="founder-image" data-loaded-from-local="true" width="300" height="400" loading="eager" fetchpriority="high" decoding="async">
                     </div>
 
                     <div class="quote-content">
@@ -409,8 +409,8 @@
         <div class="footer-shell">
             <div class="footer-brand-block">
                 <a href="index.html" class="footer-logo-lockup" aria-label="Retour à l'accueil SBI">
-                    <img src="assets/Logo_SBI_Tome.png" alt="SBI Logo" class="footer-logo-mark" data-site-media="footer-logo">
-                    <img src="assets/sbi_brand.png" alt="Sport Business Institute" class="footer-logo-wordmark" data-site-media="footer-brand-logo">
+                    <img src="assets/Logo_SBI_Tome.webp" alt="SBI Logo" class="footer-logo-mark" data-site-media="footer-logo">
+                    <img src="assets/sbi_brand.webp" alt="Sport Business Institute" class="footer-logo-wordmark" data-site-media="footer-brand-logo">
                 </a>
 
                 <p class="footer-brandline text-italic">Apprendre. Progresser. <span class="text-blue">Performer.</span></p>
@@ -420,18 +420,16 @@
             <nav class="footer-nav" aria-label="Navigation secondaire">
                 <div class="footer-column">
                     <h4 class="text-italic">Plateforme</h4>
-                    <a href="#formations" class="text-italic">Formations</a>
-                    <a href="#parcours" class="text-italic">Parcours</a>
-                    <a href="#live" class="text-italic">Live</a>
-                    <a href="#ressources" class="text-italic">Ressources</a>
+                    <a href="formations.html" class="text-italic">Formations</a>
+                    <a href="calculateur.html" class="text-italic">Calculateur</a>
+                    <a href="ressources.html" class="text-italic">Ressources</a>
                 </div>
 
                 <div class="footer-column">
                     <h4 class="text-italic">À propos</h4>
-                    <a href="#apropos" class="text-italic">Qui sommes-nous ?</a>
-                    <a href="#" class="text-italic">Nos experts</a>
-                    <a href="#" class="text-italic">Carrières</a>
-                    <a href="#contact" class="text-italic">Contact</a>
+                    <a href="a-propos.html" class="text-italic">Qui sommes-nous ?</a>
+                    <a href="a-propos.html#experts" class="text-italic">Nos experts</a>
+                    <a href="contact.html" class="text-italic">Contact</a>
                 </div>
 
                 <div class="footer-column">
@@ -461,10 +459,10 @@
         </div>
     </footer>
 
-    <script src="js/sbi-background.js"></script>
-    <script src="js/main.js"></script>
-    <script src="js/sbi-diagonals.js"></script>
-    <script src="js/public-app-shell.js?v=8.0P.9"></script>
-    <script type="module" src="js/firebase-init.js"></script>
+    <script src="js/sbi-background.js?v=8.0P.21"></script>
+    <script src="js/main.js?v=8.0P.21"></script>
+    <script src="js/sbi-diagonals.js?v=8.0P.25"></script>
+    <script type="module" src="js/site-index-public.js?v=8.0P.40"></script>
+    <script src="js/public-app-shell.js?v=8.0P.40"></script>
 </body>
 </html>

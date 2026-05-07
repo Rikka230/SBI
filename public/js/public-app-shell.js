@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.9 - Public pages foundation
+ * SBI 8.0P.37 - Hero exit fade and stylesheet-ready PJAX render
  *
  * Shell public prudent :
  * - navigation fluide des ancres de l'index ;
@@ -8,11 +8,12 @@
  * - espaces admin/student/teacher et viewers toujours protégés en reload.
  */
 
-const PUBLIC_SHELL_VERSION = '8.0P.9';
+const PUBLIC_SHELL_VERSION = '8.0P.37';
 const DISABLED_FLAG = 'sbiPublicShellDisabled';
 const READY_CLASS = 'sbi-public-shell-ready';
 const SCROLLING_CLASS = 'sbi-public-shell-scrolling';
 const LOADING_CLASS = 'sbi-public-shell-loading';
+const LEAVING_HOME_CLASS = 'sbi-public-shell-leaving-home';
 const ACTIVE_CLASS = 'is-active';
 
 const PUBLIC_PAGE_DEFINITIONS = new Map([
@@ -20,7 +21,6 @@ const PUBLIC_PAGE_DEFINITIONS = new Map([
   ['/index.html', { page: 'home', route: 'public-home-top', fetchPath: '/index.html', reason: 'index public migré en shell' }],
   ['/login.html', { page: 'login', route: 'public-login', fetchPath: '/login.html', reason: 'connexion migrée dans le shell public' }],
   ['/formations.html', { page: 'formations', route: 'public-formations', fetchPath: '/formations.html', reason: 'page formations publique migrée' }],
-  ['/parcours.html', { page: 'parcours', route: 'public-parcours', fetchPath: '/parcours.html', reason: 'page parcours publique migrée' }],
   ['/a-propos.html', { page: 'apropos', route: 'public-apropos', fetchPath: '/a-propos.html', reason: 'page à propos publique migrée' }],
   ['/ressources.html', { page: 'ressources', route: 'public-ressources', fetchPath: '/ressources.html', reason: 'page ressources publique migrée' }],
   ['/calculateur.html', { page: 'calculator', route: 'public-calculator', fetchPath: '/calculateur.html', reason: 'page calculateur aide publique migrée' }],
@@ -95,6 +95,54 @@ function getPublicRouteDefinition(pathname = window.location.pathname) {
 
 function getPublicPageId(pathname = window.location.pathname) {
   return getPublicRouteDefinition(pathname)?.page || 'external';
+}
+
+function getRenderedPublicPageId() {
+  return document.body?.dataset?.sbiPublicPage || getPublicPageId(window.location.pathname);
+}
+
+function prefersReducedMotion() {
+  return Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches);
+}
+
+function waitForPublicShellFade({ fromPageId = getRenderedPublicPageId(), toPageId = getPublicPageId(window.location.pathname) } = {}) {
+  if (prefersReducedMotion()) return Promise.resolve();
+
+  const desktopMotion = Boolean(window.matchMedia?.('(min-width: 769px)')?.matches);
+  if (!desktopMotion) return Promise.resolve();
+
+  const leavingHomeHero = fromPageId === 'home' && toPageId !== 'home';
+  const duration = leavingHomeHero ? 320 : 230;
+  return new Promise((resolve) => window.setTimeout(resolve, duration));
+}
+
+function waitForStylesheet(link) {
+  if (!link || link.sheet) return Promise.resolve();
+
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      link.removeEventListener('load', finish);
+      link.removeEventListener('error', finish);
+      resolve();
+    };
+
+    link.addEventListener('load', finish, { once: true });
+    link.addEventListener('error', finish, { once: true });
+    window.setTimeout(finish, 650);
+  });
+}
+
+function isPublicShellRootReady() {
+  return Boolean(document.querySelector('[data-sbi-public-shell-root]'));
+}
+
+function isRenderedPageDifferentFromUrl(url) {
+  const decision = classifyPublicRoute(url);
+  if (decision.mode !== 'public-shell') return false;
+  return getRenderedPublicPageId() !== decision.page;
 }
 
 function isPublicShellBootPath(pathname = window.location.pathname) {
@@ -351,8 +399,10 @@ function pageFetchUrl(url) {
   return `${cleanPath}${url.search || ''}`;
 }
 
-function syncHeadAssets(nextDocument, pageId) {
+async function syncHeadAssets(nextDocument, pageId) {
   const stylesheetSelector = 'link[rel="stylesheet"], link[rel="preload"][as="style"]';
+  const stylesheetLoaders = [];
+
   nextDocument.querySelectorAll(stylesheetSelector).forEach((link) => {
     const href = link.getAttribute('href');
     if (!href) return;
@@ -365,7 +415,11 @@ function syncHeadAssets(nextDocument, pageId) {
       });
 
     if (!exists) {
-      document.head.appendChild(link.cloneNode(true));
+      const clonedLink = link.cloneNode(true);
+      document.head.appendChild(clonedLink);
+      if (clonedLink.rel === 'stylesheet') {
+        stylesheetLoaders.push(waitForStylesheet(clonedLink));
+      }
     }
   });
 
@@ -381,6 +435,10 @@ function syncHeadAssets(nextDocument, pageId) {
 
     targetStyle.textContent = style.textContent || '';
   });
+
+  if (stylesheetLoaders.length) {
+    await Promise.allSettled(stylesheetLoaders);
+  }
 }
 
 function sanitizeBodyFragment(nextDocument) {
@@ -449,12 +507,14 @@ async function runPageInitializers(pageId) {
     console.warn('[SBI Public Shell] Init front public indisponible :', error);
   }
 
-  try {
-    const mediaModule = await import('/js/site-index-public.js');
-    const initMedia = mediaModule.initSiteIndexMedia || window.SBI_INIT_SITE_INDEX_MEDIA;
-    if (typeof initMedia === 'function') await initMedia();
-  } catch (error) {
-    console.warn('[SBI Public Shell] Médias publics indisponibles après PJAX :', error);
+  if (pageId === 'home') {
+    try {
+      const mediaModule = await import('/js/site-index-public.js?v=8.0P.37');
+      const initMedia = mediaModule.initSiteIndexMedia || window.SBI_INIT_SITE_INDEX_MEDIA;
+      if (typeof initMedia === 'function') await initMedia({ forceRefresh: false });
+    } catch (error) {
+      console.warn('[SBI Public Shell] Médias publics indisponibles après PJAX :', error);
+    }
   }
 
   if (pageId === 'login') {
@@ -469,11 +529,21 @@ async function runPageInitializers(pageId) {
 
   if (pageId === 'calculator') {
     try {
-      const calculatorModule = await import('/js/sbi-aide-calculator.js');
+      const calculatorModule = await import('/js/sbi-aide-calculator.js?v=8.0P.21');
       const initCalculator = calculatorModule.initSbiAidCalculator || window.SBI_INIT_AID_CALCULATOR;
       if (typeof initCalculator === 'function') initCalculator(document);
     } catch (error) {
       console.warn('[SBI Public Shell] Calculateur aide indisponible après PJAX :', error);
+    }
+  }
+
+  if (['formations', 'parcours', 'apropos', 'ressources', 'contact'].includes(pageId)) {
+    try {
+      const publicPagesModule = await import('/js/sbi-public-pages.js?v=8.0P.21');
+      const initPublicPages = publicPagesModule.initSbiPublicPages || window.SBI_INIT_PUBLIC_PAGES;
+      if (typeof initPublicPages === 'function') initPublicPages(document);
+    } catch (error) {
+      console.warn('[SBI Public Shell] Pages publiques indisponibles après PJAX :', error);
     }
   }
 }
@@ -485,23 +555,34 @@ async function renderPublicPage(url, decision, { historyMode = 'push', behavior 
     const enabled = !safeReadFlag(DISABLED_FLAG);
     const targetPageId = decision.page || getPublicPageId(url.pathname);
 
+    const fromPageId = getRenderedPublicPageId();
+    const leavingHomeHero = fromPageId === 'home' && targetPageId !== 'home';
+
     document.body.classList.add(LOADING_CLASS);
+    if (leavingHomeHero) document.body.classList.add(LEAVING_HOME_CLASS);
     document.body.setAttribute('aria-busy', 'true');
 
+    const fadePromise = isPublicShellRootReady()
+      ? waitForPublicShellFade({ fromPageId, toPageId: targetPageId })
+      : Promise.resolve();
+
     try {
-      const response = await fetch(pageFetchUrl(url), {
+      const responsePromise = fetch(pageFetchUrl(url), {
         method: 'GET',
         credentials: 'same-origin',
         headers: { 'X-SBI-Public-Shell': PUBLIC_SHELL_VERSION }
       });
 
+      await fadePromise;
+
+      const response = await responsePromise;
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
       const html = await response.text();
       const nextDocument = new DOMParser().parseFromString(html, 'text/html');
       if (!nextDocument.body) throw new Error('Document HTML invalide');
 
-      syncHeadAssets(nextDocument, targetPageId);
+      await syncHeadAssets(nextDocument, targetPageId);
       document.title = nextDocument.title || document.title;
 
       const fragment = sanitizeBodyFragment(nextDocument);
@@ -517,6 +598,9 @@ async function renderPublicPage(url, decision, { historyMode = 'push', behavior 
       activeObserver = null;
       await runPageInitializers(targetPageId);
       observeActiveSections();
+      if (typeof window.SBI_RENDER_DIAGONALS === 'function') {
+        window.requestAnimationFrame(() => window.SBI_RENDER_DIAGONALS());
+      }
 
       const target = decision.targetId ? getAnchorTarget(`#${decision.targetId}`) : null;
       scrollToTarget(target, behavior);
@@ -532,8 +616,10 @@ async function renderPublicPage(url, decision, { historyMode = 'push', behavior 
       window.location.assign(url.href);
       return false;
     } finally {
-      document.body.classList.remove(LOADING_CLASS);
-      document.body.removeAttribute('aria-busy');
+      window.requestAnimationFrame(() => {
+        document.body.classList.remove(LOADING_CLASS, LEAVING_HOME_CLASS);
+        document.body.removeAttribute('aria-busy');
+      });
       pageTransitionPromise = null;
     }
   })();
@@ -548,7 +634,7 @@ function navigatePublic(url, { historyMode = 'push', behavior = 'smooth', source
     return false;
   }
 
-  const currentPageId = getPublicPageId(window.location.pathname);
+  const currentPageId = getRenderedPublicPageId();
   const samePage = currentPageId === decision.page;
 
   if (samePage) {
@@ -610,6 +696,11 @@ function handlePopState() {
   const decision = classifyPublicRoute(url);
   if (decision.mode !== 'public-shell') return;
 
+  if (isRenderedPageDifferentFromUrl(url)) {
+    renderPublicPage(url, decision, { historyMode: 'replace', behavior: 'auto', source: 'popstate' });
+    return;
+  }
+
   navigatePublic(url, { historyMode: 'replace', behavior: 'auto', source: 'popstate' });
 }
 
@@ -661,6 +752,7 @@ function printStatus() {
     version: PUBLIC_SHELL_VERSION,
     enabled: !safeReadFlag(DISABLED_FLAG),
     page: getPublicPageId(currentUrl.pathname),
+    renderedPage: getRenderedPublicPageId(),
     href: currentUrl.href,
     decision: classifyPublicRoute(currentUrl),
     sections: activeSectionIds,
@@ -671,6 +763,7 @@ function printStatus() {
     version: status.version,
     enabled: status.enabled,
     page: status.page,
+    renderedPage: status.renderedPage,
     mode: status.decision.mode,
     route: status.decision.route || '-',
     reason: status.decision.reason
@@ -697,7 +790,6 @@ function printRoutes() {
     { path: '/', mode: 'public-shell', page: 'home', reason: 'haut de l’index public' },
     { path: '/index.html#video', mode: 'public-shell', page: 'home', reason: 'ancre vidéo index conservée' },
     { path: '/formations.html', mode: 'public-shell', page: 'formations', reason: 'page formations publique' },
-    { path: '/parcours.html', mode: 'public-shell', page: 'parcours', reason: 'page parcours publique' },
     { path: '/a-propos.html', mode: 'public-shell', page: 'apropos', reason: 'page à propos publique' },
     { path: '/ressources.html', mode: 'public-shell', page: 'ressources', reason: 'page ressources publique' },
     { path: '/calculateur.html', mode: 'public-shell', page: 'calculator', reason: 'page calculateur aide publique' },
@@ -732,7 +824,7 @@ function printAudit() {
     total: rows.length,
     ok: rows.filter((row) => row.verdict === 'OK').length,
     alerts: rows.filter((row) => row.verdict === 'ALERTE').length,
-    publicPagesEnabled: ['/formations.html', '/parcours.html', '/a-propos.html', '/ressources.html', '/calculateur.html', '/contact.html']
+    publicPagesEnabled: ['/formations.html', '/a-propos.html', '/ressources.html', '/calculateur.html', '/contact.html']
       .every((path) => classifyPublicRoute(new URL(path, window.location.origin)).mode === 'public-shell'),
     loginPjaxEnabled: classifyPublicRoute(new URL('/login.html', window.location.origin)).mode === 'public-shell',
     livePublicRemoved: classifyPublicRoute(new URL('/live.html', window.location.origin)).mode === 'reload',
@@ -817,6 +909,9 @@ function initSbiPublicAppShell() {
 
   attachListeners();
   observeActiveSections();
+  if (typeof window.SBI_RENDER_DIAGONALS === 'function') {
+    window.requestAnimationFrame(() => window.SBI_RENDER_DIAGONALS());
+  }
 
   if (window.location.hash) {
     const initialUrl = new URL(window.location.href);

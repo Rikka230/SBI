@@ -90,28 +90,49 @@ if (shouldEnableAnalytics()) {
 }
 
 /* --- 1.7 MÉDIAS DYNAMIQUES & SHELL PUBLIC --- */
+const SBI_PUBLIC_BOOT_VERSION = '8.0P.21';
 const path = window.location.pathname.toLowerCase().replace(/\/+$/, '') || '/';
 const publicShellPaths = new Set([
     '/',
     '/index.html',
     '/login.html',
     '/formations.html',
-    '/parcours.html',
     '/a-propos.html',
     '/ressources.html',
+    '/calculateur.html',
     '/contact.html'
 ]);
+const publicHomePaths = new Set(['/', '/index.html']);
 const isPublicShellPage = publicShellPaths.has(path);
+const isPublicHomePage = publicHomePaths.has(path);
+
+function hasScriptFor(srcPart) {
+    return Boolean(document.querySelector(`script[src*="${srcPart}"]`));
+}
 
 if (isPublicShellPage) {
-    import('/js/site-index-public.js').catch((error) => {
-        console.warn('[SBI Public] Configuration médias dynamique indisponible :', error);
-    });
+    const siteIndexAlreadyHandled = Boolean(
+        window.__SBI_SITE_INDEX_MEDIA_LOADING__
+        || window.SBI_INIT_SITE_INDEX_MEDIA
+        || hasScriptFor('site-index-public.js')
+    );
+
+    if (isPublicHomePage && !siteIndexAlreadyHandled) {
+        import(`/js/site-index-public.js?v=${SBI_PUBLIC_BOOT_VERSION}`).catch((error) => {
+            console.warn('[SBI Public] Configuration médias dynamique indisponible :', error);
+        });
+    }
+
+    const publicShellAlreadyHandled = Boolean(
+        window.__SBI_PUBLIC_SHELL_INIT_DONE__
+        || window.initSbiPublicAppShell
+        || hasScriptFor('public-app-shell.js')
+    );
 
     if (typeof window.initSbiPublicAppShell === 'function') {
         window.initSbiPublicAppShell();
-    } else {
-        import('/js/public-app-shell.js')
+    } else if (!publicShellAlreadyHandled) {
+        import(`/js/public-app-shell.js?v=${SBI_PUBLIC_BOOT_VERSION}`)
             .then((module) => {
                 if (typeof module.initSbiPublicAppShell === 'function') {
                     module.initSbiPublicAppShell();

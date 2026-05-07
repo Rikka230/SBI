@@ -1,5 +1,6 @@
-import { db } from '/js/firebase-init.js';
-import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
+const SITE_INDEX_MEDIA_VERSION = '8.0P.36';
+
+window.__SBI_SITE_INDEX_MEDIA_LOADING__ = true;
 
 const EMPTY_MEDIA = {
   heroVideoWebmUrl: '',
@@ -10,39 +11,50 @@ const EMPTY_MEDIA = {
   founderImageUrl: ''
 };
 
-const MEDIA_CACHE_KEY = 'sbi:siteIndexMedia:v1';
+const MEDIA_CACHE_KEY = 'sbi:siteIndexMedia:v2';
 const MEDIA_CACHE_TTL_MS = 5 * 60 * 1000;
-const QUALIOPI_CSS_HREF = '/css/sbi-qualiopi.css?v=8.0P.7';
+const QUALIOPI_CSS_HREF = `/css/sbi-qualiopi.css?v=${SITE_INDEX_MEDIA_VERSION}`;
+const FOUNDER_CLEAN_CSS_HREF = `/css/sbi-founder-image-clean.css?v=${SITE_INDEX_MEDIA_VERSION}`;
 const QUALIOPI_SECTION_ID = 'qualiopi';
 
+const LOCAL_MEDIA = {
+  logo: '/assets/Logo_SBI_Tome.webp',
+  brand: '/assets/sbi_brand.webp',
+  founder: '/assets/fondateur-photo.jpg'
+};
+
+let siteIndexMediaInitPromise = null;
+let lastAppliedSignature = '';
+let lastResolvedSettings = null;
+
+function cleanUrl(value) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
 function isLegacyLocalMediaUrl(value) {
-  if (typeof value !== 'string') return false;
-  const url = value.trim();
+  const url = cleanUrl(value);
   return (
     url === '/assets/sbi_master.webm' ||
+    url === 'assets/sbi_master.webm' ||
     url === '/assets/sbi.mp4' ||
-    url === '/assets/fondateur-photo.jpg' ||
+    url === 'assets/sbi.mp4' ||
     url.includes('images.unsplash.com/photo-1560250097')
   );
 }
 
 function sanitizeSettings(raw = {}) {
-  const clean = { ...EMPTY_MEDIA, ...raw };
+  const clean = { ...EMPTY_MEDIA };
+
   Object.keys(clean).forEach((key) => {
-    if (isLegacyLocalMediaUrl(clean[key])) clean[key] = '';
+    const value = cleanUrl(raw?.[key]);
+    clean[key] = isLegacyLocalMediaUrl(value) ? '' : value;
   });
+
   return clean;
 }
 
 function settingsSignature(settings) {
-  return JSON.stringify({
-    heroVideoWebmUrl: settings.heroVideoWebmUrl || '',
-    heroVideoMp4Url: settings.heroVideoMp4Url || '',
-    heroLogoUrl: settings.heroLogoUrl || '',
-    headerLogoUrl: settings.headerLogoUrl || '',
-    brandLogoUrl: settings.brandLogoUrl || '',
-    founderImageUrl: settings.founderImageUrl || ''
-  });
+  return JSON.stringify(sanitizeSettings(settings));
 }
 
 function readCachedSettings() {
@@ -57,7 +69,7 @@ function readCachedSettings() {
     }
 
     return sanitizeSettings(cached.settings || {});
-  } catch (error) {
+  } catch {
     sessionStorage.removeItem(MEDIA_CACHE_KEY);
     return null;
   }
@@ -69,40 +81,57 @@ function writeCachedSettings(settings) {
       savedAt: Date.now(),
       settings: sanitizeSettings(settings)
     }));
-  } catch (error) {
-    // Cache opportuniste uniquement. Ne bloque jamais l'index public.
+  } catch {
+    // cache opportuniste uniquement
   }
 }
 
-function ensureFounderCleanStyles() {
-  const href = '/css/sbi-founder-image-clean.css';
-  if (document.querySelector(`link[href="${href}"]`)) return;
+async function loadSiteIndexSettingsFromFirestore({ forceRefresh = false } = {}) {
+  const firebase = await import(`/js/firebase-init.js?v=${SITE_INDEX_MEDIA_VERSION}`);
+  const firestore = await import('https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js');
+
+  if (!firebase.db || !firestore.doc || !firestore.getDoc) {
+    throw new Error('Firestore indisponible');
+  }
+
+  if (forceRefresh) {
+    try { sessionStorage.removeItem(MEDIA_CACHE_KEY); } catch {}
+  }
+
+  const snap = await firestore.getDoc(firestore.doc(firebase.db, 'settings', 'siteIndex'));
+  return snap.exists() ? sanitizeSettings(snap.data()) : EMPTY_MEDIA;
+}
+
+function ensureStylesheet(href, datasetKey) {
+  const cleanPath = href.split('?')[0];
+  const existing = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
+    .find((link) => (link.getAttribute('href') || '').includes(cleanPath));
+
+  if (existing) {
+    if ((existing.getAttribute('href') || '') !== href) existing.href = href;
+    return existing;
+  }
+
   const link = document.createElement('link');
   link.rel = 'stylesheet';
   link.href = href;
+  if (datasetKey) link.dataset[datasetKey] = 'true';
   document.head.appendChild(link);
+  return link;
+}
+
+function ensureFounderCleanStyles() {
+  ensureStylesheet(FOUNDER_CLEAN_CSS_HREF, 'sbiFounderCleanStyles');
 }
 
 function ensureQualiopiStyles() {
-  const alreadyLoaded = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
-    .some((link) => {
-      const href = link.getAttribute('href') || '';
-      return href.includes('/css/sbi-qualiopi.css');
-    });
-
-  if (alreadyLoaded) return;
-
-  const link = document.createElement('link');
-  link.rel = 'stylesheet';
-  link.href = QUALIOPI_CSS_HREF;
-  link.dataset.sbiQualiopiStyles = 'true';
-  document.head.appendChild(link);
+  ensureStylesheet(QUALIOPI_CSS_HREF, 'sbiQualiopiStyles');
 }
 
 function isHomePageReady() {
   const path = window.location.pathname.toLowerCase();
   return Boolean(
-    document.querySelector('[data-sbi-public-section~="apropos"], .section-stats') &&
+    document.querySelector('.section-stats, [data-sbi-public-section~="apropos"]') &&
     (document.body?.dataset?.sbiPublicPage === 'home' || path === '/' || path.endsWith('/index.html'))
   );
 }
@@ -120,7 +149,6 @@ function ensureQualiopiTrustBlock() {
   section.className = 'section-qualiopi sbi-qualiopi-section padding-global';
   section.dataset.sbiPublicSection = 'qualiopi certification';
   section.setAttribute('aria-labelledby', 'qualiopi-title');
-
   section.innerHTML = `
     <div class="qualiopi-shell">
       <div class="qualiopi-copy">
@@ -134,7 +162,6 @@ function ensureQualiopiTrustBlock() {
           Cette certification atteste du processus qualité mis en œuvre dans le cadre des actions de formation par apprentissage.
         </p>
       </div>
-
       <figure class="qualiopi-card" aria-label="Certification Qualiopi SBI">
         <div class="qualiopi-logo-frame">
           <img src="/assets/logo-qualiopi-cfa.png" alt="Qualiopi processus certifié République Française" loading="lazy" decoding="async" width="1280" height="502">
@@ -149,13 +176,9 @@ function ensureQualiopiTrustBlock() {
   const newsletter = document.querySelector('#ressources.section-newsletter, .section-newsletter');
   const stats = document.querySelector('#apropos.section-stats, .section-stats');
 
-  if (newsletter?.parentNode) {
-    newsletter.parentNode.insertBefore(section, newsletter);
-  } else if (stats?.parentNode) {
-    stats.insertAdjacentElement('afterend', section);
-  } else {
-    document.querySelector('main')?.appendChild(section);
-  }
+  if (newsletter?.parentNode) newsletter.parentNode.insertBefore(section, newsletter);
+  else if (stats?.parentNode) stats.insertAdjacentElement('afterend', section);
+  else document.querySelector('main')?.appendChild(section);
 
   window.requestAnimationFrame(() => {
     section.classList.add('is-ready');
@@ -167,102 +190,203 @@ function ensureQualiopiTrustBlock() {
   return section;
 }
 
-function applyImage(selector, url) {
-  if (!url) return;
+function isStorageUrl(url = '') {
+  const clean = cleanUrl(url);
+  return clean.includes('firebasestorage.googleapis.com') || clean.includes('firebasestorage.app');
+}
+
+function applyImage(selector, url, sourceName = 'firestore') {
+  const clean = cleanUrl(url);
+  if (!clean) return;
+
   document.querySelectorAll(selector).forEach((img) => {
-    if (img instanceof HTMLImageElement && img.src !== url) {
-      img.src = url;
-      img.dataset.loadedFromStorage = url.includes('firebasestorage.googleapis.com') ? 'true' : 'false';
-    }
+    if (!(img instanceof HTMLImageElement)) return;
+    if (img.getAttribute('src') !== clean) img.src = clean;
+    img.dataset.loadedFromStorage = isStorageUrl(clean) ? 'true' : 'false';
+    img.dataset.mediaSource = sourceName;
+    if (isStorageUrl(clean)) img.referrerPolicy = 'no-referrer';
   });
 }
 
-function applyHeroVideo(settings) {
-  const video = document.querySelector('.hero-video-bg');
+function applyBrandMedia(settings = {}) {
+  const headerLogo = settings.headerLogoUrl || LOCAL_MEDIA.logo;
+  const brandLogo = settings.brandLogoUrl || LOCAL_MEDIA.brand;
+  const heroLogo = settings.heroLogoUrl || settings.headerLogoUrl || LOCAL_MEDIA.logo;
+
+  applyImage('.header-logo, .footer-logo-mark', headerLogo, settings.headerLogoUrl ? 'firestore' : 'assets');
+  applyImage('.header-brand, .footer-logo-wordmark', brandLogo, settings.brandLogoUrl ? 'firestore' : 'assets');
+  applyImage('.hero-large-logo', heroLogo, (settings.heroLogoUrl || settings.headerLogoUrl) ? 'firestore' : 'assets');
+}
+
+function applyFounderImage(settings = {}) {
+  const founderUrl = settings.founderImageUrl || LOCAL_MEDIA.founder;
+
+  document.querySelectorAll('.founder-img').forEach((img) => {
+    if (!(img instanceof HTMLImageElement)) return;
+    if (img.getAttribute('src') !== founderUrl) img.src = founderUrl;
+
+    const isStorage = isStorageUrl(founderUrl);
+    const isLocalAsset = founderUrl.includes('/assets/fondateur-photo.jpg') || founderUrl.includes('assets/fondateur-photo.jpg');
+    img.dataset.loadedFromStorage = isStorage ? 'true' : 'false';
+    img.dataset.loadedFromLocal = isLocalAsset ? 'true' : 'false';
+    img.dataset.mediaSource = settings.founderImageUrl ? 'firestore' : 'assets';
+    img.loading = 'eager';
+    img.fetchPriority = 'high';
+    img.decoding = 'async';
+    if (isStorage) img.referrerPolicy = 'no-referrer';
+  });
+}
+
+function applyHeroVideo(settings = {}) {
+  const video = document.querySelector('[data-site-media="hero-video"], .hero-video-bg');
   if (!(video instanceof HTMLVideoElement)) return;
 
-  const webmUrl = settings.heroVideoWebmUrl || '';
-  const mp4Url = settings.heroVideoMp4Url || '';
+  const webmUrl = cleanUrl(settings.heroVideoWebmUrl);
+  const mp4Url = cleanUrl(settings.heroVideoMp4Url);
 
-  if (!webmUrl && !mp4Url) return;
-
-  const currentSources = Array.from(video.querySelectorAll('source')).map((source) => source.getAttribute('src')).join('|');
-  const nextSources = `${webmUrl}|${mp4Url}`;
-
-  if (currentSources === nextSources) return;
-
-  video.pause();
-  video.innerHTML = '';
-
-  if (webmUrl) {
-    const webm = document.createElement('source');
-    webm.src = webmUrl;
-    webm.type = 'video/webm';
-    video.appendChild(webm);
+  if (!webmUrl && !mp4Url) {
+    video.dataset.mediaState = 'missing-url';
+    return;
   }
 
-  if (mp4Url) {
-    const mp4 = document.createElement('source');
-    mp4.src = mp4Url;
-    mp4.type = 'video/mp4';
-    video.appendChild(mp4);
+  const currentSources = Array.from(video.querySelectorAll('source'))
+    .map((source) => `${source.type}:${source.getAttribute('src') || ''}`)
+    .join('|');
+  const nextSources = `${webmUrl ? `video/webm:${webmUrl}` : ''}|${mp4Url ? `video/mp4:${mp4Url}` : ''}`;
+
+  if (currentSources !== nextSources) {
+    video.pause();
+    video.innerHTML = '';
+
+    if (webmUrl) {
+      const webm = document.createElement('source');
+      webm.src = webmUrl;
+      webm.type = 'video/webm';
+      video.appendChild(webm);
+    }
+
+    if (mp4Url) {
+      const mp4 = document.createElement('source');
+      mp4.src = mp4Url;
+      mp4.type = 'video/mp4';
+      video.appendChild(mp4);
+    }
+
+    video.load();
   }
 
   video.muted = true;
   video.loop = true;
   video.playsInline = true;
   video.autoplay = true;
-  video.load();
-  video.play().catch(() => {});
+  video.dataset.mediaState = 'requested';
+
+  video.play()
+    .then(() => { video.dataset.mediaState = 'playing'; })
+    .catch((error) => {
+      video.dataset.mediaState = 'play-blocked';
+      console.warn('[SBI Index] Lecture vidéo hero bloquée ou différée :', error);
+    });
 }
 
-function applySettings(settings) {
+function applySettings(settings = {}) {
+  const clean = sanitizeSettings(settings);
+  lastResolvedSettings = clean;
   ensureFounderCleanStyles();
   ensureQualiopiTrustBlock();
-  applyHeroVideo(settings);
-  applyImage('.hero-large-logo', settings.heroLogoUrl);
-  applyImage('.header-logo, .footer-logo-mark', settings.headerLogoUrl);
-  applyImage('.header-brand, .footer-logo-wordmark', settings.brandLogoUrl);
-  applyImage('.founder-img', settings.founderImageUrl);
+  applyHeroVideo(clean);
+  applyBrandMedia(clean);
+  applyFounderImage(clean);
+  lastAppliedSignature = settingsSignature(clean);
   document.body.classList.add('is-site-index-media-ready');
 }
 
-async function initSiteIndexMedia() {
-  ensureFounderCleanStyles();
-  ensureQualiopiTrustBlock();
+async function initSiteIndexMedia(options = {}) {
+  const forceRefresh = Boolean(options?.forceRefresh);
 
-  const cachedSettings = readCachedSettings();
-  if (cachedSettings) {
-    applySettings(cachedSettings);
+  /**
+   * En navigation PJAX publique, le module reste déjà chargé mais le DOM de
+   * l'index est remplacé. L'ancienne promesse est alors résolue et les nouveaux
+   * nœuds .hero-video-bg / .founder-img reviennent avec leurs fallbacks locaux.
+   * On réapplique donc immédiatement les derniers médias connus avant de rendre
+   * la main, puis une seconde fois quand la promesse existante se termine si elle
+   * était encore en cours.
+   */
+  if (siteIndexMediaInitPromise && !forceRefresh) {
+    const knownSettings = lastResolvedSettings || readCachedSettings();
+    if (knownSettings) applySettings(knownSettings);
+
+    return siteIndexMediaInitPromise.then(() => {
+      const settledSettings = lastResolvedSettings || readCachedSettings();
+      if (settledSettings) applySettings(settledSettings);
+    });
   }
 
-  try {
-    const snap = await getDoc(doc(db, 'settings', 'siteIndex'));
-    const settings = snap.exists() ? sanitizeSettings(snap.data()) : EMPTY_MEDIA;
-    writeCachedSettings(settings);
+  if (forceRefresh) siteIndexMediaInitPromise = null;
 
-    if (!cachedSettings || settingsSignature(cachedSettings) !== settingsSignature(settings)) {
-      applySettings(settings);
-    } else {
-      ensureQualiopiTrustBlock();
-      document.body.classList.add('is-site-index-media-ready');
-    }
-  } catch (error) {
+  siteIndexMediaInitPromise = (async () => {
+    window.__SBI_SITE_INDEX_MEDIA_LOADING__ = true;
+    ensureFounderCleanStyles();
     ensureQualiopiTrustBlock();
-    document.body.classList.add('is-site-index-media-ready');
-    if (!cachedSettings) {
-      console.warn('[SBI Index] Médias dynamiques indisponibles. Aucun fallback lourd local chargé.', error);
+
+    const cachedSettings = forceRefresh ? null : readCachedSettings();
+    if (cachedSettings) applySettings(cachedSettings);
+
+    try {
+      const settings = await loadSiteIndexSettingsFromFirestore({ forceRefresh });
+      writeCachedSettings(settings);
+      const nextSignature = settingsSignature(settings);
+      if (forceRefresh || !cachedSettings || nextSignature !== lastAppliedSignature) {
+        applySettings(settings);
+      }
+    } catch (error) {
+      document.body.classList.add('is-site-index-media-ready');
+      if (!cachedSettings) {
+        applySettings(EMPTY_MEDIA);
+        console.warn('[SBI Index] Médias dynamiques indisponibles. Fallback local appliqué.', error);
+      }
+    } finally {
+      window.__SBI_SITE_INDEX_MEDIA_LOADING__ = false;
     }
-  }
+  })();
+
+  return siteIndexMediaInitPromise;
+}
+
+function getSiteIndexMediaStatus() {
+  const video = document.querySelector('[data-site-media="hero-video"], .hero-video-bg');
+  const founder = document.querySelector('.founder-img');
+  const headerLogo = document.querySelector('.header-logo');
+  const brandLogo = document.querySelector('.header-brand');
+
+  return {
+    version: SITE_INDEX_MEDIA_VERSION,
+    ready: document.body.classList.contains('is-site-index-media-ready'),
+    heroVideoState: video?.dataset?.mediaState || 'missing-node',
+    heroVideoSources: video instanceof HTMLVideoElement
+      ? Array.from(video.querySelectorAll('source')).map((source) => source.src)
+      : [],
+    founderLoadedFromStorage: founder?.dataset?.loadedFromStorage || 'missing-node',
+    founderImageSource: founder?.dataset?.mediaSource || '',
+    founderSrc: founder?.getAttribute?.('src') || '',
+    headerLogoLoadedFromStorage: headerLogo?.dataset?.loadedFromStorage || 'missing-node',
+    headerLogoSource: headerLogo?.dataset?.mediaSource || '',
+    headerLogoSrc: headerLogo?.getAttribute?.('src') || '',
+    brandLogoLoadedFromStorage: brandLogo?.dataset?.loadedFromStorage || 'missing-node',
+    brandLogoSource: brandLogo?.dataset?.mediaSource || '',
+    brandLogoSrc: brandLogo?.getAttribute?.('src') || ''
+  };
 }
 
 window.SBI_INIT_SITE_INDEX_MEDIA = initSiteIndexMedia;
 window.SBI_ENSURE_QUALIOPI_HOME_BLOCK = ensureQualiopiTrustBlock;
+window.SBI_SITE_INDEX_MEDIA_STATUS = getSiteIndexMediaStatus;
+window.SBI_REFRESH_SITE_INDEX_MEDIA = () => initSiteIndexMedia({ forceRefresh: true });
 
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initSiteIndexMedia);
+  document.addEventListener('DOMContentLoaded', () => initSiteIndexMedia(), { once: true });
 } else {
   initSiteIndexMedia();
 }
 
-export { initSiteIndexMedia, ensureQualiopiTrustBlock };
+export { initSiteIndexMedia, ensureQualiopiTrustBlock, getSiteIndexMediaStatus };

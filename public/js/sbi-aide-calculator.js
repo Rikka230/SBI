@@ -1,4 +1,4 @@
-const SBI_AID_CALCULATOR_VERSION = '8.0P.9';
+const SBI_AID_CALCULATOR_VERSION = '8.0P.10d';
 const SBI_RNCP_LEVEL = 4;
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -176,6 +176,13 @@ function updateResult(root) {
       'Merci.'
     ].join('\n'));
     contactLink.href = `mailto:contact@sbi.fr?subject=${subject}&body=${body}`;
+    const contactParams = new URLSearchParams({
+      motif: 'estimation-aide',
+      montant: formatEuro(result.estimatedAid),
+      statut: statusLabel(result.status),
+      formation: `Bac / RNCP Niveau ${SBI_RNCP_LEVEL}`
+    });
+    contactLink.href = `contact.html?${contactParams.toString()}`;
   }
 
   root.dispatchEvent(new CustomEvent('sbi:aid-calculator:updated', {

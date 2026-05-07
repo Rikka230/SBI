@@ -1,7 +1,31 @@
-/* SBI 6.5 - Founder image clean display */
+/* SBI 8.0P.13 - Founder card cleanup, foreground shards and mobile block recovery */
+
+.founder-img-wrapper {
+    position: relative;
+    overflow: visible;
+    isolation: isolate;
+    background: transparent;
+}
 
 .founder-img {
+    position: relative;
+    z-index: 2;
+    display: block;
+    width: 100% !important;
+    max-width: none !important;
+    height: 100% !important;
+    min-height: 100%;
+    object-fit: cover !important;
+    object-position: center top !important;
     filter: none !important;
+    transform: none !important;
+    image-rendering: auto;
+    opacity: 1;
+    clip-path: polygon(50px 0, 100% 0, 100% calc(100% - 50px), calc(100% - 50px) 100%, 0 100%, 0 50px);
+    box-shadow:
+        0 22px 44px rgba(0, 0, 0, 0.22),
+        0 0 0 1px rgba(116, 180, 255, 0.14);
+    background: rgba(3, 8, 18, 0.92);
 }
 
 .founder-img-wrapper::before,
@@ -10,11 +34,137 @@
     display: none !important;
 }
 
-.founder-img:not([data-loaded-from-storage="true"]) {
+.founder-img-wrapper .shard {
+    z-index: 7 !important;
+    pointer-events: none;
+    mix-blend-mode: screen;
+}
+
+.founder-img-wrapper .shard-glint,
+.founder-img-wrapper .shard-glint::before,
+.founder-img-wrapper .shard-glint::after {
+    z-index: 8 !important;
+}
+
+.founder-img-wrapper .shard-1 {
+    top: -24px;
+    left: -28px;
+}
+
+.founder-img-wrapper .shard-2 {
+    right: -28px;
+    bottom: -22px;
+}
+
+.founder-img-wrapper .shard-4 {
+    left: -36px;
+    bottom: 38px;
+}
+
+.founder-img:not([data-loaded-from-storage="true"]):not([data-loaded-from-local="true"]):not([src*="/assets/fondateur-photo.jpg"]):not([src*="assets/fondateur-photo.jpg"]) {
     opacity: 0;
 }
 
-.founder-img[data-loaded-from-storage="true"] {
+.founder-img[data-loaded-from-storage="true"],
+.founder-img[data-loaded-from-local="true"],
+.founder-img[src*="/assets/fondateur-photo.jpg"],
+.founder-img[src*="assets/fondateur-photo.jpg"] {
     opacity: 1;
     transition: opacity 0.28s ease;
+}
+
+@media (min-width: 1181px) {
+    .section-stats .founder-img-wrapper {
+        min-height: clamp(390px, 28vw, 540px);
+    }
+
+    .section-stats .founder-img {
+        height: clamp(390px, 28vw, 540px) !important;
+    }
+}
+
+@media (max-width: 1180px) {
+    .section-stats .founder-block {
+        align-items: center;
+    }
+
+    .section-stats .founder-img-wrapper,
+    .founder-img-wrapper {
+        width: min(86vw, 430px) !important;
+        max-width: 430px;
+        aspect-ratio: 3 / 4;
+        margin-right: auto;
+        margin-left: auto;
+    }
+
+    .section-stats .founder-img,
+    .founder-img {
+        height: 100% !important;
+        aspect-ratio: auto !important;
+    }
+}
+
+@media (max-width: 768px) {
+    .section-stats .stats-grid,
+    .section-stats .founder-block,
+    .section-stats .calculator-cta-box {
+        min-width: 0;
+        overflow: visible;
+    }
+
+    .section-stats .quote-content,
+    .section-stats .calculator-panel {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
+    }
+
+    .section-stats .founder-img-wrapper,
+    .founder-img-wrapper {
+        width: min(88vw, 380px) !important;
+        max-width: 380px;
+    }
+}
+
+@media (max-width: 560px) {
+    .section-stats .founder-img-wrapper,
+    .founder-img-wrapper {
+        width: min(88vw, 350px) !important;
+        max-width: 350px;
+        aspect-ratio: 3 / 4;
+    }
+
+    .section-stats .founder-img,
+    .founder-img {
+        object-position: center top !important;
+    }
+
+    .founder-img-wrapper .shard-1 {
+        top: -18px;
+        left: -18px;
+    }
+
+    .founder-img-wrapper .shard-2 {
+        right: -18px;
+        bottom: -16px;
+    }
+
+    .founder-img-wrapper .shard-4 {
+        left: -22px;
+        bottom: 28px;
+    }
+}
+
+/* SBI 8.0P.34 - Desktop only: keep P33 wide placement, restore the founder photo’s previous portrait ratio.
+   No mobile/tablet selectors changed. */
+@media (min-width: 1761px) {
+    .section-stats .founder-img-wrapper {
+        min-height: clamp(510px, 29.3vw, 688px);
+        aspect-ratio: 23 / 29.3;
+    }
+
+    .section-stats .founder-img {
+        height: clamp(510px, 29.3vw, 688px) !important;
+    }
 }

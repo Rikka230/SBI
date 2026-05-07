@@ -5,80 +5,108 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Formations - Sport Business Institute</title>
 
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/style.css?v=8.0P.42">
     <link rel="stylesheet" href="css/sbi-newsletter.css">
     <link rel="stylesheet" href="css/sbi-footer.css">
-    <link rel="stylesheet" href="css/sbi-home-responsive.css">
+    <link rel="stylesheet" href="css/sbi-home-responsive.css?v=8.0P.10d">
+    <link rel="stylesheet" href="css/sbi-public-pages.css?v=8.0P.10d">
     <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,600;0,800;0,900;1,400;1,600;1,800;1,900&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap" rel="stylesheet">
 </head>
 
 <body data-sbi-public-page="formations">
-
     <header class="site-header">
         <div class="logo-container">
             <a href="index.html" class="header-logo-link">
-                <img src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" alt="SBI Logo" class="header-logo" data-site-media="header-logo">
-                <img src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" alt="Sport Business Institute" class="header-brand" data-site-media="brand-logo">
+                <img src="assets/Logo_SBI_Tome.webp" alt="SBI Logo" class="header-logo" data-site-media="header-logo">
+                <img src="assets/sbi_brand.webp" alt="Sport Business Institute" class="header-brand" data-site-media="brand-logo">
             </a>
         </div>
 
         <nav class="main-nav">
             <a href="formations.html" class="nav-link text-italic">Formations</a>
-            <a href="parcours.html" class="nav-link text-italic">Parcours</a>
-            <a href="a-propos.html" class="nav-link text-italic">À propos</a>
+            <a href="calculateur.html" class="nav-link text-italic">Calculateur</a>
+            <a href="a-propos.html" class="nav-link text-italic">&Agrave; propos</a>
             <a href="ressources.html" class="nav-link text-italic">Ressources</a>
         </nav>
 
         <div class="header-actions">
             <button class="btn-icon search-btn" aria-label="Rechercher">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <circle cx="11" cy="11" r="8"></circle>
                     <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                 </svg>
             </button>
-
             <a href="login.html" class="nav-link text-italic">Se connecter</a>
             <a href="contact.html" class="btn-primary text-italic">Contact</a>
         </div>
+
+        <button class="mobile-menu-toggle" type="button" aria-label="Ouvrir le menu">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
     </header>
 
     <main id="public-main" class="public-page" data-sbi-public-shell-root>
         <section class="public-page-hero padding-global" data-sbi-public-section="formations">
             <div class="public-page-hero-copy fade-in">
                 <span class="section-surtitle text-blue uppercase text-italic">Formations SBI</span>
-                <h1 class="public-page-title uppercase text-italic">Des compétences terrain.<br><span class="text-blue">Un niveau pro.</span></h1>
-                <p class="public-page-subtitle text-italic">Explore les modules pensés pour le sport business : marketing, management, événementiel, innovation, sponsoring et performance.</p>
+                <h1 class="public-page-title uppercase text-italic">Le catalogue qui pr&eacute;pare<br><span class="text-blue">le terrain.</span></h1>
+                <p class="public-page-subtitle text-italic">Retrouve les formations SBI centr&eacute;es sur le sport business, l'alternance et la progression vers le Bac / RNCP Niveau 4.</p>
                 <div class="public-page-actions">
-                    <a href="parcours.html" class="btn-primary text-italic">Voir les parcours <span class="arrow">→</span></a>
-                    <a href="contact.html" class="btn-ghost text-italic">Parler du projet</a>
+                    <a href="#catalogue" class="btn-primary text-italic">Explorer le catalogue <span class="arrow">-&gt;</span></a>
+                    <a href="calculateur.html" class="btn-ghost text-italic">Calculer l'aide</a>
                 </div>
             </div>
             <div class="public-page-orbit fade-in" aria-hidden="true"><span>SBI</span></div>
         </section>
 
-        <section class="public-page-section padding-global">
-            <div class="section-header flex-between fade-in">
+        <section id="catalogue" class="public-page-section padding-global" data-sbi-public-section="catalogue">
+            <div class="public-section-header fade-in">
                 <div>
-                    <span class="section-surtitle text-blue uppercase text-italic">Catalogue</span>
-                    <h2 class="section-title text-italic">Les piliers de formation.</h2>
+                    <span class="public-section-kicker text-italic">Catalogue public</span>
+                    <h2 class="text-italic">Formations prêtes pour le back-office.</h2>
                 </div>
+                <p class="text-italic">Cette grille affiche un socle SBI maintenant. La connexion Firebase/back-office sera ajoutée plus tard pour alimenter les formations depuis l’administration.</p>
             </div>
-            <div class="public-card-grid public-card-grid-3">
-                <article class="public-info-card fade-in"><span class="public-card-index">01</span><h3 class="text-italic">Marketing & Communication</h3><p class="text-italic">Construire une marque sportive, piloter une campagne et valoriser une communauté.</p></article>
-                <article class="public-info-card fade-in"><span class="public-card-index">02</span><h3 class="text-italic">Management & Leadership</h3><p class="text-italic">Manager une équipe, cadrer un projet et prendre les bonnes décisions sous pression.</p></article>
-                <article class="public-info-card fade-in"><span class="public-card-index">03</span><h3 class="text-italic">Événementiel sportif</h3><p class="text-italic">Concevoir, produire et sécuriser une expérience sportive de bout en bout.</p></article>
-                <article class="public-info-card fade-in"><span class="public-card-index">04</span><h3 class="text-italic">Digital & Innovation</h3><p class="text-italic">Utiliser les outils numériques, la data et les formats interactifs pour accélérer.</p></article>
-                <article class="public-info-card fade-in"><span class="public-card-index">05</span><h3 class="text-italic">Sponsoring & Partenariats</h3><p class="text-italic">Créer des offres solides, convaincre des marques et suivre la valeur générée.</p></article>
-                <article class="public-info-card fade-in"><span class="public-card-index">06</span><h3 class="text-italic">Carrière & employabilité</h3><p class="text-italic">Structurer son profil, préparer ses candidatures et progresser vers le terrain visé.</p></article>
+
+            <div class="public-firebase-panel fade-in">
+                <span class="public-firebase-dot" aria-hidden="true"></span>
+                <div>
+                    <strong class="text-italic">Back-office prévu</strong>
+                    <p class="text-italic">Connexion prévue plus tard : formations, descriptions, catégories et durées pilotées depuis le back-office.</p>
+                </div>
+                <span class="public-firebase-status text-italic" data-sbi-formations-status>Catalogue SBI de base.</span>
+            </div>
+
+            <div class="public-card-grid public-card-grid-3" data-sbi-formations-feed>
+                <article class="public-info-card fade-in">
+                    <span class="public-card-index">01</span>
+                    <h3 class="text-italic">Marketing &amp; Communication</h3>
+                    <p class="text-italic">Marque sportive, contenu, campagnes, communaut&eacute; et activation digitale.</p>
+                </article>
+                <article class="public-info-card fade-in">
+                    <span class="public-card-index">02</span>
+                    <h3 class="text-italic">Management &amp; Leadership</h3>
+                    <p class="text-italic">Gestion de projet, pilotage d'&eacute;quipe, posture professionnelle et prise de d&eacute;cision.</p>
+                </article>
+                <article class="public-info-card fade-in">
+                    <span class="public-card-index">03</span>
+                    <h3 class="text-italic">&Eacute;v&eacute;nementiel sportif</h3>
+                    <p class="text-italic">Conception, budget, logistique, s&eacute;curit&eacute; et exp&eacute;rience public.</p>
+                </article>
             </div>
         </section>
 
-        <section class="public-page-cta padding-global fade-in">
+        <section class="public-page-cta padding-global fade-in" data-sbi-public-section="alternance">
             <div class="public-cta-card">
-                <span class="section-surtitle text-blue uppercase text-italic">Prochaine étape</span>
-                <h2 class="text-italic">Construis ton parcours avec SBI.</h2>
-                <a href="contact.html" class="btn-primary text-italic">Demander des infos <span class="arrow">→</span></a>
+                <div>
+                    <span class="section-surtitle text-blue uppercase text-italic">Alternance SBI</span>
+                    <h2 class="text-italic">Une formation, un cadre, une trajectoire.</h2>
+                    <p class="text-italic">SBI accompagne les talents et les entreprises autour d'une offre centr&eacute;e Bac / RNCP Niveau 4.</p>
+                </div>
+                <a href="contact.html" class="btn-primary text-italic">Demander des infos <span class="arrow">-&gt;</span></a>
             </div>
         </section>
     </main>
@@ -86,31 +114,26 @@
     <footer id="contact" class="site-footer sbi-footer padding-global">
         <div class="footer-shell">
             <div class="footer-brand-block">
-                <a href="index.html" class="footer-logo-lockup" aria-label="Retour à l'accueil SBI">
-                    <img src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" alt="SBI Logo" class="footer-logo-mark" data-site-media="footer-logo">
-                    <img src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" alt="Sport Business Institute" class="footer-logo-wordmark" data-site-media="footer-brand-logo">
+                <a href="index.html" class="footer-logo-lockup" aria-label="Retour a l'accueil SBI">
+                    <img src="assets/Logo_SBI_Tome.webp" alt="SBI Logo" class="footer-logo-mark" data-site-media="footer-logo">
+                    <img src="assets/sbi_brand.webp" alt="Sport Business Institute" class="footer-logo-wordmark" data-site-media="footer-brand-logo">
                 </a>
-
                 <p class="footer-brandline text-italic">Apprendre. Progresser. <span class="text-blue">Performer.</span></p>
-                <p class="footer-description text-italic">La plateforme e-learning dédiée au sport business, au management sportif et à l'innovation.</p>
+                <p class="footer-description text-italic">La plateforme e-learning dédiée au sport business, au management sportif et a l'innovation.</p>
             </div>
-
             <nav class="footer-nav" aria-label="Navigation secondaire">
                 <div class="footer-column">
                     <h4 class="text-italic">Plateforme</h4>
                     <a href="formations.html" class="text-italic">Formations</a>
-                    <a href="parcours.html" class="text-italic">Parcours</a>
+                    <a href="calculateur.html" class="text-italic">Calculateur</a>
                     <a href="ressources.html" class="text-italic">Ressources</a>
                 </div>
-
                 <div class="footer-column">
-                    <h4 class="text-italic">À propos</h4>
+                    <h4 class="text-italic">SBI</h4>
                     <a href="a-propos.html" class="text-italic">Qui sommes-nous ?</a>
                     <a href="a-propos.html#experts" class="text-italic">Nos experts</a>
-                    <a href="a-propos.html#carrieres" class="text-italic">Carrières</a>
                     <a href="contact.html" class="text-italic">Contact</a>
                 </div>
-
                 <div class="footer-column">
                     <h4 class="text-italic">Légal</h4>
                     <a href="#" class="text-italic">Mentions légales</a>
@@ -119,7 +142,6 @@
                     <a href="#" class="text-italic">Cookies</a>
                 </div>
             </nav>
-
             <div class="footer-social-card">
                 <h4 class="footer-social-title text-italic">Suivez-nous</h4>
                 <div class="social-icons">
@@ -131,16 +153,15 @@
                 <a href="mailto:contact@sbi.fr" class="footer-contact-link text-italic">contact@sbi.fr</a>
             </div>
         </div>
-
         <div class="footer-bottom">
-            <span class="text-italic">© 2026 Sport Business Institute. Tous droits réservés.</span>
+            <span class="text-italic">&copy; 2026 Sport Business Institute. Tous droits réservés.</span>
             <span class="footer-bottom-signature text-italic">SBI E-Learning</span>
         </div>
     </footer>
 
-    <script src="js/sbi-background.js"></script>
-    <script src="js/main.js?v=8.0P.5"></script>
-    <script src="js/public-app-shell.js?v=8.0P.5"></script>
-    <script type="module" src="js/firebase-init.js"></script>
+    <script src="js/sbi-background.js?v=8.0P.10d"></script>
+    <script src="js/main.js?v=8.0P.10d"></script>
+    <script type="module" src="js/sbi-public-pages.js?v=8.0P.10d"></script>
+    <script src="js/public-app-shell.js?v=8.0P.40"></script>
 </body>
 </html>

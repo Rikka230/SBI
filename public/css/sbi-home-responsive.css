@@ -157,8 +157,8 @@
     .section-stats .stats-grid {
         display: grid;
         grid-template-columns:
-            minmax(220px, 0.72fr)
-            minmax(300px, 1.05fr)
+            minmax(300px, 0.84fr)
+            minmax(300px, 1fr)
             minmax(520px, 1.88fr);
         gap: clamp(1.1rem, 1.8vw, 1.75rem);
         align-items: center;
@@ -174,17 +174,17 @@
     .section-stats .founder-img-wrapper {
         grid-column: 1;
         width: 100%;
-        max-width: clamp(235px, 18vw, 340px);
+        max-width: clamp(300px, 22vw, 430px);
         justify-self: end;
     }
 
     .section-stats .founder-img {
         display: block;
         width: 100%;
-        height: clamp(320px, 23vw, 420px);
+        height: clamp(390px, 28vw, 540px);
         aspect-ratio: auto;
         object-position: center top;
-        filter: grayscale(100%) contrast(1.12) brightness(0.82);
+        filter: none;
     }
 
     .section-stats .quote-content {
@@ -313,18 +313,18 @@
 @media (min-width: 1181px) and (max-width: 1450px) {
     .section-stats .stats-grid {
         grid-template-columns:
-            minmax(205px, 0.68fr)
+            minmax(280px, 0.82fr)
             minmax(275px, 1fr)
             minmax(500px, 1.85fr);
         gap: clamp(0.9rem, 1.35vw, 1.35rem);
     }
 
     .section-stats .founder-img-wrapper {
-        max-width: clamp(230px, 19vw, 300px);
+        max-width: clamp(280px, 22vw, 360px);
     }
 
     .section-stats .founder-img {
-        height: clamp(320px, 25vw, 365px);
+        height: clamp(375px, 29vw, 455px);
     }
 
     .section-stats .quote-content {
@@ -393,5 +393,50 @@
     .section-stats .calculator-side-icon svg {
         width: clamp(68px, 6vw, 86px);
         height: clamp(68px, 6vw, 86px);
+    }
+}
+
+
+/* SBI 8.0P.13 - founder natural image override */
+.section-stats .founder-img {
+    filter: none !important;
+}
+
+/* SBI 8.0P.34 - Desktop wide founder ratio lock
+   On garde l’élargissement desktop de P33, mais on remet la photo fondateur
+   sur le ratio visuel historique : plus portrait, moins écrasé en largeur.
+   Scope strictement desktop large, aucun changement mobile/tablette. */
+@media (min-width: 1761px) {
+    .section-stats .stats-grid {
+        width: 100%;
+        max-width: none;
+        grid-template-columns:
+            minmax(420px, 560px)
+            minmax(400px, 520px)
+            minmax(620px, 1fr);
+        gap: clamp(1.35rem, 1.65vw, 2rem);
+    }
+
+    .section-stats .founder-img-wrapper {
+        justify-self: start;
+        width: 100%;
+        max-width: min(100%, clamp(400px, 23vw, 540px));
+    }
+
+    .section-stats .founder-img {
+        height: clamp(510px, 29.3vw, 688px);
+    }
+
+    .section-stats .quote-content {
+        justify-self: stretch;
+    }
+
+    .section-stats .calculator-cta-box {
+        justify-self: stretch;
+        width: 100%;
+    }
+
+    .section-stats .calculator-panel {
+        min-height: clamp(330px, 18vw, 380px);
     }
 }
