@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.15',
+  version: '8.0P.16',
   branch: 'public-pjax-app-shell',
   channel: 'PUBLIC PJAX APP SHELL',
-  stage: 'Desktop Qualiopi pre-block light bridge removal',
+  stage: 'Qualiopi side glows moved under block and unclipped on desktop',
   updatedAt: '2026-05-07',
-  label: 'SBI 8.0P.15 - REMOVE DESKTOP QUALIOPI LIGHT BRIDGE'
+  label: 'SBI 8.0P.16 - QUALIOPI SIDE GLOW UNDERLAY FIX'
 };
 
 export function getSbiVersionLabel() {
