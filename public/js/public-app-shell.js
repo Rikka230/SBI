@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.36 - Browser back render fix and soft PJAX fades
+ * SBI 8.0P.37 - Hero exit fade and stylesheet-ready PJAX render
  *
  * Shell public prudent :
  * - navigation fluide des ancres de l'index ;
@@ -8,11 +8,12 @@
  * - espaces admin/student/teacher et viewers toujours protégés en reload.
  */
 
-const PUBLIC_SHELL_VERSION = '8.0P.36';
+const PUBLIC_SHELL_VERSION = '8.0P.37';
 const DISABLED_FLAG = 'sbiPublicShellDisabled';
 const READY_CLASS = 'sbi-public-shell-ready';
 const SCROLLING_CLASS = 'sbi-public-shell-scrolling';
 const LOADING_CLASS = 'sbi-public-shell-loading';
+const LEAVING_HOME_CLASS = 'sbi-public-shell-leaving-home';
 const ACTIVE_CLASS = 'is-active';
 
 const PUBLIC_PAGE_DEFINITIONS = new Map([
@@ -104,9 +105,34 @@ function prefersReducedMotion() {
   return Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches);
 }
 
-function waitForPublicShellFade() {
+function waitForPublicShellFade({ fromPageId = getRenderedPublicPageId(), toPageId = getPublicPageId(window.location.pathname) } = {}) {
   if (prefersReducedMotion()) return Promise.resolve();
-  return new Promise((resolve) => window.setTimeout(resolve, 110));
+
+  const desktopMotion = Boolean(window.matchMedia?.('(min-width: 769px)')?.matches);
+  if (!desktopMotion) return Promise.resolve();
+
+  const leavingHomeHero = fromPageId === 'home' && toPageId !== 'home';
+  const duration = leavingHomeHero ? 320 : 230;
+  return new Promise((resolve) => window.setTimeout(resolve, duration));
+}
+
+function waitForStylesheet(link) {
+  if (!link || link.sheet) return Promise.resolve();
+
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      link.removeEventListener('load', finish);
+      link.removeEventListener('error', finish);
+      resolve();
+    };
+
+    link.addEventListener('load', finish, { once: true });
+    link.addEventListener('error', finish, { once: true });
+    window.setTimeout(finish, 650);
+  });
 }
 
 function isPublicShellRootReady() {
@@ -373,8 +399,10 @@ function pageFetchUrl(url) {
   return `${cleanPath}${url.search || ''}`;
 }
 
-function syncHeadAssets(nextDocument, pageId) {
+async function syncHeadAssets(nextDocument, pageId) {
   const stylesheetSelector = 'link[rel="stylesheet"], link[rel="preload"][as="style"]';
+  const stylesheetLoaders = [];
+
   nextDocument.querySelectorAll(stylesheetSelector).forEach((link) => {
     const href = link.getAttribute('href');
     if (!href) return;
@@ -387,7 +415,11 @@ function syncHeadAssets(nextDocument, pageId) {
       });
 
     if (!exists) {
-      document.head.appendChild(link.cloneNode(true));
+      const clonedLink = link.cloneNode(true);
+      document.head.appendChild(clonedLink);
+      if (clonedLink.rel === 'stylesheet') {
+        stylesheetLoaders.push(waitForStylesheet(clonedLink));
+      }
     }
   });
 
@@ -403,6 +435,10 @@ function syncHeadAssets(nextDocument, pageId) {
 
     targetStyle.textContent = style.textContent || '';
   });
+
+  if (stylesheetLoaders.length) {
+    await Promise.allSettled(stylesheetLoaders);
+  }
 }
 
 function sanitizeBodyFragment(nextDocument) {
@@ -473,7 +509,7 @@ async function runPageInitializers(pageId) {
 
   if (pageId === 'home') {
     try {
-      const mediaModule = await import('/js/site-index-public.js?v=8.0P.36');
+      const mediaModule = await import('/js/site-index-public.js?v=8.0P.37');
       const initMedia = mediaModule.initSiteIndexMedia || window.SBI_INIT_SITE_INDEX_MEDIA;
       if (typeof initMedia === 'function') await initMedia({ forceRefresh: false });
     } catch (error) {
@@ -519,27 +555,34 @@ async function renderPublicPage(url, decision, { historyMode = 'push', behavior 
     const enabled = !safeReadFlag(DISABLED_FLAG);
     const targetPageId = decision.page || getPublicPageId(url.pathname);
 
+    const fromPageId = getRenderedPublicPageId();
+    const leavingHomeHero = fromPageId === 'home' && targetPageId !== 'home';
+
     document.body.classList.add(LOADING_CLASS);
+    if (leavingHomeHero) document.body.classList.add(LEAVING_HOME_CLASS);
     document.body.setAttribute('aria-busy', 'true');
 
-    if (isPublicShellRootReady()) {
-      await waitForPublicShellFade();
-    }
+    const fadePromise = isPublicShellRootReady()
+      ? waitForPublicShellFade({ fromPageId, toPageId: targetPageId })
+      : Promise.resolve();
 
     try {
-      const response = await fetch(pageFetchUrl(url), {
+      const responsePromise = fetch(pageFetchUrl(url), {
         method: 'GET',
         credentials: 'same-origin',
         headers: { 'X-SBI-Public-Shell': PUBLIC_SHELL_VERSION }
       });
 
+      await fadePromise;
+
+      const response = await responsePromise;
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
       const html = await response.text();
       const nextDocument = new DOMParser().parseFromString(html, 'text/html');
       if (!nextDocument.body) throw new Error('Document HTML invalide');
 
-      syncHeadAssets(nextDocument, targetPageId);
+      await syncHeadAssets(nextDocument, targetPageId);
       document.title = nextDocument.title || document.title;
 
       const fragment = sanitizeBodyFragment(nextDocument);
@@ -574,7 +617,7 @@ async function renderPublicPage(url, decision, { historyMode = 'push', behavior 
       return false;
     } finally {
       window.requestAnimationFrame(() => {
-        document.body.classList.remove(LOADING_CLASS);
+        document.body.classList.remove(LOADING_CLASS, LEAVING_HOME_CLASS);
         document.body.removeAttribute('aria-busy');
       });
       pageTransitionPromise = null;

@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.36',
+  version: '8.0P.37',
   branch: 'public-pjax-app-shell',
   channel: 'PUBLIC PJAX APP SHELL',
-  stage: 'Public shell browser back render fix and soft page fades',
+  stage: 'Index hero PJAX fade and calculator stylesheet-ready render',
   updatedAt: '2026-05-08',
-  label: 'SBI 8.0P.36 - PUBLIC SHELL BACK/FADES FIX'
+  label: 'SBI 8.0P.37 - PUBLIC SHELL HERO FADE FIX'
 };
 
 export function getSbiVersionLabel() {

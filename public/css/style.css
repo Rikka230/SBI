@@ -1317,19 +1317,29 @@ footer {
 .social-icons a:hover { color: var(--sbi-blue); }
 
 /* =========================================================
-   SBI 8.0P.36 - PJAX page fade, chrome/header preserved
+   SBI 8.0P.37 - PJAX page fade, hero exit preserved
    ========================================================= */
 @media (prefers-reduced-motion: no-preference) and (min-width: 769px) {
     html.sbi-public-shell-ready body[data-sbi-public-shell="enabled"] [data-sbi-public-shell-root] {
         opacity: 1;
         transform: translateY(0);
-        transition: opacity 150ms ease, transform 170ms ease;
+        transition: opacity 240ms cubic-bezier(0.22, 1, 0.36, 1), transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
         will-change: opacity, transform;
     }
 
     html.sbi-public-shell-ready body[data-sbi-public-shell="enabled"].sbi-public-shell-loading [data-sbi-public-shell-root] {
         opacity: 0;
-        transform: translateY(8px);
+        transform: translateY(12px);
+    }
+
+
+    html.sbi-public-shell-ready body[data-sbi-public-shell="enabled"].sbi-public-shell-leaving-home .hero-video-bg,
+    html.sbi-public-shell-ready body[data-sbi-public-shell="enabled"].sbi-public-shell-leaving-home .hero-gradient-overlay,
+    html.sbi-public-shell-ready body[data-sbi-public-shell="enabled"].sbi-public-shell-leaving-home .hero-content,
+    html.sbi-public-shell-ready body[data-sbi-public-shell="enabled"].sbi-public-shell-leaving-home .hero-visual,
+    html.sbi-public-shell-ready body[data-sbi-public-shell="enabled"].sbi-public-shell-leaving-home .features-bar {
+        opacity: 0;
+        transition: opacity 300ms ease;
     }
 }
 
