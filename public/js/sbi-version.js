@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.31',
+  version: '8.0P.32',
   branch: 'public-pjax-app-shell',
   channel: 'PUBLIC PJAX APP SHELL',
-  stage: 'Fix Qualiopi background layer clipping and restore bottom corner lights',
+  stage: 'Restore Qualiopi top border color after light layer fix',
   updatedAt: '2026-05-08',
-  label: 'SBI 8.0P.31 - QUALIOPI LIGHT LAYER FIX'
+  label: 'SBI 8.0P.32 - QUALIOPI TOP BORDER COLOR FIX'
 };
 
 export function getSbiVersionLabel() {

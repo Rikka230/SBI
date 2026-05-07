@@ -1,5 +1,5 @@
 /* =======================================================================
- * SBI 8.0P.31 - Bloc Qualiopi index public
+ * SBI 8.0P.32 - Bloc Qualiopi index public
  * Usage institutionnel : logo conserve tel quel, texte sobre, sans badges.
  * ======================================================================= */
 
@@ -229,15 +229,11 @@
     }
 }
 
-/* SBI 8.0P.30 - retire la ligne horizontale parasite au sommet du panneau.
-   Le panneau reste opaque : on supprime seulement la ligne droite créée par
-   le border-top + la première ligne de grille du ::before. */
+/* SBI 8.0P.32 - restauration du liseré supérieur Qualiopi.
+   La grille parasite reste supprimée par .qualiopi-shell::before { content:none }.
+   On ne rend plus le border-top transparent : le cadre complet garde le même bleu. */
 @media (min-width: 769px) {
     .qualiopi-shell {
-        border-top-color: transparent;
-    }
-
-    .qualiopi-shell::before {
-        background-position: 0 72px, 72px 0;
+        border-top-color: rgba(0, 81, 255, 0.30);
     }
 }
