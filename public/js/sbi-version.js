@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.27',
+  version: '8.0P.28',
   branch: 'public-pjax-app-shell',
   channel: 'PUBLIC PJAX APP SHELL',
-  stage: 'Rollback 8.0P.26 and restore previous stable base before new light fix',
-  updatedAt: '2026-05-07',
-  label: 'SBI 8.0P.27 - ROLLBACK P26 RESTORE PREVIOUS BASE'
+  stage: 'Minimal Qualiopi/newsletter/footer background lights fix after P27 rollback',
+  updatedAt: '2026-05-08',
+  label: 'SBI 8.0P.28 - QUALIOPI NEWSLETTER BOTTOM LIGHTS FIX'
 };
 
 export function getSbiVersionLabel() {

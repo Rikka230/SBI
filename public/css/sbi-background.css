@@ -28,27 +28,25 @@ body::before {
 }
 
 
-/* Cone light doux en bas à gauche pour déboucher le fond */
+/* Halo global attaché au document, côté bas gauche.
+   Important : pas de calque fixed ici, sinon la lumière suit le viewport
+   et remonte visuellement au-dessus de Qualiopi pendant le scroll. */
 body::after {
     content: '';
-    position: fixed;
-    left: -16vw;
-    bottom: -18vh;
-    width: min(54vw, 760px);
-    height: min(78vh, 900px);
+    position: absolute;
+    inset: 0;
     background:
         radial-gradient(
-            ellipse at 18% 82%,
-            rgba(96, 162, 255, 0.22) 0%,
-            rgba(42, 87, 255, 0.13) 18%,
-            rgba(42, 87, 255, 0.055) 34%,
-            rgba(42, 87, 255, 0.018) 50%,
-            rgba(42, 87, 255, 0) 68%
+            ellipse at 0% 100%,
+            rgba(96, 162, 255, 0.20) 0%,
+            rgba(42, 87, 255, 0.12) 15%,
+            rgba(42, 87, 255, 0.05) 31%,
+            rgba(42, 87, 255, 0.014) 47%,
+            rgba(42, 87, 255, 0) 66%
         );
-    filter: blur(10px);
     pointer-events: none;
     z-index: 0;
-    opacity: 0.96;
+    opacity: 0.94;
 }
 
 .sbi-background-root {
@@ -390,20 +388,12 @@ body::after {
 
 @media (max-width: 900px) {
     body::after {
-        left: -24vw;
-        bottom: -14vh;
-        width: 74vw;
-        height: 60vh;
         opacity: 0.82;
     }
 }
 
 @media (max-width: 640px) {
     body::after {
-        left: -30vw;
-        bottom: -10vh;
-        width: 88vw;
-        height: 54vh;
         opacity: 0.74;
     }
 }

@@ -675,3 +675,36 @@ main {
         isolation: auto;
     }
 }
+
+/* SBI 8.0P.28 - fond Qualiopi/newsletter : une seule source de vérité.
+   Desktop uniquement : on neutralise les anciens pseudo-calques lumineux de
+   section, en particulier .section-newsletter::before et .section-stats::after.
+   Les deux halos de bas de page restent portés par body::before/body::after
+   dans sbi-background.css. Mobile non touché : diagonales P23 conservées. */
+@media (min-width: 769px) {
+    .section-stats::after,
+    .section-qualiopi::before,
+    .section-qualiopi::after,
+    .sbi-qualiopi-section::before,
+    .sbi-qualiopi-section::after,
+    .section-newsletter::before,
+    .section-newsletter::after {
+        content: none !important;
+        display: none !important;
+        background: none !important;
+        filter: none !important;
+    }
+
+    .section-stats,
+    .section-qualiopi,
+    .sbi-qualiopi-section,
+    .section-newsletter {
+        overflow: visible !important;
+    }
+
+    .section-qualiopi,
+    .sbi-qualiopi-section,
+    .section-newsletter {
+        isolation: auto;
+    }
+}
