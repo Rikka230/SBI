@@ -535,3 +535,44 @@ main {
         animation: none;
     }
 }
+
+/* SBI 8.0P.10f - continuité lumineuse stats -> Qualiopi sans déplacer les blocs */
+@media (min-width: 769px) {
+    .section-stats,
+    .section-qualiopi,
+    .sbi-qualiopi-section {
+        overflow: visible !important;
+    }
+
+    .section-stats {
+        z-index: 4;
+    }
+
+    .section-qualiopi,
+    .sbi-qualiopi-section {
+        z-index: 3;
+    }
+
+    .section-stats::after {
+        content: "";
+        position: absolute;
+        left: -5vw;
+        right: -5vw;
+        bottom: calc(var(--space-xl) * -0.85);
+        height: calc(var(--space-xl) + 9rem);
+        z-index: 0;
+        pointer-events: none;
+        background:
+            radial-gradient(ellipse at 12% 36%, rgba(0, 81, 255, 0.12), rgba(0, 81, 255, 0.04) 34%, transparent 68%),
+            radial-gradient(ellipse at 82% 42%, rgba(0, 81, 255, 0.10), rgba(0, 81, 255, 0.035) 30%, transparent 64%),
+            linear-gradient(180deg, rgba(5, 9, 19, 0), rgba(5, 9, 19, 0.28) 44%, rgba(5, 9, 19, 0));
+        opacity: 0.72;
+        mix-blend-mode: screen;
+    }
+
+    .section-stats > * {
+        position: relative;
+        z-index: 2;
+    }
+}
+
