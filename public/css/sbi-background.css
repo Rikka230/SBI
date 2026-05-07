@@ -9,44 +9,47 @@
    - grain vidéo hero
    ========================================================= */
 
-/* Halo global attaché au document, côté bas droit */
-body::before {
+/* SBI 8.0P.30 - deux halos globaux attachés au bas réel de page.
+   Correction ciblée : les halos restent localisés aux coins footer, sans
+   créer de nappe lumineuse fullscreen au-dessus de Qualiopi.
+   Les animations de fond/parallaxe restent intactes. */
+body::before,
+body::after {
     content: '';
     position: absolute;
-    inset: 0;
-    background:
-        radial-gradient(
-            ellipse at 100% 100%,
-            rgba(0, 81, 255, 0.15) 0%,
-            rgba(0, 81, 255, 0.078) 15%,
-            rgba(0, 81, 255, 0.025) 31%,
-            rgba(0, 81, 255, 0.006) 47%,
-            rgba(0, 81, 255, 0) 66%
-        );
+    top: auto;
+    bottom: 0;
+    width: min(58vw, 820px);
+    height: min(54vh, 640px);
     pointer-events: none;
     z-index: 0;
 }
 
+body::before {
+    right: 0;
+    background:
+        radial-gradient(
+            ellipse at 100% 100%,
+            rgba(0, 81, 255, 0.16) 0%,
+            rgba(0, 81, 255, 0.082) 22%,
+            rgba(0, 81, 255, 0.03) 42%,
+            rgba(0, 81, 255, 0.008) 58%,
+            rgba(0, 81, 255, 0) 74%
+        );
+}
 
-/* Halo global attaché au document, côté bas gauche.
-   Important : pas de calque fixed ici, sinon la lumière suit le viewport
-   et remonte visuellement au-dessus de Qualiopi pendant le scroll. */
 body::after {
-    content: '';
-    position: absolute;
-    inset: 0;
+    left: 0;
+    opacity: 0.94;
     background:
         radial-gradient(
             ellipse at 0% 100%,
-            rgba(96, 162, 255, 0.20) 0%,
-            rgba(42, 87, 255, 0.12) 15%,
-            rgba(42, 87, 255, 0.05) 31%,
-            rgba(42, 87, 255, 0.014) 47%,
-            rgba(42, 87, 255, 0) 66%
+            rgba(96, 162, 255, 0.19) 0%,
+            rgba(42, 87, 255, 0.112) 22%,
+            rgba(42, 87, 255, 0.045) 42%,
+            rgba(42, 87, 255, 0.012) 58%,
+            rgba(42, 87, 255, 0) 74%
         );
-    pointer-events: none;
-    z-index: 0;
-    opacity: 0.94;
 }
 
 .sbi-background-root {
@@ -387,12 +390,24 @@ body::after {
 
 
 @media (max-width: 900px) {
+    body::before,
+    body::after {
+        width: 72vw;
+        height: 48vh;
+    }
+
     body::after {
         opacity: 0.82;
     }
 }
 
 @media (max-width: 640px) {
+    body::before,
+    body::after {
+        width: 86vw;
+        height: 42vh;
+    }
+
     body::after {
         opacity: 0.74;
     }
