@@ -708,3 +708,41 @@ main {
         isolation: auto;
     }
 }
+
+/* SBI 8.0P.31 - desktop Qualiopi/footer light continuity
+   The Qualiopi insert must not create a separate background slab above the
+   bottom-page lights. Mobile diagonal overlay remains untouched. */
+@media (min-width: 769px) {
+    main {
+        overflow: visible !important;
+    }
+
+    .section-stats,
+    .section-qualiopi,
+    .sbi-qualiopi-section,
+    .section-newsletter {
+        background: transparent !important;
+        overflow: visible !important;
+        isolation: auto !important;
+        z-index: auto;
+    }
+
+    .section-stats::after,
+    .section-qualiopi::before,
+    .section-qualiopi::after,
+    .sbi-qualiopi-section::before,
+    .sbi-qualiopi-section::after,
+    .section-newsletter::before,
+    .section-newsletter::after {
+        content: none !important;
+        display: none !important;
+    }
+
+    .section-stats > *,
+    .section-qualiopi > *,
+    .sbi-qualiopi-section > *,
+    .section-newsletter > * {
+        position: relative;
+        z-index: 1;
+    }
+}
