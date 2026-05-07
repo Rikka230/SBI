@@ -872,13 +872,15 @@
 
 
 @media (max-width: 768px) {
-    /* SBI 8.0P.10d - raccord mobile stats/qualiopi sans trait parasite */
-    .section-stats + .section-qualiopi,
-    .section-stats + .sbi-qualiopi-section {
-        margin-top: calc((var(--sbi-section-cut, 34px) * -1) - 2px) !important;
+    /* SBI 8.0P.10e - raccord mobile stats/qualiopi sans bande parasite */
+    .section-stats {
+        padding-bottom: 0.85rem !important;
+        margin-bottom: 0 !important;
     }
 
-    .section-stats {
-        margin-bottom: -2px;
+    .section-stats + .section-qualiopi,
+    .section-stats + .sbi-qualiopi-section {
+        margin-top: -0.65rem !important;
+        padding-top: 0.9rem !important;
     }
 }

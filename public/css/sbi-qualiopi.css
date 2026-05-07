@@ -6,8 +6,8 @@
 .section-qualiopi {
     position: relative;
     z-index: 2;
-    padding-top: clamp(3.25rem, 6vw, 5.25rem);
-    padding-bottom: clamp(3.25rem, 6vw, 5.25rem);
+    padding-top: clamp(0.9rem, 2vw, 1.6rem);
+    padding-bottom: clamp(3rem, 5.5vw, 5rem);
     background: transparent;
 }
 

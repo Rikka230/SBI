@@ -1175,14 +1175,15 @@ footer {
 }
 
 
-/* SBI 8.0P.10d - raccord visuel fondateur/aide -> Qualiopi */
+/* SBI 8.0P.10e - raccord visuel fondateur/aide -> Qualiopi */
 .section-stats {
-    margin-bottom: -1px;
+    padding-bottom: clamp(1.2rem, 2.4vw, 2rem);
+    margin-bottom: 0;
 }
 
 .section-stats + .section-qualiopi,
 .section-stats + .sbi-qualiopi-section {
-    margin-top: -1px;
+    margin-top: -1.5rem;
 }
 
 /* --- SECTION 8 : NEWSLETTER --- */
