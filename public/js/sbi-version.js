@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.14',
+  version: '8.0P.15',
   branch: 'public-pjax-app-shell',
   channel: 'PUBLIC PJAX APP SHELL',
-  stage: 'Mobile diagonal alignment pass for clipped section cuts',
+  stage: 'Desktop Qualiopi pre-block light bridge removal',
   updatedAt: '2026-05-07',
-  label: 'SBI 8.0P.14 - MOBILE DIAGONAL ALIGNMENT PASS'
+  label: 'SBI 8.0P.15 - REMOVE DESKTOP QUALIOPI LIGHT BRIDGE'
 };
 
 export function getSbiVersionLabel() {
