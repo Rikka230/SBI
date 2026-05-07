@@ -89,14 +89,43 @@ if (shouldEnableAnalytics()) {
         });
 }
 
-/* --- 1.7 MÉDIAS DYNAMIQUES INDEX PUBLIC --- */
-const path = window.location.pathname.toLowerCase();
-const isPublicIndex = path === '/' || path.endsWith('/index.html') || path === '/index.html';
+/* --- 1.7 MÉDIAS DYNAMIQUES & SHELL PUBLIC --- */
+const path = window.location.pathname.toLowerCase().replace(/\/+$/, '') || '/';
+const publicShellPaths = new Set([
+    '/',
+    '/index.html',
+    '/login.html',
+    '/formations.html',
+    '/parcours.html',
+    '/a-propos.html',
+    '/ressources.html',
+    '/contact.html'
+]);
+const isPublicShellPage = publicShellPaths.has(path);
 
-if (isPublicIndex) {
+if (isPublicShellPage) {
     import('/js/site-index-public.js').catch((error) => {
-        console.warn('[SBI Index] Configuration médias dynamique indisponible :', error);
+        console.warn('[SBI Public] Configuration médias dynamique indisponible :', error);
     });
+
+    if (typeof window.initSbiPublicAppShell === 'function') {
+        window.initSbiPublicAppShell();
+    } else {
+        import('/js/public-app-shell.js')
+            .then((module) => {
+                if (typeof module.initSbiPublicAppShell === 'function') {
+                    module.initSbiPublicAppShell();
+                    return;
+                }
+
+                if (typeof window.initSbiPublicAppShell === 'function') {
+                    window.initSbiPublicAppShell();
+                }
+            })
+            .catch((error) => {
+                console.warn('[SBI Public Shell] Initialisation indisponible, navigation classique conservée :', error);
+            });
+    }
 }
 
 console.log("Firebase SBI initialisé avec succès : Cache actif");

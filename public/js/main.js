@@ -117,8 +117,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     visibleState.set(signal, true);
 
                     const isHeroSignal = signal.classList.contains('sbi-signal-hero');
-                    const delay = isHeroSignal ? 1900 : 1500;
-                    const duration = isHeroSignal ? 3900 : 3700;
+                    const isFounderSignal = signal.classList.contains('sbi-signal-founder');
+                    const delay = isHeroSignal ? 1900 : (isFounderSignal ? 350 : 1000);
+                    const duration = isHeroSignal ? 3900 : (isFounderSignal ? 6200 : 4300);
 
                     revealSignal(signal, duration, delay);
                 }
@@ -131,8 +132,8 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }, {
             root: null,
-            rootMargin: '-10% 0px -20% 0px',
-            threshold: 0.4
+            rootMargin: '-4% 0px -14% 0px',
+            threshold: 0.24
         });
 
         signals.forEach(signal => {

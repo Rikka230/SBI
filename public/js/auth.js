@@ -12,6 +12,9 @@
  * - Les interfaces privées sont masquées par CSS tant que body n'a pas
  *   la classe .auth-ready.
  * - auth.js ajoute .auth-ready uniquement après validation du rôle.
+ *
+ * SBI 8.0P.3 :
+ * - le formulaire login peut être remonté après une navigation PJAX publique.
  * =======================================================================
  */
 
@@ -27,13 +30,14 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 /* --- 1.1 ELEMENTS LOGIN --- */
-const loginForm = document.getElementById('login-form');
-const loginCard = document.getElementById('login-card');
-const loginSignal = document.querySelector('.sbi-signal-login');
-const submitButton = document.getElementById('login-submit');
-const submitLabel = submitButton?.querySelector('.login-submit-label');
-const errorMessage = document.getElementById('error-message');
+let loginForm = null;
+let loginCard = null;
+let loginSignal = null;
+let submitButton = null;
+let submitLabel = null;
+let errorMessage = null;
 
+const boundLoginForms = new WeakSet();
 let redirectInProgress = false;
 let loginSignalTimers = [];
 
@@ -62,6 +66,17 @@ const lockPrivateInterface = () => {
 };
 
 /* --- 1.4 HELPERS UI LOGIN --- */
+const refreshLoginElements = () => {
+    loginForm = document.getElementById('login-form');
+    loginCard = document.getElementById('login-card');
+    loginSignal = document.querySelector('.sbi-signal-login');
+    submitButton = document.getElementById('login-submit');
+    submitLabel = submitButton?.querySelector('.login-submit-label') || null;
+    errorMessage = document.getElementById('error-message');
+
+    return Boolean(loginForm);
+};
+
 const setSubmitLabel = (text) => {
     if (submitLabel) {
         submitLabel.textContent = text;
@@ -157,6 +172,7 @@ const setLoginSuccess = () => {
 };
 
 const setLoginError = (message) => {
+    refreshLoginElements();
     clearLoginStates();
 
     if (loginCard) {
@@ -277,14 +293,18 @@ const redirectTo = (targetUrl, useLoginFeedback = false) => {
     redirectInProgress = true;
     lockPrivateInterface();
 
-    if (useLoginFeedback && isLoginPage(currentPath) && loginCard) {
-        setLoginSuccess();
+    if (useLoginFeedback && isLoginPage(currentPath)) {
+        refreshLoginElements();
 
-        window.setTimeout(() => {
-            window.location.replace(targetUrl);
-        }, 650);
+        if (loginCard) {
+            setLoginSuccess();
 
-        return;
+            window.setTimeout(() => {
+                window.location.replace(targetUrl);
+            }, 650);
+
+            return;
+        }
     }
 
     window.location.replace(targetUrl);
@@ -295,9 +315,15 @@ const redirectToDashboard = (userData, useLoginFeedback = false) => {
 };
 
 /* --- 1.6 GESTION DU FORMULAIRE DE CONNEXION --- */
-if (loginForm) {
+const bindLoginForm = () => {
+    refreshLoginElements();
+
+    if (!loginForm || boundLoginForms.has(loginForm)) return false;
+    boundLoginForms.add(loginForm);
+
     loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
+        refreshLoginElements();
 
         const emailInput = document.getElementById('email');
         const passwordInput = document.getElementById('password');
@@ -327,7 +353,9 @@ if (loginForm) {
             setLoginError(getFirebaseErrorMessage(error));
         }
     });
-}
+
+    return true;
+};
 
 /* --- 1.7 VERIFICATION PROFIL FIRESTORE (Rôle + Statut) --- */
 const fetchUserData = async (uid) => {
@@ -367,6 +395,10 @@ const fetchUserData = async (uid) => {
 /* --- 1.8 ROUTE GUARD & REDIRECTIONS --- */
 const enforceSecurityPolicies = async (user, userData) => {
     const currentPath = normalizePath();
+
+    if (isLoginPage(currentPath)) {
+        refreshLoginElements();
+    }
 
     /*
      * Règle A :
@@ -429,6 +461,18 @@ const enforceSecurityPolicies = async (user, userData) => {
     releasePrivateInterface();
 };
 
+const enforceCurrentAuthState = async () => {
+    if (auth.currentUser) {
+        const userData = await fetchUserData(auth.currentUser.uid);
+        await enforceSecurityPolicies(auth.currentUser, userData);
+        return;
+    }
+
+    if (isLoginPage() || isPublicIndex()) {
+        releasePrivateInterface();
+    }
+};
+
 /* --- 1.9 OBSERVATEUR D'ETAT GLOBAL --- */
 onAuthStateChanged(auth, async (user) => {
     if (user) {
@@ -439,7 +483,27 @@ onAuthStateChanged(auth, async (user) => {
     }
 });
 
-/* --- 1.10 FONCTION DE DECONNEXION GLOBALE --- */
+/* --- 1.10 INIT PJAX LOGIN --- */
+const initSbiAuthPage = async () => {
+    refreshLoginElements();
+    bindLoginForm();
+    await enforceCurrentAuthState();
+
+    return {
+        loginMounted: Boolean(loginForm),
+        path: normalizePath()
+    };
+};
+
+window.SBI_INIT_AUTH_PAGE = initSbiAuthPage;
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initSbiAuthPage, { once: true });
+} else {
+    initSbiAuthPage();
+}
+
+/* --- 1.11 FONCTION DE DECONNEXION GLOBALE --- */
 export const logoutUser = () => {
     lockPrivateInterface();
 
@@ -449,3 +513,5 @@ export const logoutUser = () => {
         console.error("Erreur lors de la déconnexion :", error);
     });
 };
+
+export { initSbiAuthPage };

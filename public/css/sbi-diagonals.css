@@ -1,0 +1,523 @@
+/* =========================================================
+   SBI DIAGONAL SECTION DIVIDERS
+   - thin sport-tech cuts between home sections
+   - decorative, clipped per section, no horizontal scroll
+   ========================================================= */
+
+html,
+body {
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+main {
+    overflow: hidden;
+    overflow: clip;
+}
+
+.hero-section,
+.section-parcours,
+.section-why-sbi,
+.section-stats,
+.section-qualiopi,
+.sbi-qualiopi-section,
+.section-newsletter {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    overflow: clip;
+}
+
+.section-parcours > *,
+.section-why-sbi > *,
+.section-stats > *,
+.section-qualiopi > *,
+.sbi-qualiopi-section > *,
+.section-newsletter > * {
+    position: relative;
+    z-index: 1;
+}
+
+.hero-grid::before,
+.hero-grid::after {
+    content: "";
+    display: none;
+    position: absolute;
+    left: -18vw;
+    width: 136vw;
+    height: 18px;
+    z-index: 0;
+    pointer-events: none;
+    transform-origin: center;
+    background:
+        radial-gradient(circle at var(--sbi-hero-spark-x, 58%) 50%, rgba(255, 255, 255, 0.92) 0 2px, rgba(0, 81, 255, 0.72) 4px, transparent 11px),
+        linear-gradient(90deg, transparent, rgba(174, 218, 255, 0.24), rgba(255, 255, 255, 0.58), rgba(0, 81, 255, 0.88), transparent) center / 100% 1px no-repeat;
+    filter: drop-shadow(0 0 10px rgba(0, 81, 255, 0.5));
+}
+
+.hero-section::before,
+.section-parcours::before,
+.section-parcours::after,
+.section-why-sbi::before,
+.section-why-sbi::after,
+.section-stats::before,
+.section-qualiopi::before,
+.sbi-qualiopi-section::before,
+.section-newsletter::before,
+.section-newsletter::after {
+    content: "";
+    position: absolute;
+    left: -14vw;
+    width: 128vw;
+    height: 18px;
+    z-index: 0;
+    pointer-events: none;
+    opacity: var(--sbi-diagonal-opacity, 0.24);
+    transform: rotate(var(--sbi-diagonal-angle, -7deg));
+    transform-origin: center;
+    background:
+        radial-gradient(
+            circle at var(--sbi-diagonal-spark-x, 62%) var(--sbi-diagonal-spark-y, 50%),
+            rgba(255, 255, 255, 0.96) 0 2px,
+            rgba(178, 220, 255, 0.88) 3px,
+            rgba(0, 81, 255, 0.56) 5px,
+            transparent 11px
+        ) 0 0 / 100% 100% no-repeat,
+        linear-gradient(
+            90deg,
+            transparent 0%,
+            rgba(174, 218, 255, 0.18) 16%,
+            rgba(255, 255, 255, 0.56) 45%,
+            rgba(0, 81, 255, 0.92) 58%,
+            rgba(116, 180, 255, 0.28) 74%,
+            transparent 100%
+        ) center / 100% 1px no-repeat;
+    filter: drop-shadow(0 0 8px rgba(0, 81, 255, 0.42));
+}
+
+.hero-section::before {
+    --sbi-diagonal-angle: -8deg;
+    --sbi-diagonal-opacity: 0.3;
+    --sbi-diagonal-spark-x: 34%;
+    bottom: clamp(1.4rem, 4.5vw, 4.2rem);
+    z-index: 1;
+}
+
+.section-parcours::before {
+    --sbi-diagonal-angle: -7deg;
+    --sbi-diagonal-opacity: 0.26;
+    --sbi-diagonal-spark-x: 73%;
+    top: 0.4rem;
+}
+
+.section-parcours::after {
+    --sbi-diagonal-angle: 5deg;
+    --sbi-diagonal-opacity: 0.18;
+    --sbi-diagonal-spark-x: 28%;
+    bottom: clamp(1.2rem, 3.2vw, 2.8rem);
+}
+
+.section-stats::before {
+    --sbi-diagonal-angle: -5deg;
+    --sbi-diagonal-opacity: 0.22;
+    --sbi-diagonal-spark-x: 58%;
+    top: 0.75rem;
+}
+
+.section-why-sbi::before {
+    --sbi-diagonal-angle: -6deg;
+    --sbi-diagonal-opacity: 0.22;
+    --sbi-diagonal-spark-x: 34%;
+    top: 0.7rem;
+}
+
+.section-why-sbi::after {
+    --sbi-diagonal-angle: 6deg;
+    --sbi-diagonal-opacity: 0.16;
+    --sbi-diagonal-spark-x: 70%;
+    bottom: 0.8rem;
+}
+
+.section-newsletter {
+    padding-top: clamp(2.5rem, 5vw, 4rem);
+}
+
+.section-qualiopi::before,
+.sbi-qualiopi-section::before {
+    --sbi-diagonal-angle: -6deg;
+    --sbi-diagonal-opacity: 0.2;
+    --sbi-diagonal-spark-x: 54%;
+    top: 0.75rem;
+}
+
+.section-newsletter::before {
+    --sbi-diagonal-angle: 6deg;
+    --sbi-diagonal-opacity: 0.22;
+    --sbi-diagonal-spark-x: 76%;
+    top: 0.9rem;
+}
+
+.section-newsletter::after {
+    --sbi-diagonal-angle: -6deg;
+    --sbi-diagonal-opacity: 0.16;
+    --sbi-diagonal-spark-x: 48%;
+    bottom: 0.7rem;
+}
+
+@media (max-width: 1024px) {
+    .hero-grid::before,
+    .hero-grid::after {
+        display: block;
+    }
+
+    .hero-grid::before {
+        --sbi-hero-spark-x: 30%;
+        top: clamp(5.8rem, 22vw, 8.4rem);
+        opacity: 0.48;
+        transform: rotate(-42deg);
+    }
+
+    .hero-grid::after {
+        --sbi-hero-spark-x: 76%;
+        bottom: clamp(1.1rem, 4vw, 2.4rem);
+        opacity: 0.34;
+        transform: rotate(-8deg);
+    }
+
+    .section-parcours,
+    .section-why-sbi,
+    .section-stats,
+    .section-qualiopi,
+    .sbi-qualiopi-section,
+    .section-newsletter {
+        background:
+            linear-gradient(
+                180deg,
+                rgba(3, 7, 14, 0.96) 0%,
+                rgba(7, 12, 23, 0.9) 48%,
+                rgba(2, 5, 10, 0.97) 100%
+            );
+    }
+
+    .hero-section::before,
+    .section-parcours::before,
+    .section-parcours::after,
+    .section-why-sbi::before,
+    .section-why-sbi::after,
+    .section-stats::before,
+    .section-qualiopi::before,
+    .sbi-qualiopi-section::before,
+    .section-newsletter::before,
+    .section-newsletter::after {
+        left: -17vw;
+        width: 134vw;
+        height: 34px;
+        --sbi-diagonal-spark-y: 50%;
+        opacity: var(--sbi-diagonal-mobile-opacity, 0.46);
+        filter: drop-shadow(0 0 10px rgba(0, 81, 255, 0.5));
+    }
+
+    .hero-section::before {
+        --sbi-diagonal-mobile-opacity: 0.55;
+        bottom: 1.2rem;
+    }
+
+    .section-parcours::before {
+        --sbi-diagonal-mobile-opacity: 0.5;
+        top: 0.65rem;
+    }
+
+    .section-parcours::after {
+        --sbi-diagonal-mobile-opacity: 0.38;
+        bottom: 1rem;
+    }
+
+    .section-stats::before {
+        --sbi-diagonal-mobile-opacity: 0.5;
+        top: 1rem;
+    }
+
+    .section-why-sbi::before {
+        --sbi-diagonal-mobile-opacity: 0.5;
+        top: 0.9rem;
+    }
+
+    .section-why-sbi::after {
+        --sbi-diagonal-mobile-opacity: 0.36;
+        bottom: 0.75rem;
+    }
+
+    .section-newsletter::before {
+        --sbi-diagonal-mobile-opacity: 0.48;
+        top: 0.8rem;
+    }
+
+    .section-qualiopi::before,
+    .sbi-qualiopi-section::before {
+        --sbi-diagonal-mobile-opacity: 0.46;
+        top: 0.8rem;
+    }
+
+    .section-newsletter::after {
+        --sbi-diagonal-mobile-opacity: 0.34;
+        bottom: 0.55rem;
+    }
+}
+
+@media (max-width: 560px) {
+    .hero-section::before,
+    .section-parcours::before,
+    .section-parcours::after,
+    .section-why-sbi::before,
+    .section-why-sbi::after,
+    .section-stats::before,
+    .section-qualiopi::before,
+    .sbi-qualiopi-section::before,
+    .section-newsletter::before,
+    .section-newsletter::after {
+        left: -20vw;
+        width: 140vw;
+    }
+
+    .section-newsletter {
+        padding-top: 3rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .hero-section::before,
+    .section-parcours::before,
+    .section-parcours::after,
+    .section-why-sbi::before,
+    .section-why-sbi::after,
+    .section-stats::before,
+    .section-qualiopi::before,
+    .sbi-qualiopi-section::before,
+    .section-newsletter::before,
+    .section-newsletter::after {
+        transition: none;
+    }
+}
+
+/* Annotation pass: one diagonal per transition, and the panel itself follows it. */
+@media (max-width: 768px) {
+    .hero-section::before,
+    .hero-grid::after,
+    .section-parcours::after,
+    .section-why-sbi::after,
+    .section-newsletter::after {
+        content: none;
+        display: none;
+    }
+
+    .section-parcours,
+    .section-why-sbi,
+    .section-stats,
+    .section-qualiopi,
+    .sbi-qualiopi-section,
+    .section-newsletter {
+        margin-top: -34px;
+        clip-path: polygon(0 34px, 100% 0, 100% 100%, 0 100%);
+    }
+
+    .section-parcours {
+        z-index: 2;
+    }
+
+    .section-why-sbi {
+        z-index: 3;
+    }
+
+    .section-stats {
+        z-index: 4;
+    }
+
+    .section-qualiopi,
+    .sbi-qualiopi-section {
+        z-index: 5;
+    }
+
+    .section-newsletter {
+        z-index: 6;
+    }
+
+    .section-parcours {
+        padding-top: calc(var(--space-xl) + 34px);
+    }
+
+    .section-why-sbi {
+        padding-top: 5.4rem;
+    }
+
+    .section-stats {
+        padding-top: 4.2rem;
+    }
+
+    .section-qualiopi,
+    .sbi-qualiopi-section {
+        padding-top: 4.6rem;
+    }
+
+    .section-newsletter {
+        padding-top: 4.6rem;
+    }
+
+    .section-parcours::before,
+    .section-why-sbi::before,
+    .section-stats::before,
+    .section-qualiopi::before,
+    .sbi-qualiopi-section::before,
+    .section-newsletter::before {
+        z-index: 20;
+        top: 1px;
+        pointer-events: none;
+        transform: rotate(-5deg);
+        mix-blend-mode: screen;
+    }
+}
+
+@keyframes sbiDiagonalSparkle {
+    0%,
+    100% {
+        filter: drop-shadow(0 0 9px rgba(0, 81, 255, 0.42));
+        opacity: var(--sbi-diagonal-mobile-opacity, 0.46);
+    }
+
+    42% {
+        filter:
+            drop-shadow(0 0 12px rgba(154, 211, 255, 0.52))
+            drop-shadow(0 0 18px rgba(0, 81, 255, 0.62));
+        opacity: min(0.68, calc(var(--sbi-diagonal-mobile-opacity, 0.46) + 0.14));
+    }
+
+    55% {
+        filter: drop-shadow(0 0 7px rgba(0, 81, 255, 0.34));
+    }
+}
+
+@media (max-width: 768px) and (prefers-reduced-motion: no-preference) {
+    .section-parcours::before,
+    .section-why-sbi::before,
+    .section-stats::before,
+    .section-qualiopi::before,
+    .sbi-qualiopi-section::before,
+    .section-newsletter::before {
+        animation: sbiDiagonalSparkle 4.2s ease-in-out infinite;
+    }
+
+    .section-why-sbi::before {
+        animation-delay: 0.45s;
+    }
+
+    .section-stats::before {
+        animation-delay: 0.9s;
+    }
+
+    .section-qualiopi::before,
+    .sbi-qualiopi-section::before {
+        animation-delay: 1.25s;
+    }
+
+    .section-newsletter::before {
+        animation-delay: 1.7s;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .section-parcours::before,
+    .section-why-sbi::before,
+    .section-stats::before,
+    .section-qualiopi::before,
+    .sbi-qualiopi-section::before,
+    .section-newsletter::before {
+        animation: none;
+    }
+}
+
+/* Final mobile-only overlay pass:
+   all section pseudo diagonals are disabled so desktop stays clean and
+   mobile glows are drawn once, above every panel, without being clipped. */
+.hero-grid::before,
+.hero-grid::after,
+.hero-section::before,
+.section-parcours::before,
+.section-parcours::after,
+.section-why-sbi::before,
+.section-why-sbi::after,
+.section-stats::before,
+.section-qualiopi::before,
+.sbi-qualiopi-section::before,
+.section-newsletter::before,
+.section-newsletter::after {
+    content: none !important;
+    display: none !important;
+}
+
+.sbi-diagonal-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 80;
+    display: none;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.sbi-diagonal-overlay__line {
+    position: absolute;
+    left: -20vw;
+    width: 140vw;
+    height: 34px;
+    pointer-events: none;
+    opacity: var(--sbi-diagonal-overlay-opacity, 0.54);
+    transform: rotate(-5deg);
+    transform-origin: center;
+    mix-blend-mode: screen;
+    background:
+        radial-gradient(
+            circle at var(--sbi-diagonal-overlay-spark-x, 62%) 50%,
+            rgba(255, 255, 255, 0.98) 0 2px,
+            rgba(178, 220, 255, 0.94) 3px,
+            rgba(0, 81, 255, 0.68) 5px,
+            transparent 12px
+        ) 0 0 / 100% 100% no-repeat,
+        linear-gradient(
+            90deg,
+            transparent 0%,
+            rgba(174, 218, 255, 0.18) 16%,
+            rgba(255, 255, 255, 0.52) 45%,
+            rgba(0, 81, 255, 0.92) 58%,
+            rgba(116, 180, 255, 0.28) 74%,
+            transparent 100%
+        ) center / 100% 1px no-repeat;
+    filter:
+        drop-shadow(0 0 10px rgba(0, 81, 255, 0.54))
+        drop-shadow(0 0 18px rgba(0, 81, 255, 0.22));
+}
+
+@media (max-width: 768px) {
+    main {
+        position: relative;
+    }
+
+    .sbi-diagonal-overlay {
+        display: block;
+    }
+}
+
+@media (min-width: 769px) {
+    .sbi-diagonal-overlay {
+        display: none !important;
+    }
+}
+
+@media (max-width: 768px) and (prefers-reduced-motion: no-preference) {
+    .sbi-diagonal-overlay__line {
+        animation: sbiDiagonalSparkle 4.2s ease-in-out infinite;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sbi-diagonal-overlay__line {
+        animation: none;
+    }
+}

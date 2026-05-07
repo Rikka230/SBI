@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0M.11',
-  branch: 'pjax-app-shell-test',
-  channel: 'PJAX APP SHELL TEST',
-  stage: 'Pre-PR cleanup diagnostics - viewer reload protected',
-  updatedAt: '2026-04-29',
-  label: 'SBI 8.0M.11 - PJAX APP SHELL TEST'
+  version: '8.0P.9',
+  branch: 'public-pjax-app-shell',
+  channel: 'PUBLIC PJAX APP SHELL',
+  stage: 'Public aid calculator foundation',
+  updatedAt: '2026-05-06',
+  label: 'SBI 8.0P.9 - PUBLIC AID CALCULATOR FOUNDATION'
 };
 
 export function getSbiVersionLabel() {
