@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.9 - Public pages foundation
+ * SBI 8.0P.10b - Public mobile performance safe pass
  *
  * Shell public prudent :
  * - navigation fluide des ancres de l'index ;
@@ -8,7 +8,7 @@
  * - espaces admin/student/teacher et viewers toujours protégés en reload.
  */
 
-const PUBLIC_SHELL_VERSION = '8.0P.9';
+const PUBLIC_SHELL_VERSION = '8.0P.10b';
 const DISABLED_FLAG = 'sbiPublicShellDisabled';
 const READY_CLASS = 'sbi-public-shell-ready';
 const SCROLLING_CLASS = 'sbi-public-shell-scrolling';
@@ -449,12 +449,14 @@ async function runPageInitializers(pageId) {
     console.warn('[SBI Public Shell] Init front public indisponible :', error);
   }
 
-  try {
-    const mediaModule = await import('/js/site-index-public.js');
-    const initMedia = mediaModule.initSiteIndexMedia || window.SBI_INIT_SITE_INDEX_MEDIA;
-    if (typeof initMedia === 'function') await initMedia();
-  } catch (error) {
-    console.warn('[SBI Public Shell] Médias publics indisponibles après PJAX :', error);
+  if (pageId === 'home') {
+    try {
+      const mediaModule = await import('/js/site-index-public.js');
+      const initMedia = mediaModule.initSiteIndexMedia || window.SBI_INIT_SITE_INDEX_MEDIA;
+      if (typeof initMedia === 'function') await initMedia();
+    } catch (error) {
+      console.warn('[SBI Public Shell] Médias publics indisponibles après PJAX :', error);
+    }
   }
 
   if (pageId === 'login') {
@@ -483,7 +485,7 @@ async function runPageInitializers(pageId) {
       const initPublicPages = publicPagesModule.initSbiPublicPages || window.SBI_INIT_PUBLIC_PAGES;
       if (typeof initPublicPages === 'function') initPublicPages(document);
     } catch (error) {
-      console.warn('[SBI Public Shell] Pages publiques indisponibles apres PJAX :', error);
+      console.warn('[SBI Public Shell] Pages publiques indisponibles après PJAX :', error);
     }
   }
 }

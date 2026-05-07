@@ -137,13 +137,7 @@
 
 @media (max-width: 768px) {
     .fade-in,
-    .shard,
-    .shard-glint,
     .signature-text,
-    .sbi-signal,
-    .sbi-signal *,
-    .sbi-signal::before,
-    .sbi-signal::after,
     .sbi-diagonal-overlay__line,
     .sbi-diagonal-overlay__line::before,
     .sbi-diagonal-overlay__line::after,
@@ -154,6 +148,25 @@
     .quote-mark {
         animation: none !important;
         transition-duration: 0.01ms !important;
+    }
+
+
+    /* 8.0P.10b : on garde les animations mobiles légères qui signent la DA SBI.
+       Les éclats de verre et les signaux/assistants restent actifs, tandis que
+       les particules et la parallaxe lourde restent coupées. */
+    .shard,
+    .shard-glint,
+    .shard-glint::before,
+    .shard-glint::after,
+    .sbi-signal,
+    .sbi-signal-dot,
+    .sbi-signal-dot::before,
+    .sbi-signal-dot::after {
+        will-change: transform, opacity;
+    }
+
+    .shard {
+        transform: translateZ(0);
     }
 
     #parallax-lines,
@@ -818,5 +831,19 @@
     .site-header.is-mobile-menu-open .header-actions .nav-link,
     .site-header.is-mobile-menu-open .header-actions .btn-primary {
         min-height: 48px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .shard,
+    .shard-glint,
+    .shard-glint::before,
+    .shard-glint::after,
+    .sbi-signal,
+    .sbi-signal *,
+    .sbi-signal::before,
+    .sbi-signal::after {
+        animation: none !important;
+        transition-duration: 0.01ms !important;
     }
 }

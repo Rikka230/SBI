@@ -1,6 +1,3 @@
-import { db } from '/js/firebase-init.js';
-import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
-
 const EMPTY_MEDIA = {
   heroVideoWebmUrl: '',
   heroVideoMp4Url: '',
@@ -12,12 +9,27 @@ const EMPTY_MEDIA = {
 
 const MEDIA_CACHE_KEY = 'sbi:siteIndexMedia:v1';
 const MEDIA_CACHE_TTL_MS = 5 * 60 * 1000;
-const QUALIOPI_CSS_HREF = '/css/sbi-qualiopi.css?v=8.0P.7';
+const QUALIOPI_CSS_HREF = '/css/sbi-qualiopi.css?v=8.0P.10b';
 const QUALIOPI_SECTION_ID = 'qualiopi';
 const LOCAL_BRAND_MEDIA = {
   logo: '/assets/Logo_SBI_Tome.webp',
   brand: '/assets/sbi_brand.webp'
 };
+
+let siteIndexMediaInitPromise = null;
+
+
+async function loadSiteIndexSettingsFromFirestore() {
+  const firebase = await import('/js/firebase-init.js');
+  const firestore = await import('https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js');
+
+  if (!firebase.db || !firestore.doc || !firestore.getDoc) {
+    throw new Error('Firestore indisponible');
+  }
+
+  const snap = await firestore.getDoc(firestore.doc(firebase.db, 'settings', 'siteIndex'));
+  return snap.exists() ? sanitizeSettings(snap.data()) : EMPTY_MEDIA;
+}
 
 function isLegacyLocalMediaUrl(value) {
   if (typeof value !== 'string') return false;
@@ -248,33 +260,38 @@ function applySettings(settings) {
 }
 
 async function initSiteIndexMedia() {
-  ensureFounderCleanStyles();
-  ensureQualiopiTrustBlock();
-  applyLocalBrandMedia();
+  if (siteIndexMediaInitPromise) return siteIndexMediaInitPromise;
 
-  const cachedSettings = readCachedSettings();
-  if (cachedSettings) {
-    applySettings(cachedSettings);
-  }
+  siteIndexMediaInitPromise = (async () => {
+    ensureFounderCleanStyles();
+    ensureQualiopiTrustBlock();
+    applyLocalBrandMedia();
 
-  try {
-    const snap = await getDoc(doc(db, 'settings', 'siteIndex'));
-    const settings = snap.exists() ? sanitizeSettings(snap.data()) : EMPTY_MEDIA;
-    writeCachedSettings(settings);
+    const cachedSettings = readCachedSettings();
+    if (cachedSettings) {
+      applySettings(cachedSettings);
+    }
 
-    if (!cachedSettings || settingsSignature(cachedSettings) !== settingsSignature(settings)) {
-      applySettings(settings);
-    } else {
+    try {
+      const settings = await loadSiteIndexSettingsFromFirestore();
+      writeCachedSettings(settings);
+
+      if (!cachedSettings || settingsSignature(cachedSettings) !== settingsSignature(settings)) {
+        applySettings(settings);
+      } else {
+        ensureQualiopiTrustBlock();
+        document.body.classList.add('is-site-index-media-ready');
+      }
+    } catch (error) {
       ensureQualiopiTrustBlock();
       document.body.classList.add('is-site-index-media-ready');
+      if (!cachedSettings) {
+        console.warn('[SBI Index] Médias dynamiques indisponibles. Aucun fallback lourd local chargé.', error);
+      }
     }
-  } catch (error) {
-    ensureQualiopiTrustBlock();
-    document.body.classList.add('is-site-index-media-ready');
-    if (!cachedSettings) {
-      console.warn('[SBI Index] Médias dynamiques indisponibles. Aucun fallback lourd local chargé.', error);
-    }
-  }
+  })();
+
+  return siteIndexMediaInitPromise;
 }
 
 window.SBI_INIT_SITE_INDEX_MEDIA = initSiteIndexMedia;

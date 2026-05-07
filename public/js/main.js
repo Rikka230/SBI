@@ -123,7 +123,9 @@
         const signals = Array.from(root.querySelectorAll('.sbi-signal'))
             .filter((signal) => signal.dataset.sbiSignalReady !== 'true');
 
-        if (!signals.length || window.matchMedia(MOBILE_MEDIA).matches) return;
+        if (!signals.length || window.matchMedia(REDUCED_MOTION_MEDIA).matches) return;
+
+        const isMobile = window.matchMedia(MOBILE_MEDIA).matches;
 
         const visibleState = new WeakMap();
         const timers = new WeakMap();
@@ -173,8 +175,12 @@
 
                     const isHeroSignal = signal.classList.contains('sbi-signal-hero');
                     const isFounderSignal = signal.classList.contains('sbi-signal-founder');
-                    const delay = isHeroSignal ? 1900 : (isFounderSignal ? 350 : 1000);
-                    const duration = isHeroSignal ? 3900 : (isFounderSignal ? 6200 : 4300);
+                    const delay = isMobile
+                        ? (isHeroSignal ? 850 : (isFounderSignal ? 220 : 650))
+                        : (isHeroSignal ? 1900 : (isFounderSignal ? 350 : 1000));
+                    const duration = isMobile
+                        ? (isHeroSignal ? 4200 : (isFounderSignal ? 5200 : 3600))
+                        : (isHeroSignal ? 3900 : (isFounderSignal ? 6200 : 4300));
 
                     revealSignal(signal, duration, delay);
                 }
@@ -187,8 +193,8 @@
             });
         }, {
             root: null,
-            rootMargin: '-4% 0px -14% 0px',
-            threshold: 0.24
+            rootMargin: isMobile ? '-2% 0px -10% 0px' : '-4% 0px -14% 0px',
+            threshold: isMobile ? 0.18 : 0.24
         });
 
         signals.forEach((signal) => {

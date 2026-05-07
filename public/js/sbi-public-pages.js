@@ -1,28 +1,26 @@
-const FIRESTORE_SDK_URL = 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
-
 const FORMATION_FALLBACKS = [
   {
     titre: 'Marketing & Communication',
     categorie: 'Catalogue SBI',
-    description: 'Construire une marque sportive, piloter une campagne et valoriser une communaute.',
+    description: 'Construire une marque sportive, piloter une campagne et valoriser une communauté.',
     duree: '12 modules'
   },
   {
     titre: 'Management & Leadership',
     categorie: 'Catalogue SBI',
-    description: 'Manager une equipe, cadrer un projet et prendre les bonnes decisions sous pression.',
+    description: 'Manager une équipe, cadrer un projet et prendre les bonnes décisions sous pression.',
     duree: '9 modules'
   },
   {
-    titre: 'Evenementiel sportif',
+    titre: 'Événementiel sportif',
     categorie: 'Catalogue SBI',
-    description: 'Concevoir, produire et securiser une experience sportive de bout en bout.',
+    description: 'Concevoir, produire et sécuriser une expérience sportive de bout en bout.',
     duree: '8 modules'
   },
   {
     titre: 'Digital & Innovation',
     categorie: 'Catalogue SBI',
-    description: 'Utiliser les outils numeriques, la data et les nouveaux formats pour accelerer.',
+    description: 'Utiliser les outils numériques, la data et les nouveaux formats pour accélérer.',
     duree: '10 modules'
   }
 ];
@@ -36,28 +34,23 @@ const BROCHURE_FALLBACKS = [
   {
     titre: 'Guide alternance & aide',
     type: 'Entreprise',
-    description: 'Les reperes essentiels pour preparer un recrutement en alternance.'
+    description: 'Les repères essentiels pour préparer un recrutement en alternance.'
   },
   {
     titre: 'Programme Bac / RNCP Niveau 4',
     type: 'Formation',
-    description: 'Le cadre de formation SBI centre sur le Bac / RNCP Niveau 4.'
+    description: 'Le cadre de formation SBI centré sur le Bac / RNCP Niveau 4.'
   },
   {
     titre: 'Fiche accompagnement',
     type: 'Conseil',
-    description: 'Comment SBI accompagne candidats et entreprises avant, pendant et apres.'
+    description: 'Comment SBI accompagne candidats et entreprises avant, pendant et après.'
   }
 ];
 
 function text(value, fallback = '') {
   if (value === null || value === undefined) return fallback;
   return String(value).trim() || fallback;
-}
-
-function pick(source = {}, keys = [], fallback = '') {
-  const key = keys.find((candidate) => text(source[candidate]));
-  return key ? text(source[key], fallback) : fallback;
 }
 
 function setStatus(root, selector, message) {
@@ -94,86 +87,26 @@ function createCard(item, options = {}) {
   return article;
 }
 
-async function loadFirestoreCollection(collectionName) {
-  const firebase = await import('/js/firebase-init.js');
-  const firestore = await import(FIRESTORE_SDK_URL);
-
-  if (!firebase.db || !firestore.getDocs || !firestore.collection) {
-    throw new Error('Firestore indisponible');
-  }
-
-  const snap = await firestore.getDocs(firestore.collection(firebase.db, collectionName));
-  return snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-}
-
-function normalizeFormation(doc = {}) {
-  return {
-    id: doc.id,
-    titre: pick(doc, ['titre', 'title', 'name'], 'Formation SBI'),
-    categorie: pick(doc, ['categorie', 'category', 'type'], 'Bac / RNCP Niveau 4'),
-    description: pick(doc, ['description', 'resume', 'summary'], 'Formation SBI en cours de publication.'),
-    duree: pick(doc, ['duree', 'duration'], 'SBI'),
-    visible: doc.visible !== false && doc.isPublic !== false && doc.public !== false
-  };
-}
-
-function normalizeBrochure(doc = {}) {
-  return {
-    id: doc.id,
-    titre: pick(doc, ['titre', 'title', 'name'], 'Brochure SBI'),
-    type: pick(doc, ['type', 'categorie', 'category'], 'Brochure'),
-    description: pick(doc, ['description', 'resume', 'summary'], 'Document SBI en cours de publication.'),
-    url: pick(doc, ['url', 'fileUrl', 'downloadUrl'], '')
-  };
-}
-
-async function initFormationsPage(root) {
+function initFormationsPage(root) {
   const grid = root.querySelector('[data-sbi-formations-feed]');
   if (!grid || grid.dataset.sbiFeedReady === 'true') return;
 
   grid.dataset.sbiFeedReady = 'true';
-  setStatus(root, '[data-sbi-formations-status]', 'Connexion au catalogue Firebase preparee.');
-
-  try {
-    const docs = (await loadFirestoreCollection('formations'))
-      .map(normalizeFormation)
-      .filter((item) => item.visible);
-
-    if (!docs.length) throw new Error('Aucune formation publique disponible');
-
-    grid.replaceChildren(...docs.map((item) => createCard(item)));
-    setStatus(root, '[data-sbi-formations-status]', `${docs.length} formation(s) chargee(s) depuis Firebase.`);
-  } catch (error) {
-    grid.replaceChildren(...FORMATION_FALLBACKS.map((item) => createCard(item)));
-    setStatus(root, '[data-sbi-formations-status]', 'Affichage du catalogue SBI de base. Firebase alimentera cette zone des que les donnees publiques seront disponibles.');
-  }
+  grid.replaceChildren(...FORMATION_FALLBACKS.map((item) => createCard(item)));
+  setStatus(root, '[data-sbi-formations-status]', 'Catalogue SBI de base affiché. La connexion back-office/Firebase sera branchée plus tard.');
 }
 
-async function initBrochuresPage(root) {
+function initBrochuresPage(root) {
   const grid = root.querySelector('[data-sbi-brochures-feed]');
   if (!grid || grid.dataset.sbiFeedReady === 'true') return;
 
   grid.dataset.sbiFeedReady = 'true';
-  setStatus(root, '[data-sbi-brochures-status]', 'Connexion brochures Firebase preparee.');
-
-  try {
-    const docs = (await loadFirestoreCollection('brochures')).map(normalizeBrochure);
-    if (!docs.length) throw new Error('Aucune brochure publique disponible');
-
-    grid.replaceChildren(...docs.map((item) => createCard(item, {
-      className: 'public-resource-card fade-in visible',
-      linkHref: item.url || `contact.html?brochure=${encodeURIComponent(item.id || item.titre)}`,
-      linkLabel: item.url ? 'Ouvrir la brochure ->' : 'Demander la brochure ->'
-    })));
-    setStatus(root, '[data-sbi-brochures-status]', `${docs.length} brochure(s) chargee(s) depuis Firebase.`);
-  } catch (error) {
-    grid.replaceChildren(...BROCHURE_FALLBACKS.map((item) => createCard(item, {
-      className: 'public-resource-card fade-in visible',
-      linkHref: `contact.html?brochure=${encodeURIComponent(item.titre)}`,
-      linkLabel: 'Demander la brochure ->'
-    })));
-    setStatus(root, '[data-sbi-brochures-status]', 'Brochures de base affichees. La collection Firebase "brochures" pourra prendre le relais.');
-  }
+  grid.replaceChildren(...BROCHURE_FALLBACKS.map((item) => createCard(item, {
+    className: 'public-resource-card fade-in visible',
+    linkHref: `contact.html?brochure=${encodeURIComponent(item.titre)}`,
+    linkLabel: 'Demander la brochure ->'
+  })));
+  setStatus(root, '[data-sbi-brochures-status]', 'Brochures SBI de base affichées. La connexion back-office/Firebase sera branchée plus tard.');
 }
 
 function buildBrevoPayload(form) {
@@ -236,7 +169,7 @@ function initContactForm(root) {
 
   if (message && !message.value && params.has('montant')) {
     message.value = [
-      `Montant estime : ${text(params.get('montant'))}`,
+      `Montant estimé : ${text(params.get('montant'))}`,
       `Statut : ${text(params.get('statut'))}`,
       `Formation : ${text(params.get('formation'))}`
     ].join('\n');
@@ -253,10 +186,10 @@ function initContactForm(root) {
     try {
       const result = await submitBrevoPayload(form, payload);
       setMessage(result.mode === 'sent'
-        ? 'Demande envoyee. Un conseiller SBI revient vers vous.'
-        : 'Demande preparee. La connexion Brevo devra etre branchee cote serveur.');
+        ? 'Demande envoyée. Un conseiller SBI revient vers vous.'
+        : 'Demande préparée. La connexion Brevo devra être branchée côté serveur.');
     } catch (error) {
-      setMessage('La demande est preparee, mais l\'envoi Brevo n\'est pas disponible pour le moment.');
+      setMessage('La demande est préparée, mais l\'envoi Brevo n\'est pas disponible pour le moment.');
     }
   });
 }

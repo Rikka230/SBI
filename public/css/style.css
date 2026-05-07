@@ -1,6 +1,6 @@
-@import url('./sbi-background.css');
-@import url('./sbi-signals.css');
-@import url('./sbi-mobile.css');
+@import url('./sbi-background.css?v=8.0P.10b');
+@import url('./sbi-signals.css?v=8.0P.10b');
+@import url('./sbi-mobile.css?v=8.0P.10b');
 
 /* --- SECTION 1 : VARIABLES & TYPOGRAPHIE --- */
 :root {
