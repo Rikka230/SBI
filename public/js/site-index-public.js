@@ -9,7 +9,7 @@ const EMPTY_MEDIA = {
 
 const MEDIA_CACHE_KEY = 'sbi:siteIndexMedia:v1';
 const MEDIA_CACHE_TTL_MS = 5 * 60 * 1000;
-const QUALIOPI_CSS_HREF = '/css/sbi-qualiopi.css?v=8.0P.18';
+const QUALIOPI_CSS_HREF = '/css/sbi-qualiopi.css?v=8.0P.19';
 const QUALIOPI_SECTION_ID = 'qualiopi';
 const LOCAL_BRAND_MEDIA = {
   logo: '/assets/Logo_SBI_Tome.webp',

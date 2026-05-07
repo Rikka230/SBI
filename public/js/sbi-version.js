@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.18',
+  version: '8.0P.19',
   branch: 'public-pjax-app-shell',
   channel: 'PUBLIC PJAX APP SHELL',
-  stage: 'Qualiopi section background corner lights repositioned',
+  stage: 'Desktop light layer moved below into Qualiopi-newsletter underlay',
   updatedAt: '2026-05-07',
-  label: 'SBI 8.0P.18 - QUALIOPI SECTION BACKGROUND CORNER LIGHTS'
+  label: 'SBI 8.0P.19 - QUALIOPI/NEWSLETTER UNDERLAY LIGHT FIX'
 };
 
 export function getSbiVersionLabel() {

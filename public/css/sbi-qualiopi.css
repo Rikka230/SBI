@@ -1,12 +1,12 @@
 /* =======================================================================
- * SBI 8.0P.18 - Bloc Qualiopi index public
+ * SBI 8.0P.19 - Bloc Qualiopi index public
  * Usage institutionnel : logo conserve tel quel, texte sobre, sans badges.
  * ======================================================================= */
 
 .section-qualiopi {
     position: relative;
     z-index: 2;
-    overflow: visible;
+    overflow: hidden;
     padding-top: clamp(0.9rem, 2vw, 1.6rem);
     padding-bottom: clamp(3rem, 5.5vw, 5rem);
     background: transparent;
@@ -14,37 +14,10 @@
 
 .section-qualiopi::before,
 .section-qualiopi::after {
-    content: "";
-    position: absolute;
-    z-index: 0;
-    pointer-events: none;
-    width: clamp(280px, 28vw, 470px);
-    height: clamp(180px, 18vw, 300px);
-    bottom: clamp(-36px, -2.8vw, -20px);
-    opacity: 0.95;
+    content: none !important;
+    display: none !important;
 }
 
-.section-qualiopi::before {
-    left: clamp(-44px, -2.8vw, -12px);
-    background: radial-gradient(
-        ellipse at 0% 100%,
-        rgba(0, 81, 255, 0.30) 0%,
-        rgba(0, 81, 255, 0.16) 28%,
-        rgba(0, 81, 255, 0.06) 52%,
-        transparent 76%
-    );
-}
-
-.section-qualiopi::after {
-    right: clamp(-58px, -3.8vw, -18px);
-    background: radial-gradient(
-        ellipse at 100% 100%,
-        rgba(0, 81, 255, 0.26) 0%,
-        rgba(0, 81, 255, 0.14) 28%,
-        rgba(226, 0, 26, 0.04) 48%,
-        transparent 76%
-    );
-}
 
 .qualiopi-shell {
     position: relative;
@@ -221,22 +194,6 @@
     .section-qualiopi {
         padding-top: 3rem;
         padding-bottom: 3rem;
-    }
-
-    .section-qualiopi::before,
-    .section-qualiopi::after {
-        width: 240px;
-        height: 150px;
-        bottom: -12px;
-        opacity: 0.72;
-    }
-
-    .section-qualiopi::before {
-        left: -24px;
-    }
-
-    .section-qualiopi::after {
-        right: -24px;
     }
 
     .qualiopi-shell {
