@@ -9,6 +9,9 @@
     ];
     const sparkPositions = ['32%', '34%', '58%', '74%', '48%'];
     let frame = 0;
+    let resizeObserver = null;
+    let mutationObserver = null;
+    const observedSections = new WeakSet();
 
     const getMain = () => document.querySelector('main');
 
@@ -54,10 +57,11 @@
 
         const overlay = ensureOverlay(main);
         const mainTop = main.getBoundingClientRect().top + window.scrollY;
+        const sections = getUniqueSections();
 
         overlay.replaceChildren();
 
-        getUniqueSections().forEach((section, index) => {
+        sections.forEach((section, index) => {
             const rect = section.getBoundingClientRect();
             const top = rect.top + window.scrollY - mainTop;
             const line = document.createElement('span');
@@ -70,6 +74,8 @@
 
             overlay.appendChild(line);
         });
+
+        observeLayout(main, sections);
     };
 
     const scheduleRender = () => {
@@ -77,10 +83,43 @@
         frame = window.requestAnimationFrame(renderOverlay);
     };
 
+    const observeLayout = (main, sections) => {
+        if (window.ResizeObserver && !resizeObserver) {
+            resizeObserver = new ResizeObserver(scheduleRender);
+            resizeObserver.observe(main);
+        }
+
+        if (resizeObserver) {
+            sections.forEach((section) => {
+                if (observedSections.has(section)) return;
+                observedSections.add(section);
+                resizeObserver.observe(section);
+            });
+        }
+
+        if (!mutationObserver) {
+            mutationObserver = new MutationObserver((mutations) => {
+                const onlyOverlayChanged = mutations.every((mutation) => {
+                    const target = mutation.target;
+                    return target instanceof Element && target.closest('.sbi-diagonal-overlay');
+                });
+
+                if (!onlyOverlayChanged) scheduleRender();
+            });
+            mutationObserver.observe(main, {
+                childList: true,
+                subtree: true,
+                attributes: true,
+                attributeFilter: ['class', 'style', 'src']
+            });
+        }
+    };
+
     const init = () => {
         scheduleRender();
         window.addEventListener('resize', scheduleRender, { passive: true });
         window.addEventListener('orientationchange', scheduleRender, { passive: true });
+        window.addEventListener('load', scheduleRender, { once: true });
 
         document.querySelectorAll('img').forEach((img) => {
             if (!img.complete) img.addEventListener('load', scheduleRender, { once: true });
@@ -89,6 +128,10 @@
         if (document.fonts?.ready) {
             document.fonts.ready.then(scheduleRender).catch(() => {});
         }
+
+        [80, 180, 360, 720, 1200, 2000].forEach((delay) => {
+            window.setTimeout(scheduleRender, delay);
+        });
     };
 
     mobileQuery.addEventListener?.('change', scheduleRender);

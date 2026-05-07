@@ -4,37 +4,95 @@
  * =======================================================================
  */
 
-document.addEventListener('DOMContentLoaded', () => {
+(function () {
+    const MOBILE_MEDIA = '(max-width: 768px)';
+    const REDUCED_MOTION_MEDIA = '(prefers-reduced-motion: reduce)';
 
-    /* --- SECTION 1 : ANIMATION D'APPARITION AU SCROLL --- */
-    const initScrollAnimations = () => {
-        const observerOptions = {
+    function initMobileMenu(root = document) {
+        const doc = root.ownerDocument || document;
+        const header = doc.querySelector('.site-header');
+        const toggle = doc.querySelector('.mobile-menu-toggle');
+
+        if (!header || !toggle || header.dataset.sbiMobileMenuReady === 'true') return;
+
+        header.dataset.sbiMobileMenuReady = 'true';
+        toggle.setAttribute('aria-expanded', 'false');
+        toggle.setAttribute('aria-controls', 'sbi-mobile-menu');
+        header.setAttribute('id', header.id || 'sbi-mobile-menu');
+
+        const setMenuOpen = (isOpen) => {
+            header.classList.toggle('is-mobile-menu-open', isOpen);
+            doc.body.classList.toggle('sbi-mobile-menu-open', isOpen);
+            toggle.classList.toggle('is-active', isOpen);
+            toggle.setAttribute('aria-expanded', String(isOpen));
+            toggle.setAttribute('aria-label', isOpen ? 'Fermer le menu' : 'Ouvrir le menu');
+        };
+
+        toggle.addEventListener('click', () => {
+            setMenuOpen(!header.classList.contains('is-mobile-menu-open'));
+        });
+
+        header.addEventListener('click', (event) => {
+            const link = event.target.closest?.('.main-nav a, .header-actions a');
+            if (link) setMenuOpen(false);
+        });
+
+        doc.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') setMenuOpen(false);
+        });
+
+        window.addEventListener('resize', () => {
+            if (!window.matchMedia(MOBILE_MEDIA).matches) setMenuOpen(false);
+        }, { passive: true });
+    }
+
+    function initScrollAnimations(root = document) {
+        const elementsToAnimate = Array.from(root.querySelectorAll('.fade-in'))
+            .filter((element) => element.dataset.sbiFadeReady !== 'true');
+
+        if (!elementsToAnimate.length) return;
+
+        if (!('IntersectionObserver' in window)) {
+            elementsToAnimate.forEach((element) => {
+                element.classList.add('visible');
+                element.dataset.sbiFadeReady = 'true';
+            });
+            return;
+        }
+
+        const observer = new IntersectionObserver((entries, observerInstance) => {
+            entries.forEach((entry) => {
+                if (!entry.isIntersecting) return;
+
+                entry.target.classList.add('visible');
+                entry.target.dataset.sbiFadeReady = 'true';
+                observerInstance.unobserve(entry.target);
+            });
+        }, {
             root: null,
             rootMargin: '0px',
             threshold: 0.10
-        };
+        });
 
-        const observer = new IntersectionObserver((entries, observerInstance) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.classList.add('visible');
-                    observerInstance.unobserve(entry.target);
-                }
-            });
-        }, observerOptions);
+        elementsToAnimate.forEach((element) => {
+            element.dataset.sbiFadeReady = 'pending';
+            observer.observe(element);
+        });
+    }
 
-        const elementsToAnimate = document.querySelectorAll('.fade-in');
-        elementsToAnimate.forEach(el => observer.observe(el));
-    };
+    function initParallax(root = document) {
+        if (document.documentElement.dataset.sbiParallaxReady === 'true') return;
+        if (window.matchMedia(`${MOBILE_MEDIA}, ${REDUCED_MOTION_MEDIA}`).matches) return;
 
-    /* --- SECTION 2 : EFFET PARALLAXE SUR LES FONDS --- */
-    const initParallax = () => {
-        const parallaxLines = document.getElementById('parallax-lines');
-        const parallaxField = document.getElementById('parallax-field');
+        const parallaxLines = root.getElementById?.('parallax-lines') || document.getElementById('parallax-lines');
+        const parallaxField = root.getElementById?.('parallax-field') || document.getElementById('parallax-field');
+
+        if (!parallaxLines && !parallaxField) return;
+
+        document.documentElement.dataset.sbiParallaxReady = 'true';
 
         const lineSpeed = 0.12;
         const fieldSpeed = 0.045;
-
         let ticking = false;
 
         const updateParallax = () => {
@@ -52,30 +110,27 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         window.addEventListener('scroll', () => {
-            if (!ticking) {
-                window.requestAnimationFrame(updateParallax);
-                ticking = true;
-            }
+            if (ticking) return;
+
+            window.requestAnimationFrame(updateParallax);
+            ticking = true;
         }, { passive: true });
 
         updateParallax();
-    };
+    }
 
-    /* --- SECTION 3 : SIGNALS INTERACTIFS SBI --- */
-    const initSignals = () => {
-        const signals = document.querySelectorAll('.sbi-signal');
-        if (!signals.length) return;
+    function initSignals(root = document) {
+        const signals = Array.from(root.querySelectorAll('.sbi-signal'))
+            .filter((signal) => signal.dataset.sbiSignalReady !== 'true');
+
+        if (!signals.length || window.matchMedia(MOBILE_MEDIA).matches) return;
 
         const visibleState = new WeakMap();
         const timers = new WeakMap();
 
         const clearSignalTimers = (signal) => {
             const signalTimers = timers.get(signal);
-
-            if (signalTimers) {
-                signalTimers.forEach(timer => window.clearTimeout(timer));
-            }
-
+            if (signalTimers) signalTimers.forEach((timer) => window.clearTimeout(timer));
             timers.set(signal, []);
         };
 
@@ -109,7 +164,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         const signalObserver = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
+            entries.forEach((entry) => {
                 const signal = entry.target;
                 const wasVisible = visibleState.get(signal) === true;
 
@@ -136,7 +191,8 @@ document.addEventListener('DOMContentLoaded', () => {
             threshold: 0.24
         });
 
-        signals.forEach(signal => {
+        signals.forEach((signal) => {
+            signal.dataset.sbiSignalReady = 'true';
             visibleState.set(signal, false);
             signalObserver.observe(signal);
 
@@ -158,10 +214,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 signal.classList.remove('is-revealed', 'is-attention');
             });
         });
-    };
+    }
 
-    /* --- SECTION 4 : INITIALISATION GLOBALE --- */
-    initScrollAnimations();
-    initParallax();
-    initSignals();
-});
+    function initSbiMain(root = document) {
+        initMobileMenu(root);
+        initScrollAnimations(root);
+        initParallax(root);
+        initSignals(root);
+    }
+
+    window.SBI_MAIN_INIT = initSbiMain;
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => initSbiMain(document), { once: true });
+    } else {
+        initSbiMain(document);
+    }
+})();

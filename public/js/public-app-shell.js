@@ -476,6 +476,16 @@ async function runPageInitializers(pageId) {
       console.warn('[SBI Public Shell] Calculateur aide indisponible après PJAX :', error);
     }
   }
+
+  if (['formations', 'parcours', 'apropos', 'ressources', 'contact'].includes(pageId)) {
+    try {
+      const publicPagesModule = await import('/js/sbi-public-pages.js');
+      const initPublicPages = publicPagesModule.initSbiPublicPages || window.SBI_INIT_PUBLIC_PAGES;
+      if (typeof initPublicPages === 'function') initPublicPages(document);
+    } catch (error) {
+      console.warn('[SBI Public Shell] Pages publiques indisponibles apres PJAX :', error);
+    }
+  }
 }
 
 async function renderPublicPage(url, decision, { historyMode = 'push', behavior = 'smooth', source = 'click' } = {}) {

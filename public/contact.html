@@ -9,123 +9,181 @@
     <link rel="stylesheet" href="css/sbi-newsletter.css">
     <link rel="stylesheet" href="css/sbi-footer.css">
     <link rel="stylesheet" href="css/sbi-home-responsive.css">
+    <link rel="stylesheet" href="css/sbi-public-pages.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,600;0,800;0,900;1,400;1,600;1,800;1,900&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap" rel="stylesheet">
 </head>
 
 <body data-sbi-public-page="contact">
-
     <header class="site-header">
         <div class="logo-container">
             <a href="index.html" class="header-logo-link">
-                <img src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" alt="SBI Logo" class="header-logo" data-site-media="header-logo">
-                <img src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" alt="Sport Business Institute" class="header-brand" data-site-media="brand-logo">
+                <img src="assets/Logo_SBI_Tome.webp" alt="SBI Logo" class="header-logo" data-site-media="header-logo">
+                <img src="assets/sbi_brand.webp" alt="Sport Business Institute" class="header-brand" data-site-media="brand-logo">
             </a>
         </div>
 
         <nav class="main-nav">
             <a href="formations.html" class="nav-link text-italic">Formations</a>
             <a href="parcours.html" class="nav-link text-italic">Parcours</a>
-            <a href="a-propos.html" class="nav-link text-italic">À propos</a>
+            <a href="calculateur.html" class="nav-link text-italic">Calculateur</a>
+            <a href="a-propos.html" class="nav-link text-italic">&Agrave; propos</a>
             <a href="ressources.html" class="nav-link text-italic">Ressources</a>
+            <a href="contact.html" class="nav-link text-italic">Contact</a>
         </nav>
 
         <div class="header-actions">
             <button class="btn-icon search-btn" aria-label="Rechercher">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <circle cx="11" cy="11" r="8"></circle>
                     <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                 </svg>
             </button>
-
             <a href="login.html" class="nav-link text-italic">Se connecter</a>
             <a href="contact.html" class="btn-primary text-italic">Contact</a>
         </div>
+
+        <button class="mobile-menu-toggle" type="button" aria-label="Ouvrir le menu">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
     </header>
 
     <main id="public-main" class="public-page" data-sbi-public-shell-root>
-        <section class="public-page-hero public-contact-hero padding-global" data-sbi-public-section="contact">
+        <section class="public-page-hero padding-global" data-sbi-public-section="contact">
             <div class="public-page-hero-copy fade-in">
-                <span class="section-surtitle text-blue uppercase text-italic">Contact</span>
-                <h1 class="public-page-title uppercase text-italic">Une question ?<br><span class="text-blue">Parlons terrain.</span></h1>
-                <p class="public-page-subtitle text-italic">Formation, parcours, accès plateforme ou projet pédagogique : contacte SBI et on t’oriente vers la bonne prochaine étape.</p>
+                <span class="section-surtitle text-blue uppercase text-italic">Contact SBI</span>
+                <h1 class="public-page-title uppercase text-italic">Un projet ?<br><span class="text-blue">Parlons terrain.</span></h1>
+                <p class="public-page-subtitle text-italic">Formation, alternance, brochure, accompagnement entreprise ou acces plateforme : l'equipe SBI t'oriente vers la bonne prochaine etape.</p>
                 <div class="public-page-actions">
-                    <a href="mailto:contact@sbi.fr" class="btn-primary text-italic">contact@sbi.fr <span class="arrow">→</span></a>
-                    <a href="login.html" class="btn-ghost text-italic">Déjà inscrit ? Se connecter</a>
+                    <a href="#contact-form" class="btn-primary text-italic">Envoyer une demande <span class="arrow">-&gt;</span></a>
+                    <a href="calculateur.html" class="btn-ghost text-italic">Calculer l'aide</a>
                 </div>
             </div>
+            <div class="public-page-orbit fade-in" aria-hidden="true"><span>@</span></div>
+        </section>
 
-            <div class="public-contact-card fade-in">
-                <span class="section-surtitle text-blue uppercase text-italic">Réponse rapide</span>
-                <h2 class="text-italic">Indique ton besoin.</h2>
-                <p class="text-italic">Tu peux nous écrire directement par email pour une demande d’information, une question d’inscription ou une demande professionnelle.</p>
-                <div class="public-contact-list">
-                    <a href="mailto:contact@sbi.fr?subject=Demande%20d'information%20SBI" class="text-italic">Demande d'information</a>
-                    <a href="mailto:contact@sbi.fr?subject=Inscription%20SBI" class="text-italic">Inscription</a>
-                    <a href="mailto:contact@sbi.fr?subject=Partenariat%20SBI" class="text-italic">Partenariat</a>
-                </div>
+        <section id="contact-form" class="public-page-section padding-global" data-sbi-public-section="formulaire">
+            <div class="public-contact-layout">
+                <article class="public-contact-panel fade-in">
+                    <span class="section-surtitle text-blue uppercase text-italic">Brevo ready</span>
+                    <h2 class="text-italic">Demande d'information.</h2>
+                    <p class="text-italic">Le formulaire prepare une charge utile compatible avec une connexion Brevo cote serveur. Aucune cle API Brevo n'est exposee dans le navigateur.</p>
+
+                    <form class="public-contact-form" data-sbi-brevo-form data-brevo-endpoint="">
+                        <div class="public-form-grid">
+                            <label class="text-italic">
+                                Prenom
+                                <input type="text" name="firstname" autocomplete="given-name" required>
+                            </label>
+                            <label class="text-italic">
+                                Nom
+                                <input type="text" name="lastname" autocomplete="family-name">
+                            </label>
+                        </div>
+                        <div class="public-form-grid">
+                            <label class="text-italic">
+                                Email
+                                <input type="email" name="email" autocomplete="email" required>
+                            </label>
+                            <label class="text-italic">
+                                Mobile
+                                <input type="tel" name="phone" autocomplete="tel">
+                            </label>
+                        </div>
+                        <label class="text-italic">
+                            Sujet
+                            <select name="interest" required>
+                                <option value="">Choisir un besoin</option>
+                                <option value="formation">Formation SBI</option>
+                                <option value="alternance">Alternance / aide a l'embauche</option>
+                                <option value="brochure">Recevoir une brochure</option>
+                                <option value="plateforme">Acces plateforme</option>
+                                <option value="entreprise">Accompagnement entreprise</option>
+                            </select>
+                        </label>
+                        <label class="text-italic">
+                            Message
+                            <textarea name="message" placeholder="Explique ton besoin en quelques lignes."></textarea>
+                        </label>
+                        <label class="public-consent text-italic">
+                            <input type="checkbox" name="consent" required>
+                            <span>J'autorise SBI a utiliser mes coordonnees pour repondre a ma demande et m'envoyer des communications par email et mobile liees aux formations, brochures et campagnes SBI.</span>
+                        </label>
+                        <p class="public-form-status text-italic" data-sbi-contact-status aria-live="polite"></p>
+                        <button type="submit" class="btn-primary text-italic">Preparer ma demande <span class="arrow">-&gt;</span></button>
+                    </form>
+                </article>
+
+                <aside class="public-contact-panel fade-in">
+                    <span class="section-surtitle text-blue uppercase text-italic">Acces rapide</span>
+                    <h2 class="text-italic">Le bon canal, vite.</h2>
+                    <p class="text-italic">Tu peux aussi choisir une demande directe. Ces liens restent sur SBI et ne pointent vers aucun autre projet.</p>
+                    <div class="public-contact-list">
+                        <a href="mailto:contact@sbi.fr?subject=Demande%20d'information%20SBI" class="text-italic">Demande d'information</a>
+                        <a href="mailto:contact@sbi.fr?subject=Brochure%20SBI" class="text-italic">Recevoir une brochure</a>
+                        <a href="mailto:contact@sbi.fr?subject=Accompagnement%20alternance%20SBI" class="text-italic">Accompagnement alternance</a>
+                        <a href="mailto:contact@sbi.fr?subject=Acces%20plateforme%20SBI" class="text-italic">Acces plateforme</a>
+                    </div>
+                </aside>
             </div>
         </section>
     </main>
 
-    <footer id="contact" class="site-footer sbi-footer padding-global">
+    <footer id="contact-footer" class="site-footer sbi-footer padding-global">
         <div class="footer-shell">
             <div class="footer-brand-block">
-                <a href="index.html" class="footer-logo-lockup" aria-label="Retour à l'accueil SBI">
-                    <img src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" alt="SBI Logo" class="footer-logo-mark" data-site-media="footer-logo">
-                    <img src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" alt="Sport Business Institute" class="footer-logo-wordmark" data-site-media="footer-brand-logo">
+                <a href="index.html" class="footer-logo-lockup" aria-label="Retour a l'accueil SBI">
+                    <img src="assets/Logo_SBI_Tome.webp" alt="SBI Logo" class="footer-logo-mark" data-site-media="footer-logo">
+                    <img src="assets/sbi_brand.webp" alt="Sport Business Institute" class="footer-logo-wordmark" data-site-media="footer-brand-logo">
                 </a>
-
                 <p class="footer-brandline text-italic">Apprendre. Progresser. <span class="text-blue">Performer.</span></p>
-                <p class="footer-description text-italic">La plateforme e-learning dédiée au sport business, au management sportif et à l'innovation.</p>
+                <p class="footer-description text-italic">La plateforme e-learning dediee au sport business, au management sportif et a l'innovation.</p>
             </div>
-
             <nav class="footer-nav" aria-label="Navigation secondaire">
                 <div class="footer-column">
                     <h4 class="text-italic">Plateforme</h4>
                     <a href="formations.html" class="text-italic">Formations</a>
                     <a href="parcours.html" class="text-italic">Parcours</a>
+                    <a href="calculateur.html" class="text-italic">Calculateur</a>
                     <a href="ressources.html" class="text-italic">Ressources</a>
                 </div>
-
                 <div class="footer-column">
-                    <h4 class="text-italic">À propos</h4>
+                    <h4 class="text-italic">SBI</h4>
                     <a href="a-propos.html" class="text-italic">Qui sommes-nous ?</a>
                     <a href="a-propos.html#experts" class="text-italic">Nos experts</a>
-                    <a href="a-propos.html#carrieres" class="text-italic">Carrières</a>
                     <a href="contact.html" class="text-italic">Contact</a>
                 </div>
-
                 <div class="footer-column">
-                    <h4 class="text-italic">Légal</h4>
-                    <a href="#" class="text-italic">Mentions légales</a>
+                    <h4 class="text-italic">Legal</h4>
+                    <a href="#" class="text-italic">Mentions legales</a>
                     <a href="#" class="text-italic">CGU</a>
-                    <a href="#" class="text-italic">Politique de confidentialité</a>
+                    <a href="#" class="text-italic">Politique de confidentialite</a>
                     <a href="#" class="text-italic">Cookies</a>
                 </div>
             </nav>
-
             <div class="footer-social-card">
                 <h4 class="footer-social-title text-italic">Suivez-nous</h4>
                 <div class="social-icons">
-                    <a href="#" aria-label="X (Twitter)"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 22.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a>
-                    <a href="#" aria-label="Instagram"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg></a>
-                    <a href="#" aria-label="LinkedIn"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path><rect x="2" y="9" width="4" height="12"></rect><circle cx="4" cy="4" r="2"></circle></svg></a>
-                    <a href="#" aria-label="YouTube"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33 2.78 2.78 0 0 0 1.94 2c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.33 29 29 0 0 0-.46-5.33z"></path><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"></polygon></svg></a>
+                    <a href="#" aria-label="X"><span>X</span></a>
+                    <a href="#" aria-label="Instagram"><span>IG</span></a>
+                    <a href="#" aria-label="LinkedIn"><span>in</span></a>
+                    <a href="#" aria-label="YouTube"><span>YT</span></a>
                 </div>
                 <a href="mailto:contact@sbi.fr" class="footer-contact-link text-italic">contact@sbi.fr</a>
             </div>
         </div>
-
         <div class="footer-bottom">
-            <span class="text-italic">© 2026 Sport Business Institute. Tous droits réservés.</span>
+            <span class="text-italic">&copy; 2026 Sport Business Institute. Tous droits reserves.</span>
             <span class="footer-bottom-signature text-italic">SBI E-Learning</span>
         </div>
     </footer>
 
     <script src="js/sbi-background.js"></script>
-    <script src="js/main.js?v=8.0P.5"></script>
-    <script src="js/public-app-shell.js?v=8.0P.5"></script>
+    <script src="js/main.js?v=8.0P.9"></script>
+    <script type="module" src="js/sbi-public-pages.js?v=8.0P.9"></script>
+    <script src="js/public-app-shell.js?v=8.0P.9"></script>
     <script type="module" src="js/firebase-init.js"></script>
 </body>
 </html>

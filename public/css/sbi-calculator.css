@@ -415,9 +415,14 @@ body[data-sbi-public-page="calculator"] {
     color-scheme: dark;
 }
 
-.aid-calc-field input::-webkit-calendar-picker-indicator {
-    filter: invert(1) brightness(1.4);
-    opacity: 0.82;
+.aid-calc-field input[type="date"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    opacity: 1;
+    filter:
+        invert(1)
+        brightness(3)
+        contrast(2)
+        drop-shadow(0 0 4px rgba(255, 255, 255, 0.42));
 }
 
 .aid-calc-locked-field {
@@ -832,6 +837,13 @@ body[data-sbi-public-page="calculator"] {
 }
 
 @media (max-width: 768px) {
+    body[data-sbi-public-page="calculator"] *,
+    body[data-sbi-public-page="calculator"] *::before,
+    body[data-sbi-public-page="calculator"] *::after {
+        animation: none !important;
+        transition-duration: 0.01ms !important;
+    }
+
     .aid-calc-hero {
         padding-top: 6.2rem;
         padding-bottom: 2rem;

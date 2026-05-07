@@ -423,3 +423,27 @@ body::after {
         opacity: 0.66;
     }
 }
+
+@media (max-width: 768px), (prefers-reduced-motion: reduce) {
+    .sbi-background-root *,
+    .sbi-background-root *::before,
+    .sbi-background-root *::after {
+        animation: none !important;
+        transition-duration: 0.01ms !important;
+        will-change: auto !important;
+    }
+
+    .sbi-bg-parallax,
+    .sbi-field-parallax {
+        transform: none !important;
+    }
+
+    .sbi-particle,
+    .sbi-line {
+        display: none !important;
+    }
+
+    .hero-section::after {
+        animation: none !important;
+    }
+}

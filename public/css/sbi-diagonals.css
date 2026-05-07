@@ -316,8 +316,17 @@ main {
     .section-qualiopi,
     .sbi-qualiopi-section,
     .section-newsletter {
-        margin-top: -34px;
-        clip-path: polygon(0 34px, 100% 0, 100% 100%, 0 100%);
+        --sbi-section-cut: 34px;
+        margin-top: calc(var(--sbi-section-cut) * -1);
+        clip-path: polygon(
+            0 var(--sbi-section-cut),
+            100% 0,
+            100% calc(100% - var(--sbi-section-cut)),
+            0 100%
+        );
+        background:
+            radial-gradient(circle at 92% 18%, rgba(0, 81, 255, 0.12), transparent 42%),
+            linear-gradient(180deg, rgba(5, 11, 21, 0.96), rgba(2, 5, 11, 0.98)) !important;
     }
 
     .section-parcours {
@@ -343,23 +352,28 @@ main {
 
     .section-parcours {
         padding-top: calc(var(--space-xl) + 34px);
+        padding-bottom: calc(var(--space-xl) + 34px);
     }
 
     .section-why-sbi {
         padding-top: 5.4rem;
+        padding-bottom: 4.8rem;
     }
 
     .section-stats {
         padding-top: 4.2rem;
+        padding-bottom: 4.8rem;
     }
 
     .section-qualiopi,
     .sbi-qualiopi-section {
         padding-top: 4.6rem;
+        padding-bottom: 4.6rem;
     }
 
     .section-newsletter {
         padding-top: 4.6rem;
+        padding-bottom: 4.6rem;
     }
 
     .section-parcours::before,

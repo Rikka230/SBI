@@ -14,6 +14,10 @@ const MEDIA_CACHE_KEY = 'sbi:siteIndexMedia:v1';
 const MEDIA_CACHE_TTL_MS = 5 * 60 * 1000;
 const QUALIOPI_CSS_HREF = '/css/sbi-qualiopi.css?v=8.0P.7';
 const QUALIOPI_SECTION_ID = 'qualiopi';
+const LOCAL_BRAND_MEDIA = {
+  logo: '/assets/Logo_SBI_Tome.webp',
+  brand: '/assets/sbi_brand.webp'
+};
 
 function isLegacyLocalMediaUrl(value) {
   if (typeof value !== 'string') return false;
@@ -177,6 +181,24 @@ function applyImage(selector, url) {
   });
 }
 
+function applyLocalBrandMedia() {
+  document.querySelectorAll('.header-logo, .footer-logo-mark, .hero-large-logo').forEach((img) => {
+    if (img instanceof HTMLImageElement && img.getAttribute('src') !== LOCAL_BRAND_MEDIA.logo) {
+      img.src = LOCAL_BRAND_MEDIA.logo;
+      img.dataset.loadedFromStorage = 'false';
+      img.dataset.brandSource = 'assets';
+    }
+  });
+
+  document.querySelectorAll('.header-brand, .footer-logo-wordmark').forEach((img) => {
+    if (img instanceof HTMLImageElement && img.getAttribute('src') !== LOCAL_BRAND_MEDIA.brand) {
+      img.src = LOCAL_BRAND_MEDIA.brand;
+      img.dataset.loadedFromStorage = 'false';
+      img.dataset.brandSource = 'assets';
+    }
+  });
+}
+
 function applyHeroVideo(settings) {
   const video = document.querySelector('.hero-video-bg');
   if (!(video instanceof HTMLVideoElement)) return;
@@ -220,9 +242,7 @@ function applySettings(settings) {
   ensureFounderCleanStyles();
   ensureQualiopiTrustBlock();
   applyHeroVideo(settings);
-  applyImage('.hero-large-logo', settings.heroLogoUrl);
-  applyImage('.header-logo, .footer-logo-mark', settings.headerLogoUrl);
-  applyImage('.header-brand, .footer-logo-wordmark', settings.brandLogoUrl);
+  applyLocalBrandMedia();
   applyImage('.founder-img', settings.founderImageUrl);
   document.body.classList.add('is-site-index-media-ready');
 }
@@ -230,6 +250,7 @@ function applySettings(settings) {
 async function initSiteIndexMedia() {
   ensureFounderCleanStyles();
   ensureQualiopiTrustBlock();
+  applyLocalBrandMedia();
 
   const cachedSettings = readCachedSettings();
   if (cachedSettings) {
