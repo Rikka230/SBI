@@ -156,14 +156,15 @@
     }
 }
 
-/* SBI 8.0P.33 - Desktop only: allow the founder image to scale with the widened grid.
+/* SBI 8.0P.34 - Desktop only: keep P33 wide placement, restore the founder photo’s previous portrait ratio.
    No mobile/tablet selectors changed. */
 @media (min-width: 1761px) {
     .section-stats .founder-img-wrapper {
-        min-height: clamp(500px, 27vw, 640px);
+        min-height: clamp(510px, 29.3vw, 688px);
+        aspect-ratio: 23 / 29.3;
     }
 
     .section-stats .founder-img {
-        height: clamp(500px, 27vw, 640px) !important;
+        height: clamp(510px, 29.3vw, 688px) !important;
     }
 }
