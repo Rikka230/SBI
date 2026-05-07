@@ -1349,3 +1349,45 @@ footer {
     }
 }
 
+
+
+/* =========================================================
+   SBI 8.0P.38 - Desktop hero feature band centering/visibility
+   PC only: keeps hero content/video/logo untouched, isolates the lower band.
+   ========================================================= */
+@media (min-width: 1025px) {
+    .hero-section > .features-bar {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        width: 100%;
+        max-width: none;
+        margin: 0;
+        z-index: 3;
+        flex: 0 0 auto;
+        grid-template-columns: repeat(4, max-content);
+        justify-content: center;
+        justify-items: start;
+        gap: 0 clamp(3.5rem, 10vw, 14rem);
+        padding-left: clamp(2rem, 5vw, 6rem);
+        padding-right: clamp(2rem, 5vw, 6rem);
+    }
+
+    .hero-section > .features-bar .feature-item {
+        width: max-content;
+    }
+}
+
+@media (min-width: 1025px) and (max-width: 1380px) {
+    .hero-section > .features-bar {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        justify-content: stretch;
+        justify-items: center;
+        gap: 0 clamp(1rem, 2vw, 2rem);
+    }
+
+    .hero-section > .features-bar .feature-item {
+        width: auto;
+    }
+}
