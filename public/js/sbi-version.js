@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.41',
+  version: '8.0P.42',
   branch: 'public-pjax-app-shell',
   channel: 'PUBLIC PJAX APP SHELL',
-  stage: 'Index hero PJAX fade and calculator stylesheet-ready render',
+  stage: 'Public assistant signal halo emphasis',
   updatedAt: '2026-05-08',
-  label: 'SBI 8.0P.41 - DESKTOP HERO BAND TRANSPARENCY AND LOGO CLEARANCE'
+  label: 'SBI 8.0P.42 - ASSISTANT SIGNAL FLASH HALO'
 };
 
 export function getSbiVersionLabel() {
