@@ -1,4 +1,4 @@
-const SITE_INDEX_MEDIA_VERSION = '8.0P.21';
+const SITE_INDEX_MEDIA_VERSION = '8.0P.35';
 
 window.__SBI_SITE_INDEX_MEDIA_LOADING__ = true;
 
@@ -25,6 +25,7 @@ const LOCAL_MEDIA = {
 
 let siteIndexMediaInitPromise = null;
 let lastAppliedSignature = '';
+let lastResolvedSettings = null;
 
 function cleanUrl(value) {
   return typeof value === 'string' ? value.trim() : '';
@@ -290,6 +291,7 @@ function applyHeroVideo(settings = {}) {
 
 function applySettings(settings = {}) {
   const clean = sanitizeSettings(settings);
+  lastResolvedSettings = clean;
   ensureFounderCleanStyles();
   ensureQualiopiTrustBlock();
   applyHeroVideo(clean);
@@ -301,7 +303,25 @@ function applySettings(settings = {}) {
 
 async function initSiteIndexMedia(options = {}) {
   const forceRefresh = Boolean(options?.forceRefresh);
-  if (siteIndexMediaInitPromise && !forceRefresh) return siteIndexMediaInitPromise;
+
+  /**
+   * En navigation PJAX publique, le module reste déjà chargé mais le DOM de
+   * l'index est remplacé. L'ancienne promesse est alors résolue et les nouveaux
+   * nœuds .hero-video-bg / .founder-img reviennent avec leurs fallbacks locaux.
+   * On réapplique donc immédiatement les derniers médias connus avant de rendre
+   * la main, puis une seconde fois quand la promesse existante se termine si elle
+   * était encore en cours.
+   */
+  if (siteIndexMediaInitPromise && !forceRefresh) {
+    const knownSettings = lastResolvedSettings || readCachedSettings();
+    if (knownSettings) applySettings(knownSettings);
+
+    return siteIndexMediaInitPromise.then(() => {
+      const settledSettings = lastResolvedSettings || readCachedSettings();
+      if (settledSettings) applySettings(settledSettings);
+    });
+  }
+
   if (forceRefresh) siteIndexMediaInitPromise = null;
 
   siteIndexMediaInitPromise = (async () => {

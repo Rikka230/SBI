@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.34',
+  version: '8.0P.35',
   branch: 'public-pjax-app-shell',
   channel: 'PUBLIC PJAX APP SHELL',
-  stage: 'Desktop founder photo ratio restored after wide alignment',
+  stage: 'Public index Firebase media rehydrated after PJAX return',
   updatedAt: '2026-05-08',
-  label: 'SBI 8.0P.34 - DESKTOP FOUNDER PHOTO RATIO LOCK'
+  label: 'SBI 8.0P.35 - PUBLIC INDEX MEDIA PJAX REHYDRATE'
 };
 
 export function getSbiVersionLabel() {
