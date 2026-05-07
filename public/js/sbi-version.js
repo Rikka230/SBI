@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.16',
+  version: '8.0P.17',
   branch: 'public-pjax-app-shell',
   channel: 'PUBLIC PJAX APP SHELL',
-  stage: 'Qualiopi side glows moved under block and unclipped on desktop',
+  stage: 'Qualiopi bottom corner lights containment fix',
   updatedAt: '2026-05-07',
-  label: 'SBI 8.0P.16 - QUALIOPI SIDE GLOW UNDERLAY FIX'
+  label: 'SBI 8.0P.17 - QUALIOPI BOTTOM CORNER LIGHTS FIX'
 };
 
 export function getSbiVersionLabel() {
