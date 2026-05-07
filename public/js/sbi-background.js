@@ -16,7 +16,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     if (document.querySelector('[data-sbi-background]')) return;
 
-    const reduceBackgroundMotion = window.matchMedia('(max-width: 768px), (prefers-reduced-motion: reduce)').matches;
+    const reduceBackgroundMotion = window.matchMedia('(max-width: 768px)').matches;
     const particleCount = reduceBackgroundMotion ? 0 : 46;
     const lineCount = reduceBackgroundMotion ? 0 : 20;
 

@@ -151,7 +151,7 @@
     }
 
 
-    /* 8.0P.10b : on garde les animations mobiles légères qui signent la DA SBI.
+    /* 8.0P.10c : on garde les animations mobiles légères qui signent la DA SBI.
        Les éclats de verre et les signaux/assistants restent actifs, tandis que
        les particules et la parallaxe lourde restent coupées. */
     .shard,
@@ -391,14 +391,39 @@
 
     .sbi-signal-panel,
     .sbi-signal-founder .sbi-signal-panel {
-        position: static;
+        position: relative;
         margin-left: 0.85rem;
-        opacity: 1;
-        transform: none;
+        opacity: 0;
+        transform: translateX(-10px) scale(0.96);
         animation: none;
-        pointer-events: auto;
+        pointer-events: none;
         white-space: normal;
         text-align: left;
+        transition:
+            opacity 0.32s ease,
+            transform 0.36s cubic-bezier(0.22, 1, 0.36, 1),
+            border-color 0.32s ease,
+            box-shadow 0.32s ease;
+    }
+
+    .sbi-signal.is-revealed .sbi-signal-panel,
+    .sbi-signal:hover .sbi-signal-panel,
+    .sbi-signal:focus-visible .sbi-signal-panel {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+        pointer-events: auto;
+    }
+
+    .sbi-signal-founder .sbi-signal-panel {
+        transform: translateX(10px) scale(0.96);
+    }
+
+    .sbi-signal-founder.is-revealed .sbi-signal-panel,
+    .sbi-signal-founder:hover .sbi-signal-panel,
+    .sbi-signal-founder:focus-visible .sbi-signal-panel {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+        pointer-events: auto;
     }
 
     .sbi-signal-panel::before {
@@ -412,7 +437,7 @@
     }
 
     .sbi-signal-founder .sbi-signal-panel {
-        display: none;
+        display: inline-flex;
     }
 }
 
@@ -613,7 +638,17 @@
     }
 
     .sbi-signal-hero {
-        display: none;
+        display: inline-flex;
+        position: relative;
+        top: auto;
+        left: auto;
+        right: auto;
+        margin: 0.9rem 0 1.2rem;
+        justify-content: flex-start;
+    }
+
+    .sbi-signal-hero .sbi-signal-panel {
+        max-width: 210px;
     }
 
     .hero-title {
@@ -834,16 +869,3 @@
     }
 }
 
-@media (prefers-reduced-motion: reduce) {
-    .shard,
-    .shard-glint,
-    .shard-glint::before,
-    .shard-glint::after,
-    .sbi-signal,
-    .sbi-signal *,
-    .sbi-signal::before,
-    .sbi-signal::after {
-        animation: none !important;
-        transition-duration: 0.01ms !important;
-    }
-}

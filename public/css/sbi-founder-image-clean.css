@@ -1,4 +1,4 @@
-/* SBI 6.5 - Founder image clean display */
+/* SBI 8.0P.10c - Founder image clean display */
 
 .founder-img {
     filter: none !important;
@@ -10,11 +10,14 @@
     display: none !important;
 }
 
-.founder-img:not([data-loaded-from-storage="true"]) {
+.founder-img:not([data-loaded-from-storage="true"]):not([data-loaded-from-local="true"]):not([src*="/assets/fondateur-photo.jpg"]):not([src*="assets/fondateur-photo.jpg"]) {
     opacity: 0;
 }
 
-.founder-img[data-loaded-from-storage="true"] {
+.founder-img[data-loaded-from-storage="true"],
+.founder-img[data-loaded-from-local="true"],
+.founder-img[src*="/assets/fondateur-photo.jpg"],
+.founder-img[src*="assets/fondateur-photo.jpg"] {
     opacity: 1;
     transition: opacity 0.28s ease;
 }

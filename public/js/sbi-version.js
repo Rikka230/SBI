@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.10b',
+  version: '8.0P.10c',
   branch: 'public-pjax-app-shell',
   channel: 'PUBLIC PJAX APP SHELL',
-  stage: 'Public mobile performance safe pass',
+  stage: 'Public mobile visual fixes',
   updatedAt: '2026-05-07',
-  label: 'SBI 8.0P.10b - PUBLIC MOBILE PERFORMANCE SAFE PASS'
+  label: 'SBI 8.0P.10c - PUBLIC MOBILE VISUAL FIXES'
 };
 
 export function getSbiVersionLabel() {

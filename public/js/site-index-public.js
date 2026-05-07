@@ -9,12 +9,13 @@ const EMPTY_MEDIA = {
 
 const MEDIA_CACHE_KEY = 'sbi:siteIndexMedia:v1';
 const MEDIA_CACHE_TTL_MS = 5 * 60 * 1000;
-const QUALIOPI_CSS_HREF = '/css/sbi-qualiopi.css?v=8.0P.10b';
+const QUALIOPI_CSS_HREF = '/css/sbi-qualiopi.css?v=8.0P.10c';
 const QUALIOPI_SECTION_ID = 'qualiopi';
 const LOCAL_BRAND_MEDIA = {
   logo: '/assets/Logo_SBI_Tome.webp',
   brand: '/assets/sbi_brand.webp'
 };
+const LOCAL_FOUNDER_IMAGE = '/assets/fondateur-photo.jpg';
 
 let siteIndexMediaInitPromise = null;
 
@@ -37,7 +38,6 @@ function isLegacyLocalMediaUrl(value) {
   return (
     url === '/assets/sbi_master.webm' ||
     url === '/assets/sbi.mp4' ||
-    url === '/assets/fondateur-photo.jpg' ||
     url.includes('images.unsplash.com/photo-1560250097')
   );
 }
@@ -91,8 +91,16 @@ function writeCachedSettings(settings) {
 }
 
 function ensureFounderCleanStyles() {
-  const href = '/css/sbi-founder-image-clean.css';
-  if (document.querySelector(`link[href="${href}"]`)) return;
+  const cssPath = '/css/sbi-founder-image-clean.css';
+  const href = `${cssPath}?v=8.0P.10c`;
+  const existing = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
+    .find((link) => (link.getAttribute('href') || '').includes(cssPath));
+
+  if (existing) {
+    if ((existing.getAttribute('href') || '') !== href) existing.href = href;
+    return;
+  }
+
   const link = document.createElement('link');
   link.rel = 'stylesheet';
   link.href = href;
@@ -211,7 +219,25 @@ function applyLocalBrandMedia() {
   });
 }
 
+function applyFounderImage(settings = {}) {
+  const founderUrl = settings.founderImageUrl || LOCAL_FOUNDER_IMAGE;
+
+  document.querySelectorAll('.founder-img').forEach((img) => {
+    if (!(img instanceof HTMLImageElement)) return;
+
+    if (img.getAttribute('src') !== founderUrl) img.src = founderUrl;
+
+    const isStorage = founderUrl.includes('firebasestorage.googleapis.com');
+    const isLocalAsset = founderUrl.includes('/assets/fondateur-photo.jpg') || founderUrl.includes('assets/fondateur-photo.jpg');
+    img.dataset.loadedFromStorage = isStorage ? 'true' : 'false';
+    img.dataset.loadedFromLocal = isLocalAsset ? 'true' : 'false';
+    img.loading = img.loading || 'lazy';
+    img.decoding = img.decoding || 'async';
+  });
+}
+
 function applyHeroVideo(settings) {
+
   const video = document.querySelector('.hero-video-bg');
   if (!(video instanceof HTMLVideoElement)) return;
 
@@ -255,7 +281,7 @@ function applySettings(settings) {
   ensureQualiopiTrustBlock();
   applyHeroVideo(settings);
   applyLocalBrandMedia();
-  applyImage('.founder-img', settings.founderImageUrl);
+  applyFounderImage(settings);
   document.body.classList.add('is-site-index-media-ready');
 }
 

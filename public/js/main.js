@@ -82,7 +82,7 @@
 
     function initParallax(root = document) {
         if (document.documentElement.dataset.sbiParallaxReady === 'true') return;
-        if (window.matchMedia(`${MOBILE_MEDIA}, ${REDUCED_MOTION_MEDIA}`).matches) return;
+        if (window.matchMedia(MOBILE_MEDIA).matches) return;
 
         const parallaxLines = root.getElementById?.('parallax-lines') || document.getElementById('parallax-lines');
         const parallaxField = root.getElementById?.('parallax-field') || document.getElementById('parallax-field');
@@ -123,7 +123,7 @@
         const signals = Array.from(root.querySelectorAll('.sbi-signal'))
             .filter((signal) => signal.dataset.sbiSignalReady !== 'true');
 
-        if (!signals.length || window.matchMedia(REDUCED_MOTION_MEDIA).matches) return;
+        if (!signals.length) return;
 
         const isMobile = window.matchMedia(MOBILE_MEDIA).matches;
 
