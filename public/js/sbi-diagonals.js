@@ -1,5 +1,7 @@
 (function () {
+    const DIAGONALS_VERSION = '8.0P.13';
     const mobileQuery = window.matchMedia('(max-width: 768px)');
+
     const sectionSelectors = [
         '.section-parcours',
         '.section-why-sbi',
@@ -7,16 +9,34 @@
         '.section-qualiopi, .sbi-qualiopi-section',
         '.section-newsletter'
     ];
-    const sparkPositions = ['32%', '34%', '58%', '74%', '48%'];
+
+    const sparkPositions = ['34%', '28%', '58%', '74%', '48%'];
     let frame = 0;
     let resizeObserver = null;
     let mutationObserver = null;
     const observedSections = new WeakSet();
 
-    const getMain = () => document.querySelector('main');
+    function getMain() {
+        return document.querySelector('main');
+    }
 
-    const ensureOverlay = (main) => {
-        let overlay = main.querySelector(':scope > .sbi-diagonal-overlay');
+    function getUniqueSections() {
+        const seen = new Set();
+        const sections = [];
+
+        sectionSelectors.forEach((selector) => {
+            document.querySelectorAll(selector).forEach((section) => {
+                if (!section || seen.has(section)) return;
+                seen.add(section);
+                sections.push(section);
+            });
+        });
+
+        return sections;
+    }
+
+    function ensureOverlay(main) {
+        let overlay = Array.from(main.children).find((child) => child.classList?.contains('sbi-diagonal-overlay'));
 
         if (!overlay) {
             overlay = document.createElement('div');
@@ -26,25 +46,13 @@
         }
 
         return overlay;
-    };
+    }
 
-    const removeOverlay = () => {
+    function removeOverlay() {
         document.querySelectorAll('.sbi-diagonal-overlay').forEach((overlay) => overlay.remove());
-    };
+    }
 
-    const getUniqueSections = () => {
-        const seen = new Set();
-
-        return sectionSelectors
-            .map((selector) => document.querySelector(selector))
-            .filter((section) => {
-                if (!section || seen.has(section)) return false;
-                seen.add(section);
-                return true;
-            });
-    };
-
-    const renderOverlay = () => {
+    function renderOverlay() {
         frame = 0;
 
         if (!mobileQuery.matches) {
@@ -55,90 +63,105 @@
         const main = getMain();
         if (!main) return;
 
-        const overlay = ensureOverlay(main);
-        const mainTop = main.getBoundingClientRect().top + window.scrollY;
         const sections = getUniqueSections();
+        if (!sections.length) {
+            removeOverlay();
+            return;
+        }
 
-        overlay.replaceChildren();
+        const overlay = ensureOverlay(main);
+        const mainRect = main.getBoundingClientRect();
+        const scrollY = window.scrollY || window.pageYOffset || 0;
 
-        sections.forEach((section, index) => {
-            const rect = section.getBoundingClientRect();
-            const top = rect.top + window.scrollY - mainTop;
-            const line = document.createElement('span');
+        const nextLines = sections
+            .map((section, index) => {
+                const rect = section.getBoundingClientRect();
+                if (!rect.height) return '';
 
-            line.className = 'sbi-diagonal-overlay__line';
-            line.style.top = `${Math.round(top)}px`;
-            line.style.setProperty('--sbi-diagonal-overlay-spark-x', sparkPositions[index] || '62%');
-            line.style.setProperty('--sbi-diagonal-overlay-opacity', index === 4 ? '0.44' : '0.54');
-            line.style.animationDelay = `${index * 0.32}s`;
+                const top = rect.top + scrollY - (mainRect.top + scrollY);
+                const lineTop = Math.max(0, top - 22);
+                const angle = index % 2 ? '5deg' : '-6deg';
+                const opacity = section.matches('.section-stats') ? '0.86' : '0.68';
+                const spark = sparkPositions[index % sparkPositions.length];
 
-            overlay.appendChild(line);
-        });
+                return `<span class="sbi-diagonal-overlay__line" style="top:${lineTop}px; --sbi-diagonal-overlay-angle:${angle}; --sbi-diagonal-overlay-opacity:${opacity}; --sbi-diagonal-overlay-spark-x:${spark};"></span>`;
+            })
+            .join('');
 
-        observeLayout(main, sections);
-    };
+        overlay.innerHTML = nextLines;
+        overlay.dataset.sbiDiagonalsVersion = DIAGONALS_VERSION;
+        overlay.dataset.sbiDiagonalLines = String(overlay.children.length);
+    }
 
-    const scheduleRender = () => {
+    function scheduleRender() {
         if (frame) return;
         frame = window.requestAnimationFrame(renderOverlay);
-    };
+    }
 
-    const observeLayout = (main, sections) => {
-        if (window.ResizeObserver && !resizeObserver) {
-            resizeObserver = new ResizeObserver(scheduleRender);
-            resizeObserver.observe(main);
-        }
+    function observeLayout() {
+        resizeObserver?.disconnect?.();
 
-        if (resizeObserver) {
-            sections.forEach((section) => {
-                if (observedSections.has(section)) return;
-                observedSections.add(section);
-                resizeObserver.observe(section);
-            });
-        }
+        if (!('ResizeObserver' in window)) return;
 
-        if (!mutationObserver) {
-            mutationObserver = new MutationObserver((mutations) => {
-                const onlyOverlayChanged = mutations.every((mutation) => {
-                    const target = mutation.target;
-                    return target instanceof Element && target.closest('.sbi-diagonal-overlay');
-                });
+        resizeObserver = new ResizeObserver(scheduleRender);
+        const main = getMain();
+        if (main) resizeObserver.observe(main);
 
-                if (!onlyOverlayChanged) scheduleRender();
-            });
-            mutationObserver.observe(main, {
-                childList: true,
-                subtree: true,
-                attributes: true,
-                attributeFilter: ['class', 'style', 'src']
-            });
-        }
-    };
+        getUniqueSections().forEach((section) => {
+            if (observedSections.has(section)) return;
+            observedSections.add(section);
+            resizeObserver.observe(section);
+        });
+    }
 
-    const init = () => {
+    function observeDom() {
+        mutationObserver?.disconnect?.();
+
+        const main = getMain();
+        if (!main || !('MutationObserver' in window)) return;
+
+        mutationObserver = new MutationObserver(() => {
+            observeLayout();
+            scheduleRender();
+        });
+
+        mutationObserver.observe(main, {
+            childList: true,
+            subtree: false
+        });
+    }
+
+    function initSbiDiagonals() {
+        observeLayout();
+        observeDom();
         scheduleRender();
-        window.addEventListener('resize', scheduleRender, { passive: true });
-        window.addEventListener('orientationchange', scheduleRender, { passive: true });
-        window.addEventListener('load', scheduleRender, { once: true });
+    }
 
-        document.querySelectorAll('img').forEach((img) => {
-            if (!img.complete) img.addEventListener('load', scheduleRender, { once: true });
-        });
-
-        if (document.fonts?.ready) {
-            document.fonts.ready.then(scheduleRender).catch(() => {});
-        }
-
-        [80, 180, 360, 720, 1200, 2000].forEach((delay) => {
-            window.setTimeout(scheduleRender, delay);
-        });
+    window.SBI_RENDER_DIAGONALS = initSbiDiagonals;
+    window.SBI_DIAGONALS_STATUS = function () {
+        return {
+            version: DIAGONALS_VERSION,
+            mobile: mobileQuery.matches,
+            hasOverlay: Boolean(document.querySelector('.sbi-diagonal-overlay')),
+            lines: document.querySelectorAll('.sbi-diagonal-overlay__line').length
+        };
     };
-
-    mobileQuery.addEventListener?.('change', scheduleRender);
 
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init, { once: true });
+        document.addEventListener('DOMContentLoaded', initSbiDiagonals, { once: true });
     } else {
-        init();
+        initSbiDiagonals();
+    }
+
+    window.addEventListener('resize', scheduleRender, { passive: true });
+    window.addEventListener('orientationchange', scheduleRender, { passive: true });
+    window.addEventListener('load', scheduleRender, { passive: true });
+    window.addEventListener('sbi:public-shell:navigated', initSbiDiagonals);
+    window.addEventListener('sbi:public-shell:chrome-preserved', initSbiDiagonals);
+
+    if (typeof mobileQuery.addEventListener === 'function') {
+        mobileQuery.addEventListener('change', initSbiDiagonals);
+    } else if (typeof mobileQuery.addListener === 'function') {
+        mobileQuery.addListener(initSbiDiagonals);
     }
 }());

@@ -576,3 +576,82 @@ main {
     }
 }
 
+
+
+/* SBI 8.0P.13 - mobile diagonal overlay recovery */
+@media (max-width: 768px) {
+    main {
+        position: relative;
+        overflow: visible !important;
+    }
+
+    .sbi-diagonal-overlay {
+        display: block !important;
+        position: absolute !important;
+        inset: 0 !important;
+        overflow: visible !important;
+        z-index: 650 !important;
+        pointer-events: none !important;
+        mix-blend-mode: screen;
+    }
+
+    .sbi-diagonal-overlay__line {
+        display: block !important;
+        position: absolute !important;
+        left: -28vw !important;
+        width: 156vw !important;
+        height: 46px !important;
+        opacity: var(--sbi-diagonal-overlay-opacity, 0.72) !important;
+        transform: rotate(var(--sbi-diagonal-overlay-angle, -6deg)) !important;
+        transform-origin: center !important;
+        filter:
+            drop-shadow(0 0 12px rgba(0, 81, 255, 0.62))
+            drop-shadow(0 0 26px rgba(0, 81, 255, 0.28)) !important;
+        background:
+            radial-gradient(
+                circle at var(--sbi-diagonal-overlay-spark-x, 62%) 50%,
+                rgba(255, 255, 255, 0.98) 0 2px,
+                rgba(160, 210, 255, 0.95) 3px,
+                rgba(0, 81, 255, 0.86) 7px,
+                rgba(0, 81, 255, 0.20) 16px,
+                transparent 28px
+            ),
+            linear-gradient(
+                90deg,
+                transparent 0%,
+                rgba(0, 81, 255, 0) 14%,
+                rgba(126, 190, 255, 0.28) 30%,
+                rgba(255, 255, 255, 0.72) 48%,
+                rgba(0, 81, 255, 0.96) 60%,
+                rgba(0, 81, 255, 0.24) 76%,
+                transparent 100%
+            ) center / 100% 2px no-repeat !important;
+    }
+
+    .sbi-diagonal-overlay__line::before {
+        content: "";
+        position: absolute;
+        top: 50%;
+        left: var(--sbi-diagonal-overlay-spark-x, 62%);
+        width: 142px;
+        height: 142px;
+        border-radius: 999px;
+        transform: translate(-50%, -50%);
+        background:
+            radial-gradient(circle, rgba(255, 255, 255, 0.30), rgba(0, 81, 255, 0.26) 24%, rgba(0, 81, 255, 0.08) 52%, transparent 72%);
+        filter: blur(2px);
+        opacity: 0.58;
+    }
+
+    .sbi-diagonal-overlay__line::after {
+        content: "";
+        position: absolute;
+        top: 50%;
+        left: 12%;
+        width: 76%;
+        height: 1px;
+        background:
+            linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.76), rgba(0, 81, 255, 0.82), transparent);
+        opacity: 0.88;
+    }
+}

@@ -1,4 +1,4 @@
-/* SBI 8.0P.12 - Founder card cleanup, outside shards and mobile block recovery */
+/* SBI 8.0P.13 - Founder card cleanup, foreground shards and mobile block recovery */
 
 .founder-img-wrapper {
     position: relative;
@@ -35,23 +35,30 @@
 }
 
 .founder-img-wrapper .shard {
-    z-index: 1;
+    z-index: 7 !important;
     pointer-events: none;
+    mix-blend-mode: screen;
+}
+
+.founder-img-wrapper .shard-glint,
+.founder-img-wrapper .shard-glint::before,
+.founder-img-wrapper .shard-glint::after {
+    z-index: 8 !important;
 }
 
 .founder-img-wrapper .shard-1 {
-    top: -26px;
-    left: -34px;
+    top: -24px;
+    left: -28px;
 }
 
 .founder-img-wrapper .shard-2 {
-    right: -34px;
-    bottom: -24px;
+    right: -28px;
+    bottom: -22px;
 }
 
 .founder-img-wrapper .shard-4 {
-    left: -42px;
-    bottom: 18px;
+    left: -36px;
+    bottom: 38px;
 }
 
 .founder-img:not([data-loaded-from-storage="true"]):not([data-loaded-from-local="true"]):not([src*="/assets/fondateur-photo.jpg"]):not([src*="assets/fondateur-photo.jpg"]) {
@@ -144,7 +151,7 @@
     }
 
     .founder-img-wrapper .shard-4 {
-        left: -20px;
-        bottom: 14px;
+        left: -22px;
+        bottom: 28px;
     }
 }

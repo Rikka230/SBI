@@ -869,23 +869,31 @@
     }
 }
 
-
-
 @media (max-width: 768px) {
-    /* SBI 8.0P.12 - on supprime le raccord trop agressif qui coupait le bas des blocs */
+    /* SBI 8.0P.13 - raccord stats -> Qualiopi compact, sans découpe des panneaux */
     .section-stats {
         overflow: visible !important;
-        padding-bottom: 1.65rem !important;
+        padding-bottom: 3.45rem !important;
         margin-bottom: 0 !important;
     }
 
     .section-stats .stats-grid {
-        gap: 1.35rem;
+        gap: 1.25rem;
+    }
+
+    .section-stats .calculator-cta-box {
+        margin-bottom: 0 !important;
     }
 
     .section-stats + .section-qualiopi,
     .section-stats + .sbi-qualiopi-section {
+        margin-top: -2.15rem !important;
+        padding-top: 3.75rem !important;
+        overflow: visible !important;
+    }
+
+    .section-stats + .section-qualiopi .qualiopi-shell,
+    .section-stats + .sbi-qualiopi-section .qualiopi-shell {
         margin-top: 0 !important;
-        padding-top: 1.25rem !important;
     }
 }

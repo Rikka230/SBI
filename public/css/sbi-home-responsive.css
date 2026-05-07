@@ -397,7 +397,7 @@
 }
 
 
-/* SBI 8.0P.11 - founder natural image override */
+/* SBI 8.0P.13 - founder natural image override */
 .section-stats .founder-img {
     filter: none !important;
 }

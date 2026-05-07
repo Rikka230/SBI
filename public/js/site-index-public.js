@@ -1,4 +1,4 @@
-const SITE_INDEX_MEDIA_VERSION = '8.0P.12';
+const SITE_INDEX_MEDIA_VERSION = '8.0P.13';
 
 const EMPTY_MEDIA = {
   heroVideoWebmUrl: '',
@@ -213,6 +213,9 @@ function ensureQualiopiTrustBlock() {
     if (typeof window.SBI_PUBLIC_SHELL?.refreshSections === 'function') {
       window.SBI_PUBLIC_SHELL.refreshSections();
     }
+    if (typeof window.SBI_RENDER_DIAGONALS === 'function') {
+      window.SBI_RENDER_DIAGONALS();
+    }
   });
 
   return section;
@@ -358,6 +361,10 @@ function applySettings(settings = EMPTY_MEDIA) {
   document.body.classList.add('is-site-index-media-ready');
   document.body.dataset.sbiSiteIndexMediaVersion = SITE_INDEX_MEDIA_VERSION;
   document.body.dataset.sbiFounderImageSource = safeSettings.founderImageUrl ? 'firestore' : 'local-fallback';
+
+  if (typeof window.SBI_RENDER_DIAGONALS === 'function') {
+    window.requestAnimationFrame(() => window.SBI_RENDER_DIAGONALS());
+  }
 }
 
 async function refreshSettingsFromFirestore() {
