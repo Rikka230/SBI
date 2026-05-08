@@ -225,6 +225,19 @@ function initContactMessageCounter(form) {
   message.addEventListener('input', updateCounter);
 }
 
+function isContactFormReady(form) {
+  return !getContactValidationError(form);
+}
+
+function syncContactSubmitReadiness(form, card) {
+  const submitButton = form.querySelector('[data-sbi-contact-submit]');
+  const ready = isContactFormReady(form);
+
+  form.classList.toggle('is-ready-to-send', ready);
+  card?.classList.toggle('is-ready-to-send', ready);
+  submitButton?.classList.toggle('is-ready-to-send', ready);
+}
+
 function setContactCardState(card, state = '') {
   if (!card) return;
 
@@ -300,7 +313,7 @@ function initContactAssistant(form, card) {
       revealAssistant(message, 'error', 6800);
 
       if (field?.focus) {
-        window.setTimeout(() => field.focus({ preventScroll: false }), 50);
+        window.setTimeout(() => field.focus({ preventScroll: true }), 50);
       }
     },
 
@@ -368,8 +381,18 @@ function initContactForm(root) {
     }
   };
 
-  form.addEventListener('input', clearResolvedState);
-  form.addEventListener('change', clearResolvedState);
+  const syncReady = () => syncContactSubmitReadiness(form, card);
+  syncReady();
+
+  form.addEventListener('input', () => {
+    clearResolvedState();
+    syncReady();
+  });
+
+  form.addEventListener('change', () => {
+    clearResolvedState();
+    syncReady();
+  });
 
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -377,6 +400,7 @@ function initContactForm(root) {
     const validationError = getContactValidationError(form);
     if (validationError) {
       assistant?.error(validationError.message, validationError.field);
+      syncReady();
       return;
     }
 

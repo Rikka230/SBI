@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.43',
+  version: '8.0P.44',
   branch: 'public-pjax-app-shell',
   channel: 'PUBLIC PJAX APP SHELL',
-  stage: 'Contact premium redesign Brevo-ready',
+  stage: 'Contact viewport fit + index DA alignment',
   updatedAt: '2026-05-08',
-  label: 'SBI 8.0P.43 - CONTACT PREMIUM REDESIGN'
+  label: 'SBI 8.0P.44 - CONTACT FIT VIEWPORT + INDEX DA ALIGNMENT'
 };
 
 export function getSbiVersionLabel() {
