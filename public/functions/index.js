@@ -87,7 +87,7 @@ exports.deleteUserAccount = onCall(async (request) => {
 
 
 /* =======================================================================
- * SBI 8.0P.49 - CONTACT PUBLIC -> BREVO
+ * SBI 8.0P.50 - CONTACT PUBLIC -> BREVO
  * -----------------------------------------------------------------------
  * Endpoint appelé par /api/sendSbiContact via Firebase Hosting rewrite.
  * La clé Brevo reste dans Secret Manager : BREVO_API_KEY.
@@ -107,10 +107,10 @@ exports.deleteUserAccount = onCall(async (request) => {
 
 const BREVO_API_KEY = defineSecret("BREVO_API_KEY");
 const BREVO_LIST_ID = 77;
-const SBI_CONTACT_EMAIL = "contact@spigroup.fr";
+const SBI_CONTACT_EMAIL = "contact@sbigroup.fr";
 const SBI_CONTACT_PHONE = "06 68 60 30 01";
 const SBI_SENDER_NAME = "SBI Contact";
-const SBI_SENDER_EMAIL = "contact@spigroup.fr";
+const SBI_SENDER_EMAIL = "contact@sbigroup.fr";
 
 const PROFILE_LABELS = {
     etudiant: "Étudiant",
