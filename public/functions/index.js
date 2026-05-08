@@ -87,15 +87,19 @@ exports.deleteUserAccount = onCall(async (request) => {
 
 
 /* =======================================================================
- * SBI 8.0P.48 - CONTACT PUBLIC -> BREVO
+ * SBI 8.0P.49 - CONTACT PUBLIC -> BREVO
  * -----------------------------------------------------------------------
  * Endpoint appelé par /api/sendSbiContact via Firebase Hosting rewrite.
  * La clé Brevo reste dans Secret Manager : BREVO_API_KEY.
  *
  * Mapping adapté aux attributs Brevo existants :
- * - FIRSTNAME / LASTNAME / SMS / TEL
+ * - FIRSTNAME / LASTNAME / TEL
  * - PROFESSION / PROFILE_TYPE / PROFILE_LABEL / CONTACT_SOURCE
  * - PHONE_SMS_OPTIN
+ *
+ * IMPORTANT : l'attribut SMS Brevo est volontairement exclu.
+ * Brevo le traite comme identifiant unique et refuse la mise à jour si
+ * le même numéro est déjà associé à un autre contact.
  *
  * BESOIN et MESSAGE restent uniquement dans l'email interne, pas dans la
  * fiche contact Brevo.
@@ -207,7 +211,6 @@ function getContactAttributes(data) {
         FIRSTNAME: data.firstname,
         LASTNAME: data.lastname,
         TEL: data.phone,
-        SMS: data.normalizedPhone || data.phone,
         PROFESSION: data.profileLabel,
         PROFILE_TYPE: data.profile,
         PROFILE_LABEL: data.profileLabel,

@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.48',
+  version: '8.0P.49',
   branch: 'public-pjax-app-shell',
   channel: 'PUBLIC PJAX APP SHELL',
-  stage: 'Brevo attribute mapping fix',
+  stage: 'Brevo SMS duplicate fix',
   updatedAt: '2026-05-08',
-  label: 'SBI 8.0P.48 - BREVO ATTRIBUTE MAPPING FIX'
+  label: 'SBI 8.0P.49 - BREVO SMS DUPLICATE FIX'
 };
 
 export function getSbiVersionLabel() {
