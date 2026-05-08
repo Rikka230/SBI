@@ -38,12 +38,24 @@
       }
     ],
     "cleanUrls": false,
-    "trailingSlash": false
+    "trailingSlash": false,
+    "rewrites": [
+      {
+        "source": "/api/sendSbiContact",
+        "function": {
+          "functionId": "sendSbiContact",
+          "region": "europe-west1"
+        }
+      }
+    ]
   },
   "firestore": {
     "rules": "firestore.rules"
   },
   "storage": {
     "rules": "storage.rules"
+  },
+  "functions": {
+    "source": "public/functions"
   }
 }

@@ -156,8 +156,18 @@ async function submitBrevoPayload(form, payload) {
     body: JSON.stringify(payload)
   });
 
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  return { mode: 'sent' };
+  const result = await response.json().catch(() => ({}));
+
+  if (!response.ok || result.success === false) {
+    throw new Error(text(result.message, `Erreur serveur ${response.status}`));
+  }
+
+  return {
+    mode: 'sent',
+    message: text(result.message),
+    warning: text(result.warning),
+    brevo: result.brevo || null
+  };
 }
 
 function getFieldLabel(field) {
@@ -412,13 +422,13 @@ function initContactForm(root) {
     try {
       const result = await submitBrevoPayload(form, payload);
       const message = result.mode === 'sent'
-        ? 'Votre message a bien été envoyé. L’équipe SBI revient vers vous rapidement.'
+        ? text(result.message, 'Votre message a bien été envoyé. L’équipe SBI revient vers vous rapidement.')
         : 'Votre demande est validée. Il reste à brancher l’envoi Brevo côté serveur.';
       assistant?.success(message);
       form.reset();
       form.elements.message?.dispatchEvent(new Event('input', { bubbles: true }));
     } catch (error) {
-      assistant?.error('La demande est prête, mais l’envoi Brevo n’est pas disponible pour le moment.');
+      assistant?.error(text(error?.message, 'La demande est prête, mais l’envoi Brevo n’est pas disponible pour le moment.'));
     }
   });
 }

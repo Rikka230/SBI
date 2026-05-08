@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.46',
+  version: '8.0P.47',
   branch: 'public-pjax-app-shell',
   channel: 'PUBLIC PJAX APP SHELL',
-  stage: 'Progressive PJAX page dissolve',
+  stage: 'Brevo contact function endpoint',
   updatedAt: '2026-05-08',
-  label: 'SBI 8.0P.46 - PROGRESSIVE PJAX PAGE DISSOLVE'
+  label: 'SBI 8.0P.47 - BREVO CONTACT FUNCTION'
 };
 
 export function getSbiVersionLabel() {
