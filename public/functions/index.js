@@ -45,7 +45,7 @@ exports.deleteUserAccount = onCall(async (request) => {
 
         // 4. Vérification de la cible
         const targetDoc = await db.collection('users').doc(targetUid).get();
-        
+
         // Si la cible n'existe déjà plus dans la BDD, on s'assure qu'elle dégage de l'Auth Firebase
         if (!targetDoc.exists) {
             console.log("⚠️ Cible introuvable dans la base, on nettoie le système d'authentification par sécurité.");
@@ -75,7 +75,7 @@ exports.deleteUserAccount = onCall(async (request) => {
 
     } catch (error) {
         console.error("🔥 ERREUR SERVEUR INTERNE :", error);
-        
+
         // On renvoie l'erreur propre à l'interface si c'est une de nos règles qui bloque
         if (error instanceof HttpsError) {
             throw error;
@@ -87,10 +87,18 @@ exports.deleteUserAccount = onCall(async (request) => {
 
 
 /* =======================================================================
- * SBI 8.0P.47 - CONTACT PUBLIC -> BREVO
+ * SBI 8.0P.48 - CONTACT PUBLIC -> BREVO
  * -----------------------------------------------------------------------
  * Endpoint appelé par /api/sendSbiContact via Firebase Hosting rewrite.
  * La clé Brevo reste dans Secret Manager : BREVO_API_KEY.
+ *
+ * Mapping adapté aux attributs Brevo existants :
+ * - FIRSTNAME / LASTNAME / SMS / TEL
+ * - PROFESSION / PROFILE_TYPE / PROFILE_LABEL / CONTACT_SOURCE
+ * - PHONE_SMS_OPTIN
+ *
+ * BESOIN et MESSAGE restent uniquement dans l'email interne, pas dans la
+ * fiche contact Brevo.
  * ======================================================================= */
 
 const BREVO_API_KEY = defineSecret("BREVO_API_KEY");
@@ -99,6 +107,15 @@ const SBI_CONTACT_EMAIL = "contact@spigroup.fr";
 const SBI_CONTACT_PHONE = "06 68 60 30 01";
 const SBI_SENDER_NAME = "SBI Contact";
 const SBI_SENDER_EMAIL = "contact@spigroup.fr";
+
+const PROFILE_LABELS = {
+    etudiant: "Étudiant",
+    professeur: "Professeur",
+    professionnel: "Professionnel",
+    entreprise: "Entreprise",
+    club: "Club",
+    autre: "Autre"
+};
 
 function cleanString(value, maxLength = 1000) {
     if (value === null || value === undefined) return "";
@@ -121,6 +138,15 @@ function normalizeFrenchPhone(value) {
     return compact;
 }
 
+function normalizeProfile(value) {
+    return cleanString(value, 80).toLowerCase();
+}
+
+function getProfileLabel(profile) {
+    const normalizedProfile = normalizeProfile(profile);
+    return PROFILE_LABELS[normalizedProfile] || cleanString(profile, 80) || "Non précisé";
+}
+
 function escapeHtml(value) {
     return cleanString(value, 5000)
         .replace(/&/g, "&amp;")
@@ -138,19 +164,22 @@ function parseContactRequest(body = {}) {
     const attributes = body.attributes || {};
     const consent = body.consent || {};
     const email = cleanString(body.email || attributes.EMAIL, 180).toLowerCase();
-    const phone = cleanString(attributes.TELEPHONE || attributes.SMS, 40);
+    const phone = cleanString(attributes.TELEPHONE || attributes.TEL || attributes.SMS, 40);
     const normalizedPhone = normalizeFrenchPhone(phone);
+    const profile = normalizeProfile(attributes.PROFIL || attributes.PROFILE_TYPE || attributes.PROFESSION);
+    const profileLabel = getProfileLabel(profile);
 
     return {
         email,
-        firstname: cleanString(attributes.PRENOM, 80),
-        lastname: cleanString(attributes.NOM, 80),
+        firstname: cleanString(attributes.PRENOM || attributes.FIRSTNAME, 80),
+        lastname: cleanString(attributes.NOM || attributes.LASTNAME, 80),
         phone,
         normalizedPhone,
-        profile: cleanString(attributes.PROFIL, 80),
+        profile,
+        profileLabel,
         interest: cleanString(attributes.BESOIN, 120),
         message: cleanMultiline(attributes.MESSAGE, 1200),
-        source: cleanString(attributes.SOURCE, 120) || "SBI public contact",
+        source: cleanString(attributes.SOURCE || attributes.CONTACT_SOURCE, 120) || "SBI public contact",
         page: cleanString(attributes.PAGE, 180) || "/contact.html",
         consentRequest: consent.requestProcessingAccepted === true,
         consentEmail: consent.emailCampaigns === true,
@@ -175,19 +204,15 @@ function validateContactRequest(data) {
 
 function getContactAttributes(data) {
     return {
-        PRENOM: data.firstname,
-        NOM: data.lastname,
-        TELEPHONE: data.phone,
+        FIRSTNAME: data.firstname,
+        LASTNAME: data.lastname,
+        TEL: data.phone,
         SMS: data.normalizedPhone || data.phone,
-        PROFIL: data.profile,
-        BESOIN: data.interest,
-        MESSAGE: data.message,
-        SOURCE: data.source,
-        PAGE: data.page,
-        CONSENT_REPONSE: data.consentRequest ? "oui" : "non",
-        CONSENT_EMAIL: data.consentEmail ? "oui" : "non",
-        CONSENT_MOBILE: data.consentMobile ? "oui" : "non",
-        CAPTURED_AT: data.capturedAt
+        PROFESSION: data.profileLabel,
+        PROFILE_TYPE: data.profile,
+        PROFILE_LABEL: data.profileLabel,
+        CONTACT_SOURCE: data.source,
+        PHONE_SMS_OPTIN: data.consentMobile === true
     };
 }
 
@@ -237,7 +262,8 @@ function buildNotificationHtml(data) {
         ["Email", data.email],
         ["Téléphone", data.phone],
         ["Téléphone normalisé", data.normalizedPhone || data.phone],
-        ["Profil", data.profile],
+        ["Profil", data.profileLabel],
+        ["Profil technique", data.profile],
         ["Sujet", data.interest],
         ["Opt-in email", data.consentEmail ? "oui" : "non"],
         ["Opt-in téléphone/SMS", data.consentMobile ? "oui" : "non"],
@@ -271,7 +297,7 @@ function buildNotificationText(data) {
         `Nom : ${data.lastname}`,
         `Email : ${data.email}`,
         `Téléphone : ${data.phone}`,
-        `Profil : ${data.profile}`,
+        `Profil : ${data.profileLabel}`,
         `Sujet : ${data.interest}`,
         `Opt-in email : ${data.consentEmail ? "oui" : "non"}`,
         `Opt-in téléphone/SMS : ${data.consentMobile ? "oui" : "non"}`,
@@ -359,7 +385,7 @@ exports.sendSbiContact = onRequest({
         return res.status(200).json({
             success: true,
             mode: "sent",
-            message: "Votre message a bien été envoyé. L’équipe SBI revient vers vous rapidement.",
+            message: notificationWarning || "Votre message a bien été envoyé. L’équipe SBI revient vers vous rapidement.",
             warning: notificationWarning,
             brevo: {
                 listId: BREVO_LIST_ID,
