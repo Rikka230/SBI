@@ -52,6 +52,12 @@
 
         if (!elementsToAnimate.length) return;
 
+        elementsToAnimate.forEach((element, index) => {
+            if (!element.style.getPropertyValue('--sbi-fade-order')) {
+                element.style.setProperty('--sbi-fade-order', String(Math.min(index, 10)));
+            }
+        });
+
         if (!('IntersectionObserver' in window)) {
             elementsToAnimate.forEach((element) => {
                 element.classList.add('visible');

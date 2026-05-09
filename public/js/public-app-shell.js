@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.37 - Hero exit fade and stylesheet-ready PJAX render
+ * SBI 8.0P.46 - Progressive PJAX page dissolve
  *
  * Shell public prudent :
  * - navigation fluide des ancres de l'index ;
@@ -8,11 +8,13 @@
  * - espaces admin/student/teacher et viewers toujours protégés en reload.
  */
 
-const PUBLIC_SHELL_VERSION = '8.0P.37';
+const PUBLIC_SHELL_VERSION = '8.0P.46';
 const DISABLED_FLAG = 'sbiPublicShellDisabled';
 const READY_CLASS = 'sbi-public-shell-ready';
 const SCROLLING_CLASS = 'sbi-public-shell-scrolling';
 const LOADING_CLASS = 'sbi-public-shell-loading';
+const ENTERING_CLASS = 'sbi-public-shell-entering';
+const REVEALING_CLASS = 'sbi-public-shell-revealing';
 const LEAVING_HOME_CLASS = 'sbi-public-shell-leaving-home';
 const ACTIVE_CLASS = 'is-active';
 
@@ -112,7 +114,7 @@ function waitForPublicShellFade({ fromPageId = getRenderedPublicPageId(), toPage
   if (!desktopMotion) return Promise.resolve();
 
   const leavingHomeHero = fromPageId === 'home' && toPageId !== 'home';
-  const duration = leavingHomeHero ? 320 : 230;
+  const duration = leavingHomeHero ? 520 : 380;
   return new Promise((resolve) => window.setTimeout(resolve, duration));
 }
 
@@ -493,7 +495,16 @@ function renderBodyFragment(nextFragment) {
 
 function syncBodyAttributes(nextDocument, pageId, enabled) {
   const nextClassName = nextDocument.body?.className || '';
+  const classesToPreserve = [
+    LOADING_CLASS,
+    ENTERING_CLASS,
+    REVEALING_CLASS,
+    LEAVING_HOME_CLASS,
+    SCROLLING_CLASS
+  ].filter((className) => document.body.classList.contains(className));
+
   document.body.className = nextClassName;
+  classesToPreserve.forEach((className) => document.body.classList.add(className));
   document.body.dataset.sbiPublicPage = pageId;
   document.body.dataset.sbiPublicShell = enabled ? 'enabled' : 'disabled';
 }
@@ -509,7 +520,7 @@ async function runPageInitializers(pageId) {
 
   if (pageId === 'home') {
     try {
-      const mediaModule = await import('/js/site-index-public.js?v=8.0P.37');
+      const mediaModule = await import('/js/site-index-public.js?v=8.0P.46');
       const initMedia = mediaModule.initSiteIndexMedia || window.SBI_INIT_SITE_INDEX_MEDIA;
       if (typeof initMedia === 'function') await initMedia({ forceRefresh: false });
     } catch (error) {
@@ -529,7 +540,7 @@ async function runPageInitializers(pageId) {
 
   if (pageId === 'calculator') {
     try {
-      const calculatorModule = await import('/js/sbi-aide-calculator.js?v=8.0P.21');
+      const calculatorModule = await import('/js/sbi-aide-calculator.js?v=8.0P.46');
       const initCalculator = calculatorModule.initSbiAidCalculator || window.SBI_INIT_AID_CALCULATOR;
       if (typeof initCalculator === 'function') initCalculator(document);
     } catch (error) {
@@ -539,7 +550,7 @@ async function runPageInitializers(pageId) {
 
   if (['formations', 'parcours', 'apropos', 'ressources', 'contact'].includes(pageId)) {
     try {
-      const publicPagesModule = await import('/js/sbi-public-pages.js?v=8.0P.21');
+      const publicPagesModule = await import('/js/sbi-public-pages.js?v=8.0P.46');
       const initPublicPages = publicPagesModule.initSbiPublicPages || window.SBI_INIT_PUBLIC_PAGES;
       if (typeof initPublicPages === 'function') initPublicPages(document);
     } catch (error) {
@@ -558,6 +569,7 @@ async function renderPublicPage(url, decision, { historyMode = 'push', behavior 
     const fromPageId = getRenderedPublicPageId();
     const leavingHomeHero = fromPageId === 'home' && targetPageId !== 'home';
 
+    document.body.classList.remove(ENTERING_CLASS, REVEALING_CLASS);
     document.body.classList.add(LOADING_CLASS);
     if (leavingHomeHero) document.body.classList.add(LEAVING_HOME_CLASS);
     document.body.setAttribute('aria-busy', 'true');
@@ -587,6 +599,7 @@ async function renderPublicPage(url, decision, { historyMode = 'push', behavior 
 
       const fragment = sanitizeBodyFragment(nextDocument);
       syncBodyAttributes(nextDocument, targetPageId, enabled);
+      document.body.classList.add(ENTERING_CLASS);
       renderBodyFragment(fragment);
       document.documentElement.classList.add(READY_CLASS);
       document.body.dataset.sbiPublicShell = enabled ? 'enabled' : 'disabled';
@@ -617,8 +630,15 @@ async function renderPublicPage(url, decision, { historyMode = 'push', behavior 
       return false;
     } finally {
       window.requestAnimationFrame(() => {
-        document.body.classList.remove(LOADING_CLASS, LEAVING_HOME_CLASS);
-        document.body.removeAttribute('aria-busy');
+        window.requestAnimationFrame(() => {
+          document.body.classList.add(REVEALING_CLASS);
+          document.body.classList.remove(LOADING_CLASS, ENTERING_CLASS, LEAVING_HOME_CLASS);
+          document.body.removeAttribute('aria-busy');
+
+          window.setTimeout(() => {
+            document.body.classList.remove(REVEALING_CLASS);
+          }, 920);
+        });
       });
       pageTransitionPromise = null;
     }
