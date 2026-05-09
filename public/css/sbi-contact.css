@@ -1,8 +1,8 @@
 /* =========================================================
-   SBI 8.0P.51 - CONTACT PREMIUM REDESIGN + EMAIL TEMPLATE FIXES
+   SBI 8.0P.52 - CONTACT CORNER ALIGNMENT
    ---------------------------------------------------------
-   Scope isolé page contact : visuel premium, formulaire Brevo-ready,
-   assistant feedback et états type login.
+   Scope isolé page contact : coin inférieur aligné sur la page connexion,
+   template email et assistant feedback conservés.
    ========================================================= */
 
 body[data-sbi-public-page="contact"] {
@@ -276,8 +276,8 @@ body[data-sbi-public-page="contact"] {
 }
 
 .contact-form-card {
-    --contact-corner-band: rgba(10, 16, 28, 0.94);
-    --contact-corner-separator: rgba(255, 255, 255, 0.12);
+    --contact-corner-band: #000000;
+    --contact-corner-separator: rgba(255, 255, 255, 0.15);
     --contact-corner-border: rgba(157, 190, 246, 0.32);
 
     position: relative;
@@ -308,6 +308,7 @@ body[data-sbi-public-page="contact"] {
 
 .contact-form-card.is-loading {
     --contact-corner-band: rgba(0, 81, 255, 0.34);
+    --contact-corner-separator: rgba(255, 255, 255, 0.12);
     --contact-corner-border: rgba(0, 81, 255, 0.44);
     border-color: rgba(0, 81, 255, 0.54);
     box-shadow:
@@ -317,6 +318,7 @@ body[data-sbi-public-page="contact"] {
 
 .contact-form-card.is-success {
     --contact-corner-band: var(--sbi-blue);
+    --contact-corner-separator: rgba(255, 255, 255, 0.18);
     --contact-corner-border: rgba(0, 132, 255, 0.76);
     border-color: rgba(0, 132, 255, 0.88);
     box-shadow:
@@ -332,6 +334,7 @@ body[data-sbi-public-page="contact"] {
 
 .contact-form-card.is-error {
     --contact-corner-band: #ff4a4a;
+    --contact-corner-separator: rgba(255, 255, 255, 0.16);
     --contact-corner-border: rgba(255, 74, 74, 0.66);
     border-color: rgba(255, 74, 74, 0.76);
     box-shadow:
@@ -388,49 +391,37 @@ body[data-sbi-public-page="contact"] {
     z-index: 5;
 }
 
+/* Coin bas droit : aligné sur la logique de la page connexion */
 .contact-card-cut {
     position: absolute;
     right: -1px;
     bottom: -1px;
     z-index: 5;
-    width: 64px;
-    height: 64px;
+    width: 60px;
+    height: 60px;
     pointer-events: none;
-    overflow: hidden;
-    background: transparent;
+    border-right: 1px solid var(--contact-corner-border);
+    border-bottom: 1px solid var(--contact-corner-border);
+    background: linear-gradient(
+        -45deg,
+        #040508 0%,
+        #040508 18px,
+        var(--contact-corner-band) 18px,
+        var(--contact-corner-band) 36px,
+        var(--contact-corner-separator) 36px,
+        var(--contact-corner-separator) 37px,
+        transparent 37px
+    );
     transition:
+        background 0.24s ease,
         border-color 0.24s ease,
         filter 0.24s ease;
 }
 
 .contact-card-cut::before,
 .contact-card-cut::after {
-    content: '';
-    position: absolute;
-    pointer-events: none;
-}
-
-.contact-card-cut::before {
-    right: -18px;
-    bottom: 12px;
-    width: 92px;
-    height: 22px;
-    background: var(--contact-corner-band);
-    border-top: 1px solid var(--contact-corner-separator);
-    border-bottom: 1px solid var(--contact-corner-separator);
-    transform: rotate(-45deg);
-    transform-origin: center;
-    box-shadow: 0 0 18px rgba(0, 81, 255, 0.16);
-    transition:
-        background 0.24s ease,
-        border-color 0.24s ease,
-        box-shadow 0.24s ease;
-}
-
-.contact-card-cut::after {
-    inset: 0;
-    border-right: 1px solid var(--contact-corner-border);
-    border-bottom: 1px solid var(--contact-corner-border);
+    content: none;
+    display: none;
 }
 
 .contact-form-card.is-loading .contact-card-cut {
@@ -1171,8 +1162,8 @@ body[data-sbi-public-page="contact"] .sbi-signal-contact {
     }
 
     body[data-sbi-public-page="contact"] .contact-card-cut {
-        width: 58px;
-        height: 58px;
+        width: 60px;
+        height: 60px;
     }
 
     body[data-sbi-public-page="contact"] .contact-card-kicker {
