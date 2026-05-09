@@ -1,5 +1,5 @@
 /* =========================================================
-   SBI 8.0P.45 - CONTACT PREMIUM REDESIGN + VISUAL CLEANUP
+   SBI 8.0P.51 - CONTACT PREMIUM REDESIGN + EMAIL TEMPLATE FIXES
    ---------------------------------------------------------
    Scope isolé page contact : visuel premium, formulaire Brevo-ready,
    assistant feedback et états type login.
@@ -396,22 +396,41 @@ body[data-sbi-public-page="contact"] {
     width: 64px;
     height: 64px;
     pointer-events: none;
-    border-right: 1px solid var(--contact-corner-border);
-    border-bottom: 1px solid var(--contact-corner-border);
-    background: linear-gradient(
-        -45deg,
-        #040508 0%,
-        #040508 19px,
-        var(--contact-corner-band) 19px,
-        var(--contact-corner-band) 39px,
-        var(--contact-corner-separator) 39px,
-        var(--contact-corner-separator) 40px,
-        transparent 40px
-    );
+    overflow: hidden;
+    background: transparent;
+    transition:
+        border-color 0.24s ease,
+        filter 0.24s ease;
+}
+
+.contact-card-cut::before,
+.contact-card-cut::after {
+    content: '';
+    position: absolute;
+    pointer-events: none;
+}
+
+.contact-card-cut::before {
+    right: -18px;
+    bottom: 12px;
+    width: 92px;
+    height: 22px;
+    background: var(--contact-corner-band);
+    border-top: 1px solid var(--contact-corner-separator);
+    border-bottom: 1px solid var(--contact-corner-separator);
+    transform: rotate(-45deg);
+    transform-origin: center;
+    box-shadow: 0 0 18px rgba(0, 81, 255, 0.16);
     transition:
         background 0.24s ease,
         border-color 0.24s ease,
-        filter 0.24s ease;
+        box-shadow 0.24s ease;
+}
+
+.contact-card-cut::after {
+    inset: 0;
+    border-right: 1px solid var(--contact-corner-border);
+    border-bottom: 1px solid var(--contact-corner-border);
 }
 
 .contact-form-card.is-loading .contact-card-cut {
@@ -743,6 +762,16 @@ body[data-sbi-public-page="contact"] {
         rgba(255, 74, 74, 0.06) 58%,
         transparent 74%
     );
+}
+
+.contact-form-card.is-success .sbi-signal-contact {
+    --signal-blue: var(--sbi-blue);
+    --signal-panel-border: rgba(0, 132, 255, 0.82);
+}
+
+.contact-form-card.is-success .sbi-signal-contact.is-revealed .sbi-signal-panel {
+    opacity: 1;
+    pointer-events: auto;
 }
 
 @keyframes contactCornerPulse {
@@ -1142,8 +1171,8 @@ body[data-sbi-public-page="contact"] .sbi-signal-contact {
     }
 
     body[data-sbi-public-page="contact"] .contact-card-cut {
-        width: 52px;
-        height: 52px;
+        width: 58px;
+        height: 58px;
     }
 
     body[data-sbi-public-page="contact"] .contact-card-kicker {

@@ -268,11 +268,12 @@ function initContactAssistant(form, card) {
     assistantTimer = null;
   };
 
-  const revealAssistant = (message, tone = 'info', duration = 6200) => {
+  const revealAssistant = (message, tone = 'info', duration = 6200, options = {}) => {
     clearAssistantTimer();
 
     if (assistantMessage) assistantMessage.textContent = message;
     if (assistant) {
+      const persist = options.persist === true || duration === 0;
       assistant.classList.add('is-revealed', 'is-attention');
       assistant.dataset.tone = tone;
 
@@ -280,11 +281,13 @@ function initContactAssistant(form, card) {
         assistant.classList.remove('is-attention');
       }, 1100);
 
-      window.setTimeout(() => {
-        if (!assistant.matches(':hover') && !assistant.matches(':focus-within')) {
-          assistant.classList.remove('is-revealed', 'is-attention');
-        }
-      }, duration);
+      if (!persist) {
+        window.setTimeout(() => {
+          if (!assistant.matches(':hover') && !assistant.matches(':focus-within')) {
+            assistant.classList.remove('is-revealed', 'is-attention');
+          }
+        }, duration);
+      }
     }
 
     if (status) {
@@ -330,7 +333,7 @@ function initContactAssistant(form, card) {
     success(message) {
       setContactCardState(card, 'success');
       setSubmit('Message validé', false);
-      revealAssistant(message, 'success', 7200);
+      revealAssistant(message, 'success', 0, { persist: true });
     }
   };
 }
@@ -424,9 +427,10 @@ function initContactForm(root) {
       const message = result.mode === 'sent'
         ? text(result.message, 'Votre message a bien été envoyé. L’équipe SBI revient vers vous rapidement.')
         : 'Votre demande est validée. Il reste à brancher l’envoi Brevo côté serveur.';
-      assistant?.success(message);
       form.reset();
       form.elements.message?.dispatchEvent(new Event('input', { bubbles: true }));
+      syncReady();
+      assistant?.success(message);
     } catch (error) {
       assistant?.error(text(error?.message, 'La demande est prête, mais l’envoi Brevo n’est pas disponible pour le moment.'));
     }
