@@ -109,22 +109,37 @@ function initBrochuresPage(root) {
   setStatus(root, '[data-sbi-brochures-status]', 'Brochures SBI de base affichées. La connexion back-office/Firebase sera branchée plus tard.');
 }
 
+function getCheckedValue(form, name) {
+  const checked = form.querySelector(`input[name="${name}"]:checked`);
+  return text(checked?.value);
+}
+
 function buildBrevoPayload(form) {
   const data = new FormData(form);
+  const requestConsent = data.get('requestConsent') === 'on';
+  const emailConsent = data.get('emailConsent') === 'on';
+  const mobileConsent = data.get('mobileConsent') === 'on';
 
   return {
     email: text(data.get('email')),
     attributes: {
       PRENOM: text(data.get('firstname')),
       NOM: text(data.get('lastname')),
+      TELEPHONE: text(data.get('phone')),
       SMS: text(data.get('phone')),
+      PROFIL: getCheckedValue(form, 'profile'),
       BESOIN: text(data.get('interest')),
       MESSAGE: text(data.get('message')),
-      SOURCE: 'SBI public contact'
+      SOURCE: 'SBI public contact',
+      PAGE: window.location.pathname || '/contact.html',
+      CONSENT_REPONSE: requestConsent ? 'oui' : 'non',
+      CONSENT_EMAIL: emailConsent ? 'oui' : 'non',
+      CONSENT_MOBILE: mobileConsent ? 'oui' : 'non'
     },
     consent: {
-      emailCampaigns: data.get('consent') === 'on',
-      mobileCampaigns: data.get('consent') === 'on',
+      requestProcessingAccepted: requestConsent,
+      emailCampaigns: emailConsent,
+      mobileCampaigns: mobileConsent,
       capturedAt: new Date().toISOString()
     }
   };
@@ -141,8 +156,199 @@ async function submitBrevoPayload(form, payload) {
     body: JSON.stringify(payload)
   });
 
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  return { mode: 'sent' };
+  const result = await response.json().catch(() => ({}));
+
+  if (!response.ok || result.success === false) {
+    throw new Error(text(result.message, `Erreur serveur ${response.status}`));
+  }
+
+  return {
+    mode: 'sent',
+    message: text(result.message),
+    warning: text(result.warning),
+    brevo: result.brevo || null
+  };
+}
+
+function getFieldLabel(field) {
+  return text(field?.closest?.('[data-field-label]')?.dataset?.fieldLabel)
+    || text(field?.dataset?.fieldLabel)
+    || text(field?.name)
+    || 'ce champ';
+}
+
+function getContactValidationError(form) {
+  const profile = form.querySelector('input[name="profile"]:checked');
+  if (!profile) {
+    return {
+      field: form.querySelector('input[name="profile"]'),
+      message: 'Vous avez oublié de sélectionner votre profil.'
+    };
+  }
+
+  const requiredFields = [
+    form.elements.firstname,
+    form.elements.lastname,
+    form.elements.email,
+    form.elements.phone,
+    form.elements.interest,
+    form.elements.message
+  ].filter(Boolean);
+
+  const missingField = requiredFields.find((field) => !text(field.value));
+  if (missingField) {
+    return {
+      field: missingField,
+      message: `Vous avez oublié de remplir ${getFieldLabel(missingField)}.`
+    };
+  }
+
+  if (form.elements.email && !form.elements.email.validity.valid) {
+    return {
+      field: form.elements.email,
+      message: "L'adresse email n'est pas valide."
+    };
+  }
+
+  const requestConsent = form.elements.requestConsent;
+  if (requestConsent && !requestConsent.checked) {
+    return {
+      field: requestConsent,
+      message: "Veuillez accepter le traitement des données pour envoyer la demande."
+    };
+  }
+
+  return null;
+}
+
+function initContactMessageCounter(form) {
+  const message = form.elements.message;
+  const counter = form.querySelector('[data-sbi-message-count]');
+  if (!message || !counter) return;
+
+  const updateCounter = () => {
+    const max = Number(message.getAttribute('maxlength') || 1000);
+    counter.textContent = `${message.value.length}/${max}`;
+  };
+
+  updateCounter();
+  message.addEventListener('input', updateCounter);
+}
+
+function isContactFormReady(form) {
+  return !getContactValidationError(form);
+}
+
+function syncContactSubmitReadiness(form, card) {
+  const submitButton = form.querySelector('[data-sbi-contact-submit]');
+  const ready = isContactFormReady(form);
+
+  form.classList.toggle('is-ready-to-send', ready);
+  card?.classList.toggle('is-ready-to-send', ready);
+  submitButton?.classList.toggle('is-ready-to-send', ready);
+}
+
+function setContactCardState(card, state = '') {
+  if (!card) return;
+
+  card.classList.remove('is-loading', 'is-success', 'is-error');
+  if (state) card.classList.add(`is-${state}`);
+}
+
+function initContactAssistant(form, card) {
+  const assistant = card?.querySelector('[data-sbi-contact-assistant]');
+  const assistantMessage = card?.querySelector('[data-sbi-contact-assistant-message]');
+  const status = form.querySelector('[data-sbi-contact-status]');
+  const submitButton = form.querySelector('[data-sbi-contact-submit]');
+  const submitLabel = form.querySelector('[data-sbi-contact-submit-label]');
+  let assistantTimer = null;
+
+  const clearAssistantTimer = () => {
+    if (assistantTimer) window.clearTimeout(assistantTimer);
+    assistantTimer = null;
+  };
+
+  const revealAssistant = (message, tone = 'info', duration = 6200, options = {}) => {
+    clearAssistantTimer();
+
+    if (assistantMessage) assistantMessage.textContent = message;
+    if (assistant) {
+      const persist = options.persist === true || duration === 0;
+      assistant.classList.add('is-revealed', 'is-attention');
+      assistant.dataset.tone = tone;
+
+      assistantTimer = window.setTimeout(() => {
+        assistant.classList.remove('is-attention');
+      }, 1100);
+
+      if (!persist) {
+        window.setTimeout(() => {
+          if (!assistant.matches(':hover') && !assistant.matches(':focus-within')) {
+            assistant.classList.remove('is-revealed', 'is-attention');
+          }
+        }, duration);
+      }
+    }
+
+    if (status) {
+      status.textContent = message;
+      status.classList.toggle('is-error', tone === 'error');
+      status.classList.toggle('is-success', tone === 'success');
+    }
+  };
+
+  const setSubmit = (label, disabled = false) => {
+    if (submitLabel) submitLabel.textContent = label;
+    if (submitButton) submitButton.disabled = disabled;
+  };
+
+  return {
+    clear() {
+      clearAssistantTimer();
+      setContactCardState(card, '');
+      setSubmit('Envoyer le message', false);
+      if (status) {
+        status.textContent = '';
+        status.classList.remove('is-error', 'is-success');
+      }
+      assistant?.classList.remove('is-revealed', 'is-attention');
+    },
+
+    loading() {
+      setContactCardState(card, 'loading');
+      setSubmit('Envoi en cours', true);
+      revealAssistant('Je vérifie ta demande avant transmission.', 'info', 4200);
+    },
+
+    error(message, field) {
+      setContactCardState(card, 'error');
+      setSubmit('Envoyer le message', false);
+      revealAssistant(message, 'error', 6800);
+
+      if (field?.focus) {
+        window.setTimeout(() => field.focus({ preventScroll: true }), 50);
+      }
+    },
+
+    success(message) {
+      setContactCardState(card, 'success');
+      setSubmit('Message validé', false);
+      revealAssistant(message, 'success', 0, { persist: true });
+    }
+  };
+}
+
+async function hydrateContactDecorativeVideo(root) {
+  const video = root.querySelector('[data-site-media="hero-video"].contact-video-bg');
+  if (!(video instanceof HTMLVideoElement)) return;
+
+  try {
+    const mediaModule = await import('/js/site-index-public.js?v=8.0P.37');
+    const initMedia = mediaModule.initSiteIndexMedia || window.SBI_INIT_SITE_INDEX_MEDIA;
+    if (typeof initMedia === 'function') await initMedia({ forceRefresh: false });
+  } catch (error) {
+    video.dataset.mediaState = 'contact-fallback';
+  }
 }
 
 function initContactForm(root) {
@@ -151,10 +357,11 @@ function initContactForm(root) {
 
   form.dataset.sbiContactReady = 'true';
 
-  const status = form.querySelector('[data-sbi-contact-status]');
-  const setMessage = (message) => {
-    if (status) status.textContent = message;
-  };
+  const contactRoot = root.querySelector('[data-sbi-contact-root]') || root;
+  const card = contactRoot.querySelector('[data-sbi-contact-card]');
+  const assistant = initContactAssistant(form, card);
+  initContactMessageCounter(form);
+  hydrateContactDecorativeVideo(root);
 
   const params = new URLSearchParams(window.location.search);
   const interest = form.elements.interest;
@@ -162,8 +369,9 @@ function initContactForm(root) {
   const motif = text(params.get('motif') || params.get('brochure'));
 
   if (interest && !interest.value && motif) {
-    if (motif.includes('aide') || motif.includes('alternance')) interest.value = 'alternance';
-    else if (motif.includes('brochure')) interest.value = 'brochure';
+    const lowerMotif = motif.toLowerCase();
+    if (lowerMotif.includes('aide') || lowerMotif.includes('alternance')) interest.value = 'alternance';
+    else if (lowerMotif.includes('brochure')) interest.value = 'brochure';
     else interest.value = 'formation';
   }
 
@@ -173,23 +381,58 @@ function initContactForm(root) {
       `Statut : ${text(params.get('statut'))}`,
       `Formation : ${text(params.get('formation'))}`
     ].join('\n');
+
+    message.dispatchEvent(new Event('input', { bubbles: true }));
   }
+
+  const clearResolvedState = () => {
+    if (
+      card?.classList.contains('is-error') ||
+      card?.classList.contains('is-success')
+    ) {
+      assistant?.clear();
+    }
+  };
+
+  const syncReady = () => syncContactSubmitReadiness(form, card);
+  syncReady();
+
+  form.addEventListener('input', () => {
+    clearResolvedState();
+    syncReady();
+  });
+
+  form.addEventListener('change', () => {
+    clearResolvedState();
+    syncReady();
+  });
 
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
 
-    if (!form.reportValidity()) return;
+    const validationError = getContactValidationError(form);
+    if (validationError) {
+      assistant?.error(validationError.message, validationError.field);
+      syncReady();
+      return;
+    }
 
     const payload = buildBrevoPayload(form);
     window.SBI_LAST_BREVO_CONTACT_PAYLOAD = payload;
 
+    assistant?.loading();
+
     try {
       const result = await submitBrevoPayload(form, payload);
-      setMessage(result.mode === 'sent'
-        ? 'Demande envoyée. Un conseiller SBI revient vers vous.'
-        : 'Demande préparée. La connexion Brevo devra être branchée côté serveur.');
+      const message = result.mode === 'sent'
+        ? text(result.message, 'Votre message a bien été envoyé. L’équipe SBI revient vers vous rapidement.')
+        : 'Votre demande est validée. Il reste à brancher l’envoi Brevo côté serveur.';
+      form.reset();
+      form.elements.message?.dispatchEvent(new Event('input', { bubbles: true }));
+      syncReady();
+      assistant?.success(message);
     } catch (error) {
-      setMessage('La demande est préparée, mais l\'envoi Brevo n\'est pas disponible pour le moment.');
+      assistant?.error(text(error?.message, 'La demande est prête, mais l’envoi Brevo n’est pas disponible pour le moment.'));
     }
   });
 }

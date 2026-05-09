@@ -5,11 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Contact - Sport Business Institute</title>
 
-    <link rel="stylesheet" href="css/style.css?v=8.0P.42">
+    <link rel="stylesheet" href="css/style.css?v=8.0P.46">
+    <link rel="stylesheet" href="css/sbi-signals.css?v=8.0P.43">
     <link rel="stylesheet" href="css/sbi-newsletter.css">
     <link rel="stylesheet" href="css/sbi-footer.css">
     <link rel="stylesheet" href="css/sbi-home-responsive.css?v=8.0P.10d">
     <link rel="stylesheet" href="css/sbi-public-pages.css?v=8.0P.10d">
+    <link rel="stylesheet" href="css/sbi-contact.css?v=8.0P.51">
     <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,600;0,800;0,900;1,400;1,600;1,800;1,900&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap" rel="stylesheet">
 </head>
@@ -48,83 +50,218 @@
         </button>
     </header>
 
-    <main id="public-main" class="public-page" data-sbi-public-shell-root>
-        <section class="public-page-hero padding-global" data-sbi-public-section="contact">
-            <div class="public-page-hero-copy fade-in">
-                <span class="section-surtitle text-blue uppercase text-italic">Contact SBI</span>
-                <h1 class="public-page-title uppercase text-italic">Un projet ?<br><span class="text-blue">Parlons terrain.</span></h1>
-                <p class="public-page-subtitle text-italic">Formation, alternance, brochure, accompagnement entreprise ou acces plateforme : l'équipe SBI t'oriente vers la bonne prochaine etape.</p>
-                <div class="public-page-actions">
-                    <a href="#contact-form" class="btn-primary text-italic">Envoyer une demande <span class="arrow">-&gt;</span></a>
-                    <a href="calculateur.html" class="btn-ghost text-italic">Calculer l'aide</a>
-                </div>
-            </div>
-            <div class="public-page-orbit fade-in" aria-hidden="true"><span>@</span></div>
-        </section>
+    <main id="public-main" class="contact-page" data-sbi-public-shell-root data-sbi-contact-root>
+        <section class="contact-premium-hero padding-global" data-sbi-public-section="contact">
+            <video muted playsinline loop autoplay preload="metadata" class="contact-video-bg hero-video-bg" data-site-media="hero-video" aria-hidden="true"></video>
+            <div class="contact-video-mask" aria-hidden="true"></div>
+            <div class="contact-orbit contact-orbit-one" aria-hidden="true"></div>
+            <div class="contact-orbit contact-orbit-two" aria-hidden="true"></div>
 
-        <section id="contact-form" class="public-page-section padding-global" data-sbi-public-section="formulaire">
-            <div class="public-contact-layout">
-                <article class="public-contact-panel fade-in">
-                    <span class="section-surtitle text-blue uppercase text-italic">Brevo ready</span>
-                    <h2 class="text-italic">Demande d'information.</h2>
-                    <p class="text-italic">Le formulaire prépare une charge utile compatible avec une connexion Brevo côté serveur. Aucune clé API Brevo n'est exposée dans le navigateur.</p>
+            <div class="contact-premium-grid">
+                <aside class="contact-story fade-in">
+                    <span class="section-surtitle text-blue uppercase text-italic">Contact SBI</span>
+                    <h1 class="contact-title uppercase text-italic">
+                        Parlons de<br>
+                        <span class="text-blue">ton projet.</span>
+                    </h1>
+                    <p class="contact-lead text-italic">
+                        Que tu sois futur apprenant, professeur, club, entreprise ou partenaire,
+                        l'équipe SBI t'accompagne et répond à toutes tes questions sur les formations,
+                        la plateforme et nos solutions sport business.
+                    </p>
 
-                    <form class="public-contact-form" data-sbi-brevo-form data-brevo-endpoint="">
-                        <div class="public-form-grid">
-                            <label class="text-italic">
-                                Prénom
-                                <input type="text" name="firstname" autocomplete="given-name" required>
-                            </label>
-                            <label class="text-italic">
-                                Nom
-                                <input type="text" name="lastname" autocomplete="family-name">
-                            </label>
-                        </div>
-                        <div class="public-form-grid">
-                            <label class="text-italic">
-                                Email
-                                <input type="email" name="email" autocomplete="email" required>
-                            </label>
-                            <label class="text-italic">
-                                Mobile
-                                <input type="tel" name="phone" autocomplete="tel">
-                            </label>
-                        </div>
-                        <label class="text-italic">
-                            Sujet
-                            <select name="interest" required>
-                                <option value="">Choisir un besoin</option>
-                                <option value="formation">Formation SBI</option>
-                                <option value="alternance">Alternance / aide à l'embauche</option>
-                                <option value="brochure">Recevoir une brochure</option>
-                                <option value="plateforme">Accès plateforme</option>
-                                <option value="entreprise">Accompagnement entreprise</option>
-                            </select>
-                        </label>
-                        <label class="text-italic">
-                            Message
-                            <textarea name="message" placeholder="Explique ton besoin en quelques lignes."></textarea>
-                        </label>
-                        <label class="public-consent text-italic">
-                            <input type="checkbox" name="consent" required>
-                            <span>J'autorise SBI à utiliser mes coordonnées pour répondre à ma demande et m'envoyer des communications par email et mobile liées aux formations, brochures et campagnes SBI.</span>
-                        </label>
-                        <p class="public-form-status text-italic" data-sbi-contact-status aria-live="polite"></p>
-                        <button type="submit" class="btn-primary text-italic">Préparer ma demande <span class="arrow">-&gt;</span></button>
-                    </form>
-                </article>
+                    <div class="contact-direct-lines" aria-label="Coordonnées SBI">
+                        <a href="tel:+33668603001" class="contact-direct-link text-italic">
+                            <span>Téléphone</span>
+                            <strong>06 68 60 30 01</strong>
+                        </a>
+                        <a href="mailto:contact@sbigroup.fr" class="contact-direct-link text-italic">
+                            <span>Email</span>
+                            <strong>contact@sbigroup.fr</strong>
+                        </a>
+                    </div>
 
-                <aside class="public-contact-panel fade-in">
-                    <span class="section-surtitle text-blue uppercase text-italic">Acces rapide</span>
-                    <h2 class="text-italic">Le bon canal, vite.</h2>
-                    <p class="text-italic">Tu peux aussi choisir une demande directe. Ces liens restent sur SBI et ne pointent vers aucun autre projet.</p>
-                    <div class="public-contact-list">
-                        <a href="mailto:contact@sbi.fr?subject=Demande%20d'information%20SBI" class="text-italic">Demande d'information</a>
-                        <a href="mailto:contact@sbi.fr?subject=Brochure%20SBI" class="text-italic">Recevoir une brochure</a>
-                        <a href="mailto:contact@sbi.fr?subject=Accompagnement%20alternance%20SBI" class="text-italic">Accompagnement alternance</a>
-                        <a href="mailto:contact@sbi.fr?subject=Acces%20plateforme%20SBI" class="text-italic">Accès plateforme</a>
+                    <img src="assets/Logo_SBI_Tome.webp" alt="" class="contact-ghost-logo" data-site-media="contact-ghost-logo" aria-hidden="true">
+
+                    <div class="contact-feature-list" aria-label="Accompagnement SBI">
+                        <article class="contact-feature">
+                            <span class="contact-feature-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M13 2 4 14h7l-1 8 10-13h-7l0-7Z"></path>
+                                </svg>
+                            </span>
+                            <div>
+                                <h2 class="text-italic">Réponse rapide</h2>
+                                <p class="text-italic">Notre équipe revient vers toi sous 24h ouvrées.</p>
+                            </div>
+                        </article>
+
+                        <article class="contact-feature">
+                            <span class="contact-feature-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M20 21a8 8 0 0 0-16 0"></path>
+                                    <circle cx="12" cy="7" r="4"></circle>
+                                </svg>
+                            </span>
+                            <div>
+                                <h2 class="text-italic">Accompagnement personnalisé</h2>
+                                <p class="text-italic">Un suivi dédié selon ton profil et tes objectifs.</p>
+                            </div>
+                        </article>
+
+                        <article class="contact-feature">
+                            <span class="contact-feature-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="m22 10-10-5-10 5 10 5 10-5Z"></path>
+                                    <path d="M6 12v5c3 2 9 2 12 0v-5"></path>
+                                </svg>
+                            </span>
+                            <div>
+                                <h2 class="text-italic">Orientation formation</h2>
+                                <p class="text-italic">Trouve la formation qui correspond à ton terrain.</p>
+                            </div>
+                        </article>
                     </div>
                 </aside>
+
+                <section class="contact-form-card fade-in" id="contact-card" data-sbi-contact-card>
+                    <div class="card-badge contact-card-badge" aria-hidden="true"></div>
+                    <div class="contact-card-cut" aria-hidden="true"></div>
+
+                    <div class="contact-card-inner">
+                        <div class="contact-card-kicker">
+                            <span class="contact-kicker-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21 15a4 4 0 0 1-4 4H7l-4 4V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"></path>
+                                </svg>
+                            </span>
+                            <span class="uppercase text-italic">Contact SBI</span>
+                        </div>
+
+                        <h2 class="contact-card-title text-italic">Contact</h2>
+                        <p class="contact-card-copy text-italic">
+                            Parle-nous de ton projet, de ta formation ou de tes besoins.
+                            L'équipe SBI te répond rapidement.
+                        </p>
+
+                        <form class="contact-premium-form" data-sbi-brevo-form data-brevo-endpoint="/api/sendSbiContact" novalidate>
+                            <fieldset class="contact-profile-tabs" data-field-label="votre profil">
+                                <legend class="text-italic">Votre profil</legend>
+                                <label class="contact-profile-tab text-italic">
+                                    <input type="radio" name="profile" value="etudiant" required>
+                                    <span>Étudiant</span>
+                                </label>
+                                <label class="contact-profile-tab text-italic">
+                                    <input type="radio" name="profile" value="professeur">
+                                    <span>Professeur</span>
+                                </label>
+                                <label class="contact-profile-tab text-italic">
+                                    <input type="radio" name="profile" value="professionnel">
+                                    <span>Professionnel</span>
+                                </label>
+                                <label class="contact-profile-tab text-italic">
+                                    <input type="radio" name="profile" value="entreprise">
+                                    <span>Entreprise</span>
+                                </label>
+                                <label class="contact-profile-tab text-italic">
+                                    <input type="radio" name="profile" value="club">
+                                    <span>Club</span>
+                                </label>
+                                <label class="contact-profile-tab text-italic">
+                                    <input type="radio" name="profile" value="autre">
+                                    <span>Autre</span>
+                                </label>
+                            </fieldset>
+
+                            <div class="contact-form-grid">
+                                <label class="contact-field text-italic" data-field-label="le prénom">
+                                    Prénom
+                                    <input type="text" name="firstname" autocomplete="given-name" placeholder="Ton prénom" required>
+                                </label>
+                                <label class="contact-field text-italic" data-field-label="le nom">
+                                    Nom
+                                    <input type="text" name="lastname" autocomplete="family-name" placeholder="Ton nom" required>
+                                </label>
+                            </div>
+
+                            <label class="contact-field text-italic" data-field-label="l'email">
+                                Email
+                                <span class="contact-input-wrap">
+                                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <rect x="3" y="5" width="18" height="14" rx="2"></rect>
+                                        <path d="m3 7 9 6 9-6"></path>
+                                    </svg>
+                                    <input type="email" name="email" autocomplete="email" placeholder="ton.email@exemple.com" required>
+                                </span>
+                            </label>
+
+                            <label class="contact-field text-italic" data-field-label="le téléphone">
+                                Téléphone
+                                <span class="contact-input-wrap">
+                                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.11 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.9.32 1.77.59 2.61a2 2 0 0 1-.45 2.11L8 9.69a16 16 0 0 0 6.31 6.31l1.25-1.25a2 2 0 0 1 2.11-.45c.84.27 1.71.47 2.61.59A2 2 0 0 1 22 16.92Z"></path>
+                                    </svg>
+                                    <input type="tel" name="phone" autocomplete="tel" placeholder="06 12 34 56 78" required>
+                                </span>
+                            </label>
+
+                            <label class="contact-field text-italic" data-field-label="le sujet">
+                                Sujet
+                                <select name="interest" required>
+                                    <option value="">Choisis un sujet</option>
+                                    <option value="formation">Formation SBI</option>
+                                    <option value="alternance">Alternance / aide à l'embauche</option>
+                                    <option value="brochure">Recevoir une brochure</option>
+                                    <option value="plateforme">Accès plateforme</option>
+                                    <option value="entreprise">Accompagnement entreprise / club</option>
+                                    <option value="partenariat">Partenariat</option>
+                                    <option value="autre">Autre demande</option>
+                                </select>
+                            </label>
+
+                            <label class="contact-field text-italic" data-field-label="le message">
+                                Message
+                                <textarea name="message" maxlength="1000" placeholder="Décris ton projet, ta question ou ton besoin..." required></textarea>
+                                <span class="contact-message-count" data-sbi-message-count>0/1000</span>
+                            </label>
+
+                            <div class="contact-legal-box">
+                                <label class="contact-consent text-italic" data-field-label="le traitement des données">
+                                    <input type="checkbox" name="requestConsent" required>
+                                    <span>J'accepte que SBI traite mes données pour répondre à ma demande.</span>
+                                </label>
+                                <label class="contact-consent text-italic">
+                                    <input type="checkbox" name="emailConsent">
+                                    <span>Je souhaite recevoir les actualités, contenus et offres SBI par email.</span>
+                                </label>
+                                <label class="contact-consent text-italic">
+                                    <input type="checkbox" name="mobileConsent">
+                                    <span>J'accepte d'être recontacté par téléphone/SMS concernant les formations et solutions SBI.</span>
+                                </label>
+                                <p class="contact-legal-note text-italic">
+                                    Tes informations sont utilisées par SBI pour traiter ta demande et, si tu l'acceptes,
+                                    pour t'envoyer des communications. Tu peux te désinscrire à tout moment.
+                                    Consulte notre <a href="#" class="text-blue">politique de confidentialité</a>.
+                                </p>
+                            </div>
+
+                            <p class="contact-form-status text-italic" data-sbi-contact-status aria-live="polite"></p>
+
+                            <button type="submit" class="btn-primary text-italic contact-submit" data-sbi-contact-submit>
+                                <span data-sbi-contact-submit-label>Envoyer le message</span>
+                                <span class="arrow" aria-hidden="true">→</span>
+                            </button>
+                        </form>
+
+                    </div>
+
+                    <div class="contact-assistant sbi-signal sbi-signal-contact" data-sbi-contact-assistant aria-live="polite">
+                        <span class="sbi-signal-dot" aria-hidden="true"></span>
+                        <span class="sbi-signal-panel text-italic">
+                            <span class="sbi-signal-label" data-sbi-contact-assistant-message>Je vérifie ta demande.</span>
+                        </span>
+                    </div>
+                </section>
             </div>
         </section>
     </main>
@@ -168,7 +305,7 @@
                     <a href="#" aria-label="LinkedIn"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path><rect x="2" y="9" width="4" height="12"></rect><circle cx="4" cy="4" r="2"></circle></svg></a>
                     <a href="#" aria-label="YouTube"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33 2.78 2.78 0 0 0 1.94 2c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.33 29 29 0 0 0-.46-5.33z"></path><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"></polygon></svg></a>
                 </div>
-                <a href="mailto:contact@sbi.fr" class="footer-contact-link text-italic">contact@sbi.fr</a>
+                <a href="mailto:contact@sbigroup.fr" class="footer-contact-link text-italic">contact@sbigroup.fr</a>
             </div>
         </div>
         <div class="footer-bottom">
@@ -178,8 +315,8 @@
     </footer>
 
     <script src="js/sbi-background.js?v=8.0P.10d"></script>
-    <script src="js/main.js?v=8.0P.10d"></script>
-    <script type="module" src="js/sbi-public-pages.js?v=8.0P.10d"></script>
-    <script src="js/public-app-shell.js?v=8.0P.40"></script>
+    <script src="js/main.js?v=8.0P.51"></script>
+    <script type="module" src="js/sbi-public-pages.js?v=8.0P.51"></script>
+    <script src="js/public-app-shell.js?v=8.0P.51"></script>
 </body>
 </html>

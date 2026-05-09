@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.42',
+  version: '8.0P.51',
   branch: 'public-pjax-app-shell',
   channel: 'PUBLIC PJAX APP SHELL',
-  stage: 'Public assistant signal halo emphasis',
+  stage: 'Brevo valid sender and contact email fix',
   updatedAt: '2026-05-08',
-  label: 'SBI 8.0P.42 - ASSISTANT SIGNAL FLASH HALO'
+  label: 'SBI 8.0P.51 - BREVO EMAIL TEMPLATE + CONTACT POLISH'
 };
 
 export function getSbiVersionLabel() {
