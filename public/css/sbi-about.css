@@ -1,21 +1,20 @@
 /* =========================================================
-   SBI 8.0P.56 - ABOUT FOUNDER STORY + LAYOUT FIX
+   SBI 8.0P.57 - ABOUT HERO BLENDED + INDEX BACKGROUND
    ---------------------------------------------------------
-   - Pas de vidéo en fond global.
-   - Vidéo uniquement dans le cadre fondateur haut et le CTA final.
-   - Suppression de la section parcours métiers.
-   - Bloc mission compact.
-   - Bloc Christophe / SBI réécrit.
+   - Fond global rapproché de l'index, sans vidéo page entière.
+   - Hero fondateur fondu dans le décor : plus grand, sans bordure.
+   - Vidéo uniquement dans le visuel fondateur haut et CTA bas.
+   - SBI ghost logo plus présent, photo PNG mieux centrée.
    ========================================================= */
 
 :root {
     --about-border: rgba(99, 150, 255, 0.2);
-    --about-border-strong: rgba(99, 150, 255, 0.34);
-    --about-card-bg: linear-gradient(145deg, rgba(7, 13, 27, 0.9), rgba(4, 8, 17, 0.94));
+    --about-border-soft: rgba(99, 150, 255, 0.13);
+    --about-card-bg: linear-gradient(145deg, rgba(7, 13, 27, 0.78), rgba(4, 8, 17, 0.86));
 }
 
 body[data-sbi-public-page="apropos"] {
-    background: #04070d;
+    background: var(--bg-dark, #050913);
 }
 
 body[data-sbi-public-page="apropos"] .site-header .main-nav a[href="a-propos.html"] {
@@ -29,15 +28,14 @@ body[data-sbi-public-page="apropos"] .site-header .main-nav a[href="a-propos.htm
 
 .about-page {
     position: relative;
-    z-index: 1;
+    z-index: 2;
     min-height: 100vh;
     overflow: hidden;
     padding-top: var(--header-height);
     background:
-        radial-gradient(circle at 18% 26%, rgba(0, 81, 255, 0.13), transparent 31rem),
-        radial-gradient(circle at 82% 14%, rgba(0, 119, 255, 0.09), transparent 29rem),
-        radial-gradient(circle at 72% 76%, rgba(0, 81, 255, 0.06), transparent 30rem),
-        linear-gradient(135deg, rgba(3, 7, 14, 0.99) 0%, rgba(4, 7, 12, 0.98) 45%, rgba(2, 6, 15, 1) 100%);
+        radial-gradient(ellipse at 4% 74%, rgba(0, 81, 255, 0.135), transparent 34rem),
+        radial-gradient(ellipse at 94% 12%, rgba(0, 119, 255, 0.105), transparent 31rem),
+        linear-gradient(180deg, rgba(4, 5, 8, 0.78) 0%, rgba(4, 5, 8, 0.66) 38%, rgba(4, 5, 8, 0.86) 100%);
     isolation: isolate;
 }
 
@@ -52,18 +50,18 @@ body[data-sbi-public-page="apropos"] .site-header .main-nav a[href="a-propos.htm
 
 .about-page::before {
     background:
-        radial-gradient(circle at 15% 24%, rgba(255, 255, 255, 0.075) 0 1px, transparent 1.6px),
-        radial-gradient(circle at 82% 18%, rgba(255, 255, 255, 0.06) 0 1.2px, transparent 1.9px),
-        radial-gradient(circle at 76% 57%, rgba(255, 255, 255, 0.055) 0 1px, transparent 1.7px);
-    background-size: 420px 320px, 480px 380px, 580px 420px;
-    opacity: 0.26;
+        radial-gradient(circle at 14% 22%, rgba(255, 255, 255, 0.07) 0 1px, transparent 1.6px),
+        radial-gradient(circle at 82% 16%, rgba(255, 255, 255, 0.055) 0 1.1px, transparent 1.9px),
+        radial-gradient(circle at 70% 64%, rgba(255, 255, 255, 0.045) 0 1px, transparent 1.8px);
+    background-size: 430px 320px, 520px 380px, 620px 440px;
+    opacity: 0.22;
 }
 
 .about-page::after {
     background:
-        linear-gradient(90deg, rgba(4, 5, 8, 0.92) 0%, rgba(4, 5, 8, 0.36) 42%, rgba(4, 5, 8, 0.88) 100%),
-        radial-gradient(circle at 50% 40%, transparent 0%, rgba(0, 0, 0, 0.22) 72%);
-    opacity: 0.68;
+        linear-gradient(90deg, rgba(4, 5, 8, 0.82) 0%, rgba(4, 5, 8, 0.22) 46%, rgba(4, 5, 8, 0.76) 100%),
+        radial-gradient(circle at 50% 44%, transparent 0%, rgba(0, 0, 0, 0.2) 75%);
+    opacity: 0.66;
 }
 
 .about-page > section {
@@ -75,22 +73,24 @@ body[data-sbi-public-page="apropos"] .site-header .main-nav a[href="a-propos.htm
 .about-proof-strip,
 .about-section,
 .about-final-cta {
-    padding-top: clamp(2.2rem, 3.6vw, 4.2rem);
-    padding-bottom: clamp(2.2rem, 3.6vw, 4.2rem);
+    padding-top: clamp(2.2rem, 3.4vw, 4rem);
+    padding-bottom: clamp(2.2rem, 3.4vw, 4rem);
 }
 
 .about-hero {
     display: grid;
-    grid-template-columns: minmax(0, 0.82fr) minmax(540px, 1.18fr);
+    grid-template-columns: minmax(420px, 0.72fr) minmax(640px, 1.28fr);
     align-items: center;
-    gap: clamp(2rem, 4vw, 4.5rem);
-    min-height: clamp(690px, 82vh, 900px);
-    padding-top: clamp(4rem, 5.5vw, 5rem);
-    padding-bottom: 1.4rem;
+    gap: clamp(1.5rem, 3.2vw, 3.6rem);
+    min-height: clamp(720px, 84vh, 940px);
+    padding-top: clamp(4.2rem, 5.4vw, 5.2rem);
+    padding-bottom: 1rem;
 }
 
 .about-hero-copy {
     max-width: 700px;
+    position: relative;
+    z-index: 3;
 }
 
 .section-surtitle,
@@ -115,9 +115,7 @@ body[data-sbi-public-page="apropos"] .site-header .main-nav a[href="a-propos.htm
     text-shadow: 0 18px 36px rgba(0, 0, 0, 0.55);
 }
 
-.about-hero-title .text-blue {
-    color: var(--sbi-blue);
-}
+.about-hero-title .text-blue { color: var(--sbi-blue); }
 
 .about-hero-lead {
     max-width: 590px;
@@ -160,21 +158,31 @@ body[data-sbi-public-page="apropos"] .site-header .main-nav a[href="a-propos.htm
 
 .about-hero-visual {
     margin: 0;
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+    min-width: 0;
 }
 
 .about-hero-visual-shell {
     position: relative;
-    min-height: clamp(500px, 43vw, 630px);
+    width: 100%;
+    height: clamp(600px, 48vw, 790px);
+    min-height: 0;
     overflow: hidden;
-    border: 1px solid rgba(99, 150, 255, 0.24);
-    background:
-        linear-gradient(90deg, rgba(4, 7, 14, 0.92), rgba(4, 7, 14, 0.50) 48%, rgba(4, 7, 14, 0.76)),
-        radial-gradient(circle at 75% 38%, rgba(0, 81, 255, 0.18), transparent 32%);
-    clip-path: polygon(0 0, 100% 0, 100% 88%, 95% 100%, 0 100%);
-    box-shadow:
-        inset 0 0 0 1px rgba(255, 255, 255, 0.018),
-        0 24px 54px rgba(0, 0, 0, 0.28),
-        0 0 38px rgba(0, 81, 255, 0.07);
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    clip-path: none !important;
+    transform: translateX(1vw);
+    -webkit-mask-image:
+        linear-gradient(90deg, transparent 0%, #000 9%, #000 95%, transparent 100%),
+        linear-gradient(180deg, transparent 0%, #000 8%, #000 92%, transparent 100%);
+    -webkit-mask-composite: source-in;
+    mask-image:
+        linear-gradient(90deg, transparent 0%, #000 9%, #000 95%, transparent 100%),
+        linear-gradient(180deg, transparent 0%, #000 8%, #000 92%, transparent 100%);
+    mask-composite: intersect;
 }
 
 .about-visual-video,
@@ -188,8 +196,8 @@ body[data-sbi-public-page="apropos"] .site-header .main-nav a[href="a-propos.htm
     width: 100%;
     height: 100%;
     object-fit: cover;
-    opacity: 0.34;
-    filter: grayscale(1) contrast(1.28) brightness(0.62) saturate(1.22);
+    opacity: 0.62;
+    filter: grayscale(1) contrast(1.28) brightness(0.70) saturate(1.18);
     mix-blend-mode: screen;
     z-index: 0;
 }
@@ -197,38 +205,41 @@ body[data-sbi-public-page="apropos"] .site-header .main-nav a[href="a-propos.htm
 .about-visual-video-mask {
     z-index: 1;
     background:
-        linear-gradient(90deg, rgba(4, 7, 14, 0.9) 0%, rgba(4, 7, 14, 0.38) 54%, rgba(4, 7, 14, 0.84) 100%),
-        radial-gradient(circle at 76% 42%, rgba(0, 81, 255, 0.22), transparent 38%);
+        radial-gradient(circle at 69% 42%, rgba(0, 81, 255, 0.20), transparent 34%),
+        linear-gradient(90deg, rgba(4, 5, 8, 0.88) 0%, rgba(4, 5, 8, 0.36) 38%, rgba(4, 5, 8, 0.18) 62%, rgba(4, 5, 8, 0.74) 100%),
+        linear-gradient(180deg, rgba(4, 5, 8, 0.82) 0%, rgba(4, 5, 8, 0.18) 38%, rgba(4, 5, 8, 0.64) 100%);
 }
 
 .about-hero-ghost-logo {
     position: absolute;
-    right: 5%;
-    top: 7%;
-    width: min(58%, 465px);
-    opacity: 0.20;
-    filter: grayscale(1) contrast(1.14) brightness(0.96);
+    right: 2%;
+    top: 4%;
+    width: min(72%, 660px);
+    opacity: 0.30;
+    filter: grayscale(1) contrast(0.92) brightness(1.22);
     mix-blend-mode: screen;
     z-index: 2;
 }
 
 .about-founder-hero-img {
     position: absolute;
-    right: 2.8%;
+    left: 54%;
+    right: auto;
     bottom: 0;
-    width: min(70%, 560px);
+    width: min(76%, 670px);
     max-width: none;
-    height: 97%;
+    height: 98%;
     object-fit: contain;
-    object-position: right bottom;
+    object-position: center bottom;
+    transform: translateX(-36%);
     z-index: 4;
-    filter: drop-shadow(0 24px 34px rgba(0, 0, 0, 0.45));
+    filter: drop-shadow(0 26px 38px rgba(0, 0, 0, 0.46));
 }
 
 .about-founder-caption {
     position: absolute;
-    right: 6%;
-    bottom: 6%;
+    right: 12%;
+    bottom: 8.5%;
     z-index: 5;
     display: grid;
     justify-items: end;
@@ -277,28 +288,15 @@ body[data-sbi-public-page="apropos"] .site-header .main-nav a[href="a-propos.htm
 
 .about-proof-card h2,
 .about-panel h3,
-.about-approach-card h3 {
-    color: #fff;
-}
-
-.about-proof-card h2 {
-    margin: 0;
-    font-size: 1.1rem;
-}
+.about-approach-card h3 { color: #fff; }
+.about-proof-card h2 { margin: 0; font-size: 1.1rem; }
 
 .about-proof-card p,
 .about-panel p,
 .about-founder-card-copy p,
 .about-institute-card p,
-.about-approach-card p {
-    color: rgba(214, 225, 241, 0.76);
-}
-
-.about-proof-card p {
-    margin: 0.3rem 0 0;
-    font-size: 0.95rem;
-    line-height: 1.55;
-}
+.about-approach-card p { color: rgba(214, 225, 241, 0.76); }
+.about-proof-card p { margin: 0.3rem 0 0; font-size: 0.95rem; line-height: 1.55; }
 
 .about-icon {
     width: 44px;
@@ -322,9 +320,7 @@ body[data-sbi-public-page="apropos"] .site-header .main-nav a[href="a-propos.htm
     stroke-linejoin: round;
 }
 
-.about-mission {
-    padding-top: clamp(2rem, 3vw, 3.2rem);
-}
+.about-mission { padding-top: clamp(2rem, 3vw, 3.2rem); }
 
 .about-mission-layout {
     display: grid;
@@ -374,9 +370,7 @@ body[data-sbi-public-page="apropos"] .site-header .main-nav a[href="a-propos.htm
     padding: 1.6rem 1.55rem;
 }
 
-.about-mission .about-panel {
-    min-height: 215px;
-}
+.about-mission .about-panel { min-height: 215px; }
 
 .about-panel h3,
 .about-approach-card h3 {
@@ -431,9 +425,7 @@ body[data-sbi-public-page="apropos"] .site-header .main-nav a[href="a-propos.htm
     object-position: center top;
 }
 
-.about-founder-card-copy {
-    padding: 1.8rem 1.8rem 1.8rem 0;
-}
+.about-founder-card-copy { padding: 1.8rem 1.8rem 1.8rem 0; }
 
 .about-founder-card-copy h2,
 .about-institute-card h2,
@@ -445,58 +437,16 @@ body[data-sbi-public-page="apropos"] .site-header .main-nav a[href="a-propos.htm
 }
 
 .about-founder-card-copy h2,
-.about-institute-card h2 {
-    font-size: clamp(2rem, 2.4vw, 3rem);
-}
-
-.about-founder-eyebrow {
-    display: inline-block;
-    margin-bottom: 0.8rem;
-    font-weight: 800;
-}
-
-.about-founder-card-copy p {
-    margin: 0.75rem 0 0;
-    line-height: 1.62;
-}
-
-.about-institute-card {
-    padding: 1.8rem 1.9rem;
-}
-
-.about-institute-card p {
-    margin: 1rem 0 0;
-    line-height: 1.66;
-}
-
-.about-institute-cta {
-    color: #fff;
-}
-
-.about-network-block {
-    margin-top: 1.8rem;
-    padding-top: 1.2rem;
-    border-top: 1px solid rgba(115, 166, 255, 0.16);
-}
-
-.about-network-block h3 {
-    margin: 0 0 0.95rem;
-    font-size: 1rem;
-}
-
-.about-network-list {
-    list-style: disc;
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.6rem 1.35rem;
-    padding-left: 1rem;
-    margin: 0;
-}
-
-.about-network-list li {
-    color: rgba(214, 225, 241, 0.86);
-    font-size: 0.96rem;
-}
+.about-institute-card h2 { font-size: clamp(2rem, 2.4vw, 3rem); }
+.about-founder-eyebrow { display: inline-block; margin-bottom: 0.8rem; font-weight: 800; }
+.about-founder-card-copy p { margin: 0.75rem 0 0; line-height: 1.62; }
+.about-institute-card { padding: 1.8rem 1.9rem; }
+.about-institute-card p { margin: 1rem 0 0; line-height: 1.66; }
+.about-institute-cta { color: #fff; }
+.about-network-block { margin-top: 1.8rem; padding-top: 1.2rem; border-top: 1px solid rgba(115, 166, 255, 0.16); }
+.about-network-block h3 { margin: 0 0 0.95rem; font-size: 1rem; }
+.about-network-list { list-style: disc; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem 1.35rem; padding-left: 1rem; margin: 0; }
+.about-network-list li { color: rgba(214, 225, 241, 0.86); font-size: 0.96rem; }
 
 .about-approach-grid {
     display: grid;
@@ -513,19 +463,18 @@ body[data-sbi-public-page="apropos"] .site-header .main-nav a[href="a-propos.htm
     justify-content: center;
 }
 
-.about-approach-card p {
-    max-width: 250px;
-}
+.about-approach-card p { max-width: 250px; }
 
 .about-final-card {
     position: relative;
     overflow: hidden;
     padding: clamp(3rem, 6vw, 4.6rem);
     text-align: center;
-    min-height: 230px;
+    min-height: 250px;
+    border-color: rgba(99, 150, 255, 0.22);
     background:
-        linear-gradient(180deg, rgba(7, 12, 23, 0.78), rgba(3, 7, 14, 0.90)),
-        radial-gradient(circle at 85% 48%, rgba(0, 81, 255, 0.16), transparent 38%);
+        linear-gradient(180deg, rgba(7, 12, 23, 0.72), rgba(3, 7, 14, 0.88)),
+        radial-gradient(circle at 85% 48%, rgba(0, 81, 255, 0.18), transparent 38%);
 }
 
 .about-final-video,
@@ -539,15 +488,15 @@ body[data-sbi-public-page="apropos"] .site-header .main-nav a[href="a-propos.htm
     width: 100%;
     height: 100%;
     object-fit: cover;
-    opacity: 0.24;
-    filter: grayscale(1) contrast(1.35) brightness(0.48) saturate(1.25);
+    opacity: 0.44;
+    filter: grayscale(1) contrast(1.34) brightness(0.56) saturate(1.2);
     mix-blend-mode: screen;
 }
 
 .about-final-video-mask {
     background:
-        linear-gradient(90deg, rgba(4, 7, 14, 0.86), rgba(4, 7, 14, 0.42), rgba(4, 7, 14, 0.86)),
-        radial-gradient(circle at 84% 58%, rgba(0, 81, 255, 0.22), transparent 34%);
+        linear-gradient(90deg, rgba(4, 7, 14, 0.82), rgba(4, 7, 14, 0.28), rgba(4, 7, 14, 0.82)),
+        radial-gradient(circle at 84% 58%, rgba(0, 81, 255, 0.25), transparent 34%);
 }
 
 .about-final-card h2,
@@ -561,8 +510,21 @@ body[data-sbi-public-page="apropos"] .site-header .main-nav a[href="a-propos.htm
     line-height: 0.98;
 }
 
-.footer-brand-block .footer-description {
-    display: none;
+.footer-brand-block .footer-description { display: none; }
+
+@media (max-width: 1500px) {
+    .about-hero {
+        grid-template-columns: minmax(380px, 0.78fr) minmax(520px, 1.22fr);
+    }
+
+    .about-hero-visual-shell {
+        height: clamp(560px, 46vw, 720px);
+    }
+
+    .about-founder-hero-img {
+        width: min(76%, 600px);
+        transform: translateX(-34%);
+    }
 }
 
 @media (max-width: 1380px) {
@@ -570,13 +532,8 @@ body[data-sbi-public-page="apropos"] .site-header .main-nav a[href="a-propos.htm
         grid-template-columns: minmax(0, 0.95fr) minmax(440px, 1.05fr);
     }
 
-    .about-approach-grid {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-
-    .about-founder-grid {
-        grid-template-columns: 1fr;
-    }
+    .about-approach-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .about-founder-grid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 1120px) {
@@ -585,25 +542,15 @@ body[data-sbi-public-page="apropos"] .site-header .main-nav a[href="a-propos.htm
         min-height: auto;
     }
 
-    .about-hero-copy {
-        max-width: 720px;
-    }
-
-    .about-hero-visual-shell {
-        min-height: 540px;
-    }
+    .about-hero-copy { max-width: 720px; }
+    .about-hero-visual-shell { height: 540px; transform: none; }
 
     .about-proof-strip,
     .about-mission-grid,
     .about-approach-grid,
-    .about-network-list {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
+    .about-network-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
-    .about-mission-layout {
-        grid-template-columns: 1fr;
-        align-items: start;
-    }
+    .about-mission-layout { grid-template-columns: 1fr; align-items: start; }
 }
 
 @media (max-width: 860px) {
@@ -611,34 +558,21 @@ body[data-sbi-public-page="apropos"] .site-header .main-nav a[href="a-propos.htm
     .about-mission-grid,
     .about-founder-grid,
     .about-approach-grid,
-    .about-network-list {
-        grid-template-columns: 1fr;
-    }
+    .about-network-list { grid-template-columns: 1fr; }
 
-    .about-founder-card {
-        grid-template-columns: 1fr;
-    }
-
-    .about-founder-card-copy {
-        padding: 1.4rem 1.4rem 1.8rem;
-    }
-
-    .about-founder-portrait {
-        min-height: 340px;
-    }
-
-    .about-hero-visual-shell {
-        min-height: 470px;
-    }
+    .about-founder-card { grid-template-columns: 1fr; }
+    .about-founder-card-copy { padding: 1.4rem 1.4rem 1.8rem; }
+    .about-founder-portrait { min-height: 340px; }
+    .about-hero-visual-shell { height: 470px; }
 
     .about-founder-hero-img {
+        left: 56%;
         width: min(86%, 420px);
-        height: 92%;
+        height: 94%;
+        transform: translateX(-42%);
     }
 
-    .about-final-card {
-        text-align: left;
-    }
+    .about-final-card { text-align: left; }
 }
 
 @media (max-width: 640px) {
@@ -652,14 +586,7 @@ body[data-sbi-public-page="apropos"] .site-header .main-nav a[href="a-propos.htm
         letter-spacing: -0.06em;
     }
 
-    .about-hero-visual-shell {
-        min-height: 380px;
-    }
-
-    .about-founder-hero-img {
-        right: 1%;
-        width: min(88%, 350px);
-    }
+    .about-hero-visual-shell { height: 380px; }
 
     .about-founder-caption {
         right: 5%;
@@ -674,11 +601,6 @@ body[data-sbi-public-page="apropos"] .site-header .main-nav a[href="a-propos.htm
         padding-right: 1.15rem;
     }
 
-    .about-approach-card {
-        min-height: 180px;
-    }
-
-    .about-final-card h2 {
-        font-size: clamp(2.1rem, 11vw, 3rem);
-    }
+    .about-approach-card { min-height: 180px; }
+    .about-final-card h2 { font-size: clamp(2.1rem, 11vw, 3rem); }
 }
