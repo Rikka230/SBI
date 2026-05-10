@@ -1,4 +1,4 @@
-const SITE_INDEX_MEDIA_VERSION = '8.0P.59';
+const SITE_INDEX_MEDIA_VERSION = '8.0P.60';
 
 window.__SBI_SITE_INDEX_MEDIA_LOADING__ = true;
 
@@ -240,19 +240,24 @@ function applyFounderImage(settings = {}) {
 
 
 function applyAboutFounderHeroImage(settings = {}) {
-  const founderUrl = settings.aboutFounderHeroImageUrl || settings.founderImageUrl || LOCAL_MEDIA.founder;
+  const founderUrl = cleanUrl(settings.aboutFounderHeroImageUrl);
 
   document.querySelectorAll('[data-site-media="about-founder-hero"], .about-founder-hero-img').forEach((img) => {
     if (!(img instanceof HTMLImageElement)) return;
+
+    if (!founderUrl) {
+      img.dataset.loadedFromStorage = 'false';
+      img.dataset.mediaSource = 'missing-about-founder-hero';
+      img.dataset.loadedFromLocal = 'false';
+      return;
+    }
+
     if (img.getAttribute('src') !== founderUrl) img.src = founderUrl;
 
     const isStorage = isStorageUrl(founderUrl);
     img.dataset.loadedFromStorage = isStorage ? 'true' : 'false';
-    img.dataset.mediaSource = settings.aboutFounderHeroImageUrl
-      ? 'firestore-about-founder-hero'
-      : settings.founderImageUrl
-        ? 'firestore-founder'
-        : 'assets';
+    img.dataset.loadedFromLocal = 'false';
+    img.dataset.mediaSource = 'firestore-about-founder-hero';
     img.loading = 'eager';
     img.fetchPriority = 'high';
     img.decoding = 'async';
@@ -261,55 +266,59 @@ function applyAboutFounderHeroImage(settings = {}) {
 }
 
 function applyHeroVideo(settings = {}) {
-  const video = document.querySelector('[data-site-media="hero-video"], .hero-video-bg');
-  if (!(video instanceof HTMLVideoElement)) return;
+  const videos = Array.from(document.querySelectorAll('[data-site-media="hero-video"], .hero-video-bg'))
+    .filter((video, index, list) => video instanceof HTMLVideoElement && list.indexOf(video) === index);
+
+  if (!videos.length) return;
 
   const webmUrl = cleanUrl(settings.heroVideoWebmUrl);
   const mp4Url = cleanUrl(settings.heroVideoMp4Url);
 
-  if (!webmUrl && !mp4Url) {
-    video.dataset.mediaState = 'missing-url';
-    return;
-  }
-
-  const currentSources = Array.from(video.querySelectorAll('source'))
-    .map((source) => `${source.type}:${source.getAttribute('src') || ''}`)
-    .join('|');
-  const nextSources = `${webmUrl ? `video/webm:${webmUrl}` : ''}|${mp4Url ? `video/mp4:${mp4Url}` : ''}`;
-
-  if (currentSources !== nextSources) {
-    video.pause();
-    video.innerHTML = '';
-
-    if (webmUrl) {
-      const webm = document.createElement('source');
-      webm.src = webmUrl;
-      webm.type = 'video/webm';
-      video.appendChild(webm);
+  videos.forEach((video) => {
+    if (!webmUrl && !mp4Url) {
+      video.dataset.mediaState = 'missing-url';
+      return;
     }
 
-    if (mp4Url) {
-      const mp4 = document.createElement('source');
-      mp4.src = mp4Url;
-      mp4.type = 'video/mp4';
-      video.appendChild(mp4);
+    const currentSources = Array.from(video.querySelectorAll('source'))
+      .map((source) => `${source.type}:${source.getAttribute('src') || ''}`)
+      .join('|');
+    const nextSources = `${webmUrl ? `video/webm:${webmUrl}` : ''}|${mp4Url ? `video/mp4:${mp4Url}` : ''}`;
+
+    if (currentSources !== nextSources) {
+      video.pause();
+      video.innerHTML = '';
+
+      if (webmUrl) {
+        const webm = document.createElement('source');
+        webm.src = webmUrl;
+        webm.type = 'video/webm';
+        video.appendChild(webm);
+      }
+
+      if (mp4Url) {
+        const mp4 = document.createElement('source');
+        mp4.src = mp4Url;
+        mp4.type = 'video/mp4';
+        video.appendChild(mp4);
+      }
+
+      video.load();
     }
 
-    video.load();
-  }
+    video.muted = true;
+    video.loop = true;
+    video.playsInline = true;
+    video.autoplay = true;
+    video.dataset.mediaState = 'requested';
 
-  video.muted = true;
-  video.loop = true;
-  video.playsInline = true;
-  video.autoplay = true;
-  video.dataset.mediaState = 'requested';
-
-  video.play()
-    .then(() => { video.dataset.mediaState = 'playing'; })
-    .catch((error) => {
-      video.dataset.mediaState = 'play-blocked';
-      console.warn('[SBI Index] Lecture vidéo hero bloquée ou différée :', error);
-    });
+    video.play()
+      .then(() => { video.dataset.mediaState = 'playing'; })
+      .catch((error) => {
+        video.dataset.mediaState = 'play-blocked';
+        console.warn('[SBI Index] Lecture vidéo hero bloquée ou différée :', error);
+      });
+  });
 }
 
 function applySettings(settings = {}) {
