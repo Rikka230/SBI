@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.54',
+  version: '8.0P.55',
   branch: 'public-pjax-app-shell',
   channel: 'PUBLIC PJAX APP SHELL',
-  stage: 'About page mockup fidelity correction',
+  stage: 'About page index background and video panels fix',
   updatedAt: '2026-05-10',
-  label: 'SBI 8.0P.54 - ABOUT PAGE MOCKUP FIDELITY FIX'
+  label: 'SBI 8.0P.55 - ABOUT INDEX BACKGROUND + VIDEO PANELS'
 };
 
 export function getSbiVersionLabel() {

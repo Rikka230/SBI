@@ -1,22 +1,18 @@
 /* =========================================================
-   SBI 8.0P.54 - ABOUT PAGE MOCKUP FIDELITY PASS
+   SBI 8.0P.55 - ABOUT INDEX BACKGROUND + VIDEO PANELS FIX
    ---------------------------------------------------------
-   Reprise de la page À propos pour coller beaucoup plus
-   littéralement au mockup validé.
+   Fond repris de l'index / contact, vidéos fondues dynamiques,
+   suppression des diagonales et formes géométriques parasites.
    ========================================================= */
 
 :root {
     --about-border: rgba(99, 150, 255, 0.2);
     --about-border-strong: rgba(99, 150, 255, 0.34);
-    --about-card-bg: linear-gradient(145deg, rgba(7, 13, 27, 0.96), rgba(4, 8, 17, 0.95));
-    --about-card-glow: radial-gradient(circle at 100% 0, rgba(0, 92, 255, 0.12), transparent 12rem);
+    --about-card-bg: linear-gradient(145deg, rgba(7, 13, 27, 0.88), rgba(4, 8, 17, 0.92));
 }
 
 body[data-sbi-public-page="apropos"] {
-    background:
-        radial-gradient(circle at 10% 12%, rgba(0, 81, 255, 0.14), transparent 30rem),
-        radial-gradient(circle at 88% 8%, rgba(0, 132, 255, 0.12), transparent 26rem),
-        #040914;
+    background: #04070d;
 }
 
 body[data-sbi-public-page="apropos"] .site-header .main-nav a[href="a-propos.html"] {
@@ -32,39 +28,41 @@ body[data-sbi-public-page="apropos"] .site-header .main-nav a[href="a-propos.htm
     position: relative;
     z-index: 1;
     min-height: 100vh;
-    overflow: clip;
+    overflow: hidden;
     padding-top: var(--header-height);
     background:
-        linear-gradient(180deg, rgba(3, 7, 16, 0.98), rgba(2, 7, 17, 1)),
-        #040914;
+        radial-gradient(circle at 18% 28%, rgba(0, 81, 255, 0.12), transparent 34%),
+        radial-gradient(circle at 88% 18%, rgba(0, 119, 255, 0.10), transparent 30%),
+        linear-gradient(135deg, rgba(3, 7, 14, 0.98) 0%, rgba(4, 7, 12, 0.96) 42%, rgba(2, 6, 15, 0.99) 100%);
+    isolation: isolate;
 }
 
-.about-page::before,
-.about-page::after {
-    content: "";
-    position: absolute;
+.about-page-video {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.15;
+    filter: grayscale(1) contrast(1.28) brightness(0.56) saturate(1.25);
+    mix-blend-mode: screen;
+    pointer-events: none;
+    z-index: -3;
+}
+
+.about-video-mask {
+    position: fixed;
     inset: 0;
     pointer-events: none;
-}
-
-.about-page::before {
+    z-index: -2;
     background:
-        linear-gradient(120deg, transparent 0 28%, rgba(0, 92, 255, 0.08) 28.15%, transparent 28.45%),
-        linear-gradient(120deg, transparent 0 76%, rgba(0, 92, 255, 0.08) 76.15%, transparent 76.45%),
-        linear-gradient(180deg, rgba(255, 255, 255, 0.025), rgba(255, 255, 255, 0));
-    opacity: 0.65;
+        linear-gradient(90deg, rgba(4, 5, 8, 0.98) 0%, rgba(4, 5, 8, 0.76) 36%, rgba(4, 5, 8, 0.94) 100%),
+        radial-gradient(circle at 73% 28%, rgba(0, 81, 255, 0.12), transparent 34%),
+        radial-gradient(circle at 20% 64%, rgba(0, 81, 255, 0.10), transparent 36%);
 }
 
-.about-page::after {
-    background-image:
-        radial-gradient(circle at 15% 24%, rgba(255, 255, 255, 0.1) 0 1px, transparent 1.5px),
-        radial-gradient(circle at 82% 18%, rgba(255, 255, 255, 0.08) 0 1.2px, transparent 1.8px),
-        radial-gradient(circle at 76% 57%, rgba(255, 255, 255, 0.08) 0 1px, transparent 1.6px);
-    background-size: 420px 320px, 480px 380px, 580px 420px;
-    opacity: 0.35;
-}
-
-.about-page > * {
+.about-page > section,
+.about-page > .about-video-mask {
     position: relative;
     z-index: 1;
 }
@@ -82,20 +80,18 @@ body[data-sbi-public-page="apropos"] .site-header .main-nav a[href="a-propos.htm
     grid-template-columns: minmax(0, 0.92fr) minmax(520px, 1.08fr);
     align-items: center;
     gap: clamp(2rem, 4vw, 4.5rem);
-    min-height: clamp(720px, 86vh, 980px);
+    min-height: clamp(720px, 86vh, 920px);
     padding-top: clamp(4rem, 6vw, 5rem);
     padding-bottom: 2rem;
 }
 
-.about-hero-copy {
-    max-width: 660px;
-}
+.about-hero-copy { max-width: 720px; }
 
 .section-surtitle,
 .about-kicker {
     display: inline-block;
     color: var(--sbi-blue);
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     font-weight: 800;
     letter-spacing: 0.08em;
     margin-bottom: 1rem;
@@ -104,21 +100,22 @@ body[data-sbi-public-page="apropos"] .site-header .main-nav a[href="a-propos.htm
 .about-hero-title {
     margin: 0;
     color: #fff;
-    font-size: clamp(3.2rem, 5.6vw, 6rem);
-    line-height: 0.94;
-    letter-spacing: -0.075em;
+    font-family: var(--font-sans);
+    font-weight: 900;
+    font-style: italic;
+    font-size: clamp(3.05rem, 4.9vw, 5.7rem);
+    line-height: 0.96;
+    letter-spacing: -0.055em;
     text-shadow: 0 18px 36px rgba(0, 0, 0, 0.55);
 }
 
-.about-hero-title .text-blue {
-    color: var(--sbi-blue);
-}
+.about-hero-title .text-blue { color: var(--sbi-blue); }
 
 .about-hero-lead {
-    max-width: 580px;
+    max-width: 590px;
     margin-top: 1.4rem;
     color: rgba(226, 234, 248, 0.82);
-    font-size: clamp(1rem, 1.05vw, 1.14rem);
+    font-size: clamp(1rem, 1.05vw, 1.13rem);
     line-height: 1.7;
 }
 
@@ -141,7 +138,7 @@ body[data-sbi-public-page="apropos"] .site-header .main-nav a[href="a-propos.htm
     padding: 0.8rem 1.45rem;
     color: rgba(231, 239, 255, 0.92);
     border: 1px solid rgba(115, 166, 255, 0.28);
-    background: rgba(7, 14, 28, 0.55);
+    background: rgba(7, 14, 28, 0.42);
     clip-path: polygon(0 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%);
     transition: transform 0.22s ease, border-color 0.22s ease, color 0.22s ease;
 }
@@ -153,50 +150,80 @@ body[data-sbi-public-page="apropos"] .site-header .main-nav a[href="a-propos.htm
     color: #fff;
 }
 
-.about-hero-visual {
-    margin: 0;
-}
+.about-hero-visual { margin: 0; }
 
 .about-hero-visual-shell {
     position: relative;
-    min-height: clamp(520px, 48vw, 690px);
+    min-height: clamp(520px, 48vw, 680px);
     border: 1px solid var(--about-border-strong);
     background:
-        linear-gradient(145deg, rgba(5, 10, 22, 0.94), rgba(4, 8, 17, 0.98)),
-        radial-gradient(circle at 85% 25%, rgba(0, 92, 255, 0.18), transparent 18rem);
+        linear-gradient(180deg, rgba(7, 12, 23, 0.62), rgba(3, 7, 14, 0.82)),
+        radial-gradient(circle at 78% 31%, rgba(0, 81, 255, 0.16), transparent 32%);
     overflow: hidden;
     clip-path: polygon(0 0, 100% 0, 100% 88%, 95% 100%, 0 100%, 0 0);
     box-shadow:
         inset 0 0 0 1px rgba(255, 255, 255, 0.025),
         0 24px 54px rgba(0, 0, 0, 0.33),
-        0 0 44px rgba(0, 92, 255, 0.08);
+        0 0 44px rgba(0, 81, 255, 0.08);
 }
 
-.about-hero-visual-shell::before,
-.about-hero-visual-shell::after {
-    content: "";
+.about-visual-video,
+.about-visual-video-mask {
     position: absolute;
-    pointer-events: none;
-    z-index: 1;
-}
-
-.about-hero-visual-shell::before {
     inset: 0;
-    background:
-        linear-gradient(130deg, transparent 0 12.7%, rgba(0, 92, 255, 0.62) 12.75%, transparent 13.3%),
-        linear-gradient(130deg, transparent 0 90.3%, rgba(0, 92, 255, 0.52) 90.35%, transparent 90.8%);
-    opacity: 0.9;
+    pointer-events: none;
 }
 
-.about-hero-visual-shell::after {
-    right: 0;
-    bottom: 0;
-    width: 0;
-    height: 0;
-    border-left: 72px solid transparent;
-    border-top: 72px solid rgba(0, 92, 255, 0.9);
-    filter: drop-shadow(-10px -10px 18px rgba(0, 92, 255, 0.2));
-    z-index: 4;
+.about-visual-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.42;
+    filter: grayscale(1) contrast(1.25) brightness(0.62) saturate(1.25);
+    mix-blend-mode: screen;
+    z-index: 0;
+}
+
+.about-visual-video-mask {
+    z-index: 1;
+    background:
+        linear-gradient(90deg, rgba(4, 7, 14, 0.92) 0%, rgba(4, 7, 14, 0.44) 54%, rgba(4, 7, 14, 0.86) 100%),
+        radial-gradient(circle at 74% 42%, rgba(0, 81, 255, 0.22), transparent 38%);
+}
+
+.about-video-panel {
+    position: absolute;
+    z-index: 2;
+    overflow: hidden;
+    pointer-events: none;
+    border: 1px solid rgba(99, 150, 255, 0.2);
+    background: rgba(4, 7, 14, 0.34);
+    box-shadow: 0 0 28px rgba(0, 81, 255, 0.08);
+}
+
+.about-video-panel video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.55;
+    filter: grayscale(1) contrast(1.35) brightness(0.58) saturate(1.25);
+    mix-blend-mode: screen;
+}
+
+.about-video-panel-left {
+    left: 9%;
+    top: 9%;
+    width: 18%;
+    height: 18%;
+}
+
+.about-video-panel-right {
+    right: 4%;
+    top: 8%;
+    width: 22%;
+    height: 22%;
+    border-radius: 999px;
+    opacity: 0.74;
 }
 
 .about-hero-ghost-logo {
@@ -204,9 +231,10 @@ body[data-sbi-public-page="apropos"] .site-header .main-nav a[href="a-propos.htm
     right: 7%;
     top: 2%;
     width: min(56%, 420px);
-    opacity: 0.11;
-    filter: grayscale(1) contrast(1.15) brightness(1.25);
-    z-index: 1;
+    opacity: 0.18;
+    filter: grayscale(1) contrast(1.14) brightness(0.96);
+    mix-blend-mode: screen;
+    z-index: 2;
 }
 
 .about-founder-hero-img {
@@ -218,7 +246,7 @@ body[data-sbi-public-page="apropos"] .site-header .main-nav a[href="a-propos.htm
     height: 96%;
     object-fit: contain;
     object-position: right bottom;
-    z-index: 3;
+    z-index: 4;
     filter: drop-shadow(0 24px 34px rgba(0, 0, 0, 0.45));
 }
 
@@ -247,71 +275,6 @@ body[data-sbi-public-page="apropos"] .site-header .main-nav a[href="a-propos.htm
     color: rgba(231, 239, 255, 0.9);
 }
 
-.about-hero-shape {
-    position: absolute;
-    z-index: 2;
-    pointer-events: none;
-}
-
-.shape-cube {
-    top: 8%;
-    left: 10%;
-    width: 54px;
-    height: 54px;
-    transform: rotate(18deg) skewY(-8deg);
-    border: 1px solid rgba(175, 212, 255, 0.22);
-    background: linear-gradient(145deg, rgba(27, 42, 71, 0.78), rgba(9, 14, 27, 0.98));
-    box-shadow: inset 0 0 12px rgba(255, 255, 255, 0.06), 0 12px 22px rgba(0, 0, 0, 0.25);
-}
-
-.shape-ring {
-    border-radius: 50%;
-    box-shadow: inset 0 0 0 12px rgba(10, 16, 34, 0.9), 0 0 18px rgba(0, 92, 255, 0.18);
-    border: 1px solid rgba(108, 162, 255, 0.3);
-}
-
-.ring-left {
-    left: 22%;
-    bottom: 18%;
-    width: 76px;
-    height: 76px;
-}
-
-.ring-top {
-    right: 7%;
-    top: 7%;
-    width: 58px;
-    height: 58px;
-}
-
-.shape-triangle {
-    width: 0;
-    height: 0;
-    border-left: 18px solid transparent;
-    border-right: 18px solid transparent;
-    border-top: 28px solid rgba(28, 52, 95, 0.9);
-    filter: drop-shadow(0 0 10px rgba(0, 92, 255, 0.2));
-}
-
-.tri-small {
-    left: 37%;
-    top: 33%;
-    transform: rotate(26deg);
-}
-
-.shape-diamond {
-    width: 22px;
-    height: 22px;
-    background: linear-gradient(145deg, rgba(0, 92, 255, 0.95), rgba(105, 183, 255, 0.4));
-    transform: rotate(45deg);
-    box-shadow: 0 0 18px rgba(0, 92, 255, 0.3);
-}
-
-.diamond-mid {
-    left: 44%;
-    bottom: 30%;
-}
-
 .about-proof-strip {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -325,7 +288,7 @@ body[data-sbi-public-page="apropos"] .site-header .main-nav a[href="a-propos.htm
 .about-final-card {
     position: relative;
     border: 1px solid var(--about-border);
-    background: var(--about-card-bg), var(--about-card-glow);
+    background: var(--about-card-bg);
     box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02), 0 18px 38px rgba(0, 0, 0, 0.18);
 }
 
@@ -341,29 +304,17 @@ body[data-sbi-public-page="apropos"] .site-header .main-nav a[href="a-propos.htm
 .about-proof-card h2,
 .about-panel h3,
 .about-path-card h3,
-.about-approach-card h3 {
-    color: #fff;
-}
-
-.about-proof-card h2 {
-    margin: 0;
-    font-size: 1.1rem;
-}
+.about-approach-card h3 { color: #fff; }
+.about-proof-card h2 { margin: 0; font-size: 1.1rem; }
 
 .about-proof-card p,
 .about-panel p,
 .about-founder-card-copy p,
 .about-institute-card p,
 .about-approach-card p,
-.about-path-card small {
-    color: rgba(214, 225, 241, 0.76);
-}
+.about-path-card small { color: rgba(214, 225, 241, 0.76); }
 
-.about-proof-card p {
-    margin: 0.3rem 0 0;
-    font-size: 0.95rem;
-    line-height: 1.55;
-}
+.about-proof-card p { margin: 0.3rem 0 0; font-size: 0.95rem; line-height: 1.55; }
 
 .about-icon {
     width: 44px;
@@ -387,20 +338,18 @@ body[data-sbi-public-page="apropos"] .site-header .main-nav a[href="a-propos.htm
     stroke-linejoin: round;
 }
 
-.about-mission-layout {
-    display: grid;
-    grid-template-columns: minmax(260px, 0.9fr) minmax(0, 1.1fr);
-    gap: 2rem;
-    align-items: start;
-}
+.about-mission-layout { display: grid; grid-template-columns: minmax(260px, 0.9fr) minmax(0, 1.1fr); gap: 2rem; align-items: start; }
 
 .about-section-intro h2 {
     margin: 0;
     max-width: 440px;
-    font-size: clamp(2.5rem, 4vw, 4rem);
-    line-height: 1.04;
+    font-family: var(--font-sans);
+    font-weight: 900;
+    font-style: italic;
+    font-size: clamp(2.35rem, 3.6vw, 3.8rem);
+    line-height: 1.05;
     color: #fff;
-    letter-spacing: -0.05em;
+    letter-spacing: -0.045em;
 }
 
 .about-section-intro::after {
@@ -409,189 +358,41 @@ body[data-sbi-public-page="apropos"] .site-header .main-nav a[href="a-propos.htm
     width: 64px;
     height: 4px;
     margin-top: 1.6rem;
-    background: linear-gradient(90deg, var(--sbi-blue), rgba(0, 92, 255, 0.1));
+    background: var(--sbi-blue);
+    box-shadow: 0 0 16px rgba(0, 81, 255, 0.42);
 }
 
-.about-mission-grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0.95rem;
-}
+.about-mission-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.95rem; }
+.about-panel { min-height: 250px; padding: 1.6rem 1.55rem; }
+.about-panel h3, .about-path-card h3, .about-approach-card h3 { margin: 1rem 0 0.7rem; font-size: 1.06rem; }
+.about-panel p, .about-approach-card p { margin: 0; font-size: 0.98rem; line-height: 1.62; }
 
-.about-panel {
-    min-height: 250px;
-    padding: 1.6rem 1.55rem;
-}
+.about-founder-grid { display: grid; grid-template-columns: minmax(0, 1.04fr) minmax(0, 0.96fr); gap: 0.95rem; align-items: stretch; }
+.about-founder-card { display: grid; grid-template-columns: minmax(230px, 0.9fr) minmax(0, 1.1fr); gap: 1.2rem; overflow: hidden; padding: 0; }
+.about-founder-image-wrap { position: relative; min-height: 100%; background: rgba(4, 7, 14, 0.56); }
+.about-founder-image-wrap::before { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at 40% 36%, rgba(0, 81, 255, 0.12), transparent 42%), linear-gradient(90deg, transparent 0 74%, rgba(255, 255, 255, 0.04) 74%, transparent 100%); pointer-events: none; }
+.about-founder-portrait { display: block; width: 100%; height: 100%; min-height: 380px; object-fit: cover; object-position: center top; }
+.about-founder-card-copy { padding: 1.8rem 1.8rem 1.8rem 0; }
+.about-founder-card-copy h2, .about-institute-card h2, .about-final-card h2 { margin: 0; color: #fff; line-height: 1; letter-spacing: -0.04em; }
+.about-founder-card-copy h2, .about-institute-card h2 { font-size: clamp(2rem, 2.4vw, 3rem); }
+.about-founder-role { margin-top: 1rem; font-weight: 700; }
+.about-founder-card blockquote { margin: 1.2rem 0 0; padding-left: 1rem; border-left: 3px solid var(--sbi-blue); color: #fff; font-size: 1.03rem; line-height: 1.6; }
+.about-institute-card { padding: 1.8rem 1.9rem; }
+.about-institute-card p { margin: 1rem 0 0; line-height: 1.66; }
+.about-institute-cta { color: #fff; }
+.about-network-block { margin-top: 1.8rem; padding-top: 1.2rem; border-top: 1px solid rgba(115, 166, 255, 0.16); }
+.about-network-block h3 { margin: 0 0 0.95rem; font-size: 1rem; }
+.about-network-list { list-style: disc; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.6rem 1.35rem; padding-left: 1rem; margin: 0; }
+.about-network-list li { color: rgba(214, 225, 241, 0.86); font-size: 0.96rem; }
 
-.about-panel h3,
-.about-path-card h3,
-.about-approach-card h3 {
-    margin: 1rem 0 0.7rem;
-    font-size: 1.06rem;
-}
+.about-path-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0.85rem; }
+.about-path-card { min-height: 108px; padding: 1.15rem 1.15rem 1rem; display: flex; flex-direction: column; justify-content: center; }
+.about-path-card h3 { margin-top: 0.95rem; font-size: 1.04rem; line-height: 1.28; }
+.about-path-card small { font-size: 0.72em; white-space: nowrap; }
 
-.about-panel p,
-.about-approach-card p {
-    margin: 0;
-    font-size: 0.98rem;
-    line-height: 1.62;
-}
-
-.about-founder-grid {
-    display: grid;
-    grid-template-columns: minmax(0, 1.04fr) minmax(0, 0.96fr);
-    gap: 0.95rem;
-    align-items: stretch;
-}
-
-.about-founder-card {
-    display: grid;
-    grid-template-columns: minmax(230px, 0.9fr) minmax(0, 1.1fr);
-    gap: 1.2rem;
-    overflow: hidden;
-    padding: 0;
-}
-
-.about-founder-image-wrap {
-    position: relative;
-    min-height: 100%;
-    background:
-        linear-gradient(135deg, rgba(0, 92, 255, 0.2), transparent 18%),
-        linear-gradient(145deg, rgba(8, 14, 28, 0.95), rgba(4, 8, 17, 0.98));
-}
-
-.about-founder-image-wrap::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background:
-        linear-gradient(130deg, transparent 0 14%, rgba(0, 92, 255, 0.45) 14.2%, transparent 14.7%),
-        linear-gradient(90deg, transparent 0 74%, rgba(255, 255, 255, 0.04) 74%, transparent 100%);
-    pointer-events: none;
-}
-
-.about-founder-portrait {
-    display: block;
-    width: 100%;
-    height: 100%;
-    min-height: 380px;
-    object-fit: cover;
-    object-position: center top;
-}
-
-.about-founder-card-copy {
-    padding: 1.8rem 1.8rem 1.8rem 0;
-}
-
-.about-founder-card-copy h2,
-.about-institute-card h2,
-.about-final-card h2 {
-    margin: 0;
-    color: #fff;
-    line-height: 1;
-    letter-spacing: -0.04em;
-}
-
-.about-founder-card-copy h2,
-.about-institute-card h2 {
-    font-size: clamp(2rem, 2.4vw, 3rem);
-}
-
-.about-founder-role {
-    margin-top: 1rem;
-    font-weight: 700;
-}
-
-.about-founder-card blockquote {
-    margin: 1.2rem 0 0;
-    padding-left: 1rem;
-    border-left: 3px solid var(--sbi-blue);
-    color: #fff;
-    font-size: 1.03rem;
-    line-height: 1.6;
-}
-
-.about-institute-card {
-    padding: 1.8rem 1.9rem;
-}
-
-.about-institute-card p {
-    margin: 1rem 0 0;
-    line-height: 1.66;
-}
-
-.about-institute-cta {
-    color: #fff;
-}
-
-.about-network-block {
-    margin-top: 1.8rem;
-    padding-top: 1.2rem;
-    border-top: 1px solid rgba(115, 166, 255, 0.16);
-}
-
-.about-network-block h3 {
-    margin: 0 0 0.95rem;
-    font-size: 1rem;
-}
-
-.about-network-list {
-    list-style: disc;
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 0.6rem 1.35rem;
-    padding-left: 1rem;
-    margin: 0;
-}
-
-.about-network-list li {
-    color: rgba(214, 225, 241, 0.86);
-    font-size: 0.96rem;
-}
-
-.about-path-grid {
-    display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 0.85rem;
-}
-
-.about-path-card {
-    min-height: 108px;
-    padding: 1.15rem 1.15rem 1rem;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-}
-
-.about-path-card h3 {
-    margin-top: 0.95rem;
-    font-size: 1.04rem;
-    line-height: 1.28;
-}
-
-.about-path-card small {
-    font-size: 0.72em;
-    white-space: nowrap;
-}
-
-.about-approach-grid {
-    display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 0.85rem;
-}
-
-.about-approach-card {
-    min-height: 210px;
-    text-align: center;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-}
-
-.about-approach-card p {
-    max-width: 250px;
-}
+.about-approach-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0.85rem; }
+.about-approach-card { min-height: 210px; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.about-approach-card p { max-width: 250px; }
 
 .about-final-card {
     position: relative;
@@ -599,193 +400,20 @@ body[data-sbi-public-page="apropos"] .site-header .main-nav a[href="a-propos.htm
     padding: clamp(3rem, 6vw, 4.6rem);
     text-align: center;
     min-height: 230px;
-}
-
-.about-final-card::before {
-    content: "";
-    position: absolute;
-    inset: 0;
     background:
-        linear-gradient(130deg, transparent 0 8%, rgba(0, 92, 255, 0.1) 8.05%, transparent 8.3%),
-        linear-gradient(130deg, transparent 0 92%, rgba(0, 92, 255, 0.18) 92.05%, transparent 92.4%);
-    pointer-events: none;
+        linear-gradient(180deg, rgba(7, 12, 23, 0.78), rgba(3, 7, 14, 0.90)),
+        radial-gradient(circle at 85% 48%, rgba(0, 81, 255, 0.16), transparent 38%);
 }
 
-.about-final-card h2 {
-    position: relative;
-    z-index: 1;
-    font-size: clamp(2.5rem, 4.5vw, 4.4rem);
-    line-height: 0.98;
-}
+.about-final-video,
+.about-final-video-mask { position: absolute; inset: 0; pointer-events: none; }
+.about-final-video { width: 100%; height: 100%; object-fit: cover; opacity: 0.24; filter: grayscale(1) contrast(1.35) brightness(0.48) saturate(1.25); mix-blend-mode: screen; }
+.about-final-video-mask { background: linear-gradient(90deg, rgba(4, 7, 14, 0.86), rgba(4, 7, 14, 0.42), rgba(4, 7, 14, 0.86)), radial-gradient(circle at 84% 58%, rgba(0, 81, 255, 0.22), transparent 34%); }
+.about-final-card h2, .about-final-actions { position: relative; z-index: 1; }
+.about-final-card h2 { font-size: clamp(2.35rem, 4.1vw, 4.1rem); line-height: 0.98; }
+.footer-brand-block .footer-description { display: none; }
 
-.about-final-shape {
-    position: absolute;
-    pointer-events: none;
-}
-
-.final-left {
-    left: 5%;
-    top: 20%;
-    width: 64px;
-    height: 64px;
-    border: 2px solid rgba(146, 195, 255, 0.35);
-    transform: rotate(45deg);
-}
-
-.final-center {
-    left: 12%;
-    top: 28%;
-    width: 28px;
-    height: 28px;
-    background: linear-gradient(145deg, rgba(255, 255, 255, 0.15), rgba(0, 92, 255, 0.25));
-    transform: rotate(18deg);
-}
-
-.final-right {
-    right: 9%;
-    top: 14%;
-    width: 48px;
-    height: 48px;
-    border-left: 24px solid transparent;
-    border-right: 24px solid transparent;
-    border-top: 38px solid rgba(0, 92, 255, 0.88);
-    transform: rotate(18deg);
-    filter: drop-shadow(0 0 16px rgba(0, 92, 255, 0.3));
-}
-
-.footer-brand-block .footer-description {
-    display: none;
-}
-
-@media (max-width: 1380px) {
-    .about-hero {
-        grid-template-columns: minmax(0, 0.95fr) minmax(440px, 1.05fr);
-    }
-
-    .about-path-grid {
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-    }
-
-    .about-approach-grid {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-}
-
-@media (max-width: 1120px) {
-    .about-hero {
-        grid-template-columns: 1fr;
-        min-height: auto;
-    }
-
-    .about-hero-copy {
-        max-width: 720px;
-    }
-
-    .about-hero-visual-shell {
-        min-height: 560px;
-    }
-
-    .about-proof-strip,
-    .about-mission-grid,
-    .about-founder-grid,
-    .about-path-grid,
-    .about-approach-grid,
-    .about-network-list {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .about-mission-layout {
-        grid-template-columns: 1fr;
-    }
-}
-
-@media (max-width: 860px) {
-    .about-proof-strip,
-    .about-mission-grid,
-    .about-founder-grid,
-    .about-path-grid,
-    .about-approach-grid,
-    .about-network-list {
-        grid-template-columns: 1fr;
-    }
-
-    .about-founder-card {
-        grid-template-columns: 1fr;
-    }
-
-    .about-founder-card-copy {
-        padding: 1.4rem 1.4rem 1.8rem;
-    }
-
-    .about-founder-portrait {
-        min-height: 320px;
-    }
-
-    .about-hero-visual-shell {
-        min-height: 470px;
-    }
-
-    .about-founder-hero-img {
-        width: min(86%, 420px);
-        height: 92%;
-    }
-
-    .about-final-card {
-        text-align: left;
-    }
-}
-
-@media (max-width: 640px) {
-    .about-hero {
-        gap: 1.5rem;
-        padding-top: 3rem;
-    }
-
-    .about-hero-title {
-        font-size: clamp(2.6rem, 13vw, 4.2rem);
-    }
-
-    .about-hero-visual-shell {
-        min-height: 380px;
-    }
-
-    .shape-cube,
-    .ring-top,
-    .diamond-mid,
-    .final-left,
-    .final-center,
-    .final-right {
-        display: none;
-    }
-
-    .about-founder-hero-img {
-        right: 1%;
-        width: min(88%, 350px);
-    }
-
-    .about-founder-caption {
-        right: 5%;
-        bottom: 4%;
-    }
-
-    .about-proof-card,
-    .about-panel,
-    .about-path-card,
-    .about-final-card,
-    .about-institute-card {
-        padding-left: 1.15rem;
-        padding-right: 1.15rem;
-    }
-
-    .about-path-card {
-        min-height: 96px;
-    }
-
-    .about-approach-card {
-        min-height: 180px;
-    }
-
-    .about-final-card h2 {
-        font-size: clamp(2.1rem, 11vw, 3rem);
-    }
-}
+@media (max-width: 1380px) { .about-hero { grid-template-columns: minmax(0, 0.95fr) minmax(440px, 1.05fr); } .about-path-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } .about-approach-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 1120px) { .about-hero { grid-template-columns: 1fr; min-height: auto; } .about-hero-copy { max-width: 720px; } .about-hero-visual-shell { min-height: 560px; } .about-proof-strip, .about-mission-grid, .about-founder-grid, .about-path-grid, .about-approach-grid, .about-network-list { grid-template-columns: repeat(2, minmax(0, 1fr)); } .about-mission-layout { grid-template-columns: 1fr; } }
+@media (max-width: 860px) { .about-proof-strip, .about-mission-grid, .about-founder-grid, .about-path-grid, .about-approach-grid, .about-network-list { grid-template-columns: 1fr; } .about-founder-card { grid-template-columns: 1fr; } .about-founder-card-copy { padding: 1.4rem 1.4rem 1.8rem; } .about-founder-portrait { min-height: 320px; } .about-hero-visual-shell { min-height: 470px; } .about-founder-hero-img { width: min(86%, 420px); height: 92%; } .about-final-card { text-align: left; } }
+@media (max-width: 640px) { .about-page-video { opacity: 0.08; } .about-hero { gap: 1.5rem; padding-top: 3rem; } .about-hero-title { font-size: clamp(2.55rem, 12vw, 4rem); letter-spacing: -0.06em; } .about-hero-visual-shell { min-height: 380px; } .about-video-panel { display: none; } .about-founder-hero-img { right: 1%; width: min(88%, 350px); } .about-founder-caption { right: 5%; bottom: 4%; } .about-proof-card, .about-panel, .about-path-card, .about-final-card, .about-institute-card { padding-left: 1.15rem; padding-right: 1.15rem; } .about-path-card { min-height: 96px; } .about-approach-card { min-height: 180px; } .about-final-card h2 { font-size: clamp(2.1rem, 11vw, 3rem); } }
