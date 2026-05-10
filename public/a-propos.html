@@ -3,13 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>A propos - Sport Business Institute</title>
+    <title>À propos - Sport Business Institute</title>
 
-    <link rel="stylesheet" href="css/style.css?v=8.0P.46">
+    <link rel="stylesheet" href="css/style.css?v=8.0P.53">
     <link rel="stylesheet" href="css/sbi-newsletter.css">
     <link rel="stylesheet" href="css/sbi-footer.css">
     <link rel="stylesheet" href="css/sbi-home-responsive.css?v=8.0P.10d">
     <link rel="stylesheet" href="css/sbi-public-pages.css?v=8.0P.10d">
+    <link rel="stylesheet" href="css/sbi-about.css?v=8.0P.53">
     <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,600;0,800;0,900;1,400;1,600;1,800;1,900&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap" rel="stylesheet">
 </head>
@@ -26,7 +27,7 @@
         <nav class="main-nav">
             <a href="formations.html" class="nav-link text-italic">Formations</a>
             <a href="calculateur.html" class="nav-link text-italic">Calculateur</a>
-            <a href="a-propos.html" class="nav-link text-italic">&Agrave; propos</a>
+            <a href="a-propos.html" class="nav-link text-italic is-active" aria-current="page">&Agrave; propos</a>
             <a href="ressources.html" class="nav-link text-italic">Ressources</a>
         </nav>
 
@@ -48,63 +49,155 @@
         </button>
     </header>
 
-    <main id="public-main" class="public-page" data-sbi-public-shell-root>
-        <section class="public-page-hero padding-global" data-sbi-public-section="apropos">
-            <div class="public-page-hero-copy fade-in">
-                <span class="section-surtitle text-blue uppercase text-italic">&Agrave; propos</span>
-                <h1 class="public-page-title uppercase text-italic">Former ceux qui feront<br><span class="text-blue">avancer le sport business.</span></h1>
-                <p class="public-page-subtitle text-italic">SBI relie la pedagogie digitale, l'expertise terrain et l'ambition professionnelle dans une expérience pensee pour progresser reellement.</p>
-                <div class="public-page-actions">
-                    <a href="#mission" class="btn-primary text-italic">Comprendre SBI <span class="arrow">-&gt;</span></a>
-                    <a href="contact.html" class="btn-ghost text-italic">Nous contacter</a>
+    <main id="public-main" class="about-page" data-sbi-public-shell-root>
+        <section class="about-hero padding-global" data-sbi-public-section="apropos hero">
+            <div class="about-hero-copy fade-in">
+                <span class="section-surtitle text-blue uppercase text-italic">À propos SBI</span>
+                <h1 class="about-hero-title uppercase text-italic">
+                    Le sport est un métier.<br>
+                    Nous formons ceux<br>
+                    qui le <span class="text-blue">feront vivre.</span>
+                </h1>
+                <p class="about-hero-lead text-italic">
+                    SBI accompagne la nouvelle génération de professionnels du football, du sport business et de l’e-sport grâce à une plateforme 100% en ligne, des contenus concrets et des experts du secteur.
+                </p>
+                <div class="about-hero-actions">
+                    <a href="formations.html" class="btn-primary text-italic">Découvrir les formations <span class="arrow">→</span></a>
+                    <a href="contact.html" class="about-inline-link text-italic">Nous contacter <span aria-hidden="true">→</span></a>
                 </div>
             </div>
-            <article class="public-founder-card fade-in" aria-label="Fondateur SBI">
-                <img src="assets/fondateur-photo.jpg" alt="Christophe Mongai, fondateur SBI">
-                <div class="public-founder-copy">
-                    <blockquote class="text-italic">Chez SBI, on forme la nouvelle generation de decideurs du sport business.</blockquote>
-                    <p class="text-italic">Une approche directe, utile et connectee aux besoins du terrain.</p>
-                    <span class="signature-text">Christophe Mongai</span>
+
+            <figure class="about-hero-founder fade-in" aria-label="Christophe Mongai, fondateur SBI">
+                <div class="about-founder-frame">
+                    <img src="assets/Logo_SBI_Tome.webp" alt="" class="about-founder-ghost" data-site-media="hero-logo" aria-hidden="true">
+                    <img src="assets/fondateur-photo.jpg" alt="Christophe Mongai, fondateur SBI" class="about-founder-hero-img" data-site-media="about-founder-hero" width="680" height="760" fetchpriority="high" decoding="async">
+                    <div class="about-founder-meta">
+                        <span class="signature-text">Christophe Mongai</span>
+                        <strong class="text-italic">Fondateur de SBI</strong>
+                    </div>
                 </div>
+            </figure>
+        </section>
+
+        <section class="about-proof-strip padding-global" aria-label="Preuves SBI">
+            <article class="about-proof-card fade-in">
+                <span class="about-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H4z"></path><path d="M8 20h8"></path><path d="M12 16v4"></path></svg></span>
+                <h2 class="text-italic">100% en ligne</h2>
+                <p class="text-italic">Apprenez où que vous soyez, quand vous voulez.</p>
+            </article>
+            <article class="about-proof-card fade-in">
+                <span class="about-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2l3 6 6 .9-4.5 4.3 1.1 6.2L12 16.4 6.4 19.4l1.1-6.2L3 8.9 9 8z"></path></svg></span>
+                <h2 class="text-italic">Formations certifiées Qualiopi</h2>
+                <p class="text-italic">Des formations reconnues et éligibles aux financements.</p>
+            </article>
+            <article class="about-proof-card fade-in">
+                <span class="about-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 12l2.5 2.5L16 9"></path><path d="M3 12a9 9 0 1 0 18 0A9 9 0 0 0 3 12z"></path></svg></span>
+                <h2 class="text-italic">Partenariats clubs & institutions</h2>
+                <p class="text-italic">Un réseau solide au service de votre réussite.</p>
+            </article>
+            <article class="about-proof-card fade-in">
+                <span class="about-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M14 6h-4a4 4 0 0 0 0 8h4"></path><path d="M8 10h8"></path><path d="M8 14h7"></path><path d="M20 4a10 10 0 1 0 0 16"></path></svg></span>
+                <h2 class="text-italic">100% finançable</h2>
+                <p class="text-italic">Nos formations sont éligibles aux dispositifs de financement.</p>
             </article>
         </section>
 
-        <section id="mission" class="public-page-section padding-global" data-sbi-public-section="mission">
-            <div class="public-section-header fade-in">
-                <div>
-                    <span class="public-section-kicker text-italic">Direction SBI</span>
-                    <h2 class="text-italic">Une plateforme orientee progression.</h2>
-                </div>
-                <p class="text-italic">Le site public garde la meme DA sombre et sport-tech que l'index, avec une information plus claire pour les candidats et les entreprises.</p>
+        <section id="mission" class="about-section about-mission padding-global" data-sbi-public-section="mission">
+            <div class="about-section-intro fade-in">
+                <span class="about-kicker text-italic">Notre mission</span>
+                <h2 class="text-italic">Transformer la passion du sport en compétences métier.</h2>
             </div>
-
-            <div class="public-card-grid public-card-grid-3">
-                <article class="public-info-card fade-in">
-                    <span class="public-card-index">Mission</span>
-                    <h3 class="text-italic">Transmettre du concret</h3>
-                    <p class="text-italic">Des contenus relies au terrain, aux metiers et aux attentes du secteur sport business.</p>
+            <div class="about-mission-grid">
+                <article class="about-panel fade-in">
+                    <span class="about-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg></span>
+                    <h3 class="text-italic">Apprendre</h3>
+                    <p class="text-italic">Des formations structurées pour gérer, organiser et développer des projets dans le monde du sport.</p>
                 </article>
-                <article class="public-info-card fade-in">
-                    <span class="public-card-index">Methode</span>
-                    <h3 class="text-italic">Faire progresser</h3>
-                    <p class="text-italic">Des parcours lisibles, des ressources utiles et une expérience de formation fluide.</p>
+                <article class="about-panel fade-in">
+                    <span class="about-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 7h18"></path><path d="M3 17h18"></path><path d="M7 3v18"></path><path d="M17 3v18"></path><circle cx="12" cy="12" r="2"></circle></svg></span>
+                    <h3 class="text-italic">Comprendre le terrain</h3>
+                    <p class="text-italic">Des contenus concrets, des mises à jour régulières et une pédagogie pensée pour la réalité du secteur.</p>
                 </article>
-                <article class="public-info-card fade-in">
-                    <span class="public-card-index">Reseau</span>
-                    <h3 class="text-italic">Connecter les talents</h3>
-                    <p class="text-italic">Une communauté ambitieuse tournee vers les opportunites du sport business.</p>
+                <article class="about-panel fade-in">
+                    <span class="about-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 19h18"></path><path d="M6 16l4-4 3 3 5-8"></path><path d="M18 7h-4"></path><path d="M18 7v4"></path></svg></span>
+                    <h3 class="text-italic">Performer</h3>
+                    <p class="text-italic">Montez en compétences, certifiez-vous et faites évoluer votre carrière dans l’univers sportif.</p>
                 </article>
             </div>
         </section>
 
-        <section id="experts" class="public-page-cta padding-global fade-in" data-sbi-public-section="experts">
-            <div class="public-cta-card">
-                <div>
-                    <span class="section-surtitle text-blue uppercase text-italic">Experts &amp; accompagnement</span>
-                    <h2 class="text-italic">Un cadre humain derriere l'e-learning.</h2>
-                    <p class="text-italic">SBI accompagne les apprenants et les entreprises a chaque etape importante du parcours.</p>
+        <section id="experts" class="about-section about-founder-story padding-global" data-sbi-public-section="experts founder">
+            <span class="about-kicker text-italic fade-in">Qui sommes-nous ?</span>
+            <div class="about-founder-grid">
+                <article class="about-founder-card about-panel fade-in">
+                    <img src="assets/fondateur-photo.jpg" alt="Christophe Mongai" class="about-founder-portrait founder-img" data-site-media="founder-image" loading="lazy" decoding="async">
+                    <div class="about-founder-card-copy">
+                        <h2 class="uppercase text-italic">Christophe Mongai</h2>
+                        <p class="text-blue text-italic">Fondateur de l’agence USM FOOTBALL</p>
+                        <p class="text-italic">Agent des plus grands noms du football depuis 30 ans. Plus de 1200 joueurs gérés.</p>
+                        <blockquote class="text-italic">“J’ai créé ce centre de formation pour accompagner la nouvelle génération et permettre à tous les passionnés de sport de transformer leur passion en carrière.”</blockquote>
+                    </div>
+                </article>
+
+                <article class="about-institute-card about-panel fade-in">
+                    <h2 class="uppercase text-italic">Sport Business Institute</h2>
+                    <p class="text-italic">Accédez à notre plateforme 100% en ligne pour apprendre à gérer, organiser et développer des projets dans le monde du sport.</p>
+                    <p class="text-italic">Formations vidéo, en direct ou à la demande, avec des mises à jour régulières, adaptées à votre rythme.</p>
+                    <strong class="text-italic">Commencez dès aujourd’hui !</strong>
+                    <div class="about-network">
+                        <h3 class="text-italic">Un réseau au service de votre réussite</h3>
+                        <ul>
+                            <li>Nenê</li>
+                            <li>Bacary Sagna</li>
+                            <li>Jérémy Mathieu</li>
+                            <li>Frédéric Kanouté</li>
+                            <li>Kalidou Koulibaly</li>
+                            <li>Guillermo Ochoa</li>
+                            <li>Ismaël Bennacer</li>
+                            <li>Mario Yepes</li>
+                        </ul>
+                    </div>
+                </article>
+            </div>
+        </section>
+
+        <section class="about-section about-paths padding-global" data-sbi-public-section="parcours metiers">
+            <div class="about-section-line fade-in">
+                <span class="about-kicker text-italic">Nos parcours métiers</span>
+            </div>
+            <div class="about-path-grid">
+                <article class="about-path-card fade-in"><span class="about-path-icon">♙</span><strong>Agent de joueur</strong></article>
+                <article class="about-path-card fade-in"><span class="about-path-icon">▥</span><strong>Préparateur physique</strong></article>
+                <article class="about-path-card fade-in"><span class="about-path-icon">◌</span><strong>Préparateur mental</strong></article>
+                <article class="about-path-card fade-in"><span class="about-path-icon">⌕</span><strong>Recruteur / Scout</strong></article>
+                <article class="about-path-card fade-in"><span class="about-path-icon">▷</span><strong>Analyste vidéo Football</strong></article>
+                <article class="about-path-card fade-in"><span class="about-path-icon">▦</span><strong>Data Analyst Football</strong></article>
+                <article class="about-path-card fade-in"><span class="about-path-icon">🎮</span><strong>Animateur E-Sport</strong><small>RNCP n°37427</small></article>
+                <article class="about-path-card fade-in"><span class="about-path-icon">⌁</span><strong>Entraîneur</strong></article>
+                <article class="about-path-card fade-in"><span class="about-path-icon">✋</span><strong>Entraîneur de gardien de but</strong></article>
+                <article class="about-path-card fade-in"><span class="about-path-icon">◁</span><strong>Responsable marketing / communication</strong></article>
+                <article class="about-path-card fade-in"><span class="about-path-icon">▣</span><strong>Manager général</strong></article>
+            </div>
+        </section>
+
+        <section class="about-section about-approach padding-global" data-sbi-public-section="approche">
+            <span class="about-kicker text-italic fade-in">Notre approche</span>
+            <div class="about-approach-grid">
+                <article class="about-panel fade-in"><span class="about-icon" aria-hidden="true">⌂</span><h3 class="text-italic">Qualité pédagogique</h3><p class="text-italic">Des contenus fiables, conçus par des experts du terrain.</p></article>
+                <article class="about-panel fade-in"><span class="about-icon" aria-hidden="true">◎</span><h3 class="text-italic">Accessibilité</h3><p class="text-italic">Une plateforme 100% en ligne, accessible à tous, partout.</p></article>
+                <article class="about-panel fade-in"><span class="about-icon" aria-hidden="true">★</span><h3 class="text-italic">Professionnalisation</h3><p class="text-italic">Des compétences concrètes pour booster votre carrière.</p></article>
+                <article class="about-panel fade-in"><span class="about-icon" aria-hidden="true">⌬</span><h3 class="text-italic">Réseau & partenaires</h3><p class="text-italic">Des clubs, institutions et experts mobilisés pour votre avenir.</p></article>
+                <article class="about-panel fade-in"><span class="about-icon" aria-hidden="true">◯</span><h3 class="text-italic">Accompagnement</h3><p class="text-italic">Un suivi personnalisé pour réussir à chaque étape.</p></article>
+            </div>
+        </section>
+
+        <section class="about-final-cta padding-global fade-in" data-sbi-public-section="cta">
+            <div class="about-final-card">
+                <h2 class="uppercase text-italic">Prêt à construire ton avenir<br>dans le <span class="text-blue">sport business</span> ?</h2>
+                <div class="about-final-actions">
+                    <a href="formations.html" class="btn-primary text-italic">Découvrir les formations <span class="arrow">→</span></a>
+                    <a href="contact.html" class="about-outline-button text-italic">Contacter SBI <span aria-hidden="true">→</span></a>
                 </div>
-                <a href="contact.html" class="btn-primary text-italic">Parler a SBI <span class="arrow">-&gt;</span></a>
             </div>
         </section>
     </main>
@@ -117,7 +210,7 @@
                     <img src="assets/sbi_brand.webp" alt="Sport Business Institute" class="footer-logo-wordmark" data-site-media="footer-brand-logo">
                 </a>
                 <p class="footer-brandline text-italic">Apprendre. Progresser. <span class="text-blue">Performer.</span></p>
-                <p class="footer-description text-italic">La plateforme e-learning dédiée au sport business, au management sportif et a l'innovation.</p>
+                <p class="footer-description text-italic">La plateforme e-learning dédiée au sport business, au management sportif et à l’innovation.</p>
             </div>
             <nav class="footer-nav" aria-label="Navigation secondaire">
                 <div class="footer-column">
@@ -125,6 +218,7 @@
                     <a href="formations.html" class="text-italic">Formations</a>
                     <a href="calculateur.html" class="text-italic">Calculateur</a>
                     <a href="ressources.html" class="text-italic">Ressources</a>
+                    <a href="a-propos.html" class="text-italic">À propos</a>
                 </div>
                 <div class="footer-column">
                     <h4 class="text-italic">SBI</h4>
@@ -141,6 +235,9 @@
                 </div>
             </nav>
             <div class="footer-social-card">
+                <h4 class="footer-social-title text-italic">Contact</h4>
+                <a href="mailto:contact@sbigroup.fr" class="footer-contact-link text-italic">contact@sbigroup.fr</a>
+                <a href="tel:+33492909025" class="footer-contact-link text-italic">04.92.90.90.25</a>
                 <h4 class="footer-social-title text-italic">Suivez-nous</h4>
                 <div class="social-icons">
                     <a href="#" aria-label="X (Twitter)"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 22.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a>
@@ -148,7 +245,6 @@
                     <a href="#" aria-label="LinkedIn"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path><rect x="2" y="9" width="4" height="12"></rect><circle cx="4" cy="4" r="2"></circle></svg></a>
                     <a href="#" aria-label="YouTube"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33 2.78 2.78 0 0 0 1.94 2c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.33 29 29 0 0 0-.46-5.33z"></path><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"></polygon></svg></a>
                 </div>
-                <a href="mailto:contact@sbi.fr" class="footer-contact-link text-italic">contact@sbi.fr</a>
             </div>
         </div>
         <div class="footer-bottom">
@@ -157,9 +253,10 @@
         </div>
     </footer>
 
-    <script src="js/sbi-background.js?v=8.0P.10d"></script>
-    <script src="js/main.js?v=8.0P.46"></script>
-    <script type="module" src="js/sbi-public-pages.js?v=8.0P.10d"></script>
-    <script src="js/public-app-shell.js?v=8.0P.46"></script>
+    <script src="js/sbi-background.js?v=8.0P.53"></script>
+    <script src="js/main.js?v=8.0P.53"></script>
+    <script type="module" src="js/site-index-public.js?v=8.0P.53"></script>
+    <script type="module" src="js/sbi-public-pages.js?v=8.0P.53"></script>
+    <script src="js/public-app-shell.js?v=8.0P.53"></script>
 </body>
 </html>

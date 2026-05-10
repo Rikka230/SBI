@@ -11,7 +11,8 @@ const DEFAULTS = {
   heroLogoUrl: '',
   headerLogoUrl: '',
   brandLogoUrl: '',
-  founderImageUrl: ''
+  founderImageUrl: '',
+  aboutFounderHeroImageUrl: ''
 };
 
 const MEDIA = [
@@ -19,7 +20,8 @@ const MEDIA = [
   { key: 'heroVideoMp4Url', label: 'Vidéo hero MP4 fallback', kind: 'MP4', type: 'video', source: DEFAULTS.heroVideoMp4Url, storagePath: 'site/index/hero-video/sbi.mp4', contentType: 'video/mp4' },
   { key: 'heroLogoUrl', label: 'Logo massif hero', kind: 'PNG', type: 'image', source: DEFAULTS.heroLogoUrl, storagePath: 'site/index/logos/Logo_SBI_Tome.png', contentType: 'image/png', logo: true },
   { key: 'brandLogoUrl', label: 'Wordmark header/footer', kind: 'PNG', type: 'image', source: DEFAULTS.brandLogoUrl, storagePath: 'site/index/logos/sbi_brand.png', contentType: 'image/png', logo: true },
-  { key: 'founderImageUrl', label: 'Image fondateur', kind: 'Image', type: 'image', source: DEFAULTS.founderImageUrl, storagePath: 'site/index/founder/founder-image', contentType: 'image/jpeg' }
+  { key: 'founderImageUrl', label: 'Image fondateur index', kind: 'Image', type: 'image', source: DEFAULTS.founderImageUrl, storagePath: 'site/index/founder/founder-image', contentType: 'image/jpeg' },
+  { key: 'aboutFounderHeroImageUrl', label: 'Fondateur À propos hero PNG', kind: 'PNG', type: 'image', source: DEFAULTS.aboutFounderHeroImageUrl, storagePath: 'site/index/founder/about-founder-hero.png', contentType: 'image/png', accept: 'image/png', pngOnly: true }
 ];
 
 let currentCleanup = null;
@@ -100,7 +102,7 @@ export function mountSiteIndexSettings({ root = document } = {}) {
         <div class="site-media-actions">
           <label class="site-media-btn secondary">
             Remplacer le fichier
-            <input type="file" data-upload="${item.key}" accept="${item.type === 'video' ? 'video/*' : 'image/*'}" hidden>
+            <input type="file" data-upload="${item.key}" accept="${item.accept || (item.type === 'video' ? 'video/*' : 'image/*')}" hidden>
           </label>
         </div>
         <div class="site-media-progress"><span data-progress="${item.key}"></span></div>
@@ -165,6 +167,10 @@ export function mountSiteIndexSettings({ root = document } = {}) {
     const item = MEDIA.find((entry) => entry.key === key);
     if (!item || !file || state.disposed) return;
     try {
+      if (item.pngOnly && file.type !== 'image/png') {
+        status(`${item.label} : merci d’envoyer un fichier PNG.`, 'error');
+        return;
+      }
       status(`Upload de ${item.label}...`);
       const suffix = item.storagePath.endsWith('founder-image') ? `-${Date.now()}-${file.name.replace(/[^a-z0-9.\-_]/gi, '-')}` : '';
       const url = await uploadBlob(item, file, suffix);

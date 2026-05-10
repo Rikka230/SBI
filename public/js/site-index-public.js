@@ -1,4 +1,4 @@
-const SITE_INDEX_MEDIA_VERSION = '8.0P.36';
+const SITE_INDEX_MEDIA_VERSION = '8.0P.53';
 
 window.__SBI_SITE_INDEX_MEDIA_LOADING__ = true;
 
@@ -8,7 +8,8 @@ const EMPTY_MEDIA = {
   heroLogoUrl: '',
   headerLogoUrl: '',
   brandLogoUrl: '',
-  founderImageUrl: ''
+  founderImageUrl: '',
+  aboutFounderHeroImageUrl: ''
 };
 
 const MEDIA_CACHE_KEY = 'sbi:siteIndexMedia:v2';
@@ -215,7 +216,7 @@ function applyBrandMedia(settings = {}) {
 
   applyImage('.header-logo, .footer-logo-mark', headerLogo, settings.headerLogoUrl ? 'firestore' : 'assets');
   applyImage('.header-brand, .footer-logo-wordmark', brandLogo, settings.brandLogoUrl ? 'firestore' : 'assets');
-  applyImage('.hero-large-logo', heroLogo, (settings.heroLogoUrl || settings.headerLogoUrl) ? 'firestore' : 'assets');
+  applyImage('.hero-large-logo, [data-site-media="hero-logo"]', heroLogo, (settings.heroLogoUrl || settings.headerLogoUrl) ? 'firestore' : 'assets');
 }
 
 function applyFounderImage(settings = {}) {
@@ -230,6 +231,28 @@ function applyFounderImage(settings = {}) {
     img.dataset.loadedFromStorage = isStorage ? 'true' : 'false';
     img.dataset.loadedFromLocal = isLocalAsset ? 'true' : 'false';
     img.dataset.mediaSource = settings.founderImageUrl ? 'firestore' : 'assets';
+    img.loading = 'eager';
+    img.fetchPriority = 'high';
+    img.decoding = 'async';
+    if (isStorage) img.referrerPolicy = 'no-referrer';
+  });
+}
+
+
+function applyAboutFounderHeroImage(settings = {}) {
+  const founderUrl = settings.aboutFounderHeroImageUrl || settings.founderImageUrl || LOCAL_MEDIA.founder;
+
+  document.querySelectorAll('[data-site-media="about-founder-hero"], .about-founder-hero-img').forEach((img) => {
+    if (!(img instanceof HTMLImageElement)) return;
+    if (img.getAttribute('src') !== founderUrl) img.src = founderUrl;
+
+    const isStorage = isStorageUrl(founderUrl);
+    img.dataset.loadedFromStorage = isStorage ? 'true' : 'false';
+    img.dataset.mediaSource = settings.aboutFounderHeroImageUrl
+      ? 'firestore-about-founder-hero'
+      : settings.founderImageUrl
+        ? 'firestore-founder'
+        : 'assets';
     img.loading = 'eager';
     img.fetchPriority = 'high';
     img.decoding = 'async';
@@ -297,6 +320,7 @@ function applySettings(settings = {}) {
   applyHeroVideo(clean);
   applyBrandMedia(clean);
   applyFounderImage(clean);
+  applyAboutFounderHeroImage(clean);
   lastAppliedSignature = settingsSignature(clean);
   document.body.classList.add('is-site-index-media-ready');
 }
@@ -369,6 +393,9 @@ function getSiteIndexMediaStatus() {
     founderLoadedFromStorage: founder?.dataset?.loadedFromStorage || 'missing-node',
     founderImageSource: founder?.dataset?.mediaSource || '',
     founderSrc: founder?.getAttribute?.('src') || '',
+    aboutFounderHeroLoadedFromStorage: document.querySelector('[data-site-media="about-founder-hero"]')?.dataset?.loadedFromStorage || 'missing-node',
+    aboutFounderHeroSource: document.querySelector('[data-site-media="about-founder-hero"]')?.dataset?.mediaSource || '',
+    aboutFounderHeroSrc: document.querySelector('[data-site-media="about-founder-hero"]')?.getAttribute?.('src') || '',
     headerLogoLoadedFromStorage: headerLogo?.dataset?.loadedFromStorage || 'missing-node',
     headerLogoSource: headerLogo?.dataset?.mediaSource || '',
     headerLogoSrc: headerLogo?.getAttribute?.('src') || '',
@@ -382,6 +409,13 @@ window.SBI_INIT_SITE_INDEX_MEDIA = initSiteIndexMedia;
 window.SBI_ENSURE_QUALIOPI_HOME_BLOCK = ensureQualiopiTrustBlock;
 window.SBI_SITE_INDEX_MEDIA_STATUS = getSiteIndexMediaStatus;
 window.SBI_REFRESH_SITE_INDEX_MEDIA = () => initSiteIndexMedia({ forceRefresh: true });
+
+window.addEventListener('sbi:public-shell:navigated', () => {
+  const page = document.body?.dataset?.sbiPublicPage || '';
+  if (page === 'home' || page === 'apropos') {
+    initSiteIndexMedia({ forceRefresh: false });
+  }
+});
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => initSiteIndexMedia(), { once: true });
