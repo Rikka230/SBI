@@ -1,11 +1,11 @@
 /* =========================================================
-   SBI 8.0P.58 - ABOUT TOP LIKE MOCKUP + NO JPG FALLBACK
+   SBI 8.0P.59 - ABOUT HERO MOCKUP FIDELITY REBUILD
    ---------------------------------------------------------
-   - Haut de page recalé comme le mockup.
-   - Fond global repris du système index, sans vidéo page entière.
-   - Hero fondateur fondu dans le décor, sans bordure cadre.
-   - Vidéo uniquement dans le bloc visuel haut et CTA.
-   - Image hero PNG masquée tant que Firebase ne l'a pas injectée.
+   - Recomposition complète du hero pour coller au mockup validé.
+   - Bloc fondateur haut fondu dans le décor, sans cadre visible.
+   - Vidéo renforcée dans le hero et dans le CTA final.
+   - Titre recalé, fondateur recentré, logo SBI ghost renforcé.
+   - Fond de page calé sur le système global index.
    ========================================================= */
 
 :root {
@@ -43,9 +43,9 @@ body[data-sbi-public-page="apropos"] .site-header .main-nav a[href="a-propos.htm
     z-index: 0;
     pointer-events: none;
     background:
-        radial-gradient(ellipse 62vw 58vh at 78% 18%, rgba(0, 81, 255, 0.11), transparent 58%),
-        radial-gradient(ellipse 64vw 60vh at 6% 42%, rgba(0, 81, 255, 0.09), transparent 62%),
-        linear-gradient(180deg, rgba(4, 5, 8, 0.28), rgba(4, 5, 8, 0.62) 100%);
+        radial-gradient(ellipse 72vw 62vh at 82% 18%, rgba(0, 81, 255, 0.09), transparent 60%),
+        radial-gradient(ellipse 52vw 42vh at 8% 36%, rgba(0, 81, 255, 0.07), transparent 62%),
+        linear-gradient(180deg, rgba(4, 5, 8, 0.10), rgba(4, 5, 8, 0.48) 100%);
 }
 
 .about-page > section {
@@ -57,22 +57,23 @@ body[data-sbi-public-page="apropos"] .site-header .main-nav a[href="a-propos.htm
 .about-proof-strip,
 .about-section,
 .about-final-cta {
-    padding-top: clamp(2.15rem, 3.6vw, 4rem);
-    padding-bottom: clamp(2.15rem, 3.6vw, 4rem);
+    padding-top: clamp(2.2rem, 3.5vw, 4rem);
+    padding-bottom: clamp(2.2rem, 3.5vw, 4rem);
 }
 
 .about-hero {
     display: grid;
-    grid-template-columns: minmax(600px, 0.98fr) minmax(620px, 1.02fr);
+    grid-template-columns: minmax(500px, 0.88fr) minmax(660px, 1.12fr);
     align-items: center;
-    gap: clamp(2rem, 3.2vw, 3.8rem);
-    min-height: clamp(680px, 82vh, 880px);
-    padding-top: clamp(4.2rem, 5.4vw, 5.4rem);
-    padding-bottom: 1.15rem;
+    gap: clamp(2rem, 4vw, 4.5rem);
+    min-height: clamp(700px, 84vh, 900px);
+    padding-top: clamp(4rem, 5vw, 5.2rem);
+    padding-bottom: 1rem;
 }
 
 .about-hero-copy {
-    max-width: 720px;
+    max-width: 650px;
+    align-self: center;
 }
 
 .section-surtitle,
@@ -87,26 +88,28 @@ body[data-sbi-public-page="apropos"] .site-header .main-nav a[href="a-propos.htm
 
 .about-hero-title {
     margin: 0;
+    max-width: 720px;
     color: #fff;
     font-family: var(--font-sans);
     font-weight: 900;
     font-style: italic;
-    font-size: clamp(3.25rem, 3.62vw, 4.75rem);
-    line-height: 0.97;
-    letter-spacing: -0.052em;
+    font-size: clamp(4.05rem, 4.85vw, 6rem);
+    line-height: 0.92;
+    letter-spacing: -0.068em;
     text-shadow: 0 18px 36px rgba(0, 0, 0, 0.55);
 }
 
 .about-hero-title .text-blue {
     color: var(--sbi-blue);
+    display: inline-block;
 }
 
 .about-hero-lead {
-    max-width: 560px;
+    max-width: 590px;
     margin-top: 1.55rem;
     color: rgba(226, 234, 248, 0.84);
-    font-size: clamp(0.98rem, 1.02vw, 1.08rem);
-    line-height: 1.68;
+    font-size: clamp(1rem, 1.05vw, 1.14rem);
+    line-height: 1.7;
 }
 
 .about-hero-actions,
@@ -143,17 +146,46 @@ body[data-sbi-public-page="apropos"] .site-header .main-nav a[href="a-propos.htm
 .about-hero-visual {
     margin: 0;
     align-self: stretch;
+    position: relative;
 }
 
 .about-hero-visual-shell {
     position: relative;
-    min-height: clamp(560px, 47vw, 720px);
+    width: min(100%, 920px);
+    min-height: clamp(610px, 45vw, 770px);
     height: 100%;
-    overflow: visible;
+    margin-left: auto;
+    margin-right: -1vw;
+    overflow: hidden;
+    isolation: isolate;
     border: 0;
     background: transparent;
-    clip-path: none;
     box-shadow: none;
+    clip-path: none;
+}
+
+.about-hero-visual-shell::before,
+.about-hero-visual-shell::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+.about-hero-visual-shell::before {
+    z-index: 2;
+    background:
+        linear-gradient(90deg, rgba(3, 7, 14, 0) 0%, rgba(3, 7, 14, 0.02) 22%, rgba(3, 7, 14, 0.14) 45%, rgba(3, 7, 14, 0.5) 100%),
+        linear-gradient(180deg, rgba(3, 7, 14, 0.32) 0%, rgba(3, 7, 14, 0.02) 18%, rgba(3, 7, 14, 0.02) 82%, rgba(3, 7, 14, 0.42) 100%);
+}
+
+.about-hero-visual-shell::after {
+    inset: -10% -8% -8% -10%;
+    z-index: 3;
+    background:
+        radial-gradient(circle at 74% 49%, rgba(0, 81, 255, 0.18), transparent 18%),
+        radial-gradient(circle at 72% 46%, rgba(0, 81, 255, 0.09), transparent 34%),
+        linear-gradient(90deg, transparent 0%, transparent 55%, rgba(255, 255, 255, 0.02) 100%);
 }
 
 .about-visual-video,
@@ -163,80 +195,127 @@ body[data-sbi-public-page="apropos"] .site-header .main-nav a[href="a-propos.htm
 }
 
 .about-visual-video {
-    inset: -4% -2% 0 -8%;
+    inset: -4% -2% -2% -8%;
     width: 110%;
-    height: 104%;
+    height: 106%;
     object-fit: cover;
-    opacity: 0.50;
-    filter: grayscale(1) contrast(1.26) brightness(0.66) saturate(1.24);
+    opacity: 0.66;
+    filter: grayscale(1) contrast(1.38) brightness(0.84) saturate(1.35);
     mix-blend-mode: screen;
     z-index: 0;
     -webkit-mask-image:
-        linear-gradient(90deg, transparent 0%, #000 18%, #000 82%, transparent 100%),
-        linear-gradient(180deg, transparent 0%, #000 13%, #000 84%, transparent 100%);
+        linear-gradient(90deg, transparent 0%, #000 10%, #000 96%, transparent 100%),
+        linear-gradient(180deg, transparent 0%, #000 10%, #000 90%, transparent 100%);
     -webkit-mask-composite: source-in;
     mask-image:
-        linear-gradient(90deg, transparent 0%, #000 18%, #000 82%, transparent 100%),
-        linear-gradient(180deg, transparent 0%, #000 13%, #000 84%, transparent 100%);
+        linear-gradient(90deg, transparent 0%, #000 10%, #000 96%, transparent 100%),
+        linear-gradient(180deg, transparent 0%, #000 10%, #000 90%, transparent 100%);
     mask-composite: intersect;
 }
 
 .about-visual-video-mask {
-    inset: -2% -4% 0 -10%;
+    inset: -3% -3% -2% -8%;
     z-index: 1;
     background:
-        radial-gradient(ellipse at 73% 47%, rgba(0, 81, 255, 0.22), transparent 42%),
-        linear-gradient(90deg, rgba(4, 5, 8, 0.92) 0%, rgba(4, 5, 8, 0.18) 45%, rgba(4, 5, 8, 0.82) 100%),
-        linear-gradient(180deg, rgba(4, 5, 8, 0.78) 0%, rgba(4, 5, 8, 0.12) 42%, rgba(4, 5, 8, 0.82) 100%);
+        radial-gradient(circle at 73% 47%, rgba(0, 81, 255, 0.22), transparent 24%),
+        linear-gradient(90deg, rgba(4, 7, 14, 0) 0%, rgba(4, 7, 14, 0.03) 28%, rgba(4, 7, 14, 0.18) 48%, rgba(4, 7, 14, 0.46) 100%),
+        linear-gradient(180deg, rgba(4, 7, 14, 0.26) 0%, rgba(4, 7, 14, 0.06) 20%, rgba(4, 7, 14, 0.08) 82%, rgba(4, 7, 14, 0.38) 100%);
 }
 
 .about-hero-ghost-logo {
     position: absolute;
-    right: -1%;
-    top: 8%;
-    width: min(76%, 660px);
-    opacity: 0.29;
-    filter: grayscale(1) contrast(1.15) brightness(0.90);
+    right: 0;
+    top: 2%;
+    width: min(75%, 660px);
+    opacity: 0.52;
+    filter: grayscale(1) brightness(1.7) contrast(1.12) saturate(0) drop-shadow(0 0 24px rgba(0, 81, 255, 0.14));
     mix-blend-mode: screen;
-    z-index: 2;
+    z-index: 1;
+}
+
+.about-hero-deco {
+    position: absolute;
+    z-index: 4;
+    pointer-events: none;
+    opacity: 0.88;
+    filter: drop-shadow(0 8px 18px rgba(0, 81, 255, 0.18));
+}
+
+.about-hero-deco-cube {
+    top: 8%;
+    right: 33%;
+    width: 22px;
+    height: 22px;
+    border: 1px solid rgba(182, 214, 255, 0.48);
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.1), rgba(0, 81, 255, 0.1));
+    transform: rotate(28deg);
+}
+
+.about-hero-deco-ring {
+    top: 13%;
+    right: 2%;
+    width: 36px;
+    height: 36px;
+    border: 4px solid rgba(196, 217, 255, 0.5);
+    border-radius: 50%;
+    background: transparent;
+    transform: rotate(18deg);
+}
+
+.about-hero-deco-triangle {
+    bottom: 22%;
+    right: 26%;
+    width: 0;
+    height: 0;
+    border-left: 13px solid transparent;
+    border-right: 13px solid transparent;
+    border-top: 22px solid rgba(69, 120, 255, 0.82);
+    filter: drop-shadow(0 8px 18px rgba(0, 81, 255, 0.22));
 }
 
 .about-founder-hero-img {
     position: absolute;
-    right: 8%;
+    right: 9%;
     bottom: 0;
-    width: min(76%, 600px);
+    width: min(58%, 540px);
     max-width: none;
-    height: 98%;
+    height: 96%;
     object-fit: contain;
     object-position: center bottom;
-    z-index: 4;
-    filter: drop-shadow(0 26px 36px rgba(0, 0, 0, 0.48));
+    z-index: 5;
+    filter: drop-shadow(0 28px 40px rgba(0, 0, 0, 0.45));
     transition: opacity 0.28s ease;
 }
 
 .about-founder-hero-img[src^="data:"] {
-    opacity: 0;
+    opacity: 0 !important;
+    visibility: hidden;
 }
 
 .about-founder-hero-img:not([src^="data:"]) {
     opacity: 1;
+    visibility: visible;
+}
+
+.about-founder-hero-img[src^="data:"] ~ .about-founder-caption {
+    opacity: 0;
 }
 
 .about-founder-caption {
     position: absolute;
-    right: 11%;
-    bottom: 7%;
-    z-index: 5;
+    right: 12%;
+    bottom: 9%;
+    z-index: 6;
     display: grid;
     justify-items: end;
     color: #fff;
     text-align: right;
+    transition: opacity 0.25s ease;
 }
 
 .signature-text {
     font-family: 'Great Vibes', cursive;
-    font-size: clamp(1.5rem, 2.1vw, 2.25rem);
+    font-size: clamp(1.5rem, 2.05vw, 2.28rem);
     color: rgba(255, 255, 255, 0.88);
     line-height: 1;
     text-shadow: 0 0 16px rgba(0, 0, 0, 0.8);
@@ -326,19 +405,19 @@ body[data-sbi-public-page="apropos"] .site-header .main-nav a[href="a-propos.htm
 
 .about-mission-layout {
     display: grid;
-    grid-template-columns: minmax(280px, 0.62fr) minmax(0, 1.38fr);
+    grid-template-columns: minmax(280px, 0.7fr) minmax(0, 1.3fr);
     gap: clamp(1.5rem, 3vw, 3rem);
-    align-items: center;
+    align-items: start;
 }
 
 .about-section-intro h2 {
     margin: 0;
-    max-width: 470px;
+    max-width: 500px;
     font-family: var(--font-sans);
     font-weight: 900;
     font-style: italic;
-    font-size: clamp(2.1rem, 3vw, 3.3rem);
-    line-height: 1.06;
+    font-size: clamp(2.1rem, 2.9vw, 3.15rem);
+    line-height: 1.05;
     color: #fff;
     letter-spacing: -0.04em;
 }
@@ -520,10 +599,10 @@ body[data-sbi-public-page="apropos"] .site-header .main-nav a[href="a-propos.htm
     overflow: hidden;
     padding: clamp(3rem, 6vw, 4.6rem);
     text-align: center;
-    min-height: 240px;
+    min-height: 250px;
     background:
-        linear-gradient(180deg, rgba(7, 12, 23, 0.66), rgba(3, 7, 14, 0.86)),
-        radial-gradient(circle at 85% 48%, rgba(0, 81, 255, 0.22), transparent 38%);
+        linear-gradient(180deg, rgba(7, 12, 23, 0.56), rgba(3, 7, 14, 0.82)),
+        radial-gradient(circle at 84% 52%, rgba(0, 81, 255, 0.24), transparent 36%);
 }
 
 .about-final-video,
@@ -537,15 +616,15 @@ body[data-sbi-public-page="apropos"] .site-header .main-nav a[href="a-propos.htm
     width: 100%;
     height: 100%;
     object-fit: cover;
-    opacity: 0.34;
-    filter: grayscale(1) contrast(1.35) brightness(0.58) saturate(1.25);
+    opacity: 0.5;
+    filter: grayscale(1) contrast(1.4) brightness(0.76) saturate(1.3);
     mix-blend-mode: screen;
 }
 
 .about-final-video-mask {
     background:
-        linear-gradient(90deg, rgba(4, 7, 14, 0.82), rgba(4, 7, 14, 0.34), rgba(4, 7, 14, 0.84)),
-        radial-gradient(circle at 84% 58%, rgba(0, 81, 255, 0.26), transparent 34%);
+        linear-gradient(90deg, rgba(4, 7, 14, 0.72), rgba(4, 7, 14, 0.18), rgba(4, 7, 14, 0.74)),
+        radial-gradient(circle at 82% 56%, rgba(0, 81, 255, 0.24), transparent 34%);
 }
 
 .about-final-card h2,
@@ -565,26 +644,31 @@ body[data-sbi-public-page="apropos"] .site-header .main-nav a[href="a-propos.htm
 
 @media (max-width: 1500px) {
     .about-hero {
-        grid-template-columns: minmax(520px, 0.93fr) minmax(520px, 1.07fr);
+        grid-template-columns: minmax(470px, 0.88fr) minmax(560px, 1.12fr);
     }
 
     .about-hero-title {
-        font-size: clamp(3rem, 3.55vw, 4.55rem);
+        font-size: clamp(3.8rem, 4.45vw, 5.3rem);
     }
 
     .about-founder-hero-img {
-        right: 4%;
-        width: min(80%, 570px);
+        right: 7%;
+        width: min(60%, 520px);
     }
 }
 
 @media (max-width: 1380px) {
     .about-hero {
-        grid-template-columns: minmax(0, 0.92fr) minmax(480px, 1.08fr);
+        grid-template-columns: minmax(0, 0.94fr) minmax(520px, 1.06fr);
     }
 
     .about-hero-title {
-        font-size: clamp(2.8rem, 3.4vw, 4.1rem);
+        font-size: clamp(3.4rem, 4.2vw, 4.8rem);
+    }
+
+    .about-hero-visual-shell {
+        min-height: 560px;
+        margin-right: 0;
     }
 
     .about-approach-grid {
@@ -607,11 +691,12 @@ body[data-sbi-public-page="apropos"] .site-header .main-nav a[href="a-propos.htm
     }
 
     .about-hero-title {
-        font-size: clamp(2.9rem, 7vw, 5rem);
+        font-size: clamp(3rem, 7vw, 5rem);
     }
 
     .about-hero-visual-shell {
-        min-height: 520px;
+        min-height: 560px;
+        width: 100%;
     }
 
     .about-proof-strip,
@@ -649,13 +734,18 @@ body[data-sbi-public-page="apropos"] .site-header .main-nav a[href="a-propos.htm
     }
 
     .about-hero-visual-shell {
-        min-height: 460px;
+        min-height: 480px;
     }
 
     .about-founder-hero-img {
-        width: min(86%, 420px);
-        height: 92%;
-        right: 4%;
+        width: min(82%, 420px);
+        height: 94%;
+        right: 8%;
+    }
+
+    .about-founder-caption {
+        right: 10%;
+        bottom: 7%;
     }
 
     .about-final-card {
@@ -665,21 +755,40 @@ body[data-sbi-public-page="apropos"] .site-header .main-nav a[href="a-propos.htm
 
 @media (max-width: 640px) {
     .about-hero {
-        gap: 1.5rem;
+        gap: 1.6rem;
         padding-top: 3rem;
     }
 
     .about-hero-title {
-        font-size: clamp(2.55rem, 12vw, 4rem);
+        font-size: clamp(2.65rem, 12vw, 4rem);
         letter-spacing: -0.06em;
     }
 
     .about-hero-visual-shell {
-        min-height: 360px;
+        min-height: 390px;
+    }
+
+    .about-hero-deco-cube {
+        top: 10%;
+        right: 30%;
+        width: 16px;
+        height: 16px;
+    }
+
+    .about-hero-deco-ring {
+        width: 28px;
+        height: 28px;
+        border-width: 3px;
+    }
+
+    .about-hero-deco-triangle {
+        border-left-width: 10px;
+        border-right-width: 10px;
+        border-top-width: 18px;
     }
 
     .about-founder-caption {
-        right: 5%;
+        right: 6%;
         bottom: 4%;
     }
 

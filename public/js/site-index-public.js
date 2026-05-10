@@ -1,4 +1,4 @@
-const SITE_INDEX_MEDIA_VERSION = '8.0P.55';
+const SITE_INDEX_MEDIA_VERSION = '8.0P.59';
 
 window.__SBI_SITE_INDEX_MEDIA_LOADING__ = true;
 
@@ -261,59 +261,55 @@ function applyAboutFounderHeroImage(settings = {}) {
 }
 
 function applyHeroVideo(settings = {}) {
-  const videos = Array.from(document.querySelectorAll('[data-site-media="hero-video"], .hero-video-bg'))
-    .filter((video, index, list) => video instanceof HTMLVideoElement && list.indexOf(video) === index);
-
-  if (!videos.length) return;
+  const video = document.querySelector('[data-site-media="hero-video"], .hero-video-bg');
+  if (!(video instanceof HTMLVideoElement)) return;
 
   const webmUrl = cleanUrl(settings.heroVideoWebmUrl);
   const mp4Url = cleanUrl(settings.heroVideoMp4Url);
 
-  videos.forEach((video) => {
-    if (!webmUrl && !mp4Url) {
-      video.dataset.mediaState = 'missing-url';
-      return;
+  if (!webmUrl && !mp4Url) {
+    video.dataset.mediaState = 'missing-url';
+    return;
+  }
+
+  const currentSources = Array.from(video.querySelectorAll('source'))
+    .map((source) => `${source.type}:${source.getAttribute('src') || ''}`)
+    .join('|');
+  const nextSources = `${webmUrl ? `video/webm:${webmUrl}` : ''}|${mp4Url ? `video/mp4:${mp4Url}` : ''}`;
+
+  if (currentSources !== nextSources) {
+    video.pause();
+    video.innerHTML = '';
+
+    if (webmUrl) {
+      const webm = document.createElement('source');
+      webm.src = webmUrl;
+      webm.type = 'video/webm';
+      video.appendChild(webm);
     }
 
-    const currentSources = Array.from(video.querySelectorAll('source'))
-      .map((source) => `${source.type}:${source.getAttribute('src') || ''}`)
-      .join('|');
-    const nextSources = `${webmUrl ? `video/webm:${webmUrl}` : ''}|${mp4Url ? `video/mp4:${mp4Url}` : ''}`;
-
-    if (currentSources !== nextSources) {
-      video.pause();
-      video.innerHTML = '';
-
-      if (webmUrl) {
-        const webm = document.createElement('source');
-        webm.src = webmUrl;
-        webm.type = 'video/webm';
-        video.appendChild(webm);
-      }
-
-      if (mp4Url) {
-        const mp4 = document.createElement('source');
-        mp4.src = mp4Url;
-        mp4.type = 'video/mp4';
-        video.appendChild(mp4);
-      }
-
-      video.load();
+    if (mp4Url) {
+      const mp4 = document.createElement('source');
+      mp4.src = mp4Url;
+      mp4.type = 'video/mp4';
+      video.appendChild(mp4);
     }
 
-    video.muted = true;
-    video.loop = true;
-    video.playsInline = true;
-    video.autoplay = true;
-    video.dataset.mediaState = 'requested';
+    video.load();
+  }
 
-    video.play()
-      .then(() => { video.dataset.mediaState = 'playing'; })
-      .catch((error) => {
-        video.dataset.mediaState = 'play-blocked';
-        console.warn('[SBI Index] Lecture vidéo hero bloquée ou différée :', error);
-      });
-  });
+  video.muted = true;
+  video.loop = true;
+  video.playsInline = true;
+  video.autoplay = true;
+  video.dataset.mediaState = 'requested';
+
+  video.play()
+    .then(() => { video.dataset.mediaState = 'playing'; })
+    .catch((error) => {
+      video.dataset.mediaState = 'play-blocked';
+      console.warn('[SBI Index] Lecture vidéo hero bloquée ou différée :', error);
+    });
 }
 
 function applySettings(settings = {}) {
