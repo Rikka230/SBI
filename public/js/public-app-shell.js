@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.72 - Contact mobile frame cleanup
+ * SBI 8.0P.73 - Contact/login mobile cleanup
  *
  * Shell public prudent :
  * - navigation fluide des ancres de l'index ;
@@ -8,7 +8,7 @@
  * - espaces admin/student/teacher et viewers toujours protégés en reload.
  */
 
-const PUBLIC_SHELL_VERSION = '8.0P.72';
+const PUBLIC_SHELL_VERSION = '8.0P.73';
 const DISABLED_FLAG = 'sbiPublicShellDisabled';
 const READY_CLASS = 'sbi-public-shell-ready';
 const SCROLLING_CLASS = 'sbi-public-shell-scrolling';
