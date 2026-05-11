@@ -746,3 +746,29 @@ main {
         z-index: 1;
     }
 }
+
+/* SBI 8.0P.79 - mobile index: restore the hero -> formations section cut without touching legal pages.
+   The first home panel gets a guaranteed slanted top edge; the glow stays attached
+   to the mobile overlay so legal artefact fixes remain isolated in sbi-legal.css. */
+@media (max-width: 768px) {
+    body[data-sbi-public-page="home"] .sbi-home-page .section-parcours {
+        --sbi-section-cut: 34px;
+        margin-top: calc(var(--sbi-section-cut) * -1) !important;
+        clip-path: polygon(
+            0 var(--sbi-section-cut),
+            100% 0,
+            100% calc(100% - var(--sbi-section-cut)),
+            0 100%
+        ) !important;
+        background:
+            radial-gradient(circle at 92% 18%, rgba(0, 81, 255, 0.12), transparent 42%),
+            linear-gradient(180deg, rgba(5, 11, 21, 0.96), rgba(2, 5, 11, 0.98)) !important;
+    }
+
+    body[data-sbi-public-page="home"] .sbi-home-page > .sbi-diagonal-overlay .sbi-diagonal-overlay__line:first-child {
+        opacity: 0.78;
+        filter:
+            drop-shadow(0 0 10px rgba(0, 81, 255, 0.54))
+            drop-shadow(0 0 18px rgba(0, 81, 255, 0.24));
+    }
+}

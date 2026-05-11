@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.78 - Diagonals restore without legal artefacts
+ * SBI 8.0P.79 - Home mobile formation cut restore
  *
  * Shell public prudent :
  * - navigation fluide des ancres de l'index ;
@@ -8,7 +8,7 @@
  * - espaces admin/student/teacher et viewers toujours protégés en reload.
  */
 
-const PUBLIC_SHELL_VERSION = '8.0P.78';
+const PUBLIC_SHELL_VERSION = '8.0P.79';
 const DISABLED_FLAG = 'sbiPublicShellDisabled';
 const READY_CLASS = 'sbi-public-shell-ready';
 const SCROLLING_CLASS = 'sbi-public-shell-scrolling';
@@ -529,7 +529,7 @@ function renderDiagonalsSoon() {
 async function ensureDiagonalRendererForPage(pageId) {
   if (pageId === 'home' && typeof window.SBI_RENDER_DIAGONALS !== 'function') {
     try {
-      await import('/js/sbi-diagonals.js?v=8.0P.25');
+      await import('/js/sbi-diagonals.js?v=8.0P.79');
     } catch (error) {
       console.warn('[SBI Public Shell] Diagonales index indisponibles après PJAX :', error);
     }

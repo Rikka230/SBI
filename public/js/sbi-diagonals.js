@@ -1,5 +1,5 @@
 (function () {
-    const DIAGONALS_VERSION = '8.0P.25';
+    const DIAGONALS_VERSION = '8.0P.79';
     const mobileQuery = window.matchMedia('(max-width: 768px)');
 
     const sectionSelectors = [
@@ -15,6 +15,12 @@
     let resizeObserver = null;
     let mutationObserver = null;
     const observedSections = new WeakSet();
+
+    const layoutSelectors = [
+        '.hero-section',
+        '.features-bar',
+        ...sectionSelectors
+    ];
 
     function getMain() {
         return document.querySelector('main');
@@ -101,6 +107,21 @@
         frame = window.requestAnimationFrame(renderOverlay);
     }
 
+    function getLayoutElements() {
+        const seen = new Set();
+        const elements = [];
+
+        layoutSelectors.forEach((selector) => {
+            document.querySelectorAll(selector).forEach((element) => {
+                if (!element || seen.has(element)) return;
+                seen.add(element);
+                elements.push(element);
+            });
+        });
+
+        return elements;
+    }
+
     function observeLayout() {
         resizeObserver?.disconnect?.();
 
@@ -110,10 +131,10 @@
         const main = getMain();
         if (main) resizeObserver.observe(main);
 
-        getUniqueSections().forEach((section) => {
-            if (observedSections.has(section)) return;
-            observedSections.add(section);
-            resizeObserver.observe(section);
+        getLayoutElements().forEach((element) => {
+            if (observedSections.has(element)) return;
+            observedSections.add(element);
+            resizeObserver.observe(element);
         });
     }
 
@@ -134,10 +155,17 @@
         });
     }
 
+    function scheduleRenderPasses() {
+        scheduleRender();
+        window.setTimeout(scheduleRender, 120);
+        window.setTimeout(scheduleRender, 360);
+        window.setTimeout(scheduleRender, 900);
+    }
+
     function initSbiDiagonals() {
         observeLayout();
         observeDom();
-        scheduleRender();
+        scheduleRenderPasses();
     }
 
     window.SBI_RENDER_DIAGONALS = initSbiDiagonals;
