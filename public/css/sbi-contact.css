@@ -1979,3 +1979,18 @@ body[data-sbi-public-page="contact"] .contact-consent input[type="checkbox"]:foc
         margin-top: 0.02rem !important;
     }
 }
+
+
+/* =========================================================
+   SBI 8.0P.87 - Contact frame stability
+   ---------------------------------------------------------
+   Garde un seul contour lisible sur la carte contact.
+   ========================================================= */
+body[data-sbi-public-page="contact"] .contact-card-inner {
+    border-color: transparent !important;
+    box-shadow: none !important;
+}
+
+body[data-sbi-public-page="contact"] .contact-form-card::before {
+    inset: 0;
+}

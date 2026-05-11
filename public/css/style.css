@@ -488,7 +488,7 @@ footer {
 .parcours-card:nth-child(4) { background-image: url('https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&w=800&q=80'); }
 
 /* =========================================================
-   SBI 8.0P.86 - Index formations dynamiques Firebase
+   SBI 8.0P.87 - Index formations dynamiques Firebase stabilisé
    ========================================================= */
 
 .sbi-home-formation-card {
@@ -506,14 +506,14 @@ footer {
 
 .sbi-home-formation-card.has-cover-image {
     background-image:
-        linear-gradient(to top, rgba(4, 5, 8, 0.58) 0%, rgba(4, 5, 8, 0.12) 72%),
+        linear-gradient(to top, rgba(4, 5, 8, 0.30) 0%, rgba(4, 5, 8, 0.03) 72%),
         var(--sbi-cover-image) !important;
     background-position: center, var(--sbi-cover-x) var(--sbi-cover-y) !important;
     background-size: cover, cover !important;
 }
 
 .sbi-home-formation-card.has-cover-image .card-mask {
-    background: linear-gradient(to top, rgba(4, 5, 8, 0.46) 0%, rgba(4, 5, 8, 0.06) 70%);
+    background: linear-gradient(to top, rgba(4, 5, 8, 0.22) 0%, rgba(4, 5, 8, 0.00) 70%);
 }
 
 .sbi-home-formation-card:not(.has-cover-image) .card-mask::after {

@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="css/admin.css">
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
     <link rel="stylesheet" href="css/admin-notifications.css">
-    <link rel="stylesheet" href="css/public-content-admin.css?v=8.0P.86">
+    <link rel="stylesheet" href="css/public-content-admin.css?v=8.0P.87">
     <link rel="stylesheet" href="/css/sbi-7-1-harmonization.css">
     <script src="js/components.js"></script>
 
@@ -390,7 +390,7 @@
                                 Afficher cette formation sur l’index
                             </label>
 
-                            <label>Brochures associées <small>IDs Firestore, une ligne par brochure. Utilisé par le prochain patch ressources.</small>
+                            <label class="public-admin-brochure-field" hidden aria-hidden="true">Brochures associées <small>À venir dans le patch Ressources/Brochures.</small>
                                 <textarea id="public-formation-brochure-ids" rows="3"></textarea>
                             </label>
 
@@ -461,8 +461,9 @@
     window.switchCourseTab = function(tabId) {
         document.querySelectorAll('.sub-nav-item').forEach(el => el.classList.remove('active'));
         document.querySelectorAll('.course-section').forEach(el => el.classList.remove('active'));
-        document.getElementById('nav-' + tabId).classList.add('active');
-        document.getElementById(tabId).classList.add('active');
+        document.getElementById('nav-' + tabId)?.classList.add('active');
+        document.getElementById(tabId)?.classList.add('active');
+        window.dispatchEvent(new CustomEvent('sbi:course-tab-change', { detail: { tabId } }));
     };
 
     document.querySelectorAll('input[name="media_type"]').forEach(radio => {
@@ -558,7 +559,7 @@
 </script>
 
 <script type="module" src="js/admin-ui.js"></script>
-<script type="module" src="js/admin-courses.js?v=8.0P.86"></script>
+<script type="module" src="js/admin-courses.js?v=8.0P.87"></script>
 <script type="module" src="js/tracker.js"></script>
 <script type="module" src="js/admin-notifications.js"></script>
 </body>

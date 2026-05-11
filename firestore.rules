@@ -422,13 +422,15 @@ service cloud.firestore {
        ============================================================ */
 
     match /publicFormations/{formationId} {
-      allow get, list: if resource.data.status in ['published', 'coming_soon'];
+      allow get, list: if isAdmin()
+        || resource.data.status in ['published', 'coming_soon'];
       allow create, update, delete: if isAdmin();
     }
 
     match /publicResources/{resourceId} {
-      allow get, list: if resource.data.status == 'published'
-        && resource.data.globalVisible == true;
+      allow get, list: if isAdmin()
+        || (resource.data.status == 'published'
+          && resource.data.globalVisible == true);
       allow create, update, delete: if isAdmin();
     }
 

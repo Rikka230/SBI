@@ -526,7 +526,7 @@ body[data-sbi-public-page] .public-page::after {
 
 
 /* =========================================================
-   SBI 8.0P.86 - Formations publiques dynamiques
+   SBI 8.0P.87 - Formations publiques dynamiques stabilisées
    ========================================================= */
 
 .public-formations-grid.public-card-grid-3 {
@@ -568,7 +568,7 @@ body[data-sbi-public-page] .public-page::after {
 .public-formation-card.has-cover-image::before {
     content: "";
     background-image:
-        linear-gradient(to top, rgba(2, 6, 14, 0.54) 0%, rgba(2, 6, 14, 0.08) 72%),
+        linear-gradient(to top, rgba(2, 6, 14, 0.28) 0%, rgba(2, 6, 14, 0.02) 72%),
         var(--sbi-cover-image);
     background-size: cover;
     background-position: center, var(--sbi-cover-x) var(--sbi-cover-y);
@@ -591,7 +591,7 @@ body[data-sbi-public-page] .public-page::after {
     position: absolute;
     inset: 0;
     background:
-        linear-gradient(to top, rgba(3, 7, 17, 0.38) 0%, rgba(3, 7, 17, 0.03) 70%),
+        linear-gradient(to top, rgba(3, 7, 17, 0.20) 0%, rgba(3, 7, 17, 0.00) 70%),
         radial-gradient(circle at 80% 8%, rgba(0, 81, 255, 0.10), transparent 16rem);
     z-index: 1;
     pointer-events: none;
@@ -703,48 +703,73 @@ body[data-sbi-public-page] .public-page::after {
     position: relative;
     z-index: 4;
     display: grid;
-    gap: 1rem;
-    padding: 0 clamp(1.2rem, 2vw, 1.8rem) clamp(1.3rem, 2vw, 1.8rem);
-    color: var(--public-muted);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.85rem;
+    margin: 0 clamp(1.2rem, 2vw, 1.8rem) clamp(1.3rem, 2vw, 1.8rem);
+    padding: clamp(1rem, 1.7vw, 1.35rem);
+    border: 1px solid rgba(126, 181, 255, 0.22);
+    background:
+        linear-gradient(145deg, rgba(7, 13, 25, 0.92), rgba(3, 7, 14, 0.96)),
+        radial-gradient(circle at 95% 0%, rgba(0, 81, 255, 0.16), transparent 18rem);
+    color: rgba(224, 235, 255, 0.78);
 }
 
 .public-formation-details[hidden] {
     display: none !important;
 }
 
+.public-formation-detail-intro,
+.public-formation-cta {
+    grid-column: 1 / -1;
+}
+
+.public-formation-detail-intro {
+    margin: 0;
+    padding: 0.95rem 1rem;
+    border-left: 3px solid var(--public-blue);
+    background: rgba(255, 255, 255, 0.035);
+    color: #eaf2ff;
+    line-height: 1.68;
+}
+
 .public-formation-detail-block {
+    min-width: 0;
     padding: 1rem;
     border: 1px solid rgba(126, 181, 255, 0.18);
-    background: rgba(2, 7, 17, 0.68);
+    background: rgba(255, 255, 255, 0.035);
 }
 
 .public-formation-detail-block h4 {
-    margin-bottom: 0.7rem;
+    margin: 0 0 0.75rem;
     color: #fff;
-    font-size: 1rem;
+    font-size: 0.92rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
 }
 
 .public-formation-detail-block ul {
     display: grid;
-    gap: 0.45rem;
+    gap: 0.55rem;
     margin: 0;
     padding-left: 1.1rem;
 }
 
 .public-formation-detail-block li,
 .public-formation-mini-section p {
-    line-height: 1.55;
+    color: rgba(224, 235, 255, 0.78);
+    line-height: 1.62;
 }
 
 .public-formation-mini-section + .public-formation-mini-section {
-    margin-top: 0.8rem;
-    padding-top: 0.8rem;
+    margin-top: 0.85rem;
+    padding-top: 0.85rem;
     border-top: 1px solid rgba(126, 181, 255, 0.14);
 }
 
 .public-formation-mini-section strong {
     display: block;
     color: #d7e7ff;
+    line-height: 1.35;
 }
 
 .public-formation-card.is-coming-soon {
@@ -779,6 +804,9 @@ body[data-sbi-public-page] .public-page::after {
     }
 
     .public-formation-details {
+        grid-template-columns: 1fr;
+        margin-left: 1rem;
+        margin-right: 1rem;
         padding-left: 1rem;
         padding-right: 1rem;
     }

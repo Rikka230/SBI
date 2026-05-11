@@ -19,7 +19,7 @@ async function getFirestoreTools() {
 
 const PUBLIC_FORMATIONS_COLLECTION = 'publicFormations';
 const PUBLIC_RESOURCES_COLLECTION = 'publicResources';
-const PUBLIC_CONTENT_VERSION = '8.0P.85';
+const PUBLIC_CONTENT_VERSION = '8.0P.87';
 
 const DEFAULT_COVER_LABEL = 'SBI';
 
@@ -330,8 +330,11 @@ function createFormationDetails(formation) {
   const details = createElement('div', 'public-formation-details');
   details.hidden = true;
 
-  const intro = createElement('p', 'text-italic', formation.longDescription || formation.shortSummary);
-  details.append(intro);
+  const introText = text(formation.longDescription || formation.shortSummary);
+  if (introText) {
+    const intro = createElement('p', 'public-formation-detail-intro text-italic', introText);
+    details.append(intro);
+  }
 
   appendList(details, 'Objectifs', formation.objectives);
   appendList(details, 'Prérequis', formation.prerequisites);

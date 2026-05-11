@@ -73,7 +73,6 @@ import {
     handleCourseNotifications as handleCourseNotificationsService
 } from '/admin/js/courses/course-notifications.js';
 import { getCourseTargetingSnapshot } from '/admin/js/courses/course-targeting.js';
-import { initPublicFormationsAdmin } from '/admin/js/public-formations-admin.js?v=8.0P.86';
 let currentUid = null;
 let currentUserProfile = null;
 let currentChapters = [];
@@ -116,6 +115,33 @@ function openFormationModal(formationId) {
 }
 
 window.openFormationModal = openFormationModal;
+
+async function mountPublicFormationsAdminSafely(cleanups) {
+    const publicCatalogRoot = document.querySelector('#tab-formations [data-sbi-public-formations-admin]');
+
+    if (!publicCatalogRoot) return;
+
+    try {
+        const module = await import('/admin/js/public-formations-admin.js?v=8.0P.87');
+        const initPublicFormationsAdmin = module?.initPublicFormationsAdmin || window.SBI_INIT_PUBLIC_FORMATIONS_ADMIN;
+
+        if (typeof initPublicFormationsAdmin !== 'function') return;
+
+        const cleanupPublicFormationsAdmin = initPublicFormationsAdmin({
+            root: document.getElementById('tab-formations') || publicCatalogRoot,
+            source: 'admin-courses'
+        });
+
+        if (typeof cleanupPublicFormationsAdmin === 'function') cleanups.push(cleanupPublicFormationsAdmin);
+    } catch (error) {
+        console.warn('[SBI Public Formations Admin] Module isolé non chargé. Le gestionnaire de cours reste disponible :', error);
+        const status = document.getElementById('public-formations-admin-status');
+        if (status) {
+            status.dataset.tone = 'error';
+            status.textContent = 'Catalogue public indisponible. Recharge la page ou vérifie les droits admin.';
+        }
+    }
+}
 
 function renderFormationsPillsAndFilters() {
     renderFormationsPillsAndFiltersUi(courseUiState);
@@ -295,8 +321,7 @@ export function mountAdminCourses({ source = 'standard' } = {}) {
     setupFormationSearch();
     setupFormationModal();
 
-    const cleanupPublicFormationsAdmin = initPublicFormationsAdmin();
-    if (typeof cleanupPublicFormationsAdmin === 'function') cleanups.push(cleanupPublicFormationsAdmin);
+    mountPublicFormationsAdminSafely(cleanups);
 
     const cleanup = () => {
         disposed = true;
