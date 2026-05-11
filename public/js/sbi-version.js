@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.77',
+  version: '8.0P.78',
   branch: 'legal-pages-footer',
   channel: 'PUBLIC PJAX APP SHELL',
-  stage: 'Legal pages mobile polish',
+  stage: 'Diagonals restore without legal artefacts',
   updatedAt: '2026-05-11',
-  label: 'SBI 8.0P.77 - LEGAL PAGES MOBILE POLISH'
+  label: 'SBI 8.0P.78 - DIAGONALS RESTORE WITHOUT LEGAL ARTEFACTS'
 };
 
 export function getSbiVersionLabel() {

@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.76 - Legal pages polish + Instagram fix
+ * SBI 8.0P.78 - Diagonals restore without legal artefacts
  *
  * Shell public prudent :
  * - navigation fluide des ancres de l'index ;
@@ -8,7 +8,7 @@
  * - espaces admin/student/teacher et viewers toujours protégés en reload.
  */
 
-const PUBLIC_SHELL_VERSION = '8.0P.76';
+const PUBLIC_SHELL_VERSION = '8.0P.78';
 const DISABLED_FLAG = 'sbiPublicShellDisabled';
 const READY_CLASS = 'sbi-public-shell-ready';
 const SCROLLING_CLASS = 'sbi-public-shell-scrolling';
@@ -514,6 +514,30 @@ function syncBodyAttributes(nextDocument, pageId, enabled) {
   document.body.dataset.sbiPublicShell = enabled ? 'enabled' : 'disabled';
 }
 
+
+function renderDiagonalsSoon() {
+  if (typeof window.SBI_RENDER_DIAGONALS !== 'function') return false;
+
+  window.requestAnimationFrame(() => {
+    window.SBI_RENDER_DIAGONALS();
+    window.setTimeout(() => window.SBI_RENDER_DIAGONALS?.(), 140);
+  });
+
+  return true;
+}
+
+async function ensureDiagonalRendererForPage(pageId) {
+  if (pageId === 'home' && typeof window.SBI_RENDER_DIAGONALS !== 'function') {
+    try {
+      await import('/js/sbi-diagonals.js?v=8.0P.25');
+    } catch (error) {
+      console.warn('[SBI Public Shell] Diagonales index indisponibles après PJAX :', error);
+    }
+  }
+
+  renderDiagonalsSoon();
+}
+
 async function runPageInitializers(pageId) {
   try {
     if (typeof window.SBI_MAIN_INIT === 'function') {
@@ -616,9 +640,7 @@ async function renderPublicPage(url, decision, { historyMode = 'push', behavior 
       activeObserver = null;
       await runPageInitializers(targetPageId);
       observeActiveSections();
-      if (typeof window.SBI_RENDER_DIAGONALS === 'function') {
-        window.requestAnimationFrame(() => window.SBI_RENDER_DIAGONALS());
-      }
+      await ensureDiagonalRendererForPage(targetPageId);
 
       const target = decision.targetId ? getAnchorTarget(`#${decision.targetId}`) : null;
       scrollToTarget(target, behavior);
@@ -939,9 +961,7 @@ function initSbiPublicAppShell() {
 
   attachListeners();
   observeActiveSections();
-  if (typeof window.SBI_RENDER_DIAGONALS === 'function') {
-    window.requestAnimationFrame(() => window.SBI_RENDER_DIAGONALS());
-  }
+  ensureDiagonalRendererForPage(getPublicPageId(window.location.pathname));
 
   if (window.location.hash) {
     const initialUrl = new URL(window.location.href);

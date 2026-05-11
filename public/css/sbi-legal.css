@@ -1,5 +1,5 @@
 /* =========================================================
-   SBI 8.0P.77 - Pages légales
+   SBI 8.0P.78 - Pages légales
    ---------------------------------------------------------
    Extension sobre du shell public : lisibilité, cartes fines,
    navigation interne et responsive sans scroll horizontal.
@@ -239,12 +239,29 @@ body[data-sbi-public-page="accessibilite"] {
         display: none;
     }
 
+    /* SBI 8.0P.78
+       On neutralise uniquement le tracé terrain/lasers sur les pages légales mobile.
+       Important : ne jamais couper .sbi-field-parallax en display:none, car ce
+       calque global peut être réutilisé par le shell PJAX lors du retour index. */
     body[data-sbi-public-page="mentions-legales"] .sbi-field-parallax,
     body[data-sbi-public-page="confidentialite"] .sbi-field-parallax,
     body[data-sbi-public-page="cookies"] .sbi-field-parallax,
     body[data-sbi-public-page="cgu"] .sbi-field-parallax,
-    body[data-sbi-public-page="accessibilite"] .sbi-field-parallax {
-        display: none !important;
+    body[data-sbi-public-page="accessibilite"] .sbi-field-parallax,
+    body[data-sbi-public-page="mentions-legales"] .sbi-bg-parallax,
+    body[data-sbi-public-page="confidentialite"] .sbi-bg-parallax,
+    body[data-sbi-public-page="cookies"] .sbi-bg-parallax,
+    body[data-sbi-public-page="cgu"] .sbi-bg-parallax,
+    body[data-sbi-public-page="accessibilite"] .sbi-bg-parallax {
+        opacity: 0 !important;
+        visibility: hidden !important;
+    }
+
+    body[data-sbi-public-page="home"] .sbi-field-parallax,
+    body[data-sbi-public-page="home"] .sbi-bg-parallax {
+        display: block !important;
+        opacity: 1 !important;
+        visibility: visible !important;
     }
 
     body[data-sbi-public-page="mentions-legales"] .sbi-bg-fixed,
