@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.64',
+  version: '8.0P.65',
   branch: 'public-pjax-app-shell',
   channel: 'PUBLIC PJAX APP SHELL',
-  stage: 'About hero grid flow recovery and founder scene containment',
+  stage: 'Mobile header alignment and contact mobile structure cleanup',
   updatedAt: '2026-05-11',
-  label: 'SBI 8.0P.64 - ABOUT HERO FULL-WIDTH VIDEO SCENE FIX'
+  label: 'SBI 8.0P.65 - MOBILE HEADER AND CONTACT STRUCTURE ALIGNMENT'
 };
 
 export function getSbiVersionLabel() {

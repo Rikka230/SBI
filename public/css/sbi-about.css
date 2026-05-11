@@ -1,5 +1,5 @@
 /* =========================================================
-   SBI 8.0P.64 - ABOUT HERO FULL-WIDTH VIDEO SCENE FIX
+   SBI 8.0P.65 - ABOUT MOBILE STRUCTURE ALIGNMENT
    ---------------------------------------------------------
    Objectif : remettre le hero À propos en scène full-width avec vidéo fondue et PNG centré.
    - Deux colonnes en flux : texte à gauche, scène fondateur à droite.
@@ -1100,5 +1100,200 @@ body[data-sbi-public-page="apropos"] .site-header .main-nav a[href="a-propos.htm
     .about-founder-hero-img {
         width: min(78vw, 340px);
         height: 86%;
+    }
+}
+
+/* =========================================================
+   8.0P.65 - MOBILE ABOUT STRUCTURE ALIGNMENT
+   ---------------------------------------------------------
+   Mobile suit la logique index : header commun, visuel en premier,
+   contenu ensuite, scène compacte et preuve cards propres.
+   ========================================================= */
+
+@media (max-width: 768px) {
+    body[data-sbi-public-page="apropos"] .about-page {
+        padding-top: 78px;
+    }
+
+    body[data-sbi-public-page="apropos"] .about-hero {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0;
+        min-height: auto;
+        padding-top: 1.1rem;
+        padding-bottom: 2.85rem;
+        overflow: hidden;
+    }
+
+    body[data-sbi-public-page="apropos"] .about-hero-backdrop {
+        opacity: 0.72;
+        -webkit-mask-image:
+            linear-gradient(90deg, transparent 0%, #000 7%, #000 93%, transparent 100%),
+            linear-gradient(180deg, transparent 0%, #000 10%, #000 82%, transparent 100%);
+        mask-image:
+            linear-gradient(90deg, transparent 0%, #000 7%, #000 93%, transparent 100%),
+            linear-gradient(180deg, transparent 0%, #000 10%, #000 82%, transparent 100%);
+    }
+
+    body[data-sbi-public-page="apropos"] .about-hero-backdrop::before {
+        background:
+            linear-gradient(180deg, rgba(3, 7, 15, 0.82) 0%, rgba(3, 7, 15, 0.08) 22%, rgba(3, 7, 15, 0.30) 66%, rgba(3, 7, 15, 0.96) 100%),
+            linear-gradient(90deg, rgba(3, 7, 15, 0.92) 0%, rgba(3, 7, 15, 0.24) 48%, rgba(3, 7, 15, 0.84) 100%);
+    }
+
+    body[data-sbi-public-page="apropos"] .about-hero-copy {
+        order: 2;
+        width: 100%;
+        max-width: none;
+        margin-top: 0;
+        text-align: left;
+    }
+
+    body[data-sbi-public-page="apropos"] .about-hero-visual {
+        order: 1;
+        position: relative;
+        inset: auto;
+        z-index: 3;
+        width: 100%;
+        max-width: 100%;
+        min-height: clamp(330px, 74vw, 460px);
+        height: clamp(330px, 74vw, 460px);
+        margin: 0 auto 0.75rem;
+    }
+
+    body[data-sbi-public-page="apropos"] .about-hero-visual-shell {
+        position: relative;
+        inset: auto;
+        height: 100%;
+        min-height: inherit;
+    }
+
+    body[data-sbi-public-page="apropos"] .about-hero-ghost-logo {
+        left: 50%;
+        top: 0;
+        width: min(96vw, 520px);
+        opacity: 0.34;
+        transform: translateX(-50%) rotate(-2deg);
+    }
+
+    body[data-sbi-public-page="apropos"] .about-founder-hero-img {
+        left: 50%;
+        right: auto;
+        bottom: 0;
+        width: min(82vw, 405px);
+        height: 92%;
+        max-height: 100%;
+        object-fit: contain;
+        object-position: center bottom;
+        transform: translateX(-50%);
+    }
+
+    body[data-sbi-public-page="apropos"] .about-founder-caption {
+        right: clamp(1rem, 10vw, 4rem);
+        bottom: 7%;
+        text-align: right;
+    }
+
+    body[data-sbi-public-page="apropos"] .signature-text {
+        font-size: clamp(1.25rem, 6vw, 1.85rem);
+    }
+
+    body[data-sbi-public-page="apropos"] .about-founder-caption strong {
+        font-size: 0.78rem;
+    }
+
+    body[data-sbi-public-page="apropos"] .section-surtitle {
+        margin-bottom: 0.72rem;
+    }
+
+    body[data-sbi-public-page="apropos"] .about-hero-title {
+        max-width: min(100%, 25rem);
+        font-size: clamp(2.45rem, 11vw, 3.35rem);
+        line-height: 1.03;
+        letter-spacing: -0.052em;
+    }
+
+    body[data-sbi-public-page="apropos"] .about-hero-title span {
+        white-space: normal;
+    }
+
+    body[data-sbi-public-page="apropos"] .about-hero-lead {
+        max-width: min(100%, 22.5rem);
+        margin-top: 1.18rem;
+        font-size: 0.98rem;
+        line-height: 1.58;
+    }
+
+    body[data-sbi-public-page="apropos"] .about-hero-actions {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.92rem;
+        margin-top: 1.65rem;
+    }
+
+    body[data-sbi-public-page="apropos"] .about-hero-actions .btn-primary {
+        width: min(100%, 17.5rem);
+        justify-content: center;
+    }
+
+    body[data-sbi-public-page="apropos"] .about-proof-strip {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1rem;
+        padding-top: 2.3rem;
+        padding-bottom: 3.2rem;
+    }
+
+    body[data-sbi-public-page="apropos"] .about-proof-card {
+        grid-template-columns: 42px minmax(0, 1fr);
+        gap: 0.82rem;
+        min-height: 122px;
+        padding: 1.05rem;
+    }
+
+    body[data-sbi-public-page="apropos"] .about-proof-card .about-icon {
+        width: 42px;
+        height: 42px;
+    }
+
+    body[data-sbi-public-page="apropos"] .about-proof-card h2 {
+        font-size: 0.92rem;
+        line-height: 1.18;
+    }
+
+    body[data-sbi-public-page="apropos"] .about-proof-card p {
+        font-size: 0.78rem;
+        line-height: 1.36;
+    }
+}
+
+@media (max-width: 520px) {
+    body[data-sbi-public-page="apropos"] .about-hero {
+        padding-top: 0.85rem;
+    }
+
+    body[data-sbi-public-page="apropos"] .about-hero-visual {
+        min-height: clamp(310px, 86vw, 390px);
+        height: clamp(310px, 86vw, 390px);
+        margin-bottom: 0.45rem;
+    }
+
+    body[data-sbi-public-page="apropos"] .about-founder-hero-img {
+        width: min(88vw, 350px);
+        height: 90%;
+    }
+
+    body[data-sbi-public-page="apropos"] .about-hero-ghost-logo {
+        width: min(106vw, 430px);
+        opacity: 0.30;
+    }
+
+    body[data-sbi-public-page="apropos"] .about-founder-caption {
+        right: 0.9rem;
+        bottom: 5.8%;
+    }
+
+    body[data-sbi-public-page="apropos"] .about-proof-strip {
+        grid-template-columns: 1fr;
     }
 }
