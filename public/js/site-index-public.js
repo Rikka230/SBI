@@ -1,4 +1,4 @@
-const SITE_INDEX_MEDIA_VERSION = '8.0P.36';
+const SITE_INDEX_MEDIA_VERSION = '8.0P.66';
 
 window.__SBI_SITE_INDEX_MEDIA_LOADING__ = true;
 
@@ -8,7 +8,8 @@ const EMPTY_MEDIA = {
   heroLogoUrl: '',
   headerLogoUrl: '',
   brandLogoUrl: '',
-  founderImageUrl: ''
+  founderImageUrl: '',
+  aboutFounderHeroImageUrl: ''
 };
 
 const MEDIA_CACHE_KEY = 'sbi:siteIndexMedia:v2';
@@ -215,7 +216,7 @@ function applyBrandMedia(settings = {}) {
 
   applyImage('.header-logo, .footer-logo-mark', headerLogo, settings.headerLogoUrl ? 'firestore' : 'assets');
   applyImage('.header-brand, .footer-logo-wordmark', brandLogo, settings.brandLogoUrl ? 'firestore' : 'assets');
-  applyImage('.hero-large-logo', heroLogo, (settings.heroLogoUrl || settings.headerLogoUrl) ? 'firestore' : 'assets');
+  applyImage('.hero-large-logo, [data-site-media="hero-logo"]', heroLogo, (settings.heroLogoUrl || settings.headerLogoUrl) ? 'firestore' : 'assets');
 }
 
 function applyFounderImage(settings = {}) {
@@ -237,56 +238,87 @@ function applyFounderImage(settings = {}) {
   });
 }
 
+
+function applyAboutFounderHeroImage(settings = {}) {
+  const founderUrl = cleanUrl(settings.aboutFounderHeroImageUrl);
+
+  document.querySelectorAll('[data-site-media="about-founder-hero"], .about-founder-hero-img').forEach((img) => {
+    if (!(img instanceof HTMLImageElement)) return;
+
+    if (!founderUrl) {
+      img.dataset.loadedFromStorage = 'false';
+      img.dataset.mediaSource = 'missing-about-founder-hero';
+      img.dataset.loadedFromLocal = 'false';
+      return;
+    }
+
+    if (img.getAttribute('src') !== founderUrl) img.src = founderUrl;
+
+    const isStorage = isStorageUrl(founderUrl);
+    img.dataset.loadedFromStorage = isStorage ? 'true' : 'false';
+    img.dataset.loadedFromLocal = 'false';
+    img.dataset.mediaSource = 'firestore-about-founder-hero';
+    img.loading = 'eager';
+    img.fetchPriority = 'high';
+    img.decoding = 'async';
+    if (isStorage) img.referrerPolicy = 'no-referrer';
+  });
+}
+
 function applyHeroVideo(settings = {}) {
-  const video = document.querySelector('[data-site-media="hero-video"], .hero-video-bg');
-  if (!(video instanceof HTMLVideoElement)) return;
+  const videos = Array.from(document.querySelectorAll('[data-site-media="hero-video"], .hero-video-bg'))
+    .filter((video, index, list) => video instanceof HTMLVideoElement && list.indexOf(video) === index);
+
+  if (!videos.length) return;
 
   const webmUrl = cleanUrl(settings.heroVideoWebmUrl);
   const mp4Url = cleanUrl(settings.heroVideoMp4Url);
 
-  if (!webmUrl && !mp4Url) {
-    video.dataset.mediaState = 'missing-url';
-    return;
-  }
-
-  const currentSources = Array.from(video.querySelectorAll('source'))
-    .map((source) => `${source.type}:${source.getAttribute('src') || ''}`)
-    .join('|');
-  const nextSources = `${webmUrl ? `video/webm:${webmUrl}` : ''}|${mp4Url ? `video/mp4:${mp4Url}` : ''}`;
-
-  if (currentSources !== nextSources) {
-    video.pause();
-    video.innerHTML = '';
-
-    if (webmUrl) {
-      const webm = document.createElement('source');
-      webm.src = webmUrl;
-      webm.type = 'video/webm';
-      video.appendChild(webm);
+  videos.forEach((video) => {
+    if (!webmUrl && !mp4Url) {
+      video.dataset.mediaState = 'missing-url';
+      return;
     }
 
-    if (mp4Url) {
-      const mp4 = document.createElement('source');
-      mp4.src = mp4Url;
-      mp4.type = 'video/mp4';
-      video.appendChild(mp4);
+    const currentSources = Array.from(video.querySelectorAll('source'))
+      .map((source) => `${source.type}:${source.getAttribute('src') || ''}`)
+      .join('|');
+    const nextSources = `${webmUrl ? `video/webm:${webmUrl}` : ''}|${mp4Url ? `video/mp4:${mp4Url}` : ''}`;
+
+    if (currentSources !== nextSources) {
+      video.pause();
+      video.innerHTML = '';
+
+      if (webmUrl) {
+        const webm = document.createElement('source');
+        webm.src = webmUrl;
+        webm.type = 'video/webm';
+        video.appendChild(webm);
+      }
+
+      if (mp4Url) {
+        const mp4 = document.createElement('source');
+        mp4.src = mp4Url;
+        mp4.type = 'video/mp4';
+        video.appendChild(mp4);
+      }
+
+      video.load();
     }
 
-    video.load();
-  }
+    video.muted = true;
+    video.loop = true;
+    video.playsInline = true;
+    video.autoplay = true;
+    video.dataset.mediaState = 'requested';
 
-  video.muted = true;
-  video.loop = true;
-  video.playsInline = true;
-  video.autoplay = true;
-  video.dataset.mediaState = 'requested';
-
-  video.play()
-    .then(() => { video.dataset.mediaState = 'playing'; })
-    .catch((error) => {
-      video.dataset.mediaState = 'play-blocked';
-      console.warn('[SBI Index] Lecture vidéo hero bloquée ou différée :', error);
-    });
+    video.play()
+      .then(() => { video.dataset.mediaState = 'playing'; })
+      .catch((error) => {
+        video.dataset.mediaState = 'play-blocked';
+        console.warn('[SBI Index] Lecture vidéo hero bloquée ou différée :', error);
+      });
+  });
 }
 
 function applySettings(settings = {}) {
@@ -297,6 +329,7 @@ function applySettings(settings = {}) {
   applyHeroVideo(clean);
   applyBrandMedia(clean);
   applyFounderImage(clean);
+  applyAboutFounderHeroImage(clean);
   lastAppliedSignature = settingsSignature(clean);
   document.body.classList.add('is-site-index-media-ready');
 }
@@ -369,6 +402,9 @@ function getSiteIndexMediaStatus() {
     founderLoadedFromStorage: founder?.dataset?.loadedFromStorage || 'missing-node',
     founderImageSource: founder?.dataset?.mediaSource || '',
     founderSrc: founder?.getAttribute?.('src') || '',
+    aboutFounderHeroLoadedFromStorage: document.querySelector('[data-site-media="about-founder-hero"]')?.dataset?.loadedFromStorage || 'missing-node',
+    aboutFounderHeroSource: document.querySelector('[data-site-media="about-founder-hero"]')?.dataset?.mediaSource || '',
+    aboutFounderHeroSrc: document.querySelector('[data-site-media="about-founder-hero"]')?.getAttribute?.('src') || '',
     headerLogoLoadedFromStorage: headerLogo?.dataset?.loadedFromStorage || 'missing-node',
     headerLogoSource: headerLogo?.dataset?.mediaSource || '',
     headerLogoSrc: headerLogo?.getAttribute?.('src') || '',
@@ -382,6 +418,13 @@ window.SBI_INIT_SITE_INDEX_MEDIA = initSiteIndexMedia;
 window.SBI_ENSURE_QUALIOPI_HOME_BLOCK = ensureQualiopiTrustBlock;
 window.SBI_SITE_INDEX_MEDIA_STATUS = getSiteIndexMediaStatus;
 window.SBI_REFRESH_SITE_INDEX_MEDIA = () => initSiteIndexMedia({ forceRefresh: true });
+
+window.addEventListener('sbi:public-shell:navigated', () => {
+  const page = document.body?.dataset?.sbiPublicPage || '';
+  if (page === 'home' || page === 'apropos') {
+    initSiteIndexMedia({ forceRefresh: false });
+  }
+});
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => initSiteIndexMedia(), { once: true });

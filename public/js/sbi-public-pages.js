@@ -255,6 +255,21 @@ function setContactCardState(card, state = '') {
   if (state) card.classList.add(`is-${state}`);
 }
 
+
+function scrollContactFeedbackIntoView(card) {
+  if (!card || !window.matchMedia('(max-width: 768px)').matches) return;
+
+  const target = card.querySelector('[data-sbi-contact-assistant]') || card;
+  const header = document.querySelector('.site-header');
+  const headerHeight = header?.offsetHeight || 80;
+
+  window.requestAnimationFrame(() => {
+    const targetTop = target.getBoundingClientRect().top + window.scrollY;
+    const nextTop = Math.max(0, targetTop - headerHeight - 18);
+    window.scrollTo({ top: nextTop, behavior: 'smooth' });
+  });
+}
+
 function initContactAssistant(form, card) {
   const assistant = card?.querySelector('[data-sbi-contact-assistant]');
   const assistantMessage = card?.querySelector('[data-sbi-contact-assistant-message]');
@@ -295,6 +310,8 @@ function initContactAssistant(form, card) {
       status.classList.toggle('is-error', tone === 'error');
       status.classList.toggle('is-success', tone === 'success');
     }
+
+    scrollContactFeedbackIntoView(card);
   };
 
   const setSubmit = (label, disabled = false) => {
@@ -343,7 +360,7 @@ async function hydrateContactDecorativeVideo(root) {
   if (!(video instanceof HTMLVideoElement)) return;
 
   try {
-    const mediaModule = await import('/js/site-index-public.js?v=8.0P.37');
+    const mediaModule = await import('/js/site-index-public.js?v=8.0P.65');
     const initMedia = mediaModule.initSiteIndexMedia || window.SBI_INIT_SITE_INDEX_MEDIA;
     if (typeof initMedia === 'function') await initMedia({ forceRefresh: false });
   } catch (error) {
@@ -366,6 +383,7 @@ function initContactForm(root) {
   const params = new URLSearchParams(window.location.search);
   const interest = form.elements.interest;
   const message = form.elements.message;
+  const profile = form.elements.profile;
   const motif = text(params.get('motif') || params.get('brochure'));
 
   if (interest && !interest.value && motif) {
@@ -375,14 +393,30 @@ function initContactForm(root) {
     else interest.value = 'formation';
   }
 
-  if (message && !message.value && params.has('montant')) {
-    message.value = [
-      `Montant estimé : ${text(params.get('montant'))}`,
-      `Statut : ${text(params.get('statut'))}`,
-      `Formation : ${text(params.get('formation'))}`
-    ].join('\n');
+  if (profile && motif.toLowerCase().includes('estimation-aide')) {
+    const companyProfile = form.querySelector('input[name="profile"][value="entreprise"]');
+    if (companyProfile && !companyProfile.checked) {
+      companyProfile.checked = true;
+      companyProfile.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  }
 
-    message.dispatchEvent(new Event('input', { bubbles: true }));
+  if (message && !message.value) {
+    const transferredMessage = text(params.get('message'));
+
+    if (transferredMessage) {
+      message.value = transferredMessage;
+    } else if (params.has('montant')) {
+      message.value = [
+        `Montant estimé : ${text(params.get('montant'))}`,
+        `Statut : ${text(params.get('statut'))}`,
+        `Formation : ${text(params.get('formation'))}`
+      ].join('\n');
+    }
+
+    if (message.value) {
+      message.dispatchEvent(new Event('input', { bubbles: true }));
+    }
   }
 
   const clearResolvedState = () => {
