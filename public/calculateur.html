@@ -5,12 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Calculateur de reste à charge alternance - Sport Business Institute</title>
 
-    <link rel="stylesheet" href="css/style.css?v=8.0P.68">
+    <link rel="stylesheet" href="css/style.css?v=8.0P.69">
     <link rel="stylesheet" href="css/sbi-newsletter.css">
     <link rel="stylesheet" href="css/sbi-footer.css">
-    <link rel="stylesheet" href="css/sbi-home-responsive.css?v=8.0P.68">
-    <link rel="stylesheet" href="css/sbi-mobile.css?v=8.0P.68">
-    <link rel="stylesheet" href="css/sbi-calculator.css?v=8.0P.68">
+    <link rel="stylesheet" href="css/sbi-home-responsive.css?v=8.0P.69">
+    <link rel="stylesheet" href="css/sbi-mobile.css?v=8.0P.69">
+    <link rel="stylesheet" href="css/sbi-calculator.css?v=8.0P.69">
     <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,600;0,800;0,900;1,400;1,600;1,800;1,900&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap" rel="stylesheet">
 </head>
@@ -58,7 +58,7 @@
             <div class="aid-calc-hero-copy fade-in">
                 <span class="section-surtitle text-blue uppercase text-italic">Calculateur d'aide à l'embauche</span>
                 <h1 class="aid-calc-title uppercase text-italic">Calculez votre<br>reste à charge<span>.</span></h1>
-                <p class="aid-calc-subtitle text-italic">Estimez le coût mensuel indicatif d'un apprenti après l'aide employeur, selon l'âge, le SMIC et la durée du contrat.</p>
+                <p class="aid-calc-subtitle text-italic">Estimez le coût mensuel indicatif d'un apprenti après l'aide employeur, selon l'âge et le SMIC de référence.</p>
 
                 <ul class="aid-calc-proof-list" aria-label="Informations de calcul">
                     <li>
@@ -94,37 +94,10 @@
                         </div>
                     </section>
 
-                    <section class="aid-calc-step" aria-labelledby="contract-step-title">
-                        <div class="aid-calc-step-head">
-                            <span class="aid-calc-step-index">2</span>
-                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h7l4 4v14H7z"></path><path d="M14 3v5h4"></path><path d="M10 13h5"></path><path d="M10 17h5"></path></svg>
-                            <h2 id="contract-step-title" class="text-italic">Le contrat</h2>
-                        </div>
-
-                        <div class="aid-calc-segmented" role="group" aria-label="Type de contrat">
-                            <button type="button" class="aid-calc-segment is-active" data-field="contractType" data-value="apprentissage" aria-pressed="true">Apprentissage</button>
-                            <button type="button" class="aid-calc-segment" data-field="contractType" data-value="professionnalisation" aria-pressed="false">Professionnalisation</button>
-                        </div>
-
-                        <div class="aid-calc-date-grid">
-                            <label class="aid-calc-field">
-                                <span>Date de signature</span>
-                                <input type="date" name="signatureDate" data-aid-field="signatureDate">
-                            </label>
-                            <label class="aid-calc-field">
-                                <span>Début du contrat</span>
-                                <input type="date" name="contractStartDate" data-aid-field="contractStartDate">
-                            </label>
-                            <label class="aid-calc-field">
-                                <span>Fin prévue</span>
-                                <input type="date" name="contractEndDate" data-aid-field="contractEndDate">
-                            </label>
-                        </div>
-                    </section>
 
                     <section class="aid-calc-step" aria-labelledby="training-step-title">
                         <div class="aid-calc-step-head">
-                            <span class="aid-calc-step-index">3</span>
+                            <span class="aid-calc-step-index">2</span>
                             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 10 12 4 2 10l10 6 10-6Z"></path><path d="M6 12v5c2 2 10 2 12 0v-5"></path></svg>
                             <h2 id="training-step-title" class="text-italic">Formation concernée</h2>
                         </div>
@@ -138,7 +111,7 @@
 
                     <section class="aid-calc-step" aria-labelledby="apprentice-step-title">
                         <div class="aid-calc-step-head">
-                            <span class="aid-calc-step-index">4</span>
+                            <span class="aid-calc-step-index">3</span>
                             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="4"></circle><path d="M5.5 21a6.5 6.5 0 0 1 13 0"></path></svg>
                             <div>
                                 <h2 id="apprentice-step-title" class="text-italic">L'apprenti</h2>
@@ -161,7 +134,7 @@
 
                     <section class="aid-calc-step" aria-labelledby="disability-step-title">
                         <div class="aid-calc-step-head">
-                            <span class="aid-calc-step-index aid-calc-step-index-muted">5</span>
+                            <span class="aid-calc-step-index aid-calc-step-index-muted">4</span>
                             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="5" r="2"></circle><path d="M9 7v6h5l3 5"></path><path d="M7 13a5 5 0 1 0 5 5"></path></svg>
                             <div>
                                 <h2 id="disability-step-title" class="text-italic">Situation particulière <span>(optionnel)</span></h2>
@@ -225,7 +198,7 @@
 
                 <div class="aid-calc-legal-note">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 8v4"></path><path d="M12 16h.01"></path></svg>
-                    <span>Estimation indicative basée sur les informations saisies. Le reste à charge réel peut varier selon le SMC, la convention collective, l'âge, le contrat, les aides applicables et la situation de l'employeur.</span>
+                    <span>Estimation indicative basée sur une base annuelle de 12 mois et les informations saisies. Le reste à charge réel peut varier selon le SMC, la convention collective, l'âge, les aides applicables et la situation de l'employeur.</span>
                 </div>
 
                 <a href="contact.html?motif=estimation-aide" class="aid-calc-result-cta text-italic" data-aid-contact-link>Transférer cette estimation <span>→</span></a>
@@ -325,9 +298,9 @@
         </div>
     </footer>
 
-    <script src="js/sbi-background.js?v=8.0P.68"></script>
-    <script src="js/main.js?v=8.0P.68"></script>
-    <script type="module" src="js/sbi-aide-calculator.js?v=8.0P.68"></script>
-    <script src="js/public-app-shell.js?v=8.0P.68"></script>
+    <script src="js/sbi-background.js?v=8.0P.69"></script>
+    <script src="js/main.js?v=8.0P.69"></script>
+    <script type="module" src="js/sbi-aide-calculator.js?v=8.0P.69"></script>
+    <script src="js/public-app-shell.js?v=8.0P.69"></script>
 </body>
 </html>

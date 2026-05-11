@@ -343,7 +343,7 @@ async function hydrateContactDecorativeVideo(root) {
   if (!(video instanceof HTMLVideoElement)) return;
 
   try {
-    const mediaModule = await import('/js/site-index-public.js?v=8.0P.67');
+    const mediaModule = await import('/js/site-index-public.js?v=8.0P.65');
     const initMedia = mediaModule.initSiteIndexMedia || window.SBI_INIT_SITE_INDEX_MEDIA;
     if (typeof initMedia === 'function') await initMedia({ forceRefresh: false });
   } catch (error) {
@@ -366,36 +366,40 @@ function initContactForm(root) {
   const params = new URLSearchParams(window.location.search);
   const interest = form.elements.interest;
   const message = form.elements.message;
+  const profile = form.elements.profile;
   const motif = text(params.get('motif') || params.get('brochure'));
-  const transferredMessage = text(params.get('message'));
 
   if (interest && !interest.value && motif) {
     const lowerMotif = motif.toLowerCase();
-    if (lowerMotif.includes('aide') || lowerMotif.includes('alternance') || lowerMotif.includes('estimation')) interest.value = 'alternance';
+    if (lowerMotif.includes('aide') || lowerMotif.includes('alternance')) interest.value = 'alternance';
     else if (lowerMotif.includes('brochure')) interest.value = 'brochure';
     else interest.value = 'formation';
   }
 
-  if (motif && motif.toLowerCase().includes('estimation')) {
+  if (profile && motif.toLowerCase().includes('estimation-aide')) {
     const companyProfile = form.querySelector('input[name="profile"][value="entreprise"]');
-    if (companyProfile && !form.querySelector('input[name="profile"]:checked')) {
+    if (companyProfile && !companyProfile.checked) {
       companyProfile.checked = true;
+      companyProfile.dispatchEvent(new Event('change', { bubbles: true }));
     }
   }
 
-  if (message && !message.value && transferredMessage) {
-    const max = Number(message.getAttribute('maxlength') || 1000);
-    message.value = transferredMessage.slice(0, max);
-    message.dispatchEvent(new Event('input', { bubbles: true }));
-  } else if (message && !message.value && params.has('montant')) {
-    message.value = [
-      `Reste à charge mensuel estimé : ${text(params.get('montant'))}`,
-      `Reste à charge total estimé : ${text(params.get('montantTotal'))}`,
-      `Statut : ${text(params.get('statut'))}`,
-      `Formation : ${text(params.get('formation'))}`
-    ].join('\n');
+  if (message && !message.value) {
+    const transferredMessage = text(params.get('message'));
 
-    message.dispatchEvent(new Event('input', { bubbles: true }));
+    if (transferredMessage) {
+      message.value = transferredMessage;
+    } else if (params.has('montant')) {
+      message.value = [
+        `Montant estimé : ${text(params.get('montant'))}`,
+        `Statut : ${text(params.get('statut'))}`,
+        `Formation : ${text(params.get('formation'))}`
+      ].join('\n');
+    }
+
+    if (message.value) {
+      message.dispatchEvent(new Event('input', { bubbles: true }));
+    }
   }
 
   const clearResolvedState = () => {

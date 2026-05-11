@@ -1619,3 +1619,69 @@ body[data-sbi-public-page="contact"] .sbi-signal-contact {
         font-size: 0.88rem;
     }
 }
+
+/* =========================================================
+   SBI 8.0P.69 - CONTACT MOBILE SUBMIT CONTAINMENT
+   ---------------------------------------------------------
+   Sécurise le bouton d'envoi sur petits écrans et évite tout
+   débordement horizontal lié au texte, au padding ou à la flèche.
+   ========================================================= */
+body[data-sbi-public-page="contact"] .contact-premium-form,
+body[data-sbi-public-page="contact"] .contact-form-card,
+body[data-sbi-public-page="contact"] .contact-card-inner {
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+body[data-sbi-public-page="contact"] .contact-submit {
+    inline-size: 100%;
+    max-inline-size: 100%;
+    min-inline-size: 0;
+    box-sizing: border-box;
+}
+
+body[data-sbi-public-page="contact"] .contact-submit span:first-child {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+@media (max-width: 520px) {
+    body[data-sbi-public-page="contact"] .contact-submit {
+        display: flex;
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        flex-wrap: nowrap;
+        gap: 0.42rem;
+        padding: 0.82rem 0.72rem;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        transform: none;
+        clip-path: polygon(0 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%);
+    }
+
+    body[data-sbi-public-page="contact"] .contact-submit:hover {
+        transform: none;
+    }
+
+    body[data-sbi-public-page="contact"] .contact-submit .arrow {
+        flex: 0 0 auto;
+        margin-left: 0;
+    }
+}
+
+@media (max-width: 380px) {
+    body[data-sbi-public-page="contact"] .contact-card-inner {
+        padding-left: 0.82rem;
+        padding-right: 0.82rem;
+    }
+
+    body[data-sbi-public-page="contact"] .contact-submit {
+        padding-left: 0.62rem;
+        padding-right: 0.62rem;
+        font-size: 0.82rem;
+        letter-spacing: 0.01em;
+    }
+}
