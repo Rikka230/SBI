@@ -1,11 +1,11 @@
 /* =========================================================
-   SBI 8.0P.63 - ABOUT HERO GRID FLOW FIX
+   SBI 8.0P.64 - ABOUT HERO FULL-WIDTH VIDEO SCENE FIX
    ---------------------------------------------------------
-   Objectif : remettre le hero À propos en grille stable et garder les layers dans le bloc droit.
+   Objectif : remettre le hero À propos en scène full-width avec vidéo fondue et PNG centré.
    - Deux colonnes en flux : texte à gauche, scène fondateur à droite.
-   - Vidéo limitée au bloc visuel droit et au CTA final.
+   - Vidéo du hero étirée sur toute la largeur du hero, avec bords fondus, plus CTA final.
    - Logo SBI ghost warm metallic / bronze, fondu dans la scène.
-   - PNG fondateur centré et masqué tant que Firebase ne l’a pas injecté.
+   - PNG fondateur recentré dans la scène et masqué tant que Firebase ne l’a pas injecté.
    - Aucune bordure, aucun cadre visible, aucune forme parasite.
    ========================================================= */
 
@@ -838,5 +838,267 @@ body[data-sbi-public-page="apropos"] .site-header .main-nav a[href="a-propos.htm
 
     .about-final-card h2 {
         font-size: clamp(2.1rem, 11vw, 3rem);
+    }
+}
+
+
+/* =========================================================
+   8.0P.64 - HERO FULL-WIDTH VIDEO + PNG CENTERED SCENE
+   ---------------------------------------------------------
+   Le fond vidéo appartient au hero complet, pas à une carte droite.
+   Le bloc visuel ne crée plus de rectangle : il sert uniquement à positionner
+   le logo ghost, le PNG fondateur et la signature dans la scène.
+   ========================================================= */
+
+.about-hero {
+    grid-template-columns: minmax(560px, 0.50fr) minmax(520px, 0.50fr);
+    gap: 0;
+    overflow: hidden;
+    isolation: isolate;
+}
+
+.about-hero-backdrop {
+    position: absolute;
+    z-index: 0;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    background: rgba(3, 7, 15, 0.52);
+    -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 5%, #000 95%, transparent 100%);
+    mask-image: linear-gradient(90deg, transparent 0%, #000 5%, #000 95%, transparent 100%);
+}
+
+.about-hero-backdrop::before,
+.about-hero-backdrop::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    pointer-events: none;
+}
+
+.about-hero-backdrop::before {
+    background:
+        linear-gradient(90deg, rgba(3, 7, 15, 0.94) 0%, rgba(3, 7, 15, 0.55) 22%, rgba(3, 7, 15, 0.10) 49%, rgba(3, 7, 15, 0.34) 100%),
+        linear-gradient(180deg, rgba(3, 7, 15, 0.90) 0%, rgba(3, 7, 15, 0.06) 18%, rgba(3, 7, 15, 0.06) 70%, rgba(3, 7, 15, 0.96) 100%);
+}
+
+.about-hero-backdrop::after {
+    background:
+        radial-gradient(ellipse 52% 58% at 67% 43%, rgba(186, 157, 118, 0.16), transparent 58%),
+        radial-gradient(ellipse 40% 44% at 30% 40%, rgba(0, 81, 255, 0.10), transparent 64%);
+    mix-blend-mode: screen;
+    opacity: 0.72;
+}
+
+.about-hero-backdrop .about-visual-video {
+    position: absolute;
+    z-index: 0;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.56;
+    filter: grayscale(1) contrast(1.28) brightness(0.72) saturate(0.92);
+    mix-blend-mode: screen;
+    -webkit-mask-image:
+        linear-gradient(90deg, transparent 0%, #000 7%, #000 93%, transparent 100%),
+        linear-gradient(180deg, transparent 0%, #000 9%, #000 84%, transparent 100%);
+    mask-image:
+        linear-gradient(90deg, transparent 0%, #000 7%, #000 93%, transparent 100%),
+        linear-gradient(180deg, transparent 0%, #000 9%, #000 84%, transparent 100%);
+}
+
+.about-hero-backdrop .about-visual-video-mask {
+    position: absolute;
+    z-index: 2;
+    inset: 0;
+    background:
+        linear-gradient(90deg, rgba(3, 7, 15, 0.98) 0%, rgba(3, 7, 15, 0.42) 26%, rgba(3, 7, 15, 0.08) 54%, rgba(3, 7, 15, 0.36) 100%),
+        radial-gradient(ellipse 58% 66% at 65% 50%, rgba(184, 151, 111, 0.10), transparent 60%);
+    -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 5%, #000 95%, transparent 100%);
+    mask-image: linear-gradient(90deg, transparent 0%, #000 5%, #000 95%, transparent 100%);
+}
+
+.about-hero-copy {
+    grid-column: 1;
+    z-index: 6;
+}
+
+.about-hero-visual {
+    position: absolute;
+    z-index: 2;
+    inset: 0;
+    width: 100%;
+    min-height: 0;
+    height: 100%;
+    margin: 0;
+    pointer-events: none;
+}
+
+.about-hero-visual-shell {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    overflow: visible;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+}
+
+.about-hero-visual-shell::before,
+.about-hero-visual-shell::after {
+    background: none;
+    -webkit-mask-image: none;
+    mask-image: none;
+}
+
+.about-hero-ghost-logo {
+    z-index: 3;
+    left: 64%;
+    top: 5%;
+    width: min(52vw, 780px);
+    opacity: 0.46;
+    transform: translateX(-50%) rotate(-2deg);
+    filter:
+        sepia(0.95)
+        saturate(0.68)
+        hue-rotate(348deg)
+        brightness(1.08)
+        contrast(1.12)
+        drop-shadow(0 0 24px rgba(190, 158, 118, 0.15));
+    mix-blend-mode: screen;
+}
+
+.about-founder-hero-img {
+    z-index: 6;
+    left: 64%;
+    right: auto;
+    bottom: 0;
+    width: min(43vw, 690px);
+    max-width: none;
+    height: 90%;
+    max-height: 780px;
+    object-position: center bottom;
+    transform: translateX(-50%);
+}
+
+.about-founder-caption {
+    z-index: 7;
+    right: clamp(4rem, 16vw, 16rem);
+    bottom: clamp(3rem, 9vh, 6.4rem);
+}
+
+@media (max-width: 1500px) {
+    .about-hero-ghost-logo {
+        left: 65%;
+        width: min(56vw, 720px);
+    }
+
+    .about-founder-hero-img {
+        left: 65%;
+        width: min(45vw, 640px);
+    }
+
+    .about-founder-caption {
+        right: clamp(3rem, 12vw, 12rem);
+    }
+}
+
+@media (max-width: 1380px) {
+    .about-hero-ghost-logo {
+        left: 66%;
+        width: min(58vw, 680px);
+    }
+
+    .about-founder-hero-img {
+        left: 66%;
+        width: min(46vw, 600px);
+    }
+}
+
+@media (max-width: 1120px) {
+    .about-hero {
+        grid-template-columns: 1fr;
+        min-height: auto;
+        overflow: hidden;
+    }
+
+    .about-hero-copy {
+        grid-column: 1;
+    }
+
+    .about-hero-visual {
+        position: relative;
+        inset: auto;
+        grid-column: 1;
+        justify-self: center;
+        width: min(100%, 780px);
+        min-height: 560px;
+        height: 560px;
+        margin-top: 0.4rem;
+    }
+
+    .about-hero-visual-shell {
+        position: relative;
+        inset: auto;
+        min-height: inherit;
+        height: 100%;
+    }
+
+    .about-hero-ghost-logo {
+        left: 50%;
+        top: 4%;
+        width: min(78vw, 600px);
+    }
+
+    .about-founder-hero-img {
+        left: 50%;
+        width: min(62vw, 480px);
+        height: 90%;
+    }
+
+    .about-founder-caption {
+        right: 12%;
+        bottom: 8%;
+    }
+}
+
+@media (max-width: 860px) {
+    .about-hero-visual {
+        min-height: 480px;
+        height: 480px;
+    }
+
+    .about-hero-ghost-logo {
+        width: min(90vw, 520px);
+    }
+
+    .about-founder-hero-img {
+        width: min(72vw, 400px);
+    }
+}
+
+@media (max-width: 640px) {
+    .about-hero-backdrop {
+        opacity: 0.68;
+    }
+
+    .about-hero-visual {
+        min-height: 390px;
+        height: 390px;
+    }
+
+    .about-hero-ghost-logo {
+        top: 8%;
+        width: min(96vw, 440px);
+        opacity: 0.34;
+    }
+
+    .about-founder-hero-img {
+        width: min(78vw, 340px);
+        height: 86%;
     }
 }
