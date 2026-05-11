@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.74',
-  branch: 'public-pjax-app-shell',
+  version: '8.0P.80',
+  branch: 'legal-pages-footer',
   channel: 'PUBLIC PJAX APP SHELL',
-  stage: 'Login background + contact feedback scroll',
+  stage: 'Index newsletter Brevo subscription',
   updatedAt: '2026-05-11',
-  label: 'SBI 8.0P.74 - LOGIN BACKGROUND + CONTACT FEEDBACK SCROLL'
+  label: 'SBI 8.0P.80 - INDEX NEWSLETTER BREVO'
 };
 
 export function getSbiVersionLabel() {
