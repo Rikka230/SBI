@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.88',
+  version: '8.0P.89',
   branch: 'public-pjax-app-shell',
   channel: 'PUBLIC PJAX APP SHELL',
-  stage: 'Public formations hotfix admin tab, unsaved guard, card overlays, login background',
+  stage: 'Public formation detail scrollbar styling and layout stability',
   updatedAt: '2026-05-11',
-  label: 'SBI 8.0P.88 - PUBLIC FORMATIONS FULL PAGE DETAIL HOTFIX'
+  label: 'SBI 8.0P.89 - FORMATION DETAIL SCROLLBAR STABILITY'
 };
 
 export function getSbiVersionLabel() {

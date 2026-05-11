@@ -19,7 +19,7 @@ async function getFirestoreTools() {
 
 const PUBLIC_FORMATIONS_COLLECTION = 'publicFormations';
 const PUBLIC_RESOURCES_COLLECTION = 'publicResources';
-const PUBLIC_CONTENT_VERSION = '8.0P.88';
+const PUBLIC_CONTENT_VERSION = '8.0P.89';
 
 const DEFAULT_COVER_LABEL = 'SBI';
 
@@ -383,6 +383,7 @@ function closeFormationSheet(sheet) {
   target.classList.remove('is-open');
   document.documentElement.classList.remove('sbi-formation-sheet-open');
   document.body.classList.remove('sbi-formation-sheet-open');
+  document.documentElement.style.removeProperty('--sbi-scrollbar-compensation');
   window.setTimeout(() => target.remove(), 180);
 }
 
@@ -438,6 +439,8 @@ function openFormationSheet(formation) {
     if (event.target === sheet) closeFormationSheet(sheet);
   });
 
+  const scrollbarCompensation = Math.max(0, window.innerWidth - document.documentElement.clientWidth);
+  document.documentElement.style.setProperty('--sbi-scrollbar-compensation', `${scrollbarCompensation}px`);
   document.documentElement.classList.add('sbi-formation-sheet-open');
   document.body.classList.add('sbi-formation-sheet-open');
   window.requestAnimationFrame(() => sheet.classList.add('is-open'));
