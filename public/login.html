@@ -514,6 +514,35 @@
             }
         }
 
+
+        /* =========================================================
+           SBI 8.0P.86 - LOGIN DESKTOP ANIMATED BACKGROUND RESTORE
+           ---------------------------------------------------------
+           Restaure le fond animé global sur desktop, tout en gardant
+           la stabilisation mobile validée.
+           ========================================================= */
+        @media (min-width: 769px) {
+            body[data-sbi-public-page="login"] {
+                background: var(--bg-dark) !important;
+            }
+
+            body[data-sbi-public-page="login"] .sbi-background-root,
+            body[data-sbi-public-page="login"] .sbi-bg-fixed,
+            body[data-sbi-public-page="login"] .sbi-field-parallax,
+            body[data-sbi-public-page="login"] .sbi-bg-parallax,
+            body[data-sbi-public-page="login"] .sbi-football-field,
+            body[data-sbi-public-page="login"] .sbi-line,
+            body[data-sbi-public-page="login"] .sbi-particle,
+            body[data-sbi-public-page="login"] .sbi-fog {
+                display: block !important;
+            }
+
+            body[data-sbi-public-page="login"] .login-page {
+                position: relative;
+                z-index: 2;
+            }
+        }
+
     </style>
 </head>
 
@@ -592,7 +621,7 @@
 
     <script src="js/sbi-background.js?v=8.0P.65"></script>
     <script src="js/main.js?v=8.0P.80"></script>
-    <script src="js/public-app-shell.js?v=8.0P.85"></script>
+    <script src="js/public-app-shell.js?v=8.0P.86"></script>
     <script type="module" src="js/auth.js"></script>
 </body>
 </html>

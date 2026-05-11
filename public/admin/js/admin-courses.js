@@ -73,7 +73,7 @@ import {
     handleCourseNotifications as handleCourseNotificationsService
 } from '/admin/js/courses/course-notifications.js';
 import { getCourseTargetingSnapshot } from '/admin/js/courses/course-targeting.js';
-import { initPublicFormationsAdmin } from '/admin/js/public-formations-admin.js';
+import { initPublicFormationsAdmin } from '/admin/js/public-formations-admin.js?v=8.0P.86';
 let currentUid = null;
 let currentUserProfile = null;
 let currentChapters = [];

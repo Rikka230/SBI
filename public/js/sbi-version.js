@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.85',
-  branch: 'legal-pages-footer',
+  version: '8.0P.86',
+  branch: 'public-pjax-app-shell',
   channel: 'PUBLIC PJAX APP SHELL',
-  stage: 'Public formations dynamic catalog + coming soon',
+  stage: 'Public formations hotfix admin tab, unsaved guard, card overlays, login background',
   updatedAt: '2026-05-11',
-  label: 'SBI 8.0P.85 - PUBLIC FORMATIONS DYNAMIC CATALOG'
+  label: 'SBI 8.0P.86 - PUBLIC FORMATIONS HOTFIX'
 };
 
 export function getSbiVersionLabel() {
