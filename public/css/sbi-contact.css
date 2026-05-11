@@ -1839,3 +1839,79 @@ body[data-sbi-public-page="contact"] .contact-submit span:first-child {
         display: none !important;
     }
 }
+
+
+/* =========================================================
+   SBI 8.0P.74 - CONTACT MOBILE FRAME + FEEDBACK ANCHOR
+   ---------------------------------------------------------
+   Mobile : un seul cadre lisible, assistant conservé en haut
+   de carte et plus aucun faux double contour bas.
+   ========================================================= */
+@media (max-width: 768px) {
+    body[data-sbi-public-page="contact"] .contact-form-card {
+        padding: 0 !important;
+        border: 1px solid rgba(92, 131, 196, 0.58);
+        background: rgba(7, 12, 23, 0.96) !important;
+        box-shadow:
+            0 20px 54px rgba(0, 0, 0, 0.48),
+            0 0 28px rgba(0, 81, 255, 0.06);
+        overflow: visible;
+    }
+
+    body[data-sbi-public-page="contact"] .contact-form-card::before {
+        content: none !important;
+        display: none !important;
+    }
+
+    body[data-sbi-public-page="contact"] .contact-card-inner {
+        min-height: auto !important;
+        height: auto !important;
+        border: 0 !important;
+        background:
+            linear-gradient(180deg, rgba(7, 12, 23, 0.96), rgba(3, 7, 14, 0.98)),
+            radial-gradient(circle at 92% 0%, rgba(0, 81, 255, 0.10), transparent 36%) !important;
+        box-shadow: none !important;
+    }
+
+    body[data-sbi-public-page="contact"] .contact-card-inner::before,
+    body[data-sbi-public-page="contact"] .contact-card-inner::after {
+        content: none !important;
+        display: none !important;
+    }
+
+    body[data-sbi-public-page="contact"] .sbi-signal-contact {
+        position: absolute !important;
+        top: 1.05rem !important;
+        right: 0.9rem !important;
+        bottom: auto !important;
+        margin: 0 !important;
+        z-index: 90;
+    }
+
+    body[data-sbi-public-page="contact"] .sbi-signal-contact::before,
+    body[data-sbi-public-page="contact"] .sbi-signal-contact::after {
+        display: none !important;
+    }
+
+    body[data-sbi-public-page="contact"] .sbi-signal-contact .sbi-signal-panel {
+        display: none !important;
+    }
+
+    body[data-sbi-public-page="contact"] .sbi-signal-contact.is-revealed .sbi-signal-panel {
+        display: inline-flex !important;
+        max-width: min(62vw, 260px);
+        min-width: 0;
+        white-space: normal;
+        line-height: 1.16;
+        font-size: 0.68rem;
+        padding: 0.66rem 0.78rem;
+        transform: translateX(0) scale(1);
+    }
+
+    body[data-sbi-public-page="contact"] .contact-submit,
+    body[data-sbi-public-page="contact"] .contact-submit.is-ready-to-send,
+    body[data-sbi-public-page="contact"] .contact-form-card.is-ready-to-send .contact-submit {
+        max-width: 100%;
+        transform: none !important;
+    }
+}

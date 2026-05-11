@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="css/style.css?v=8.0P.65">
     <link rel="stylesheet" href="css/sbi-signals.css?v=8.0P.65">
     <link rel="stylesheet" href="css/sbi-home-responsive.css?v=8.0P.65">
-    <link rel="stylesheet" href="css/sbi-mobile.css?v=8.0P.73">
+    <link rel="stylesheet" href="css/sbi-mobile.css?v=8.0P.74">
     <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,600;0,800;0,900;1,400;1,600;1,800;1,900&display=swap" rel="stylesheet">
 
     <style>
@@ -461,6 +461,59 @@
             }
         }
 
+
+        /* =========================================================
+           SBI 8.0P.74 - LOGIN MOBILE BACKGROUND STABILIZATION
+           ---------------------------------------------------------
+           Connexion garde un fond sombre propre et contrôlé. Les
+           calques globaux terrain/parallaxe sont coupés sur cette
+           page pour éviter les aplats bleus et débordements mobile.
+           ========================================================= */
+        body[data-sbi-public-page="login"] {
+            isolation: isolate;
+            overflow-x: clip;
+            background: #03070e !important;
+        }
+
+        body[data-sbi-public-page="login"]::before {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            background:
+                radial-gradient(circle at 78% 8%, rgba(0, 81, 255, 0.16), transparent 34%),
+                radial-gradient(circle at 9% 82%, rgba(0, 132, 255, 0.10), transparent 42%),
+                linear-gradient(180deg, #02050b 0%, #06101c 58%, #03070e 100%);
+        }
+
+        body[data-sbi-public-page="login"] .sbi-background-root,
+        body[data-sbi-public-page="login"] .sbi-bg-fixed,
+        body[data-sbi-public-page="login"] .sbi-field-parallax,
+        body[data-sbi-public-page="login"] .sbi-bg-parallax,
+        body[data-sbi-public-page="login"] .sbi-football-field,
+        body[data-sbi-public-page="login"] .sbi-line,
+        body[data-sbi-public-page="login"] .sbi-particle,
+        body[data-sbi-public-page="login"] .sbi-fog {
+            display: none !important;
+        }
+
+        body[data-sbi-public-page="login"] .login-page {
+            background: transparent !important;
+        }
+
+        @media (max-width: 768px) {
+            body[data-sbi-public-page="login"] .login-page {
+                min-height: calc(100dvh - var(--header-height));
+                padding-top: calc(var(--header-height) + 1.55rem);
+                padding-bottom: 4rem;
+            }
+
+            body[data-sbi-public-page="login"] .login-card {
+                background:
+                    linear-gradient(180deg, rgba(7, 12, 23, 0.97), rgba(3, 7, 14, 0.985)),
+                    radial-gradient(circle at 90% 3%, rgba(0, 81, 255, 0.11), transparent 32%);
+            }
+        }
+
     </style>
 </head>
 
@@ -539,7 +592,7 @@
 
     <script src="js/sbi-background.js?v=8.0P.65"></script>
     <script src="js/main.js?v=8.0P.65"></script>
-    <script src="js/public-app-shell.js?v=8.0P.73"></script>
+    <script src="js/public-app-shell.js?v=8.0P.74"></script>
     <script type="module" src="js/auth.js"></script>
 </body>
 </html>

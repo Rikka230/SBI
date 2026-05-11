@@ -255,6 +255,21 @@ function setContactCardState(card, state = '') {
   if (state) card.classList.add(`is-${state}`);
 }
 
+
+function scrollContactFeedbackIntoView(card) {
+  if (!card || !window.matchMedia('(max-width: 768px)').matches) return;
+
+  const target = card.querySelector('[data-sbi-contact-assistant]') || card;
+  const header = document.querySelector('.site-header');
+  const headerHeight = header?.offsetHeight || 80;
+
+  window.requestAnimationFrame(() => {
+    const targetTop = target.getBoundingClientRect().top + window.scrollY;
+    const nextTop = Math.max(0, targetTop - headerHeight - 18);
+    window.scrollTo({ top: nextTop, behavior: 'smooth' });
+  });
+}
+
 function initContactAssistant(form, card) {
   const assistant = card?.querySelector('[data-sbi-contact-assistant]');
   const assistantMessage = card?.querySelector('[data-sbi-contact-assistant-message]');
@@ -295,6 +310,8 @@ function initContactAssistant(form, card) {
       status.classList.toggle('is-error', tone === 'error');
       status.classList.toggle('is-success', tone === 'success');
     }
+
+    scrollContactFeedbackIntoView(card);
   };
 
   const setSubmit = (label, disabled = false) => {
