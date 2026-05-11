@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.66',
+  version: '8.0P.67',
   branch: 'public-pjax-app-shell',
   channel: 'PUBLIC PJAX APP SHELL',
-  stage: 'About mobile video bleed and visibility fix',
+  stage: 'Calculator remainder cost and contact transfer patch',
   updatedAt: '2026-05-11',
-  label: 'SBI 8.0P.66 - ABOUT MOBILE VIDEO BLEED VISIBILITY FIX'
+  label: 'SBI 8.0P.67 - CALCULATOR RESTE A CHARGE CONTACT TRANSFER'
 };
 
 export function getSbiVersionLabel() {

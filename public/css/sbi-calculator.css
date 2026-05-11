@@ -1,6 +1,6 @@
 /* =========================================================
-   SBI 8.0P.10d - PUBLIC MOBILE PERFORMANCE SAFE PASS
-   Page publique calculateur d'aide à l'embauche.
+   SBI 8.0P.67 - CALCULATEUR RESTE A CHARGE
+   Page publique calculateur de reste à charge apprentissage.
    ========================================================= */
 
 :root {
@@ -837,9 +837,9 @@ body[data-sbi-public-page="calculator"] {
 }
 
 @media (max-width: 768px) {
-    body[data-sbi-public-page="calculator"] *,
-    body[data-sbi-public-page="calculator"] *::before,
-    body[data-sbi-public-page="calculator"] *::after {
+    .aid-calc-background *,
+    .aid-calc-background *::before,
+    .aid-calc-background *::after {
         animation: none !important;
         transition-duration: 0.01ms !important;
     }
@@ -956,5 +956,96 @@ body[data-sbi-public-page="calculator"] {
 
     .aid-calc-result-amount {
         font-size: 3rem;
+    }
+}
+
+/* =========================================================
+   SBI 8.0P.67 - reste à charge apprentissage
+   ========================================================= */
+
+.aid-calc-background {
+    background:
+        radial-gradient(circle at 16% 26%, rgba(0, 81, 255, 0.12), transparent 30%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.018), transparent 48%);
+}
+
+.aid-calc-diagonal,
+.aid-calc-shard,
+.aid-calc-result-card::before {
+    display: none !important;
+}
+
+.aid-calc-page {
+    background:
+        linear-gradient(90deg, rgba(0, 81, 255, 0.035) 1px, transparent 1px),
+        radial-gradient(circle at 8% 30%, rgba(0, 81, 255, 0.08), transparent 24%),
+        linear-gradient(180deg, #02050b 0%, #050914 42%, #02050b 100%);
+    background-size: 300px 100%, auto, auto;
+}
+
+.aid-calc-input-grid {
+    grid-column: 2;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.78rem;
+}
+
+.aid-calc-field small,
+.aid-calc-field-help {
+    color: rgba(222, 233, 255, 0.56);
+    font-size: 0.72rem;
+    font-weight: 600;
+    line-height: 1.35;
+}
+
+.aid-calc-result-label {
+    max-width: 520px;
+}
+
+.aid-calc-result-amount {
+    font-size: clamp(2.55rem, 3.65vw, 4.1rem);
+    white-space: normal;
+}
+
+.aid-calc-result-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.aid-calc-result-metrics div {
+    min-height: 84px;
+}
+
+.aid-calc-result-metrics strong {
+    overflow-wrap: anywhere;
+}
+
+.aid-calc-soft-error {
+    line-height: 1.45;
+}
+
+.aid-calc-legal-note {
+    line-height: 1.45;
+}
+
+@media (max-width: 900px) {
+    .aid-calc-input-grid {
+        grid-column: auto;
+    }
+}
+
+@media (max-width: 768px) {
+    .aid-calc-input-grid,
+    .aid-calc-result-metrics {
+        grid-template-columns: 1fr;
+    }
+
+    .aid-calc-result-amount {
+        font-size: clamp(2.45rem, 11vw, 3.45rem);
+    }
+}
+
+@media (max-width: 420px) {
+    .aid-calc-result-amount {
+        font-size: 2.55rem;
     }
 }

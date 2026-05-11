@@ -1,5 +1,8 @@
-const SBI_AID_CALCULATOR_VERSION = '8.0P.10d';
+const SBI_AID_CALCULATOR_VERSION = '8.0P.67';
 const SBI_RNCP_LEVEL = 4;
+const DEFAULT_SMIC_MONTHLY = 1823.03;
+const STANDARD_AID_AMOUNT = 5000;
+const DISABLED_APPRENTICE_AID_AMOUNT = 6000;
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 function padDatePart(value) {
@@ -34,16 +37,117 @@ function isLeapYear(year) {
   return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
 }
 
-function formatEuro(value) {
+function parseFrenchNumber(value, fallback = 0) {
+  if (value === null || value === undefined || value === '') return fallback;
+  const normalized = String(value)
+    .replace(/\s/g, '')
+    .replace(',', '.')
+    .replace(/[^0-9.-]/g, '');
+  const parsed = Number.parseFloat(normalized);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function roundMoney(value) {
+  return Math.round((Number(value) || 0) * 100) / 100;
+}
+
+function formatEuro(value, options = {}) {
+  const digits = Number.isInteger(options.digits) ? options.digits : 0;
   return new Intl.NumberFormat('fr-FR', {
     style: 'currency',
     currency: 'EUR',
-    maximumFractionDigits: 0
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits
   }).format(Math.max(0, Number(value) || 0));
+}
+
+function formatEuroMonthly(value) {
+  return `${formatEuro(value, { digits: 2 })} / mois`;
 }
 
 function formatPercent(value) {
   return `${Math.round((Number(value) || 0) * 100)} %`;
+}
+
+function formatMonths(value) {
+  const months = Number(value) || 0;
+  if (Math.abs(months - Math.round(months)) < 0.01) {
+    const rounded = Math.max(0, Math.round(months));
+    return `${rounded} mois`;
+  }
+  return `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 }).format(months)} mois`;
+}
+
+function getApprenticeRate(age) {
+  const numericAge = Math.max(0, Number.parseInt(age, 10) || 0);
+
+  if (numericAge < 18) {
+    return {
+      rate: 0.27,
+      label: 'Moins de 18 ans',
+      detail: '1re année : 27 % du SMIC'
+    };
+  }
+
+  if (numericAge <= 20) {
+    return {
+      rate: 0.43,
+      label: '18 à 20 ans',
+      detail: '1re année : 43 % du SMIC'
+    };
+  }
+
+  if (numericAge <= 25) {
+    return {
+      rate: 0.53,
+      label: '21 à 25 ans',
+      detail: '1re année : 53 % du SMIC'
+    };
+  }
+
+  return {
+    rate: 1,
+    label: '26 ans et plus',
+    detail: 'Rémunération au moins égale au SMIC ou au SMC applicable'
+  };
+}
+
+function getDurationInfo(startDate, endDate, nonExecutedDays = 0) {
+  if (!startDate || !endDate) {
+    return {
+      isValid: false,
+      contractDays: 0,
+      contractMonths: 0,
+      aidRatio: 0,
+      warning: 'Renseignez les dates du contrat pour calculer le reste à charge.'
+    };
+  }
+
+  if (endDate < startDate) {
+    return {
+      isValid: false,
+      contractDays: 0,
+      contractMonths: 0,
+      aidRatio: 0,
+      warning: 'La date de fin prévue doit être postérieure au début du contrat.'
+    };
+  }
+
+  const contractDays = Math.max(1, daysBetween(startDate, endDate) + 1);
+  const firstYearEnd = new Date(Math.min(endDate.getTime(), addYearsMinusOneDay(startDate).getTime()));
+  const firstYearTheoreticalDays = Math.max(1, daysBetween(startDate, firstYearEnd) + 1);
+  const firstYearExecutedDays = Math.max(0, firstYearTheoreticalDays - Math.max(0, nonExecutedDays));
+  const referenceDays = isLeapYear(startDate.getFullYear()) ? 366 : 365;
+  const contractMonths = Math.max(1, roundMoney((contractDays / referenceDays) * 12));
+  const aidRatio = Math.min(1, firstYearExecutedDays / referenceDays);
+
+  return {
+    isValid: true,
+    contractDays,
+    contractMonths,
+    aidRatio,
+    warning: ''
+  };
 }
 
 function getState(root) {
@@ -54,6 +158,8 @@ function getState(root) {
     companySize: activeValue('companySize') || 'under_250',
     contractType: activeValue('contractType') || 'apprentissage',
     isDisabledApprentice: activeValue('isDisabledApprentice') === 'yes',
+    apprenticeAge: Math.max(0, Number.parseInt(fieldValue('apprenticeAge') || '0', 10) || 0),
+    smicMonthly: parseFrenchNumber(fieldValue('smicMonthly'), DEFAULT_SMIC_MONTHLY),
     signatureDate: fieldValue('signatureDate'),
     contractStartDate: fieldValue('contractStartDate'),
     contractEndDate: fieldValue('contractEndDate'),
@@ -62,63 +168,81 @@ function getState(root) {
 }
 
 function calculateAid(state) {
+  const startDate = parseLocalDate(state.contractStartDate);
+  const endDate = parseLocalDate(state.contractEndDate);
+  const duration = getDurationInfo(startDate, endDate, state.nonExecutedDays);
+  const apprenticeRate = getApprenticeRate(state.apprenticeAge);
+  const smicMonthly = state.smicMonthly > 0 ? state.smicMonthly : DEFAULT_SMIC_MONTHLY;
+  const monthlySalary = roundMoney(smicMonthly * apprenticeRate.rate);
+  const totalGrossSalary = roundMoney(monthlySalary * duration.contractMonths);
+
   let baseAid = 0;
-  let status = 'a_verifier';
+  let status = 'eligible';
   let reason = '';
-  let summary = '';
 
   if (state.contractType !== 'apprentissage') {
     status = 'hors_simulateur';
     reason = "Ce simulateur concerne les contrats d'apprentissage. Pour un contrat de professionnalisation, les règles peuvent différer.";
-  } else if (state.isDisabledApprentice) {
-    baseAid = 6000;
-    status = 'eligible';
-  } else if (state.companySize === 'under_250') {
-    baseAid = 5000;
-    status = 'eligible';
   } else {
-    status = 'a_verifier';
-    reason = 'Les règles peuvent différer pour les entreprises de 250 salariés et plus. Un accompagnement est recommandé.';
-  }
+    baseAid = state.isDisabledApprentice ? DISABLED_APPRENTICE_AID_AMOUNT : STANDARD_AID_AMOUNT;
 
-  const startDate = parseLocalDate(state.contractStartDate);
-  const endDate = parseLocalDate(state.contractEndDate);
-  let ratio = baseAid > 0 ? 1 : 0;
-  let dateWarning = '';
-
-  if (startDate && endDate) {
-    if (endDate < startDate) {
-      ratio = 0;
-      dateWarning = 'La date de fin prévue doit être postérieure au début du contrat.';
-    } else {
-      const firstYearEnd = new Date(Math.min(endDate.getTime(), addYearsMinusOneDay(startDate).getTime()));
-      const theoreticalDays = Math.max(0, daysBetween(startDate, firstYearEnd) + 1);
-      const executedDays = Math.max(0, theoreticalDays - state.nonExecutedDays);
-      const referenceDays = isLeapYear(startDate.getFullYear()) ? 366 : 365;
-      ratio = baseAid > 0 ? Math.min(1, executedDays / referenceDays) : 0;
+    if (state.companySize === 'over_250') {
+      status = 'a_verifier';
+      reason = 'Aide possible sous conditions pour les entreprises de 250 salariés et plus. Une vérification SBI est recommandée.';
     }
   }
 
-  const estimatedAid = Math.round(baseAid * ratio);
+  const estimatedAid = duration.isValid && baseAid > 0
+    ? roundMoney(baseAid * duration.aidRatio)
+    : 0;
+  const totalRemainder = duration.isValid
+    ? Math.max(0, roundMoney(totalGrossSalary - estimatedAid))
+    : 0;
+  const monthlyRemainder = duration.isValid && duration.contractMonths > 0
+    ? roundMoney(totalRemainder / duration.contractMonths)
+    : 0;
 
-  if (status === 'eligible') {
-    const companyText = state.companySize === 'under_250'
-      ? 'une entreprise de moins de 250 salariés'
-      : 'une entreprise recrutant un apprenti';
-    const disabilityText = state.isDisabledApprentice ? ' en situation de handicap' : '';
-    summary = `Estimation pour ${companyText} recrutant un apprenti${disabilityText} en formation SBI Bac / Niveau ${SBI_RNCP_LEVEL}.`;
-  } else {
-    summary = reason;
-  }
+  const summary = duration.isValid
+    ? `Pour un apprenti de ${state.apprenticeAge || '-'} ans : ${formatPercent(apprenticeRate.rate)} du SMIC, soit ${formatEuro(monthlySalary, { digits: 2 })} brut / mois. Aide déduite : ${formatEuro(estimatedAid)}.`
+    : duration.warning;
+
+  const legalWarning = [duration.warning, reason].filter(Boolean).join(' ');
+  const contactMessage = [
+    'Bonjour SBI,',
+    '',
+    "Je souhaite être recontacté au sujet de cette estimation de reste à charge pour un contrat d'apprentissage.",
+    '',
+    `Âge de l'apprenti : ${state.apprenticeAge || '-'} ans`,
+    `Barème appliqué : ${apprenticeRate.label} - ${apprenticeRate.detail}`,
+    `SMIC brut mensuel retenu : ${formatEuro(smicMonthly, { digits: 2 })}`,
+    `Durée du contrat retenue : ${formatMonths(duration.contractMonths)} (${duration.contractDays || 0} jours)`,
+    `Salaire brut mensuel estimé : ${formatEuro(monthlySalary, { digits: 2 })}`,
+    `Coût brut total estimé : ${formatEuro(totalGrossSalary, { digits: 2 })}`,
+    `Aide employeur estimée : ${formatEuro(estimatedAid, { digits: 2 })}`,
+    `Reste à charge total estimé : ${formatEuro(totalRemainder, { digits: 2 })}`,
+    `Reste à charge mensuel estimé : ${formatEuro(monthlyRemainder, { digits: 2 })}`,
+    `Statut : ${statusLabel(status)}`,
+    '',
+    'Merci de vérifier cette estimation avec moi.'
+  ].join('\n');
 
   return {
     baseAid,
     estimatedAid,
-    ratio,
+    aidRatio: duration.aidRatio,
     status,
     reason,
     summary,
-    dateWarning
+    dateWarning: legalWarning,
+    apprenticeRate,
+    smicMonthly,
+    monthlySalary,
+    totalGrossSalary,
+    totalRemainder,
+    monthlyRemainder,
+    contractMonths: duration.contractMonths,
+    contractDays: duration.contractDays,
+    contactMessage
   };
 }
 
@@ -148,13 +272,17 @@ function updateResult(root) {
   const state = getState(root);
   const result = calculateAid(state);
   const isEligible = result.status === 'eligible';
+  const isCalculable = result.status !== 'hors_simulateur' && result.contractMonths > 0;
 
-  setText(root, '[data-aid-result-amount]', isEligible ? formatEuro(result.estimatedAid) : 'À vérifier');
+  setText(root, '[data-aid-result-amount]', isCalculable ? formatEuroMonthly(result.monthlyRemainder) : 'À vérifier');
   setText(root, '[data-aid-result-summary]', result.summary);
-  setText(root, '[data-aid-base]', formatEuro(result.baseAid));
-  setText(root, '[data-aid-ratio]', formatPercent(result.ratio));
+  setText(root, '[data-aid-total-cost]', isCalculable ? formatEuro(result.totalRemainder, { digits: 2 }) : 'À vérifier');
+  setText(root, '[data-aid-monthly-salary]', formatEuro(result.monthlySalary, { digits: 2 }));
+  setText(root, '[data-aid-estimated-aid]', formatEuro(result.estimatedAid));
+  setText(root, '[data-aid-contract-duration]', formatMonths(result.contractMonths));
+  setText(root, '[data-aid-rate]', formatPercent(result.apprenticeRate.rate));
   setText(root, '[data-aid-status]', statusLabel(result.status));
-  setText(root, '[data-aid-error]', result.dateWarning || result.reason || '');
+  setText(root, '[data-aid-error]', result.dateWarning || '');
 
   const statusNode = root.querySelector('[data-aid-status]');
   if (statusNode) {
@@ -164,23 +292,13 @@ function updateResult(root) {
 
   const contactLink = root.querySelector('[data-aid-contact-link]');
   if (contactLink) {
-    const subject = encodeURIComponent('Estimation aide à l\'embauche SBI');
-    const body = encodeURIComponent([
-      'Bonjour SBI,',
-      '',
-      'Je souhaite recevoir mon estimation pour l\'aide à l\'embauche.',
-      `Montant estimé : ${formatEuro(result.estimatedAid)}`,
-      `Statut : ${statusLabel(result.status)}`,
-      `Formation : Bac / RNCP Niveau ${SBI_RNCP_LEVEL}`,
-      '',
-      'Merci.'
-    ].join('\n'));
-    contactLink.href = `mailto:contact@sbi.fr?subject=${subject}&body=${body}`;
     const contactParams = new URLSearchParams({
       motif: 'estimation-aide',
-      montant: formatEuro(result.estimatedAid),
+      montant: formatEuro(result.monthlyRemainder, { digits: 2 }),
+      montantTotal: formatEuro(result.totalRemainder, { digits: 2 }),
       statut: statusLabel(result.status),
-      formation: `Bac / RNCP Niveau ${SBI_RNCP_LEVEL}`
+      formation: `Bac / RNCP Niveau ${SBI_RNCP_LEVEL}`,
+      message: result.contactMessage
     });
     contactLink.href = `contact.html?${contactParams.toString()}`;
   }

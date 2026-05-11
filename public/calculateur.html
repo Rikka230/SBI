@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calculateur d'aide à l'embauche - Sport Business Institute</title>
+    <title>Calculateur de reste à charge alternance - Sport Business Institute</title>
 
-    <link rel="stylesheet" href="css/style.css?v=8.0P.46">
+    <link rel="stylesheet" href="css/style.css?v=8.0P.67">
     <link rel="stylesheet" href="css/sbi-newsletter.css">
     <link rel="stylesheet" href="css/sbi-footer.css">
-    <link rel="stylesheet" href="css/sbi-home-responsive.css?v=8.0P.10d">
-    <link rel="stylesheet" href="css/sbi-mobile.css?v=8.0P.10d">
-    <link rel="stylesheet" href="css/sbi-calculator.css?v=8.0P.10d">
+    <link rel="stylesheet" href="css/sbi-home-responsive.css?v=8.0P.67">
+    <link rel="stylesheet" href="css/sbi-mobile.css?v=8.0P.67">
+    <link rel="stylesheet" href="css/sbi-calculator.css?v=8.0P.67">
     <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,600;0,800;0,900;1,400;1,600;1,800;1,900&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap" rel="stylesheet">
 </head>
@@ -53,18 +53,12 @@
 
     <main id="public-main" class="aid-calc-page" data-sbi-public-shell-root>
         <section class="aid-calc-hero padding-global" data-sbi-public-section="calculator">
-            <div class="aid-calc-background" aria-hidden="true">
-                <span class="aid-calc-diagonal aid-calc-diagonal-1"></span>
-                <span class="aid-calc-diagonal aid-calc-diagonal-2"></span>
-                <span class="aid-calc-diagonal aid-calc-diagonal-3"></span>
-                <span class="aid-calc-shard aid-calc-shard-left"></span>
-                <span class="aid-calc-shard aid-calc-shard-right"></span>
-            </div>
+            <div class="aid-calc-background" aria-hidden="true"></div>
 
             <div class="aid-calc-hero-copy fade-in">
                 <span class="section-surtitle text-blue uppercase text-italic">Calculateur d'aide à l'embauche</span>
-                <h1 class="aid-calc-title uppercase text-italic">Calculez votre<br>aide à l'embauche<span>.</span></h1>
-                <p class="aid-calc-subtitle text-italic">Estimez en quelques secondes le montant potentiel de l'aide liée au recrutement d'un apprenti chez SBI.</p>
+                <h1 class="aid-calc-title uppercase text-italic">Calculez votre<br>reste à charge<span>.</span></h1>
+                <p class="aid-calc-subtitle text-italic">Estimez le coût mensuel indicatif d'un apprenti après l'aide employeur, selon l'âge, le SMIC et la durée du contrat.</p>
 
                 <ul class="aid-calc-proof-list" aria-label="Informations de calcul">
                     <li>
@@ -73,7 +67,7 @@
                     </li>
                     <li>
                         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 8v4"></path><path d="M12 16h.01"></path></svg>
-                        <span>Estimation indicative selon les informations saisies.</span>
+                        <span>Reste à charge mensuel et total après aide employeur.</span>
                     </li>
                 </ul>
 
@@ -146,7 +140,33 @@
                         <div class="aid-calc-step-head">
                             <span class="aid-calc-step-index">4</span>
                             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="4"></circle><path d="M5.5 21a6.5 6.5 0 0 1 13 0"></path></svg>
-                            <h2 id="apprentice-step-title" class="text-italic">L'apprenti</h2>
+                            <div>
+                                <h2 id="apprentice-step-title" class="text-italic">L'apprenti</h2>
+                                <p>Le barème de rémunération est calculé sur la 1re année.</p>
+                            </div>
+                        </div>
+
+                        <div class="aid-calc-input-grid aid-calc-apprentice-grid">
+                            <label class="aid-calc-field">
+                                <span>Âge de l'apprenti</span>
+                                <input type="number" name="apprenticeAge" data-aid-field="apprenticeAge" value="19" min="16" max="67" step="1" inputmode="numeric">
+                            </label>
+                            <label class="aid-calc-field">
+                                <span>SMIC brut mensuel</span>
+                                <input type="text" name="smicMonthly" data-aid-field="smicMonthly" value="1 823,03" inputmode="decimal" aria-describedby="smic-help">
+                                <small id="smic-help" class="aid-calc-field-help">Modifiable si le taux évolue.</small>
+                            </label>
+                        </div>
+                    </section>
+
+                    <section class="aid-calc-step" aria-labelledby="disability-step-title">
+                        <div class="aid-calc-step-head">
+                            <span class="aid-calc-step-index aid-calc-step-index-muted">5</span>
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="5" r="2"></circle><path d="M9 7v6h5l3 5"></path><path d="M7 13a5 5 0 1 0 5 5"></path></svg>
+                            <div>
+                                <h2 id="disability-step-title" class="text-italic">Situation particulière <span>(optionnel)</span></h2>
+                                <p>Permet d'afficher l'aide majorée si l'apprenti est en situation de handicap.</p>
+                            </div>
                         </div>
 
                         <div class="aid-calc-inline-choice">
@@ -160,11 +180,11 @@
 
                     <section class="aid-calc-step" aria-labelledby="days-step-title">
                         <div class="aid-calc-step-head">
-                            <span class="aid-calc-step-index aid-calc-step-index-muted">5</span>
+                            <span class="aid-calc-step-index aid-calc-step-index-muted">6</span>
                             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>
                             <div>
                                 <h2 id="days-step-title" class="text-italic">Jours non exécutés <span>(optionnel)</span></h2>
-                                <p>Nombre de jours d'absence ou non travaillés à déduire du calcul.</p>
+                                <p>Utilisé uniquement pour proratiser l'aide sur la première année.</p>
                             </div>
                         </div>
 
@@ -184,21 +204,33 @@
                 <div class="aid-calc-result-head">
                     <span class="aid-calc-result-icon" aria-hidden="true">€</span>
                     <div>
-                        <span id="aid-result-title" class="aid-calc-result-label">Montant estimé</span>
-                        <strong class="aid-calc-result-amount text-italic" data-aid-result-amount>5 000 €</strong>
+                        <span id="aid-result-title" class="aid-calc-result-label">Reste à charge mensuel estimé</span>
+                        <strong class="aid-calc-result-amount text-italic" data-aid-result-amount>367,23 € / mois</strong>
                     </div>
                 </div>
 
-                <p class="aid-calc-result-summary text-italic" data-aid-result-summary>Estimation pour une entreprise de moins de 250 salariés recrutant un apprenti en formation SBI Bac / Niveau 4.</p>
+                <p class="aid-calc-result-summary text-italic" data-aid-result-summary>Pour un apprenti de 19 ans : 43 % du SMIC, soit 783,90 € brut / mois. Aide déduite : 5 000 €.</p>
 
                 <div class="aid-calc-result-metrics">
                     <div>
-                        <span>Base d'aide :</span>
-                        <strong data-aid-base>5 000 €</strong>
+                        <span>Reste total :</span>
+                        <strong data-aid-total-cost>4 406,80 €</strong>
                     </div>
                     <div>
-                        <span>Prorata :</span>
-                        <strong data-aid-ratio>100 %</strong>
+                        <span>Salaire mensuel brut :</span>
+                        <strong data-aid-monthly-salary>783,90 €</strong>
+                    </div>
+                    <div>
+                        <span>Aide estimée :</span>
+                        <strong data-aid-estimated-aid>5 000 €</strong>
+                    </div>
+                    <div>
+                        <span>Durée retenue :</span>
+                        <strong data-aid-contract-duration>12 mois</strong>
+                    </div>
+                    <div>
+                        <span>Barème :</span>
+                        <strong data-aid-rate>43 %</strong>
                     </div>
                     <div>
                         <span>Statut :</span>
@@ -208,15 +240,15 @@
 
                 <div class="aid-calc-handicap-note">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="5" r="2"></circle><path d="M9 7v6h5l3 5"></path><path d="M7 13a5 5 0 1 0 5 5"></path></svg>
-                    <span>Apprenti en situation de handicap : <strong>jusqu'à 6 000 €</strong></span>
+                    <span>Base standard : <strong>5 000 €</strong>. Apprenti en situation de handicap : <strong>jusqu'à 6 000 €</strong>.</span>
                 </div>
 
                 <div class="aid-calc-legal-note">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 8v4"></path><path d="M12 16h.01"></path></svg>
-                    <span>Ce simulateur fournit une estimation indicative.<br>Il ne remplace pas l'instruction officielle du dossier.</span>
+                    <span>Estimation indicative basée sur les informations saisies. Le reste à charge réel peut varier selon le SMC, la convention collective, l'âge, le contrat, les aides applicables et la situation de l'employeur.</span>
                 </div>
 
-                <a href="contact.html?motif=estimation-aide" class="aid-calc-result-cta text-italic" data-aid-contact-link>Recevoir mon estimation <span>→</span></a>
+                <a href="contact.html?motif=estimation-aide" class="aid-calc-result-cta text-italic" data-aid-contact-link>Transférer cette estimation <span>→</span></a>
             </aside>
         </section>
 
@@ -226,14 +258,14 @@
                     <span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z"></path></svg></span>
                     <div>
                         <h2 class="text-italic">Versement automatique</h2>
-                        <p>L'aide est versée directement chaque mois à votre entreprise.</p>
+                        <p>L'aide employeur est estimée sur la première année du contrat.</p>
                     </div>
                 </div>
                 <div class="aid-calc-benefit">
                     <span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"></path></svg></span>
                     <div>
-                        <h2 class="text-italic">Zéro formalité</h2>
-                        <p>SBI s'occupe de toutes les démarches administratives.</p>
+                        <h2 class="text-italic">Lecture mensuelle</h2>
+                        <p>Le résultat affiche le reste à charge total et sa moyenne mensuelle.</p>
                     </div>
                 </div>
                 <div class="aid-calc-benefit">
@@ -313,9 +345,9 @@
         </div>
     </footer>
 
-    <script src="js/sbi-background.js?v=8.0P.10d"></script>
-    <script src="js/main.js?v=8.0P.46"></script>
-    <script type="module" src="js/sbi-aide-calculator.js?v=8.0P.10d"></script>
-    <script src="js/public-app-shell.js?v=8.0P.46"></script>
+    <script src="js/sbi-background.js?v=8.0P.67"></script>
+    <script src="js/main.js?v=8.0P.67"></script>
+    <script type="module" src="js/sbi-aide-calculator.js?v=8.0P.67"></script>
+    <script src="js/public-app-shell.js?v=8.0P.67"></script>
 </body>
 </html>
