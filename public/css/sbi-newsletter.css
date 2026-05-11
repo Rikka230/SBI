@@ -358,3 +358,202 @@
     outline-offset: 2px;
 }
 
+/* =========================================================
+   SBI 8.0P.82 - NEWSLETTER MOBILE CLEANUP
+   ---------------------------------------------------------
+   Le bloc mobile repasse en carte compacte : header lisible,
+   formulaire pleine largeur, consentement propre, zéro débordement.
+   ========================================================= */
+.section-newsletter,
+.section-newsletter * {
+    box-sizing: border-box;
+}
+
+.section-newsletter .newsletter-consent input[type="checkbox"] {
+    appearance: none;
+    -webkit-appearance: none;
+    display: inline-grid;
+    place-content: center;
+    flex: 0 0 auto;
+    width: 18px;
+    height: 18px;
+    min-height: 18px;
+    margin: 0.08rem 0 0;
+    border: 1px solid rgba(126, 181, 255, 0.58);
+    border-radius: 4px;
+    background: rgba(2, 8, 18, 0.92);
+    box-shadow: inset 0 0 0 1px rgba(0, 81, 255, 0.10);
+    outline: none;
+    cursor: pointer;
+}
+
+.section-newsletter .newsletter-consent input[type="checkbox"]::after {
+    content: "";
+    width: 5px;
+    height: 9px;
+    border: solid #ffffff;
+    border-width: 0 2px 2px 0;
+    opacity: 0;
+    transform: rotate(45deg) translateY(-1px);
+}
+
+.section-newsletter .newsletter-consent input[type="checkbox"]:checked {
+    border-color: rgba(0, 81, 255, 0.95);
+    background: var(--sbi-blue);
+    box-shadow: 0 0 0 3px rgba(0, 81, 255, 0.12);
+}
+
+.section-newsletter .newsletter-consent input[type="checkbox"]:checked::after {
+    opacity: 1;
+}
+
+.section-newsletter .newsletter-consent input[type="checkbox"]:focus-visible {
+    outline: 2px solid rgba(126, 181, 255, 0.78);
+    outline-offset: 3px;
+}
+
+.section-newsletter .newsletter-consent input[aria-invalid="true"] {
+    border-color: rgba(255, 120, 120, 0.9);
+    outline: 2px solid rgba(255, 120, 120, 0.42);
+    outline-offset: 3px;
+}
+
+@media (max-width: 768px) {
+    body[data-sbi-public-page="home"] .section-newsletter {
+        padding-top: clamp(2rem, 8vw, 3.4rem);
+        padding-bottom: clamp(3rem, 11vw, 4.5rem);
+    }
+
+    body[data-sbi-public-page="home"] .section-newsletter .newsletter-box {
+        display: grid !important;
+        grid-template-columns: 1fr !important;
+        gap: 1.1rem;
+        width: 100%;
+        max-width: 100%;
+        padding: 1.15rem;
+        overflow: hidden;
+        border-color: rgba(126, 181, 255, 0.22);
+        background:
+            linear-gradient(180deg, rgba(7, 12, 23, 0.94), rgba(3, 7, 14, 0.98)),
+            radial-gradient(circle at 100% 0%, rgba(0, 81, 255, 0.10), transparent 34%);
+    }
+
+    body[data-sbi-public-page="home"] .section-newsletter .news-text {
+        display: grid;
+        grid-template-columns: 44px minmax(0, 1fr);
+        align-items: center;
+        gap: 0.85rem;
+        width: 100%;
+        margin: 0;
+    }
+
+    body[data-sbi-public-page="home"] .section-newsletter .news-icon {
+        width: 44px;
+        height: 44px;
+        min-width: 44px;
+        box-shadow: 0 10px 22px rgba(0, 81, 255, 0.16);
+    }
+
+    body[data-sbi-public-page="home"] .section-newsletter .news-icon svg {
+        width: 20px;
+        height: 20px;
+    }
+
+    body[data-sbi-public-page="home"] .section-newsletter .news-text h3 {
+        margin: 0 0 0.16rem;
+        font-size: clamp(1.15rem, 6vw, 1.55rem);
+        line-height: 1.02;
+    }
+
+    body[data-sbi-public-page="home"] .section-newsletter .news-text p {
+        max-width: 100%;
+        margin: 0;
+        font-size: 0.78rem;
+        line-height: 1.35;
+    }
+
+    body[data-sbi-public-page="home"] .section-newsletter .news-form {
+        display: grid !important;
+        grid-template-columns: 1fr !important;
+        gap: 0.78rem;
+        width: 100%;
+        max-width: 100%;
+        margin: 0;
+        padding: 1.75rem 0.86rem 0.92rem;
+        border-color: rgba(0, 81, 255, 0.22);
+        box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.035),
+            0 14px 28px rgba(0, 0, 0, 0.22);
+    }
+
+    body[data-sbi-public-page="home"] .section-newsletter .news-form::before {
+        top: 0.58rem;
+        left: 0.86rem;
+        font-size: 0.58rem;
+        letter-spacing: 0.16em;
+    }
+
+    body[data-sbi-public-page="home"] .section-newsletter .news-form::after {
+        top: 0.91rem;
+        left: 8.15rem;
+        width: 32px;
+    }
+
+    body[data-sbi-public-page="home"] .section-newsletter .news-form .newsletter-email {
+        width: 100%;
+        height: 48px;
+        min-width: 0;
+        padding: 0 0.9rem;
+        font-size: 0.95rem;
+    }
+
+    body[data-sbi-public-page="home"] .section-newsletter .news-form .btn-primary {
+        width: 100%;
+        min-width: 0;
+        height: 50px;
+        font-size: 0.95rem;
+    }
+
+    body[data-sbi-public-page="home"] .section-newsletter .newsletter-consent {
+        grid-template-columns: 20px minmax(0, 1fr);
+        gap: 0.72rem;
+        margin-top: 0.02rem;
+        font-size: 0.8rem;
+        line-height: 1.38;
+    }
+
+    body[data-sbi-public-page="home"] .section-newsletter .newsletter-consent input[type="checkbox"] {
+        width: 20px;
+        height: 20px;
+        min-height: 20px;
+        margin-top: 0.02rem;
+    }
+
+    body[data-sbi-public-page="home"] .section-newsletter .newsletter-status {
+        min-height: 1.2rem;
+        font-size: 0.76rem;
+    }
+
+    body[data-sbi-public-page="home"] .section-newsletter .newsletter-legal-note {
+        grid-column: auto;
+        max-width: 100%;
+        margin: 0;
+        font-size: 0.76rem;
+        line-height: 1.45;
+    }
+}
+
+@media (max-width: 380px) {
+    body[data-sbi-public-page="home"] .section-newsletter .newsletter-box {
+        padding: 1rem;
+    }
+
+    body[data-sbi-public-page="home"] .section-newsletter .news-form {
+        padding-left: 0.78rem;
+        padding-right: 0.78rem;
+    }
+
+    body[data-sbi-public-page="home"] .section-newsletter .news-form::after {
+        display: none;
+    }
+}

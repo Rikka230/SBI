@@ -1915,3 +1915,67 @@ body[data-sbi-public-page="contact"] .contact-submit span:first-child {
         transform: none !important;
     }
 }
+
+/* =========================================================
+   SBI 8.0P.82 - CONTACT CHECKBOX CLEANUP
+   ---------------------------------------------------------
+   Remplace le rendu natif Android/Samsung des cases par une
+   case SBI contrôlée, sans double carré bleu parasite.
+   ========================================================= */
+body[data-sbi-public-page="contact"] .contact-consent input[type="checkbox"] {
+    appearance: none;
+    -webkit-appearance: none;
+    display: inline-grid;
+    place-content: center;
+    flex: 0 0 auto;
+    width: 18px;
+    height: 18px;
+    min-height: 18px;
+    margin: 0.05rem 0 0;
+    padding: 0;
+    border: 1px solid rgba(126, 181, 255, 0.58);
+    border-radius: 4px;
+    background: rgba(2, 8, 18, 0.92);
+    box-shadow: inset 0 0 0 1px rgba(0, 81, 255, 0.10);
+    outline: none;
+    cursor: pointer;
+}
+
+body[data-sbi-public-page="contact"] .contact-consent input[type="checkbox"]::after {
+    content: "";
+    width: 5px;
+    height: 9px;
+    border: solid #ffffff;
+    border-width: 0 2px 2px 0;
+    opacity: 0;
+    transform: rotate(45deg) translateY(-1px);
+}
+
+body[data-sbi-public-page="contact"] .contact-consent input[type="checkbox"]:checked {
+    border-color: rgba(0, 81, 255, 0.95);
+    background: var(--sbi-blue);
+    box-shadow: 0 0 0 3px rgba(0, 81, 255, 0.12);
+}
+
+body[data-sbi-public-page="contact"] .contact-consent input[type="checkbox"]:checked::after {
+    opacity: 1;
+}
+
+body[data-sbi-public-page="contact"] .contact-consent input[type="checkbox"]:focus-visible {
+    outline: 2px solid rgba(126, 181, 255, 0.78);
+    outline-offset: 3px;
+}
+
+@media (max-width: 768px) {
+    body[data-sbi-public-page="contact"] .contact-consent {
+        grid-template-columns: 18px minmax(0, 1fr) !important;
+        gap: 0.58rem !important;
+    }
+
+    body[data-sbi-public-page="contact"] .contact-consent input[type="checkbox"] {
+        width: 18px !important;
+        height: 18px !important;
+        min-height: 18px !important;
+        margin-top: 0.02rem !important;
+    }
+}
