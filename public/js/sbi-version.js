@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.89',
+  version: '8.0P.90',
   branch: 'public-pjax-app-shell',
   channel: 'PUBLIC PJAX APP SHELL',
-  stage: 'Public formation detail scrollbar styling and layout stability',
+  stage: 'Index formation sheet CSS availability hotfix',
   updatedAt: '2026-05-11',
-  label: 'SBI 8.0P.89 - FORMATION DETAIL SCROLLBAR STABILITY'
+  label: 'SBI 8.0P.90 - INDEX FORMATION SHEET CSS HOTFIX'
 };
 
 export function getSbiVersionLabel() {
