@@ -84,6 +84,30 @@ service firebase.storage {
       allow delete: if isAdmin();
     }
 
+
+
+    /* ============================================================
+       MÉDIAS PUBLICS FORMATIONS / RESSOURCES
+       ============================================================ */
+    match /site/formations/{formationId}/cover/{fileName} {
+      allow read: if true;
+      allow create, update: if isAdmin()
+        && request.resource.size < 20 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+      allow delete: if isAdmin();
+    }
+
+    match /site/resources/{resourceId}/{fileName} {
+      allow read: if true;
+      allow create, update: if isAdmin()
+        && request.resource.size < 60 * 1024 * 1024
+        && (
+          request.resource.contentType.matches('image/.*') ||
+          request.resource.contentType == 'application/pdf'
+        );
+      allow delete: if isAdmin();
+    }
+
     /* ============================================================
        MÉDIAS DES COURS
        ============================================================
