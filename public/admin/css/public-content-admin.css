@@ -1,5 +1,5 @@
 /* =========================================================
-   SBI 8.0P.87 - Admin catalogue public formations hotfix
+   SBI 8.0P.88 - Admin catalogue public formations hotfix
    ========================================================= */
 
 .public-content-admin-panel {
@@ -328,8 +328,8 @@
 }
 
 
-/* SBI 8.0P.87 - cloisonnement onglet + brochures désactivées temporairement */
-#tab-formations:not(.active) [data-sbi-public-formations-admin],
+/* SBI 8.0P.88 - cloisonnement onglet + brochures désactivées temporairement */
+#tab-public-formations:not(.active) [data-sbi-public-formations-admin],
 .public-content-admin-panel[hidden],
 .public-admin-brochure-field[hidden] {
     display: none !important;

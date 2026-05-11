@@ -17,7 +17,7 @@ import { storage } from '/js/firebase-init.js';
 import { compressImageFileToWebpBlob } from '/admin/js/course-media-storage.js';
 
 const COLLECTION = 'publicFormations';
-const VERSION = '8.0P.87';
+const VERSION = '8.0P.88';
 
 let mounted = false;
 let currentItems = [];
@@ -39,7 +39,7 @@ let adminRoot = null;
 
 function getAdminRoot(options = {}) {
   const explicitRoot = options?.root instanceof Element ? options.root : null;
-  const tabRoot = explicitRoot?.closest?.('#tab-formations') || explicitRoot || document.getElementById('tab-formations');
+  const tabRoot = explicitRoot?.closest?.('#tab-public-formations') || explicitRoot || document.getElementById('tab-public-formations');
   return tabRoot || document;
 }
 
@@ -48,7 +48,7 @@ function queryAdmin(selector) {
 }
 
 function isCatalogTabActive() {
-  const tab = document.getElementById('tab-formations');
+  const tab = document.getElementById('tab-public-formations');
   return !tab || tab.classList.contains('active');
 }
 
@@ -505,7 +505,7 @@ export function initPublicFormationsAdmin(options = {}) {
   const panel = queryAdmin('[data-sbi-public-formations-admin]');
 
   if (mounted && panel) return () => {};
-  if (!panel || !panel.closest('#tab-formations')) return () => {};
+  if (!panel || !panel.closest('#tab-public-formations')) return () => {};
 
   mounted = true;
   cleanupFns = [];

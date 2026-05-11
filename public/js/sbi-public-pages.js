@@ -19,7 +19,7 @@ async function getFirestoreTools() {
 
 const PUBLIC_FORMATIONS_COLLECTION = 'publicFormations';
 const PUBLIC_RESOURCES_COLLECTION = 'publicResources';
-const PUBLIC_CONTENT_VERSION = '8.0P.87';
+const PUBLIC_CONTENT_VERSION = '8.0P.88';
 
 const DEFAULT_COVER_LABEL = 'SBI';
 
@@ -374,6 +374,76 @@ function createFormationDetails(formation) {
   return details;
 }
 
+function closeFormationSheet(sheet) {
+  const target = sheet || document.querySelector('[data-sbi-formation-sheet]');
+  if (!target) return;
+
+  const keyHandler = target.__sbiKeyHandler;
+  if (keyHandler) document.removeEventListener('keydown', keyHandler);
+  target.classList.remove('is-open');
+  document.documentElement.classList.remove('sbi-formation-sheet-open');
+  document.body.classList.remove('sbi-formation-sheet-open');
+  window.setTimeout(() => target.remove(), 180);
+}
+
+function openFormationSheet(formation) {
+  if (!formation || isComingSoon(formation)) return;
+
+  closeFormationSheet();
+
+  const sheet = createElement('aside', 'public-formation-sheet');
+  sheet.dataset.sbiFormationSheet = 'true';
+  sheet.setAttribute('role', 'dialog');
+  sheet.setAttribute('aria-modal', 'true');
+  sheet.setAttribute('aria-label', `Fiche formation ${formation.title}`);
+
+  const shell = createElement('div', 'public-formation-sheet-shell');
+  const closeButton = document.createElement('button');
+  closeButton.type = 'button';
+  closeButton.className = 'public-formation-sheet-close';
+  closeButton.setAttribute('aria-label', 'Fermer la fiche formation');
+  closeButton.textContent = '×';
+
+  const hero = createElement('div', 'public-formation-sheet-hero');
+  const cover = createElement('div', 'public-formation-sheet-cover');
+  applyCoverBackground(cover, formation);
+  const heroCopy = createElement('div', 'public-formation-sheet-hero-copy');
+  heroCopy.append(createElement('span', 'public-formation-kicker text-italic', formation.category || 'Formation SBI'));
+  heroCopy.append(createElement('h2', 'text-italic', formation.title));
+  if (formation.subtitle) heroCopy.append(createElement('p', 'text-italic', formation.subtitle));
+  hero.append(cover, heroCopy);
+
+  const body = createElement('div', 'public-formation-sheet-body');
+  const meta = createElement('div', 'public-formation-sheet-meta');
+  [formation.level, formation.duration, formation.modality, formation.targetAudience].filter(Boolean).forEach((value) => {
+    meta.append(createElement('span', 'text-italic', value));
+  });
+  if (meta.children.length) body.append(meta);
+
+  const details = createFormationDetails(formation);
+  details.hidden = false;
+  body.append(details);
+
+  shell.append(closeButton, hero, body);
+  sheet.append(shell);
+  document.body.append(sheet);
+
+  const keyHandler = (event) => {
+    if (event.key === 'Escape') closeFormationSheet(sheet);
+  };
+  sheet.__sbiKeyHandler = keyHandler;
+  document.addEventListener('keydown', keyHandler);
+  closeButton.addEventListener('click', () => closeFormationSheet(sheet));
+  sheet.addEventListener('click', (event) => {
+    if (event.target === sheet) closeFormationSheet(sheet);
+  });
+
+  document.documentElement.classList.add('sbi-formation-sheet-open');
+  document.body.classList.add('sbi-formation-sheet-open');
+  window.requestAnimationFrame(() => sheet.classList.add('is-open'));
+  closeButton.focus({ preventScroll: true });
+}
+
 function createFormationCard(formation, options = {}) {
   const isHome = options.mode === 'home';
   const article = createElement('article', isHome ? 'parcours-card fade-in visible sbi-home-formation-card' : 'public-formation-card fade-in visible');
@@ -423,30 +493,21 @@ function createFormationCard(formation, options = {}) {
   if (isHome) {
     article.tabIndex = 0;
     article.setAttribute('role', 'button');
-    article.setAttribute('aria-label', `Afficher un aperçu de la formation ${formation.title}`);
+    article.setAttribute('aria-label', `Ouvrir la fiche formation ${formation.title}`);
     return article;
   }
 
   const toggle = document.createElement('button');
   toggle.type = 'button';
   toggle.className = 'public-formation-toggle text-italic';
-  toggle.textContent = 'Voir le détail';
-  toggle.setAttribute('aria-expanded', 'false');
-
-  const details = createFormationDetails(formation);
-  const detailId = `formation-detail-${formation.slug || formation.id}`;
-  details.id = detailId;
-  toggle.setAttribute('aria-controls', detailId);
-
-  toggle.addEventListener('click', () => {
-    const expanded = article.classList.toggle('is-open');
-    details.hidden = !expanded;
-    toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
-    toggle.textContent = expanded ? 'Refermer' : 'Voir le détail';
+  toggle.textContent = 'Ouvrir la fiche complète';
+  toggle.addEventListener('click', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    openFormationSheet(formation);
   });
 
   content.append(toggle);
-  article.append(details);
   return article;
 }
 
@@ -554,7 +615,6 @@ function renderHomePreview(panel, formation) {
 }
 
 function bindHomeFormationCards(root, formations) {
-  const panel = createHomePreviewPanel(root);
   const byId = new Map(formations.map((formation) => [formation.id, formation]));
 
   root.querySelectorAll('[data-sbi-home-formations-feed] .sbi-home-formation-card').forEach((card) => {
@@ -564,7 +624,7 @@ function bindHomeFormationCards(root, formations) {
     const activate = () => {
       root.querySelectorAll('.sbi-home-formation-card.is-selected').forEach((node) => node.classList.remove('is-selected'));
       card.classList.add('is-selected');
-      renderHomePreview(panel, formation);
+      openFormationSheet(formation);
     };
 
     card.addEventListener('click', activate);
@@ -629,6 +689,10 @@ async function initFormationsPage(root) {
   if (hash) {
     const target = grid.querySelector(`[data-formation-slug="${hash}"]`);
     target?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+    const formation = visible.find((item) => item.slug === hash);
+    if (formation && !isComingSoon(formation)) {
+      window.setTimeout(() => openFormationSheet(formation), 180);
+    }
   }
 }
 

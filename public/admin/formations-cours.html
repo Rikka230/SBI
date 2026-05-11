@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="css/admin.css">
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
     <link rel="stylesheet" href="css/admin-notifications.css">
-    <link rel="stylesheet" href="css/public-content-admin.css?v=8.0P.87">
+    <link rel="stylesheet" href="css/public-content-admin.css?v=8.0P.88">
     <link rel="stylesheet" href="/css/sbi-7-1-harmonization.css">
     <script src="js/components.js"></script>
 
@@ -110,6 +110,7 @@
                 <div class="sub-nav-item active" onclick="switchCourseTab('tab-list')" id="nav-tab-list">Bibliothèque</div>
                 <div class="sub-nav-item" onclick="switchCourseTab('tab-editor')" id="nav-tab-editor">Éditeur de Cours</div>
                 <div class="sub-nav-item" onclick="switchCourseTab('tab-formations')" id="nav-tab-formations">Catégories & Accès</div>
+                <div class="sub-nav-item" onclick="switchCourseTab('tab-public-formations')" id="nav-tab-public-formations">Catalogue public</div>
                 <div class="sub-nav-item" onclick="switchCourseTab('tab-tracking')" id="nav-tab-tracking">Suivi Pédagogique</div>
             </div>
 
@@ -236,6 +237,9 @@
                 <div id="formations-list-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem;">
                     <p style="color: var(--text-muted);">Chargement de vos formations...</p>
                 </div>
+            </div>
+
+            <div id="tab-public-formations" class="course-section">
 
 
 
@@ -559,7 +563,7 @@
 </script>
 
 <script type="module" src="js/admin-ui.js"></script>
-<script type="module" src="js/admin-courses.js?v=8.0P.87"></script>
+<script type="module" src="js/admin-courses.js?v=8.0P.88"></script>
 <script type="module" src="js/tracker.js"></script>
 <script type="module" src="js/admin-notifications.js"></script>
 </body>

@@ -117,18 +117,18 @@ function openFormationModal(formationId) {
 window.openFormationModal = openFormationModal;
 
 async function mountPublicFormationsAdminSafely(cleanups) {
-    const publicCatalogRoot = document.querySelector('#tab-formations [data-sbi-public-formations-admin]');
+    const publicCatalogRoot = document.querySelector('#tab-public-formations [data-sbi-public-formations-admin]');
 
     if (!publicCatalogRoot) return;
 
     try {
-        const module = await import('/admin/js/public-formations-admin.js?v=8.0P.87');
+        const module = await import('/admin/js/public-formations-admin.js?v=8.0P.88');
         const initPublicFormationsAdmin = module?.initPublicFormationsAdmin || window.SBI_INIT_PUBLIC_FORMATIONS_ADMIN;
 
         if (typeof initPublicFormationsAdmin !== 'function') return;
 
         const cleanupPublicFormationsAdmin = initPublicFormationsAdmin({
-            root: document.getElementById('tab-formations') || publicCatalogRoot,
+            root: document.getElementById('tab-public-formations') || publicCatalogRoot,
             source: 'admin-courses'
         });
 
