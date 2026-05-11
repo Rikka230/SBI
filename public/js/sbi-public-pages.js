@@ -3,7 +3,7 @@ let firestoreToolsPromise = null;
 async function getFirestoreTools() {
   if (!firestoreToolsPromise) {
     firestoreToolsPromise = Promise.all([
-      import('/js/firebase-init.js?v=8.0P.91'),
+      import('/js/firebase-init.js?v=8.0P.92'),
       import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js")
     ]).then(([firebaseModule, firestoreModule]) => ({
       db: firebaseModule.db,
@@ -19,7 +19,7 @@ async function getFirestoreTools() {
 
 const PUBLIC_FORMATIONS_COLLECTION = 'publicFormations';
 const PUBLIC_RESOURCES_COLLECTION = 'publicResources';
-const PUBLIC_CONTENT_VERSION = '8.0P.91';
+const PUBLIC_CONTENT_VERSION = '8.0P.92';
 
 const DEFAULT_COVER_LABEL = 'SBI';
 
@@ -369,23 +369,54 @@ function createFormationDetails(formation) {
   const ctaLabel = text(formation.cta?.label, 'Demander des informations');
   const cta = createElement('a', 'public-inline-link public-formation-cta text-italic', `${ctaLabel} ->`);
   cta.href = ctaHref;
+  cta.addEventListener('click', forceCloseFormationSheet);
   details.append(cta);
 
   return details;
 }
 
-function closeFormationSheet(sheet) {
-  const target = sheet || document.querySelector('[data-sbi-formation-sheet]');
+function unlockFormationSheetScrollState() {
+  document.documentElement.classList.remove('sbi-formation-sheet-open');
+  document.body?.classList.remove('sbi-formation-sheet-open');
+  document.documentElement.style.removeProperty('--sbi-scrollbar-compensation');
+}
+
+function closeFormationSheet(sheet, options = {}) {
+  let target = sheet || document.querySelector('[data-sbi-formation-sheet]');
+  let closeOptions = options || {};
+
+  if (sheet && typeof sheet === 'object' && !sheet.nodeType) {
+    target = document.querySelector('[data-sbi-formation-sheet]');
+    closeOptions = sheet;
+  }
+
+  unlockFormationSheetScrollState();
+
   if (!target) return;
 
   const keyHandler = target.__sbiKeyHandler;
-  if (keyHandler) document.removeEventListener('keydown', keyHandler);
+  if (keyHandler) {
+    document.removeEventListener('keydown', keyHandler);
+    target.__sbiKeyHandler = null;
+  }
+
   target.classList.remove('is-open');
-  document.documentElement.classList.remove('sbi-formation-sheet-open');
-  document.body.classList.remove('sbi-formation-sheet-open');
-  document.documentElement.style.removeProperty('--sbi-scrollbar-compensation');
+
+  if (closeOptions.immediate) {
+    target.remove();
+    return;
+  }
+
   window.setTimeout(() => target.remove(), 180);
 }
+
+function forceCloseFormationSheet() {
+  closeFormationSheet(null, { immediate: true });
+}
+
+window.SBI_CLOSE_PUBLIC_FORMATION_SHEET = forceCloseFormationSheet;
+window.addEventListener('sbi:public-shell:before-navigate', forceCloseFormationSheet);
+window.addEventListener('pagehide', forceCloseFormationSheet);
 
 function openFormationSheet(formation) {
   if (!formation || isComingSoon(formation)) return;
@@ -978,7 +1009,7 @@ async function hydrateContactDecorativeVideo(root) {
   if (!(video instanceof HTMLVideoElement)) return;
 
   try {
-    const mediaModule = await import('/js/site-index-public.js?v=8.0P.91');
+    const mediaModule = await import('/js/site-index-public.js?v=8.0P.92');
     const initMedia = mediaModule.initSiteIndexMedia || window.SBI_INIT_SITE_INDEX_MEDIA;
     if (typeof initMedia === 'function') await initMedia({ forceRefresh: false });
   } catch (error) {

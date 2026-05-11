@@ -8,7 +8,7 @@
  * - espaces admin/student/teacher et viewers toujours protégés en reload.
  */
 
-const PUBLIC_SHELL_VERSION = '8.0P.91';
+const PUBLIC_SHELL_VERSION = '8.0P.92';
 const DISABLED_FLAG = 'sbiPublicShellDisabled';
 const READY_CLASS = 'sbi-public-shell-ready';
 const SCROLLING_CLASS = 'sbi-public-shell-scrolling';
@@ -498,6 +498,30 @@ function renderBodyFragment(nextFragment) {
   }
 }
 
+function cleanupPublicNavigationArtifacts({ source = 'navigation' } = {}) {
+  try {
+    window.dispatchEvent(new CustomEvent('sbi:public-shell:before-navigate', {
+      detail: { source }
+    }));
+  } catch {}
+
+  try {
+    if (typeof window.SBI_CLOSE_PUBLIC_FORMATION_SHEET === 'function') {
+      window.SBI_CLOSE_PUBLIC_FORMATION_SHEET({ immediate: true, source });
+    }
+  } catch (error) {
+    console.warn('[SBI Public Shell] Nettoyage fiche formation indisponible :', error);
+  }
+
+  document.querySelectorAll('[data-sbi-formation-sheet], .public-formation-sheet').forEach((node) => {
+    try { node.remove(); } catch {}
+  });
+
+  document.documentElement.classList.remove('sbi-formation-sheet-open');
+  document.body?.classList.remove('sbi-formation-sheet-open');
+  document.documentElement.style.removeProperty('--sbi-scrollbar-compensation');
+}
+
 function syncBodyAttributes(nextDocument, pageId, enabled) {
   const nextClassName = nextDocument.body?.className || '';
   const classesToPreserve = [
@@ -549,7 +573,7 @@ async function runPageInitializers(pageId) {
 
   if (pageId === 'home') {
     try {
-      const mediaModule = await import('/js/site-index-public.js?v=8.0P.91');
+      const mediaModule = await import('/js/site-index-public.js?v=8.0P.92');
       const initMedia = mediaModule.initSiteIndexMedia || window.SBI_INIT_SITE_INDEX_MEDIA;
       if (typeof initMedia === 'function') await initMedia({ forceRefresh: false });
     } catch (error) {
@@ -579,7 +603,7 @@ async function runPageInitializers(pageId) {
 
   if (['home', 'formations', 'parcours', 'apropos', 'ressources', 'contact'].includes(pageId)) {
     try {
-      const publicPagesModule = await import('/js/sbi-public-pages.js?v=8.0P.91');
+      const publicPagesModule = await import('/js/sbi-public-pages.js?v=8.0P.92');
       const initPublicPages = publicPagesModule.initSbiPublicPages || window.SBI_INIT_PUBLIC_PAGES;
       if (typeof initPublicPages === 'function') initPublicPages(document);
     } catch (error) {
@@ -590,6 +614,8 @@ async function runPageInitializers(pageId) {
 
 async function renderPublicPage(url, decision, { historyMode = 'push', behavior = 'smooth', source = 'click' } = {}) {
   if (pageTransitionPromise) return pageTransitionPromise;
+
+  cleanupPublicNavigationArtifacts({ source });
 
   pageTransitionPromise = (async () => {
     const enabled = !safeReadFlag(DISABLED_FLAG);
@@ -683,6 +709,8 @@ function navigatePublic(url, { historyMode = 'push', behavior = 'smooth', source
 
   const currentPageId = getRenderedPublicPageId();
   const samePage = currentPageId === decision.page;
+
+  cleanupPublicNavigationArtifacts({ source });
 
   if (samePage) {
     const target = decision.targetId ? getAnchorTarget(`#${decision.targetId}`) : null;
