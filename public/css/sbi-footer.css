@@ -254,6 +254,23 @@
     font-size: 0.78rem;
 }
 
+
+.sbi-footer .footer-powered {
+    color: rgba(138, 147, 166, 0.82);
+    font-weight: 700;
+}
+
+.sbi-footer .footer-powered a {
+    color: rgba(255, 255, 255, 0.78);
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.sbi-footer .footer-powered a:hover {
+    color: #ffffff;
+}
+
 .sbi-footer .footer-bottom-signature {
     color: rgba(255, 255, 255, 0.72);
     font-weight: 800;

@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.74',
-  branch: 'public-pjax-app-shell',
+  version: '8.0P.75',
+  branch: 'legal-pages-footer',
   channel: 'PUBLIC PJAX APP SHELL',
-  stage: 'Login background + contact feedback scroll',
+  stage: 'Legal pages + footer links',
   updatedAt: '2026-05-11',
-  label: 'SBI 8.0P.74 - LOGIN BACKGROUND + CONTACT FEEDBACK SCROLL'
+  label: 'SBI 8.0P.75 - LEGAL PAGES + FOOTER LINKS'
 };
 
 export function getSbiVersionLabel() {

@@ -90,7 +90,7 @@ if (shouldEnableAnalytics()) {
 }
 
 /* --- 1.7 MÉDIAS DYNAMIQUES & SHELL PUBLIC --- */
-const SBI_PUBLIC_BOOT_VERSION = '8.0P.21';
+const SBI_PUBLIC_BOOT_VERSION = '8.0P.75';
 const path = window.location.pathname.toLowerCase().replace(/\/+$/, '') || '/';
 const publicShellPaths = new Set([
     '/',
@@ -100,7 +100,12 @@ const publicShellPaths = new Set([
     '/a-propos.html',
     '/ressources.html',
     '/calculateur.html',
-    '/contact.html'
+    '/contact.html',
+    '/mentions-legales.html',
+    '/politique-confidentialite.html',
+    '/politique-cookies.html',
+    '/cgu.html',
+    '/accessibilite.html'
 ]);
 const publicHomePaths = new Set(['/', '/index.html']);
 const isPublicShellPage = publicShellPaths.has(path);
