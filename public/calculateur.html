@@ -5,12 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Calculateur de reste à charge alternance - Sport Business Institute</title>
 
-    <link rel="stylesheet" href="css/style.css?v=8.0P.69">
+    <link rel="stylesheet" href="css/style.css?v=8.0P.71">
     <link rel="stylesheet" href="css/sbi-newsletter.css">
     <link rel="stylesheet" href="css/sbi-footer.css">
-    <link rel="stylesheet" href="css/sbi-home-responsive.css?v=8.0P.69">
-    <link rel="stylesheet" href="css/sbi-mobile.css?v=8.0P.69">
-    <link rel="stylesheet" href="css/sbi-calculator.css?v=8.0P.69">
+    <link rel="stylesheet" href="css/sbi-home-responsive.css?v=8.0P.71">
+    <link rel="stylesheet" href="css/sbi-mobile.css?v=8.0P.71">
+    <link rel="stylesheet" href="css/sbi-calculator.css?v=8.0P.71">
     <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,600;0,800;0,900;1,400;1,600;1,800;1,900&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap" rel="stylesheet">
 </head>
@@ -79,8 +79,9 @@
         </section>
 
         <section id="simulateur" class="aid-calc-workspace padding-global sbi-aide-calculator" data-sbi-public-section="simulateur">
-            <div class="aid-calc-form-card fade-in">
-                <form class="aid-calc-form" novalidate>
+            <div class="aid-calc-column aid-calc-column-form">
+                <div class="aid-calc-form-card fade-in">
+                    <form class="aid-calc-form" novalidate>
                     <section class="aid-calc-step" aria-labelledby="company-step-title">
                         <div class="aid-calc-step-head">
                             <span class="aid-calc-step-index">1</span>
@@ -154,10 +155,36 @@
                     <p class="aid-calc-soft-error" data-aid-error role="status"></p>
 
                     <button type="submit" class="aid-calc-submit text-italic">Calculer mon estimation <span>→</span></button>
-                </form>
+                    </form>
+                </div>
+
+                <article class="aid-calc-support-card aid-calc-benefits-card fade-in">
+                    <div class="aid-calc-benefit">
+                        <span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z"></path></svg></span>
+                        <div>
+                            <h2 class="text-italic">Versement automatique</h2>
+                            <p>L'aide employeur est estimée sur une base forfaitaire par apprenti.</p>
+                        </div>
+                    </div>
+                    <div class="aid-calc-benefit">
+                        <span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"></path></svg></span>
+                        <div>
+                            <h2 class="text-italic">Lecture mensuelle</h2>
+                            <p>Le résultat affiche le reste à charge total et sa moyenne mensuelle.</p>
+                        </div>
+                    </div>
+                    <div class="aid-calc-benefit">
+                        <span><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="4"></circle><path d="M5.5 21a6.5 6.5 0 0 1 13 0"></path></svg></span>
+                        <div>
+                            <h2 class="text-italic">Accompagnement SBI</h2>
+                            <p>Nos experts restent à vos côtés avant, pendant et après.</p>
+                        </div>
+                    </div>
+                </article>
             </div>
 
-            <aside class="aid-calc-result-card fade-in" aria-live="polite" aria-labelledby="aid-result-title">
+            <div class="aid-calc-column aid-calc-column-result">
+                <aside class="aid-calc-result-card fade-in" aria-live="polite" aria-labelledby="aid-result-title">
                 <div class="aid-calc-result-head">
                     <span class="aid-calc-result-icon" aria-hidden="true">€</span>
                     <div>
@@ -201,36 +228,10 @@
                     <span>Estimation indicative basée sur une base annuelle de 12 mois et les informations saisies. Le reste à charge réel peut varier selon le SMC, la convention collective, l'âge, les aides applicables et la situation de l'employeur.</span>
                 </div>
 
-                <a href="contact.html?motif=estimation-aide" class="aid-calc-result-cta text-italic" data-aid-contact-link>Transférer cette estimation <span>→</span></a>
-            </aside>
-        </section>
+                    <a href="contact.html?motif=estimation-aide" class="aid-calc-result-cta text-italic" data-aid-contact-link>Transférer cette estimation <span>→</span></a>
+                </aside>
 
-        <section class="aid-calc-support-grid padding-global">
-            <article class="aid-calc-support-card aid-calc-benefits-card fade-in">
-                <div class="aid-calc-benefit">
-                    <span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z"></path></svg></span>
-                    <div>
-                        <h2 class="text-italic">Versement automatique</h2>
-                        <p>L'aide employeur est estimée sur une base forfaitaire par apprenti.</p>
-                    </div>
-                </div>
-                <div class="aid-calc-benefit">
-                    <span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"></path></svg></span>
-                    <div>
-                        <h2 class="text-italic">Lecture mensuelle</h2>
-                        <p>Le résultat affiche le reste à charge total et sa moyenne mensuelle.</p>
-                    </div>
-                </div>
-                <div class="aid-calc-benefit">
-                    <span><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="4"></circle><path d="M5.5 21a6.5 6.5 0 0 1 13 0"></path></svg></span>
-                    <div>
-                        <h2 class="text-italic">Accompagnement SBI</h2>
-                        <p>Nos experts restent à vos côtés avant, pendant et après.</p>
-                    </div>
-                </div>
-            </article>
-
-            <article class="aid-calc-support-card aid-calc-advisor-card fade-in">
+                <article class="aid-calc-support-card aid-calc-advisor-card fade-in">
                 <span class="aid-calc-advisor-icon" aria-hidden="true">
                     <svg viewBox="0 0 24 24"><path d="M4 13a8 8 0 0 1 16 0"></path><path d="M4 13v4a2 2 0 0 0 2 2h2v-8H6a2 2 0 0 0-2 2Z"></path><path d="M20 13v4a2 2 0 0 1-2 2h-2v-8h2a2 2 0 0 1 2 2Z"></path></svg>
                 </span>
@@ -238,8 +239,9 @@
                     <h2 class="text-italic">Besoin d'aide ?</h2>
                     <p>Un conseiller SBI vous accompagne à chaque étape de votre recrutement en alternance.</p>
                 </div>
-                <a href="contact.html?motif=conseiller-alternance" class="aid-calc-advisor-cta text-italic">Parler à un conseiller <span>→</span></a>
-            </article>
+                    <a href="contact.html?motif=conseiller-alternance" class="aid-calc-advisor-cta text-italic">Parler à un conseiller <span>→</span></a>
+                </article>
+            </div>
         </section>
     </main>
 
@@ -298,9 +300,9 @@
         </div>
     </footer>
 
-    <script src="js/sbi-background.js?v=8.0P.69"></script>
-    <script src="js/main.js?v=8.0P.69"></script>
-    <script type="module" src="js/sbi-aide-calculator.js?v=8.0P.69"></script>
-    <script src="js/public-app-shell.js?v=8.0P.69"></script>
+    <script src="js/sbi-background.js?v=8.0P.71"></script>
+    <script src="js/main.js?v=8.0P.71"></script>
+    <script type="module" src="js/sbi-aide-calculator.js?v=8.0P.71"></script>
+    <script src="js/public-app-shell.js?v=8.0P.71"></script>
 </body>
 </html>
