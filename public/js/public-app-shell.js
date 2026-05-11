@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.71 - Calculator layout harmonization
+ * SBI 8.0P.72 - Contact mobile frame cleanup
  *
  * Shell public prudent :
  * - navigation fluide des ancres de l'index ;
@@ -8,7 +8,7 @@
  * - espaces admin/student/teacher et viewers toujours protégés en reload.
  */
 
-const PUBLIC_SHELL_VERSION = '8.0P.71';
+const PUBLIC_SHELL_VERSION = '8.0P.72';
 const DISABLED_FLAG = 'sbiPublicShellDisabled';
 const READY_CLASS = 'sbi-public-shell-ready';
 const SCROLLING_CLASS = 'sbi-public-shell-scrolling';

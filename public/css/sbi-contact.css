@@ -1744,3 +1744,33 @@ body[data-sbi-public-page="contact"] .contact-submit span:first-child {
         transform: none;
     }
 }
+
+
+/* =========================================================
+   SBI 8.0P.72 - CONTACT MOBILE FRAME CLEANUP
+   ---------------------------------------------------------
+   Supprime le faux double cadre en bas du formulaire mobile.
+   Le signal assistant décoratif était sorti du bloc interne et
+   ajoutait une zone basse vide avec un losange bleu. Sur mobile,
+   le statut visible reste géré par .contact-form-status.
+   ========================================================= */
+@media (max-width: 768px) {
+    body[data-sbi-public-page="contact"] .contact-form-card {
+        overflow: hidden;
+    }
+
+    body[data-sbi-public-page="contact"] .contact-card-inner {
+        min-height: 0;
+        height: auto;
+        padding-bottom: 2rem;
+    }
+
+    body[data-sbi-public-page="contact"] .sbi-signal-contact {
+        display: none !important;
+    }
+
+    body[data-sbi-public-page="contact"] .contact-card-cut {
+        right: -1px;
+        bottom: -1px;
+    }
+}
