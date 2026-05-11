@@ -1,5 +1,5 @@
 /* =========================================================
-   SBI 8.0P.76 - Pages légales
+   SBI 8.0P.77 - Pages légales
    ---------------------------------------------------------
    Extension sobre du shell public : lisibilité, cartes fines,
    navigation interne et responsive sans scroll horizontal.
@@ -80,10 +80,12 @@ body[data-sbi-public-page="accessibilite"] {
 }
 
 .legal-title {
+    max-width: 100%;
     margin-top: 0.9rem;
     font-size: clamp(2.65rem, 6vw, 6.2rem);
     line-height: 0.92;
     letter-spacing: -0.035em;
+    overflow-wrap: normal;
 }
 
 .legal-lead {
@@ -237,8 +239,32 @@ body[data-sbi-public-page="accessibilite"] {
         display: none;
     }
 
+    body[data-sbi-public-page="mentions-legales"] .sbi-field-parallax,
+    body[data-sbi-public-page="confidentialite"] .sbi-field-parallax,
+    body[data-sbi-public-page="cookies"] .sbi-field-parallax,
+    body[data-sbi-public-page="cgu"] .sbi-field-parallax,
+    body[data-sbi-public-page="accessibilite"] .sbi-field-parallax {
+        display: none !important;
+    }
+
+    body[data-sbi-public-page="mentions-legales"] .sbi-bg-fixed,
+    body[data-sbi-public-page="confidentialite"] .sbi-bg-fixed,
+    body[data-sbi-public-page="cookies"] .sbi-bg-fixed,
+    body[data-sbi-public-page="cgu"] .sbi-bg-fixed,
+    body[data-sbi-public-page="accessibilite"] .sbi-bg-fixed {
+        opacity: 0.28;
+    }
+
+    body[data-sbi-public-page="mentions-legales"]::before,
+    body[data-sbi-public-page="confidentialite"]::before,
+    body[data-sbi-public-page="cookies"]::before,
+    body[data-sbi-public-page="cgu"]::before,
+    body[data-sbi-public-page="accessibilite"]::before {
+        opacity: 0.22;
+    }
+
     .legal-title {
-        letter-spacing: -0.025em;
+        letter-spacing: -0.018em;
     }
 }
 
@@ -255,16 +281,38 @@ body[data-sbi-public-page="accessibilite"] {
 
 @media (max-width: 560px) {
     .legal-hero {
-        padding-top: 4rem;
+        padding-top: 3.25rem;
     }
 
     .legal-hero-card {
-        padding: 1.35rem;
+        padding: 1.18rem;
         clip-path: polygon(0 0, 100% 0, 100% calc(100% - 22px), calc(100% - 22px) 100%, 0 100%);
     }
 
     .legal-title {
-        font-size: clamp(2.35rem, 15vw, 3.8rem);
+        font-size: clamp(1.92rem, 10.8vw, 2.85rem);
+        line-height: 0.96;
+        letter-spacing: -0.012em;
+    }
+
+    body[data-sbi-public-page="cgu"] .legal-title,
+    body[data-sbi-public-page="confidentialite"] .legal-title {
+        font-size: clamp(1.45rem, 7.4vw, 2.05rem);
+        line-height: 1;
+        letter-spacing: -0.004em;
+    }
+
+    .legal-lead {
+        font-size: 0.98rem;
+        line-height: 1.62;
+    }
+
+    .legal-updated {
+        width: 100%;
+        justify-content: center;
+        text-align: center;
+        font-size: 0.7rem;
+        letter-spacing: 0.025em;
     }
 
     .legal-definition-list {
@@ -274,5 +322,17 @@ body[data-sbi-public-page="accessibilite"] {
 
     .legal-section-card {
         padding: 1.15rem;
+    }
+}
+
+
+@media (max-width: 390px) {
+    .legal-title {
+        font-size: clamp(1.72rem, 9.4vw, 2.25rem);
+    }
+
+    body[data-sbi-public-page="cgu"] .legal-title,
+    body[data-sbi-public-page="confidentialite"] .legal-title {
+        font-size: clamp(1.32rem, 6.9vw, 1.82rem);
     }
 }
