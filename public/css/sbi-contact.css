@@ -1572,6 +1572,21 @@ body[data-sbi-public-page="contact"] .sbi-signal-contact {
         min-height: 54px;
     }
 
+    body[data-sbi-public-page="contact"] .contact-submit {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
+        padding-left: 1rem;
+        padding-right: 1rem;
+        overflow: hidden;
+        clip-path: polygon(0 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%);
+    }
+
+    body[data-sbi-public-page="contact"] .contact-submit .arrow {
+        flex: 0 0 auto;
+    }
+
     body[data-sbi-public-page="contact"] .sbi-signal-contact {
         position: relative;
         top: auto;
@@ -1594,5 +1609,13 @@ body[data-sbi-public-page="contact"] .sbi-signal-contact {
     body[data-sbi-public-page="contact"] .contact-card-inner {
         padding-left: 1rem;
         padding-right: 1rem;
+    }
+
+
+    body[data-sbi-public-page="contact"] .contact-submit {
+        min-height: 50px;
+        padding-left: 0.82rem;
+        padding-right: 0.82rem;
+        font-size: 0.88rem;
     }
 }

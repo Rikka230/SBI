@@ -1,4 +1,4 @@
-const SBI_AID_CALCULATOR_VERSION = '8.0P.67';
+const SBI_AID_CALCULATOR_VERSION = '8.0P.68';
 const SBI_RNCP_LEVEL = 4;
 const DEFAULT_SMIC_MONTHLY = 1823.03;
 const STANDARD_AID_AMOUNT = 5000;
@@ -112,7 +112,7 @@ function getApprenticeRate(age) {
   };
 }
 
-function getDurationInfo(startDate, endDate, nonExecutedDays = 0) {
+function getDurationInfo(startDate, endDate) {
   if (!startDate || !endDate) {
     return {
       isValid: false,
@@ -134,12 +134,9 @@ function getDurationInfo(startDate, endDate, nonExecutedDays = 0) {
   }
 
   const contractDays = Math.max(1, daysBetween(startDate, endDate) + 1);
-  const firstYearEnd = new Date(Math.min(endDate.getTime(), addYearsMinusOneDay(startDate).getTime()));
-  const firstYearTheoreticalDays = Math.max(1, daysBetween(startDate, firstYearEnd) + 1);
-  const firstYearExecutedDays = Math.max(0, firstYearTheoreticalDays - Math.max(0, nonExecutedDays));
   const referenceDays = isLeapYear(startDate.getFullYear()) ? 366 : 365;
   const contractMonths = Math.max(1, roundMoney((contractDays / referenceDays) * 12));
-  const aidRatio = Math.min(1, firstYearExecutedDays / referenceDays);
+  const aidRatio = 1;
 
   return {
     isValid: true,
@@ -162,15 +159,14 @@ function getState(root) {
     smicMonthly: parseFrenchNumber(fieldValue('smicMonthly'), DEFAULT_SMIC_MONTHLY),
     signatureDate: fieldValue('signatureDate'),
     contractStartDate: fieldValue('contractStartDate'),
-    contractEndDate: fieldValue('contractEndDate'),
-    nonExecutedDays: Math.max(0, Number.parseInt(fieldValue('nonExecutedDays') || '0', 10) || 0)
+    contractEndDate: fieldValue('contractEndDate')
   };
 }
 
 function calculateAid(state) {
   const startDate = parseLocalDate(state.contractStartDate);
   const endDate = parseLocalDate(state.contractEndDate);
-  const duration = getDurationInfo(startDate, endDate, state.nonExecutedDays);
+  const duration = getDurationInfo(startDate, endDate);
   const apprenticeRate = getApprenticeRate(state.apprenticeAge);
   const smicMonthly = state.smicMonthly > 0 ? state.smicMonthly : DEFAULT_SMIC_MONTHLY;
   const monthlySalary = roundMoney(smicMonthly * apprenticeRate.rate);
@@ -193,7 +189,7 @@ function calculateAid(state) {
   }
 
   const estimatedAid = duration.isValid && baseAid > 0
-    ? roundMoney(baseAid * duration.aidRatio)
+    ? roundMoney(baseAid)
     : 0;
   const totalRemainder = duration.isValid
     ? Math.max(0, roundMoney(totalGrossSalary - estimatedAid))
@@ -214,8 +210,6 @@ function calculateAid(state) {
     '',
     `Âge de l'apprenti : ${state.apprenticeAge || '-'} ans`,
     `Barème appliqué : ${apprenticeRate.label} - ${apprenticeRate.detail}`,
-    `SMIC brut mensuel retenu : ${formatEuro(smicMonthly, { digits: 2 })}`,
-    `Durée du contrat retenue : ${formatMonths(duration.contractMonths)} (${duration.contractDays || 0} jours)`,
     `Salaire brut mensuel estimé : ${formatEuro(monthlySalary, { digits: 2 })}`,
     `Coût brut total estimé : ${formatEuro(totalGrossSalary, { digits: 2 })}`,
     `Aide employeur estimée : ${formatEuro(estimatedAid, { digits: 2 })}`,
@@ -279,7 +273,6 @@ function updateResult(root) {
   setText(root, '[data-aid-total-cost]', isCalculable ? formatEuro(result.totalRemainder, { digits: 2 }) : 'À vérifier');
   setText(root, '[data-aid-monthly-salary]', formatEuro(result.monthlySalary, { digits: 2 }));
   setText(root, '[data-aid-estimated-aid]', formatEuro(result.estimatedAid));
-  setText(root, '[data-aid-contract-duration]', formatMonths(result.contractMonths));
   setText(root, '[data-aid-rate]', formatPercent(result.apprenticeRate.rate));
   setText(root, '[data-aid-status]', statusLabel(result.status));
   setText(root, '[data-aid-error]', result.dateWarning || '');
