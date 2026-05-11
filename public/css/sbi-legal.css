@@ -1,5 +1,5 @@
 /* =========================================================
-   SBI 8.0P.75 - Pages légales
+   SBI 8.0P.76 - Pages légales
    ---------------------------------------------------------
    Extension sobre du shell public : lisibilité, cartes fines,
    navigation interne et responsive sans scroll horizontal.
@@ -83,7 +83,7 @@ body[data-sbi-public-page="accessibilite"] {
     margin-top: 0.9rem;
     font-size: clamp(2.65rem, 6vw, 6.2rem);
     line-height: 0.92;
-    letter-spacing: -0.07em;
+    letter-spacing: -0.035em;
 }
 
 .legal-lead {
@@ -228,6 +228,18 @@ body[data-sbi-public-page="accessibilite"] {
 
 .legal-section-card a:hover {
     color: #fff;
+}
+
+
+@media (max-width: 768px) {
+    .legal-page::before {
+        content: none;
+        display: none;
+    }
+
+    .legal-title {
+        letter-spacing: -0.025em;
+    }
 }
 
 @media (max-width: 900px) {
