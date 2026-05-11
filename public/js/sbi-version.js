@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.60',
+  version: '8.0P.61',
   branch: 'public-pjax-app-shell',
   channel: 'PUBLIC PJAX APP SHELL',
-  stage: 'About hero true mockup rebuild',
+  stage: 'About hero founder centered bronze ghost cleanup',
   updatedAt: '2026-05-10',
-  label: 'SBI 8.0P.60 - ABOUT HERO TRUE MOCKUP REBUILD'
+  label: 'SBI 8.0P.61 - ABOUT HERO CENTER + BRONZE CLEANUP'
 };
 
 export function getSbiVersionLabel() {
