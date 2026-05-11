@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mon Espace - SBI Teacher</title>
+    
+    <link rel="stylesheet" href="/admin/css/admin-layout.css">
+    <link rel="stylesheet" href="/admin/css/admin.css">
+    <link rel="stylesheet" href="/admin/css/admin-notifications.css">
+    <link rel="stylesheet" href="/teacher/css/teacher.css">
+    
+    <script src="/admin/js/components.js"></script>
+</head>
+<body class="preload">
+
+<div class="app-container" id="app-container">
+    
+    <script>
+        if (window.innerWidth > 1024 && localStorage.getItem('leftPanelCollapsed') === 'true') {
+            document.getElementById('app-container').classList.add('left-collapsed');
+        }
+    </script>
+
+    <teacher-left-panel></teacher-left-panel>
+    <teacher-top-bar></teacher-top-bar>
+
+    <main id="main-content">
+        <div class="content-wrapper sbi-teacher-dashboard">
+            <section class="sbi-dashboard-hero" aria-labelledby="teacher-dashboard-title">
+                <span class="sbi-dashboard-kicker">SBI Teacher Hub</span>
+                <h1 class="sbi-dashboard-title" id="teacher-dashboard-title">
+                    Pilote tes <span>formations</span> avec un espace coach clair.
+                </h1>
+                <p class="sbi-dashboard-lead">
+                    Retrouvez vos formations, préparez vos cours et gardez un accès rapide aux actions importantes depuis un tableau de bord plus lisible, plus sportif, plus SBI.
+                </p>
+                <div class="sbi-dashboard-actions">
+                    <a class="sbi-dashboard-primary-link" href="/teacher/mes-cours.html">
+                        Ouvrir mes formations & cours <span aria-hidden="true">→</span>
+                    </a>
+                    <a class="sbi-dashboard-secondary-link" href="/teacher/mon-profil.html">
+                        Voir mon profil
+                    </a>
+                </div>
+            </section>
+
+            <section class="sbi-teacher-action-grid" aria-label="Raccourcis professeur">
+                <article class="sbi-teacher-mini-card">
+                    <div class="sbi-teacher-mini-card__icon" aria-hidden="true">
+                        <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12zM10 9h8v2h-8zm0 3h4v2h-4zm0-6h8v2h-8z"/>
+                        </svg>
+                    </div>
+                    <h3>Préparer les contenus</h3>
+                    <p>Accès direct à vos modules, supports et cours liés aux formations qui vous sont assignées.</p>
+                </article>
+
+                <article class="sbi-teacher-mini-card">
+                    <div class="sbi-teacher-mini-card__icon" aria-hidden="true">
+                        <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15-5-5 1.41-1.41L11 14.17l6.59-6.59L19 9l-8 8z"/>
+                        </svg>
+                    </div>
+                    <h3>Suivre les validations</h3>
+                    <p>Les prochaines notifications prof pourront remonter ici les contenus à vérifier ou les actions urgentes.</p>
+                </article>
+
+                <article class="sbi-teacher-mini-card">
+                    <div class="sbi-teacher-mini-card__icon" aria-hidden="true">
+                        <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
+                        </svg>
+                    </div>
+                    <h3>Accompagner les élèves</h3>
+                    <p>Une base prête pour les futurs raccourcis de suivi, progression et échanges pédagogiques.</p>
+                </article>
+            </section>
+        </div>
+    </main>
+</div>
+
+<script type="module" src="/admin/js/admin-ui.js"></script>
+<script src="/admin/js/sbi-safe-fixes.js"></script>
+<script type="module" src="/admin/js/admin-notifications.js"></script>
+
+<script type="module">
+    import { db, auth } from '/js/firebase-init.js';
+    import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+
+    document.addEventListener('DOMContentLoaded', () => {
+        onAuthStateChanged(auth, async (user) => {
+            if (!user) {
+                window.location.replace('/login.html');
+                return;
+            }
+
+            try {
+                const userSnap = await getDoc(doc(db, "users", user.uid));
+
+                if (!userSnap.exists()) return;
+
+                const currentUserProfile = userSnap.data();
+                const displayName = `${currentUserProfile.prenom || ''} ${currentUserProfile.nom || ''}`.trim() || "Professeur";
+                const avatarUrl = currentUserProfile.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=111&color=fff`;
+                
+                const topName = document.getElementById('top-user-name');
+                if (topName) topName.textContent = displayName;
+                
+                const topAvatar = document.getElementById('top-user-avatar');
+                if (topAvatar) {
+                    topAvatar.innerHTML = `<img src="${avatarUrl}" alt="Avatar" style="width:100%; height:100%; object-fit:cover;">`;
+                }
+            } catch (error) {
+                console.warn('[SBI Teacher] Impossible de charger le résumé du profil :', error);
+            }
+        });
+    });
+</script>
+
+<script type="module" src="/teacher/js/teacher-dashboard.js"></script>
+<script type="module" src="/admin/js/tracker.js"></script>
+</body>
+</html>

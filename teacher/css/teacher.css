@@ -1,0 +1,186 @@
+/* =======================================================================
+   THÈME PROFESSEUR (LIGHT MODE) ET STYLES DU HUB
+   ======================================================================= */
+
+:root {
+    --bg-body: #f4f7f6;
+    --bg-panel: #ffffff;
+    --bg-card: #ffffff;
+    --border-color: #e2e8f0;
+    --text-main: #1f2937;
+    --text-muted: #6b7280;
+
+    /* Couleur identitaire Jaune-Orangé (Amber) */
+    --accent-orange: #f59e0b; 
+
+    /* SÉCURITÉ MAGIQUE : On force les scripts existants à utiliser l'orange */
+    --accent-blue: var(--accent-orange) !important; 
+    --accent-green: var(--accent-orange) !important; 
+
+    /* Pour l'éditeur de cours */
+    --accent-blue-light: rgba(245, 158, 11, 0.1); 
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+body { background-color: var(--bg-body) !important; color: var(--text-main); }
+
+/* =======================================================================
+   ARCHITECTURE GRAPHIQUE (Grilles, Cartes, Navigation)
+   ======================================================================= */
+
+.hub-grid { display: grid; grid-template-columns: minmax(300px, 1fr) 2.5fr; gap: 2.5rem; align-items: start; width: 100%; }
+
+.hub-card {
+    background: var(--bg-card);
+    border-radius: 16px;
+    padding: 1.8rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+    border: 1px solid var(--border-color);
+}
+
+.section-title { margin-top: 0; font-size: 1.2rem; color: var(--text-main); display: flex; align-items: center; gap: 10px; }
+.section-icon { width: 36px; height: 36px; border-radius: 10px; background: #f3f4f6; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; }
+
+/* --- ONGLETS (TABS) --- */
+.student-sub-nav { display: flex; gap: 1.5rem; border-bottom: 2px solid var(--border-color); margin-bottom: 2rem; overflow-x: auto; }
+.student-sub-nav-item { padding-bottom: 0.8rem; cursor: pointer; color: var(--text-muted); font-weight: bold; border-bottom: 3px solid transparent; transition: 0.2s; white-space: nowrap; }
+.student-sub-nav-item:hover { color: var(--text-main); }
+.student-sub-nav-item.active { color: var(--accent-orange); border-bottom-color: var(--accent-orange); }
+
+.student-view { display: none; animation: fadeIn 0.3s; }
+.student-view.active { display: flex; flex-direction: column; }
+
+@keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+/* --- FORMULAIRES --- */
+.form-group { margin-bottom: 1.5rem; }
+.form-group label { display: block; font-weight: 600; margin-bottom: 0.5rem; color: var(--text-main); font-size: 0.95rem; }
+.prof-input {
+    width: 100%; padding: 0.8rem 1rem; border: 1px solid var(--border-color);
+    border-radius: 8px; background: var(--bg-card); color: var(--text-main);
+    font-family: inherit; font-size: 0.95rem; outline: none; transition: 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+}
+.prof-input:focus { border-color: var(--accent-orange); background: #fff; box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1); }
+
+.editing .edit-avatar-badge { opacity: 1; pointer-events: auto; }
+.edit-avatar-badge svg { width: 18px; height: 18px; flex-shrink: 0; }
+
+/* --- BARRES XP ET BADGES --- */
+.xp-bar-bg { width: 100%; height: 8px; background: #e5e7eb; border-radius: 10px; overflow: hidden; margin-top: 1rem;}
+.xp-bar-fill { height: 100%; background: var(--accent-orange) !important; width: 0%; transition: width 0.5s ease; }
+.badges-grid { display: flex; gap: 10px; margin-top: 1rem; }
+.badge-slot { width: 40px; height: 40px; border-radius: 50%; background: #f3f4f6; border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; opacity: 0.3; filter: grayscale(100%); transition: 0.3s; }
+.badge-slot.unlocked { opacity: 1; filter: grayscale(0%); background: #ffffff; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-color: transparent; }
+
+/* --- ÉLÉMENTS DE COURS --- */
+.course-item {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1rem 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.8rem;
+    cursor: pointer;
+    transition: 0.2s;
+}
+.course-item:hover { border-color: var(--accent-orange); background: var(--accent-blue-light); }
+.bloc-title { font-size: 1.1rem; color: var(--text-main); font-weight: bold; margin: 2rem 0 1rem 0; padding-bottom: 0.5rem; border-bottom: 2px solid var(--border-color); }
+
+/* --- BOUTONS RESTAURÉS --- */
+.action-btn {
+    background: var(--accent-orange); color: white; font-weight: bold; border: none;
+    padding: 0.8rem 1.5rem; border-radius: 8px; cursor: pointer; transition: 0.2s;
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+}
+.action-btn:hover { opacity: 0.9; transform: translateY(-2px); }
+.action-btn.danger { background: rgba(239, 68, 68, 0.1); color: var(--accent-red); border: 1px solid rgba(239, 68, 68, 0.3); }
+.action-btn.danger:hover { background: var(--accent-red); color: white; }
+
+.editor-action-btn { transition: 0.2s; opacity: 0.7; }
+.editor-action-btn:hover { opacity: 1; transform: scale(1.02); }
+
+/* =======================================================================
+   NOUVEAUX COMPOSANTS UI MODERNES (Toggle Switch & Drag'n'Drop)
+   ======================================================================= */
+.toggle-switch { position: relative; width: 46px; height: 26px; flex-shrink: 0; }
+.toggle-switch .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #cbd5e1; transition: .3s; border-radius: 24px; }
+.toggle-switch .slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+.toggle-switch input:checked + .slider { background-color: var(--accent-orange); }
+.toggle-switch input:checked + .slider:before { transform: translateX(20px); }
+
+.drag-drop-zone { border: 2px dashed var(--border-color); border-radius: 12px; padding: 2rem; text-align: center; background: #f9fafb; cursor: pointer; transition: 0.2s; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.drag-drop-zone:hover, .drag-drop-zone.dragover { border-color: var(--accent-orange); background: rgba(245, 158, 11, 0.05); }
+.drag-drop-zone p { margin: 0; color: var(--text-muted); font-size: 0.9rem; }
+.drag-drop-zone span { color: var(--accent-orange); font-weight: bold; }
+
+/* =======================================================================
+   EDITEUR QUILL (Style et INFOBULLES RESTAURÉES)
+   ======================================================================= */
+.ql-toolbar { background: #f9fafb; border-color: var(--border-color) !important; border-top-left-radius: 8px; border-top-right-radius: 8px; }
+.ql-container { border-color: var(--border-color) !important; border-bottom-left-radius: 8px; border-bottom-right-radius: 8px; font-family: 'Inter', sans-serif; font-size: 1rem; background: white; }
+.ql-editor { min-height: 250px; }
+
+/* FIX : Les fameuses "bulles d'infos" au survol des boutons */
+.ql-toolbar button { position: relative; overflow: visible !important; }
+.ql-toolbar button:hover::after {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1f2937;
+    color: white;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-family: 'Inter', sans-serif;
+    font-weight: bold;
+    white-space: nowrap;
+    z-index: 1000;
+    pointer-events: none;
+    margin-bottom: 6px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+/* Flèche sous la bulle */
+.ql-toolbar button:hover::before {
+    content: ''; position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%);
+    border-width: 6px; border-style: solid; border-color: #1f2937 transparent transparent transparent;
+    margin-bottom: -6px; z-index: 1000; pointer-events: none;
+}
+
+/* Noms des outils */
+.ql-toolbar button.ql-bold:hover::after { content: "Gras"; }
+.ql-toolbar button.ql-italic:hover::after { content: "Italique"; }
+.ql-toolbar button.ql-underline:hover::after { content: "Souligné"; }
+.ql-toolbar button.ql-strike:hover::after { content: "Barré"; }
+.ql-toolbar button.ql-list[value="ordered"]:hover::after { content: "Liste numérotée"; }
+.ql-toolbar button.ql-list[value="bullet"]:hover::after { content: "Liste à puces"; }
+.ql-toolbar button.ql-link:hover::after { content: "Insérer un lien"; }
+.ql-toolbar button.ql-image:hover::after { content: "Insérer une image"; }
+.ql-toolbar button.ql-video:hover::after { content: "Insérer une vidéo"; }
+.ql-toolbar button.ql-clean:hover::after { content: "Effacer le formatage"; }
+
+@media (max-width: 1024px) {
+    .hub-grid { grid-template-columns: 1fr; }
+    .search-bar-top { display: none; }
+    .content-wrapper { padding: 1.5rem; }
+}
+
+/* --- SBI 5.5 : polish édition avatar --- */
+.edit-avatar-badge {
+    transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+}
+.edit-avatar-badge:hover {
+    transform: scale(1.08) translateY(-1px);
+    box-shadow: 0 8px 18px rgba(245, 158, 11, 0.28), 0 0 0 6px rgba(245, 158, 11, 0.12);
+}
+.edit-avatar-badge:active {
+    transform: scale(0.98);
+}
+#btn-save-crop:disabled,
+#btn-upload-new:disabled {
+    opacity: 0.55;
+    cursor: not-allowed !important;
+    transform: none !important;
+}
