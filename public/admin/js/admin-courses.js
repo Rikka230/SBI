@@ -73,6 +73,7 @@ import {
     handleCourseNotifications as handleCourseNotificationsService
 } from '/admin/js/courses/course-notifications.js';
 import { getCourseTargetingSnapshot } from '/admin/js/courses/course-targeting.js';
+import { initPublicFormationsAdmin } from '/admin/js/public-formations-admin.js';
 let currentUid = null;
 let currentUserProfile = null;
 let currentChapters = [];
@@ -293,6 +294,9 @@ export function mountAdminCourses({ source = 'standard' } = {}) {
     setupMediaInputs();
     setupFormationSearch();
     setupFormationModal();
+
+    const cleanupPublicFormationsAdmin = initPublicFormationsAdmin();
+    if (typeof cleanupPublicFormationsAdmin === 'function') cleanups.push(cleanupPublicFormationsAdmin);
 
     const cleanup = () => {
         disposed = true;

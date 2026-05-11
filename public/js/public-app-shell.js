@@ -8,7 +8,7 @@
  * - espaces admin/student/teacher et viewers toujours protégés en reload.
  */
 
-const PUBLIC_SHELL_VERSION = '8.0P.79';
+const PUBLIC_SHELL_VERSION = '8.0P.85';
 const DISABLED_FLAG = 'sbiPublicShellDisabled';
 const READY_CLASS = 'sbi-public-shell-ready';
 const SCROLLING_CLASS = 'sbi-public-shell-scrolling';
@@ -549,7 +549,7 @@ async function runPageInitializers(pageId) {
 
   if (pageId === 'home') {
     try {
-      const mediaModule = await import('/js/site-index-public.js?v=8.0P.76');
+      const mediaModule = await import('/js/site-index-public.js?v=8.0P.85');
       const initMedia = mediaModule.initSiteIndexMedia || window.SBI_INIT_SITE_INDEX_MEDIA;
       if (typeof initMedia === 'function') await initMedia({ forceRefresh: false });
     } catch (error) {
@@ -577,9 +577,9 @@ async function runPageInitializers(pageId) {
     }
   }
 
-  if (['formations', 'parcours', 'apropos', 'ressources', 'contact'].includes(pageId)) {
+  if (['home', 'formations', 'parcours', 'apropos', 'ressources', 'contact'].includes(pageId)) {
     try {
-      const publicPagesModule = await import('/js/sbi-public-pages.js?v=8.0P.76');
+      const publicPagesModule = await import('/js/sbi-public-pages.js?v=8.0P.85');
       const initPublicPages = publicPagesModule.initSbiPublicPages || window.SBI_INIT_PUBLIC_PAGES;
       if (typeof initPublicPages === 'function') initPublicPages(document);
     } catch (error) {

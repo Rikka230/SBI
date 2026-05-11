@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.84',
+  version: '8.0P.85',
   branch: 'legal-pages-footer',
   channel: 'PUBLIC PJAX APP SHELL',
-  stage: 'Newsletter desktop checkbox square lock',
+  stage: 'Public formations dynamic catalog + coming soon',
   updatedAt: '2026-05-11',
-  label: 'SBI 8.0P.84 - NEWSLETTER DESKTOP CHECKBOX SQUARE'
+  label: 'SBI 8.0P.85 - PUBLIC FORMATIONS DYNAMIC CATALOG'
 };
 
 export function getSbiVersionLabel() {
