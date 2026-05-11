@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.74 - Login background + contact feedback scroll
+ * SBI 8.0P.79 - Home mobile formation cut restore
  *
  * Shell public prudent :
  * - navigation fluide des ancres de l'index ;
@@ -8,7 +8,7 @@
  * - espaces admin/student/teacher et viewers toujours protégés en reload.
  */
 
-const PUBLIC_SHELL_VERSION = '8.0P.74';
+const PUBLIC_SHELL_VERSION = '8.0P.92';
 const DISABLED_FLAG = 'sbiPublicShellDisabled';
 const READY_CLASS = 'sbi-public-shell-ready';
 const SCROLLING_CLASS = 'sbi-public-shell-scrolling';
@@ -26,7 +26,12 @@ const PUBLIC_PAGE_DEFINITIONS = new Map([
   ['/a-propos.html', { page: 'apropos', route: 'public-apropos', fetchPath: '/a-propos.html', reason: 'page à propos publique migrée' }],
   ['/ressources.html', { page: 'ressources', route: 'public-ressources', fetchPath: '/ressources.html', reason: 'page ressources publique migrée' }],
   ['/calculateur.html', { page: 'calculator', route: 'public-calculator', fetchPath: '/calculateur.html', reason: 'page calculateur aide publique migrée' }],
-  ['/contact.html', { page: 'contact', route: 'public-contact', fetchPath: '/contact.html', reason: 'page contact publique migrée' }]
+  ['/contact.html', { page: 'contact', route: 'public-contact', fetchPath: '/contact.html', reason: 'page contact publique migrée' }],
+  ['/mentions-legales.html', { page: 'mentions-legales', route: 'public-mentions-legales', fetchPath: '/mentions-legales.html', reason: 'page mentions légales migrée' }],
+  ['/politique-confidentialite.html', { page: 'confidentialite', route: 'public-confidentialite', fetchPath: '/politique-confidentialite.html', reason: 'page confidentialité migrée' }],
+  ['/politique-cookies.html', { page: 'cookies', route: 'public-cookies', fetchPath: '/politique-cookies.html', reason: 'page cookies migrée' }],
+  ['/cgu.html', { page: 'cgu', route: 'public-cgu', fetchPath: '/cgu.html', reason: 'page CGU migrée' }],
+  ['/accessibilite.html', { page: 'accessibilite', route: 'public-accessibilite', fetchPath: '/accessibilite.html', reason: 'page accessibilité migrée' }]
 ]);
 
 const PUBLIC_INDEX_PATHS = new Set(['/', '/index.html']);
@@ -493,6 +498,30 @@ function renderBodyFragment(nextFragment) {
   }
 }
 
+function cleanupPublicNavigationArtifacts({ source = 'navigation' } = {}) {
+  try {
+    window.dispatchEvent(new CustomEvent('sbi:public-shell:before-navigate', {
+      detail: { source }
+    }));
+  } catch {}
+
+  try {
+    if (typeof window.SBI_CLOSE_PUBLIC_FORMATION_SHEET === 'function') {
+      window.SBI_CLOSE_PUBLIC_FORMATION_SHEET({ immediate: true, source });
+    }
+  } catch (error) {
+    console.warn('[SBI Public Shell] Nettoyage fiche formation indisponible :', error);
+  }
+
+  document.querySelectorAll('[data-sbi-formation-sheet], .public-formation-sheet').forEach((node) => {
+    try { node.remove(); } catch {}
+  });
+
+  document.documentElement.classList.remove('sbi-formation-sheet-open');
+  document.body?.classList.remove('sbi-formation-sheet-open');
+  document.documentElement.style.removeProperty('--sbi-scrollbar-compensation');
+}
+
 function syncBodyAttributes(nextDocument, pageId, enabled) {
   const nextClassName = nextDocument.body?.className || '';
   const classesToPreserve = [
@@ -509,6 +538,30 @@ function syncBodyAttributes(nextDocument, pageId, enabled) {
   document.body.dataset.sbiPublicShell = enabled ? 'enabled' : 'disabled';
 }
 
+
+function renderDiagonalsSoon() {
+  if (typeof window.SBI_RENDER_DIAGONALS !== 'function') return false;
+
+  window.requestAnimationFrame(() => {
+    window.SBI_RENDER_DIAGONALS();
+    window.setTimeout(() => window.SBI_RENDER_DIAGONALS?.(), 140);
+  });
+
+  return true;
+}
+
+async function ensureDiagonalRendererForPage(pageId) {
+  if (pageId === 'home' && typeof window.SBI_RENDER_DIAGONALS !== 'function') {
+    try {
+      await import('/js/sbi-diagonals.js?v=8.0P.79');
+    } catch (error) {
+      console.warn('[SBI Public Shell] Diagonales index indisponibles après PJAX :', error);
+    }
+  }
+
+  renderDiagonalsSoon();
+}
+
 async function runPageInitializers(pageId) {
   try {
     if (typeof window.SBI_MAIN_INIT === 'function') {
@@ -520,7 +573,7 @@ async function runPageInitializers(pageId) {
 
   if (pageId === 'home') {
     try {
-      const mediaModule = await import('/js/site-index-public.js?v=8.0P.69');
+      const mediaModule = await import('/js/site-index-public.js?v=8.0P.92');
       const initMedia = mediaModule.initSiteIndexMedia || window.SBI_INIT_SITE_INDEX_MEDIA;
       if (typeof initMedia === 'function') await initMedia({ forceRefresh: false });
     } catch (error) {
@@ -540,7 +593,7 @@ async function runPageInitializers(pageId) {
 
   if (pageId === 'calculator') {
     try {
-      const calculatorModule = await import('/js/sbi-aide-calculator.js?v=8.0P.71');
+      const calculatorModule = await import('/js/sbi-aide-calculator.js?v=8.0P.76');
       const initCalculator = calculatorModule.initSbiAidCalculator || window.SBI_INIT_AID_CALCULATOR;
       if (typeof initCalculator === 'function') initCalculator(document);
     } catch (error) {
@@ -548,9 +601,9 @@ async function runPageInitializers(pageId) {
     }
   }
 
-  if (['formations', 'parcours', 'apropos', 'ressources', 'contact'].includes(pageId)) {
+  if (['home', 'formations', 'parcours', 'apropos', 'ressources', 'contact'].includes(pageId)) {
     try {
-      const publicPagesModule = await import('/js/sbi-public-pages.js?v=8.0P.74');
+      const publicPagesModule = await import('/js/sbi-public-pages.js?v=8.0P.92');
       const initPublicPages = publicPagesModule.initSbiPublicPages || window.SBI_INIT_PUBLIC_PAGES;
       if (typeof initPublicPages === 'function') initPublicPages(document);
     } catch (error) {
@@ -561,6 +614,8 @@ async function runPageInitializers(pageId) {
 
 async function renderPublicPage(url, decision, { historyMode = 'push', behavior = 'smooth', source = 'click' } = {}) {
   if (pageTransitionPromise) return pageTransitionPromise;
+
+  cleanupPublicNavigationArtifacts({ source });
 
   pageTransitionPromise = (async () => {
     const enabled = !safeReadFlag(DISABLED_FLAG);
@@ -611,9 +666,7 @@ async function renderPublicPage(url, decision, { historyMode = 'push', behavior 
       activeObserver = null;
       await runPageInitializers(targetPageId);
       observeActiveSections();
-      if (typeof window.SBI_RENDER_DIAGONALS === 'function') {
-        window.requestAnimationFrame(() => window.SBI_RENDER_DIAGONALS());
-      }
+      await ensureDiagonalRendererForPage(targetPageId);
 
       const target = decision.targetId ? getAnchorTarget(`#${decision.targetId}`) : null;
       scrollToTarget(target, behavior);
@@ -656,6 +709,8 @@ function navigatePublic(url, { historyMode = 'push', behavior = 'smooth', source
 
   const currentPageId = getRenderedPublicPageId();
   const samePage = currentPageId === decision.page;
+
+  cleanupPublicNavigationArtifacts({ source });
 
   if (samePage) {
     const target = decision.targetId ? getAnchorTarget(`#${decision.targetId}`) : null;
@@ -814,6 +869,11 @@ function printRoutes() {
     { path: '/ressources.html', mode: 'public-shell', page: 'ressources', reason: 'page ressources publique' },
     { path: '/calculateur.html', mode: 'public-shell', page: 'calculator', reason: 'page calculateur aide publique' },
     { path: '/contact.html', mode: 'public-shell', page: 'contact', reason: 'page contact publique' },
+    { path: '/mentions-legales.html', mode: 'public-shell', page: 'mentions-legales', reason: 'page mentions légales' },
+    { path: '/politique-confidentialite.html', mode: 'public-shell', page: 'confidentialite', reason: 'page confidentialité' },
+    { path: '/politique-cookies.html', mode: 'public-shell', page: 'cookies', reason: 'page cookies' },
+    { path: '/cgu.html', mode: 'public-shell', page: 'cgu', reason: 'page CGU' },
+    { path: '/accessibilite.html', mode: 'public-shell', page: 'accessibilite', reason: 'page accessibilité' },
     { path: '/login.html', mode: 'public-shell', page: 'login', reason: 'connexion migrée dans le shell public' },
     { path: '/admin/index.html', mode: 'reload', page: '-', reason: 'shell admin séparé' },
     { path: '/student/cours-viewer.html?id=test', mode: 'reload', page: '-', reason: 'viewer protégé' },
@@ -844,7 +904,7 @@ function printAudit() {
     total: rows.length,
     ok: rows.filter((row) => row.verdict === 'OK').length,
     alerts: rows.filter((row) => row.verdict === 'ALERTE').length,
-    publicPagesEnabled: ['/formations.html', '/a-propos.html', '/ressources.html', '/calculateur.html', '/contact.html']
+    publicPagesEnabled: ['/formations.html', '/a-propos.html', '/ressources.html', '/calculateur.html', '/contact.html', '/mentions-legales.html', '/politique-confidentialite.html', '/politique-cookies.html', '/cgu.html', '/accessibilite.html']
       .every((path) => classifyPublicRoute(new URL(path, window.location.origin)).mode === 'public-shell'),
     loginPjaxEnabled: classifyPublicRoute(new URL('/login.html', window.location.origin)).mode === 'public-shell',
     livePublicRemoved: classifyPublicRoute(new URL('/live.html', window.location.origin)).mode === 'reload',
@@ -929,9 +989,7 @@ function initSbiPublicAppShell() {
 
   attachListeners();
   observeActiveSections();
-  if (typeof window.SBI_RENDER_DIAGONALS === 'function') {
-    window.requestAnimationFrame(() => window.SBI_RENDER_DIAGONALS());
-  }
+  ensureDiagonalRendererForPage(getPublicPageId(window.location.pathname));
 
   if (window.location.hash) {
     const initialUrl = new URL(window.location.href);

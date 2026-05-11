@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.80',
-  branch: 'legal-pages-footer',
+  version: '8.0P.92',
+  branch: 'public-pjax-app-shell',
   channel: 'PUBLIC PJAX APP SHELL',
-  stage: 'Index newsletter Brevo subscription',
+  stage: 'Formation sheet scroll lock cleanup hotfix',
   updatedAt: '2026-05-11',
-  label: 'SBI 8.0P.80 - INDEX NEWSLETTER BREVO'
+  label: 'SBI 8.0P.92 - FORMATION SHEET SCROLL LOCK HOTFIX'
 };
 
 export function getSbiVersionLabel() {
