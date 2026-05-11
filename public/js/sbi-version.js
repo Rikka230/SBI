@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.65',
+  version: '8.0P.66',
   branch: 'public-pjax-app-shell',
   channel: 'PUBLIC PJAX APP SHELL',
-  stage: 'Mobile header alignment and contact mobile structure cleanup',
+  stage: 'About mobile video bleed and visibility fix',
   updatedAt: '2026-05-11',
-  label: 'SBI 8.0P.65 - MOBILE HEADER AND CONTACT STRUCTURE ALIGNMENT'
+  label: 'SBI 8.0P.66 - ABOUT MOBILE VIDEO BLEED VISIBILITY FIX'
 };
 
 export function getSbiVersionLabel() {
