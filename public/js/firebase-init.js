@@ -11,10 +11,11 @@
  */
 
 // Importation native depuis le CDN Google
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+import { initializeApp, getApp, getApps } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import {
     initializeFirestore,
+    getFirestore,
     persistentLocalCache,
     persistentMultipleTabManager
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
@@ -35,7 +36,7 @@ const firebaseConfig = {
 };
 
 /* --- 1.2 INITIALISATION DE L'APPLICATION --- */
-const app = initializeApp(firebaseConfig);
+const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
 /* --- 1.3 BOUCLIER ANTI-BOT (APP CHECK avec reCAPTCHA v3) --- */
 // DESACTIVE POUR LES TESTS : À réactiver quand la vraie clé Google reCAPTCHA sera générée
@@ -48,11 +49,25 @@ const appCheck = initializeAppCheck(app, {
 
 /* --- 1.4 INITIALISATION DE FIRESTORE AVEC MISE EN CACHE --- */
 // Forçage du cache local pour limiter les requêtes de lecture facturables
-const db = initializeFirestore(app, {
-    localCache: persistentLocalCache({
-        tabManager: persistentMultipleTabManager()
-    })
-});
+let db;
+
+try {
+    db = initializeFirestore(app, {
+        localCache: persistentLocalCache({
+            tabManager: persistentMultipleTabManager()
+        })
+    });
+} catch (error) {
+    // Les pages publiques peuvent importer firebase-init avec des cache-busts
+    // différents. Dans ce cas Firebase est déjà initialisé : on réutilise
+    // l'instance Firestore existante au lieu de faire tomber les données.
+    db = getFirestore(app);
+
+    if (!window.__SBI_FIRESTORE_REUSE_WARNED__) {
+        window.__SBI_FIRESTORE_REUSE_WARNED__ = true;
+        console.warn('[SBI Firebase] Firestore déjà initialisé, instance existante réutilisée.', error);
+    }
+}
 
 /* --- 1.5 INITIALISATION AUTH & STORAGE --- */
 const auth = getAuth(app);
@@ -90,7 +105,7 @@ if (shouldEnableAnalytics()) {
 }
 
 /* --- 1.7 MÉDIAS DYNAMIQUES & SHELL PUBLIC --- */
-const SBI_PUBLIC_BOOT_VERSION = '8.0P.89';
+const SBI_PUBLIC_BOOT_VERSION = '8.0P.91';
 const path = window.location.pathname.toLowerCase().replace(/\/+$/, '') || '/';
 const publicShellPaths = new Set([
     '/',

@@ -3,7 +3,7 @@ let firestoreToolsPromise = null;
 async function getFirestoreTools() {
   if (!firestoreToolsPromise) {
     firestoreToolsPromise = Promise.all([
-      import('/js/firebase-init.js'),
+      import('/js/firebase-init.js?v=8.0P.91'),
       import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js")
     ]).then(([firebaseModule, firestoreModule]) => ({
       db: firebaseModule.db,
@@ -19,7 +19,7 @@ async function getFirestoreTools() {
 
 const PUBLIC_FORMATIONS_COLLECTION = 'publicFormations';
 const PUBLIC_RESOURCES_COLLECTION = 'publicResources';
-const PUBLIC_CONTENT_VERSION = '8.0P.89';
+const PUBLIC_CONTENT_VERSION = '8.0P.91';
 
 const DEFAULT_COVER_LABEL = 'SBI';
 
@@ -978,7 +978,7 @@ async function hydrateContactDecorativeVideo(root) {
   if (!(video instanceof HTMLVideoElement)) return;
 
   try {
-    const mediaModule = await import('/js/site-index-public.js?v=8.0P.65');
+    const mediaModule = await import('/js/site-index-public.js?v=8.0P.91');
     const initMedia = mediaModule.initSiteIndexMedia || window.SBI_INIT_SITE_INDEX_MEDIA;
     if (typeof initMedia === 'function') await initMedia({ forceRefresh: false });
   } catch (error) {

@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.90',
+  version: '8.0P.91',
   branch: 'public-pjax-app-shell',
   channel: 'PUBLIC PJAX APP SHELL',
-  stage: 'Index formation sheet CSS availability hotfix',
+  stage: 'Firebase public data boot stability hotfix',
   updatedAt: '2026-05-11',
-  label: 'SBI 8.0P.90 - INDEX FORMATION SHEET CSS HOTFIX'
+  label: 'SBI 8.0P.91 - FIREBASE PUBLIC DATA BOOT HOTFIX'
 };
 
 export function getSbiVersionLabel() {
