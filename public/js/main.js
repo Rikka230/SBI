@@ -228,11 +228,141 @@
         });
     }
 
+
+    function isNewsletterEmailValid(value) {
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
+    }
+
+    function setNewsletterStatus(form, message = '', state = '') {
+        const status = form.querySelector('[data-newsletter-status]');
+        if (!status) return;
+
+        status.textContent = message;
+        status.dataset.state = state;
+        form.classList.toggle('is-success', state === 'success');
+        form.classList.toggle('is-error', state === 'error');
+        form.classList.toggle('is-info', state === 'info');
+    }
+
+    function setNewsletterLoading(form, isLoading) {
+        const controls = form.querySelectorAll('input, button');
+        const submit = form.querySelector('[data-newsletter-submit]');
+
+        form.classList.toggle('is-loading', isLoading);
+        form.dataset.sbiNewsletterSubmitting = isLoading ? 'true' : 'false';
+
+        controls.forEach((control) => {
+            if (control.matches('[data-newsletter-honeypot]')) return;
+            control.disabled = isLoading;
+        });
+
+        if (submit) {
+            if (!submit.dataset.defaultLabel) submit.dataset.defaultLabel = submit.innerHTML;
+            submit.innerHTML = isLoading ? 'Inscription...' : submit.dataset.defaultLabel;
+        }
+    }
+
+    function initNewsletterForms(root = document) {
+        const forms = Array.from(root.querySelectorAll('[data-sbi-newsletter-form]'))
+            .filter((form) => form.dataset.sbiNewsletterReady !== 'true');
+
+        if (!forms.length) return;
+
+        forms.forEach((form) => {
+            const emailInput = form.querySelector('[data-newsletter-email]');
+            const consentInput = form.querySelector('[data-newsletter-consent]');
+            const honeypotInput = form.querySelector('[data-newsletter-honeypot]');
+            const endpoint = form.getAttribute('data-newsletter-endpoint') || '/api/subscribeNewsletter';
+
+            if (!emailInput || !consentInput) return;
+
+            form.dataset.sbiNewsletterReady = 'true';
+
+            form.addEventListener('submit', async (event) => {
+                event.preventDefault();
+                if (form.dataset.sbiNewsletterSubmitting === 'true') return;
+
+                const email = String(emailInput.value || '').trim().toLowerCase();
+                const hasConsent = consentInput.checked === true;
+
+                form.classList.remove('is-success', 'is-error', 'is-info');
+                emailInput.removeAttribute('aria-invalid');
+                consentInput.removeAttribute('aria-invalid');
+
+                if (!isNewsletterEmailValid(email)) {
+                    emailInput.setAttribute('aria-invalid', 'true');
+                    setNewsletterStatus(form, 'Entre une adresse email valide.', 'error');
+                    emailInput.focus({ preventScroll: true });
+                    return;
+                }
+
+                if (!hasConsent) {
+                    consentInput.setAttribute('aria-invalid', 'true');
+                    setNewsletterStatus(form, 'Merci de cocher le consentement newsletter avant de valider.', 'error');
+                    consentInput.focus({ preventScroll: true });
+                    return;
+                }
+
+                const payload = {
+                    email,
+                    newsletterConsent: hasConsent,
+                    consent: {
+                        newsletter: hasConsent,
+                        capturedAt: new Date().toISOString()
+                    },
+                    source: 'SBI public newsletter',
+                    page: `${window.location.pathname || '/index.html'}${window.location.hash || ''}`,
+                    website: honeypotInput?.value || ''
+                };
+
+                setNewsletterLoading(form, true);
+                setNewsletterStatus(form, 'Inscription en cours...', 'info');
+
+                try {
+                    const response = await fetch(endpoint, {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(payload)
+                    });
+
+                    let result = null;
+                    try {
+                        result = await response.json();
+                    } catch (_) {
+                        result = null;
+                    }
+
+                    const message = result?.message || (response.ok
+                        ? 'Inscription confirmée. Bienvenue dans la boucle SBI.'
+                        : 'Impossible de finaliser l’inscription pour le moment.');
+
+                    if (!response.ok || result?.success === false) {
+                        setNewsletterStatus(form, message, 'error');
+                        return;
+                    }
+
+                    setNewsletterStatus(form, message, result?.mode === 'already_exists' ? 'info' : 'success');
+                    form.reset();
+                } catch (error) {
+                    console.warn('[SBI Newsletter] Erreur inscription :', error);
+                    setNewsletterStatus(form, 'Erreur réseau. Réessaie dans quelques instants.', 'error');
+                } finally {
+                    setNewsletterLoading(form, false);
+                }
+            });
+        });
+    }
+
     function initSbiMain(root = document) {
         initMobileMenu(root);
         initScrollAnimations(root);
         initParallax(root);
         initSignals(root);
+        initNewsletterForms(root);
     }
 
     window.SBI_MAIN_INIT = initSbiMain;

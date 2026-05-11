@@ -108,6 +108,7 @@ exports.deleteUserAccount = onCall(async (request) => {
 
 const BREVO_API_KEY = defineSecret("BREVO_API_KEY");
 const BREVO_LIST_ID = 77;
+const BREVO_NEWSLETTER_LIST_ID = 77;
 const SBI_CONTACT_EMAIL = "contact@sbigroup.fr";
 const SBI_CONTACT_PHONE = "06 68 60 30 01";
 const SBI_SENDER_NAME = "SBI Contact";
@@ -220,16 +221,22 @@ function getContactAttributes(data) {
     };
 }
 
-async function callBrevo(path, payload, apiKey) {
-    const response = await fetch(`https://api.brevo.com/v3${path}`, {
-        method: "POST",
+async function callBrevo(path, payload, apiKey, options = {}) {
+    const method = options.method || "POST";
+    const requestOptions = {
+        method,
         headers: {
             "Accept": "application/json",
-            "Content-Type": "application/json",
             "api-key": apiKey
-        },
-        body: JSON.stringify(payload)
-    });
+        }
+    };
+
+    if (method !== "GET" && payload !== undefined) {
+        requestOptions.headers["Content-Type"] = "application/json";
+        requestOptions.body = JSON.stringify(payload);
+    }
+
+    const response = await fetch(`https://api.brevo.com/v3${path}`, requestOptions);
 
     const raw = await response.text();
     let parsed = null;
@@ -395,6 +402,57 @@ function buildConfirmationText(data) {
     ].join("\n");
 }
 
+
+function parseNewsletterRequest(body = {}) {
+    const consent = body.consent || {};
+    const attributes = body.attributes || {};
+    const email = cleanString(body.email || attributes.EMAIL, 180).toLowerCase();
+
+    return {
+        email,
+        consentNewsletter: body.newsletterConsent === true || consent.newsletter === true,
+        source: cleanString(body.source || attributes.SOURCE || attributes.CONTACT_SOURCE, 120) || "SBI public newsletter",
+        page: cleanString(body.page || attributes.PAGE, 180) || "/index.html",
+        capturedAt: cleanString(body.capturedAt || consent.capturedAt, 80) || new Date().toISOString(),
+        honeypot: cleanString(body.website || body.company || body.url || body.hp, 120)
+    };
+}
+
+function validateNewsletterRequest(data) {
+    if (data.honeypot) return "HONEYPOT";
+    if (!data.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) {
+        return "L'adresse email n'est pas valide.";
+    }
+    if (!data.consentNewsletter) {
+        return "Veuillez accepter l'inscription à la newsletter SBI.";
+    }
+    return "";
+}
+
+function getNewsletterAttributes(data) {
+    return {
+        CONTACT_SOURCE: data.source
+    };
+}
+
+async function getBrevoContactByEmail(email, apiKey) {
+    try {
+        return await callBrevo(`/contacts/${encodeURIComponent(email)}`, undefined, apiKey, { method: "GET" });
+    } catch (error) {
+        if (error.status === 404) return null;
+        throw error;
+    }
+}
+
+async function upsertBrevoNewsletterContact(data, apiKey) {
+    return callBrevo("/contacts", {
+        email: data.email,
+        attributes: getNewsletterAttributes(data),
+        listIds: [BREVO_NEWSLETTER_LIST_ID],
+        updateEnabled: true
+    }, apiKey);
+}
+
 async function sendBrevoEmail(payload, apiKey) {
     return callBrevo("/smtp/email", payload, apiKey);
 }
@@ -518,3 +576,86 @@ exports.sendSbiContact = onRequest({
         });
     }
 });
+
+/* =======================================================================
+ * SBI 8.0P.80 - NEWSLETTER INDEX -> BREVO
+ * -----------------------------------------------------------------------
+ * Endpoint appelé par /api/subscribeNewsletter via Firebase Hosting rewrite.
+ * La clé Brevo reste côté serveur dans BREVO_API_KEY.
+ * ======================================================================= */
+
+exports.subscribeNewsletter = onRequest({
+    region: "europe-west1",
+    secrets: [BREVO_API_KEY],
+    timeoutSeconds: 20,
+    memory: "256MiB"
+}, async (req, res) => {
+    res.set("Cache-Control", "no-store");
+
+    if (req.method === "OPTIONS") {
+        res.set("Access-Control-Allow-Origin", req.get("origin") || "*");
+        res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+        res.set("Access-Control-Allow-Headers", "Content-Type");
+        return res.status(204).send("");
+    }
+
+    if (req.method !== "POST") {
+        return res.status(405).json({
+            success: false,
+            message: "Méthode non autorisée."
+        });
+    }
+
+    const apiKey = BREVO_API_KEY.value();
+    if (!apiKey) {
+        console.error("BREVO_API_KEY manquant dans Secret Manager pour la newsletter SBI.");
+        return res.status(500).json({
+            success: false,
+            message: "Configuration newsletter manquante côté serveur."
+        });
+    }
+
+    const data = parseNewsletterRequest(req.body || {});
+    const validationMessage = validateNewsletterRequest(data);
+
+    if (validationMessage === "HONEYPOT") {
+        return res.status(200).json({
+            success: true,
+            mode: "ignored",
+            message: "Inscription prise en compte."
+        });
+    }
+
+    if (validationMessage) {
+        return res.status(400).json({
+            success: false,
+            message: validationMessage
+        });
+    }
+
+    try {
+        const existingContact = await getBrevoContactByEmail(data.email, apiKey);
+        const existingListIds = Array.isArray(existingContact?.listIds) ? existingContact.listIds : [];
+        const alreadySubscribed = existingListIds.includes(BREVO_NEWSLETTER_LIST_ID);
+        const contactResult = await upsertBrevoNewsletterContact(data, apiKey);
+
+        return res.status(200).json({
+            success: true,
+            mode: alreadySubscribed ? "already_exists" : "subscribed",
+            message: alreadySubscribed
+                ? "Cette adresse est déjà inscrite à la newsletter SBI."
+                : "Inscription confirmée. Bienvenue dans la boucle SBI.",
+            brevo: {
+                listId: BREVO_NEWSLETTER_LIST_ID,
+                contact: existingContact?.id || contactResult?.id || contactResult?.ok || "updated"
+            }
+        });
+    } catch (error) {
+        console.error("Erreur Brevo newsletter SBI :", error.message, error.payload || "");
+        return res.status(502).json({
+            success: false,
+            message: "L'inscription newsletter n'a pas pu aboutir pour le moment. Réessaie plus tard."
+        });
+    }
+});
+

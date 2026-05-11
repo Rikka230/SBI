@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.79',
+  version: '8.0P.80',
   branch: 'legal-pages-footer',
   channel: 'PUBLIC PJAX APP SHELL',
-  stage: 'Mobile home formation section cut restore',
+  stage: 'Index newsletter Brevo subscription',
   updatedAt: '2026-05-11',
-  label: 'SBI 8.0P.79 - MOBILE HOME FORMATION SECTION CUT RESTORE'
+  label: 'SBI 8.0P.80 - INDEX NEWSLETTER BREVO'
 };
 
 export function getSbiVersionLabel() {

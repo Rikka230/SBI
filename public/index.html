@@ -6,7 +6,7 @@
     <title>SBI - Apprends. Progresse. Performe.</title>
 
     <link rel="stylesheet" href="css/style.css?v=8.0P.46">
-    <link rel="stylesheet" href="css/sbi-newsletter.css">
+    <link rel="stylesheet" href="css/sbi-newsletter.css?v=8.0P.80">
     <link rel="stylesheet" href="css/sbi-footer.css?v=8.0P.76">
     <link rel="stylesheet" href="css/sbi-home-responsive.css?v=8.0P.34">
     <link rel="stylesheet" href="css/sbi-founder-image-clean.css?v=8.0P.34">
@@ -397,11 +397,24 @@
                     </div>
                 </div>
 
-                <form class="news-form">
-                    <input type="email" placeholder="Ton email" required class="text-italic">
-                    <button type="submit" class="btn-primary text-italic">Je m'inscris <span class="arrow">→</span></button>
+                <form class="news-form" data-sbi-newsletter-form data-newsletter-endpoint="/api/subscribeNewsletter" novalidate>
+                    <label class="newsletter-field-label" for="sbi-newsletter-email">Adresse email</label>
+                    <input id="sbi-newsletter-email" name="email" type="email" autocomplete="email" inputmode="email" placeholder="Ton email" required class="newsletter-email text-italic" data-newsletter-email>
+                    <button type="submit" class="btn-primary text-italic" data-newsletter-submit>Je m'inscris <span class="arrow">→</span></button>
+
+                    <label class="newsletter-consent text-italic" for="sbi-newsletter-consent">
+                        <input id="sbi-newsletter-consent" name="newsletterConsent" type="checkbox" value="1" data-newsletter-consent>
+                        <span>J'accepte de recevoir les actualités, contenus et communications de SBI par email.</span>
+                    </label>
+
+                    <label class="newsletter-honeypot" aria-hidden="true">
+                        Site web
+                        <input type="text" name="website" tabindex="-1" autocomplete="off" data-newsletter-honeypot>
+                    </label>
+
+                    <p class="newsletter-status text-italic" data-newsletter-status aria-live="polite"></p>
                 </form>
-                <p class="newsletter-legal-note text-italic">En t'inscrivant, tu acceptes de recevoir les communications SBI. Tu peux te désinscrire à tout moment. Consulte notre <a href="politique-confidentialite.html#newsletter" class="text-blue">politique de confidentialité</a>.</p>
+                <p class="newsletter-legal-note text-italic">Tu peux te désinscrire à tout moment. Tes données sont utilisées selon notre <a href="politique-confidentialite.html#newsletter" class="text-blue">politique de confidentialité</a>.</p>
             </div>
         </section>
     </main>
@@ -466,7 +479,7 @@
     </footer>
 
     <script src="js/sbi-background.js?v=8.0P.21"></script>
-    <script src="js/main.js?v=8.0P.46"></script>
+    <script src="js/main.js?v=8.0P.80"></script>
     <script src="js/sbi-diagonals.js?v=8.0P.79"></script>
     <script type="module" src="js/site-index-public.js?v=8.0P.40"></script>
     <script src="js/public-app-shell.js?v=8.0P.79"></script>

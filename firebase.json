@@ -46,6 +46,13 @@
           "functionId": "sendSbiContact",
           "region": "europe-west1"
         }
+      },
+      {
+        "source": "/api/subscribeNewsletter",
+        "function": {
+          "functionId": "subscribeNewsletter",
+          "region": "europe-west1"
+        }
       }
     ]
   },
