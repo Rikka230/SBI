@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.69',
+  version: '8.0P.70',
   branch: 'public-pjax-app-shell',
   channel: 'PUBLIC PJAX APP SHELL',
-  stage: 'Calculator remainder cost and contact transfer patch',
+  stage: 'Contact low-height overflow fix',
   updatedAt: '2026-05-11',
-  label: 'SBI 8.0P.69 - CALCULATOR ANNUAL BASE CLEANUP'
+  label: 'SBI 8.0P.70 - CONTACT LOW HEIGHT FIX'
 };
 
 export function getSbiVersionLabel() {

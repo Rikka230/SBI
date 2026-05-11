@@ -1685,3 +1685,62 @@ body[data-sbi-public-page="contact"] .contact-submit span:first-child {
         letter-spacing: 0.01em;
     }
 }
+
+
+/* =========================================================
+   SBI 8.0P.70 - CONTACT LOW HEIGHT CONTAINMENT
+   ---------------------------------------------------------
+   Corrige le débordement vertical du bouton d’envoi lorsque
+   la hauteur d’écran est courte en desktop/intermédiaire.
+   Le cadre n'est plus verrouillé à 100dvh : il peut grandir
+   naturellement et rester scrollable au lieu de laisser le
+   bouton sortir sous la bordure.
+   ========================================================= */
+@media (min-width: 1025px) and (max-height: 820px) {
+    body[data-sbi-public-page="contact"] .contact-page {
+        min-height: 100dvh;
+        overflow-x: hidden;
+        overflow-y: auto;
+    }
+
+    body[data-sbi-public-page="contact"] .contact-premium-hero {
+        min-height: auto;
+        height: auto;
+        overflow: visible;
+        padding-top: calc(var(--header-height) + 0.45rem);
+        padding-bottom: 1.65rem;
+    }
+
+    body[data-sbi-public-page="contact"] .contact-premium-grid {
+        height: auto;
+        max-height: none;
+        align-items: start;
+    }
+
+    body[data-sbi-public-page="contact"] .contact-form-card {
+        min-height: 0;
+        height: auto;
+        max-height: none;
+        align-self: start;
+        overflow: visible;
+    }
+
+    body[data-sbi-public-page="contact"] .contact-card-inner {
+        min-height: 0;
+        height: auto;
+        padding-bottom: 1.9rem;
+        overflow: hidden;
+    }
+
+    body[data-sbi-public-page="contact"] .contact-premium-form {
+        flex: initial;
+        align-content: start;
+    }
+
+    body[data-sbi-public-page="contact"] .contact-submit,
+    body[data-sbi-public-page="contact"] .contact-submit:hover,
+    body[data-sbi-public-page="contact"] .contact-submit.is-ready-to-send:hover,
+    body[data-sbi-public-page="contact"] .contact-form-card.is-ready-to-send .contact-submit:hover {
+        transform: none;
+    }
+}
