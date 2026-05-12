@@ -546,7 +546,7 @@ function createFormationCard(formation, options = {}) {
   const toggle = document.createElement('button');
   toggle.type = 'button';
   toggle.className = 'public-formation-toggle text-italic';
-  toggle.textContent = 'Voir la fiche formation';
+  toggle.textContent = 'Voir la fiche';
   toggle.addEventListener('click', (event) => {
     event.preventDefault();
     event.stopPropagation();
@@ -729,7 +729,7 @@ async function initFormationsPage(root) {
   const publishedCount = visible.filter((item) => item.status === 'published').length;
   const upcomingCount = visible.filter((item) => item.status === 'coming_soon').length;
   const source = fromFirebase ? 'Catalogue Firebase public' : 'Catalogue SBI de base';
-  setStatus(root, '[data-sbi-formations-status]', `${source} affiché : ${publishedCount} formation(s) publiée(s), ${upcomingCount} prochainement.`);
+  setStatus(root, '[data-sbi-formations-status]', `${source} : ${publishedCount} formation(s) disponible(s), ${upcomingCount} prochainement.`);
 
   const hash = normalizeSlug(window.location.hash.replace('#', ''));
   if (hash) {
@@ -767,7 +767,7 @@ async function initBrochuresPage(root) {
   grid.replaceChildren(...items.map((item) => createResourceCard(item)));
   setStatus(root, '[data-sbi-brochures-status]', fromFirebase
     ? 'Ressources Firebase publiques affichées.'
-    : 'Ressources SBI de base affichées. Les ressources administrables seront visibles ici dès publication.');
+    : 'Ressources SBI disponibles. Les nouveaux documents publiés apparaîtront automatiquement ici.');
 }
 
 function getCheckedValue(form, name) {
@@ -1021,7 +1021,7 @@ async function hydrateContactDecorativeVideo(root) {
   if (!(video instanceof HTMLVideoElement)) return;
 
   try {
-    const mediaModule = await import('/js/site-index-public.js?v=8.0P.92');
+    const mediaModule = await import('/js/site-index-public.js?v=8.0P.94');
     const initMedia = mediaModule.initSiteIndexMedia || window.SBI_INIT_SITE_INDEX_MEDIA;
     if (typeof initMedia === 'function') await initMedia({ forceRefresh: false });
   } catch (error) {

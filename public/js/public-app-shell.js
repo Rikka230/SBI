@@ -571,7 +571,7 @@ async function runPageInitializers(pageId) {
     console.warn('[SBI Public Shell] Init front public indisponible :', error);
   }
 
-  if (pageId === 'home') {
+  if (['home', 'formations', 'ressources'].includes(pageId)) {
     try {
       const mediaModule = await import('/js/site-index-public.js?v=8.0P.94');
       const initMedia = mediaModule.initSiteIndexMedia || window.SBI_INIT_SITE_INDEX_MEDIA;
