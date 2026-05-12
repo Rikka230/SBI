@@ -122,9 +122,23 @@ body { background-color: var(--bg-body) !important; color: var(--text-main); }
 .ql-container { border-color: var(--border-color) !important; border-bottom-left-radius: 8px; border-bottom-right-radius: 8px; font-family: 'Inter', sans-serif; font-size: 1rem; background: white; }
 .ql-editor { min-height: 250px; }
 
-/* FIX : Les fameuses "bulles d'infos" au survol des boutons */
-.ql-toolbar button { position: relative; overflow: visible !important; }
-.ql-toolbar button:hover::after {
+/* FIX : bulles d'information Quill prof alignées sur les vrais contrôles visibles. */
+.ql-toolbar button,
+.ql-toolbar .ql-picker,
+.ql-toolbar .ql-picker-label,
+.ql-toolbar .sbi-teacher-quill-tooltip-anchor {
+    position: relative;
+    overflow: visible !important;
+}
+
+.ql-toolbar .sbi-teacher-quill-tooltip-anchor::before,
+.ql-toolbar .sbi-teacher-quill-tooltip-anchor::after {
+    content: none;
+    display: none;
+}
+
+.ql-toolbar .sbi-teacher-quill-tooltip-anchor:not(.ql-expanded):hover::after {
+    content: attr(data-sbi-tooltip);
     position: absolute;
     bottom: 100%;
     left: 50%;
@@ -141,25 +155,31 @@ body { background-color: var(--bg-body) !important; color: var(--text-main); }
     pointer-events: none;
     margin-bottom: 6px;
     box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-}
-/* Flèche sous la bulle */
-.ql-toolbar button:hover::before {
-    content: ''; position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%);
-    border-width: 6px; border-style: solid; border-color: #1f2937 transparent transparent transparent;
-    margin-bottom: -6px; z-index: 1000; pointer-events: none;
+    display: block;
 }
 
-/* Noms des outils */
-.ql-toolbar button.ql-bold:hover::after { content: "Gras"; }
-.ql-toolbar button.ql-italic:hover::after { content: "Italique"; }
-.ql-toolbar button.ql-underline:hover::after { content: "Souligné"; }
-.ql-toolbar button.ql-strike:hover::after { content: "Barré"; }
-.ql-toolbar button.ql-list[value="ordered"]:hover::after { content: "Liste numérotée"; }
-.ql-toolbar button.ql-list[value="bullet"]:hover::after { content: "Liste à puces"; }
-.ql-toolbar button.ql-link:hover::after { content: "Insérer un lien"; }
-.ql-toolbar button.ql-image:hover::after { content: "Insérer une image"; }
-.ql-toolbar button.ql-video:hover::after { content: "Insérer une vidéo"; }
-.ql-toolbar button.ql-clean:hover::after { content: "Effacer le formatage"; }
+.ql-toolbar .sbi-teacher-quill-tooltip-anchor:not(.ql-expanded):hover::before {
+    content: '';
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 6px;
+    border-style: solid;
+    border-color: #1f2937 transparent transparent transparent;
+    margin-bottom: -6px;
+    z-index: 1000;
+    pointer-events: none;
+    display: block;
+}
+
+.ql-toolbar .ql-picker.ql-expanded::before,
+.ql-toolbar .ql-picker.ql-expanded::after,
+.ql-toolbar .ql-picker.ql-expanded .ql-picker-label::before,
+.ql-toolbar .ql-picker.ql-expanded .ql-picker-label::after {
+    content: none !important;
+    display: none !important;
+}
 
 @media (max-width: 1024px) {
     .hub-grid { grid-template-columns: 1fr; }
