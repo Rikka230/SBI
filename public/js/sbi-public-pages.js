@@ -3,7 +3,7 @@ let firestoreToolsPromise = null;
 async function getFirestoreTools() {
   if (!firestoreToolsPromise) {
     firestoreToolsPromise = Promise.all([
-      import('/js/firebase-init.js?v=8.0P.92'),
+      import('/js/firebase-init.js?v=8.0P.93'),
       import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js")
     ]).then(([firebaseModule, firestoreModule]) => ({
       db: firebaseModule.db,
@@ -19,9 +19,10 @@ async function getFirestoreTools() {
 
 const PUBLIC_FORMATIONS_COLLECTION = 'publicFormations';
 const PUBLIC_RESOURCES_COLLECTION = 'publicResources';
-const PUBLIC_CONTENT_VERSION = '8.0P.92';
+const PUBLIC_CONTENT_VERSION = '8.0P.93';
 
 const DEFAULT_COVER_LABEL = 'SBI';
+const COMING_SOON_COVER_URL = 'assets/coming.png';
 
 const FORMATION_FALLBACKS = [
   {
@@ -309,13 +310,24 @@ function appendList(container, title, values) {
   container.append(block);
 }
 
+function getFormationCoverUrl(formation) {
+  if (isComingSoon(formation)) return COMING_SOON_COVER_URL;
+  return text(formation?.cover?.url);
+}
+
 function applyCoverBackground(element, formation) {
-  const coverUrl = text(formation?.cover?.url);
-  const x = toNumber(formation?.cover?.objectPositionX, 50);
-  const y = toNumber(formation?.cover?.objectPositionY, 50);
+  const coverUrl = getFormationCoverUrl(formation);
+  const x = isComingSoon(formation) ? 50 : toNumber(formation?.cover?.objectPositionX, 50);
+  const y = isComingSoon(formation) ? 50 : toNumber(formation?.cover?.objectPositionY, 50);
 
   element.style.setProperty('--sbi-cover-x', `${x}%`);
   element.style.setProperty('--sbi-cover-y', `${y}%`);
+
+  if (isComingSoon(formation)) {
+    element.classList.add('has-coming-cover');
+  } else {
+    element.classList.remove('has-coming-cover');
+  }
 
   if (coverUrl) {
     element.style.setProperty('--sbi-cover-image', `url("${coverUrl.replace(/"/g, '%22')}")`);
@@ -1009,7 +1021,7 @@ async function hydrateContactDecorativeVideo(root) {
   if (!(video instanceof HTMLVideoElement)) return;
 
   try {
-    const mediaModule = await import('/js/site-index-public.js?v=8.0P.92');
+    const mediaModule = await import('/js/site-index-public.js?v=8.0P.93');
     const initMedia = mediaModule.initSiteIndexMedia || window.SBI_INIT_SITE_INDEX_MEDIA;
     if (typeof initMedia === 'function') await initMedia({ forceRefresh: false });
   } catch (error) {
