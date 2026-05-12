@@ -3209,10 +3209,10 @@ body[data-sbi-public-page="ressources"] .public-section-header-stacked .public-s
 }
 
 /* =========================================================
-   SBI 8.0P.110 - Mobile public unclipped spark cleanup
-   - Fixes the real luminous spark on diagonal transitions
-   - Moves mobile section backgrounds into clipped panes instead of clipping the whole section
-   - Keeps sparks outside clipped panes so they cannot be cut by previous blocks
+   SBI 8.0P.111 - Mobile public spark lines and slider cleanup
+   - Keeps the real luminous spark outside clipped panes
+   - Removes inherited horizontal section borders and hard background seams on mobile
+   - Stabilizes the two-row horizontal formations slider without card stacking
    - Keeps the public page CSS scoped to Formations/Ressources mobile
    - Keeps desktop untouched
    ========================================================= */
@@ -3435,6 +3435,9 @@ body[data-sbi-public-page="ressources"] .public-section-header-stacked .public-s
         padding-top: calc(clamp(1.7rem, 6.5vw, 2.65rem) + var(--sbi-public-section-cut)) !important;
         padding-bottom: calc(clamp(1.8rem, 6.5vw, 2.85rem) + 12px) !important;
         background: transparent !important;
+        border-top: 0 !important;
+        border-bottom: 0 !important;
+        box-shadow: none !important;
         clip-path: none !important;
     }
 
@@ -3468,9 +3471,8 @@ body[data-sbi-public-page="ressources"] .public-section-header-stacked .public-s
         background:
             radial-gradient(circle at 88% 22%, rgba(0, 81, 255, 0.10), transparent 40%),
             linear-gradient(180deg,
-                rgba(5, 11, 21, 0.995) 0,
-                rgba(5, 11, 21, 0.995) var(--sbi-public-section-cut),
-                rgba(4, 9, 18, 0.982) var(--sbi-public-section-cut),
+                rgba(5, 11, 21, 0.995) 0%,
+                rgba(4, 9, 18, 0.986) 42%,
                 rgba(2, 5, 11, 0.99) 100%) !important;
         clip-path: polygon(
             0 var(--sbi-public-section-cut),
@@ -3556,18 +3558,20 @@ body[data-sbi-public-page="ressources"] .public-section-header-stacked .public-s
 
     body[data-sbi-public-page="formations"] .public-formations-grid {
         display: grid !important;
+        grid-template-columns: none !important;
         grid-auto-flow: column !important;
-        grid-template-rows: repeat(2, minmax(0, 1fr)) !important;
-        grid-auto-columns: minmax(220px, 74vw) !important;
-        gap: 0.85rem !important;
+        grid-template-rows: repeat(2, auto) !important;
+        grid-auto-columns: clamp(168px, 45vw, 210px) !important;
+        gap: 0.8rem !important;
         overflow-x: auto !important;
         overflow-y: hidden !important;
         overscroll-behavior-x: contain !important;
         scroll-snap-type: x proximity !important;
         scroll-padding-inline: 1rem !important;
         padding-right: calc(1.35rem + env(safe-area-inset-right, 0px)) !important;
-        padding-bottom: 0.25rem !important;
+        padding-bottom: 0.35rem !important;
         align-items: stretch !important;
+        justify-content: start !important;
         -webkit-overflow-scrolling: touch !important;
         scrollbar-width: none !important;
     }
@@ -3580,16 +3584,46 @@ body[data-sbi-public-page="ressources"] .public-section-header-stacked .public-s
     body[data-sbi-public-page="formations"] .public-formations-grid > .sbi-catalogue-formation-card {
         width: auto !important;
         min-width: 0 !important;
-        min-height: 232px !important;
+        min-height: 0 !important;
+        height: auto !important;
         aspect-ratio: 1 / 1 !important;
         scroll-snap-align: start !important;
         margin-right: 0 !important;
+        transform: none !important;
+    }
+
+    body[data-sbi-public-page="formations"] .public-formations-grid .card-content {
+        min-height: 0 !important;
+        padding: 0.82rem !important;
+        justify-content: flex-end !important;
+        gap: 0.38rem !important;
+    }
+
+    body[data-sbi-public-page="formations"] .public-formations-grid .sbi-home-formation-card .public-formation-kicker,
+    body[data-sbi-public-page="formations"] .public-formations-grid .sbi-catalogue-formation-card .public-formation-kicker {
+        margin-bottom: 0.08rem !important;
+        padding: 0.22rem 0.38rem !important;
+        font-size: 0.48rem !important;
+        line-height: 1 !important;
+        letter-spacing: 0.07em !important;
     }
 
     body[data-sbi-public-page="formations"] .public-formations-grid .card-content h3,
     body[data-sbi-public-page="formations"] .public-formations-grid .sbi-catalogue-formation-card .card-content h3 {
-        font-size: 1.75rem !important;
-        line-height: 1 !important;
+        margin: 0 !important;
+        font-size: clamp(1rem, 4.1vw, 1.18rem) !important;
+        line-height: 0.98 !important;
+        letter-spacing: -0.045em !important;
+    }
+
+    body[data-sbi-public-page="formations"] .public-formations-grid .card-footer {
+        margin-top: 0.08rem !important;
+        gap: 0.45rem !important;
+    }
+
+    body[data-sbi-public-page="formations"] .public-formations-grid .course-count {
+        font-size: 0.68rem !important;
+        line-height: 1.12 !important;
     }
 }
 
@@ -3606,12 +3640,14 @@ body[data-sbi-public-page="ressources"] .public-section-header-stacked .public-s
     }
 
     body[data-sbi-public-page="formations"] .public-formations-grid {
-        grid-auto-columns: minmax(205px, 76vw) !important;
-        gap: 0.75rem !important;
+        grid-template-columns: none !important;
+        grid-template-rows: repeat(2, auto) !important;
+        grid-auto-columns: clamp(156px, 46vw, 190px) !important;
+        gap: 0.72rem !important;
     }
 
     body[data-sbi-public-page="formations"] .public-formations-grid > .parcours-card,
     body[data-sbi-public-page="formations"] .public-formations-grid > .sbi-catalogue-formation-card {
-        min-height: 214px !important;
+        min-height: 0 !important;
     }
 }
