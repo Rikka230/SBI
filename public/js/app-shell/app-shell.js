@@ -1,5 +1,5 @@
 /**
- * SBI 8.0M.11 - App shell foundation
+ * SBI 8.0P.118 - App shell foundation
  *
  * Le PJAX est activé par défaut sur la branche labo.
  *
@@ -12,7 +12,7 @@
  * location.reload()
  */
 
-import { createRouteRegistry } from './route-registry.js';
+import { createRouteRegistry } from './route-registry.js?v=8.0P.118';
 import { createRouter } from './router.js';
 import { injectAppShellStyles, markAppShellReady } from './transitions.js';
 import { initRoutePreload } from './preload.js';

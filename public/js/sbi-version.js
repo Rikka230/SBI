@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.117',
+  version: '8.0P.118',
   branch: 'public-pjax-app-shell',
   channel: 'PUBLIC PJAX APP SHELL',
-  stage: 'Public brochures PDF admin',
+  stage: 'PJAX admin resource tab sync + no static placeholders',
   updatedAt: '2026-05-12',
-  label: 'SBI 8.0P.117 - PUBLIC BROCHURES PDF ADMIN'
+  label: 'SBI 8.0P.118 - PJAX ADMIN RESOURCE TAB SYNC + NO STATIC PLACEHOLDERS'
 };
 
 export function getSbiVersionLabel() {

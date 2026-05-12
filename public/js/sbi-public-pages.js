@@ -1,4 +1,5 @@
 let firestoreToolsPromise = null;
+let storageToolsPromise = null;
 
 async function getFirestoreTools() {
   if (!firestoreToolsPromise) {
@@ -17,130 +18,27 @@ async function getFirestoreTools() {
   return firestoreToolsPromise;
 }
 
+async function getStorageTools() {
+  if (!storageToolsPromise) {
+    storageToolsPromise = Promise.all([
+      import('/js/firebase-init.js?v=8.0P.99'),
+      import("https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js")
+    ]).then(([firebaseModule, storageModule]) => ({
+      storage: firebaseModule.storage,
+      ref: storageModule.ref,
+      getBlob: storageModule.getBlob
+    }));
+  }
+
+  return storageToolsPromise;
+}
+
 const PUBLIC_FORMATIONS_COLLECTION = 'publicFormations';
 const PUBLIC_RESOURCES_COLLECTION = 'publicResources';
-const PUBLIC_CONTENT_VERSION = '8.0P.117';
+const PUBLIC_CONTENT_VERSION = '8.0P.118';
 
 const DEFAULT_COVER_LABEL = 'SBI';
 const COMING_SOON_COVER_URL = '/assets/coming.png';
-
-const FORMATION_FALLBACKS = [
-  {
-    id: 'fallback-marketing-communication',
-    title: 'Marketing & Communication',
-    subtitle: 'Construire une marque sportive forte',
-    category: 'Catalogue SBI',
-    level: 'Fondamentaux',
-    duration: '12 modules',
-    modality: 'E-learning',
-    shortSummary: 'Construire une marque sportive, piloter une campagne et valoriser une communauté.',
-    longDescription: 'Un parcours pensé pour apprendre à positionner une offre sportive, structurer une communication claire et transformer l’attention en engagement durable.',
-    objectives: ['Comprendre les fondamentaux du marketing sportif', 'Structurer une campagne de communication', 'Valoriser une communauté autour d’un projet'],
-    highlights: ['Approche métier', 'Cas appliqués sport business', 'Méthode progressive'],
-    status: 'published',
-    featuredOnHome: true,
-    displayOrder: 10,
-    homeOrder: 10,
-    slug: 'marketing-communication'
-  },
-  {
-    id: 'fallback-management-leadership',
-    title: 'Management & Leadership',
-    subtitle: 'Piloter une équipe et cadrer un projet',
-    category: 'Catalogue SBI',
-    level: 'Intermédiaire',
-    duration: '9 modules',
-    modality: 'E-learning',
-    shortSummary: 'Manager une équipe, cadrer un projet et prendre les bonnes décisions sous pression.',
-    longDescription: 'Une formation pour développer une posture professionnelle, clarifier les responsabilités et accompagner la progression d’une équipe.',
-    objectives: ['Organiser une équipe', 'Suivre un projet', 'Développer une posture de leader'],
-    highlights: ['Outils concrets', 'Vision terrain', 'Progression structurée'],
-    status: 'published',
-    featuredOnHome: true,
-    displayOrder: 20,
-    homeOrder: 20,
-    slug: 'management-leadership'
-  },
-  {
-    id: 'fallback-evenementiel-sportif',
-    title: 'Événementiel sportif',
-    subtitle: 'Concevoir une expérience sportive',
-    category: 'Catalogue SBI',
-    level: 'Fondamentaux',
-    duration: '8 modules',
-    modality: 'E-learning',
-    shortSummary: 'Concevoir, produire et sécuriser une expérience sportive de bout en bout.',
-    longDescription: 'Un parcours dédié aux coulisses de l’événementiel sportif : préparation, coordination, exploitation et expérience participant.',
-    objectives: ['Préparer un événement', 'Coordonner les parties prenantes', 'Analyser les risques opérationnels'],
-    highlights: ['Méthode événementielle', 'Vision production', 'Culture terrain'],
-    status: 'published',
-    featuredOnHome: true,
-    displayOrder: 30,
-    homeOrder: 30,
-    slug: 'evenementiel-sportif'
-  },
-  {
-    id: 'fallback-digital-innovation',
-    title: 'Digital & Innovation',
-    subtitle: 'Comprendre les nouveaux formats',
-    category: 'Catalogue SBI',
-    level: 'Prochainement',
-    duration: 'À compléter',
-    modality: 'E-learning',
-    shortSummary: 'Utiliser les outils numériques, la data et les nouveaux formats pour accélérer.',
-    longDescription: '',
-    objectives: [],
-    highlights: [],
-    status: 'coming_soon',
-    featuredOnHome: true,
-    displayOrder: 40,
-    homeOrder: 40,
-    slug: 'digital-innovation'
-  }
-];
-
-const BROCHURE_FALLBACKS = [
-  {
-    id: 'fallback-brochure-formations',
-    title: 'Brochure formations SBI',
-    type: 'brochure',
-    category: 'Catalogue',
-    description: 'Une vue claire des formations, des parcours et de l\'accompagnement SBI.',
-    status: 'published',
-    globalVisible: true,
-    displayOrder: 10
-  },
-  {
-    id: 'fallback-guide-alternance',
-    title: 'Guide alternance & aide',
-    type: 'document',
-    category: 'Entreprise',
-    description: 'Les repères essentiels pour préparer un recrutement en alternance.',
-    status: 'published',
-    globalVisible: true,
-    displayOrder: 20
-  },
-  {
-    id: 'fallback-programme-rncp',
-    title: 'Programme Bac / RNCP Niveau 4',
-    type: 'brochure',
-    category: 'Formation',
-    description: 'Le cadre de formation SBI centré sur le Bac / RNCP Niveau 4.',
-    status: 'published',
-    globalVisible: true,
-    displayOrder: 30
-  },
-  {
-    id: 'fallback-fiche-accompagnement',
-    title: 'Fiche accompagnement',
-    type: 'document',
-    category: 'Conseil',
-    description: 'Comment SBI accompagne candidats et entreprises avant, pendant et après.',
-    status: 'published',
-    globalVisible: true,
-    displayOrder: 40
-  }
-];
 
 function text(value, fallback = '') {
   if (value === null || value === undefined) return fallback;
@@ -619,23 +517,49 @@ function getPublicResourceFileName(item) {
   return `${clean}.pdf`;
 }
 
-async function downloadPublicResourceFile(url, filename) {
-  try {
-    const response = await fetch(url, { mode: 'cors' });
-    if (!response.ok) throw new Error(`Téléchargement indisponible (${response.status})`);
+function triggerBlobDownload(blob, filename) {
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = objectUrl;
+  link.download = filename || 'brochure-sbi.pdf';
+  document.body.append(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1200);
+}
 
-    const blob = await response.blob();
-    const objectUrl = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = objectUrl;
-    link.download = filename || 'brochure-sbi.pdf';
-    document.body.append(link);
-    link.click();
-    link.remove();
-    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1200);
+function triggerDirectDownload(url, filename) {
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename || 'brochure-sbi.pdf';
+  link.rel = 'noopener noreferrer';
+  document.body.append(link);
+  link.click();
+  link.remove();
+}
+
+async function downloadPublicResourceFile(item) {
+  const filename = getPublicResourceFileName(item);
+  const storagePath = text(item?.file?.storagePath);
+  const directUrl = text(item?.file?.url || item?.externalUrl);
+
+  try {
+    if (storagePath) {
+      const { storage, ref, getBlob } = await getStorageTools();
+      const blob = await getBlob(ref(storage, storagePath));
+      triggerBlobDownload(blob, filename);
+      return;
+    }
+
+    if (directUrl) {
+      triggerDirectDownload(directUrl, filename);
+      return;
+    }
+
+    throw new Error('Aucun fichier PDF disponible pour cette ressource.');
   } catch (error) {
-    console.warn('[SBI Public] Téléchargement direct impossible, ouverture du PDF en secours :', error);
-    window.open(url, '_blank', 'noopener,noreferrer');
+    console.warn('[SBI Public] Téléchargement direct impossible.', error);
+    if (directUrl) triggerDirectDownload(directUrl, filename);
   }
 }
 
@@ -665,7 +589,7 @@ function createResourceCard(item) {
 
     const downloadButton = createElement('button', 'public-resource-action public-resource-download-btn text-italic', 'Télécharger');
     downloadButton.type = 'button';
-    downloadButton.addEventListener('click', () => downloadPublicResourceFile(href, getPublicResourceFileName(item)));
+    downloadButton.addEventListener('click', () => downloadPublicResourceFile(item));
 
     actions.append(viewLink, downloadButton);
     article.append(actions);
@@ -795,10 +719,10 @@ async function getPublicFormationsWithFallback() {
       (baseRef, tools) => tools.query(baseRef, tools.where('status', 'in', ['published', 'coming_soon']))
     );
     const visible = sortByDisplay(loaded.filter(isPublicVisible));
-    return { items: visible.length ? visible : FORMATION_FALLBACKS, fromFirebase: visible.length > 0 };
+    return { items: visible, fromFirebase: true };
   } catch (error) {
-    console.warn('[SBI Public] Formations publiques indisponibles. Fallback HTML appliqué.', error);
-    return { items: FORMATION_FALLBACKS, fromFirebase: false, error };
+    console.warn('[SBI Public] Formations publiques indisponibles. Aucun placeholder statique affiché.', error);
+    return { items: [], fromFirebase: false, error };
   }
 }
 
@@ -810,10 +734,10 @@ async function getPublicResourcesWithFallback() {
       (baseRef, tools) => tools.query(baseRef, tools.where('status', '==', 'published'), tools.where('globalVisible', '==', true))
     );
     const visible = sortByDisplay(loaded.filter((item) => item.status === 'published' && item.globalVisible));
-    return { items: visible.length ? visible : BROCHURE_FALLBACKS, fromFirebase: visible.length > 0 };
+    return { items: visible, fromFirebase: true };
   } catch (error) {
-    console.warn('[SBI Public] Ressources publiques indisponibles. Fallback HTML appliqué.', error);
-    return { items: BROCHURE_FALLBACKS, fromFirebase: false, error };
+    console.warn('[SBI Public] Ressources publiques indisponibles. Aucun placeholder statique affiché.', error);
+    return { items: [], fromFirebase: false, error };
   }
 }
 
@@ -854,8 +778,7 @@ async function initHomeFeaturedFormations(root) {
   grid.dataset.sbiFeedReady = PUBLIC_CONTENT_VERSION;
 
   const { items } = await getPublicFormationsWithFallback();
-  const featured = sortByDisplay(items.filter((item) => isPublicVisible(item) && item.featuredOnHome), 'homeOrder').slice(0, 4);
-  const cards = (featured.length ? featured : FORMATION_FALLBACKS).slice(0, 4);
+  const cards = sortByDisplay(items.filter((item) => isPublicVisible(item) && item.featuredOnHome), 'homeOrder').slice(0, 4);
 
   grid.replaceChildren(...cards.map((item) => createFormationCard(item, { mode: 'home' })));
   bindHomeFormationCards(root, cards);
