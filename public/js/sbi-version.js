@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.125',
+  version: '8.0P.126',
   branch: 'public-pjax-app-shell',
   channel: 'PUBLIC PJAX APP SHELL',
-  stage: 'PJAX CSS SYNC STABILITY',
+  stage: 'PUBLIC HEADER CLEANUP + ABOUT FOUNDER FADE',
   updatedAt: '2026-05-12',
-  label: 'SBI 8.0P.125 - PJAX CSS SYNC STABILITY'
+  label: 'SBI 8.0P.126 - PUBLIC HEADER CLEANUP + ABOUT FOUNDER FADE'
 };
 
 export function getSbiVersionLabel() {

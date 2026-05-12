@@ -1,4 +1,4 @@
-const SITE_INDEX_MEDIA_VERSION = '8.0P.125';
+const SITE_INDEX_MEDIA_VERSION = '8.0P.126';
 
 window.__SBI_SITE_INDEX_MEDIA_LOADING__ = true;
 
@@ -321,29 +321,59 @@ function applyFounderImage(settings = {}) {
 }
 
 
+function revealAboutFounderHeroImage(img) {
+  if (!(img instanceof HTMLImageElement)) return;
+  window.requestAnimationFrame(() => {
+    window.requestAnimationFrame(() => {
+      img.classList.add('is-loaded');
+      img.dataset.ready = 'true';
+    });
+  });
+}
+
 function applyAboutFounderHeroImage(settings = {}) {
   const founderUrl = cleanUrl(settings.aboutFounderHeroImageUrl);
 
   document.querySelectorAll('[data-site-media="about-founder-hero"], .about-founder-hero-img').forEach((img) => {
     if (!(img instanceof HTMLImageElement)) return;
 
+    img.loading = 'eager';
+    img.fetchPriority = 'high';
+    img.decoding = 'async';
+
     if (!founderUrl) {
+      img.classList.remove('is-loaded');
+      img.dataset.ready = 'false';
       img.dataset.loadedFromStorage = 'false';
       img.dataset.mediaSource = 'missing-about-founder-hero';
       img.dataset.loadedFromLocal = 'false';
       return;
     }
 
-    if (img.getAttribute('src') !== founderUrl) img.src = founderUrl;
+    const srcChanged = img.getAttribute('src') !== founderUrl;
+    if (srcChanged) {
+      img.classList.remove('is-loaded');
+      img.dataset.ready = 'false';
+      img.src = founderUrl;
+    }
 
     const isStorage = isStorageUrl(founderUrl);
     img.dataset.loadedFromStorage = isStorage ? 'true' : 'false';
     img.dataset.loadedFromLocal = 'false';
     img.dataset.mediaSource = 'firestore-about-founder-hero';
-    img.loading = 'eager';
-    img.fetchPriority = 'high';
-    img.decoding = 'async';
     if (isStorage) img.referrerPolicy = 'no-referrer';
+
+    const onReady = () => revealAboutFounderHeroImage(img);
+    img.removeEventListener('load', onReady);
+    img.addEventListener('load', onReady, { once: true });
+
+    if (img.complete && img.naturalWidth > 0) {
+      if (typeof img.decode === 'function') {
+        img.decode().then(onReady).catch(onReady);
+      } else {
+        onReady();
+      }
+    }
   });
 }
 

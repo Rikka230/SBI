@@ -1405,3 +1405,27 @@ body[data-sbi-public-page="apropos"] .site-header .main-nav a[href="a-propos.htm
         opacity: 0.22;
     }
 }
+
+/* SBI 8.0P.126 - apparition progressive du PNG fondateur À propos */
+body[data-sbi-public-page="apropos"] .about-founder-hero-img {
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.82s ease 0.08s, visibility 0.82s ease 0.08s;
+    will-change: opacity;
+}
+
+body[data-sbi-public-page="apropos"] .about-founder-hero-img.is-loaded {
+    opacity: 1;
+    visibility: visible;
+}
+
+body[data-sbi-public-page="apropos"] .about-founder-caption {
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.58s ease 0.32s, visibility 0.58s ease 0.32s;
+}
+
+body[data-sbi-public-page="apropos"] .about-founder-hero-img.is-loaded ~ .about-founder-caption {
+    opacity: 1;
+    visibility: visible;
+}
