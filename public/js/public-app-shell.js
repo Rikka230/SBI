@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.79 - Home mobile formation cut restore
+ * SBI 8.0P.108 - Public shell stylesheet sync cleanup
  *
  * Shell public prudent :
  * - navigation fluide des ancres de l'index ;
@@ -8,7 +8,7 @@
  * - espaces admin/student/teacher et viewers toujours protégés en reload.
  */
 
-const PUBLIC_SHELL_VERSION = '8.0P.102';
+const PUBLIC_SHELL_VERSION = '8.0P.108';
 const DISABLED_FLAG = 'sbiPublicShellDisabled';
 const READY_CLASS = 'sbi-public-shell-ready';
 const SCROLLING_CLASS = 'sbi-public-shell-scrolling';
@@ -406,20 +406,81 @@ function pageFetchUrl(url) {
   return `${cleanPath}${url.search || ''}`;
 }
 
+function getPublicCssLinkKey(link) {
+  const href = link?.getAttribute?.('href');
+  if (!href) return null;
+
+  try {
+    const url = new URL(href, window.location.origin);
+    if (url.origin !== window.location.origin || !url.pathname.startsWith('/css/')) return null;
+
+    const rel = (link.getAttribute('rel') || '').toLowerCase();
+    const as = (link.getAttribute('as') || '').toLowerCase();
+    return `${rel}:${as}:${url.pathname}`;
+  } catch {
+    return null;
+  }
+}
+
+function getAbsoluteAssetHref(link) {
+  const href = link?.getAttribute?.('href');
+  if (!href) return '';
+
+  try {
+    return new URL(href, window.location.origin).href;
+  } catch {
+    return href;
+  }
+}
+
 async function syncHeadAssets(nextDocument, pageId) {
   const stylesheetSelector = 'link[rel="stylesheet"], link[rel="preload"][as="style"]';
   const stylesheetLoaders = [];
+  const nextLinks = Array.from(nextDocument.querySelectorAll(stylesheetSelector))
+    .filter((link) => Boolean(link.getAttribute('href')));
 
-  nextDocument.querySelectorAll(stylesheetSelector).forEach((link) => {
-    const href = link.getAttribute('href');
-    if (!href) return;
+  const nextLocalCssByKey = new Map();
+  nextLinks.forEach((link) => {
+    const key = getPublicCssLinkKey(link);
+    if (key && !nextLocalCssByKey.has(key)) nextLocalCssByKey.set(key, link);
+  });
 
-    const absoluteHref = new URL(href, window.location.origin).href;
+  const syncedCurrentLocalKeys = new Set();
+  Array.from(document.head.querySelectorAll(stylesheetSelector)).forEach((currentLink) => {
+    const key = getPublicCssLinkKey(currentLink);
+    if (!key) return;
+
+    if (syncedCurrentLocalKeys.has(key)) {
+      currentLink.remove();
+      return;
+    }
+
+    syncedCurrentLocalKeys.add(key);
+    const nextLink = nextLocalCssByKey.get(key);
+
+    if (!nextLink) {
+      currentLink.remove();
+      return;
+    }
+
+    const currentHref = getAbsoluteAssetHref(currentLink);
+    const nextHref = getAbsoluteAssetHref(nextLink);
+
+    if (currentHref !== nextHref) {
+      const replacement = nextLink.cloneNode(true);
+      currentLink.replaceWith(replacement);
+      if (replacement.rel === 'stylesheet') {
+        stylesheetLoaders.push(waitForStylesheet(replacement));
+      }
+    }
+  });
+
+  nextLinks.forEach((link) => {
+    const absoluteHref = getAbsoluteAssetHref(link);
+    if (!absoluteHref) return;
+
     const exists = Array.from(document.head.querySelectorAll(stylesheetSelector))
-      .some((current) => {
-        const currentHref = current.getAttribute('href');
-        return currentHref && new URL(currentHref, window.location.origin).href === absoluteHref;
-      });
+      .some((current) => getAbsoluteAssetHref(current) === absoluteHref);
 
     if (!exists) {
       const clonedLink = link.cloneNode(true);
@@ -430,8 +491,10 @@ async function syncHeadAssets(nextDocument, pageId) {
     }
   });
 
+  const activeInlineStyleKeys = new Set();
   nextDocument.querySelectorAll('style').forEach((style, index) => {
     const key = `sbi-public-shell-inline-${pageId}-${index}`;
+    activeInlineStyleKeys.add(key);
     let targetStyle = document.head.querySelector(`style[data-sbi-public-shell-style="${key}"]`);
 
     if (!targetStyle) {
@@ -441,6 +504,10 @@ async function syncHeadAssets(nextDocument, pageId) {
     }
 
     targetStyle.textContent = style.textContent || '';
+  });
+
+  document.head.querySelectorAll('style[data-sbi-public-shell-style]').forEach((style) => {
+    if (!activeInlineStyleKeys.has(style.dataset.sbiPublicShellStyle || '')) style.remove();
   });
 
   if (stylesheetLoaders.length) {
