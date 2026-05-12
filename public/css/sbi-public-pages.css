@@ -3207,3 +3207,219 @@ body[data-sbi-public-page="ressources"] .public-section-header-stacked .public-s
     line-height: 1.65;
     text-align: left !important;
 }
+
+/* =========================================================
+   SBI 8.0P.99 - Mobile public pages alignment
+   - Top bar mobile = index via sbi-mobile.css loaded in pages
+   - Découpe/orbe/diagonale uniquement mobile
+   - CTA final réduit sur mobile, forme PC conservée
+   ========================================================= */
+@media (max-width: 768px) {
+    body[data-sbi-public-page="formations"] .site-header,
+    body[data-sbi-public-page="ressources"] .site-header {
+        height: 78px;
+        padding: 0 1.25rem;
+        background: rgba(2, 5, 10, 0.96);
+    }
+
+    body[data-sbi-public-page="formations"] .header-actions,
+    body[data-sbi-public-page="ressources"] .header-actions {
+        display: none;
+    }
+
+    body[data-sbi-public-page="formations"] .mobile-menu-toggle,
+    body[data-sbi-public-page="ressources"] .mobile-menu-toggle {
+        display: inline-flex;
+    }
+
+    body[data-sbi-public-page="formations"] .public-page,
+    body[data-sbi-public-page="ressources"] .public-page {
+        position: relative;
+        overflow: hidden;
+        background:
+            radial-gradient(circle at 86% 12%, rgba(0, 81, 255, 0.12), transparent 16rem),
+            linear-gradient(180deg, rgba(3, 7, 14, 0.98), rgba(2, 5, 10, 0.98));
+    }
+
+    body[data-sbi-public-page="formations"] .public-page-hero-wide,
+    body[data-sbi-public-page="ressources"] .public-page-hero-wide {
+        position: relative;
+        min-height: auto !important;
+        padding-top: 6.7rem !important;
+        padding-bottom: 3.35rem !important;
+        clip-path: polygon(0 0, 100% 0, 100% calc(100% - 34px), calc(100% - 34px) 100%, 0 100%);
+        isolation: isolate;
+    }
+
+    body[data-sbi-public-page="formations"] .public-page-hero-wide::before,
+    body[data-sbi-public-page="ressources"] .public-page-hero-wide::before {
+        content: "" !important;
+        display: block !important;
+        position: absolute;
+        left: -24vw;
+        bottom: 0.7rem;
+        width: 148vw;
+        height: 42px;
+        z-index: 1;
+        pointer-events: none;
+        opacity: 0.52;
+        transform: rotate(-8deg);
+        transform-origin: center;
+        background:
+            radial-gradient(circle at 72% 50%, rgba(255, 255, 255, 0.9) 0 2px, rgba(0, 81, 255, 0.68) 4px, transparent 12px),
+            linear-gradient(90deg, transparent, rgba(174, 218, 255, 0.18), rgba(255, 255, 255, 0.42), rgba(0, 81, 255, 0.78), transparent) center / 100% 1px no-repeat;
+        filter: drop-shadow(0 0 10px rgba(0, 81, 255, 0.48));
+    }
+
+    body[data-sbi-public-page="formations"] .public-page-hero-wide::after,
+    body[data-sbi-public-page="ressources"] .public-page-hero-wide::after {
+        content: "" !important;
+        display: block !important;
+        position: absolute;
+        right: -8.6rem;
+        bottom: -7.8rem;
+        width: 16rem;
+        height: 16rem;
+        z-index: 0;
+        pointer-events: none;
+        border: 1px solid rgba(126, 181, 255, 0.24);
+        border-radius: 999px;
+        background:
+            radial-gradient(circle at 50% 50%, rgba(0, 81, 255, 0.14), transparent 56%),
+            radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.13), transparent 18%);
+        opacity: 0.62;
+        box-shadow: 0 0 38px rgba(0, 81, 255, 0.18);
+    }
+
+    body[data-sbi-public-page="formations"] .public-page-hero-video-bg,
+    body[data-sbi-public-page="ressources"] .public-page-hero-video-bg {
+        opacity: 0.86 !important;
+        filter: saturate(1.12) contrast(1.08) brightness(1.02) !important;
+    }
+
+    body[data-sbi-public-page="formations"] .public-page-hero-overlay,
+    body[data-sbi-public-page="ressources"] .public-page-hero-overlay {
+        background:
+            linear-gradient(180deg, rgba(2, 5, 10, 0.35), rgba(2, 5, 10, 0.68)),
+            linear-gradient(90deg, rgba(2, 5, 10, 0.72), rgba(2, 5, 10, 0.24)) !important;
+    }
+
+    body[data-sbi-public-page="formations"] .public-page-hero-wide .public-page-hero-copy,
+    body[data-sbi-public-page="ressources"] .public-page-hero-wide .public-page-hero-copy {
+        position: relative;
+        z-index: 2;
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+    }
+
+    body[data-sbi-public-page="formations"] .public-page-hero-wide .public-page-title,
+    body[data-sbi-public-page="ressources"] .public-page-hero-wide .public-page-title {
+        width: 100% !important;
+        max-width: 100% !important;
+        font-size: clamp(2.35rem, 12vw, 3.85rem) !important;
+        line-height: 0.96 !important;
+        letter-spacing: -0.055em !important;
+    }
+
+    body[data-sbi-public-page="formations"] .public-page-hero-wide .public-page-subtitle,
+    body[data-sbi-public-page="ressources"] .public-page-hero-wide .public-page-subtitle {
+        max-width: 100% !important;
+        font-size: 0.96rem !important;
+        line-height: 1.58 !important;
+    }
+
+    body[data-sbi-public-page="formations"] .public-proof-strip,
+    body[data-sbi-public-page="formations"] .public-catalogue-section,
+    body[data-sbi-public-page="formations"] .public-about-final-cta,
+    body[data-sbi-public-page="ressources"] .public-proof-strip,
+    body[data-sbi-public-page="ressources"] .public-resources-library,
+    body[data-sbi-public-page="ressources"] .public-about-final-cta {
+        position: relative;
+        overflow: hidden;
+        background:
+            linear-gradient(180deg, rgba(3, 7, 14, 0.96), rgba(7, 12, 23, 0.90) 48%, rgba(2, 5, 10, 0.97));
+    }
+
+    body[data-sbi-public-page="formations"] .public-proof-strip::before,
+    body[data-sbi-public-page="formations"] .public-catalogue-section::before,
+    body[data-sbi-public-page="ressources"] .public-proof-strip::before,
+    body[data-sbi-public-page="ressources"] .public-resources-library::before {
+        content: "";
+        position: absolute;
+        left: -22vw;
+        top: 0.45rem;
+        width: 142vw;
+        height: 42px;
+        opacity: 0.32;
+        pointer-events: none;
+        transform: rotate(-6deg);
+        background:
+            radial-gradient(circle at 34% 50%, rgba(255,255,255,0.82) 0 2px, rgba(0,81,255,0.64) 4px, transparent 12px),
+            linear-gradient(90deg, transparent, rgba(174, 218, 255, 0.18), rgba(0, 81, 255, 0.72), transparent) center / 100% 1px no-repeat;
+        filter: drop-shadow(0 0 9px rgba(0, 81, 255, 0.42));
+    }
+
+    body[data-sbi-public-page="formations"] .public-about-final-cta,
+    body[data-sbi-public-page="ressources"] .public-about-final-cta {
+        padding-top: 1.6rem !important;
+        padding-bottom: 2rem !important;
+    }
+
+    body[data-sbi-public-page="formations"] .public-about-final-card,
+    body[data-sbi-public-page="ressources"] .public-about-final-card {
+        min-height: 172px !important;
+        padding: 1.45rem 1.1rem !important;
+        text-align: center !important;
+        clip-path: polygon(0 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%);
+    }
+
+    body[data-sbi-public-page="formations"] .public-about-final-card h2,
+    body[data-sbi-public-page="ressources"] .public-about-final-card h2 {
+        max-width: 22rem !important;
+        margin: 0 auto !important;
+        font-size: clamp(1.5rem, 7.3vw, 2.15rem) !important;
+        line-height: 1.05 !important;
+        letter-spacing: -0.035em !important;
+        text-align: center !important;
+    }
+
+    body[data-sbi-public-page="formations"] .public-about-final-card .about-final-actions,
+    body[data-sbi-public-page="ressources"] .public-about-final-card .about-final-actions {
+        justify-content: center !important;
+        margin-top: 1rem !important;
+    }
+
+    body[data-sbi-public-page="formations"] .public-about-final-card .btn-primary,
+    body[data-sbi-public-page="ressources"] .public-about-final-card .btn-primary {
+        width: min(100%, 17rem);
+        justify-content: center;
+        min-height: 46px;
+        padding: 0.8rem 1rem;
+        font-size: 0.88rem;
+    }
+}
+
+@media (max-width: 560px) {
+    body[data-sbi-public-page="formations"] .site-header,
+    body[data-sbi-public-page="ressources"] .site-header {
+        padding: 0 1rem;
+    }
+
+    body[data-sbi-public-page="formations"] .public-page-hero-wide,
+    body[data-sbi-public-page="ressources"] .public-page-hero-wide {
+        padding-top: 6.2rem !important;
+        padding-bottom: 3.05rem !important;
+    }
+
+    body[data-sbi-public-page="formations"] .public-proof-strip,
+    body[data-sbi-public-page="ressources"] .public-proof-strip {
+        padding-top: 1.35rem;
+        padding-bottom: 1.35rem;
+    }
+
+    body[data-sbi-public-page="formations"] .public-about-final-card,
+    body[data-sbi-public-page="ressources"] .public-about-final-card {
+        min-height: 158px !important;
+    }
+}
