@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.127 - Course editor bridge
+ * SBI 8.0P.128 - Course editor bridge
  *
  * Prépare et monte les éléments que les scripts inline ne relancent pas
  * en navigation PJAX : Quill, onglets éditeur et switch image/vidéo.
@@ -165,9 +165,18 @@ function positionTooltip(target, portal) {
   portal.style.top = `${top}px`;
 }
 
+function isExpandedQuillPicker(target) {
+  return Boolean(target?.classList?.contains('ql-picker') && target.classList.contains('ql-expanded'));
+}
+
 function showStyledTooltip(target) {
   const label = target?.getAttribute('data-sbi-tooltip');
   if (!label) return;
+
+  if (isExpandedQuillPicker(target)) {
+    hideStyledTooltip();
+    return;
+  }
 
   const portal = getTooltipPortal();
   portal.textContent = label;
@@ -175,6 +184,11 @@ function showStyledTooltip(target) {
   portal.dataset.placement = 'bottom';
 
   window.requestAnimationFrame(() => {
+    if (isExpandedQuillPicker(target)) {
+      hideStyledTooltip();
+      return;
+    }
+
     positionTooltip(target, portal);
   });
 }
@@ -192,10 +206,20 @@ function bindStyledTooltip(target, cleanups) {
 
   target.dataset.sbiTooltipBound = 'true';
 
+  const isPicker = target.classList.contains('ql-picker');
   const show = () => showStyledTooltip(target);
   const hide = () => hideStyledTooltip();
+  const hidePickerTooltip = () => {
+    if (isPicker) hideStyledTooltip();
+  };
   const reposition = () => {
     const portal = document.getElementById(TOOLTIP_PORTAL_ID);
+
+    if (isExpandedQuillPicker(target)) {
+      hideStyledTooltip();
+      return;
+    }
+
     if (portal?.classList.contains('is-visible')) {
       positionTooltip(target, portal);
     }
@@ -205,16 +229,36 @@ function bindStyledTooltip(target, cleanups) {
   target.addEventListener('focus', show);
   target.addEventListener('mouseleave', hide);
   target.addEventListener('blur', hide);
+  target.addEventListener('mousedown', hidePickerTooltip, true);
+  target.addEventListener('pointerdown', hidePickerTooltip, true);
+  target.addEventListener('touchstart', hidePickerTooltip, true);
   window.addEventListener('scroll', reposition, true);
   window.addEventListener('resize', reposition);
+
+  let pickerObserver = null;
+  if (isPicker && typeof MutationObserver !== 'undefined') {
+    pickerObserver = new MutationObserver(() => {
+      if (isExpandedQuillPicker(target)) {
+        hideStyledTooltip();
+      }
+    });
+    pickerObserver.observe(target, {
+      attributes: true,
+      attributeFilter: ['class']
+    });
+  }
 
   cleanups.push(() => {
     target.removeEventListener('mouseenter', show);
     target.removeEventListener('focus', show);
     target.removeEventListener('mouseleave', hide);
     target.removeEventListener('blur', hide);
+    target.removeEventListener('mousedown', hidePickerTooltip, true);
+    target.removeEventListener('pointerdown', hidePickerTooltip, true);
+    target.removeEventListener('touchstart', hidePickerTooltip, true);
     window.removeEventListener('scroll', reposition, true);
     window.removeEventListener('resize', reposition);
+    pickerObserver?.disconnect();
   });
 }
 

@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.127 - Route registry
+ * SBI 8.0P.128 - Route registry
  *
  * Admin shell :
  * - admin index tabs
@@ -39,7 +39,7 @@ import {
   installCourseEditorTabs,
   installMediaTypeSwitch,
   hasCourseEditorDom
-} from './course-editor-bridge.js?v=8.0P.127';
+} from './course-editor-bridge.js?v=8.0P.128';
 
 const CROPPER_SCRIPT = 'https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js';
 const ADMIN_INDEX_CACHE_KEY = 'admin:index-main';
