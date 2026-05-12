@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.122',
+  version: '8.0P.123',
   branch: 'public-pjax-app-shell',
   channel: 'PUBLIC PJAX APP SHELL',
-  stage: 'Hero YouTube overlay admin',
+  stage: 'Hero YouTube overlay body-layer fix',
   updatedAt: '2026-05-12',
-  label: 'SBI 8.0P.122 - HERO YOUTUBE OVERLAY ADMIN'
+  label: 'SBI 8.0P.123 - HERO YOUTUBE OVERLAY BODY LAYER FIX'
 };
 
 export function getSbiVersionLabel() {

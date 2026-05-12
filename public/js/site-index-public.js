@@ -1,4 +1,4 @@
-const SITE_INDEX_MEDIA_VERSION = '8.0P.122';
+const SITE_INDEX_MEDIA_VERSION = '8.0P.123';
 
 window.__SBI_SITE_INDEX_MEDIA_LOADING__ = true;
 
@@ -320,12 +320,44 @@ function applyAboutFounderHeroImage(settings = {}) {
   });
 }
 
-function getHeroYoutubeOverlay() {
-  return document.querySelector('[data-sbi-hero-video-overlay]');
+function buildHeroYoutubeOverlay() {
+  const overlay = document.createElement('div');
+  overlay.className = 'sbi-hero-video-overlay';
+  overlay.dataset.sbiHeroVideoOverlay = 'true';
+  overlay.setAttribute('aria-hidden', 'true');
+  overlay.setAttribute('role', 'dialog');
+  overlay.setAttribute('aria-modal', 'true');
+  overlay.setAttribute('aria-label', 'Vidéo Sport Business Institute');
+  overlay.innerHTML = `
+    <button type="button" class="sbi-hero-video-close" data-sbi-hero-video-close aria-label="Fermer la vidéo">
+      <span aria-hidden="true">×</span>
+    </button>
+    <div class="sbi-hero-video-modal" role="document">
+      <div class="sbi-hero-video-frame" data-sbi-hero-video-frame></div>
+    </div>
+  `;
+  return overlay;
 }
 
-function getHeroYoutubeFrame() {
-  return document.querySelector('[data-sbi-hero-video-frame]');
+function getHeroYoutubeOverlay({ create = true } = {}) {
+  let overlay = document.querySelector('[data-sbi-hero-video-overlay]');
+
+  if (!overlay && create) {
+    overlay = buildHeroYoutubeOverlay();
+  }
+
+  if (overlay && overlay.parentElement !== document.body) {
+    document.body.appendChild(overlay);
+  } else if (overlay && !overlay.isConnected) {
+    document.body.appendChild(overlay);
+  }
+
+  return overlay;
+}
+
+function getHeroYoutubeFrame({ create = true } = {}) {
+  const overlay = getHeroYoutubeOverlay({ create });
+  return overlay?.querySelector('[data-sbi-hero-video-frame]') || null;
 }
 
 function setHeroYoutubeButtonState(videoId) {
@@ -338,8 +370,8 @@ function setHeroYoutubeButtonState(videoId) {
 }
 
 function closeHeroYoutubeOverlay({ restoreFocus = false } = {}) {
-  const overlay = getHeroYoutubeOverlay();
-  const frame = getHeroYoutubeFrame();
+  const overlay = getHeroYoutubeOverlay({ create: false });
+  const frame = getHeroYoutubeFrame({ create: false });
 
   if (overlay) {
     overlay.classList.remove('is-open');
@@ -358,8 +390,8 @@ function openHeroYoutubeOverlay(trigger = null) {
   const videoId = heroYoutubeOverlayVideoId;
   if (!videoId) return;
 
-  const overlay = getHeroYoutubeOverlay();
-  const frame = getHeroYoutubeFrame();
+  const overlay = getHeroYoutubeOverlay({ create: true });
+  const frame = getHeroYoutubeFrame({ create: true });
   if (!overlay || !frame) return;
 
   heroYoutubeLastTrigger = trigger;
@@ -405,14 +437,14 @@ function bindHeroYoutubeOverlayEvents() {
       return;
     }
 
-    const overlay = getHeroYoutubeOverlay();
+    const overlay = getHeroYoutubeOverlay({ create: false });
     if (overlay && overlay.classList.contains('is-open') && event.target === overlay) {
       closeHeroYoutubeOverlay({ restoreFocus: true });
     }
   });
 
   document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && getHeroYoutubeOverlay()?.classList.contains('is-open')) {
+    if (event.key === 'Escape' && getHeroYoutubeOverlay({ create: false })?.classList.contains('is-open')) {
       closeHeroYoutubeOverlay({ restoreFocus: true });
     }
   });
