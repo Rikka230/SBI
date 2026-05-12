@@ -1,4 +1,4 @@
-const SITE_INDEX_MEDIA_VERSION = '8.0P.99';
+const SITE_INDEX_MEDIA_VERSION = '8.0P.122';
 
 window.__SBI_SITE_INDEX_MEDIA_LOADING__ = true;
 
@@ -9,10 +9,12 @@ const EMPTY_MEDIA = {
   headerLogoUrl: '',
   brandLogoUrl: '',
   founderImageUrl: '',
-  aboutFounderHeroImageUrl: ''
+  aboutFounderHeroImageUrl: '',
+  heroYoutubeUrl: '',
+  heroYoutubeVideoId: ''
 };
 
-const MEDIA_CACHE_KEY = 'sbi:siteIndexMedia:v2';
+const MEDIA_CACHE_KEY = 'sbi:siteIndexMedia:v3';
 const MEDIA_CACHE_TTL_MS = 5 * 60 * 1000;
 const QUALIOPI_CSS_HREF = `/css/sbi-qualiopi.css?v=${SITE_INDEX_MEDIA_VERSION}`;
 const FOUNDER_CLEAN_CSS_HREF = `/css/sbi-founder-image-clean.css?v=${SITE_INDEX_MEDIA_VERSION}`;
@@ -24,9 +26,59 @@ const LOCAL_MEDIA = {
   founder: '/assets/fondateur-photo.jpg'
 };
 
+const YOUTUBE_VIDEO_ID_RE = /^[A-Za-z0-9_-]{11}$/;
+
+function extractYoutubeVideoId(value) {
+  const raw = cleanUrl(value);
+  if (!raw) return '';
+  if (YOUTUBE_VIDEO_ID_RE.test(raw)) return raw;
+
+  try {
+    const url = new URL(raw);
+    const host = url.hostname.replace(/^www\./, '').toLowerCase();
+
+    if (host === 'youtu.be') {
+      const id = url.pathname.split('/').filter(Boolean)[0] || '';
+      return YOUTUBE_VIDEO_ID_RE.test(id) ? id : '';
+    }
+
+    if (host === 'youtube.com' || host === 'm.youtube.com' || host === 'music.youtube.com' || host === 'youtube-nocookie.com') {
+      const fromWatch = url.searchParams.get('v');
+      if (fromWatch && YOUTUBE_VIDEO_ID_RE.test(fromWatch)) return fromWatch;
+
+      const parts = url.pathname.split('/').filter(Boolean);
+      const knownPrefixes = new Set(['embed', 'shorts', 'live', 'v']);
+      if (parts.length >= 2 && knownPrefixes.has(parts[0]) && YOUTUBE_VIDEO_ID_RE.test(parts[1])) return parts[1];
+    }
+  } catch {
+    return '';
+  }
+
+  return '';
+}
+
+function getHeroYoutubeVideoId(settings = {}) {
+  return extractYoutubeVideoId(settings.heroYoutubeVideoId) || extractYoutubeVideoId(settings.heroYoutubeUrl);
+}
+
+function youtubeEmbedUrl(videoId) {
+  if (!YOUTUBE_VIDEO_ID_RE.test(videoId)) return '';
+  const params = new URLSearchParams({
+    autoplay: '1',
+    rel: '0',
+    modestbranding: '1',
+    playsinline: '1'
+  });
+  return `https://www.youtube-nocookie.com/embed/${videoId}?${params.toString()}`;
+}
+
+
 let siteIndexMediaInitPromise = null;
 let lastAppliedSignature = '';
 let lastResolvedSettings = null;
+let heroYoutubeOverlayVideoId = '';
+let heroYoutubeEventsBound = false;
+let heroYoutubeLastTrigger = null;
 
 function cleanUrl(value) {
   return typeof value === 'string' ? value.trim() : '';
@@ -50,6 +102,9 @@ function sanitizeSettings(raw = {}) {
     const value = cleanUrl(raw?.[key]);
     clean[key] = isLegacyLocalMediaUrl(value) ? '' : value;
   });
+
+  clean.heroYoutubeVideoId = getHeroYoutubeVideoId(clean);
+  clean.heroYoutubeUrl = clean.heroYoutubeVideoId ? clean.heroYoutubeUrl : '';
 
   return clean;
 }
@@ -265,6 +320,114 @@ function applyAboutFounderHeroImage(settings = {}) {
   });
 }
 
+function getHeroYoutubeOverlay() {
+  return document.querySelector('[data-sbi-hero-video-overlay]');
+}
+
+function getHeroYoutubeFrame() {
+  return document.querySelector('[data-sbi-hero-video-frame]');
+}
+
+function setHeroYoutubeButtonState(videoId) {
+  document.querySelectorAll('[data-sbi-hero-video-open]').forEach((trigger) => {
+    const enabled = Boolean(videoId);
+    trigger.classList.toggle('is-disabled', !enabled);
+    trigger.setAttribute('aria-disabled', enabled ? 'false' : 'true');
+    trigger.setAttribute('title', enabled ? 'Lire la vidéo SBI' : 'Aucune vidéo YouTube configurée');
+  });
+}
+
+function closeHeroYoutubeOverlay({ restoreFocus = false } = {}) {
+  const overlay = getHeroYoutubeOverlay();
+  const frame = getHeroYoutubeFrame();
+
+  if (overlay) {
+    overlay.classList.remove('is-open');
+    overlay.setAttribute('aria-hidden', 'true');
+  }
+
+  if (frame) frame.innerHTML = '';
+  document.body.classList.remove('sbi-hero-video-overlay-lock');
+
+  if (restoreFocus && heroYoutubeLastTrigger && document.contains(heroYoutubeLastTrigger)) {
+    heroYoutubeLastTrigger.focus({ preventScroll: true });
+  }
+}
+
+function openHeroYoutubeOverlay(trigger = null) {
+  const videoId = heroYoutubeOverlayVideoId;
+  if (!videoId) return;
+
+  const overlay = getHeroYoutubeOverlay();
+  const frame = getHeroYoutubeFrame();
+  if (!overlay || !frame) return;
+
+  heroYoutubeLastTrigger = trigger;
+  const src = youtubeEmbedUrl(videoId);
+  if (!src) return;
+
+  frame.innerHTML = `
+    <iframe
+      src="${src}"
+      title="Vidéo Sport Business Institute"
+      loading="eager"
+      referrerpolicy="strict-origin-when-cross-origin"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+      allowfullscreen
+    ></iframe>
+  `;
+
+  overlay.setAttribute('aria-hidden', 'false');
+  document.body.classList.add('sbi-hero-video-overlay-lock');
+
+  requestAnimationFrame(() => {
+    overlay.classList.add('is-open');
+    overlay.querySelector('[data-sbi-hero-video-close]')?.focus({ preventScroll: true });
+  });
+}
+
+function bindHeroYoutubeOverlayEvents() {
+  if (heroYoutubeEventsBound) return;
+  heroYoutubeEventsBound = true;
+
+  document.addEventListener('click', (event) => {
+    const openTrigger = event.target.closest('[data-sbi-hero-video-open]');
+    if (openTrigger) {
+      event.preventDefault();
+      openHeroYoutubeOverlay(openTrigger);
+      return;
+    }
+
+    const closeTrigger = event.target.closest('[data-sbi-hero-video-close]');
+    if (closeTrigger) {
+      event.preventDefault();
+      closeHeroYoutubeOverlay({ restoreFocus: true });
+      return;
+    }
+
+    const overlay = getHeroYoutubeOverlay();
+    if (overlay && overlay.classList.contains('is-open') && event.target === overlay) {
+      closeHeroYoutubeOverlay({ restoreFocus: true });
+    }
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && getHeroYoutubeOverlay()?.classList.contains('is-open')) {
+      closeHeroYoutubeOverlay({ restoreFocus: true });
+    }
+  });
+}
+
+function applyHeroYoutubeOverlay(settings = {}) {
+  const videoId = getHeroYoutubeVideoId(settings);
+  heroYoutubeOverlayVideoId = videoId;
+  bindHeroYoutubeOverlayEvents();
+  setHeroYoutubeButtonState(videoId);
+
+  if (!videoId) closeHeroYoutubeOverlay();
+}
+
+
 function applyHeroVideo(settings = {}) {
   const videos = Array.from(document.querySelectorAll('[data-site-media="hero-video"], .hero-video-bg'))
     .filter((video, index, list) => video instanceof HTMLVideoElement && list.indexOf(video) === index);
@@ -327,6 +490,7 @@ function applySettings(settings = {}) {
   ensureFounderCleanStyles();
   ensureQualiopiTrustBlock();
   applyHeroVideo(clean);
+  applyHeroYoutubeOverlay(clean);
   applyBrandMedia(clean);
   applyFounderImage(clean);
   applyAboutFounderHeroImage(clean);
@@ -420,6 +584,7 @@ window.SBI_SITE_INDEX_MEDIA_STATUS = getSiteIndexMediaStatus;
 window.SBI_REFRESH_SITE_INDEX_MEDIA = () => initSiteIndexMedia({ forceRefresh: true });
 
 window.addEventListener('sbi:public-shell:navigated', () => {
+  closeHeroYoutubeOverlay();
   const page = document.body?.dataset?.sbiPublicPage || '';
   if (['home', 'apropos', 'formations', 'ressources'].includes(page)) {
     initSiteIndexMedia({ forceRefresh: false });

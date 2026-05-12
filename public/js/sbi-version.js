@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.121',
+  version: '8.0P.122',
   branch: 'public-pjax-app-shell',
   channel: 'PUBLIC PJAX APP SHELL',
-  stage: 'PJAX admin resource tab sync + no static placeholders',
+  stage: 'Hero YouTube overlay admin',
   updatedAt: '2026-05-12',
-  label: 'SBI 8.0P.121 - PJAX ADMIN RESOURCE TAB SYNC + NO STATIC PLACEHOLDERS'
+  label: 'SBI 8.0P.122 - HERO YOUTUBE OVERLAY ADMIN'
 };
 
 export function getSbiVersionLabel() {

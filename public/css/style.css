@@ -129,6 +129,127 @@ footer {
     color: var(--sbi-blue);
 }
 
+
+.btn-ghost[aria-disabled="true"] {
+    opacity: 0.58;
+    cursor: not-allowed;
+}
+
+.sbi-hero-video-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: clamp(1rem, 4vw, 3rem);
+    background:
+        radial-gradient(circle at 50% 20%, rgba(42, 87, 255, 0.22), transparent 34%),
+        rgba(2, 4, 12, 0.86);
+    backdrop-filter: blur(16px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.32s ease;
+}
+
+.sbi-hero-video-overlay.is-open {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.sbi-hero-video-modal {
+    position: relative;
+    width: min(1120px, 100%);
+    transform: translateY(16px) scale(0.985);
+    opacity: 0;
+    transition: transform 0.36s ease, opacity 0.36s ease;
+}
+
+.sbi-hero-video-overlay.is-open .sbi-hero-video-modal {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+}
+
+.sbi-hero-video-frame {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    background: #02040c;
+    border: 1px solid rgba(42, 87, 255, 0.48);
+    box-shadow:
+        0 30px 90px rgba(0, 0, 0, 0.62),
+        0 0 46px rgba(42, 87, 255, 0.18),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 24px), calc(100% - 24px) 100%, 0 100%);
+}
+
+.sbi-hero-video-frame::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    z-index: 2;
+}
+
+.sbi-hero-video-frame iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    display: block;
+}
+
+.sbi-hero-video-close {
+    position: fixed;
+    top: clamp(1rem, 3vw, 2rem);
+    right: clamp(1rem, 3vw, 2rem);
+    z-index: 2001;
+    width: 48px;
+    height: 48px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: rgba(5, 8, 18, 0.86);
+    color: #fff;
+    cursor: pointer;
+    font-size: 2rem;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 11px), calc(100% - 11px) 100%, 0 100%);
+    transition: transform 0.22s ease, border-color 0.22s ease, background 0.22s ease;
+}
+
+.sbi-hero-video-close:hover,
+.sbi-hero-video-close:focus-visible {
+    transform: translateY(-1px);
+    border-color: rgba(42, 87, 255, 0.72);
+    background: rgba(42, 87, 255, 0.18);
+    outline: none;
+}
+
+body.sbi-hero-video-overlay-lock {
+    overflow: hidden;
+}
+
+@media (max-width: 720px) {
+    .sbi-hero-video-overlay {
+        padding: 0.8rem;
+    }
+
+    .sbi-hero-video-close {
+        width: 42px;
+        height: 42px;
+        font-size: 1.7rem;
+    }
+
+    .sbi-hero-video-frame {
+        clip-path: polygon(0 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%);
+    }
+}
+
 .btn-icon {
     color: white;
     display: flex;
