@@ -1,4 +1,4 @@
-const SITE_INDEX_MEDIA_VERSION = '8.0P.95';
+const SITE_INDEX_MEDIA_VERSION = '8.0P.96';
 
 window.__SBI_SITE_INDEX_MEDIA_LOADING__ = true;
 
@@ -421,7 +421,7 @@ window.SBI_REFRESH_SITE_INDEX_MEDIA = () => initSiteIndexMedia({ forceRefresh: t
 
 window.addEventListener('sbi:public-shell:navigated', () => {
   const page = document.body?.dataset?.sbiPublicPage || '';
-  if (page === 'home' || page === 'apropos') {
+  if (['home', 'apropos', 'formations', 'ressources'].includes(page)) {
     initSiteIndexMedia({ forceRefresh: false });
   }
 });
