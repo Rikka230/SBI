@@ -19,7 +19,7 @@ async function getFirestoreTools() {
 
 const PUBLIC_FORMATIONS_COLLECTION = 'publicFormations';
 const PUBLIC_RESOURCES_COLLECTION = 'publicResources';
-const PUBLIC_CONTENT_VERSION = '8.0P.113';
+const PUBLIC_CONTENT_VERSION = '8.0P.115';
 
 const DEFAULT_COVER_LABEL = 'SBI';
 const COMING_SOON_COVER_URL = '/assets/coming.png';

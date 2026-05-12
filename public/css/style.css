@@ -1783,6 +1783,26 @@ footer {
     }
 }
 
+
+/* =========================================================
+   SBI 8.0P.115 - Mobile PJAX anti-flash guard
+   - Keeps the public shell hidden during mobile body swaps
+   - Reveals after the synchronized CSS + page init pass
+   ========================================================= */
+@media (max-width: 768px) and (prefers-reduced-motion: no-preference) {
+    html.sbi-public-shell-ready body[data-sbi-public-shell="enabled"].sbi-public-shell-loading [data-sbi-public-shell-root],
+    html.sbi-public-shell-ready body[data-sbi-public-shell="enabled"].sbi-public-shell-entering [data-sbi-public-shell-root] {
+        opacity: 0 !important;
+        transition: none !important;
+        pointer-events: none !important;
+    }
+
+    html.sbi-public-shell-ready body[data-sbi-public-shell="enabled"].sbi-public-shell-revealing [data-sbi-public-shell-root] {
+        opacity: 1 !important;
+        transition: opacity 160ms ease !important;
+    }
+}
+
 @media (prefers-reduced-motion: reduce) {
     html.sbi-public-shell-ready .fade-in,
     html.sbi-public-shell-ready .fade-in.visible,
