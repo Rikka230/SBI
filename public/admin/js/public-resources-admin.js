@@ -17,7 +17,7 @@ import {
 
 const COLLECTION = 'publicResources';
 const FORMATIONS_COLLECTION = 'publicFormations';
-const VERSION = '8.0P.117';
+const VERSION = '8.0P.119';
 const MAX_PDF_BYTES = 50 * 1024 * 1024;
 
 let mounted = false;
@@ -118,6 +118,21 @@ function confirmDiscardChanges() {
   return confirm('Quitter cette brochure sans sauvegarder ? Les modifications en cours seront perdues.');
 }
 
+
+function normalizeSeo(value = {}, fallback = {}) {
+  const raw = value && typeof value === 'object' ? value : {};
+  return {
+    title: text(raw.title || raw.seoTitle || fallback.title),
+    description: text(raw.description || raw.metaDescription || fallback.description),
+    indexable: raw.indexable !== false,
+    ogTitle: text(raw.ogTitle),
+    ogDescription: text(raw.ogDescription),
+    ogImageUrl: text(raw.ogImageUrl || raw.imageUrl),
+    sitemapPriority: Number(raw.sitemapPriority ?? fallback.sitemapPriority ?? 0.5),
+    sitemapChangefreq: text(raw.sitemapChangefreq || fallback.sitemapChangefreq, 'monthly')
+  };
+}
+
 function getStatusLabel(status) {
   return status === 'draft' ? 'Brouillon' : 'Publié';
 }
@@ -151,6 +166,10 @@ function normalizeResource(raw = {}, id = '') {
     globalVisible: raw.globalVisible !== false,
     assignedFormationIds: normalizeList(raw.assignedFormationIds || raw.formationIds),
     displayOrder: Number(raw.displayOrder ?? 999),
+    seo: {
+      ...normalizeSeo(raw.seo, { title, description: raw.description || raw.resume, sitemapPriority: 0.5 }),
+      pdfIndexable: raw.seo?.pdfIndexable !== false
+    },
     file: {
       url: text(file.url || raw.fileUrl || raw.pdfUrl),
       storagePath: text(file.storagePath || raw.fileStoragePath),
@@ -295,6 +314,13 @@ function fillForm(item = null) {
   $('public-resource-category').value = item?.category || 'Brochure';
   $('public-resource-display-order').value = item?.displayOrder ?? 999;
   $('public-resource-description').value = item?.description || '';
+  $('public-resource-seo-title').value = item?.seo?.title || '';
+  $('public-resource-seo-description').value = item?.seo?.description || '';
+  $('public-resource-seo-image').value = item?.seo?.ogImageUrl || '';
+  $('public-resource-seo-priority').value = item?.seo?.sitemapPriority ?? 0.5;
+  $('public-resource-seo-changefreq').value = item?.seo?.sitemapChangefreq || 'monthly';
+  $('public-resource-seo-indexable').checked = item?.seo?.indexable !== false;
+  $('public-resource-seo-pdf-indexable').checked = item?.seo?.pdfIndexable !== false;
   $('public-resource-global-visible').checked = item?.globalVisible !== false;
   $('public-resource-file-url').value = item?.file?.url || '';
   $('public-resource-file-storage-path').value = item?.file?.storagePath || '';
@@ -346,6 +372,15 @@ function gatherFormData() {
     category: text($('public-resource-category')?.value, 'Brochure'),
     description: text($('public-resource-description')?.value),
     status: $('public-resource-status')?.value || 'draft',
+    seo: {
+      title: text($('public-resource-seo-title')?.value),
+      description: text($('public-resource-seo-description')?.value),
+      indexable: $('public-resource-seo-indexable')?.checked !== false,
+      pdfIndexable: $('public-resource-seo-pdf-indexable')?.checked !== false,
+      ogImageUrl: text($('public-resource-seo-image')?.value),
+      sitemapPriority: Math.min(1, Math.max(0, Number($('public-resource-seo-priority')?.value || 0.5))),
+      sitemapChangefreq: text($('public-resource-seo-changefreq')?.value, 'monthly')
+    },
     globalVisible: $('public-resource-global-visible')?.checked === true,
     assignedFormationIds: getSelectedFormationIds(),
     displayOrder: Number($('public-resource-display-order')?.value || 999),

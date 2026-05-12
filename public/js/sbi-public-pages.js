@@ -35,7 +35,7 @@ async function getStorageTools() {
 
 const PUBLIC_FORMATIONS_COLLECTION = 'publicFormations';
 const PUBLIC_RESOURCES_COLLECTION = 'publicResources';
-const PUBLIC_CONTENT_VERSION = '8.0P.118';
+const PUBLIC_CONTENT_VERSION = '8.0P.119';
 
 const DEFAULT_COVER_LABEL = 'SBI';
 const COMING_SOON_COVER_URL = '/assets/coming.png';
@@ -84,6 +84,21 @@ function normalizeSlug(value, fallback = '') {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)/g, '') || fallback;
+}
+
+
+function normalizeSeo(value = {}, fallback = {}) {
+  const raw = value && typeof value === 'object' ? value : {};
+  return {
+    title: text(raw.title || raw.seoTitle || fallback.title),
+    description: text(raw.description || raw.metaDescription || fallback.description),
+    indexable: raw.indexable !== false,
+    ogTitle: text(raw.ogTitle),
+    ogDescription: text(raw.ogDescription),
+    ogImageUrl: text(raw.ogImageUrl || raw.imageUrl),
+    sitemapPriority: toNumber(raw.sitemapPriority, 0.6),
+    sitemapChangefreq: text(raw.sitemapChangefreq, 'monthly')
+  };
 }
 
 function getStatus(raw = {}) {
@@ -183,6 +198,7 @@ function normalizeFormation(raw = {}, id = '') {
     displayOrder: toNumber(raw.displayOrder ?? raw.ordreAffichage, 999),
     homeOrder: toNumber(raw.homeOrder ?? raw.ordreIndex ?? raw.displayOrder, 999),
     slug,
+    seo: normalizeSeo(raw.seo, { title, description: raw.shortSummary || raw.description }),
     cover: {
       url: text(cover.url || raw.coverUrl || raw.imageUrl),
       storagePath: text(cover.storagePath || raw.coverStoragePath),
@@ -217,6 +233,7 @@ function normalizeResource(raw = {}, id = '') {
       size: toNumber(file.size || raw.fileSize, 0)
     },
     externalUrl: text(raw.externalUrl || raw.url),
+    seo: normalizeSeo(raw.seo, { title, description: raw.description || raw.resume }),
     thumbnail: {
       url: text(thumbnail.url || raw.thumbnailUrl || raw.imageUrl),
       objectPositionX: Math.min(100, Math.max(0, toNumber(thumbnail.objectPositionX, 50))),
@@ -619,12 +636,13 @@ function injectFormationStructuredData(formations) {
   const existing = document.getElementById('sbi-public-formations-jsonld');
   if (existing) existing.remove();
 
-  const visible = formations.filter(isPublicVisible).slice(0, 24);
+  const visible = formations.filter((formation) => isPublicVisible(formation) && formation.seo?.indexable !== false).slice(0, 24);
   if (!visible.length) return;
 
   const script = document.createElement('script');
   script.id = 'sbi-public-formations-jsonld';
   script.type = 'application/ld+json';
+  script.dataset.sbiSeoDynamic = 'formations';
   script.textContent = JSON.stringify({
     '@context': 'https://schema.org',
     '@type': 'ItemList',
@@ -635,7 +653,8 @@ function injectFormationStructuredData(formations) {
       item: {
         '@type': 'Course',
         name: formation.title,
-        description: formation.shortSummary,
+        description: formation.seo?.description || formation.shortSummary,
+        url: `${window.location.origin}/formations.html#${formation.slug}`,
         provider: {
           '@type': 'Organization',
           name: 'Sport Business Institute',

@@ -122,7 +122,7 @@ async function mountPublicFormationsAdminSafely(cleanups) {
     if (!publicCatalogRoot) return;
 
     try {
-        const module = await import('/admin/js/public-formations-admin.js?v=8.0P.118');
+        const module = await import('/admin/js/public-formations-admin.js?v=8.0P.119');
         const initPublicFormationsAdmin = module?.initPublicFormationsAdmin || window.SBI_INIT_PUBLIC_FORMATIONS_ADMIN;
 
         if (typeof initPublicFormationsAdmin !== 'function') return;
@@ -150,7 +150,7 @@ async function mountPublicResourcesAdminSafely(cleanups) {
     if (!publicResourcesRoot) return;
 
     try {
-        const module = await import('/admin/js/public-resources-admin.js?v=8.0P.118');
+        const module = await import('/admin/js/public-resources-admin.js?v=8.0P.119');
         const initPublicResourcesAdmin = module?.initPublicResourcesAdmin || window.SBI_INIT_PUBLIC_RESOURCES_ADMIN;
 
         if (typeof initPublicResourcesAdmin !== 'function') return;

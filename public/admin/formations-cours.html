@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="css/admin.css">
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
     <link rel="stylesheet" href="css/admin-notifications.css">
-    <link rel="stylesheet" href="css/public-content-admin.css?v=8.0P.117">
+    <link rel="stylesheet" href="css/public-content-admin.css?v=8.0P.119">
     <link rel="stylesheet" href="/css/sbi-7-1-harmonization.css">
     <script src="js/components.js"></script>
 
@@ -309,6 +309,38 @@
                                 </label>
                             </div>
 
+                            <details class="public-admin-seo-panel">
+                                <summary>SEO de la fiche formation</summary>
+                                <div class="public-admin-form-grid two">
+                                    <label>SEO title
+                                        <input type="text" id="public-formation-seo-title" maxlength="70" placeholder="Titre affiché dans Google et les partages">
+                                    </label>
+                                    <label>Priorité sitemap
+                                        <input type="number" id="public-formation-seo-priority" min="0" max="1" step="0.1" value="0.8">
+                                    </label>
+                                </div>
+                                <label>Meta description
+                                    <textarea id="public-formation-seo-description" rows="3" maxlength="170" placeholder="Résumé SEO court, clair et unique."></textarea>
+                                </label>
+                                <div class="public-admin-form-grid two">
+                                    <label>Image sociale URL <small>optionnel, par défaut couverture</small>
+                                        <input type="url" id="public-formation-seo-image" placeholder="https://...">
+                                    </label>
+                                    <label>Fréquence sitemap
+                                        <select id="public-formation-seo-changefreq">
+                                            <option value="weekly">Weekly</option>
+                                            <option value="monthly" selected>Monthly</option>
+                                            <option value="yearly">Yearly</option>
+                                        </select>
+                                    </label>
+                                </div>
+                                <label class="public-admin-check">
+                                    <input type="checkbox" id="public-formation-seo-indexable" checked>
+                                    Préparer cette fiche pour l’indexation future
+                                </label>
+                                <p class="public-admin-help">Ces champs sont stockés dans <code>seo</code>. Ils n’activent pas encore une URL dédiée, mais préparent les futures fiches indexables.</p>
+                            </details>
+
                             <label>Sous-titre
                                 <input type="text" id="public-formation-subtitle" placeholder="Formation Bac / RNCP Niveau 4">
                             </label>
@@ -501,6 +533,44 @@
                                 Afficher cette brochure sur la page Ressources
                             </label>
 
+                            <details class="public-admin-seo-panel">
+                                <summary>SEO de la brochure</summary>
+                                <div class="public-admin-form-grid two">
+                                    <label>SEO title
+                                        <input type="text" id="public-resource-seo-title" maxlength="70" placeholder="Titre affiché dans Google et les partages">
+                                    </label>
+                                    <label>Priorité sitemap
+                                        <input type="number" id="public-resource-seo-priority" min="0" max="1" step="0.1" value="0.5">
+                                    </label>
+                                </div>
+                                <label>Meta description
+                                    <textarea id="public-resource-seo-description" rows="3" maxlength="170" placeholder="Résumé SEO court, clair et unique."></textarea>
+                                </label>
+                                <div class="public-admin-form-grid two">
+                                    <label>Image sociale URL <small>optionnel</small>
+                                        <input type="url" id="public-resource-seo-image" placeholder="https://...">
+                                    </label>
+                                    <label>Fréquence sitemap
+                                        <select id="public-resource-seo-changefreq">
+                                            <option value="weekly">Weekly</option>
+                                            <option value="monthly" selected>Monthly</option>
+                                            <option value="yearly">Yearly</option>
+                                        </select>
+                                    </label>
+                                </div>
+                                <div class="public-admin-form-grid two">
+                                    <label class="public-admin-check">
+                                        <input type="checkbox" id="public-resource-seo-indexable" checked>
+                                        Préparer cette brochure pour l’indexation future
+                                    </label>
+                                    <label class="public-admin-check">
+                                        <input type="checkbox" id="public-resource-seo-pdf-indexable" checked>
+                                        Autoriser l’indexation du PDF associé
+                                    </label>
+                                </div>
+                                <p class="public-admin-help">Ces champs sont stockés dans <code>seo</code>. La page Ressources actuelle n’est pas modifiée.</p>
+                            </details>
+
                             <div class="public-admin-preview-card public-admin-resource-preview" id="public-resource-admin-preview">
                                 <span>Prévisualisation</span>
                                 <h4>Brochure SBI</h4>
@@ -666,8 +736,8 @@
     });
 </script>
 
-<script type="module" src="js/admin-ui.js?v=8.0P.118"></script>
-<script type="module" src="js/admin-courses.js?v=8.0P.118"></script>
+<script type="module" src="js/admin-ui.js?v=8.0P.119"></script>
+<script type="module" src="js/admin-courses.js?v=8.0P.119"></script>
 <script type="module" src="js/tracker.js"></script>
 <script type="module" src="js/admin-notifications.js"></script>
 </body>

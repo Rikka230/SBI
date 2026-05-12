@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.118 - Public shell synchronized content module
+ * SBI 8.0P.119 - SEO foundation + PJAX head sync
  *
  * Shell public prudent :
  * - navigation fluide des ancres de l'index ;
@@ -8,7 +8,7 @@
  * - espaces admin/student/teacher et viewers toujours protégés en reload.
  */
 
-const PUBLIC_SHELL_VERSION = '8.0P.118';
+const PUBLIC_SHELL_VERSION = '8.0P.119';
 const DISABLED_FLAG = 'sbiPublicShellDisabled';
 const READY_CLASS = 'sbi-public-shell-ready';
 const SCROLLING_CLASS = 'sbi-public-shell-scrolling';
@@ -444,6 +444,34 @@ function prunePageScopedHeadAssets(pageId) {
   document.head.querySelectorAll('style[data-sbi-public-shell-style]').forEach((style) => style.remove());
 }
 
+
+function syncManagedSeoHead(nextDocument) {
+  const nextHead = nextDocument?.head;
+  if (!nextHead) return;
+
+  const nextTitle = textContentOf(nextDocument.querySelector('title'));
+  if (nextTitle) document.title = nextTitle;
+
+  const managedSelector = '[data-sbi-seo], #sbi-public-formations-jsonld, script[data-sbi-seo-dynamic]';
+  document.head.querySelectorAll(managedSelector).forEach((node) => {
+    try { node.remove(); } catch {}
+  });
+
+  const nextManagedNodes = Array.from(nextHead.querySelectorAll('[data-sbi-seo]'));
+  if (!nextManagedNodes.length) return;
+
+  const insertionAnchor = document.head.querySelector('link[rel="stylesheet"], link[rel="preload"][as="style"], style');
+  nextManagedNodes.forEach((node) => {
+    const clone = node.cloneNode(true);
+    if (insertionAnchor?.parentNode) document.head.insertBefore(clone, insertionAnchor);
+    else document.head.appendChild(clone);
+  });
+}
+
+function textContentOf(node) {
+  return String(node?.textContent || '').trim();
+}
+
 async function syncHeadAssets(nextDocument, pageId) {
   const stylesheetSelector = 'link[rel="stylesheet"], link[rel="preload"][as="style"]';
   const stylesheetLoaders = [];
@@ -696,7 +724,7 @@ async function runPageInitializers(pageId) {
 
   if (['home', 'formations', 'parcours', 'apropos', 'ressources', 'contact'].includes(pageId)) {
     try {
-      const publicPagesModule = await import('/js/sbi-public-pages.js?v=8.0P.118');
+      const publicPagesModule = await import('/js/sbi-public-pages.js?v=8.0P.119');
       const initPublicPages = publicPagesModule.initSbiPublicPages || window.SBI_INIT_PUBLIC_PAGES;
       if (typeof initPublicPages === 'function') initPublicPages(document);
     } catch (error) {
@@ -743,7 +771,7 @@ async function renderPublicPage(url, decision, { historyMode = 'push', behavior 
       if (!nextDocument.body) throw new Error('Document HTML invalide');
 
       await syncHeadAssets(nextDocument, targetPageId);
-      document.title = nextDocument.title || document.title;
+      syncManagedSeoHead(nextDocument);
 
       const fragment = sanitizeBodyFragment(nextDocument);
       syncBodyAttributes(nextDocument, targetPageId, enabled);
