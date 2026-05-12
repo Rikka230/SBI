@@ -3209,11 +3209,10 @@ body[data-sbi-public-page="ressources"] .public-section-header-stacked .public-s
 }
 
 /* =========================================================
-   SBI 8.0P.111 - Mobile public spark lines and slider cleanup
+   SBI 8.0P.112 - Mobile public slider snap cleanup
    - Keeps the real luminous spark outside clipped panes
-   - Removes inherited horizontal section borders and hard background seams on mobile
-   - Stabilizes the two-row horizontal formations slider without card stacking
-   - Keeps the public page CSS scoped to Formations/Ressources mobile
+   - Locks the mobile formations carousel to two clean rows
+   - Matches grid tracks and card width to prevent visual overlap
    - Keeps desktop untouched
    ========================================================= */
 @media (max-width: 768px) {
@@ -3560,20 +3559,26 @@ body[data-sbi-public-page="ressources"] .public-section-header-stacked .public-s
         display: grid !important;
         grid-template-columns: none !important;
         grid-auto-flow: column !important;
-        grid-template-rows: repeat(2, auto) !important;
-        grid-auto-columns: clamp(168px, 45vw, 210px) !important;
-        gap: 0.8rem !important;
+        grid-template-rows: repeat(2, minmax(0, 1fr)) !important;
+        grid-auto-columns: calc((100% - 0.95rem) / 2) !important;
+        column-gap: 0.95rem !important;
+        row-gap: 0.95rem !important;
+        gap: 0.95rem !important;
         overflow-x: auto !important;
         overflow-y: hidden !important;
         overscroll-behavior-x: contain !important;
-        scroll-snap-type: x proximity !important;
-        scroll-padding-inline: 1rem !important;
-        padding-right: calc(1.35rem + env(safe-area-inset-right, 0px)) !important;
-        padding-bottom: 0.35rem !important;
+        scroll-snap-type: x mandatory !important;
+        scroll-padding-left: 0 !important;
+        scroll-padding-right: calc(1.2rem + env(safe-area-inset-right, 0px)) !important;
+        padding-left: 0 !important;
+        padding-right: calc(1.2rem + env(safe-area-inset-right, 0px)) !important;
+        padding-bottom: 0.45rem !important;
         align-items: stretch !important;
+        justify-items: stretch !important;
         justify-content: start !important;
         -webkit-overflow-scrolling: touch !important;
         scrollbar-width: none !important;
+        contain: layout paint !important;
     }
 
     body[data-sbi-public-page="formations"] .public-formations-grid::-webkit-scrollbar {
@@ -3581,15 +3586,25 @@ body[data-sbi-public-page="ressources"] .public-section-header-stacked .public-s
     }
 
     body[data-sbi-public-page="formations"] .public-formations-grid > .parcours-card,
-    body[data-sbi-public-page="formations"] .public-formations-grid > .sbi-catalogue-formation-card {
-        width: auto !important;
+    body[data-sbi-public-page="formations"] .public-formations-grid > .sbi-catalogue-formation-card,
+    body[data-sbi-public-page="formations"] .public-formations-grid > .sbi-home-formation-card {
+        box-sizing: border-box !important;
+        width: 100% !important;
+        max-width: none !important;
         min-width: 0 !important;
         min-height: 0 !important;
         height: auto !important;
+        flex: none !important;
+        flex-basis: auto !important;
+        align-self: stretch !important;
+        justify-self: stretch !important;
         aspect-ratio: 1 / 1 !important;
         scroll-snap-align: start !important;
-        margin-right: 0 !important;
+        scroll-snap-stop: always !important;
+        margin: 0 !important;
         transform: none !important;
+        grid-column: auto !important;
+        grid-row: auto !important;
     }
 
     body[data-sbi-public-page="formations"] .public-formations-grid .card-content {
@@ -3641,13 +3656,19 @@ body[data-sbi-public-page="ressources"] .public-section-header-stacked .public-s
 
     body[data-sbi-public-page="formations"] .public-formations-grid {
         grid-template-columns: none !important;
-        grid-template-rows: repeat(2, auto) !important;
-        grid-auto-columns: clamp(156px, 46vw, 190px) !important;
-        gap: 0.72rem !important;
+        grid-template-rows: repeat(2, minmax(0, 1fr)) !important;
+        grid-auto-columns: calc((100% - 0.82rem) / 2) !important;
+        column-gap: 0.82rem !important;
+        row-gap: 0.82rem !important;
+        gap: 0.82rem !important;
     }
 
     body[data-sbi-public-page="formations"] .public-formations-grid > .parcours-card,
-    body[data-sbi-public-page="formations"] .public-formations-grid > .sbi-catalogue-formation-card {
+    body[data-sbi-public-page="formations"] .public-formations-grid > .sbi-catalogue-formation-card,
+    body[data-sbi-public-page="formations"] .public-formations-grid > .sbi-home-formation-card {
         min-height: 0 !important;
+        width: 100% !important;
+        max-width: none !important;
+        flex: none !important;
     }
 }

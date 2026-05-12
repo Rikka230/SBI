@@ -713,6 +713,10 @@ async function initFormationsPage(root) {
   const { items, fromFirebase } = await getPublicFormationsWithFallback();
   const visible = sortByDisplay(items.filter(isPublicVisible));
   grid.replaceChildren(...visible.map((item) => createFormationCard(item)));
+  grid.scrollLeft = 0;
+  window.requestAnimationFrame(() => {
+    grid.scrollLeft = 0;
+  });
   injectFormationStructuredData(visible);
 
   const publishedCount = visible.filter((item) => item.status === 'published').length;

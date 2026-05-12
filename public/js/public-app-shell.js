@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.109 - Public shell home return cleanup
+ * SBI 8.0P.112 - Public shell safe stylesheet swap
  *
  * Shell public prudent :
  * - navigation fluide des ancres de l'index ;
@@ -8,7 +8,7 @@
  * - espaces admin/student/teacher et viewers toujours protégés en reload.
  */
 
-const PUBLIC_SHELL_VERSION = '8.0P.109';
+const PUBLIC_SHELL_VERSION = '8.0P.112';
 const DISABLED_FLAG = 'sbiPublicShellDisabled';
 const READY_CLASS = 'sbi-public-shell-ready';
 const SCROLLING_CLASS = 'sbi-public-shell-scrolling';
@@ -447,6 +447,7 @@ function prunePageScopedHeadAssets(pageId) {
 async function syncHeadAssets(nextDocument, pageId) {
   const stylesheetSelector = 'link[rel="stylesheet"], link[rel="preload"][as="style"]';
   const stylesheetLoaders = [];
+  const staleLocalLinks = new Set();
   const nextLinks = Array.from(nextDocument.querySelectorAll(stylesheetSelector))
     .filter((link) => Boolean(link.getAttribute('href')));
 
@@ -456,13 +457,35 @@ async function syncHeadAssets(nextDocument, pageId) {
     if (key && !nextLocalCssByKey.has(key)) nextLocalCssByKey.set(key, link);
   });
 
+  const appendStylesheetClone = (sourceLink, insertAfter = null) => {
+    const absoluteHref = getAbsoluteAssetHref(sourceLink);
+    if (!absoluteHref) return null;
+
+    const existing = Array.from(document.head.querySelectorAll(stylesheetSelector))
+      .find((current) => getAbsoluteAssetHref(current) === absoluteHref);
+
+    if (existing) return existing;
+
+    const clonedLink = sourceLink.cloneNode(true);
+    clonedLink.dataset.sbiPublicShellManaged = 'true';
+
+    if (insertAfter?.parentNode) insertAfter.after(clonedLink);
+    else document.head.appendChild(clonedLink);
+
+    if (clonedLink.rel === 'stylesheet') {
+      stylesheetLoaders.push(waitForStylesheet(clonedLink));
+    }
+
+    return clonedLink;
+  };
+
   const syncedCurrentLocalKeys = new Set();
   Array.from(document.head.querySelectorAll(stylesheetSelector)).forEach((currentLink) => {
     const key = getPublicCssLinkKey(currentLink);
     if (!key) return;
 
     if (syncedCurrentLocalKeys.has(key)) {
-      currentLink.remove();
+      staleLocalLinks.add(currentLink);
       return;
     }
 
@@ -470,7 +493,7 @@ async function syncHeadAssets(nextDocument, pageId) {
     const nextLink = nextLocalCssByKey.get(key);
 
     if (!nextLink) {
-      currentLink.remove();
+      staleLocalLinks.add(currentLink);
       return;
     }
 
@@ -478,29 +501,12 @@ async function syncHeadAssets(nextDocument, pageId) {
     const nextHref = getAbsoluteAssetHref(nextLink);
 
     if (currentHref !== nextHref) {
-      const replacement = nextLink.cloneNode(true);
-      currentLink.replaceWith(replacement);
-      if (replacement.rel === 'stylesheet') {
-        stylesheetLoaders.push(waitForStylesheet(replacement));
-      }
+      appendStylesheetClone(nextLink, currentLink);
+      staleLocalLinks.add(currentLink);
     }
   });
 
-  nextLinks.forEach((link) => {
-    const absoluteHref = getAbsoluteAssetHref(link);
-    if (!absoluteHref) return;
-
-    const exists = Array.from(document.head.querySelectorAll(stylesheetSelector))
-      .some((current) => getAbsoluteAssetHref(current) === absoluteHref);
-
-    if (!exists) {
-      const clonedLink = link.cloneNode(true);
-      document.head.appendChild(clonedLink);
-      if (clonedLink.rel === 'stylesheet') {
-        stylesheetLoaders.push(waitForStylesheet(clonedLink));
-      }
-    }
-  });
+  nextLinks.forEach((link) => appendStylesheetClone(link));
 
   const activeInlineStyleKeys = new Set();
   nextDocument.querySelectorAll('style').forEach((style, index) => {
@@ -525,7 +531,12 @@ async function syncHeadAssets(nextDocument, pageId) {
     await Promise.allSettled(stylesheetLoaders);
   }
 
-  prunePageScopedHeadAssets(pageId);
+  window.requestAnimationFrame(() => {
+    staleLocalLinks.forEach((link) => {
+      try { link.remove(); } catch {}
+    });
+    prunePageScopedHeadAssets(pageId);
+  });
 }
 
 function sanitizeBodyFragment(nextDocument) {
@@ -635,7 +646,7 @@ async function ensureDiagonalRendererForPage(pageId) {
 
   if (pagesWithMobileCuts.has(pageId) && typeof window.SBI_RENDER_DIAGONALS !== 'function') {
     try {
-      await import('/js/sbi-diagonals.js?v=8.0P.104');
+      await import('/js/sbi-diagonals.js?v=8.0P.105');
     } catch (error) {
       console.warn('[SBI Public Shell] Diagonales publiques indisponibles après PJAX :', error);
     }
@@ -655,7 +666,7 @@ async function runPageInitializers(pageId) {
 
   if (['home', 'formations', 'ressources'].includes(pageId)) {
     try {
-      const mediaModule = await import('/js/site-index-public.js?v=8.0P.104');
+      const mediaModule = await import('/js/site-index-public.js?v=8.0P.105');
       const initMedia = mediaModule.initSiteIndexMedia || window.SBI_INIT_SITE_INDEX_MEDIA;
       if (typeof initMedia === 'function') await initMedia({ forceRefresh: false });
     } catch (error) {
@@ -685,7 +696,7 @@ async function runPageInitializers(pageId) {
 
   if (['home', 'formations', 'parcours', 'apropos', 'ressources', 'contact'].includes(pageId)) {
     try {
-      const publicPagesModule = await import('/js/sbi-public-pages.js?v=8.0P.105');
+      const publicPagesModule = await import('/js/sbi-public-pages.js?v=8.0P.112');
       const initPublicPages = publicPagesModule.initSbiPublicPages || window.SBI_INIT_PUBLIC_PAGES;
       if (typeof initPublicPages === 'function') initPublicPages(document);
     } catch (error) {
