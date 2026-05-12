@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.113',
+  version: '8.0P.114',
   branch: 'public-pjax-app-shell',
   channel: 'PUBLIC PJAX APP SHELL',
-  stage: 'Mobile public slider start position cleanup',
+  stage: 'Mobile public slider grid specificity cleanup',
   updatedAt: '2026-05-12',
-  label: 'SBI 8.0P.113 - MOBILE PUBLIC SLIDER START CLEANUP'
+  label: 'SBI 8.0P.114 - MOBILE PUBLIC SLIDER GRID SPECIFICITY CLEANUP'
 };
 
 export function getSbiVersionLabel() {
