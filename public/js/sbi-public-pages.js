@@ -19,7 +19,7 @@ async function getFirestoreTools() {
 
 const PUBLIC_FORMATIONS_COLLECTION = 'publicFormations';
 const PUBLIC_RESOURCES_COLLECTION = 'publicResources';
-const PUBLIC_CONTENT_VERSION = '8.0P.116';
+const PUBLIC_CONTENT_VERSION = '8.0P.117';
 
 const DEFAULT_COVER_LABEL = 'SBI';
 const COMING_SOON_COVER_URL = '/assets/coming.png';
@@ -313,7 +313,9 @@ function normalizeResource(raw = {}, id = '') {
     file: {
       url: text(file.url || raw.fileUrl || raw.pdfUrl),
       storagePath: text(file.storagePath || raw.fileStoragePath),
-      mimeType: text(file.mimeType || raw.mimeType),
+      name: text(file.name || raw.fileName),
+      originalName: text(file.originalName || raw.originalFileName),
+      mimeType: text(file.mimeType || raw.mimeType, 'application/pdf'),
       size: toNumber(file.size || raw.fileSize, 0)
     },
     externalUrl: text(raw.externalUrl || raw.url),
@@ -598,6 +600,45 @@ function createFormationCard(formation, options = {}) {
   return article;
 }
 
+function formatPublicFileSize(bytes = 0) {
+  const size = Number(bytes) || 0;
+  if (size <= 0) return '';
+  if (size < 1024 * 1024) return `${Math.round(size / 1024)} Ko`;
+  return `${(size / (1024 * 1024)).toFixed(size >= 10 * 1024 * 1024 ? 0 : 1)} Mo`;
+}
+
+function getPublicResourceFileName(item) {
+  const rawName = text(item?.file?.originalName || item?.file?.name || item?.title || 'brochure-sbi');
+  const clean = rawName
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\.pdf$/i, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '') || 'brochure-sbi';
+  return `${clean}.pdf`;
+}
+
+async function downloadPublicResourceFile(url, filename) {
+  try {
+    const response = await fetch(url, { mode: 'cors' });
+    if (!response.ok) throw new Error(`Téléchargement indisponible (${response.status})`);
+
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = objectUrl;
+    link.download = filename || 'brochure-sbi.pdf';
+    document.body.append(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1200);
+  } catch (error) {
+    console.warn('[SBI Public] Téléchargement direct impossible, ouverture du PDF en secours :', error);
+    window.open(url, '_blank', 'noopener,noreferrer');
+  }
+}
+
 function createResourceCard(item) {
   const article = createElement('article', 'public-resource-card fade-in visible');
   article.dataset.resourceId = item.id;
@@ -608,10 +649,32 @@ function createResourceCard(item) {
 
   article.append(marker, title, description);
 
-  const href = item.file.url || item.externalUrl || `contact.html?brochure=${encodeURIComponent(item.title)}`;
-  const link = createElement('a', 'public-inline-link text-italic', item.file.url || item.externalUrl ? 'Consulter ->' : 'Demander la brochure ->');
+  const hasFile = Boolean(item.file?.url);
+  const href = item.file?.url || item.externalUrl || `contact.html?brochure=${encodeURIComponent(item.title)}`;
+
+  if (hasFile) {
+    const metaText = ['PDF', formatPublicFileSize(item.file.size)].filter(Boolean).join(' · ');
+    if (metaText) article.append(createElement('div', 'public-resource-meta text-italic', metaText));
+
+    const actions = createElement('div', 'public-resource-actions');
+
+    const viewLink = createElement('a', 'public-resource-action public-resource-action-primary text-italic', 'Visualiser');
+    viewLink.href = href;
+    viewLink.target = '_blank';
+    viewLink.rel = 'noopener noreferrer';
+
+    const downloadButton = createElement('button', 'public-resource-action public-resource-download-btn text-italic', 'Télécharger');
+    downloadButton.type = 'button';
+    downloadButton.addEventListener('click', () => downloadPublicResourceFile(href, getPublicResourceFileName(item)));
+
+    actions.append(viewLink, downloadButton);
+    article.append(actions);
+    return article;
+  }
+
+  const link = createElement('a', 'public-inline-link text-italic', item.externalUrl ? 'Consulter ->' : 'Demander la brochure ->');
   link.href = href;
-  if (item.file.url || item.externalUrl) {
+  if (item.externalUrl) {
     link.target = '_blank';
     link.rel = 'noopener noreferrer';
   }

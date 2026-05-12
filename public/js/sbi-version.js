@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.116',
+  version: '8.0P.117',
   branch: 'public-pjax-app-shell',
   channel: 'PUBLIC PJAX APP SHELL',
-  stage: 'Mobile formation card text readability panel',
+  stage: 'Public brochures PDF admin',
   updatedAt: '2026-05-12',
-  label: 'SBI 8.0P.116 - MOBILE FORMATION CARD TEXT READABILITY PANEL'
+  label: 'SBI 8.0P.117 - PUBLIC BROCHURES PDF ADMIN'
 };
 
 export function getSbiVersionLabel() {

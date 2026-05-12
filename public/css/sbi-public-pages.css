@@ -3740,3 +3740,69 @@ body[data-sbi-public-page="ressources"] .public-section-header-stacked .public-s
         flex: none !important;
     }
 }
+
+/* =========================================================
+   SBI 8.0P.117 - Ressources PDF : visualisation + téléchargement
+   ========================================================= */
+body[data-sbi-public-page="ressources"] .public-resource-card {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+body[data-sbi-public-page="ressources"] .public-resource-meta {
+    margin-top: auto;
+    padding-top: 1rem;
+    color: rgba(207, 226, 255, 0.70);
+    font-size: 0.78rem;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+body[data-sbi-public-page="ressources"] .public-resource-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+    margin-top: 0.85rem;
+}
+
+body[data-sbi-public-page="ressources"] .public-resource-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 42px;
+    margin-top: 0;
+    padding: 0.72rem 0.95rem;
+    border: 1px solid rgba(126, 181, 255, 0.28);
+    background: rgba(255, 255, 255, 0.035);
+    color: #dbeaff;
+    font: inherit;
+    font-size: 0.88rem;
+    font-weight: 900;
+    text-decoration: none;
+    cursor: pointer;
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 9px), calc(100% - 9px) 100%, 0 100%);
+    transition: transform .22s ease, border-color .22s ease, background .22s ease;
+}
+
+body[data-sbi-public-page="ressources"] .public-resource-action-primary {
+    border-color: rgba(0, 81, 255, 0.75);
+    background: linear-gradient(135deg, rgba(0, 81, 255, 0.92), rgba(65, 137, 255, 0.42));
+    color: #fff;
+}
+
+body[data-sbi-public-page="ressources"] .public-resource-action:hover,
+body[data-sbi-public-page="ressources"] .public-resource-action:focus-visible {
+    transform: translateY(-2px);
+    border-color: rgba(126, 181, 255, 0.72);
+    background: rgba(0, 81, 255, 0.16);
+    outline: none;
+}
+
+@media (max-width: 560px) {
+    body[data-sbi-public-page="ressources"] .public-resource-actions,
+    body[data-sbi-public-page="ressources"] .public-resource-action {
+        width: 100%;
+    }
+}
