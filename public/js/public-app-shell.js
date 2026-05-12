@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.108 - Public shell stylesheet sync cleanup
+ * SBI 8.0P.109 - Public shell home return cleanup
  *
  * Shell public prudent :
  * - navigation fluide des ancres de l'index ;
@@ -8,7 +8,7 @@
  * - espaces admin/student/teacher et viewers toujours protégés en reload.
  */
 
-const PUBLIC_SHELL_VERSION = '8.0P.108';
+const PUBLIC_SHELL_VERSION = '8.0P.109';
 const DISABLED_FLAG = 'sbiPublicShellDisabled';
 const READY_CLASS = 'sbi-public-shell-ready';
 const SCROLLING_CLASS = 'sbi-public-shell-scrolling';
@@ -433,6 +433,17 @@ function getAbsoluteAssetHref(link) {
   }
 }
 
+function prunePageScopedHeadAssets(pageId) {
+  if (pageId !== 'home') return;
+
+  document.head.querySelectorAll('link[rel="stylesheet"]').forEach((link) => {
+    const href = link.getAttribute('href') || '';
+    if (/sbi-public-pages\.css/i.test(href)) link.remove();
+  });
+
+  document.head.querySelectorAll('style[data-sbi-public-shell-style]').forEach((style) => style.remove());
+}
+
 async function syncHeadAssets(nextDocument, pageId) {
   const stylesheetSelector = 'link[rel="stylesheet"], link[rel="preload"][as="style"]';
   const stylesheetLoaders = [];
@@ -513,6 +524,8 @@ async function syncHeadAssets(nextDocument, pageId) {
   if (stylesheetLoaders.length) {
     await Promise.allSettled(stylesheetLoaders);
   }
+
+  prunePageScopedHeadAssets(pageId);
 }
 
 function sanitizeBodyFragment(nextDocument) {
@@ -622,7 +635,7 @@ async function ensureDiagonalRendererForPage(pageId) {
 
   if (pagesWithMobileCuts.has(pageId) && typeof window.SBI_RENDER_DIAGONALS !== 'function') {
     try {
-      await import('/js/sbi-diagonals.js?v=8.0P.102');
+      await import('/js/sbi-diagonals.js?v=8.0P.104');
     } catch (error) {
       console.warn('[SBI Public Shell] Diagonales publiques indisponibles après PJAX :', error);
     }
@@ -642,7 +655,7 @@ async function runPageInitializers(pageId) {
 
   if (['home', 'formations', 'ressources'].includes(pageId)) {
     try {
-      const mediaModule = await import('/js/site-index-public.js?v=8.0P.102');
+      const mediaModule = await import('/js/site-index-public.js?v=8.0P.104');
       const initMedia = mediaModule.initSiteIndexMedia || window.SBI_INIT_SITE_INDEX_MEDIA;
       if (typeof initMedia === 'function') await initMedia({ forceRefresh: false });
     } catch (error) {
@@ -672,7 +685,7 @@ async function runPageInitializers(pageId) {
 
   if (['home', 'formations', 'parcours', 'apropos', 'ressources', 'contact'].includes(pageId)) {
     try {
-      const publicPagesModule = await import('/js/sbi-public-pages.js?v=8.0P.102');
+      const publicPagesModule = await import('/js/sbi-public-pages.js?v=8.0P.105');
       const initPublicPages = publicPagesModule.initSbiPublicPages || window.SBI_INIT_PUBLIC_PAGES;
       if (typeof initPublicPages === 'function') initPublicPages(document);
     } catch (error) {
