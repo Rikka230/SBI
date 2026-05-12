@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.126',
-  branch: 'public-pjax-app-shell',
-  channel: 'PUBLIC PJAX APP SHELL',
-  stage: 'PUBLIC HEADER CLEANUP + ABOUT FOUNDER FADE',
+  version: '8.0P.127',
+  branch: 'private-admin-accounts-mail-workflow',
+  channel: 'ADMIN MAIL WORKFLOW P1',
+  stage: 'PRIVATE P1 QUILL ALIGN + STUDENT NOTICE + ADMIN DELETE CLEANUP',
   updatedAt: '2026-05-12',
-  label: 'SBI 8.0P.126 - PUBLIC HEADER CLEANUP + ABOUT FOUNDER FADE'
+  label: 'SBI 8.0P.127 - PRIVATE P1 QUILL ALIGN + STUDENT NOTICE + ADMIN DELETE CLEANUP'
 };
 
 export function getSbiVersionLabel() {

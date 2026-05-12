@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.118 - Course editor bridge
+ * SBI 8.0P.127 - Course editor bridge
  *
  * Prépare et monte les éléments que les scripts inline ne relancent pas
  * en navigation PJAX : Quill, onglets éditeur et switch image/vidéo.
@@ -274,6 +274,7 @@ function applyQuillToolbarTooltips(toolbar, cleanups = []) {
   setToolbarLabel(toolbar, '.ql-background', 'Surlignage du caractère', cleanups);
   setToolbarLabel(toolbar, '.ql-list[value="ordered"]', 'Liste numérotée', cleanups);
   setToolbarLabel(toolbar, '.ql-list[value="bullet"]', 'Liste à puces', cleanups);
+  setToolbarLabel(toolbar, '.ql-align', 'Alignement', cleanups);
   setToolbarLabel(toolbar, '.ql-link', 'Ajouter un lien', cleanups);
   setToolbarLabel(toolbar, '.ql-image', 'Insérer une image', cleanups);
   setToolbarLabel(toolbar, '.ql-video', 'Insérer une vidéo', cleanups);
@@ -311,6 +312,7 @@ export function initCourseEditorQuill() {
     ['bold', 'italic', 'underline', 'strike'],
     [{ color: [] }, { background: [] }],
     [{ list: 'ordered' }, { list: 'bullet' }],
+    [{ align: [] }],
     ['link', 'image', 'video'],
     ['clean']
   ];

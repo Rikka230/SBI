@@ -44,6 +44,14 @@ const showAdminMessage = (message) => {
     window.alert(message);
 };
 
+const showAdminConfirm = async (options) => {
+    if (typeof window.SBIAdminConfirm === 'function') {
+        return window.SBIAdminConfirm(options);
+    }
+
+    return window.confirm(options?.text || options?.title || 'Confirmer ?');
+};
+
 const presenceToMillis = (value) => {
     if (!value) return 0;
     if (typeof value.toMillis === 'function') return value.toMillis();
@@ -457,43 +465,50 @@ const initModalLogic = () => {
         }
     });
 
-    document.getElementById('delete-user-btn').addEventListener('click', (event) => {
+    document.getElementById('delete-user-btn').addEventListener('click', async (event) => {
         event.preventDefault();
 
         const deleteBtn = event.currentTarget;
         deleteBtn.disabled = true;
         deleteBtn.style.opacity = '0.65';
 
-        runAfterPaint(async () => {
-            try {
-                const userId = document.getElementById('edit-user-id').value;
-                const targetUser = allUsersData.find(u => u.id === userId);
+        try {
+            const userId = document.getElementById('edit-user-id').value;
+            const targetUser = allUsersData.find(u => u.id === userId);
 
-                if (!targetUser) return;
+            if (!targetUser) return;
 
-                if (targetUser.isGod) {
-                    showAdminMessage("Sécurité : le compte Suprême ne peut pas être supprimé.");
-                    return;
-                }
-
-                if (targetUser.id === currentUid) {
-                    showAdminMessage("Sécurité : vous ne pouvez pas supprimer votre propre compte.");
-                    return;
-                }
-
-                if (!window.confirm("DANGER ABSOLU : supprimer définitivement cet utilisateur ?")) return;
-
-                const deleteUserAccount = httpsCallable(functionsInstance, 'deleteUserAccount');
-                await deleteUserAccount({ uid: userId });
-                modal.style.display = 'none';
-                fetchUsers();
-            } catch (error) {
-                showAdminMessage("Erreur serveur pendant la suppression.");
-            } finally {
-                deleteBtn.disabled = false;
-                deleteBtn.style.opacity = '';
+            if (targetUser.isGod) {
+                showAdminMessage("Sécurité : le compte Suprême ne peut pas être supprimé.");
+                return;
             }
-        });
+
+            if (targetUser.id === currentUid) {
+                showAdminMessage("Sécurité : vous ne pouvez pas supprimer votre propre compte.");
+                return;
+            }
+
+            const displayName = `${targetUser.prenom || ''} ${targetUser.nom || ''}`.trim() || targetUser.email || 'cet utilisateur';
+            const confirmed = await showAdminConfirm({
+                title: 'Supprimer définitivement ?',
+                text: `Cette action supprimera le compte de ${displayName}. Elle ne doit être utilisée qu’en dernier recours.`,
+                confirmLabel: 'Supprimer',
+                cancelLabel: 'Annuler',
+                tone: 'danger'
+            });
+
+            if (!confirmed) return;
+
+            const deleteUserAccount = httpsCallable(functionsInstance, 'deleteUserAccount');
+            await deleteUserAccount({ uid: userId });
+            modal.style.display = 'none';
+            fetchUsers();
+        } catch (error) {
+            showAdminMessage("Erreur serveur pendant la suppression.");
+        } finally {
+            deleteBtn.disabled = false;
+            deleteBtn.style.opacity = '';
+        }
     });
 
     document.getElementById('reset-pwd-btn').addEventListener('click', async () => {
