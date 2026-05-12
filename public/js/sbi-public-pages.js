@@ -3,7 +3,7 @@ let firestoreToolsPromise = null;
 async function getFirestoreTools() {
   if (!firestoreToolsPromise) {
     firestoreToolsPromise = Promise.all([
-      import('/js/firebase-init.js?v=8.0P.94'),
+      import('/js/firebase-init.js?v=8.0P.95'),
       import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js")
     ]).then(([firebaseModule, firestoreModule]) => ({
       db: firebaseModule.db,
@@ -19,7 +19,7 @@ async function getFirestoreTools() {
 
 const PUBLIC_FORMATIONS_COLLECTION = 'publicFormations';
 const PUBLIC_RESOURCES_COLLECTION = 'publicResources';
-const PUBLIC_CONTENT_VERSION = '8.0P.94';
+const PUBLIC_CONTENT_VERSION = '8.0P.95';
 
 const DEFAULT_COVER_LABEL = 'SBI';
 const COMING_SOON_COVER_URL = '/assets/coming.png';
@@ -492,42 +492,36 @@ function openFormationSheet(formation) {
 
 function createFormationCard(formation, options = {}) {
   const isHome = options.mode === 'home';
-  const article = createElement('article', isHome ? 'parcours-card fade-in visible sbi-home-formation-card' : 'public-formation-card fade-in visible');
+  const isCatalogue = !isHome;
+  const article = createElement('article', 'parcours-card fade-in visible sbi-home-formation-card');
+
+  if (isCatalogue) article.classList.add('sbi-catalogue-formation-card');
+
   article.dataset.formationId = formation.id;
   article.dataset.formationSlug = formation.slug;
   article.dataset.formationStatus = formation.status;
   if (isComingSoon(formation)) article.classList.add('is-coming-soon');
   applyCoverBackground(article, formation);
 
-  const mask = createElement('div', isHome ? 'card-mask' : 'public-formation-cover-mask');
-  const badge = createElement('div', isHome ? 'card-badge' : 'public-formation-badge');
-  const content = createElement('div', isHome ? 'card-content' : 'public-formation-content');
+  const mask = createElement('div', 'card-mask');
+  const badge = createElement('div', 'card-badge');
+  const content = createElement('div', 'card-content');
 
-  const statusLabel = isComingSoon(formation) ? 'Prochainement' : formation.category;
+  const statusLabel = isComingSoon(formation) ? 'Prochainement' : text(formation.category, 'Formation SBI');
   content.append(createElement('span', 'public-formation-kicker text-italic', statusLabel));
+  content.append(createElement('h3', 'text-italic', formation.title));
 
-  const title = createElement('h3', 'text-italic', formation.title);
-  content.append(title);
-
-  if (!isHome && formation.subtitle) {
-    content.append(createElement('p', 'public-formation-subtitle text-italic', formation.subtitle));
-  }
-
-  const meta = createElement('div', isHome ? 'card-footer' : 'public-formation-meta');
-  const metaItems = [formation.duration, formation.level, formation.modality].filter(Boolean).slice(0, isHome ? 1 : 3);
-  metaItems.forEach((value) => meta.append(createElement('span', 'course-count text-italic', value)));
+  const footer = createElement('div', 'card-footer');
+  const metaText = isComingSoon(formation)
+    ? 'Bientôt disponible'
+    : text(formation.duration || formation.level || formation.modality, isHome ? 'Voir la fiche' : 'Formation');
+  footer.append(createElement('span', 'course-count text-italic', metaText));
 
   if (!isComingSoon(formation)) {
-    const arrow = createElement('span', 'arrow text-blue', isHome ? '→' : '+');
-    meta.append(arrow);
+    footer.append(createElement('span', 'arrow text-blue', '→'));
   }
 
-  content.append(meta);
-
-  if (!isHome) {
-    content.append(createElement('p', 'public-formation-summary text-italic', formation.shortSummary));
-  }
-
+  content.append(footer);
   article.append(mask, badge, content);
 
   if (isComingSoon(formation)) {
@@ -536,24 +530,21 @@ function createFormationCard(formation, options = {}) {
     return article;
   }
 
-  if (isHome) {
-    article.tabIndex = 0;
-    article.setAttribute('role', 'button');
-    article.setAttribute('aria-label', `Ouvrir la fiche formation ${formation.title}`);
-    return article;
+  article.tabIndex = 0;
+  article.setAttribute('role', 'button');
+  article.setAttribute('aria-label', `Ouvrir la fiche formation ${formation.title}`);
+
+  if (isCatalogue) {
+    const activate = () => openFormationSheet(formation);
+    article.addEventListener('click', activate);
+    article.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        activate();
+      }
+    });
   }
 
-  const toggle = document.createElement('button');
-  toggle.type = 'button';
-  toggle.className = 'public-formation-toggle text-italic';
-  toggle.textContent = 'Voir la fiche';
-  toggle.addEventListener('click', (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    openFormationSheet(formation);
-  });
-
-  content.append(toggle);
   return article;
 }
 
@@ -1021,7 +1012,7 @@ async function hydrateContactDecorativeVideo(root) {
   if (!(video instanceof HTMLVideoElement)) return;
 
   try {
-    const mediaModule = await import('/js/site-index-public.js?v=8.0P.94');
+    const mediaModule = await import('/js/site-index-public.js?v=8.0P.95');
     const initMedia = mediaModule.initSiteIndexMedia || window.SBI_INIT_SITE_INDEX_MEDIA;
     if (typeof initMedia === 'function') await initMedia({ forceRefresh: false });
   } catch (error) {

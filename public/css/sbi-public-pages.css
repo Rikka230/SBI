@@ -1643,7 +1643,7 @@ body[data-sbi-public-page="ressources"] .public-page-orbit span {
 }
 
 /* =========================================================
-   SBI 8.0P.94 - Formations & Ressources visual rework
+   SBI 8.0P.94 - Formations & Ressources visual rework (superseded by 8.0P.95)
    Références : index validé, À propos, Contact, Calculateur.
    ========================================================= */
 
@@ -2292,4 +2292,288 @@ body[data-sbi-public-page="ressources"] .public-section-header p {
     .public-method-section {
         gap: 1rem;
     }
+}
+
+
+/* =========================================================
+   SBI 8.0P.95 - Alignement mockup Formations/Ressources
+   - desktop sans formes géométriques ajoutées
+   - même fond vidéo animé que l'index
+   - blocs formations repris sur la base des cartes index
+   ========================================================= */
+
+body[data-sbi-public-page="formations"],
+body[data-sbi-public-page="ressources"] {
+    background: #030711;
+}
+
+@media (min-width: 769px) {
+    body[data-sbi-public-page="formations"] .public-page::before,
+    body[data-sbi-public-page="formations"] .public-page::after,
+    body[data-sbi-public-page="ressources"] .public-page::before,
+    body[data-sbi-public-page="ressources"] .public-page::after,
+    body[data-sbi-public-page="formations"] .public-page-hero::before,
+    body[data-sbi-public-page="ressources"] .public-page-hero::before,
+    body[data-sbi-public-page="formations"] .public-page-hero-wide::after,
+    body[data-sbi-public-page="ressources"] .public-page-hero-wide::after {
+        display: none !important;
+        content: none !important;
+    }
+}
+
+body[data-sbi-public-page="formations"] .public-page-hero-wide,
+body[data-sbi-public-page="ressources"] .public-page-hero-wide {
+    min-height: clamp(620px, 78vh, 820px);
+    display: flex;
+    align-items: flex-end;
+    padding-top: clamp(7rem, 10vw, 10rem);
+    padding-bottom: clamp(4.5rem, 7vw, 6.6rem);
+    overflow: hidden;
+    border-bottom: 1px solid rgba(126, 181, 255, 0.12);
+    background: #030711;
+}
+
+body[data-sbi-public-page="formations"] .public-page-hero-video-bg,
+body[data-sbi-public-page="ressources"] .public-page-hero-video-bg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.62;
+    filter: contrast(1.16) brightness(0.80) saturate(1.12);
+    z-index: -3;
+}
+
+body[data-sbi-public-page="formations"] .public-page-hero-overlay,
+body[data-sbi-public-page="ressources"] .public-page-hero-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    background:
+        linear-gradient(90deg, rgba(3, 7, 17, 0.98) 0%, rgba(3, 7, 17, 0.82) 35%, rgba(3, 7, 17, 0.28) 72%, rgba(3, 7, 17, 0.56) 100%),
+        linear-gradient(180deg, rgba(3, 7, 17, 0.08) 0%, rgba(3, 7, 17, 0.35) 55%, #030711 100%);
+    pointer-events: none;
+}
+
+body[data-sbi-public-page="formations"] .public-page-hero-wide .public-page-hero-copy,
+body[data-sbi-public-page="ressources"] .public-page-hero-wide .public-page-hero-copy {
+    width: min(100%, 1280px);
+    max-width: 1280px;
+    padding-right: clamp(0rem, 20vw, 22rem);
+}
+
+body[data-sbi-public-page="formations"] .public-page-hero-wide .public-page-title,
+body[data-sbi-public-page="ressources"] .public-page-hero-wide .public-page-title {
+    max-width: 1240px;
+    font-size: clamp(3rem, 5.1vw, 5.75rem);
+    line-height: 0.96;
+    letter-spacing: -0.055em;
+    text-wrap: balance;
+}
+
+body[data-sbi-public-page="formations"] .public-page-hero-wide .public-page-subtitle,
+body[data-sbi-public-page="ressources"] .public-page-hero-wide .public-page-subtitle {
+    max-width: 760px;
+    font-size: clamp(1rem, 1.16vw, 1.18rem);
+}
+
+.public-page-actions-minimal {
+    margin-top: 1.8rem;
+}
+
+.public-page-actions-minimal .btn-ghost {
+    min-width: 210px;
+    background: rgba(5, 10, 20, 0.34);
+}
+
+body[data-sbi-public-page="formations"] .public-hero-video-cue,
+body[data-sbi-public-page="ressources"] .public-resource-hero-document {
+    right: clamp(1.25rem, 5vw, 5rem);
+}
+
+body[data-sbi-public-page="formations"] .public-hero-video-cue {
+    bottom: clamp(3rem, 6vw, 6rem);
+}
+
+body[data-sbi-public-page="formations"] .public-section-header h2,
+body[data-sbi-public-page="ressources"] .public-section-header h2 {
+    max-width: 1120px;
+    font-size: clamp(2.3rem, 3.8vw, 4.55rem);
+    line-height: 0.96;
+    text-wrap: balance;
+}
+
+body[data-sbi-public-page="formations"] .public-section-header p,
+body[data-sbi-public-page="ressources"] .public-section-header p {
+    max-width: 560px;
+}
+
+.public-formations-grid.public-card-grid-3 {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1.5rem;
+}
+
+.public-formations-grid .sbi-catalogue-formation-card {
+    border-color: #1a1e29;
+    aspect-ratio: 1 / 1;
+}
+
+.public-formations-grid .sbi-catalogue-formation-card:hover,
+.public-formations-grid .sbi-catalogue-formation-card:focus-visible {
+    transform: translateY(-5px);
+    border-color: rgba(0, 81, 255, 0.70);
+    box-shadow: 0 0 0 1px rgba(0, 81, 255, 0.22), 0 22px 68px rgba(0, 81, 255, 0.16);
+    outline: none;
+}
+
+.public-formations-grid .sbi-catalogue-formation-card:hover::after,
+.public-formations-grid .sbi-catalogue-formation-card:focus-visible::after {
+    opacity: 1;
+}
+
+.public-formations-grid .sbi-catalogue-formation-card.has-cover-image {
+    background-image:
+        linear-gradient(to top, rgba(4, 5, 8, 0.36) 0%, rgba(4, 5, 8, 0.03) 70%),
+        var(--sbi-cover-image) !important;
+    background-position: center, var(--sbi-cover-x) var(--sbi-cover-y) !important;
+    background-size: cover, cover !important;
+}
+
+.public-formations-grid .sbi-catalogue-formation-card.has-coming-cover {
+    background-image:
+        linear-gradient(to top, rgba(4, 5, 8, 0.32) 0%, rgba(4, 5, 8, 0.06) 70%),
+        var(--sbi-cover-image) !important;
+    filter: saturate(0.92) brightness(0.92);
+}
+
+.public-formations-grid .sbi-catalogue-formation-card.is-coming-soon:hover,
+.public-formations-grid .sbi-catalogue-formation-card.is-coming-soon:focus-visible {
+    transform: none;
+    border-color: #1a1e29;
+    box-shadow: none;
+}
+
+.public-formations-grid .sbi-catalogue-formation-card.is-coming-soon::after {
+    opacity: 0;
+}
+
+.public-formations-grid .sbi-catalogue-formation-card .card-content h3 {
+    max-width: 96%;
+}
+
+.public-formations-grid .sbi-catalogue-formation-card .public-formation-kicker {
+    margin-bottom: 0.75rem;
+}
+
+.public-cta-card-video {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+}
+
+.public-final-video,
+.public-final-video-mask {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+.public-final-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.5;
+    filter: grayscale(1) contrast(1.42) brightness(0.72) saturate(1.25);
+    mix-blend-mode: screen;
+    z-index: -3;
+}
+
+.public-final-video-mask {
+    background:
+        linear-gradient(90deg, rgba(4, 7, 14, 0.76), rgba(4, 7, 14, 0.20), rgba(4, 7, 14, 0.78)),
+        radial-gradient(circle at 84% 54%, rgba(0, 81, 255, 0.26), transparent 34%);
+    z-index: -2;
+}
+
+.public-cta-card-video > div,
+.public-cta-card-video > a,
+.public-cta-card-video .public-cta-actions {
+    position: relative;
+    z-index: 1;
+}
+
+@media (max-width: 1200px) {
+    .public-formations-grid.public-card-grid-3 {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 900px) {
+    .public-formations-grid.public-card-grid-3 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 768px) {
+    body[data-sbi-public-page="formations"] .public-page::before,
+    body[data-sbi-public-page="formations"] .public-page::after,
+    body[data-sbi-public-page="ressources"] .public-page::before,
+    body[data-sbi-public-page="ressources"] .public-page::after {
+        display: block;
+        opacity: 0.42;
+    }
+
+    body[data-sbi-public-page="formations"] .public-page-hero-wide,
+    body[data-sbi-public-page="ressources"] .public-page-hero-wide {
+        min-height: auto;
+        padding-top: 7rem;
+        padding-bottom: 4rem;
+        clip-path: polygon(0 0, 100% 0, 100% calc(100% - 28px), calc(100% - 28px) 100%, 0 100%);
+    }
+
+    body[data-sbi-public-page="formations"] .public-page-hero-wide::after,
+    body[data-sbi-public-page="ressources"] .public-page-hero-wide::after {
+        content: "";
+        display: block !important;
+        position: absolute;
+        right: -5rem;
+        bottom: -5rem;
+        width: 13rem;
+        height: 13rem;
+        border-radius: 50%;
+        border: 1px solid rgba(126, 181, 255, 0.20);
+        box-shadow: inset 0 0 44px rgba(0, 81, 255, 0.14), 0 0 48px rgba(0, 81, 255, 0.14);
+        opacity: 0.58;
+        z-index: -1;
+    }
+
+    body[data-sbi-public-page="formations"] .public-page-hero-wide .public-page-hero-copy,
+    body[data-sbi-public-page="ressources"] .public-page-hero-wide .public-page-hero-copy {
+        max-width: 100%;
+        padding-right: 0;
+    }
+
+    body[data-sbi-public-page="formations"] .public-page-hero-wide .public-page-title,
+    body[data-sbi-public-page="ressources"] .public-page-hero-wide .public-page-title {
+        font-size: clamp(2.35rem, 12vw, 4rem);
+        line-height: 0.96;
+    }
+
+    body[data-sbi-public-page="formations"] .public-hero-video-cue {
+        position: relative;
+        right: auto;
+        bottom: auto;
+        margin-top: 1.6rem;
+    }
+
+    .public-formations-grid.public-card-grid-3 {
+        grid-template-columns: 1fr;
+    }
+}
+
+body[data-sbi-public-page="formations"] .public-page-hero-wide .public-page-title .text-blue,
+body[data-sbi-public-page="ressources"] .public-page-hero-wide .public-page-title .text-blue {
+    display: inline;
 }
