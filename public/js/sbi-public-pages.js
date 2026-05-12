@@ -3,7 +3,7 @@ let firestoreToolsPromise = null;
 async function getFirestoreTools() {
   if (!firestoreToolsPromise) {
     firestoreToolsPromise = Promise.all([
-      import('/js/firebase-init.js?v=8.0P.93'),
+      import('/js/firebase-init.js?v=8.0P.94'),
       import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js")
     ]).then(([firebaseModule, firestoreModule]) => ({
       db: firebaseModule.db,
@@ -19,10 +19,10 @@ async function getFirestoreTools() {
 
 const PUBLIC_FORMATIONS_COLLECTION = 'publicFormations';
 const PUBLIC_RESOURCES_COLLECTION = 'publicResources';
-const PUBLIC_CONTENT_VERSION = '8.0P.93';
+const PUBLIC_CONTENT_VERSION = '8.0P.94';
 
 const DEFAULT_COVER_LABEL = 'SBI';
-const COMING_SOON_COVER_URL = 'assets/coming.png';
+const COMING_SOON_COVER_URL = '/assets/coming.png';
 
 const FORMATION_FALLBACKS = [
   {
@@ -546,7 +546,7 @@ function createFormationCard(formation, options = {}) {
   const toggle = document.createElement('button');
   toggle.type = 'button';
   toggle.className = 'public-formation-toggle text-italic';
-  toggle.textContent = 'Ouvrir la fiche complète';
+  toggle.textContent = 'Voir la fiche formation';
   toggle.addEventListener('click', (event) => {
     event.preventDefault();
     event.stopPropagation();
@@ -1021,7 +1021,7 @@ async function hydrateContactDecorativeVideo(root) {
   if (!(video instanceof HTMLVideoElement)) return;
 
   try {
-    const mediaModule = await import('/js/site-index-public.js?v=8.0P.93');
+    const mediaModule = await import('/js/site-index-public.js?v=8.0P.92');
     const initMedia = mediaModule.initSiteIndexMedia || window.SBI_INIT_SITE_INDEX_MEDIA;
     if (typeof initMedia === 'function') await initMedia({ forceRefresh: false });
   } catch (error) {
