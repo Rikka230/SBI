@@ -3173,3 +3173,37 @@ body[data-sbi-public-page="ressources"] .public-about-final-card .about-final-ac
         justify-content: flex-start;
     }
 }
+
+
+/* =========================================================
+   SBI 8.0P.98 - Section header text alignment hotfix
+   - Le texte d'intro ne flotte plus dans le vide à droite
+   - Aucun changement sur les cartes ou le hero
+   ========================================================= */
+body[data-sbi-public-page="formations"] .public-section-header-stacked,
+body[data-sbi-public-page="ressources"] .public-section-header-stacked {
+    display: block !important;
+    max-width: min(1120px, 92vw);
+    margin-bottom: clamp(1.8rem, 2.8vw, 2.8rem) !important;
+}
+
+body[data-sbi-public-page="formations"] .public-section-header-stacked > div,
+body[data-sbi-public-page="ressources"] .public-section-header-stacked > div {
+    max-width: min(1120px, 92vw);
+}
+
+body[data-sbi-public-page="formations"] .public-section-header-stacked h2,
+body[data-sbi-public-page="ressources"] .public-section-header-stacked h2 {
+    max-width: min(1080px, 92vw) !important;
+}
+
+body[data-sbi-public-page="formations"] .public-section-header-stacked .public-section-lead,
+body[data-sbi-public-page="ressources"] .public-section-header-stacked .public-section-lead {
+    width: min(100%, 760px) !important;
+    max-width: 760px !important;
+    margin: clamp(0.8rem, 1.2vw, 1.15rem) 0 0 !important;
+    color: var(--public-muted);
+    font-size: clamp(0.98rem, 1vw, 1.1rem);
+    line-height: 1.65;
+    text-align: left !important;
+}
