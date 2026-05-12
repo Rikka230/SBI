@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.101',
+  version: '8.0P.102',
   branch: 'public-pjax-app-shell',
   channel: 'PUBLIC PJAX APP SHELL',
-  stage: 'Mobile diagonal spacing and Qualiopi alignment hotfix',
+  stage: 'Rollback 8.0P.101 and restore index state',
   updatedAt: '2026-05-11',
-  label: 'SBI 8.0P.101 - MOBILE DIAGONAL SPACING HOTFIX'
+  label: 'SBI 8.0P.102 - ROLLBACK 101 RESTORE INDEX'
 };
 
 export function getSbiVersionLabel() {

@@ -3426,7 +3426,7 @@ body[data-sbi-public-page="ressources"] .public-section-header-stacked .public-s
 
 
 /* =========================================================
-   SBI 8.0P.100 - Mobile header + diagonal engine handoff
+   SBI 8.0P.102 - Mobile header + diagonal engine handoff
    ========================================================= */
 @media (max-width: 768px) {
     body[data-sbi-public-page="formations"] .site-header.is-mobile-menu-open .main-nav,
@@ -3498,77 +3498,5 @@ body[data-sbi-public-page="ressources"] .public-section-header-stacked .public-s
     body[data-sbi-public-page="ressources"] .public-about-final-card h2 {
         font-size: clamp(1.38rem, 6.8vw, 2rem) !important;
         line-height: 1.03 !important;
-    }
-}
-
-
-/* =========================================================
-   SBI 8.0P.101 - Public mobile spacing hotfix
-   - Desktop untouched
-   - Reduces mobile section overlap after diagonal handoff
-   - Keeps the diagonal overlay engine as the only visible diagonal source
-   ========================================================= */
-@media (max-width: 768px) {
-    body[data-sbi-public-page="formations"] .public-proof-strip,
-    body[data-sbi-public-page="formations"] .public-catalogue-section,
-    body[data-sbi-public-page="formations"] .public-about-final-cta,
-    body[data-sbi-public-page="ressources"] .public-proof-strip,
-    body[data-sbi-public-page="ressources"] .public-resources-library,
-    body[data-sbi-public-page="ressources"] .public-about-final-cta {
-        margin-top: -14px !important;
-        isolation: isolate;
-        overflow: hidden !important;
-        overflow: clip !important;
-    }
-
-    body[data-sbi-public-page="formations"] .public-proof-grid,
-    body[data-sbi-public-page="ressources"] .public-proof-grid {
-        gap: 0.85rem !important;
-    }
-
-    body[data-sbi-public-page="formations"] .public-proof-card,
-    body[data-sbi-public-page="ressources"] .public-proof-card {
-        min-height: auto !important;
-        padding: 1rem !important;
-    }
-
-    body[data-sbi-public-page="formations"] .public-section-header-stacked,
-    body[data-sbi-public-page="ressources"] .public-section-header-stacked {
-        margin-bottom: 1.35rem !important;
-    }
-
-    body[data-sbi-public-page="formations"] .grid-parcours,
-    body[data-sbi-public-page="ressources"] .public-resource-grid {
-        margin-top: 1.35rem !important;
-    }
-
-    body[data-sbi-public-page="formations"] .public-proof-strip::before,
-    body[data-sbi-public-page="formations"] .public-catalogue-section::before,
-    body[data-sbi-public-page="formations"] .public-about-final-cta::before,
-    body[data-sbi-public-page="formations"] .public-proof-strip::after,
-    body[data-sbi-public-page="formations"] .public-catalogue-section::after,
-    body[data-sbi-public-page="formations"] .public-about-final-cta::after,
-    body[data-sbi-public-page="ressources"] .public-proof-strip::before,
-    body[data-sbi-public-page="ressources"] .public-resources-library::before,
-    body[data-sbi-public-page="ressources"] .public-about-final-cta::before,
-    body[data-sbi-public-page="ressources"] .public-proof-strip::after,
-    body[data-sbi-public-page="ressources"] .public-resources-library::after,
-    body[data-sbi-public-page="ressources"] .public-about-final-cta::after {
-        content: none !important;
-        display: none !important;
-    }
-}
-
-@media (max-width: 560px) {
-    body[data-sbi-public-page="formations"] .public-proof-strip,
-    body[data-sbi-public-page="ressources"] .public-proof-strip {
-        padding-top: calc(1.2rem + 28px) !important;
-        padding-bottom: calc(1.25rem + 28px) !important;
-    }
-
-    body[data-sbi-public-page="formations"] .public-catalogue-section,
-    body[data-sbi-public-page="ressources"] .public-resources-library {
-        padding-top: calc(1.65rem + 28px) !important;
-        padding-bottom: calc(1.9rem + 28px) !important;
     }
 }

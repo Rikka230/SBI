@@ -1,5 +1,5 @@
 (function () {
-    const DIAGONALS_VERSION = '8.0P.101';
+    const DIAGONALS_VERSION = '8.0P.102';
     const mobileQuery = window.matchMedia('(max-width: 768px)');
 
     const sectionSelectors = [
@@ -90,13 +90,11 @@
                 const top = rect.top + scrollY - (mainRect.top + scrollY);
                 const sectionStyles = window.getComputedStyle(section);
                 const sectionCut = parseFloat(sectionStyles.getPropertyValue('--sbi-section-cut')) || 34;
-                const lineOffset = parseFloat(sectionStyles.getPropertyValue('--sbi-diagonal-line-offset'));
-                const overlayLineHeight = parseFloat(sectionStyles.getPropertyValue('--sbi-diagonal-line-height')) || 46;
-                const centerOffset = Number.isFinite(lineOffset) ? lineOffset : sectionCut * 0.5;
-                const lineTop = Math.max(0, top + centerOffset - (overlayLineHeight * 0.5));
-                const angle = sectionStyles.getPropertyValue('--sbi-diagonal-overlay-angle').trim() || '-5deg';
-                const opacity = sectionStyles.getPropertyValue('--sbi-diagonal-overlay-opacity').trim() || (section.matches('.section-stats') ? '0.86' : '0.68');
-                const spark = sectionStyles.getPropertyValue('--sbi-diagonal-overlay-spark-x').trim() || sparkPositions[index % sparkPositions.length];
+                const overlayLineHeight = 46;
+                const lineTop = Math.max(0, top + (sectionCut * 0.5) - (overlayLineHeight * 0.5));
+                const angle = '-5deg';
+                const opacity = section.matches('.section-stats') ? '0.86' : '0.68';
+                const spark = sparkPositions[index % sparkPositions.length];
 
                 return `<span class="sbi-diagonal-overlay__line" style="top:${lineTop}px; --sbi-diagonal-overlay-angle:${angle}; --sbi-diagonal-overlay-opacity:${opacity}; --sbi-diagonal-overlay-spark-x:${spark};"></span>`;
             })

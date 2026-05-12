@@ -775,7 +775,7 @@ main {
 
 
 /* =========================================================
-   SBI 8.0P.100 - Public pages mobile cuts share index engine
+   SBI 8.0P.102 - Public pages mobile cuts share index engine
    ========================================================= */
 .public-proof-strip,
 .public-catalogue-section,
@@ -830,67 +830,5 @@ main {
         z-index: 4;
         padding-top: calc(1.65rem + var(--sbi-section-cut));
         padding-bottom: calc(2rem + var(--sbi-section-cut));
-    }
-}
-
-
-/* =========================================================
-   SBI 8.0P.101 - Mobile diagonal spacing/alignment hotfix
-   - Less aggressive overlap on public pages
-   - Overlay line can use per-section offsets
-   - Qualiopi/newsletter line alignment stabilized on index mobile
-   ========================================================= */
-@media (max-width: 768px) {
-    body[data-sbi-public-page="formations"] .public-proof-strip,
-    body[data-sbi-public-page="formations"] .public-catalogue-section,
-    body[data-sbi-public-page="formations"] .public-about-final-cta,
-    body[data-sbi-public-page="ressources"] .public-proof-strip,
-    body[data-sbi-public-page="ressources"] .public-resources-library,
-    body[data-sbi-public-page="ressources"] .public-about-final-cta {
-        --sbi-section-cut: 28px;
-        --sbi-diagonal-line-offset: 14px;
-        --sbi-diagonal-overlay-angle: -4.35deg;
-        --sbi-diagonal-overlay-opacity: 0.74;
-        margin-top: -14px !important;
-        clip-path: polygon(
-            0 var(--sbi-section-cut),
-            100% 0,
-            100% calc(100% - var(--sbi-section-cut)),
-            0 100%
-        ) !important;
-    }
-
-    body[data-sbi-public-page="formations"] .public-proof-strip,
-    body[data-sbi-public-page="ressources"] .public-proof-strip {
-        padding-top: calc(1.45rem + var(--sbi-section-cut)) !important;
-        padding-bottom: calc(1.55rem + var(--sbi-section-cut)) !important;
-    }
-
-    body[data-sbi-public-page="formations"] .public-catalogue-section,
-    body[data-sbi-public-page="ressources"] .public-resources-library {
-        padding-top: calc(2rem + var(--sbi-section-cut)) !important;
-        padding-bottom: calc(2.25rem + var(--sbi-section-cut)) !important;
-    }
-
-    body[data-sbi-public-page="formations"] .public-about-final-cta,
-    body[data-sbi-public-page="ressources"] .public-about-final-cta {
-        padding-top: calc(1.25rem + var(--sbi-section-cut)) !important;
-        padding-bottom: calc(1.45rem + var(--sbi-section-cut)) !important;
-    }
-
-    body[data-sbi-public-page="home"] .section-qualiopi,
-    body[data-sbi-public-page="home"] .sbi-qualiopi-section,
-    body[data-sbi-public-page="home"] .section-newsletter {
-        --sbi-section-cut: 34px;
-        --sbi-diagonal-line-offset: 17px;
-        --sbi-diagonal-overlay-angle: -5deg;
-    }
-
-    body[data-sbi-public-page="home"] .section-newsletter {
-        margin-top: calc(var(--sbi-section-cut) * -1) !important;
-    }
-
-    body[data-sbi-public-page="home"] .sbi-home-page > .sbi-diagonal-overlay .sbi-diagonal-overlay__line {
-        will-change: transform, top;
     }
 }
