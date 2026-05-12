@@ -144,12 +144,12 @@ footer {
     justify-content: center;
     padding: clamp(1rem, 4vw, 3rem);
     background:
-        radial-gradient(circle at 50% 20%, rgba(42, 87, 255, 0.22), transparent 34%),
-        rgba(2, 4, 12, 0.86);
-    backdrop-filter: blur(16px);
+        radial-gradient(circle at 50% 18%, rgba(42, 87, 255, 0.18), transparent 34%),
+        rgba(2, 4, 12, 0.92);
     opacity: 0;
     pointer-events: none;
-    transition: opacity 0.32s ease;
+    transition: opacity 0.22s ease;
+    will-change: opacity;
 }
 
 .sbi-hero-video-overlay.is-open {
@@ -160,13 +160,11 @@ footer {
 .sbi-hero-video-modal {
     position: relative;
     width: min(1120px, 100%);
-    transform: translateY(16px) scale(0.985);
     opacity: 0;
-    transition: transform 0.36s ease, opacity 0.36s ease;
+    transition: opacity 0.22s ease;
 }
 
 .sbi-hero-video-overlay.is-open .sbi-hero-video-modal {
-    transform: translateY(0) scale(1);
     opacity: 1;
 }
 
@@ -196,10 +194,64 @@ footer {
 .sbi-hero-video-frame iframe {
     position: absolute;
     inset: 0;
+    z-index: 1;
     width: 100%;
     height: 100%;
     border: 0;
     display: block;
+    background: #02040c;
+    opacity: 1;
+}
+
+.sbi-hero-video-loader {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    display: grid;
+    place-items: center;
+    color: #c7d2fe;
+    font-size: 0.86rem;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    background:
+        radial-gradient(circle at 50% 35%, rgba(42, 87, 255, 0.22), transparent 44%),
+        #02040c;
+}
+
+.sbi-hero-video-loader::before {
+    content: '';
+    width: 26px;
+    height: 26px;
+    margin-right: 0.75rem;
+    border: 2px solid rgba(255, 255, 255, 0.18);
+    border-top-color: rgba(42, 87, 255, 0.95);
+    border-radius: 999px;
+    animation: sbiHeroVideoSpin 0.9s linear infinite;
+}
+
+@keyframes sbiHeroVideoSpin {
+    to { transform: rotate(360deg); }
+}
+
+.sbi-hero-video-fallback {
+    display: inline-flex;
+    margin-top: 0.9rem;
+    color: #8fb2ff;
+    font-size: 0.78rem;
+    font-weight: 900;
+    font-style: italic;
+    text-decoration: none;
+}
+
+.sbi-hero-video-fallback:hover,
+.sbi-hero-video-fallback:focus-visible {
+    color: #fff;
+    outline: none;
+}
+
+.sbi-hero-video-fallback[hidden] {
+    display: none;
 }
 
 .sbi-hero-video-close {

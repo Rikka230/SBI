@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.120 - dynamic SEO links + Firebase detail head
+ * SBI 8.0P.125 - PJAX CSS SYNC STABILITY
  *
  * Shell public prudent :
  * - navigation fluide des ancres de l'index ;
@@ -8,7 +8,7 @@
  * - espaces admin/student/teacher et viewers toujours protégés en reload.
  */
 
-const PUBLIC_SHELL_VERSION = '8.0P.120';
+const PUBLIC_SHELL_VERSION = '8.0P.125';
 const DISABLED_FLAG = 'sbiPublicShellDisabled';
 const READY_CLASS = 'sbi-public-shell-ready';
 const SCROLLING_CLASS = 'sbi-public-shell-scrolling';
@@ -492,7 +492,12 @@ async function syncHeadAssets(nextDocument, pageId) {
     const existing = Array.from(document.head.querySelectorAll(stylesheetSelector))
       .find((current) => getAbsoluteAssetHref(current) === absoluteHref);
 
-    if (existing) return existing;
+    if (existing) {
+      if ((existing.rel || '').toLowerCase() === 'stylesheet') {
+        stylesheetLoaders.push(waitForStylesheet(existing));
+      }
+      return existing;
+    }
 
     const clonedLink = sourceLink.cloneNode(true);
     clonedLink.dataset.sbiPublicShellManaged = 'true';
@@ -500,7 +505,7 @@ async function syncHeadAssets(nextDocument, pageId) {
     if (insertAfter?.parentNode) insertAfter.after(clonedLink);
     else document.head.appendChild(clonedLink);
 
-    if (clonedLink.rel === 'stylesheet') {
+    if ((clonedLink.rel || '').toLowerCase() === 'stylesheet') {
       stylesheetLoaders.push(waitForStylesheet(clonedLink));
     }
 
@@ -559,12 +564,32 @@ async function syncHeadAssets(nextDocument, pageId) {
     await Promise.allSettled(stylesheetLoaders);
   }
 
-  window.requestAnimationFrame(() => {
-    staleLocalLinks.forEach((link) => {
-      try { link.remove(); } catch {}
-    });
-    prunePageScopedHeadAssets(pageId);
+  staleLocalLinks.forEach((link) => {
+    try { link.remove(); } catch {}
   });
+
+  const retainedLocalKeys = new Set();
+  document.head.querySelectorAll(stylesheetSelector).forEach((link) => {
+    const key = getPublicCssLinkKey(link);
+    if (!key) return;
+
+    const nextLink = nextLocalCssByKey.get(key);
+    if (!nextLink) {
+      try { link.remove(); } catch {}
+      return;
+    }
+
+    const currentHref = getAbsoluteAssetHref(link);
+    const nextHref = getAbsoluteAssetHref(nextLink);
+    if (currentHref !== nextHref || retainedLocalKeys.has(key)) {
+      try { link.remove(); } catch {}
+      return;
+    }
+
+    retainedLocalKeys.add(key);
+  });
+
+  prunePageScopedHeadAssets(pageId);
 }
 
 function sanitizeBodyFragment(nextDocument) {
@@ -674,7 +699,7 @@ async function ensureDiagonalRendererForPage(pageId) {
 
   if (pagesWithMobileCuts.has(pageId) && typeof window.SBI_RENDER_DIAGONALS !== 'function') {
     try {
-      await import('/js/sbi-diagonals.js?v=8.0P.105');
+      await import('/js/sbi-diagonals.js?v=8.0P.125');
     } catch (error) {
       console.warn('[SBI Public Shell] Diagonales publiques indisponibles après PJAX :', error);
     }
@@ -694,7 +719,7 @@ async function runPageInitializers(pageId) {
 
   if (['home', 'formations', 'ressources'].includes(pageId)) {
     try {
-      const mediaModule = await import('/js/site-index-public.js?v=8.0P.105');
+      const mediaModule = await import('/js/site-index-public.js?v=8.0P.125');
       const initMedia = mediaModule.initSiteIndexMedia || window.SBI_INIT_SITE_INDEX_MEDIA;
       if (typeof initMedia === 'function') await initMedia({ forceRefresh: false });
     } catch (error) {
@@ -714,7 +739,7 @@ async function runPageInitializers(pageId) {
 
   if (pageId === 'calculator') {
     try {
-      const calculatorModule = await import('/js/sbi-aide-calculator.js?v=8.0P.76');
+      const calculatorModule = await import('/js/sbi-aide-calculator.js?v=8.0P.125');
       const initCalculator = calculatorModule.initSbiAidCalculator || window.SBI_INIT_AID_CALCULATOR;
       if (typeof initCalculator === 'function') initCalculator(document);
     } catch (error) {
@@ -724,7 +749,7 @@ async function runPageInitializers(pageId) {
 
   if (['home', 'formations', 'parcours', 'apropos', 'ressources', 'contact'].includes(pageId)) {
     try {
-      const publicPagesModule = await import('/js/sbi-public-pages.js?v=8.0P.120');
+      const publicPagesModule = await import('/js/sbi-public-pages.js?v=8.0P.125');
       const initPublicPages = publicPagesModule.initSbiPublicPages || window.SBI_INIT_PUBLIC_PAGES;
       if (typeof initPublicPages === 'function') initPublicPages(document);
     } catch (error) {

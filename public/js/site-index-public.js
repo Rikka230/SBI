@@ -1,4 +1,4 @@
-const SITE_INDEX_MEDIA_VERSION = '8.0P.123';
+const SITE_INDEX_MEDIA_VERSION = '8.0P.125';
 
 window.__SBI_SITE_INDEX_MEDIA_LOADING__ = true;
 
@@ -67,9 +67,35 @@ function youtubeEmbedUrl(videoId) {
     autoplay: '1',
     rel: '0',
     modestbranding: '1',
-    playsinline: '1'
+    playsinline: '1',
+    controls: '1',
+    fs: '1',
+    iv_load_policy: '3',
+    enablejsapi: '1',
+    origin: window.location.origin
   });
   return `https://www.youtube-nocookie.com/embed/${videoId}?${params.toString()}`;
+}
+
+function youtubeWatchUrl(videoId) {
+  return YOUTUBE_VIDEO_ID_RE.test(videoId) ? `https://www.youtube.com/watch?v=${videoId}` : '';
+}
+
+function ensureYoutubePreconnect() {
+  [
+    'https://www.youtube-nocookie.com',
+    'https://www.youtube.com',
+    'https://i.ytimg.com',
+    'https://www.google.com',
+    'https://rr1---sn-25glene6.googlevideo.com'
+  ].forEach((href) => {
+    if (document.head.querySelector(`link[rel="preconnect"][href="${href}"]`)) return;
+    const link = document.createElement('link');
+    link.rel = 'preconnect';
+    link.href = href;
+    link.crossOrigin = 'anonymous';
+    document.head.appendChild(link);
+  });
 }
 
 
@@ -79,6 +105,7 @@ let lastResolvedSettings = null;
 let heroYoutubeOverlayVideoId = '';
 let heroYoutubeEventsBound = false;
 let heroYoutubeLastTrigger = null;
+let heroYoutubePausedHeroVideos = [];
 
 function cleanUrl(value) {
   return typeof value === 'string' ? value.trim() : '';
@@ -333,7 +360,12 @@ function buildHeroYoutubeOverlay() {
       <span aria-hidden="true">×</span>
     </button>
     <div class="sbi-hero-video-modal" role="document">
-      <div class="sbi-hero-video-frame" data-sbi-hero-video-frame></div>
+      <div class="sbi-hero-video-frame" data-sbi-hero-video-frame>
+        <div class="sbi-hero-video-loader" aria-live="polite">Chargement de la vidéo…</div>
+      </div>
+      <a class="sbi-hero-video-fallback" data-sbi-hero-video-fallback href="#" target="_blank" rel="noopener noreferrer">
+        Ouvrir sur YouTube
+      </a>
     </div>
   `;
   return overlay;
@@ -369,17 +401,41 @@ function setHeroYoutubeButtonState(videoId) {
   });
 }
 
+function pauseHeroBackgroundVideosForOverlay() {
+  heroYoutubePausedHeroVideos = Array.from(document.querySelectorAll('[data-site-media="hero-video"], .hero-video-bg'))
+    .filter((video) => video instanceof HTMLVideoElement && !video.paused);
+
+  heroYoutubePausedHeroVideos.forEach((video) => {
+    try { video.pause(); } catch {}
+  });
+}
+
+function resumeHeroBackgroundVideosAfterOverlay() {
+  const videos = heroYoutubePausedHeroVideos.filter((video) => document.contains(video));
+  heroYoutubePausedHeroVideos = [];
+
+  videos.forEach((video) => {
+    try {
+      video.play().catch(() => {});
+    } catch {}
+  });
+}
+
 function closeHeroYoutubeOverlay({ restoreFocus = false } = {}) {
   const overlay = getHeroYoutubeOverlay({ create: false });
   const frame = getHeroYoutubeFrame({ create: false });
 
   if (overlay) {
-    overlay.classList.remove('is-open');
+    overlay.classList.remove('is-open', 'is-loading', 'is-ready');
     overlay.setAttribute('aria-hidden', 'true');
   }
 
-  if (frame) frame.innerHTML = '';
+  if (frame) {
+    frame.innerHTML = '<div class="sbi-hero-video-loader" aria-live="polite">Chargement de la vidéo…</div>';
+  }
+
   document.body.classList.remove('sbi-hero-video-overlay-lock');
+  resumeHeroBackgroundVideosAfterOverlay();
 
   if (restoreFocus && heroYoutubeLastTrigger && document.contains(heroYoutubeLastTrigger)) {
     heroYoutubeLastTrigger.focus({ preventScroll: true });
@@ -390,27 +446,45 @@ function openHeroYoutubeOverlay(trigger = null) {
   const videoId = heroYoutubeOverlayVideoId;
   if (!videoId) return;
 
+  ensureYoutubePreconnect();
+
   const overlay = getHeroYoutubeOverlay({ create: true });
   const frame = getHeroYoutubeFrame({ create: true });
   if (!overlay || !frame) return;
 
   heroYoutubeLastTrigger = trigger;
   const src = youtubeEmbedUrl(videoId);
+  const watchUrl = youtubeWatchUrl(videoId);
   if (!src) return;
 
-  frame.innerHTML = `
-    <iframe
-      src="${src}"
-      title="Vidéo Sport Business Institute"
-      loading="eager"
-      referrerpolicy="strict-origin-when-cross-origin"
-      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-      allowfullscreen
-    ></iframe>
-  `;
+  pauseHeroBackgroundVideosForOverlay();
 
   overlay.setAttribute('aria-hidden', 'false');
+  overlay.classList.remove('is-ready');
+  overlay.classList.add('is-loading');
   document.body.classList.add('sbi-hero-video-overlay-lock');
+
+  const fallback = overlay.querySelector('[data-sbi-hero-video-fallback]');
+  if (fallback) {
+    fallback.href = watchUrl || '#';
+    fallback.hidden = !watchUrl;
+  }
+
+  frame.innerHTML = '<div class="sbi-hero-video-loader" aria-live="polite">Chargement de la vidéo…</div>';
+
+  const iframe = document.createElement('iframe');
+  iframe.title = 'Vidéo Sport Business Institute';
+  iframe.loading = 'eager';
+  iframe.referrerPolicy = 'origin-when-cross-origin';
+  iframe.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen; web-share';
+  iframe.allowFullscreen = true;
+  iframe.src = src;
+  iframe.addEventListener('load', () => {
+    overlay.classList.remove('is-loading');
+    overlay.classList.add('is-ready');
+  }, { once: true });
+
+  frame.appendChild(iframe);
 
   requestAnimationFrame(() => {
     overlay.classList.add('is-open');
@@ -456,6 +530,7 @@ function applyHeroYoutubeOverlay(settings = {}) {
   bindHeroYoutubeOverlayEvents();
   setHeroYoutubeButtonState(videoId);
 
+  if (videoId) ensureYoutubePreconnect();
   if (!videoId) closeHeroYoutubeOverlay();
 }
 
