@@ -1,5 +1,5 @@
 (function () {
-    const DIAGONALS_VERSION = '8.0P.102';
+    const DIAGONALS_VERSION = '8.0P.103';
     const mobileQuery = window.matchMedia('(max-width: 768px)');
 
     const sectionSelectors = [
@@ -91,8 +91,9 @@
                 const sectionStyles = window.getComputedStyle(section);
                 const sectionCut = parseFloat(sectionStyles.getPropertyValue('--sbi-section-cut')) || 34;
                 const overlayLineHeight = 46;
-                const lineTop = Math.max(0, top + (sectionCut * 0.5) - (overlayLineHeight * 0.5));
-                const angle = '-5deg';
+                const lineOffset = parseFloat(sectionStyles.getPropertyValue('--sbi-diagonal-line-offset')) || 0;
+                const lineTop = Math.max(0, top + (sectionCut * 0.5) - (overlayLineHeight * 0.5) + lineOffset);
+                const angle = sectionStyles.getPropertyValue('--sbi-diagonal-line-angle').trim() || '-5deg';
                 const opacity = section.matches('.section-stats') ? '0.86' : '0.68';
                 const spark = sparkPositions[index % sparkPositions.length];
 

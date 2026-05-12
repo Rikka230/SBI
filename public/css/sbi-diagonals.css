@@ -775,7 +775,7 @@ main {
 
 
 /* =========================================================
-   SBI 8.0P.102 - Public pages mobile cuts share index engine
+   SBI 8.0P.103 - Public pages mobile cuts share index engine
    ========================================================= */
 .public-proof-strip,
 .public-catalogue-section,
@@ -830,5 +830,23 @@ main {
         z-index: 4;
         padding-top: calc(1.65rem + var(--sbi-section-cut));
         padding-bottom: calc(2rem + var(--sbi-section-cut));
+    }
+}
+
+
+/* =========================================================
+   SBI 8.0P.103 - Qualiopi/newsletter mobile diagonal fine tune
+   - moves only the overlay line that separates Qualiopi and Newsletter
+   - no desktop visual change
+   ========================================================= */
+@media (max-width: 768px) {
+    .section-newsletter {
+        --sbi-diagonal-line-offset: -24px;
+        --sbi-diagonal-line-angle: -5deg;
+    }
+
+    .section-qualiopi,
+    .sbi-qualiopi-section {
+        --sbi-diagonal-line-offset: 0px;
     }
 }
