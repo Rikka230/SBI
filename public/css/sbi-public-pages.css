@@ -3209,9 +3209,10 @@ body[data-sbi-public-page="ressources"] .public-section-header-stacked .public-s
 }
 
 /* =========================================================
-   SBI 8.0P.109 - Mobile public spark cleanup
-   - Removes unintended circular ornaments from the mobile transition layer
-   - Keeps only the luminous spark carried by the diagonal line
+   SBI 8.0P.110 - Mobile public unclipped spark cleanup
+   - Fixes the real luminous spark on diagonal transitions
+   - Moves mobile section backgrounds into clipped panes instead of clipping the whole section
+   - Keeps sparks outside clipped panes so they cannot be cut by previous blocks
    - Keeps the public page CSS scoped to Formations/Ressources mobile
    - Keeps desktop untouched
    ========================================================= */
@@ -3324,23 +3325,8 @@ body[data-sbi-public-page="ressources"] .public-section-header-stacked .public-s
 
     body[data-sbi-public-page="formations"] .public-page::before,
     body[data-sbi-public-page="ressources"] .public-page::before {
-        content: "" !important;
-        display: block !important;
-        position: absolute !important;
-        left: -18vw !important;
-        top: clamp(31.5rem, 123vw, 39.5rem) !important;
-        width: 136vw !important;
-        height: 42px !important;
-        z-index: 7 !important;
-        pointer-events: none !important;
-        opacity: 0.58 !important;
-        transform: rotate(-5deg) !important;
-        transform-origin: left center !important;
-        mix-blend-mode: screen !important;
-        background:
-            radial-gradient(circle at 67% 50%, rgba(255, 255, 255, 0.96) 0 2px, rgba(178, 220, 255, 0.86) 3px, rgba(0, 81, 255, 0.78) 5px, transparent 12px),
-            linear-gradient(90deg, transparent 0%, rgba(174, 218, 255, 0.16) 22%, rgba(255, 255, 255, 0.48) 48%, rgba(0, 81, 255, 0.82) 62%, rgba(116, 180, 255, 0.22) 76%, transparent 100%) center / 100% 1px no-repeat !important;
-        filter: drop-shadow(0 0 10px rgba(0, 81, 255, 0.46)) !important;
+        content: none !important;
+        display: none !important;
     }
 
     body[data-sbi-public-page="formations"] .public-page::after,
@@ -3373,23 +3359,8 @@ body[data-sbi-public-page="ressources"] .public-section-header-stacked .public-s
 
     body[data-sbi-public-page="formations"] .public-page-hero-wide::before,
     body[data-sbi-public-page="ressources"] .public-page-hero-wide::before {
-        content: "" !important;
-        display: block !important;
-        position: absolute !important;
-        left: -20vw !important;
-        bottom: 0.9rem !important;
-        width: 136vw !important;
-        height: 42px !important;
-        z-index: 1 !important;
-        pointer-events: none !important;
-        opacity: 0.52 !important;
-        transform: rotate(-5deg) !important;
-        transform-origin: center !important;
-        mix-blend-mode: screen !important;
-        background:
-            radial-gradient(circle at 70% 50%, rgba(255, 255, 255, 0.9) 0 2px, rgba(178, 220, 255, 0.82) 3px, rgba(0, 81, 255, 0.72) 5px, transparent 12px),
-            linear-gradient(90deg, transparent 0%, rgba(174, 218, 255, 0.16) 22%, rgba(255, 255, 255, 0.50) 48%, rgba(0, 81, 255, 0.82) 62%, rgba(116, 180, 255, 0.22) 76%, transparent 100%) center / 100% 1px no-repeat !important;
-        filter: drop-shadow(0 0 10px rgba(0, 81, 255, 0.46)) !important;
+        content: none !important;
+        display: none !important;
     }
 
     body[data-sbi-public-page="formations"] .public-page-hero-wide::after,
@@ -3459,24 +3430,12 @@ body[data-sbi-public-page="ressources"] .public-section-header-stacked .public-s
         position: relative !important;
         z-index: 2 !important;
         isolation: isolate !important;
-        overflow: hidden !important;
+        overflow: visible !important;
         margin-top: clamp(1.45rem, 6.5vw, 2.55rem) !important;
         padding-top: calc(clamp(1.7rem, 6.5vw, 2.65rem) + var(--sbi-public-section-cut)) !important;
         padding-bottom: calc(clamp(1.8rem, 6.5vw, 2.85rem) + 12px) !important;
-        background:
-            radial-gradient(circle at 88% 22%, rgba(0, 81, 255, 0.10), transparent 40%),
-            linear-gradient(180deg,
-                rgba(5, 11, 21, 0.995) 0,
-                rgba(5, 11, 21, 0.995) var(--sbi-public-section-cut),
-                rgba(4, 9, 18, 0.982) var(--sbi-public-section-cut),
-                rgba(2, 5, 11, 0.99) 100%) !important;
-        clip-path: polygon(
-            0 var(--sbi-public-section-cut),
-            100% 0,
-            100% calc(100% - var(--sbi-public-section-cut)),
-            calc(100% - var(--sbi-public-section-cut)) 100%,
-            0 100%
-        ) !important;
+        background: transparent !important;
+        clip-path: none !important;
     }
 
     body[data-sbi-public-page="formations"] .public-page-hero-wide + .public-proof-strip,
@@ -3500,11 +3459,43 @@ body[data-sbi-public-page="ressources"] .public-section-header-stacked .public-s
         content: "" !important;
         display: block !important;
         position: absolute !important;
+        inset: 0 !important;
+        z-index: 0 !important;
+        pointer-events: none !important;
+        opacity: 1 !important;
+        transform: none !important;
+        mix-blend-mode: normal !important;
+        background:
+            radial-gradient(circle at 88% 22%, rgba(0, 81, 255, 0.10), transparent 40%),
+            linear-gradient(180deg,
+                rgba(5, 11, 21, 0.995) 0,
+                rgba(5, 11, 21, 0.995) var(--sbi-public-section-cut),
+                rgba(4, 9, 18, 0.982) var(--sbi-public-section-cut),
+                rgba(2, 5, 11, 0.99) 100%) !important;
+        clip-path: polygon(
+            0 var(--sbi-public-section-cut),
+            100% 0,
+            100% calc(100% - var(--sbi-public-section-cut)),
+            calc(100% - var(--sbi-public-section-cut)) 100%,
+            0 100%
+        ) !important;
+        filter: none !important;
+    }
+
+    body[data-sbi-public-page="formations"] .public-proof-strip::after,
+    body[data-sbi-public-page="formations"] .public-catalogue-section::after,
+    body[data-sbi-public-page="formations"] .public-about-final-cta::after,
+    body[data-sbi-public-page="ressources"] .public-proof-strip::after,
+    body[data-sbi-public-page="ressources"] .public-resources-library::after,
+    body[data-sbi-public-page="ressources"] .public-about-final-cta::after {
+        content: "" !important;
+        display: block !important;
+        position: absolute !important;
         left: -2vw !important;
-        top: calc(var(--sbi-public-section-cut) - 19px) !important;
+        top: calc(var(--sbi-public-section-cut) - 20px) !important;
         width: 124vw !important;
         height: 40px !important;
-        z-index: 7 !important;
+        z-index: 6 !important;
         pointer-events: none !important;
         opacity: 0.76 !important;
         transform: rotate(-5deg) !important;
@@ -3514,16 +3505,6 @@ body[data-sbi-public-page="ressources"] .public-section-header-stacked .public-s
             radial-gradient(circle at 58% 50%, rgba(255, 255, 255, 0.95) 0 2px, rgba(178, 220, 255, 0.84) 3px, rgba(0, 81, 255, 0.72) 5px, transparent 12px),
             linear-gradient(90deg, transparent 0%, rgba(174, 218, 255, 0.18) 18%, rgba(255, 255, 255, 0.54) 45%, rgba(0, 81, 255, 0.90) 58%, rgba(116, 180, 255, 0.24) 74%, transparent 100%) center / 100% 1px no-repeat !important;
         filter: drop-shadow(0 0 10px rgba(0, 81, 255, 0.50)) !important;
-    }
-
-    body[data-sbi-public-page="formations"] .public-proof-strip::after,
-    body[data-sbi-public-page="formations"] .public-catalogue-section::after,
-    body[data-sbi-public-page="formations"] .public-about-final-cta::after,
-    body[data-sbi-public-page="ressources"] .public-proof-strip::after,
-    body[data-sbi-public-page="ressources"] .public-resources-library::after,
-    body[data-sbi-public-page="ressources"] .public-about-final-cta::after {
-        content: none !important;
-        display: none !important;
     }
 
     body[data-sbi-public-page="formations"] .public-proof-strip > *,
