@@ -35,10 +35,17 @@ async function getStorageTools() {
 
 const PUBLIC_FORMATIONS_COLLECTION = 'publicFormations';
 const PUBLIC_RESOURCES_COLLECTION = 'publicResources';
-const PUBLIC_CONTENT_VERSION = '8.0P.119';
+const PUBLIC_CONTENT_VERSION = '8.0P.120';
 
 const DEFAULT_COVER_LABEL = 'SBI';
 const COMING_SOON_COVER_URL = '/assets/coming.png';
+const SEO_SITE_ORIGIN = 'https://www.sbigroup.fr';
+const DYNAMIC_DETAIL_JSONLD_ID = 'sbi-public-dynamic-detail-jsonld';
+const FORMATION_QUERY_KEY = 'formation';
+const RESOURCE_QUERY_KEY = 'resource';
+
+let activePublicFormations = [];
+let activePublicResources = [];
 
 function text(value, fallback = '') {
   if (value === null || value === undefined) return fallback;
@@ -115,6 +122,320 @@ function isPublicVisible(item) {
 
 function isComingSoon(item) {
   return item.status === 'coming_soon';
+}
+
+function createSeoUrl(pathname = '/', params = {}) {
+  const url = new URL(pathname, SEO_SITE_ORIGIN);
+  Object.entries(params).forEach(([key, value]) => {
+    const cleanValue = text(value);
+    if (cleanValue) url.searchParams.set(key, cleanValue);
+  });
+  return url.href;
+}
+
+function createRuntimeUrl(pathname = '/', params = {}) {
+  const url = new URL(pathname, window.location.origin);
+  Object.entries(params).forEach(([key, value]) => {
+    const cleanValue = text(value);
+    if (cleanValue) url.searchParams.set(key, cleanValue);
+  });
+  return `${url.pathname}${url.search}`;
+}
+
+function createFormationSeoUrl(formation) {
+  return createSeoUrl('/formations.html', { [FORMATION_QUERY_KEY]: formation?.slug });
+}
+
+function createFormationRuntimeUrl(formation) {
+  return createRuntimeUrl('/formations.html', { [FORMATION_QUERY_KEY]: formation?.slug });
+}
+
+function createResourceSeoUrl(resource) {
+  return createSeoUrl('/ressources.html', { [RESOURCE_QUERY_KEY]: resource?.slug });
+}
+
+function createResourceRuntimeUrl(resource) {
+  return createRuntimeUrl('/ressources.html', { [RESOURCE_QUERY_KEY]: resource?.slug });
+}
+
+function getCurrentDynamicSlug(keys = []) {
+  const params = new URLSearchParams(window.location.search);
+  for (const key of keys) {
+    const value = normalizeSlug(params.get(key));
+    if (value) return value;
+  }
+  return normalizeSlug(window.location.hash.replace('#', ''));
+}
+
+function readSeoStateFromHead() {
+  const getMeta = (selector) => text(document.head.querySelector(selector)?.getAttribute('content'));
+  const canonical = document.head.querySelector('link[rel="canonical"]');
+
+  return {
+    title: document.title,
+    description: getMeta('meta[name="description"]'),
+    robots: getMeta('meta[name="robots"]'),
+    canonical: text(canonical?.getAttribute('href')),
+    ogType: getMeta('meta[property="og:type"]'),
+    ogTitle: getMeta('meta[property="og:title"]'),
+    ogDescription: getMeta('meta[property="og:description"]'),
+    ogUrl: getMeta('meta[property="og:url"]'),
+    ogImage: getMeta('meta[property="og:image"]'),
+    twitterCard: getMeta('meta[name="twitter:card"]'),
+    twitterTitle: getMeta('meta[name="twitter:title"]'),
+    twitterDescription: getMeta('meta[name="twitter:description"]'),
+    twitterImage: getMeta('meta[name="twitter:image"]')
+  };
+}
+
+const baseSeoByPage = new Map();
+
+function getCurrentPublicPageId() {
+  return text(document.body?.dataset?.sbiPublicPage, 'home');
+}
+
+function captureBaseSeoForCurrentPage({ force = false } = {}) {
+  const pageId = getCurrentPublicPageId();
+  if (!force && baseSeoByPage.has(pageId)) return baseSeoByPage.get(pageId);
+
+  const state = readSeoStateFromHead();
+  baseSeoByPage.set(pageId, state);
+  return state;
+}
+
+function ensureMeta(selector, createNode) {
+  let node = document.head.querySelector(selector);
+  if (node) return node;
+
+  node = createNode();
+  node.dataset.sbiSeoDynamic = 'head';
+  const anchor = document.head.querySelector('link[rel="stylesheet"], link[rel="preload"][as="style"], style');
+  if (anchor?.parentNode) document.head.insertBefore(node, anchor);
+  else document.head.append(node);
+  return node;
+}
+
+function setMetaContent(selector, value, createNode) {
+  const cleanValue = text(value);
+  if (!cleanValue) return;
+  ensureMeta(selector, createNode).setAttribute('content', cleanValue);
+}
+
+function setManagedHeadState(state = {}) {
+  if (state.title) document.title = state.title;
+
+  setMetaContent('meta[name="description"]', state.description, () => {
+    const meta = document.createElement('meta');
+    meta.name = 'description';
+    return meta;
+  });
+
+  setMetaContent('meta[name="robots"]', state.robots || 'index,follow', () => {
+    const meta = document.createElement('meta');
+    meta.name = 'robots';
+    return meta;
+  });
+
+  const canonicalUrl = text(state.canonical);
+  if (canonicalUrl) {
+    const canonical = ensureMeta('link[rel="canonical"]', () => {
+      const link = document.createElement('link');
+      link.rel = 'canonical';
+      return link;
+    });
+    canonical.href = canonicalUrl;
+  }
+
+  setMetaContent('meta[property="og:type"]', state.ogType || 'website', () => {
+    const meta = document.createElement('meta');
+    meta.setAttribute('property', 'og:type');
+    return meta;
+  });
+  setMetaContent('meta[property="og:title"]', state.ogTitle || state.title, () => {
+    const meta = document.createElement('meta');
+    meta.setAttribute('property', 'og:title');
+    return meta;
+  });
+  setMetaContent('meta[property="og:description"]', state.ogDescription || state.description, () => {
+    const meta = document.createElement('meta');
+    meta.setAttribute('property', 'og:description');
+    return meta;
+  });
+  setMetaContent('meta[property="og:url"]', state.ogUrl || state.canonical, () => {
+    const meta = document.createElement('meta');
+    meta.setAttribute('property', 'og:url');
+    return meta;
+  });
+  setMetaContent('meta[property="og:image"]', state.ogImage, () => {
+    const meta = document.createElement('meta');
+    meta.setAttribute('property', 'og:image');
+    return meta;
+  });
+  setMetaContent('meta[name="twitter:card"]', state.twitterCard || 'summary_large_image', () => {
+    const meta = document.createElement('meta');
+    meta.name = 'twitter:card';
+    return meta;
+  });
+  setMetaContent('meta[name="twitter:title"]', state.twitterTitle || state.title, () => {
+    const meta = document.createElement('meta');
+    meta.name = 'twitter:title';
+    return meta;
+  });
+  setMetaContent('meta[name="twitter:description"]', state.twitterDescription || state.description, () => {
+    const meta = document.createElement('meta');
+    meta.name = 'twitter:description';
+    return meta;
+  });
+  setMetaContent('meta[name="twitter:image"]', state.twitterImage || state.ogImage, () => {
+    const meta = document.createElement('meta');
+    meta.name = 'twitter:image';
+    return meta;
+  });
+}
+
+function removeDynamicDetailStructuredData() {
+  document.getElementById(DYNAMIC_DETAIL_JSONLD_ID)?.remove();
+}
+
+function injectDynamicDetailStructuredData(payload) {
+  removeDynamicDetailStructuredData();
+  if (!payload) return;
+
+  const script = document.createElement('script');
+  script.id = DYNAMIC_DETAIL_JSONLD_ID;
+  script.type = 'application/ld+json';
+  script.dataset.sbiSeoDynamic = 'detail';
+  script.textContent = JSON.stringify(payload);
+  document.head.append(script);
+}
+
+function resetDynamicSeoToPageDefaults() {
+  removeDynamicDetailStructuredData();
+  const state = baseSeoByPage.get(getCurrentPublicPageId()) || captureBaseSeoForCurrentPage();
+  setManagedHeadState(state);
+}
+
+function getFormationSeoImage(formation) {
+  if (isComingSoon(formation)) return createSeoUrl('/assets/coming.png');
+  const image = text(formation?.seo?.ogImageUrl || formation?.cover?.url);
+  return image || createSeoUrl('/assets/sbi_brand.webp');
+}
+
+function getResourceSeoImage(resource) {
+  const image = text(resource?.seo?.ogImageUrl || resource?.thumbnail?.url);
+  return image || createSeoUrl('/assets/sbi_brand.webp');
+}
+
+function applyFormationDynamicSeo(formation) {
+  if (!formation || isComingSoon(formation)) return;
+  captureBaseSeoForCurrentPage();
+
+  const title = text(formation.seo?.title, `${formation.title} - Formation Sport Business Institute`);
+  const description = text(formation.seo?.description || formation.longDescription || formation.shortSummary, `Découvrez la formation ${formation.title} proposée par Sport Business Institute.`);
+  const canonical = createFormationSeoUrl(formation);
+  const image = getFormationSeoImage(formation);
+
+  setManagedHeadState({
+    title,
+    description,
+    robots: formation.seo?.indexable === false ? 'noindex,follow' : 'index,follow',
+    canonical,
+    ogType: 'article',
+    ogTitle: text(formation.seo?.ogTitle, title),
+    ogDescription: text(formation.seo?.ogDescription, description),
+    ogUrl: canonical,
+    ogImage: image,
+    twitterCard: 'summary_large_image',
+    twitterTitle: text(formation.seo?.ogTitle, title),
+    twitterDescription: text(formation.seo?.ogDescription, description),
+    twitterImage: image
+  });
+
+  injectDynamicDetailStructuredData({
+    '@context': 'https://schema.org',
+    '@type': 'Course',
+    name: formation.title,
+    description,
+    url: canonical,
+    image,
+    courseMode: formation.modality || undefined,
+    educationalLevel: formation.level || undefined,
+    provider: {
+      '@type': 'EducationalOrganization',
+      name: 'Sport Business Institute',
+      url: SEO_SITE_ORIGIN
+    }
+  });
+}
+
+function applyResourceDynamicSeo(resource) {
+  if (!resource) return;
+  captureBaseSeoForCurrentPage();
+
+  const title = text(resource.seo?.title, `${resource.title} - Ressource Sport Business Institute`);
+  const description = text(resource.seo?.description || resource.description, `Consultez la ressource ${resource.title} proposée par Sport Business Institute.`);
+  const canonical = createResourceSeoUrl(resource);
+  const image = getResourceSeoImage(resource);
+
+  setManagedHeadState({
+    title,
+    description,
+    robots: resource.seo?.indexable === false ? 'noindex,follow' : 'index,follow',
+    canonical,
+    ogType: 'article',
+    ogTitle: text(resource.seo?.ogTitle, title),
+    ogDescription: text(resource.seo?.ogDescription, description),
+    ogUrl: canonical,
+    ogImage: image,
+    twitterCard: 'summary_large_image',
+    twitterTitle: text(resource.seo?.ogTitle, title),
+    twitterDescription: text(resource.seo?.ogDescription, description),
+    twitterImage: image
+  });
+
+  injectDynamicDetailStructuredData({
+    '@context': 'https://schema.org',
+    '@type': 'DigitalDocument',
+    name: resource.title,
+    description,
+    url: canonical,
+    image,
+    fileFormat: resource.file?.mimeType || undefined,
+    associatedMedia: resource.file?.url ? {
+      '@type': 'MediaObject',
+      contentUrl: resource.file.url,
+      encodingFormat: resource.file.mimeType || 'application/pdf'
+    } : undefined,
+    publisher: {
+      '@type': 'EducationalOrganization',
+      name: 'Sport Business Institute',
+      url: SEO_SITE_ORIGIN
+    }
+  });
+}
+
+function syncDetailHistory(pathname, key, slug, mode = 'push') {
+  const cleanSlug = normalizeSlug(slug);
+  if (!cleanSlug || !window.history?.[`${mode}State`]) return;
+
+  const url = new URL(pathname, window.location.origin);
+  url.searchParams.set(key, cleanSlug);
+  const nextUrl = `${url.pathname}${url.search}`;
+  if (`${window.location.pathname}${window.location.search}` === nextUrl) return;
+
+  window.history[`${mode}State`]({ sbiDynamicDetail: key, slug: cleanSlug }, '', nextUrl);
+}
+
+function clearDetailHistory(pathname, keys = [], mode = 'push') {
+  if (!window.history?.[`${mode}State`]) return;
+
+  const url = new URL(pathname, window.location.origin);
+  const nextUrl = url.pathname;
+  const current = `${window.location.pathname}${window.location.search}`;
+  const hasDynamicParam = keys.some((key) => new URLSearchParams(window.location.search).has(key));
+  if (!hasDynamicParam || current === nextUrl) return;
+
+  window.history[`${mode}State`]({ sbiDynamicDetail: null }, '', nextUrl);
 }
 
 function isMobilePublicViewport() {
@@ -211,11 +532,13 @@ function normalizeFormation(raw = {}, id = '') {
 
 function normalizeResource(raw = {}, id = '') {
   const title = text(raw.title || raw.titre || raw.name, 'Ressource SBI');
+  const slug = normalizeSlug(raw.slug, normalizeSlug(title, id || 'ressource-sbi'));
   const file = raw.file && typeof raw.file === 'object' ? raw.file : {};
   const thumbnail = raw.thumbnail && typeof raw.thumbnail === 'object' ? raw.thumbnail : {};
 
   return {
-    id: text(id || raw.id || normalizeSlug(title, 'ressource-sbi')),
+    id: text(id || raw.id || slug),
+    slug,
     title,
     description: text(raw.description || raw.resume, 'Ressource SBI en cours de publication.'),
     type: text(raw.type, 'document'),
@@ -381,6 +704,11 @@ function closeFormationSheet(sheet, options = {}) {
     target.__sbiKeyHandler = null;
   }
 
+  if (closeOptions.restoreUrl !== false && getCurrentPublicPageId() === 'formations') {
+    clearDetailHistory('/formations.html', [FORMATION_QUERY_KEY], closeOptions.historyMode || 'push');
+    resetDynamicSeoToPageDefaults();
+  }
+
   target.classList.remove('is-open');
 
   if (closeOptions.immediate) {
@@ -392,17 +720,17 @@ function closeFormationSheet(sheet, options = {}) {
 }
 
 function forceCloseFormationSheet() {
-  closeFormationSheet(null, { immediate: true });
+  closeFormationSheet(null, { immediate: true, restoreUrl: false });
 }
 
 window.SBI_CLOSE_PUBLIC_FORMATION_SHEET = forceCloseFormationSheet;
 window.addEventListener('sbi:public-shell:before-navigate', forceCloseFormationSheet);
 window.addEventListener('pagehide', forceCloseFormationSheet);
 
-function openFormationSheet(formation) {
+function openFormationSheet(formation, options = {}) {
   if (!formation || isComingSoon(formation)) return;
 
-  closeFormationSheet();
+  closeFormationSheet(null, { immediate: true, restoreUrl: false });
 
   const sheet = createElement('aside', 'public-formation-sheet');
   sheet.dataset.sbiFormationSheet = 'true';
@@ -455,6 +783,12 @@ function openFormationSheet(formation) {
   document.documentElement.style.setProperty('--sbi-scrollbar-compensation', `${scrollbarCompensation}px`);
   document.documentElement.classList.add('sbi-formation-sheet-open');
   document.body.classList.add('sbi-formation-sheet-open');
+
+  if (options.applySeo !== false) applyFormationDynamicSeo(formation);
+  if (options.updateUrl !== false && getCurrentPublicPageId() === 'formations') {
+    syncDetailHistory('/formations.html', FORMATION_QUERY_KEY, formation.slug, options.historyMode || 'push');
+  }
+
   window.requestAnimationFrame(() => sheet.classList.add('is-open'));
   closeButton.focus({ preventScroll: true });
 }
@@ -462,7 +796,12 @@ function openFormationSheet(formation) {
 function createFormationCard(formation, options = {}) {
   const isHome = options.mode === 'home';
   const isCatalogue = !isHome;
-  const article = createElement('article', 'parcours-card fade-in visible sbi-home-formation-card');
+  const cardTag = isCatalogue && !isComingSoon(formation) ? 'a' : 'article';
+  const article = createElement(cardTag, 'parcours-card fade-in visible sbi-home-formation-card');
+
+  if (cardTag === 'a') {
+    article.href = createFormationRuntimeUrl(formation);
+  }
 
   article.dataset.formationId = formation.id;
   article.dataset.formationSlug = formation.slug;
@@ -498,11 +837,14 @@ function createFormationCard(formation, options = {}) {
   }
 
   article.tabIndex = 0;
-  article.setAttribute('role', 'button');
+  article.setAttribute('role', isCatalogue ? 'link' : 'button');
   article.setAttribute('aria-label', `Ouvrir la fiche formation ${formation.title}`);
 
   if (isCatalogue) {
-    const activate = () => openFormationSheet(formation);
+    const activate = (event) => {
+      event?.preventDefault?.();
+      openFormationSheet(formation);
+    };
     article.addEventListener('click', activate);
     article.addEventListener('keydown', (event) => {
       if (event.key === 'Enter' || event.key === ' ') {
@@ -584,9 +926,19 @@ function createResourceCard(item) {
   const article = createElement('article', 'public-resource-card fade-in visible');
   article.dataset.resourceId = item.id;
 
+  article.dataset.resourceSlug = item.slug;
+
   const marker = createElement('span', 'public-card-index', item.category || item.type || 'SBI');
-  const title = createElement('h3', 'text-italic', item.title);
+  const title = createElement('h3', 'text-italic');
+  const titleLink = createElement('a', 'public-resource-title-link text-italic', item.title);
+  titleLink.href = createResourceRuntimeUrl(item);
+  titleLink.setAttribute('aria-label', `Voir la fiche ressource ${item.title}`);
+  title.append(titleLink);
   const description = createElement('p', 'text-italic', item.description);
+
+  titleLink.addEventListener('click', () => {
+    window.requestAnimationFrame(() => revealResourceFromUrl([item], { historyMode: 'replace' }));
+  });
 
   article.append(marker, title, description);
 
@@ -654,7 +1006,7 @@ function injectFormationStructuredData(formations) {
         '@type': 'Course',
         name: formation.title,
         description: formation.seo?.description || formation.shortSummary,
-        url: `${window.location.origin}/formations.html#${formation.slug}`,
+        url: createFormationSeoUrl(formation),
         provider: {
           '@type': 'Organization',
           name: 'Sport Business Institute',
@@ -664,6 +1016,90 @@ function injectFormationStructuredData(formations) {
     }))
   });
   document.head.append(script);
+}
+
+
+function injectResourceStructuredData(resources) {
+  const existing = document.getElementById('sbi-public-resources-jsonld');
+  if (existing) existing.remove();
+
+  const visible = resources.filter((resource) => resource.status === 'published' && resource.globalVisible && resource.seo?.indexable !== false).slice(0, 24);
+  if (!visible.length) return;
+
+  const script = document.createElement('script');
+  script.id = 'sbi-public-resources-jsonld';
+  script.type = 'application/ld+json';
+  script.dataset.sbiSeoDynamic = 'resources';
+  script.textContent = JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: 'Ressources Sport Business Institute',
+    itemListElement: visible.map((resource, index) => ({
+      '@type': 'ListItem',
+      position: index + 1,
+      item: {
+        '@type': 'DigitalDocument',
+        name: resource.title,
+        description: resource.seo?.description || resource.description,
+        url: createResourceSeoUrl(resource),
+        encodingFormat: resource.file?.mimeType || undefined,
+        publisher: {
+          '@type': 'EducationalOrganization',
+          name: 'Sport Business Institute',
+          url: SEO_SITE_ORIGIN
+        }
+      }
+    }))
+  });
+  document.head.append(script);
+}
+
+function revealFormationFromUrl(formations = [], options = {}) {
+  const slug = getCurrentDynamicSlug([FORMATION_QUERY_KEY, 'slug']);
+  if (!slug) {
+    resetDynamicSeoToPageDefaults();
+    return false;
+  }
+
+  const formation = formations.find((item) => item.slug === slug);
+  if (!formation || isComingSoon(formation)) {
+    resetDynamicSeoToPageDefaults();
+    return false;
+  }
+
+  const target = document.querySelector(`[data-formation-slug="${slug}"]`);
+  target?.scrollIntoView?.({ behavior: options.behavior || 'smooth', block: 'center' });
+  openFormationSheet(formation, {
+    historyMode: options.historyMode || 'replace',
+    updateUrl: options.updateUrl !== false,
+    applySeo: true
+  });
+  return true;
+}
+
+function revealResourceFromUrl(resources = [], options = {}) {
+  const slug = getCurrentDynamicSlug([RESOURCE_QUERY_KEY, 'ressource', 'brochure']);
+  if (!slug) {
+    resetDynamicSeoToPageDefaults();
+    return false;
+  }
+
+  const resource = resources.find((item) => item.slug === slug);
+  if (!resource) {
+    resetDynamicSeoToPageDefaults();
+    return false;
+  }
+
+  const target = document.querySelector(`[data-resource-slug="${slug}"]`);
+  target?.scrollIntoView?.({ behavior: options.behavior || 'smooth', block: 'center' });
+  target?.classList.add('is-seo-target');
+  window.setTimeout(() => target?.classList.remove('is-seo-target'), 1400);
+
+  applyResourceDynamicSeo(resource);
+  if (options.updateUrl !== false) {
+    syncDetailHistory('/ressources.html', RESOURCE_QUERY_KEY, resource.slug, options.historyMode || 'replace');
+  }
+  return true;
 }
 
 function createHomePreviewPanel(root) {
@@ -699,7 +1135,7 @@ function renderHomePreview(panel, formation) {
 
   const actions = createElement('div', 'sbi-home-formation-preview-actions');
   const allLink = createElement('a', 'btn-primary text-italic', 'Voir toutes les formations');
-  allLink.href = `formations.html#${formation.slug}`;
+  allLink.href = createFormationRuntimeUrl(formation);
   const contactLink = createElement('a', 'public-outline-cta text-italic', 'Demander des infos');
   contactLink.href = `contact.html?formation=${encodeURIComponent(formation.slug)}`;
   actions.append(allLink, contactLink);
@@ -762,7 +1198,13 @@ async function getPublicResourcesWithFallback() {
 
 async function initFormationsPage(root) {
   const grid = root.querySelector('[data-sbi-formations-feed]');
-  if (!grid || grid.dataset.sbiFeedReady === PUBLIC_CONTENT_VERSION) return;
+  if (!grid) return;
+  captureBaseSeoForCurrentPage({ force: true });
+
+  if (grid.dataset.sbiFeedReady === PUBLIC_CONTENT_VERSION) {
+    revealFormationFromUrl(activePublicFormations, { historyMode: 'replace', behavior: 'auto' });
+    return;
+  }
 
   grid.dataset.sbiFeedReady = PUBLIC_CONTENT_VERSION;
   grid.classList.add('public-formations-grid', 'grid-parcours');
@@ -770,6 +1212,7 @@ async function initFormationsPage(root) {
 
   const { items, fromFirebase } = await getPublicFormationsWithFallback();
   const visible = sortByDisplay(items.filter(isPublicVisible));
+  activePublicFormations = visible;
   grid.replaceChildren(...visible.map((item) => createFormationCard(item)));
   forceResetMobileFormationsSlider(grid);
   injectFormationStructuredData(visible);
@@ -779,14 +1222,9 @@ async function initFormationsPage(root) {
   const source = fromFirebase ? 'Catalogue Firebase public' : 'Catalogue SBI de base';
   // Les compteurs restent internes : l'interface publique ne montre pas de bloc technique Firebase.
 
-  const hash = normalizeSlug(window.location.hash.replace('#', ''));
-  if (hash) {
-    const target = grid.querySelector(`[data-formation-slug="${hash}"]`);
-    target?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
-    const formation = visible.find((item) => item.slug === hash);
-    if (formation && !isComingSoon(formation)) {
-      window.setTimeout(() => openFormationSheet(formation), 180);
-    }
+  const hasDynamicFormation = revealFormationFromUrl(visible, { historyMode: 'replace', behavior: 'smooth' });
+  if (!hasDynamicFormation && !getCurrentDynamicSlug([FORMATION_QUERY_KEY, 'slug'])) {
+    resetDynamicSeoToPageDefaults();
   }
 }
 
@@ -805,13 +1243,22 @@ async function initHomeFeaturedFormations(root) {
 
 async function initBrochuresPage(root) {
   const grid = root.querySelector('[data-sbi-brochures-feed]');
-  if (!grid || grid.dataset.sbiFeedReady === PUBLIC_CONTENT_VERSION) return;
+  if (!grid) return;
+  captureBaseSeoForCurrentPage({ force: true });
+
+  if (grid.dataset.sbiFeedReady === PUBLIC_CONTENT_VERSION) {
+    revealResourceFromUrl(activePublicResources, { historyMode: 'replace', behavior: 'auto' });
+    return;
+  }
 
   grid.dataset.sbiFeedReady = PUBLIC_CONTENT_VERSION;
   setStatus(root, '[data-sbi-brochures-status]', 'Chargement des ressources publiques SBI...');
 
   const { items, fromFirebase } = await getPublicResourcesWithFallback();
+  activePublicResources = items;
   grid.replaceChildren(...items.map((item) => createResourceCard(item)));
+  injectResourceStructuredData(items);
+  revealResourceFromUrl(items, { historyMode: 'replace', behavior: 'smooth' });
   setStatus(root, '[data-sbi-brochures-status]', fromFirebase
     ? 'Ressources Firebase publiques affichées.'
     : 'Ressources SBI disponibles. Les nouveaux documents publiés apparaîtront automatiquement ici.');
@@ -1192,14 +1639,34 @@ export function initSbiPublicPages(root = document) {
 
 window.SBI_INIT_PUBLIC_PAGES = initSbiPublicPages;
 
+function handleDynamicPublicUrl({ behavior = 'auto', historyMode = 'replace' } = {}) {
+  const page = getCurrentPublicPageId();
+
+  if (page === 'formations') {
+    revealFormationFromUrl(activePublicFormations, { behavior, historyMode });
+    return;
+  }
+
+  if (page === 'ressources') {
+    revealResourceFromUrl(activePublicResources, { behavior, historyMode });
+  }
+}
+
 window.addEventListener('sbi:public-shell:navigated', (event) => {
   if (event?.detail?.page === 'formations') {
     window.requestAnimationFrame(resetActiveMobileFormationsSlider);
   }
+
+  window.requestAnimationFrame(() => {
+    handleDynamicPublicUrl({ behavior: event?.detail?.source === 'popstate' ? 'auto' : 'smooth', historyMode: 'replace' });
+  });
 });
 
 window.addEventListener('pageshow', () => {
-  window.requestAnimationFrame(resetActiveMobileFormationsSlider);
+  window.requestAnimationFrame(() => {
+    resetActiveMobileFormationsSlider();
+    handleDynamicPublicUrl({ behavior: 'auto', historyMode: 'replace' });
+  });
 });
 
 if (document.readyState === 'loading') {

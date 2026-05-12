@@ -3806,3 +3806,34 @@ body[data-sbi-public-page="ressources"] .public-resource-action:focus-visible {
         width: 100%;
     }
 }
+
+/* =========================================================
+   SBI 8.0P.120 - SEO dynamique formations / ressources
+   ========================================================= */
+body[data-sbi-public-page="formations"] .public-formations-grid.grid-parcours > a.parcours-card {
+    color: inherit;
+    text-decoration: none;
+}
+
+body[data-sbi-public-page="formations"] .public-formations-grid.grid-parcours > a.parcours-card:hover,
+body[data-sbi-public-page="formations"] .public-formations-grid.grid-parcours > a.parcours-card:focus-visible {
+    color: inherit;
+    text-decoration: none;
+}
+
+body[data-sbi-public-page="ressources"] .public-resource-title-link {
+    color: inherit;
+    text-decoration: none;
+}
+
+body[data-sbi-public-page="ressources"] .public-resource-title-link:hover,
+body[data-sbi-public-page="ressources"] .public-resource-title-link:focus-visible {
+    color: #ffffff;
+    text-decoration: none;
+    outline: none;
+}
+
+body[data-sbi-public-page="ressources"] .public-resource-card.is-seo-target {
+    border-color: rgba(126, 181, 255, 0.56);
+    box-shadow: 0 0 0 1px rgba(126, 181, 255, 0.20), 0 22px 55px rgba(0, 81, 255, 0.18);
+}

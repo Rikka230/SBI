@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.119',
+  version: '8.0P.120',
   branch: 'public-pjax-app-shell',
   channel: 'PUBLIC PJAX APP SHELL',
-  stage: 'SEO foundation + PJAX head sync + admin SEO fields',
+  stage: 'Dynamic SEO for Firebase public data + phone consistency',
   updatedAt: '2026-05-12',
-  label: 'SBI 8.0P.119 - SEO FOUNDATION + PJAX HEAD SYNC + ADMIN SEO FIELDS'
+  label: 'SBI 8.0P.120 - DYNAMIC SEO FIREBASE + CONTACT PHONE SYNC'
 };
 
 export function getSbiVersionLabel() {
