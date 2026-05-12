@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.105',
+  version: '8.0P.106',
   branch: 'public-pjax-app-shell',
   channel: 'PUBLIC PJAX APP SHELL',
-  stage: 'Mobile public cuts clean-up',
+  stage: 'Mobile formations cleanup',
   updatedAt: '2026-05-12',
-  label: 'SBI 8.0P.105 - MOBILE PUBLIC CUTS CLEAN-UP'
+  label: 'SBI 8.0P.106 - MOBILE FORMATIONS CLEANUP'
 };
 
 export function getSbiVersionLabel() {
