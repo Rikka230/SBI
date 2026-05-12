@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.115 - Public shell synchronized mobile swap
+ * SBI 8.0P.116 - Public shell synchronized mobile swap
  *
  * Shell public prudent :
  * - navigation fluide des ancres de l'index ;
@@ -8,7 +8,7 @@
  * - espaces admin/student/teacher et viewers toujours protégés en reload.
  */
 
-const PUBLIC_SHELL_VERSION = '8.0P.115';
+const PUBLIC_SHELL_VERSION = '8.0P.116';
 const DISABLED_FLAG = 'sbiPublicShellDisabled';
 const READY_CLASS = 'sbi-public-shell-ready';
 const SCROLLING_CLASS = 'sbi-public-shell-scrolling';
@@ -696,7 +696,7 @@ async function runPageInitializers(pageId) {
 
   if (['home', 'formations', 'parcours', 'apropos', 'ressources', 'contact'].includes(pageId)) {
     try {
-      const publicPagesModule = await import('/js/sbi-public-pages.js?v=8.0P.115');
+      const publicPagesModule = await import('/js/sbi-public-pages.js?v=8.0P.116');
       const initPublicPages = publicPagesModule.initSbiPublicPages || window.SBI_INIT_PUBLIC_PAGES;
       if (typeof initPublicPages === 'function') initPublicPages(document);
     } catch (error) {

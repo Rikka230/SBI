@@ -2467,6 +2467,41 @@ body[data-sbi-public-page="ressources"] .public-section-header p {
     margin-bottom: 0.75rem;
 }
 
+
+/* =========================================================
+   SBI 8.0P.116 - Fond texte lisible sur cartes Formations
+   ========================================================= */
+body[data-sbi-public-page="formations"] .public-formations-grid.grid-parcours .card-content {
+    isolation: isolate;
+}
+
+body[data-sbi-public-page="formations"] .public-formations-grid.grid-parcours .card-content::before {
+    content: "";
+    position: absolute;
+    left: clamp(0.75rem, 5%, 1.05rem);
+    right: clamp(0.75rem, 5%, 1.05rem);
+    bottom: clamp(0.75rem, 5%, 1.05rem);
+    height: clamp(6.35rem, 48%, 9rem);
+    z-index: 0;
+    pointer-events: none;
+    background:
+        linear-gradient(135deg, rgba(2, 6, 15, 0.92) 0%, rgba(5, 12, 27, 0.78) 64%, rgba(2, 7, 18, 0.46) 100%),
+        radial-gradient(circle at 100% 0%, rgba(0, 81, 255, 0.18), transparent 58%);
+    border: 1px solid rgba(126, 181, 255, 0.16);
+    box-shadow: 0 14px 42px rgba(0, 0, 0, 0.32);
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%);
+    backdrop-filter: blur(3px);
+}
+
+body[data-sbi-public-page="formations"] .public-formations-grid.grid-parcours .card-content > * {
+    position: relative;
+    z-index: 1;
+}
+
+body[data-sbi-public-page="formations"] .public-formations-grid.grid-parcours .card-content h3 {
+    text-shadow: 0 2px 18px rgba(0, 0, 0, 0.56);
+}
+
 .public-cta-card-video {
     position: relative;
     overflow: hidden;
@@ -3625,6 +3660,22 @@ body[data-sbi-public-page="ressources"] .public-section-header-stacked .public-s
         padding: 0.82rem !important;
         justify-content: flex-end !important;
         gap: 0.38rem !important;
+    }
+
+
+    body[data-sbi-public-page="formations"] .public-formations-grid.grid-parcours .card-content::before {
+        left: 0.5rem !important;
+        right: 0.5rem !important;
+        bottom: 0.5rem !important;
+        height: clamp(4.85rem, 62%, 6.55rem) !important;
+        border-color: rgba(126, 181, 255, 0.14) !important;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.34) !important;
+        clip-path: polygon(0 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%) !important;
+    }
+
+    body[data-sbi-public-page="formations"] .public-formations-grid.grid-parcours .card-content > * {
+        position: relative !important;
+        z-index: 1 !important;
     }
 
     body[data-sbi-public-page="formations"] .public-formations-grid.grid-parcours .sbi-home-formation-card .public-formation-kicker,
