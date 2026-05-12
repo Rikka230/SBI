@@ -1,5 +1,5 @@
 /* =========================================================
-   SBI 8.0P.10d - PUBLIC MOBILE PERFORMANCE SAFE PASS
+   SBI 8.0P.71 - PUBLIC CALCULATOR LAYOUT PASS
    Page publique calculateur d'aide à l'embauche.
    ========================================================= */
 
@@ -956,5 +956,127 @@ body[data-sbi-public-page="calculator"] {
 
     .aid-calc-result-amount {
         font-size: 3rem;
+    }
+}
+
+/* =========================================================
+   SBI 8.0P.71 - Calculator card layout harmonization
+   Objectif : cadres plus cohérents, colonnes plus propres,
+   sans toucher au PJAX ni au calcul métier.
+   ========================================================= */
+
+.aid-calc-column {
+    display: grid;
+    gap: clamp(1rem, 1.45vw, 1.45rem);
+    align-content: start;
+    min-width: 0;
+}
+
+.aid-calc-form-card,
+.aid-calc-result-card,
+.aid-calc-support-card {
+    min-width: 0;
+    border-radius: 6px;
+}
+
+.aid-calc-result-card {
+    position: relative;
+    top: auto;
+    align-self: start;
+    padding: clamp(1.25rem, 1.45vw, 1.8rem);
+}
+
+.aid-calc-result-card::before {
+    top: 24%;
+    opacity: 0.62;
+}
+
+.aid-calc-result-head {
+    gap: clamp(0.85rem, 1.1vw, 1rem);
+}
+
+.aid-calc-result-amount {
+    font-size: clamp(3.1rem, 4.35vw, 4.8rem);
+}
+
+.aid-calc-result-summary {
+    margin: clamp(1rem, 1.25vw, 1.35rem) 0 0.85rem;
+}
+
+.aid-calc-result-metrics {
+    gap: 0.6rem;
+}
+
+.aid-calc-result-metrics div {
+    min-height: 70px;
+    padding: 0.72rem 0.78rem;
+}
+
+.aid-calc-handicap-note,
+.aid-calc-legal-note {
+    margin-top: 0.75rem;
+    padding: 0.78rem 0.9rem;
+}
+
+.aid-calc-result-cta {
+    min-height: 52px;
+    margin-top: 0.85rem;
+}
+
+.aid-calc-support-card {
+    min-height: auto;
+}
+
+.aid-calc-advisor-card {
+    min-height: 112px;
+}
+
+@media (min-width: 1025px) {
+    .aid-calc-workspace {
+        grid-template-columns: minmax(0, 1.12fr) minmax(390px, 0.88fr);
+        align-items: start;
+        gap: clamp(1rem, 1.55vw, 1.65rem);
+        padding-bottom: clamp(4rem, 7vw, 7rem);
+    }
+}
+
+@media (max-width: 1024px) {
+    .aid-calc-workspace {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: clamp(1rem, 2.2vw, 1.4rem);
+    }
+
+    .aid-calc-column {
+        display: contents;
+    }
+
+    .aid-calc-form-card {
+        order: 1;
+    }
+
+    .aid-calc-result-card {
+        order: 2;
+    }
+
+    .aid-calc-benefits-card {
+        order: 3;
+    }
+
+    .aid-calc-advisor-card {
+        order: 4;
+    }
+}
+
+@media (max-width: 768px) {
+    .aid-calc-result-amount {
+        white-space: normal;
+    }
+}
+
+
+@media (max-width: 420px) {
+    .aid-calc-result-amount {
+        font-size: 2.82rem;
     }
 }

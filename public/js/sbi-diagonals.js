@@ -1,5 +1,5 @@
 (function () {
-    const DIAGONALS_VERSION = '8.0P.25';
+    const DIAGONALS_VERSION = '8.0P.104';
     const mobileQuery = window.matchMedia('(max-width: 768px)');
 
     const sectionSelectors = [
@@ -14,7 +14,12 @@
     let frame = 0;
     let resizeObserver = null;
     let mutationObserver = null;
-    const observedSections = new WeakSet();
+    const layoutSelectors = [
+        '.hero-section',
+        '.public-page-hero-wide',
+        '.features-bar',
+        ...sectionSelectors
+    ];
 
     function getMain() {
         return document.querySelector('main');
@@ -82,8 +87,9 @@
                 const sectionStyles = window.getComputedStyle(section);
                 const sectionCut = parseFloat(sectionStyles.getPropertyValue('--sbi-section-cut')) || 34;
                 const overlayLineHeight = 46;
-                const lineTop = Math.max(0, top + (sectionCut * 0.5) - (overlayLineHeight * 0.5));
-                const angle = '-5deg';
+                const lineOffset = parseFloat(sectionStyles.getPropertyValue('--sbi-diagonal-line-offset')) || 0;
+                const lineTop = Math.max(0, top + (sectionCut * 0.5) - (overlayLineHeight * 0.5) + lineOffset);
+                const angle = sectionStyles.getPropertyValue('--sbi-diagonal-line-angle').trim() || '-5deg';
                 const opacity = section.matches('.section-stats') ? '0.86' : '0.68';
                 const spark = sparkPositions[index % sparkPositions.length];
 
@@ -101,6 +107,21 @@
         frame = window.requestAnimationFrame(renderOverlay);
     }
 
+    function getLayoutElements() {
+        const seen = new Set();
+        const elements = [];
+
+        layoutSelectors.forEach((selector) => {
+            document.querySelectorAll(selector).forEach((element) => {
+                if (!element || seen.has(element)) return;
+                seen.add(element);
+                elements.push(element);
+            });
+        });
+
+        return elements;
+    }
+
     function observeLayout() {
         resizeObserver?.disconnect?.();
 
@@ -110,10 +131,8 @@
         const main = getMain();
         if (main) resizeObserver.observe(main);
 
-        getUniqueSections().forEach((section) => {
-            if (observedSections.has(section)) return;
-            observedSections.add(section);
-            resizeObserver.observe(section);
+        getLayoutElements().forEach((element) => {
+            resizeObserver.observe(element);
         });
     }
 
@@ -134,10 +153,20 @@
         });
     }
 
+    function scheduleRenderPasses() {
+        scheduleRender();
+        window.requestAnimationFrame?.(() => window.requestAnimationFrame?.(scheduleRender));
+        window.setTimeout(scheduleRender, 40);
+        window.setTimeout(scheduleRender, 120);
+        window.setTimeout(scheduleRender, 260);
+        window.setTimeout(scheduleRender, 520);
+        window.setTimeout(scheduleRender, 980);
+    }
+
     function initSbiDiagonals() {
         observeLayout();
         observeDom();
-        scheduleRender();
+        scheduleRenderPasses();
     }
 
     window.SBI_RENDER_DIAGONALS = initSbiDiagonals;
@@ -155,6 +184,8 @@
     } else {
         initSbiDiagonals();
     }
+
+    document.fonts?.ready?.then?.(scheduleRenderPasses).catch?.(() => {});
 
     window.addEventListener('resize', scheduleRender, { passive: true });
     window.addEventListener('orientationchange', scheduleRender, { passive: true });

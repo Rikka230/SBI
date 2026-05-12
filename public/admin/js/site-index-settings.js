@@ -11,7 +11,10 @@ const DEFAULTS = {
   heroLogoUrl: '',
   headerLogoUrl: '',
   brandLogoUrl: '',
-  founderImageUrl: ''
+  founderImageUrl: '',
+  aboutFounderHeroImageUrl: '',
+  heroYoutubeUrl: '',
+  heroYoutubeVideoId: ''
 };
 
 const MEDIA = [
@@ -19,8 +22,45 @@ const MEDIA = [
   { key: 'heroVideoMp4Url', label: 'Vidéo hero MP4 fallback', kind: 'MP4', type: 'video', source: DEFAULTS.heroVideoMp4Url, storagePath: 'site/index/hero-video/sbi.mp4', contentType: 'video/mp4' },
   { key: 'heroLogoUrl', label: 'Logo massif hero', kind: 'PNG', type: 'image', source: DEFAULTS.heroLogoUrl, storagePath: 'site/index/logos/Logo_SBI_Tome.png', contentType: 'image/png', logo: true },
   { key: 'brandLogoUrl', label: 'Wordmark header/footer', kind: 'PNG', type: 'image', source: DEFAULTS.brandLogoUrl, storagePath: 'site/index/logos/sbi_brand.png', contentType: 'image/png', logo: true },
-  { key: 'founderImageUrl', label: 'Image fondateur', kind: 'Image', type: 'image', source: DEFAULTS.founderImageUrl, storagePath: 'site/index/founder/founder-image', contentType: 'image/jpeg' }
+  { key: 'founderImageUrl', label: 'Image fondateur index', kind: 'Image', type: 'image', source: DEFAULTS.founderImageUrl, storagePath: 'site/index/founder/founder-image', contentType: 'image/jpeg' },
+  { key: 'aboutFounderHeroImageUrl', label: 'Fondateur À propos hero PNG', kind: 'PNG', type: 'image', source: DEFAULTS.aboutFounderHeroImageUrl, storagePath: 'site/index/founder/about-founder-hero.png', contentType: 'image/png', accept: 'image/png', pngOnly: true }
 ];
+
+const YOUTUBE_VIDEO_ID_RE = /^[A-Za-z0-9_-]{11}$/;
+
+function extractYoutubeVideoId(value) {
+  const raw = typeof value === 'string' ? value.trim() : '';
+  if (!raw) return '';
+
+  if (YOUTUBE_VIDEO_ID_RE.test(raw)) return raw;
+
+  try {
+    const url = new URL(raw);
+    const host = url.hostname.replace(/^www\./, '').toLowerCase();
+
+    if (host === 'youtu.be') {
+      const id = url.pathname.split('/').filter(Boolean)[0] || '';
+      return YOUTUBE_VIDEO_ID_RE.test(id) ? id : '';
+    }
+
+    if (host === 'youtube.com' || host === 'm.youtube.com' || host === 'music.youtube.com' || host === 'youtube-nocookie.com') {
+      const fromWatch = url.searchParams.get('v');
+      if (fromWatch && YOUTUBE_VIDEO_ID_RE.test(fromWatch)) return fromWatch;
+
+      const parts = url.pathname.split('/').filter(Boolean);
+      const knownPrefixes = new Set(['embed', 'shorts', 'live', 'v']);
+      if (parts.length >= 2 && knownPrefixes.has(parts[0]) && YOUTUBE_VIDEO_ID_RE.test(parts[1])) return parts[1];
+    }
+  } catch {
+    return '';
+  }
+
+  return '';
+}
+
+function youtubeWatchUrl(videoId) {
+  return YOUTUBE_VIDEO_ID_RE.test(videoId) ? `https://www.youtube.com/watch?v=${videoId}` : '';
+}
 
 let currentCleanup = null;
 
@@ -39,7 +79,13 @@ function sanitizeSettings(raw = {}) {
   const clean = { ...DEFAULTS, ...raw };
   Object.keys(clean).forEach((key) => {
     if (isLegacyLocalMediaUrl(clean[key])) clean[key] = '';
+    if (typeof clean[key] === 'string') clean[key] = clean[key].trim();
   });
+
+  const parsedYoutubeId = extractYoutubeVideoId(clean.heroYoutubeVideoId) || extractYoutubeVideoId(clean.heroYoutubeUrl);
+  clean.heroYoutubeVideoId = parsedYoutubeId;
+  clean.heroYoutubeUrl = parsedYoutubeId ? (clean.heroYoutubeUrl || youtubeWatchUrl(parsedYoutubeId)) : '';
+
   return clean;
 }
 
@@ -62,6 +108,91 @@ export function mountSiteIndexSettings({ root = document } = {}) {
     el.textContent = message;
     el.style.color = tone === 'ok' ? '#2ed573' : tone === 'error' ? '#ff4a4a' : '#9ca3af';
   }
+
+  function renderYoutubeSettings() {
+    const input = $('#site-index-youtube-url');
+    const preview = $('#site-index-youtube-preview');
+    const removeBtn = $('#site-index-youtube-remove');
+
+    const videoId = extractYoutubeVideoId(state.settings.heroYoutubeVideoId || state.settings.heroYoutubeUrl);
+    const watchUrl = videoId ? youtubeWatchUrl(videoId) : '';
+
+    if (input) input.value = state.settings.heroYoutubeUrl || watchUrl || '';
+    if (preview) {
+      preview.textContent = videoId
+        ? `ID vidéo : ${videoId} • Embed : youtube-nocookie.com/embed/${videoId}`
+        : 'Aucune vidéo YouTube configurée.';
+      preview.classList.toggle('is-ready', Boolean(videoId));
+    }
+    if (removeBtn) removeBtn.disabled = !videoId;
+  }
+
+  async function saveYoutubeSettings() {
+    const input = $('#site-index-youtube-url');
+    const rawUrl = input?.value?.trim() || '';
+    const videoId = extractYoutubeVideoId(rawUrl);
+
+    if (!rawUrl) {
+      await removeYoutubeSettings();
+      return;
+    }
+
+    if (!videoId) {
+      status('Lien YouTube invalide. Formats acceptés : youtube.com/watch, youtu.be, shorts, embed ou live.', 'error');
+      input?.focus();
+      return;
+    }
+
+    const normalizedUrl = youtubeWatchUrl(videoId);
+    await saveSettings({
+      heroYoutubeUrl: normalizedUrl,
+      heroYoutubeVideoId: videoId
+    });
+    renderYoutubeSettings();
+    status('Vidéo YouTube hero enregistrée.', 'ok');
+  }
+
+  async function removeYoutubeSettings() {
+    await saveSettings({
+      heroYoutubeUrl: '',
+      heroYoutubeVideoId: ''
+    });
+    renderYoutubeSettings();
+    status('Vidéo YouTube hero supprimée.', 'ok');
+  }
+
+  function handleYoutubeClick(event) {
+    const saveBtn = event.target.closest('[data-youtube-action="save"]');
+    const removeBtn = event.target.closest('[data-youtube-action="remove"]');
+
+    if (saveBtn && root.contains(saveBtn)) {
+      event.preventDefault();
+      saveYoutubeSettings().catch((error) => {
+        console.error(error);
+        status('Erreur lors de l’enregistrement de la vidéo YouTube.', 'error');
+      });
+      return;
+    }
+
+    if (removeBtn && root.contains(removeBtn)) {
+      event.preventDefault();
+      removeYoutubeSettings().catch((error) => {
+        console.error(error);
+        status('Erreur lors de la suppression de la vidéo YouTube.', 'error');
+      });
+    }
+  }
+
+  function handleYoutubeSubmit(event) {
+    if (event.target.closest('[data-youtube-form]')) {
+      event.preventDefault();
+      saveYoutubeSettings().catch((error) => {
+        console.error(error);
+        status('Erreur lors de l’enregistrement de la vidéo YouTube.', 'error');
+      });
+    }
+  }
+
 
   function makePreview(item, url) {
     const src = url && !isLegacyLocalMediaUrl(url) ? url : '';
@@ -100,7 +231,7 @@ export function mountSiteIndexSettings({ root = document } = {}) {
         <div class="site-media-actions">
           <label class="site-media-btn secondary">
             Remplacer le fichier
-            <input type="file" data-upload="${item.key}" accept="${item.type === 'video' ? 'video/*' : 'image/*'}" hidden>
+            <input type="file" data-upload="${item.key}" accept="${item.accept || (item.type === 'video' ? 'video/*' : 'image/*')}" hidden>
           </label>
         </div>
         <div class="site-media-progress"><span data-progress="${item.key}"></span></div>
@@ -165,6 +296,10 @@ export function mountSiteIndexSettings({ root = document } = {}) {
     const item = MEDIA.find((entry) => entry.key === key);
     if (!item || !file || state.disposed) return;
     try {
+      if (item.pngOnly && file.type !== 'image/png') {
+        status(`${item.label} : merci d’envoyer un fichier PNG.`, 'error');
+        return;
+      }
       status(`Upload de ${item.label}...`);
       const suffix = item.storagePath.endsWith('founder-image') ? `-${Date.now()}-${file.name.replace(/[^a-z0-9.\-_]/gi, '-')}` : '';
       const url = await uploadBlob(item, file, suffix);
@@ -187,6 +322,7 @@ export function mountSiteIndexSettings({ root = document } = {}) {
     const snap = await getDoc(SETTINGS_REF);
     if (state.disposed) return;
     state.settings = snap.exists() ? sanitizeSettings(snap.data()) : { ...DEFAULTS };
+    renderYoutubeSettings();
     renderCards();
   }
 
@@ -204,11 +340,16 @@ export function mountSiteIndexSettings({ root = document } = {}) {
   });
 
   root.addEventListener('change', handleChange);
+  root.addEventListener('click', handleYoutubeClick);
+  root.addEventListener('submit', handleYoutubeSubmit);
+  renderYoutubeSettings();
   renderCards();
 
   const cleanup = () => {
     state.disposed = true;
     root.removeEventListener('change', handleChange);
+    root.removeEventListener('click', handleYoutubeClick);
+    root.removeEventListener('submit', handleYoutubeSubmit);
     unsubscribeAuth?.();
     if (currentCleanup === cleanup) currentCleanup = null;
   };

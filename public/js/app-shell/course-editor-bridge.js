@@ -1,5 +1,5 @@
 /**
- * SBI 8.0L.1 - Course editor bridge
+ * SBI 8.0P.118 - Course editor bridge
  *
  * Prépare et monte les éléments que les scripts inline ne relancent pas
  * en navigation PJAX : Quill, onglets éditeur et switch image/vidéo.
@@ -424,6 +424,13 @@ export function installCourseEditorTabs() {
     if (navEditor && tabId === 'tab-editor') {
       navEditor.style.display = '';
     }
+
+    window.dispatchEvent(new CustomEvent('sbi:course-tab-change', {
+      detail: {
+        tabId,
+        source: 'course-editor-bridge'
+      }
+    }));
 
     window.requestAnimationFrame(() => {
       targetView?.scrollIntoView?.({

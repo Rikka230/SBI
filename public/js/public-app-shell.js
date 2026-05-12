@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.46 - Progressive PJAX page dissolve
+ * SBI 8.0P.126 - PUBLIC HEADER CLEANUP + ABOUT FOUNDER FADE
  *
  * Shell public prudent :
  * - navigation fluide des ancres de l'index ;
@@ -8,7 +8,7 @@
  * - espaces admin/student/teacher et viewers toujours protégés en reload.
  */
 
-const PUBLIC_SHELL_VERSION = '8.0P.46';
+const PUBLIC_SHELL_VERSION = '8.0P.126';
 const DISABLED_FLAG = 'sbiPublicShellDisabled';
 const READY_CLASS = 'sbi-public-shell-ready';
 const SCROLLING_CLASS = 'sbi-public-shell-scrolling';
@@ -26,7 +26,12 @@ const PUBLIC_PAGE_DEFINITIONS = new Map([
   ['/a-propos.html', { page: 'apropos', route: 'public-apropos', fetchPath: '/a-propos.html', reason: 'page à propos publique migrée' }],
   ['/ressources.html', { page: 'ressources', route: 'public-ressources', fetchPath: '/ressources.html', reason: 'page ressources publique migrée' }],
   ['/calculateur.html', { page: 'calculator', route: 'public-calculator', fetchPath: '/calculateur.html', reason: 'page calculateur aide publique migrée' }],
-  ['/contact.html', { page: 'contact', route: 'public-contact', fetchPath: '/contact.html', reason: 'page contact publique migrée' }]
+  ['/contact.html', { page: 'contact', route: 'public-contact', fetchPath: '/contact.html', reason: 'page contact publique migrée' }],
+  ['/mentions-legales.html', { page: 'mentions-legales', route: 'public-mentions-legales', fetchPath: '/mentions-legales.html', reason: 'page mentions légales migrée' }],
+  ['/politique-confidentialite.html', { page: 'confidentialite', route: 'public-confidentialite', fetchPath: '/politique-confidentialite.html', reason: 'page confidentialité migrée' }],
+  ['/politique-cookies.html', { page: 'cookies', route: 'public-cookies', fetchPath: '/politique-cookies.html', reason: 'page cookies migrée' }],
+  ['/cgu.html', { page: 'cgu', route: 'public-cgu', fetchPath: '/cgu.html', reason: 'page CGU migrée' }],
+  ['/accessibilite.html', { page: 'accessibilite', route: 'public-accessibilite', fetchPath: '/accessibilite.html', reason: 'page accessibilité migrée' }]
 ]);
 
 const PUBLIC_INDEX_PATHS = new Set(['/', '/index.html']);
@@ -401,32 +406,145 @@ function pageFetchUrl(url) {
   return `${cleanPath}${url.search || ''}`;
 }
 
+function getPublicCssLinkKey(link) {
+  const href = link?.getAttribute?.('href');
+  if (!href) return null;
+
+  try {
+    const url = new URL(href, window.location.origin);
+    if (url.origin !== window.location.origin || !url.pathname.startsWith('/css/')) return null;
+
+    const rel = (link.getAttribute('rel') || '').toLowerCase();
+    const as = (link.getAttribute('as') || '').toLowerCase();
+    return `${rel}:${as}:${url.pathname}`;
+  } catch {
+    return null;
+  }
+}
+
+function getAbsoluteAssetHref(link) {
+  const href = link?.getAttribute?.('href');
+  if (!href) return '';
+
+  try {
+    return new URL(href, window.location.origin).href;
+  } catch {
+    return href;
+  }
+}
+
+function prunePageScopedHeadAssets(pageId) {
+  if (pageId !== 'home') return;
+
+  document.head.querySelectorAll('link[rel="stylesheet"]').forEach((link) => {
+    const href = link.getAttribute('href') || '';
+    if (/sbi-public-pages\.css/i.test(href)) link.remove();
+  });
+
+  document.head.querySelectorAll('style[data-sbi-public-shell-style]').forEach((style) => style.remove());
+}
+
+
+function syncManagedSeoHead(nextDocument) {
+  const nextHead = nextDocument?.head;
+  if (!nextHead) return;
+
+  const nextTitle = textContentOf(nextDocument.querySelector('title'));
+  if (nextTitle) document.title = nextTitle;
+
+  const managedSelector = '[data-sbi-seo], #sbi-public-formations-jsonld, script[data-sbi-seo-dynamic]';
+  document.head.querySelectorAll(managedSelector).forEach((node) => {
+    try { node.remove(); } catch {}
+  });
+
+  const nextManagedNodes = Array.from(nextHead.querySelectorAll('[data-sbi-seo]'));
+  if (!nextManagedNodes.length) return;
+
+  const insertionAnchor = document.head.querySelector('link[rel="stylesheet"], link[rel="preload"][as="style"], style');
+  nextManagedNodes.forEach((node) => {
+    const clone = node.cloneNode(true);
+    if (insertionAnchor?.parentNode) document.head.insertBefore(clone, insertionAnchor);
+    else document.head.appendChild(clone);
+  });
+}
+
+function textContentOf(node) {
+  return String(node?.textContent || '').trim();
+}
+
 async function syncHeadAssets(nextDocument, pageId) {
   const stylesheetSelector = 'link[rel="stylesheet"], link[rel="preload"][as="style"]';
   const stylesheetLoaders = [];
+  const staleLocalLinks = new Set();
+  const nextLinks = Array.from(nextDocument.querySelectorAll(stylesheetSelector))
+    .filter((link) => Boolean(link.getAttribute('href')));
 
-  nextDocument.querySelectorAll(stylesheetSelector).forEach((link) => {
-    const href = link.getAttribute('href');
-    if (!href) return;
+  const nextLocalCssByKey = new Map();
+  nextLinks.forEach((link) => {
+    const key = getPublicCssLinkKey(link);
+    if (key && !nextLocalCssByKey.has(key)) nextLocalCssByKey.set(key, link);
+  });
 
-    const absoluteHref = new URL(href, window.location.origin).href;
-    const exists = Array.from(document.head.querySelectorAll(stylesheetSelector))
-      .some((current) => {
-        const currentHref = current.getAttribute('href');
-        return currentHref && new URL(currentHref, window.location.origin).href === absoluteHref;
-      });
+  const appendStylesheetClone = (sourceLink, insertAfter = null) => {
+    const absoluteHref = getAbsoluteAssetHref(sourceLink);
+    if (!absoluteHref) return null;
 
-    if (!exists) {
-      const clonedLink = link.cloneNode(true);
-      document.head.appendChild(clonedLink);
-      if (clonedLink.rel === 'stylesheet') {
-        stylesheetLoaders.push(waitForStylesheet(clonedLink));
+    const existing = Array.from(document.head.querySelectorAll(stylesheetSelector))
+      .find((current) => getAbsoluteAssetHref(current) === absoluteHref);
+
+    if (existing) {
+      if ((existing.rel || '').toLowerCase() === 'stylesheet') {
+        stylesheetLoaders.push(waitForStylesheet(existing));
       }
+      return existing;
+    }
+
+    const clonedLink = sourceLink.cloneNode(true);
+    clonedLink.dataset.sbiPublicShellManaged = 'true';
+
+    if (insertAfter?.parentNode) insertAfter.after(clonedLink);
+    else document.head.appendChild(clonedLink);
+
+    if ((clonedLink.rel || '').toLowerCase() === 'stylesheet') {
+      stylesheetLoaders.push(waitForStylesheet(clonedLink));
+    }
+
+    return clonedLink;
+  };
+
+  const syncedCurrentLocalKeys = new Set();
+  Array.from(document.head.querySelectorAll(stylesheetSelector)).forEach((currentLink) => {
+    const key = getPublicCssLinkKey(currentLink);
+    if (!key) return;
+
+    if (syncedCurrentLocalKeys.has(key)) {
+      staleLocalLinks.add(currentLink);
+      return;
+    }
+
+    syncedCurrentLocalKeys.add(key);
+    const nextLink = nextLocalCssByKey.get(key);
+
+    if (!nextLink) {
+      staleLocalLinks.add(currentLink);
+      return;
+    }
+
+    const currentHref = getAbsoluteAssetHref(currentLink);
+    const nextHref = getAbsoluteAssetHref(nextLink);
+
+    if (currentHref !== nextHref) {
+      appendStylesheetClone(nextLink, currentLink);
+      staleLocalLinks.add(currentLink);
     }
   });
 
+  nextLinks.forEach((link) => appendStylesheetClone(link));
+
+  const activeInlineStyleKeys = new Set();
   nextDocument.querySelectorAll('style').forEach((style, index) => {
     const key = `sbi-public-shell-inline-${pageId}-${index}`;
+    activeInlineStyleKeys.add(key);
     let targetStyle = document.head.querySelector(`style[data-sbi-public-shell-style="${key}"]`);
 
     if (!targetStyle) {
@@ -438,9 +556,40 @@ async function syncHeadAssets(nextDocument, pageId) {
     targetStyle.textContent = style.textContent || '';
   });
 
+  document.head.querySelectorAll('style[data-sbi-public-shell-style]').forEach((style) => {
+    if (!activeInlineStyleKeys.has(style.dataset.sbiPublicShellStyle || '')) style.remove();
+  });
+
   if (stylesheetLoaders.length) {
     await Promise.allSettled(stylesheetLoaders);
   }
+
+  staleLocalLinks.forEach((link) => {
+    try { link.remove(); } catch {}
+  });
+
+  const retainedLocalKeys = new Set();
+  document.head.querySelectorAll(stylesheetSelector).forEach((link) => {
+    const key = getPublicCssLinkKey(link);
+    if (!key) return;
+
+    const nextLink = nextLocalCssByKey.get(key);
+    if (!nextLink) {
+      try { link.remove(); } catch {}
+      return;
+    }
+
+    const currentHref = getAbsoluteAssetHref(link);
+    const nextHref = getAbsoluteAssetHref(nextLink);
+    if (currentHref !== nextHref || retainedLocalKeys.has(key)) {
+      try { link.remove(); } catch {}
+      return;
+    }
+
+    retainedLocalKeys.add(key);
+  });
+
+  prunePageScopedHeadAssets(pageId);
 }
 
 function sanitizeBodyFragment(nextDocument) {
@@ -493,6 +642,30 @@ function renderBodyFragment(nextFragment) {
   }
 }
 
+function cleanupPublicNavigationArtifacts({ source = 'navigation' } = {}) {
+  try {
+    window.dispatchEvent(new CustomEvent('sbi:public-shell:before-navigate', {
+      detail: { source }
+    }));
+  } catch {}
+
+  try {
+    if (typeof window.SBI_CLOSE_PUBLIC_FORMATION_SHEET === 'function') {
+      window.SBI_CLOSE_PUBLIC_FORMATION_SHEET({ immediate: true, source });
+    }
+  } catch (error) {
+    console.warn('[SBI Public Shell] Nettoyage fiche formation indisponible :', error);
+  }
+
+  document.querySelectorAll('[data-sbi-formation-sheet], .public-formation-sheet').forEach((node) => {
+    try { node.remove(); } catch {}
+  });
+
+  document.documentElement.classList.remove('sbi-formation-sheet-open');
+  document.body?.classList.remove('sbi-formation-sheet-open');
+  document.documentElement.style.removeProperty('--sbi-scrollbar-compensation');
+}
+
 function syncBodyAttributes(nextDocument, pageId, enabled) {
   const nextClassName = nextDocument.body?.className || '';
   const classesToPreserve = [
@@ -509,6 +682,32 @@ function syncBodyAttributes(nextDocument, pageId, enabled) {
   document.body.dataset.sbiPublicShell = enabled ? 'enabled' : 'disabled';
 }
 
+
+function renderDiagonalsSoon() {
+  if (typeof window.SBI_RENDER_DIAGONALS !== 'function') return false;
+
+  window.requestAnimationFrame(() => {
+    window.SBI_RENDER_DIAGONALS();
+    window.setTimeout(() => window.SBI_RENDER_DIAGONALS?.(), 140);
+  });
+
+  return true;
+}
+
+async function ensureDiagonalRendererForPage(pageId) {
+  const pagesWithMobileCuts = new Set(['home', 'formations', 'ressources']);
+
+  if (pagesWithMobileCuts.has(pageId) && typeof window.SBI_RENDER_DIAGONALS !== 'function') {
+    try {
+      await import('/js/sbi-diagonals.js?v=8.0P.126');
+    } catch (error) {
+      console.warn('[SBI Public Shell] Diagonales publiques indisponibles après PJAX :', error);
+    }
+  }
+
+  renderDiagonalsSoon();
+}
+
 async function runPageInitializers(pageId) {
   try {
     if (typeof window.SBI_MAIN_INIT === 'function') {
@@ -518,9 +717,9 @@ async function runPageInitializers(pageId) {
     console.warn('[SBI Public Shell] Init front public indisponible :', error);
   }
 
-  if (pageId === 'home') {
+  if (['home', 'formations', 'ressources'].includes(pageId)) {
     try {
-      const mediaModule = await import('/js/site-index-public.js?v=8.0P.46');
+      const mediaModule = await import('/js/site-index-public.js?v=8.0P.126');
       const initMedia = mediaModule.initSiteIndexMedia || window.SBI_INIT_SITE_INDEX_MEDIA;
       if (typeof initMedia === 'function') await initMedia({ forceRefresh: false });
     } catch (error) {
@@ -540,7 +739,7 @@ async function runPageInitializers(pageId) {
 
   if (pageId === 'calculator') {
     try {
-      const calculatorModule = await import('/js/sbi-aide-calculator.js?v=8.0P.46');
+      const calculatorModule = await import('/js/sbi-aide-calculator.js?v=8.0P.126');
       const initCalculator = calculatorModule.initSbiAidCalculator || window.SBI_INIT_AID_CALCULATOR;
       if (typeof initCalculator === 'function') initCalculator(document);
     } catch (error) {
@@ -548,9 +747,9 @@ async function runPageInitializers(pageId) {
     }
   }
 
-  if (['formations', 'parcours', 'apropos', 'ressources', 'contact'].includes(pageId)) {
+  if (['home', 'formations', 'parcours', 'apropos', 'ressources', 'contact'].includes(pageId)) {
     try {
-      const publicPagesModule = await import('/js/sbi-public-pages.js?v=8.0P.46');
+      const publicPagesModule = await import('/js/sbi-public-pages.js?v=8.0P.126');
       const initPublicPages = publicPagesModule.initSbiPublicPages || window.SBI_INIT_PUBLIC_PAGES;
       if (typeof initPublicPages === 'function') initPublicPages(document);
     } catch (error) {
@@ -561,6 +760,8 @@ async function runPageInitializers(pageId) {
 
 async function renderPublicPage(url, decision, { historyMode = 'push', behavior = 'smooth', source = 'click' } = {}) {
   if (pageTransitionPromise) return pageTransitionPromise;
+
+  cleanupPublicNavigationArtifacts({ source });
 
   pageTransitionPromise = (async () => {
     const enabled = !safeReadFlag(DISABLED_FLAG);
@@ -595,7 +796,7 @@ async function renderPublicPage(url, decision, { historyMode = 'push', behavior 
       if (!nextDocument.body) throw new Error('Document HTML invalide');
 
       await syncHeadAssets(nextDocument, targetPageId);
-      document.title = nextDocument.title || document.title;
+      syncManagedSeoHead(nextDocument);
 
       const fragment = sanitizeBodyFragment(nextDocument);
       syncBodyAttributes(nextDocument, targetPageId, enabled);
@@ -611,9 +812,7 @@ async function renderPublicPage(url, decision, { historyMode = 'push', behavior 
       activeObserver = null;
       await runPageInitializers(targetPageId);
       observeActiveSections();
-      if (typeof window.SBI_RENDER_DIAGONALS === 'function') {
-        window.requestAnimationFrame(() => window.SBI_RENDER_DIAGONALS());
-      }
+      await ensureDiagonalRendererForPage(targetPageId);
 
       const target = decision.targetId ? getAnchorTarget(`#${decision.targetId}`) : null;
       scrollToTarget(target, behavior);
@@ -656,6 +855,8 @@ function navigatePublic(url, { historyMode = 'push', behavior = 'smooth', source
 
   const currentPageId = getRenderedPublicPageId();
   const samePage = currentPageId === decision.page;
+
+  cleanupPublicNavigationArtifacts({ source });
 
   if (samePage) {
     const target = decision.targetId ? getAnchorTarget(`#${decision.targetId}`) : null;
@@ -814,6 +1015,11 @@ function printRoutes() {
     { path: '/ressources.html', mode: 'public-shell', page: 'ressources', reason: 'page ressources publique' },
     { path: '/calculateur.html', mode: 'public-shell', page: 'calculator', reason: 'page calculateur aide publique' },
     { path: '/contact.html', mode: 'public-shell', page: 'contact', reason: 'page contact publique' },
+    { path: '/mentions-legales.html', mode: 'public-shell', page: 'mentions-legales', reason: 'page mentions légales' },
+    { path: '/politique-confidentialite.html', mode: 'public-shell', page: 'confidentialite', reason: 'page confidentialité' },
+    { path: '/politique-cookies.html', mode: 'public-shell', page: 'cookies', reason: 'page cookies' },
+    { path: '/cgu.html', mode: 'public-shell', page: 'cgu', reason: 'page CGU' },
+    { path: '/accessibilite.html', mode: 'public-shell', page: 'accessibilite', reason: 'page accessibilité' },
     { path: '/login.html', mode: 'public-shell', page: 'login', reason: 'connexion migrée dans le shell public' },
     { path: '/admin/index.html', mode: 'reload', page: '-', reason: 'shell admin séparé' },
     { path: '/student/cours-viewer.html?id=test', mode: 'reload', page: '-', reason: 'viewer protégé' },
@@ -844,7 +1050,7 @@ function printAudit() {
     total: rows.length,
     ok: rows.filter((row) => row.verdict === 'OK').length,
     alerts: rows.filter((row) => row.verdict === 'ALERTE').length,
-    publicPagesEnabled: ['/formations.html', '/a-propos.html', '/ressources.html', '/calculateur.html', '/contact.html']
+    publicPagesEnabled: ['/formations.html', '/a-propos.html', '/ressources.html', '/calculateur.html', '/contact.html', '/mentions-legales.html', '/politique-confidentialite.html', '/politique-cookies.html', '/cgu.html', '/accessibilite.html']
       .every((path) => classifyPublicRoute(new URL(path, window.location.origin)).mode === 'public-shell'),
     loginPjaxEnabled: classifyPublicRoute(new URL('/login.html', window.location.origin)).mode === 'public-shell',
     livePublicRemoved: classifyPublicRoute(new URL('/live.html', window.location.origin)).mode === 'reload',
@@ -929,9 +1135,7 @@ function initSbiPublicAppShell() {
 
   attachListeners();
   observeActiveSections();
-  if (typeof window.SBI_RENDER_DIAGONALS === 'function') {
-    window.requestAnimationFrame(() => window.SBI_RENDER_DIAGONALS());
-  }
+  ensureDiagonalRendererForPage(getPublicPageId(window.location.pathname));
 
   if (window.location.hash) {
     const initialUrl = new URL(window.location.href);

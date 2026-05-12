@@ -1,0 +1,433 @@
+/* =========================================================
+   SBI 8.0P.88 - Admin catalogue public formations hotfix
+   ========================================================= */
+
+.public-content-admin-panel {
+    margin-top: 2.25rem;
+    padding: clamp(1.1rem, 2vw, 1.5rem);
+    border: 1px solid rgba(87, 130, 255, 0.22);
+    border-radius: 12px;
+    background:
+        linear-gradient(145deg, rgba(8, 14, 27, 0.92), rgba(6, 8, 15, 0.96)),
+        radial-gradient(circle at 90% 0%, rgba(42, 87, 255, 0.14), transparent 22rem);
+}
+
+.public-content-admin-head,
+.public-admin-modal-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.public-content-admin-head h2,
+.public-admin-modal-head h3 {
+    margin: 0.25rem 0 0;
+    color: var(--text-main, #fff);
+}
+
+.public-content-admin-head p {
+    max-width: 760px;
+    margin: 0.45rem 0 0;
+    color: var(--text-muted, #9ba7bd);
+    line-height: 1.55;
+}
+
+.public-admin-kicker {
+    color: var(--accent-blue, #2a57ff);
+    font-size: 0.74rem;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.public-admin-note {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem 1rem;
+    margin: 1rem 0;
+    padding: 0.85rem 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.035);
+    color: var(--text-muted, #9ba7bd);
+    font-size: 0.86rem;
+}
+
+.public-admin-status {
+    min-height: 1.25rem;
+    margin-bottom: 1rem;
+    color: var(--text-muted, #9ba7bd);
+    font-size: 0.9rem;
+}
+
+.public-admin-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 1rem;
+}
+
+.public-admin-card {
+    position: relative;
+    overflow: hidden;
+    min-height: 210px;
+    padding: 1rem;
+    border: 1px solid rgba(87, 130, 255, 0.22);
+    border-radius: 10px;
+    background: rgba(3, 7, 14, 0.75);
+    cursor: pointer;
+}
+
+.public-admin-card::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 44px;
+    height: 44px;
+    background: var(--accent-blue, #2a57ff);
+    clip-path: polygon(100% 0, 100% 100%, 0 100%);
+    opacity: 0.85;
+}
+
+.public-admin-card:hover {
+    border-color: rgba(87, 130, 255, 0.55);
+    transform: translateY(-2px);
+}
+
+.public-admin-card span {
+    display: inline-flex;
+    margin-bottom: 0.8rem;
+    padding: 0.3rem 0.55rem;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #cfe0ff;
+    font-size: 0.72rem;
+    font-weight: 900;
+    text-transform: uppercase;
+}
+
+.public-admin-card h3 {
+    margin: 0;
+    color: #fff;
+    font-size: 1.25rem;
+    line-height: 1.1;
+}
+
+.public-admin-card p {
+    margin: 0.7rem 0 0;
+    color: var(--text-muted, #9ba7bd);
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.public-admin-modal[hidden] {
+    display: none !important;
+}
+
+.public-admin-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1200;
+    display: grid;
+    place-items: center;
+    padding: 1rem;
+    background: rgba(0, 0, 0, 0.82);
+}
+
+.public-admin-modal-card {
+    width: min(100%, 980px);
+    max-height: 92vh;
+    overflow: auto;
+    padding: clamp(1rem, 2vw, 1.5rem);
+    border: 1px solid rgba(87, 130, 255, 0.28);
+    border-radius: 14px;
+    background: #090d17;
+    box-shadow: 0 32px 120px rgba(0, 0, 0, 0.55);
+}
+
+.public-admin-icon-btn {
+    width: 40px;
+    height: 40px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.04);
+    color: #fff;
+    font-size: 1.6rem;
+    cursor: pointer;
+}
+
+.public-admin-form {
+    display: grid;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.public-admin-form-grid {
+    display: grid;
+    gap: 1rem;
+}
+
+.public-admin-form-grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.public-admin-form-grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+.public-admin-form label {
+    display: grid;
+    gap: 0.4rem;
+    color: #fff;
+    font-weight: 800;
+}
+
+.public-admin-form small,
+.public-admin-help {
+    color: var(--text-muted, #9ba7bd);
+    font-size: 0.78rem;
+    font-weight: 500;
+}
+
+.public-admin-form input,
+.public-admin-form select,
+.public-admin-form textarea {
+    width: 100%;
+    min-height: 44px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    background: #05080f;
+    color: #fff;
+    padding: 0.72rem 0.85rem;
+    font: inherit;
+}
+
+.public-admin-form textarea {
+    resize: vertical;
+}
+
+.public-admin-check {
+    display: flex !important;
+    grid-template-columns: auto 1fr;
+    flex-direction: row;
+    align-items: center;
+}
+
+.public-admin-check input {
+    width: 18px;
+    min-height: 18px;
+    accent-color: var(--accent-blue, #2a57ff);
+}
+
+.public-admin-cover-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 0.72fr);
+    gap: 1rem;
+    align-items: start;
+}
+
+.public-admin-cover-frame {
+    position: relative;
+    display: grid;
+    place-items: center;
+    min-height: 220px;
+    overflow: hidden;
+    border: 1px dashed rgba(87, 130, 255, 0.35);
+    border-radius: 10px;
+    background:
+        radial-gradient(circle at 70% 20%, rgba(42, 87, 255, 0.24), transparent 12rem),
+        #030711;
+    cursor: grab;
+    user-select: none;
+}
+
+.public-admin-cover-frame:active {
+    cursor: grabbing;
+}
+
+.public-admin-cover-frame img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: var(--cover-x, 50%) var(--cover-y, 50%);
+    -webkit-user-drag: none;
+    user-select: none;
+}
+
+.public-admin-cover-frame span {
+    color: rgba(255,255,255,0.08);
+    font-size: 5rem;
+    font-style: italic;
+    font-weight: 900;
+    letter-spacing: -0.12em;
+}
+
+.public-admin-preview-card {
+    min-height: 150px;
+    padding: 1rem;
+    border: 1px solid rgba(87, 130, 255, 0.22);
+    border-radius: 10px;
+    background:
+        linear-gradient(145deg, rgba(7, 13, 25, 0.9), rgba(3, 7, 14, 0.98)),
+        radial-gradient(circle at 90% 0%, rgba(42, 87, 255, 0.2), transparent 18rem);
+}
+
+.public-admin-preview-card span {
+    color: var(--accent-blue, #2a57ff);
+    font-size: 0.76rem;
+    font-weight: 900;
+    text-transform: uppercase;
+}
+
+.public-admin-preview-card h4 {
+    margin: 0.4rem 0 0;
+    color: #fff;
+    font-size: 1.45rem;
+}
+
+.public-admin-preview-card p {
+    color: var(--text-muted, #9ba7bd);
+}
+
+.public-admin-modal-actions {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    justify-content: flex-end;
+}
+
+.public-admin-save-btn {
+    margin: 0 !important;
+    width: auto !important;
+    background: var(--accent-blue, #2a57ff) !important;
+    color: white !important;
+    border: 0 !important;
+}
+
+.public-admin-danger-btn {
+    padding: 0.85rem 1rem;
+    border: 1px solid rgba(255, 74, 74, 0.6);
+    border-radius: 8px;
+    background: rgba(255, 74, 74, 0.08);
+    color: var(--accent-red, #ff4a4a);
+    font-weight: 900;
+    cursor: pointer;
+}
+
+@media (max-width: 800px) {
+    .public-content-admin-head,
+    .public-admin-modal-head,
+    .public-admin-cover-layout,
+    .public-admin-form-grid.two,
+    .public-admin-form-grid.three {
+        grid-template-columns: 1fr;
+        display: grid;
+    }
+
+    .public-admin-modal-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}
+
+
+/* SBI 8.0P.88 - cloisonnement onglet + brochures désactivées temporairement */
+#tab-public-formations:not(.active) [data-sbi-public-formations-admin],
+.public-content-admin-panel[hidden],
+.public-admin-brochure-field[hidden] {
+    display: none !important;
+}
+
+.public-content-admin-panel {
+    clear: both;
+}
+
+/* =========================================================
+   SBI 8.0P.117 - Admin brochures PDF publiques
+   ========================================================= */
+#tab-public-resources:not(.active) [data-sbi-public-resources-admin] {
+    display: none !important;
+}
+
+.public-admin-note-stack {
+    align-items: center;
+}
+
+.public-admin-resource-grid .public-admin-card {
+    text-align: left;
+}
+
+.public-admin-resource-card p:last-child {
+    color: #cfe0ff;
+    font-size: 0.82rem;
+}
+
+.public-admin-resource-form .public-admin-file-field {
+    align-content: start;
+}
+
+.public-admin-file-current,
+.public-admin-resource-file-meta {
+    display: inline-flex;
+    align-items: center;
+    min-height: 38px;
+    padding: 0.7rem 0.8rem;
+    border: 1px solid rgba(87, 130, 255, 0.18);
+    border-radius: 8px;
+    background: rgba(87, 130, 255, 0.07);
+    color: #cfe0ff;
+    font-size: 0.82rem;
+    font-weight: 700;
+    line-height: 1.35;
+}
+
+.public-admin-resource-options select[multiple] {
+    min-height: 158px;
+}
+
+.public-admin-resource-preview {
+    display: grid;
+    gap: 0.45rem;
+}
+
+.public-admin-resource-preview h4,
+.public-admin-resource-preview p {
+    margin-bottom: 0;
+}
+
+@media (max-width: 800px) {
+    .sub-nav {
+        flex-wrap: wrap;
+        gap: 0.9rem 1.2rem;
+    }
+
+    .public-admin-resource-options select[multiple] {
+        min-height: 132px;
+    }
+}
+
+
+/* =========================================================
+   SBI 8.0P.119 - Champs SEO formations / brochures
+   ========================================================= */
+.public-admin-seo-panel {
+    border: 1px solid rgba(87, 130, 255, 0.18);
+    border-radius: 12px;
+    background: rgba(87, 130, 255, 0.055);
+    padding: 0.9rem 1rem 1rem;
+}
+
+.public-admin-seo-panel summary {
+    cursor: pointer;
+    color: #eaf1ff;
+    font-weight: 900;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+}
+
+.public-admin-seo-panel[open] summary {
+    margin-bottom: 0.9rem;
+}
+
+.public-admin-seo-panel code {
+    color: #cfe0ff;
+    font-weight: 800;
+}
+

@@ -108,6 +108,7 @@ exports.deleteUserAccount = onCall(async (request) => {
 
 const BREVO_API_KEY = defineSecret("BREVO_API_KEY");
 const BREVO_LIST_ID = 77;
+const BREVO_NEWSLETTER_LIST_ID = 77;
 const SBI_CONTACT_EMAIL = "contact@sbigroup.fr";
 const SBI_CONTACT_PHONE = "06 68 60 30 01";
 const SBI_SENDER_NAME = "SBI Contact";
@@ -220,16 +221,22 @@ function getContactAttributes(data) {
     };
 }
 
-async function callBrevo(path, payload, apiKey) {
-    const response = await fetch(`https://api.brevo.com/v3${path}`, {
-        method: "POST",
+async function callBrevo(path, payload, apiKey, options = {}) {
+    const method = options.method || "POST";
+    const requestOptions = {
+        method,
         headers: {
             "Accept": "application/json",
-            "Content-Type": "application/json",
             "api-key": apiKey
-        },
-        body: JSON.stringify(payload)
-    });
+        }
+    };
+
+    if (method !== "GET" && payload !== undefined) {
+        requestOptions.headers["Content-Type"] = "application/json";
+        requestOptions.body = JSON.stringify(payload);
+    }
+
+    const response = await fetch(`https://api.brevo.com/v3${path}`, requestOptions);
 
     const raw = await response.text();
     let parsed = null;
@@ -261,7 +268,15 @@ async function upsertBrevoContact(data, apiKey) {
 
 const SBI_SITE_URL = "https://www.sbigroup.fr";
 const SBI_TEMPLATE_PHONE_TEL = "tel:+33668603001";
-const SBI_EMAIL_TEMPLATE = "<!DOCTYPE html>\n<html lang=\"fr\" xmlns=\"http://www.w3.org/1999/xhtml\">\n<head>\n  <meta charset=\"UTF-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n  <meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge\">\n  <meta name=\"x-apple-disable-message-reformatting\">\n  <title>SBI - Email générique</title>\n\n  <!--\n    TEMPLATE EMAIL GÉNÉRIQUE SBI - RESPONSIVE\n    Usage : email de contact, réponse prospect, suivi, envoi de document, prise de rendez-vous.\n    Remplace les variables entre doubles accolades avant envoi.\n  -->\n\n  <style>\n    body, table, td, a {\n      -webkit-text-size-adjust: 100%;\n      -ms-text-size-adjust: 100%;\n    }\n\n    table, td {\n      mso-table-lspace: 0pt;\n      mso-table-rspace: 0pt;\n    }\n\n    img {\n      -ms-interpolation-mode: bicubic;\n      border: 0;\n      outline: none;\n      text-decoration: none;\n    }\n\n    body {\n      margin: 0 !important;\n      padding: 0 !important;\n      width: 100% !important;\n      background-color: #f3f5f9;\n    }\n\n    a {\n      text-decoration: none;\n    }\n\n    @media only screen and (max-width: 640px) {\n      .sbi-wrapper {\n        padding: 0 !important;\n      }\n\n      .sbi-container {\n        width: 100% !important;\n        max-width: 100% !important;\n        border-radius: 0 !important;\n        border-left: 0 !important;\n        border-right: 0 !important;\n      }\n\n      .sbi-padding {\n        padding-left: 22px !important;\n        padding-right: 22px !important;\n      }\n\n      .sbi-header {\n        padding-top: 22px !important;\n        padding-bottom: 22px !important;\n      }\n\n      .sbi-header-logo-cell,\n      .sbi-header-brand-cell {\n        display: block !important;\n        width: 100% !important;\n        text-align: center !important;\n      }\n\n      .sbi-logo {\n        width: 56px !important;\n        max-width: 56px !important;\n        margin: 0 auto 12px auto !important;\n      }\n\n      .sbi-brand {\n        width: 190px !important;\n        max-width: 190px !important;\n        margin: 0 auto !important;\n      }\n\n      .sbi-tagline {\n        text-align: center !important;\n      }\n\n      .sbi-message {\n        padding-top: 28px !important;\n        padding-bottom: 18px !important;\n      }\n\n      .sbi-message-text,\n      .sbi-message-text p {\n        font-size: 16px !important;\n        line-height: 27px !important;\n      }\n\n      .sbi-signature-card {\n        padding: 18px !important;\n      }\n\n      .sbi-contact-column,\n      .sbi-info-column {\n        display: block !important;\n        width: 100% !important;\n      }\n\n      .sbi-info-column {\n        padding-top: 16px !important;\n      }\n\n      .sbi-social-table {\n        width: 100% !important;\n      }\n\n      .sbi-social-item {\n        display: inline-block !important;\n        padding: 6px 12px 6px 0 !important;\n      }\n\n      .sbi-footer {\n        padding-left: 22px !important;\n        padding-right: 22px !important;\n      }\n    }\n\n    @media only screen and (max-width: 420px) {\n      .sbi-padding {\n        padding-left: 18px !important;\n        padding-right: 18px !important;\n      }\n\n      .sbi-message-text,\n      .sbi-message-text p {\n        font-size: 15px !important;\n        line-height: 26px !important;\n      }\n\n      .sbi-brand {\n        width: 170px !important;\n        max-width: 170px !important;\n      }\n    }\n  </style>\n</head>\n\n<body style=\"margin:0; padding:0; background-color:#f3f5f9; font-family:Arial, Helvetica, sans-serif; color:#101828;\">\n\n  <!-- Preheader caché -->\n  <div style=\"display:none; max-height:0; overflow:hidden; opacity:0; color:transparent; mso-hide:all;\">\n    Message de Sport Business Institute.\n  </div>\n\n  <table role=\"presentation\" width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" border=\"0\" style=\"width:100%; margin:0; padding:0; background-color:#f3f5f9;\">\n    <tr>\n      <td align=\"center\" class=\"sbi-wrapper\" style=\"padding:28px 14px;\">\n\n        <table role=\"presentation\" width=\"620\" cellspacing=\"0\" cellpadding=\"0\" border=\"0\" class=\"sbi-container\" style=\"width:620px; max-width:620px; background-color:#ffffff; border-radius:18px; overflow:hidden; border:1px solid #d9e1ee;\">\n\n          <!-- Header -->\n          <tr>\n            <td class=\"sbi-header sbi-padding\" style=\"background-color:#050913; padding:24px 30px; border-bottom:4px solid #0051ff;\">\n\n              <table role=\"presentation\" width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" border=\"0\">\n                <tr>\n                  <td class=\"sbi-header-logo-cell\" align=\"left\" valign=\"middle\" width=\"74\" style=\"width:74px;\">\n                    <img\n                      src=\"https://firebasestorage.googleapis.com/v0/b/sbi-web-4f6b4.firebasestorage.app/o/site%2Findex%2Flogos%2FLogo_SBI_Tome.png?alt=media\"\n                      width=\"56\"\n                      alt=\"SBI\"\n                      class=\"sbi-logo\"\n                      style=\"display:block; width:56px; max-width:56px; height:auto; border:0;\"\n                    >\n                  </td>\n\n                  <td class=\"sbi-header-brand-cell\" align=\"left\" valign=\"middle\">\n                    <img\n                      src=\"https://firebasestorage.googleapis.com/v0/b/sbi-web-4f6b4.firebasestorage.app/o/site%2Findex%2Flogos%2Fsbi_brand.png?alt=media\"\n                      width=\"214\"\n                      alt=\"Sport Business Institute\"\n                      class=\"sbi-brand\"\n                      style=\"display:block; width:214px; max-width:214px; height:auto; border:0;\"\n                    >\n\n                    <div class=\"sbi-tagline\" style=\"font-size:12px; line-height:18px; color:#8a93a6; font-style:italic; margin-top:8px;\">\n                      Apprendre. Progresser. <span style=\"color:#0051ff;\">Performer.</span>\n                    </div>\n                  </td>\n                </tr>\n              </table>\n\n            </td>\n          </tr>\n\n          <!-- Message principal -->\n          <tr>\n            <td class=\"sbi-message sbi-padding\" style=\"padding:34px 34px 20px 34px; background-color:#ffffff;\">\n\n              <p style=\"margin:0 0 18px 0; font-size:16px; line-height:26px; color:#101828;\">\n                Bonjour {PRENOM},\n              </p>\n\n              <div class=\"sbi-message-text\" style=\"font-size:16px; line-height:27px; color:#253047;\">\n                {MESSAGE_HTML}\n              </div>\n\n              <p style=\"margin:24px 0 0 0; font-size:16px; line-height:26px; color:#101828;\">\n                Bien cordialement,\n              </p>\n\n              <p style=\"margin:4px 0 0 0; font-size:16px; line-height:26px; color:#101828; font-weight:bold;\">\n                {NOM_EXPEDITEUR}\n              </p>\n\n              <p style=\"margin:0; font-size:14px; line-height:22px; color:#667085;\">\n                {POSTE_EXPEDITEUR} · Sport Business Institute\n              </p>\n\n            </td>\n          </tr>\n\n          <!-- Carte signature -->\n          <tr>\n            <td class=\"sbi-padding\" style=\"padding:8px 34px 34px 34px; background-color:#ffffff;\">\n\n              <table role=\"presentation\" width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" border=\"0\" style=\"background-color:#f7f9fd; border:1px solid #dce4f2; border-radius:14px;\">\n                <tr>\n                  <td class=\"sbi-signature-card\" style=\"padding:22px;\">\n\n                    <table role=\"presentation\" width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" border=\"0\">\n                      <tr>\n                        <td style=\"padding-bottom:15px;\">\n                          <div style=\"font-size:13px; line-height:19px; color:#0051ff; font-weight:bold; text-transform:uppercase; letter-spacing:0.8px; font-style:italic;\">\n                            SBI · Sport Business Institute\n                          </div>\n\n                          <div style=\"font-size:14px; line-height:23px; color:#344054; margin-top:8px;\">\n                            Centre de formation dédié aux métiers du football et du sport business.\n                          </div>\n                        </td>\n                      </tr>\n\n                      <tr>\n                        <td style=\"border-top:1px solid #dce4f2; padding-top:16px;\">\n\n                          <table role=\"presentation\" width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" border=\"0\">\n                            <tr>\n                              <td class=\"sbi-contact-column\" valign=\"top\" width=\"55%\" style=\"width:55%; font-size:14px; line-height:24px; color:#344054;\">\n                                <strong style=\"color:#101828;\">Contact</strong><br>\n\n                                <span style=\"color:#667085;\">Email :</span>\n                                <a href=\"mailto:contact@sbigroup.fr\" style=\"color:#0051ff; text-decoration:none;\">contact@sbigroup.fr</a><br>\n\n                                <span style=\"color:#667085;\">Téléphone :</span>\n                                <a href=\"tel:+33492909025\" style=\"color:#0051ff; text-decoration:none;\">04.92.90.90.25</a><br>\n\n                                <span style=\"color:#667085;\">Site :</span>\n                                <a href=\"https://www.sbigroup.fr\" style=\"color:#0051ff; text-decoration:none;\">www.sbigroup.fr</a>\n                              </td>\n\n                              <td class=\"sbi-info-column\" valign=\"top\" width=\"45%\" style=\"width:45%; font-size:14px; line-height:24px; color:#344054;\">\n                                <strong style=\"color:#101828;\">Formations</strong><br>\n                                <span style=\"color:#667085;\">100% en ligne</span><br>\n                                <span style=\"color:#667085;\">Vidéo, live et à la demande</span><br>\n                                <span style=\"color:#667085;\">Certifications professionnelles</span>\n                              </td>\n                            </tr>\n                          </table>\n\n                        </td>\n                      </tr>\n\n                      <!-- Réseaux sociaux -->\n                      <tr>\n                        <td style=\"padding-top:18px;\">\n                          <table role=\"presentation\" cellspacing=\"0\" cellpadding=\"0\" border=\"0\" class=\"sbi-social-table\">\n                            <tr>\n                              <td class=\"sbi-social-item\" style=\"padding-right:12px;\">\n                                <a href=\"{LINKEDIN_URL}\" style=\"font-size:13px; line-height:20px; color:#344054; text-decoration:none; font-weight:bold;\">LinkedIn</a>\n                              </td>\n\n                              <td class=\"sbi-social-item\" style=\"padding-right:12px;\">\n                                <a href=\"{INSTAGRAM_URL}\" style=\"font-size:13px; line-height:20px; color:#344054; text-decoration:none; font-weight:bold;\">Instagram</a>\n                              </td>\n\n                              <td class=\"sbi-social-item\" style=\"padding-right:12px;\">\n                                <a href=\"{FACEBOOK_URL}\" style=\"font-size:13px; line-height:20px; color:#344054; text-decoration:none; font-weight:bold;\">Facebook</a>\n                              </td>\n\n                              <td class=\"sbi-social-item\" style=\"padding-right:12px;\">\n                                <a href=\"{YOUTUBE_URL}\" style=\"font-size:13px; line-height:20px; color:#344054; text-decoration:none; font-weight:bold;\">YouTube</a>\n                              </td>\n\n                              <td class=\"sbi-social-item\" style=\"padding-right:12px;\">\n                                <a href=\"{X_URL}\" style=\"font-size:13px; line-height:20px; color:#344054; text-decoration:none; font-weight:bold;\">X</a>\n                              </td>\n                            </tr>\n                          </table>\n                        </td>\n                      </tr>\n\n                    </table>\n\n                  </td>\n                </tr>\n              </table>\n\n            </td>\n          </tr>\n\n          <!-- Footer légal discret -->\n          <tr>\n            <td class=\"sbi-footer\" style=\"background-color:#050913; padding:18px 30px;\">\n              <p style=\"margin:0; font-size:11px; line-height:18px; color:#8a93a6;\">\n                Ce message et ses éventuelles pièces jointes sont destinés exclusivement à leur destinataire.\n                Si vous l’avez reçu par erreur, merci d’en informer l’expéditeur et de le supprimer.\n              </p>\n            </td>\n          </tr>\n\n        </table>\n\n      </td>\n    </tr>\n  </table>\n\n</body>\n</html>\n";
+const SBI_SOCIAL_LINKS = {
+    linkedin: "https://www.linkedin.com/company/sport-business-institute",
+    instagram: "https://www.instagram.com/sportbusinessinstitute",
+    facebook: "https://www.facebook.com/people/SBI-Sport-Business-Institute/61581987031214",
+    youtube: "https://www.youtube.com/@sbisportbusinessinstitute",
+    x: "https://x.com/sbigroupe",
+    snapchat: "https://www.snapchat.com/@sbigroupe?share_id=lOOvFhpVVyk&locale=fr-FR"
+};
+const SBI_EMAIL_TEMPLATE = "<!DOCTYPE html>\n<html lang=\"fr\" xmlns=\"http://www.w3.org/1999/xhtml\">\n<head>\n  <meta charset=\"UTF-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n  <meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge\">\n  <meta name=\"x-apple-disable-message-reformatting\">\n  <title>SBI - Email générique</title>\n\n  <!--\n    TEMPLATE EMAIL GÉNÉRIQUE SBI - RESPONSIVE\n    Usage : email de contact, réponse prospect, suivi, envoi de document, prise de rendez-vous.\n    Remplace les variables entre doubles accolades avant envoi.\n  -->\n\n  <style>\n    body, table, td, a {\n      -webkit-text-size-adjust: 100%;\n      -ms-text-size-adjust: 100%;\n    }\n\n    table, td {\n      mso-table-lspace: 0pt;\n      mso-table-rspace: 0pt;\n    }\n\n    img {\n      -ms-interpolation-mode: bicubic;\n      border: 0;\n      outline: none;\n      text-decoration: none;\n    }\n\n    body {\n      margin: 0 !important;\n      padding: 0 !important;\n      width: 100% !important;\n      background-color: #f3f5f9;\n    }\n\n    a {\n      text-decoration: none;\n    }\n\n    @media only screen and (max-width: 640px) {\n      .sbi-wrapper {\n        padding: 0 !important;\n      }\n\n      .sbi-container {\n        width: 100% !important;\n        max-width: 100% !important;\n        border-radius: 0 !important;\n        border-left: 0 !important;\n        border-right: 0 !important;\n      }\n\n      .sbi-padding {\n        padding-left: 22px !important;\n        padding-right: 22px !important;\n      }\n\n      .sbi-header {\n        padding-top: 22px !important;\n        padding-bottom: 22px !important;\n      }\n\n      .sbi-header-logo-cell,\n      .sbi-header-brand-cell {\n        display: block !important;\n        width: 100% !important;\n        text-align: center !important;\n      }\n\n      .sbi-logo {\n        width: 56px !important;\n        max-width: 56px !important;\n        margin: 0 auto 12px auto !important;\n      }\n\n      .sbi-brand {\n        width: 190px !important;\n        max-width: 190px !important;\n        margin: 0 auto !important;\n      }\n\n      .sbi-tagline {\n        text-align: center !important;\n      }\n\n      .sbi-message {\n        padding-top: 28px !important;\n        padding-bottom: 18px !important;\n      }\n\n      .sbi-message-text,\n      .sbi-message-text p {\n        font-size: 16px !important;\n        line-height: 27px !important;\n      }\n\n      .sbi-signature-card {\n        padding: 18px !important;\n      }\n\n      .sbi-contact-column,\n      .sbi-info-column {\n        display: block !important;\n        width: 100% !important;\n      }\n\n      .sbi-info-column {\n        padding-top: 16px !important;\n      }\n\n      .sbi-social-table {\n        width: 100% !important;\n      }\n\n      .sbi-social-item {\n        display: inline-block !important;\n        padding: 6px 12px 6px 0 !important;\n      }\n\n      .sbi-footer {\n        padding-left: 22px !important;\n        padding-right: 22px !important;\n      }\n    }\n\n    @media only screen and (max-width: 420px) {\n      .sbi-padding {\n        padding-left: 18px !important;\n        padding-right: 18px !important;\n      }\n\n      .sbi-message-text,\n      .sbi-message-text p {\n        font-size: 15px !important;\n        line-height: 26px !important;\n      }\n\n      .sbi-brand {\n        width: 170px !important;\n        max-width: 170px !important;\n      }\n    }\n  </style>\n</head>\n\n<body style=\"margin:0; padding:0; background-color:#f3f5f9; font-family:Arial, Helvetica, sans-serif; color:#101828;\">\n\n  <!-- Preheader caché -->\n  <div style=\"display:none; max-height:0; overflow:hidden; opacity:0; color:transparent; mso-hide:all;\">\n    Message de Sport Business Institute.\n  </div>\n\n  <table role=\"presentation\" width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" border=\"0\" style=\"width:100%; margin:0; padding:0; background-color:#f3f5f9;\">\n    <tr>\n      <td align=\"center\" class=\"sbi-wrapper\" style=\"padding:28px 14px;\">\n\n        <table role=\"presentation\" width=\"620\" cellspacing=\"0\" cellpadding=\"0\" border=\"0\" class=\"sbi-container\" style=\"width:620px; max-width:620px; background-color:#ffffff; border-radius:18px; overflow:hidden; border:1px solid #d9e1ee;\">\n\n          <!-- Header -->\n          <tr>\n            <td class=\"sbi-header sbi-padding\" style=\"background-color:#050913; padding:24px 30px; border-bottom:4px solid #0051ff;\">\n\n              <table role=\"presentation\" width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" border=\"0\">\n                <tr>\n                  <td class=\"sbi-header-logo-cell\" align=\"left\" valign=\"middle\" width=\"74\" style=\"width:74px;\">\n                    <img\n                      src=\"https://firebasestorage.googleapis.com/v0/b/sbi-web-4f6b4.firebasestorage.app/o/site%2Findex%2Flogos%2FLogo_SBI_Tome.png?alt=media\"\n                      width=\"56\"\n                      alt=\"SBI\"\n                      class=\"sbi-logo\"\n                      style=\"display:block; width:56px; max-width:56px; height:auto; border:0;\"\n                    >\n                  </td>\n\n                  <td class=\"sbi-header-brand-cell\" align=\"left\" valign=\"middle\">\n                    <img\n                      src=\"https://firebasestorage.googleapis.com/v0/b/sbi-web-4f6b4.firebasestorage.app/o/site%2Findex%2Flogos%2Fsbi_brand.png?alt=media\"\n                      width=\"214\"\n                      alt=\"Sport Business Institute\"\n                      class=\"sbi-brand\"\n                      style=\"display:block; width:214px; max-width:214px; height:auto; border:0;\"\n                    >\n\n                    <div class=\"sbi-tagline\" style=\"font-size:12px; line-height:18px; color:#8a93a6; font-style:italic; margin-top:8px;\">\n                      Apprendre. Progresser. <span style=\"color:#0051ff;\">Performer.</span>\n                    </div>\n                  </td>\n                </tr>\n              </table>\n\n            </td>\n          </tr>\n\n          <!-- Message principal -->\n          <tr>\n            <td class=\"sbi-message sbi-padding\" style=\"padding:34px 34px 20px 34px; background-color:#ffffff;\">\n\n              <p style=\"margin:0 0 18px 0; font-size:16px; line-height:26px; color:#101828;\">\n                Bonjour {PRENOM},\n              </p>\n\n              <div class=\"sbi-message-text\" style=\"font-size:16px; line-height:27px; color:#253047;\">\n                {MESSAGE_HTML}\n              </div>\n\n              <p style=\"margin:24px 0 0 0; font-size:16px; line-height:26px; color:#101828;\">\n                Bien cordialement,\n              </p>\n\n              <p style=\"margin:4px 0 0 0; font-size:16px; line-height:26px; color:#101828; font-weight:bold;\">\n                {NOM_EXPEDITEUR}\n              </p>\n\n              <p style=\"margin:0; font-size:14px; line-height:22px; color:#667085;\">\n                {POSTE_EXPEDITEUR} · Sport Business Institute\n              </p>\n\n            </td>\n          </tr>\n\n          <!-- Carte signature -->\n          <tr>\n            <td class=\"sbi-padding\" style=\"padding:8px 34px 34px 34px; background-color:#ffffff;\">\n\n              <table role=\"presentation\" width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" border=\"0\" style=\"background-color:#f7f9fd; border:1px solid #dce4f2; border-radius:14px;\">\n                <tr>\n                  <td class=\"sbi-signature-card\" style=\"padding:22px;\">\n\n                    <table role=\"presentation\" width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" border=\"0\">\n                      <tr>\n                        <td style=\"padding-bottom:15px;\">\n                          <div style=\"font-size:13px; line-height:19px; color:#0051ff; font-weight:bold; text-transform:uppercase; letter-spacing:0.8px; font-style:italic;\">\n                            SBI · Sport Business Institute\n                          </div>\n\n                          <div style=\"font-size:14px; line-height:23px; color:#344054; margin-top:8px;\">\n                            Centre de formation dédié aux métiers du football et du sport business.\n                          </div>\n                        </td>\n                      </tr>\n\n                      <tr>\n                        <td style=\"border-top:1px solid #dce4f2; padding-top:16px;\">\n\n                          <table role=\"presentation\" width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" border=\"0\">\n                            <tr>\n                              <td class=\"sbi-contact-column\" valign=\"top\" width=\"55%\" style=\"width:55%; font-size:14px; line-height:24px; color:#344054;\">\n                                <strong style=\"color:#101828;\">Contact</strong><br>\n\n                                <span style=\"color:#667085;\">Email :</span>\n                                <a href=\"mailto:contact@sbigroup.fr\" style=\"color:#0051ff; text-decoration:none;\">contact@sbigroup.fr</a><br>\n\n                                <span style=\"color:#667085;\">Téléphone :</span>\n                                <a href=\"tel:+33492909025\" style=\"color:#0051ff; text-decoration:none;\">04.92.90.90.25</a><br>\n\n                                <span style=\"color:#667085;\">Site :</span>\n                                <a href=\"https://www.sbigroup.fr\" style=\"color:#0051ff; text-decoration:none;\">www.sbigroup.fr</a>\n                              </td>\n\n                              <td class=\"sbi-info-column\" valign=\"top\" width=\"45%\" style=\"width:45%; font-size:14px; line-height:24px; color:#344054;\">\n                                <strong style=\"color:#101828;\">Formations</strong><br>\n                                <span style=\"color:#667085;\">100% en ligne</span><br>\n                                <span style=\"color:#667085;\">Vidéo, live et à la demande</span><br>\n                                <span style=\"color:#667085;\">Certifications professionnelles</span>\n                              </td>\n                            </tr>\n                          </table>\n\n                        </td>\n                      </tr>\n\n                      <!-- Réseaux sociaux -->\n                      <tr>\n                        <td style=\"padding-top:18px;\">\n                          <table role=\"presentation\" cellspacing=\"0\" cellpadding=\"0\" border=\"0\" class=\"sbi-social-table\">\n                            <tr>\n                              <td class=\"sbi-social-item\" style=\"padding-right:12px;\">\n                                <a href=\"{LINKEDIN_URL}\" style=\"font-size:13px; line-height:20px; color:#344054; text-decoration:none; font-weight:bold;\">LinkedIn</a>\n                              </td>\n\n                              <td class=\"sbi-social-item\" style=\"padding-right:12px;\">\n                                <a href=\"{INSTAGRAM_URL}\" style=\"font-size:13px; line-height:20px; color:#344054; text-decoration:none; font-weight:bold;\">Instagram</a>\n                              </td>\n\n                              <td class=\"sbi-social-item\" style=\"padding-right:12px;\">\n                                <a href=\"{FACEBOOK_URL}\" style=\"font-size:13px; line-height:20px; color:#344054; text-decoration:none; font-weight:bold;\">Facebook</a>\n                              </td>\n\n                              <td class=\"sbi-social-item\" style=\"padding-right:12px;\">\n                                <a href=\"{YOUTUBE_URL}\" style=\"font-size:13px; line-height:20px; color:#344054; text-decoration:none; font-weight:bold;\">YouTube</a>\n                              </td>\n\n                              <td class=\"sbi-social-item\" style=\"padding-right:12px;\">\n                                <a href=\"{X_URL}\" style=\"font-size:13px; line-height:20px; color:#344054; text-decoration:none; font-weight:bold;\">X</a>\n                              </td>\n\n                              <td class=\"sbi-social-item\" style=\"padding-right:12px;\">\n                                <a href=\"{SNAPCHAT_URL}\" style=\"font-size:13px; line-height:20px; color:#344054; text-decoration:none; font-weight:bold;\">Snapchat</a>\n                              </td>\n                            </tr>\n                          </table>\n                        </td>\n                      </tr>\n\n                    </table>\n\n                  </td>\n                </tr>\n              </table>\n\n            </td>\n          </tr>\n\n          <!-- Footer légal discret -->\n          <tr>\n            <td class=\"sbi-footer\" style=\"background-color:#050913; padding:18px 30px;\">\n              <p style=\"margin:0; font-size:11px; line-height:18px; color:#8a93a6;\">\n                Ce message et ses éventuelles pièces jointes sont destinés exclusivement à leur destinataire.\n                Si vous l’avez reçu par erreur, merci d’en informer l’expéditeur et de le supprimer.\n              </p>\n            </td>\n          </tr>\n\n        </table>\n\n      </td>\n    </tr>\n  </table>\n\n</body>\n</html>\n";
 
 function renderSbiEmailTemplate({
     prenom = "",
@@ -276,11 +291,12 @@ function renderSbiEmailTemplate({
         .replaceAll("{MESSAGE_HTML}", messageHtml)
         .replaceAll("{NOM_EXPEDITEUR}", escapeHtml(nomExpediteur))
         .replaceAll("{POSTE_EXPEDITEUR}", escapeHtml(posteExpediteur))
-        .replaceAll("{LINKEDIN_URL}", SBI_SITE_URL)
-        .replaceAll("{INSTAGRAM_URL}", SBI_SITE_URL)
-        .replaceAll("{FACEBOOK_URL}", SBI_SITE_URL)
-        .replaceAll("{YOUTUBE_URL}", SBI_SITE_URL)
-        .replaceAll("{X_URL}", SBI_SITE_URL)
+        .replaceAll("{LINKEDIN_URL}", SBI_SOCIAL_LINKS.linkedin)
+        .replaceAll("{INSTAGRAM_URL}", SBI_SOCIAL_LINKS.instagram)
+        .replaceAll("{FACEBOOK_URL}", SBI_SOCIAL_LINKS.facebook)
+        .replaceAll("{YOUTUBE_URL}", SBI_SOCIAL_LINKS.youtube)
+        .replaceAll("{X_URL}", SBI_SOCIAL_LINKS.x)
+        .replaceAll("{SNAPCHAT_URL}", SBI_SOCIAL_LINKS.snapchat)
         .replaceAll("contact@spigroup.fr", SBI_CONTACT_EMAIL)
         .replaceAll("contact@sbigroup.fr", SBI_CONTACT_EMAIL)
         .replaceAll("04.92.90.90.25", SBI_CONTACT_PHONE)
@@ -395,6 +411,157 @@ function buildConfirmationText(data) {
     ].join("\n");
 }
 
+
+function buildNewsletterDetailsTable(data, mode = "subscribed") {
+    const rows = [
+        ["Email", data.email],
+        ["Statut", mode === "already_exists" ? "Déjà inscrit" : "Nouvelle inscription"],
+        ["Profession Brevo", "Newsletter si la fiche n'avait aucune profession"],
+        ["Consentement newsletter", data.consentNewsletter ? "oui" : "non"],
+        ["Source", data.source],
+        ["Page", data.page],
+        ["Date", data.capturedAt]
+    ];
+
+    const tableRows = rows.map(([label, value]) => `
+        <tr>
+            <td style="padding:10px 12px;border-bottom:1px solid #dce4f2;color:#0051ff;font-weight:bold;width:38%;">${escapeHtml(label)}</td>
+            <td style="padding:10px 12px;border-bottom:1px solid #dce4f2;color:#101828;">${escapeHtml(value)}</td>
+        </tr>`).join("");
+
+    return `
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;border-collapse:collapse;margin:18px 0;border:1px solid #dce4f2;border-radius:12px;overflow:hidden;">
+            ${tableRows}
+        </table>`;
+}
+
+function buildNewsletterConfirmationMessageHtml() {
+    return `
+        <p style="margin:0 0 16px 0;">Ton inscription à la newsletter SBI est bien confirmée.</p>
+        <p style="margin:0 0 16px 0;">Tu recevras les actualités, contenus et informations importantes de Sport Business Institute par email.</p>
+        <div style="padding:14px 16px;border:1px solid #dce4f2;background:#f7f9fd;border-radius:12px;color:#253047;line-height:1.7;">
+            <strong style="color:#101828;">Newsletter SBI</strong><br>
+            Tu peux te désinscrire à tout moment depuis les emails reçus ou en contactant SBI.
+        </div>
+        <p style="margin:18px 0 0 0;">Bienvenue dans la boucle SBI.</p>`;
+}
+
+function buildNewsletterInternalMessageHtml(data, mode = "subscribed") {
+    return `
+        <p style="margin:0 0 16px 0;">Une nouvelle adresse vient d’être ajoutée à la newsletter SBI depuis le site public.</p>
+        ${buildNewsletterDetailsTable(data, mode)}
+        <p style="margin:18px 0 0 0;color:#667085;font-size:14px;line-height:22px;">Si la fiche Brevo n’avait pas encore de profession, la valeur <strong>Newsletter</strong> a été renseignée. Elle sera remplacée automatiquement si cette personne envoie ensuite une demande de contact complète.</p>`;
+}
+
+function buildNewsletterConfirmationHtml() {
+    return renderSbiEmailTemplate({
+        prenom: "à toi",
+        messageHtml: buildNewsletterConfirmationMessageHtml(),
+        nomExpediteur: "L’équipe SBI",
+        posteExpediteur: "Newsletter",
+        preheader: "Ton inscription à la newsletter SBI est confirmée."
+    });
+}
+
+function buildNewsletterInternalNotificationHtml(data, mode = "subscribed") {
+    return renderSbiEmailTemplate({
+        prenom: "l’équipe SBI",
+        messageHtml: buildNewsletterInternalMessageHtml(data, mode),
+        nomExpediteur: "Newsletter SBI",
+        posteExpediteur: "Notification inscription",
+        preheader: `Nouvelle inscription newsletter SBI - ${data.email}`
+    });
+}
+
+function buildNewsletterConfirmationText() {
+    return [
+        "Bonjour,",
+        "",
+        "Ton inscription à la newsletter SBI est bien confirmée.",
+        "Tu recevras les actualités, contenus et informations importantes de Sport Business Institute par email.",
+        "",
+        "Tu peux te désinscrire à tout moment depuis les emails reçus ou en contactant SBI.",
+        "",
+        "Bien cordialement,",
+        "L’équipe SBI"
+    ].join("\n");
+}
+
+function buildNewsletterNotificationText(data, mode = "subscribed") {
+    return [
+        "Nouvelle inscription newsletter SBI",
+        "",
+        `Email : ${data.email}`,
+        `Statut : ${mode === "already_exists" ? "Déjà inscrit" : "Nouvelle inscription"}`,
+        "Profession Brevo : Newsletter si la fiche n'avait aucune profession",
+        `Consentement newsletter : ${data.consentNewsletter ? "oui" : "non"}`,
+        `Source : ${data.source}`,
+        `Page : ${data.page}`,
+        `Date : ${data.capturedAt}`
+    ].join("\n");
+}
+
+function parseNewsletterRequest(body = {}) {
+    const consent = body.consent || {};
+    const attributes = body.attributes || {};
+    const email = cleanString(body.email || attributes.EMAIL, 180).toLowerCase();
+
+    return {
+        email,
+        consentNewsletter: body.newsletterConsent === true || consent.newsletter === true,
+        source: cleanString(body.source || attributes.SOURCE || attributes.CONTACT_SOURCE, 120) || "SBI public newsletter",
+        page: cleanString(body.page || attributes.PAGE, 180) || "/index.html",
+        capturedAt: cleanString(body.capturedAt || consent.capturedAt, 80) || new Date().toISOString(),
+        honeypot: cleanString(body.website || body.company || body.url || body.hp, 120)
+    };
+}
+
+function validateNewsletterRequest(data) {
+    if (data.honeypot) return "HONEYPOT";
+    if (!data.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) {
+        return "L'adresse email n'est pas valide.";
+    }
+    if (!data.consentNewsletter) {
+        return "Veuillez accepter l'inscription à la newsletter SBI.";
+    }
+    return "";
+}
+
+function getNewsletterAttributes(data, existingContact = null) {
+    const existingAttributes = existingContact?.attributes || {};
+    const existingProfession = cleanString(existingAttributes.PROFESSION, 120);
+    const attributes = {
+        CONTACT_SOURCE: data.source
+    };
+
+    // Newsletter seule : on renseigne PROFESSION uniquement si la fiche
+    // Brevo n'avait encore aucune profession. Le formulaire Contact
+    // continuera ensuite à remplacer cette valeur par le profil réel.
+    if (!existingProfession) {
+        attributes.PROFESSION = "Newsletter";
+    }
+
+    return attributes;
+}
+
+async function getBrevoContactByEmail(email, apiKey) {
+    try {
+        return await callBrevo(`/contacts/${encodeURIComponent(email)}`, undefined, apiKey, { method: "GET" });
+    } catch (error) {
+        if (error.status === 404) return null;
+        throw error;
+    }
+}
+
+async function upsertBrevoNewsletterContact(data, apiKey, existingContact = null) {
+    return callBrevo("/contacts", {
+        email: data.email,
+        attributes: getNewsletterAttributes(data, existingContact),
+        listIds: [BREVO_NEWSLETTER_LIST_ID],
+        updateEnabled: true
+    }, apiKey);
+}
+
 async function sendBrevoEmail(payload, apiKey) {
     return callBrevo("/smtp/email", payload, apiKey);
 }
@@ -436,6 +603,46 @@ async function sendBrevoConfirmation(data, apiKey) {
         subject: "SBI - Nous avons bien reçu ta demande",
         htmlContent: buildConfirmationHtml(data),
         textContent: buildConfirmationText(data)
+    }, apiKey);
+}
+
+async function sendBrevoNewsletterNotification(data, apiKey, mode = "subscribed") {
+    return sendBrevoEmail({
+        sender: {
+            name: SBI_SENDER_NAME,
+            email: SBI_SENDER_EMAIL
+        },
+        to: [{
+            email: SBI_CONTACT_EMAIL,
+            name: "Sport Business Institute"
+        }],
+        replyTo: {
+            email: data.email,
+            name: data.email
+        },
+        subject: `Nouvelle inscription newsletter SBI - ${data.email}`,
+        htmlContent: buildNewsletterInternalNotificationHtml(data, mode),
+        textContent: buildNewsletterNotificationText(data, mode)
+    }, apiKey);
+}
+
+async function sendBrevoNewsletterConfirmation(data, apiKey) {
+    return sendBrevoEmail({
+        sender: {
+            name: SBI_SENDER_NAME,
+            email: SBI_SENDER_EMAIL
+        },
+        to: [{
+            email: data.email,
+            name: data.email
+        }],
+        replyTo: {
+            email: SBI_CONTACT_EMAIL,
+            name: "Sport Business Institute"
+        },
+        subject: "SBI - Inscription newsletter confirmée",
+        htmlContent: buildNewsletterConfirmationHtml(data),
+        textContent: buildNewsletterConfirmationText(data)
     }, apiKey);
 }
 
@@ -518,3 +725,111 @@ exports.sendSbiContact = onRequest({
         });
     }
 });
+
+/* =======================================================================
+ * SBI 8.0P.82 - NEWSLETTER MOBILE + EMAIL SOCIAL LINKS
+ * -----------------------------------------------------------------------
+ * Endpoint appelé par /api/subscribeNewsletter via Firebase Hosting rewrite.
+ * La clé Brevo reste côté serveur dans BREVO_API_KEY.
+ * ======================================================================= */
+
+exports.subscribeNewsletter = onRequest({
+    region: "europe-west1",
+    secrets: [BREVO_API_KEY],
+    timeoutSeconds: 20,
+    memory: "256MiB"
+}, async (req, res) => {
+    res.set("Cache-Control", "no-store");
+
+    if (req.method === "OPTIONS") {
+        res.set("Access-Control-Allow-Origin", req.get("origin") || "*");
+        res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+        res.set("Access-Control-Allow-Headers", "Content-Type");
+        return res.status(204).send("");
+    }
+
+    if (req.method !== "POST") {
+        return res.status(405).json({
+            success: false,
+            message: "Méthode non autorisée."
+        });
+    }
+
+    const apiKey = BREVO_API_KEY.value();
+    if (!apiKey) {
+        console.error("BREVO_API_KEY manquant dans Secret Manager pour la newsletter SBI.");
+        return res.status(500).json({
+            success: false,
+            message: "Configuration newsletter manquante côté serveur."
+        });
+    }
+
+    const data = parseNewsletterRequest(req.body || {});
+    const validationMessage = validateNewsletterRequest(data);
+
+    if (validationMessage === "HONEYPOT") {
+        return res.status(200).json({
+            success: true,
+            mode: "ignored",
+            message: "Inscription prise en compte."
+        });
+    }
+
+    if (validationMessage) {
+        return res.status(400).json({
+            success: false,
+            message: validationMessage
+        });
+    }
+
+    try {
+        const existingContact = await getBrevoContactByEmail(data.email, apiKey);
+        const existingListIds = Array.isArray(existingContact?.listIds) ? existingContact.listIds : [];
+        const alreadySubscribed = existingListIds.includes(BREVO_NEWSLETTER_LIST_ID);
+        const contactResult = await upsertBrevoNewsletterContact(data, apiKey, existingContact);
+        const mode = alreadySubscribed ? "already_exists" : "subscribed";
+        let notificationWarning = "";
+
+        // On évite de renvoyer des emails à chaque tentative si l'adresse
+        // était déjà inscrite. Une vraie nouvelle inscription déclenche :
+        // - une notification interne à contact@sbigroup.fr ;
+        // - un email de confirmation au prospect.
+        if (!alreadySubscribed) {
+            try {
+                await sendBrevoNewsletterNotification(data, apiKey, mode);
+            } catch (notificationError) {
+                notificationWarning = "Newsletter enregistrée, mais la notification interne n'a pas pu être envoyée.";
+                console.error("Erreur notification newsletter SBI :", notificationError.message, notificationError.payload || "");
+            }
+
+            try {
+                await sendBrevoNewsletterConfirmation(data, apiKey);
+            } catch (confirmationError) {
+                notificationWarning = notificationWarning
+                    ? `${notificationWarning} L'email de confirmation newsletter n'a pas pu être envoyé.`
+                    : "Newsletter enregistrée, mais l'email de confirmation n'a pas pu être envoyé.";
+                console.error("Erreur confirmation newsletter SBI :", confirmationError.message, confirmationError.payload || "");
+            }
+        }
+
+        return res.status(200).json({
+            success: true,
+            mode,
+            message: alreadySubscribed
+                ? "Cette adresse est déjà inscrite à la newsletter SBI."
+                : "Inscription confirmée. Bienvenue dans la boucle SBI.",
+            warning: notificationWarning,
+            brevo: {
+                listId: BREVO_NEWSLETTER_LIST_ID,
+                contact: existingContact?.id || contactResult?.id || contactResult?.ok || "updated"
+            }
+        });
+    } catch (error) {
+        console.error("Erreur Brevo newsletter SBI :", error.message, error.payload || "");
+        return res.status(502).json({
+            success: false,
+            message: "L'inscription newsletter n'a pas pu aboutir pour le moment. Réessaie plus tard."
+        });
+    }
+});
+

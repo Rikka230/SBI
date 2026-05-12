@@ -746,3 +746,128 @@ main {
         z-index: 1;
     }
 }
+
+/* SBI 8.0P.79 - mobile index: restore the hero -> formations section cut without touching legal pages.
+   The first home panel gets a guaranteed slanted top edge; the glow stays attached
+   to the mobile overlay so legal artefact fixes remain isolated in sbi-legal.css. */
+@media (max-width: 768px) {
+    body[data-sbi-public-page="home"] .sbi-home-page .section-parcours {
+        --sbi-section-cut: 34px;
+        margin-top: calc(var(--sbi-section-cut) * -1) !important;
+        clip-path: polygon(
+            0 var(--sbi-section-cut),
+            100% 0,
+            100% calc(100% - var(--sbi-section-cut)),
+            0 100%
+        ) !important;
+        background:
+            radial-gradient(circle at 92% 18%, rgba(0, 81, 255, 0.12), transparent 42%),
+            linear-gradient(180deg, rgba(5, 11, 21, 0.96), rgba(2, 5, 11, 0.98)) !important;
+    }
+
+    body[data-sbi-public-page="home"] .sbi-home-page > .sbi-diagonal-overlay .sbi-diagonal-overlay__line:first-child {
+        opacity: 0.78;
+        filter:
+            drop-shadow(0 0 10px rgba(0, 81, 255, 0.54))
+            drop-shadow(0 0 18px rgba(0, 81, 255, 0.24));
+    }
+}
+
+
+/* =========================================================
+   SBI 8.0P.103 - Public pages mobile cuts share index engine
+   ========================================================= */
+.public-proof-strip,
+.public-catalogue-section,
+.public-resources-library,
+.public-about-final-cta {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    overflow: clip;
+}
+
+.public-proof-strip > *,
+.public-catalogue-section > *,
+.public-resources-library > *,
+.public-about-final-cta > * {
+    position: relative;
+    z-index: 1;
+}
+
+@media (max-width: 768px) {
+    .public-proof-strip,
+    .public-catalogue-section,
+    .public-resources-library,
+    .public-about-final-cta {
+        --sbi-section-cut: 34px;
+        margin-top: calc(var(--sbi-section-cut) * -1);
+        clip-path: polygon(
+            0 var(--sbi-section-cut),
+            100% 0,
+            100% calc(100% - var(--sbi-section-cut)),
+            0 100%
+        );
+        background:
+            radial-gradient(circle at 92% 18%, rgba(0, 81, 255, 0.12), transparent 42%),
+            linear-gradient(180deg, rgba(5, 11, 21, 0.96), rgba(2, 5, 11, 0.98)) !important;
+    }
+
+    .public-proof-strip {
+        z-index: 2;
+        padding-top: calc(1.8rem + var(--sbi-section-cut));
+        padding-bottom: calc(1.7rem + var(--sbi-section-cut));
+    }
+
+    .public-catalogue-section,
+    .public-resources-library {
+        z-index: 3;
+        padding-top: calc(2.6rem + var(--sbi-section-cut));
+        padding-bottom: calc(2.9rem + var(--sbi-section-cut));
+    }
+
+    .public-about-final-cta {
+        z-index: 4;
+        padding-top: calc(1.65rem + var(--sbi-section-cut));
+        padding-bottom: calc(2rem + var(--sbi-section-cut));
+    }
+}
+
+
+/* =========================================================
+   SBI 8.0P.103 - Qualiopi/newsletter mobile diagonal fine tune
+   - moves only the overlay line that separates Qualiopi and Newsletter
+   - no desktop visual change
+   ========================================================= */
+@media (max-width: 768px) {
+    .section-newsletter {
+        --sbi-diagonal-line-offset: -24px;
+        --sbi-diagonal-line-angle: -5deg;
+    }
+
+    .section-qualiopi,
+    .sbi-qualiopi-section {
+        --sbi-diagonal-line-offset: 0px;
+    }
+}
+
+
+/* =========================================================
+   SBI 8.0P.104 - Mobile Qualiopi background continuity
+   - restore the original mobile diagonal position
+   - remove the false double-cut perception by unifying the background
+   ========================================================= */
+@media (max-width: 768px) {
+    .section-qualiopi,
+    .sbi-qualiopi-section,
+    .section-newsletter {
+        background: linear-gradient(180deg, rgba(3, 7, 14, 0.98), rgba(3, 7, 14, 0.98)) !important;
+    }
+
+    .section-newsletter,
+    .section-qualiopi,
+    .sbi-qualiopi-section {
+        --sbi-diagonal-line-offset: 0px !important;
+        --sbi-diagonal-line-angle: -5deg;
+    }
+}

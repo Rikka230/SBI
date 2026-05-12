@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="css/admin.css">
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
     <link rel="stylesheet" href="css/admin-notifications.css">
+    <link rel="stylesheet" href="css/public-content-admin.css?v=8.0P.119">
     <link rel="stylesheet" href="/css/sbi-7-1-harmonization.css">
     <script src="js/components.js"></script>
 
@@ -109,6 +110,8 @@
                 <div class="sub-nav-item active" onclick="switchCourseTab('tab-list')" id="nav-tab-list">Bibliothèque</div>
                 <div class="sub-nav-item" onclick="switchCourseTab('tab-editor')" id="nav-tab-editor">Éditeur de Cours</div>
                 <div class="sub-nav-item" onclick="switchCourseTab('tab-formations')" id="nav-tab-formations">Catégories & Accès</div>
+                <div class="sub-nav-item" onclick="switchCourseTab('tab-public-formations')" id="nav-tab-public-formations">Catalogue public</div>
+                <div class="sub-nav-item" onclick="switchCourseTab('tab-public-resources')" id="nav-tab-public-resources">Brochures</div>
                 <div class="sub-nav-item" onclick="switchCourseTab('tab-tracking')" id="nav-tab-tracking">Suivi Pédagogique</div>
             </div>
 
@@ -237,6 +240,353 @@
                 </div>
             </div>
 
+            <div id="tab-public-formations" class="course-section">
+
+
+
+                <section class="public-content-admin-panel" data-sbi-public-formations-admin>
+                    <div class="public-content-admin-head">
+                        <div>
+                            <span class="public-admin-kicker">Catalogue public</span>
+                            <h2>Fiches formations publiques</h2>
+                            <p>Ces fiches alimentent la page Formations et le bloc mis en avant sur l’index. Elles sont séparées des catégories privées élèves/profs.</p>
+                        </div>
+                        <button id="btn-create-public-formation" class="action-btn" type="button">
+                            + Fiche publique
+                        </button>
+                    </div>
+
+                    <div class="public-admin-note">
+                        <strong>Statuts :</strong>
+                        <span><b>Publié</b> = visible et cliquable.</span>
+                        <span><b>Prochainement</b> = visible avec titre et image par défaut/couverture, mais non cliquable.</span>
+                        <span><b>Brouillon</b> = masqué côté public.</span>
+                    </div>
+
+                    <div id="public-formations-admin-status" class="public-admin-status">Chargement du catalogue public...</div>
+                    <div id="public-formations-list" class="public-admin-grid"></div>
+                </section>
+
+                <div id="public-formation-modal" class="public-admin-modal" hidden>
+                    <div class="public-admin-modal-card" role="dialog" aria-modal="true" aria-labelledby="public-formation-modal-title">
+                        <div class="public-admin-modal-head">
+                            <div>
+                                <span class="public-admin-kicker">Fiche publique</span>
+                                <h3 id="public-formation-modal-title">Créer une fiche formation</h3>
+                            </div>
+                            <button type="button" id="close-public-formation-modal" class="public-admin-icon-btn" aria-label="Fermer">×</button>
+                        </div>
+
+                        <form id="public-formation-form" class="public-admin-form">
+                            <input type="hidden" id="public-formation-id">
+                            <input type="hidden" id="public-formation-cover-url">
+                            <input type="hidden" id="public-formation-cover-storage-path">
+                            <input type="hidden" id="public-formation-cover-x" value="50">
+                            <input type="hidden" id="public-formation-cover-y" value="50">
+
+                            <div class="public-admin-form-grid two">
+                                <label>Titre
+                                    <input type="text" id="public-formation-title" required placeholder="Ex : Bachelor Sport Business">
+                                </label>
+                                <label>Slug SEO
+                                    <input type="text" id="public-formation-slug" placeholder="bachelor-sport-business">
+                                </label>
+                            </div>
+
+                            <div class="public-admin-form-grid three">
+                                <label>Statut
+                                    <select id="public-formation-status">
+                                        <option value="published">Publié</option>
+                                        <option value="coming_soon">Prochainement</option>
+                                        <option value="draft">Brouillon</option>
+                                    </select>
+                                </label>
+                                <label>Ordre page
+                                    <input type="number" id="public-formation-display-order" value="999">
+                                </label>
+                                <label>Ordre index
+                                    <input type="number" id="public-formation-home-order" value="999">
+                                </label>
+                            </div>
+
+                            <details class="public-admin-seo-panel">
+                                <summary>SEO de la fiche formation</summary>
+                                <div class="public-admin-form-grid two">
+                                    <label>SEO title
+                                        <input type="text" id="public-formation-seo-title" maxlength="70" placeholder="Titre affiché dans Google et les partages">
+                                    </label>
+                                    <label>Priorité sitemap
+                                        <input type="number" id="public-formation-seo-priority" min="0" max="1" step="0.1" value="0.8">
+                                    </label>
+                                </div>
+                                <label>Meta description
+                                    <textarea id="public-formation-seo-description" rows="3" maxlength="170" placeholder="Résumé SEO court, clair et unique."></textarea>
+                                </label>
+                                <div class="public-admin-form-grid two">
+                                    <label>Image sociale URL <small>optionnel, par défaut couverture</small>
+                                        <input type="url" id="public-formation-seo-image" placeholder="https://...">
+                                    </label>
+                                    <label>Fréquence sitemap
+                                        <select id="public-formation-seo-changefreq">
+                                            <option value="weekly">Weekly</option>
+                                            <option value="monthly" selected>Monthly</option>
+                                            <option value="yearly">Yearly</option>
+                                        </select>
+                                    </label>
+                                </div>
+                                <label class="public-admin-check">
+                                    <input type="checkbox" id="public-formation-seo-indexable" checked>
+                                    Préparer cette fiche pour l’indexation future
+                                </label>
+                                <p class="public-admin-help">Ces champs sont stockés dans <code>seo</code>. Ils n’activent pas encore une URL dédiée, mais préparent les futures fiches indexables.</p>
+                            </details>
+
+                            <label>Sous-titre
+                                <input type="text" id="public-formation-subtitle" placeholder="Formation Bac / RNCP Niveau 4">
+                            </label>
+
+                            <div class="public-admin-form-grid two">
+                                <label>Catégorie
+                                    <input type="text" id="public-formation-category" placeholder="Sport business">
+                                </label>
+                                <label>Niveau
+                                    <input type="text" id="public-formation-level" placeholder="À compléter">
+                                </label>
+                            </div>
+
+                            <div class="public-admin-form-grid three">
+                                <label>Durée
+                                    <input type="text" id="public-formation-duration" placeholder="À compléter">
+                                </label>
+                                <label>Modalité
+                                    <input type="text" id="public-formation-modality" placeholder="E-learning / Alternance">
+                                </label>
+                                <label>Public cible
+                                    <input type="text" id="public-formation-target" placeholder="Étudiants, alternants...">
+                                </label>
+                            </div>
+
+                            <label>Résumé court
+                                <textarea id="public-formation-short" rows="3" placeholder="Résumé visible sur les cartes publiques."></textarea>
+                            </label>
+
+                            <label>Description longue
+                                <textarea id="public-formation-long" rows="5" placeholder="Texte affiché dans le détail de la formation."></textarea>
+                            </label>
+
+                            <div class="public-admin-cover-layout">
+                                <div>
+                                    <label>Image de couverture
+                                        <input type="file" id="public-formation-cover-file" accept="image/*">
+                                    </label>
+                                    <p class="public-admin-help">L’image est compressée en WebP avant upload. Glisse l’image dans le cadre pour sauvegarder son cadrage public.</p>
+                                </div>
+                                <div class="public-admin-cover-frame" id="public-formation-cover-frame">
+                                    <img id="public-formation-cover-preview" alt="Prévisualisation couverture" hidden>
+                                    <span id="public-formation-cover-fallback">SBI</span>
+                                </div>
+                            </div>
+
+                            <div class="public-admin-form-grid two">
+                                <label>Objectifs <small>1 ligne = 1 objectif</small>
+                                    <textarea id="public-formation-objectives" rows="5"></textarea>
+                                </label>
+                                <label>Prérequis <small>1 ligne = 1 prérequis</small>
+                                    <textarea id="public-formation-prerequisites" rows="5"></textarea>
+                                </label>
+                            </div>
+
+                            <div class="public-admin-form-grid two">
+                                <label>Débouchés <small>1 ligne = 1 débouché</small>
+                                    <textarea id="public-formation-outcomes" rows="5"></textarea>
+                                </label>
+                                <label>Points forts <small>1 ligne = 1 point fort</small>
+                                    <textarea id="public-formation-highlights" rows="5"></textarea>
+                                </label>
+                            </div>
+
+                            <label>Sections d'information <small>Format : Titre | Contenu, une section par ligne</small>
+                                <textarea id="public-formation-sections" rows="6" placeholder="Admission | Modalités à compléter\nAccompagnement | Suivi individualisé..."></textarea>
+                            </label>
+
+                            <label>Programme détaillé <small>Format : Titre | Contenu, une ligne par bloc</small>
+                                <textarea id="public-formation-program" rows="6" placeholder="Bloc 1 | Fondamentaux du sport business..."></textarea>
+                            </label>
+
+                            <div class="public-admin-form-grid two">
+                                <label>CTA label
+                                    <input type="text" id="public-formation-cta-label" placeholder="Demander des informations">
+                                </label>
+                                <label>CTA URL
+                                    <input type="text" id="public-formation-cta-href" placeholder="contact.html?formation=...">
+                                </label>
+                            </div>
+
+                            <label class="public-admin-check">
+                                <input type="checkbox" id="public-formation-featured">
+                                Afficher cette formation sur l’index
+                            </label>
+
+                            <label class="public-admin-brochure-field" hidden aria-hidden="true">Brochures associées <small>À venir dans le patch Ressources/Brochures.</small>
+                                <textarea id="public-formation-brochure-ids" rows="3"></textarea>
+                            </label>
+
+                            <div class="public-admin-preview-card" id="public-formation-admin-preview">
+                                <span>Prévisualisation</span>
+                                <h4>Formation SBI</h4>
+                                <p>Le rendu public se met à jour pendant la saisie.</p>
+                            </div>
+
+                            <div class="public-admin-modal-actions">
+                                <button type="submit" class="action-btn public-admin-save-btn">Sauvegarder la fiche publique</button>
+                                <button type="button" id="delete-public-formation" class="public-admin-danger-btn">Supprimer</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+
+            <div id="tab-public-resources" class="course-section">
+                <section class="public-content-admin-panel" data-sbi-public-resources-admin>
+                    <div class="public-content-admin-head">
+                        <div>
+                            <span class="public-admin-kicker">Ressources publiques</span>
+                            <h2>Brochures PDF</h2>
+                            <p>Ajoutez les brochures PDF affichées sur la page Ressources. Une brochure peut rester globale, être masquée, ou être associée à une fiche formation publique pour un usage futur.</p>
+                        </div>
+                        <button id="btn-create-public-resource" class="action-btn" type="button">
+                            + Brochure PDF
+                        </button>
+                    </div>
+
+                    <div class="public-admin-note public-admin-note-stack">
+                        <strong>Règles :</strong>
+                        <span><b>Publié + visible Ressources</b> = affiché sur la page Ressources.</span>
+                        <span><b>Brouillon</b> = masqué côté public.</span>
+                        <span><b>Formation associée</b> = prêt pour la future fiche formation sans forcer l’affichage global.</span>
+                    </div>
+
+                    <div id="public-resources-admin-status" class="public-admin-status">Chargement des brochures...</div>
+                    <div id="public-resources-list" class="public-admin-grid public-admin-resource-grid"></div>
+                </section>
+
+                <div id="public-resource-modal" class="public-admin-modal" hidden>
+                    <div class="public-admin-modal-card" role="dialog" aria-modal="true" aria-labelledby="public-resource-modal-title">
+                        <div class="public-admin-modal-head">
+                            <div>
+                                <span class="public-admin-kicker">Brochure PDF</span>
+                                <h3 id="public-resource-modal-title">Créer une brochure</h3>
+                            </div>
+                            <button type="button" id="close-public-resource-modal" class="public-admin-icon-btn" aria-label="Fermer">×</button>
+                        </div>
+
+                        <form id="public-resource-form" class="public-admin-form public-admin-resource-form">
+                            <input type="hidden" id="public-resource-id">
+                            <input type="hidden" id="public-resource-file-url">
+                            <input type="hidden" id="public-resource-file-storage-path">
+                            <input type="hidden" id="public-resource-file-name">
+                            <input type="hidden" id="public-resource-file-original-name">
+                            <input type="hidden" id="public-resource-file-mime-type" value="application/pdf">
+                            <input type="hidden" id="public-resource-file-size" value="0">
+
+                            <div class="public-admin-form-grid two">
+                                <label>Titre
+                                    <input type="text" id="public-resource-title" required placeholder="Ex : Brochure Bachelor Sport Business">
+                                </label>
+                                <label>Slug SEO
+                                    <input type="text" id="public-resource-slug" placeholder="brochure-bachelor-sport-business">
+                                </label>
+                            </div>
+
+                            <div class="public-admin-form-grid three">
+                                <label>Statut
+                                    <select id="public-resource-status">
+                                        <option value="published">Publié</option>
+                                        <option value="draft">Brouillon</option>
+                                    </select>
+                                </label>
+                                <label>Catégorie
+                                    <input type="text" id="public-resource-category" placeholder="Formation">
+                                </label>
+                                <label>Ordre page
+                                    <input type="number" id="public-resource-display-order" value="999">
+                                </label>
+                            </div>
+
+                            <label>Description courte
+                                <textarea id="public-resource-description" rows="3" placeholder="Résumé affiché sur la carte Ressources."></textarea>
+                            </label>
+
+                            <div class="public-admin-form-grid two public-admin-resource-options">
+                                <label class="public-admin-file-field">Fichier PDF
+                                    <input type="file" id="public-resource-file" accept="application/pdf,.pdf">
+                                    <span id="public-resource-file-current" class="public-admin-file-current">Aucun PDF sélectionné.</span>
+                                </label>
+                                <label>Formation associée <small>optionnel, multi-sélection possible</small>
+                                    <select id="public-resource-formations" multiple size="6"></select>
+                                </label>
+                            </div>
+
+                            <label class="public-admin-check">
+                                <input type="checkbox" id="public-resource-global-visible" checked>
+                                Afficher cette brochure sur la page Ressources
+                            </label>
+
+                            <details class="public-admin-seo-panel">
+                                <summary>SEO de la brochure</summary>
+                                <div class="public-admin-form-grid two">
+                                    <label>SEO title
+                                        <input type="text" id="public-resource-seo-title" maxlength="70" placeholder="Titre affiché dans Google et les partages">
+                                    </label>
+                                    <label>Priorité sitemap
+                                        <input type="number" id="public-resource-seo-priority" min="0" max="1" step="0.1" value="0.5">
+                                    </label>
+                                </div>
+                                <label>Meta description
+                                    <textarea id="public-resource-seo-description" rows="3" maxlength="170" placeholder="Résumé SEO court, clair et unique."></textarea>
+                                </label>
+                                <div class="public-admin-form-grid two">
+                                    <label>Image sociale URL <small>optionnel</small>
+                                        <input type="url" id="public-resource-seo-image" placeholder="https://...">
+                                    </label>
+                                    <label>Fréquence sitemap
+                                        <select id="public-resource-seo-changefreq">
+                                            <option value="weekly">Weekly</option>
+                                            <option value="monthly" selected>Monthly</option>
+                                            <option value="yearly">Yearly</option>
+                                        </select>
+                                    </label>
+                                </div>
+                                <div class="public-admin-form-grid two">
+                                    <label class="public-admin-check">
+                                        <input type="checkbox" id="public-resource-seo-indexable" checked>
+                                        Préparer cette brochure pour l’indexation future
+                                    </label>
+                                    <label class="public-admin-check">
+                                        <input type="checkbox" id="public-resource-seo-pdf-indexable" checked>
+                                        Autoriser l’indexation du PDF associé
+                                    </label>
+                                </div>
+                                <p class="public-admin-help">Ces champs sont stockés dans <code>seo</code>. La page Ressources actuelle n’est pas modifiée.</p>
+                            </details>
+
+                            <div class="public-admin-preview-card public-admin-resource-preview" id="public-resource-admin-preview">
+                                <span>Prévisualisation</span>
+                                <h4>Brochure SBI</h4>
+                                <p>Le rendu public se met à jour pendant la saisie.</p>
+                                <div class="public-admin-resource-file-meta" id="public-resource-preview-file">PDF requis pour publier une brochure consultable.</div>
+                            </div>
+
+                            <div class="public-admin-modal-actions">
+                                <button type="submit" class="action-btn public-admin-save-btn">Sauvegarder la brochure</button>
+                                <button type="button" id="delete-public-resource" class="public-admin-danger-btn">Supprimer</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
             <div id="tab-tracking" class="course-section">
                 <div style="text-align: center; padding: 4rem; background: var(--bg-card); border-radius: 8px; border: 1px solid var(--border-color);">
                     <h3 style="color: var(--accent-blue);">Suivi Pédagogique</h3>
@@ -289,8 +639,9 @@
     window.switchCourseTab = function(tabId) {
         document.querySelectorAll('.sub-nav-item').forEach(el => el.classList.remove('active'));
         document.querySelectorAll('.course-section').forEach(el => el.classList.remove('active'));
-        document.getElementById('nav-' + tabId).classList.add('active');
-        document.getElementById(tabId).classList.add('active');
+        document.getElementById('nav-' + tabId)?.classList.add('active');
+        document.getElementById(tabId)?.classList.add('active');
+        window.dispatchEvent(new CustomEvent('sbi:course-tab-change', { detail: { tabId } }));
     };
 
     document.querySelectorAll('input[name="media_type"]').forEach(radio => {
@@ -385,8 +736,8 @@
     });
 </script>
 
-<script type="module" src="js/admin-ui.js"></script>
-<script type="module" src="js/admin-courses.js"></script>
+<script type="module" src="js/admin-ui.js?v=8.0P.119"></script>
+<script type="module" src="js/admin-courses.js?v=8.0P.119"></script>
 <script type="module" src="js/tracker.js"></script>
 <script type="module" src="js/admin-notifications.js"></script>
 </body>

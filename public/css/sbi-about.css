@@ -1,0 +1,1431 @@
+/* =========================================================
+   SBI 8.0P.66 - ABOUT MOBILE VIDEO BLEED FIX
+   ---------------------------------------------------------
+   Objectif : remettre le hero À propos en scène full-width avec vidéo fondue et PNG centré.
+   - Deux colonnes en flux : texte à gauche, scène fondateur à droite.
+   - Vidéo du hero étirée sur toute la largeur du hero, avec bords fondus, plus CTA final.
+   - Logo SBI ghost warm metallic / bronze, fondu dans la scène.
+   - PNG fondateur recentré dans la scène et masqué tant que Firebase ne l’a pas injecté.
+   - Aucune bordure, aucun cadre visible, aucune forme parasite.
+   ========================================================= */
+
+:root {
+    --about-border: rgba(99, 150, 255, 0.2);
+    --about-card-bg: linear-gradient(145deg, rgba(7, 13, 27, 0.72), rgba(4, 8, 17, 0.86));
+}
+
+body[data-sbi-public-page="apropos"] {
+    background: var(--bg-dark);
+}
+
+body[data-sbi-public-page="apropos"] .site-header .main-nav a[href="a-propos.html"] {
+    color: #fff;
+}
+
+body[data-sbi-public-page="apropos"] .site-header .main-nav a[href="a-propos.html"]::after {
+    opacity: 1;
+    transform: scaleX(1);
+}
+
+.about-page {
+    position: relative;
+    z-index: 2;
+    min-height: 100vh;
+    overflow: hidden;
+    padding-top: var(--header-height);
+    background: transparent;
+    isolation: isolate;
+}
+
+.about-page::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background:
+        radial-gradient(ellipse 72vw 62vh at 77% 16%, rgba(0, 81, 255, 0.12), transparent 60%),
+        radial-gradient(ellipse 54vw 44vh at 5% 36%, rgba(0, 81, 255, 0.08), transparent 62%),
+        linear-gradient(180deg, rgba(4, 5, 8, 0.06), rgba(4, 5, 8, 0.46) 100%);
+}
+
+.about-page > section {
+    position: relative;
+    z-index: 1;
+}
+
+.about-hero,
+.about-proof-strip,
+.about-section,
+.about-final-cta {
+    padding-top: clamp(2.2rem, 3.5vw, 4rem);
+    padding-bottom: clamp(2.2rem, 3.5vw, 4rem);
+}
+
+/* =========================
+   HERO MOCKUP
+   ========================= */
+
+.about-hero {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(560px, 0.56fr) minmax(380px, 0.44fr);
+    align-items: center;
+    gap: clamp(1.6rem, 3.2vw, 4.2rem);
+    min-height: clamp(660px, calc(100vh - var(--header-height)), 860px);
+    padding-top: clamp(4rem, 5vw, 5.4rem);
+    padding-bottom: clamp(1.4rem, 3vw, 3.4rem);
+    overflow: visible;
+}
+
+.about-hero-copy {
+    position: relative;
+    z-index: 5;
+    max-width: 790px;
+    align-self: center;
+}
+
+.section-surtitle,
+.about-kicker {
+    display: inline-block;
+    color: var(--sbi-blue);
+    font-size: 0.88rem;
+    font-weight: 900;
+    letter-spacing: 0.085em;
+    margin-bottom: 1rem;
+}
+
+.about-hero-title {
+    margin: 0;
+    max-width: 790px;
+    color: #fff;
+    font-family: var(--font-sans);
+    font-weight: 900;
+    font-style: italic;
+    font-size: clamp(3.45rem, 3.92vw, 4.9rem);
+    line-height: 0.98;
+    letter-spacing: -0.055em;
+    text-shadow: 0 18px 36px rgba(0, 0, 0, 0.55);
+}
+
+.about-hero-title span {
+    display: block;
+    white-space: nowrap;
+}
+
+.about-hero-title em {
+    color: var(--sbi-blue);
+    font-style: inherit;
+}
+
+.about-hero-lead {
+    max-width: 590px;
+    margin-top: 1.55rem;
+    color: rgba(226, 234, 248, 0.84);
+    font-size: clamp(1rem, 1.05vw, 1.14rem);
+    line-height: 1.7;
+}
+
+.about-hero-actions,
+.about-final-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 2rem;
+}
+
+.about-inline-link,
+.about-outline-button {
+    min-height: 54px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.65rem;
+    padding: 0.8rem 1.45rem;
+    color: rgba(231, 239, 255, 0.92);
+    border: 1px solid rgba(115, 166, 255, 0.28);
+    background: rgba(7, 14, 28, 0.42);
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%);
+    transition: transform 0.22s ease, border-color 0.22s ease, color 0.22s ease;
+}
+
+.about-inline-link:hover,
+.about-outline-button:hover {
+    transform: translateY(-2px);
+    border-color: rgba(0, 92, 255, 0.7);
+    color: #fff;
+}
+
+/* La zone droite reste un item de grille : elle ne sort jamais du flux du hero. */
+.about-hero-visual {
+    position: relative;
+    z-index: 2;
+    min-height: clamp(560px, 68vh, 760px);
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    align-self: stretch;
+    pointer-events: none;
+}
+
+.about-hero-visual-shell {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    min-height: inherit;
+    overflow: visible;
+    isolation: isolate;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    clip-path: none;
+}
+
+/* Fusion douce interne au bloc visuel, sans carte ni bordure visible. */
+.about-hero-visual-shell::before {
+    content: "";
+    position: absolute;
+    z-index: 2;
+    inset: -2% -2% -4%;
+    pointer-events: none;
+    background:
+        radial-gradient(ellipse 68% 62% at 52% 52%, rgba(184, 151, 111, 0.16), transparent 40%),
+        radial-gradient(ellipse 88% 78% at 58% 48%, rgba(16, 24, 40, 0.42), transparent 66%),
+        linear-gradient(90deg, rgba(4, 7, 14, 0.66) 0%, rgba(4, 7, 14, 0.12) 34%, rgba(4, 7, 14, 0.38) 100%);
+    -webkit-mask-image: radial-gradient(ellipse 82% 76% at 54% 52%, #000 0 56%, rgba(0, 0, 0, 0.62) 68%, transparent 86%);
+    mask-image: radial-gradient(ellipse 82% 76% at 54% 52%, #000 0 56%, rgba(0, 0, 0, 0.62) 68%, transparent 86%);
+}
+
+.about-hero-visual-shell::after {
+    content: "";
+    position: absolute;
+    z-index: 5;
+    inset: 0;
+    pointer-events: none;
+    background:
+        linear-gradient(90deg, rgba(4, 7, 14, 0.92) 0%, rgba(4, 7, 14, 0.28) 22%, transparent 52%, rgba(4, 7, 14, 0.18) 100%),
+        linear-gradient(180deg, rgba(4, 7, 14, 0.56) 0%, transparent 28%, transparent 70%, rgba(4, 7, 14, 0.82) 100%);
+}
+
+.about-visual-video,
+.about-visual-video-mask {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+.about-visual-video {
+    z-index: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.5;
+    filter: grayscale(1) contrast(1.25) brightness(0.78) saturate(1.05);
+    mix-blend-mode: screen;
+    -webkit-mask-image: radial-gradient(ellipse 78% 74% at 55% 52%, #000 0 50%, rgba(0, 0, 0, 0.68) 64%, transparent 84%);
+    mask-image: radial-gradient(ellipse 78% 74% at 55% 52%, #000 0 50%, rgba(0, 0, 0, 0.68) 64%, transparent 84%);
+}
+
+.about-visual-video-mask {
+    z-index: 1;
+    background:
+        radial-gradient(circle at 52% 48%, rgba(184, 151, 111, 0.10), transparent 31%),
+        linear-gradient(90deg, rgba(4, 7, 14, 0.72) 0%, rgba(4, 7, 14, 0.12) 38%, rgba(4, 7, 14, 0.48) 100%),
+        linear-gradient(180deg, rgba(4, 7, 14, 0.42) 0%, rgba(4, 7, 14, 0.04) 28%, rgba(4, 7, 14, 0.10) 68%, rgba(4, 7, 14, 0.72) 100%);
+    -webkit-mask-image: radial-gradient(ellipse 86% 80% at 55% 52%, #000 0 58%, rgba(0, 0, 0, 0.70) 70%, transparent 88%);
+    mask-image: radial-gradient(ellipse 86% 80% at 55% 52%, #000 0 58%, rgba(0, 0, 0, 0.70) 70%, transparent 88%);
+}
+
+.about-hero-ghost-logo {
+    position: absolute;
+    z-index: 3;
+    left: 50%;
+    top: 7%;
+    width: min(42vw, 620px);
+    max-width: none;
+    opacity: 0.44;
+    transform: translateX(-50%) rotate(-2deg);
+    filter:
+        sepia(0.8)
+        saturate(0.58)
+        hue-rotate(345deg)
+        brightness(1.12)
+        contrast(1.08)
+        drop-shadow(0 0 18px rgba(184, 151, 111, 0.13));
+    mix-blend-mode: screen;
+}
+
+.about-hero-deco,
+.about-hero-deco-cube,
+.about-hero-deco-ring,
+.about-hero-deco-triangle {
+    display: none !important;
+}
+
+.about-founder-hero-img {
+    position: absolute;
+    z-index: 6;
+    left: 50%;
+    bottom: 0;
+    width: min(34vw, 520px);
+    max-width: min(100%, 560px);
+    height: 88%;
+    max-height: 740px;
+    object-fit: contain;
+    object-position: center bottom;
+    transform: translateX(-50%);
+    filter: drop-shadow(0 28px 40px rgba(0, 0, 0, 0.46));
+    transition: opacity 0.28s ease, visibility 0.28s ease;
+}
+
+.about-founder-hero-img[src^="data:"] {
+    opacity: 0 !important;
+    visibility: hidden;
+}
+
+.about-founder-hero-img:not([src^="data:"]) {
+    opacity: 1;
+    visibility: visible;
+}
+
+.about-founder-caption {
+    position: absolute;
+    right: clamp(0.8rem, 9%, 4rem);
+    bottom: clamp(2.4rem, 8%, 4.8rem);
+    z-index: 8;
+    display: grid;
+    justify-items: end;
+    color: #fff;
+    text-align: right;
+    transition: opacity 0.25s ease, visibility 0.25s ease;
+}
+
+.about-founder-hero-img[src^="data:"] ~ .about-founder-caption {
+    opacity: 0;
+    visibility: hidden;
+}
+
+.signature-text {
+    font-family: 'Great Vibes', cursive;
+    font-size: clamp(1.5rem, 2.05vw, 2.28rem);
+    color: rgba(255, 255, 255, 0.88);
+    line-height: 1;
+    text-shadow: 0 0 16px rgba(0, 0, 0, 0.8);
+}
+
+.about-founder-caption strong {
+    font-size: 0.92rem;
+    margin-top: 0.2rem;
+    color: rgba(231, 239, 255, 0.9);
+}
+
+/* =========================
+   RESTE PAGE
+   ========================= */
+
+.about-proof-strip {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.95rem;
+    padding-top: 0.4rem;
+}
+
+.about-proof-card,
+.about-panel,
+.about-final-card {
+    position: relative;
+    border: 1px solid var(--about-border);
+    background: var(--about-card-bg);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02), 0 18px 38px rgba(0, 0, 0, 0.18);
+}
+
+.about-proof-card {
+    min-height: 132px;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.85rem 1rem;
+    align-items: start;
+    padding: 1.35rem 1.45rem;
+}
+
+.about-proof-card h2,
+.about-panel h3,
+.about-approach-card h3 {
+    color: #fff;
+}
+
+.about-proof-card h2 {
+    margin: 0;
+    font-size: 1.1rem;
+}
+
+.about-proof-card p,
+.about-panel p,
+.about-founder-card-copy p,
+.about-institute-card p,
+.about-approach-card p {
+    color: rgba(214, 225, 241, 0.76);
+}
+
+.about-proof-card p {
+    margin: 0.3rem 0 0;
+    font-size: 0.95rem;
+    line-height: 1.55;
+}
+
+.about-icon {
+    width: 44px;
+    height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(0, 92, 255, 0.35);
+    color: var(--sbi-blue);
+    background: rgba(3, 12, 30, 0.55);
+    flex-shrink: 0;
+}
+
+.about-icon svg {
+    width: 22px;
+    height: 22px;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.about-mission {
+    padding-top: clamp(2rem, 3vw, 3.2rem);
+}
+
+.about-mission-layout {
+    display: grid;
+    grid-template-columns: minmax(280px, 0.7fr) minmax(0, 1.3fr);
+    gap: clamp(1.5rem, 3vw, 3rem);
+    align-items: start;
+}
+
+.about-section-intro h2 {
+    margin: 0;
+    max-width: 500px;
+    font-family: var(--font-sans);
+    font-weight: 900;
+    font-style: italic;
+    font-size: clamp(2.1rem, 2.9vw, 3.15rem);
+    line-height: 1.05;
+    color: #fff;
+    letter-spacing: -0.04em;
+}
+
+.about-section-lead {
+    max-width: 500px;
+    margin: 1rem 0 0;
+    color: rgba(214, 225, 241, 0.74);
+    font-size: 1rem;
+    line-height: 1.65;
+}
+
+.about-section-intro::after {
+    content: "";
+    display: block;
+    width: 64px;
+    height: 4px;
+    margin-top: 1.45rem;
+    background: var(--sbi-blue);
+    box-shadow: 0 0 16px rgba(0, 81, 255, 0.42);
+}
+
+.about-mission-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.95rem;
+}
+
+.about-panel {
+    min-height: 230px;
+    padding: 1.6rem 1.55rem;
+}
+
+.about-mission .about-panel {
+    min-height: 215px;
+}
+
+.about-panel h3,
+.about-approach-card h3 {
+    margin: 1rem 0 0.7rem;
+    font-size: 1.06rem;
+}
+
+.about-panel p,
+.about-approach-card p {
+    margin: 0;
+    font-size: 0.98rem;
+    line-height: 1.62;
+}
+
+.about-founder-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
+    gap: 0.95rem;
+    align-items: stretch;
+}
+
+.about-founder-card {
+    display: grid;
+    grid-template-columns: minmax(260px, 0.82fr) minmax(0, 1.18fr);
+    gap: 1.2rem;
+    overflow: hidden;
+    padding: 0;
+}
+
+.about-founder-image-wrap {
+    position: relative;
+    min-height: 100%;
+    background:
+        radial-gradient(circle at 44% 35%, rgba(0, 81, 255, 0.12), transparent 45%),
+        rgba(4, 7, 14, 0.56);
+}
+
+.about-founder-image-wrap::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent 0 74%, rgba(255, 255, 255, 0.04) 74%, transparent 100%);
+    pointer-events: none;
+}
+
+.about-founder-portrait {
+    display: block;
+    width: 100%;
+    height: 100%;
+    min-height: 520px;
+    object-fit: cover;
+    object-position: center top;
+}
+
+.about-founder-card-copy {
+    padding: 1.8rem 1.8rem 1.8rem 0;
+}
+
+.about-founder-card-copy h2,
+.about-institute-card h2,
+.about-final-card h2 {
+    margin: 0;
+    color: #fff;
+    line-height: 1;
+    letter-spacing: -0.04em;
+}
+
+.about-founder-card-copy h2,
+.about-institute-card h2 {
+    font-size: clamp(2rem, 2.4vw, 3rem);
+}
+
+.about-founder-eyebrow {
+    display: inline-block;
+    margin-bottom: 0.8rem;
+    font-weight: 800;
+}
+
+.about-founder-card-copy p {
+    margin: 0.75rem 0 0;
+    line-height: 1.62;
+}
+
+.about-institute-card {
+    padding: 1.8rem 1.9rem;
+}
+
+.about-institute-card p {
+    margin: 1rem 0 0;
+    line-height: 1.66;
+}
+
+.about-institute-cta {
+    color: #fff;
+}
+
+.about-network-block {
+    margin-top: 1.8rem;
+    padding-top: 1.2rem;
+    border-top: 1px solid rgba(115, 166, 255, 0.16);
+}
+
+.about-network-block h3 {
+    margin: 0 0 0.95rem;
+    font-size: 1rem;
+}
+
+.about-network-list {
+    list-style: disc;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.6rem 1.35rem;
+    padding-left: 1rem;
+    margin: 0;
+}
+
+.about-network-list li {
+    color: rgba(214, 225, 241, 0.86);
+    font-size: 0.96rem;
+}
+
+.about-approach-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0.85rem;
+}
+
+.about-approach-card {
+    min-height: 210px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.about-approach-card p {
+    max-width: 250px;
+}
+
+.about-final-card {
+    position: relative;
+    overflow: hidden;
+    padding: clamp(3rem, 6vw, 4.6rem);
+    text-align: center;
+    min-height: 250px;
+    background:
+        linear-gradient(180deg, rgba(7, 12, 23, 0.56), rgba(3, 7, 14, 0.82)),
+        radial-gradient(circle at 84% 52%, rgba(0, 81, 255, 0.24), transparent 36%);
+}
+
+.about-final-video,
+.about-final-video-mask {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+.about-final-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.5;
+    filter: grayscale(1) contrast(1.4) brightness(0.76) saturate(1.3);
+    mix-blend-mode: screen;
+}
+
+.about-final-video-mask {
+    background:
+        linear-gradient(90deg, rgba(4, 7, 14, 0.72), rgba(4, 7, 14, 0.18), rgba(4, 7, 14, 0.74)),
+        radial-gradient(circle at 82% 56%, rgba(0, 81, 255, 0.24), transparent 34%);
+}
+
+.about-final-card h2,
+.about-final-actions {
+    position: relative;
+    z-index: 1;
+}
+
+.about-final-card h2 {
+    font-size: clamp(2.35rem, 4.1vw, 4.1rem);
+    line-height: 0.98;
+}
+
+.footer-brand-block .footer-description {
+    display: none;
+}
+
+@media (max-width: 1500px) {
+    .about-hero {
+        grid-template-columns: minmax(520px, 0.54fr) minmax(360px, 0.46fr);
+    }
+
+    .about-hero-title {
+        font-size: clamp(3.3rem, 3.72vw, 4.45rem);
+    }
+
+    .about-hero-ghost-logo {
+        width: min(45vw, 600px);
+    }
+
+    .about-founder-hero-img {
+        width: min(35vw, 500px);
+    }
+}
+
+@media (max-width: 1380px) {
+    .about-hero {
+        grid-template-columns: minmax(500px, 0.53fr) minmax(340px, 0.47fr);
+        gap: clamp(1.2rem, 2.4vw, 3rem);
+    }
+
+    .about-hero-title {
+        font-size: clamp(3.05rem, 3.55vw, 4.08rem);
+    }
+
+    .about-founder-hero-img {
+        width: min(37vw, 480px);
+    }
+
+    .about-approach-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .about-founder-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 1120px) {
+    .about-hero {
+        grid-template-columns: 1fr;
+        min-height: auto;
+        gap: clamp(1.5rem, 4vw, 2.4rem);
+        padding-top: clamp(3rem, 6vw, 4.4rem);
+    }
+
+    .about-hero-copy {
+        max-width: 760px;
+    }
+
+    .about-hero-title {
+        font-size: clamp(3rem, 7vw, 5rem);
+    }
+
+    .about-hero-title span {
+        white-space: normal;
+    }
+
+    .about-hero-visual {
+        justify-self: center;
+        width: min(100%, 760px);
+        min-height: 560px;
+        height: 560px;
+        margin-top: 0.4rem;
+    }
+
+    .about-hero-visual-shell {
+        overflow: visible;
+    }
+
+    .about-hero-ghost-logo {
+        top: 5%;
+        width: min(72vw, 560px);
+    }
+
+    .about-founder-hero-img {
+        width: min(54vw, 430px);
+        height: 88%;
+    }
+
+    .about-founder-caption {
+        right: clamp(1rem, 12%, 5rem);
+        bottom: 8%;
+    }
+
+    .about-proof-strip,
+    .about-mission-grid,
+    .about-approach-grid,
+    .about-network-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .about-mission-layout {
+        grid-template-columns: 1fr;
+        align-items: start;
+    }
+}
+
+@media (max-width: 860px) {
+    .about-proof-strip,
+    .about-mission-grid,
+    .about-founder-grid,
+    .about-approach-grid,
+    .about-network-list {
+        grid-template-columns: 1fr;
+    }
+
+    .about-founder-card {
+        grid-template-columns: 1fr;
+    }
+
+    .about-founder-card-copy {
+        padding: 1.4rem 1.4rem 1.8rem;
+    }
+
+    .about-founder-portrait {
+        min-height: 340px;
+    }
+
+    .about-hero-visual {
+        min-height: 480px;
+        height: 480px;
+    }
+
+    .about-hero-ghost-logo {
+        width: min(86vw, 520px);
+    }
+
+    .about-founder-hero-img {
+        width: min(66vw, 390px);
+    }
+
+    .about-founder-caption {
+        right: 8%;
+        bottom: 7%;
+    }
+
+    .about-final-card {
+        text-align: left;
+    }
+}
+
+@media (max-width: 640px) {
+    .about-hero {
+        gap: 1.6rem;
+        padding-top: 3rem;
+    }
+
+    .about-hero-title {
+        font-size: clamp(2.65rem, 12vw, 4rem);
+        letter-spacing: -0.06em;
+    }
+
+    .about-hero-visual {
+        min-height: 390px;
+        height: 390px;
+    }
+
+    .about-hero-ghost-logo {
+        top: 8%;
+        width: min(92vw, 440px);
+        opacity: 0.36;
+    }
+
+    .about-founder-hero-img {
+        width: min(74vw, 330px);
+        height: 86%;
+    }
+
+    .about-founder-caption {
+        right: 7%;
+        bottom: 6%;
+    }
+
+    .signature-text {
+        font-size: clamp(1.25rem, 7vw, 1.8rem);
+    }
+
+    .about-founder-caption strong {
+        font-size: 0.78rem;
+    }
+
+    .about-proof-card,
+    .about-panel,
+    .about-final-card,
+    .about-institute-card {
+        padding-left: 1.15rem;
+        padding-right: 1.15rem;
+    }
+
+    .about-approach-card {
+        min-height: 180px;
+    }
+
+    .about-final-card h2 {
+        font-size: clamp(2.1rem, 11vw, 3rem);
+    }
+}
+
+
+/* =========================================================
+   8.0P.64 - HERO FULL-WIDTH VIDEO + PNG CENTERED SCENE
+   ---------------------------------------------------------
+   Le fond vidéo appartient au hero complet, pas à une carte droite.
+   Le bloc visuel ne crée plus de rectangle : il sert uniquement à positionner
+   le logo ghost, le PNG fondateur et la signature dans la scène.
+   ========================================================= */
+
+.about-hero {
+    grid-template-columns: minmax(560px, 0.50fr) minmax(520px, 0.50fr);
+    gap: 0;
+    overflow: hidden;
+    isolation: isolate;
+}
+
+.about-hero-backdrop {
+    position: absolute;
+    z-index: 0;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    background: rgba(3, 7, 15, 0.52);
+    -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 5%, #000 95%, transparent 100%);
+    mask-image: linear-gradient(90deg, transparent 0%, #000 5%, #000 95%, transparent 100%);
+}
+
+.about-hero-backdrop::before,
+.about-hero-backdrop::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    pointer-events: none;
+}
+
+.about-hero-backdrop::before {
+    background:
+        linear-gradient(90deg, rgba(3, 7, 15, 0.94) 0%, rgba(3, 7, 15, 0.55) 22%, rgba(3, 7, 15, 0.10) 49%, rgba(3, 7, 15, 0.34) 100%),
+        linear-gradient(180deg, rgba(3, 7, 15, 0.90) 0%, rgba(3, 7, 15, 0.06) 18%, rgba(3, 7, 15, 0.06) 70%, rgba(3, 7, 15, 0.96) 100%);
+}
+
+.about-hero-backdrop::after {
+    background:
+        radial-gradient(ellipse 52% 58% at 67% 43%, rgba(186, 157, 118, 0.16), transparent 58%),
+        radial-gradient(ellipse 40% 44% at 30% 40%, rgba(0, 81, 255, 0.10), transparent 64%);
+    mix-blend-mode: screen;
+    opacity: 0.72;
+}
+
+.about-hero-backdrop .about-visual-video {
+    position: absolute;
+    z-index: 0;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.56;
+    filter: grayscale(1) contrast(1.28) brightness(0.72) saturate(0.92);
+    mix-blend-mode: screen;
+    -webkit-mask-image:
+        linear-gradient(90deg, transparent 0%, #000 7%, #000 93%, transparent 100%),
+        linear-gradient(180deg, transparent 0%, #000 9%, #000 84%, transparent 100%);
+    mask-image:
+        linear-gradient(90deg, transparent 0%, #000 7%, #000 93%, transparent 100%),
+        linear-gradient(180deg, transparent 0%, #000 9%, #000 84%, transparent 100%);
+}
+
+.about-hero-backdrop .about-visual-video-mask {
+    position: absolute;
+    z-index: 2;
+    inset: 0;
+    background:
+        linear-gradient(90deg, rgba(3, 7, 15, 0.98) 0%, rgba(3, 7, 15, 0.42) 26%, rgba(3, 7, 15, 0.08) 54%, rgba(3, 7, 15, 0.36) 100%),
+        radial-gradient(ellipse 58% 66% at 65% 50%, rgba(184, 151, 111, 0.10), transparent 60%);
+    -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 5%, #000 95%, transparent 100%);
+    mask-image: linear-gradient(90deg, transparent 0%, #000 5%, #000 95%, transparent 100%);
+}
+
+.about-hero-copy {
+    grid-column: 1;
+    z-index: 6;
+}
+
+.about-hero-visual {
+    position: absolute;
+    z-index: 2;
+    inset: 0;
+    width: 100%;
+    min-height: 0;
+    height: 100%;
+    margin: 0;
+    pointer-events: none;
+}
+
+.about-hero-visual-shell {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    overflow: visible;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+}
+
+.about-hero-visual-shell::before,
+.about-hero-visual-shell::after {
+    background: none;
+    -webkit-mask-image: none;
+    mask-image: none;
+}
+
+.about-hero-ghost-logo {
+    z-index: 3;
+    left: 64%;
+    top: 5%;
+    width: min(52vw, 780px);
+    opacity: 0.46;
+    transform: translateX(-50%) rotate(-2deg);
+    filter:
+        sepia(0.95)
+        saturate(0.68)
+        hue-rotate(348deg)
+        brightness(1.08)
+        contrast(1.12)
+        drop-shadow(0 0 24px rgba(190, 158, 118, 0.15));
+    mix-blend-mode: screen;
+}
+
+.about-founder-hero-img {
+    z-index: 6;
+    left: 64%;
+    right: auto;
+    bottom: 0;
+    width: min(43vw, 690px);
+    max-width: none;
+    height: 90%;
+    max-height: 780px;
+    object-position: center bottom;
+    transform: translateX(-50%);
+}
+
+.about-founder-caption {
+    z-index: 7;
+    right: clamp(4rem, 16vw, 16rem);
+    bottom: clamp(3rem, 9vh, 6.4rem);
+}
+
+@media (max-width: 1500px) {
+    .about-hero-ghost-logo {
+        left: 65%;
+        width: min(56vw, 720px);
+    }
+
+    .about-founder-hero-img {
+        left: 65%;
+        width: min(45vw, 640px);
+    }
+
+    .about-founder-caption {
+        right: clamp(3rem, 12vw, 12rem);
+    }
+}
+
+@media (max-width: 1380px) {
+    .about-hero-ghost-logo {
+        left: 66%;
+        width: min(58vw, 680px);
+    }
+
+    .about-founder-hero-img {
+        left: 66%;
+        width: min(46vw, 600px);
+    }
+}
+
+@media (max-width: 1120px) {
+    .about-hero {
+        grid-template-columns: 1fr;
+        min-height: auto;
+        overflow: hidden;
+    }
+
+    .about-hero-copy {
+        grid-column: 1;
+    }
+
+    .about-hero-visual {
+        position: relative;
+        inset: auto;
+        grid-column: 1;
+        justify-self: center;
+        width: min(100%, 780px);
+        min-height: 560px;
+        height: 560px;
+        margin-top: 0.4rem;
+    }
+
+    .about-hero-visual-shell {
+        position: relative;
+        inset: auto;
+        min-height: inherit;
+        height: 100%;
+    }
+
+    .about-hero-ghost-logo {
+        left: 50%;
+        top: 4%;
+        width: min(78vw, 600px);
+    }
+
+    .about-founder-hero-img {
+        left: 50%;
+        width: min(62vw, 480px);
+        height: 90%;
+    }
+
+    .about-founder-caption {
+        right: 12%;
+        bottom: 8%;
+    }
+}
+
+@media (max-width: 860px) {
+    .about-hero-visual {
+        min-height: 480px;
+        height: 480px;
+    }
+
+    .about-hero-ghost-logo {
+        width: min(90vw, 520px);
+    }
+
+    .about-founder-hero-img {
+        width: min(72vw, 400px);
+    }
+}
+
+@media (max-width: 640px) {
+    .about-hero-backdrop {
+        opacity: 0.68;
+    }
+
+    .about-hero-visual {
+        min-height: 390px;
+        height: 390px;
+    }
+
+    .about-hero-ghost-logo {
+        top: 8%;
+        width: min(96vw, 440px);
+        opacity: 0.34;
+    }
+
+    .about-founder-hero-img {
+        width: min(78vw, 340px);
+        height: 86%;
+    }
+}
+
+/* =========================================================
+   8.0P.65 - MOBILE ABOUT STRUCTURE ALIGNMENT
+   ---------------------------------------------------------
+   Mobile suit la logique index : header commun, visuel en premier,
+   contenu ensuite, scène compacte et preuve cards propres.
+   ========================================================= */
+
+@media (max-width: 768px) {
+    body[data-sbi-public-page="apropos"] .about-page {
+        padding-top: 78px;
+    }
+
+    body[data-sbi-public-page="apropos"] .about-hero {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0;
+        min-height: auto;
+        padding-top: 1.1rem;
+        padding-bottom: 2.85rem;
+        overflow: hidden;
+    }
+
+    body[data-sbi-public-page="apropos"] .about-hero-backdrop {
+        opacity: 0.72;
+        -webkit-mask-image:
+            linear-gradient(90deg, transparent 0%, #000 7%, #000 93%, transparent 100%),
+            linear-gradient(180deg, transparent 0%, #000 10%, #000 82%, transparent 100%);
+        mask-image:
+            linear-gradient(90deg, transparent 0%, #000 7%, #000 93%, transparent 100%),
+            linear-gradient(180deg, transparent 0%, #000 10%, #000 82%, transparent 100%);
+    }
+
+    body[data-sbi-public-page="apropos"] .about-hero-backdrop::before {
+        background:
+            linear-gradient(180deg, rgba(3, 7, 15, 0.82) 0%, rgba(3, 7, 15, 0.08) 22%, rgba(3, 7, 15, 0.30) 66%, rgba(3, 7, 15, 0.96) 100%),
+            linear-gradient(90deg, rgba(3, 7, 15, 0.92) 0%, rgba(3, 7, 15, 0.24) 48%, rgba(3, 7, 15, 0.84) 100%);
+    }
+
+    body[data-sbi-public-page="apropos"] .about-hero-copy {
+        order: 2;
+        width: 100%;
+        max-width: none;
+        margin-top: 0;
+        text-align: left;
+    }
+
+    body[data-sbi-public-page="apropos"] .about-hero-visual {
+        order: 1;
+        position: relative;
+        inset: auto;
+        z-index: 3;
+        width: 100%;
+        max-width: 100%;
+        min-height: clamp(330px, 74vw, 460px);
+        height: clamp(330px, 74vw, 460px);
+        margin: 0 auto 0.75rem;
+    }
+
+    body[data-sbi-public-page="apropos"] .about-hero-visual-shell {
+        position: relative;
+        inset: auto;
+        height: 100%;
+        min-height: inherit;
+    }
+
+    body[data-sbi-public-page="apropos"] .about-hero-ghost-logo {
+        left: 50%;
+        top: 0;
+        width: min(96vw, 520px);
+        opacity: 0.34;
+        transform: translateX(-50%) rotate(-2deg);
+    }
+
+    body[data-sbi-public-page="apropos"] .about-founder-hero-img {
+        left: 50%;
+        right: auto;
+        bottom: 0;
+        width: min(82vw, 405px);
+        height: 92%;
+        max-height: 100%;
+        object-fit: contain;
+        object-position: center bottom;
+        transform: translateX(-50%);
+    }
+
+    body[data-sbi-public-page="apropos"] .about-founder-caption {
+        right: clamp(1rem, 10vw, 4rem);
+        bottom: 7%;
+        text-align: right;
+    }
+
+    body[data-sbi-public-page="apropos"] .signature-text {
+        font-size: clamp(1.25rem, 6vw, 1.85rem);
+    }
+
+    body[data-sbi-public-page="apropos"] .about-founder-caption strong {
+        font-size: 0.78rem;
+    }
+
+    body[data-sbi-public-page="apropos"] .section-surtitle {
+        margin-bottom: 0.72rem;
+    }
+
+    body[data-sbi-public-page="apropos"] .about-hero-title {
+        max-width: min(100%, 25rem);
+        font-size: clamp(2.45rem, 11vw, 3.35rem);
+        line-height: 1.03;
+        letter-spacing: -0.052em;
+    }
+
+    body[data-sbi-public-page="apropos"] .about-hero-title span {
+        white-space: normal;
+    }
+
+    body[data-sbi-public-page="apropos"] .about-hero-lead {
+        max-width: min(100%, 22.5rem);
+        margin-top: 1.18rem;
+        font-size: 0.98rem;
+        line-height: 1.58;
+    }
+
+    body[data-sbi-public-page="apropos"] .about-hero-actions {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.92rem;
+        margin-top: 1.65rem;
+    }
+
+    body[data-sbi-public-page="apropos"] .about-hero-actions .btn-primary {
+        width: min(100%, 17.5rem);
+        justify-content: center;
+    }
+
+    body[data-sbi-public-page="apropos"] .about-proof-strip {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1rem;
+        padding-top: 2.3rem;
+        padding-bottom: 3.2rem;
+    }
+
+    body[data-sbi-public-page="apropos"] .about-proof-card {
+        grid-template-columns: 42px minmax(0, 1fr);
+        gap: 0.82rem;
+        min-height: 122px;
+        padding: 1.05rem;
+    }
+
+    body[data-sbi-public-page="apropos"] .about-proof-card .about-icon {
+        width: 42px;
+        height: 42px;
+    }
+
+    body[data-sbi-public-page="apropos"] .about-proof-card h2 {
+        font-size: 0.92rem;
+        line-height: 1.18;
+    }
+
+    body[data-sbi-public-page="apropos"] .about-proof-card p {
+        font-size: 0.78rem;
+        line-height: 1.36;
+    }
+}
+
+@media (max-width: 520px) {
+    body[data-sbi-public-page="apropos"] .about-hero {
+        padding-top: 0.85rem;
+    }
+
+    body[data-sbi-public-page="apropos"] .about-hero-visual {
+        min-height: clamp(310px, 86vw, 390px);
+        height: clamp(310px, 86vw, 390px);
+        margin-bottom: 0.45rem;
+    }
+
+    body[data-sbi-public-page="apropos"] .about-founder-hero-img {
+        width: min(88vw, 350px);
+        height: 90%;
+    }
+
+    body[data-sbi-public-page="apropos"] .about-hero-ghost-logo {
+        width: min(106vw, 430px);
+        opacity: 0.30;
+    }
+
+    body[data-sbi-public-page="apropos"] .about-founder-caption {
+        right: 0.9rem;
+        bottom: 5.8%;
+    }
+
+    body[data-sbi-public-page="apropos"] .about-proof-strip {
+        grid-template-columns: 1fr;
+    }
+}
+
+
+/* =========================================================
+   8.0P.66 - MOBILE ABOUT VIDEO BLEED + VISIBILITY FIX
+   ---------------------------------------------------------
+   Corrige le rectangle visible du fond vidéo sur mobile :
+   la vidéo respire au-delà du viewport, les bords sont fondus
+   par un seul masque large, et le PNG reste centré au-dessus.
+   ========================================================= */
+
+@media (max-width: 768px) {
+    body[data-sbi-public-page="apropos"] .about-hero {
+        position: relative;
+        overflow: hidden;
+    }
+
+    body[data-sbi-public-page="apropos"] .about-hero-backdrop {
+        inset: -1.5rem -18vw -1.5rem -18vw;
+        width: auto;
+        opacity: 1;
+        background: transparent;
+        -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 13%, #000 87%, transparent 100%);
+        mask-image: linear-gradient(90deg, transparent 0%, #000 13%, #000 87%, transparent 100%);
+    }
+
+    body[data-sbi-public-page="apropos"] .about-hero-backdrop::before {
+        z-index: 3;
+        background:
+            linear-gradient(180deg, rgba(3, 7, 15, 0.72) 0%, rgba(3, 7, 15, 0.14) 24%, rgba(3, 7, 15, 0.18) 58%, rgba(3, 7, 15, 0.94) 100%),
+            linear-gradient(90deg, rgba(3, 7, 15, 0.88) 0%, rgba(3, 7, 15, 0.08) 28%, rgba(3, 7, 15, 0.08) 68%, rgba(3, 7, 15, 0.88) 100%);
+    }
+
+    body[data-sbi-public-page="apropos"] .about-hero-backdrop::after {
+        z-index: 4;
+        opacity: 0.62;
+        background:
+            radial-gradient(ellipse 80% 48% at 52% 23%, rgba(0, 81, 255, 0.18), transparent 66%),
+            radial-gradient(ellipse 70% 58% at 62% 38%, rgba(186, 157, 118, 0.14), transparent 64%);
+        mix-blend-mode: screen;
+    }
+
+    body[data-sbi-public-page="apropos"] .about-hero-backdrop .about-visual-video {
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0.88;
+        object-fit: cover;
+        filter: grayscale(0.78) contrast(1.24) brightness(0.86) saturate(1.05);
+        mix-blend-mode: normal;
+        -webkit-mask-image: none;
+        mask-image: none;
+    }
+
+    body[data-sbi-public-page="apropos"] .about-hero-backdrop .about-visual-video-mask {
+        z-index: 2;
+        inset: 0;
+        background:
+            linear-gradient(180deg, rgba(3, 7, 15, 0.42) 0%, rgba(3, 7, 15, 0.02) 30%, rgba(3, 7, 15, 0.08) 66%, rgba(3, 7, 15, 0.82) 100%),
+            linear-gradient(90deg, rgba(3, 7, 15, 0.62) 0%, rgba(3, 7, 15, 0.03) 28%, rgba(3, 7, 15, 0.03) 72%, rgba(3, 7, 15, 0.62) 100%);
+        -webkit-mask-image: none;
+        mask-image: none;
+    }
+
+    body[data-sbi-public-page="apropos"] .about-hero-visual {
+        z-index: 5;
+        overflow: visible;
+        isolation: isolate;
+    }
+
+    body[data-sbi-public-page="apropos"] .about-hero-visual-shell {
+        overflow: visible;
+    }
+
+    body[data-sbi-public-page="apropos"] .about-hero-ghost-logo {
+        top: -2%;
+        opacity: 0.24;
+        mix-blend-mode: screen;
+        filter:
+            sepia(0.9)
+            saturate(0.58)
+            hue-rotate(348deg)
+            brightness(1.02)
+            contrast(1.08)
+            drop-shadow(0 0 22px rgba(190, 158, 118, 0.14));
+    }
+
+    body[data-sbi-public-page="apropos"] .about-founder-hero-img {
+        left: 50%;
+        transform: translateX(-50%);
+    }
+}
+
+@media (max-width: 520px) {
+    body[data-sbi-public-page="apropos"] .about-hero-backdrop {
+        inset: -1.2rem -24vw -1.4rem -24vw;
+        -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 16%, #000 84%, transparent 100%);
+        mask-image: linear-gradient(90deg, transparent 0%, #000 16%, #000 84%, transparent 100%);
+    }
+
+    body[data-sbi-public-page="apropos"] .about-hero-backdrop .about-visual-video {
+        opacity: 0.92;
+        filter: grayscale(0.72) contrast(1.28) brightness(0.90) saturate(1.08);
+    }
+
+    body[data-sbi-public-page="apropos"] .about-hero-ghost-logo {
+        opacity: 0.22;
+    }
+}
+
+/* SBI 8.0P.126 - apparition progressive du PNG fondateur À propos */
+body[data-sbi-public-page="apropos"] .about-founder-hero-img {
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.82s ease 0.08s, visibility 0.82s ease 0.08s;
+    will-change: opacity;
+}
+
+body[data-sbi-public-page="apropos"] .about-founder-hero-img.is-loaded {
+    opacity: 1;
+    visibility: visible;
+}
+
+body[data-sbi-public-page="apropos"] .about-founder-caption {
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.58s ease 0.32s, visibility 0.58s ease 0.32s;
+}
+
+body[data-sbi-public-page="apropos"] .about-founder-hero-img.is-loaded ~ .about-founder-caption {
+    opacity: 1;
+    visibility: visible;
+}

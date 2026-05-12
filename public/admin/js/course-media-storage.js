@@ -131,7 +131,7 @@ const canvasToBlob = (canvas, type, quality) => {
     });
 };
 
-const compressImageFileToWebpBlob = async (file) => {
+export const compressImageFileToWebpBlob = async (file) => {
     if (!file) {
         throw new Error("Aucun fichier image sélectionné.");
     }
