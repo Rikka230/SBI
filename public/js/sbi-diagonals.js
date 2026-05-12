@@ -1,5 +1,5 @@
 (function () {
-    const DIAGONALS_VERSION = '8.0P.79';
+    const DIAGONALS_VERSION = '8.0P.100';
     const mobileQuery = window.matchMedia('(max-width: 768px)');
 
     const sectionSelectors = [
@@ -7,17 +7,20 @@
         '.section-why-sbi',
         '.section-stats',
         '.section-qualiopi, .sbi-qualiopi-section',
-        '.section-newsletter'
+        '.section-newsletter',
+        '.public-proof-strip',
+        '.public-catalogue-section',
+        '.public-resources-library',
+        '.public-about-final-cta'
     ];
 
     const sparkPositions = ['34%', '28%', '58%', '74%', '48%'];
     let frame = 0;
     let resizeObserver = null;
     let mutationObserver = null;
-    const observedSections = new WeakSet();
-
     const layoutSelectors = [
         '.hero-section',
+        '.public-page-hero-wide',
         '.features-bar',
         ...sectionSelectors
     ];
@@ -132,8 +135,6 @@
         if (main) resizeObserver.observe(main);
 
         getLayoutElements().forEach((element) => {
-            if (observedSections.has(element)) return;
-            observedSections.add(element);
             resizeObserver.observe(element);
         });
     }
@@ -157,9 +158,12 @@
 
     function scheduleRenderPasses() {
         scheduleRender();
+        window.requestAnimationFrame?.(() => window.requestAnimationFrame?.(scheduleRender));
+        window.setTimeout(scheduleRender, 40);
         window.setTimeout(scheduleRender, 120);
-        window.setTimeout(scheduleRender, 360);
-        window.setTimeout(scheduleRender, 900);
+        window.setTimeout(scheduleRender, 260);
+        window.setTimeout(scheduleRender, 520);
+        window.setTimeout(scheduleRender, 980);
     }
 
     function initSbiDiagonals() {
@@ -183,6 +187,8 @@
     } else {
         initSbiDiagonals();
     }
+
+    document.fonts?.ready?.then?.(scheduleRenderPasses).catch?.(() => {});
 
     window.addEventListener('resize', scheduleRender, { passive: true });
     window.addEventListener('orientationchange', scheduleRender, { passive: true });

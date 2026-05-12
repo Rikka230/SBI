@@ -3423,3 +3423,80 @@ body[data-sbi-public-page="ressources"] .public-section-header-stacked .public-s
         min-height: 158px !important;
     }
 }
+
+
+/* =========================================================
+   SBI 8.0P.100 - Mobile header + diagonal engine handoff
+   ========================================================= */
+@media (max-width: 768px) {
+    body[data-sbi-public-page="formations"] .site-header.is-mobile-menu-open .main-nav,
+    body[data-sbi-public-page="ressources"] .site-header.is-mobile-menu-open .main-nav,
+    body[data-sbi-public-page="formations"] .site-header.is-mobile-menu-open .header-actions,
+    body[data-sbi-public-page="ressources"] .site-header.is-mobile-menu-open .header-actions {
+        display: flex !important;
+    }
+
+    body[data-sbi-public-page="formations"] .site-header.is-mobile-menu-open .header-actions,
+    body[data-sbi-public-page="ressources"] .site-header.is-mobile-menu-open .header-actions {
+        top: calc(78px + 9.55rem) !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 0.85rem !important;
+    }
+
+    body[data-sbi-public-page="formations"] .site-header.is-mobile-menu-open .header-actions .nav-link,
+    body[data-sbi-public-page="formations"] .site-header.is-mobile-menu-open .header-actions .btn-primary,
+    body[data-sbi-public-page="ressources"] .site-header.is-mobile-menu-open .header-actions .nav-link,
+    body[data-sbi-public-page="ressources"] .site-header.is-mobile-menu-open .header-actions .btn-primary {
+        display: flex !important;
+        min-height: 46px;
+    }
+
+    body[data-sbi-public-page="formations"] .site-header.is-mobile-menu-open .header-actions .search-btn,
+    body[data-sbi-public-page="ressources"] .site-header.is-mobile-menu-open .header-actions .search-btn {
+        display: none !important;
+    }
+
+    body[data-sbi-public-page="formations"] .public-page,
+    body[data-sbi-public-page="ressources"] .public-page {
+        background: transparent !important;
+    }
+
+    body[data-sbi-public-page="formations"] .public-proof-strip::before,
+    body[data-sbi-public-page="formations"] .public-catalogue-section::before,
+    body[data-sbi-public-page="formations"] .public-about-final-cta::before,
+    body[data-sbi-public-page="ressources"] .public-proof-strip::before,
+    body[data-sbi-public-page="ressources"] .public-resources-library::before,
+    body[data-sbi-public-page="ressources"] .public-about-final-cta::before,
+    body[data-sbi-public-page="formations"] .public-proof-strip::after,
+    body[data-sbi-public-page="formations"] .public-catalogue-section::after,
+    body[data-sbi-public-page="formations"] .public-about-final-cta::after,
+    body[data-sbi-public-page="ressources"] .public-proof-strip::after,
+    body[data-sbi-public-page="ressources"] .public-resources-library::after,
+    body[data-sbi-public-page="ressources"] .public-about-final-cta::after {
+        content: none !important;
+        display: none !important;
+    }
+
+    body[data-sbi-public-page="formations"] .public-proof-strip,
+    body[data-sbi-public-page="formations"] .public-catalogue-section,
+    body[data-sbi-public-page="formations"] .public-about-final-cta,
+    body[data-sbi-public-page="ressources"] .public-proof-strip,
+    body[data-sbi-public-page="ressources"] .public-resources-library,
+    body[data-sbi-public-page="ressources"] .public-about-final-cta {
+        overflow: hidden !important;
+        overflow: clip !important;
+    }
+
+    body[data-sbi-public-page="formations"] .public-about-final-card,
+    body[data-sbi-public-page="ressources"] .public-about-final-card {
+        min-height: 156px !important;
+        padding: 1.35rem 1.05rem !important;
+    }
+
+    body[data-sbi-public-page="formations"] .public-about-final-card h2,
+    body[data-sbi-public-page="ressources"] .public-about-final-card h2 {
+        font-size: clamp(1.38rem, 6.8vw, 2rem) !important;
+        line-height: 1.03 !important;
+    }
+}

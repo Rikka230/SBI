@@ -772,3 +772,63 @@ main {
             drop-shadow(0 0 18px rgba(0, 81, 255, 0.24));
     }
 }
+
+
+/* =========================================================
+   SBI 8.0P.100 - Public pages mobile cuts share index engine
+   ========================================================= */
+.public-proof-strip,
+.public-catalogue-section,
+.public-resources-library,
+.public-about-final-cta {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    overflow: clip;
+}
+
+.public-proof-strip > *,
+.public-catalogue-section > *,
+.public-resources-library > *,
+.public-about-final-cta > * {
+    position: relative;
+    z-index: 1;
+}
+
+@media (max-width: 768px) {
+    .public-proof-strip,
+    .public-catalogue-section,
+    .public-resources-library,
+    .public-about-final-cta {
+        --sbi-section-cut: 34px;
+        margin-top: calc(var(--sbi-section-cut) * -1);
+        clip-path: polygon(
+            0 var(--sbi-section-cut),
+            100% 0,
+            100% calc(100% - var(--sbi-section-cut)),
+            0 100%
+        );
+        background:
+            radial-gradient(circle at 92% 18%, rgba(0, 81, 255, 0.12), transparent 42%),
+            linear-gradient(180deg, rgba(5, 11, 21, 0.96), rgba(2, 5, 11, 0.98)) !important;
+    }
+
+    .public-proof-strip {
+        z-index: 2;
+        padding-top: calc(1.8rem + var(--sbi-section-cut));
+        padding-bottom: calc(1.7rem + var(--sbi-section-cut));
+    }
+
+    .public-catalogue-section,
+    .public-resources-library {
+        z-index: 3;
+        padding-top: calc(2.6rem + var(--sbi-section-cut));
+        padding-bottom: calc(2.9rem + var(--sbi-section-cut));
+    }
+
+    .public-about-final-cta {
+        z-index: 4;
+        padding-top: calc(1.65rem + var(--sbi-section-cut));
+        padding-bottom: calc(2rem + var(--sbi-section-cut));
+    }
+}
