@@ -3724,3 +3724,101 @@ body[data-sbi-public-page="ressources"] .public-section-header-stacked .public-s
         opacity: 0.36 !important;
     }
 }
+
+
+/* =========================================================
+   SBI 8.0P.105 - Mobile public cuts clean-up
+   - keep desktop validated
+   - keep local diagonals, align them to the visible cut
+   - move the orb deeper inside the section so it is not eaten by the previous block
+   - unify the mobile page/section background so the color reaches the cut edge
+   ========================================================= */
+@media (max-width: 768px) {
+    body[data-sbi-public-page="formations"] .site-header:not(.is-mobile-menu-open) .main-nav,
+    body[data-sbi-public-page="ressources"] .site-header:not(.is-mobile-menu-open) .main-nav,
+    body[data-sbi-public-page="formations"] .site-header:not(.is-mobile-menu-open) .header-actions,
+    body[data-sbi-public-page="ressources"] .site-header:not(.is-mobile-menu-open) .header-actions {
+        display: none !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
+    }
+
+    body[data-sbi-public-page="formations"] .site-header:not(.is-mobile-menu-open),
+    body[data-sbi-public-page="ressources"] .site-header:not(.is-mobile-menu-open) {
+        overflow: hidden !important;
+    }
+
+    body[data-sbi-public-page="formations"] .logo-container,
+    body[data-sbi-public-page="ressources"] .logo-container {
+        max-width: calc(100% - 72px) !important;
+        min-width: 0 !important;
+    }
+
+    body[data-sbi-public-page="formations"] .header-logo-link,
+    body[data-sbi-public-page="ressources"] .header-logo-link {
+        min-width: 0 !important;
+    }
+
+    body[data-sbi-public-page="formations"] .public-page,
+    body[data-sbi-public-page="ressources"] .public-page {
+        background:
+            radial-gradient(circle at 92% 18%, rgba(0, 81, 255, 0.08), transparent 34%),
+            linear-gradient(180deg, rgba(3, 7, 14, 0.985), rgba(3, 7, 14, 0.985)) !important;
+    }
+
+    body[data-sbi-public-page="formations"] .public-proof-strip,
+    body[data-sbi-public-page="formations"] .public-catalogue-section,
+    body[data-sbi-public-page="formations"] .public-about-final-cta,
+    body[data-sbi-public-page="ressources"] .public-proof-strip,
+    body[data-sbi-public-page="ressources"] .public-resources-library,
+    body[data-sbi-public-page="ressources"] .public-about-final-cta {
+        --sbi-public-section-cut: 34px;
+        margin-top: clamp(2.35rem, 9vw, 3.45rem) !important;
+        background:
+            linear-gradient(180deg,
+                rgba(5, 11, 21, 0.985) 0,
+                rgba(5, 11, 21, 0.985) var(--sbi-public-section-cut),
+                rgba(4, 9, 18, 0.97) var(--sbi-public-section-cut),
+                rgba(2, 5, 11, 0.985) 100%) !important;
+    }
+
+    body[data-sbi-public-page="formations"] .public-proof-strip::before,
+    body[data-sbi-public-page="formations"] .public-catalogue-section::before,
+    body[data-sbi-public-page="formations"] .public-about-final-cta::before,
+    body[data-sbi-public-page="ressources"] .public-proof-strip::before,
+    body[data-sbi-public-page="ressources"] .public-resources-library::before,
+    body[data-sbi-public-page="ressources"] .public-about-final-cta::before {
+        left: -2vw !important;
+        top: calc(var(--sbi-public-section-cut) - 20px) !important;
+        width: 124vw !important;
+        height: 40px !important;
+        z-index: 3 !important;
+        opacity: 0.72 !important;
+        transform: rotate(-5deg) !important;
+        transform-origin: left center !important;
+    }
+
+    body[data-sbi-public-page="formations"] .public-proof-strip::after,
+    body[data-sbi-public-page="formations"] .public-catalogue-section::after,
+    body[data-sbi-public-page="formations"] .public-about-final-cta::after,
+    body[data-sbi-public-page="ressources"] .public-proof-strip::after,
+    body[data-sbi-public-page="ressources"] .public-resources-library::after,
+    body[data-sbi-public-page="ressources"] .public-about-final-cta::after {
+        right: -8.75rem !important;
+        top: calc(var(--sbi-public-section-cut) + 3.9rem) !important;
+        width: 13.5rem !important;
+        height: 13.5rem !important;
+        z-index: 1 !important;
+        opacity: 0.28 !important;
+    }
+
+    body[data-sbi-public-page="formations"] .public-proof-strip > *,
+    body[data-sbi-public-page="formations"] .public-catalogue-section > *,
+    body[data-sbi-public-page="formations"] .public-about-final-cta > *,
+    body[data-sbi-public-page="ressources"] .public-proof-strip > *,
+    body[data-sbi-public-page="ressources"] .public-resources-library > *,
+    body[data-sbi-public-page="ressources"] .public-about-final-cta > * {
+        position: relative !important;
+        z-index: 4 !important;
+    }
+}
