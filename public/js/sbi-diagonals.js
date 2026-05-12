@@ -1,5 +1,5 @@
 (function () {
-    const DIAGONALS_VERSION = '8.0P.103';
+    const DIAGONALS_VERSION = '8.0P.104';
     const mobileQuery = window.matchMedia('(max-width: 768px)');
 
     const sectionSelectors = [
@@ -7,11 +7,7 @@
         '.section-why-sbi',
         '.section-stats',
         '.section-qualiopi, .sbi-qualiopi-section',
-        '.section-newsletter',
-        '.public-proof-strip',
-        '.public-catalogue-section',
-        '.public-resources-library',
-        '.public-about-final-cta'
+        '.section-newsletter'
     ];
 
     const sparkPositions = ['34%', '28%', '58%', '74%', '48%'];

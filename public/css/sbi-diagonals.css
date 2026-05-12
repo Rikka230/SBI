@@ -850,3 +850,24 @@ main {
         --sbi-diagonal-line-offset: 0px;
     }
 }
+
+
+/* =========================================================
+   SBI 8.0P.104 - Mobile Qualiopi background continuity
+   - restore the original mobile diagonal position
+   - remove the false double-cut perception by unifying the background
+   ========================================================= */
+@media (max-width: 768px) {
+    .section-qualiopi,
+    .sbi-qualiopi-section,
+    .section-newsletter {
+        background: linear-gradient(180deg, rgba(3, 7, 14, 0.98), rgba(3, 7, 14, 0.98)) !important;
+    }
+
+    .section-newsletter,
+    .section-qualiopi,
+    .sbi-qualiopi-section {
+        --sbi-diagonal-line-offset: 0px !important;
+        --sbi-diagonal-line-angle: -5deg;
+    }
+}

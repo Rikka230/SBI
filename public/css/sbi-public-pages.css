@@ -3665,3 +3665,62 @@ body[data-sbi-public-page="ressources"] .public-section-header-stacked .public-s
         margin-top: 2rem !important;
     }
 }
+
+
+/* =========================================================
+   SBI 8.0P.104 - Mobile public cuts fine alignment
+   - local diagonals are anchored to the real clipped edge
+   - public sections no longer rely on the global index overlay
+   - orb is kept inside the section instead of sliding behind the previous block
+   ========================================================= */
+@media (max-width: 768px) {
+    body[data-sbi-public-page="formations"] .public-proof-strip,
+    body[data-sbi-public-page="formations"] .public-catalogue-section,
+    body[data-sbi-public-page="formations"] .public-about-final-cta,
+    body[data-sbi-public-page="ressources"] .public-proof-strip,
+    body[data-sbi-public-page="ressources"] .public-resources-library,
+    body[data-sbi-public-page="ressources"] .public-about-final-cta {
+        --sbi-public-section-cut: 34px;
+        margin-top: clamp(2.1rem, 8vw, 3.25rem) !important;
+        background:
+            radial-gradient(circle at 88% 26%, rgba(0, 81, 255, 0.10), transparent 42%),
+            linear-gradient(180deg, rgba(5, 11, 21, 0.96), rgba(2, 5, 11, 0.985)) !important;
+    }
+
+    body[data-sbi-public-page="formations"] .public-proof-strip::before,
+    body[data-sbi-public-page="formations"] .public-catalogue-section::before,
+    body[data-sbi-public-page="formations"] .public-about-final-cta::before,
+    body[data-sbi-public-page="ressources"] .public-proof-strip::before,
+    body[data-sbi-public-page="ressources"] .public-resources-library::before,
+    body[data-sbi-public-page="ressources"] .public-about-final-cta::before {
+        content: "" !important;
+        display: block !important;
+        position: absolute !important;
+        left: 0 !important;
+        top: calc(var(--sbi-public-section-cut) - 20px) !important;
+        width: 118vw !important;
+        height: 40px !important;
+        z-index: 2 !important;
+        pointer-events: none !important;
+        opacity: 0.70 !important;
+        transform: rotate(-5deg) !important;
+        transform-origin: left center !important;
+        mix-blend-mode: screen !important;
+        background:
+            radial-gradient(circle at 58% 50%, rgba(255,255,255,0.95) 0 2px, rgba(178,220,255,0.84) 3px, rgba(0,81,255,0.72) 5px, transparent 12px),
+            linear-gradient(90deg, transparent 0%, rgba(174,218,255,0.18) 18%, rgba(255,255,255,0.54) 45%, rgba(0,81,255,0.9) 58%, rgba(116,180,255,0.24) 74%, transparent 100%) center / 100% 1px no-repeat !important;
+        filter: drop-shadow(0 0 10px rgba(0,81,255,0.5)) !important;
+    }
+
+    body[data-sbi-public-page="formations"] .public-proof-strip::after,
+    body[data-sbi-public-page="formations"] .public-catalogue-section::after,
+    body[data-sbi-public-page="formations"] .public-about-final-cta::after,
+    body[data-sbi-public-page="ressources"] .public-proof-strip::after,
+    body[data-sbi-public-page="ressources"] .public-resources-library::after,
+    body[data-sbi-public-page="ressources"] .public-about-final-cta::after {
+        right: -8.5rem !important;
+        top: calc(var(--sbi-public-section-cut) + 0.75rem) !important;
+        z-index: 1 !important;
+        opacity: 0.36 !important;
+    }
+}
