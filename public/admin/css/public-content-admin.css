@@ -338,3 +338,96 @@
 .public-content-admin-panel {
     clear: both;
 }
+
+/* =========================================================
+   SBI 8.0P.117 - Admin brochures PDF publiques
+   ========================================================= */
+#tab-public-resources:not(.active) [data-sbi-public-resources-admin] {
+    display: none !important;
+}
+
+.public-admin-note-stack {
+    align-items: center;
+}
+
+.public-admin-resource-grid .public-admin-card {
+    text-align: left;
+}
+
+.public-admin-resource-card p:last-child {
+    color: #cfe0ff;
+    font-size: 0.82rem;
+}
+
+.public-admin-resource-form .public-admin-file-field {
+    align-content: start;
+}
+
+.public-admin-file-current,
+.public-admin-resource-file-meta {
+    display: inline-flex;
+    align-items: center;
+    min-height: 38px;
+    padding: 0.7rem 0.8rem;
+    border: 1px solid rgba(87, 130, 255, 0.18);
+    border-radius: 8px;
+    background: rgba(87, 130, 255, 0.07);
+    color: #cfe0ff;
+    font-size: 0.82rem;
+    font-weight: 700;
+    line-height: 1.35;
+}
+
+.public-admin-resource-options select[multiple] {
+    min-height: 158px;
+}
+
+.public-admin-resource-preview {
+    display: grid;
+    gap: 0.45rem;
+}
+
+.public-admin-resource-preview h4,
+.public-admin-resource-preview p {
+    margin-bottom: 0;
+}
+
+@media (max-width: 800px) {
+    .sub-nav {
+        flex-wrap: wrap;
+        gap: 0.9rem 1.2rem;
+    }
+
+    .public-admin-resource-options select[multiple] {
+        min-height: 132px;
+    }
+}
+
+
+/* =========================================================
+   SBI 8.0P.119 - Champs SEO formations / brochures
+   ========================================================= */
+.public-admin-seo-panel {
+    border: 1px solid rgba(87, 130, 255, 0.18);
+    border-radius: 12px;
+    background: rgba(87, 130, 255, 0.055);
+    padding: 0.9rem 1rem 1rem;
+}
+
+.public-admin-seo-panel summary {
+    cursor: pointer;
+    color: #eaf1ff;
+    font-weight: 900;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+}
+
+.public-admin-seo-panel[open] summary {
+    margin-bottom: 0.9rem;
+}
+
+.public-admin-seo-panel code {
+    color: #cfe0ff;
+    font-weight: 800;
+}
+

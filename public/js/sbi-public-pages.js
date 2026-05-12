@@ -1,9 +1,10 @@
 let firestoreToolsPromise = null;
+let storageToolsPromise = null;
 
 async function getFirestoreTools() {
   if (!firestoreToolsPromise) {
     firestoreToolsPromise = Promise.all([
-      import('/js/firebase-init.js?v=8.0P.92'),
+      import('/js/firebase-init.js?v=8.0P.99'),
       import("https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js")
     ]).then(([firebaseModule, firestoreModule]) => ({
       db: firebaseModule.db,
@@ -17,129 +18,34 @@ async function getFirestoreTools() {
   return firestoreToolsPromise;
 }
 
+async function getStorageTools() {
+  if (!storageToolsPromise) {
+    storageToolsPromise = Promise.all([
+      import('/js/firebase-init.js?v=8.0P.99'),
+      import("https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js")
+    ]).then(([firebaseModule, storageModule]) => ({
+      storage: firebaseModule.storage,
+      ref: storageModule.ref,
+      getBlob: storageModule.getBlob
+    }));
+  }
+
+  return storageToolsPromise;
+}
+
 const PUBLIC_FORMATIONS_COLLECTION = 'publicFormations';
 const PUBLIC_RESOURCES_COLLECTION = 'publicResources';
-const PUBLIC_CONTENT_VERSION = '8.0P.92';
+const PUBLIC_CONTENT_VERSION = '8.0P.120';
 
 const DEFAULT_COVER_LABEL = 'SBI';
+const COMING_SOON_COVER_URL = '/assets/coming.png';
+const SEO_SITE_ORIGIN = 'https://www.sbigroup.fr';
+const DYNAMIC_DETAIL_JSONLD_ID = 'sbi-public-dynamic-detail-jsonld';
+const FORMATION_QUERY_KEY = 'formation';
+const RESOURCE_QUERY_KEY = 'resource';
 
-const FORMATION_FALLBACKS = [
-  {
-    id: 'fallback-marketing-communication',
-    title: 'Marketing & Communication',
-    subtitle: 'Construire une marque sportive forte',
-    category: 'Catalogue SBI',
-    level: 'Fondamentaux',
-    duration: '12 modules',
-    modality: 'E-learning',
-    shortSummary: 'Construire une marque sportive, piloter une campagne et valoriser une communauté.',
-    longDescription: 'Un parcours pensé pour apprendre à positionner une offre sportive, structurer une communication claire et transformer l’attention en engagement durable.',
-    objectives: ['Comprendre les fondamentaux du marketing sportif', 'Structurer une campagne de communication', 'Valoriser une communauté autour d’un projet'],
-    highlights: ['Approche métier', 'Cas appliqués sport business', 'Méthode progressive'],
-    status: 'published',
-    featuredOnHome: true,
-    displayOrder: 10,
-    homeOrder: 10,
-    slug: 'marketing-communication'
-  },
-  {
-    id: 'fallback-management-leadership',
-    title: 'Management & Leadership',
-    subtitle: 'Piloter une équipe et cadrer un projet',
-    category: 'Catalogue SBI',
-    level: 'Intermédiaire',
-    duration: '9 modules',
-    modality: 'E-learning',
-    shortSummary: 'Manager une équipe, cadrer un projet et prendre les bonnes décisions sous pression.',
-    longDescription: 'Une formation pour développer une posture professionnelle, clarifier les responsabilités et accompagner la progression d’une équipe.',
-    objectives: ['Organiser une équipe', 'Suivre un projet', 'Développer une posture de leader'],
-    highlights: ['Outils concrets', 'Vision terrain', 'Progression structurée'],
-    status: 'published',
-    featuredOnHome: true,
-    displayOrder: 20,
-    homeOrder: 20,
-    slug: 'management-leadership'
-  },
-  {
-    id: 'fallback-evenementiel-sportif',
-    title: 'Événementiel sportif',
-    subtitle: 'Concevoir une expérience sportive',
-    category: 'Catalogue SBI',
-    level: 'Fondamentaux',
-    duration: '8 modules',
-    modality: 'E-learning',
-    shortSummary: 'Concevoir, produire et sécuriser une expérience sportive de bout en bout.',
-    longDescription: 'Un parcours dédié aux coulisses de l’événementiel sportif : préparation, coordination, exploitation et expérience participant.',
-    objectives: ['Préparer un événement', 'Coordonner les parties prenantes', 'Analyser les risques opérationnels'],
-    highlights: ['Méthode événementielle', 'Vision production', 'Culture terrain'],
-    status: 'published',
-    featuredOnHome: true,
-    displayOrder: 30,
-    homeOrder: 30,
-    slug: 'evenementiel-sportif'
-  },
-  {
-    id: 'fallback-digital-innovation',
-    title: 'Digital & Innovation',
-    subtitle: 'Comprendre les nouveaux formats',
-    category: 'Catalogue SBI',
-    level: 'Prochainement',
-    duration: 'À compléter',
-    modality: 'E-learning',
-    shortSummary: 'Utiliser les outils numériques, la data et les nouveaux formats pour accélérer.',
-    longDescription: '',
-    objectives: [],
-    highlights: [],
-    status: 'coming_soon',
-    featuredOnHome: true,
-    displayOrder: 40,
-    homeOrder: 40,
-    slug: 'digital-innovation'
-  }
-];
-
-const BROCHURE_FALLBACKS = [
-  {
-    id: 'fallback-brochure-formations',
-    title: 'Brochure formations SBI',
-    type: 'brochure',
-    category: 'Catalogue',
-    description: 'Une vue claire des formations, des parcours et de l\'accompagnement SBI.',
-    status: 'published',
-    globalVisible: true,
-    displayOrder: 10
-  },
-  {
-    id: 'fallback-guide-alternance',
-    title: 'Guide alternance & aide',
-    type: 'document',
-    category: 'Entreprise',
-    description: 'Les repères essentiels pour préparer un recrutement en alternance.',
-    status: 'published',
-    globalVisible: true,
-    displayOrder: 20
-  },
-  {
-    id: 'fallback-programme-rncp',
-    title: 'Programme Bac / RNCP Niveau 4',
-    type: 'brochure',
-    category: 'Formation',
-    description: 'Le cadre de formation SBI centré sur le Bac / RNCP Niveau 4.',
-    status: 'published',
-    globalVisible: true,
-    displayOrder: 30
-  },
-  {
-    id: 'fallback-fiche-accompagnement',
-    title: 'Fiche accompagnement',
-    type: 'document',
-    category: 'Conseil',
-    description: 'Comment SBI accompagne candidats et entreprises avant, pendant et après.',
-    status: 'published',
-    globalVisible: true,
-    displayOrder: 40
-  }
-];
+let activePublicFormations = [];
+let activePublicResources = [];
 
 function text(value, fallback = '') {
   if (value === null || value === undefined) return fallback;
@@ -187,6 +93,21 @@ function normalizeSlug(value, fallback = '') {
     .replace(/(^-|-$)/g, '') || fallback;
 }
 
+
+function normalizeSeo(value = {}, fallback = {}) {
+  const raw = value && typeof value === 'object' ? value : {};
+  return {
+    title: text(raw.title || raw.seoTitle || fallback.title),
+    description: text(raw.description || raw.metaDescription || fallback.description),
+    indexable: raw.indexable !== false,
+    ogTitle: text(raw.ogTitle),
+    ogDescription: text(raw.ogDescription),
+    ogImageUrl: text(raw.ogImageUrl || raw.imageUrl),
+    sitemapPriority: toNumber(raw.sitemapPriority, 0.6),
+    sitemapChangefreq: text(raw.sitemapChangefreq, 'monthly')
+  };
+}
+
 function getStatus(raw = {}) {
   const status = text(raw.status || raw.publicStatus || raw.etat || (raw.isComingSoon ? 'coming_soon' : 'published')).toLowerCase();
 
@@ -201,6 +122,372 @@ function isPublicVisible(item) {
 
 function isComingSoon(item) {
   return item.status === 'coming_soon';
+}
+
+function createSeoUrl(pathname = '/', params = {}) {
+  const url = new URL(pathname, SEO_SITE_ORIGIN);
+  Object.entries(params).forEach(([key, value]) => {
+    const cleanValue = text(value);
+    if (cleanValue) url.searchParams.set(key, cleanValue);
+  });
+  return url.href;
+}
+
+function createRuntimeUrl(pathname = '/', params = {}) {
+  const url = new URL(pathname, window.location.origin);
+  Object.entries(params).forEach(([key, value]) => {
+    const cleanValue = text(value);
+    if (cleanValue) url.searchParams.set(key, cleanValue);
+  });
+  return `${url.pathname}${url.search}`;
+}
+
+function createFormationSeoUrl(formation) {
+  return createSeoUrl('/formations.html', { [FORMATION_QUERY_KEY]: formation?.slug });
+}
+
+function createFormationRuntimeUrl(formation) {
+  return createRuntimeUrl('/formations.html', { [FORMATION_QUERY_KEY]: formation?.slug });
+}
+
+function createResourceSeoUrl(resource) {
+  return createSeoUrl('/ressources.html', { [RESOURCE_QUERY_KEY]: resource?.slug });
+}
+
+function createResourceRuntimeUrl(resource) {
+  return createRuntimeUrl('/ressources.html', { [RESOURCE_QUERY_KEY]: resource?.slug });
+}
+
+function getCurrentDynamicSlug(keys = []) {
+  const params = new URLSearchParams(window.location.search);
+  for (const key of keys) {
+    const value = normalizeSlug(params.get(key));
+    if (value) return value;
+  }
+  return normalizeSlug(window.location.hash.replace('#', ''));
+}
+
+function readSeoStateFromHead() {
+  const getMeta = (selector) => text(document.head.querySelector(selector)?.getAttribute('content'));
+  const canonical = document.head.querySelector('link[rel="canonical"]');
+
+  return {
+    title: document.title,
+    description: getMeta('meta[name="description"]'),
+    robots: getMeta('meta[name="robots"]'),
+    canonical: text(canonical?.getAttribute('href')),
+    ogType: getMeta('meta[property="og:type"]'),
+    ogTitle: getMeta('meta[property="og:title"]'),
+    ogDescription: getMeta('meta[property="og:description"]'),
+    ogUrl: getMeta('meta[property="og:url"]'),
+    ogImage: getMeta('meta[property="og:image"]'),
+    twitterCard: getMeta('meta[name="twitter:card"]'),
+    twitterTitle: getMeta('meta[name="twitter:title"]'),
+    twitterDescription: getMeta('meta[name="twitter:description"]'),
+    twitterImage: getMeta('meta[name="twitter:image"]')
+  };
+}
+
+const baseSeoByPage = new Map();
+
+function getCurrentPublicPageId() {
+  return text(document.body?.dataset?.sbiPublicPage, 'home');
+}
+
+function captureBaseSeoForCurrentPage({ force = false } = {}) {
+  const pageId = getCurrentPublicPageId();
+  if (!force && baseSeoByPage.has(pageId)) return baseSeoByPage.get(pageId);
+
+  const state = readSeoStateFromHead();
+  baseSeoByPage.set(pageId, state);
+  return state;
+}
+
+function ensureMeta(selector, createNode) {
+  let node = document.head.querySelector(selector);
+  if (node) return node;
+
+  node = createNode();
+  node.dataset.sbiSeoDynamic = 'head';
+  const anchor = document.head.querySelector('link[rel="stylesheet"], link[rel="preload"][as="style"], style');
+  if (anchor?.parentNode) document.head.insertBefore(node, anchor);
+  else document.head.append(node);
+  return node;
+}
+
+function setMetaContent(selector, value, createNode) {
+  const cleanValue = text(value);
+  if (!cleanValue) return;
+  ensureMeta(selector, createNode).setAttribute('content', cleanValue);
+}
+
+function setManagedHeadState(state = {}) {
+  if (state.title) document.title = state.title;
+
+  setMetaContent('meta[name="description"]', state.description, () => {
+    const meta = document.createElement('meta');
+    meta.name = 'description';
+    return meta;
+  });
+
+  setMetaContent('meta[name="robots"]', state.robots || 'index,follow', () => {
+    const meta = document.createElement('meta');
+    meta.name = 'robots';
+    return meta;
+  });
+
+  const canonicalUrl = text(state.canonical);
+  if (canonicalUrl) {
+    const canonical = ensureMeta('link[rel="canonical"]', () => {
+      const link = document.createElement('link');
+      link.rel = 'canonical';
+      return link;
+    });
+    canonical.href = canonicalUrl;
+  }
+
+  setMetaContent('meta[property="og:type"]', state.ogType || 'website', () => {
+    const meta = document.createElement('meta');
+    meta.setAttribute('property', 'og:type');
+    return meta;
+  });
+  setMetaContent('meta[property="og:title"]', state.ogTitle || state.title, () => {
+    const meta = document.createElement('meta');
+    meta.setAttribute('property', 'og:title');
+    return meta;
+  });
+  setMetaContent('meta[property="og:description"]', state.ogDescription || state.description, () => {
+    const meta = document.createElement('meta');
+    meta.setAttribute('property', 'og:description');
+    return meta;
+  });
+  setMetaContent('meta[property="og:url"]', state.ogUrl || state.canonical, () => {
+    const meta = document.createElement('meta');
+    meta.setAttribute('property', 'og:url');
+    return meta;
+  });
+  setMetaContent('meta[property="og:image"]', state.ogImage, () => {
+    const meta = document.createElement('meta');
+    meta.setAttribute('property', 'og:image');
+    return meta;
+  });
+  setMetaContent('meta[name="twitter:card"]', state.twitterCard || 'summary_large_image', () => {
+    const meta = document.createElement('meta');
+    meta.name = 'twitter:card';
+    return meta;
+  });
+  setMetaContent('meta[name="twitter:title"]', state.twitterTitle || state.title, () => {
+    const meta = document.createElement('meta');
+    meta.name = 'twitter:title';
+    return meta;
+  });
+  setMetaContent('meta[name="twitter:description"]', state.twitterDescription || state.description, () => {
+    const meta = document.createElement('meta');
+    meta.name = 'twitter:description';
+    return meta;
+  });
+  setMetaContent('meta[name="twitter:image"]', state.twitterImage || state.ogImage, () => {
+    const meta = document.createElement('meta');
+    meta.name = 'twitter:image';
+    return meta;
+  });
+}
+
+function removeDynamicDetailStructuredData() {
+  document.getElementById(DYNAMIC_DETAIL_JSONLD_ID)?.remove();
+}
+
+function injectDynamicDetailStructuredData(payload) {
+  removeDynamicDetailStructuredData();
+  if (!payload) return;
+
+  const script = document.createElement('script');
+  script.id = DYNAMIC_DETAIL_JSONLD_ID;
+  script.type = 'application/ld+json';
+  script.dataset.sbiSeoDynamic = 'detail';
+  script.textContent = JSON.stringify(payload);
+  document.head.append(script);
+}
+
+function resetDynamicSeoToPageDefaults() {
+  removeDynamicDetailStructuredData();
+  const state = baseSeoByPage.get(getCurrentPublicPageId()) || captureBaseSeoForCurrentPage();
+  setManagedHeadState(state);
+}
+
+function getFormationSeoImage(formation) {
+  if (isComingSoon(formation)) return createSeoUrl('/assets/coming.png');
+  const image = text(formation?.seo?.ogImageUrl || formation?.cover?.url);
+  return image || createSeoUrl('/assets/sbi_brand.webp');
+}
+
+function getResourceSeoImage(resource) {
+  const image = text(resource?.seo?.ogImageUrl || resource?.thumbnail?.url);
+  return image || createSeoUrl('/assets/sbi_brand.webp');
+}
+
+function applyFormationDynamicSeo(formation) {
+  if (!formation || isComingSoon(formation)) return;
+  captureBaseSeoForCurrentPage();
+
+  const title = text(formation.seo?.title, `${formation.title} - Formation Sport Business Institute`);
+  const description = text(formation.seo?.description || formation.longDescription || formation.shortSummary, `Découvrez la formation ${formation.title} proposée par Sport Business Institute.`);
+  const canonical = createFormationSeoUrl(formation);
+  const image = getFormationSeoImage(formation);
+
+  setManagedHeadState({
+    title,
+    description,
+    robots: formation.seo?.indexable === false ? 'noindex,follow' : 'index,follow',
+    canonical,
+    ogType: 'article',
+    ogTitle: text(formation.seo?.ogTitle, title),
+    ogDescription: text(formation.seo?.ogDescription, description),
+    ogUrl: canonical,
+    ogImage: image,
+    twitterCard: 'summary_large_image',
+    twitterTitle: text(formation.seo?.ogTitle, title),
+    twitterDescription: text(formation.seo?.ogDescription, description),
+    twitterImage: image
+  });
+
+  injectDynamicDetailStructuredData({
+    '@context': 'https://schema.org',
+    '@type': 'Course',
+    name: formation.title,
+    description,
+    url: canonical,
+    image,
+    courseMode: formation.modality || undefined,
+    educationalLevel: formation.level || undefined,
+    provider: {
+      '@type': 'EducationalOrganization',
+      name: 'Sport Business Institute',
+      url: SEO_SITE_ORIGIN
+    }
+  });
+}
+
+function applyResourceDynamicSeo(resource) {
+  if (!resource) return;
+  captureBaseSeoForCurrentPage();
+
+  const title = text(resource.seo?.title, `${resource.title} - Ressource Sport Business Institute`);
+  const description = text(resource.seo?.description || resource.description, `Consultez la ressource ${resource.title} proposée par Sport Business Institute.`);
+  const canonical = createResourceSeoUrl(resource);
+  const image = getResourceSeoImage(resource);
+
+  setManagedHeadState({
+    title,
+    description,
+    robots: resource.seo?.indexable === false ? 'noindex,follow' : 'index,follow',
+    canonical,
+    ogType: 'article',
+    ogTitle: text(resource.seo?.ogTitle, title),
+    ogDescription: text(resource.seo?.ogDescription, description),
+    ogUrl: canonical,
+    ogImage: image,
+    twitterCard: 'summary_large_image',
+    twitterTitle: text(resource.seo?.ogTitle, title),
+    twitterDescription: text(resource.seo?.ogDescription, description),
+    twitterImage: image
+  });
+
+  injectDynamicDetailStructuredData({
+    '@context': 'https://schema.org',
+    '@type': 'DigitalDocument',
+    name: resource.title,
+    description,
+    url: canonical,
+    image,
+    fileFormat: resource.file?.mimeType || undefined,
+    associatedMedia: resource.file?.url ? {
+      '@type': 'MediaObject',
+      contentUrl: resource.file.url,
+      encodingFormat: resource.file.mimeType || 'application/pdf'
+    } : undefined,
+    publisher: {
+      '@type': 'EducationalOrganization',
+      name: 'Sport Business Institute',
+      url: SEO_SITE_ORIGIN
+    }
+  });
+}
+
+function syncDetailHistory(pathname, key, slug, mode = 'push') {
+  const cleanSlug = normalizeSlug(slug);
+  if (!cleanSlug || !window.history?.[`${mode}State`]) return;
+
+  const url = new URL(pathname, window.location.origin);
+  url.searchParams.set(key, cleanSlug);
+  const nextUrl = `${url.pathname}${url.search}`;
+  if (`${window.location.pathname}${window.location.search}` === nextUrl) return;
+
+  window.history[`${mode}State`]({ sbiDynamicDetail: key, slug: cleanSlug }, '', nextUrl);
+}
+
+function clearDetailHistory(pathname, keys = [], mode = 'push') {
+  if (!window.history?.[`${mode}State`]) return;
+
+  const url = new URL(pathname, window.location.origin);
+  const nextUrl = url.pathname;
+  const current = `${window.location.pathname}${window.location.search}`;
+  const hasDynamicParam = keys.some((key) => new URLSearchParams(window.location.search).has(key));
+  if (!hasDynamicParam || current === nextUrl) return;
+
+  window.history[`${mode}State`]({ sbiDynamicDetail: null }, '', nextUrl);
+}
+
+function isMobilePublicViewport() {
+  return window.matchMedia?.('(max-width: 768px)')?.matches || window.innerWidth <= 768;
+}
+
+function forceResetMobileFormationsSlider(grid) {
+  if (!grid || !isMobilePublicViewport()) return;
+
+  if (!grid.__sbiMobileSliderTouchBound) {
+    const markTouched = () => {
+      grid.dataset.sbiMobileSliderTouched = 'true';
+    };
+    grid.addEventListener('pointerdown', markTouched, { passive: true });
+    grid.addEventListener('touchstart', markTouched, { passive: true });
+    grid.addEventListener('wheel', markTouched, { passive: true });
+    grid.__sbiMobileSliderTouchBound = true;
+  }
+
+  delete grid.dataset.sbiMobileSliderTouched;
+  grid.dataset.sbiMobileSliderResetting = 'true';
+
+  const reset = () => {
+    if (!grid.isConnected || grid.dataset.sbiMobileSliderTouched === 'true') return;
+    try {
+      grid.scrollTo({ left: 0, top: 0, behavior: 'auto' });
+    } catch {
+      grid.scrollLeft = 0;
+      grid.scrollTop = 0;
+    }
+    grid.scrollLeft = 0;
+    grid.scrollTop = 0;
+  };
+
+  reset();
+  window.requestAnimationFrame(() => {
+    reset();
+    window.requestAnimationFrame(reset);
+  });
+
+  [90, 220, 460, 760].forEach((delay) => {
+    window.setTimeout(reset, delay);
+  });
+
+  window.setTimeout(() => {
+    if (grid.isConnected) delete grid.dataset.sbiMobileSliderResetting;
+  }, 860);
+}
+
+function resetActiveMobileFormationsSlider() {
+  if ((document.body?.dataset?.sbiPublicPage || '') !== 'formations') return;
+  forceResetMobileFormationsSlider(document.querySelector('[data-sbi-formations-feed]'));
 }
 
 function normalizeFormation(raw = {}, id = '') {
@@ -232,6 +519,7 @@ function normalizeFormation(raw = {}, id = '') {
     displayOrder: toNumber(raw.displayOrder ?? raw.ordreAffichage, 999),
     homeOrder: toNumber(raw.homeOrder ?? raw.ordreIndex ?? raw.displayOrder, 999),
     slug,
+    seo: normalizeSeo(raw.seo, { title, description: raw.shortSummary || raw.description }),
     cover: {
       url: text(cover.url || raw.coverUrl || raw.imageUrl),
       storagePath: text(cover.storagePath || raw.coverStoragePath),
@@ -244,11 +532,13 @@ function normalizeFormation(raw = {}, id = '') {
 
 function normalizeResource(raw = {}, id = '') {
   const title = text(raw.title || raw.titre || raw.name, 'Ressource SBI');
+  const slug = normalizeSlug(raw.slug, normalizeSlug(title, id || 'ressource-sbi'));
   const file = raw.file && typeof raw.file === 'object' ? raw.file : {};
   const thumbnail = raw.thumbnail && typeof raw.thumbnail === 'object' ? raw.thumbnail : {};
 
   return {
-    id: text(id || raw.id || normalizeSlug(title, 'ressource-sbi')),
+    id: text(id || raw.id || slug),
+    slug,
     title,
     description: text(raw.description || raw.resume, 'Ressource SBI en cours de publication.'),
     type: text(raw.type, 'document'),
@@ -260,10 +550,13 @@ function normalizeResource(raw = {}, id = '') {
     file: {
       url: text(file.url || raw.fileUrl || raw.pdfUrl),
       storagePath: text(file.storagePath || raw.fileStoragePath),
-      mimeType: text(file.mimeType || raw.mimeType),
+      name: text(file.name || raw.fileName),
+      originalName: text(file.originalName || raw.originalFileName),
+      mimeType: text(file.mimeType || raw.mimeType, 'application/pdf'),
       size: toNumber(file.size || raw.fileSize, 0)
     },
     externalUrl: text(raw.externalUrl || raw.url),
+    seo: normalizeSeo(raw.seo, { title, description: raw.description || raw.resume }),
     thumbnail: {
       url: text(thumbnail.url || raw.thumbnailUrl || raw.imageUrl),
       objectPositionX: Math.min(100, Math.max(0, toNumber(thumbnail.objectPositionX, 50))),
@@ -309,13 +602,24 @@ function appendList(container, title, values) {
   container.append(block);
 }
 
+function getFormationCoverUrl(formation) {
+  if (isComingSoon(formation)) return COMING_SOON_COVER_URL;
+  return text(formation?.cover?.url);
+}
+
 function applyCoverBackground(element, formation) {
-  const coverUrl = text(formation?.cover?.url);
-  const x = toNumber(formation?.cover?.objectPositionX, 50);
-  const y = toNumber(formation?.cover?.objectPositionY, 50);
+  const coverUrl = getFormationCoverUrl(formation);
+  const x = isComingSoon(formation) ? 50 : toNumber(formation?.cover?.objectPositionX, 50);
+  const y = isComingSoon(formation) ? 50 : toNumber(formation?.cover?.objectPositionY, 50);
 
   element.style.setProperty('--sbi-cover-x', `${x}%`);
   element.style.setProperty('--sbi-cover-y', `${y}%`);
+
+  if (isComingSoon(formation)) {
+    element.classList.add('has-coming-cover');
+  } else {
+    element.classList.remove('has-coming-cover');
+  }
 
   if (coverUrl) {
     element.style.setProperty('--sbi-cover-image', `url("${coverUrl.replace(/"/g, '%22')}")`);
@@ -400,6 +704,11 @@ function closeFormationSheet(sheet, options = {}) {
     target.__sbiKeyHandler = null;
   }
 
+  if (closeOptions.restoreUrl !== false && getCurrentPublicPageId() === 'formations') {
+    clearDetailHistory('/formations.html', [FORMATION_QUERY_KEY], closeOptions.historyMode || 'push');
+    resetDynamicSeoToPageDefaults();
+  }
+
   target.classList.remove('is-open');
 
   if (closeOptions.immediate) {
@@ -411,17 +720,17 @@ function closeFormationSheet(sheet, options = {}) {
 }
 
 function forceCloseFormationSheet() {
-  closeFormationSheet(null, { immediate: true });
+  closeFormationSheet(null, { immediate: true, restoreUrl: false });
 }
 
 window.SBI_CLOSE_PUBLIC_FORMATION_SHEET = forceCloseFormationSheet;
 window.addEventListener('sbi:public-shell:before-navigate', forceCloseFormationSheet);
 window.addEventListener('pagehide', forceCloseFormationSheet);
 
-function openFormationSheet(formation) {
+function openFormationSheet(formation, options = {}) {
   if (!formation || isComingSoon(formation)) return;
 
-  closeFormationSheet();
+  closeFormationSheet(null, { immediate: true, restoreUrl: false });
 
   const sheet = createElement('aside', 'public-formation-sheet');
   sheet.dataset.sbiFormationSheet = 'true';
@@ -474,48 +783,51 @@ function openFormationSheet(formation) {
   document.documentElement.style.setProperty('--sbi-scrollbar-compensation', `${scrollbarCompensation}px`);
   document.documentElement.classList.add('sbi-formation-sheet-open');
   document.body.classList.add('sbi-formation-sheet-open');
+
+  if (options.applySeo !== false) applyFormationDynamicSeo(formation);
+  if (options.updateUrl !== false && getCurrentPublicPageId() === 'formations') {
+    syncDetailHistory('/formations.html', FORMATION_QUERY_KEY, formation.slug, options.historyMode || 'push');
+  }
+
   window.requestAnimationFrame(() => sheet.classList.add('is-open'));
   closeButton.focus({ preventScroll: true });
 }
 
 function createFormationCard(formation, options = {}) {
   const isHome = options.mode === 'home';
-  const article = createElement('article', isHome ? 'parcours-card fade-in visible sbi-home-formation-card' : 'public-formation-card fade-in visible');
+  const isCatalogue = !isHome;
+  const cardTag = isCatalogue && !isComingSoon(formation) ? 'a' : 'article';
+  const article = createElement(cardTag, 'parcours-card fade-in visible sbi-home-formation-card');
+
+  if (cardTag === 'a') {
+    article.href = createFormationRuntimeUrl(formation);
+  }
+
   article.dataset.formationId = formation.id;
   article.dataset.formationSlug = formation.slug;
   article.dataset.formationStatus = formation.status;
   if (isComingSoon(formation)) article.classList.add('is-coming-soon');
   applyCoverBackground(article, formation);
 
-  const mask = createElement('div', isHome ? 'card-mask' : 'public-formation-cover-mask');
-  const badge = createElement('div', isHome ? 'card-badge' : 'public-formation-badge');
-  const content = createElement('div', isHome ? 'card-content' : 'public-formation-content');
+  const mask = createElement('div', 'card-mask');
+  const badge = createElement('div', 'card-badge');
+  const content = createElement('div', 'card-content');
 
-  const statusLabel = isComingSoon(formation) ? 'Prochainement' : formation.category;
+  const statusLabel = isComingSoon(formation) ? 'Prochainement' : text(formation.category, 'Formation SBI');
   content.append(createElement('span', 'public-formation-kicker text-italic', statusLabel));
+  content.append(createElement('h3', 'text-italic', formation.title));
 
-  const title = createElement('h3', 'text-italic', formation.title);
-  content.append(title);
-
-  if (!isHome && formation.subtitle) {
-    content.append(createElement('p', 'public-formation-subtitle text-italic', formation.subtitle));
-  }
-
-  const meta = createElement('div', isHome ? 'card-footer' : 'public-formation-meta');
-  const metaItems = [formation.duration, formation.level, formation.modality].filter(Boolean).slice(0, isHome ? 1 : 3);
-  metaItems.forEach((value) => meta.append(createElement('span', 'course-count text-italic', value)));
+  const footer = createElement('div', 'card-footer');
+  const metaText = isComingSoon(formation)
+    ? 'Bientôt disponible'
+    : text(formation.duration || formation.level || formation.modality, isHome ? 'Voir la fiche' : 'Formation');
+  footer.append(createElement('span', 'course-count text-italic', metaText));
 
   if (!isComingSoon(formation)) {
-    const arrow = createElement('span', 'arrow text-blue', isHome ? '→' : '+');
-    meta.append(arrow);
+    footer.append(createElement('span', 'arrow text-blue', '→'));
   }
 
-  content.append(meta);
-
-  if (!isHome) {
-    content.append(createElement('p', 'public-formation-summary text-italic', formation.shortSummary));
-  }
-
+  content.append(footer);
   article.append(mask, badge, content);
 
   if (isComingSoon(formation)) {
@@ -524,41 +836,138 @@ function createFormationCard(formation, options = {}) {
     return article;
   }
 
-  if (isHome) {
-    article.tabIndex = 0;
-    article.setAttribute('role', 'button');
-    article.setAttribute('aria-label', `Ouvrir la fiche formation ${formation.title}`);
-    return article;
+  article.tabIndex = 0;
+  article.setAttribute('role', isCatalogue ? 'link' : 'button');
+  article.setAttribute('aria-label', `Ouvrir la fiche formation ${formation.title}`);
+
+  if (isCatalogue) {
+    const activate = (event) => {
+      event?.preventDefault?.();
+      openFormationSheet(formation);
+    };
+    article.addEventListener('click', activate);
+    article.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        activate();
+      }
+    });
   }
 
-  const toggle = document.createElement('button');
-  toggle.type = 'button';
-  toggle.className = 'public-formation-toggle text-italic';
-  toggle.textContent = 'Ouvrir la fiche complète';
-  toggle.addEventListener('click', (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    openFormationSheet(formation);
-  });
-
-  content.append(toggle);
   return article;
+}
+
+function formatPublicFileSize(bytes = 0) {
+  const size = Number(bytes) || 0;
+  if (size <= 0) return '';
+  if (size < 1024 * 1024) return `${Math.round(size / 1024)} Ko`;
+  return `${(size / (1024 * 1024)).toFixed(size >= 10 * 1024 * 1024 ? 0 : 1)} Mo`;
+}
+
+function getPublicResourceFileName(item) {
+  const rawName = text(item?.file?.originalName || item?.file?.name || item?.title || 'brochure-sbi');
+  const clean = rawName
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\.pdf$/i, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '') || 'brochure-sbi';
+  return `${clean}.pdf`;
+}
+
+function triggerBlobDownload(blob, filename) {
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = objectUrl;
+  link.download = filename || 'brochure-sbi.pdf';
+  document.body.append(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1200);
+}
+
+function triggerDirectDownload(url, filename) {
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename || 'brochure-sbi.pdf';
+  link.rel = 'noopener noreferrer';
+  document.body.append(link);
+  link.click();
+  link.remove();
+}
+
+async function downloadPublicResourceFile(item) {
+  const filename = getPublicResourceFileName(item);
+  const storagePath = text(item?.file?.storagePath);
+  const directUrl = text(item?.file?.url || item?.externalUrl);
+
+  try {
+    if (storagePath) {
+      const { storage, ref, getBlob } = await getStorageTools();
+      const blob = await getBlob(ref(storage, storagePath));
+      triggerBlobDownload(blob, filename);
+      return;
+    }
+
+    if (directUrl) {
+      triggerDirectDownload(directUrl, filename);
+      return;
+    }
+
+    throw new Error('Aucun fichier PDF disponible pour cette ressource.');
+  } catch (error) {
+    console.warn('[SBI Public] Téléchargement direct impossible.', error);
+    if (directUrl) triggerDirectDownload(directUrl, filename);
+  }
 }
 
 function createResourceCard(item) {
   const article = createElement('article', 'public-resource-card fade-in visible');
   article.dataset.resourceId = item.id;
 
+  article.dataset.resourceSlug = item.slug;
+
   const marker = createElement('span', 'public-card-index', item.category || item.type || 'SBI');
-  const title = createElement('h3', 'text-italic', item.title);
+  const title = createElement('h3', 'text-italic');
+  const titleLink = createElement('a', 'public-resource-title-link text-italic', item.title);
+  titleLink.href = createResourceRuntimeUrl(item);
+  titleLink.setAttribute('aria-label', `Voir la fiche ressource ${item.title}`);
+  title.append(titleLink);
   const description = createElement('p', 'text-italic', item.description);
+
+  titleLink.addEventListener('click', () => {
+    window.requestAnimationFrame(() => revealResourceFromUrl([item], { historyMode: 'replace' }));
+  });
 
   article.append(marker, title, description);
 
-  const href = item.file.url || item.externalUrl || `contact.html?brochure=${encodeURIComponent(item.title)}`;
-  const link = createElement('a', 'public-inline-link text-italic', item.file.url || item.externalUrl ? 'Consulter ->' : 'Demander la brochure ->');
+  const hasFile = Boolean(item.file?.url);
+  const href = item.file?.url || item.externalUrl || `contact.html?brochure=${encodeURIComponent(item.title)}`;
+
+  if (hasFile) {
+    const metaText = ['PDF', formatPublicFileSize(item.file.size)].filter(Boolean).join(' · ');
+    if (metaText) article.append(createElement('div', 'public-resource-meta text-italic', metaText));
+
+    const actions = createElement('div', 'public-resource-actions');
+
+    const viewLink = createElement('a', 'public-resource-action public-resource-action-primary text-italic', 'Visualiser');
+    viewLink.href = href;
+    viewLink.target = '_blank';
+    viewLink.rel = 'noopener noreferrer';
+
+    const downloadButton = createElement('button', 'public-resource-action public-resource-download-btn text-italic', 'Télécharger');
+    downloadButton.type = 'button';
+    downloadButton.addEventListener('click', () => downloadPublicResourceFile(item));
+
+    actions.append(viewLink, downloadButton);
+    article.append(actions);
+    return article;
+  }
+
+  const link = createElement('a', 'public-inline-link text-italic', item.externalUrl ? 'Consulter ->' : 'Demander la brochure ->');
   link.href = href;
-  if (item.file.url || item.externalUrl) {
+  if (item.externalUrl) {
     link.target = '_blank';
     link.rel = 'noopener noreferrer';
   }
@@ -579,12 +988,13 @@ function injectFormationStructuredData(formations) {
   const existing = document.getElementById('sbi-public-formations-jsonld');
   if (existing) existing.remove();
 
-  const visible = formations.filter(isPublicVisible).slice(0, 24);
+  const visible = formations.filter((formation) => isPublicVisible(formation) && formation.seo?.indexable !== false).slice(0, 24);
   if (!visible.length) return;
 
   const script = document.createElement('script');
   script.id = 'sbi-public-formations-jsonld';
   script.type = 'application/ld+json';
+  script.dataset.sbiSeoDynamic = 'formations';
   script.textContent = JSON.stringify({
     '@context': 'https://schema.org',
     '@type': 'ItemList',
@@ -595,7 +1005,8 @@ function injectFormationStructuredData(formations) {
       item: {
         '@type': 'Course',
         name: formation.title,
-        description: formation.shortSummary,
+        description: formation.seo?.description || formation.shortSummary,
+        url: createFormationSeoUrl(formation),
         provider: {
           '@type': 'Organization',
           name: 'Sport Business Institute',
@@ -605,6 +1016,90 @@ function injectFormationStructuredData(formations) {
     }))
   });
   document.head.append(script);
+}
+
+
+function injectResourceStructuredData(resources) {
+  const existing = document.getElementById('sbi-public-resources-jsonld');
+  if (existing) existing.remove();
+
+  const visible = resources.filter((resource) => resource.status === 'published' && resource.globalVisible && resource.seo?.indexable !== false).slice(0, 24);
+  if (!visible.length) return;
+
+  const script = document.createElement('script');
+  script.id = 'sbi-public-resources-jsonld';
+  script.type = 'application/ld+json';
+  script.dataset.sbiSeoDynamic = 'resources';
+  script.textContent = JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: 'Ressources Sport Business Institute',
+    itemListElement: visible.map((resource, index) => ({
+      '@type': 'ListItem',
+      position: index + 1,
+      item: {
+        '@type': 'DigitalDocument',
+        name: resource.title,
+        description: resource.seo?.description || resource.description,
+        url: createResourceSeoUrl(resource),
+        encodingFormat: resource.file?.mimeType || undefined,
+        publisher: {
+          '@type': 'EducationalOrganization',
+          name: 'Sport Business Institute',
+          url: SEO_SITE_ORIGIN
+        }
+      }
+    }))
+  });
+  document.head.append(script);
+}
+
+function revealFormationFromUrl(formations = [], options = {}) {
+  const slug = getCurrentDynamicSlug([FORMATION_QUERY_KEY, 'slug']);
+  if (!slug) {
+    resetDynamicSeoToPageDefaults();
+    return false;
+  }
+
+  const formation = formations.find((item) => item.slug === slug);
+  if (!formation || isComingSoon(formation)) {
+    resetDynamicSeoToPageDefaults();
+    return false;
+  }
+
+  const target = document.querySelector(`[data-formation-slug="${slug}"]`);
+  target?.scrollIntoView?.({ behavior: options.behavior || 'smooth', block: 'center' });
+  openFormationSheet(formation, {
+    historyMode: options.historyMode || 'replace',
+    updateUrl: options.updateUrl !== false,
+    applySeo: true
+  });
+  return true;
+}
+
+function revealResourceFromUrl(resources = [], options = {}) {
+  const slug = getCurrentDynamicSlug([RESOURCE_QUERY_KEY, 'ressource', 'brochure']);
+  if (!slug) {
+    resetDynamicSeoToPageDefaults();
+    return false;
+  }
+
+  const resource = resources.find((item) => item.slug === slug);
+  if (!resource) {
+    resetDynamicSeoToPageDefaults();
+    return false;
+  }
+
+  const target = document.querySelector(`[data-resource-slug="${slug}"]`);
+  target?.scrollIntoView?.({ behavior: options.behavior || 'smooth', block: 'center' });
+  target?.classList.add('is-seo-target');
+  window.setTimeout(() => target?.classList.remove('is-seo-target'), 1400);
+
+  applyResourceDynamicSeo(resource);
+  if (options.updateUrl !== false) {
+    syncDetailHistory('/ressources.html', RESOURCE_QUERY_KEY, resource.slug, options.historyMode || 'replace');
+  }
+  return true;
 }
 
 function createHomePreviewPanel(root) {
@@ -640,7 +1135,7 @@ function renderHomePreview(panel, formation) {
 
   const actions = createElement('div', 'sbi-home-formation-preview-actions');
   const allLink = createElement('a', 'btn-primary text-italic', 'Voir toutes les formations');
-  allLink.href = `formations.html#${formation.slug}`;
+  allLink.href = createFormationRuntimeUrl(formation);
   const contactLink = createElement('a', 'public-outline-cta text-italic', 'Demander des infos');
   contactLink.href = `contact.html?formation=${encodeURIComponent(formation.slug)}`;
   actions.append(allLink, contactLink);
@@ -679,10 +1174,10 @@ async function getPublicFormationsWithFallback() {
       (baseRef, tools) => tools.query(baseRef, tools.where('status', 'in', ['published', 'coming_soon']))
     );
     const visible = sortByDisplay(loaded.filter(isPublicVisible));
-    return { items: visible.length ? visible : FORMATION_FALLBACKS, fromFirebase: visible.length > 0 };
+    return { items: visible, fromFirebase: true };
   } catch (error) {
-    console.warn('[SBI Public] Formations publiques indisponibles. Fallback HTML appliqué.', error);
-    return { items: FORMATION_FALLBACKS, fromFirebase: false, error };
+    console.warn('[SBI Public] Formations publiques indisponibles. Aucun placeholder statique affiché.', error);
+    return { items: [], fromFirebase: false, error };
   }
 }
 
@@ -694,39 +1189,42 @@ async function getPublicResourcesWithFallback() {
       (baseRef, tools) => tools.query(baseRef, tools.where('status', '==', 'published'), tools.where('globalVisible', '==', true))
     );
     const visible = sortByDisplay(loaded.filter((item) => item.status === 'published' && item.globalVisible));
-    return { items: visible.length ? visible : BROCHURE_FALLBACKS, fromFirebase: visible.length > 0 };
+    return { items: visible, fromFirebase: true };
   } catch (error) {
-    console.warn('[SBI Public] Ressources publiques indisponibles. Fallback HTML appliqué.', error);
-    return { items: BROCHURE_FALLBACKS, fromFirebase: false, error };
+    console.warn('[SBI Public] Ressources publiques indisponibles. Aucun placeholder statique affiché.', error);
+    return { items: [], fromFirebase: false, error };
   }
 }
 
 async function initFormationsPage(root) {
   const grid = root.querySelector('[data-sbi-formations-feed]');
-  if (!grid || grid.dataset.sbiFeedReady === PUBLIC_CONTENT_VERSION) return;
+  if (!grid) return;
+  captureBaseSeoForCurrentPage({ force: true });
+
+  if (grid.dataset.sbiFeedReady === PUBLIC_CONTENT_VERSION) {
+    revealFormationFromUrl(activePublicFormations, { historyMode: 'replace', behavior: 'auto' });
+    return;
+  }
 
   grid.dataset.sbiFeedReady = PUBLIC_CONTENT_VERSION;
-  grid.classList.add('public-formations-grid');
-  setStatus(root, '[data-sbi-formations-status]', 'Chargement du catalogue public SBI...');
+  grid.classList.add('public-formations-grid', 'grid-parcours');
+  // Statut technique masqué côté public : pas de message admin/client.
 
   const { items, fromFirebase } = await getPublicFormationsWithFallback();
   const visible = sortByDisplay(items.filter(isPublicVisible));
+  activePublicFormations = visible;
   grid.replaceChildren(...visible.map((item) => createFormationCard(item)));
+  forceResetMobileFormationsSlider(grid);
   injectFormationStructuredData(visible);
 
   const publishedCount = visible.filter((item) => item.status === 'published').length;
   const upcomingCount = visible.filter((item) => item.status === 'coming_soon').length;
   const source = fromFirebase ? 'Catalogue Firebase public' : 'Catalogue SBI de base';
-  setStatus(root, '[data-sbi-formations-status]', `${source} affiché : ${publishedCount} formation(s) publiée(s), ${upcomingCount} prochainement.`);
+  // Les compteurs restent internes : l'interface publique ne montre pas de bloc technique Firebase.
 
-  const hash = normalizeSlug(window.location.hash.replace('#', ''));
-  if (hash) {
-    const target = grid.querySelector(`[data-formation-slug="${hash}"]`);
-    target?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
-    const formation = visible.find((item) => item.slug === hash);
-    if (formation && !isComingSoon(formation)) {
-      window.setTimeout(() => openFormationSheet(formation), 180);
-    }
+  const hasDynamicFormation = revealFormationFromUrl(visible, { historyMode: 'replace', behavior: 'smooth' });
+  if (!hasDynamicFormation && !getCurrentDynamicSlug([FORMATION_QUERY_KEY, 'slug'])) {
+    resetDynamicSeoToPageDefaults();
   }
 }
 
@@ -737,8 +1235,7 @@ async function initHomeFeaturedFormations(root) {
   grid.dataset.sbiFeedReady = PUBLIC_CONTENT_VERSION;
 
   const { items } = await getPublicFormationsWithFallback();
-  const featured = sortByDisplay(items.filter((item) => isPublicVisible(item) && item.featuredOnHome), 'homeOrder').slice(0, 4);
-  const cards = (featured.length ? featured : FORMATION_FALLBACKS).slice(0, 4);
+  const cards = sortByDisplay(items.filter((item) => isPublicVisible(item) && item.featuredOnHome), 'homeOrder').slice(0, 4);
 
   grid.replaceChildren(...cards.map((item) => createFormationCard(item, { mode: 'home' })));
   bindHomeFormationCards(root, cards);
@@ -746,16 +1243,25 @@ async function initHomeFeaturedFormations(root) {
 
 async function initBrochuresPage(root) {
   const grid = root.querySelector('[data-sbi-brochures-feed]');
-  if (!grid || grid.dataset.sbiFeedReady === PUBLIC_CONTENT_VERSION) return;
+  if (!grid) return;
+  captureBaseSeoForCurrentPage({ force: true });
+
+  if (grid.dataset.sbiFeedReady === PUBLIC_CONTENT_VERSION) {
+    revealResourceFromUrl(activePublicResources, { historyMode: 'replace', behavior: 'auto' });
+    return;
+  }
 
   grid.dataset.sbiFeedReady = PUBLIC_CONTENT_VERSION;
   setStatus(root, '[data-sbi-brochures-status]', 'Chargement des ressources publiques SBI...');
 
   const { items, fromFirebase } = await getPublicResourcesWithFallback();
+  activePublicResources = items;
   grid.replaceChildren(...items.map((item) => createResourceCard(item)));
+  injectResourceStructuredData(items);
+  revealResourceFromUrl(items, { historyMode: 'replace', behavior: 'smooth' });
   setStatus(root, '[data-sbi-brochures-status]', fromFirebase
     ? 'Ressources Firebase publiques affichées.'
-    : 'Ressources SBI de base affichées. Les ressources administrables seront visibles ici dès publication.');
+    : 'Ressources SBI disponibles. Les nouveaux documents publiés apparaîtront automatiquement ici.');
 }
 
 function getCheckedValue(form, name) {
@@ -1009,7 +1515,7 @@ async function hydrateContactDecorativeVideo(root) {
   if (!(video instanceof HTMLVideoElement)) return;
 
   try {
-    const mediaModule = await import('/js/site-index-public.js?v=8.0P.92');
+    const mediaModule = await import('/js/site-index-public.js?v=8.0P.99');
     const initMedia = mediaModule.initSiteIndexMedia || window.SBI_INIT_SITE_INDEX_MEDIA;
     if (typeof initMedia === 'function') await initMedia({ forceRefresh: false });
   } catch (error) {
@@ -1132,6 +1638,36 @@ export function initSbiPublicPages(root = document) {
 }
 
 window.SBI_INIT_PUBLIC_PAGES = initSbiPublicPages;
+
+function handleDynamicPublicUrl({ behavior = 'auto', historyMode = 'replace' } = {}) {
+  const page = getCurrentPublicPageId();
+
+  if (page === 'formations') {
+    revealFormationFromUrl(activePublicFormations, { behavior, historyMode });
+    return;
+  }
+
+  if (page === 'ressources') {
+    revealResourceFromUrl(activePublicResources, { behavior, historyMode });
+  }
+}
+
+window.addEventListener('sbi:public-shell:navigated', (event) => {
+  if (event?.detail?.page === 'formations') {
+    window.requestAnimationFrame(resetActiveMobileFormationsSlider);
+  }
+
+  window.requestAnimationFrame(() => {
+    handleDynamicPublicUrl({ behavior: event?.detail?.source === 'popstate' ? 'auto' : 'smooth', historyMode: 'replace' });
+  });
+});
+
+window.addEventListener('pageshow', () => {
+  window.requestAnimationFrame(() => {
+    resetActiveMobileFormationsSlider();
+    handleDynamicPublicUrl({ behavior: 'auto', historyMode: 'replace' });
+  });
+});
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => initSbiPublicPages(document), { once: true });

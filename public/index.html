@@ -3,16 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <link rel="manifest" href="/site.webmanifest">
+  <meta name="theme-color" content="#050313">
     <title>SBI - Apprends. Progresse. Performe.</title>
 
-    <link rel="stylesheet" href="css/style.css?v=8.0P.90">
-    <link rel="stylesheet" href="css/sbi-newsletter.css?v=8.0P.84">
-    <link rel="stylesheet" href="css/sbi-footer.css?v=8.0P.76">
-    <link rel="stylesheet" href="css/sbi-home-responsive.css?v=8.0P.34">
-    <link rel="stylesheet" href="css/sbi-founder-image-clean.css?v=8.0P.34">
-    <link rel="stylesheet" href="css/sbi-mobile.css?v=8.0P.21">
-    <link rel="stylesheet" href="css/sbi-qualiopi.css?v=8.0P.32">
-    <link rel="stylesheet" href="css/sbi-diagonals.css?v=8.0P.79">
+    <link rel="stylesheet" href="css/style.css?v=8.0P.125">
+    <link rel="stylesheet" href="css/sbi-newsletter.css?v=8.0P.125">
+    <link rel="stylesheet" href="css/sbi-footer.css?v=8.0P.125">
+    <link rel="stylesheet" href="css/sbi-home-responsive.css?v=8.0P.125">
+    <link rel="stylesheet" href="css/sbi-founder-image-clean.css?v=8.0P.125">
+    <link rel="stylesheet" href="css/sbi-mobile.css?v=8.0P.125">
+    <link rel="stylesheet" href="css/sbi-qualiopi.css?v=8.0P.125">
+    <link rel="stylesheet" href="css/sbi-diagonals.css?v=8.0P.125">
     <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,600;0,800;0,900;1,400;1,600;1,800;1,900&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap" rel="stylesheet">
 </head>
@@ -35,13 +42,6 @@
         </nav>
 
         <div class="header-actions">
-            <button class="btn-icon search-btn" aria-label="Rechercher">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="11" cy="11" r="8"></circle>
-                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                </svg>
-            </button>
-
             <a href="login.html" class="nav-link text-italic">Se connecter</a>
             <a href="contact.html" class="btn-primary text-italic">Contact</a>
         </div>
@@ -83,9 +83,9 @@
                     <div class="hero-buttons">
                         <a href="formations.html" class="btn-primary text-italic">Découvrir les formations <span class="arrow">→</span></a>
 
-                        <a href="#video" class="btn-ghost text-italic">
+                        <a href="#video" class="btn-ghost text-italic" data-sbi-hero-video-open aria-disabled="true">
                             <span class="play-icon">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                                     <polygon points="5 3 19 12 5 21 5 3"></polygon>
                                 </svg>
                             </span>
@@ -159,7 +159,8 @@
                     </div>
                 </div>
             </div>
-        </section>
+        
+</section>
 
         <section id="formations" class="section-parcours padding-global">
             <div class="section-header flex-between fade-in">
@@ -172,53 +173,6 @@
             </div>
 
             <div class="grid-parcours" data-sbi-home-formations-feed>
-                <article class="parcours-card fade-in">
-                    <div class="card-mask"></div>
-                    <div class="card-badge"></div>
-                    <div class="card-content">
-                        <h3 class="text-italic">Marketing &<br>Communication</h3>
-                        <div class="card-footer">
-                            <span class="course-count text-italic">12 formations</span>
-                            <span class="arrow text-blue">→</span>
-                        </div>
-                    </div>
-                </article>
-
-                <article class="parcours-card fade-in">
-                    <div class="card-mask"></div>
-                    <div class="card-badge"></div>
-                    <div class="card-content">
-                        <h3 class="text-italic">Management<br>& Leadership</h3>
-                        <div class="card-footer">
-                            <span class="course-count text-italic">9 formations</span>
-                            <span class="arrow text-blue">→</span>
-                        </div>
-                    </div>
-                </article>
-
-                <article class="parcours-card fade-in">
-                    <div class="card-mask"></div>
-                    <div class="card-badge"></div>
-                    <div class="card-content">
-                        <h3 class="text-italic">Événementiel<br>Sportif</h3>
-                        <div class="card-footer">
-                            <span class="course-count text-italic">8 formations</span>
-                            <span class="arrow text-blue">→</span>
-                        </div>
-                    </div>
-                </article>
-
-                <article class="parcours-card fade-in">
-                    <div class="card-mask"></div>
-                    <div class="card-badge"></div>
-                    <div class="card-content">
-                        <h3 class="text-italic">Digital &<br>Innovation</h3>
-                        <div class="card-footer">
-                            <span class="course-count text-italic">10 formations</span>
-                            <span class="arrow text-blue">→</span>
-                        </div>
-                    </div>
-                </article>
             </div>
         </section>
 
@@ -480,9 +434,9 @@
 
     <script src="js/sbi-background.js?v=8.0P.21"></script>
     <script src="js/main.js?v=8.0P.80"></script>
-    <script src="js/sbi-diagonals.js?v=8.0P.79"></script>
-    <script type="module" src="js/site-index-public.js?v=8.0P.92"></script>
-    <script type="module" src="js/sbi-public-pages.js?v=8.0P.92"></script>
-    <script src="js/public-app-shell.js?v=8.0P.92"></script>
+    <script src="js/sbi-diagonals.js?v=8.0P.104"></script>
+    <script type="module" src="js/site-index-public.js?v=8.0P.126"></script>
+    <script type="module" src="js/sbi-public-pages.js?v=8.0P.126"></script>
+    <script src="js/public-app-shell.js?v=8.0P.126"></script>
 </body>
 </html>

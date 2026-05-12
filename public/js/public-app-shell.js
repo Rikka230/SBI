@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.79 - Home mobile formation cut restore
+ * SBI 8.0P.126 - PUBLIC HEADER CLEANUP + ABOUT FOUNDER FADE
  *
  * Shell public prudent :
  * - navigation fluide des ancres de l'index ;
@@ -8,7 +8,7 @@
  * - espaces admin/student/teacher et viewers toujours protégés en reload.
  */
 
-const PUBLIC_SHELL_VERSION = '8.0P.92';
+const PUBLIC_SHELL_VERSION = '8.0P.126';
 const DISABLED_FLAG = 'sbiPublicShellDisabled';
 const READY_CLASS = 'sbi-public-shell-ready';
 const SCROLLING_CLASS = 'sbi-public-shell-scrolling';
@@ -406,32 +406,145 @@ function pageFetchUrl(url) {
   return `${cleanPath}${url.search || ''}`;
 }
 
+function getPublicCssLinkKey(link) {
+  const href = link?.getAttribute?.('href');
+  if (!href) return null;
+
+  try {
+    const url = new URL(href, window.location.origin);
+    if (url.origin !== window.location.origin || !url.pathname.startsWith('/css/')) return null;
+
+    const rel = (link.getAttribute('rel') || '').toLowerCase();
+    const as = (link.getAttribute('as') || '').toLowerCase();
+    return `${rel}:${as}:${url.pathname}`;
+  } catch {
+    return null;
+  }
+}
+
+function getAbsoluteAssetHref(link) {
+  const href = link?.getAttribute?.('href');
+  if (!href) return '';
+
+  try {
+    return new URL(href, window.location.origin).href;
+  } catch {
+    return href;
+  }
+}
+
+function prunePageScopedHeadAssets(pageId) {
+  if (pageId !== 'home') return;
+
+  document.head.querySelectorAll('link[rel="stylesheet"]').forEach((link) => {
+    const href = link.getAttribute('href') || '';
+    if (/sbi-public-pages\.css/i.test(href)) link.remove();
+  });
+
+  document.head.querySelectorAll('style[data-sbi-public-shell-style]').forEach((style) => style.remove());
+}
+
+
+function syncManagedSeoHead(nextDocument) {
+  const nextHead = nextDocument?.head;
+  if (!nextHead) return;
+
+  const nextTitle = textContentOf(nextDocument.querySelector('title'));
+  if (nextTitle) document.title = nextTitle;
+
+  const managedSelector = '[data-sbi-seo], #sbi-public-formations-jsonld, script[data-sbi-seo-dynamic]';
+  document.head.querySelectorAll(managedSelector).forEach((node) => {
+    try { node.remove(); } catch {}
+  });
+
+  const nextManagedNodes = Array.from(nextHead.querySelectorAll('[data-sbi-seo]'));
+  if (!nextManagedNodes.length) return;
+
+  const insertionAnchor = document.head.querySelector('link[rel="stylesheet"], link[rel="preload"][as="style"], style');
+  nextManagedNodes.forEach((node) => {
+    const clone = node.cloneNode(true);
+    if (insertionAnchor?.parentNode) document.head.insertBefore(clone, insertionAnchor);
+    else document.head.appendChild(clone);
+  });
+}
+
+function textContentOf(node) {
+  return String(node?.textContent || '').trim();
+}
+
 async function syncHeadAssets(nextDocument, pageId) {
   const stylesheetSelector = 'link[rel="stylesheet"], link[rel="preload"][as="style"]';
   const stylesheetLoaders = [];
+  const staleLocalLinks = new Set();
+  const nextLinks = Array.from(nextDocument.querySelectorAll(stylesheetSelector))
+    .filter((link) => Boolean(link.getAttribute('href')));
 
-  nextDocument.querySelectorAll(stylesheetSelector).forEach((link) => {
-    const href = link.getAttribute('href');
-    if (!href) return;
+  const nextLocalCssByKey = new Map();
+  nextLinks.forEach((link) => {
+    const key = getPublicCssLinkKey(link);
+    if (key && !nextLocalCssByKey.has(key)) nextLocalCssByKey.set(key, link);
+  });
 
-    const absoluteHref = new URL(href, window.location.origin).href;
-    const exists = Array.from(document.head.querySelectorAll(stylesheetSelector))
-      .some((current) => {
-        const currentHref = current.getAttribute('href');
-        return currentHref && new URL(currentHref, window.location.origin).href === absoluteHref;
-      });
+  const appendStylesheetClone = (sourceLink, insertAfter = null) => {
+    const absoluteHref = getAbsoluteAssetHref(sourceLink);
+    if (!absoluteHref) return null;
 
-    if (!exists) {
-      const clonedLink = link.cloneNode(true);
-      document.head.appendChild(clonedLink);
-      if (clonedLink.rel === 'stylesheet') {
-        stylesheetLoaders.push(waitForStylesheet(clonedLink));
+    const existing = Array.from(document.head.querySelectorAll(stylesheetSelector))
+      .find((current) => getAbsoluteAssetHref(current) === absoluteHref);
+
+    if (existing) {
+      if ((existing.rel || '').toLowerCase() === 'stylesheet') {
+        stylesheetLoaders.push(waitForStylesheet(existing));
       }
+      return existing;
+    }
+
+    const clonedLink = sourceLink.cloneNode(true);
+    clonedLink.dataset.sbiPublicShellManaged = 'true';
+
+    if (insertAfter?.parentNode) insertAfter.after(clonedLink);
+    else document.head.appendChild(clonedLink);
+
+    if ((clonedLink.rel || '').toLowerCase() === 'stylesheet') {
+      stylesheetLoaders.push(waitForStylesheet(clonedLink));
+    }
+
+    return clonedLink;
+  };
+
+  const syncedCurrentLocalKeys = new Set();
+  Array.from(document.head.querySelectorAll(stylesheetSelector)).forEach((currentLink) => {
+    const key = getPublicCssLinkKey(currentLink);
+    if (!key) return;
+
+    if (syncedCurrentLocalKeys.has(key)) {
+      staleLocalLinks.add(currentLink);
+      return;
+    }
+
+    syncedCurrentLocalKeys.add(key);
+    const nextLink = nextLocalCssByKey.get(key);
+
+    if (!nextLink) {
+      staleLocalLinks.add(currentLink);
+      return;
+    }
+
+    const currentHref = getAbsoluteAssetHref(currentLink);
+    const nextHref = getAbsoluteAssetHref(nextLink);
+
+    if (currentHref !== nextHref) {
+      appendStylesheetClone(nextLink, currentLink);
+      staleLocalLinks.add(currentLink);
     }
   });
 
+  nextLinks.forEach((link) => appendStylesheetClone(link));
+
+  const activeInlineStyleKeys = new Set();
   nextDocument.querySelectorAll('style').forEach((style, index) => {
     const key = `sbi-public-shell-inline-${pageId}-${index}`;
+    activeInlineStyleKeys.add(key);
     let targetStyle = document.head.querySelector(`style[data-sbi-public-shell-style="${key}"]`);
 
     if (!targetStyle) {
@@ -443,9 +556,40 @@ async function syncHeadAssets(nextDocument, pageId) {
     targetStyle.textContent = style.textContent || '';
   });
 
+  document.head.querySelectorAll('style[data-sbi-public-shell-style]').forEach((style) => {
+    if (!activeInlineStyleKeys.has(style.dataset.sbiPublicShellStyle || '')) style.remove();
+  });
+
   if (stylesheetLoaders.length) {
     await Promise.allSettled(stylesheetLoaders);
   }
+
+  staleLocalLinks.forEach((link) => {
+    try { link.remove(); } catch {}
+  });
+
+  const retainedLocalKeys = new Set();
+  document.head.querySelectorAll(stylesheetSelector).forEach((link) => {
+    const key = getPublicCssLinkKey(link);
+    if (!key) return;
+
+    const nextLink = nextLocalCssByKey.get(key);
+    if (!nextLink) {
+      try { link.remove(); } catch {}
+      return;
+    }
+
+    const currentHref = getAbsoluteAssetHref(link);
+    const nextHref = getAbsoluteAssetHref(nextLink);
+    if (currentHref !== nextHref || retainedLocalKeys.has(key)) {
+      try { link.remove(); } catch {}
+      return;
+    }
+
+    retainedLocalKeys.add(key);
+  });
+
+  prunePageScopedHeadAssets(pageId);
 }
 
 function sanitizeBodyFragment(nextDocument) {
@@ -551,11 +695,13 @@ function renderDiagonalsSoon() {
 }
 
 async function ensureDiagonalRendererForPage(pageId) {
-  if (pageId === 'home' && typeof window.SBI_RENDER_DIAGONALS !== 'function') {
+  const pagesWithMobileCuts = new Set(['home', 'formations', 'ressources']);
+
+  if (pagesWithMobileCuts.has(pageId) && typeof window.SBI_RENDER_DIAGONALS !== 'function') {
     try {
-      await import('/js/sbi-diagonals.js?v=8.0P.79');
+      await import('/js/sbi-diagonals.js?v=8.0P.126');
     } catch (error) {
-      console.warn('[SBI Public Shell] Diagonales index indisponibles après PJAX :', error);
+      console.warn('[SBI Public Shell] Diagonales publiques indisponibles après PJAX :', error);
     }
   }
 
@@ -571,9 +717,9 @@ async function runPageInitializers(pageId) {
     console.warn('[SBI Public Shell] Init front public indisponible :', error);
   }
 
-  if (pageId === 'home') {
+  if (['home', 'formations', 'ressources'].includes(pageId)) {
     try {
-      const mediaModule = await import('/js/site-index-public.js?v=8.0P.92');
+      const mediaModule = await import('/js/site-index-public.js?v=8.0P.126');
       const initMedia = mediaModule.initSiteIndexMedia || window.SBI_INIT_SITE_INDEX_MEDIA;
       if (typeof initMedia === 'function') await initMedia({ forceRefresh: false });
     } catch (error) {
@@ -593,7 +739,7 @@ async function runPageInitializers(pageId) {
 
   if (pageId === 'calculator') {
     try {
-      const calculatorModule = await import('/js/sbi-aide-calculator.js?v=8.0P.76');
+      const calculatorModule = await import('/js/sbi-aide-calculator.js?v=8.0P.126');
       const initCalculator = calculatorModule.initSbiAidCalculator || window.SBI_INIT_AID_CALCULATOR;
       if (typeof initCalculator === 'function') initCalculator(document);
     } catch (error) {
@@ -603,7 +749,7 @@ async function runPageInitializers(pageId) {
 
   if (['home', 'formations', 'parcours', 'apropos', 'ressources', 'contact'].includes(pageId)) {
     try {
-      const publicPagesModule = await import('/js/sbi-public-pages.js?v=8.0P.92');
+      const publicPagesModule = await import('/js/sbi-public-pages.js?v=8.0P.126');
       const initPublicPages = publicPagesModule.initSbiPublicPages || window.SBI_INIT_PUBLIC_PAGES;
       if (typeof initPublicPages === 'function') initPublicPages(document);
     } catch (error) {
@@ -650,7 +796,7 @@ async function renderPublicPage(url, decision, { historyMode = 'push', behavior 
       if (!nextDocument.body) throw new Error('Document HTML invalide');
 
       await syncHeadAssets(nextDocument, targetPageId);
-      document.title = nextDocument.title || document.title;
+      syncManagedSeoHead(nextDocument);
 
       const fragment = sanitizeBodyFragment(nextDocument);
       syncBodyAttributes(nextDocument, targetPageId, enabled);

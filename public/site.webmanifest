@@ -1,0 +1,23 @@
+{
+  "name": "Sport Business Institute",
+  "short_name": "SBI",
+  "description": "Plateforme e-learning et formations sport business de Sport Business Institute.",
+  "lang": "fr-FR",
+  "start_url": "/index.html",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#050313",
+  "theme_color": "#050313",
+  "icons": [
+    {
+      "src": "/android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

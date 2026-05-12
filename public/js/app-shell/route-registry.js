@@ -1,5 +1,5 @@
 /**
- * SBI 8.0M.2 - Route registry
+ * SBI 8.0P.118 - Route registry
  *
  * Admin shell :
  * - admin index tabs
@@ -39,7 +39,7 @@ import {
   installCourseEditorTabs,
   installMediaTypeSwitch,
   hasCourseEditorDom
-} from './course-editor-bridge.js';
+} from './course-editor-bridge.js?v=8.0P.118';
 
 const CROPPER_SCRIPT = 'https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js';
 const ADMIN_INDEX_CACHE_KEY = 'admin:index-main';
@@ -278,7 +278,7 @@ async function mountAdminCourses({ url }) {
   window.__SBI_APP_SHELL_MOUNTING_COURSE_EDITOR = true;
 
   try {
-    const module = await import('/admin/js/admin-courses.js');
+    const module = await import('/admin/js/admin-courses.js?v=8.0P.119');
     const cleanupCourses = module.mountAdminCourses?.({ source: 'pjax-admin-courses' });
 
     if (typeof cleanupCourses === 'function') {
@@ -450,7 +450,7 @@ async function mountTeacherCourses({ url }) {
   window.__SBI_APP_SHELL_MOUNTING_COURSE_EDITOR = true;
 
   try {
-    const module = await import('/admin/js/admin-courses.js');
+    const module = await import('/admin/js/admin-courses.js?v=8.0P.119');
     const cleanupCourses = module.mountAdminCourses?.({ source: 'pjax-teacher-courses' });
 
     if (typeof cleanupCourses === 'function') {

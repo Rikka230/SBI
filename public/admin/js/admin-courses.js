@@ -122,7 +122,7 @@ async function mountPublicFormationsAdminSafely(cleanups) {
     if (!publicCatalogRoot) return;
 
     try {
-        const module = await import('/admin/js/public-formations-admin.js?v=8.0P.88');
+        const module = await import('/admin/js/public-formations-admin.js?v=8.0P.119');
         const initPublicFormationsAdmin = module?.initPublicFormationsAdmin || window.SBI_INIT_PUBLIC_FORMATIONS_ADMIN;
 
         if (typeof initPublicFormationsAdmin !== 'function') return;
@@ -139,6 +139,34 @@ async function mountPublicFormationsAdminSafely(cleanups) {
         if (status) {
             status.dataset.tone = 'error';
             status.textContent = 'Catalogue public indisponible. Recharge la page ou vérifie les droits admin.';
+        }
+    }
+}
+
+
+async function mountPublicResourcesAdminSafely(cleanups) {
+    const publicResourcesRoot = document.querySelector('#tab-public-resources [data-sbi-public-resources-admin]');
+
+    if (!publicResourcesRoot) return;
+
+    try {
+        const module = await import('/admin/js/public-resources-admin.js?v=8.0P.119');
+        const initPublicResourcesAdmin = module?.initPublicResourcesAdmin || window.SBI_INIT_PUBLIC_RESOURCES_ADMIN;
+
+        if (typeof initPublicResourcesAdmin !== 'function') return;
+
+        const cleanupPublicResourcesAdmin = initPublicResourcesAdmin({
+            root: document.getElementById('tab-public-resources') || publicResourcesRoot,
+            source: 'admin-courses'
+        });
+
+        if (typeof cleanupPublicResourcesAdmin === 'function') cleanups.push(cleanupPublicResourcesAdmin);
+    } catch (error) {
+        console.warn('[SBI Public Resources Admin] Module isolé non chargé. Le gestionnaire de cours reste disponible :', error);
+        const status = document.getElementById('public-resources-admin-status');
+        if (status) {
+            status.dataset.tone = 'error';
+            status.textContent = 'Brochures indisponibles. Recharge la page ou vérifie les droits admin.';
         }
     }
 }
@@ -322,6 +350,7 @@ export function mountAdminCourses({ source = 'standard' } = {}) {
     setupFormationModal();
 
     mountPublicFormationsAdminSafely(cleanups);
+    mountPublicResourcesAdminSafely(cleanups);
 
     const cleanup = () => {
         disposed = true;

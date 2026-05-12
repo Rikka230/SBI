@@ -41,6 +41,38 @@
                 </p>
             </section>
 
+            <section class="site-youtube-card" aria-labelledby="site-youtube-title">
+                <div class="site-youtube-card__head">
+                    <div>
+                        <span class="site-index-kicker">Vidéo externe</span>
+                        <h2 id="site-youtube-title">Vidéo YouTube hero</h2>
+                        <p>
+                            Ajoute le lien YouTube qui sera ouvert par le bouton “Voir la vidéo” de l’accueil. Le site convertit automatiquement le lien en embed sécurisé <strong>youtube-nocookie.com</strong> et ne charge l’iframe qu’au clic.
+                        </p>
+                    </div>
+                    <span class="site-media-kind">YouTube</span>
+                </div>
+
+                <form class="site-youtube-form" data-youtube-form>
+                    <label for="site-index-youtube-url">Lien YouTube</label>
+                    <div class="site-youtube-row">
+                        <input
+                            id="site-index-youtube-url"
+                            type="text"
+                            inputmode="url"
+                            placeholder="https://www.youtube.com/watch?v=XXXXXXXXXXX"
+                            autocomplete="off"
+                        >
+                        <button type="submit" class="site-media-btn" data-youtube-action="save">Enregistrer</button>
+                        <button type="button" class="site-media-btn secondary" data-youtube-action="remove" id="site-index-youtube-remove">Supprimer</button>
+                    </div>
+                    <p class="site-youtube-help">
+                        Formats acceptés : youtube.com/watch, youtu.be, shorts, embed ou live.
+                    </p>
+                    <p id="site-index-youtube-preview" class="site-youtube-preview">Aucune vidéo YouTube configurée.</p>
+                </form>
+            </section>
+
             <p id="site-index-status" class="site-index-status">Chargement des médias actuels...</p>
             <section id="site-index-grid" class="site-index-grid" aria-label="Médias publics SBI"></section>
         </div>

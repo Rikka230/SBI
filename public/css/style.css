@@ -129,6 +129,179 @@ footer {
     color: var(--sbi-blue);
 }
 
+
+.btn-ghost[aria-disabled="true"] {
+    opacity: 0.58;
+    cursor: not-allowed;
+}
+
+.sbi-hero-video-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 2147483000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: clamp(1rem, 4vw, 3rem);
+    background:
+        radial-gradient(circle at 50% 18%, rgba(42, 87, 255, 0.18), transparent 34%),
+        rgba(2, 4, 12, 0.92);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.22s ease;
+    will-change: opacity;
+}
+
+.sbi-hero-video-overlay.is-open {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.sbi-hero-video-modal {
+    position: relative;
+    width: min(1120px, 100%);
+    opacity: 0;
+    transition: opacity 0.22s ease;
+}
+
+.sbi-hero-video-overlay.is-open .sbi-hero-video-modal {
+    opacity: 1;
+}
+
+.sbi-hero-video-frame {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    background: #02040c;
+    border: 1px solid rgba(42, 87, 255, 0.48);
+    box-shadow:
+        0 30px 90px rgba(0, 0, 0, 0.62),
+        0 0 46px rgba(42, 87, 255, 0.18),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 24px), calc(100% - 24px) 100%, 0 100%);
+}
+
+.sbi-hero-video-frame::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    z-index: 2;
+}
+
+.sbi-hero-video-frame iframe {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    display: block;
+    background: #02040c;
+    opacity: 1;
+}
+
+.sbi-hero-video-loader {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    display: grid;
+    place-items: center;
+    color: #c7d2fe;
+    font-size: 0.86rem;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    background:
+        radial-gradient(circle at 50% 35%, rgba(42, 87, 255, 0.22), transparent 44%),
+        #02040c;
+}
+
+.sbi-hero-video-loader::before {
+    content: '';
+    width: 26px;
+    height: 26px;
+    margin-right: 0.75rem;
+    border: 2px solid rgba(255, 255, 255, 0.18);
+    border-top-color: rgba(42, 87, 255, 0.95);
+    border-radius: 999px;
+    animation: sbiHeroVideoSpin 0.9s linear infinite;
+}
+
+@keyframes sbiHeroVideoSpin {
+    to { transform: rotate(360deg); }
+}
+
+.sbi-hero-video-fallback {
+    display: inline-flex;
+    margin-top: 0.9rem;
+    color: #8fb2ff;
+    font-size: 0.78rem;
+    font-weight: 900;
+    font-style: italic;
+    text-decoration: none;
+}
+
+.sbi-hero-video-fallback:hover,
+.sbi-hero-video-fallback:focus-visible {
+    color: #fff;
+    outline: none;
+}
+
+.sbi-hero-video-fallback[hidden] {
+    display: none;
+}
+
+.sbi-hero-video-close {
+    position: fixed;
+    top: clamp(1rem, 3vw, 2rem);
+    right: clamp(1rem, 3vw, 2rem);
+    z-index: 2147483001;
+    width: 48px;
+    height: 48px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: rgba(5, 8, 18, 0.86);
+    color: #fff;
+    cursor: pointer;
+    font-size: 2rem;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 11px), calc(100% - 11px) 100%, 0 100%);
+    transition: transform 0.22s ease, border-color 0.22s ease, background 0.22s ease;
+}
+
+.sbi-hero-video-close:hover,
+.sbi-hero-video-close:focus-visible {
+    transform: translateY(-1px);
+    border-color: rgba(42, 87, 255, 0.72);
+    background: rgba(42, 87, 255, 0.18);
+    outline: none;
+}
+
+body.sbi-hero-video-overlay-lock {
+    overflow: hidden;
+}
+
+@media (max-width: 720px) {
+    .sbi-hero-video-overlay {
+        padding: 0.8rem;
+    }
+
+    .sbi-hero-video-close {
+        width: 42px;
+        height: 42px;
+        font-size: 1.7rem;
+    }
+
+    .sbi-hero-video-frame {
+        clip-path: polygon(0 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%);
+    }
+}
+
 .btn-icon {
     color: white;
     display: flex;
@@ -1783,6 +1956,26 @@ footer {
     }
 }
 
+
+/* =========================================================
+   SBI 8.0P.115 - Mobile PJAX anti-flash guard
+   - Keeps the public shell hidden during mobile body swaps
+   - Reveals after the synchronized CSS + page init pass
+   ========================================================= */
+@media (max-width: 768px) and (prefers-reduced-motion: no-preference) {
+    html.sbi-public-shell-ready body[data-sbi-public-shell="enabled"].sbi-public-shell-loading [data-sbi-public-shell-root],
+    html.sbi-public-shell-ready body[data-sbi-public-shell="enabled"].sbi-public-shell-entering [data-sbi-public-shell-root] {
+        opacity: 0 !important;
+        transition: none !important;
+        pointer-events: none !important;
+    }
+
+    html.sbi-public-shell-ready body[data-sbi-public-shell="enabled"].sbi-public-shell-revealing [data-sbi-public-shell-root] {
+        opacity: 1 !important;
+        transition: opacity 160ms ease !important;
+    }
+}
+
 @media (prefers-reduced-motion: reduce) {
     html.sbi-public-shell-ready .fade-in,
     html.sbi-public-shell-ready .fade-in.visible,
@@ -2085,3 +2278,9 @@ html.sbi-formation-sheet-open {
     }
 }
 
+
+
+/* SBI 8.0P.94 - Index data safety only, visual design protected */
+.sbi-home-formation-card.has-coming-cover.has-cover-image {
+    background-position: center, center !important;
+}

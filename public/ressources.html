@@ -3,14 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <link rel="manifest" href="/site.webmanifest">
+  <meta name="theme-color" content="#050313">
     <meta name="description" content="Ressources Sport Business Institute : brochures, documents et supports publics pour découvrir les formations SBI.">
     <title>Ressources - Sport Business Institute</title>
 
-    <link rel="stylesheet" href="css/style.css?v=8.0P.90">
-    <link rel="stylesheet" href="css/sbi-newsletter.css">
-    <link rel="stylesheet" href="css/sbi-footer.css?v=8.0P.76">
-    <link rel="stylesheet" href="css/sbi-home-responsive.css?v=8.0P.10d">
-    <link rel="stylesheet" href="css/sbi-public-pages.css?v=8.0P.89">
+    <link rel="stylesheet" href="css/style.css?v=8.0P.125">
+    <link rel="stylesheet" href="css/sbi-newsletter.css?v=8.0P.125">
+    <link rel="stylesheet" href="css/sbi-footer.css?v=8.0P.125">
+    <link rel="stylesheet" href="css/sbi-home-responsive.css?v=8.0P.125">
+    <link rel="stylesheet" href="css/sbi-mobile.css?v=8.0P.125">
+    <link rel="stylesheet" href="css/sbi-diagonals.css?v=8.0P.125">
+    <link rel="stylesheet" href="css/sbi-public-pages.css?v=8.0P.125">
     <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,600;0,800;0,900;1,400;1,600;1,800;1,900&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap" rel="stylesheet">
 </head>
@@ -32,12 +41,6 @@
         </nav>
 
         <div class="header-actions">
-            <button class="btn-icon search-btn" aria-label="Rechercher">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <circle cx="11" cy="11" r="8"></circle>
-                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                </svg>
-            </button>
             <a href="login.html" class="nav-link text-italic">Se connecter</a>
             <a href="contact.html" class="btn-primary text-italic">Contact</a>
         </div>
@@ -49,62 +52,65 @@
         </button>
     </header>
 
-    <main id="public-main" class="public-page" data-sbi-public-shell-root>
-        <section class="public-page-hero padding-global" data-sbi-public-section="ressources">
+    <main id="public-main" class="public-page public-page-ressources" data-sbi-public-shell-root>
+        <section class="public-page-hero public-page-hero-video public-page-hero-wide padding-global" data-sbi-public-section="ressources">
+            <video muted playsinline class="public-page-hero-video-bg hero-video-bg" preload="none" data-site-media="hero-video" aria-hidden="true"></video>
+            <div class="public-page-hero-overlay" aria-hidden="true"></div>
+
             <div class="public-page-hero-copy fade-in">
-                <span class="section-surtitle text-blue uppercase text-italic">Ressources</span>
-                <h1 class="public-page-title uppercase text-italic">Brochures, guides<br><span class="text-blue">et contenus utiles.</span></h1>
-                <p class="public-page-subtitle text-italic">Accede aux documents SBI pour comprendre les formations, l'alternance, l'aide a l'embauche et l'accompagnement.</p>
-                <div class="public-page-actions">
-                    <a href="#brochures" class="btn-primary text-italic">Voir les brochures <span class="arrow">-&gt;</span></a>
-                    <a href="contact.html" class="btn-ghost text-italic">Recevoir un document</a>
+                <span class="section-surtitle text-blue uppercase text-italic">Ressources SBI</span>
+                <h1 class="public-page-title uppercase text-italic"><span>Accède aux guides, brochures et outils.</span><span class="text-blue">Avance avec les bons repères.</span></h1>
+                <p class="public-page-subtitle text-italic">Des documents concrets pour t’informer, t’orienter et passer à l’action : apprenants, professionnels et entreprises du sport business y trouvent les bons repères.</p>
+                <div class="public-page-actions public-page-actions-minimal">
+                    <a href="contact.html" class="btn-ghost text-italic">Demander un document <span class="arrow">→</span></a>
                 </div>
             </div>
-            <div class="public-page-orbit fade-in" aria-hidden="true"><span>R</span></div>
         </section>
 
-        <section id="brochures" class="public-page-section padding-global" data-sbi-public-section="brochures">
-            <div class="public-section-header fade-in">
-                <div>
-                    <span class="public-section-kicker text-italic">Bibliothèque SBI</span>
-                    <h2 class="text-italic">Les brochures à rendre accessibles.</h2>
-                </div>
-                <p class="text-italic">La grille affiche les ressources de base. La connexion Firebase/back-office pourra prendre le relais plus tard pour publier les brochures.</p>
-            </div>
+        <section class="public-proof-strip padding-global" aria-label="Types de ressources SBI">
+            <article class="public-proof-card fade-in">
+                <span class="public-proof-icon" aria-hidden="true">▤</span>
+                <strong class="text-italic">Brochures formations</strong>
+                <p class="text-italic">Découvre les parcours, les objectifs et les informations utiles.</p>
+            </article>
+            <article class="public-proof-card fade-in">
+                <span class="public-proof-icon" aria-hidden="true">☷</span>
+                <strong class="text-italic">Guides pratiques</strong>
+                <p class="text-italic">Métiers, compétences, financement et conseils carrière.</p>
+            </article>
+            <article class="public-proof-card fade-in">
+                <span class="public-proof-icon" aria-hidden="true">▢</span>
+                <strong class="text-italic">Ressources entreprises</strong>
+                <p class="text-italic">Des supports pour recruter, former et accompagner vos talents.</p>
+            </article>
+            <article class="public-proof-card fade-in">
+                <span class="public-proof-icon" aria-hidden="true">⚙</span>
+                <strong class="text-italic">Outils & modèles</strong>
+                <p class="text-italic">Templates, checklists et documents prêts à l’emploi.</p>
+            </article>
+        </section>
 
-            <div class="public-firebase-panel fade-in">
-                <span class="public-firebase-dot" aria-hidden="true"></span>
+        <section id="brochures" class="public-page-section public-resources-library padding-global" data-sbi-public-section="brochures">
+            <div class="public-section-header public-section-header-stacked fade-in">
                 <div>
-                    <strong class="text-italic">Back-office prévu</strong>
-                    <p class="text-italic">Connexion prévue plus tard : brochures, descriptions, types et liens de téléchargement pilotés depuis le back-office.</p>
+                    <span class="public-section-kicker text-italic">Notre bibliothèque de ressources</span>
+                    <h2 class="text-italic">Des contenus concrets pour passer à l’action.</h2>
+                    <p class="public-section-lead text-italic">Retrouve les documents publics SBI : brochures, guides, études, modèles et supports utiles pour préparer ton projet ou accompagner tes équipes.</p>
                 </div>
-                <span class="public-firebase-status text-italic" data-sbi-brochures-status>Brochures SBI de base.</span>
             </div>
 
             <div class="public-resource-grid" data-sbi-brochures-feed>
-                <article class="public-resource-card fade-in">
-                    <span>Catalogue</span>
-                    <h3 class="text-italic">Brochure formations SBI</h3>
-                    <p class="text-italic">Une vue claire des formations, parcours et modalites d'accompagnement.</p>
-                    <a href="contact.html?brochure=formations-sbi" class="text-italic">Demander la brochure -&gt;</a>
-                </article>
-                <article class="public-resource-card fade-in">
-                    <span>Entreprise</span>
-                    <h3 class="text-italic">Guide alternance &amp; aide</h3>
-                    <p class="text-italic">Les repères pour préparer un recrutement en alternance avec SBI.</p>
-                    <a href="contact.html?brochure=alternance-aide" class="text-italic">Demander la brochure -&gt;</a>
-                </article>
             </div>
         </section>
 
-        <section class="public-page-cta padding-global fade-in" data-sbi-public-section="contact-doc">
-            <div class="public-cta-card">
-                <div>
-                    <span class="section-surtitle text-blue uppercase text-italic">Besoin d'un document precis ?</span>
-                    <h2 class="text-italic">On t'envoie la bonne ressource.</h2>
-                    <p class="text-italic">Le formulaire contact est prépare pour transmettre le besoin et la validation d'utilisation des données.</p>
+        <section class="about-final-cta public-about-final-cta padding-global fade-in" data-sbi-public-section="contact-doc">
+            <div class="about-final-card public-about-final-card">
+                <video muted playsinline loop autoplay preload="metadata" class="about-final-video hero-video-bg" data-site-media="hero-video" aria-hidden="true"></video>
+                <div class="about-final-video-mask" aria-hidden="true"></div>
+                <h2 class="uppercase text-italic">Besoin d’un document précis<br>pour <span class="text-blue">avancer</span> ?</h2>
+                <div class="about-final-actions">
+                    <a href="contact.html" class="btn-primary text-italic">Demander de l’aide <span class="arrow">→</span></a>
                 </div>
-                <a href="contact.html" class="btn-primary text-italic">Contacter SBI <span class="arrow">-&gt;</span></a>
             </div>
         </section>
     </main>
@@ -170,7 +176,9 @@
 
     <script src="js/sbi-background.js?v=8.0P.10d"></script>
     <script src="js/main.js?v=8.0P.80"></script>
-    <script type="module" src="js/sbi-public-pages.js?v=8.0P.92"></script>
-    <script src="js/public-app-shell.js?v=8.0P.92"></script>
+    <script type="module" src="js/site-index-public.js?v=8.0P.126"></script>
+    <script type="module" src="js/sbi-public-pages.js?v=8.0P.126"></script>
+    <script src="js/sbi-diagonals.js?v=8.0P.105"></script>
+    <script src="js/public-app-shell.js?v=8.0P.126"></script>
 </body>
 </html>

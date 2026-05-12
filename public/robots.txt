@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /student/
+Disallow: /teacher/
+Disallow: /functions/
+
+Sitemap: https://www.sbigroup.fr/sitemap.xml

@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.92',
+  version: '8.0P.126',
   branch: 'public-pjax-app-shell',
   channel: 'PUBLIC PJAX APP SHELL',
-  stage: 'Formation sheet scroll lock cleanup hotfix',
-  updatedAt: '2026-05-11',
-  label: 'SBI 8.0P.92 - FORMATION SHEET SCROLL LOCK HOTFIX'
+  stage: 'PUBLIC HEADER CLEANUP + ABOUT FOUNDER FADE',
+  updatedAt: '2026-05-12',
+  label: 'SBI 8.0P.126 - PUBLIC HEADER CLEANUP + ABOUT FOUNDER FADE'
 };
 
 export function getSbiVersionLabel() {

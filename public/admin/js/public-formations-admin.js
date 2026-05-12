@@ -17,7 +17,7 @@ import { storage } from '/js/firebase-init.js';
 import { compressImageFileToWebpBlob } from '/admin/js/course-media-storage.js';
 
 const COLLECTION = 'publicFormations';
-const VERSION = '8.0P.88';
+const VERSION = '8.0P.119';
 
 let mounted = false;
 let currentItems = [];
@@ -118,6 +118,21 @@ function bind(target, eventName, handler, options) {
   cleanupFns.push(() => target.removeEventListener(eventName, handler, options));
 }
 
+
+function normalizeSeo(value = {}, fallback = {}) {
+  const raw = value && typeof value === 'object' ? value : {};
+  return {
+    title: text(raw.title || raw.seoTitle || fallback.title),
+    description: text(raw.description || raw.metaDescription || fallback.description),
+    indexable: raw.indexable !== false,
+    ogTitle: text(raw.ogTitle),
+    ogDescription: text(raw.ogDescription),
+    ogImageUrl: text(raw.ogImageUrl || raw.imageUrl),
+    sitemapPriority: Number(raw.sitemapPriority ?? fallback.sitemapPriority ?? 0.8),
+    sitemapChangefreq: text(raw.sitemapChangefreq || fallback.sitemapChangefreq, 'monthly')
+  };
+}
+
 function getCoverPosition() {
   return {
     x: Math.min(100, Math.max(0, Number($('public-formation-cover-x')?.value || 50))),
@@ -185,6 +200,7 @@ function normalizeItem(raw = {}, id = '') {
     displayOrder: Number(raw.displayOrder ?? 999),
     homeOrder: Number(raw.homeOrder ?? 999),
     slug: text(raw.slug || slugify(raw.title || raw.titre)),
+    seo: normalizeSeo(raw.seo, { title: raw.title || raw.titre, description: raw.shortSummary || raw.description, sitemapPriority: 0.8 }),
     cover: {
       url: text(cover.url || raw.coverUrl),
       storagePath: text(cover.storagePath),
@@ -241,6 +257,12 @@ function fillForm(item = null) {
   $('public-formation-status').value = item?.status || 'draft';
   $('public-formation-display-order').value = item?.displayOrder ?? 999;
   $('public-formation-home-order').value = item?.homeOrder ?? 999;
+  $('public-formation-seo-title').value = item?.seo?.title || '';
+  $('public-formation-seo-description').value = item?.seo?.description || '';
+  $('public-formation-seo-image').value = item?.seo?.ogImageUrl || '';
+  $('public-formation-seo-priority').value = item?.seo?.sitemapPriority ?? 0.8;
+  $('public-formation-seo-changefreq').value = item?.seo?.sitemapChangefreq || 'monthly';
+  $('public-formation-seo-indexable').checked = item?.seo?.indexable !== false;
   $('public-formation-subtitle').value = item?.subtitle || '';
   $('public-formation-category').value = item?.category || '';
   $('public-formation-level').value = item?.level || '';
@@ -311,6 +333,14 @@ function gatherFormData() {
     title,
     slug,
     status: $('public-formation-status')?.value || 'draft',
+    seo: {
+      title: text($('public-formation-seo-title')?.value),
+      description: text($('public-formation-seo-description')?.value),
+      indexable: $('public-formation-seo-indexable')?.checked !== false,
+      ogImageUrl: text($('public-formation-seo-image')?.value),
+      sitemapPriority: Math.min(1, Math.max(0, Number($('public-formation-seo-priority')?.value || 0.8))),
+      sitemapChangefreq: text($('public-formation-seo-changefreq')?.value, 'monthly')
+    },
     subtitle: text($('public-formation-subtitle')?.value),
     category: text($('public-formation-category')?.value),
     level: text($('public-formation-level')?.value),
