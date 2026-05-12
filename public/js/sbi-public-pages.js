@@ -19,7 +19,7 @@ async function getFirestoreTools() {
 
 const PUBLIC_FORMATIONS_COLLECTION = 'publicFormations';
 const PUBLIC_RESOURCES_COLLECTION = 'publicResources';
-const PUBLIC_CONTENT_VERSION = '8.0P.99';
+const PUBLIC_CONTENT_VERSION = '8.0P.113';
 
 const DEFAULT_COVER_LABEL = 'SBI';
 const COMING_SOON_COVER_URL = '/assets/coming.png';
@@ -202,6 +202,58 @@ function isPublicVisible(item) {
 
 function isComingSoon(item) {
   return item.status === 'coming_soon';
+}
+
+function isMobilePublicViewport() {
+  return window.matchMedia?.('(max-width: 768px)')?.matches || window.innerWidth <= 768;
+}
+
+function forceResetMobileFormationsSlider(grid) {
+  if (!grid || !isMobilePublicViewport()) return;
+
+  if (!grid.__sbiMobileSliderTouchBound) {
+    const markTouched = () => {
+      grid.dataset.sbiMobileSliderTouched = 'true';
+    };
+    grid.addEventListener('pointerdown', markTouched, { passive: true });
+    grid.addEventListener('touchstart', markTouched, { passive: true });
+    grid.addEventListener('wheel', markTouched, { passive: true });
+    grid.__sbiMobileSliderTouchBound = true;
+  }
+
+  delete grid.dataset.sbiMobileSliderTouched;
+  grid.dataset.sbiMobileSliderResetting = 'true';
+
+  const reset = () => {
+    if (!grid.isConnected || grid.dataset.sbiMobileSliderTouched === 'true') return;
+    try {
+      grid.scrollTo({ left: 0, top: 0, behavior: 'auto' });
+    } catch {
+      grid.scrollLeft = 0;
+      grid.scrollTop = 0;
+    }
+    grid.scrollLeft = 0;
+    grid.scrollTop = 0;
+  };
+
+  reset();
+  window.requestAnimationFrame(() => {
+    reset();
+    window.requestAnimationFrame(reset);
+  });
+
+  [90, 220, 460, 760].forEach((delay) => {
+    window.setTimeout(reset, delay);
+  });
+
+  window.setTimeout(() => {
+    if (grid.isConnected) delete grid.dataset.sbiMobileSliderResetting;
+  }, 860);
+}
+
+function resetActiveMobileFormationsSlider() {
+  if ((document.body?.dataset?.sbiPublicPage || '') !== 'formations') return;
+  forceResetMobileFormationsSlider(document.querySelector('[data-sbi-formations-feed]'));
 }
 
 function normalizeFormation(raw = {}, id = '') {
@@ -713,10 +765,7 @@ async function initFormationsPage(root) {
   const { items, fromFirebase } = await getPublicFormationsWithFallback();
   const visible = sortByDisplay(items.filter(isPublicVisible));
   grid.replaceChildren(...visible.map((item) => createFormationCard(item)));
-  grid.scrollLeft = 0;
-  window.requestAnimationFrame(() => {
-    grid.scrollLeft = 0;
-  });
+  forceResetMobileFormationsSlider(grid);
   injectFormationStructuredData(visible);
 
   const publishedCount = visible.filter((item) => item.status === 'published').length;
@@ -1137,6 +1186,16 @@ export function initSbiPublicPages(root = document) {
 }
 
 window.SBI_INIT_PUBLIC_PAGES = initSbiPublicPages;
+
+window.addEventListener('sbi:public-shell:navigated', (event) => {
+  if (event?.detail?.page === 'formations') {
+    window.requestAnimationFrame(resetActiveMobileFormationsSlider);
+  }
+});
+
+window.addEventListener('pageshow', () => {
+  window.requestAnimationFrame(resetActiveMobileFormationsSlider);
+});
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => initSbiPublicPages(document), { once: true });
