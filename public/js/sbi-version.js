@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.96',
+  version: '8.0P.97',
   branch: 'public-pjax-app-shell',
   channel: 'PUBLIC PJAX APP SHELL',
-  stage: 'Formations strict index alignment',
+  stage: 'Formations hero and CTA strict correction',
   updatedAt: '2026-05-11',
-  label: 'SBI 8.0P.96 - FORMATIONS STRICT INDEX ALIGNMENT'
+  label: 'SBI 8.0P.97 - FORMATIONS HERO CTA STRICT CORRECTION'
 };
 
 export function getSbiVersionLabel() {
