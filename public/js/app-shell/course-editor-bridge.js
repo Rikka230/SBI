@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.128 - Course editor bridge
+ * SBI 8.0P.129 - Course editor bridge
  *
  * Prépare et monte les éléments que les scripts inline ne relancent pas
  * en navigation PJAX : Quill, onglets éditeur et switch image/vidéo.
@@ -9,6 +9,7 @@ const QUILL_SCRIPT = 'https://cdn.quilljs.com/1.3.6/quill.min.js';
 const TOOLTIP_STYLE_ID = 'sbi-quill-tooltip-style';
 const TOOLTIP_PORTAL_ID = 'sbi-quill-tooltip-portal';
 const EDITOR_SELECTORS = ['#quill-editor', '#course-editor'];
+const tooltipBindings = new WeakMap();
 
 export const COURSE_EDITOR_ROUTES = {
   admin: '/admin/formations-cours.html',
@@ -165,15 +166,21 @@ function positionTooltip(target, portal) {
   portal.style.top = `${top}px`;
 }
 
-function isExpandedQuillPicker(target) {
-  return Boolean(target?.classList?.contains('ql-picker') && target.classList.contains('ql-expanded'));
+function getQuillPicker(target) {
+  return target?.classList?.contains('ql-picker')
+    ? target
+    : target?.closest?.('.ql-picker') || null;
+}
+
+function isWithinExpandedQuillPicker(target) {
+  return Boolean(getQuillPicker(target)?.classList?.contains('ql-expanded'));
 }
 
 function showStyledTooltip(target) {
   const label = target?.getAttribute('data-sbi-tooltip');
   if (!label) return;
 
-  if (isExpandedQuillPicker(target)) {
+  if (isWithinExpandedQuillPicker(target)) {
     hideStyledTooltip();
     return;
   }
@@ -184,7 +191,7 @@ function showStyledTooltip(target) {
   portal.dataset.placement = 'bottom';
 
   window.requestAnimationFrame(() => {
-    if (isExpandedQuillPicker(target)) {
+    if (isWithinExpandedQuillPicker(target)) {
       hideStyledTooltip();
       return;
     }
@@ -202,20 +209,25 @@ function hideStyledTooltip() {
 }
 
 function bindStyledTooltip(target, cleanups) {
-  if (!target || target.dataset.sbiTooltipBound === 'true') return;
+  if (!target) return;
+
+  const previousCleanup = tooltipBindings.get(target);
+  if (typeof previousCleanup === 'function') {
+    previousCleanup();
+  }
 
   target.dataset.sbiTooltipBound = 'true';
 
-  const isPicker = target.classList.contains('ql-picker');
+  const picker = getQuillPicker(target);
   const show = () => showStyledTooltip(target);
   const hide = () => hideStyledTooltip();
   const hidePickerTooltip = () => {
-    if (isPicker) hideStyledTooltip();
+    if (picker) hideStyledTooltip();
   };
   const reposition = () => {
     const portal = document.getElementById(TOOLTIP_PORTAL_ID);
 
-    if (isExpandedQuillPicker(target)) {
+    if (isWithinExpandedQuillPicker(target)) {
       hideStyledTooltip();
       return;
     }
@@ -236,19 +248,23 @@ function bindStyledTooltip(target, cleanups) {
   window.addEventListener('resize', reposition);
 
   let pickerObserver = null;
-  if (isPicker && typeof MutationObserver !== 'undefined') {
+  if (picker && typeof MutationObserver !== 'undefined') {
     pickerObserver = new MutationObserver(() => {
-      if (isExpandedQuillPicker(target)) {
+      if (isWithinExpandedQuillPicker(target)) {
         hideStyledTooltip();
       }
     });
-    pickerObserver.observe(target, {
+    pickerObserver.observe(picker, {
       attributes: true,
       attributeFilter: ['class']
     });
   }
 
-  cleanups.push(() => {
+  let cleaned = false;
+  const cleanupBinding = () => {
+    if (cleaned) return;
+    cleaned = true;
+
     target.removeEventListener('mouseenter', show);
     target.removeEventListener('focus', show);
     target.removeEventListener('mouseleave', hide);
@@ -259,7 +275,18 @@ function bindStyledTooltip(target, cleanups) {
     window.removeEventListener('scroll', reposition, true);
     window.removeEventListener('resize', reposition);
     pickerObserver?.disconnect();
-  });
+
+    if (tooltipBindings.get(target) === cleanupBinding) {
+      tooltipBindings.delete(target);
+    }
+
+    if (target.dataset.sbiTooltipBound === 'true') {
+      delete target.dataset.sbiTooltipBound;
+    }
+  };
+
+  tooltipBindings.set(target, cleanupBinding);
+  cleanups.push(cleanupBinding);
 }
 
 function decorateTooltipElement(element, label, cleanups) {
@@ -290,7 +317,12 @@ function setToolbarLabel(toolbar, selector, label, cleanups) {
 
       if (picker) {
         decorateTooltipElement(picker, label, cleanups);
+        decorateTooltipElement(picker.querySelector('.ql-picker-label'), label, cleanups);
       }
+    }
+
+    if (element.classList?.contains('ql-picker')) {
+      decorateTooltipElement(element.querySelector('.ql-picker-label'), label, cleanups);
     }
   });
 }
@@ -327,8 +359,41 @@ function applyQuillToolbarTooltips(toolbar, cleanups = []) {
   toolbar.dataset.sbiTooltipsReady = 'true';
 }
 
+function toolbarHasRequiredControls(toolbar) {
+  if (!toolbar) return false;
+
+  return Boolean(
+    toolbar.querySelector('.ql-underline')
+    && toolbar.querySelector('.ql-background')
+    && toolbar.querySelector('.ql-align')
+  );
+}
+
+function resetExistingQuillContainer(editor) {
+  const quill = window.quill;
+  const toolbar = quill?.getModule?.('toolbar')?.container || document.querySelector('.ql-toolbar.ql-snow');
+  const container = quill?.container || editor;
+  const html = quill?.root?.innerHTML || editor?.querySelector?.('.ql-editor')?.innerHTML || '';
+  const cleanEditor = document.createElement('div');
+
+  cleanEditor.id = editor?.id || 'course-editor';
+  if (editor?.className && !editor.classList.contains('ql-container')) {
+    cleanEditor.className = editor.className;
+  }
+
+  if (html && html !== '<p><br></p>') {
+    cleanEditor.innerHTML = html;
+  }
+
+  toolbar?.remove?.();
+  container?.replaceWith?.(cleanEditor);
+  window.quill = null;
+
+  return cleanEditor;
+}
+
 export function initCourseEditorQuill() {
-  const editor = getCourseEditorElement(document);
+  let editor = getCourseEditorElement(document);
   if (!editor) return () => {};
 
   const editorSelector = editor.id ? `#${editor.id}` : '#quill-editor';
@@ -338,14 +403,19 @@ export function initCourseEditorQuill() {
   }
 
   if (window.quill && window.quill.root?.isConnected && window.quill.container?.contains(editor.querySelector('.ql-editor'))) {
-    const existingCleanups = [];
     const existingToolbar = window.quill.getModule('toolbar')?.container;
-    applyQuillToolbarTooltips(existingToolbar, existingCleanups);
 
-    return () => {
-      existingCleanups.splice(0, existingCleanups.length).forEach((cleanup) => cleanup());
-      hideStyledTooltip();
-    };
+    if (toolbarHasRequiredControls(existingToolbar)) {
+      const existingCleanups = [];
+      applyQuillToolbarTooltips(existingToolbar, existingCleanups);
+
+      return () => {
+        existingCleanups.splice(0, existingCleanups.length).forEach((cleanup) => cleanup());
+        hideStyledTooltip();
+      };
+    }
+
+    editor = resetExistingQuillContainer(editor);
   }
 
   let lastQuillSelection = null;
