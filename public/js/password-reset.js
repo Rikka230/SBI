@@ -29,11 +29,46 @@ document.addEventListener('DOMContentLoaded', () => {
     handleInitialLoad();
 });
 
+function collectUrlParams(url = window.location.href) {
+    const parsed = new URL(url);
+    const params = new URLSearchParams(parsed.search);
+
+    if (parsed.hash) {
+        const hashParams = new URLSearchParams(parsed.hash.replace(/^#/, ''));
+        hashParams.forEach((value, key) => {
+            if (!params.has(key)) params.set(key, value);
+        });
+    }
+
+    return params;
+}
+
+function resolveActionCodeFromCurrentUrl() {
+    const urlsToInspect = [window.location.href];
+    const inspectedUrls = new Set();
+
+    while (urlsToInspect.length > 0) {
+        const currentUrl = urlsToInspect.shift();
+        if (!currentUrl || inspectedUrls.has(currentUrl)) continue;
+        inspectedUrls.add(currentUrl);
+
+        const params = collectUrlParams(currentUrl);
+        const code = params.get('oobCode');
+        if (code) return code;
+
+        ['link', 'continueUrl', 'continueURL'].forEach((key) => {
+            const nestedUrl = params.get(key);
+            if (nestedUrl) urlsToInspect.push(nestedUrl);
+        });
+    }
+
+    return '';
+}
+
 // 1. INITIALISATION ET VÉRIFICATION DU CODE
 async function handleInitialLoad() {
-    // Extraction du oobCode depuis l'URL générée par Firebase
-    const urlParams = new URLSearchParams(window.location.search);
-    actionCode = urlParams.get('oobCode');
+    // Extraction robuste du oobCode depuis l'URL générée par Firebase ou reconstruite par SBI.
+    actionCode = resolveActionCodeFromCurrentUrl();
 
     // Si aucun code n'est présent (accès direct à la page sans lien)
     if (!actionCode) {

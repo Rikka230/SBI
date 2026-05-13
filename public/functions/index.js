@@ -11,81 +11,6 @@ const admin = require("firebase-admin");
 
 admin.initializeApp();
 
-// En V2, la fonction reçoit un seul objet "request"
-exports.deleteUserAccount = onCall(async (request) => {
-    console.log("🚀 --- NOUVELLE TENTATIVE DE SUPPRESSION (V2) ---");
-
-    // 1. Extraction propre des données de la requête V2
-    const data = request.data;
-    const auth = request.auth;
-
-    // 2. Vérification stricte du badge de sécurité
-    if (!auth || !auth.uid) {
-        console.error("🛑 ÉCHEC : La requête n'est pas authentifiée.");
-        throw new HttpsError('unauthenticated', 'Vous devez être connecté pour effectuer cette action.');
-    }
-
-    const callerUid = auth.uid;
-    const targetUid = data.uid;
-
-    console.log("🕵️ UID Admin (Toi) :", callerUid);
-    console.log("🎯 UID Cible (À supprimer) :", targetUid);
-
-    const db = admin.firestore();
-
-    try {
-        // 3. Vérification de tes droits (Es-tu bien Admin ?)
-        const callerDoc = await db.collection('users').doc(callerUid).get();
-        const callerData = callerDoc.data();
-
-        if (!callerData || callerData.role !== 'admin') {
-            console.error("🛑 ÉCHEC : Rôle Admin introuvable dans Firestore pour cet utilisateur.");
-            throw new HttpsError('permission-denied', 'Action refusée : Seuls les administrateurs ont ce pouvoir.');
-        }
-
-        // 4. Vérification de la cible
-        const targetDoc = await db.collection('users').doc(targetUid).get();
-
-        // Si la cible n'existe déjà plus dans la BDD, on s'assure qu'elle dégage de l'Auth Firebase
-        if (!targetDoc.exists) {
-            console.log("⚠️ Cible introuvable dans la base, on nettoie le système d'authentification par sécurité.");
-            await admin.auth().deleteUser(targetUid);
-            return { success: true, message: 'Nettoyage de sécurité effectué.' };
-        }
-
-        const targetData = targetDoc.data();
-
-        // 5. Boucliers de sécurité du Suprême
-        if (targetData.isGod) {
-            console.error("🛑 ÉCHEC : Tentative de suppression du compte God.");
-            throw new HttpsError('permission-denied', 'Sacrilège : Le compte Suprême est indestructible.');
-        }
-
-        if (targetData.role === 'admin' && !callerData.isGod) {
-            console.error("🛑 ÉCHEC : Guerre civile entre admins.");
-            throw new HttpsError('permission-denied', 'Un administrateur classique ne peut pas supprimer un de ses pairs.');
-        }
-
-        // 6. Sentence finale : on supprime d'abord de l'authentification, puis de la base de données
-        await admin.auth().deleteUser(targetUid);
-        await db.collection('users').doc(targetUid).delete();
-
-        console.log("✅ SUCCÈS TOTAL : Le compte a été effacé du serveur.");
-        return { success: true, message: 'Le compte a été intégralement supprimé.' };
-
-    } catch (error) {
-        console.error("🔥 ERREUR SERVEUR INTERNE :", error);
-
-        // On renvoie l'erreur propre à l'interface si c'est une de nos règles qui bloque
-        if (error instanceof HttpsError) {
-            throw error;
-        }
-        // Sinon c'est un crash inattendu
-        throw new HttpsError('internal', "Le serveur a rencontré une erreur : " + error.message);
-    }
-});
-
-
 /* =======================================================================
  * SBI 8.0P.51 - CONTACT PUBLIC -> BREVO
  * -----------------------------------------------------------------------
@@ -111,7 +36,7 @@ const BREVO_LIST_ID = 77;
 const BREVO_NEWSLETTER_LIST_ID = 77;
 const SBI_CONTACT_EMAIL = "contact@sbigroup.fr";
 const SBI_CONTACT_PHONE = "06 68 60 30 01";
-const SBI_SENDER_NAME = "SBI Contact";
+const SBI_SENDER_NAME = "Contact";
 const SBI_SENDER_EMAIL = "contact@sbigroup.fr";
 
 const PROFILE_LABELS = {
@@ -267,6 +192,71 @@ async function upsertBrevoContact(data, apiKey) {
 }
 
 const SBI_SITE_URL = "https://www.sbigroup.fr";
+const SBI_PASSWORD_RESET_URL = "https://www.sbigroup.fr/password-reset.html";
+const SBI_AUTH_ACTION_SETTINGS = {
+    url: SBI_PASSWORD_RESET_URL,
+    handleCodeInApp: true
+};
+
+function readActionParamsFromUrl(rawUrl) {
+    const parsed = new URL(rawUrl);
+    const params = new URLSearchParams(parsed.search);
+
+    if (parsed.hash) {
+        const hashParams = new URLSearchParams(parsed.hash.replace(/^#/, ""));
+        hashParams.forEach((value, key) => {
+            if (!params.has(key)) params.set(key, value);
+        });
+    }
+
+    return params;
+}
+
+function extractPasswordResetParams(firebaseLink) {
+    const urlsToInspect = [firebaseLink];
+    const inspectedUrls = new Set();
+
+    while (urlsToInspect.length > 0) {
+        const currentUrl = urlsToInspect.shift();
+        if (!currentUrl || inspectedUrls.has(currentUrl)) continue;
+        inspectedUrls.add(currentUrl);
+
+        const params = readActionParamsFromUrl(currentUrl);
+        const oobCode = params.get("oobCode");
+        const apiKey = params.get("apiKey");
+        const mode = params.get("mode") || "resetPassword";
+        const lang = params.get("lang") || "fr";
+
+        if (oobCode) {
+            return { oobCode, apiKey, mode, lang };
+        }
+
+        ["link", "continueUrl", "continueURL"].forEach((key) => {
+            const nestedUrl = params.get(key);
+            if (nestedUrl) urlsToInspect.push(nestedUrl);
+        });
+    }
+
+    return null;
+}
+
+function buildSbiPasswordResetLink(firebaseLink) {
+    try {
+        const actionParams = extractPasswordResetParams(firebaseLink);
+        if (!actionParams?.oobCode) return firebaseLink;
+
+        const sbiLink = new URL(SBI_PASSWORD_RESET_URL);
+        sbiLink.searchParams.set("mode", actionParams.mode || "resetPassword");
+        sbiLink.searchParams.set("oobCode", actionParams.oobCode);
+        if (actionParams.apiKey) sbiLink.searchParams.set("apiKey", actionParams.apiKey);
+        if (actionParams.lang) sbiLink.searchParams.set("lang", actionParams.lang);
+
+        return sbiLink.toString();
+    } catch (error) {
+        console.error("Erreur reconstruction lien reset SBI :", error);
+        return firebaseLink;
+    }
+}
 const SBI_TEMPLATE_PHONE_TEL = "tel:+33668603001";
 const SBI_SOCIAL_LINKS = {
     linkedin: "https://www.linkedin.com/company/sport-business-institute",
@@ -645,6 +635,1367 @@ async function sendBrevoNewsletterConfirmation(data, apiKey) {
         textContent: buildNewsletterConfirmationText(data)
     }, apiKey);
 }
+
+
+/* =======================================================================
+ * SBI 8.0P.134 - ADMIN ACCOUNT MAIL WORKFLOW
+ * -----------------------------------------------------------------------
+ * Actions sensibles Auth déplacées côté serveur : création compte,
+ * reset password, édition profil/rôle/statut et suppression enrichies
+ * avec mails Brevo + audit.
+ * ======================================================================= */
+
+const ACCOUNT_ROLES = ["student", "teacher", "admin"];
+
+function cleanEmail(value) {
+    return cleanString(value, 180).toLowerCase();
+}
+
+function isValidEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email || "");
+}
+
+function normalizeAccountRole(role) {
+    const normalized = cleanString(role, 40).toLowerCase();
+    return ACCOUNT_ROLES.includes(normalized) ? normalized : "student";
+}
+
+function getAccountRoleLabel(role) {
+    const normalized = normalizeAccountRole(role);
+    if (normalized === "teacher") return "Enseignant";
+    if (normalized === "admin") return "Administrateur";
+    return "Étudiant";
+}
+
+function formatAccountPrenom(value) {
+    return cleanString(value, 80).toLowerCase().replace(/(^|\s|-)\S/g, letter => letter.toUpperCase());
+}
+
+function formatAccountNom(value) {
+    return cleanString(value, 80).toUpperCase();
+}
+
+function getAccountDisplayName(data = {}) {
+    return cleanString(`${data.prenom || ""} ${data.nom || ""}`, 160) || data.email || "Utilisateur SBI";
+}
+
+function getActorEmail(request, callerData = {}) {
+    return cleanEmail(request.auth?.token?.email || callerData.email || SBI_CONTACT_EMAIL);
+}
+
+async function requireAdminCaller(request, db) {
+    if (!request.auth || !request.auth.uid) {
+        throw new HttpsError("unauthenticated", "Vous devez être connecté pour effectuer cette action.");
+    }
+
+    const callerUid = request.auth.uid;
+    const callerDoc = await db.collection("users").doc(callerUid).get();
+    const callerData = callerDoc.data();
+
+    if (!callerDoc.exists || !callerData || callerData.statut === "suspendu") {
+        throw new HttpsError("permission-denied", "Action refusée : compte administrateur introuvable ou suspendu.");
+    }
+
+    if (callerData.isGod !== true && callerData.role !== "admin") {
+        throw new HttpsError("permission-denied", "Action refusée : seuls les administrateurs peuvent effectuer cette action.");
+    }
+
+    return {
+        uid: callerUid,
+        email: getActorEmail(request, callerData),
+        data: callerData,
+        name: getAccountDisplayName(callerData)
+    };
+}
+
+async function safeWriteAccountAuditLog(db, payload) {
+    try {
+        await db.collection("accountAuditLogs").add({
+            ...payload,
+            source: "admin",
+            createdAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+    } catch (error) {
+        console.error("Erreur audit compte SBI :", error.message);
+    }
+}
+
+
+function normalizeFormationIndexValues(value) {
+    if (!Array.isArray(value)) return [];
+
+    return Array.from(
+        new Set(
+            value
+                .filter(Boolean)
+                .map((item) => String(item).trim())
+                .filter(Boolean)
+        )
+    ).sort((a, b) => a.localeCompare(b, "fr", { sensitivity: "base" }));
+}
+
+function formationIndexArraysEqual(a, b) {
+    const arrA = normalizeFormationIndexValues(a);
+    const arrB = normalizeFormationIndexValues(b);
+
+    if (arrA.length !== arrB.length) return false;
+    return arrA.every((value, index) => value === arrB[index]);
+}
+
+function ensureFormationIndexEntry(index, uid) {
+    if (!uid) return null;
+
+    const safeUid = String(uid).trim();
+    if (!safeUid) return null;
+
+    if (!index.has(safeUid)) {
+        index.set(safeUid, {
+            ids: new Set(),
+            titles: new Set()
+        });
+    }
+
+    return index.get(safeUid);
+}
+
+function addFormationAccessToUserIndex(index, uid, formationId, formationTitle) {
+    const entry = ensureFormationIndexEntry(index, uid);
+    if (!entry) return;
+
+    if (formationId) entry.ids.add(String(formationId));
+    if (formationTitle) entry.titles.add(String(formationTitle).trim());
+}
+
+async function commitFormationIndexBatch(db, operations) {
+    if (operations.length === 0) return;
+
+    const batch = db.batch();
+    operations.forEach(({ ref, payload }) => {
+        batch.update(ref, payload);
+    });
+    await batch.commit();
+}
+
+exports.adminSyncUserFormationIndexes = onCall({
+    region: "europe-west1",
+    timeoutSeconds: 60,
+    memory: "256MiB"
+}, async (request) => {
+    const db = admin.firestore();
+    const caller = await requireAdminCaller(request, db);
+
+    const [formationsSnap, usersSnap] = await Promise.all([
+        db.collection("formations").get(),
+        db.collection("users").get()
+    ]);
+
+    const index = new Map();
+    usersSnap.forEach((userDoc) => {
+        ensureFormationIndexEntry(index, userDoc.id);
+    });
+
+    formationsSnap.forEach((formationDoc) => {
+        const formation = formationDoc.data() || {};
+        const formationId = String(formationDoc.id);
+        const formationTitle = formation.titre ? String(formation.titre).trim() : "";
+        const profs = Array.isArray(formation.profs) ? formation.profs : [];
+        const students = Array.isArray(formation.students) ? formation.students : [];
+
+        [...profs, ...students].forEach((uid) => {
+            addFormationAccessToUserIndex(index, uid, formationId, formationTitle);
+        });
+    });
+
+    let updated = 0;
+    let skipped = 0;
+    const pendingOperations = [];
+
+    for (const userDoc of usersSnap.docs) {
+        const userData = userDoc.data() || {};
+        const entry = index.get(String(userDoc.id)) || { ids: new Set(), titles: new Set() };
+        const nextFormationIds = normalizeFormationIndexValues(Array.from(entry.ids));
+        const nextFormationsAcces = normalizeFormationIndexValues(Array.from(entry.titles));
+
+        const currentFormationIds = normalizeFormationIndexValues(userData.formationIds || []);
+        const currentFormationsAcces = normalizeFormationIndexValues(userData.formationsAcces || []);
+
+        if (
+            formationIndexArraysEqual(currentFormationIds, nextFormationIds)
+            && formationIndexArraysEqual(currentFormationsAcces, nextFormationsAcces)
+        ) {
+            skipped += 1;
+            continue;
+        }
+
+        pendingOperations.push({
+            ref: userDoc.ref,
+            payload: {
+                formationIds: nextFormationIds,
+                formationsAcces: nextFormationsAcces,
+                formationIndexSyncedAt: admin.firestore.FieldValue.serverTimestamp(),
+                formationIndexSyncedBy: caller.uid
+            }
+        });
+        updated += 1;
+
+        if (pendingOperations.length >= 450) {
+            await commitFormationIndexBatch(db, pendingOperations.splice(0));
+        }
+    }
+
+    await commitFormationIndexBatch(db, pendingOperations);
+
+    await safeWriteAccountAuditLog(db, {
+        type: "account.formation_indexes_synced",
+        actorUid: caller.uid,
+        actorEmail: caller.email,
+        targetUid: "*",
+        targetEmail: "",
+        targetRole: "",
+        updated,
+        skipped,
+        formations: formationsSnap.size,
+        users: usersSnap.size
+    });
+
+    return {
+        success: true,
+        updated,
+        skipped,
+        totalUsers: usersSnap.size,
+        totalFormations: formationsSnap.size,
+        message: updated > 0
+            ? `${updated} index utilisateur synchronisé(s).`
+            : "Tous les index utilisateurs étaient déjà à jour."
+    };
+});
+
+function buildActionButtonHtml(url, label) {
+    if (!url) return "";
+    return `
+        <p style="margin:22px 0;">
+            <a href="${escapeHtml(url)}" style="display:inline-block;background:#0051ff;color:#ffffff;font-weight:bold;padding:13px 18px;border-radius:10px;text-decoration:none;">
+                ${escapeHtml(label)}
+            </a>
+        </p>
+        <p style="margin:0 0 18px 0;font-size:13px;line-height:20px;color:#667085;">
+            Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :<br>
+            <a href="${escapeHtml(url)}" style="color:#0051ff;word-break:break-all;">${escapeHtml(url)}</a>
+        </p>`;
+}
+
+function buildAccountInternalHtml(eventLabel, details = {}) {
+    const rows = Object.entries(details)
+        .filter(([, value]) => value !== undefined && value !== null && value !== "")
+        .map(([label, value]) => `
+            <tr>
+                <td style="padding:10px 12px;border-bottom:1px solid #dce4f2;color:#0051ff;font-weight:bold;width:38%;">${escapeHtml(label)}</td>
+                <td style="padding:10px 12px;border-bottom:1px solid #dce4f2;color:#253047;">${escapeHtml(value)}</td>
+            </tr>
+        `).join("");
+
+    return renderSbiEmailTemplate({
+        prenom: "équipe SBI",
+        nomExpediteur: "Automatisation SBI",
+        posteExpediteur: "Notifications comptes",
+        preheader: `Action compte SBI - ${eventLabel}`,
+        messageHtml: `
+            <p style="margin:0 0 16px 0;">Une action sensible a été effectuée dans l’administration SBI.</p>
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border:1px solid #dce4f2;border-radius:12px;overflow:hidden;background:#f7f9fd;">
+                ${rows}
+            </table>
+        `
+    });
+}
+
+function buildAccountInternalText(eventLabel, details = {}) {
+    const lines = Object.entries(details)
+        .filter(([, value]) => value !== undefined && value !== null && value !== "")
+        .map(([label, value]) => `${label}: ${value}`);
+    return [`Action compte SBI - ${eventLabel}`, "", ...lines].join("\n");
+}
+
+async function sendAccountInternalEmail(eventLabel, details, apiKey) {
+    return sendBrevoEmail({
+        sender: {
+            name: SBI_SENDER_NAME,
+            email: SBI_SENDER_EMAIL
+        },
+        to: [{
+            email: SBI_CONTACT_EMAIL,
+            name: "Sport Business Institute"
+        }],
+        replyTo: {
+            email: isValidEmail(details["Admin email"]) ? details["Admin email"] : SBI_CONTACT_EMAIL,
+            name: details["Admin"] || "Administration SBI"
+        },
+        subject: `SBI Admin - ${eventLabel}`,
+        htmlContent: buildAccountInternalHtml(eventLabel, details),
+        textContent: buildAccountInternalText(eventLabel, details)
+    }, apiKey);
+}
+
+async function sendAccountInviteEmail(account, resetLink, apiKey) {
+    const roleLabel = getAccountRoleLabel(account.role);
+    return sendBrevoEmail({
+        sender: {
+            name: SBI_SENDER_NAME,
+            email: SBI_SENDER_EMAIL
+        },
+        to: [{
+            email: account.email,
+            name: getAccountDisplayName(account)
+        }],
+        replyTo: {
+            email: SBI_CONTACT_EMAIL,
+            name: "Sport Business Institute"
+        },
+        subject: "SBI - Votre espace personnel est prêt",
+        htmlContent: renderSbiEmailTemplate({
+            prenom: account.prenom || "",
+            nomExpediteur: "L’équipe SBI",
+            posteExpediteur: "Administration",
+            preheader: "Votre espace SBI est prêt.",
+            messageHtml: `
+                <p style="margin:0 0 16px 0;">Votre espace <strong>${escapeHtml(roleLabel)}</strong> vient d’être créé sur la plateforme Sport Business Institute.</p>
+                <p style="margin:0 0 16px 0;">Pour sécuriser votre accès, définissez votre mot de passe via le lien ci-dessous.</p>
+                ${buildActionButtonHtml(resetLink, "Définir mon mot de passe")}
+                <p style="margin:0;">Si vous n’êtes pas à l’origine de cette demande, contactez l’équipe SBI.</p>
+            `
+        }),
+        textContent: `Bonjour ${account.prenom || ""},\n\nVotre espace ${roleLabel} SBI est prêt. Définissez votre mot de passe avec ce lien :\n${resetLink}\n\nSport Business Institute`
+    }, apiKey);
+}
+
+async function sendAccountResetEmail(account, resetLink, apiKey) {
+    return sendBrevoEmail({
+        sender: {
+            name: SBI_SENDER_NAME,
+            email: SBI_SENDER_EMAIL
+        },
+        to: [{
+            email: account.email,
+            name: getAccountDisplayName(account)
+        }],
+        replyTo: {
+            email: SBI_CONTACT_EMAIL,
+            name: "Sport Business Institute"
+        },
+        subject: "SBI - Réinitialisation de votre mot de passe",
+        htmlContent: renderSbiEmailTemplate({
+            prenom: account.prenom || "",
+            nomExpediteur: "L’équipe SBI",
+            posteExpediteur: "Administration",
+            preheader: "Réinitialisation de votre mot de passe SBI.",
+            messageHtml: `
+                <p style="margin:0 0 16px 0;">Une réinitialisation de mot de passe a été demandée pour votre espace SBI.</p>
+                <p style="margin:0 0 16px 0;">Cliquez sur le bouton ci-dessous pour choisir un nouveau mot de passe.</p>
+                ${buildActionButtonHtml(resetLink, "Réinitialiser mon mot de passe")}
+                <p style="margin:0;">Si vous n’avez pas demandé cette action, contactez l’équipe SBI.</p>
+            `
+        }),
+        textContent: `Bonjour ${account.prenom || ""},\n\nRéinitialisez votre mot de passe SBI avec ce lien :\n${resetLink}\n\nSport Business Institute`
+    }, apiKey);
+}
+
+async function sendAccountDeletedEmail(account, apiKey) {
+    return sendBrevoEmail({
+        sender: {
+            name: SBI_SENDER_NAME,
+            email: SBI_SENDER_EMAIL
+        },
+        to: [{
+            email: account.email,
+            name: getAccountDisplayName(account)
+        }],
+        replyTo: {
+            email: SBI_CONTACT_EMAIL,
+            name: "Sport Business Institute"
+        },
+        subject: "SBI - Suppression de votre accès",
+        htmlContent: renderSbiEmailTemplate({
+            prenom: account.prenom || "",
+            nomExpediteur: "L’équipe SBI",
+            posteExpediteur: "Administration",
+            preheader: "Votre accès SBI a été supprimé.",
+            messageHtml: `
+                <p style="margin:0 0 16px 0;">Votre accès à l’espace privé Sport Business Institute a été supprimé par l’administration.</p>
+                <p style="margin:0;">Si cette action vous semble anormale, contactez l’équipe SBI à <a href="mailto:${SBI_CONTACT_EMAIL}" style="color:#0051ff;">${SBI_CONTACT_EMAIL}</a>.</p>
+            `
+        }),
+        textContent: `Bonjour ${account.prenom || ""},\n\nVotre accès à l’espace privé SBI a été supprimé par l’administration.\n\nContact : ${SBI_CONTACT_EMAIL}`
+    }, apiKey);
+}
+
+async function sendAccountUpdatedEmail(account, changeLabels, apiKey) {
+    const changesHtml = changeLabels.length
+        ? `<ul style="margin:0 0 16px 18px;padding:0;color:#253047;line-height:1.7;">${changeLabels.map(label => `<li>${escapeHtml(label)}</li>`).join("")}</ul>`
+        : "";
+
+    return sendBrevoEmail({
+        sender: {
+            name: SBI_SENDER_NAME,
+            email: SBI_SENDER_EMAIL
+        },
+        to: [{
+            email: account.email,
+            name: getAccountDisplayName(account)
+        }],
+        replyTo: {
+            email: SBI_CONTACT_EMAIL,
+            name: "Sport Business Institute"
+        },
+        subject: "SBI - Mise à jour de votre compte",
+        htmlContent: renderSbiEmailTemplate({
+            prenom: account.prenom || "",
+            nomExpediteur: "L’équipe SBI",
+            posteExpediteur: "Administration",
+            preheader: "Votre compte SBI a été mis à jour.",
+            messageHtml: `
+                <p style="margin:0 0 16px 0;">Votre compte Sport Business Institute a été mis à jour par l’administration.</p>
+                ${changesHtml}
+                <p style="margin:0;">Si cette action vous semble anormale, contactez l’équipe SBI à <a href="mailto:${SBI_CONTACT_EMAIL}" style="color:#0051ff;">${SBI_CONTACT_EMAIL}</a>.</p>
+            `
+        }),
+        textContent: `Bonjour ${account.prenom || ""},\n\nVotre compte SBI a été mis à jour.\n${changeLabels.map(label => `- ${label}`).join("\n")}\n\nContact : ${SBI_CONTACT_EMAIL}`
+    }, apiKey);
+}
+
+
+function buildAccountEmailChangeCardHtml(rows) {
+    const tableRows = rows.map(([label, value]) => `
+        <tr>
+            <td style="padding:10px 12px;border-bottom:1px solid #dce4f2;color:#0051ff;font-weight:bold;width:40%;">${escapeHtml(label)}</td>
+            <td style="padding:10px 12px;border-bottom:1px solid #dce4f2;color:#101828;word-break:break-word;">${escapeHtml(value)}</td>
+        </tr>`).join("");
+
+    return `
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;border-collapse:collapse;margin:18px 0;border:1px solid #dce4f2;border-radius:12px;overflow:hidden;background:#f7f9fd;">
+            ${tableRows}
+        </table>`;
+}
+
+function renderAccountEmailChangedOldAddressHtml(account, oldEmail, newEmail) {
+    return renderSbiEmailTemplate({
+        prenom: account.prenom || "",
+        nomExpediteur: "L’équipe SBI",
+        posteExpediteur: "Administration",
+        preheader: "Votre adresse email SBI a été modifiée.",
+        messageHtml: `
+            <p style="margin:0 0 16px 0;">L’adresse email associée à votre compte Sport Business Institute vient d’être modifiée par l’administration.</p>
+            ${buildAccountEmailChangeCardHtml([
+                ["Ancienne adresse", oldEmail],
+                ["Nouvelle adresse", newEmail]
+            ])}
+            <p style="margin:18px 0 0 0;">Si vous n’êtes pas à l’origine de cette modification, contactez immédiatement l’équipe SBI à <a href="mailto:${SBI_CONTACT_EMAIL}" style="color:#0051ff;">${SBI_CONTACT_EMAIL}</a>.</p>
+        `
+    });
+}
+
+function renderAccountEmailChangedNewAddressHtml(account, oldEmail, newEmail) {
+    return renderSbiEmailTemplate({
+        prenom: account.prenom || "",
+        nomExpediteur: "L’équipe SBI",
+        posteExpediteur: "Administration",
+        preheader: "Votre nouvelle adresse email SBI est active.",
+        messageHtml: `
+            <p style="margin:0 0 16px 0;">Cette adresse est désormais liée à votre compte Sport Business Institute.</p>
+            ${buildAccountEmailChangeCardHtml([
+                ["Nouvelle adresse de connexion", newEmail],
+                ["Ancienne adresse", oldEmail]
+            ])}
+            <p style="margin:18px 0 0 0;">Votre mot de passe reste inchangé. Si vous avez un doute, demandez une réinitialisation depuis la page de connexion ou contactez l’équipe SBI.</p>
+        `
+    });
+}
+
+async function sendAccountEmailChangedOldAddressEmail(account, oldEmail, newEmail, apiKey) {
+    return sendBrevoEmail({
+        sender: {
+            name: SBI_SENDER_NAME,
+            email: SBI_SENDER_EMAIL
+        },
+        to: [{
+            email: oldEmail,
+            name: getAccountDisplayName(account)
+        }],
+        replyTo: {
+            email: SBI_CONTACT_EMAIL,
+            name: "Sport Business Institute"
+        },
+        subject: "SBI - Votre adresse email de connexion a été modifiée",
+        htmlContent: renderAccountEmailChangedOldAddressHtml(account, oldEmail, newEmail)
+    }, apiKey);
+}
+
+async function sendAccountEmailChangedNewAddressEmail(account, oldEmail, newEmail, apiKey) {
+    return sendBrevoEmail({
+        sender: {
+            name: SBI_SENDER_NAME,
+            email: SBI_SENDER_EMAIL
+        },
+        to: [{
+            email: newEmail,
+            name: getAccountDisplayName(account)
+        }],
+        replyTo: {
+            email: SBI_CONTACT_EMAIL,
+            name: "Sport Business Institute"
+        },
+        subject: "SBI - Nouvelle adresse email de connexion",
+        htmlContent: renderAccountEmailChangedNewAddressHtml(account, oldEmail, newEmail)
+    }, apiKey);
+}
+
+function mapAuthCreateError(error) {
+    if (error?.code === "auth/email-already-exists") {
+        return new HttpsError("already-exists", "Un compte Firebase Auth utilise déjà cette adresse email.");
+    }
+    if (error?.code === "auth/invalid-email") {
+        return new HttpsError("invalid-argument", "L'adresse email n'est pas valide.");
+    }
+    return new HttpsError("internal", `Création Auth impossible : ${error.message}`);
+}
+
+exports.adminCreateUserAccount = onCall({
+    region: "europe-west1",
+    secrets: [BREVO_API_KEY],
+    timeoutSeconds: 30,
+    memory: "256MiB"
+}, async (request) => {
+    const db = admin.firestore();
+    const caller = await requireAdminCaller(request, db);
+    const data = request.data || {};
+
+    const prenom = formatAccountPrenom(data.prenom);
+    const nom = formatAccountNom(data.nom);
+    const email = cleanEmail(data.email);
+    const role = normalizeAccountRole(data.role);
+
+    if (!prenom) throw new HttpsError("invalid-argument", "Le prénom est obligatoire.");
+    if (!nom) throw new HttpsError("invalid-argument", "Le nom est obligatoire.");
+    if (!isValidEmail(email)) throw new HttpsError("invalid-argument", "L'adresse email n'est pas valide.");
+
+    const existingUserByEmail = await db.collection("users").where("email", "==", email).limit(1).get();
+    if (!existingUserByEmail.empty) {
+        throw new HttpsError("already-exists", "Un document utilisateur existe déjà avec cette adresse email.");
+    }
+
+    let createdUser = null;
+    const accountData = {
+        prenom,
+        nom,
+        email,
+        role,
+        statut: "actif",
+        isGod: false,
+        isOnline: false,
+        lastSeenAt: null,
+        dateCreation: new Date().toISOString(),
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        createdBy: caller.uid,
+        formationsAcces: []
+    };
+
+    try {
+        createdUser = await admin.auth().createUser({
+            email,
+            displayName: getAccountDisplayName(accountData),
+            disabled: false
+        });
+    } catch (error) {
+        throw mapAuthCreateError(error);
+    }
+
+    try {
+        await db.collection("users").doc(createdUser.uid).set(accountData, { merge: false });
+    } catch (error) {
+        try {
+            await admin.auth().deleteUser(createdUser.uid);
+        } catch (rollbackError) {
+            console.error("Rollback Auth impossible après échec Firestore :", rollbackError.message);
+        }
+        throw new HttpsError("internal", `Création Firestore impossible : ${error.message}`);
+    }
+
+    const apiKey = BREVO_API_KEY.value();
+    let warning = "";
+
+    try {
+        if (!apiKey) throw new Error("BREVO_API_KEY manquant.");
+        const firebaseResetLink = await admin.auth().generatePasswordResetLink(email, SBI_AUTH_ACTION_SETTINGS);
+        const resetLink = buildSbiPasswordResetLink(firebaseResetLink);
+        await sendAccountInviteEmail(accountData, resetLink, apiKey);
+        await sendAccountInternalEmail("Compte créé", {
+            "Admin": caller.name,
+            "Admin email": caller.email,
+            "Utilisateur": getAccountDisplayName(accountData),
+            "Email": email,
+            "Rôle": getAccountRoleLabel(role),
+            "UID": createdUser.uid
+        }, apiKey);
+    } catch (error) {
+        warning = "Compte créé, mais l’email d’invitation ou la notification interne n’a pas pu être envoyé.";
+        console.error("Erreur email création compte SBI :", error.message, error.payload || "");
+    }
+
+    await safeWriteAccountAuditLog(db, {
+        type: "account.created",
+        actorUid: caller.uid,
+        actorEmail: caller.email,
+        targetUid: createdUser.uid,
+        targetEmail: email,
+        targetRole: role
+    });
+
+    return {
+        success: true,
+        uid: createdUser.uid,
+        email,
+        warning,
+        message: warning || "Compte créé. Email d’invitation envoyé."
+    };
+});
+
+exports.adminSendPasswordReset = onCall({
+    region: "europe-west1",
+    secrets: [BREVO_API_KEY],
+    timeoutSeconds: 20,
+    memory: "256MiB"
+}, async (request) => {
+    const db = admin.firestore();
+    const caller = await requireAdminCaller(request, db);
+    const data = request.data || {};
+    const targetUid = cleanString(data.uid, 160);
+
+    if (!targetUid) throw new HttpsError("invalid-argument", "UID utilisateur manquant.");
+
+    const targetDoc = await db.collection("users").doc(targetUid).get();
+    if (!targetDoc.exists) throw new HttpsError("not-found", "Compte utilisateur introuvable dans Firestore.");
+
+    const targetData = targetDoc.data() || {};
+    if (targetData.isGod === true && caller.data.isGod !== true) {
+        throw new HttpsError("permission-denied", "Seul le compte Suprême peut envoyer un reset au compte Suprême.");
+    }
+
+    const email = cleanEmail(targetData.email);
+    if (!isValidEmail(email)) throw new HttpsError("failed-precondition", "Email utilisateur invalide ou manquant.");
+
+    const apiKey = BREVO_API_KEY.value();
+    if (!apiKey) throw new HttpsError("failed-precondition", "Configuration Brevo manquante côté serveur.");
+
+    try {
+        const firebaseResetLink = await admin.auth().generatePasswordResetLink(email, SBI_AUTH_ACTION_SETTINGS);
+        const resetLink = buildSbiPasswordResetLink(firebaseResetLink);
+        await sendAccountResetEmail({ ...targetData, email }, resetLink, apiKey);
+        await sendAccountInternalEmail("Reset mot de passe envoyé", {
+            "Admin": caller.name,
+            "Admin email": caller.email,
+            "Utilisateur": getAccountDisplayName(targetData),
+            "Email": email,
+            "Rôle": getAccountRoleLabel(targetData.role),
+            "UID": targetUid
+        }, apiKey);
+    } catch (error) {
+        console.error("Erreur reset password SBI :", error.message, error.payload || "");
+        throw new HttpsError("internal", `Impossible d'envoyer l'email de réinitialisation : ${error.message}`);
+    }
+
+    await safeWriteAccountAuditLog(db, {
+        type: "account.password_reset_sent",
+        actorUid: caller.uid,
+        actorEmail: caller.email,
+        targetUid,
+        targetEmail: email,
+        targetRole: targetData.role || ""
+    });
+
+    return {
+        success: true,
+        message: `Email de réinitialisation envoyé à ${email}.`
+    };
+});
+
+
+
+
+/* =======================================================================
+ * SBI 8.0P.137 - SELF EMAIL CHANGE WORKFLOW
+ * -----------------------------------------------------------------------
+ * Changement d'email depuis l'espace personnel professeur / étudiant.
+ * Le client effectue une réauthentification, puis cette Function applique
+ * la modification Auth + Firestore, envoie les emails SBI et écrit l'audit.
+ * ======================================================================= */
+
+async function sendSelfEmailChangeSbiEmail(apiKey, { toEmail, toName, subject, prenom, messageHtml, preheader }) {
+    if (!toEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(toEmail)) return null;
+
+    const htmlContent = renderSbiEmailTemplate({
+        prenom: prenom || '',
+        messageHtml,
+        nomExpediteur: 'L’équipe SBI',
+        posteExpediteur: 'Support comptes',
+        preheader: preheader || subject
+    });
+
+    return callBrevo('/smtp/email', {
+        sender: { name: SBI_SENDER_NAME, email: SBI_SENDER_EMAIL },
+        to: [{ email: toEmail, name: toName || toEmail }],
+        subject,
+        htmlContent,
+        replyTo: { email: SBI_CONTACT_EMAIL, name: 'SBI' }
+    }, apiKey);
+}
+
+function buildSelfEmailChangeTable(oldEmail, newEmail) {
+    return `
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;border-collapse:collapse;margin:18px 0;border:1px solid #dce4f2;border-radius:12px;overflow:hidden;">
+            <tr>
+                <td style="padding:12px 14px;border-bottom:1px solid #dce4f2;color:#0051ff;font-weight:bold;width:38%;">Ancienne adresse</td>
+                <td style="padding:12px 14px;border-bottom:1px solid #dce4f2;color:#101828;">${escapeHtml(oldEmail)}</td>
+            </tr>
+            <tr>
+                <td style="padding:12px 14px;color:#0051ff;font-weight:bold;width:38%;">Nouvelle adresse</td>
+                <td style="padding:12px 14px;color:#101828;">${escapeHtml(newEmail)}</td>
+            </tr>
+        </table>`;
+}
+
+async function notifySelfEmailChange({ apiKey, actorUid, oldEmail, newEmail, userProfile }) {
+    const prenom = userProfile?.prenom || '';
+    const nom = userProfile?.nom || '';
+    const fullName = `${prenom} ${nom}`.trim() || newEmail;
+    const tableHtml = buildSelfEmailChangeTable(oldEmail, newEmail);
+
+    const oldAddressHtml = `
+        <p style="margin:0 0 16px 0;">L’adresse email de votre compte SBI vient d’être modifiée depuis votre espace personnel.</p>
+        ${tableHtml}
+        <p style="margin:18px 0 0 0;">Si vous êtes bien à l’origine de cette action, aucune démarche supplémentaire n’est nécessaire.</p>
+        <p style="margin:12px 0 0 0;color:#667085;font-size:14px;line-height:22px;">Si vous n’avez pas demandé ce changement, contactez immédiatement SBI.</p>`;
+
+    const newAddressHtml = `
+        <p style="margin:0 0 16px 0;">Cette adresse email est désormais associée à votre compte SBI.</p>
+        ${tableHtml}
+        <p style="margin:18px 0 0 0;">Vous pourrez l’utiliser pour vos prochaines connexions à la plateforme.</p>`;
+
+    const internalHtml = `
+        <p style="margin:0 0 16px 0;">Un utilisateur vient de modifier son adresse email depuis son espace personnel.</p>
+        ${tableHtml}
+        <p style="margin:18px 0 0 0;color:#667085;font-size:14px;line-height:22px;">UID : ${escapeHtml(actorUid)}</p>`;
+
+    const tasks = [
+        sendSelfEmailChangeSbiEmail(apiKey, {
+            toEmail: oldEmail,
+            toName: fullName,
+            subject: 'Votre adresse email SBI a été modifiée',
+            prenom,
+            messageHtml: oldAddressHtml,
+            preheader: 'Modification de l’adresse email de votre compte SBI.'
+        }),
+        sendSelfEmailChangeSbiEmail(apiKey, {
+            toEmail: newEmail,
+            toName: fullName,
+            subject: 'Nouvelle adresse email confirmée pour votre compte SBI',
+            prenom,
+            messageHtml: newAddressHtml,
+            preheader: 'Votre nouvelle adresse email SBI est active.'
+        }),
+        sendSelfEmailChangeSbiEmail(apiKey, {
+            toEmail: SBI_CONTACT_EMAIL,
+            toName: 'SBI',
+            subject: 'Compte SBI - email modifié par utilisateur',
+            prenom: 'équipe',
+            messageHtml: internalHtml,
+            preheader: 'Un utilisateur a modifié son email depuis son profil.'
+        })
+    ];
+
+    const results = await Promise.allSettled(tasks);
+    const failed = results.filter(result => result.status === 'rejected');
+    if (failed.length) {
+        console.error('Emails selfChangeUserEmail partiellement échoués :', failed.map(item => item.reason?.message || item.reason));
+    }
+    return { sent: results.length - failed.length, failed: failed.length };
+}
+
+exports.selfChangeUserEmail = onCall({
+    region: 'europe-west1',
+    secrets: [BREVO_API_KEY],
+    timeoutSeconds: 30,
+    memory: '256MiB'
+}, async (request) => {
+    if (!request.auth?.uid) {
+        throw new HttpsError('unauthenticated', 'Connexion requise.');
+    }
+
+    const uid = request.auth.uid;
+    const authTime = Number(request.auth.token?.auth_time || 0) * 1000;
+    if (!authTime || Date.now() - authTime > 5 * 60 * 1000) {
+        throw new HttpsError('failed-precondition', 'Veuillez confirmer votre mot de passe avant de modifier votre email.');
+    }
+
+    const newEmail = cleanString(request.data?.email, 180).toLowerCase();
+    if (!newEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
+        throw new HttpsError('invalid-argument', "L'adresse email n'est pas valide.");
+    }
+
+    const userRef = admin.firestore().collection('users').doc(uid);
+    const userSnap = await userRef.get();
+    if (!userSnap.exists) {
+        throw new HttpsError('not-found', 'Profil utilisateur introuvable.');
+    }
+
+    const userProfile = userSnap.data() || {};
+    const authUser = await admin.auth().getUser(uid);
+    const oldEmail = cleanString(authUser.email || userProfile.email, 180).toLowerCase();
+
+    if (!oldEmail) {
+        throw new HttpsError('failed-precondition', 'Ancienne adresse email introuvable.');
+    }
+
+    if (oldEmail === newEmail) {
+        throw new HttpsError('invalid-argument', "La nouvelle adresse doit être différente de l'adresse actuelle.");
+    }
+
+    try {
+        const existingAuthUser = await admin.auth().getUserByEmail(newEmail);
+        if (existingAuthUser.uid !== uid) {
+            throw new HttpsError('already-exists', 'Cette adresse email est déjà utilisée par un autre compte.');
+        }
+    } catch (error) {
+        if (error instanceof HttpsError) throw error;
+        if (error?.code !== 'auth/user-not-found') {
+            throw new HttpsError('internal', 'Vérification email impossible.');
+        }
+    }
+
+    const existingFirestore = await admin.firestore()
+        .collection('users')
+        .where('email', '==', newEmail)
+        .limit(1)
+        .get();
+
+    if (!existingFirestore.empty) {
+        const existingDoc = existingFirestore.docs[0];
+        if (existingDoc.id !== uid) {
+            throw new HttpsError('already-exists', 'Cette adresse email est déjà utilisée par un autre profil.');
+        }
+    }
+
+    await admin.auth().updateUser(uid, {
+        email: newEmail,
+        emailVerified: false
+    });
+
+    try {
+        await userRef.update({
+            email: newEmail,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            emailUpdatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+    } catch (error) {
+        console.error('Rollback email Auth après erreur Firestore selfChangeUserEmail :', error);
+        try {
+            await admin.auth().updateUser(uid, { email: oldEmail });
+        } catch (rollbackError) {
+            console.error('Rollback email Auth impossible :', rollbackError);
+        }
+        throw new HttpsError('internal', 'Modification Firestore impossible.');
+    }
+
+    let emailReport = { sent: 0, failed: 0 };
+    try {
+        emailReport = await notifySelfEmailChange({
+            apiKey: BREVO_API_KEY.value(),
+            actorUid: uid,
+            oldEmail,
+            newEmail,
+            userProfile
+        });
+    } catch (error) {
+        console.error('Notification selfChangeUserEmail impossible :', error);
+        emailReport = { sent: 0, failed: 3 };
+    }
+
+    await admin.firestore().collection('accountAuditLogs').add({
+        type: 'account.self_email_changed',
+        actorUid: uid,
+        actorEmail: newEmail,
+        targetUid: uid,
+        targetEmail: newEmail,
+        previousEmail: oldEmail,
+        newEmail,
+        targetRole: userProfile.role || '',
+        source: 'self-profile',
+        emailReport,
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    return {
+        ok: true,
+        email: newEmail,
+        warning: emailReport.failed ? 'Email modifié, mais certaines notifications n’ont pas pu être envoyées.' : ''
+    };
+});
+
+exports.adminChangeUserEmail = onCall({
+    region: "europe-west1",
+    secrets: [BREVO_API_KEY],
+    timeoutSeconds: 30,
+    memory: "256MiB"
+}, async (request) => {
+    const db = admin.firestore();
+    const caller = await requireAdminCaller(request, db);
+    const data = request.data || {};
+    const targetUid = cleanString(data.uid, 160);
+    const newEmail = cleanEmail(data.email);
+
+    if (!targetUid) throw new HttpsError("invalid-argument", "UID utilisateur manquant.");
+    if (!isValidEmail(newEmail)) throw new HttpsError("invalid-argument", "La nouvelle adresse email n'est pas valide.");
+
+    const targetRef = db.collection("users").doc(targetUid);
+    const targetDoc = await targetRef.get();
+    if (!targetDoc.exists) throw new HttpsError("not-found", "Compte utilisateur introuvable.");
+
+    const targetData = targetDoc.data() || {};
+    const callerIsGod = caller.data.isGod === true;
+    const targetIsGod = targetData.isGod === true;
+    const targetRole = normalizeAccountRole(targetData.role);
+    const isSelfEdit = targetUid === caller.uid;
+    const oldEmail = cleanEmail(targetData.email);
+
+    if (!oldEmail || !isValidEmail(oldEmail)) {
+        throw new HttpsError("failed-precondition", "Ancienne adresse email invalide ou manquante dans Firestore.");
+    }
+
+    if (newEmail === oldEmail) {
+        return { success: true, message: "Adresse email inchangée." };
+    }
+
+    if (isSelfEdit) {
+        throw new HttpsError("permission-denied", "Pour votre propre compte, utilisez une procédure dédiée de changement d'adresse email.");
+    }
+
+    if (targetIsGod && !callerIsGod) {
+        throw new HttpsError("permission-denied", "Seul le compte Suprême peut modifier l'adresse email du compte Suprême.");
+    }
+
+    if (targetRole === "admin" && !callerIsGod) {
+        throw new HttpsError("permission-denied", "Seul le compte Suprême peut modifier l'adresse email d'un administrateur.");
+    }
+
+    const existingUserByEmail = await db.collection("users").where("email", "==", newEmail).limit(2).get();
+    const conflictingUserDoc = existingUserByEmail.docs.find(docSnap => docSnap.id !== targetUid);
+    if (conflictingUserDoc) {
+        throw new HttpsError("already-exists", "Un document utilisateur existe déjà avec cette adresse email.");
+    }
+
+    try {
+        const existingAuthUser = await admin.auth().getUserByEmail(newEmail);
+        if (existingAuthUser.uid !== targetUid) {
+            throw new HttpsError("already-exists", "Un compte Firebase Auth existe déjà avec cette adresse email.");
+        }
+    } catch (error) {
+        if (error instanceof HttpsError) throw error;
+        if (error?.code !== "auth/user-not-found") {
+            console.error("Erreur vérification email Auth SBI :", error.message);
+            throw new HttpsError("internal", `Vérification email Auth impossible : ${error.message}`);
+        }
+    }
+
+    try {
+        await admin.auth().updateUser(targetUid, {
+            email: newEmail,
+            emailVerified: false
+        });
+    } catch (error) {
+        console.error("Erreur changement email Auth SBI :", error.message);
+        if (error?.code === "auth/email-already-exists") {
+            throw new HttpsError("already-exists", "Cette adresse email est déjà utilisée par un autre compte Firebase Auth.");
+        }
+        if (error?.code === "auth/user-not-found") {
+            throw new HttpsError("failed-precondition", "Compte Firebase Auth introuvable : synchronisation impossible.");
+        }
+        throw new HttpsError("internal", `Modification email Auth impossible : ${error.message}`);
+    }
+
+    try {
+        await targetRef.set({
+            email: newEmail,
+            emailUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            emailUpdatedBy: caller.uid,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedBy: caller.uid
+        }, { merge: true });
+    } catch (error) {
+        console.error("Erreur changement email Firestore SBI, tentative rollback Auth :", error.message);
+        try {
+            await admin.auth().updateUser(targetUid, {
+                email: oldEmail,
+                emailVerified: false
+            });
+        } catch (rollbackError) {
+            console.error("Rollback email Auth impossible :", rollbackError.message);
+        }
+        throw new HttpsError("internal", `Modification email Firestore impossible : ${error.message}`);
+    }
+
+    const nextProfile = {
+        ...targetData,
+        email: newEmail
+    };
+
+    const apiKey = BREVO_API_KEY.value();
+    let warning = "";
+
+    try {
+        if (!apiKey) throw new Error("BREVO_API_KEY manquant.");
+        await sendAccountEmailChangedOldAddressEmail(nextProfile, oldEmail, newEmail, apiKey);
+        await sendAccountEmailChangedNewAddressEmail(nextProfile, oldEmail, newEmail, apiKey);
+        await sendAccountInternalEmail("Email compte modifié", {
+            "Admin": caller.name,
+            "Admin email": caller.email,
+            "Utilisateur": getAccountDisplayName(nextProfile),
+            "Ancien email": oldEmail,
+            "Nouvel email": newEmail,
+            "Rôle": getAccountRoleLabel(nextProfile.role),
+            "UID": targetUid
+        }, apiKey);
+    } catch (error) {
+        warning = "Adresse email modifiée, mais un ou plusieurs emails de notification n’ont pas pu être envoyés.";
+        console.error("Erreur email changement adresse SBI :", error.message, error.payload || "");
+    }
+
+    await safeWriteAccountAuditLog(db, {
+        type: "account.email_changed",
+        actorUid: caller.uid,
+        actorEmail: caller.email,
+        targetUid,
+        targetEmail: newEmail,
+        targetRole: nextProfile.role || "",
+        changes: {
+            email: {
+                before: oldEmail,
+                after: newEmail
+            }
+        }
+    });
+
+    return {
+        success: true,
+        warning,
+        message: warning || "Adresse email modifiée."
+    };
+});
+
+exports.adminUpdateUserAccount = onCall({
+    region: "europe-west1",
+    secrets: [BREVO_API_KEY],
+    timeoutSeconds: 30,
+    memory: "256MiB"
+}, async (request) => {
+    const db = admin.firestore();
+    const caller = await requireAdminCaller(request, db);
+    const data = request.data || {};
+    const targetUid = cleanString(data.uid, 160);
+
+    if (!targetUid) throw new HttpsError("invalid-argument", "UID utilisateur manquant.");
+
+    const targetRef = db.collection("users").doc(targetUid);
+    const targetDoc = await targetRef.get();
+    if (!targetDoc.exists) throw new HttpsError("not-found", "Compte utilisateur introuvable.");
+
+    const targetData = targetDoc.data() || {};
+    const callerIsGod = caller.data.isGod === true;
+    const targetIsGod = targetData.isGod === true;
+    const targetRole = normalizeAccountRole(targetData.role);
+    const isSelfEdit = targetUid === caller.uid;
+
+    if (targetIsGod && !callerIsGod) {
+        throw new HttpsError("permission-denied", "Accès refusé : seul le compte Suprême peut modifier le compte Suprême.");
+    }
+
+    const updates = {};
+    const authUpdates = {};
+    const changeLabels = [];
+    const auditChanges = {};
+    let previousGodUidToDemote = "";
+
+    if (Object.prototype.hasOwnProperty.call(data, "prenom")) {
+        const prenom = formatAccountPrenom(data.prenom);
+        if (!prenom) throw new HttpsError("invalid-argument", "Le prénom est obligatoire.");
+        if (prenom !== (targetData.prenom || "")) {
+            updates.prenom = prenom;
+            auditChanges.prenom = { before: targetData.prenom || "", after: prenom };
+        }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(data, "nom")) {
+        const nom = formatAccountNom(data.nom);
+        if (!nom) throw new HttpsError("invalid-argument", "Le nom est obligatoire.");
+        if (nom !== (targetData.nom || "")) {
+            updates.nom = nom;
+            auditChanges.nom = { before: targetData.nom || "", after: nom };
+        }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(data, "role")) {
+        const requestedRoleRaw = cleanString(data.role, 40).toLowerCase();
+        if (!ACCOUNT_ROLES.includes(requestedRoleRaw)) {
+            throw new HttpsError("invalid-argument", "Rôle utilisateur invalide.");
+        }
+        if (targetIsGod) {
+            throw new HttpsError("permission-denied", "Le rôle du compte Suprême ne peut pas être modifié.");
+        }
+        if (!callerIsGod && (targetRole === "admin" || requestedRoleRaw === "admin")) {
+            throw new HttpsError("permission-denied", "Seul le compte Suprême peut modifier ou attribuer un rôle administrateur.");
+        }
+        if (isSelfEdit && requestedRoleRaw !== targetRole) {
+            throw new HttpsError("permission-denied", "Vous ne pouvez pas modifier votre propre rôle.");
+        }
+        if (requestedRoleRaw !== targetRole) {
+            updates.role = requestedRoleRaw;
+            auditChanges.role = { before: targetRole, after: requestedRoleRaw };
+            changeLabels.push(`Votre rôle est désormais : ${getAccountRoleLabel(requestedRoleRaw)}.`);
+        }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(data, "statut")) {
+        const requestedStatus = cleanString(data.statut, 40).toLowerCase();
+        if (!["actif", "suspendu"].includes(requestedStatus)) {
+            throw new HttpsError("invalid-argument", "Statut utilisateur invalide.");
+        }
+        if (targetIsGod) {
+            throw new HttpsError("permission-denied", "Le compte Suprême ne peut pas être suspendu.");
+        }
+        if (isSelfEdit && requestedStatus === "suspendu") {
+            throw new HttpsError("permission-denied", "Vous ne pouvez pas suspendre votre propre compte.");
+        }
+        if (!callerIsGod && targetRole === "admin" && requestedStatus !== (targetData.statut || "actif")) {
+            throw new HttpsError("permission-denied", "Un administrateur classique ne peut pas suspendre ou réactiver un autre administrateur.");
+        }
+        if (requestedStatus !== (targetData.statut || "actif")) {
+            updates.statut = requestedStatus;
+            authUpdates.disabled = requestedStatus === "suspendu";
+            auditChanges.statut = { before: targetData.statut || "actif", after: requestedStatus };
+            changeLabels.push(requestedStatus === "suspendu"
+                ? "Votre compte a été suspendu temporairement."
+                : "Votre compte a été réactivé.");
+        }
+    }
+
+    if (data.isGod === true) {
+        const currentGodSnapshot = await db.collection("users").where("isGod", "==", true).limit(2).get();
+        const currentGodDocs = currentGodSnapshot.docs;
+        const currentGodDoc = currentGodDocs[0] || null;
+        const godExists = !!currentGodDoc;
+
+        if (targetIsGod) {
+            // Rien à faire : le compte cible est déjà Suprême.
+        } else if (callerIsGod) {
+            updates.isGod = true;
+            updates.role = "admin";
+            updates.statut = "actif";
+            authUpdates.disabled = false;
+            auditChanges.isGod = { before: false, after: true };
+            changeLabels.push("Votre compte possède désormais les droits Suprême SBI.");
+
+            if (currentGodDoc && currentGodDoc.id !== targetUid) {
+                previousGodUidToDemote = currentGodDoc.id;
+            }
+        } else if (!godExists && isSelfEdit && targetRole === "admin") {
+            updates.isGod = true;
+            updates.role = "admin";
+            updates.statut = "actif";
+            authUpdates.disabled = false;
+            auditChanges.isGod = { before: false, after: true };
+            changeLabels.push("Votre compte a réclamé les droits Suprême SBI.");
+        } else {
+            throw new HttpsError("permission-denied", "Seul le compte Suprême peut transférer les droits Suprême.");
+        }
+    }
+
+    if (Object.keys(updates).length === 0 && Object.keys(authUpdates).length === 0) {
+        return { success: true, message: "Aucune modification à appliquer." };
+    }
+
+    const nextProfile = {
+        ...targetData,
+        ...updates
+    };
+
+    const nextDisplayName = getAccountDisplayName(nextProfile);
+    if ((updates.prenom !== undefined || updates.nom !== undefined) && nextDisplayName) {
+        authUpdates.displayName = nextDisplayName;
+    }
+
+    if (Object.keys(authUpdates).length > 0) {
+        try {
+            await admin.auth().updateUser(targetUid, authUpdates);
+        } catch (error) {
+            console.error("Erreur update Auth compte SBI :", error.message);
+            if (error?.code === "auth/user-not-found") {
+                throw new HttpsError("failed-precondition", "Compte Firebase Auth introuvable : synchronisation impossible.");
+            }
+            throw new HttpsError("internal", `Mise à jour Auth impossible : ${error.message}`);
+        }
+    }
+
+    const accountUpdateStamp = admin.firestore.FieldValue.serverTimestamp();
+    const accountUpdateBatch = db.batch();
+
+    accountUpdateBatch.set(targetRef, {
+        ...updates,
+        updatedAt: accountUpdateStamp,
+        updatedBy: caller.uid
+    }, { merge: true });
+
+    if (previousGodUidToDemote) {
+        accountUpdateBatch.set(db.collection("users").doc(previousGodUidToDemote), {
+            isGod: false,
+            updatedAt: accountUpdateStamp,
+            updatedBy: caller.uid
+        }, { merge: true });
+    }
+
+    await accountUpdateBatch.commit();
+
+    const apiKey = BREVO_API_KEY.value();
+    let warning = "";
+    const sensitiveChange = auditChanges.role || auditChanges.statut || auditChanges.isGod;
+
+    if (sensitiveChange) {
+        try {
+            if (!apiKey) throw new Error("BREVO_API_KEY manquant.");
+            const targetEmail = cleanEmail(nextProfile.email);
+            if (isValidEmail(targetEmail) && changeLabels.length > 0) {
+                await sendAccountUpdatedEmail({ ...nextProfile, email: targetEmail }, changeLabels, apiKey);
+            }
+            await sendAccountInternalEmail("Compte modifié", {
+                "Admin": caller.name,
+                "Admin email": caller.email,
+                "Utilisateur": getAccountDisplayName(nextProfile),
+                "Email": targetEmail,
+                "Ancien rôle": auditChanges.role ? getAccountRoleLabel(auditChanges.role.before) : "",
+                "Nouveau rôle": auditChanges.role ? getAccountRoleLabel(auditChanges.role.after) : "",
+                "Ancien statut": auditChanges.statut ? auditChanges.statut.before : "",
+                "Nouveau statut": auditChanges.statut ? auditChanges.statut.after : "",
+                "Droits Suprême": auditChanges.isGod ? "modifiés" : "",
+                "UID": targetUid
+            }, apiKey);
+        } catch (error) {
+            warning = "Compte modifié, mais l’email de notification n’a pas pu être envoyé.";
+            console.error("Erreur email modification compte SBI :", error.message, error.payload || "");
+        }
+    }
+
+    await safeWriteAccountAuditLog(db, {
+        type: auditChanges.isGod ? "account.god_updated" : "account.updated",
+        actorUid: caller.uid,
+        actorEmail: caller.email,
+        targetUid,
+        targetEmail: cleanEmail(nextProfile.email),
+        targetRole: nextProfile.role || "",
+        changes: auditChanges
+    });
+
+    return {
+        success: true,
+        warning,
+        message: warning || "Compte modifié."
+    };
+});
+
+exports.deleteUserAccount = onCall({
+    region: "europe-west1",
+    secrets: [BREVO_API_KEY],
+    timeoutSeconds: 30,
+    memory: "256MiB"
+}, async (request) => {
+    const db = admin.firestore();
+    const caller = await requireAdminCaller(request, db);
+    const targetUid = cleanString(request.data?.uid, 160);
+
+    if (!targetUid) throw new HttpsError("invalid-argument", "UID utilisateur manquant.");
+    if (targetUid === caller.uid) {
+        throw new HttpsError("permission-denied", "Sécurité : vous ne pouvez pas supprimer votre propre compte.");
+    }
+
+    const targetDoc = await db.collection("users").doc(targetUid).get();
+
+    if (!targetDoc.exists) {
+        try {
+            await admin.auth().deleteUser(targetUid);
+        } catch (error) {
+            if (error?.code !== "auth/user-not-found") throw error;
+        }
+        await safeWriteAccountAuditLog(db, {
+            type: "account.deleted.orphan_cleanup",
+            actorUid: caller.uid,
+            actorEmail: caller.email,
+            targetUid,
+            targetEmail: "",
+            targetRole: ""
+        });
+        return { success: true, message: "Nettoyage de sécurité effectué." };
+    }
+
+    const targetData = targetDoc.data() || {};
+    const targetEmail = cleanEmail(targetData.email);
+    const targetRole = targetData.role || "";
+
+    if (targetData.isGod === true) {
+        throw new HttpsError("permission-denied", "Sécurité : le compte Suprême ne peut pas être supprimé.");
+    }
+
+    if (targetRole === "admin" && caller.data.isGod !== true) {
+        throw new HttpsError("permission-denied", "Un administrateur classique ne peut pas supprimer un autre administrateur.");
+    }
+
+    try {
+        await admin.auth().deleteUser(targetUid);
+    } catch (error) {
+        if (error?.code !== "auth/user-not-found") throw error;
+    }
+
+    await db.collection("users").doc(targetUid).delete();
+
+    const apiKey = BREVO_API_KEY.value();
+    let warning = "";
+
+    try {
+        if (!apiKey) throw new Error("BREVO_API_KEY manquant.");
+        if (isValidEmail(targetEmail)) {
+            await sendAccountDeletedEmail({ ...targetData, email: targetEmail }, apiKey);
+        }
+        await sendAccountInternalEmail("Compte supprimé", {
+            "Admin": caller.name,
+            "Admin email": caller.email,
+            "Utilisateur": getAccountDisplayName(targetData),
+            "Email": targetEmail,
+            "Rôle": getAccountRoleLabel(targetRole),
+            "UID": targetUid
+        }, apiKey);
+    } catch (error) {
+        warning = "Compte supprimé, mais l’email de confirmation ou la notification interne n’a pas pu être envoyé.";
+        console.error("Erreur email suppression compte SBI :", error.message, error.payload || "");
+    }
+
+    await safeWriteAccountAuditLog(db, {
+        type: "account.deleted",
+        actorUid: caller.uid,
+        actorEmail: caller.email,
+        targetUid,
+        targetEmail,
+        targetRole
+    });
+
+    return {
+        success: true,
+        warning,
+        message: warning || "Le compte a été intégralement supprimé."
+    };
+});
 
 exports.sendSbiContact = onRequest({
     region: "europe-west1",

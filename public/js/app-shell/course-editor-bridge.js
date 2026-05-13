@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.118 - Course editor bridge
+ * SBI 8.0P.129 - Course editor bridge
  *
  * Prépare et monte les éléments que les scripts inline ne relancent pas
  * en navigation PJAX : Quill, onglets éditeur et switch image/vidéo.
@@ -9,6 +9,7 @@ const QUILL_SCRIPT = 'https://cdn.quilljs.com/1.3.6/quill.min.js';
 const TOOLTIP_STYLE_ID = 'sbi-quill-tooltip-style';
 const TOOLTIP_PORTAL_ID = 'sbi-quill-tooltip-portal';
 const EDITOR_SELECTORS = ['#quill-editor', '#course-editor'];
+const tooltipBindings = new WeakMap();
 
 export const COURSE_EDITOR_ROUTES = {
   admin: '/admin/formations-cours.html',
@@ -165,9 +166,24 @@ function positionTooltip(target, portal) {
   portal.style.top = `${top}px`;
 }
 
+function getQuillPicker(target) {
+  return target?.classList?.contains('ql-picker')
+    ? target
+    : target?.closest?.('.ql-picker') || null;
+}
+
+function isWithinExpandedQuillPicker(target) {
+  return Boolean(getQuillPicker(target)?.classList?.contains('ql-expanded'));
+}
+
 function showStyledTooltip(target) {
   const label = target?.getAttribute('data-sbi-tooltip');
   if (!label) return;
+
+  if (isWithinExpandedQuillPicker(target)) {
+    hideStyledTooltip();
+    return;
+  }
 
   const portal = getTooltipPortal();
   portal.textContent = label;
@@ -175,6 +191,11 @@ function showStyledTooltip(target) {
   portal.dataset.placement = 'bottom';
 
   window.requestAnimationFrame(() => {
+    if (isWithinExpandedQuillPicker(target)) {
+      hideStyledTooltip();
+      return;
+    }
+
     positionTooltip(target, portal);
   });
 }
@@ -188,14 +209,29 @@ function hideStyledTooltip() {
 }
 
 function bindStyledTooltip(target, cleanups) {
-  if (!target || target.dataset.sbiTooltipBound === 'true') return;
+  if (!target) return;
+
+  const previousCleanup = tooltipBindings.get(target);
+  if (typeof previousCleanup === 'function') {
+    previousCleanup();
+  }
 
   target.dataset.sbiTooltipBound = 'true';
 
+  const picker = getQuillPicker(target);
   const show = () => showStyledTooltip(target);
   const hide = () => hideStyledTooltip();
+  const hidePickerTooltip = () => {
+    if (picker) hideStyledTooltip();
+  };
   const reposition = () => {
     const portal = document.getElementById(TOOLTIP_PORTAL_ID);
+
+    if (isWithinExpandedQuillPicker(target)) {
+      hideStyledTooltip();
+      return;
+    }
+
     if (portal?.classList.contains('is-visible')) {
       positionTooltip(target, portal);
     }
@@ -205,17 +241,52 @@ function bindStyledTooltip(target, cleanups) {
   target.addEventListener('focus', show);
   target.addEventListener('mouseleave', hide);
   target.addEventListener('blur', hide);
+  target.addEventListener('mousedown', hidePickerTooltip, true);
+  target.addEventListener('pointerdown', hidePickerTooltip, true);
+  target.addEventListener('touchstart', hidePickerTooltip, true);
   window.addEventListener('scroll', reposition, true);
   window.addEventListener('resize', reposition);
 
-  cleanups.push(() => {
+  let pickerObserver = null;
+  if (picker && typeof MutationObserver !== 'undefined') {
+    pickerObserver = new MutationObserver(() => {
+      if (isWithinExpandedQuillPicker(target)) {
+        hideStyledTooltip();
+      }
+    });
+    pickerObserver.observe(picker, {
+      attributes: true,
+      attributeFilter: ['class']
+    });
+  }
+
+  let cleaned = false;
+  const cleanupBinding = () => {
+    if (cleaned) return;
+    cleaned = true;
+
     target.removeEventListener('mouseenter', show);
     target.removeEventListener('focus', show);
     target.removeEventListener('mouseleave', hide);
     target.removeEventListener('blur', hide);
+    target.removeEventListener('mousedown', hidePickerTooltip, true);
+    target.removeEventListener('pointerdown', hidePickerTooltip, true);
+    target.removeEventListener('touchstart', hidePickerTooltip, true);
     window.removeEventListener('scroll', reposition, true);
     window.removeEventListener('resize', reposition);
-  });
+    pickerObserver?.disconnect();
+
+    if (tooltipBindings.get(target) === cleanupBinding) {
+      tooltipBindings.delete(target);
+    }
+
+    if (target.dataset.sbiTooltipBound === 'true') {
+      delete target.dataset.sbiTooltipBound;
+    }
+  };
+
+  tooltipBindings.set(target, cleanupBinding);
+  cleanups.push(cleanupBinding);
 }
 
 function decorateTooltipElement(element, label, cleanups) {
@@ -246,7 +317,12 @@ function setToolbarLabel(toolbar, selector, label, cleanups) {
 
       if (picker) {
         decorateTooltipElement(picker, label, cleanups);
+        decorateTooltipElement(picker.querySelector('.ql-picker-label'), label, cleanups);
       }
+    }
+
+    if (element.classList?.contains('ql-picker')) {
+      decorateTooltipElement(element.querySelector('.ql-picker-label'), label, cleanups);
     }
   });
 }
@@ -274,6 +350,7 @@ function applyQuillToolbarTooltips(toolbar, cleanups = []) {
   setToolbarLabel(toolbar, '.ql-background', 'Surlignage du caractère', cleanups);
   setToolbarLabel(toolbar, '.ql-list[value="ordered"]', 'Liste numérotée', cleanups);
   setToolbarLabel(toolbar, '.ql-list[value="bullet"]', 'Liste à puces', cleanups);
+  setToolbarLabel(toolbar, '.ql-align', 'Alignement', cleanups);
   setToolbarLabel(toolbar, '.ql-link', 'Ajouter un lien', cleanups);
   setToolbarLabel(toolbar, '.ql-image', 'Insérer une image', cleanups);
   setToolbarLabel(toolbar, '.ql-video', 'Insérer une vidéo', cleanups);
@@ -282,8 +359,41 @@ function applyQuillToolbarTooltips(toolbar, cleanups = []) {
   toolbar.dataset.sbiTooltipsReady = 'true';
 }
 
+function toolbarHasRequiredControls(toolbar) {
+  if (!toolbar) return false;
+
+  return Boolean(
+    toolbar.querySelector('.ql-underline')
+    && toolbar.querySelector('.ql-background')
+    && toolbar.querySelector('.ql-align')
+  );
+}
+
+function resetExistingQuillContainer(editor) {
+  const quill = window.quill;
+  const toolbar = quill?.getModule?.('toolbar')?.container || document.querySelector('.ql-toolbar.ql-snow');
+  const container = quill?.container || editor;
+  const html = quill?.root?.innerHTML || editor?.querySelector?.('.ql-editor')?.innerHTML || '';
+  const cleanEditor = document.createElement('div');
+
+  cleanEditor.id = editor?.id || 'course-editor';
+  if (editor?.className && !editor.classList.contains('ql-container')) {
+    cleanEditor.className = editor.className;
+  }
+
+  if (html && html !== '<p><br></p>') {
+    cleanEditor.innerHTML = html;
+  }
+
+  toolbar?.remove?.();
+  container?.replaceWith?.(cleanEditor);
+  window.quill = null;
+
+  return cleanEditor;
+}
+
 export function initCourseEditorQuill() {
-  const editor = getCourseEditorElement(document);
+  let editor = getCourseEditorElement(document);
   if (!editor) return () => {};
 
   const editorSelector = editor.id ? `#${editor.id}` : '#quill-editor';
@@ -293,14 +403,19 @@ export function initCourseEditorQuill() {
   }
 
   if (window.quill && window.quill.root?.isConnected && window.quill.container?.contains(editor.querySelector('.ql-editor'))) {
-    const existingCleanups = [];
     const existingToolbar = window.quill.getModule('toolbar')?.container;
-    applyQuillToolbarTooltips(existingToolbar, existingCleanups);
 
-    return () => {
-      existingCleanups.splice(0, existingCleanups.length).forEach((cleanup) => cleanup());
-      hideStyledTooltip();
-    };
+    if (toolbarHasRequiredControls(existingToolbar)) {
+      const existingCleanups = [];
+      applyQuillToolbarTooltips(existingToolbar, existingCleanups);
+
+      return () => {
+        existingCleanups.splice(0, existingCleanups.length).forEach((cleanup) => cleanup());
+        hideStyledTooltip();
+      };
+    }
+
+    editor = resetExistingQuillContainer(editor);
   }
 
   let lastQuillSelection = null;
@@ -311,6 +426,7 @@ export function initCourseEditorQuill() {
     ['bold', 'italic', 'underline', 'strike'],
     [{ color: [] }, { background: [] }],
     [{ list: 'ordered' }, { list: 'bullet' }],
+    [{ align: [] }],
     ['link', 'image', 'video'],
     ['clean']
   ];

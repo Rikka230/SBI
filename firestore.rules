@@ -69,21 +69,27 @@ service cloud.firestore {
 
     function userProtectedFields() {
       return [
+        'email',
+        'emailUpdatedAt',
+        'emailUpdatedBy',
+        'prenom',
+        'nom',
         'role',
         'isGod',
         'statut',
         'dateCreation',
         'createdAt',
+        'createdBy',
+        'updatedBy',
         'formationIds',
-        'formationsAcces'
+        'formationsAcces',
+        'formationIndexSyncedAt',
+        'formationIndexSyncedBy'
       ];
     }
 
     function ownUserWritableFields() {
       return [
-        'prenom',
-        'nom',
-        'email',
         'bio',
         'privateData',
         'photoURL',
@@ -101,9 +107,32 @@ service cloud.firestore {
       ];
     }
 
+    function adminUserMaintenanceWritableFields() {
+      return [
+        'bio',
+        'privateData',
+        'photoURL',
+        'photoOriginal',
+        'photoStoragePath',
+        'avatarUpdatedAt',
+        'avatarStorageVersion',
+        'avatarCleanupAt',
+        'learningProgress',
+        'xp',
+        'updatedAt'
+      ];
+    }
+
     function safeOwnUserUpdate(userId) {
       return isSelf(userId)
         && changedOnly(ownUserWritableFields())
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(userProtectedFields());
+    }
+
+    function safeAdminUserMaintenanceUpdate(userId) {
+      return isAdmin()
+        && !isSelf(userId)
+        && changedOnly(adminUserMaintenanceWritableFields())
         && !request.resource.data.diff(resource.data).affectedKeys().hasAny(userProtectedFields());
     }
 
@@ -441,12 +470,13 @@ service cloud.firestore {
     match /users/{userId} {
       allow get, list: if canReadUser(userId, resource.data);
 
-      allow create: if isAdmin();
+      // Création / édition sensible / suppression : uniquement via Cloud Functions Admin SDK.
+      allow create: if false;
 
-      allow update: if isAdmin()
-        || safeOwnUserUpdate(userId);
+      allow update: if safeOwnUserUpdate(userId)
+        || safeAdminUserMaintenanceUpdate(userId);
 
-      allow delete: if isAdmin();
+      allow delete: if false;
     }
 
     /* ============================================================

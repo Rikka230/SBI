@@ -62,6 +62,141 @@ service firebase.storage {
         );
     }
 
+    function formationPath(formationId) {
+      return /databases/(default)/documents/formations/$(formationId);
+    }
+
+    function currentUserHasFormationIds() {
+      return currentUser().keys().hasAny(['formationIds'])
+        && currentUser().formationIds is list
+        && currentUser().formationIds.size() > 0;
+    }
+
+    function currentUserHasFormationsAcces() {
+      return currentUser().keys().hasAny(['formationsAcces'])
+        && currentUser().formationsAcces is list
+        && currentUser().formationsAcces.size() > 0;
+    }
+
+    function courseHasFormations(courseData) {
+      return courseData.keys().hasAny(['formations'])
+        && courseData.formations is list
+        && courseData.formations.size() > 0;
+    }
+
+    function courseHasTargetFormationIds(courseData) {
+      return courseData.keys().hasAny(['targetFormationIds'])
+        && courseData.targetFormationIds is list
+        && courseData.targetFormationIds.size() > 0;
+    }
+
+    function courseHasTargetFormationTitles(courseData) {
+      return courseData.keys().hasAny(['targetFormationTitles'])
+        && courseData.targetFormationTitles is list
+        && courseData.targetFormationTitles.size() > 0;
+    }
+
+    function courseSharedByFormationsField(courseData) {
+      return courseHasFormations(courseData)
+        && (
+          (
+            currentUserHasFormationIds()
+            && courseData.formations.hasAny(currentUser().formationIds)
+          )
+          || (
+            currentUserHasFormationsAcces()
+            && courseData.formations.hasAny(currentUser().formationsAcces)
+          )
+        );
+    }
+
+    function courseSharedByTargetFormationIds(courseData) {
+      return courseHasTargetFormationIds(courseData)
+        && currentUserHasFormationIds()
+        && courseData.targetFormationIds.hasAny(currentUser().formationIds);
+    }
+
+    function courseSharedByTargetFormationTitles(courseData) {
+      return courseHasTargetFormationTitles(courseData)
+        && currentUserHasFormationsAcces()
+        && courseData.targetFormationTitles.hasAny(currentUser().formationsAcces);
+    }
+
+    function courseSharedWithCurrentUser(courseData) {
+      return courseSharedByFormationsField(courseData)
+        || courseSharedByTargetFormationIds(courseData)
+        || courseSharedByTargetFormationTitles(courseData);
+    }
+
+    function courseTargetedToCurrentUser(courseData) {
+      return courseData.keys().hasAny(['targetStudents'])
+        && courseData.targetStudents is list
+        && request.auth.uid in courseData.targetStudents;
+    }
+
+    function formationDocHasCurrentUser(formationId) {
+      return signedIn()
+        && formationId is string
+        && firestore.exists(formationPath(formationId))
+        && (
+          (
+            firestore.get(formationPath(formationId)).data.keys().hasAny(['students'])
+            && firestore.get(formationPath(formationId)).data.students is list
+            && request.auth.uid in firestore.get(formationPath(formationId)).data.students
+          )
+          || (
+            firestore.get(formationPath(formationId)).data.keys().hasAny(['profs'])
+            && firestore.get(formationPath(formationId)).data.profs is list
+            && request.auth.uid in firestore.get(formationPath(formationId)).data.profs
+          )
+        );
+    }
+
+    function courseFormationAtAllowsCurrentUser(courseData, index) {
+      return courseHasFormations(courseData)
+        && courseData.formations.size() > index
+        && formationDocHasCurrentUser(courseData.formations[index]);
+    }
+
+    function courseLinkedToReadableFormation(courseData) {
+      return courseFormationAtAllowsCurrentUser(courseData, 0)
+        || courseFormationAtAllowsCurrentUser(courseData, 1)
+        || courseFormationAtAllowsCurrentUser(courseData, 2)
+        || courseFormationAtAllowsCurrentUser(courseData, 3)
+        || courseFormationAtAllowsCurrentUser(courseData, 4);
+    }
+
+    function canReadCourseMedia(courseId) {
+      return isAdmin()
+        || (
+          isActiveUser()
+          && courseDocExists(courseId)
+          && (
+            firestore.get(courseDocPath(courseId)).data.auteurId == request.auth.uid
+            || (
+              firestore.get(courseDocPath(courseId)).data.actif == true
+              && (
+                courseSharedWithCurrentUser(firestore.get(courseDocPath(courseId)).data)
+                || courseTargetedToCurrentUser(firestore.get(courseDocPath(courseId)).data)
+                || courseLinkedToReadableFormation(firestore.get(courseDocPath(courseId)).data)
+              )
+            )
+          )
+        );
+    }
+
+    function validCourseMediaUpload() {
+      return isActiveUser()
+        && request.resource.size < 200 * 1024 * 1024
+        && request.resource.metadata.keys().hasAny(['uploadedBy'])
+        && request.resource.metadata.keys().hasAny(['uploadedBy'])
+        && request.resource.metadata.uploadedBy == request.auth.uid
+        && (
+          request.resource.contentType.matches('image/.*') ||
+          request.resource.contentType.matches('video/.*')
+        );
+    }
+
     /* ============================================================
        MÉDIAS PUBLICS INDEX / LANDING
        ============================================================
@@ -114,22 +249,20 @@ service firebase.storage {
        Chemin utilisé par le site :
        courses/{courseId}/chapters/{chapterId}/{fileName}
 
-       Lecture : utilisateur connecté actif.
-       Upload : utilisateur connecté actif, image/vidéo, max 200 Mo.
-       Suppression : utilisateur connecté actif, logique fine gérée par l'app.
+       Lecture : limitée aux admins, auteurs et utilisateurs autorisés
+       par les formations / ciblages du cours.
+       Upload : utilisateur actif avec métadonnée uploadedBy cohérente,
+       image/vidéo, max 200 Mo.
+       Suppression : admin ou auteur du cours.
        ============================================================ */
     match /courses/{courseId}/chapters/{chapterId}/{fileName} {
-      allow read: if isActiveUser();
+      allow read: if canReadCourseMedia(courseId);
 
-      allow create: if isActiveUser()
-        && request.resource.size < 200 * 1024 * 1024
-        && (
-          request.resource.contentType.matches('image/.*') ||
-          request.resource.contentType.matches('video/.*')
-        );
+      allow create: if validCourseMediaUpload();
 
       allow update: if canManageCourseMedia(courseId)
         && request.resource.size < 200 * 1024 * 1024
+        && request.resource.metadata.uploadedBy == request.auth.uid
         && (
           request.resource.contentType.matches('image/.*') ||
           request.resource.contentType.matches('video/.*')

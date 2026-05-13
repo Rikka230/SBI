@@ -1,8 +1,10 @@
-import { auth, app, db } from '/js/firebase-init.js';
-import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
-import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js';
-
-const functionsInstance = getFunctions(app);
+/**
+ * SBI 8.0P.127 - Helpers UI admin comptes
+ *
+ * Ce fichier ne pilote plus la suppression utilisateur : admin-core.js reste
+ * l’unique source de vérité. Il expose seulement une confirmation stylisée
+ * pour éviter la double logique click/capture qui bloquait le flux natif.
+ */
 
 function closeConfirm(modal) {
     if (!modal) return;
@@ -12,28 +14,44 @@ function closeConfirm(modal) {
     window.setTimeout(() => modal.remove(), 180);
 }
 
-function showConfirm({ title, text, confirmLabel = 'Confirmer', cancelLabel = 'Annuler' }) {
+function escapeHTML(value) {
+    return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function showConfirm({ title, text, confirmLabel = 'Confirmer', cancelLabel = 'Annuler', tone = 'danger' }) {
     return new Promise((resolve) => {
         let modal = document.getElementById('sbi-admin-delete-confirm');
         if (modal) modal.remove();
+
+        const isDanger = tone !== 'info';
+        const accent = isDanger ? '#ff4a4a' : '#2A57FF';
+        const safeTitle = escapeHTML(title);
+        const safeText = escapeHTML(text);
+        const safeConfirm = escapeHTML(confirmLabel);
+        const safeCancel = escapeHTML(cancelLabel);
 
         modal = document.createElement('div');
         modal.id = 'sbi-admin-delete-confirm';
         modal.style.cssText = 'position:fixed;inset:0;z-index:10080;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.72);backdrop-filter:blur(5px);opacity:0;transition:opacity .18s ease;';
         modal.innerHTML = `
-            <div data-panel style="width:min(92vw,440px);background:linear-gradient(145deg,#0d1327,#070b18);border:1px solid rgba(255,74,74,.34);padding:1.6rem;box-shadow:0 24px 70px rgba(0,0,0,.5);clip-path:polygon(0 0,100% 0,100% calc(100% - 18px),calc(100% - 18px) 100%,0 100%);transform:translateY(10px) scale(.98);transition:transform .18s ease;">
+            <div data-panel style="width:min(92vw,440px);background:linear-gradient(145deg,#0d1327,#070b18);border:1px solid ${accent}66;padding:1.6rem;box-shadow:0 24px 70px rgba(0,0,0,.5);clip-path:polygon(0 0,100% 0,100% calc(100% - 18px),calc(100% - 18px) 100%,0 100%);transform:translateY(10px) scale(.98);transition:transform .18s ease;">
                 <div style="display:flex;gap:1rem;align-items:flex-start;margin-bottom:1.2rem;">
-                    <div style="width:42px;height:42px;display:flex;align-items:center;justify-content:center;color:#ff4a4a;background:rgba(255,74,74,.1);border:1px solid rgba(255,74,74,.28);clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);flex:0 0 auto;">
+                    <div style="width:42px;height:42px;display:flex;align-items:center;justify-content:center;color:${accent};background:${accent}1A;border:1px solid ${accent}47;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);flex:0 0 auto;">
                         <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M12 2 1 21h22L12 2zm1 16h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
                     </div>
                     <div>
-                        <h3 style="margin:0;color:#fff;font-size:1.12rem;font-weight:950;letter-spacing:-.03em;">${title}</h3>
-                        <p style="margin:.45rem 0 0;color:#9ca3af;font-size:.92rem;line-height:1.45;">${text}</p>
+                        <h3 style="margin:0;color:#fff;font-size:1.12rem;font-weight:950;letter-spacing:-.03em;">${safeTitle}</h3>
+                        <p style="margin:.45rem 0 0;color:#9ca3af;font-size:.92rem;line-height:1.45;">${safeText}</p>
                     </div>
                 </div>
                 <div style="display:flex;gap:.75rem;justify-content:flex-end;">
-                    <button data-cancel style="padding:.82rem 1rem;border:1px solid rgba(148,163,184,.28);background:transparent;color:#fff;font-weight:800;cursor:pointer;clip-path:polygon(0 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%);">${cancelLabel}</button>
-                    <button data-confirm style="padding:.82rem 1rem;border:1px solid rgba(255,74,74,.45);background:rgba(255,74,74,.12);color:#ff4a4a;font-weight:900;cursor:pointer;clip-path:polygon(0 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%);">${confirmLabel}</button>
+                    <button data-cancel style="padding:.82rem 1rem;border:1px solid rgba(148,163,184,.28);background:transparent;color:#fff;font-weight:800;cursor:pointer;clip-path:polygon(0 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%);">${safeCancel}</button>
+                    <button data-confirm style="padding:.82rem 1rem;border:1px solid ${accent}73;background:${accent}1F;color:${accent};font-weight:900;cursor:pointer;clip-path:polygon(0 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%);">${safeConfirm}</button>
                 </div>
             </div>
         `;
@@ -45,76 +63,17 @@ function showConfirm({ title, text, confirmLabel = 'Confirmer', cancelLabel = 'A
             if (panel) panel.style.transform = 'translateY(0) scale(1)';
         });
 
-        modal.querySelector('[data-cancel]').addEventListener('click', () => {
+        const finish = (value) => {
             closeConfirm(modal);
-            resolve(false);
-        });
+            resolve(value);
+        };
 
-        modal.querySelector('[data-confirm]').addEventListener('click', () => {
-            closeConfirm(modal);
-            resolve(true);
-        });
-
+        modal.querySelector('[data-cancel]')?.addEventListener('click', () => finish(false));
+        modal.querySelector('[data-confirm]')?.addEventListener('click', () => finish(true));
         modal.addEventListener('click', (event) => {
-            if (event.target === modal) {
-                closeConfirm(modal);
-                resolve(false);
-            }
+            if (event.target === modal) finish(false);
         });
     });
 }
 
-async function handleDeleteUser(event) {
-    const button = event.target.closest('#delete-user-btn');
-    if (!button) return;
-
-    event.preventDefault();
-    event.stopPropagation();
-    event.stopImmediatePropagation();
-
-    const userId = document.getElementById('edit-user-id')?.value;
-    const currentUser = auth.currentUser;
-    if (!userId || !currentUser) return;
-
-    button.disabled = true;
-    button.style.opacity = '0.62';
-
-    try {
-        if (userId === currentUser.uid) {
-            await showConfirm({ title: 'Action impossible', text: 'Vous ne pouvez pas supprimer votre propre compte.', confirmLabel: 'Compris', cancelLabel: 'Fermer' });
-            return;
-        }
-
-        const userSnap = await getDoc(doc(db, 'users', userId));
-        const targetUser = userSnap.exists() ? userSnap.data() : null;
-
-        if (targetUser?.isGod === true) {
-            await showConfirm({ title: 'Compte protégé', text: 'Le compte Suprême ne peut pas être supprimé.', confirmLabel: 'Compris', cancelLabel: 'Fermer' });
-            return;
-        }
-
-        const displayName = `${targetUser?.prenom || ''} ${targetUser?.nom || ''}`.trim() || targetUser?.email || 'cet utilisateur';
-        const confirmed = await showConfirm({
-            title: 'Supprimer définitivement ?',
-            text: `Cette action supprimera le compte de ${displayName}. Elle ne doit être utilisée qu’en dernier recours.`,
-            confirmLabel: 'Supprimer',
-            cancelLabel: 'Annuler'
-        });
-
-        if (!confirmed) return;
-
-        const deleteUserAccount = httpsCallable(functionsInstance, 'deleteUserAccount');
-        await deleteUserAccount({ uid: userId });
-
-        const modal = document.getElementById('edit-user-modal');
-        if (modal) modal.style.display = 'none';
-        window.location.reload();
-    } catch (error) {
-        await showConfirm({ title: 'Erreur serveur', text: 'La suppression n’a pas pu être finalisée.', confirmLabel: 'Compris', cancelLabel: 'Fermer' });
-    } finally {
-        button.disabled = false;
-        button.style.opacity = '';
-    }
-}
-
-document.addEventListener('click', handleDeleteUser, true);
+window.SBIAdminConfirm = showConfirm;

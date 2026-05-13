@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.118 - Route registry
+ * SBI 8.0P.130 - Route registry
  *
  * Admin shell :
  * - admin index tabs
@@ -39,7 +39,7 @@ import {
   installCourseEditorTabs,
   installMediaTypeSwitch,
   hasCourseEditorDom
-} from './course-editor-bridge.js?v=8.0P.118';
+} from './course-editor-bridge.js?v=8.0P.130';
 
 const CROPPER_SCRIPT = 'https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js';
 const ADMIN_INDEX_CACHE_KEY = 'admin:index-main';
@@ -346,7 +346,7 @@ async function mountStudentPage({ url }) {
     window.__SBI_APP_SHELL_MOUNTING_STUDENT_HUB = true;
 
     try {
-      const module = await import('/student/js/student-hub.js');
+      const module = await import('/student/js/student-hub.js?v=8.0P.127');
       const cleanup = module.mountStudentHub?.({ source: 'pjax-student-dashboard' });
 
       if (typeof cleanup === 'function') registerCleanup(cleanup, 'student-hub');

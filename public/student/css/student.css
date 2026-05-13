@@ -84,3 +84,122 @@ body.learning-mode {
 }
 .quiz-option:hover { border-color: var(--accent-blue); background: rgba(42, 87, 255, 0.02); }
 .quiz-option input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent-blue); cursor: pointer; }
+
+
+/* SBI 8.0P.127 - Notice première connexion étudiant */
+.sbi-student-notice {
+    position: fixed;
+    inset: 0;
+    z-index: 10070;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.2rem;
+    background: rgba(3, 7, 18, 0.68);
+    backdrop-filter: blur(8px);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 180ms ease, visibility 180ms ease;
+}
+
+.sbi-student-notice.is-visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+.sbi-student-notice__panel {
+    width: min(92vw, 560px);
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 1.1rem;
+    padding: 1.7rem;
+    border: 1px solid rgba(42, 87, 255, 0.26);
+    background:
+        radial-gradient(circle at top left, rgba(42, 87, 255, 0.18), transparent 38%),
+        linear-gradient(145deg, #ffffff, #f7f9ff);
+    color: var(--text-main);
+    box-shadow: 0 26px 80px rgba(15, 23, 42, 0.28);
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 22px), calc(100% - 22px) 100%, 0 100%);
+    transform: translateY(12px) scale(0.98);
+    transition: transform 180ms ease;
+}
+
+.sbi-student-notice.is-visible .sbi-student-notice__panel {
+    transform: translateY(0) scale(1);
+}
+
+.sbi-student-notice__badge {
+    width: 46px;
+    height: 46px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+    background: var(--accent-blue);
+    font-weight: 950;
+    font-size: 1.1rem;
+    box-shadow: 0 14px 32px rgba(42, 87, 255, 0.24);
+    clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+}
+
+.sbi-student-notice__content {
+    min-width: 0;
+}
+
+.sbi-student-notice__eyebrow {
+    margin: 0 0 0.4rem;
+    color: var(--accent-blue);
+    font-size: 0.72rem;
+    font-weight: 950;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.sbi-student-notice__content h2 {
+    margin: 0 0 0.8rem;
+    font-size: clamp(1.45rem, 4vw, 2rem);
+    line-height: 1;
+    letter-spacing: -0.04em;
+}
+
+.sbi-student-notice__content p {
+    margin: 0 0 0.75rem;
+    color: var(--text-muted);
+    line-height: 1.55;
+}
+
+.sbi-student-notice__close {
+    margin-top: 0.5rem;
+    width: 100%;
+    border: 0;
+    padding: 0.95rem 1.2rem;
+    background: var(--accent-blue);
+    color: #ffffff;
+    font-weight: 900;
+    cursor: pointer;
+    box-shadow: 0 16px 34px rgba(42, 87, 255, 0.22);
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%);
+}
+
+.sbi-student-notice__close:focus-visible {
+    outline: 3px solid rgba(42, 87, 255, 0.28);
+    outline-offset: 3px;
+}
+
+@media (max-width: 640px) {
+    .sbi-student-notice {
+        align-items: flex-end;
+        padding: 1rem;
+    }
+
+    .sbi-student-notice__panel {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+        padding: 1.35rem;
+    }
+
+    .sbi-student-notice__badge {
+        width: 38px;
+        height: 38px;
+    }
+}

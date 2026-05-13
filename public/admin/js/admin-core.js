@@ -7,26 +7,14 @@
 import { logoutUser } from '/js/auth.js';
 import { db, auth, app } from '/js/firebase-init.js';
 import {
-    doc,
-    setDoc,
     collection,
-    updateDoc,
     onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, sendPasswordResetEmail, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js";
 
-const functionsInstance = getFunctions(app);
+const functionsInstance = getFunctions(app, "europe-west1");
 
-const firebaseConfig = {
-    apiKey: "AIzaSyBCBY51kkexg7jJgEpVYlKCNbZemrtdaiY",
-    authDomain: "sbi-web-4f6b4.firebaseapp.com",
-    projectId: "sbi-web-4f6b4"
-};
-
-const secondaryApp = initializeApp(firebaseConfig, "AdminCreationApp");
-const secondaryAuth = getAuth(secondaryApp);
 
 let allUsersData = [];
 let currentUid = null;
@@ -42,6 +30,19 @@ const runAfterPaint = (callback) => {
 
 const showAdminMessage = (message) => {
     window.alert(message);
+};
+
+const showAdminConfirm = async (options) => {
+    if (typeof window.SBIAdminConfirm === 'function') {
+        return window.SBIAdminConfirm(options);
+    }
+
+    return window.confirm(options?.text || options?.title || 'Confirmer ?');
+};
+
+const getCallableErrorMessage = (error, fallback = 'Une erreur est survenue.') => {
+    const rawMessage = error?.message || error?.details?.message || fallback;
+    return String(rawMessage).replace(/^Firebase:\s*/i, '').replace(/\s*\([^)]*\)\.?$/g, '').trim() || fallback;
 };
 
 const presenceToMillis = (value) => {
@@ -240,29 +241,27 @@ const initFilters = () => {
     roleFilter.addEventListener('change', renderCurrentFilteredUsers);
 };
 
-const generateRandomPassword = () => {
-    const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%&";
-    let pwd = "";
-    for (let i = 0; i < 10; i++) pwd += charset.charAt(Math.floor(Math.random() * charset.length));
-    return pwd;
-};
-
 const formatNom = (str) => str.toUpperCase();
 const formatPrenom = (str) => str.toLowerCase().replace(/(^|\s|-)\S/g, l => l.toUpperCase());
 
 const initUserCreation = () => {
     const form = document.getElementById('create-user-form');
-    const pwdInput = document.getElementById('new-user-password');
-    if (!form || !pwdInput) return;
+    if (!form) return;
 
-    pwdInput.value = generateRandomPassword();
-    document.getElementById('btn-regen-pwd').addEventListener('click', () => pwdInput.value = generateRandomPassword());
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const adminCreateUserAccount = httpsCallable(functionsInstance, 'adminCreateUserAccount');
 
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
         const msgBox = document.getElementById('user-creation-msg');
         msgBox.style.display = 'block';
-        msgBox.textContent = 'Création...';
+        msgBox.style.color = 'var(--text-muted)';
+        msgBox.textContent = 'Création du compte et préparation de l’email...';
+
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.style.opacity = '0.65';
+        }
 
         const prenom = formatPrenom(document.getElementById('new-user-prenom').value.trim());
         const nom = formatNom(document.getElementById('new-user-nom').value.trim());
@@ -270,33 +269,22 @@ const initUserCreation = () => {
         const role = document.getElementById('new-user-role').value;
 
         try {
-            const userCredential = await createUserWithEmailAndPassword(secondaryAuth, email, pwdInput.value);
+            const result = await adminCreateUserAccount({ prenom, nom, email, role });
+            const warning = result?.data?.warning || '';
 
-            await setDoc(doc(db, "users", userCredential.user.uid), {
-                prenom: prenom,
-                nom: nom,
-                email: email,
-                role: role,
-                statut: "actif",
-                isGod: false,
-                isOnline: false,
-                lastSeenAt: null,
-                dateCreation: new Date().toISOString(),
-                formationsAcces: []
-            });
-
-            await secondaryAuth.signOut();
-            await sendPasswordResetEmail(auth, email);
-
-            msgBox.style.color = "var(--accent-green)";
-            msgBox.textContent = `Compte créé pour ${prenom}. Email envoyé.`;
+            msgBox.style.color = warning ? 'var(--accent-yellow)' : 'var(--accent-green)';
+            msgBox.textContent = warning || `Compte créé pour ${prenom}. Email d’invitation envoyé.`;
 
             form.reset();
-            pwdInput.value = generateRandomPassword();
             fetchUsers();
         } catch (error) {
-            msgBox.style.color = "var(--accent-red)";
-            msgBox.textContent = "Erreur : " + error.message;
+            msgBox.style.color = 'var(--accent-red)';
+            msgBox.textContent = 'Erreur : ' + getCallableErrorMessage(error, 'Création du compte impossible.');
+        } finally {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.style.opacity = '';
+            }
         }
     });
 };
@@ -329,6 +317,7 @@ const openEditModal = (userId) => {
 
     prenomInput.disabled = false;
     nomInput.disabled = false;
+    emailInput.disabled = false;
     roleSelect.disabled = false;
     statutSelect.disabled = false;
 
@@ -348,6 +337,7 @@ const openEditModal = (userId) => {
     if (targetUser.isGod && !isCurrentUserGod) {
         prenomInput.disabled = true;
         nomInput.disabled = true;
+        emailInput.disabled = true;
         roleSelect.disabled = true;
         statutSelect.disabled = true;
 
@@ -366,6 +356,7 @@ const openEditModal = (userId) => {
     } else if (targetUser.isGod && isCurrentUserGod) {
         if (deleteZone) deleteZone.style.display = 'none';
 
+        emailInput.disabled = true;
         roleSelect.disabled = true;
         statutSelect.disabled = true;
 
@@ -394,8 +385,9 @@ const openEditModal = (userId) => {
         }
     }
 
-    if (targetUser.id === currentUid && deleteZone) {
-        deleteZone.style.display = 'none';
+    if (targetUser.id === currentUid) {
+        emailInput.disabled = true;
+        if (deleteZone) deleteZone.style.display = 'none';
     }
 
     document.getElementById('edit-user-modal').style.display = 'flex';
@@ -410,100 +402,152 @@ const initModalLogic = () => {
     document.getElementById('edit-user-form').addEventListener('submit', async (e) => {
         e.preventDefault();
 
+        const submitBtn = e.currentTarget.querySelector('button[type="submit"]');
         const userId = document.getElementById('edit-user-id').value;
         const targetUser = allUsersData.find(u => u.id === userId);
+
+        if (!targetUser) {
+            showAdminMessage("Compte introuvable dans la liste chargée.");
+            return;
+        }
 
         if (targetUser.isGod && !isCurrentUserGod) {
             showAdminMessage("Accès refusé : vous ne pouvez pas modifier le profil de l'Administrateur Suprême.");
             return;
         }
 
-        const updates = {};
+        const payload = { uid: userId };
 
-        if (!document.getElementById('edit-user-prenom').disabled) {
-            updates.prenom = formatPrenom(document.getElementById('edit-user-prenom').value);
+        const prenomInput = document.getElementById('edit-user-prenom');
+        const nomInput = document.getElementById('edit-user-nom');
+        const emailInput = document.getElementById('edit-user-email');
+        const roleSelect = document.getElementById('edit-user-role');
+        const statutSelect = document.getElementById('edit-user-statut');
+
+        if (!prenomInput.disabled) payload.prenom = formatPrenom(prenomInput.value);
+        if (!nomInput.disabled) payload.nom = formatNom(nomInput.value);
+        if (!emailInput.disabled && emailInput.value.trim() !== (targetUser.email || '').trim()) {
+            payload.email = emailInput.value.trim().toLowerCase();
         }
 
-        if (!document.getElementById('edit-user-nom').disabled) {
-            updates.nom = formatNom(document.getElementById('edit-user-nom').value);
-        }
-
-        if (!document.getElementById('edit-user-role').disabled) {
-            updates.role = document.getElementById('edit-user-role').value;
-            updates.statut = document.getElementById('edit-user-statut').value;
+        if (!roleSelect.disabled) {
+            payload.role = roleSelect.value;
+            payload.statut = statutSelect.value;
         }
 
         const godCheckbox = document.getElementById('edit-user-isgod');
         const godLabelWrapper = godCheckbox ? godCheckbox.parentElement : null;
-        const godExists = allUsersData.some(u => u.isGod === true);
 
         if (godCheckbox && godCheckbox.checked && godLabelWrapper && godLabelWrapper.style.display !== 'none') {
-            if (isCurrentUserGod || !godExists) {
-                updates.isGod = true;
-                const currentGodProfile = allUsersData.find(u => u.isGod === true);
+            payload.isGod = true;
+        }
 
-                if (currentGodProfile && currentGodProfile.id !== targetUser.id) {
-                    await updateDoc(doc(db, "users", currentGodProfile.id), { isGod: false });
-                }
-            }
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.style.opacity = '0.65';
         }
 
         try {
-            await updateDoc(doc(db, "users", userId), updates);
+            let emailWarning = '';
+
+            if (payload.email) {
+                const adminChangeUserEmail = httpsCallable(functionsInstance, 'adminChangeUserEmail');
+                const emailResult = await adminChangeUserEmail({ uid: userId, email: payload.email });
+                emailWarning = emailResult?.data?.warning || '';
+                delete payload.email;
+            }
+
+            const profilePayload = { ...payload };
+            delete profilePayload.uid;
+            const hasProfileChanges = Object.keys(profilePayload).length > 0;
+            let updateWarning = '';
+
+            if (hasProfileChanges) {
+                const adminUpdateUserAccount = httpsCallable(functionsInstance, 'adminUpdateUserAccount');
+                const result = await adminUpdateUserAccount(payload);
+                updateWarning = result?.data?.warning || '';
+            }
+
             modal.style.display = 'none';
             fetchUsers();
+
+            const warningMessage = [emailWarning, updateWarning].filter(Boolean).join('\n');
+            if (warningMessage) {
+                showAdminMessage(warningMessage);
+            }
         } catch (error) {
-            showAdminMessage("Erreur de sauvegarde.");
+            showAdminMessage(getCallableErrorMessage(error, "Erreur de sauvegarde."));
+        } finally {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.style.opacity = '';
+            }
         }
     });
 
-    document.getElementById('delete-user-btn').addEventListener('click', (event) => {
+    document.getElementById('delete-user-btn').addEventListener('click', async (event) => {
         event.preventDefault();
 
         const deleteBtn = event.currentTarget;
         deleteBtn.disabled = true;
         deleteBtn.style.opacity = '0.65';
 
-        runAfterPaint(async () => {
-            try {
-                const userId = document.getElementById('edit-user-id').value;
-                const targetUser = allUsersData.find(u => u.id === userId);
+        try {
+            const userId = document.getElementById('edit-user-id').value;
+            const targetUser = allUsersData.find(u => u.id === userId);
 
-                if (!targetUser) return;
+            if (!targetUser) return;
 
-                if (targetUser.isGod) {
-                    showAdminMessage("Sécurité : le compte Suprême ne peut pas être supprimé.");
-                    return;
-                }
-
-                if (targetUser.id === currentUid) {
-                    showAdminMessage("Sécurité : vous ne pouvez pas supprimer votre propre compte.");
-                    return;
-                }
-
-                if (!window.confirm("DANGER ABSOLU : supprimer définitivement cet utilisateur ?")) return;
-
-                const deleteUserAccount = httpsCallable(functionsInstance, 'deleteUserAccount');
-                await deleteUserAccount({ uid: userId });
-                modal.style.display = 'none';
-                fetchUsers();
-            } catch (error) {
-                showAdminMessage("Erreur serveur pendant la suppression.");
-            } finally {
-                deleteBtn.disabled = false;
-                deleteBtn.style.opacity = '';
+            if (targetUser.isGod) {
+                showAdminMessage("Sécurité : le compte Suprême ne peut pas être supprimé.");
+                return;
             }
-        });
+
+            if (targetUser.id === currentUid) {
+                showAdminMessage("Sécurité : vous ne pouvez pas supprimer votre propre compte.");
+                return;
+            }
+
+            const displayName = `${targetUser.prenom || ''} ${targetUser.nom || ''}`.trim() || targetUser.email || 'cet utilisateur';
+            const confirmed = await showAdminConfirm({
+                title: 'Supprimer définitivement ?',
+                text: `Cette action supprimera le compte de ${displayName}. Elle ne doit être utilisée qu’en dernier recours.`,
+                confirmLabel: 'Supprimer',
+                cancelLabel: 'Annuler',
+                tone: 'danger'
+            });
+
+            if (!confirmed) return;
+
+            const deleteUserAccount = httpsCallable(functionsInstance, 'deleteUserAccount');
+            await deleteUserAccount({ uid: userId });
+            modal.style.display = 'none';
+            fetchUsers();
+        } catch (error) {
+            showAdminMessage(getCallableErrorMessage(error, "Erreur serveur pendant la suppression."));
+        } finally {
+            deleteBtn.disabled = false;
+            deleteBtn.style.opacity = '';
+        }
     });
 
-    document.getElementById('reset-pwd-btn').addEventListener('click', async () => {
+    document.getElementById('reset-pwd-btn').addEventListener('click', async (event) => {
+        const resetBtn = event.currentTarget;
+        const userId = document.getElementById('edit-user-id').value;
         const userEmail = document.getElementById('edit-user-email').value;
 
+        resetBtn.disabled = true;
+        resetBtn.style.opacity = '0.65';
+
         try {
-            await sendPasswordResetEmail(auth, userEmail);
+            const adminSendPasswordReset = httpsCallable(functionsInstance, 'adminSendPasswordReset');
+            await adminSendPasswordReset({ uid: userId });
             showAdminMessage(`E-mail de réinitialisation envoyé à ${userEmail}`);
         } catch (error) {
-            showAdminMessage("Impossible d'envoyer l'e-mail.");
+            showAdminMessage(getCallableErrorMessage(error, "Impossible d'envoyer l'e-mail."));
+        } finally {
+            resetBtn.disabled = false;
+            resetBtn.style.opacity = '';
         }
     });
 };

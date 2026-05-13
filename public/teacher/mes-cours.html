@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="/admin/css/admin-layout.css">
     <link rel="stylesheet" href="/admin/css/admin.css">
     <link rel="stylesheet" href="/admin/css/admin-notifications.css">
-    <link rel="stylesheet" href="/teacher/css/teacher.css">
+    <link rel="stylesheet" href="/teacher/css/teacher.css?v=8.0P.130">
     <link rel="stylesheet" href="/css/sbi-7-1-harmonization.css">
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
     
@@ -169,6 +169,7 @@
             ['bold', 'italic', 'underline', 'strike'],
             [{ 'color': [] }, { 'background': [] }],
             [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+            [{ 'align': [] }],
             ['link', 'image', 'video'],
             ['clean']
         ];
@@ -221,6 +222,59 @@
                     rememberQuillSelection(window.quill.getSelection());
                 }, true);
             });
+
+            applyTeacherQuillTooltips(toolbar);
+        }
+
+        function applyTeacherQuillTooltips(toolbarRoot) {
+            const labels = [
+                ['.ql-size', 'Taille du texte'],
+                ['.ql-bold', 'Gras'],
+                ['.ql-italic', 'Italique'],
+                ['.ql-underline', 'Souligner'],
+                ['.ql-strike', 'Barrer'],
+                ['.ql-color', 'Couleur du caractère'],
+                ['.ql-background', 'Surlignage du caractère'],
+                ['.ql-list[value="ordered"]', 'Liste numérotée'],
+                ['.ql-list[value="bullet"]', 'Liste à puces'],
+                ['.ql-align', 'Alignement'],
+                ['.ql-link', 'Ajouter un lien'],
+                ['.ql-image', 'Insérer une image'],
+                ['.ql-video', 'Insérer une vidéo'],
+                ['.ql-clean', 'Nettoyer la mise en forme']
+            ];
+
+            labels.forEach(([selector, label]) => {
+                toolbarRoot.querySelectorAll(selector).forEach((element) => {
+                    decorateTeacherTooltip(element, label);
+
+                    if (element.tagName === 'SELECT') {
+                        const picker = element.nextElementSibling?.classList?.contains('ql-picker')
+                            ? element.nextElementSibling
+                            : null;
+
+                        if (picker) {
+                            decorateTeacherTooltip(picker, label);
+                            decorateTeacherTooltip(picker.querySelector('.ql-picker-label'), label);
+                        }
+                    }
+
+                    if (element.classList?.contains('ql-picker')) {
+                        decorateTeacherTooltip(element.querySelector('.ql-picker-label'), label);
+                    }
+                });
+            });
+        }
+
+        function decorateTeacherTooltip(element, label) {
+            if (!element || !label) return;
+
+            element.dataset.sbiTooltip = label;
+            element.classList.add('sbi-teacher-quill-tooltip-anchor');
+
+            if (element.tagName === 'BUTTON') {
+                element.setAttribute('type', 'button');
+            }
         }
 
         function safeSwitchTab(tabId) {

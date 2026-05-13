@@ -3,7 +3,7 @@
  * STUDENT HUB - Tableau de bord étudiant
  * =======================================================================
  *
- * 8.0F : devient montable via mountStudentHub() pour le shell PJAX.
+ * 8.0P.127 : ajoute l’avertissement étudiant première connexion.
  * =======================================================================
  */
 
@@ -25,6 +25,8 @@ const state = {
     courses: [],
     progress: { courses: {}, formations: {} }
 };
+
+const STUDENT_NOTICE_STORAGE_KEY = 'sbi_student_space_notice_seen_v1';
 
 let activeCleanup = null;
 
@@ -61,6 +63,7 @@ export function mountStudentHub() {
         try {
             await waitForSbiTopbar();
             await loadStudentData(user.uid);
+            showStudentSpaceNotice(addCleanup);
             bindHubActions(addCleanup);
         } catch (error) {
             console.error('[SBI Student Hub] Erreur de chargement :', error);
@@ -81,6 +84,73 @@ export function mountStudentHub() {
 
     activeCleanup = cleanup;
     return cleanup;
+}
+
+function hasSeenStudentSpaceNotice() {
+    try {
+        return localStorage.getItem(STUDENT_NOTICE_STORAGE_KEY) === 'true';
+    } catch {
+        return false;
+    }
+}
+
+function markStudentSpaceNoticeSeen() {
+    try {
+        localStorage.setItem(STUDENT_NOTICE_STORAGE_KEY, 'true');
+    } catch {
+        // Stockage local indisponible : la fermeture reste non bloquante.
+    }
+}
+
+function showStudentSpaceNotice(addCleanup) {
+    if (hasSeenStudentSpaceNotice()) return;
+    if (document.getElementById('sbi-student-space-notice')) return;
+
+    const modal = document.createElement('div');
+    modal.id = 'sbi-student-space-notice';
+    modal.className = 'sbi-student-notice';
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('aria-labelledby', 'sbi-student-notice-title');
+    modal.innerHTML = `
+        <div class="sbi-student-notice__panel">
+            <div class="sbi-student-notice__badge" aria-hidden="true">i</div>
+            <div class="sbi-student-notice__content">
+                <p class="sbi-student-notice__eyebrow">Espace étudiant SBI</p>
+                <h2 id="sbi-student-notice-title">Information importante</h2>
+                <p>
+                    L’espace compte étudiant est encore en construction. Certaines options ne sont pas encore disponibles
+                    ou entièrement fonctionnelles.
+                </p>
+                <p>
+                    Si vous rencontrez un bug bloquant dans cet espace, merci de le signaler à l’équipe SBI en précisant
+                    qu’il concerne l’espace compte étudiant.
+                </p>
+                <button type="button" class="sbi-student-notice__close">J’ai compris</button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    const closeButton = modal.querySelector('.sbi-student-notice__close');
+    const closeNotice = () => {
+        markStudentSpaceNoticeSeen();
+        modal.classList.remove('is-visible');
+        window.setTimeout(() => modal.remove(), 180);
+    };
+
+    closeButton?.addEventListener('click', closeNotice);
+
+    window.requestAnimationFrame(() => {
+        modal.classList.add('is-visible');
+        closeButton?.focus({ preventScroll: true });
+    });
+
+    addCleanup(() => {
+        closeButton?.removeEventListener('click', closeNotice);
+        modal.remove();
+    });
 }
 
 function bindHubActions(addCleanup) {
