@@ -1,55 +1,30 @@
-# SBI 8.0P.142 / P2E.4
+SBI 8.0P.144 / P2F.2
+======================
 
-## Objectif
+Base attendue : branche private-admin-accounts-mail-workflow validée jusqu'à P2E.4, avec P2F.1 validé.
 
-Durcir les règles Firestore sur `users/{uid}` après validation de P2E.1 à P2E.3.
+Contenu du patch :
+- storage.rules
+- public/functions/index.js
+- public/calculateur.html
+- public/js/sbi-aide-calculator.js
+- public/js/sbi-version.js
 
-## Fichiers modifiés
+Changements :
+1. Reprise de P2F.1 validé : durcissement Storage des médias de cours.
+2. Page calculateur : ajout de l'astérisque sur le reste à charge mensuel / total.
+3. Page calculateur : ajout de la mention “* Hors charges si applicable.”.
+4. Message de transfert d'estimation : ajout de la mention hors charges.
+5. Functions : remplacement de l'URL reset password Firebase provisoire par le domaine final :
+   https://www.sbigroup.fr/password-reset.html
+6. Version bump : 8.0P.144.
 
-- `firestore.rules`
-- `public/js/sbi-version.js`
+Déploiement conseillé :
+1. firebase deploy --only functions,storage --project sbi-web-4f6b4
+2. firebase hosting:channel:deploy admin-mail-workflow --project sbi-web-4f6b4 --expires 7d
 
-## Changements
-
-- Bloque la création directe de documents `users/{uid}` côté client.
-- Bloque la suppression directe de documents `users/{uid}` côté client.
-- Retire l'autorisation admin globale `allow update: if isAdmin()` sur `users/{uid}`.
-- Les champs sensibles doivent passer par les Cloud Functions déjà validées :
-  - création compte : `adminCreateUserAccount`
-  - édition prénom / nom / rôle / statut / droits : `adminUpdateUserAccount`
-  - changement email admin : `adminChangeUserEmail`
-  - changement email utilisateur : `selfChangeUserEmail`
-  - suppression compte : `deleteUserAccount`
-  - accès formations : `adminSyncUserFormationIndexes`
-- Garde les écritures client nécessaires :
-  - propriétaire du profil : bio, données privées, avatar, présence, progression, XP ;
-  - admin sur un autre profil : maintenance non sensible, avatar legacy, bio/privateData, progression/XP.
-
-## Déploiement
-
-```bash
-firebase deploy --only firestore:rules --project sbi-web-4f6b4
-firebase hosting:channel:deploy admin-mail-workflow --project sbi-web-4f6b4 --expires 7d
-```
-
-## Tests recommandés
-
-1. Admin > créer un compte test.
-2. Admin > modifier prénom / nom / rôle / statut du compte test.
-3. Admin > changer email du compte test.
-4. Admin > envoyer reset password.
-5. Admin > supprimer le compte test.
-6. Admin > Diagnostic accès cours > Réparer index users.
-7. Étudiant / prof > modifier bio.
-8. Étudiant / prof > modifier téléphone/adresse.
-9. Étudiant / prof > upload avatar.
-10. Étudiant > ouvrir cours et valider progression / XP.
-11. Admin > profil étudiant > modifier XP / progression si utilisé.
-
-## Rollback rapide
-
-Remettre les anciens `firestore.rules` depuis le ZIP précédent puis redéployer :
-
-```bash
-firebase deploy --only firestore:rules --project sbi-web-4f6b4
-```
+Avant migration domaine finale :
+- Ajouter/valider www.sbigroup.fr dans Firebase Auth > Authorized domains.
+- Vérifier que /password-reset.html est bien servi sur le domaine final.
+- Tester création compte + bouton “Définir mon mot de passe”.
+- Tester la page calculateur sur preview puis sur domaine final.

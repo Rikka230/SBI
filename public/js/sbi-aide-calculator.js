@@ -1,4 +1,4 @@
-const SBI_AID_CALCULATOR_VERSION = '8.0P.71';
+const SBI_AID_CALCULATOR_VERSION = '8.0P.144';
 const SBI_RNCP_LEVEL = 4;
 const DEFAULT_SMIC_MONTHLY = 1823.03;
 const STANDARD_AID_AMOUNT = 5000;
@@ -117,8 +117,9 @@ function calculateAid(state) {
     `Salaire brut mensuel estimé : ${formatEuro(monthlySalary, { digits: 2 })}`,
     `Coût brut annuel estimé : ${formatEuro(totalGrossSalary, { digits: 2 })}`,
     `Aide employeur estimée : ${formatEuro(estimatedAid, { digits: 2 })}`,
-    `Reste à charge total estimé : ${formatEuro(totalRemainder, { digits: 2 })}`,
-    `Reste à charge mensuel estimé : ${formatEuro(monthlyRemainder, { digits: 2 })}`,
+    `Reste à charge total estimé* : ${formatEuro(totalRemainder, { digits: 2 })}`,
+    `Reste à charge mensuel estimé* : ${formatEuro(monthlyRemainder, { digits: 2 })}`,
+    '* Hors charges si applicable.',
     `Statut : ${statusLabel(status)}`,
     '',
     'Merci de vérifier cette estimation avec moi.'

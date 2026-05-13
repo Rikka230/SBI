@@ -192,7 +192,7 @@ async function upsertBrevoContact(data, apiKey) {
 }
 
 const SBI_SITE_URL = "https://www.sbigroup.fr";
-const SBI_PASSWORD_RESET_URL = "https://sbi-web-4f6b4.web.app/password-reset.html";
+const SBI_PASSWORD_RESET_URL = "https://www.sbigroup.fr/password-reset.html";
 const SBI_AUTH_ACTION_SETTINGS = {
     url: SBI_PASSWORD_RESET_URL,
     handleCodeInApp: true
