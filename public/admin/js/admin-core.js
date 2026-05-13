@@ -8,25 +8,15 @@ import { logoutUser } from '/js/auth.js';
 import { db, auth, app } from '/js/firebase-init.js';
 import {
     doc,
-    setDoc,
     collection,
     updateDoc,
     onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, sendPasswordResetEmail, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js";
 
 const functionsInstance = getFunctions(app);
 
-const firebaseConfig = {
-    apiKey: "AIzaSyBCBY51kkexg7jJgEpVYlKCNbZemrtdaiY",
-    authDomain: "sbi-web-4f6b4.firebaseapp.com",
-    projectId: "sbi-web-4f6b4"
-};
-
-const secondaryApp = initializeApp(firebaseConfig, "AdminCreationApp");
-const secondaryAuth = getAuth(secondaryApp);
 
 let allUsersData = [];
 let currentUid = null;
@@ -50,6 +40,11 @@ const showAdminConfirm = async (options) => {
     }
 
     return window.confirm(options?.text || options?.title || 'Confirmer ?');
+};
+
+const getCallableErrorMessage = (error, fallback = 'Une erreur est survenue.') => {
+    const rawMessage = error?.message || error?.details?.message || fallback;
+    return String(rawMessage).replace(/^Firebase:\s*/i, '').replace(/\s*\([^)]*\)\.?$/g, '').trim() || fallback;
 };
 
 const presenceToMillis = (value) => {
@@ -248,29 +243,27 @@ const initFilters = () => {
     roleFilter.addEventListener('change', renderCurrentFilteredUsers);
 };
 
-const generateRandomPassword = () => {
-    const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%&";
-    let pwd = "";
-    for (let i = 0; i < 10; i++) pwd += charset.charAt(Math.floor(Math.random() * charset.length));
-    return pwd;
-};
-
 const formatNom = (str) => str.toUpperCase();
 const formatPrenom = (str) => str.toLowerCase().replace(/(^|\s|-)\S/g, l => l.toUpperCase());
 
 const initUserCreation = () => {
     const form = document.getElementById('create-user-form');
-    const pwdInput = document.getElementById('new-user-password');
-    if (!form || !pwdInput) return;
+    if (!form) return;
 
-    pwdInput.value = generateRandomPassword();
-    document.getElementById('btn-regen-pwd').addEventListener('click', () => pwdInput.value = generateRandomPassword());
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const adminCreateUserAccount = httpsCallable(functionsInstance, 'adminCreateUserAccount');
 
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
         const msgBox = document.getElementById('user-creation-msg');
         msgBox.style.display = 'block';
-        msgBox.textContent = 'Création...';
+        msgBox.style.color = 'var(--text-muted)';
+        msgBox.textContent = 'Création du compte et préparation de l’email...';
+
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.style.opacity = '0.65';
+        }
 
         const prenom = formatPrenom(document.getElementById('new-user-prenom').value.trim());
         const nom = formatNom(document.getElementById('new-user-nom').value.trim());
@@ -278,33 +271,22 @@ const initUserCreation = () => {
         const role = document.getElementById('new-user-role').value;
 
         try {
-            const userCredential = await createUserWithEmailAndPassword(secondaryAuth, email, pwdInput.value);
+            const result = await adminCreateUserAccount({ prenom, nom, email, role });
+            const warning = result?.data?.warning || '';
 
-            await setDoc(doc(db, "users", userCredential.user.uid), {
-                prenom: prenom,
-                nom: nom,
-                email: email,
-                role: role,
-                statut: "actif",
-                isGod: false,
-                isOnline: false,
-                lastSeenAt: null,
-                dateCreation: new Date().toISOString(),
-                formationsAcces: []
-            });
-
-            await secondaryAuth.signOut();
-            await sendPasswordResetEmail(auth, email);
-
-            msgBox.style.color = "var(--accent-green)";
-            msgBox.textContent = `Compte créé pour ${prenom}. Email envoyé.`;
+            msgBox.style.color = warning ? 'var(--accent-yellow)' : 'var(--accent-green)';
+            msgBox.textContent = warning || `Compte créé pour ${prenom}. Email d’invitation envoyé.`;
 
             form.reset();
-            pwdInput.value = generateRandomPassword();
             fetchUsers();
         } catch (error) {
-            msgBox.style.color = "var(--accent-red)";
-            msgBox.textContent = "Erreur : " + error.message;
+            msgBox.style.color = 'var(--accent-red)';
+            msgBox.textContent = 'Erreur : ' + getCallableErrorMessage(error, 'Création du compte impossible.');
+        } finally {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.style.opacity = '';
+            }
         }
     });
 };
@@ -504,21 +486,30 @@ const initModalLogic = () => {
             modal.style.display = 'none';
             fetchUsers();
         } catch (error) {
-            showAdminMessage("Erreur serveur pendant la suppression.");
+            showAdminMessage(getCallableErrorMessage(error, "Erreur serveur pendant la suppression."));
         } finally {
             deleteBtn.disabled = false;
             deleteBtn.style.opacity = '';
         }
     });
 
-    document.getElementById('reset-pwd-btn').addEventListener('click', async () => {
+    document.getElementById('reset-pwd-btn').addEventListener('click', async (event) => {
+        const resetBtn = event.currentTarget;
+        const userId = document.getElementById('edit-user-id').value;
         const userEmail = document.getElementById('edit-user-email').value;
 
+        resetBtn.disabled = true;
+        resetBtn.style.opacity = '0.65';
+
         try {
-            await sendPasswordResetEmail(auth, userEmail);
+            const adminSendPasswordReset = httpsCallable(functionsInstance, 'adminSendPasswordReset');
+            await adminSendPasswordReset({ uid: userId });
             showAdminMessage(`E-mail de réinitialisation envoyé à ${userEmail}`);
         } catch (error) {
-            showAdminMessage("Impossible d'envoyer l'e-mail.");
+            showAdminMessage(getCallableErrorMessage(error, "Impossible d'envoyer l'e-mail."));
+        } finally {
+            resetBtn.disabled = false;
+            resetBtn.style.opacity = '';
         }
     });
 };

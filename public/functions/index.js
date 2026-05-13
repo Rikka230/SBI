@@ -11,81 +11,6 @@ const admin = require("firebase-admin");
 
 admin.initializeApp();
 
-// En V2, la fonction reçoit un seul objet "request"
-exports.deleteUserAccount = onCall(async (request) => {
-    console.log("🚀 --- NOUVELLE TENTATIVE DE SUPPRESSION (V2) ---");
-
-    // 1. Extraction propre des données de la requête V2
-    const data = request.data;
-    const auth = request.auth;
-
-    // 2. Vérification stricte du badge de sécurité
-    if (!auth || !auth.uid) {
-        console.error("🛑 ÉCHEC : La requête n'est pas authentifiée.");
-        throw new HttpsError('unauthenticated', 'Vous devez être connecté pour effectuer cette action.');
-    }
-
-    const callerUid = auth.uid;
-    const targetUid = data.uid;
-
-    console.log("🕵️ UID Admin (Toi) :", callerUid);
-    console.log("🎯 UID Cible (À supprimer) :", targetUid);
-
-    const db = admin.firestore();
-
-    try {
-        // 3. Vérification de tes droits (Es-tu bien Admin ?)
-        const callerDoc = await db.collection('users').doc(callerUid).get();
-        const callerData = callerDoc.data();
-
-        if (!callerData || callerData.role !== 'admin') {
-            console.error("🛑 ÉCHEC : Rôle Admin introuvable dans Firestore pour cet utilisateur.");
-            throw new HttpsError('permission-denied', 'Action refusée : Seuls les administrateurs ont ce pouvoir.');
-        }
-
-        // 4. Vérification de la cible
-        const targetDoc = await db.collection('users').doc(targetUid).get();
-
-        // Si la cible n'existe déjà plus dans la BDD, on s'assure qu'elle dégage de l'Auth Firebase
-        if (!targetDoc.exists) {
-            console.log("⚠️ Cible introuvable dans la base, on nettoie le système d'authentification par sécurité.");
-            await admin.auth().deleteUser(targetUid);
-            return { success: true, message: 'Nettoyage de sécurité effectué.' };
-        }
-
-        const targetData = targetDoc.data();
-
-        // 5. Boucliers de sécurité du Suprême
-        if (targetData.isGod) {
-            console.error("🛑 ÉCHEC : Tentative de suppression du compte God.");
-            throw new HttpsError('permission-denied', 'Sacrilège : Le compte Suprême est indestructible.');
-        }
-
-        if (targetData.role === 'admin' && !callerData.isGod) {
-            console.error("🛑 ÉCHEC : Guerre civile entre admins.");
-            throw new HttpsError('permission-denied', 'Un administrateur classique ne peut pas supprimer un de ses pairs.');
-        }
-
-        // 6. Sentence finale : on supprime d'abord de l'authentification, puis de la base de données
-        await admin.auth().deleteUser(targetUid);
-        await db.collection('users').doc(targetUid).delete();
-
-        console.log("✅ SUCCÈS TOTAL : Le compte a été effacé du serveur.");
-        return { success: true, message: 'Le compte a été intégralement supprimé.' };
-
-    } catch (error) {
-        console.error("🔥 ERREUR SERVEUR INTERNE :", error);
-
-        // On renvoie l'erreur propre à l'interface si c'est une de nos règles qui bloque
-        if (error instanceof HttpsError) {
-            throw error;
-        }
-        // Sinon c'est un crash inattendu
-        throw new HttpsError('internal', "Le serveur a rencontré une erreur : " + error.message);
-    }
-});
-
-
 /* =======================================================================
  * SBI 8.0P.51 - CONTACT PUBLIC -> BREVO
  * -----------------------------------------------------------------------
@@ -645,6 +570,504 @@ async function sendBrevoNewsletterConfirmation(data, apiKey) {
         textContent: buildNewsletterConfirmationText(data)
     }, apiKey);
 }
+
+
+/* =======================================================================
+ * SBI 8.0P.131 - ADMIN ACCOUNT MAIL WORKFLOW
+ * -----------------------------------------------------------------------
+ * Actions sensibles Auth déplacées côté serveur : création compte,
+ * reset password et suppression enrichie avec mails Brevo + audit.
+ * ======================================================================= */
+
+const ACCOUNT_ROLES = ["student", "teacher", "admin"];
+
+function cleanEmail(value) {
+    return cleanString(value, 180).toLowerCase();
+}
+
+function isValidEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email || "");
+}
+
+function normalizeAccountRole(role) {
+    const normalized = cleanString(role, 40).toLowerCase();
+    return ACCOUNT_ROLES.includes(normalized) ? normalized : "student";
+}
+
+function getAccountRoleLabel(role) {
+    const normalized = normalizeAccountRole(role);
+    if (normalized === "teacher") return "Enseignant";
+    if (normalized === "admin") return "Administrateur";
+    return "Étudiant";
+}
+
+function formatAccountPrenom(value) {
+    return cleanString(value, 80).toLowerCase().replace(/(^|\s|-)\S/g, letter => letter.toUpperCase());
+}
+
+function formatAccountNom(value) {
+    return cleanString(value, 80).toUpperCase();
+}
+
+function getAccountDisplayName(data = {}) {
+    return cleanString(`${data.prenom || ""} ${data.nom || ""}`, 160) || data.email || "Utilisateur SBI";
+}
+
+function getActorEmail(request, callerData = {}) {
+    return cleanEmail(request.auth?.token?.email || callerData.email || SBI_CONTACT_EMAIL);
+}
+
+async function requireAdminCaller(request, db) {
+    if (!request.auth || !request.auth.uid) {
+        throw new HttpsError("unauthenticated", "Vous devez être connecté pour effectuer cette action.");
+    }
+
+    const callerUid = request.auth.uid;
+    const callerDoc = await db.collection("users").doc(callerUid).get();
+    const callerData = callerDoc.data();
+
+    if (!callerDoc.exists || !callerData || callerData.statut === "suspendu") {
+        throw new HttpsError("permission-denied", "Action refusée : compte administrateur introuvable ou suspendu.");
+    }
+
+    if (callerData.isGod !== true && callerData.role !== "admin") {
+        throw new HttpsError("permission-denied", "Action refusée : seuls les administrateurs peuvent effectuer cette action.");
+    }
+
+    return {
+        uid: callerUid,
+        email: getActorEmail(request, callerData),
+        data: callerData,
+        name: getAccountDisplayName(callerData)
+    };
+}
+
+async function safeWriteAccountAuditLog(db, payload) {
+    try {
+        await db.collection("accountAuditLogs").add({
+            ...payload,
+            source: "admin",
+            createdAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+    } catch (error) {
+        console.error("Erreur audit compte SBI :", error.message);
+    }
+}
+
+function buildActionButtonHtml(url, label) {
+    if (!url) return "";
+    return `
+        <p style="margin:22px 0;">
+            <a href="${escapeHtml(url)}" style="display:inline-block;background:#0051ff;color:#ffffff;font-weight:bold;padding:13px 18px;border-radius:10px;text-decoration:none;">
+                ${escapeHtml(label)}
+            </a>
+        </p>
+        <p style="margin:0 0 18px 0;font-size:13px;line-height:20px;color:#667085;">
+            Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :<br>
+            <a href="${escapeHtml(url)}" style="color:#0051ff;word-break:break-all;">${escapeHtml(url)}</a>
+        </p>`;
+}
+
+function buildAccountInternalHtml(eventLabel, details = {}) {
+    const rows = Object.entries(details)
+        .filter(([, value]) => value !== undefined && value !== null && value !== "")
+        .map(([label, value]) => `
+            <tr>
+                <td style="padding:10px 12px;border-bottom:1px solid #dce4f2;color:#0051ff;font-weight:bold;width:38%;">${escapeHtml(label)}</td>
+                <td style="padding:10px 12px;border-bottom:1px solid #dce4f2;color:#253047;">${escapeHtml(value)}</td>
+            </tr>
+        `).join("");
+
+    return renderSbiEmailTemplate({
+        prenom: "équipe SBI",
+        nomExpediteur: "Automatisation SBI",
+        posteExpediteur: "Notifications comptes",
+        preheader: `Action compte SBI - ${eventLabel}`,
+        messageHtml: `
+            <p style="margin:0 0 16px 0;">Une action sensible a été effectuée dans l’administration SBI.</p>
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border:1px solid #dce4f2;border-radius:12px;overflow:hidden;background:#f7f9fd;">
+                ${rows}
+            </table>
+        `
+    });
+}
+
+function buildAccountInternalText(eventLabel, details = {}) {
+    const lines = Object.entries(details)
+        .filter(([, value]) => value !== undefined && value !== null && value !== "")
+        .map(([label, value]) => `${label}: ${value}`);
+    return [`Action compte SBI - ${eventLabel}`, "", ...lines].join("\n");
+}
+
+async function sendAccountInternalEmail(eventLabel, details, apiKey) {
+    return sendBrevoEmail({
+        sender: {
+            name: SBI_SENDER_NAME,
+            email: SBI_SENDER_EMAIL
+        },
+        to: [{
+            email: SBI_CONTACT_EMAIL,
+            name: "Sport Business Institute"
+        }],
+        replyTo: {
+            email: isValidEmail(details["Admin email"]) ? details["Admin email"] : SBI_CONTACT_EMAIL,
+            name: details["Admin"] || "Administration SBI"
+        },
+        subject: `SBI Admin - ${eventLabel}`,
+        htmlContent: buildAccountInternalHtml(eventLabel, details),
+        textContent: buildAccountInternalText(eventLabel, details)
+    }, apiKey);
+}
+
+async function sendAccountInviteEmail(account, resetLink, apiKey) {
+    const roleLabel = getAccountRoleLabel(account.role);
+    return sendBrevoEmail({
+        sender: {
+            name: SBI_SENDER_NAME,
+            email: SBI_SENDER_EMAIL
+        },
+        to: [{
+            email: account.email,
+            name: getAccountDisplayName(account)
+        }],
+        replyTo: {
+            email: SBI_CONTACT_EMAIL,
+            name: "Sport Business Institute"
+        },
+        subject: "SBI - Votre espace personnel est prêt",
+        htmlContent: renderSbiEmailTemplate({
+            prenom: account.prenom || "",
+            nomExpediteur: "L’équipe SBI",
+            posteExpediteur: "Administration",
+            preheader: "Votre espace SBI est prêt.",
+            messageHtml: `
+                <p style="margin:0 0 16px 0;">Votre espace <strong>${escapeHtml(roleLabel)}</strong> vient d’être créé sur la plateforme Sport Business Institute.</p>
+                <p style="margin:0 0 16px 0;">Pour sécuriser votre accès, définissez votre mot de passe via le lien ci-dessous.</p>
+                ${buildActionButtonHtml(resetLink, "Définir mon mot de passe")}
+                <p style="margin:0;">Si vous n’êtes pas à l’origine de cette demande, contactez l’équipe SBI.</p>
+            `
+        }),
+        textContent: `Bonjour ${account.prenom || ""},\n\nVotre espace ${roleLabel} SBI est prêt. Définissez votre mot de passe avec ce lien :\n${resetLink}\n\nSport Business Institute`
+    }, apiKey);
+}
+
+async function sendAccountResetEmail(account, resetLink, apiKey) {
+    return sendBrevoEmail({
+        sender: {
+            name: SBI_SENDER_NAME,
+            email: SBI_SENDER_EMAIL
+        },
+        to: [{
+            email: account.email,
+            name: getAccountDisplayName(account)
+        }],
+        replyTo: {
+            email: SBI_CONTACT_EMAIL,
+            name: "Sport Business Institute"
+        },
+        subject: "SBI - Réinitialisation de votre mot de passe",
+        htmlContent: renderSbiEmailTemplate({
+            prenom: account.prenom || "",
+            nomExpediteur: "L’équipe SBI",
+            posteExpediteur: "Administration",
+            preheader: "Réinitialisation de votre mot de passe SBI.",
+            messageHtml: `
+                <p style="margin:0 0 16px 0;">Une réinitialisation de mot de passe a été demandée pour votre espace SBI.</p>
+                <p style="margin:0 0 16px 0;">Cliquez sur le bouton ci-dessous pour choisir un nouveau mot de passe.</p>
+                ${buildActionButtonHtml(resetLink, "Réinitialiser mon mot de passe")}
+                <p style="margin:0;">Si vous n’avez pas demandé cette action, contactez l’équipe SBI.</p>
+            `
+        }),
+        textContent: `Bonjour ${account.prenom || ""},\n\nRéinitialisez votre mot de passe SBI avec ce lien :\n${resetLink}\n\nSport Business Institute`
+    }, apiKey);
+}
+
+async function sendAccountDeletedEmail(account, apiKey) {
+    return sendBrevoEmail({
+        sender: {
+            name: SBI_SENDER_NAME,
+            email: SBI_SENDER_EMAIL
+        },
+        to: [{
+            email: account.email,
+            name: getAccountDisplayName(account)
+        }],
+        replyTo: {
+            email: SBI_CONTACT_EMAIL,
+            name: "Sport Business Institute"
+        },
+        subject: "SBI - Suppression de votre accès",
+        htmlContent: renderSbiEmailTemplate({
+            prenom: account.prenom || "",
+            nomExpediteur: "L’équipe SBI",
+            posteExpediteur: "Administration",
+            preheader: "Votre accès SBI a été supprimé.",
+            messageHtml: `
+                <p style="margin:0 0 16px 0;">Votre accès à l’espace privé Sport Business Institute a été supprimé par l’administration.</p>
+                <p style="margin:0;">Si cette action vous semble anormale, contactez l’équipe SBI à <a href="mailto:${SBI_CONTACT_EMAIL}" style="color:#0051ff;">${SBI_CONTACT_EMAIL}</a>.</p>
+            `
+        }),
+        textContent: `Bonjour ${account.prenom || ""},\n\nVotre accès à l’espace privé SBI a été supprimé par l’administration.\n\nContact : ${SBI_CONTACT_EMAIL}`
+    }, apiKey);
+}
+
+function mapAuthCreateError(error) {
+    if (error?.code === "auth/email-already-exists") {
+        return new HttpsError("already-exists", "Un compte Firebase Auth utilise déjà cette adresse email.");
+    }
+    if (error?.code === "auth/invalid-email") {
+        return new HttpsError("invalid-argument", "L'adresse email n'est pas valide.");
+    }
+    return new HttpsError("internal", `Création Auth impossible : ${error.message}`);
+}
+
+exports.adminCreateUserAccount = onCall({
+    region: "europe-west1",
+    secrets: [BREVO_API_KEY],
+    timeoutSeconds: 30,
+    memory: "256MiB"
+}, async (request) => {
+    const db = admin.firestore();
+    const caller = await requireAdminCaller(request, db);
+    const data = request.data || {};
+
+    const prenom = formatAccountPrenom(data.prenom);
+    const nom = formatAccountNom(data.nom);
+    const email = cleanEmail(data.email);
+    const role = normalizeAccountRole(data.role);
+
+    if (!prenom) throw new HttpsError("invalid-argument", "Le prénom est obligatoire.");
+    if (!nom) throw new HttpsError("invalid-argument", "Le nom est obligatoire.");
+    if (!isValidEmail(email)) throw new HttpsError("invalid-argument", "L'adresse email n'est pas valide.");
+
+    const existingUserByEmail = await db.collection("users").where("email", "==", email).limit(1).get();
+    if (!existingUserByEmail.empty) {
+        throw new HttpsError("already-exists", "Un document utilisateur existe déjà avec cette adresse email.");
+    }
+
+    let createdUser = null;
+    const accountData = {
+        prenom,
+        nom,
+        email,
+        role,
+        statut: "actif",
+        isGod: false,
+        isOnline: false,
+        lastSeenAt: null,
+        dateCreation: new Date().toISOString(),
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        createdBy: caller.uid,
+        formationsAcces: []
+    };
+
+    try {
+        createdUser = await admin.auth().createUser({
+            email,
+            displayName: getAccountDisplayName(accountData),
+            disabled: false
+        });
+    } catch (error) {
+        throw mapAuthCreateError(error);
+    }
+
+    try {
+        await db.collection("users").doc(createdUser.uid).set(accountData, { merge: false });
+    } catch (error) {
+        try {
+            await admin.auth().deleteUser(createdUser.uid);
+        } catch (rollbackError) {
+            console.error("Rollback Auth impossible après échec Firestore :", rollbackError.message);
+        }
+        throw new HttpsError("internal", `Création Firestore impossible : ${error.message}`);
+    }
+
+    const apiKey = BREVO_API_KEY.value();
+    let warning = "";
+
+    try {
+        if (!apiKey) throw new Error("BREVO_API_KEY manquant.");
+        const resetLink = await admin.auth().generatePasswordResetLink(email);
+        await sendAccountInviteEmail(accountData, resetLink, apiKey);
+        await sendAccountInternalEmail("Compte créé", {
+            "Admin": caller.name,
+            "Admin email": caller.email,
+            "Utilisateur": getAccountDisplayName(accountData),
+            "Email": email,
+            "Rôle": getAccountRoleLabel(role),
+            "UID": createdUser.uid
+        }, apiKey);
+    } catch (error) {
+        warning = "Compte créé, mais l’email d’invitation ou la notification interne n’a pas pu être envoyé.";
+        console.error("Erreur email création compte SBI :", error.message, error.payload || "");
+    }
+
+    await safeWriteAccountAuditLog(db, {
+        type: "account.created",
+        actorUid: caller.uid,
+        actorEmail: caller.email,
+        targetUid: createdUser.uid,
+        targetEmail: email,
+        targetRole: role
+    });
+
+    return {
+        success: true,
+        uid: createdUser.uid,
+        email,
+        warning,
+        message: warning || "Compte créé. Email d’invitation envoyé."
+    };
+});
+
+exports.adminSendPasswordReset = onCall({
+    region: "europe-west1",
+    secrets: [BREVO_API_KEY],
+    timeoutSeconds: 20,
+    memory: "256MiB"
+}, async (request) => {
+    const db = admin.firestore();
+    const caller = await requireAdminCaller(request, db);
+    const data = request.data || {};
+    const targetUid = cleanString(data.uid, 160);
+
+    if (!targetUid) throw new HttpsError("invalid-argument", "UID utilisateur manquant.");
+
+    const targetDoc = await db.collection("users").doc(targetUid).get();
+    if (!targetDoc.exists) throw new HttpsError("not-found", "Compte utilisateur introuvable dans Firestore.");
+
+    const targetData = targetDoc.data() || {};
+    if (targetData.isGod === true && caller.data.isGod !== true) {
+        throw new HttpsError("permission-denied", "Seul le compte Suprême peut envoyer un reset au compte Suprême.");
+    }
+
+    const email = cleanEmail(targetData.email);
+    if (!isValidEmail(email)) throw new HttpsError("failed-precondition", "Email utilisateur invalide ou manquant.");
+
+    const apiKey = BREVO_API_KEY.value();
+    if (!apiKey) throw new HttpsError("failed-precondition", "Configuration Brevo manquante côté serveur.");
+
+    try {
+        const resetLink = await admin.auth().generatePasswordResetLink(email);
+        await sendAccountResetEmail({ ...targetData, email }, resetLink, apiKey);
+        await sendAccountInternalEmail("Reset mot de passe envoyé", {
+            "Admin": caller.name,
+            "Admin email": caller.email,
+            "Utilisateur": getAccountDisplayName(targetData),
+            "Email": email,
+            "Rôle": getAccountRoleLabel(targetData.role),
+            "UID": targetUid
+        }, apiKey);
+    } catch (error) {
+        console.error("Erreur reset password SBI :", error.message, error.payload || "");
+        throw new HttpsError("internal", `Impossible d'envoyer l'email de réinitialisation : ${error.message}`);
+    }
+
+    await safeWriteAccountAuditLog(db, {
+        type: "account.password_reset_sent",
+        actorUid: caller.uid,
+        actorEmail: caller.email,
+        targetUid,
+        targetEmail: email,
+        targetRole: targetData.role || ""
+    });
+
+    return {
+        success: true,
+        message: `Email de réinitialisation envoyé à ${email}.`
+    };
+});
+
+exports.deleteUserAccount = onCall({
+    region: "europe-west1",
+    secrets: [BREVO_API_KEY],
+    timeoutSeconds: 30,
+    memory: "256MiB"
+}, async (request) => {
+    const db = admin.firestore();
+    const caller = await requireAdminCaller(request, db);
+    const targetUid = cleanString(request.data?.uid, 160);
+
+    if (!targetUid) throw new HttpsError("invalid-argument", "UID utilisateur manquant.");
+    if (targetUid === caller.uid) {
+        throw new HttpsError("permission-denied", "Sécurité : vous ne pouvez pas supprimer votre propre compte.");
+    }
+
+    const targetDoc = await db.collection("users").doc(targetUid).get();
+
+    if (!targetDoc.exists) {
+        try {
+            await admin.auth().deleteUser(targetUid);
+        } catch (error) {
+            if (error?.code !== "auth/user-not-found") throw error;
+        }
+        await safeWriteAccountAuditLog(db, {
+            type: "account.deleted.orphan_cleanup",
+            actorUid: caller.uid,
+            actorEmail: caller.email,
+            targetUid,
+            targetEmail: "",
+            targetRole: ""
+        });
+        return { success: true, message: "Nettoyage de sécurité effectué." };
+    }
+
+    const targetData = targetDoc.data() || {};
+    const targetEmail = cleanEmail(targetData.email);
+    const targetRole = targetData.role || "";
+
+    if (targetData.isGod === true) {
+        throw new HttpsError("permission-denied", "Sécurité : le compte Suprême ne peut pas être supprimé.");
+    }
+
+    if (targetRole === "admin" && caller.data.isGod !== true) {
+        throw new HttpsError("permission-denied", "Un administrateur classique ne peut pas supprimer un autre administrateur.");
+    }
+
+    try {
+        await admin.auth().deleteUser(targetUid);
+    } catch (error) {
+        if (error?.code !== "auth/user-not-found") throw error;
+    }
+
+    await db.collection("users").doc(targetUid).delete();
+
+    const apiKey = BREVO_API_KEY.value();
+    let warning = "";
+
+    try {
+        if (!apiKey) throw new Error("BREVO_API_KEY manquant.");
+        if (isValidEmail(targetEmail)) {
+            await sendAccountDeletedEmail({ ...targetData, email: targetEmail }, apiKey);
+        }
+        await sendAccountInternalEmail("Compte supprimé", {
+            "Admin": caller.name,
+            "Admin email": caller.email,
+            "Utilisateur": getAccountDisplayName(targetData),
+            "Email": targetEmail,
+            "Rôle": getAccountRoleLabel(targetRole),
+            "UID": targetUid
+        }, apiKey);
+    } catch (error) {
+        warning = "Compte supprimé, mais l’email de confirmation ou la notification interne n’a pas pu être envoyé.";
+        console.error("Erreur email suppression compte SBI :", error.message, error.payload || "");
+    }
+
+    await safeWriteAccountAuditLog(db, {
+        type: "account.deleted",
+        actorUid: caller.uid,
+        actorEmail: caller.email,
+        targetUid,
+        targetEmail,
+        targetRole
+    });
+
+    return {
+        success: true,
+        warning,
+        message: warning || "Le compte a été intégralement supprimé."
+    };
+});
 
 exports.sendSbiContact = onRequest({
     region: "europe-west1",

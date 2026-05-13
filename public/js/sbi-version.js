@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.130',
+  version: '8.0P.131',
   branch: 'private-admin-accounts-mail-workflow',
-  channel: 'ADMIN MAIL WORKFLOW P1',
-  stage: 'PRIVATE P1 TEACHER QUILL ALIGN + TOOLTIP SYNC',
-  updatedAt: '2026-05-12',
-  label: 'SBI 8.0P.130 - PRIVATE P1.3 TEACHER QUILL ALIGN + TOOLTIP SYNC'
+  channel: 'ADMIN MAIL WORKFLOW P2A',
+  stage: 'PRIVATE P2A ADMIN ACCOUNT MAIL WORKFLOW',
+  updatedAt: '2026-05-13',
+  label: 'SBI 8.0P.131 - PRIVATE P2A ADMIN ACCOUNT MAIL WORKFLOW'
 };
 
 export function getSbiVersionLabel() {
