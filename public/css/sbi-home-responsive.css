@@ -157,10 +157,10 @@
     .section-stats .stats-grid {
         display: grid;
         grid-template-columns:
-            minmax(300px, 0.84fr)
-            minmax(300px, 1fr)
-            minmax(520px, 1.88fr);
-        gap: clamp(1.1rem, 1.8vw, 1.75rem);
+            minmax(300px, 0.74fr)
+            minmax(320px, 0.88fr)
+            minmax(680px, 2.35fr);
+        gap: clamp(0.9rem, 1.45vw, 1.45rem);
         align-items: center;
         max-width: 1720px;
         margin-right: auto;
@@ -242,8 +242,8 @@
     }
 
     .section-stats .calculator-panel {
-        --panel-slant: clamp(44px, 4vw, 76px);
-        grid-template-columns: minmax(0, 1fr) minmax(150px, 33%);
+        --panel-slant: clamp(28px, 2.5vw, 44px);
+        grid-template-columns: minmax(0, 1fr) minmax(118px, 22%);
         min-height: clamp(280px, 19vw, 340px);
         height: auto;
         max-height: none;
@@ -251,29 +251,29 @@
 
     .section-stats .calculator-panel-main {
         padding:
-            clamp(1.35rem, 1.65vw, 2rem)
+            clamp(1.45rem, 1.75vw, 2.15rem)
             calc(clamp(1.25rem, 1.45vw, 1.85rem) + var(--panel-slant))
-            clamp(1.2rem, 1.45vw, 1.65rem)
-            clamp(1.35rem, 1.65vw, 2rem);
+            clamp(1.25rem, 1.45vw, 1.7rem)
+            clamp(1.45rem, 1.75vw, 2.15rem);
     }
 
     .section-stats .calculator-panel-side {
         padding:
-            clamp(1.45rem, 1.8vw, 2rem)
-            clamp(1.15rem, 1.45vw, 1.8rem)
-            clamp(1.45rem, 1.8vw, 2rem)
-            calc(var(--panel-slant) + 0.8rem);
+            clamp(1.35rem, 1.6vw, 1.8rem)
+            clamp(0.9rem, 1.2vw, 1.35rem)
+            clamp(1.35rem, 1.6vw, 1.8rem)
+            calc(var(--panel-slant) + 0.45rem);
     }
 
     .section-stats .display-amount {
         white-space: nowrap;
-        font-size: clamp(3.4rem, 4.45vw, 5.2rem);
+        font-size: clamp(3.75rem, 4.95vw, 5.85rem);
     }
 
     .section-stats .cta-description {
-        max-width: 560px;
-        font-size: clamp(0.86rem, 0.94vw, 1.02rem);
-        line-height: 1.38;
+        max-width: 640px;
+        font-size: clamp(0.9rem, 0.98vw, 1.06rem);
+        line-height: 1.42;
     }
 
     .section-stats .cta-main-content {
@@ -292,7 +292,7 @@
     }
 
     .section-stats .btn-calc-neon {
-        width: min(100%, 520px);
+        width: min(100%, 600px);
         padding: clamp(0.86rem, 1vw, 1.08rem) 1.25rem;
         padding-right: 2.45rem;
         font-size: clamp(0.84rem, 0.9vw, 0.98rem);
@@ -305,18 +305,18 @@
     }
 
     .section-stats .calculator-side-icon svg {
-        width: clamp(76px, 6.5vw, 112px);
-        height: clamp(76px, 6.5vw, 112px);
+        width: clamp(64px, 5vw, 92px);
+        height: clamp(64px, 5vw, 92px);
     }
 }
 
 @media (min-width: 1461px) and (max-width: 1760px) {
     .section-stats .stats-grid {
         grid-template-columns:
-            minmax(280px, 0.82fr)
-            minmax(275px, 1fr)
-            minmax(500px, 1.85fr);
-        gap: clamp(0.9rem, 1.35vw, 1.35rem);
+            minmax(260px, 0.68fr)
+            minmax(280px, 0.78fr)
+            minmax(620px, 2.25fr);
+        gap: clamp(0.75rem, 1.15vw, 1.15rem);
     }
 
     .section-stats .founder-img-wrapper {
@@ -337,31 +337,31 @@
     }
 
     .section-stats .calculator-panel {
-        --panel-slant: clamp(40px, 3.6vw, 58px);
-        grid-template-columns: minmax(0, 1fr) minmax(136px, 30%);
+        --panel-slant: clamp(26px, 2.4vw, 42px);
+        grid-template-columns: minmax(0, 1fr) minmax(108px, 22%);
         min-height: clamp(282px, 22vw, 322px);
         height: auto;
     }
 
     .section-stats .calculator-panel-main {
         padding:
-            clamp(1.15rem, 1.4vw, 1.5rem)
-            calc(clamp(0.95rem, 1.2vw, 1.35rem) + var(--panel-slant))
-            clamp(1rem, 1.2vw, 1.3rem)
-            clamp(1.15rem, 1.4vw, 1.5rem);
+            clamp(1.2rem, 1.45vw, 1.6rem)
+            calc(clamp(0.95rem, 1.15vw, 1.25rem) + var(--panel-slant))
+            clamp(1rem, 1.15vw, 1.25rem)
+            clamp(1.2rem, 1.45vw, 1.6rem);
     }
 
     .section-stats .calculator-panel-side {
-        padding-left: calc(var(--panel-slant) + 0.55rem);
+        padding-left: calc(var(--panel-slant) + 0.35rem);
     }
 
     .section-stats .display-amount {
-        font-size: clamp(3rem, 4.3vw, 3.9rem);
+        font-size: clamp(3.35rem, 4.65vw, 4.8rem);
     }
 
     .section-stats .cta-description {
-        font-size: clamp(0.76rem, 0.98vw, 0.88rem);
-        line-height: 1.32;
+        font-size: clamp(0.82rem, 0.96vw, 0.94rem);
+        line-height: 1.4;
     }
 
     .section-stats .cta-main-content {
@@ -379,7 +379,7 @@
     }
 
     .section-stats .btn-calc-neon {
-        width: min(100%, 440px);
+        width: min(100%, 540px);
         padding-top: 0.78rem;
         padding-bottom: 0.78rem;
         font-size: clamp(0.76rem, 0.88vw, 0.88rem);
@@ -391,8 +391,8 @@
     }
 
     .section-stats .calculator-side-icon svg {
-        width: clamp(68px, 6vw, 86px);
-        height: clamp(68px, 6vw, 86px);
+        width: clamp(58px, 4.8vw, 78px);
+        height: clamp(58px, 4.8vw, 78px);
     }
 }
 
@@ -411,10 +411,10 @@
         width: 100%;
         max-width: none;
         grid-template-columns:
-            minmax(420px, 560px)
-            minmax(400px, 520px)
-            minmax(620px, 1fr);
-        gap: clamp(1.35rem, 1.65vw, 2rem);
+            minmax(390px, 500px)
+            minmax(350px, 440px)
+            minmax(720px, 1fr);
+        gap: clamp(1rem, 1.25vw, 1.45rem);
     }
 
     .section-stats .founder-img-wrapper {
@@ -437,6 +437,28 @@
     }
 
     .section-stats .calculator-panel {
+        --panel-slant: clamp(26px, 2.2vw, 42px);
+        grid-template-columns: minmax(0, 1fr) minmax(110px, 20%);
         min-height: clamp(330px, 18vw, 380px);
+    }
+
+    .section-stats .calculator-panel-main {
+        padding:
+            clamp(1.55rem, 1.75vw, 2.2rem)
+            calc(clamp(1.2rem, 1.35vw, 1.65rem) + var(--panel-slant))
+            clamp(1.25rem, 1.4vw, 1.65rem)
+            clamp(1.55rem, 1.75vw, 2.2rem);
+    }
+
+    .section-stats .calculator-panel-side {
+        padding-left: calc(var(--panel-slant) + 0.4rem);
+    }
+
+    .section-stats .cta-description {
+        max-width: 680px;
+    }
+
+    .section-stats .btn-calc-neon {
+        width: min(100%, 620px);
     }
 }
