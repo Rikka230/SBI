@@ -7,9 +7,7 @@
 import { logoutUser } from '/js/auth.js';
 import { db, auth, app } from '/js/firebase-init.js';
 import {
-    doc,
     collection,
-    updateDoc,
     onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
@@ -400,50 +398,62 @@ const initModalLogic = () => {
     document.getElementById('edit-user-form').addEventListener('submit', async (e) => {
         e.preventDefault();
 
+        const submitBtn = e.currentTarget.querySelector('button[type="submit"]');
         const userId = document.getElementById('edit-user-id').value;
         const targetUser = allUsersData.find(u => u.id === userId);
+
+        if (!targetUser) {
+            showAdminMessage("Compte introuvable dans la liste chargée.");
+            return;
+        }
 
         if (targetUser.isGod && !isCurrentUserGod) {
             showAdminMessage("Accès refusé : vous ne pouvez pas modifier le profil de l'Administrateur Suprême.");
             return;
         }
 
-        const updates = {};
+        const payload = { uid: userId };
 
-        if (!document.getElementById('edit-user-prenom').disabled) {
-            updates.prenom = formatPrenom(document.getElementById('edit-user-prenom').value);
-        }
+        const prenomInput = document.getElementById('edit-user-prenom');
+        const nomInput = document.getElementById('edit-user-nom');
+        const roleSelect = document.getElementById('edit-user-role');
+        const statutSelect = document.getElementById('edit-user-statut');
 
-        if (!document.getElementById('edit-user-nom').disabled) {
-            updates.nom = formatNom(document.getElementById('edit-user-nom').value);
-        }
+        if (!prenomInput.disabled) payload.prenom = formatPrenom(prenomInput.value);
+        if (!nomInput.disabled) payload.nom = formatNom(nomInput.value);
 
-        if (!document.getElementById('edit-user-role').disabled) {
-            updates.role = document.getElementById('edit-user-role').value;
-            updates.statut = document.getElementById('edit-user-statut').value;
+        if (!roleSelect.disabled) {
+            payload.role = roleSelect.value;
+            payload.statut = statutSelect.value;
         }
 
         const godCheckbox = document.getElementById('edit-user-isgod');
         const godLabelWrapper = godCheckbox ? godCheckbox.parentElement : null;
-        const godExists = allUsersData.some(u => u.isGod === true);
 
         if (godCheckbox && godCheckbox.checked && godLabelWrapper && godLabelWrapper.style.display !== 'none') {
-            if (isCurrentUserGod || !godExists) {
-                updates.isGod = true;
-                const currentGodProfile = allUsersData.find(u => u.isGod === true);
+            payload.isGod = true;
+        }
 
-                if (currentGodProfile && currentGodProfile.id !== targetUser.id) {
-                    await updateDoc(doc(db, "users", currentGodProfile.id), { isGod: false });
-                }
-            }
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.style.opacity = '0.65';
         }
 
         try {
-            await updateDoc(doc(db, "users", userId), updates);
+            const adminUpdateUserAccount = httpsCallable(functionsInstance, 'adminUpdateUserAccount');
+            const result = await adminUpdateUserAccount(payload);
             modal.style.display = 'none';
             fetchUsers();
+            if (result?.data?.warning) {
+                showAdminMessage(result.data.warning);
+            }
         } catch (error) {
-            showAdminMessage("Erreur de sauvegarde.");
+            showAdminMessage(getCallableErrorMessage(error, "Erreur de sauvegarde."));
+        } finally {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.style.opacity = '';
+            }
         }
     });
 

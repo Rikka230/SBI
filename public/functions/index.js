@@ -603,10 +603,11 @@ async function sendBrevoNewsletterConfirmation(data, apiKey) {
 
 
 /* =======================================================================
- * SBI 8.0P.131 - ADMIN ACCOUNT MAIL WORKFLOW
+ * SBI 8.0P.134 - ADMIN ACCOUNT MAIL WORKFLOW
  * -----------------------------------------------------------------------
  * Actions sensibles Auth déplacées côté serveur : création compte,
- * reset password et suppression enrichie avec mails Brevo + audit.
+ * reset password, édition profil/rôle/statut et suppression enrichies
+ * avec mails Brevo + audit.
  * ======================================================================= */
 
 const ACCOUNT_ROLES = ["student", "teacher", "admin"];
@@ -841,6 +842,40 @@ async function sendAccountDeletedEmail(account, apiKey) {
     }, apiKey);
 }
 
+async function sendAccountUpdatedEmail(account, changeLabels, apiKey) {
+    const changesHtml = changeLabels.length
+        ? `<ul style="margin:0 0 16px 18px;padding:0;color:#253047;line-height:1.7;">${changeLabels.map(label => `<li>${escapeHtml(label)}</li>`).join("")}</ul>`
+        : "";
+
+    return sendBrevoEmail({
+        sender: {
+            name: SBI_SENDER_NAME,
+            email: SBI_SENDER_EMAIL
+        },
+        to: [{
+            email: account.email,
+            name: getAccountDisplayName(account)
+        }],
+        replyTo: {
+            email: SBI_CONTACT_EMAIL,
+            name: "Sport Business Institute"
+        },
+        subject: "SBI - Mise à jour de votre compte",
+        htmlContent: renderSbiEmailTemplate({
+            prenom: account.prenom || "",
+            nomExpediteur: "L’équipe SBI",
+            posteExpediteur: "Administration",
+            preheader: "Votre compte SBI a été mis à jour.",
+            messageHtml: `
+                <p style="margin:0 0 16px 0;">Votre compte Sport Business Institute a été mis à jour par l’administration.</p>
+                ${changesHtml}
+                <p style="margin:0;">Si cette action vous semble anormale, contactez l’équipe SBI à <a href="mailto:${SBI_CONTACT_EMAIL}" style="color:#0051ff;">${SBI_CONTACT_EMAIL}</a>.</p>
+            `
+        }),
+        textContent: `Bonjour ${account.prenom || ""},\n\nVotre compte SBI a été mis à jour.\n${changeLabels.map(label => `- ${label}`).join("\n")}\n\nContact : ${SBI_CONTACT_EMAIL}`
+    }, apiKey);
+}
+
 function mapAuthCreateError(error) {
     if (error?.code === "auth/email-already-exists") {
         return new HttpsError("already-exists", "Un compte Firebase Auth utilise déjà cette adresse email.");
@@ -1007,6 +1042,225 @@ exports.adminSendPasswordReset = onCall({
     return {
         success: true,
         message: `Email de réinitialisation envoyé à ${email}.`
+    };
+});
+
+
+exports.adminUpdateUserAccount = onCall({
+    region: "europe-west1",
+    secrets: [BREVO_API_KEY],
+    timeoutSeconds: 30,
+    memory: "256MiB"
+}, async (request) => {
+    const db = admin.firestore();
+    const caller = await requireAdminCaller(request, db);
+    const data = request.data || {};
+    const targetUid = cleanString(data.uid, 160);
+
+    if (!targetUid) throw new HttpsError("invalid-argument", "UID utilisateur manquant.");
+
+    const targetRef = db.collection("users").doc(targetUid);
+    const targetDoc = await targetRef.get();
+    if (!targetDoc.exists) throw new HttpsError("not-found", "Compte utilisateur introuvable.");
+
+    const targetData = targetDoc.data() || {};
+    const callerIsGod = caller.data.isGod === true;
+    const targetIsGod = targetData.isGod === true;
+    const targetRole = normalizeAccountRole(targetData.role);
+    const isSelfEdit = targetUid === caller.uid;
+
+    if (targetIsGod && !callerIsGod) {
+        throw new HttpsError("permission-denied", "Accès refusé : seul le compte Suprême peut modifier le compte Suprême.");
+    }
+
+    const updates = {};
+    const authUpdates = {};
+    const changeLabels = [];
+    const auditChanges = {};
+    let previousGodUidToDemote = "";
+
+    if (Object.prototype.hasOwnProperty.call(data, "prenom")) {
+        const prenom = formatAccountPrenom(data.prenom);
+        if (!prenom) throw new HttpsError("invalid-argument", "Le prénom est obligatoire.");
+        if (prenom !== (targetData.prenom || "")) {
+            updates.prenom = prenom;
+            auditChanges.prenom = { before: targetData.prenom || "", after: prenom };
+        }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(data, "nom")) {
+        const nom = formatAccountNom(data.nom);
+        if (!nom) throw new HttpsError("invalid-argument", "Le nom est obligatoire.");
+        if (nom !== (targetData.nom || "")) {
+            updates.nom = nom;
+            auditChanges.nom = { before: targetData.nom || "", after: nom };
+        }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(data, "role")) {
+        const requestedRoleRaw = cleanString(data.role, 40).toLowerCase();
+        if (!ACCOUNT_ROLES.includes(requestedRoleRaw)) {
+            throw new HttpsError("invalid-argument", "Rôle utilisateur invalide.");
+        }
+        if (targetIsGod) {
+            throw new HttpsError("permission-denied", "Le rôle du compte Suprême ne peut pas être modifié.");
+        }
+        if (!callerIsGod && (targetRole === "admin" || requestedRoleRaw === "admin")) {
+            throw new HttpsError("permission-denied", "Seul le compte Suprême peut modifier ou attribuer un rôle administrateur.");
+        }
+        if (isSelfEdit && requestedRoleRaw !== targetRole) {
+            throw new HttpsError("permission-denied", "Vous ne pouvez pas modifier votre propre rôle.");
+        }
+        if (requestedRoleRaw !== targetRole) {
+            updates.role = requestedRoleRaw;
+            auditChanges.role = { before: targetRole, after: requestedRoleRaw };
+            changeLabels.push(`Votre rôle est désormais : ${getAccountRoleLabel(requestedRoleRaw)}.`);
+        }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(data, "statut")) {
+        const requestedStatus = cleanString(data.statut, 40).toLowerCase();
+        if (!["actif", "suspendu"].includes(requestedStatus)) {
+            throw new HttpsError("invalid-argument", "Statut utilisateur invalide.");
+        }
+        if (targetIsGod) {
+            throw new HttpsError("permission-denied", "Le compte Suprême ne peut pas être suspendu.");
+        }
+        if (isSelfEdit && requestedStatus === "suspendu") {
+            throw new HttpsError("permission-denied", "Vous ne pouvez pas suspendre votre propre compte.");
+        }
+        if (!callerIsGod && targetRole === "admin" && requestedStatus !== (targetData.statut || "actif")) {
+            throw new HttpsError("permission-denied", "Un administrateur classique ne peut pas suspendre ou réactiver un autre administrateur.");
+        }
+        if (requestedStatus !== (targetData.statut || "actif")) {
+            updates.statut = requestedStatus;
+            authUpdates.disabled = requestedStatus === "suspendu";
+            auditChanges.statut = { before: targetData.statut || "actif", after: requestedStatus };
+            changeLabels.push(requestedStatus === "suspendu"
+                ? "Votre compte a été suspendu temporairement."
+                : "Votre compte a été réactivé.");
+        }
+    }
+
+    if (data.isGod === true) {
+        const currentGodSnapshot = await db.collection("users").where("isGod", "==", true).limit(2).get();
+        const currentGodDocs = currentGodSnapshot.docs;
+        const currentGodDoc = currentGodDocs[0] || null;
+        const godExists = !!currentGodDoc;
+
+        if (targetIsGod) {
+            // Rien à faire : le compte cible est déjà Suprême.
+        } else if (callerIsGod) {
+            updates.isGod = true;
+            updates.role = "admin";
+            updates.statut = "actif";
+            authUpdates.disabled = false;
+            auditChanges.isGod = { before: false, after: true };
+            changeLabels.push("Votre compte possède désormais les droits Suprême SBI.");
+
+            if (currentGodDoc && currentGodDoc.id !== targetUid) {
+                previousGodUidToDemote = currentGodDoc.id;
+            }
+        } else if (!godExists && isSelfEdit && targetRole === "admin") {
+            updates.isGod = true;
+            updates.role = "admin";
+            updates.statut = "actif";
+            authUpdates.disabled = false;
+            auditChanges.isGod = { before: false, after: true };
+            changeLabels.push("Votre compte a réclamé les droits Suprême SBI.");
+        } else {
+            throw new HttpsError("permission-denied", "Seul le compte Suprême peut transférer les droits Suprême.");
+        }
+    }
+
+    if (Object.keys(updates).length === 0 && Object.keys(authUpdates).length === 0) {
+        return { success: true, message: "Aucune modification à appliquer." };
+    }
+
+    const nextProfile = {
+        ...targetData,
+        ...updates
+    };
+
+    const nextDisplayName = getAccountDisplayName(nextProfile);
+    if ((updates.prenom !== undefined || updates.nom !== undefined) && nextDisplayName) {
+        authUpdates.displayName = nextDisplayName;
+    }
+
+    if (Object.keys(authUpdates).length > 0) {
+        try {
+            await admin.auth().updateUser(targetUid, authUpdates);
+        } catch (error) {
+            console.error("Erreur update Auth compte SBI :", error.message);
+            if (error?.code === "auth/user-not-found") {
+                throw new HttpsError("failed-precondition", "Compte Firebase Auth introuvable : synchronisation impossible.");
+            }
+            throw new HttpsError("internal", `Mise à jour Auth impossible : ${error.message}`);
+        }
+    }
+
+    const accountUpdateStamp = admin.firestore.FieldValue.serverTimestamp();
+    const accountUpdateBatch = db.batch();
+
+    accountUpdateBatch.set(targetRef, {
+        ...updates,
+        updatedAt: accountUpdateStamp,
+        updatedBy: caller.uid
+    }, { merge: true });
+
+    if (previousGodUidToDemote) {
+        accountUpdateBatch.set(db.collection("users").doc(previousGodUidToDemote), {
+            isGod: false,
+            updatedAt: accountUpdateStamp,
+            updatedBy: caller.uid
+        }, { merge: true });
+    }
+
+    await accountUpdateBatch.commit();
+
+    const apiKey = BREVO_API_KEY.value();
+    let warning = "";
+    const sensitiveChange = auditChanges.role || auditChanges.statut || auditChanges.isGod;
+
+    if (sensitiveChange) {
+        try {
+            if (!apiKey) throw new Error("BREVO_API_KEY manquant.");
+            const targetEmail = cleanEmail(nextProfile.email);
+            if (isValidEmail(targetEmail) && changeLabels.length > 0) {
+                await sendAccountUpdatedEmail({ ...nextProfile, email: targetEmail }, changeLabels, apiKey);
+            }
+            await sendAccountInternalEmail("Compte modifié", {
+                "Admin": caller.name,
+                "Admin email": caller.email,
+                "Utilisateur": getAccountDisplayName(nextProfile),
+                "Email": targetEmail,
+                "Ancien rôle": auditChanges.role ? getAccountRoleLabel(auditChanges.role.before) : "",
+                "Nouveau rôle": auditChanges.role ? getAccountRoleLabel(auditChanges.role.after) : "",
+                "Ancien statut": auditChanges.statut ? auditChanges.statut.before : "",
+                "Nouveau statut": auditChanges.statut ? auditChanges.statut.after : "",
+                "Droits Suprême": auditChanges.isGod ? "modifiés" : "",
+                "UID": targetUid
+            }, apiKey);
+        } catch (error) {
+            warning = "Compte modifié, mais l’email de notification n’a pas pu être envoyé.";
+            console.error("Erreur email modification compte SBI :", error.message, error.payload || "");
+        }
+    }
+
+    await safeWriteAccountAuditLog(db, {
+        type: auditChanges.isGod ? "account.god_updated" : "account.updated",
+        actorUid: caller.uid,
+        actorEmail: caller.email,
+        targetUid,
+        targetEmail: cleanEmail(nextProfile.email),
+        targetRole: nextProfile.role || "",
+        changes: auditChanges
+    });
+
+    return {
+        success: true,
+        warning,
+        message: warning || "Compte modifié."
     };
 });
 

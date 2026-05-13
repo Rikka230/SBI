@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.133',
+  version: '8.0P.134',
   branch: 'private-admin-accounts-mail-workflow',
-  channel: 'ADMIN MAIL WORKFLOW P2A',
-  stage: 'PRIVATE P2A.2 PASSWORD RESET LINK DOMAIN FIX',
+  channel: 'ADMIN MAIL WORKFLOW P2B',
+  stage: 'PRIVATE P2B ADMIN UPDATE USER WORKFLOW',
   updatedAt: '2026-05-13',
-  label: 'SBI 8.0P.133 - PRIVATE P2A.2 PASSWORD RESET LINK DOMAIN FIX'
+  label: 'SBI 8.0P.134 - PRIVATE P2B ADMIN UPDATE USER WORKFLOW'
 };
 
 export function getSbiVersionLabel() {
