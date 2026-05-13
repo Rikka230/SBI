@@ -1,136 +1,143 @@
 /**
  * =======================================================================
- * CHANGE EMAIL - Logique de mise à jour sécurisée avec Re-Auth
+ * CHANGE EMAIL - SBI 8.0P.137
+ * -----------------------------------------------------------------------
+ * Flux unifié professeur / étudiant : réauth client obligatoire,
+ * puis changement email serveur via Firebase Functions + Brevo SBI.
  * =======================================================================
  */
 
-import { auth, db } from '/js/firebase-init.js';
-import { onAuthStateChanged, updateEmail, reauthenticateWithCredential, EmailAuthProvider } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-import { doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { auth, app } from '/js/firebase-init.js';
+import {
+    onAuthStateChanged,
+    reauthenticateWithCredential,
+    EmailAuthProvider
+} from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js";
 
-// Vues
-const viewLoading = document.getElementById('state-loading');
+const functionsInstance = getFunctions(app, "europe-west1");
+const selfChangeUserEmail = httpsCallable(functionsInstance, 'selfChangeUserEmail');
+
 const viewForm = document.getElementById('state-form');
 const viewSuccess = document.getElementById('state-success');
-
-// Formulaire
 const form = document.getElementById('change-email-form');
 const inputNewEmail = document.getElementById('new-email');
 const groupPassword = document.getElementById('password-group');
 const inputPassword = document.getElementById('current-password');
 const btnSubmit = document.getElementById('btn-submit');
-const btnText = btnSubmit.querySelector('.btn-text');
-const btnSpinner = btnSubmit.querySelector('.btn-spinner');
+const btnText = btnSubmit?.querySelector('.btn-text');
+const btnSpinner = btnSubmit?.querySelector('.btn-spinner');
 const errorText = document.getElementById('form-error');
 
 let currentUser = null;
 
+const getCallableErrorMessage = (error, fallback = 'Une erreur est survenue.') => {
+    const rawMessage = error?.message || error?.details?.message || fallback;
+    return String(rawMessage).replace(/^Firebase:\s*/i, '').replace(/\s*\([^)]*\)\.?$/g, '').trim() || fallback;
+};
+
 document.addEventListener('DOMContentLoaded', () => {
-    // Vérification de la connexion de l'utilisateur
     onAuthStateChanged(auth, (user) => {
-        if (user) {
-            currentUser = user;
-            document.getElementById('current-email-display').textContent = user.email;
-            showView(viewForm);
-        } else {
-            // Sécurité : redirection si l'utilisateur n'est pas connecté
+        if (!user) {
             window.location.replace('/login.html');
+            return;
         }
+
+        currentUser = user;
+        const currentEmailDisplay = document.getElementById('current-email-display');
+        if (currentEmailDisplay) currentEmailDisplay.textContent = user.email || '';
+
+        if (groupPassword) {
+            groupPassword.style.display = 'block';
+            inputPassword?.setAttribute('required', 'true');
+        }
+
+        showView(viewForm);
     });
 });
 
-form.addEventListener('submit', async (e) => {
-    e.preventDefault();
+form?.addEventListener('submit', async (event) => {
+    event.preventDefault();
     hideFormError();
 
-    const newEmail = inputNewEmail.value.trim();
+    if (!currentUser) {
+        showFormError('Session introuvable. Veuillez vous reconnecter.');
+        return;
+    }
+
+    const newEmail = inputNewEmail.value.trim().toLowerCase();
     const password = inputPassword.value;
 
-    if (!newEmail || newEmail === currentUser.email) {
+    if (!newEmail || newEmail === (currentUser.email || '').toLowerCase()) {
         showFormError("Veuillez entrer une adresse e-mail différente de l'actuelle.");
+        return;
+    }
+
+    if (!password) {
+        showFormError('Veuillez confirmer votre mot de passe actuel.');
+        inputPassword.focus();
         return;
     }
 
     setButtonLoading(true);
 
     try {
-        // ÉTAPE 1 : Si le champ mot de passe est visible, on re-valide d'abord la session
-        if (groupPassword.style.display !== 'none') {
-            if (!password) {
-                showFormError("Veuillez entrer votre mot de passe actuel.");
-                setButtonLoading(false);
-                return;
-            }
-            const credential = EmailAuthProvider.credential(currentUser.email, password);
-            await reauthenticateWithCredential(currentUser, credential);
-        }
+        const credential = EmailAuthProvider.credential(currentUser.email, password);
+        await reauthenticateWithCredential(currentUser, credential);
+        await currentUser.getIdToken(true);
 
-        // ÉTAPE 2 : Mise à jour de l'e-mail dans Firebase Auth
-        await updateEmail(currentUser, newEmail);
+        const result = await selfChangeUserEmail({ email: newEmail });
+        const warning = result?.data?.warning || '';
 
-        // ÉTAPE 3 : Synchronisation dans la base de données Firestore (Essentiel pour l'affichage Profil)
-        await updateDoc(doc(db, "users", currentUser.uid), {
-            email: newEmail
-        });
-
-        // Succès
+        await auth.currentUser?.reload();
         showView(viewSuccess);
 
+        if (warning) {
+            console.warn(warning);
+        }
     } catch (error) {
-        console.error("Erreur de modification d'email :", error.code);
+        console.error('Erreur de modification email SBI :', error);
         setButtonLoading(false);
 
-        // Interception du blocage de sécurité de Firebase (Session trop ancienne)
-        if (error.code === 'auth/requires-recent-login') {
-            // On fait apparaître le champ de mot de passe pour forcer la ré-authentification
-            groupPassword.style.display = 'block';
-            inputPassword.setAttribute('required', 'true');
-            inputPassword.focus();
-            showFormError("Pour votre sécurité, veuillez confirmer avec votre mot de passe actuel.");
-        } 
-        else if (error.code === 'auth/wrong-password') {
-            showFormError("Le mot de passe actuel est incorrect.");
-        }
-        else if (error.code === 'auth/email-already-in-use') {
-            showFormError("Cette adresse e-mail est déjà utilisée par un autre compte.");
-        }
-        else if (error.code === 'auth/invalid-email') {
+        if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+            showFormError('Le mot de passe actuel est incorrect.');
+        } else if (error.code === 'auth/too-many-requests') {
+            showFormError('Trop de tentatives. Réessayez plus tard.');
+        } else if (String(error?.message || '').includes('already-exists')) {
+            showFormError('Cette adresse e-mail est déjà utilisée par un autre compte.');
+        } else if (String(error?.message || '').includes('invalid-argument')) {
             showFormError("Format d'adresse e-mail invalide.");
-        }
-        else {
-            showFormError("Une erreur est survenue. Veuillez réessayer.");
+        } else if (String(error?.message || '').includes('failed-precondition')) {
+            showFormError('Veuillez confirmer à nouveau votre mot de passe actuel.');
+        } else {
+            showFormError(getCallableErrorMessage(error, 'Une erreur est survenue. Veuillez réessayer.'));
         }
     }
 });
 
-// Fonctions utilitaires
 function showView(viewElement) {
-    document.querySelectorAll('.state-view').forEach(el => el.classList.remove('active'));
-    viewElement.classList.add('active');
+    document.querySelectorAll('.state-view').forEach(element => element.classList.remove('active'));
+    if (viewElement) viewElement.classList.add('active');
 }
 
 function showFormError(message) {
-    errorText.textContent = message;
-    errorText.style.display = 'block';
-    inputNewEmail.style.borderColor = 'var(--accent-red)';
-    if (groupPassword.style.display !== 'none') {
-        inputPassword.style.borderColor = 'var(--accent-red)';
+    if (errorText) {
+        errorText.textContent = message;
+        errorText.style.display = 'block';
     }
+    if (inputNewEmail) inputNewEmail.style.borderColor = 'var(--accent-red)';
+    if (inputPassword) inputPassword.style.borderColor = 'var(--accent-red)';
 }
 
 function hideFormError() {
-    errorText.style.display = 'none';
-    inputNewEmail.style.borderColor = 'var(--border-color)';
-    inputPassword.style.borderColor = 'var(--border-color)';
+    if (errorText) errorText.style.display = 'none';
+    if (inputNewEmail) inputNewEmail.style.borderColor = 'var(--border-color)';
+    if (inputPassword) inputPassword.style.borderColor = 'var(--border-color)';
 }
 
 function setButtonLoading(isLoading) {
+    if (!btnSubmit) return;
     btnSubmit.disabled = isLoading;
-    if (isLoading) {
-        btnText.style.display = 'none';
-        btnSpinner.style.display = 'block';
-    } else {
-        btnText.style.display = 'block';
-        btnSpinner.style.display = 'none';
-    }
+    if (btnText) btnText.style.display = isLoading ? 'none' : 'block';
+    if (btnSpinner) btnSpinner.style.display = isLoading ? 'block' : 'none';
 }

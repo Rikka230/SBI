@@ -1132,6 +1132,227 @@ exports.adminSendPasswordReset = onCall({
 });
 
 
+
+
+/* =======================================================================
+ * SBI 8.0P.137 - SELF EMAIL CHANGE WORKFLOW
+ * -----------------------------------------------------------------------
+ * Changement d'email depuis l'espace personnel professeur / étudiant.
+ * Le client effectue une réauthentification, puis cette Function applique
+ * la modification Auth + Firestore, envoie les emails SBI et écrit l'audit.
+ * ======================================================================= */
+
+async function sendSelfEmailChangeSbiEmail(apiKey, { toEmail, toName, subject, prenom, messageHtml, preheader }) {
+    if (!toEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(toEmail)) return null;
+
+    const htmlContent = renderSbiEmailTemplate({
+        prenom: prenom || '',
+        messageHtml,
+        nomExpediteur: 'L’équipe SBI',
+        posteExpediteur: 'Support comptes',
+        preheader: preheader || subject
+    });
+
+    return callBrevo('/smtp/email', {
+        sender: { name: SBI_SENDER_NAME, email: SBI_SENDER_EMAIL },
+        to: [{ email: toEmail, name: toName || toEmail }],
+        subject,
+        htmlContent,
+        replyTo: { email: SBI_CONTACT_EMAIL, name: 'SBI' }
+    }, apiKey);
+}
+
+function buildSelfEmailChangeTable(oldEmail, newEmail) {
+    return `
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;border-collapse:collapse;margin:18px 0;border:1px solid #dce4f2;border-radius:12px;overflow:hidden;">
+            <tr>
+                <td style="padding:12px 14px;border-bottom:1px solid #dce4f2;color:#0051ff;font-weight:bold;width:38%;">Ancienne adresse</td>
+                <td style="padding:12px 14px;border-bottom:1px solid #dce4f2;color:#101828;">${escapeHtml(oldEmail)}</td>
+            </tr>
+            <tr>
+                <td style="padding:12px 14px;color:#0051ff;font-weight:bold;width:38%;">Nouvelle adresse</td>
+                <td style="padding:12px 14px;color:#101828;">${escapeHtml(newEmail)}</td>
+            </tr>
+        </table>`;
+}
+
+async function notifySelfEmailChange({ apiKey, actorUid, oldEmail, newEmail, userProfile }) {
+    const prenom = userProfile?.prenom || '';
+    const nom = userProfile?.nom || '';
+    const fullName = `${prenom} ${nom}`.trim() || newEmail;
+    const tableHtml = buildSelfEmailChangeTable(oldEmail, newEmail);
+
+    const oldAddressHtml = `
+        <p style="margin:0 0 16px 0;">L’adresse email de votre compte SBI vient d’être modifiée depuis votre espace personnel.</p>
+        ${tableHtml}
+        <p style="margin:18px 0 0 0;">Si vous êtes bien à l’origine de cette action, aucune démarche supplémentaire n’est nécessaire.</p>
+        <p style="margin:12px 0 0 0;color:#667085;font-size:14px;line-height:22px;">Si vous n’avez pas demandé ce changement, contactez immédiatement SBI.</p>`;
+
+    const newAddressHtml = `
+        <p style="margin:0 0 16px 0;">Cette adresse email est désormais associée à votre compte SBI.</p>
+        ${tableHtml}
+        <p style="margin:18px 0 0 0;">Vous pourrez l’utiliser pour vos prochaines connexions à la plateforme.</p>`;
+
+    const internalHtml = `
+        <p style="margin:0 0 16px 0;">Un utilisateur vient de modifier son adresse email depuis son espace personnel.</p>
+        ${tableHtml}
+        <p style="margin:18px 0 0 0;color:#667085;font-size:14px;line-height:22px;">UID : ${escapeHtml(actorUid)}</p>`;
+
+    const tasks = [
+        sendSelfEmailChangeSbiEmail(apiKey, {
+            toEmail: oldEmail,
+            toName: fullName,
+            subject: 'Votre adresse email SBI a été modifiée',
+            prenom,
+            messageHtml: oldAddressHtml,
+            preheader: 'Modification de l’adresse email de votre compte SBI.'
+        }),
+        sendSelfEmailChangeSbiEmail(apiKey, {
+            toEmail: newEmail,
+            toName: fullName,
+            subject: 'Nouvelle adresse email confirmée pour votre compte SBI',
+            prenom,
+            messageHtml: newAddressHtml,
+            preheader: 'Votre nouvelle adresse email SBI est active.'
+        }),
+        sendSelfEmailChangeSbiEmail(apiKey, {
+            toEmail: SBI_CONTACT_EMAIL,
+            toName: 'SBI',
+            subject: 'Compte SBI - email modifié par utilisateur',
+            prenom: 'équipe',
+            messageHtml: internalHtml,
+            preheader: 'Un utilisateur a modifié son email depuis son profil.'
+        })
+    ];
+
+    const results = await Promise.allSettled(tasks);
+    const failed = results.filter(result => result.status === 'rejected');
+    if (failed.length) {
+        console.error('Emails selfChangeUserEmail partiellement échoués :', failed.map(item => item.reason?.message || item.reason));
+    }
+    return { sent: results.length - failed.length, failed: failed.length };
+}
+
+exports.selfChangeUserEmail = onCall({
+    region: 'europe-west1',
+    secrets: [BREVO_API_KEY],
+    timeoutSeconds: 30,
+    memory: '256MiB'
+}, async (request) => {
+    if (!request.auth?.uid) {
+        throw new HttpsError('unauthenticated', 'Connexion requise.');
+    }
+
+    const uid = request.auth.uid;
+    const authTime = Number(request.auth.token?.auth_time || 0) * 1000;
+    if (!authTime || Date.now() - authTime > 5 * 60 * 1000) {
+        throw new HttpsError('failed-precondition', 'Veuillez confirmer votre mot de passe avant de modifier votre email.');
+    }
+
+    const newEmail = cleanString(request.data?.email, 180).toLowerCase();
+    if (!newEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) {
+        throw new HttpsError('invalid-argument', "L'adresse email n'est pas valide.");
+    }
+
+    const userRef = admin.firestore().collection('users').doc(uid);
+    const userSnap = await userRef.get();
+    if (!userSnap.exists) {
+        throw new HttpsError('not-found', 'Profil utilisateur introuvable.');
+    }
+
+    const userProfile = userSnap.data() || {};
+    const authUser = await admin.auth().getUser(uid);
+    const oldEmail = cleanString(authUser.email || userProfile.email, 180).toLowerCase();
+
+    if (!oldEmail) {
+        throw new HttpsError('failed-precondition', 'Ancienne adresse email introuvable.');
+    }
+
+    if (oldEmail === newEmail) {
+        throw new HttpsError('invalid-argument', "La nouvelle adresse doit être différente de l'adresse actuelle.");
+    }
+
+    try {
+        const existingAuthUser = await admin.auth().getUserByEmail(newEmail);
+        if (existingAuthUser.uid !== uid) {
+            throw new HttpsError('already-exists', 'Cette adresse email est déjà utilisée par un autre compte.');
+        }
+    } catch (error) {
+        if (error instanceof HttpsError) throw error;
+        if (error?.code !== 'auth/user-not-found') {
+            throw new HttpsError('internal', 'Vérification email impossible.');
+        }
+    }
+
+    const existingFirestore = await admin.firestore()
+        .collection('users')
+        .where('email', '==', newEmail)
+        .limit(1)
+        .get();
+
+    if (!existingFirestore.empty) {
+        const existingDoc = existingFirestore.docs[0];
+        if (existingDoc.id !== uid) {
+            throw new HttpsError('already-exists', 'Cette adresse email est déjà utilisée par un autre profil.');
+        }
+    }
+
+    await admin.auth().updateUser(uid, {
+        email: newEmail,
+        emailVerified: false
+    });
+
+    try {
+        await userRef.update({
+            email: newEmail,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            emailUpdatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+    } catch (error) {
+        console.error('Rollback email Auth après erreur Firestore selfChangeUserEmail :', error);
+        try {
+            await admin.auth().updateUser(uid, { email: oldEmail });
+        } catch (rollbackError) {
+            console.error('Rollback email Auth impossible :', rollbackError);
+        }
+        throw new HttpsError('internal', 'Modification Firestore impossible.');
+    }
+
+    let emailReport = { sent: 0, failed: 0 };
+    try {
+        emailReport = await notifySelfEmailChange({
+            apiKey: BREVO_API_KEY.value(),
+            actorUid: uid,
+            oldEmail,
+            newEmail,
+            userProfile
+        });
+    } catch (error) {
+        console.error('Notification selfChangeUserEmail impossible :', error);
+        emailReport = { sent: 0, failed: 3 };
+    }
+
+    await admin.firestore().collection('accountAuditLogs').add({
+        type: 'account.self_email_changed',
+        actorUid: uid,
+        actorEmail: newEmail,
+        targetUid: uid,
+        targetEmail: newEmail,
+        previousEmail: oldEmail,
+        newEmail,
+        targetRole: userProfile.role || '',
+        source: 'self-profile',
+        emailReport,
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    return {
+        ok: true,
+        email: newEmail,
+        warning: emailReport.failed ? 'Email modifié, mais certaines notifications n’ont pas pu être envoyées.' : ''
+    };
+});
+
 exports.adminChangeUserEmail = onCall({
     region: "europe-west1",
     secrets: [BREVO_API_KEY],
