@@ -36,7 +36,7 @@ const BREVO_LIST_ID = 77;
 const BREVO_NEWSLETTER_LIST_ID = 77;
 const SBI_CONTACT_EMAIL = "contact@sbigroup.fr";
 const SBI_CONTACT_PHONE = "06 68 60 30 01";
-const SBI_SENDER_NAME = "SBI Contact";
+const SBI_SENDER_NAME = "Contact";
 const SBI_SENDER_EMAIL = "contact@sbigroup.fr";
 
 const PROFILE_LABELS = {
@@ -193,28 +193,63 @@ async function upsertBrevoContact(data, apiKey) {
 
 const SBI_SITE_URL = "https://www.sbigroup.fr";
 const SBI_PASSWORD_RESET_URL = "https://sbi-web-4f6b4.web.app/password-reset.html";
+const SBI_AUTH_ACTION_SETTINGS = {
+    url: SBI_PASSWORD_RESET_URL,
+    handleCodeInApp: true
+};
+
+function readActionParamsFromUrl(rawUrl) {
+    const parsed = new URL(rawUrl);
+    const params = new URLSearchParams(parsed.search);
+
+    if (parsed.hash) {
+        const hashParams = new URLSearchParams(parsed.hash.replace(/^#/, ""));
+        hashParams.forEach((value, key) => {
+            if (!params.has(key)) params.set(key, value);
+        });
+    }
+
+    return params;
+}
+
+function extractPasswordResetParams(firebaseLink) {
+    const urlsToInspect = [firebaseLink];
+    const inspectedUrls = new Set();
+
+    while (urlsToInspect.length > 0) {
+        const currentUrl = urlsToInspect.shift();
+        if (!currentUrl || inspectedUrls.has(currentUrl)) continue;
+        inspectedUrls.add(currentUrl);
+
+        const params = readActionParamsFromUrl(currentUrl);
+        const oobCode = params.get("oobCode");
+        const apiKey = params.get("apiKey");
+        const mode = params.get("mode") || "resetPassword";
+        const lang = params.get("lang") || "fr";
+
+        if (oobCode) {
+            return { oobCode, apiKey, mode, lang };
+        }
+
+        ["link", "continueUrl", "continueURL"].forEach((key) => {
+            const nestedUrl = params.get(key);
+            if (nestedUrl) urlsToInspect.push(nestedUrl);
+        });
+    }
+
+    return null;
+}
 
 function buildSbiPasswordResetLink(firebaseLink) {
     try {
-        const parsed = new URL(firebaseLink);
-        let oobCode = parsed.searchParams.get("oobCode");
-        let mode = parsed.searchParams.get("mode") || "resetPassword";
-        let apiKey = parsed.searchParams.get("apiKey");
-
-        const nestedLink = parsed.searchParams.get("link");
-        if ((!oobCode || !apiKey) && nestedLink) {
-            const nested = new URL(nestedLink);
-            oobCode = oobCode || nested.searchParams.get("oobCode");
-            mode = nested.searchParams.get("mode") || mode;
-            apiKey = apiKey || nested.searchParams.get("apiKey");
-        }
-
-        if (!oobCode) return firebaseLink;
+        const actionParams = extractPasswordResetParams(firebaseLink);
+        if (!actionParams?.oobCode) return firebaseLink;
 
         const sbiLink = new URL(SBI_PASSWORD_RESET_URL);
-        sbiLink.searchParams.set("mode", mode || "resetPassword");
-        sbiLink.searchParams.set("oobCode", oobCode);
-        if (apiKey) sbiLink.searchParams.set("apiKey", apiKey);
+        sbiLink.searchParams.set("mode", actionParams.mode || "resetPassword");
+        sbiLink.searchParams.set("oobCode", actionParams.oobCode);
+        if (actionParams.apiKey) sbiLink.searchParams.set("apiKey", actionParams.apiKey);
+        if (actionParams.lang) sbiLink.searchParams.set("lang", actionParams.lang);
 
         return sbiLink.toString();
     } catch (error) {
@@ -1038,7 +1073,7 @@ exports.adminCreateUserAccount = onCall({
 
     try {
         if (!apiKey) throw new Error("BREVO_API_KEY manquant.");
-        const firebaseResetLink = await admin.auth().generatePasswordResetLink(email);
+        const firebaseResetLink = await admin.auth().generatePasswordResetLink(email, SBI_AUTH_ACTION_SETTINGS);
         const resetLink = buildSbiPasswordResetLink(firebaseResetLink);
         await sendAccountInviteEmail(accountData, resetLink, apiKey);
         await sendAccountInternalEmail("Compte créé", {
@@ -1100,7 +1135,7 @@ exports.adminSendPasswordReset = onCall({
     if (!apiKey) throw new HttpsError("failed-precondition", "Configuration Brevo manquante côté serveur.");
 
     try {
-        const firebaseResetLink = await admin.auth().generatePasswordResetLink(email);
+        const firebaseResetLink = await admin.auth().generatePasswordResetLink(email, SBI_AUTH_ACTION_SETTINGS);
         const resetLink = buildSbiPasswordResetLink(firebaseResetLink);
         await sendAccountResetEmail({ ...targetData, email }, resetLink, apiKey);
         await sendAccountInternalEmail("Reset mot de passe envoyé", {
