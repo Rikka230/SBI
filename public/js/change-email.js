@@ -1,6 +1,6 @@
 /**
  * =======================================================================
- * CHANGE EMAIL - SBI 8.0P.137
+ * CHANGE EMAIL - SBI 8.0P.138
  * -----------------------------------------------------------------------
  * Flux unifié professeur / étudiant : réauth client obligatoire,
  * puis changement email serveur via Firebase Functions + Brevo SBI.
@@ -11,7 +11,8 @@ import { auth, app } from '/js/firebase-init.js';
 import {
     onAuthStateChanged,
     reauthenticateWithCredential,
-    EmailAuthProvider
+    EmailAuthProvider,
+    signOut
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js";
 
@@ -28,8 +29,11 @@ const btnSubmit = document.getElementById('btn-submit');
 const btnText = btnSubmit?.querySelector('.btn-text');
 const btnSpinner = btnSubmit?.querySelector('.btn-spinner');
 const errorText = document.getElementById('form-error');
+const btnRelogin = document.getElementById('btn-relogin');
 
 let currentUser = null;
+let pendingEmailChange = false;
+let emailChangeCompleted = false;
 
 const getCallableErrorMessage = (error, fallback = 'Une erreur est survenue.') => {
     const rawMessage = error?.message || error?.details?.message || fallback;
@@ -39,9 +43,12 @@ const getCallableErrorMessage = (error, fallback = 'Une erreur est survenue.') =
 document.addEventListener('DOMContentLoaded', () => {
     onAuthStateChanged(auth, (user) => {
         if (!user) {
+            if (pendingEmailChange || emailChangeCompleted) return;
             window.location.replace('/login.html');
             return;
         }
+
+        if (emailChangeCompleted) return;
 
         currentUser = user;
         const currentEmailDisplay = document.getElementById('current-email-display');
@@ -80,6 +87,7 @@ form?.addEventListener('submit', async (event) => {
     }
 
     setButtonLoading(true);
+    pendingEmailChange = true;
 
     try {
         const credential = EmailAuthProvider.credential(currentUser.email, password);
@@ -89,13 +97,16 @@ form?.addEventListener('submit', async (event) => {
         const result = await selfChangeUserEmail({ email: newEmail });
         const warning = result?.data?.warning || '';
 
-        await auth.currentUser?.reload();
+        pendingEmailChange = false;
+        emailChangeCompleted = true;
+        currentUser = null;
         showView(viewSuccess);
 
         if (warning) {
             console.warn(warning);
         }
     } catch (error) {
+        pendingEmailChange = false;
         console.error('Erreur de modification email SBI :', error);
         setButtonLoading(false);
 
@@ -112,6 +123,22 @@ form?.addEventListener('submit', async (event) => {
         } else {
             showFormError(getCallableErrorMessage(error, 'Une erreur est survenue. Veuillez réessayer.'));
         }
+    }
+});
+
+
+btnRelogin?.addEventListener('click', async () => {
+    if (btnRelogin) {
+        btnRelogin.disabled = true;
+        btnRelogin.textContent = 'Déconnexion...';
+    }
+
+    try {
+        await signOut(auth);
+    } catch (error) {
+        console.warn('Déconnexion après changement email :', error);
+    } finally {
+        window.location.replace('/login.html');
     }
 });
 

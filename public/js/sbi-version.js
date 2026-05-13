@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.137',
+  version: '8.0P.138',
   branch: 'private-admin-accounts-mail-workflow',
-  channel: 'ADMIN MAIL WORKFLOW P2C.1',
-  stage: 'PRIVATE P2D SELF EMAIL CHANGE WORKFLOW',
+  channel: 'ADMIN MAIL WORKFLOW P2D.1',
+  stage: 'PRIVATE P2D.1 SELF EMAIL RELOGIN UX',
   updatedAt: '2026-05-13',
-  label: 'SBI 8.0P.137 - PRIVATE P2D SELF EMAIL CHANGE WORKFLOW'
+  label: 'SBI 8.0P.138 - PRIVATE P2D.1 SELF EMAIL RELOGIN UX'
 };
 
 export function getSbiVersionLabel() {
