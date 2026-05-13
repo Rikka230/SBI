@@ -317,6 +317,7 @@ const openEditModal = (userId) => {
 
     prenomInput.disabled = false;
     nomInput.disabled = false;
+    emailInput.disabled = false;
     roleSelect.disabled = false;
     statutSelect.disabled = false;
 
@@ -336,6 +337,7 @@ const openEditModal = (userId) => {
     if (targetUser.isGod && !isCurrentUserGod) {
         prenomInput.disabled = true;
         nomInput.disabled = true;
+        emailInput.disabled = true;
         roleSelect.disabled = true;
         statutSelect.disabled = true;
 
@@ -354,6 +356,7 @@ const openEditModal = (userId) => {
     } else if (targetUser.isGod && isCurrentUserGod) {
         if (deleteZone) deleteZone.style.display = 'none';
 
+        emailInput.disabled = true;
         roleSelect.disabled = true;
         statutSelect.disabled = true;
 
@@ -382,8 +385,9 @@ const openEditModal = (userId) => {
         }
     }
 
-    if (targetUser.id === currentUid && deleteZone) {
-        deleteZone.style.display = 'none';
+    if (targetUser.id === currentUid) {
+        emailInput.disabled = true;
+        if (deleteZone) deleteZone.style.display = 'none';
     }
 
     document.getElementById('edit-user-modal').style.display = 'flex';
@@ -416,11 +420,15 @@ const initModalLogic = () => {
 
         const prenomInput = document.getElementById('edit-user-prenom');
         const nomInput = document.getElementById('edit-user-nom');
+        const emailInput = document.getElementById('edit-user-email');
         const roleSelect = document.getElementById('edit-user-role');
         const statutSelect = document.getElementById('edit-user-statut');
 
         if (!prenomInput.disabled) payload.prenom = formatPrenom(prenomInput.value);
         if (!nomInput.disabled) payload.nom = formatNom(nomInput.value);
+        if (!emailInput.disabled && emailInput.value.trim() !== (targetUser.email || '').trim()) {
+            payload.email = emailInput.value.trim().toLowerCase();
+        }
 
         if (!roleSelect.disabled) {
             payload.role = roleSelect.value;
@@ -440,12 +448,32 @@ const initModalLogic = () => {
         }
 
         try {
-            const adminUpdateUserAccount = httpsCallable(functionsInstance, 'adminUpdateUserAccount');
-            const result = await adminUpdateUserAccount(payload);
+            let emailWarning = '';
+
+            if (payload.email) {
+                const adminChangeUserEmail = httpsCallable(functionsInstance, 'adminChangeUserEmail');
+                const emailResult = await adminChangeUserEmail({ uid: userId, email: payload.email });
+                emailWarning = emailResult?.data?.warning || '';
+                delete payload.email;
+            }
+
+            const profilePayload = { ...payload };
+            delete profilePayload.uid;
+            const hasProfileChanges = Object.keys(profilePayload).length > 0;
+            let updateWarning = '';
+
+            if (hasProfileChanges) {
+                const adminUpdateUserAccount = httpsCallable(functionsInstance, 'adminUpdateUserAccount');
+                const result = await adminUpdateUserAccount(payload);
+                updateWarning = result?.data?.warning || '';
+            }
+
             modal.style.display = 'none';
             fetchUsers();
-            if (result?.data?.warning) {
-                showAdminMessage(result.data.warning);
+
+            const warningMessage = [emailWarning, updateWarning].filter(Boolean).join('\n');
+            if (warningMessage) {
+                showAdminMessage(warningMessage);
             }
         } catch (error) {
             showAdminMessage(getCallableErrorMessage(error, "Erreur de sauvegarde."));

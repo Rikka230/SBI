@@ -876,6 +876,72 @@ async function sendAccountUpdatedEmail(account, changeLabels, apiKey) {
     }, apiKey);
 }
 
+
+async function sendAccountEmailChangedOldAddressEmail(account, oldEmail, newEmail, apiKey) {
+    return sendBrevoEmail({
+        sender: {
+            name: SBI_SENDER_NAME,
+            email: SBI_SENDER_EMAIL
+        },
+        to: [{
+            email: oldEmail,
+            name: getAccountDisplayName(account)
+        }],
+        replyTo: {
+            email: SBI_CONTACT_EMAIL,
+            name: "Sport Business Institute"
+        },
+        subject: "SBI - Votre adresse email de connexion a été modifiée",
+        htmlContent: renderSbiEmailTemplate({
+            prenom: account.prenom || "",
+            nomExpediteur: "L’équipe SBI",
+            posteExpediteur: "Administration",
+            preheader: "Votre adresse email SBI a été modifiée.",
+            messageHtml: `
+                <p style="margin:0 0 16px 0;">L’adresse email associée à votre compte Sport Business Institute vient d’être modifiée par l’administration.</p>
+                <div style="padding:14px 16px;border:1px solid #dce4f2;background:#f7f9fd;border-radius:12px;color:#253047;line-height:1.7;">
+                    Ancienne adresse : <strong>${escapeHtml(oldEmail)}</strong><br>
+                    Nouvelle adresse : <strong>${escapeHtml(newEmail)}</strong>
+                </div>
+                <p style="margin:18px 0 0 0;">Si vous n’êtes pas à l’origine de cette modification, contactez immédiatement l’équipe SBI à <a href="mailto:${SBI_CONTACT_EMAIL}" style="color:#0051ff;">${SBI_CONTACT_EMAIL}</a>.</p>
+            `
+        }),
+        textContent: `Bonjour ${account.prenom || ""},\n\nL'adresse email de votre compte SBI a été modifiée.\nAncienne adresse : ${oldEmail}\nNouvelle adresse : ${newEmail}\n\nSi cette action vous semble anormale, contactez ${SBI_CONTACT_EMAIL}.`
+    }, apiKey);
+}
+
+async function sendAccountEmailChangedNewAddressEmail(account, oldEmail, newEmail, apiKey) {
+    return sendBrevoEmail({
+        sender: {
+            name: SBI_SENDER_NAME,
+            email: SBI_SENDER_EMAIL
+        },
+        to: [{
+            email: newEmail,
+            name: getAccountDisplayName(account)
+        }],
+        replyTo: {
+            email: SBI_CONTACT_EMAIL,
+            name: "Sport Business Institute"
+        },
+        subject: "SBI - Nouvelle adresse email de connexion",
+        htmlContent: renderSbiEmailTemplate({
+            prenom: account.prenom || "",
+            nomExpediteur: "L’équipe SBI",
+            posteExpediteur: "Administration",
+            preheader: "Votre nouvelle adresse email SBI est active.",
+            messageHtml: `
+                <p style="margin:0 0 16px 0;">Cette adresse est désormais liée à votre compte Sport Business Institute.</p>
+                <div style="padding:14px 16px;border:1px solid #dce4f2;background:#f7f9fd;border-radius:12px;color:#253047;line-height:1.7;">
+                    Nouvelle adresse de connexion : <strong>${escapeHtml(newEmail)}</strong>
+                </div>
+                <p style="margin:18px 0 0 0;">Votre mot de passe reste inchangé. Si vous avez un doute, demandez une réinitialisation depuis la page de connexion ou contactez l’équipe SBI.</p>
+            `
+        }),
+        textContent: `Bonjour ${account.prenom || ""},\n\nCette adresse est désormais liée à votre compte SBI : ${newEmail}\nVotre mot de passe reste inchangé.\n\nContact : ${SBI_CONTACT_EMAIL}`
+    }, apiKey);
+}
+
 function mapAuthCreateError(error) {
     if (error?.code === "auth/email-already-exists") {
         return new HttpsError("already-exists", "Un compte Firebase Auth utilise déjà cette adresse email.");
@@ -1045,6 +1111,156 @@ exports.adminSendPasswordReset = onCall({
     };
 });
 
+
+exports.adminChangeUserEmail = onCall({
+    region: "europe-west1",
+    secrets: [BREVO_API_KEY],
+    timeoutSeconds: 30,
+    memory: "256MiB"
+}, async (request) => {
+    const db = admin.firestore();
+    const caller = await requireAdminCaller(request, db);
+    const data = request.data || {};
+    const targetUid = cleanString(data.uid, 160);
+    const newEmail = cleanEmail(data.email);
+
+    if (!targetUid) throw new HttpsError("invalid-argument", "UID utilisateur manquant.");
+    if (!isValidEmail(newEmail)) throw new HttpsError("invalid-argument", "La nouvelle adresse email n'est pas valide.");
+
+    const targetRef = db.collection("users").doc(targetUid);
+    const targetDoc = await targetRef.get();
+    if (!targetDoc.exists) throw new HttpsError("not-found", "Compte utilisateur introuvable.");
+
+    const targetData = targetDoc.data() || {};
+    const callerIsGod = caller.data.isGod === true;
+    const targetIsGod = targetData.isGod === true;
+    const targetRole = normalizeAccountRole(targetData.role);
+    const isSelfEdit = targetUid === caller.uid;
+    const oldEmail = cleanEmail(targetData.email);
+
+    if (!oldEmail || !isValidEmail(oldEmail)) {
+        throw new HttpsError("failed-precondition", "Ancienne adresse email invalide ou manquante dans Firestore.");
+    }
+
+    if (newEmail === oldEmail) {
+        return { success: true, message: "Adresse email inchangée." };
+    }
+
+    if (isSelfEdit) {
+        throw new HttpsError("permission-denied", "Pour votre propre compte, utilisez une procédure dédiée de changement d'adresse email.");
+    }
+
+    if (targetIsGod && !callerIsGod) {
+        throw new HttpsError("permission-denied", "Seul le compte Suprême peut modifier l'adresse email du compte Suprême.");
+    }
+
+    if (targetRole === "admin" && !callerIsGod) {
+        throw new HttpsError("permission-denied", "Seul le compte Suprême peut modifier l'adresse email d'un administrateur.");
+    }
+
+    const existingUserByEmail = await db.collection("users").where("email", "==", newEmail).limit(2).get();
+    const conflictingUserDoc = existingUserByEmail.docs.find(docSnap => docSnap.id !== targetUid);
+    if (conflictingUserDoc) {
+        throw new HttpsError("already-exists", "Un document utilisateur existe déjà avec cette adresse email.");
+    }
+
+    try {
+        const existingAuthUser = await admin.auth().getUserByEmail(newEmail);
+        if (existingAuthUser.uid !== targetUid) {
+            throw new HttpsError("already-exists", "Un compte Firebase Auth existe déjà avec cette adresse email.");
+        }
+    } catch (error) {
+        if (error instanceof HttpsError) throw error;
+        if (error?.code !== "auth/user-not-found") {
+            console.error("Erreur vérification email Auth SBI :", error.message);
+            throw new HttpsError("internal", `Vérification email Auth impossible : ${error.message}`);
+        }
+    }
+
+    try {
+        await admin.auth().updateUser(targetUid, {
+            email: newEmail,
+            emailVerified: false
+        });
+    } catch (error) {
+        console.error("Erreur changement email Auth SBI :", error.message);
+        if (error?.code === "auth/email-already-exists") {
+            throw new HttpsError("already-exists", "Cette adresse email est déjà utilisée par un autre compte Firebase Auth.");
+        }
+        if (error?.code === "auth/user-not-found") {
+            throw new HttpsError("failed-precondition", "Compte Firebase Auth introuvable : synchronisation impossible.");
+        }
+        throw new HttpsError("internal", `Modification email Auth impossible : ${error.message}`);
+    }
+
+    try {
+        await targetRef.set({
+            email: newEmail,
+            emailUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            emailUpdatedBy: caller.uid,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedBy: caller.uid
+        }, { merge: true });
+    } catch (error) {
+        console.error("Erreur changement email Firestore SBI, tentative rollback Auth :", error.message);
+        try {
+            await admin.auth().updateUser(targetUid, {
+                email: oldEmail,
+                emailVerified: false
+            });
+        } catch (rollbackError) {
+            console.error("Rollback email Auth impossible :", rollbackError.message);
+        }
+        throw new HttpsError("internal", `Modification email Firestore impossible : ${error.message}`);
+    }
+
+    const nextProfile = {
+        ...targetData,
+        email: newEmail
+    };
+
+    const apiKey = BREVO_API_KEY.value();
+    let warning = "";
+
+    try {
+        if (!apiKey) throw new Error("BREVO_API_KEY manquant.");
+        await sendAccountEmailChangedOldAddressEmail(nextProfile, oldEmail, newEmail, apiKey);
+        await sendAccountEmailChangedNewAddressEmail(nextProfile, oldEmail, newEmail, apiKey);
+        await sendAccountInternalEmail("Email compte modifié", {
+            "Admin": caller.name,
+            "Admin email": caller.email,
+            "Utilisateur": getAccountDisplayName(nextProfile),
+            "Ancien email": oldEmail,
+            "Nouvel email": newEmail,
+            "Rôle": getAccountRoleLabel(nextProfile.role),
+            "UID": targetUid
+        }, apiKey);
+    } catch (error) {
+        warning = "Adresse email modifiée, mais un ou plusieurs emails de notification n’ont pas pu être envoyés.";
+        console.error("Erreur email changement adresse SBI :", error.message, error.payload || "");
+    }
+
+    await safeWriteAccountAuditLog(db, {
+        type: "account.email_changed",
+        actorUid: caller.uid,
+        actorEmail: caller.email,
+        targetUid,
+        targetEmail: newEmail,
+        targetRole: nextProfile.role || "",
+        changes: {
+            email: {
+                before: oldEmail,
+                after: newEmail
+            }
+        }
+    });
+
+    return {
+        success: true,
+        warning,
+        message: warning || "Adresse email modifiée."
+    };
+});
 
 exports.adminUpdateUserAccount = onCall({
     region: "europe-west1",
