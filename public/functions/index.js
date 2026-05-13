@@ -720,6 +720,156 @@ async function safeWriteAccountAuditLog(db, payload) {
     }
 }
 
+
+function normalizeFormationIndexValues(value) {
+    if (!Array.isArray(value)) return [];
+
+    return Array.from(
+        new Set(
+            value
+                .filter(Boolean)
+                .map((item) => String(item).trim())
+                .filter(Boolean)
+        )
+    ).sort((a, b) => a.localeCompare(b, "fr", { sensitivity: "base" }));
+}
+
+function formationIndexArraysEqual(a, b) {
+    const arrA = normalizeFormationIndexValues(a);
+    const arrB = normalizeFormationIndexValues(b);
+
+    if (arrA.length !== arrB.length) return false;
+    return arrA.every((value, index) => value === arrB[index]);
+}
+
+function ensureFormationIndexEntry(index, uid) {
+    if (!uid) return null;
+
+    const safeUid = String(uid).trim();
+    if (!safeUid) return null;
+
+    if (!index.has(safeUid)) {
+        index.set(safeUid, {
+            ids: new Set(),
+            titles: new Set()
+        });
+    }
+
+    return index.get(safeUid);
+}
+
+function addFormationAccessToUserIndex(index, uid, formationId, formationTitle) {
+    const entry = ensureFormationIndexEntry(index, uid);
+    if (!entry) return;
+
+    if (formationId) entry.ids.add(String(formationId));
+    if (formationTitle) entry.titles.add(String(formationTitle).trim());
+}
+
+async function commitFormationIndexBatch(db, operations) {
+    if (operations.length === 0) return;
+
+    const batch = db.batch();
+    operations.forEach(({ ref, payload }) => {
+        batch.update(ref, payload);
+    });
+    await batch.commit();
+}
+
+exports.adminSyncUserFormationIndexes = onCall({
+    region: "europe-west1",
+    timeoutSeconds: 60,
+    memory: "256MiB"
+}, async (request) => {
+    const db = admin.firestore();
+    const caller = await requireAdminCaller(request, db);
+
+    const [formationsSnap, usersSnap] = await Promise.all([
+        db.collection("formations").get(),
+        db.collection("users").get()
+    ]);
+
+    const index = new Map();
+    usersSnap.forEach((userDoc) => {
+        ensureFormationIndexEntry(index, userDoc.id);
+    });
+
+    formationsSnap.forEach((formationDoc) => {
+        const formation = formationDoc.data() || {};
+        const formationId = String(formationDoc.id);
+        const formationTitle = formation.titre ? String(formation.titre).trim() : "";
+        const profs = Array.isArray(formation.profs) ? formation.profs : [];
+        const students = Array.isArray(formation.students) ? formation.students : [];
+
+        [...profs, ...students].forEach((uid) => {
+            addFormationAccessToUserIndex(index, uid, formationId, formationTitle);
+        });
+    });
+
+    let updated = 0;
+    let skipped = 0;
+    const pendingOperations = [];
+
+    for (const userDoc of usersSnap.docs) {
+        const userData = userDoc.data() || {};
+        const entry = index.get(String(userDoc.id)) || { ids: new Set(), titles: new Set() };
+        const nextFormationIds = normalizeFormationIndexValues(Array.from(entry.ids));
+        const nextFormationsAcces = normalizeFormationIndexValues(Array.from(entry.titles));
+
+        const currentFormationIds = normalizeFormationIndexValues(userData.formationIds || []);
+        const currentFormationsAcces = normalizeFormationIndexValues(userData.formationsAcces || []);
+
+        if (
+            formationIndexArraysEqual(currentFormationIds, nextFormationIds)
+            && formationIndexArraysEqual(currentFormationsAcces, nextFormationsAcces)
+        ) {
+            skipped += 1;
+            continue;
+        }
+
+        pendingOperations.push({
+            ref: userDoc.ref,
+            payload: {
+                formationIds: nextFormationIds,
+                formationsAcces: nextFormationsAcces,
+                formationIndexSyncedAt: admin.firestore.FieldValue.serverTimestamp(),
+                formationIndexSyncedBy: caller.uid
+            }
+        });
+        updated += 1;
+
+        if (pendingOperations.length >= 450) {
+            await commitFormationIndexBatch(db, pendingOperations.splice(0));
+        }
+    }
+
+    await commitFormationIndexBatch(db, pendingOperations);
+
+    await safeWriteAccountAuditLog(db, {
+        type: "account.formation_indexes_synced",
+        actorUid: caller.uid,
+        actorEmail: caller.email,
+        targetUid: "*",
+        targetEmail: "",
+        targetRole: "",
+        updated,
+        skipped,
+        formations: formationsSnap.size,
+        users: usersSnap.size
+    });
+
+    return {
+        success: true,
+        updated,
+        skipped,
+        totalUsers: usersSnap.size,
+        totalFormations: formationsSnap.size,
+        message: updated > 0
+            ? `${updated} index utilisateur synchronisé(s).`
+            : "Tous les index utilisateurs étaient déjà à jour."
+    };
+});
+
 function buildActionButtonHtml(url, label) {
     if (!url) return "";
     return `

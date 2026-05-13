@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.140',
+  version: '8.0P.141',
   branch: 'private-admin-accounts-mail-workflow',
-  channel: 'ADMIN MAIL WORKFLOW P2E.2',
-  stage: 'PRIVATE P2E.2 ACCOUNT INVITE MAIL FIX',
+  channel: 'ADMIN MAIL WORKFLOW P2E.3',
+  stage: 'PRIVATE P2E.3 SERVER FORMATION INDEX SYNC',
   updatedAt: '2026-05-13',
-  label: 'SBI 8.0P.140 - PRIVATE P2E.2 ACCOUNT INVITE MAIL FIX'
+  label: 'SBI 8.0P.141 - PRIVATE P2E.3 SERVER FORMATION INDEX SYNC'
 };
 
 export function getSbiVersionLabel() {
