@@ -15,7 +15,7 @@ import {
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js";
 
-const functionsInstance = getFunctions(app);
+const functionsInstance = getFunctions(app, "europe-west1");
 
 
 let allUsersData = [];
