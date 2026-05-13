@@ -192,6 +192,36 @@ async function upsertBrevoContact(data, apiKey) {
 }
 
 const SBI_SITE_URL = "https://www.sbigroup.fr";
+const SBI_PASSWORD_RESET_URL = "https://sbi-web-4f6b4.web.app/password-reset.html";
+
+function buildSbiPasswordResetLink(firebaseLink) {
+    try {
+        const parsed = new URL(firebaseLink);
+        let oobCode = parsed.searchParams.get("oobCode");
+        let mode = parsed.searchParams.get("mode") || "resetPassword";
+        let apiKey = parsed.searchParams.get("apiKey");
+
+        const nestedLink = parsed.searchParams.get("link");
+        if ((!oobCode || !apiKey) && nestedLink) {
+            const nested = new URL(nestedLink);
+            oobCode = oobCode || nested.searchParams.get("oobCode");
+            mode = nested.searchParams.get("mode") || mode;
+            apiKey = apiKey || nested.searchParams.get("apiKey");
+        }
+
+        if (!oobCode) return firebaseLink;
+
+        const sbiLink = new URL(SBI_PASSWORD_RESET_URL);
+        sbiLink.searchParams.set("mode", mode || "resetPassword");
+        sbiLink.searchParams.set("oobCode", oobCode);
+        if (apiKey) sbiLink.searchParams.set("apiKey", apiKey);
+
+        return sbiLink.toString();
+    } catch (error) {
+        console.error("Erreur reconstruction lien reset SBI :", error);
+        return firebaseLink;
+    }
+}
 const SBI_TEMPLATE_PHONE_TEL = "tel:+33668603001";
 const SBI_SOCIAL_LINKS = {
     linkedin: "https://www.linkedin.com/company/sport-business-institute",
@@ -887,7 +917,8 @@ exports.adminCreateUserAccount = onCall({
 
     try {
         if (!apiKey) throw new Error("BREVO_API_KEY manquant.");
-        const resetLink = await admin.auth().generatePasswordResetLink(email);
+        const firebaseResetLink = await admin.auth().generatePasswordResetLink(email);
+        const resetLink = buildSbiPasswordResetLink(firebaseResetLink);
         await sendAccountInviteEmail(accountData, resetLink, apiKey);
         await sendAccountInternalEmail("Compte créé", {
             "Admin": caller.name,
@@ -948,7 +979,8 @@ exports.adminSendPasswordReset = onCall({
     if (!apiKey) throw new HttpsError("failed-precondition", "Configuration Brevo manquante côté serveur.");
 
     try {
-        const resetLink = await admin.auth().generatePasswordResetLink(email);
+        const firebaseResetLink = await admin.auth().generatePasswordResetLink(email);
+        const resetLink = buildSbiPasswordResetLink(firebaseResetLink);
         await sendAccountResetEmail({ ...targetData, email }, resetLink, apiKey);
         await sendAccountInternalEmail("Reset mot de passe envoyé", {
             "Admin": caller.name,
