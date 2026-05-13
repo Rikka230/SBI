@@ -90,7 +90,7 @@
    ZONE PLUS ÉTROITE MAIS ENCORE DESKTOP
    On garde l'alignement, sans forcer l'empilement.
    --------------------------------------------------------- */
-@media (min-width: 1181px) and (max-width: 1450px) {
+@media (min-width: 1461px) and (max-width: 1760px) {
     .section-stats .stats-grid {
         grid-template-columns: minmax(0, 1.02fr) minmax(0, 0.98fr);
     }
@@ -145,7 +145,7 @@
    Image reference: portrait / founder quote / hiring-aid panel
    stay as three distinct sport-tech panels on desktop.
    --------------------------------------------------------- */
-@media (min-width: 1181px) {
+@media (min-width: 1461px) {
     .section-stats {
         padding-top: clamp(4.5rem, 7vw, 7.25rem);
         padding-bottom: clamp(4.5rem, 7vw, 7.25rem);
@@ -310,7 +310,7 @@
     }
 }
 
-@media (min-width: 1181px) and (max-width: 1450px) {
+@media (min-width: 1461px) and (max-width: 1760px) {
     .section-stats .stats-grid {
         grid-template-columns:
             minmax(280px, 0.82fr)

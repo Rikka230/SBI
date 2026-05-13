@@ -56,9 +56,18 @@ function resolveActionCodeFromCurrentUrl() {
         const code = params.get('oobCode');
         if (code) return code;
 
-        ['link', 'continueUrl', 'continueURL'].forEach((key) => {
+        ['link', 'continueUrl', 'continueURL', 'deep_link_id'].forEach((key) => {
             const nestedUrl = params.get(key);
-            if (nestedUrl) urlsToInspect.push(nestedUrl);
+            if (!nestedUrl) return;
+
+            urlsToInspect.push(nestedUrl);
+
+            try {
+                const decodedUrl = decodeURIComponent(nestedUrl);
+                if (decodedUrl && decodedUrl !== nestedUrl) urlsToInspect.push(decodedUrl);
+            } catch (_) {
+                // Lien déjà décodé ou valeur non décodable : on garde la valeur brute.
+            }
         });
     }
 
@@ -90,11 +99,11 @@ async function handleInitialLoad() {
         console.error("Erreur de vérification du code:", error.code);
         showView(viewError);
         
-        let errorMsg = "Ce lien a expiré ou a déjà été utilisé.";
+        let errorMsg = "Ce lien a expiré, a déjà été utilisé ou provient d’un ancien email. Veuillez demander un nouveau lien depuis l’espace de connexion.";
         if (error.code === 'auth/invalid-action-code') {
-            errorMsg = "Ce lien de réinitialisation est invalide ou a déjà été utilisé.";
+            errorMsg = "Ce lien de réinitialisation est invalide, déjà utilisé ou généré avant la configuration du domaine final.";
         } else if (error.code === 'auth/expired-action-code') {
-            errorMsg = "Ce lien a expiré. Veuillez refaire une demande de mot de passe.";
+            errorMsg = "Ce lien a expiré. Veuillez refaire une demande de mot de passe depuis la page de connexion.";
         }
         document.getElementById('error-message').textContent = errorMsg;
     }

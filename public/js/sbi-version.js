@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.144',
+  version: '8.0P.145',
   branch: 'private-admin-accounts-mail-workflow',
-  channel: 'ADMIN MAIL WORKFLOW P2F.2',
-  stage: 'PRIVATE P2F.2 DOMAIN CALCULATOR RELEASE FIX',
+  channel: 'ADMIN MAIL WORKFLOW P2F.3',
+  stage: 'PRIVATE P2F.3 DOMAIN RESET LINK + INDEX CTA FIX',
   updatedAt: '2026-05-13',
-  label: 'SBI 8.0P.144 - PRIVATE P2F.2 DOMAIN CALCULATOR RELEASE FIX'
+  label: 'SBI 8.0P.145 - PRIVATE P2F.3 DOMAIN RESET LINK + INDEX CTA FIX'
 };
 
 export function getSbiVersionLabel() {
