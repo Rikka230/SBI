@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.135',
+  version: '8.0P.136',
   branch: 'private-admin-accounts-mail-workflow',
-  channel: 'ADMIN MAIL WORKFLOW P2C',
-  stage: 'PRIVATE P2C ADMIN EMAIL CHANGE WORKFLOW',
+  channel: 'ADMIN MAIL WORKFLOW P2C.1',
+  stage: 'PRIVATE P2C.1 EMAIL CHANGE TEMPLATE FIX',
   updatedAt: '2026-05-13',
-  label: 'SBI 8.0P.135 - PRIVATE P2C ADMIN EMAIL CHANGE WORKFLOW'
+  label: 'SBI 8.0P.136 - PRIVATE P2C.1 EMAIL CHANGE TEMPLATE FIX'
 };
 
 export function getSbiVersionLabel() {

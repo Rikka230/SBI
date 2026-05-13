@@ -877,6 +877,53 @@ async function sendAccountUpdatedEmail(account, changeLabels, apiKey) {
 }
 
 
+function buildAccountEmailChangeCardHtml(rows) {
+    const tableRows = rows.map(([label, value]) => `
+        <tr>
+            <td style="padding:10px 12px;border-bottom:1px solid #dce4f2;color:#0051ff;font-weight:bold;width:40%;">${escapeHtml(label)}</td>
+            <td style="padding:10px 12px;border-bottom:1px solid #dce4f2;color:#101828;word-break:break-word;">${escapeHtml(value)}</td>
+        </tr>`).join("");
+
+    return `
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;border-collapse:collapse;margin:18px 0;border:1px solid #dce4f2;border-radius:12px;overflow:hidden;background:#f7f9fd;">
+            ${tableRows}
+        </table>`;
+}
+
+function renderAccountEmailChangedOldAddressHtml(account, oldEmail, newEmail) {
+    return renderSbiEmailTemplate({
+        prenom: account.prenom || "",
+        nomExpediteur: "L’équipe SBI",
+        posteExpediteur: "Administration",
+        preheader: "Votre adresse email SBI a été modifiée.",
+        messageHtml: `
+            <p style="margin:0 0 16px 0;">L’adresse email associée à votre compte Sport Business Institute vient d’être modifiée par l’administration.</p>
+            ${buildAccountEmailChangeCardHtml([
+                ["Ancienne adresse", oldEmail],
+                ["Nouvelle adresse", newEmail]
+            ])}
+            <p style="margin:18px 0 0 0;">Si vous n’êtes pas à l’origine de cette modification, contactez immédiatement l’équipe SBI à <a href="mailto:${SBI_CONTACT_EMAIL}" style="color:#0051ff;">${SBI_CONTACT_EMAIL}</a>.</p>
+        `
+    });
+}
+
+function renderAccountEmailChangedNewAddressHtml(account, oldEmail, newEmail) {
+    return renderSbiEmailTemplate({
+        prenom: account.prenom || "",
+        nomExpediteur: "L’équipe SBI",
+        posteExpediteur: "Administration",
+        preheader: "Votre nouvelle adresse email SBI est active.",
+        messageHtml: `
+            <p style="margin:0 0 16px 0;">Cette adresse est désormais liée à votre compte Sport Business Institute.</p>
+            ${buildAccountEmailChangeCardHtml([
+                ["Nouvelle adresse de connexion", newEmail],
+                ["Ancienne adresse", oldEmail]
+            ])}
+            <p style="margin:18px 0 0 0;">Votre mot de passe reste inchangé. Si vous avez un doute, demandez une réinitialisation depuis la page de connexion ou contactez l’équipe SBI.</p>
+        `
+    });
+}
+
 async function sendAccountEmailChangedOldAddressEmail(account, oldEmail, newEmail, apiKey) {
     return sendBrevoEmail({
         sender: {
@@ -892,21 +939,7 @@ async function sendAccountEmailChangedOldAddressEmail(account, oldEmail, newEmai
             name: "Sport Business Institute"
         },
         subject: "SBI - Votre adresse email de connexion a été modifiée",
-        htmlContent: renderSbiEmailTemplate({
-            prenom: account.prenom || "",
-            nomExpediteur: "L’équipe SBI",
-            posteExpediteur: "Administration",
-            preheader: "Votre adresse email SBI a été modifiée.",
-            messageHtml: `
-                <p style="margin:0 0 16px 0;">L’adresse email associée à votre compte Sport Business Institute vient d’être modifiée par l’administration.</p>
-                <div style="padding:14px 16px;border:1px solid #dce4f2;background:#f7f9fd;border-radius:12px;color:#253047;line-height:1.7;">
-                    Ancienne adresse : <strong>${escapeHtml(oldEmail)}</strong><br>
-                    Nouvelle adresse : <strong>${escapeHtml(newEmail)}</strong>
-                </div>
-                <p style="margin:18px 0 0 0;">Si vous n’êtes pas à l’origine de cette modification, contactez immédiatement l’équipe SBI à <a href="mailto:${SBI_CONTACT_EMAIL}" style="color:#0051ff;">${SBI_CONTACT_EMAIL}</a>.</p>
-            `
-        }),
-        textContent: `Bonjour ${account.prenom || ""},\n\nL'adresse email de votre compte SBI a été modifiée.\nAncienne adresse : ${oldEmail}\nNouvelle adresse : ${newEmail}\n\nSi cette action vous semble anormale, contactez ${SBI_CONTACT_EMAIL}.`
+        htmlContent: renderAccountEmailChangedOldAddressHtml(account, oldEmail, newEmail)
     }, apiKey);
 }
 
@@ -925,20 +958,7 @@ async function sendAccountEmailChangedNewAddressEmail(account, oldEmail, newEmai
             name: "Sport Business Institute"
         },
         subject: "SBI - Nouvelle adresse email de connexion",
-        htmlContent: renderSbiEmailTemplate({
-            prenom: account.prenom || "",
-            nomExpediteur: "L’équipe SBI",
-            posteExpediteur: "Administration",
-            preheader: "Votre nouvelle adresse email SBI est active.",
-            messageHtml: `
-                <p style="margin:0 0 16px 0;">Cette adresse est désormais liée à votre compte Sport Business Institute.</p>
-                <div style="padding:14px 16px;border:1px solid #dce4f2;background:#f7f9fd;border-radius:12px;color:#253047;line-height:1.7;">
-                    Nouvelle adresse de connexion : <strong>${escapeHtml(newEmail)}</strong>
-                </div>
-                <p style="margin:18px 0 0 0;">Votre mot de passe reste inchangé. Si vous avez un doute, demandez une réinitialisation depuis la page de connexion ou contactez l’équipe SBI.</p>
-            `
-        }),
-        textContent: `Bonjour ${account.prenom || ""},\n\nCette adresse est désormais liée à votre compte SBI : ${newEmail}\nVotre mot de passe reste inchangé.\n\nContact : ${SBI_CONTACT_EMAIL}`
+        htmlContent: renderAccountEmailChangedNewAddressHtml(account, oldEmail, newEmail)
     }, apiKey);
 }
 
