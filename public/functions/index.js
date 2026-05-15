@@ -1542,6 +1542,63 @@ exports.adminSendFinalizationInvite = onCall({
 
 
 
+
+exports.adminResolveFinalizationEscalation = onCall({
+    region: "europe-west1",
+    timeoutSeconds: 20,
+    memory: "256MiB"
+}, async (request) => {
+    const db = admin.firestore();
+    const caller = await requireAdminCaller(request, db);
+    const data = request.data || {};
+    const targetUid = cleanString(data.uid, 160);
+    const resolutionNote = cleanMultiline(data.note || "", 600);
+
+    if (!targetUid) throw new HttpsError("invalid-argument", "UID utilisateur manquant.");
+
+    const targetDoc = await db.collection("users").doc(targetUid).get();
+    if (!targetDoc.exists) throw new HttpsError("not-found", "Compte utilisateur introuvable.");
+
+    const targetData = targetDoc.data() || {};
+    if (!targetData.accountStatus?.finalizationEscalationAt) {
+        throw new HttpsError("failed-precondition", "Aucune alerte de finalisation à traiter pour ce compte.");
+    }
+
+    if (targetData.accountStatus?.finalizationEscalationResolvedAt) {
+        return {
+            success: true,
+            message: "Cette alerte était déjà traitée."
+        };
+    }
+
+    const updatePayload = {
+        "accountStatus.finalizationEscalationResolvedAt": admin.firestore.FieldValue.serverTimestamp(),
+        "accountStatus.finalizationEscalationResolvedBy": caller.uid,
+        "accountStatus.finalizationEscalationResolvedByEmail": caller.email || "",
+        "accountStatus.finalizationEscalationResolutionNote": resolutionNote,
+        "accountStatus.preparationState": "to_check"
+    };
+
+    await targetDoc.ref.update(updatePayload);
+
+    await safeWriteAccountAuditLog(db, {
+        type: "account.finalization_escalation_resolved",
+        actorUid: caller.uid,
+        actorEmail: caller.email,
+        targetUid,
+        targetEmail: targetData.email || "",
+        targetRole: targetData.role || "",
+        source: "admin-profile",
+        note: resolutionNote
+    });
+
+    return {
+        success: true,
+        message: "Alerte marquée comme traitée."
+    };
+});
+
+
 exports.runFinalizationReminders = onSchedule({
     region: "europe-west1",
     schedule: "every 24 hours",

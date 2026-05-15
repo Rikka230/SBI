@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.165.3 / P2H.2-E.2 HARD ROLLBACK
+ * SBI 8.0P.166.2 / P2H.2-E.3 LIGHT
  * Structure lecture seule "Comptes & accès".
  *
  * Objectif :
@@ -29,7 +29,7 @@ function injectStyle() {
   const link = document.createElement('link');
   link.id = 'sbi-admin-accounts-css';
   link.rel = 'stylesheet';
-  link.href = '/admin/css/admin-accounts.css?v=8.0P.165.3';
+  link.href = '/admin/css/admin-accounts.css?v=8.0P.166.2';
   document.head.append(link);
 }
 
@@ -348,9 +348,13 @@ function enhanceRenderedAccountRows() {
 
     if (statusCell) {
       statusCell.classList.add('sbi-account-status-cell');
+      const escalationText = needsDirectFinalizationContact(user)
+        ? '<small style="color:#ff9b9b; font-weight:800;">3 relances · contact élève</small>'
+        : `<small>${escapeHtml(getAccountPreparationInfo(user))}</small>`;
+
       statusCell.innerHTML = `
         <span class="sbi-status-dot sbi-status-${activation.tone}">${escapeHtml(activation.label)}</span>
-        <small>${escapeHtml(getAccountPreparationInfo(user))}</small>
+        ${escalationText}
       `;
     }
 
@@ -393,7 +397,7 @@ function startAccountsSnapshot() {
     enhanceRenderedAccountRows();
 
     window.SBI_ACCOUNTS_DASHBOARD_STATE = {
-      version: '8.0P.165.3',
+      version: '8.0P.166.2',
       users: users.length,
       updatedAt: new Date().toISOString()
     };

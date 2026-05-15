@@ -17,6 +17,7 @@ const functionsInstance = getFunctions(app, 'europe-west1');
 const adminUpdateUserAccountCallable = httpsCallable(functionsInstance, 'adminUpdateUserAccount');
 const adminSendPasswordResetCallable = httpsCallable(functionsInstance, 'adminSendPasswordReset');
 const adminSendFinalizationInviteCallable = httpsCallable(functionsInstance, 'adminSendFinalizationInvite');
+const adminResolveFinalizationEscalationCallable = httpsCallable(functionsInstance, 'adminResolveFinalizationEscalation');
 
 const ACCOUNT_PREPARATION_LABELS = {
   not_prepared: 'Compte à préparer',
@@ -224,6 +225,7 @@ function getFinalizationInfo(data = {}) {
   const lastInviteAt = data.accountStatus?.finalizationInviteSentAt || null;
   const lastReminderAt = data.accountStatus?.lastReminderSentAt || null;
   const escalationAt = data.accountStatus?.finalizationEscalationAt || null;
+  const escalationResolvedAt = data.accountStatus?.finalizationEscalationResolvedAt || null;
 
   if (finalized) {
     return {
@@ -236,17 +238,35 @@ function getFinalizationInfo(data = {}) {
     };
   }
 
-  if (escalationAt) {
+  if (escalationAt && !escalationResolvedAt) {
     return {
       finalized,
       label: 'Contact direct requis',
-      detail: `3 relances automatiques envoyées. Dernière relance : ${formatSbiDate(lastReminderAt || escalationAt, 'date inconnue')}`,
+      detail: `Finalisation bloquée : 3 relances envoyées. Dernière relance : ${formatSbiDate(lastReminderAt || escalationAt, 'date inconnue')}`,
       tone: '#ff4a4a',
       inviteCount,
       reminderCount,
       lastInviteAt,
       lastReminderAt,
-      escalationAt
+      escalationAt,
+      escalationResolvedAt,
+      needsDirectContact: true
+    };
+  }
+
+  if (escalationAt && escalationResolvedAt) {
+    return {
+      finalized,
+      label: 'Contact direct traité',
+      detail: `Alerte traitée le ${formatSbiDate(escalationResolvedAt, 'date inconnue')}`,
+      tone: '#2ed573',
+      inviteCount,
+      reminderCount,
+      lastInviteAt,
+      lastReminderAt,
+      escalationAt,
+      escalationResolvedAt,
+      needsDirectContact: false
     };
   }
 
@@ -340,6 +360,34 @@ function renderAccountActionsPanel({ uid, data = {}, reloadProfile }) {
         </p>
       </div>
 
+      ${finalizationInfo.needsDirectContact ? `
+        <div style="
+          margin:0 0 0.85rem 0;
+          padding:0.95rem 1rem;
+          border:1px solid rgba(255,74,74,0.38);
+          border-left:4px solid #ff4a4a;
+          border-radius:12px;
+          background:rgba(255,74,74,0.09);
+        ">
+          <strong style="display:block; color:#ff9b9b; font-size:0.9rem; margin-bottom:0.35rem;">
+            Finalisation bloquée : contact direct requis
+          </strong>
+          <p style="margin:0; color:#ffd6d6; font-size:0.82rem; line-height:1.5;">
+            3 relances automatiques ont été envoyées sans première connexion. Contactez l’élève directement, puis marquez l’alerte comme traitée.
+          </p>
+          <button id="prof-resolve-escalation-btn" type="button" style="
+            margin-top:0.75rem;
+            border:1px solid rgba(255,255,255,0.18);
+            background:rgba(255,255,255,0.08);
+            color:#fff;
+            border-radius:999px;
+            padding:0.55rem 0.85rem;
+            font-weight:900;
+            cursor:pointer;
+          ">Marquer contact traité</button>
+        </div>
+      ` : ''}
+
       <label style="display:block; color:var(--text-muted); font-size:0.78rem; font-weight:800; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:0.35rem;">
         Suivi du compte
       </label>
@@ -414,6 +462,7 @@ function renderAccountActionsPanel({ uid, data = {}, reloadProfile }) {
   const saveButton = panel.querySelector('#prof-save-account-followup-btn');
   const resendButton = panel.querySelector('#prof-resend-access-btn');
   const finalizationButton = panel.querySelector('#prof-send-finalization-btn');
+  const resolveEscalationButton = panel.querySelector('#prof-resolve-escalation-btn');
   const noteTextarea = panel.querySelector('#prof-account-note');
   const notePreviewText = panel.querySelector('#prof-account-note-preview-text');
   const notePreviewMeta = panel.querySelector('#prof-account-note-meta');
@@ -463,6 +512,44 @@ function renderAccountActionsPanel({ uid, data = {}, reloadProfile }) {
     } finally {
       saveButton.disabled = false;
       saveButton.style.opacity = '';
+    }
+  });
+
+  resolveEscalationButton?.addEventListener('click', async () => {
+    const confirmed = window.confirm('Marquer cette alerte comme traitée après contact direct ?');
+    if (!confirmed) return;
+
+    const resolutionNote = window.prompt('Note optionnelle sur le contact direct :', '') || '';
+
+    resolveEscalationButton.disabled = true;
+    resolveEscalationButton.style.opacity = '0.65';
+
+    if (status) {
+      status.style.color = 'var(--text-muted)';
+      status.textContent = 'Traitement de l’alerte...';
+    }
+
+    try {
+      await adminResolveFinalizationEscalationCallable({
+        uid,
+        note: resolutionNote
+      });
+
+      if (status) {
+        status.style.color = '#2ed573';
+        status.textContent = 'Alerte marquée comme traitée.';
+      }
+
+      await reloadProfile?.(uid);
+    } catch (error) {
+      console.warn('[SBI Profile] Traitement alerte finalisation impossible :', error);
+      if (status) {
+        status.style.color = '#ff4a4a';
+        status.textContent = getCallableUiMessage(error, 'Traitement impossible.');
+      }
+    } finally {
+      resolveEscalationButton.disabled = false;
+      resolveEscalationButton.style.opacity = '';
     }
   });
 
@@ -623,6 +710,18 @@ function getAccountLogMeta(type = '') {
     'account.finalization_invite_sent': {
       label: 'Invitation finalisation envoyée',
       color: '#2A57FF'
+    },
+    'account.finalization_reminder_sent': {
+      label: 'Relance automatique envoyée',
+      color: '#fbbc04'
+    },
+    'account.finalization_escalation_required': {
+      label: 'Contact direct requis',
+      color: '#ff4a4a'
+    },
+    'account.finalization_escalation_resolved': {
+      label: 'Contact direct traité',
+      color: '#2ed573'
     },
     'account.public_password_reset_requested': {
       label: 'Demande mot de passe oublié',
