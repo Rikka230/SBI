@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.164 / P2H.2-E.1
+ * SBI 8.0P.165 / P2H.2-E.2
  * Structure lecture seule "Comptes & accès".
  *
  * Objectif :
@@ -29,7 +29,7 @@ function injectStyle() {
   const link = document.createElement('link');
   link.id = 'sbi-admin-accounts-css';
   link.rel = 'stylesheet';
-  link.href = '/admin/css/admin-accounts.css?v=8.0P.164';
+  link.href = '/admin/css/admin-accounts.css?v=8.0P.165';
   document.head.append(link);
 }
 
@@ -100,6 +100,10 @@ function getRoleLabel(user) {
   return 'Non défini';
 }
 
+function needsDirectFinalizationContact(user) {
+  return Boolean(user?.accountStatus?.finalizationEscalationAt && !user?.accountStatus?.finalizationEscalationResolvedAt);
+}
+
 function getActivationInfo(user) {
   if (!user) {
     return {
@@ -114,6 +118,14 @@ function getActivationInfo(user) {
       label: 'Suspendu',
       tone: 'danger',
       detail: 'Accès bloqué'
+    };
+  }
+
+  if (needsDirectFinalizationContact(user)) {
+    return {
+      label: 'Contact direct requis',
+      tone: 'danger',
+      detail: '3 relances envoyées'
     };
   }
 
@@ -282,7 +294,7 @@ function renderCounters(users) {
 
     const activation = getActivationInfo(user);
     const preparation = user.accountStatus?.preparationState || user.preparationState;
-    if (activation.tone === 'warning' || activation.tone === 'danger' || preparation === 'to_check') {
+    if (activation.tone === 'warning' || activation.tone === 'danger' || preparation === 'to_check' || needsDirectFinalizationContact(user)) {
       acc.tocheck += 1;
     }
 
@@ -381,7 +393,7 @@ function startAccountsSnapshot() {
     enhanceRenderedAccountRows();
 
     window.SBI_ACCOUNTS_DASHBOARD_STATE = {
-      version: '8.0P.164',
+      version: '8.0P.165',
       users: users.length,
       updatedAt: new Date().toISOString()
     };

@@ -11,7 +11,7 @@
  * présence réelle des panels/topbars attendus pour la page courante.
  * 8.0P.151 : suppression des bridges conformité, intégration directe dans
  * public-formations-admin.js et sbi-public-pages.js.
- * 8.0P.164 : remount Comptes robuste après retour PJAX depuis profil.
+ * 8.0P.165 : cache-bust relance automatique finalisation compte.
  */
 
 (function bootstrapSbiComponents(){
@@ -36,7 +36,7 @@
     if (!shouldMountAccountsModule()) return Promise.resolve(false);
 
     if (!accountsModulePromise) {
-      accountsModulePromise = import('/admin/js/admin-accounts-dashboard.js?v=8.0P.164')
+      accountsModulePromise = import('/admin/js/admin-accounts-dashboard.js?v=8.0P.165')
         .catch((error) => {
           accountsModulePromise = null;
           console.warn('[SBI Accounts] Module comptes non chargé :', error);

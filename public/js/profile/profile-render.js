@@ -220,7 +220,10 @@ function hasFinalizedFirstAccess(data = {}) {
 function getFinalizationInfo(data = {}) {
   const finalized = hasFinalizedFirstAccess(data);
   const inviteCount = Number(data.accountStatus?.finalizationInviteCount || 0);
+  const reminderCount = Number(data.accountStatus?.reminderCount || 0);
   const lastInviteAt = data.accountStatus?.finalizationInviteSentAt || null;
+  const lastReminderAt = data.accountStatus?.lastReminderSentAt || null;
+  const escalationAt = data.accountStatus?.finalizationEscalationAt || null;
 
   if (finalized) {
     return {
@@ -233,15 +236,34 @@ function getFinalizationInfo(data = {}) {
     };
   }
 
+  if (escalationAt) {
+    return {
+      finalized,
+      label: 'Contact direct requis',
+      detail: `3 relances automatiques envoyées. Dernière relance : ${formatSbiDate(lastReminderAt || escalationAt, 'date inconnue')}`,
+      tone: '#ff4a4a',
+      inviteCount,
+      reminderCount,
+      lastInviteAt,
+      lastReminderAt,
+      escalationAt
+    };
+  }
+
   return {
     finalized,
     label: 'Finalisation en attente',
-    detail: lastInviteAt
-      ? `Dernière invitation : ${formatSbiDate(lastInviteAt, 'date inconnue')}`
-      : 'Aucune relance de finalisation enregistrée',
+    detail: lastReminderAt
+      ? `Dernière relance auto : ${formatSbiDate(lastReminderAt, 'date inconnue')}`
+      : lastInviteAt
+        ? `Dernière invitation : ${formatSbiDate(lastInviteAt, 'date inconnue')}`
+        : 'Aucune relance de finalisation enregistrée',
     tone: '#fbbc04',
     inviteCount,
-    lastInviteAt
+    reminderCount,
+    lastInviteAt,
+    lastReminderAt,
+    escalationAt
   };
 }
 
@@ -311,7 +333,7 @@ function renderAccountActionsPanel({ uid, data = {}, reloadProfile }) {
       ">
         <div style="display:flex; justify-content:space-between; gap:0.75rem; flex-wrap:wrap; align-items:center;">
           <strong style="color:${finalizationInfo.tone}; font-size:0.88rem;">${escapeHTML(finalizationInfo.label)}</strong>
-          <span style="color:var(--text-muted); font-size:0.76rem;">Relances manuelles : ${finalizationInfo.inviteCount}</span>
+          <span style="color:var(--text-muted); font-size:0.76rem;">Manuelles : ${finalizationInfo.inviteCount} · Auto : ${finalizationInfo.reminderCount || 0}/3</span>
         </div>
         <p style="margin:0.35rem 0 0; color:var(--text-muted); font-size:0.8rem; line-height:1.45;">
           ${escapeHTML(finalizationInfo.detail)}

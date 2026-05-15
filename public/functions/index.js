@@ -6,6 +6,7 @@
 
 // Importation spécifique pour la V2
 const { onCall, onRequest, HttpsError } = require("firebase-functions/v2/https");
+const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { defineSecret } = require("firebase-functions/params");
 const admin = require("firebase-admin");
 
@@ -197,6 +198,9 @@ const SBI_AUTH_ACTION_SETTINGS = {
     url: SBI_PASSWORD_RESET_URL,
     handleCodeInApp: true
 };
+
+const SBI_FINALIZATION_REMINDER_MAX_COUNT = 3;
+const SBI_FINALIZATION_REMINDER_DELAY_MS = 48 * 60 * 60 * 1000;
 
 function readActionParamsFromUrl(rawUrl) {
     const parsed = new URL(rawUrl);
@@ -1246,6 +1250,45 @@ function hasAccountFinalizedAccess(accountData = {}) {
     );
 }
 
+function toAccountReminderMillis(value) {
+    if (!value) return 0;
+    if (typeof value.toMillis === "function") return value.toMillis();
+    if (typeof value.seconds === "number") return value.seconds * 1000;
+    if (value instanceof Date) return value.getTime();
+    if (typeof value === "number") return value;
+    if (typeof value === "string") {
+        const parsed = Date.parse(value);
+        return Number.isNaN(parsed) ? 0 : parsed;
+    }
+    return 0;
+}
+
+function shouldSendFinalizationReminder(accountData = {}, nowMs = Date.now()) {
+    if (accountData.statut === "suspendu") return false;
+    if (hasAccountFinalizedAccess(accountData)) return false;
+
+    const accountStatus = accountData.accountStatus || {};
+    if (accountStatus.finalizationReminderEnabled === false) return false;
+
+    const activationState = accountStatus.activationState || accountData.activationState || "";
+    if (activationState && activationState !== "pending_password") return false;
+
+    const reminderCount = Number(accountStatus.reminderCount || 0);
+    if (reminderCount >= SBI_FINALIZATION_REMINDER_MAX_COUNT) return false;
+
+    const lastReminderMs = toAccountReminderMillis(accountStatus.lastReminderSentAt);
+    const manualInviteMs = toAccountReminderMillis(accountStatus.finalizationInviteSentAt);
+    const invitationMs = toAccountReminderMillis(accountStatus.invitationSentAt);
+    const passwordResetMs = toAccountReminderMillis(accountStatus.passwordResetSentAt);
+    const lastAccessMs = toAccountReminderMillis(accountStatus.lastAccessEmailSentAt);
+    const createdMs = toAccountReminderMillis(accountData.createdAt || accountData.dateCreation);
+
+    const lastSignalMs = Math.max(lastReminderMs, manualInviteMs, invitationMs, passwordResetMs, lastAccessMs, createdMs);
+
+    if (!lastSignalMs) return true;
+    return nowMs - lastSignalMs >= SBI_FINALIZATION_REMINDER_DELAY_MS;
+}
+
 exports.adminCreateUserAccount = onCall({
     region: "europe-west1",
     secrets: [BREVO_API_KEY],
@@ -1497,6 +1540,131 @@ exports.adminSendFinalizationInvite = onCall({
     };
 });
 
+
+
+exports.runFinalizationReminders = onSchedule({
+    region: "europe-west1",
+    schedule: "every 24 hours",
+    timeZone: "Europe/Paris",
+    secrets: [BREVO_API_KEY],
+    timeoutSeconds: 540,
+    memory: "512MiB"
+}, async () => {
+    const db = admin.firestore();
+    const apiKey = BREVO_API_KEY.value();
+
+    if (!apiKey) {
+        console.error("[SBI Finalization] BREVO_API_KEY manquant.");
+        return;
+    }
+
+    const nowMs = Date.now();
+    const usersSnap = await db.collection("users")
+        .where("statut", "==", "actif")
+        .limit(500)
+        .get();
+
+    let checked = 0;
+    let sent = 0;
+    let skipped = 0;
+    let escalated = 0;
+    let failed = 0;
+
+    for (const userDoc of usersSnap.docs) {
+        checked += 1;
+        const userData = userDoc.data() || {};
+        const uid = userDoc.id;
+
+        if (!shouldSendFinalizationReminder(userData, nowMs)) {
+            skipped += 1;
+            continue;
+        }
+
+        const email = cleanEmail(userData.email);
+        if (!isValidEmail(email)) {
+            skipped += 1;
+            await safeWriteAccountAuditLog(db, {
+                type: "account.finalization_reminder_skipped",
+                actorUid: "system",
+                actorEmail: "scheduler",
+                targetUid: uid,
+                targetEmail: email,
+                targetRole: userData.role || "",
+                source: "auto-finalization-reminder",
+                reason: "invalid-email"
+            });
+            continue;
+        }
+
+        const accountStatus = userData.accountStatus || {};
+        const previousReminderCount = Number(accountStatus.reminderCount || 0);
+        const nextReminderCount = previousReminderCount + 1;
+        const isFinalReminder = nextReminderCount >= SBI_FINALIZATION_REMINDER_MAX_COUNT;
+
+        try {
+            const firebaseResetLink = await admin.auth().generatePasswordResetLink(email, SBI_AUTH_ACTION_SETTINGS);
+            const finalizationLink = buildSbiPasswordResetLink(firebaseResetLink);
+
+            await sendAccountFinalizationEmail({ ...userData, email }, finalizationLink, apiKey);
+
+            const updatePayload = {
+                "accountStatus.activationState": "pending_password",
+                "accountStatus.finalizationReminderEnabled": accountStatus.finalizationReminderEnabled === false ? false : true,
+                "accountStatus.lastReminderSentAt": admin.firestore.FieldValue.serverTimestamp(),
+                "accountStatus.lastAccessEmailSentAt": admin.firestore.FieldValue.serverTimestamp(),
+                "accountStatus.reminderCount": admin.firestore.FieldValue.increment(1)
+            };
+
+            if (isFinalReminder) {
+                updatePayload["accountStatus.finalizationEscalationAt"] = admin.firestore.FieldValue.serverTimestamp();
+                updatePayload["accountStatus.finalizationEscalationResolvedAt"] = null;
+                updatePayload["accountStatus.finalizationEscalationResolvedBy"] = "";
+                updatePayload["accountStatus.finalizationReminderEnabled"] = false;
+            }
+
+            await userDoc.ref.update(updatePayload);
+
+            await safeWriteAccountAuditLog(db, {
+                type: isFinalReminder ? "account.finalization_escalation_required" : "account.finalization_reminder_sent",
+                actorUid: "system",
+                actorEmail: "scheduler",
+                targetUid: uid,
+                targetEmail: email,
+                targetRole: userData.role || "",
+                source: "auto-finalization-reminder",
+                reminderCount: nextReminderCount,
+                maxReminderCount: SBI_FINALIZATION_REMINDER_MAX_COUNT
+            });
+
+            if (isFinalReminder) {
+                escalated += 1;
+            } else {
+                sent += 1;
+            }
+        } catch (error) {
+            failed += 1;
+            console.error("[SBI Finalization] Relance impossible :", uid, email, error.message);
+            await safeWriteAccountAuditLog(db, {
+                type: "account.finalization_reminder_failed",
+                actorUid: "system",
+                actorEmail: "scheduler",
+                targetUid: uid,
+                targetEmail: email,
+                targetRole: userData.role || "",
+                source: "auto-finalization-reminder",
+                errorMessage: cleanString(error.message, 300)
+            });
+        }
+    }
+
+    console.log("[SBI Finalization] Rapport relances", {
+        checked,
+        sent,
+        skipped,
+        escalated,
+        failed
+    });
+});
 
 exports.requestPasswordReset = onRequest({
     region: "europe-west1",
