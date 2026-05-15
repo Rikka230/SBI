@@ -11,7 +11,7 @@
  * présence réelle des panels/topbars attendus pour la page courante.
  * 8.0P.151 : suppression des bridges conformité, intégration directe dans
  * public-formations-admin.js et sbi-public-pages.js.
- * 8.0P.165 : cache-bust relance automatique finalisation compte.
+ * 8.0P.165.1 : stabilisation retour PJAX Comptes / remount après profil.
  */
 
 (function bootstrapSbiComponents(){
@@ -36,7 +36,7 @@
     if (!shouldMountAccountsModule()) return Promise.resolve(false);
 
     if (!accountsModulePromise) {
-      accountsModulePromise = import('/admin/js/admin-accounts-dashboard.js?v=8.0P.165')
+      accountsModulePromise = import('/admin/js/admin-accounts-dashboard.js?v=8.0P.165.1')
         .catch((error) => {
           accountsModulePromise = null;
           console.warn('[SBI Accounts] Module comptes non chargé :', error);
@@ -54,6 +54,10 @@
     window.requestAnimationFrame(() => {
       loadAccountsModule();
     });
+
+    window.setTimeout(loadAccountsModule, 120);
+    window.setTimeout(loadAccountsModule, 450);
+    window.setTimeout(loadAccountsModule, 950);
   };
 
   const startAccountsWatcher = () => {
@@ -66,10 +70,30 @@
 
     observer.observe(document.documentElement, { childList: true, subtree: true });
 
+    document.addEventListener('click', (event) => {
+      const target = event.target?.closest?.('a, button, [role="button"], [data-view], [data-tab]');
+      const text = (target?.textContent || '').trim().toLowerCase();
+      const href = target?.getAttribute?.('href') || '';
+      const dataView = target?.getAttribute?.('data-view') || target?.getAttribute?.('data-tab') || '';
+
+      if (
+        text.includes('comptes')
+        || text.includes('utilisateurs')
+        || href.includes('index.html')
+        || href.includes('view-users')
+        || dataView.includes('users')
+      ) {
+        scheduleAccountsMount();
+      }
+    }, true);
+
     window.addEventListener('popstate', scheduleAccountsMount);
+    window.addEventListener('pageshow', scheduleAccountsMount);
+    window.addEventListener('hashchange', scheduleAccountsMount);
     window.addEventListener('sbi:components-ready', scheduleAccountsMount);
     window.addEventListener('sbi:app-shell-rendered', scheduleAccountsMount);
     window.addEventListener('sbi:accounts-rendered', scheduleAccountsMount);
+    window.addEventListener('sbi:accounts-force-remount', scheduleAccountsMount);
   };
 
   const failSafe = window.setTimeout(() => {
