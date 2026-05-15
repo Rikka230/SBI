@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.154',
+  version: '8.0P.155',
   branch: 'private-admin-accounts-mail-workflow',
-  channel: 'ADMIN MAIL WORKFLOW P2H.1',
-  stage: 'PRIVATE P2H.1 PUBLIC PASSWORD RESET WORKFLOW',
+  channel: 'ADMIN MAIL WORKFLOW P2H.2-A',
+  stage: 'PRIVATE P2H.2-A ACCOUNTS STRUCTURE DASHBOARD',
   updatedAt: '2026-05-15',
-  label: 'SBI 8.0P.154 - PRIVATE P2H.1 PUBLIC PASSWORD RESET WORKFLOW'
+  label: 'SBI 8.0P.155 - PRIVATE P2H.2-A ACCOUNTS STRUCTURE DASHBOARD'
 };
 
 export function getSbiVersionLabel() {

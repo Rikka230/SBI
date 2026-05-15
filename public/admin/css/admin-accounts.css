@@ -1,0 +1,252 @@
+.sbi-accounts-view {
+  --sbi-account-card: rgba(255, 255, 255, 0.035);
+  --sbi-account-border: rgba(255, 255, 255, 0.11);
+  --sbi-account-muted: var(--text-muted, #9ca3af);
+}
+
+.sbi-accounts-header {
+  align-items: flex-start !important;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.sbi-accounts-header h2 {
+  margin-bottom: 0.35rem;
+}
+
+.sbi-accounts-header-copy {
+  margin: 0;
+  max-width: 760px;
+  color: var(--text-muted, #9ca3af);
+  line-height: 1.55;
+}
+
+.sbi-accounts-overview {
+  margin: 0 0 1.5rem;
+  padding: clamp(1rem, 2vw, 1.35rem);
+  border: 1px solid rgba(42, 87, 255, 0.24);
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at top right, rgba(42, 87, 255, 0.14), transparent 38%),
+    linear-gradient(145deg, rgba(8, 13, 28, 0.92), rgba(14, 16, 24, 0.94));
+}
+
+.sbi-accounts-overview-main {
+  display: flex;
+  justify-content: space-between;
+  gap: 1.25rem;
+  align-items: stretch;
+  margin-bottom: 1rem;
+}
+
+.sbi-accounts-overview h3 {
+  margin: 0 0 0.4rem;
+  color: #ffffff;
+  font-size: clamp(1.2rem, 2vw, 1.55rem);
+}
+
+.sbi-accounts-overview p {
+  margin: 0;
+  color: var(--text-muted, #9ca3af);
+  line-height: 1.6;
+  max-width: 760px;
+}
+
+.sbi-kicker {
+  display: inline-flex;
+  margin-bottom: 0.45rem;
+  color: var(--accent-blue, #2A57FF);
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sbi-accounts-roadmap {
+  min-width: 170px;
+  padding: 0.9rem 1rem;
+  border: 1px solid rgba(42, 87, 255, 0.25);
+  border-radius: 12px;
+  background: rgba(42, 87, 255, 0.075);
+}
+
+.sbi-accounts-roadmap span,
+.sbi-accounts-roadmap small {
+  display: block;
+  color: var(--text-muted, #9ca3af);
+  font-size: 0.78rem;
+}
+
+.sbi-accounts-roadmap strong {
+  display: block;
+  margin: 0.2rem 0;
+  color: #fff;
+  font-size: 1.45rem;
+}
+
+.sbi-accounts-stats {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(92px, 1fr));
+  gap: 0.7rem;
+}
+
+.sbi-account-stat {
+  padding: 0.85rem;
+  border: 1px solid var(--sbi-account-border);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.sbi-account-stat span {
+  display: block;
+  color: var(--text-muted, #9ca3af);
+  font-size: 0.73rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.sbi-account-stat strong {
+  display: block;
+  margin-top: 0.35rem;
+  color: #ffffff;
+  font-size: 1.45rem;
+  line-height: 1;
+}
+
+.sbi-accounts-workspace {
+  grid-template-columns: minmax(280px, 0.8fr) minmax(520px, 1.6fr) !important;
+}
+
+.sbi-account-create-card,
+.sbi-account-list-card {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.025)) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  border-radius: 14px !important;
+}
+
+.sbi-account-create-card h3,
+.sbi-account-list-card h3 {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: #ffffff;
+}
+
+.sbi-account-create-card h3::after,
+.sbi-account-list-card h3::after {
+  content: "P2H.2-A";
+  display: inline-flex;
+  padding: 0.18rem 0.45rem;
+  border: 1px solid rgba(42, 87, 255, 0.3);
+  border-radius: 999px;
+  color: var(--accent-blue, #2A57FF);
+  font-size: 0.64rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+}
+
+.sbi-account-row {
+  min-height: 64px;
+  transition: border-color 0.18s ease, transform 0.18s ease, background 0.18s ease;
+}
+
+.sbi-account-row:hover {
+  border-color: rgba(42, 87, 255, 0.34) !important;
+  background: rgba(42, 87, 255, 0.055) !important;
+}
+
+.sbi-account-email-cell,
+.sbi-account-status-cell {
+  flex-direction: column;
+  align-items: flex-start !important;
+  justify-content: center !important;
+  gap: 0.22rem;
+}
+
+.sbi-account-email-line {
+  color: #dbe5ff;
+  word-break: break-word;
+}
+
+.sbi-account-card-meta {
+  color: var(--text-muted, #9ca3af);
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+.sbi-account-status-cell small {
+  color: var(--text-muted, #9ca3af);
+  font-size: 0.68rem;
+}
+
+.sbi-status-dot {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.sbi-status-dot::before {
+  content: "";
+  width: 0.46rem;
+  height: 0.46rem;
+  border-radius: 999px;
+  background: currentColor;
+  box-shadow: 0 0 10px currentColor;
+}
+
+.sbi-status-success {
+  color: var(--accent-green, #2ed573);
+}
+
+.sbi-status-warning {
+  color: var(--accent-yellow, #fbbc04);
+}
+
+.sbi-status-danger {
+  color: var(--accent-red, #ff4a4a);
+}
+
+.sbi-status-muted {
+  color: var(--text-muted, #9ca3af);
+}
+
+@media (max-width: 1280px) {
+  .sbi-accounts-stats {
+    grid-template-columns: repeat(4, minmax(110px, 1fr));
+  }
+
+  .sbi-accounts-workspace {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .sbi-accounts-overview-main {
+    flex-direction: column;
+  }
+
+  .sbi-accounts-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sbi-account-row {
+    grid-template-columns: 1fr !important;
+  }
+
+  .sbi-account-row > * {
+    min-height: 44px;
+    border-left: 0 !important;
+    border-right: 0 !important;
+    border-bottom: 1px solid #222;
+  }
+
+  .sbi-account-row button {
+    min-height: 44px;
+  }
+}

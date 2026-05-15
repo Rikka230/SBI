@@ -11,6 +11,7 @@
  * présence réelle des panels/topbars attendus pour la page courante.
  * 8.0P.151 : suppression des bridges conformité, intégration directe dans
  * public-formations-admin.js et sbi-public-pages.js.
+ * 8.0P.155 : montage du module lecture seule Comptes & accès.
  */
 
 (function bootstrapSbiComponents(){
@@ -24,6 +25,23 @@
     window.dispatchEvent(new CustomEvent('sbi:components-ready'));
   };
 
+  const loadAccountsModule = () => {
+    const isAdminIndex = window.location.pathname.endsWith('/admin/')
+      || window.location.pathname.endsWith('/admin/index.html');
+
+    if (!isAdminIndex) return Promise.resolve(false);
+
+    return import('/admin/js/admin-accounts-dashboard.js?v=8.0P.155')
+      .then((module) => {
+        module?.mountAdminAccountsDashboard?.();
+        return true;
+      })
+      .catch((error) => {
+        console.warn('[SBI Accounts] Module comptes non chargé :', error);
+        return false;
+      });
+  };
+
   const failSafe = window.setTimeout(() => {
     notifyReady();
     releasePreload();
@@ -34,6 +52,8 @@
       if (module?.waitForExpectedComponents) {
         await module.waitForExpectedComponents(1800);
       }
+
+      await loadAccountsModule();
 
       await new Promise((resolve) => requestAnimationFrame(resolve));
       window.clearTimeout(failSafe);
