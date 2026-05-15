@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.165.1 / P2H.2-E.2.1
+ * SBI 8.0P.165.3 / P2H.2-E.2 HARD ROLLBACK
  * Structure lecture seule "Comptes & accès".
  *
  * Objectif :
@@ -19,9 +19,7 @@ import {
 let mounted = false;
 let unsubscribeAccounts = null;
 let accountsById = new Map();
-let latestAccounts = [];
 let listObserver = null;
-let filtersBound = false;
 
 const ONLINE_TTL_MS = 90000;
 
@@ -31,7 +29,7 @@ function injectStyle() {
   const link = document.createElement('link');
   link.id = 'sbi-admin-accounts-css';
   link.rel = 'stylesheet';
-  link.href = '/admin/css/admin-accounts.css?v=8.0P.165.1';
+  link.href = '/admin/css/admin-accounts.css?v=8.0P.165.3';
   document.head.append(link);
 }
 
@@ -315,147 +313,6 @@ function renderCounters(users) {
   Object.entries(stats).forEach(([key, value]) => updateStat(key, value));
 }
 
-function getFilteredAccounts() {
-  const searchInput = document.getElementById('search-user');
-  const roleFilter = document.getElementById('filter-role');
-
-  const searchTerm = (searchInput?.value || '').toLowerCase().trim();
-  const roleTerm = roleFilter?.value || 'all';
-
-  return latestAccounts.filter((user) => {
-    const fullName = `${user.prenom || ''} ${user.nom || ''}`.toLowerCase();
-    const email = (user.email || '').toLowerCase();
-    const matchesSearch = !searchTerm || fullName.includes(searchTerm) || email.includes(searchTerm);
-    const matchesRole = roleTerm === 'all' || user.role === roleTerm;
-    return matchesSearch && matchesRole;
-  });
-}
-
-function getRoleChip(user) {
-  if (user?.isGod) return { text: 'Suprême', bg: 'rgba(255,215,0,0.15)', color: '#ffd700' };
-  if (user?.role === 'admin') return { text: 'Admin', bg: 'rgba(255,74,74,0.15)', color: '#ff4a4a' };
-  if (user?.role === 'teacher') return { text: 'Prof', bg: 'rgba(251,188,4,0.15)', color: '#fbbc04' };
-  return { text: 'Élève', bg: 'rgba(0,255,163,0.15)', color: '#00ffa3' };
-}
-
-function renderFallbackAccountRows(force = false) {
-  const container = document.getElementById('users-list-container');
-  if (!container || latestAccounts.length === 0) return false;
-
-  const filtered = getFilteredAccounts();
-  const hasProfileButtons = Boolean(container.querySelector('.btn-view-profile[data-id]'));
-  const text = (container.textContent || '').toLowerCase();
-  const isVisiblyEmpty = container.children.length === 0
-    || text.includes('aucun compte trouvé')
-    || text.includes('chargement')
-    || text.includes('erreur de chargement');
-
-  if (!force && hasProfileButtons && !isVisiblyEmpty) return false;
-
-  container.innerHTML = '';
-  container.style.overflowX = 'hidden';
-  container.style.paddingBottom = '0';
-
-  if (filtered.length === 0) {
-    container.innerHTML = '<div class="empty-state">Aucun compte trouvé.</div>';
-    return true;
-  }
-
-  filtered.forEach((user) => {
-    const displayName = (user.prenom && user.nom)
-      ? `${user.prenom} ${user.nom}`
-      : (user.nom || user.email || 'Compte sans nom');
-
-    const role = getRoleChip(user);
-    const activation = getActivationInfo(user);
-    const accessCount = getAccessCount(user);
-    const lastActivity = formatDate(getLastActivityDate(user), 'Jamais connecté');
-    const online = isOnline(user);
-
-    const row = document.createElement('div');
-    row.className = 'sbi-account-row';
-    row.dataset.sbiAccountEnhanced = 'true';
-    row.style.cssText = `
-      background:#0a0a0c;
-      border:1px solid #222;
-      border-radius:6px;
-      margin-bottom:0.4rem;
-      display:grid;
-      grid-template-columns:85px minmax(150px,1fr) minmax(190px,1.45fr) minmax(110px,.8fr) 75px 75px;
-      align-items:stretch;
-      opacity:${user.statut === 'suspendu' ? '0.6' : '1'};
-      font-size:0.8rem;
-      overflow:hidden;
-    `;
-
-    row.innerHTML = `
-      <div style="background:${role.bg}; color:${role.color}; display:flex; align-items:center; justify-content:center; font-weight:bold; text-transform:uppercase; letter-spacing:.5px; font-size:.7rem; border-right:1px solid #222; text-align:center;">
-        ${escapeHtml(role.text)}
-      </div>
-      <div style="color:white; font-weight:bold; word-break:break-word; min-width:0; padding:.6rem .8rem; display:flex; align-items:center;">
-        <span style="display:inline-block; min-width:8px; height:8px; background-color:${online ? '#00ffa3' : '#4b4b52'}; border-radius:50%; margin-right:8px; ${online ? 'box-shadow:0 0 6px #00ffa3;' : ''}"></span>
-        ${escapeHtml(displayName)}
-      </div>
-      <div class="sbi-account-email-cell" style="color:#9ca3af; word-break:break-word; min-width:0; padding:.6rem .8rem; display:flex; flex-direction:column; justify-content:center;">
-        <span class="sbi-account-email-line">${escapeHtml(user.email || 'Email manquant')}</span>
-        <span class="sbi-account-card-meta">${escapeHtml(lastActivity)} · ${accessCount} accès formation${accessCount > 1 ? 's' : ''}</span>
-      </div>
-      <div class="sbi-account-status-cell" style="text-align:center; padding:.6rem .8rem; display:flex; flex-direction:column; align-items:center; justify-content:center;">
-        <span class="sbi-status-dot sbi-status-${activation.tone}">${escapeHtml(activation.label)}</span>
-        <small>${escapeHtml(getAccountPreparationInfo(user))}</small>
-      </div>
-      <button class="btn-view-profile" data-id="${escapeHtml(user.id)}" style="background:rgba(46,213,115,.1); color:#2ed573; border:none; border-left:1px solid #222; cursor:pointer; font-weight:bold; text-transform:uppercase; letter-spacing:.5px; font-size:.7rem; display:flex; align-items:center; justify-content:center; width:100%; height:100%; padding:0;">
-        Profil
-      </button>
-      <button class="btn-edit-user" data-id="${escapeHtml(user.id)}" title="Rechargez si l’édition rapide n’est pas encore montée" style="background:rgba(42,87,255,.1); color:#2A57FF; border:none; border-left:1px solid #222; cursor:pointer; font-weight:bold; text-transform:uppercase; letter-spacing:.5px; font-size:.7rem; display:flex; align-items:center; justify-content:center; width:100%; height:100%; padding:0;">
-        Éditer
-      </button>
-    `;
-
-    container.appendChild(row);
-  });
-
-  enhanceRenderedAccountRows();
-  return true;
-}
-
-function ensureAccountsRows(force = false) {
-  if (!document.getElementById('view-users')) return;
-  ensureAccountsShell();
-
-  const container = document.getElementById('users-list-container');
-  if (!container) return;
-
-  const hasRows = Boolean(container.querySelector('.btn-view-profile[data-id]'));
-  const hasLegacyCards = Boolean(container.children.length);
-  const shouldFallback = force || !hasRows || !hasLegacyCards;
-
-  if (shouldFallback) {
-    renderFallbackAccountRows(force);
-  }
-
-  enhanceRenderedAccountRows();
-}
-
-function bindAccountsFilters() {
-  if (filtersBound) return;
-
-  const searchInput = document.getElementById('search-user');
-  const roleFilter = document.getElementById('filter-role');
-
-  if (!searchInput && !roleFilter) return;
-
-  filtersBound = true;
-
-  searchInput?.addEventListener('input', () => {
-    renderFallbackAccountRows(true);
-  });
-
-  roleFilter?.addEventListener('change', () => {
-    renderFallbackAccountRows(true);
-  });
-}
-
 function enhanceRenderedAccountRows() {
   const container = document.getElementById('users-list-container');
   if (!container || accountsById.size === 0) return;
@@ -531,14 +388,12 @@ function startAccountsSnapshot() {
       nextMap.set(docSnap.id, user);
     });
 
-    latestAccounts = users;
     accountsById = nextMap;
     renderCounters(users);
-    bindAccountsFilters();
-    ensureAccountsRows(false);
+    enhanceRenderedAccountRows();
 
     window.SBI_ACCOUNTS_DASHBOARD_STATE = {
-      version: '8.0P.165.1',
+      version: '8.0P.165.3',
       users: users.length,
       updatedAt: new Date().toISOString()
     };
@@ -611,8 +466,7 @@ function mount() {
 
   if (mounted) {
     ensureAccountsShell();
-    bindAccountsFilters();
-    ensureAccountsRows(false);
+    enhanceRenderedAccountRows();
     return;
   }
 
@@ -621,24 +475,18 @@ function mount() {
   mounted = true;
   injectStyle();
   bindProfileNavigation();
-  bindAccountsFilters();
   observeUsersList();
   startAccountsSnapshot();
-  ensureAccountsRows(false);
+  enhanceRenderedAccountRows();
 }
 
 export function mountAdminAccountsDashboard() {
   const tryMount = () => {
     mount();
 
-    window.setTimeout(() => ensureAccountsRows(false), 180);
-    window.setTimeout(() => ensureAccountsRows(false), 500);
-    window.setTimeout(() => ensureAccountsRows(true), 1100);
-
     if (!mounted) {
       window.setTimeout(mount, 200);
       window.setTimeout(mount, 800);
-      window.setTimeout(mount, 1400);
     }
   };
 
@@ -655,22 +503,6 @@ window.addEventListener('sbi:accounts-rendered', () => {
 
 window.addEventListener('sbi:components-ready', () => {
   window.requestAnimationFrame(mount);
-});
-
-window.addEventListener('sbi:app-shell-rendered', () => {
-  window.requestAnimationFrame(mount);
-  window.setTimeout(() => ensureAccountsRows(true), 650);
-});
-
-window.addEventListener('sbi:accounts-force-remount', () => {
-  mounted = false;
-  listObserver?.disconnect?.();
-  listObserver = null;
-  window.requestAnimationFrame(mount);
-});
-
-document.addEventListener('visibilitychange', () => {
-  if (!document.hidden) window.setTimeout(() => ensureAccountsRows(false), 120);
 });
 
 function escapeHtml(value) {
