@@ -631,22 +631,114 @@ function appendList(container, title, values) {
   container.append(block);
 }
 
+function ensureComplianceDetailsStyles() {
+  if (document.getElementById('sbi-public-compliance-details-style')) return;
+
+  const style = document.createElement('style');
+  style.id = 'sbi-public-compliance-details-style';
+  style.textContent = `
+    .public-formation-quality-block {
+      overflow: hidden;
+    }
+
+    .public-formation-quality-block summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      cursor: pointer;
+      list-style: none;
+    }
+
+    .public-formation-quality-block summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .public-formation-quality-block summary::after {
+      content: '+';
+      display: inline-grid;
+      place-items: center;
+      width: 1.55rem;
+      height: 1.55rem;
+      border: 1px solid rgba(87, 130, 255, 0.35);
+      border-radius: 999px;
+      color: #cfe0ff;
+      font-size: 1rem;
+      line-height: 1;
+      flex: 0 0 auto;
+    }
+
+    .public-formation-quality-block[open] summary::after {
+      content: '−';
+    }
+
+    .public-formation-quality-block summary h4 {
+      margin-bottom: 0;
+    }
+
+    .public-formation-quality-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.85rem;
+      margin-top: 1rem;
+    }
+
+    .public-formation-quality-grid .public-formation-mini-section {
+      min-width: 0;
+      padding: 0.85rem;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.025);
+    }
+
+    .public-formation-quality-grid .public-formation-mini-section p + p {
+      margin-top: 0.65rem;
+    }
+
+    @media (max-width: 720px) {
+      .public-formation-quality-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  `;
+  document.head.append(style);
+}
+
+function splitComplianceParagraphs(content = '') {
+  return text(content)
+    .split(/\n{2,}|\r?\n(?=[A-ZÀ-ÖØ-Ý0-9])/g)
+    .map((paragraph) => text(paragraph))
+    .filter(Boolean);
+}
+
 function appendComplianceSections(container, compliance = {}) {
   const sections = getVisibleComplianceSections(compliance);
   if (!sections.length) return;
 
-  const block = createElement('div', 'public-formation-detail-block public-formation-quality-block');
-  block.append(createElement('h4', 'text-italic', 'Informations pédagogiques et qualité'));
+  ensureComplianceDetailsStyles();
+
+  const block = document.createElement('details');
+  block.className = 'public-formation-detail-block public-formation-quality-block';
+
+  const summary = document.createElement('summary');
+  summary.append(createElement('h4', 'text-italic', 'Informations pédagogiques et qualité'));
+  block.append(summary);
+
+  const grid = createElement('div', 'public-formation-quality-grid');
 
   sections.forEach((section) => {
     const item = createElement('article', 'public-formation-mini-section');
     item.append(createElement('strong', 'text-italic', section.title));
-    const paragraph = createElement('p', 'text-italic', section.content);
-    paragraph.style.whiteSpace = 'pre-line';
-    item.append(paragraph);
-    block.append(item);
+
+    const paragraphs = splitComplianceParagraphs(section.content);
+    paragraphs.forEach((paragraphText) => {
+      item.append(createElement('p', 'text-italic', paragraphText));
+    });
+
+    grid.append(item);
   });
 
+  block.append(grid);
   container.append(block);
 }
 

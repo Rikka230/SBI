@@ -749,7 +749,7 @@ async function runPageInitializers(pageId) {
 
   if (['home', 'formations', 'parcours', 'apropos', 'ressources', 'contact'].includes(pageId)) {
     try {
-      const publicPagesModule = await import('/js/sbi-public-pages.js?v=8.0P.151');
+      const publicPagesModule = await import('/js/sbi-public-pages.js?v=8.0P.152');
       const initPublicPages = publicPagesModule.initSbiPublicPages || window.SBI_INIT_PUBLIC_PAGES;
       if (typeof initPublicPages === 'function') initPublicPages(document);
     } catch (error) {
