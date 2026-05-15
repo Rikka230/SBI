@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.166.2 / P2H.2-E.3 LIGHT
+ * SBI 8.0P.166.3 / P2H.2-E.3 UX
  * Structure lecture seule "Comptes & accès".
  *
  * Objectif :
@@ -29,7 +29,7 @@ function injectStyle() {
   const link = document.createElement('link');
   link.id = 'sbi-admin-accounts-css';
   link.rel = 'stylesheet';
-  link.href = '/admin/css/admin-accounts.css?v=8.0P.166.2';
+  link.href = '/admin/css/admin-accounts.css?v=8.0P.166.3';
   document.head.append(link);
 }
 
@@ -104,6 +104,16 @@ function needsDirectFinalizationContact(user) {
   return Boolean(user?.accountStatus?.finalizationEscalationAt && !user?.accountStatus?.finalizationEscalationResolvedAt);
 }
 
+function hasResolvedFinalizationContact(user) {
+  return Boolean(user?.accountStatus?.finalizationEscalationAt && user?.accountStatus?.finalizationEscalationResolvedAt);
+}
+
+function getEscalationNotePreview(user) {
+  const note = String(user?.accountStatus?.finalizationEscalationResolutionNote || '').trim();
+  if (!note) return '';
+  return note.length > 46 ? `${note.slice(0, 46)}…` : note;
+}
+
 function getActivationInfo(user) {
   if (!user) {
     return {
@@ -126,6 +136,14 @@ function getActivationInfo(user) {
       label: 'Contact direct requis',
       tone: 'danger',
       detail: '3 relances envoyées'
+    };
+  }
+
+  if (hasResolvedFinalizationContact(user)) {
+    return {
+      label: 'Contact direct traité',
+      tone: 'success',
+      detail: getEscalationNotePreview(user) || 'Alerte traitée'
     };
   }
 
@@ -348,9 +366,12 @@ function enhanceRenderedAccountRows() {
 
     if (statusCell) {
       statusCell.classList.add('sbi-account-status-cell');
+      const notePreview = getEscalationNotePreview(user);
       const escalationText = needsDirectFinalizationContact(user)
         ? '<small style="color:#ff9b9b; font-weight:800;">3 relances · contact élève</small>'
-        : `<small>${escapeHtml(getAccountPreparationInfo(user))}</small>`;
+        : hasResolvedFinalizationContact(user)
+          ? `<small style="color:#9ff3bd; font-weight:800;">Traité${notePreview ? ` · ${escapeHtml(notePreview)}` : ''}</small>`
+          : `<small>${escapeHtml(getAccountPreparationInfo(user))}</small>`;
 
       statusCell.innerHTML = `
         <span class="sbi-status-dot sbi-status-${activation.tone}">${escapeHtml(activation.label)}</span>
@@ -397,7 +418,7 @@ function startAccountsSnapshot() {
     enhanceRenderedAccountRows();
 
     window.SBI_ACCOUNTS_DASHBOARD_STATE = {
-      version: '8.0P.166.2',
+      version: '8.0P.166.3',
       users: users.length,
       updatedAt: new Date().toISOString()
     };

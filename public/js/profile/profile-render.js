@@ -226,6 +226,8 @@ function getFinalizationInfo(data = {}) {
   const lastReminderAt = data.accountStatus?.lastReminderSentAt || null;
   const escalationAt = data.accountStatus?.finalizationEscalationAt || null;
   const escalationResolvedAt = data.accountStatus?.finalizationEscalationResolvedAt || null;
+  const escalationResolutionNote = data.accountStatus?.finalizationEscalationResolutionNote || '';
+  const escalationResolvedByEmail = data.accountStatus?.finalizationEscalationResolvedByEmail || '';
 
   if (finalized) {
     return {
@@ -266,6 +268,8 @@ function getFinalizationInfo(data = {}) {
       lastReminderAt,
       escalationAt,
       escalationResolvedAt,
+      escalationResolutionNote,
+      escalationResolvedByEmail,
       needsDirectContact: false
     };
   }
@@ -372,19 +376,59 @@ function renderAccountActionsPanel({ uid, data = {}, reloadProfile }) {
           <strong style="display:block; color:#ff9b9b; font-size:0.9rem; margin-bottom:0.35rem;">
             Finalisation bloquée : contact direct requis
           </strong>
-          <p style="margin:0; color:#ffd6d6; font-size:0.82rem; line-height:1.5;">
-            3 relances automatiques ont été envoyées sans première connexion. Contactez l’élève directement, puis marquez l’alerte comme traitée.
+          <p style="margin:0 0 0.75rem; color:#ffd6d6; font-size:0.82rem; line-height:1.5;">
+            3 relances automatiques ont été envoyées sans première connexion. Contactez l’élève directement, puis notez l’action réalisée.
           </p>
-          <button id="prof-resolve-escalation-btn" type="button" style="
-            margin-top:0.75rem;
-            border:1px solid rgba(255,255,255,0.18);
-            background:rgba(255,255,255,0.08);
+          <label for="prof-escalation-resolution-note" style="display:block; color:#fff; font-size:0.78rem; font-weight:800; margin-bottom:0.35rem;">
+            Note de traitement
+          </label>
+          <textarea id="prof-escalation-resolution-note" rows="3" placeholder="Ex : Appel effectué, message vocal laissé, relance WhatsApp envoyée..." style="
+            width:100%;
+            box-sizing:border-box;
+            border:1px solid rgba(255,255,255,0.14);
+            background:rgba(0,0,0,0.24);
             color:#fff;
-            border-radius:999px;
-            padding:0.55rem 0.85rem;
-            font-weight:900;
-            cursor:pointer;
-          ">Marquer contact traité</button>
+            border-radius:10px;
+            padding:0.75rem;
+            resize:vertical;
+            min-height:84px;
+            outline:none;
+          "></textarea>
+          <div style="display:flex; gap:0.6rem; align-items:center; flex-wrap:wrap; margin-top:0.75rem;">
+            <button id="prof-resolve-escalation-btn" type="button" style="
+              border:1px solid rgba(255,255,255,0.18);
+              background:rgba(255,255,255,0.08);
+              color:#fff;
+              border-radius:999px;
+              padding:0.55rem 0.85rem;
+              font-weight:900;
+              cursor:pointer;
+            ">Marquer contact traité</button>
+            <span style="color:rgba(255,214,214,0.76); font-size:0.75rem;">Le compteur Auto reste à 3/3.</span>
+          </div>
+        </div>
+      ` : ''}
+
+      ${(!finalizationInfo.needsDirectContact && finalizationInfo.escalationResolvedAt) ? `
+        <div style="
+          margin:0 0 0.85rem 0;
+          padding:0.9rem 1rem;
+          border:1px solid rgba(46,213,115,0.28);
+          border-left:4px solid #2ed573;
+          border-radius:12px;
+          background:rgba(46,213,115,0.08);
+        ">
+          <strong style="display:block; color:#9ff3bd; font-size:0.88rem; margin-bottom:0.35rem;">
+            Contact direct traité
+          </strong>
+          <p style="margin:0; color:rgba(220,255,232,0.82); font-size:0.8rem; line-height:1.5;">
+            Traité le ${escapeHTML(formatSbiDate(finalizationInfo.escalationResolvedAt, 'date inconnue'))}${finalizationInfo.escalationResolvedByEmail ? ` par ${escapeHTML(finalizationInfo.escalationResolvedByEmail)}` : ''}.
+          </p>
+          ${finalizationInfo.escalationResolutionNote ? `
+            <p style="margin:0.55rem 0 0; color:#fff; font-size:0.82rem; line-height:1.5;">
+              <strong>Note :</strong> ${escapeHTML(finalizationInfo.escalationResolutionNote)}
+            </p>
+          ` : ''}
         </div>
       ` : ''}
 
@@ -516,10 +560,7 @@ function renderAccountActionsPanel({ uid, data = {}, reloadProfile }) {
   });
 
   resolveEscalationButton?.addEventListener('click', async () => {
-    const confirmed = window.confirm('Marquer cette alerte comme traitée après contact direct ?');
-    if (!confirmed) return;
-
-    const resolutionNote = window.prompt('Note optionnelle sur le contact direct :', '') || '';
+    const resolutionNote = panel.querySelector('#prof-escalation-resolution-note')?.value?.trim() || '';
 
     resolveEscalationButton.disabled = true;
     resolveEscalationButton.style.opacity = '0.65';
@@ -779,6 +820,7 @@ function getAccountLogDetails(log = {}) {
   const details = [];
 
   if (log.type === 'account.finalization_invite_sent') details.push('Email finalisation envoyé');
+  if (log.type === 'account.finalization_escalation_resolved' && log.note) details.push(`Note : ${log.note}`);
   if (log.emailSent === true) details.push('Email envoyé');
   if (log.emailSent === false) details.push('Email non envoyé');
   if (log.page) details.push(`Page : ${log.page}`);

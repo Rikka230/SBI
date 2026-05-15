@@ -11,7 +11,7 @@
  * présence réelle des panels/topbars attendus pour la page courante.
  * 8.0P.151 : suppression des bridges conformité, intégration directe dans
  * public-formations-admin.js et sbi-public-pages.js.
- * 8.0P.166.2 : alerte escalade légère, sans listener global.
+ * 8.0P.166.3 : UX note escalade intégrée.
  */
 
 (function bootstrapSbiComponents(){
@@ -53,7 +53,7 @@
     if (!shouldMountAccountsModule()) return Promise.resolve(false);
 
     if (!accountsModulePromise) {
-      accountsModulePromise = import('/admin/js/admin-accounts-dashboard.js?v=8.0P.166.2')
+      accountsModulePromise = import('/admin/js/admin-accounts-dashboard.js?v=8.0P.166.3')
         .catch((error) => {
           accountsModulePromise = null;
           console.warn('[SBI Accounts] Module comptes non chargé :', error);
