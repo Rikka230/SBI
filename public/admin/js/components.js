@@ -11,7 +11,7 @@
  * présence réelle des panels/topbars attendus pour la page courante.
  * 8.0P.151 : suppression des bridges conformité, intégration directe dans
  * public-formations-admin.js et sbi-public-pages.js.
- * 8.0P.165.4 : stabilisation loader admin, sortie preload plus rapide.
+ * 8.0P.166 : alertes admin finalisation après 3 relances.
  */
 
 (function bootstrapSbiComponents(){
@@ -53,7 +53,7 @@
     if (!shouldMountAccountsModule()) return Promise.resolve(false);
 
     if (!accountsModulePromise) {
-      accountsModulePromise = import('/admin/js/admin-accounts-dashboard.js?v=8.0P.165.4')
+      accountsModulePromise = import('/admin/js/admin-accounts-dashboard.js?v=8.0P.166')
         .catch((error) => {
           accountsModulePromise = null;
           console.warn('[SBI Accounts] Module comptes non chargé :', error);
@@ -71,6 +71,18 @@
     window.requestAnimationFrame(() => {
       loadAccountsModule();
     });
+  };
+
+  const loadAccountAlertsModule = () => {
+    return import('/admin/js/admin-account-alerts.js?v=8.0P.166')
+      .then((module) => {
+        module?.mountAdminAccountAlerts?.();
+        return true;
+      })
+      .catch((error) => {
+        console.warn('[SBI Account Alerts] Module alertes compte non chargé :', error);
+        return false;
+      });
   };
 
   const startAccountsWatcher = () => {
@@ -94,6 +106,7 @@
     releasePreload();
     startAccountsWatcher();
     scheduleAccountsMount();
+    loadAccountAlertsModule();
   }, 900);
 
   window.SBI_COMPONENTS_READY = import('/admin/js/components/index.js')
@@ -103,6 +116,7 @@
       }
 
       await loadAccountsModule();
+      await loadAccountAlertsModule();
 
       await new Promise((resolve) => requestAnimationFrame(resolve));
       window.clearTimeout(failSafe);
@@ -119,6 +133,7 @@
       releasePreload();
       startAccountsWatcher();
       scheduleAccountsMount();
+      loadAccountAlertsModule();
       return false;
     });
 })();
