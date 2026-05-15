@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.166.3',
+  version: '8.0P.166.4',
   branch: 'private-admin-accounts-mail-workflow',
-  channel: 'ADMIN MAIL WORKFLOW P2H.2-E.3 UX',
-  stage: 'PRIVATE ESCALATION INLINE NOTE UX',
+  channel: 'ADMIN MAIL WORKFLOW P2H.2-E.3 PANEL FIX',
+  stage: 'PRIVATE FAST PROFILE PANEL',
   updatedAt: '2026-05-15',
-  label: 'SBI 8.0P.166.3 - ESCALATION INLINE NOTE UX'
+  label: 'SBI 8.0P.166.4 - FAST PROFILE PANEL'
 };
 
 export function getSbiVersionLabel() {
