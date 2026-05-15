@@ -220,7 +220,11 @@ function renderAccountActionsPanel({ uid, data = {}, reloadProfile }) {
   }
 
   const currentState = normalizePreparationState(data.accountStatus?.preparationState || data.preparationState || 'not_prepared');
-  const currentNote = data.adminNotes?.accountNote || '';
+  const currentNote = getAccountInternalNote(data);
+  const noteMeta = getAccountInternalNoteMeta(data);
+  const notePreviewHtml = currentNote
+    ? escapeHTML(currentNote).replace(/\n/g, '<br>')
+    : 'Aucune note interne enregistrée pour ce compte.';
 
   panel.innerHTML = `
     <div style="
@@ -267,8 +271,24 @@ function renderAccountActionsPanel({ uid, data = {}, reloadProfile }) {
         `).join('')}
       </select>
 
+      <div id="prof-account-note-preview" style="
+        margin:0 0 0.75rem 0;
+        padding:0.85rem;
+        border:1px solid rgba(255,255,255,0.10);
+        border-radius:10px;
+        background:rgba(255,255,255,0.035);
+      ">
+        <div style="display:flex; justify-content:space-between; gap:0.75rem; flex-wrap:wrap; margin-bottom:0.35rem;">
+          <strong style="color:#fff; font-size:0.86rem;">Note enregistrée</strong>
+          <span id="prof-account-note-meta" style="color:var(--text-muted); font-size:0.74rem;">${escapeHTML(noteMeta)}</span>
+        </div>
+        <p id="prof-account-note-preview-text" style="margin:0; color:#dbe5ff; font-size:0.84rem; line-height:1.55; white-space:normal;">
+          ${notePreviewHtml}
+        </p>
+      </div>
+
       <label style="display:block; color:var(--text-muted); font-size:0.78rem; font-weight:800; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:0.35rem;">
-        Note interne
+        Modifier la note interne
       </label>
       <textarea id="prof-account-note" rows="4" maxlength="2000" style="
         width:100%;
@@ -283,6 +303,9 @@ function renderAccountActionsPanel({ uid, data = {}, reloadProfile }) {
         outline:none;
         font-family:inherit;
       " placeholder="Ajouter une note interne sur ce compte...">${escapeHTML(currentNote)}</textarea>
+      <p style="margin:0.4rem 0 0; color:var(--text-muted); font-size:0.74rem; line-height:1.35;">
+        La note reste visible dans le bloc “Note enregistrée” après sauvegarde.
+      </p>
 
       <div style="display:flex; justify-content:flex-end; gap:0.75rem; flex-wrap:wrap; margin-top:0.85rem;">
         <span id="prof-account-actions-status" style="margin-right:auto; color:var(--text-muted); font-size:0.8rem; align-self:center;"></span>
@@ -302,10 +325,18 @@ function renderAccountActionsPanel({ uid, data = {}, reloadProfile }) {
   const status = panel.querySelector('#prof-account-actions-status');
   const saveButton = panel.querySelector('#prof-save-account-followup-btn');
   const resendButton = panel.querySelector('#prof-resend-access-btn');
+  const noteTextarea = panel.querySelector('#prof-account-note');
+  const notePreviewText = panel.querySelector('#prof-account-note-preview-text');
+  const notePreviewMeta = panel.querySelector('#prof-account-note-meta');
 
   saveButton?.addEventListener('click', async () => {
     const preparationState = panel.querySelector('#prof-account-preparation-state')?.value || 'not_prepared';
-    const accountNote = panel.querySelector('#prof-account-note')?.value || '';
+    let accountNote = noteTextarea?.value || '';
+
+    if (currentNote && !accountNote.trim()) {
+      accountNote = currentNote;
+      if (noteTextarea) noteTextarea.value = currentNote;
+    }
 
     saveButton.disabled = true;
     saveButton.style.opacity = '0.65';
@@ -316,11 +347,17 @@ function renderAccountActionsPanel({ uid, data = {}, reloadProfile }) {
 
     try {
       await adminUpdateUserAccountCallable({ uid, preparationState, accountNote });
+
+      if (notePreviewText) {
+        notePreviewText.innerHTML = accountNote.trim()
+          ? escapeHTML(accountNote).replace(/\n/g, '<br>')
+          : 'Aucune note interne enregistrée pour ce compte.';
+      }
+      if (notePreviewMeta) notePreviewMeta.textContent = 'Mis à jour à l’instant';
       if (status) {
         status.style.color = '#2ed573';
-        status.textContent = 'Suivi sauvegardé.';
+        status.textContent = 'Suivi sauvegardé. Note accessible ci-dessus.';
       }
-      await reloadProfile?.(uid);
     } catch (error) {
       console.warn('[SBI Profile] Sauvegarde suivi compte impossible :', error);
       if (status) {
@@ -362,6 +399,22 @@ function renderAccountActionsPanel({ uid, data = {}, reloadProfile }) {
       resendButton.style.opacity = '';
     }
   });
+}
+
+function getAccountInternalNote(data = {}) {
+  return data.adminNotes?.accountNote
+    || data.adminNotes?.preparationNote
+    || '';
+}
+
+function getAccountInternalNoteMeta(data = {}) {
+  const updatedAt = data.adminNotes?.updatedAt || data.adminNotes?.accountNoteUpdatedAt || null;
+  const updatedBy = data.adminNotes?.updatedByName || data.adminNotes?.updatedByEmail || data.adminNotes?.updatedBy || '';
+  const dateLabel = formatSbiDate(updatedAt, 'Aucune mise à jour');
+
+  if (!updatedAt && !updatedBy) return 'Aucune note enregistrée';
+  if (updatedBy) return `${dateLabel} · ${updatedBy}`;
+  return dateLabel;
 }
 
 function getCallableUiMessage(error, fallback) {

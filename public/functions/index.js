@@ -2025,7 +2025,9 @@ exports.adminUpdateUserAccount = onCall({
                 ...(updates.adminNotes || {}),
                 accountNote,
                 updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-                updatedBy: caller.uid
+                updatedBy: caller.uid,
+                updatedByEmail: caller.email,
+                updatedByName: caller.name
             };
             auditChanges.accountNote = {
                 before: getNoteAuditState(previousAccountNote),
