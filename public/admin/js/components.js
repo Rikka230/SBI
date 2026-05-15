@@ -11,10 +11,13 @@
  * présence réelle des panels/topbars attendus pour la page courante.
  * 8.0P.151 : suppression des bridges conformité, intégration directe dans
  * public-formations-admin.js et sbi-public-pages.js.
- * 8.0P.159 : cache-bust Comptes & accès après correction statut activité.
+ * 8.0P.164 : remount Comptes robuste après retour PJAX depuis profil.
  */
 
 (function bootstrapSbiComponents(){
+  let accountsModulePromise = null;
+  let accountsWatchStarted = false;
+
   const releasePreload = () => {
     document.body?.classList?.remove('preload');
     document.body?.classList?.add('sbi-preload-timeout');
@@ -25,26 +28,55 @@
     window.dispatchEvent(new CustomEvent('sbi:components-ready'));
   };
 
+  const shouldMountAccountsModule = () => Boolean(document.getElementById('view-users'))
+    || window.location.pathname.endsWith('/admin/')
+    || window.location.pathname.endsWith('/admin/index.html');
+
   const loadAccountsModule = () => {
-    const isAdminIndex = window.location.pathname.endsWith('/admin/')
-      || window.location.pathname.endsWith('/admin/index.html');
+    if (!shouldMountAccountsModule()) return Promise.resolve(false);
 
-    if (!isAdminIndex) return Promise.resolve(false);
+    if (!accountsModulePromise) {
+      accountsModulePromise = import('/admin/js/admin-accounts-dashboard.js?v=8.0P.164')
+        .catch((error) => {
+          accountsModulePromise = null;
+          console.warn('[SBI Accounts] Module comptes non chargé :', error);
+          return null;
+        });
+    }
 
-    return import('/admin/js/admin-accounts-dashboard.js?v=8.0P.159')
-      .then((module) => {
-        module?.mountAdminAccountsDashboard?.();
-        return true;
-      })
-      .catch((error) => {
-        console.warn('[SBI Accounts] Module comptes non chargé :', error);
-        return false;
-      });
+    return accountsModulePromise.then((module) => {
+      module?.mountAdminAccountsDashboard?.();
+      return Boolean(module);
+    });
+  };
+
+  const scheduleAccountsMount = () => {
+    window.requestAnimationFrame(() => {
+      loadAccountsModule();
+    });
+  };
+
+  const startAccountsWatcher = () => {
+    if (accountsWatchStarted) return;
+    accountsWatchStarted = true;
+
+    const observer = new MutationObserver(() => {
+      if (document.getElementById('view-users')) scheduleAccountsMount();
+    });
+
+    observer.observe(document.documentElement, { childList: true, subtree: true });
+
+    window.addEventListener('popstate', scheduleAccountsMount);
+    window.addEventListener('sbi:components-ready', scheduleAccountsMount);
+    window.addEventListener('sbi:app-shell-rendered', scheduleAccountsMount);
+    window.addEventListener('sbi:accounts-rendered', scheduleAccountsMount);
   };
 
   const failSafe = window.setTimeout(() => {
     notifyReady();
     releasePreload();
+    startAccountsWatcher();
+    scheduleAccountsMount();
   }, 2200);
 
   window.SBI_COMPONENTS_READY = import('/admin/js/components/index.js')
@@ -59,6 +91,8 @@
       window.clearTimeout(failSafe);
       notifyReady();
       releasePreload();
+      startAccountsWatcher();
+      scheduleAccountsMount();
       return true;
     })
     .catch((error) => {
@@ -66,6 +100,8 @@
       window.clearTimeout(failSafe);
       notifyReady();
       releasePreload();
+      startAccountsWatcher();
+      scheduleAccountsMount();
       return false;
     });
 })();

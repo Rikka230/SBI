@@ -1020,6 +1020,38 @@ async function sendAccountResetEmail(account, resetLink, apiKey) {
     }, apiKey);
 }
 
+async function sendAccountFinalizationEmail(account, finalizationLink, apiKey) {
+    return sendBrevoEmail({
+        sender: {
+            name: SBI_SENDER_NAME,
+            email: SBI_SENDER_EMAIL
+        },
+        to: [{
+            email: account.email,
+            name: getAccountDisplayName(account)
+        }],
+        replyTo: {
+            email: SBI_CONTACT_EMAIL,
+            name: "Sport Business Institute"
+        },
+        subject: "SBI - Finalisez votre accès à la plateforme",
+        htmlContent: renderSbiEmailTemplate({
+            prenom: account.prenom || "",
+            nomExpediteur: "L’équipe SBI",
+            posteExpediteur: "Administration",
+            preheader: "Finalisez votre accès à votre espace SBI.",
+            messageHtml: `
+                <p style="margin:0 0 16px 0;">Votre compte Sport Business Institute a été créé, mais votre accès n’a pas encore été finalisé.</p>
+                <p style="margin:0 0 16px 0;">Pour activer votre espace personnel, cliquez sur le bouton ci-dessous et définissez votre mot de passe.</p>
+                ${buildActionButtonHtml(finalizationLink, "Finaliser mon compte")}
+                <p style="margin:0 0 16px 0;">Ce lien vous permet de finaliser votre accès à la plateforme SBI.</p>
+                <p style="margin:0;">Si vous avez déjà finalisé votre compte, vous pouvez ignorer ce message.</p>
+            `
+        }),
+        textContent: `Bonjour ${account.prenom || ""},\n\nVotre compte SBI a été créé, mais votre accès n’a pas encore été finalisé.\n\nFinalisez votre compte avec ce lien :\n${finalizationLink}\n\nSport Business Institute`
+    }, apiKey);
+}
+
 async function sendAccountDeletedEmail(account, apiKey) {
     return sendBrevoEmail({
         sender: {
@@ -1188,13 +1220,30 @@ function buildInitialAccountStatus() {
         firstLoginAt: null,
         lastLoginAt: null,
         lastAccessEmailSentAt: null,
-        emailVerifiedAt: null
+        emailVerifiedAt: null,
+        finalizationInviteSentAt: null,
+        finalizationInviteCount: 0,
+        finalizationReminderEnabled: true,
+        reminderCount: 0,
+        lastReminderSentAt: null,
+        finalizationEscalationAt: null,
+        finalizationEscalationResolvedAt: null,
+        finalizationEscalationResolvedBy: ""
     };
 }
 
 function keepActiveOrPendingPassword(accountData = {}) {
     const currentActivation = accountData.accountStatus?.activationState || accountData.activationState || "";
     return currentActivation === "active" ? "active" : "pending_password";
+}
+
+function hasAccountFinalizedAccess(accountData = {}) {
+    return Boolean(
+        accountData.accountStatus?.firstLoginAt
+        || accountData.firstLoginAt
+        || accountData.accountStatus?.activationState === "active"
+        || accountData.activationState === "active"
+    );
 }
 
 exports.adminCreateUserAccount = onCall({
@@ -1363,6 +1412,88 @@ exports.adminSendPasswordReset = onCall({
     return {
         success: true,
         message: `Email de réinitialisation envoyé à ${email}.`
+    };
+});
+
+
+
+exports.adminSendFinalizationInvite = onCall({
+    region: "europe-west1",
+    secrets: [BREVO_API_KEY],
+    timeoutSeconds: 20,
+    memory: "256MiB"
+}, async (request) => {
+    const db = admin.firestore();
+    const caller = await requireAdminCaller(request, db);
+    const data = request.data || {};
+    const targetUid = cleanString(data.uid, 160);
+
+    if (!targetUid) throw new HttpsError("invalid-argument", "UID utilisateur manquant.");
+
+    const targetDoc = await db.collection("users").doc(targetUid).get();
+    if (!targetDoc.exists) throw new HttpsError("not-found", "Compte utilisateur introuvable dans Firestore.");
+
+    const targetData = targetDoc.data() || {};
+    if (targetData.isGod === true && caller.data.isGod !== true) {
+        throw new HttpsError("permission-denied", "Seul le compte Suprême peut relancer le compte Suprême.");
+    }
+
+    if (targetData.statut === "suspendu") {
+        throw new HttpsError("failed-precondition", "Le compte est suspendu. Réactivez-le avant de renvoyer une invitation.");
+    }
+
+    if (hasAccountFinalizedAccess(targetData)) {
+        throw new HttpsError("failed-precondition", "Ce compte a déjà finalisé sa première connexion. Utilisez plutôt le reset mot de passe si nécessaire.");
+    }
+
+    const email = cleanEmail(targetData.email);
+    if (!isValidEmail(email)) throw new HttpsError("failed-precondition", "Email utilisateur invalide ou manquant.");
+
+    const apiKey = BREVO_API_KEY.value();
+    if (!apiKey) throw new HttpsError("failed-precondition", "Configuration Brevo manquante côté serveur.");
+
+    try {
+        const firebaseResetLink = await admin.auth().generatePasswordResetLink(email, SBI_AUTH_ACTION_SETTINGS);
+        const finalizationLink = buildSbiPasswordResetLink(firebaseResetLink);
+        await sendAccountFinalizationEmail({ ...targetData, email }, finalizationLink, apiKey);
+
+        const accountStatus = targetData.accountStatus || {};
+        const finalizationReminderEnabled = accountStatus.finalizationReminderEnabled === false ? false : true;
+
+        await targetDoc.ref.update({
+            "accountStatus.finalizationInviteSentAt": admin.firestore.FieldValue.serverTimestamp(),
+            "accountStatus.lastAccessEmailSentAt": admin.firestore.FieldValue.serverTimestamp(),
+            "accountStatus.activationState": "pending_password",
+            "accountStatus.finalizationReminderEnabled": finalizationReminderEnabled,
+            "accountStatus.finalizationInviteCount": admin.firestore.FieldValue.increment(1)
+        });
+
+        await sendAccountInternalEmail("Invitation finalisation envoyée", {
+            "Admin": caller.name,
+            "Admin email": caller.email,
+            "Utilisateur": getAccountDisplayName(targetData),
+            "Email": email,
+            "Rôle": getAccountRoleLabel(targetData.role),
+            "UID": targetUid
+        }, apiKey);
+    } catch (error) {
+        console.error("Erreur invitation finalisation SBI :", error.message, error.payload || "");
+        throw new HttpsError("internal", `Impossible d'envoyer l'invitation de finalisation : ${error.message}`);
+    }
+
+    await safeWriteAccountAuditLog(db, {
+        type: "account.finalization_invite_sent",
+        actorUid: caller.uid,
+        actorEmail: caller.email,
+        targetUid,
+        targetEmail: email,
+        targetRole: targetData.role || "",
+        source: "admin-manual"
+    });
+
+    return {
+        success: true,
+        message: `Invitation de finalisation envoyée à ${email}.`
     };
 });
 

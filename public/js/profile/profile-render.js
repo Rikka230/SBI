@@ -16,6 +16,7 @@ import { updateProfilePresenceStatus } from './profile-presence.js';
 const functionsInstance = getFunctions(app, 'europe-west1');
 const adminUpdateUserAccountCallable = httpsCallable(functionsInstance, 'adminUpdateUserAccount');
 const adminSendPasswordResetCallable = httpsCallable(functionsInstance, 'adminSendPasswordReset');
+const adminSendFinalizationInviteCallable = httpsCallable(functionsInstance, 'adminSendFinalizationInvite');
 
 const ACCOUNT_PREPARATION_LABELS = {
   not_prepared: 'Compte à préparer',
@@ -207,6 +208,43 @@ function normalizePreparationState(value) {
   return Object.prototype.hasOwnProperty.call(ACCOUNT_PREPARATION_LABELS, value) ? value : 'not_prepared';
 }
 
+function hasFinalizedFirstAccess(data = {}) {
+  return Boolean(
+    data.accountStatus?.firstLoginAt
+    || data.firstLoginAt
+    || data.accountStatus?.activationState === 'active'
+    || data.activationState === 'active'
+  );
+}
+
+function getFinalizationInfo(data = {}) {
+  const finalized = hasFinalizedFirstAccess(data);
+  const inviteCount = Number(data.accountStatus?.finalizationInviteCount || 0);
+  const lastInviteAt = data.accountStatus?.finalizationInviteSentAt || null;
+
+  if (finalized) {
+    return {
+      finalized,
+      label: 'Compte finalisé',
+      detail: formatSbiDate(data.accountStatus?.firstLoginAt || data.firstLoginAt || data.accountStatus?.lastLoginAt || data.lastLoginAt, 'Première connexion validée'),
+      tone: '#2ed573',
+      inviteCount,
+      lastInviteAt
+    };
+  }
+
+  return {
+    finalized,
+    label: 'Finalisation en attente',
+    detail: lastInviteAt
+      ? `Dernière invitation : ${formatSbiDate(lastInviteAt, 'date inconnue')}`
+      : 'Aucune relance de finalisation enregistrée',
+    tone: '#fbbc04',
+    inviteCount,
+    lastInviteAt
+  };
+}
+
 function renderAccountActionsPanel({ uid, data = {}, reloadProfile }) {
   const list = document.getElementById('prof-activity-list');
   const group = list?.closest?.('.data-group');
@@ -222,6 +260,7 @@ function renderAccountActionsPanel({ uid, data = {}, reloadProfile }) {
   const currentState = normalizePreparationState(data.accountStatus?.preparationState || data.preparationState || 'not_prepared');
   const currentNote = getAccountInternalNote(data);
   const noteMeta = getAccountInternalNoteMeta(data);
+  const finalizationInfo = getFinalizationInfo(data);
   const notePreviewHtml = currentNote
     ? escapeHTML(currentNote).replace(/\n/g, '<br>')
     : 'Aucune note interne enregistrée pour ce compte.';
@@ -238,18 +277,45 @@ function renderAccountActionsPanel({ uid, data = {}, reloadProfile }) {
         <div>
           <strong style="color:#fff;">Actions compte</strong>
           <p style="margin:0.25rem 0 0; color:var(--text-muted); font-size:0.82rem; line-height:1.45;">
-            Suivi manuel, notes internes et renvoi d’accès sécurisé.
+            Suivi manuel, notes internes, accès et finalisation du compte.
           </p>
         </div>
-        <button id="prof-resend-access-btn" type="button" style="
-          border:1px solid rgba(251,188,4,0.45);
-          background:rgba(251,188,4,0.10);
-          color:#fbbc04;
-          border-radius:999px;
-          padding:0.55rem 0.85rem;
-          font-weight:800;
-          cursor:pointer;
-        ">Renvoyer accès</button>
+        <div style="display:flex; gap:0.55rem; flex-wrap:wrap; justify-content:flex-end;">
+          <button id="prof-send-finalization-btn" type="button" style="
+            border:1px solid rgba(42,87,255,0.55);
+            background:rgba(42,87,255,0.12);
+            color:#dbe5ff;
+            border-radius:999px;
+            padding:0.55rem 0.85rem;
+            font-weight:900;
+            cursor:pointer;
+          ">Renvoyer finalisation</button>
+          <button id="prof-resend-access-btn" type="button" style="
+            border:1px solid rgba(251,188,4,0.45);
+            background:rgba(251,188,4,0.10);
+            color:#fbbc04;
+            border-radius:999px;
+            padding:0.55rem 0.85rem;
+            font-weight:800;
+            cursor:pointer;
+          ">Reset accès</button>
+        </div>
+      </div>
+
+      <div style="
+        margin:0 0 0.85rem 0;
+        padding:0.8rem 0.9rem;
+        border:1px solid rgba(255,255,255,0.10);
+        border-radius:10px;
+        background:rgba(255,255,255,0.035);
+      ">
+        <div style="display:flex; justify-content:space-between; gap:0.75rem; flex-wrap:wrap; align-items:center;">
+          <strong style="color:${finalizationInfo.tone}; font-size:0.88rem;">${escapeHTML(finalizationInfo.label)}</strong>
+          <span style="color:var(--text-muted); font-size:0.76rem;">Relances manuelles : ${finalizationInfo.inviteCount}</span>
+        </div>
+        <p style="margin:0.35rem 0 0; color:var(--text-muted); font-size:0.8rem; line-height:1.45;">
+          ${escapeHTML(finalizationInfo.detail)}
+        </p>
       </div>
 
       <label style="display:block; color:var(--text-muted); font-size:0.78rem; font-weight:800; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:0.35rem;">
@@ -325,9 +391,17 @@ function renderAccountActionsPanel({ uid, data = {}, reloadProfile }) {
   const status = panel.querySelector('#prof-account-actions-status');
   const saveButton = panel.querySelector('#prof-save-account-followup-btn');
   const resendButton = panel.querySelector('#prof-resend-access-btn');
+  const finalizationButton = panel.querySelector('#prof-send-finalization-btn');
   const noteTextarea = panel.querySelector('#prof-account-note');
   const notePreviewText = panel.querySelector('#prof-account-note-preview-text');
   const notePreviewMeta = panel.querySelector('#prof-account-note-meta');
+
+  if (finalizationInfo.finalized && finalizationButton) {
+    finalizationButton.disabled = true;
+    finalizationButton.style.opacity = '0.55';
+    finalizationButton.style.cursor = 'not-allowed';
+    finalizationButton.title = 'Le compte a déjà finalisé sa première connexion.';
+  }
 
   saveButton?.addEventListener('click', async () => {
     const preparationState = panel.querySelector('#prof-account-preparation-state')?.value || 'not_prepared';
@@ -367,6 +441,38 @@ function renderAccountActionsPanel({ uid, data = {}, reloadProfile }) {
     } finally {
       saveButton.disabled = false;
       saveButton.style.opacity = '';
+    }
+  });
+
+  finalizationButton?.addEventListener('click', async () => {
+    if (finalizationInfo.finalized) return;
+
+    const confirmed = window.confirm('Renvoyer une invitation de finalisation à ce compte ?');
+    if (!confirmed) return;
+
+    finalizationButton.disabled = true;
+    finalizationButton.style.opacity = '0.65';
+    if (status) {
+      status.style.color = 'var(--text-muted)';
+      status.textContent = 'Envoi de l’invitation de finalisation...';
+    }
+
+    try {
+      await adminSendFinalizationInviteCallable({ uid });
+      if (status) {
+        status.style.color = '#2ed573';
+        status.textContent = 'Invitation de finalisation envoyée.';
+      }
+      await reloadProfile?.(uid);
+    } catch (error) {
+      console.warn('[SBI Profile] Invitation de finalisation impossible :', error);
+      if (status) {
+        status.style.color = '#ff4a4a';
+        status.textContent = getCallableUiMessage(error, 'Envoi impossible.');
+      }
+    } finally {
+      finalizationButton.disabled = false;
+      finalizationButton.style.opacity = '';
     }
   });
 
@@ -492,6 +598,10 @@ function getAccountLogMeta(type = '') {
       label: 'Reset mot de passe envoyé',
       color: '#fbbc04'
     },
+    'account.finalization_invite_sent': {
+      label: 'Invitation finalisation envoyée',
+      color: '#2A57FF'
+    },
     'account.public_password_reset_requested': {
       label: 'Demande mot de passe oublié',
       color: '#fbbc04'
@@ -547,6 +657,7 @@ function getAccountLogActor(log = {}) {
 function getAccountLogDetails(log = {}) {
   const details = [];
 
+  if (log.type === 'account.finalization_invite_sent') details.push('Email finalisation envoyé');
   if (log.emailSent === true) details.push('Email envoyé');
   if (log.emailSent === false) details.push('Email non envoyé');
   if (log.page) details.push(`Page : ${log.page}`);

@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.161 / P2H.2-C.1
+ * SBI 8.0P.164 / P2H.2-E.1
  * Structure lecture seule "Comptes & accès".
  *
  * Objectif :
@@ -29,7 +29,7 @@ function injectStyle() {
   const link = document.createElement('link');
   link.id = 'sbi-admin-accounts-css';
   link.rel = 'stylesheet';
-  link.href = '/admin/css/admin-accounts.css?v=8.0P.161';
+  link.href = '/admin/css/admin-accounts.css?v=8.0P.164';
   document.head.append(link);
 }
 
@@ -381,7 +381,7 @@ function startAccountsSnapshot() {
     enhanceRenderedAccountRows();
 
     window.SBI_ACCOUNTS_DASHBOARD_STATE = {
-      version: '8.0P.161',
+      version: '8.0P.164',
       users: users.length,
       updatedAt: new Date().toISOString()
     };
@@ -436,8 +436,28 @@ function bindProfileNavigation() {
   }, true);
 }
 
+function resetAccountsMountIfDomWasReplaced() {
+  const section = document.getElementById('view-users');
+  if (!section) return false;
+
+  const needsRemount = mounted && !section.classList.contains('sbi-accounts-view');
+  if (!needsRemount) return false;
+
+  listObserver?.disconnect?.();
+  listObserver = null;
+  mounted = false;
+  return true;
+}
+
 function mount() {
-  if (mounted) return;
+  resetAccountsMountIfDomWasReplaced();
+
+  if (mounted) {
+    ensureAccountsShell();
+    enhanceRenderedAccountRows();
+    return;
+  }
+
   if (!ensureAccountsShell()) return;
 
   mounted = true;
@@ -464,6 +484,14 @@ export function mountAdminAccountsDashboard() {
     tryMount();
   }
 }
+
+window.addEventListener('sbi:accounts-rendered', () => {
+  window.requestAnimationFrame(mount);
+});
+
+window.addEventListener('sbi:components-ready', () => {
+  window.requestAnimationFrame(mount);
+});
 
 function escapeHtml(value) {
   return String(value ?? '')
