@@ -1,11 +1,14 @@
 /*
- * SBI 8.0P.148 - Rendu public blocs conformité / Qualiopi / RNCP
+ * SBI 8.0P.150 - Rendu public blocs conformité / Qualiopi / RNCP
  *
- * Lit publicFormations.complianceSections et injecte une section dédiée
- * dans la fiche formation ouverte. Compatible avec le rendu existant.
+ * Hotfix P2G.4 :
+ * - charge les formations avec la même requête publique que sbi-public-pages.js
+ *   (status in published / coming_soon) pour respecter les rules Firestore ;
+ * - injecte les blocs dans la fiche publique dès qu'elle s'ouvre ;
+ * - fonctionne en accès direct et après ouverture dynamique de fiche.
  */
 
-const SBI_FORMATION_COMPLIANCE_VERSION = '8.0P.148';
+const SBI_FORMATION_COMPLIANCE_VERSION = '8.0P.150';
 const PUBLIC_FORMATIONS_COLLECTION = 'publicFormations';
 const FORMATION_QUERY_KEY = 'formation';
 
@@ -21,7 +24,7 @@ const COMPLIANCE_LABELS = [
 
 let firestoreToolsPromise = null;
 let cachedFormationsPromise = null;
-let lastRenderedKey = '';
+let lastRenderSignature = '';
 
 function text(value, fallback = '') {
   if (value === null || value === undefined) return fallback;
@@ -46,30 +49,49 @@ async function getFirestoreTools() {
     ]).then(([firebaseModule, firestoreModule]) => ({
       db: firebaseModule.db,
       collection: firestoreModule.collection,
-      getDocs: firestoreModule.getDocs
+      getDocs: firestoreModule.getDocs,
+      query: firestoreModule.query,
+      where: firestoreModule.where
     }));
   }
 
   return firestoreToolsPromise;
 }
 
+function normalizeCompliance(raw = {}) {
+  const source = raw && typeof raw === 'object' ? raw : {};
+  return COMPLIANCE_LABELS.reduce((payload, [key]) => {
+    payload[key] = text(source[key]);
+    return payload;
+  }, {});
+}
+
 async function loadPublicFormations({ force = false } = {}) {
   if (force) cachedFormationsPromise = null;
 
   if (!cachedFormationsPromise) {
-    cachedFormationsPromise = getFirestoreTools().then(async ({ db, collection, getDocs }) => {
-      const snapshot = await getDocs(collection(db, PUBLIC_FORMATIONS_COLLECTION));
+    cachedFormationsPromise = getFirestoreTools().then(async ({ db, collection, getDocs, query, where }) => {
+      const ref = collection(db, PUBLIC_FORMATIONS_COLLECTION);
+
+      const snapshot = await getDocs(
+        query(ref, where('status', 'in', ['published', 'coming_soon']))
+      );
+
       const items = [];
       snapshot.forEach((docSnap) => {
         const data = docSnap.data() || {};
         const title = text(data.title || data.titre || data.name, 'Formation SBI');
+        const slug = normalizeSlug(data.slug, normalizeSlug(title, docSnap.id));
+
         items.push({
           id: docSnap.id,
           title,
-          slug: normalizeSlug(data.slug, normalizeSlug(title, docSnap.id)),
-          complianceSections: data.complianceSections || {}
+          slug,
+          status: text(data.status || data.publicStatus, 'published'),
+          complianceSections: normalizeCompliance(data.complianceSections)
         });
       });
+
       return items;
     });
   }
@@ -79,11 +101,23 @@ async function loadPublicFormations({ force = false } = {}) {
 
 function getCurrentSlug() {
   const params = new URLSearchParams(window.location.search);
-  return normalizeSlug(params.get(FORMATION_QUERY_KEY) || window.location.hash.replace('#', ''));
+  return normalizeSlug(params.get(FORMATION_QUERY_KEY) || params.get('slug') || window.location.hash.replace('#', ''));
 }
 
-function getSheetTitle() {
-  return text(document.querySelector('[data-sbi-formation-sheet] .public-formation-sheet-hero-copy h2')?.textContent);
+function getOpenSheet() {
+  return document.querySelector('[data-sbi-formation-sheet], .public-formation-sheet');
+}
+
+function getSheetTitle(sheet = getOpenSheet()) {
+  return text(
+    sheet?.querySelector('.public-formation-sheet-hero-copy h2')?.textContent
+    || sheet?.querySelector('h2')?.textContent
+  );
+}
+
+function getSheetSlugCandidate(sheet = getOpenSheet()) {
+  const title = getSheetTitle(sheet);
+  return normalizeSlug(title);
 }
 
 function getVisibleComplianceEntries(compliance = {}) {
@@ -137,6 +171,7 @@ function ensureStyle() {
       margin: 0;
       color: var(--text-muted, #9ba7bd);
       line-height: 1.55;
+      white-space: pre-line;
     }
 
     @media (max-width: 720px) {
@@ -149,16 +184,17 @@ function ensureStyle() {
 }
 
 function renderComplianceBlock(sheet, formation) {
-  if (!sheet || !formation) return;
-
-  const entries = getVisibleComplianceEntries(formation.complianceSections);
-  sheet.querySelector('[data-sbi-formation-compliance]')?.remove();
-  if (!entries.length) return;
-
-  ensureStyle();
+  if (!sheet || !formation) return false;
 
   const details = sheet.querySelector('.public-formation-details');
-  if (!details) return;
+  if (!details) return false;
+
+  const entries = getVisibleComplianceEntries(formation.complianceSections);
+  details.querySelector('[data-sbi-formation-compliance]')?.remove();
+
+  if (!entries.length) return false;
+
+  ensureStyle();
 
   const block = document.createElement('div');
   block.className = 'public-formation-compliance-block';
@@ -194,60 +230,114 @@ function renderComplianceBlock(sheet, formation) {
     .find((heading) => heading.textContent.trim().toLowerCase() === 'programme')
     ?.closest('.public-formation-detail-block');
 
+  const infoBlock = Array.from(details.querySelectorAll('.public-formation-detail-block h4'))
+    .find((heading) => heading.textContent.trim().toLowerCase() === 'informations')
+    ?.closest('.public-formation-detail-block');
+
+  const cta = details.querySelector('.public-formation-cta');
+
   if (programBlock?.parentNode) {
     programBlock.parentNode.insertBefore(block, programBlock);
+  } else if (infoBlock?.parentNode) {
+    infoBlock.parentNode.insertBefore(block, infoBlock);
+  } else if (cta?.parentNode) {
+    cta.parentNode.insertBefore(block, cta);
   } else {
-    const cta = details.querySelector('.public-formation-cta');
-    if (cta?.parentNode) cta.parentNode.insertBefore(block, cta);
-    else details.append(block);
+    details.append(block);
   }
+
+  return true;
 }
 
-async function tryRenderCurrentSheet({ force = false } = {}) {
-  const sheet = document.querySelector('[data-sbi-formation-sheet]');
+async function renderCurrentFormationCompliance({ force = false } = {}) {
+  const sheet = getOpenSheet();
   if (!sheet) {
-    lastRenderedKey = '';
-    return;
+    lastRenderSignature = '';
+    return false;
   }
 
-  const slug = getCurrentSlug();
-  const title = getSheetTitle();
-  const renderKey = slug || title;
+  const currentSlug = getCurrentSlug();
+  const sheetTitle = getSheetTitle(sheet);
+  const sheetSlug = getSheetSlugCandidate(sheet);
+  const signature = `${currentSlug}|${sheetSlug}|${sheetTitle}|${force ? Date.now() : ''}`;
 
-  if (!force && renderKey && renderKey === lastRenderedKey && sheet.querySelector('[data-sbi-formation-compliance]')) return;
-  lastRenderedKey = renderKey;
+  if (!force && lastRenderSignature === signature && sheet.querySelector('[data-sbi-formation-compliance]')) {
+    return true;
+  }
 
   try {
     const formations = await loadPublicFormations({ force });
-    const formation = formations.find((item) => slug && item.slug === slug)
-      || formations.find((item) => title && item.title === title);
+    const formation = formations.find((item) => currentSlug && item.slug === currentSlug)
+      || formations.find((item) => sheetSlug && item.slug === sheetSlug)
+      || formations.find((item) => sheetTitle && item.title.trim().toLowerCase() === sheetTitle.trim().toLowerCase());
 
-    renderComplianceBlock(sheet, formation);
+    const rendered = renderComplianceBlock(sheet, formation);
+    lastRenderSignature = signature;
+
+    window.SBI_LAST_FORMATION_COMPLIANCE_STATUS = {
+      version: SBI_FORMATION_COMPLIANCE_VERSION,
+      rendered,
+      currentSlug,
+      sheetSlug,
+      sheetTitle,
+      matched: formation?.slug || '',
+      hasEntries: Boolean(formation && getVisibleComplianceEntries(formation.complianceSections).length)
+    };
+
+    return rendered;
   } catch (error) {
     console.warn('[SBI Formation Compliance] Rendu impossible :', error);
+    window.SBI_LAST_FORMATION_COMPLIANCE_STATUS = {
+      version: SBI_FORMATION_COMPLIANCE_VERSION,
+      rendered: false,
+      error: String(error?.message || error)
+    };
+    return false;
   }
+}
+
+function scheduleRender({ force = false, delay = 80 } = {}) {
+  window.setTimeout(() => {
+    renderCurrentFormationCompliance({ force });
+  }, delay);
+
+  window.setTimeout(() => {
+    renderCurrentFormationCompliance({ force });
+  }, delay + 420);
 }
 
 function init() {
   if ((document.body?.dataset?.sbiPublicPage || '') !== 'formations') return;
 
   const observer = new MutationObserver(() => {
-    window.requestAnimationFrame(() => tryRenderCurrentSheet());
-  });
-  observer.observe(document.body, { childList: true, subtree: true });
-
-  window.addEventListener('popstate', () => tryRenderCurrentSheet({ force: true }));
-  window.addEventListener('sbi:public-shell:navigated', () => tryRenderCurrentSheet({ force: true }));
-  window.addEventListener('sbi:public-shell:page-ready', () => tryRenderCurrentSheet({ force: true }));
-
-  [180, 520, 1100, 2200].forEach((delay) => {
-    window.setTimeout(() => tryRenderCurrentSheet({ force: true }), delay);
+    window.requestAnimationFrame(() => scheduleRender());
   });
 
-  console.info(`[SBI Formation Compliance] ${SBI_FORMATION_COMPLIANCE_VERSION} chargé`);
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['class', 'hidden', 'data-sbi-formation-sheet']
+  });
+
+  document.addEventListener('click', (event) => {
+    if (event.target?.closest?.('[data-formation-slug], .sbi-home-formation-card, .parcours-card')) {
+      scheduleRender({ force: true, delay: 120 });
+    }
+  }, true);
+
+  window.addEventListener('popstate', () => scheduleRender({ force: true }));
+  window.addEventListener('pageshow', () => scheduleRender({ force: true }));
+  window.addEventListener('sbi:public-shell:navigated', () => scheduleRender({ force: true }));
+
+  window.SBI_RENDER_FORMATION_COMPLIANCE = (options = {}) => renderCurrentFormationCompliance({ force: options.force !== false });
+  window.SBI_REFRESH_FORMATION_COMPLIANCE_CACHE = () => {
+    cachedFormationsPromise = null;
+    return renderCurrentFormationCompliance({ force: true });
+  };
+
+  [120, 650, 1400].forEach((delay) => scheduleRender({ force: true, delay }));
 }
-
-window.SBI_RENDER_FORMATION_COMPLIANCE = tryRenderCurrentSheet;
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init, { once: true });
