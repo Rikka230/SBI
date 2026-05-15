@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.155',
+  version: '8.0P.156',
   branch: 'private-admin-accounts-mail-workflow',
-  channel: 'ADMIN MAIL WORKFLOW P2H.2-A',
-  stage: 'PRIVATE P2H.2-A ACCOUNTS STRUCTURE DASHBOARD',
+  channel: 'ADMIN MAIL WORKFLOW P2H.2-A.1',
+  stage: 'PRIVATE P2H.2-A.1 REMOVE ACCOUNTS BANNER',
   updatedAt: '2026-05-15',
-  label: 'SBI 8.0P.155 - PRIVATE P2H.2-A ACCOUNTS STRUCTURE DASHBOARD'
+  label: 'SBI 8.0P.156 - PRIVATE P2H.2-A.1 REMOVE ACCOUNTS BANNER'
 };
 
 export function getSbiVersionLabel() {

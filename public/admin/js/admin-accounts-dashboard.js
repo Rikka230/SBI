@@ -1,9 +1,10 @@
 /**
- * SBI 8.0P.155 / P2H.2-A
+ * SBI 8.0P.156 / P2H.2-A.1
  * Structure lecture seule "Comptes & accès".
  *
  * Objectif :
- * - préparer une vraie section Comptes avant migration élèves ;
+ * - garder la section Comptes propre ;
+ * - retirer le bandeau "support migration" ;
  * - ne pas importer, supprimer en masse ou envoyer de mails groupés ;
  * - ne pas toucher aux workflows sensibles déjà validés ;
  * - enrichir la lecture admin à partir de Firestore.
@@ -28,7 +29,7 @@ function injectStyle() {
   const link = document.createElement('link');
   link.id = 'sbi-admin-accounts-css';
   link.rel = 'stylesheet';
-  link.href = '/admin/css/admin-accounts.css?v=8.0P.155';
+  link.href = '/admin/css/admin-accounts.css?v=8.0P.156';
   document.head.append(link);
 }
 
@@ -70,10 +71,6 @@ function isOnline(user) {
   if (!lastSeenMs) return false;
 
   return Date.now() - lastSeenMs <= ONLINE_TTL_MS;
-}
-
-function getCreationDate(user) {
-  return user.createdAt || user.dateCreation || user.created_at || null;
 }
 
 function getLastActivityDate(user) {
@@ -169,16 +166,16 @@ function getActivationInfo(user) {
   };
 }
 
-function getMigrationInfo(user) {
-  const state = user?.accountStatus?.migrationState || user?.migrationState || 'not_started';
+function getAccountPreparationInfo(user) {
+  const state = user?.accountStatus?.preparationState || user?.preparationState || 'not_prepared';
   const labels = {
-    not_started: 'Non démarrée',
+    not_prepared: 'Compte à préparer',
     to_check: 'À vérifier',
     ready: 'Prêt',
-    migrated: 'Migré'
+    completed: 'Terminé'
   };
 
-  return labels[state] || 'Non démarrée';
+  return labels[state] || 'Compte à préparer';
 }
 
 function getAccessCount(user) {
@@ -187,15 +184,6 @@ function getAccessCount(user) {
 
   const set = new Set([...ids, ...access].filter(Boolean));
   return set.size;
-}
-
-function buildStatCard(id, label, value = '-') {
-  return `
-    <article class="sbi-account-stat" data-sbi-account-stat="${id}">
-      <span>${label}</span>
-      <strong>${value}</strong>
-    </article>
-  `;
 }
 
 function ensureAccountsShell() {
@@ -211,11 +199,14 @@ function ensureAccountsShell() {
   if (header) {
     header.classList.add('sbi-accounts-header');
 
-    if (!header.querySelector('.sbi-accounts-header-copy')) {
-      const copy = document.createElement('p');
-      copy.className = 'sbi-accounts-header-copy';
-      copy.textContent = 'Base de suivi des accès avant migration élèves : création, activation, rôles, état de connexion et accès formations.';
-      heading?.insertAdjacentElement('afterend', copy);
+    const oldIntro = header.querySelector('.sbi-accounts-header-copy');
+    if (oldIntro) oldIntro.remove();
+
+    if (!header.querySelector('.sbi-accounts-header-note')) {
+      const note = document.createElement('p');
+      note.className = 'sbi-accounts-header-note';
+      note.textContent = 'Création, accès, activation et vérification des comptes.';
+      heading?.insertAdjacentElement('afterend', note);
     }
   }
 
@@ -235,74 +226,13 @@ function ensureAccountsShell() {
     const listTitle = workspace.lastElementChild?.querySelector('h3');
     if (listTitle) listTitle.textContent = 'Liste des comptes';
 
-    if (!workspace.previousElementSibling?.classList?.contains('sbi-accounts-overview')) {
-      const overview = document.createElement('div');
-      overview.className = 'sbi-accounts-overview';
-      overview.innerHTML = `
-        <div class="sbi-accounts-overview-main">
-          <div>
-            <span class="sbi-kicker">Support migration</span>
-            <h3>Suivi des comptes</h3>
-            <p>Cette vue prépare la migration : elle donne une lecture claire des comptes existants sans lancer d’import ni d’action groupée.</p>
-          </div>
-          <div class="sbi-accounts-roadmap">
-            <span>Étape actuelle</span>
-            <strong>P2H.2-A</strong>
-            <small>Structure Comptes</small>
-          </div>
-        </div>
-        <div class="sbi-accounts-stats">
-          ${buildStatCard('total', 'Comptes')}
-          ${buildStatCard('students', 'Élèves')}
-          ${buildStatCard('teachers', 'Professeurs')}
-          ${buildStatCard('admins', 'Admins')}
-          ${buildStatCard('never', 'Jamais connectés')}
-          ${buildStatCard('suspended', 'Suspendus')}
-          ${buildStatCard('online', 'En ligne')}
-          ${buildStatCard('tocheck', 'À vérifier')}
-        </div>
-      `;
-      workspace.parentNode.insertBefore(overview, workspace);
+    const previousOverview = workspace.previousElementSibling;
+    if (previousOverview?.classList?.contains('sbi-accounts-overview')) {
+      previousOverview.remove();
     }
   }
 
   return true;
-}
-
-function updateStat(id, value) {
-  const card = document.querySelector(`[data-sbi-account-stat="${id}"] strong`);
-  if (card) card.textContent = String(value);
-}
-
-function renderOverview(users) {
-  const stats = users.reduce((acc, user) => {
-    acc.total += 1;
-    if (user.role === 'student') acc.students += 1;
-    if (user.role === 'teacher') acc.teachers += 1;
-    if (user.role === 'admin' || user.isGod === true) acc.admins += 1;
-    if (!hasConnected(user)) acc.never += 1;
-    if (user.statut === 'suspendu') acc.suspended += 1;
-    if (isOnline(user)) acc.online += 1;
-
-    const activation = getActivationInfo(user);
-    const migration = user.accountStatus?.migrationState || user.migrationState;
-    if (activation.tone === 'warning' || activation.tone === 'danger' || migration === 'to_check') {
-      acc.tocheck += 1;
-    }
-
-    return acc;
-  }, {
-    total: 0,
-    students: 0,
-    teachers: 0,
-    admins: 0,
-    never: 0,
-    suspended: 0,
-    online: 0,
-    tocheck: 0
-  });
-
-  Object.entries(stats).forEach(([key, value]) => updateStat(key, value));
 }
 
 function enhanceRenderedAccountRows() {
@@ -342,7 +272,7 @@ function enhanceRenderedAccountRows() {
       statusCell.classList.add('sbi-account-status-cell');
       statusCell.innerHTML = `
         <span class="sbi-status-dot sbi-status-${activation.tone}">${escapeHtml(activation.label)}</span>
-        <small>${escapeHtml(getMigrationInfo(user))}</small>
+        <small>${escapeHtml(getAccountPreparationInfo(user))}</small>
       `;
     }
 
@@ -351,7 +281,7 @@ function enhanceRenderedAccountRows() {
       `Activation : ${activation.label}`,
       `Détail : ${activation.detail}`,
       `Dernière activité : ${lastActivity}`,
-      `Migration : ${getMigrationInfo(user)}`
+      `Compte : ${getAccountPreparationInfo(user)}`
     ].join('\n');
   });
 }
@@ -381,11 +311,10 @@ function startAccountsSnapshot() {
     });
 
     accountsById = nextMap;
-    renderOverview(users);
     enhanceRenderedAccountRows();
 
     window.SBI_ACCOUNTS_DASHBOARD_STATE = {
-      version: '8.0P.155',
+      version: '8.0P.156',
       users: users.length,
       updatedAt: new Date().toISOString()
     };
