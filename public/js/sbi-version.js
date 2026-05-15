@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.152',
+  version: '8.0P.153',
   branch: 'private-admin-accounts-mail-workflow',
-  channel: 'ADMIN MAIL WORKFLOW P2G.6',
-  stage: 'PRIVATE P2G.6 PUBLIC QUALITY ACCORDION',
+  channel: 'ADMIN MAIL WORKFLOW P2G.7',
+  stage: 'PRIVATE P2G.7 PUBLIC QUALITY FULLWIDTH BAND',
   updatedAt: '2026-05-15',
-  label: 'SBI 8.0P.152 - PRIVATE P2G.6 PUBLIC QUALITY ACCORDION'
+  label: 'SBI 8.0P.153 - PRIVATE P2G.7 PUBLIC QUALITY FULLWIDTH BAND'
 };
 
 export function getSbiVersionLabel() {

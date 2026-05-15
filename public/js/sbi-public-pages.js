@@ -35,7 +35,7 @@ async function getStorageTools() {
 
 const PUBLIC_FORMATIONS_COLLECTION = 'publicFormations';
 const PUBLIC_RESOURCES_COLLECTION = 'publicResources';
-const PUBLIC_CONTENT_VERSION = '8.0P.151';
+const PUBLIC_CONTENT_VERSION = '8.0P.153';
 
 const DEFAULT_COVER_LABEL = 'SBI';
 const COMING_SOON_COVER_URL = '/assets/coming.png';
@@ -637,66 +637,100 @@ function ensureComplianceDetailsStyles() {
   const style = document.createElement('style');
   style.id = 'sbi-public-compliance-details-style';
   style.textContent = `
-    .public-formation-quality-block {
+    .public-formation-sheet .public-formation-quality-band {
+      grid-column: 1 / -1;
+      width: 100%;
+      padding: 0;
       overflow: hidden;
+      border: 1px solid rgba(126, 181, 255, 0.22);
+      background: linear-gradient(135deg, rgba(10, 18, 34, 0.96), rgba(7, 10, 20, 0.92));
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
     }
 
-    .public-formation-quality-block summary {
+    .public-formation-sheet .public-formation-quality-band summary {
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 1rem;
+      min-height: 3.35rem;
+      padding: 1rem 1.1rem;
       cursor: pointer;
       list-style: none;
+      border-left: 3px solid var(--public-blue, #2f7dff);
+      background: rgba(47, 125, 255, 0.06);
     }
 
-    .public-formation-quality-block summary::-webkit-details-marker {
+    .public-formation-sheet .public-formation-quality-band summary::-webkit-details-marker {
       display: none;
     }
 
-    .public-formation-quality-block summary::after {
+    .public-formation-sheet .public-formation-quality-band summary h4 {
+      margin: 0;
+      color: #fff;
+      font-size: 0.94rem;
+      letter-spacing: 0.075em;
+      text-transform: uppercase;
+    }
+
+    .public-formation-sheet .public-formation-quality-band summary::after {
       content: '+';
       display: inline-grid;
       place-items: center;
-      width: 1.55rem;
-      height: 1.55rem;
-      border: 1px solid rgba(87, 130, 255, 0.35);
+      width: 1.75rem;
+      height: 1.75rem;
+      border: 1px solid rgba(87, 130, 255, 0.45);
       border-radius: 999px;
-      color: #cfe0ff;
+      color: #dce8ff;
       font-size: 1rem;
       line-height: 1;
       flex: 0 0 auto;
+      background: rgba(87, 130, 255, 0.08);
     }
 
-    .public-formation-quality-block[open] summary::after {
+    .public-formation-sheet .public-formation-quality-band[open] summary {
+      border-bottom: 1px solid rgba(126, 181, 255, 0.14);
+    }
+
+    .public-formation-sheet .public-formation-quality-band[open] summary::after {
       content: '−';
     }
 
-    .public-formation-quality-block summary h4 {
-      margin-bottom: 0;
-    }
-
-    .public-formation-quality-grid {
+    .public-formation-sheet .public-formation-quality-content {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 0.85rem;
-      margin-top: 1rem;
+      gap: 1rem;
+      padding: 1rem;
     }
 
-    .public-formation-quality-grid .public-formation-mini-section {
+    .public-formation-sheet .public-formation-quality-card {
       min-width: 0;
-      padding: 0.85rem;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 10px;
-      background: rgba(255, 255, 255, 0.025);
+      padding: 1rem;
+      border: 1px solid rgba(126, 181, 255, 0.14);
+      background: rgba(255, 255, 255, 0.028);
     }
 
-    .public-formation-quality-grid .public-formation-mini-section p + p {
-      margin-top: 0.65rem;
+    .public-formation-sheet .public-formation-quality-card strong {
+      display: block;
+      margin: 0 0 0.55rem;
+      color: #f3f7ff;
+      font-size: 0.88rem;
+      letter-spacing: 0.035em;
     }
 
-    @media (max-width: 720px) {
-      .public-formation-quality-grid {
+    .public-formation-sheet .public-formation-quality-card p {
+      margin: 0;
+      color: rgba(224, 235, 255, 0.74);
+      line-height: 1.62;
+    }
+
+    .public-formation-sheet .public-formation-quality-card p + p {
+      margin-top: 0.75rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.075);
+    }
+
+    @media (max-width: 820px) {
+      .public-formation-sheet .public-formation-quality-content {
         grid-template-columns: 1fr;
       }
     }
@@ -718,16 +752,16 @@ function appendComplianceSections(container, compliance = {}) {
   ensureComplianceDetailsStyles();
 
   const block = document.createElement('details');
-  block.className = 'public-formation-detail-block public-formation-quality-block';
+  block.className = 'public-formation-detail-block public-formation-quality-band';
 
   const summary = document.createElement('summary');
   summary.append(createElement('h4', 'text-italic', 'Informations pédagogiques et qualité'));
   block.append(summary);
 
-  const grid = createElement('div', 'public-formation-quality-grid');
+  const content = createElement('div', 'public-formation-quality-content');
 
   sections.forEach((section) => {
-    const item = createElement('article', 'public-formation-mini-section');
+    const item = createElement('article', 'public-formation-quality-card');
     item.append(createElement('strong', 'text-italic', section.title));
 
     const paragraphs = splitComplianceParagraphs(section.content);
@@ -735,10 +769,10 @@ function appendComplianceSections(container, compliance = {}) {
       item.append(createElement('p', 'text-italic', paragraphText));
     });
 
-    grid.append(item);
+    content.append(item);
   });
 
-  block.append(grid);
+  block.append(content);
   container.append(block);
 }
 
@@ -784,7 +818,6 @@ function createFormationDetails(formation) {
   appendList(details, 'Prérequis', formation.prerequisites);
   appendList(details, 'Points forts', formation.highlights);
   appendList(details, 'Débouchés', formation.outcomes);
-  appendComplianceSections(details, formation.complianceSections);
 
   if (formation.program?.length) {
     const program = createElement('div', 'public-formation-detail-block');
@@ -809,6 +842,8 @@ function createFormationDetails(formation) {
     });
     details.append(sections);
   }
+
+  appendComplianceSections(details, formation.complianceSections);
 
   const ctaHref = text(formation.cta?.href, `contact.html?formation=${encodeURIComponent(formation.slug)}`);
   const ctaLabel = text(formation.cta?.label, 'Demander des informations');
