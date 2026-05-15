@@ -550,6 +550,136 @@
             }
         }
 
+
+        /* =========================================================
+           SBI 8.0P.154 - PUBLIC PASSWORD RESET REQUEST
+           ---------------------------------------------------------
+           Panneau discret de demande de lien reset, envoyé via
+           Cloud Function + template Brevo SBI.
+           ========================================================= */
+        .login-forgot-row {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: -1.95rem;
+            margin-bottom: 1.75rem;
+            position: relative;
+            z-index: 2;
+        }
+
+        .login-forgot-link {
+            appearance: none;
+            border: 0;
+            background: transparent;
+            padding: 0;
+            color: var(--text-muted);
+            font: inherit;
+            font-size: 0.82rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: color 0.22s ease, opacity 0.22s ease;
+        }
+
+        .login-forgot-link:hover,
+        .login-forgot-link:focus-visible {
+            color: var(--sbi-blue);
+            outline: none;
+        }
+
+        .login-reset-panel {
+            margin-top: 1.1rem;
+            padding: 1rem;
+            border: 1px solid rgba(0, 81, 255, 0.22);
+            border-radius: 8px;
+            background: linear-gradient(145deg, rgba(0, 81, 255, 0.09), rgba(255, 255, 255, 0.025));
+            position: relative;
+            z-index: 2;
+        }
+
+        .login-reset-panel[hidden] {
+            display: none !important;
+        }
+
+        .login-reset-panel-title {
+            margin: 0 0 0.45rem;
+            color: #fff;
+            font-size: 0.96rem;
+            font-weight: 900;
+        }
+
+        .login-reset-panel-text,
+        .login-reset-status {
+            margin: 0;
+            color: var(--text-muted);
+            font-size: 0.82rem;
+            line-height: 1.55;
+        }
+
+        .login-reset-form {
+            margin-top: 0.85rem;
+        }
+
+        .login-reset-actions {
+            display: flex;
+            gap: 0.6rem;
+            align-items: center;
+            margin-top: 0.8rem;
+        }
+
+        .login-reset-submit {
+            flex: 1;
+            justify-content: center;
+            min-height: 42px;
+            padding: 0.72rem 0.9rem;
+            font-size: 0.82rem;
+        }
+
+        .login-reset-cancel {
+            appearance: none;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.035);
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 0.78rem;
+            font-weight: 800;
+            padding: 0.66rem 0.85rem;
+            transition: border-color 0.22s ease, color 0.22s ease, background 0.22s ease;
+        }
+
+        .login-reset-cancel:hover,
+        .login-reset-cancel:focus-visible {
+            border-color: rgba(0, 81, 255, 0.45);
+            color: #fff;
+            background: rgba(0, 81, 255, 0.08);
+            outline: none;
+        }
+
+        .login-reset-status {
+            min-height: 1.15rem;
+            margin-top: 0.75rem;
+            font-weight: 700;
+        }
+
+        .login-reset-status.is-success {
+            color: #78ffb5;
+        }
+
+        .login-reset-status.is-error {
+            color: #ff7b7b;
+        }
+
+        @media (max-width: 768px) {
+            .login-forgot-row {
+                margin-top: -1.25rem;
+                margin-bottom: 1.35rem;
+            }
+
+            .login-reset-actions {
+                flex-direction: column;
+                align-items: stretch;
+            }
+        }
+
     </style>
 </head>
 
@@ -610,11 +740,31 @@
                     <input type="password" id="password" class="login-input text-italic" required autocomplete="current-password">
                 </div>
 
+                <div class="login-forgot-row">
+                    <button type="button" class="login-forgot-link text-italic" id="login-forgot-password">
+                        Mot de passe oublié ?
+                    </button>
+                </div>
+
                 <button type="submit" class="btn-primary text-italic login-submit" id="login-submit">
                     <span class="login-submit-label">Accéder à l'espace</span>
                     <span class="login-submit-arrow">→</span>
                 </button>
             </form>
+
+            <section class="login-reset-panel" id="login-reset-panel" hidden aria-labelledby="login-reset-title">
+                <h2 class="login-reset-panel-title text-italic" id="login-reset-title">Réinitialiser le mot de passe</h2>
+                <p class="login-reset-panel-text text-italic">Indique l’adresse email liée au compte SBI. Un lien sécurisé sera envoyé si le compte existe.</p>
+                <form class="login-reset-form" id="login-reset-form">
+                    <label for="reset-email" class="text-italic">Adresse email du compte</label>
+                    <input type="email" id="reset-email" class="login-input text-italic" required autocomplete="email">
+                    <div class="login-reset-actions">
+                        <button type="submit" class="btn-primary text-italic login-reset-submit" id="login-reset-submit">Recevoir le lien</button>
+                        <button type="button" class="login-reset-cancel text-italic" id="login-reset-cancel">Annuler</button>
+                    </div>
+                    <p class="login-reset-status text-italic" id="login-reset-status" aria-live="polite"></p>
+                </form>
+            </section>
 
             <div id="error-message" class="text-italic" aria-live="polite"></div>
         </div>
@@ -623,6 +773,6 @@
     <script src="js/sbi-background.js?v=8.0P.65"></script>
     <script src="js/main.js?v=8.0P.80"></script>
     <script src="js/public-app-shell.js?v=8.0P.126"></script>
-    <script type="module" src="js/auth.js"></script>
+    <script type="module" src="js/auth.js?v=8.0P.154"></script>
 </body>
 </html>

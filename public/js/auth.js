@@ -15,6 +15,8 @@
  *
  * SBI 8.0P.3 :
  * - le formulaire login peut être remonté après une navigation PJAX publique.
+ * SBI 8.0P.154 :
+ * - demande publique de reset mot de passe via Function + email SBI/Brevo.
  * =======================================================================
  */
 
@@ -36,8 +38,16 @@ let loginSignal = null;
 let submitButton = null;
 let submitLabel = null;
 let errorMessage = null;
+let forgotPasswordButton = null;
+let resetPanel = null;
+let resetForm = null;
+let resetEmailInput = null;
+let resetSubmitButton = null;
+let resetCancelButton = null;
+let resetStatus = null;
 
 const boundLoginForms = new WeakSet();
+const boundResetForms = new WeakSet();
 let redirectInProgress = false;
 let loginSignalTimers = [];
 
@@ -73,6 +83,13 @@ const refreshLoginElements = () => {
     submitButton = document.getElementById('login-submit');
     submitLabel = submitButton?.querySelector('.login-submit-label') || null;
     errorMessage = document.getElementById('error-message');
+    forgotPasswordButton = document.getElementById('login-forgot-password');
+    resetPanel = document.getElementById('login-reset-panel');
+    resetForm = document.getElementById('login-reset-form');
+    resetEmailInput = document.getElementById('reset-email');
+    resetSubmitButton = document.getElementById('login-reset-submit');
+    resetCancelButton = document.getElementById('login-reset-cancel');
+    resetStatus = document.getElementById('login-reset-status');
 
     return Boolean(loginForm);
 };
@@ -219,6 +236,128 @@ const getFirebaseErrorMessage = (error) => {
     }
 };
 
+
+const clearResetStatus = () => {
+    if (!resetStatus) return;
+    resetStatus.textContent = '';
+    resetStatus.classList.remove('is-success', 'is-error');
+};
+
+const setResetStatus = (message, state = '') => {
+    if (!resetStatus) return;
+    resetStatus.textContent = message;
+    resetStatus.classList.remove('is-success', 'is-error');
+    if (state) resetStatus.classList.add(`is-${state}`);
+};
+
+const openResetPanel = () => {
+    refreshLoginElements();
+    if (!resetPanel) return;
+
+    clearLoginError();
+    clearResetStatus();
+    resetPanel.hidden = false;
+
+    const currentEmail = document.getElementById('email')?.value?.trim() || '';
+    if (resetEmailInput && currentEmail && !resetEmailInput.value) {
+        resetEmailInput.value = currentEmail;
+    }
+
+    window.setTimeout(() => resetEmailInput?.focus({ preventScroll: true }), 60);
+};
+
+const closeResetPanel = () => {
+    refreshLoginElements();
+    if (!resetPanel) return;
+
+    resetPanel.hidden = true;
+    clearResetStatus();
+};
+
+const setResetLoading = (isLoading) => {
+    if (resetSubmitButton) {
+        resetSubmitButton.disabled = isLoading;
+        resetSubmitButton.textContent = isLoading ? 'Envoi en cours' : 'Recevoir le lien';
+    }
+    if (forgotPasswordButton) forgotPasswordButton.disabled = isLoading;
+};
+
+const getPublicResetErrorMessage = (error) => {
+    if (error?.name === 'AbortError') return 'La demande prend trop de temps. Réessaie dans un instant.';
+    return 'Impossible d’envoyer la demande pour le moment. Réessaie dans un instant.';
+};
+
+const requestPublicPasswordReset = async (email) => {
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 15000);
+
+    try {
+        const response = await fetch('/api/requestPasswordReset', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            signal: controller.signal,
+            body: JSON.stringify({
+                email,
+                page: window.location.pathname || '/login.html'
+            })
+        });
+
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || result.success === false) {
+            throw new Error(result.message || `Erreur serveur ${response.status}`);
+        }
+
+        return result.message || 'Si un compte existe avec cette adresse, un lien de réinitialisation vient d’être envoyé.';
+    } finally {
+        window.clearTimeout(timeout);
+    }
+};
+
+const bindPasswordResetForm = () => {
+    refreshLoginElements();
+
+    if (forgotPasswordButton && forgotPasswordButton.dataset.sbiResetBound !== 'true') {
+        forgotPasswordButton.dataset.sbiResetBound = 'true';
+        forgotPasswordButton.addEventListener('click', openResetPanel);
+    }
+
+    if (resetCancelButton && resetCancelButton.dataset.sbiResetBound !== 'true') {
+        resetCancelButton.dataset.sbiResetBound = 'true';
+        resetCancelButton.addEventListener('click', closeResetPanel);
+    }
+
+    if (!resetForm || boundResetForms.has(resetForm)) return false;
+    boundResetForms.add(resetForm);
+
+    resetForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        refreshLoginElements();
+
+        const email = resetEmailInput?.value?.trim().toLowerCase() || '';
+        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            setResetStatus('Renseigne une adresse email valide.', 'error');
+            resetEmailInput?.focus({ preventScroll: true });
+            return;
+        }
+
+        setResetLoading(true);
+        setResetStatus('Préparation du lien sécurisé SBI...');
+
+        try {
+            const message = await requestPublicPasswordReset(email);
+            setResetStatus(message, 'success');
+        } catch (error) {
+            console.error('❌ Demande reset public SBI :', error);
+            setResetStatus(getPublicResetErrorMessage(error), 'error');
+        } finally {
+            setResetLoading(false);
+        }
+    });
+
+    return true;
+};
+
 /* --- 1.5 HELPERS ROLES / ROUTES --- */
 const normalizePath = () => {
     return window.location.pathname.toLowerCase();
@@ -317,6 +456,7 @@ const redirectToDashboard = (userData, useLoginFeedback = false) => {
 /* --- 1.6 GESTION DU FORMULAIRE DE CONNEXION --- */
 const bindLoginForm = () => {
     refreshLoginElements();
+    bindPasswordResetForm();
 
     if (!loginForm || boundLoginForms.has(loginForm)) return false;
     boundLoginForms.add(loginForm);
@@ -487,6 +627,7 @@ onAuthStateChanged(auth, async (user) => {
 const initSbiAuthPage = async () => {
     refreshLoginElements();
     bindLoginForm();
+    bindPasswordResetForm();
     await enforceCurrentAuthState();
 
     return {

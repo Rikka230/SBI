@@ -712,7 +712,7 @@ async function safeWriteAccountAuditLog(db, payload) {
     try {
         await db.collection("accountAuditLogs").add({
             ...payload,
-            source: "admin",
+            source: payload.source || "admin",
             createdAt: admin.firestore.FieldValue.serverTimestamp()
         });
     } catch (error) {
@@ -1315,6 +1315,102 @@ exports.adminSendPasswordReset = onCall({
         message: `Email de réinitialisation envoyé à ${email}.`
     };
 });
+
+
+exports.requestPasswordReset = onRequest({
+    region: "europe-west1",
+    secrets: [BREVO_API_KEY],
+    timeoutSeconds: 20,
+    memory: "256MiB"
+}, async (req, res) => {
+    res.set("Cache-Control", "no-store");
+    res.set("X-Content-Type-Options", "nosniff");
+
+    if (req.method === "OPTIONS") {
+        res.status(204).send("");
+        return;
+    }
+
+    if (req.method !== "POST") {
+        res.status(405).json({ success: false, message: "Méthode non autorisée." });
+        return;
+    }
+
+    const genericMessage = "Si un compte existe avec cette adresse, un lien de réinitialisation vient d’être envoyé.";
+    const db = admin.firestore();
+    const email = cleanEmail(req.body?.email);
+    const page = cleanString(req.body?.page || "login.html", 180);
+
+    if (!isValidEmail(email)) {
+        res.status(400).json({ success: false, message: "Adresse email invalide." });
+        return;
+    }
+
+    let targetUid = "";
+    let targetRole = "";
+    let emailSent = false;
+    let emailError = "";
+
+    try {
+        const authUser = await admin.auth().getUserByEmail(email);
+        targetUid = authUser.uid;
+
+        let targetData = {
+            email,
+            prenom: cleanString(authUser.displayName || "", 80),
+            nom: "",
+            role: "student",
+            statut: authUser.disabled ? "suspendu" : "actif"
+        };
+
+        const targetDoc = await db.collection("users").doc(authUser.uid).get();
+        if (targetDoc.exists) {
+            targetData = {
+                ...targetData,
+                ...(targetDoc.data() || {}),
+                email
+            };
+        }
+
+        targetRole = targetData.role || "";
+
+        if (targetData.statut !== "suspendu" && authUser.disabled !== true) {
+            const apiKey = BREVO_API_KEY.value();
+            if (!apiKey) throw new Error("BREVO_API_KEY manquant.");
+
+            const firebaseResetLink = await admin.auth().generatePasswordResetLink(email, SBI_AUTH_ACTION_SETTINGS);
+            const resetLink = buildSbiPasswordResetLink(firebaseResetLink);
+            await sendAccountResetEmail({ ...targetData, email }, resetLink, apiKey);
+            emailSent = true;
+        }
+    } catch (error) {
+        if (error?.code === "auth/user-not-found") {
+            // Réponse volontairement identique : ne jamais révéler si un compte existe.
+        } else {
+            emailError = cleanString(error?.message || error?.code || "Erreur reset public", 300);
+            console.error("Erreur requestPasswordReset SBI :", emailError, error?.payload || "");
+        }
+    }
+
+    await safeWriteAccountAuditLog(db, {
+        type: "account.public_password_reset_requested",
+        actorUid: "public",
+        actorEmail: email,
+        targetUid,
+        targetEmail: email,
+        targetRole,
+        source: "public-login",
+        page,
+        emailSent,
+        emailError
+    });
+
+    res.status(200).json({
+        success: true,
+        message: genericMessage
+    });
+});
+
 
 
 

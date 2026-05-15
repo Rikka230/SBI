@@ -8,7 +8,7 @@
  * - espaces admin/student/teacher et viewers toujours protégés en reload.
  */
 
-const PUBLIC_SHELL_VERSION = '8.0P.153';
+const PUBLIC_SHELL_VERSION = '8.0P.126';
 const DISABLED_FLAG = 'sbiPublicShellDisabled';
 const READY_CLASS = 'sbi-public-shell-ready';
 const SCROLLING_CLASS = 'sbi-public-shell-scrolling';
@@ -729,7 +729,7 @@ async function runPageInitializers(pageId) {
 
   if (pageId === 'login') {
     try {
-      const authModule = await import('/js/auth.js');
+      const authModule = await import('/js/auth.js?v=8.0P.154');
       const initAuth = authModule.initSbiAuthPage || window.SBI_INIT_AUTH_PAGE;
       if (typeof initAuth === 'function') await initAuth();
     } catch (error) {
@@ -749,7 +749,7 @@ async function runPageInitializers(pageId) {
 
   if (['home', 'formations', 'parcours', 'apropos', 'ressources', 'contact'].includes(pageId)) {
     try {
-      const publicPagesModule = await import('/js/sbi-public-pages.js?v=8.0P.153');
+      const publicPagesModule = await import('/js/sbi-public-pages.js?v=8.0P.126');
       const initPublicPages = publicPagesModule.initSbiPublicPages || window.SBI_INIT_PUBLIC_PAGES;
       if (typeof initPublicPages === 'function') initPublicPages(document);
     } catch (error) {

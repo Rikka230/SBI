@@ -48,6 +48,13 @@
         }
       },
       {
+        "source": "/api/requestPasswordReset",
+        "function": {
+          "functionId": "requestPasswordReset",
+          "region": "europe-west1"
+        }
+      },
+      {
         "source": "/api/subscribeNewsletter",
         "function": {
           "functionId": "subscribeNewsletter",
