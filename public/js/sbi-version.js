@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.161',
+  version: '8.0P.162',
   branch: 'private-admin-accounts-mail-workflow',
-  channel: 'ADMIN MAIL WORKFLOW P2H.2-C.1',
-  stage: 'PRIVATE P2H.2-C.1 ACCOUNT LOG COMPACT',
+  channel: 'ADMIN MAIL WORKFLOW P2H.2-D',
+  stage: 'PRIVATE P2H.2-D SECURE ACCOUNT ACTIONS',
   updatedAt: '2026-05-15',
-  label: 'SBI 8.0P.161 - PRIVATE P2H.2-C.1 ACCOUNT LOG COMPACT'
+  label: 'SBI 8.0P.162 - PRIVATE P2H.2-D SECURE ACCOUNT ACTIONS'
 };
 
 export function getSbiVersionLabel() {

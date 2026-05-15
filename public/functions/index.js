@@ -646,6 +646,14 @@ async function sendBrevoNewsletterConfirmation(data, apiKey) {
  * ======================================================================= */
 
 const ACCOUNT_ROLES = ["student", "teacher", "admin"];
+const ACCOUNT_PREPARATION_STATES = ["not_prepared", "to_check", "ready", "completed"];
+const ACCOUNT_PREPARATION_LABELS = {
+    not_prepared: "Compte à préparer",
+    to_check: "À vérifier",
+    ready: "Prêt",
+    completed: "Terminé"
+};
+
 
 function cleanEmail(value) {
     return cleanString(value, 180).toLowerCase();
@@ -665,6 +673,20 @@ function getAccountRoleLabel(role) {
     if (normalized === "teacher") return "Enseignant";
     if (normalized === "admin") return "Administrateur";
     return "Étudiant";
+}
+
+function normalizeAccountPreparationState(value) {
+    const normalized = cleanString(value, 40).toLowerCase();
+    return ACCOUNT_PREPARATION_STATES.includes(normalized) ? normalized : "not_prepared";
+}
+
+function getAccountPreparationLabel(value) {
+    const normalized = normalizeAccountPreparationState(value);
+    return ACCOUNT_PREPARATION_LABELS[normalized] || ACCOUNT_PREPARATION_LABELS.not_prepared;
+}
+
+function getNoteAuditState(value) {
+    return cleanString(value, 2000) ? "renseignée" : "vide";
 }
 
 function formatAccountPrenom(value) {
@@ -1970,6 +1992,48 @@ exports.adminUpdateUserAccount = onCall({
         }
     }
 
+    if (Object.prototype.hasOwnProperty.call(data, "preparationState")) {
+        const requestedPreparationState = normalizeAccountPreparationState(data.preparationState);
+        const currentPreparationState = normalizeAccountPreparationState(
+            targetData.accountStatus?.preparationState || targetData.preparationState || "not_prepared"
+        );
+
+        if (requestedPreparationState !== currentPreparationState) {
+            updates.accountStatus = {
+                ...(targetData.accountStatus || {}),
+                ...(updates.accountStatus || {}),
+                preparationState: requestedPreparationState,
+                preparationUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                preparationUpdatedBy: caller.uid
+            };
+            auditChanges.preparationState = {
+                before: currentPreparationState,
+                after: requestedPreparationState,
+                beforeLabel: getAccountPreparationLabel(currentPreparationState),
+                afterLabel: getAccountPreparationLabel(requestedPreparationState)
+            };
+        }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(data, "accountNote")) {
+        const accountNote = cleanMultiline(data.accountNote, 2000);
+        const previousAccountNote = cleanMultiline(targetData.adminNotes?.accountNote || "", 2000);
+
+        if (accountNote !== previousAccountNote) {
+            updates.adminNotes = {
+                ...(targetData.adminNotes || {}),
+                ...(updates.adminNotes || {}),
+                accountNote,
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                updatedBy: caller.uid
+            };
+            auditChanges.accountNote = {
+                before: getNoteAuditState(previousAccountNote),
+                after: getNoteAuditState(accountNote)
+            };
+        }
+    }
+
     if (data.isGod === true) {
         const currentGodSnapshot = await db.collection("users").where("isGod", "==", true).limit(2).get();
         const currentGodDocs = currentGodSnapshot.docs;
@@ -2075,8 +2139,12 @@ exports.adminUpdateUserAccount = onCall({
         }
     }
 
+    const auditChangeKeys = Object.keys(auditChanges);
+    const onlyFollowupChanges = auditChangeKeys.length > 0
+        && auditChangeKeys.every((key) => ["preparationState", "accountNote"].includes(key));
+
     await safeWriteAccountAuditLog(db, {
-        type: auditChanges.isGod ? "account.god_updated" : "account.updated",
+        type: auditChanges.isGod ? "account.god_updated" : onlyFollowupChanges ? "account.followup_updated" : "account.updated",
         actorUid: caller.uid,
         actorEmail: caller.email,
         targetUid,

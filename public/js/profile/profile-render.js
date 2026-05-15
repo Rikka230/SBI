@@ -7,9 +7,22 @@ import {
   updateDoc,
   where
 } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
+import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js';
+import { app } from '/js/firebase-init.js';
 import { escapeHTML, getDisplayName, SVG_EDIT } from './profile-utils.js';
 import { maybeMigrateVisibleLegacyAvatar } from './profile-avatar-cropper.js';
 import { updateProfilePresenceStatus } from './profile-presence.js';
+
+const functionsInstance = getFunctions(app, 'europe-west1');
+const adminUpdateUserAccountCallable = httpsCallable(functionsInstance, 'adminUpdateUserAccount');
+const adminSendPasswordResetCallable = httpsCallable(functionsInstance, 'adminSendPasswordReset');
+
+const ACCOUNT_PREPARATION_LABELS = {
+  not_prepared: 'Compte à préparer',
+  to_check: 'À vérifier',
+  ready: 'Prêt',
+  completed: 'Terminé'
+};
 
 export async function renderProfileShell({ db, uid, data, context, reloadProfile }) {
   const displayName = getDisplayName(data, 'Utilisateur Sans Nom');
@@ -35,7 +48,7 @@ export async function renderProfileShell({ db, uid, data, context, reloadProfile
   renderRoleBadge(data);
   await renderXp({ db, uid, data, context, reloadProfile });
   renderPrivateData(data, context);
-  await renderActivity({ db, uid, data, context });
+  await renderActivity({ db, uid, data, context, reloadProfile });
 }
 
 function renderRoleBadge(data = {}) {
@@ -119,7 +132,7 @@ function renderPrivateData(data = {}, context) {
   }
 }
 
-async function renderActivity({ db, uid, data = {}, context }) {
+async function renderActivity({ db, uid, data = {}, context, reloadProfile }) {
   const list = document.getElementById('prof-activity-list');
   if (!list) return;
 
@@ -136,6 +149,8 @@ async function renderActivity({ db, uid, data = {}, context }) {
     `;
     return;
   }
+
+  renderAccountActionsPanel({ uid, data, reloadProfile });
 
   list.innerHTML = `
     <li style="list-style:none; padding:0.75rem 0; color:var(--text-muted);">
@@ -186,6 +201,172 @@ async function renderActivity({ db, uid, data = {}, context }) {
       </li>
     `;
   }
+}
+
+function normalizePreparationState(value) {
+  return Object.prototype.hasOwnProperty.call(ACCOUNT_PREPARATION_LABELS, value) ? value : 'not_prepared';
+}
+
+function renderAccountActionsPanel({ uid, data = {}, reloadProfile }) {
+  const list = document.getElementById('prof-activity-list');
+  const group = list?.closest?.('.data-group');
+  if (!group || !uid) return;
+
+  let panel = document.getElementById('prof-account-actions-panel');
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.id = 'prof-account-actions-panel';
+    group.insertBefore(panel, list);
+  }
+
+  const currentState = normalizePreparationState(data.accountStatus?.preparationState || data.preparationState || 'not_prepared');
+  const currentNote = data.adminNotes?.accountNote || '';
+
+  panel.innerHTML = `
+    <div style="
+      margin:0 0 1rem 0;
+      padding:1rem;
+      border:1px solid rgba(42,87,255,0.18);
+      border-radius:12px;
+      background:rgba(42,87,255,0.045);
+    ">
+      <div style="display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap; align-items:flex-start; margin-bottom:0.85rem;">
+        <div>
+          <strong style="color:#fff;">Actions compte</strong>
+          <p style="margin:0.25rem 0 0; color:var(--text-muted); font-size:0.82rem; line-height:1.45;">
+            Suivi manuel, notes internes et renvoi d’accès sécurisé.
+          </p>
+        </div>
+        <button id="prof-resend-access-btn" type="button" style="
+          border:1px solid rgba(251,188,4,0.45);
+          background:rgba(251,188,4,0.10);
+          color:#fbbc04;
+          border-radius:999px;
+          padding:0.55rem 0.85rem;
+          font-weight:800;
+          cursor:pointer;
+        ">Renvoyer accès</button>
+      </div>
+
+      <label style="display:block; color:var(--text-muted); font-size:0.78rem; font-weight:800; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:0.35rem;">
+        Suivi du compte
+      </label>
+      <select id="prof-account-preparation-state" style="
+        width:100%;
+        box-sizing:border-box;
+        padding:0.75rem;
+        margin-bottom:0.75rem;
+        background:#111827;
+        color:#fff;
+        border:1px solid rgba(255,255,255,0.12);
+        border-radius:8px;
+        outline:none;
+      ">
+        ${Object.entries(ACCOUNT_PREPARATION_LABELS).map(([value, label]) => `
+          <option value="${escapeHTML(value)}"${value === currentState ? ' selected' : ''}>${escapeHTML(label)}</option>
+        `).join('')}
+      </select>
+
+      <label style="display:block; color:var(--text-muted); font-size:0.78rem; font-weight:800; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:0.35rem;">
+        Note interne
+      </label>
+      <textarea id="prof-account-note" rows="4" maxlength="2000" style="
+        width:100%;
+        box-sizing:border-box;
+        min-height:92px;
+        padding:0.85rem;
+        background:#0b1020;
+        color:#fff;
+        border:1px solid rgba(255,255,255,0.12);
+        border-radius:8px;
+        resize:vertical;
+        outline:none;
+        font-family:inherit;
+      " placeholder="Ajouter une note interne sur ce compte...">${escapeHTML(currentNote)}</textarea>
+
+      <div style="display:flex; justify-content:flex-end; gap:0.75rem; flex-wrap:wrap; margin-top:0.85rem;">
+        <span id="prof-account-actions-status" style="margin-right:auto; color:var(--text-muted); font-size:0.8rem; align-self:center;"></span>
+        <button id="prof-save-account-followup-btn" type="button" style="
+          border:0;
+          background:var(--accent-blue, #2A57FF);
+          color:#fff;
+          border-radius:8px;
+          padding:0.65rem 1rem;
+          font-weight:900;
+          cursor:pointer;
+        ">Sauvegarder le suivi</button>
+      </div>
+    </div>
+  `;
+
+  const status = panel.querySelector('#prof-account-actions-status');
+  const saveButton = panel.querySelector('#prof-save-account-followup-btn');
+  const resendButton = panel.querySelector('#prof-resend-access-btn');
+
+  saveButton?.addEventListener('click', async () => {
+    const preparationState = panel.querySelector('#prof-account-preparation-state')?.value || 'not_prepared';
+    const accountNote = panel.querySelector('#prof-account-note')?.value || '';
+
+    saveButton.disabled = true;
+    saveButton.style.opacity = '0.65';
+    if (status) {
+      status.style.color = 'var(--text-muted)';
+      status.textContent = 'Sauvegarde...';
+    }
+
+    try {
+      await adminUpdateUserAccountCallable({ uid, preparationState, accountNote });
+      if (status) {
+        status.style.color = '#2ed573';
+        status.textContent = 'Suivi sauvegardé.';
+      }
+      await reloadProfile?.(uid);
+    } catch (error) {
+      console.warn('[SBI Profile] Sauvegarde suivi compte impossible :', error);
+      if (status) {
+        status.style.color = '#ff4a4a';
+        status.textContent = getCallableUiMessage(error, 'Sauvegarde impossible.');
+      }
+    } finally {
+      saveButton.disabled = false;
+      saveButton.style.opacity = '';
+    }
+  });
+
+  resendButton?.addEventListener('click', async () => {
+    const confirmed = window.confirm('Renvoyer un email d’accès / réinitialisation à ce compte ?');
+    if (!confirmed) return;
+
+    resendButton.disabled = true;
+    resendButton.style.opacity = '0.65';
+    if (status) {
+      status.style.color = 'var(--text-muted)';
+      status.textContent = 'Envoi du lien...';
+    }
+
+    try {
+      await adminSendPasswordResetCallable({ uid });
+      if (status) {
+        status.style.color = '#2ed573';
+        status.textContent = 'Lien envoyé.';
+      }
+      await reloadProfile?.(uid);
+    } catch (error) {
+      console.warn('[SBI Profile] Renvoi accès impossible :', error);
+      if (status) {
+        status.style.color = '#ff4a4a';
+        status.textContent = getCallableUiMessage(error, 'Envoi impossible.');
+      }
+    } finally {
+      resendButton.disabled = false;
+      resendButton.style.opacity = '';
+    }
+  });
+}
+
+function getCallableUiMessage(error, fallback) {
+  const raw = error?.message || error?.details?.message || fallback;
+  return String(raw).replace(/^Firebase:\s*/i, '').replace(/\s*\([^)]*\)\.?$/g, '').trim() || fallback;
 }
 
 function compactAccountLogs(logs = []) {
@@ -274,6 +455,10 @@ function getAccountLogMeta(type = '') {
       label: 'Compte mis à jour',
       color: '#2A57FF'
     },
+    'account.followup_updated': {
+      label: 'Suivi compte mis à jour',
+      color: '#2A57FF'
+    },
     'account.deleted': {
       label: 'Compte supprimé',
       color: '#ff4a4a'
@@ -315,6 +500,10 @@ function getAccountLogDetails(log = {}) {
   if (log.targetRole) details.push(`Rôle : ${log.targetRole}`);
   if (log.updated !== undefined) details.push(`Éléments mis à jour : ${log.updated}`);
   if (log.skipped !== undefined) details.push(`Éléments inchangés : ${log.skipped}`);
+
+  const changes = log.changes || {};
+  if (changes.preparationState?.afterLabel) details.push(`Suivi : ${changes.preparationState.afterLabel}`);
+  if (changes.accountNote) details.push('Note interne modifiée');
 
   return details.join(' · ');
 }
