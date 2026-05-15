@@ -1,11 +1,12 @@
 /*
- * SBI 8.0P.147 - Admin bridge blocs conformité / Qualiopi / RNCP
+ * SBI 8.0P.148 - Admin blocs conformité / Qualiopi / RNCP
  *
- * Ajoute des champs dédiés à la fiche publique sans réécrire le legacy inline.
- * Les données sont sauvegardées dans publicFormations/{id}.complianceSections.
+ * Module direct pour /admin/formations-cours.html.
+ * Objectif : afficher les champs même si components.js est encore en cache.
+ * Stockage : publicFormations/{id}.complianceSections
  */
 
-const SBI_PUBLIC_FORMATION_COMPLIANCE_VERSION = '8.0P.147';
+const SBI_PUBLIC_FORMATION_COMPLIANCE_VERSION = '8.0P.148';
 const PUBLIC_FORMATIONS_COLLECTION = 'publicFormations';
 
 const COMPLIANCE_FIELDS = [
@@ -19,9 +20,9 @@ const COMPLIANCE_FIELDS = [
 ];
 
 let firestoreToolsPromise = null;
-let observerStarted = false;
 let lastLoadedKey = '';
 let saveTimer = null;
+let observerStarted = false;
 
 function text(value, fallback = '') {
   if (value === null || value === undefined) return fallback;
@@ -70,9 +71,9 @@ function ensureStyle() {
   style.id = 'sbi-public-formation-compliance-admin-style';
   style.textContent = `
     .public-admin-compliance-panel {
-      border: 1px solid rgba(87, 130, 255, 0.2);
+      border: 1px solid rgba(87, 130, 255, 0.24);
       border-radius: 12px;
-      background: linear-gradient(145deg, rgba(87, 130, 255, 0.055), rgba(255, 255, 255, 0.025));
+      background: linear-gradient(145deg, rgba(87, 130, 255, 0.08), rgba(255, 255, 255, 0.025));
       padding: 0.9rem 1rem 1rem;
     }
 
@@ -103,6 +104,12 @@ function ensureStyle() {
       font-size: 0.8rem;
       font-weight: 700;
     }
+
+    @media (max-width: 800px) {
+      .public-admin-compliance-panel .public-admin-form-grid.two {
+        grid-template-columns: 1fr;
+      }
+    }
   `;
   document.head.append(style);
 }
@@ -123,11 +130,14 @@ function createField(key, label, placeholder) {
 
 function ensureCompliancePanel() {
   const form = document.getElementById('public-formation-form');
-  if (!form || document.getElementById('public-formation-compliance-panel')) return Boolean(form);
+  if (!form) return false;
+
+  let panel = document.getElementById('public-formation-compliance-panel');
+  if (panel && form.contains(panel)) return true;
 
   ensureStyle();
 
-  const panel = document.createElement('details');
+  panel = document.createElement('details');
   panel.id = 'public-formation-compliance-panel';
   panel.className = 'public-admin-compliance-panel';
   panel.open = true;
@@ -143,9 +153,7 @@ function ensureCompliancePanel() {
 
   const grid = document.createElement('div');
   grid.className = 'public-admin-form-grid two';
-  COMPLIANCE_FIELDS.forEach(([key, label, placeholder]) => {
-    grid.append(createField(key, label, placeholder));
-  });
+  COMPLIANCE_FIELDS.forEach(([key, label, placeholder]) => grid.append(createField(key, label, placeholder)));
   panel.append(grid);
 
   const status = document.createElement('p');
@@ -285,10 +293,7 @@ async function saveComplianceForCurrentFormation() {
 
 function scheduleComplianceSave() {
   window.clearTimeout(saveTimer);
-  saveTimer = window.setTimeout(() => {
-    saveComplianceForCurrentFormation();
-  }, 950);
-
+  saveTimer = window.setTimeout(() => saveComplianceForCurrentFormation(), 850);
   window.setTimeout(() => saveComplianceForCurrentFormation(), 2200);
 }
 
@@ -297,7 +302,7 @@ function bindForm() {
   if (!form || form.dataset.sbiComplianceBound === 'true') return;
 
   form.dataset.sbiComplianceBound = 'true';
-  form.addEventListener('submit', scheduleComplianceSave);
+  form.addEventListener('submit', scheduleComplianceSave, true);
 
   form.addEventListener('input', (event) => {
     if (event.target?.dataset?.sbiComplianceKey) {
@@ -306,45 +311,48 @@ function bindForm() {
   });
 }
 
+function refresh({ force = false } = {}) {
+  ensureCompliancePanel();
+  bindForm();
+  [80, 220, 520, 1100].forEach((delay) => {
+    window.setTimeout(() => loadComplianceForCurrentFormation({ force }), delay);
+  });
+}
+
 function watchModal() {
   if (observerStarted) return;
   observerStarted = true;
 
-  const tick = () => {
-    ensureCompliancePanel();
-    bindForm();
-    [120, 420, 900].forEach((delay) => {
-      window.setTimeout(() => loadComplianceForCurrentFormation({ force: true }), delay);
-    });
-  };
-
-  const observer = new MutationObserver(tick);
-  observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden', 'value'] });
+  const observer = new MutationObserver(() => refresh({ force: false }));
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['hidden', 'value', 'class']
+  });
 
   document.addEventListener('click', (event) => {
-    const target = event.target;
-    if (!target) return;
-    if (target.closest?.('#btn-create-public-formation, #public-formations-list, .public-admin-card')) {
-      tick();
+    if (event.target?.closest?.('#btn-create-public-formation, #public-formations-list, .public-admin-card, #public-formation-modal')) {
+      refresh({ force: true });
     }
   }, true);
 
   window.setInterval(() => {
     const modal = document.getElementById('public-formation-modal');
-    if (modal && !modal.hidden) loadComplianceForCurrentFormation();
-  }, 1200);
-
-  tick();
+    if (modal && !modal.hidden) refresh({ force: false });
+  }, 1300);
 }
 
 function init() {
   const path = window.location.pathname.toLowerCase();
   if (!path.endsWith('/admin/formations-cours.html') && !path.endsWith('/admin/formations-cours')) return;
-
-  ensureCompliancePanel();
-  bindForm();
+  refresh({ force: true });
   watchModal();
+  console.info(`[SBI Compliance Admin] ${SBI_PUBLIC_FORMATION_COMPLIANCE_VERSION} chargé`);
 }
+
+window.SBI_PUBLIC_FORMATION_COMPLIANCE_ADMIN_REFRESH = refresh;
+window.SBI_PUBLIC_FORMATION_COMPLIANCE_ADMIN_SAVE = saveComplianceForCurrentFormation;
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init, { once: true });

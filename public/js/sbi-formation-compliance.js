@@ -1,11 +1,11 @@
 /*
- * SBI 8.0P.147 - Rendu public blocs conformité / Qualiopi / RNCP
+ * SBI 8.0P.148 - Rendu public blocs conformité / Qualiopi / RNCP
  *
  * Lit publicFormations.complianceSections et injecte une section dédiée
  * dans la fiche formation ouverte. Compatible avec le rendu existant.
  */
 
-const SBI_FORMATION_COMPLIANCE_VERSION = '8.0P.147';
+const SBI_FORMATION_COMPLIANCE_VERSION = '8.0P.148';
 const PUBLIC_FORMATIONS_COLLECTION = 'publicFormations';
 const FORMATION_QUERY_KEY = 'formation';
 
@@ -53,7 +53,9 @@ async function getFirestoreTools() {
   return firestoreToolsPromise;
 }
 
-async function loadPublicFormations() {
+async function loadPublicFormations({ force = false } = {}) {
+  if (force) cachedFormationsPromise = null;
+
   if (!cachedFormationsPromise) {
     cachedFormationsPromise = getFirestoreTools().then(async ({ db, collection, getDocs }) => {
       const snapshot = await getDocs(collection(db, PUBLIC_FORMATIONS_COLLECTION));
@@ -216,7 +218,7 @@ async function tryRenderCurrentSheet({ force = false } = {}) {
   lastRenderedKey = renderKey;
 
   try {
-    const formations = await loadPublicFormations();
+    const formations = await loadPublicFormations({ force });
     const formation = formations.find((item) => slug && item.slug === slug)
       || formations.find((item) => title && item.title === title);
 
@@ -235,12 +237,17 @@ function init() {
   observer.observe(document.body, { childList: true, subtree: true });
 
   window.addEventListener('popstate', () => tryRenderCurrentSheet({ force: true }));
+  window.addEventListener('sbi:public-shell:navigated', () => tryRenderCurrentSheet({ force: true }));
   window.addEventListener('sbi:public-shell:page-ready', () => tryRenderCurrentSheet({ force: true }));
 
-  [250, 800, 1600].forEach((delay) => {
+  [180, 520, 1100, 2200].forEach((delay) => {
     window.setTimeout(() => tryRenderCurrentSheet({ force: true }), delay);
   });
+
+  console.info(`[SBI Formation Compliance] ${SBI_FORMATION_COMPLIANCE_VERSION} chargé`);
 }
+
+window.SBI_RENDER_FORMATION_COMPLIANCE = tryRenderCurrentSheet;
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init, { once: true });
