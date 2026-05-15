@@ -9,6 +9,8 @@
  *
  * 6.7E : le signal ready attend DOMContentLoaded + définition des tags +
  * présence réelle des panels/topbars attendus pour la page courante.
+ * 8.0P.151 : suppression des bridges conformité, intégration directe dans
+ * public-formations-admin.js et sbi-public-pages.js.
  */
 
 (function bootstrapSbiComponents(){

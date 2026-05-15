@@ -10,6 +10,9 @@
  *
  * Le terrain et les lasers sont dans deux calques séparés pour avoir
  * des vitesses de parallaxe différentes.
+ *
+ * 8.0P.151 : suppression du chargement externe conformité. Le rendu des
+ * blocs formation est intégré directement dans sbi-public-pages.js.
  * =======================================================================
  */
 
