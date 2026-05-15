@@ -11,7 +11,7 @@
  * présence réelle des panels/topbars attendus pour la page courante.
  * 8.0P.151 : suppression des bridges conformité, intégration directe dans
  * public-formations-admin.js et sbi-public-pages.js.
- * 8.0P.158 : cache-bust Comptes & accès après suivi activation.
+ * 8.0P.159 : cache-bust Comptes & accès après correction statut activité.
  */
 
 (function bootstrapSbiComponents(){
@@ -31,7 +31,7 @@
 
     if (!isAdminIndex) return Promise.resolve(false);
 
-    return import('/admin/js/admin-accounts-dashboard.js?v=8.0P.158')
+    return import('/admin/js/admin-accounts-dashboard.js?v=8.0P.159')
       .then((module) => {
         module?.mountAdminAccountsDashboard?.();
         return true;

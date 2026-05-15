@@ -1,14 +1,13 @@
 /**
- * SBI 8.0P.157 / P2H.2-A.2
+ * SBI 8.0P.159 / P2H.2-B.1
  * Structure lecture seule "Comptes & accès".
  *
  * Objectif :
  * - garder la section Comptes propre ;
- * - retirer le bandeau éditorial ;
- * - restaurer les compteurs utiles ;
+ * - conserver les compteurs utiles ;
+ * - afficher l’activité réelle avant un ancien état pending_password ;
  * - ne pas importer, supprimer en masse ou envoyer de mails groupés ;
- * - ne pas toucher aux workflows sensibles déjà validés ;
- * - enrichir la lecture admin à partir de Firestore.
+ * - ne pas toucher aux workflows sensibles déjà validés.
  */
 
 import { db } from '/js/firebase-init.js';
@@ -75,10 +74,10 @@ function isOnline(user) {
 }
 
 function getLastActivityDate(user) {
-  return user.lastLoginAt
-    || user.accountStatus?.lastLoginAt
-    || user.firstLoginAt
+  return user.accountStatus?.lastLoginAt
+    || user.lastLoginAt
     || user.accountStatus?.firstLoginAt
+    || user.firstLoginAt
     || user.lastSeenAt
     || null;
 }
@@ -120,14 +119,6 @@ function getActivationInfo(user) {
 
   const explicitState = user.accountStatus?.activationState || user.activationState || '';
 
-  if (explicitState === 'active') {
-    return {
-      label: 'Activé',
-      tone: 'success',
-      detail: 'Première connexion validée'
-    };
-  }
-
   if (explicitState === 'blocked') {
     return {
       label: 'Bloqué',
@@ -136,19 +127,32 @@ function getActivationInfo(user) {
     };
   }
 
-  if (explicitState === 'pending_password') {
+  if (explicitState === 'active') {
     return {
-      label: 'Mot de passe attendu',
-      tone: 'warning',
-      detail: 'Lien à utiliser ou renvoyer'
+      label: 'Activité détectée',
+      tone: 'success',
+      detail: formatDate(getLastActivityDate(user), 'Première connexion validée')
     };
   }
 
+  /*
+   * P2H.2-B.1 :
+   * Si une vraie activité existe, elle doit primer sur un ancien
+   * activationState = pending_password encore présent en base.
+   */
   if (hasConnected(user)) {
     return {
       label: 'Activité détectée',
       tone: 'success',
       detail: formatDate(getLastActivityDate(user), 'Activité enregistrée')
+    };
+  }
+
+  if (explicitState === 'pending_password') {
+    return {
+      label: 'Mot de passe attendu',
+      tone: 'warning',
+      detail: 'Lien à utiliser ou renvoyer'
     };
   }
 
@@ -186,7 +190,6 @@ function getAccessCount(user) {
   const set = new Set([...ids, ...access].filter(Boolean));
   return set.size;
 }
-
 
 function buildCounterCard(id, label) {
   return `
@@ -378,7 +381,7 @@ function startAccountsSnapshot() {
     enhanceRenderedAccountRows();
 
     window.SBI_ACCOUNTS_DASHBOARD_STATE = {
-      version: '8.0P.157',
+      version: '8.0P.159',
       users: users.length,
       updatedAt: new Date().toISOString()
     };
