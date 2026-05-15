@@ -11,7 +11,7 @@
  * présence réelle des panels/topbars attendus pour la page courante.
  * 8.0P.151 : suppression des bridges conformité, intégration directe dans
  * public-formations-admin.js et sbi-public-pages.js.
- * 8.0P.165.3 : rollback dur admin stable après patch PJAX cassé.
+ * 8.0P.165.4 : stabilisation loader admin, sortie preload plus rapide.
  */
 
 (function bootstrapSbiComponents(){
@@ -28,6 +28,23 @@
     window.dispatchEvent(new CustomEvent('sbi:components-ready'));
   };
 
+  const scheduleEarlyDisplay = () => {
+    const release = () => {
+      releasePreload();
+      document.documentElement?.classList?.add('sbi-admin-loader-released');
+    };
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => window.setTimeout(release, 120), { once: true });
+    } else {
+      window.setTimeout(release, 120);
+    }
+
+    window.setTimeout(release, 700);
+  };
+
+  scheduleEarlyDisplay();
+
   const shouldMountAccountsModule = () => Boolean(document.getElementById('view-users'))
     || window.location.pathname.endsWith('/admin/')
     || window.location.pathname.endsWith('/admin/index.html');
@@ -36,7 +53,7 @@
     if (!shouldMountAccountsModule()) return Promise.resolve(false);
 
     if (!accountsModulePromise) {
-      accountsModulePromise = import('/admin/js/admin-accounts-dashboard.js?v=8.0P.165.3')
+      accountsModulePromise = import('/admin/js/admin-accounts-dashboard.js?v=8.0P.165.4')
         .catch((error) => {
           accountsModulePromise = null;
           console.warn('[SBI Accounts] Module comptes non chargé :', error);
@@ -77,12 +94,12 @@
     releasePreload();
     startAccountsWatcher();
     scheduleAccountsMount();
-  }, 2200);
+  }, 900);
 
   window.SBI_COMPONENTS_READY = import('/admin/js/components/index.js')
     .then(async (module) => {
       if (module?.waitForExpectedComponents) {
-        await module.waitForExpectedComponents(1800);
+        await module.waitForExpectedComponents(650);
       }
 
       await loadAccountsModule();

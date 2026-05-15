@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.165.3',
+  version: '8.0P.165.4',
   branch: 'private-admin-accounts-mail-workflow',
-  channel: 'ADMIN MAIL WORKFLOW P2H.2-E.2 HARD ROLLBACK',
-  stage: 'PRIVATE P2H.2-E.2 HARD ROLLBACK ADMIN STABLE',
+  channel: 'ADMIN MAIL WORKFLOW P2H.2-E.2 LOADER FIX',
+  stage: 'PRIVATE P2H.2-E.2 ADMIN LOADER STABILIZATION',
   updatedAt: '2026-05-15',
-  label: 'SBI 8.0P.165.3 - HARD ROLLBACK ADMIN STABLE'
+  label: 'SBI 8.0P.165.4 - ADMIN LOADER STABILIZATION'
 };
 
 export function getSbiVersionLabel() {
