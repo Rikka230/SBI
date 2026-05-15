@@ -1,10 +1,11 @@
 /**
- * SBI 8.0P.156 / P2H.2-A.1
+ * SBI 8.0P.157 / P2H.2-A.2
  * Structure lecture seule "Comptes & accès".
  *
  * Objectif :
  * - garder la section Comptes propre ;
- * - retirer le bandeau "support migration" ;
+ * - retirer le bandeau éditorial ;
+ * - restaurer les compteurs utiles ;
  * - ne pas importer, supprimer en masse ou envoyer de mails groupés ;
  * - ne pas toucher aux workflows sensibles déjà validés ;
  * - enrichir la lecture admin à partir de Firestore.
@@ -29,7 +30,7 @@ function injectStyle() {
   const link = document.createElement('link');
   link.id = 'sbi-admin-accounts-css';
   link.rel = 'stylesheet';
-  link.href = '/admin/css/admin-accounts.css?v=8.0P.156';
+  link.href = '/admin/css/admin-accounts.css?v=8.0P.157';
   document.head.append(link);
 }
 
@@ -186,6 +187,16 @@ function getAccessCount(user) {
   return set.size;
 }
 
+
+function buildCounterCard(id, label) {
+  return `
+    <article class="sbi-account-counter" data-sbi-account-stat="${id}">
+      <span>${escapeHtml(label)}</span>
+      <strong>-</strong>
+    </article>
+  `;
+}
+
 function ensureAccountsShell() {
   const section = document.getElementById('view-users');
   if (!section) return false;
@@ -230,9 +241,61 @@ function ensureAccountsShell() {
     if (previousOverview?.classList?.contains('sbi-accounts-overview')) {
       previousOverview.remove();
     }
+
+    if (!workspace.previousElementSibling?.classList?.contains('sbi-accounts-counters')) {
+      const counters = document.createElement('div');
+      counters.className = 'sbi-accounts-counters';
+      counters.innerHTML = `
+        ${buildCounterCard('total', 'Comptes')}
+        ${buildCounterCard('students', 'Élèves')}
+        ${buildCounterCard('teachers', 'Professeurs')}
+        ${buildCounterCard('admins', 'Admins')}
+        ${buildCounterCard('never', 'Jamais connectés')}
+        ${buildCounterCard('suspended', 'Suspendus')}
+        ${buildCounterCard('online', 'En ligne')}
+        ${buildCounterCard('tocheck', 'À vérifier')}
+      `;
+      workspace.parentNode.insertBefore(counters, workspace);
+    }
   }
 
   return true;
+}
+
+function updateStat(id, value) {
+  const card = document.querySelector(`[data-sbi-account-stat="${id}"] strong`);
+  if (card) card.textContent = String(value);
+}
+
+function renderCounters(users) {
+  const stats = users.reduce((acc, user) => {
+    acc.total += 1;
+    if (user.role === 'student') acc.students += 1;
+    if (user.role === 'teacher') acc.teachers += 1;
+    if (user.role === 'admin' || user.isGod === true) acc.admins += 1;
+    if (!hasConnected(user)) acc.never += 1;
+    if (user.statut === 'suspendu') acc.suspended += 1;
+    if (isOnline(user)) acc.online += 1;
+
+    const activation = getActivationInfo(user);
+    const preparation = user.accountStatus?.preparationState || user.preparationState;
+    if (activation.tone === 'warning' || activation.tone === 'danger' || preparation === 'to_check') {
+      acc.tocheck += 1;
+    }
+
+    return acc;
+  }, {
+    total: 0,
+    students: 0,
+    teachers: 0,
+    admins: 0,
+    never: 0,
+    suspended: 0,
+    online: 0,
+    tocheck: 0
+  });
+
+  Object.entries(stats).forEach(([key, value]) => updateStat(key, value));
 }
 
 function enhanceRenderedAccountRows() {
@@ -311,10 +374,11 @@ function startAccountsSnapshot() {
     });
 
     accountsById = nextMap;
+    renderCounters(users);
     enhanceRenderedAccountRows();
 
     window.SBI_ACCOUNTS_DASHBOARD_STATE = {
-      version: '8.0P.156',
+      version: '8.0P.157',
       users: users.length,
       updatedAt: new Date().toISOString()
     };

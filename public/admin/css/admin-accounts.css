@@ -21,6 +21,39 @@
   line-height: 1.55;
 }
 
+
+.sbi-accounts-counters {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(92px, 1fr));
+  gap: 0.7rem;
+  margin: 0 0 1.25rem;
+}
+
+.sbi-account-counter {
+  padding: 0.85rem;
+  border: 1px solid var(--sbi-account-border);
+  border-radius: 11px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.025));
+}
+
+.sbi-account-counter span {
+  display: block;
+  color: var(--text-muted, #9ca3af);
+  font-size: 0.73rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.sbi-account-counter strong {
+  display: block;
+  margin-top: 0.35rem;
+  color: #ffffff;
+  font-size: 1.45rem;
+  line-height: 1;
+}
+
 .sbi-accounts-workspace {
   grid-template-columns: minmax(280px, 0.8fr) minmax(520px, 1.6fr) !important;
 }
@@ -124,12 +157,20 @@
 }
 
 @media (max-width: 1280px) {
+  .sbi-accounts-counters {
+    grid-template-columns: repeat(4, minmax(110px, 1fr));
+  }
+
   .sbi-accounts-workspace {
     grid-template-columns: 1fr !important;
   }
 }
 
 @media (max-width: 720px) {
+  .sbi-accounts-counters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .sbi-account-row {
     grid-template-columns: 1fr !important;
   }
