@@ -17,7 +17,7 @@ import { storage } from '/js/firebase-init.js';
 import { compressImageFileToWebpBlob } from '/admin/js/course-media-storage.js';
 
 const COLLECTION = 'publicFormations';
-const VERSION = '8.0P.119';
+const VERSION = '8.0P.151';
 
 let mounted = false;
 let currentItems = [];
@@ -25,6 +25,44 @@ let pendingCoverFile = null;
 let cleanupFns = [];
 let formDirty = false;
 let suppressDirtyTracking = false;
+
+const COMPLIANCE_FIELDS = [
+  'evaluation',
+  'certification',
+  'accessibility',
+  'teachingMethods',
+  'admission',
+  'technicalMeans',
+  'complaints'
+];
+
+function getComplianceFieldId(key) {
+  return `public-formation-compliance-${key}`;
+}
+
+function normalizeComplianceSections(value = {}) {
+  const raw = value && typeof value === 'object' ? value : {};
+  return COMPLIANCE_FIELDS.reduce((payload, key) => {
+    payload[key] = text(raw[key]);
+    return payload;
+  }, {});
+}
+
+function fillComplianceForm(compliance = {}) {
+  const normalized = normalizeComplianceSections(compliance);
+  COMPLIANCE_FIELDS.forEach((key) => {
+    const field = $(getComplianceFieldId(key));
+    if (field) field.value = normalized[key] || '';
+  });
+}
+
+function readComplianceForm() {
+  return COMPLIANCE_FIELDS.reduce((payload, key) => {
+    payload[key] = text($(getComplianceFieldId(key))?.value);
+    return payload;
+  }, {});
+}
+
 
 function text(value, fallback = '') {
   if (value === null || value === undefined) return fallback;
@@ -193,6 +231,7 @@ function normalizeItem(raw = {}, id = '') {
     highlights: Array.isArray(raw.highlights) ? raw.highlights : [],
     infoSections: Array.isArray(raw.infoSections) ? raw.infoSections : [],
     program: Array.isArray(raw.program) ? raw.program : [],
+    complianceSections: normalizeComplianceSections(raw.complianceSections),
     cta: raw.cta && typeof raw.cta === 'object' ? raw.cta : {},
     brochureIds: Array.isArray(raw.brochureIds) ? raw.brochureIds : [],
     status: text(raw.status, 'draft'),
@@ -277,6 +316,7 @@ function fillForm(item = null) {
   $('public-formation-highlights').value = arrayToLines(item?.highlights);
   $('public-formation-sections').value = sectionsToTextarea(item?.infoSections);
   $('public-formation-program').value = sectionsToTextarea(item?.program);
+  fillComplianceForm(item?.complianceSections);
   $('public-formation-cta-label').value = item?.cta?.label || '';
   $('public-formation-cta-href').value = item?.cta?.href || '';
   $('public-formation-featured').checked = item?.featuredOnHome === true;
@@ -355,6 +395,7 @@ function gatherFormData() {
     highlights: linesToArray($('public-formation-highlights')?.value),
     infoSections: textareaToSections($('public-formation-sections')?.value),
     program: textareaToSections($('public-formation-program')?.value),
+    complianceSections: readComplianceForm(),
     cta: {
       label: text($('public-formation-cta-label')?.value),
       href: text($('public-formation-cta-href')?.value)

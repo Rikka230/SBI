@@ -35,7 +35,7 @@ async function getStorageTools() {
 
 const PUBLIC_FORMATIONS_COLLECTION = 'publicFormations';
 const PUBLIC_RESOURCES_COLLECTION = 'publicResources';
-const PUBLIC_CONTENT_VERSION = '8.0P.120';
+const PUBLIC_CONTENT_VERSION = '8.0P.151';
 
 const DEFAULT_COVER_LABEL = 'SBI';
 const COMING_SOON_COVER_URL = '/assets/coming.png';
@@ -43,6 +43,17 @@ const SEO_SITE_ORIGIN = 'https://www.sbigroup.fr';
 const DYNAMIC_DETAIL_JSONLD_ID = 'sbi-public-dynamic-detail-jsonld';
 const FORMATION_QUERY_KEY = 'formation';
 const RESOURCE_QUERY_KEY = 'resource';
+
+const FORMATION_COMPLIANCE_LABELS = [
+  ['evaluation', 'Évaluation'],
+  ['certification', 'Certification / RNCP'],
+  ['accessibility', 'Accessibilité / handicap'],
+  ['teachingMethods', 'Méthodes pédagogiques'],
+  ['admission', 'Modalités d’admission'],
+  ['technicalMeans', 'Moyens techniques'],
+  ['complaints', 'Procédure réclamation']
+];
+
 
 let activePublicFormations = [];
 let activePublicResources = [];
@@ -81,6 +92,23 @@ function normalizeSections(value) {
   }
 
   return [];
+}
+
+function normalizeComplianceSections(value = {}) {
+  const raw = value && typeof value === 'object' ? value : {};
+  return FORMATION_COMPLIANCE_LABELS.reduce((payload, [key]) => {
+    payload[key] = text(raw[key]);
+    return payload;
+  }, {});
+}
+
+function getVisibleComplianceSections(compliance = {}) {
+  return FORMATION_COMPLIANCE_LABELS
+    .map(([key, title]) => ({
+      title,
+      content: text(compliance?.[key])
+    }))
+    .filter((section) => section.content);
 }
 
 function normalizeSlug(value, fallback = '') {
@@ -512,6 +540,7 @@ function normalizeFormation(raw = {}, id = '') {
     outcomes: normalizeList(raw.outcomes || raw.debouches),
     highlights: normalizeList(raw.highlights || raw.pointsForts),
     infoSections: normalizeSections(raw.infoSections || raw.sections || raw.blocsInformation),
+    complianceSections: normalizeComplianceSections(raw.complianceSections),
     cta: raw.cta && typeof raw.cta === 'object' ? raw.cta : {},
     brochureIds: normalizeList(raw.brochureIds || raw.brochures),
     status: getStatus(raw),
@@ -602,6 +631,25 @@ function appendList(container, title, values) {
   container.append(block);
 }
 
+function appendComplianceSections(container, compliance = {}) {
+  const sections = getVisibleComplianceSections(compliance);
+  if (!sections.length) return;
+
+  const block = createElement('div', 'public-formation-detail-block public-formation-quality-block');
+  block.append(createElement('h4', 'text-italic', 'Informations pédagogiques et qualité'));
+
+  sections.forEach((section) => {
+    const item = createElement('article', 'public-formation-mini-section');
+    item.append(createElement('strong', 'text-italic', section.title));
+    const paragraph = createElement('p', 'text-italic', section.content);
+    paragraph.style.whiteSpace = 'pre-line';
+    item.append(paragraph);
+    block.append(item);
+  });
+
+  container.append(block);
+}
+
 function getFormationCoverUrl(formation) {
   if (isComingSoon(formation)) return COMING_SOON_COVER_URL;
   return text(formation?.cover?.url);
@@ -644,6 +692,7 @@ function createFormationDetails(formation) {
   appendList(details, 'Prérequis', formation.prerequisites);
   appendList(details, 'Points forts', formation.highlights);
   appendList(details, 'Débouchés', formation.outcomes);
+  appendComplianceSections(details, formation.complianceSections);
 
   if (formation.program?.length) {
     const program = createElement('div', 'public-formation-detail-block');

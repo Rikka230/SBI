@@ -122,7 +122,7 @@ async function mountPublicFormationsAdminSafely(cleanups) {
     if (!publicCatalogRoot) return;
 
     try {
-        const module = await import('/admin/js/public-formations-admin.js?v=8.0P.119');
+        const module = await import('/admin/js/public-formations-admin.js?v=8.0P.151');
         const initPublicFormationsAdmin = module?.initPublicFormationsAdmin || window.SBI_INIT_PUBLIC_FORMATIONS_ADMIN;
 
         if (typeof initPublicFormationsAdmin !== 'function') return;

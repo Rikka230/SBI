@@ -9,7 +9,8 @@
  *
  * 6.7E : le signal ready attend DOMContentLoaded + définition des tags +
  * présence réelle des panels/topbars attendus pour la page courante.
- * 8.0P.147 : charge le bridge conformité des fiches formations publiques.
+ * 8.0P.151 : suppression des bridges conformité, intégration directe dans
+ * public-formations-admin.js et sbi-public-pages.js.
  */
 
 (function bootstrapSbiComponents(){
@@ -23,19 +24,9 @@
     window.dispatchEvent(new CustomEvent('sbi:components-ready'));
   };
 
-  const loadPageBridges = () => {
-    const path = window.location.pathname.toLowerCase();
-
-    if (path.endsWith('/admin/formations-cours.html') || path.endsWith('/admin/formations-cours')) {
-      import('/admin/js/public-formation-compliance-admin.js?v=8.0P.147')
-        .catch((error) => console.warn('[SBI Components] Bridge conformité formations publiques indisponible :', error));
-    }
-  };
-
   const failSafe = window.setTimeout(() => {
     notifyReady();
     releasePreload();
-    loadPageBridges();
   }, 2200);
 
   window.SBI_COMPONENTS_READY = import('/admin/js/components/index.js')
@@ -48,7 +39,6 @@
       window.clearTimeout(failSafe);
       notifyReady();
       releasePreload();
-      loadPageBridges();
       return true;
     })
     .catch((error) => {
@@ -56,7 +46,6 @@
       window.clearTimeout(failSafe);
       notifyReady();
       releasePreload();
-      loadPageBridges();
       return false;
     });
 })();

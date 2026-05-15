@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="css/admin-notifications.css">
     <link rel="stylesheet" href="css/public-content-admin.css?v=8.0P.119">
     <link rel="stylesheet" href="/css/sbi-7-1-harmonization.css">
-    <script src="js/components.js"></script>
+    <script src="js/components.js?v=8.0P.151"></script>
 
     <style>
         *, *::before, *::after { box-sizing: border-box; }
@@ -413,6 +413,38 @@
                                 <textarea id="public-formation-program" rows="6" placeholder="Bloc 1 | Fondamentaux du sport business..."></textarea>
                             </label>
 
+                            <details id="public-formation-compliance-panel" class="public-admin-seo-panel public-admin-compliance-panel" open>
+                                <summary>Blocs conformité / Qualiopi / RNCP</summary>
+                                <p class="public-admin-help">Ces blocs s’affichent dans la fiche publique, dans une section dédiée “Informations pédagogiques et qualité”.</p>
+                                <div class="public-admin-form-grid two">
+                                    <label>Évaluation
+                                        <textarea id="public-formation-compliance-evaluation" rows="5" placeholder="Modalités d’évaluation, mises en situation, quiz, projet final..."></textarea>
+                                    </label>
+                                    <label>Certification / RNCP
+                                        <textarea id="public-formation-compliance-certification" rows="5" placeholder="Certification visée, RNCP, niveau, blocs de compétences, équivalences..."></textarea>
+                                    </label>
+                                </div>
+                                <div class="public-admin-form-grid two">
+                                    <label>Accessibilité / handicap
+                                        <textarea id="public-formation-compliance-accessibility" rows="5" placeholder="Accueil des personnes en situation de handicap, adaptations possibles..."></textarea>
+                                    </label>
+                                    <label>Méthodes pédagogiques
+                                        <textarea id="public-formation-compliance-teachingMethods" rows="5" placeholder="E-learning, tutorat, études de cas, exercices pratiques..."></textarea>
+                                    </label>
+                                </div>
+                                <div class="public-admin-form-grid two">
+                                    <label>Modalités d’admission
+                                        <textarea id="public-formation-compliance-admission" rows="5" placeholder="Conditions d’entrée, dossier, entretien, délai d’accès..."></textarea>
+                                    </label>
+                                    <label>Moyens techniques
+                                        <textarea id="public-formation-compliance-technicalMeans" rows="5" placeholder="Plateforme, supports numériques, outils, prérequis techniques..."></textarea>
+                                    </label>
+                                </div>
+                                <label>Procédure réclamation
+                                    <textarea id="public-formation-compliance-complaints" rows="5" placeholder="Canal de réclamation, contact, traitement, délais indicatifs..."></textarea>
+                                </label>
+                            </details>
+
                             <div class="public-admin-form-grid two">
                                 <label>CTA label
                                     <input type="text" id="public-formation-cta-label" placeholder="Demander des informations">
@@ -737,7 +769,7 @@
 </script>
 
 <script type="module" src="js/admin-ui.js?v=8.0P.119"></script>
-<script type="module" src="js/admin-courses.js?v=8.0P.119"></script>
+<script type="module" src="js/admin-courses.js?v=8.0P.151"></script>
 <script type="module" src="js/tracker.js"></script>
 <script type="module" src="js/admin-notifications.js"></script>
 </body>
