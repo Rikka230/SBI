@@ -1157,6 +1157,24 @@ function mapAuthCreateError(error) {
     return new HttpsError("internal", `Création Auth impossible : ${error.message}`);
 }
 
+function buildInitialAccountStatus() {
+    return {
+        activationState: "pending_password",
+        preparationState: "not_prepared",
+        invitationSentAt: null,
+        passwordResetSentAt: null,
+        firstLoginAt: null,
+        lastLoginAt: null,
+        lastAccessEmailSentAt: null,
+        emailVerifiedAt: null
+    };
+}
+
+function keepActiveOrPendingPassword(accountData = {}) {
+    const currentActivation = accountData.accountStatus?.activationState || accountData.activationState || "";
+    return currentActivation === "active" ? "active" : "pending_password";
+}
+
 exports.adminCreateUserAccount = onCall({
     region: "europe-west1",
     secrets: [BREVO_API_KEY],
@@ -1194,7 +1212,8 @@ exports.adminCreateUserAccount = onCall({
         dateCreation: new Date().toISOString(),
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         createdBy: caller.uid,
-        formationsAcces: []
+        formationsAcces: [],
+        accountStatus: buildInitialAccountStatus()
     };
 
     try {
@@ -1226,6 +1245,10 @@ exports.adminCreateUserAccount = onCall({
         const firebaseResetLink = await admin.auth().generatePasswordResetLink(email, SBI_AUTH_ACTION_SETTINGS);
         const resetLink = buildSbiPasswordResetLink(firebaseResetLink);
         await sendAccountInviteEmail(accountData, resetLink, apiKey);
+        await db.collection("users").doc(createdUser.uid).update({
+            "accountStatus.invitationSentAt": admin.firestore.FieldValue.serverTimestamp(),
+            "accountStatus.lastAccessEmailSentAt": admin.firestore.FieldValue.serverTimestamp()
+        });
         await sendAccountInternalEmail("Compte créé", {
             "Admin": caller.name,
             "Admin email": caller.email,
@@ -1288,6 +1311,11 @@ exports.adminSendPasswordReset = onCall({
         const firebaseResetLink = await admin.auth().generatePasswordResetLink(email, SBI_AUTH_ACTION_SETTINGS);
         const resetLink = buildSbiPasswordResetLink(firebaseResetLink);
         await sendAccountResetEmail({ ...targetData, email }, resetLink, apiKey);
+        await targetDoc.ref.update({
+            "accountStatus.passwordResetSentAt": admin.firestore.FieldValue.serverTimestamp(),
+            "accountStatus.lastAccessEmailSentAt": admin.firestore.FieldValue.serverTimestamp(),
+            "accountStatus.activationState": keepActiveOrPendingPassword(targetData)
+        });
         await sendAccountInternalEmail("Reset mot de passe envoyé", {
             "Admin": caller.name,
             "Admin email": caller.email,
@@ -1381,6 +1409,13 @@ exports.requestPasswordReset = onRequest({
             const firebaseResetLink = await admin.auth().generatePasswordResetLink(email, SBI_AUTH_ACTION_SETTINGS);
             const resetLink = buildSbiPasswordResetLink(firebaseResetLink);
             await sendAccountResetEmail({ ...targetData, email }, resetLink, apiKey);
+            if (targetDoc.exists) {
+                await targetDoc.ref.update({
+                    "accountStatus.passwordResetSentAt": admin.firestore.FieldValue.serverTimestamp(),
+                    "accountStatus.lastAccessEmailSentAt": admin.firestore.FieldValue.serverTimestamp(),
+                    "accountStatus.activationState": keepActiveOrPendingPassword(targetData)
+                });
+            }
             emailSent = true;
         }
     } catch (error) {
@@ -1412,7 +1447,62 @@ exports.requestPasswordReset = onRequest({
 });
 
 
+exports.trackAccountLogin = onCall({
+    region: "europe-west1",
+    timeoutSeconds: 15,
+    memory: "256MiB"
+}, async (request) => {
+    const uid = request.auth?.uid || "";
+    if (!uid) {
+        throw new HttpsError("unauthenticated", "Connexion requise.");
+    }
 
+    const db = admin.firestore();
+    const userRef = db.collection("users").doc(uid);
+    const userDoc = await userRef.get();
+
+    if (!userDoc.exists) {
+        throw new HttpsError("not-found", "Compte utilisateur introuvable.");
+    }
+
+    const userData = userDoc.data() || {};
+    if (userData.statut === "suspendu") {
+        throw new HttpsError("permission-denied", "Compte suspendu.");
+    }
+
+    const now = admin.firestore.FieldValue.serverTimestamp();
+    const hasFirstLogin = Boolean(userData.accountStatus?.firstLoginAt || userData.firstLoginAt);
+    const preparationState = userData.accountStatus?.preparationState || userData.preparationState || "not_prepared";
+
+    const payload = {
+        "accountStatus.activationState": "active",
+        "accountStatus.preparationState": preparationState,
+        "accountStatus.lastLoginAt": now,
+        lastLoginAt: now,
+        updatedAt: now
+    };
+
+    if (!hasFirstLogin) {
+        payload["accountStatus.firstLoginAt"] = now;
+        payload.firstLoginAt = now;
+    }
+
+    await userRef.set(payload, { merge: true });
+
+    await safeWriteAccountAuditLog(db, {
+        type: "account.login_tracked",
+        actorUid: uid,
+        actorEmail: request.auth.token?.email || userData.email || "",
+        targetUid: uid,
+        targetEmail: userData.email || request.auth.token?.email || "",
+        targetRole: userData.role || ""
+    });
+
+    return {
+        success: true,
+        firstLoginCreated: !hasFirstLogin
+    };
+});
 
 
 /* =======================================================================

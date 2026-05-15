@@ -17,10 +17,12 @@
  * - le formulaire login peut être remonté après une navigation PJAX publique.
  * SBI 8.0P.154 :
  * - demande publique de reset mot de passe via Function + email SBI/Brevo.
+ * SBI 8.0P.158 :
+ * - suivi serveur de première connexion / dernière connexion.
  * =======================================================================
  */
 
-import { auth, db } from './firebase-init.js';
+import { app, auth, db } from './firebase-init.js';
 import {
     signInWithEmailAndPassword,
     onAuthStateChanged,
@@ -30,6 +32,7 @@ import {
     doc,
     getDoc
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js";
 
 /* --- 1.1 ELEMENTS LOGIN --- */
 let loginForm = null;
@@ -50,6 +53,9 @@ const boundLoginForms = new WeakSet();
 const boundResetForms = new WeakSet();
 let redirectInProgress = false;
 let loginSignalTimers = [];
+let lastTrackedLoginUid = null;
+const functionsInstance = getFunctions(app, "europe-west1");
+const trackAccountLoginCallable = httpsCallable(functionsInstance, 'trackAccountLogin');
 
 /* --- 1.2 CONSTANTES ROUTES --- */
 const ROLE_DASHBOARDS = {
@@ -532,6 +538,20 @@ const fetchUserData = async (uid) => {
     }
 };
 
+const trackAccountLogin = async (user, userData) => {
+    if (!user?.uid || userData?.statut === 'suspendu') return;
+    if (lastTrackedLoginUid === user.uid) return;
+
+    lastTrackedLoginUid = user.uid;
+
+    try {
+        await trackAccountLoginCallable({});
+    } catch (error) {
+        lastTrackedLoginUid = null;
+        console.warn('[SBI Auth] Suivi connexion non bloquant :', error?.message || error);
+    }
+};
+
 /* --- 1.8 ROUTE GUARD & REDIRECTIONS --- */
 const enforceSecurityPolicies = async (user, userData) => {
     const currentPath = normalizePath();
@@ -617,9 +637,11 @@ const enforceCurrentAuthState = async () => {
 onAuthStateChanged(auth, async (user) => {
     if (user) {
         const userData = await fetchUserData(user.uid);
-        enforceSecurityPolicies(user, userData);
+        await trackAccountLogin(user, userData);
+        await enforceSecurityPolicies(user, userData);
     } else {
-        enforceSecurityPolicies(null, null);
+        lastTrackedLoginUid = null;
+        await enforceSecurityPolicies(null, null);
     }
 });
 
