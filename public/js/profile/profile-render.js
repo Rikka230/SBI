@@ -158,8 +158,9 @@ async function renderActivity({ db, uid, data = {}, context }) {
     });
 
     logs.sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
+    const compactLogs = compactAccountLogs(logs);
 
-    if (logs.length === 0) {
+    if (compactLogs.length === 0) {
       list.innerHTML = `
         <li style="line-height:1.7;">
           <strong style="color:#fff;">Création du compte</strong>
@@ -172,7 +173,7 @@ async function renderActivity({ db, uid, data = {}, context }) {
       return;
     }
 
-    list.innerHTML = logs.slice(0, 50).map(renderAccountLogItem).join('');
+    list.innerHTML = compactLogs.slice(0, 10).map(renderAccountLogItem).join('');
   } catch (error) {
     console.warn('[SBI Profile] Journal compte indisponible :', error);
     list.innerHTML = `
@@ -187,11 +188,43 @@ async function renderActivity({ db, uid, data = {}, context }) {
   }
 }
 
+function compactAccountLogs(logs = []) {
+  const compact = [];
+  let previousLoginMs = 0;
+  let skippedLoginCount = 0;
+
+  logs.forEach((log) => {
+    const type = log?.type || '';
+    const createdAtMs = toMillis(log?.createdAt);
+
+    if (type === 'account.login_tracked') {
+      if (previousLoginMs && Math.abs(previousLoginMs - createdAtMs) < (30 * 60 * 1000)) {
+        skippedLoginCount += 1;
+        return;
+      }
+
+      previousLoginMs = createdAtMs;
+    }
+
+    compact.push(log);
+  });
+
+  if (skippedLoginCount > 0 && compact.length > 0) {
+    compact[0] = {
+      ...compact[0],
+      compactedLoginCount: skippedLoginCount
+    };
+  }
+
+  return compact;
+}
+
 function renderAccountLogItem(log = {}) {
   const meta = getAccountLogMeta(log.type);
   const date = formatSbiDate(log.createdAt, 'Date inconnue');
   const actor = getAccountLogActor(log);
   const details = getAccountLogDetails(log);
+  const compactNote = log.compactedLoginCount ? ` · ${log.compactedLoginCount} connexion(s) rapprochée(s) masquée(s)` : '';
 
   return `
     <li style="
@@ -208,7 +241,7 @@ function renderAccountLogItem(log = {}) {
         <span style="color:var(--text-muted); font-size:0.78rem;">${escapeHTML(date)}</span>
       </div>
       <div style="margin-top:0.35rem; color:var(--text-muted); font-size:0.82rem; line-height:1.55;">
-        ${escapeHTML(actor)}
+        ${escapeHTML(actor + compactNote)}
       </div>
       ${details ? `<div style="margin-top:0.35rem; color:#dbe5ff; font-size:0.8rem; line-height:1.5;">${escapeHTML(details)}</div>` : ''}
     </li>

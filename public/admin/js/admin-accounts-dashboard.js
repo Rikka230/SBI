@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.159 / P2H.2-B.1
+ * SBI 8.0P.161 / P2H.2-C.1
  * Structure lecture seule "Comptes & accès".
  *
  * Objectif :
@@ -29,7 +29,7 @@ function injectStyle() {
   const link = document.createElement('link');
   link.id = 'sbi-admin-accounts-css';
   link.rel = 'stylesheet';
-  link.href = '/admin/css/admin-accounts.css?v=8.0P.157';
+  link.href = '/admin/css/admin-accounts.css?v=8.0P.161';
   document.head.append(link);
 }
 
@@ -381,7 +381,7 @@ function startAccountsSnapshot() {
     enhanceRenderedAccountRows();
 
     window.SBI_ACCOUNTS_DASHBOARD_STATE = {
-      version: '8.0P.159',
+      version: '8.0P.161',
       users: users.length,
       updatedAt: new Date().toISOString()
     };
@@ -390,12 +390,59 @@ function startAccountsSnapshot() {
   });
 }
 
+function navigateToProfile(uid) {
+  if (!uid) return;
+
+  const href = `/admin/admin-profile.html?id=${encodeURIComponent(uid)}`;
+  const url = new URL(href, window.location.origin);
+
+  /*
+   * On laisse le routeur PJAX interne intercepter un vrai lien si possible.
+   * En fallback, on garde une navigation classique propre.
+   */
+  const ghostLink = document.createElement('a');
+  ghostLink.href = href;
+  ghostLink.setAttribute('data-sbi-href', href);
+  ghostLink.style.display = 'none';
+  document.body.appendChild(ghostLink);
+
+  const clickEvent = new MouseEvent('click', {
+    bubbles: true,
+    cancelable: true,
+    view: window,
+    button: 0
+  });
+
+  const intercepted = !ghostLink.dispatchEvent(clickEvent);
+  ghostLink.remove();
+
+  if (!intercepted) {
+    window.location.href = url.pathname + url.search;
+  }
+}
+
+function bindProfileNavigation() {
+  if (document.body.dataset.sbiAccountProfileNavBound === 'true') return;
+  document.body.dataset.sbiAccountProfileNavBound = 'true';
+
+  document.addEventListener('click', (event) => {
+    const button = event.target?.closest?.('.btn-view-profile[data-id]');
+    if (!button) return;
+
+    event.preventDefault();
+    event.stopImmediatePropagation();
+
+    navigateToProfile(button.getAttribute('data-id'));
+  }, true);
+}
+
 function mount() {
   if (mounted) return;
   if (!ensureAccountsShell()) return;
 
   mounted = true;
   injectStyle();
+  bindProfileNavigation();
   observeUsersList();
   startAccountsSnapshot();
   enhanceRenderedAccountRows();

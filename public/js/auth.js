@@ -19,6 +19,8 @@
  * - demande publique de reset mot de passe via Function + email SBI/Brevo.
  * SBI 8.0P.158 :
  * - suivi serveur de première connexion / dernière connexion.
+ * SBI 8.0P.161 :
+ * - throttle local du suivi connexion pour éviter le spam de logs.
  * =======================================================================
  */
 
@@ -56,6 +58,28 @@ let loginSignalTimers = [];
 let lastTrackedLoginUid = null;
 const functionsInstance = getFunctions(app, "europe-west1");
 const trackAccountLoginCallable = httpsCallable(functionsInstance, 'trackAccountLogin');
+const LOGIN_TRACK_THROTTLE_MS = 30 * 60 * 1000;
+
+const getLoginTrackKey = (uid) => `sbi:lastAccountLoginTrack:${uid}`;
+
+const readLastLoginTrack = (uid) => {
+    try {
+        return Number(localStorage.getItem(getLoginTrackKey(uid))) || 0;
+    } catch (_) {
+        return 0;
+    }
+};
+
+const writeLastLoginTrack = (uid, value = Date.now()) => {
+    try {
+        localStorage.setItem(getLoginTrackKey(uid), String(value));
+    } catch (_) {}
+};
+
+const shouldTrackAccountLogin = (uid) => {
+    const lastTrack = readLastLoginTrack(uid);
+    return !lastTrack || (Date.now() - lastTrack) > LOGIN_TRACK_THROTTLE_MS;
+};
 
 /* --- 1.2 CONSTANTES ROUTES --- */
 const ROLE_DASHBOARDS = {
@@ -541,11 +565,13 @@ const fetchUserData = async (uid) => {
 const trackAccountLogin = async (user, userData) => {
     if (!user?.uid || userData?.statut === 'suspendu') return;
     if (lastTrackedLoginUid === user.uid) return;
+    if (!shouldTrackAccountLogin(user.uid)) return;
 
     lastTrackedLoginUid = user.uid;
 
     try {
         await trackAccountLoginCallable({});
+        writeLastLoginTrack(user.uid);
     } catch (error) {
         lastTrackedLoginUid = null;
         console.warn('[SBI Auth] Suivi connexion non bloquant :', error?.message || error);
