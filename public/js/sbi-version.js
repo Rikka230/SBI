@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.166.5',
+  version: '8.0P.166.6',
   branch: 'private-admin-accounts-mail-workflow',
-  channel: 'ADMIN MAIL WORKFLOW P2H.2-E.3 PANEL REAL FIX',
-  stage: 'PRIVATE REAL ADMIN RIGHT PANEL FIX',
+  channel: 'ADMIN MAIL WORKFLOW P2H.2-E.4',
+  stage: 'PRIVATE ACCOUNT LOGS SCROLL UX',
   updatedAt: '2026-05-15',
-  label: 'SBI 8.0P.166.5 - REAL ADMIN RIGHT PANEL FIX'
+  label: 'SBI 8.0P.166.6 - ACCOUNT LOGS SCROLL UX'
 };
 
 export function getSbiVersionLabel() {

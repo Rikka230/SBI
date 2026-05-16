@@ -138,27 +138,21 @@ async function renderActivity({ db, uid, data = {}, context, reloadProfile }) {
   const list = document.getElementById('prof-activity-list');
   if (!list) return;
 
+  list.style.margin = '0';
+  list.style.padding = '0';
+
   const fallbackCreationDate = data.dateCreation
     ? formatSbiDate(data.dateCreation, 'Date inconnue')
     : formatSbiDate(data.createdAt, 'Date inconnue');
 
   if (!context.isAdmin) {
-    list.innerHTML = `
-      <li style="line-height:1.7;">
-        <strong style="color:#fff;">Création du compte</strong>
-        <span style="color:var(--text-muted);"> · ${escapeHTML(fallbackCreationDate)}</span>
-      </li>
-    `;
+    list.innerHTML = renderAccountLogsReadOnlyCreation(fallbackCreationDate);
     return;
   }
 
   renderAccountActionsPanel({ uid, data, reloadProfile });
 
-  list.innerHTML = `
-    <li style="list-style:none; padding:0.75rem 0; color:var(--text-muted);">
-      Chargement du journal compte...
-    </li>
-  `;
+  list.innerHTML = renderAccountLogsLoading();
 
   try {
     const logsQuery = query(
@@ -178,31 +172,160 @@ async function renderActivity({ db, uid, data = {}, context, reloadProfile }) {
     const compactLogs = compactAccountLogs(logs);
 
     if (compactLogs.length === 0) {
-      list.innerHTML = `
-        <li style="line-height:1.7;">
-          <strong style="color:#fff;">Création du compte</strong>
-          <span style="color:var(--text-muted);"> · ${escapeHTML(fallbackCreationDate)}</span>
-        </li>
-        <li style="list-style:none; margin-top:0.75rem; color:var(--text-muted);">
-          Aucun journal compte détaillé pour le moment.
-        </li>
-      `;
+      list.innerHTML = renderAccountLogsEmpty(fallbackCreationDate);
       return;
     }
 
-    list.innerHTML = compactLogs.slice(0, 10).map(renderAccountLogItem).join('');
+    list.innerHTML = renderAccountLogsPanel({
+      logs: compactLogs.slice(0, 24),
+      compactCount: compactLogs.length,
+      rawCount: logs.length,
+      fallbackCreationDate
+    });
   } catch (error) {
     console.warn('[SBI Profile] Journal compte indisponible :', error);
-    list.innerHTML = `
-      <li style="line-height:1.7;">
-        <strong style="color:#fff;">Création du compte</strong>
-        <span style="color:var(--text-muted);"> · ${escapeHTML(fallbackCreationDate)}</span>
-      </li>
-      <li style="list-style:none; margin-top:0.75rem; color:#fbbc04;">
-        Journal compte indisponible pour le moment.
-      </li>
-    `;
+    list.innerHTML = renderAccountLogsUnavailable(fallbackCreationDate);
   }
+}
+
+function renderAccountLogsReadOnlyCreation(fallbackCreationDate) {
+  return `
+    <li style="line-height:1.7;">
+      <strong style="color:#fff;">Création du compte</strong>
+      <span style="color:var(--text-muted);"> · ${escapeHTML(fallbackCreationDate)}</span>
+    </li>
+  `;
+}
+
+function renderAccountLogsLoading() {
+  return `
+    <li style="
+      list-style:none;
+      padding:0.95rem 1rem;
+      border:1px solid rgba(255,255,255,0.08);
+      border-radius:12px;
+      background:rgba(255,255,255,0.035);
+      color:var(--text-muted);
+    ">
+      Chargement du journal compte...
+    </li>
+  `;
+}
+
+function renderAccountLogsEmpty(fallbackCreationDate) {
+  return `
+    <li style="
+      list-style:none;
+      padding:1rem;
+      border:1px solid rgba(255,255,255,0.08);
+      border-radius:12px;
+      background:rgba(255,255,255,0.035);
+    ">
+      <div style="display:flex; justify-content:space-between; gap:0.85rem; flex-wrap:wrap;">
+        <strong style="color:#fff;">Journal du compte</strong>
+        <span style="color:var(--text-muted); font-size:0.78rem;">Création · ${escapeHTML(fallbackCreationDate)}</span>
+      </div>
+      <p style="margin:0.65rem 0 0; color:var(--text-muted); font-size:0.84rem; line-height:1.5;">
+        Aucun journal compte détaillé pour le moment.
+      </p>
+    </li>
+  `;
+}
+
+function renderAccountLogsUnavailable(fallbackCreationDate) {
+  return `
+    <li style="
+      list-style:none;
+      padding:1rem;
+      border:1px solid rgba(251,188,4,0.18);
+      border-left:3px solid #fbbc04;
+      border-radius:12px;
+      background:rgba(251,188,4,0.055);
+    ">
+      <div style="display:flex; justify-content:space-between; gap:0.85rem; flex-wrap:wrap;">
+        <strong style="color:#fff;">Journal du compte</strong>
+        <span style="color:var(--text-muted); font-size:0.78rem;">Création · ${escapeHTML(fallbackCreationDate)}</span>
+      </div>
+      <p style="margin:0.65rem 0 0; color:#fbbc04; font-size:0.84rem; line-height:1.5;">
+        Journal compte indisponible pour le moment.
+      </p>
+    </li>
+  `;
+}
+
+function renderAccountLogsPanel({ logs = [], compactCount = 0, rawCount = 0, fallbackCreationDate = 'Date inconnue' }) {
+  const visibleCount = logs.length;
+  const hiddenCount = Math.max(compactCount - visibleCount, 0);
+  const hiddenLabel = hiddenCount > 0
+    ? ` · ${hiddenCount} entrée${hiddenCount > 1 ? 's' : ''} plus ancienne${hiddenCount > 1 ? 's' : ''} masquée${hiddenCount > 1 ? 's' : ''}`
+    : '';
+
+  return `
+    <li style="
+      list-style:none;
+      margin:0;
+      padding:0;
+    ">
+      <div style="
+        border:1px solid rgba(255,255,255,0.08);
+        border-radius:14px;
+        background:rgba(255,255,255,0.032);
+        overflow:hidden;
+      ">
+        <div style="
+          display:flex;
+          justify-content:space-between;
+          gap:0.85rem;
+          flex-wrap:wrap;
+          align-items:flex-start;
+          padding:0.95rem 1rem;
+          border-bottom:1px solid rgba(255,255,255,0.08);
+          background:rgba(0,0,0,0.18);
+        ">
+          <div>
+            <strong style="display:block; color:#fff; font-size:0.94rem;">Journal du compte</strong>
+            <span style="display:block; color:var(--text-muted); font-size:0.78rem; margin-top:0.22rem;">
+              Création · ${escapeHTML(fallbackCreationDate)}
+            </span>
+          </div>
+          <span style="
+            color:#dbe5ff;
+            background:rgba(42,87,255,0.12);
+            border:1px solid rgba(42,87,255,0.24);
+            border-radius:999px;
+            padding:0.35rem 0.6rem;
+            font-size:0.72rem;
+            font-weight:800;
+          ">
+            ${visibleCount}/${compactCount} affichées
+          </span>
+        </div>
+
+        <div style="
+          padding:0.85rem 0.85rem 0.15rem;
+          max-height:min(52vh, 520px);
+          overflow-y:auto;
+          overscroll-behavior:contain;
+          scrollbar-width:thin;
+        ">
+          <ul style="margin:0; padding:0;">
+            ${logs.map(renderAccountLogItem).join('')}
+          </ul>
+        </div>
+
+        <div style="
+          padding:0.7rem 1rem;
+          border-top:1px solid rgba(255,255,255,0.07);
+          color:var(--text-muted);
+          font-size:0.74rem;
+          line-height:1.45;
+          background:rgba(0,0,0,0.12);
+        ">
+          ${rawCount} log${rawCount > 1 ? 's' : ''} lu${rawCount > 1 ? 's' : ''} · ${compactCount} entrée${compactCount > 1 ? 's' : ''} après regroupement${hiddenLabel}
+        </div>
+      </div>
+    </li>
+  `;
 }
 
 function normalizePreparationState(value) {
@@ -820,6 +943,8 @@ function getAccountLogDetails(log = {}) {
   const details = [];
 
   if (log.type === 'account.finalization_invite_sent') details.push('Email finalisation envoyé');
+  if (log.type === 'account.finalization_reminder_sent') details.push('Relance automatique envoyée');
+  if (log.type === 'account.finalization_escalation_required') details.push('Alerte générée après 3 relances');
   if (log.type === 'account.finalization_escalation_resolved' && log.note) details.push(`Note : ${log.note}`);
   if (log.emailSent === true) details.push('Email envoyé');
   if (log.emailSent === false) details.push('Email non envoyé');
