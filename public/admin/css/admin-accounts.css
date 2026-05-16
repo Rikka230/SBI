@@ -277,3 +277,46 @@
     display: none;
   }
 }
+
+/* SBI 8.0P.167.33 - Smooth 60fps account list scroll, CSS-only */
+@media (min-width: 1025px) {
+  #users-list-container {
+    contain: layout paint style;
+    isolation: isolate;
+    will-change: scroll-position;
+    scroll-behavior: auto;
+    -webkit-overflow-scrolling: touch;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+  }
+
+  #users-list-container .sbi-account-row {
+    contain: layout paint style;
+    content-visibility: auto;
+    contain-intrinsic-size: 66px;
+    transform: translateZ(0);
+    transition: background-color 0.12s ease, border-color 0.12s ease !important;
+    box-shadow: none !important;
+  }
+
+  #users-list-container .sbi-account-row:hover {
+    transform: none !important;
+  }
+
+  #users-list-container .sbi-status-dot::before {
+    box-shadow: none !important;
+  }
+
+  #users-list-container * {
+    animation: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #users-list-container,
+  #users-list-container * {
+    scroll-behavior: auto !important;
+    transition: none !important;
+    animation: none !important;
+  }
+}

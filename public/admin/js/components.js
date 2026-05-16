@@ -18,6 +18,7 @@
  * 8.0P.167.29 : tentative scroll interne liste comptes rejetée visuellement.
  * 8.0P.167.30 : tentative hauteur fixe commune, rejetée car bloc création tronqué.
  * 8.0P.167.32 : hauteur saine sans tronquer le formulaire de création.
+ * 8.0P.167.33 : scroll liste comptes optimisé 60fps CSS-only.
  */
 
 (function bootstrapSbiComponents(){
@@ -143,7 +144,7 @@
     loadAccountEscalationsModule();
 
     if (!accountsModulePromise) {
-      accountsModulePromise = import('/admin/js/admin-accounts-dashboard.js?v=8.0P.167.32')
+      accountsModulePromise = import('/admin/js/admin-accounts-dashboard.js?v=8.0P.167.33')
         .catch((error) => {
           accountsModulePromise = null;
           console.warn('[SBI Accounts] Module comptes non chargé :', error);
