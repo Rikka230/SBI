@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.6',
+  version: '8.0P.167.7',
   branch: 'private-admin-accounts-mail-workflow',
-  channel: 'ADMIN MAIL WORKFLOW ROLLBACK DECOR',
-  stage: 'ROLLBACK FULL DECOR TO SINGLE SCROLL STABLE',
+  channel: 'ADMIN MAIL WORKFLOW CONTAINED DECOR',
+  stage: 'CONTAINED ADMIN DECOR NO OVERFLOW',
   updatedAt: '2026-05-15',
-  label: 'SBI 8.0P.167.6 - ROLLBACK DECOR TO SINGLE SCROLL'
+  label: 'SBI 8.0P.167.7 - CONTAINED ADMIN DECOR NO OVERFLOW'
 };
 
 export function getSbiVersionLabel() {

@@ -1,8 +1,15 @@
 /* ==========================================================================
-   SBI 8.0P.167.6 — Admin single-scroll visual guard
+   SBI 8.0P.167.7 — Contained admin decor, no overflow
    --------------------------------------------------------------------------
-   Rollback décor 167.5 : retour au visuel léger stable du fix double-scroll.
-   Aucun background-attachment, aucune grille fixed, aucun repaint lourd.
+   Base stable : 8.0P.167.6
+   Objectif : remettre un décor plus riche sans recréer de scroll parasite.
+   Règles :
+   - un seul scroll vertical : #main-content ;
+   - aucun fixed pour le décor ;
+   - aucun background-attachment local/fixed ;
+   - aucun pseudo-élément plus large que son conteneur ;
+   - aucun top/bottom négatif ;
+   - aucun décor qui peut agrandir la zone scrollable.
    ========================================================================== */
 
 body.sbi-admin-space,
@@ -11,23 +18,20 @@ body.sbi-internal-ui.sbi-admin-space {
     background: var(--sbi-admin-bg, #050812) !important;
 }
 
-/* Le vrai décor reste dans l’unique conteneur scrollable. */
+/* L’unique conteneur de scroll reste #main-content. Fond stable, sans repaint lourd. */
 body.sbi-admin-space #main-content,
 body.sbi-profile-page.sbi-admin-surface #main-content {
+    position: relative;
+    isolation: isolate;
     background:
-        radial-gradient(circle at 16% 8%, rgba(42, 87, 255, 0.16), transparent 34rem),
-        radial-gradient(circle at 86% 12%, rgba(255, 255, 255, 0.045), transparent 28rem),
         linear-gradient(135deg, #050812 0%, #0a1020 52%, #05070d 100%) !important;
     background-repeat: no-repeat;
     background-size: cover;
 }
 
-/* Neutralise les overlays fixed anciens, responsables d’un décor “collé”. */
-body.sbi-admin-space.sbi-dashboard-page,
-body.sbi-admin-space.sbi-dashboard-page #main-content::before,
-body.sbi-profile-page #main-content::before,
-body.sbi-course-editor-page #main-content::before {
-    background-attachment: initial !important;
+/* Neutralisation des anciens décors fixed / attachés au viewport. */
+body.sbi-admin-space.sbi-dashboard-page {
+    background: var(--sbi-admin-bg, #050812) !important;
 }
 
 body.sbi-admin-space.sbi-dashboard-page #main-content::before,
@@ -36,16 +40,83 @@ body.sbi-course-editor-page #main-content::before {
     display: none !important;
 }
 
+/* Le wrapper scrolle avec le contenu. On garde une isolation locale sûre. */
 body.sbi-admin-space .content-wrapper,
 body.sbi-profile-page.sbi-admin-surface .content-wrapper {
     position: relative;
+    isolation: isolate;
     z-index: 1;
+    min-height: calc(100dvh - var(--header-height, 60px));
     padding-bottom: max(3rem, env(safe-area-inset-bottom));
+}
+
+/* Décor contenu : inset 0, pas de largeur externe, pas de débordement. */
+body.sbi-admin-space .content-wrapper::before,
+body.sbi-profile-page.sbi-admin-surface .content-wrapper::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    pointer-events: none;
+    border-radius: 0;
+    background:
+        radial-gradient(circle at 8% 4%, rgba(42, 87, 255, 0.22), transparent 28rem),
+        radial-gradient(circle at 94% 8%, rgba(255, 255, 255, 0.060), transparent 24rem),
+        radial-gradient(circle at 74% 88%, rgba(42, 87, 255, 0.11), transparent 26rem),
+        linear-gradient(135deg, rgba(42, 87, 255, 0.055), transparent 52%);
+    background-repeat: no-repeat;
+}
+
+/* Grille contenue : aucune extension hors wrapper. */
+body.sbi-admin-space .content-wrapper::after,
+body.sbi-profile-page.sbi-admin-surface .content-wrapper::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    opacity: 0.105;
+    background-image:
+        linear-gradient(rgba(255,255,255,0.070) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.070) 1px, transparent 1px);
+    background-size: 72px 72px;
+    mask-image: linear-gradient(to bottom, transparent 0%, black 8%, black 86%, transparent 100%);
+}
+
+/* Les contenus restent toujours devant le décor. */
+body.sbi-admin-space .admin-view,
+body.sbi-admin-space .content-wrapper > *,
+body.sbi-profile-page.sbi-admin-surface .content-wrapper > * {
+    position: relative;
+    z-index: 1;
+}
+
+/* Petite profondeur sur les cartes sans effet de scroll. */
+body.sbi-admin-space .admin-view > div,
+body.sbi-profile-page.sbi-admin-surface .profile-header-card,
+body.sbi-profile-page.sbi-admin-surface .gamification-box,
+body.sbi-profile-page.sbi-admin-surface .data-group {
+    transform: translateZ(0);
 }
 
 @media (max-width: 768px) {
     body.sbi-admin-space .content-wrapper,
     body.sbi-profile-page.sbi-admin-surface .content-wrapper {
         padding-bottom: max(4rem, env(safe-area-inset-bottom));
+    }
+
+    body.sbi-admin-space .content-wrapper::before,
+    body.sbi-profile-page.sbi-admin-surface .content-wrapper::before {
+        background:
+            radial-gradient(circle at 8% 3%, rgba(42, 87, 255, 0.19), transparent 20rem),
+            radial-gradient(circle at 96% 9%, rgba(255, 255, 255, 0.050), transparent 18rem),
+            radial-gradient(circle at 70% 92%, rgba(42, 87, 255, 0.09), transparent 20rem),
+            linear-gradient(135deg, rgba(42, 87, 255, 0.045), transparent 52%);
+    }
+
+    body.sbi-admin-space .content-wrapper::after,
+    body.sbi-profile-page.sbi-admin-surface .content-wrapper::after {
+        opacity: 0.075;
+        background-size: 56px 56px;
     }
 }
