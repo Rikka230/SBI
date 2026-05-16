@@ -485,3 +485,69 @@
         flex: 0 0 auto !important;
     }
 }
+
+
+/* ==========================================================================
+   SBI 8.0P.167.1 — Profil admin : background continu au scroll
+   --------------------------------------------------------------------------
+   Correction ciblée pour les profils longs : le décor ne doit plus couper
+   en bas lorsque #main-content scrolle indépendamment du body.
+   ========================================================================== */
+
+.sbi-profile-page {
+    min-height: 100vh;
+    background:
+        radial-gradient(circle at 12% 8%, var(--sbi-role-soft), transparent 34%),
+        radial-gradient(circle at 86% 18%, rgba(255, 255, 255, 0.055), transparent 30%),
+        linear-gradient(135deg, rgba(42, 87, 255, 0.10), transparent 54%),
+        var(--bg-dark) !important;
+    background-attachment: fixed;
+}
+
+.sbi-profile-page .app-container {
+    min-height: 100vh;
+}
+
+.sbi-profile-page #main-content {
+    min-height: 100vh;
+    background:
+        radial-gradient(circle at 14% 10%, var(--sbi-role-soft), transparent 33%),
+        radial-gradient(circle at 86% 18%, rgba(255, 255, 255, 0.055), transparent 30%),
+        linear-gradient(135deg, rgba(42, 87, 255, 0.08), transparent 58%),
+        var(--bg-dark);
+    background-attachment: local, local, local, local;
+    background-repeat: no-repeat;
+    background-size: 100% max(100%, 1200px), 100% max(100%, 1200px), 100% max(100%, 1200px), 100% 100%;
+}
+
+.sbi-profile-page #main-content::before {
+    position: absolute !important;
+    inset: 0 !important;
+    min-height: max(100%, 100vh);
+    background:
+        radial-gradient(circle at 12% 8%, var(--sbi-role-soft), transparent 32%),
+        radial-gradient(circle at 86% 18%, rgba(255, 255, 255, 0.07), transparent 28%),
+        linear-gradient(135deg, rgba(255, 255, 255, 0.02), transparent 52%) !important;
+}
+
+.sbi-profile-page .content-wrapper {
+    position: relative;
+    z-index: 1;
+    min-height: calc(100vh - var(--header-height, 60px));
+    padding-bottom: max(3rem, env(safe-area-inset-bottom));
+}
+
+.sbi-profile-page .profile-grid {
+    align-items: start;
+}
+
+@media (max-width: 768px) {
+    .sbi-profile-page #main-content {
+        background-size: 100% max(100%, 1400px), 100% max(100%, 1400px), 100% max(100%, 1400px), 100% 100%;
+    }
+
+    .sbi-profile-page .content-wrapper {
+        padding-bottom: max(4rem, env(safe-area-inset-bottom));
+    }
+}
+
