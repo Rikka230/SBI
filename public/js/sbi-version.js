@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.19',
+  version: '8.0P.167.20',
   branch: 'private-admin-accounts-mail-workflow',
-  channel: 'ADMIN MAIL WORKFLOW DECOR FIX',
-  stage: 'RICH ADMIN INDEX BACKGROUND SINGLE SCROLL',
+  channel: 'ADMIN MAIL WORKFLOW SAFE ROLLBACK',
+  stage: 'ROLLBACK FROM REJECTED RICH GRID',
   updatedAt: '2026-05-16',
-  label: 'SBI 8.0P.167.19 - RICH ADMIN INDEX BACKGROUND SINGLE SCROLL'
+  label: 'SBI 8.0P.167.20 - ROLLBACK FROM REJECTED RICH GRID'
 };
 
 export function getSbiVersionLabel() {
