@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.17',
+  version: '8.0P.167.18',
   branch: 'private-admin-accounts-mail-workflow',
-  channel: 'ADMIN MAIL WORKFLOW DECOR FIX',
-  stage: 'SAFETY ROLLBACK FROM 8.0P.167.16',
+  channel: 'ADMIN MAIL WORKFLOW EMERGENCY ROLLBACK',
+  stage: 'CACHE-BUST ROLLBACK TO SAFE ADMIN DISPLAY',
   updatedAt: '2026-05-16',
-  label: 'SBI 8.0P.167.17 - SAFETY ROLLBACK FROM 8.0P.167.16'
+  label: 'SBI 8.0P.167.18 - CACHE-BUST ROLLBACK TO SAFE ADMIN DISPLAY'
 };
 
 export function getSbiVersionLabel() {

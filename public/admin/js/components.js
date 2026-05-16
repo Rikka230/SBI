@@ -12,9 +12,7 @@
  * 8.0P.151 : suppression des bridges conformité, intégration directe dans
  * public-formations-admin.js et sbi-public-pages.js.
  * 8.0P.166.4 : chargement rapide panel profil droit.
- * 8.0P.167.14 : rollback des styles composants, grille index admin scopée.
- * 8.0P.167.15 : fond corrigé, grille type main douce, profil exclu, badge 0 masqué.
- * 8.0P.167.17 : rollback sécurité depuis 8.0P.167.16 écran vide.
+ * 8.0P.167.18 : rollback cache-bust vers base safe affichable.
  */
 
 (function bootstrapSbiComponents(){
@@ -49,55 +47,9 @@
 
   scheduleEarlyDisplay();
 
-
-  const applyAdminGridScope = () => {
-    const body = document.body;
-    if (!body) return;
-
-    const path = window.location.pathname || '';
-    const isProfileView = path.includes('admin-profile.html')
-      || Boolean(document.querySelector('.profile-header-card, .profile-grid, #prof-name'));
-
-    const isAdminIndex = !isProfileView
-      && !path.includes('formations-cours.html')
-      && !path.includes('formations-live.html')
-      && !path.includes('site-index-settings.html')
-      && (
-        path.endsWith('/admin/')
-        || path.endsWith('/admin/index.html')
-        || Boolean(document.getElementById('view-dashboard'))
-        || Boolean(document.getElementById('view-users'))
-      );
-
-    body.classList.toggle('sbi-admin-grid-page', Boolean(isAdminIndex));
-
-    // Nettoyage explicite des classes ajoutées par 8.0P.167.11/13.
-    // Ces classes activaient des styles larges sur profil, cartes, inputs/selects.
-    body.classList.remove('sbi-internal-ui', 'sbi-admin-space', 'sbi-dashboard-page');
-  };
-
-  const scheduleAdminGridScope = () => {
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', applyAdminGridScope, { once: true });
-    } else {
-      applyAdminGridScope();
-    }
-
-    window.setTimeout(applyAdminGridScope, 0);
-    window.setTimeout(applyAdminGridScope, 120);
-  };
-
-  scheduleAdminGridScope();
-
   const injectAdminSingleScrollFix = () => {
-    const href = '/admin/css/sbi-admin-single-scroll.css?v=8.0P.167.17';
+    const href = '/admin/css/sbi-admin-single-scroll.css?v=8.0P.167.18';
     const absoluteHref = new URL(href, window.location.origin).href;
-
-    Array.from(document.querySelectorAll('link[rel="stylesheet"][href*="/admin/css/sbi-admin-single-scroll.css?v="]'))
-      .forEach((link) => {
-        const currentHref = new URL(link.getAttribute('href'), window.location.origin).href;
-        if (currentHref !== absoluteHref) link.remove();
-      });
 
     const existingLink = Array.from(document.querySelectorAll('link[rel="stylesheet"][href]'))
       .find((link) => new URL(link.getAttribute('href'), window.location.origin).href === absoluteHref);
@@ -116,8 +68,8 @@
   injectAdminSingleScrollFix();
   window.setTimeout(injectAdminSingleScrollFix, 250);
   window.setTimeout(injectAdminSingleScrollFix, 900);
-  window.addEventListener('sbi:components-ready', () => { applyAdminGridScope(); injectAdminSingleScrollFix(); });
-  window.addEventListener('sbi:app-shell-rendered', () => { applyAdminGridScope(); injectAdminSingleScrollFix(); });
+  window.addEventListener('sbi:components-ready', injectAdminSingleScrollFix);
+  window.addEventListener('sbi:app-shell-rendered', injectAdminSingleScrollFix);
 
 
   import('/admin/js/admin-profile-panel-fast.js?v=8.0P.166.4')
