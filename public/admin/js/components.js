@@ -13,11 +13,13 @@
  * public-formations-admin.js et sbi-public-pages.js.
  * 8.0P.166.4 : chargement rapide panel profil droit.
  * 8.0P.167.24 : surface admin claire homogène sans grille.
+ * 8.0P.167.25 : alertes admin légères pour escalades après 3 relances.
  */
 
 (function bootstrapSbiComponents(){
   let accountsModulePromise = null;
   let adminIndexModulesPromise = null;
+  let accountEscalationsModulePromise = null;
   let accountsWatchStarted = false;
 
   const releasePreload = () => {
@@ -113,10 +115,28 @@
     return adminIndexModulesPromise;
   };
 
+  const loadAccountEscalationsModule = () => {
+    if (!shouldBootAdminIndexModules()) return Promise.resolve(false);
+
+    if (!accountEscalationsModulePromise) {
+      accountEscalationsModulePromise = import('/admin/js/admin-account-escalations-lite.js?v=8.0P.167.25')
+        .catch((error) => {
+          accountEscalationsModulePromise = null;
+          if (window.localStorage?.getItem('sbiDebugAccess') === 'true') {
+            console.warn('[SBI Account Escalations] Module non chargé :', error);
+          }
+          return null;
+        });
+    }
+
+    return accountEscalationsModulePromise.then(Boolean);
+  };
+
   const loadAccountsModule = () => {
     if (!shouldMountAccountsModule()) return Promise.resolve(false);
 
     bootAdminIndexModules();
+    loadAccountEscalationsModule();
 
     if (!accountsModulePromise) {
       accountsModulePromise = import('/admin/js/admin-accounts-dashboard.js?v=8.0P.166.4')
@@ -136,6 +156,7 @@
   const scheduleAccountsMount = () => {
     window.requestAnimationFrame(() => {
       bootAdminIndexModules();
+      loadAccountEscalationsModule();
       loadAccountsModule();
     });
   };
@@ -174,6 +195,7 @@
       }
 
       await bootAdminIndexModules();
+      await loadAccountEscalationsModule();
       await loadAccountsModule();
 
       await new Promise((resolve) => requestAnimationFrame(resolve));
