@@ -193,6 +193,38 @@ const forceUsersRehydrateFromProfile = () => {
     }, 1200);
 };
 
+const resetUserListFilters = () => {
+    const searchInput = document.getElementById('search-user');
+    const roleFilter = document.getElementById('filter-role');
+
+    if (searchInput) searchInput.value = '';
+    if (roleFilter) roleFilter.value = 'all';
+};
+
+const forceUsersRefreshAfterCreate = (createdUser = {}) => {
+    const container = document.getElementById('users-list-container');
+    if (container) {
+        container.innerHTML = '<div class="empty-state">Actualisation du nouveau compte...</div>';
+    }
+
+    resetUserListFilters();
+    disconnectUsersRealtime();
+    fetchUsers();
+
+    window.dispatchEvent(new CustomEvent('sbi:account-created', {
+        detail: {
+            uid: createdUser.uid || '',
+            email: createdUser.email || '',
+            at: Date.now()
+        }
+    }));
+
+    window.setTimeout(() => {
+        disconnectUsersRealtime();
+        fetchUsers();
+    }, 450);
+};
+
 const renderUsersList = (usersToRender) => {
     const container = document.getElementById('users-list-container');
     if (!container) return;
@@ -327,7 +359,10 @@ const initUserCreation = () => {
             msgBox.textContent = warning || `Compte créé pour ${prenom}. Email d’invitation envoyé.`;
 
             form.reset();
-            fetchUsers();
+            forceUsersRefreshAfterCreate({
+                uid: result?.data?.uid || '',
+                email
+            });
         } catch (error) {
             msgBox.style.color = 'var(--accent-red)';
             msgBox.textContent = 'Erreur : ' + getCallableErrorMessage(error, 'Création du compte impossible.');

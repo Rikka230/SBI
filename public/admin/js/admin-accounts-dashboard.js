@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.166.3 / P2H.2-E.3 UX
+ * SBI 8.0P.167.28 / P2H.2-F.2 UX
  * Structure lecture seule "Comptes & accès".
  *
  * Objectif :
@@ -138,6 +138,24 @@ function getSuspiciousEmailSuggestion(email) {
   return '';
 }
 
+function getFriendlyBounceDetail(message = '') {
+  const raw = String(message || '').toLowerCase();
+
+  if (raw.includes('does not exist') || raw.includes('user unknown') || raw.includes('recipient address rejected') || raw.includes('550-5.1.1')) {
+    return 'Adresse inexistante ou refusée';
+  }
+
+  if (raw.includes('mailbox full') || raw.includes('quota')) {
+    return 'Boîte mail pleine ou indisponible';
+  }
+
+  if (raw.includes('blocked') || raw.includes('spam') || raw.includes('complaint')) {
+    return 'Adresse bloquée ou refusée';
+  }
+
+  return 'Adresse inexistante ou refusée';
+}
+
 function getFinalizationEmailIssue(user = {}) {
   const issueCode = user?.accountStatus?.finalizationIssueCode || '';
   const issueMessage = user?.accountStatus?.finalizationIssueMessage || '';
@@ -149,7 +167,8 @@ function getFinalizationEmailIssue(user = {}) {
       code: 'email_bounced',
       label: 'Email rejeté',
       tone: 'danger',
-      detail: issueMessage || 'Retour Brevo : adresse à corriger',
+      detail: getFriendlyBounceDetail(issueMessage),
+      technicalDetail: issueMessage,
       blocking: true,
       event: issueEvent
     };
@@ -486,7 +505,7 @@ function enhanceRenderedAccountRows() {
       const notePreview = getEscalationNotePreview(user);
       const emailIssue = getFinalizationEmailIssue(user);
       const escalationText = emailIssue
-        ? `<small style="color:${emailIssue.tone === 'danger' ? '#ff9b9b' : '#ffe39a'}; font-weight:800;">${escapeHtml(emailIssue.detail)}</small>`
+        ? `<small style="display:block; max-width:150px; color:${emailIssue.tone === 'danger' ? '#ff9b9b' : '#ffe39a'}; font-weight:800; line-height:1.25; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(emailIssue.detail)}</small>`
         : needsDirectFinalizationContact(user)
           ? '<small style="color:#ff9b9b; font-weight:800;">3 relances · contact élève</small>'
           : hasResolvedFinalizationContact(user)
@@ -540,7 +559,7 @@ function startAccountsSnapshot() {
     enhanceRenderedAccountRows();
 
     window.SBI_ACCOUNTS_DASHBOARD_STATE = {
-      version: '8.0P.167.26',
+      version: '8.0P.167.28',
       users: users.length,
       updatedAt: new Date().toISOString()
     };

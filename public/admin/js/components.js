@@ -14,6 +14,7 @@
  * 8.0P.166.4 : chargement rapide panel profil droit.
  * 8.0P.167.24 : surface admin claire homogène sans grille.
  * 8.0P.167.25 : alertes admin légères pour escalades après 3 relances.
+ * 8.0P.167.28 : cache-bust admin-core après correction refresh création compte.
  */
 
 (function bootstrapSbiComponents(){
@@ -94,7 +95,7 @@
 
     if (!adminIndexModulesPromise) {
       adminIndexModulesPromise = Promise.allSettled([
-        import('/admin/js/admin-core.js?v=8.0P.167.0'),
+        import('/admin/js/admin-core.js?v=8.0P.167.28'),
         import('/admin/js/admin-dashboard.js?v=8.0P.167.0')
       ]).then((results) => {
         const failed = results.filter((result) => result.status === 'rejected');

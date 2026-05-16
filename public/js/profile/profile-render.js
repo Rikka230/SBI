@@ -378,6 +378,30 @@ function getSuspiciousEmailSuggestion(email) {
   return '';
 }
 
+function getFriendlyBounceDetail(message = '') {
+  const raw = String(message || '').toLowerCase();
+
+  if (raw.includes('does not exist') || raw.includes('user unknown') || raw.includes('recipient address rejected') || raw.includes('550-5.1.1')) {
+    return 'Adresse inexistante ou inaccessible. Corrigez l’adresse avant de renvoyer une finalisation.';
+  }
+
+  if (raw.includes('mailbox full') || raw.includes('quota')) {
+    return 'Boîte mail pleine ou temporairement indisponible. Vérifiez l’adresse avant de relancer.';
+  }
+
+  if (raw.includes('blocked') || raw.includes('spam') || raw.includes('complaint')) {
+    return 'Adresse bloquée ou refusée. Corrigez l’adresse avant de renvoyer une finalisation.';
+  }
+
+  return 'Adresse rejetée par le serveur email. Corrigez l’adresse avant de renvoyer une finalisation.';
+}
+
+function truncateTechnicalDetail(value = '', maxLength = 260) {
+  const text = String(value || '').replace(/\s+/g, ' ').trim();
+  if (!text) return '';
+  return text.length > maxLength ? `${text.slice(0, maxLength)}…` : text;
+}
+
 function getFinalizationEmailIssue(data = {}) {
   const accountStatus = data.accountStatus || {};
   const issueCode = accountStatus.finalizationIssueCode || '';
@@ -389,7 +413,8 @@ function getFinalizationEmailIssue(data = {}) {
     return {
       code: 'email_bounced',
       label: 'Email rejeté',
-      detail: issueMessage || 'Retour Brevo : adresse rejetée. Corrigez l’adresse avant de renvoyer une finalisation.',
+      detail: getFriendlyBounceDetail(issueMessage),
+      technicalDetail: truncateTechnicalDetail(issueMessage),
       tone: '#ff4a4a',
       blocking: true,
       event: issueEvent
@@ -467,6 +492,8 @@ function getFinalizationInfo(data = {}) {
       lastReminderAt,
       issueCode: emailIssue.code,
       issueMessage: emailIssue.detail,
+      issueTechnicalDetail: emailIssue.technicalDetail || '',
+      issueEvent: emailIssue.event || '',
       needsEmailCorrection: emailIssue.blocking,
       needsEmailVerification: !emailIssue.blocking
     };
@@ -628,6 +655,12 @@ function renderAccountActionsPanel({ uid, data = {}, reloadProfile }) {
           <p style="margin:0; color:#ffd6d6; font-size:0.82rem; line-height:1.5;">
             ${escapeHTML(finalizationInfo.detail)}
           </p>
+          ${finalizationInfo.issueTechnicalDetail ? `
+            <details style="margin-top:0.7rem; color:rgba(255,214,214,0.74); font-size:0.74rem; line-height:1.45;">
+              <summary style="cursor:pointer; font-weight:800; color:#ffb4b4;">Détail technique</summary>
+              <p style="margin:0.45rem 0 0; word-break:break-word;">${escapeHTML(finalizationInfo.issueTechnicalDetail)}</p>
+            </details>
+          ` : ''}
         </div>
       ` : ''}
 
