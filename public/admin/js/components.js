@@ -46,6 +46,24 @@
 
   scheduleEarlyDisplay();
 
+  const injectAdminBackgroundScrollFix = () => {
+    const href = '/admin/css/sbi-admin-background-scroll.css?v=8.0P.167.2';
+    const absoluteHref = new URL(href, window.location.origin).href;
+
+    const exists = Array.from(document.querySelectorAll('link[rel="stylesheet"][href]'))
+      .some((link) => new URL(link.getAttribute('href'), window.location.origin).href === absoluteHref);
+
+    if (exists) return;
+
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = href;
+    document.head.appendChild(link);
+  };
+
+  injectAdminBackgroundScrollFix();
+
+
   import('/admin/js/admin-profile-panel-fast.js?v=8.0P.166.4')
     .catch((error) => {
       if (window.localStorage?.getItem('sbiDebugAccess') === 'true') {

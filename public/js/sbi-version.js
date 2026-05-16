@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.1',
+  version: '8.0P.167.2',
   branch: 'private-admin-accounts-mail-workflow',
-  channel: 'ADMIN MAIL WORKFLOW P2H.2-E.5',
-  stage: 'PRIVATE PROFILE BACKGROUND SCROLL FIX',
+  channel: 'ADMIN MAIL WORKFLOW GLOBAL BG FIX',
+  stage: 'GLOBAL ADMIN BACKGROUND SCROLL FIX',
   updatedAt: '2026-05-15',
-  label: 'SBI 8.0P.167.1 - PROFILE BACKGROUND SCROLL FIX'
+  label: 'SBI 8.0P.167.2 - GLOBAL ADMIN BACKGROUND SCROLL FIX'
 };
 
 export function getSbiVersionLabel() {
