@@ -665,6 +665,13 @@ function initAdminCore() {
     });
 }
 
+window.SBI_ADMIN_CORE_REINIT = () => {
+    if (auth.currentUser) {
+        currentUid = auth.currentUser.uid;
+        fetchUsers();
+    }
+};
+
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initAdminCore, { once: true });
 } else {

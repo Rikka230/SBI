@@ -11,11 +11,12 @@
  * présence réelle des panels/topbars attendus pour la page courante.
  * 8.0P.151 : suppression des bridges conformité, intégration directe dans
  * public-formations-admin.js et sbi-public-pages.js.
- * 8.0P.166.5 : correction réelle panel droit admin nav-name/nav-avatar/nav-role.
+ * 8.0P.166.4 : chargement rapide panel profil droit.
  */
 
 (function bootstrapSbiComponents(){
   let accountsModulePromise = null;
+  let adminIndexModulesPromise = null;
   let accountsWatchStarted = false;
 
   const releasePreload = () => {
@@ -45,7 +46,7 @@
 
   scheduleEarlyDisplay();
 
-  import('/admin/js/admin-profile-panel-fast.js?v=8.0P.166.5')
+  import('/admin/js/admin-profile-panel-fast.js?v=8.0P.166.4')
     .catch((error) => {
       if (window.localStorage?.getItem('sbiDebugAccess') === 'true') {
         console.warn('[SBI Profile Panel] Chargement rapide indisponible :', error);
@@ -56,11 +57,43 @@
     || window.location.pathname.endsWith('/admin/')
     || window.location.pathname.endsWith('/admin/index.html');
 
+  const shouldBootAdminIndexModules = () => Boolean(document.getElementById('main-content'))
+    && Boolean(document.getElementById('view-dashboard') || document.getElementById('view-users'))
+    && !window.location.pathname.includes('admin-profile.html');
+
+  const bootAdminIndexModules = () => {
+    if (!shouldBootAdminIndexModules()) return Promise.resolve(false);
+
+    if (!adminIndexModulesPromise) {
+      adminIndexModulesPromise = Promise.allSettled([
+        import('/admin/js/admin-core.js?v=8.0P.167.0'),
+        import('/admin/js/admin-dashboard.js?v=8.0P.167.0')
+      ]).then((results) => {
+        const failed = results.filter((result) => result.status === 'rejected');
+
+        if (failed.length) {
+          console.warn('[SBI Admin] Boot index partiel :', failed.map((item) => item.reason));
+          adminIndexModulesPromise = null;
+          return false;
+        }
+
+        window.SBI_ADMIN_CORE_REINIT?.();
+        window.SBI_ADMIN_DASHBOARD_REINIT?.();
+        window.dispatchEvent(new CustomEvent('sbi:admin-index-modules-booted'));
+        return true;
+      });
+    }
+
+    return adminIndexModulesPromise;
+  };
+
   const loadAccountsModule = () => {
     if (!shouldMountAccountsModule()) return Promise.resolve(false);
 
+    bootAdminIndexModules();
+
     if (!accountsModulePromise) {
-      accountsModulePromise = import('/admin/js/admin-accounts-dashboard.js?v=8.0P.166.5')
+      accountsModulePromise = import('/admin/js/admin-accounts-dashboard.js?v=8.0P.166.4')
         .catch((error) => {
           accountsModulePromise = null;
           console.warn('[SBI Accounts] Module comptes non chargé :', error);
@@ -76,6 +109,7 @@
 
   const scheduleAccountsMount = () => {
     window.requestAnimationFrame(() => {
+      bootAdminIndexModules();
       loadAccountsModule();
     });
   };
@@ -91,9 +125,13 @@
     observer.observe(document.documentElement, { childList: true, subtree: true });
 
     window.addEventListener('popstate', scheduleAccountsMount);
+    window.addEventListener('pageshow', scheduleAccountsMount);
+    window.addEventListener('focus', scheduleAccountsMount);
     window.addEventListener('sbi:components-ready', scheduleAccountsMount);
     window.addEventListener('sbi:app-shell-rendered', scheduleAccountsMount);
     window.addEventListener('sbi:accounts-rendered', scheduleAccountsMount);
+    window.addEventListener('sbi:admin-index-dom-present', scheduleAccountsMount);
+    window.addEventListener('sbi:admin-tab-changed', scheduleAccountsMount);
   };
 
   const failSafe = window.setTimeout(() => {
@@ -109,6 +147,7 @@
         await module.waitForExpectedComponents(650);
       }
 
+      await bootAdminIndexModules();
       await loadAccountsModule();
 
       await new Promise((resolve) => requestAnimationFrame(resolve));

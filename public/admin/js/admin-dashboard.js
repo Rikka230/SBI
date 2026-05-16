@@ -46,6 +46,10 @@ function initAdminDashboardStats() {
     });
 }
 
+window.SBI_ADMIN_DASHBOARD_REINIT = () => {
+    if (auth.currentUser) loadDashboardStats();
+};
+
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initAdminDashboardStats, { once: true });
 } else {
