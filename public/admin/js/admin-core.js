@@ -603,7 +603,17 @@ const initModalLogic = () => {
     });
 };
 
-document.addEventListener('DOMContentLoaded', () => {
+function initAdminCore() {
+    if (window.__SBI_ADMIN_CORE_READY === true) {
+        if (auth.currentUser) {
+            currentUid = auth.currentUser.uid;
+            fetchUsers();
+        }
+        return;
+    }
+
+    window.__SBI_ADMIN_CORE_READY = true;
+
     const myProfileBtn = document.getElementById('btn-my-profile');
 
     if (myProfileBtn) {
@@ -653,4 +663,10 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.replace('/login.html');
         }
     });
-});
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initAdminCore, { once: true });
+} else {
+    initAdminCore();
+}
