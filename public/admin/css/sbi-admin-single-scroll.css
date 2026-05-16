@@ -1,0 +1,51 @@
+/* ==========================================================================
+   SBI 8.0P.167.4 — Admin single-scroll visual guard
+   --------------------------------------------------------------------------
+   Complément visuel léger du fix double-scroll.
+   Aucun background-attachment, aucune grille fixed, aucun repaint lourd.
+   ========================================================================== */
+
+body.sbi-admin-space,
+body.sbi-profile-page.sbi-admin-surface,
+body.sbi-internal-ui.sbi-admin-space {
+    background: var(--sbi-admin-bg, #050812) !important;
+}
+
+/* Le vrai décor reste dans l’unique conteneur scrollable. */
+body.sbi-admin-space #main-content,
+body.sbi-profile-page.sbi-admin-surface #main-content {
+    background:
+        radial-gradient(circle at 16% 8%, rgba(42, 87, 255, 0.16), transparent 34rem),
+        radial-gradient(circle at 86% 12%, rgba(255, 255, 255, 0.045), transparent 28rem),
+        linear-gradient(135deg, #050812 0%, #0a1020 52%, #05070d 100%) !important;
+    background-repeat: no-repeat;
+    background-size: cover;
+}
+
+/* Neutralise les overlays fixed anciens, responsables d’un décor “collé”. */
+body.sbi-admin-space.sbi-dashboard-page,
+body.sbi-admin-space.sbi-dashboard-page #main-content::before,
+body.sbi-profile-page #main-content::before,
+body.sbi-course-editor-page #main-content::before {
+    background-attachment: initial !important;
+}
+
+body.sbi-admin-space.sbi-dashboard-page #main-content::before,
+body.sbi-profile-page #main-content::before,
+body.sbi-course-editor-page #main-content::before {
+    display: none !important;
+}
+
+body.sbi-admin-space .content-wrapper,
+body.sbi-profile-page.sbi-admin-surface .content-wrapper {
+    position: relative;
+    z-index: 1;
+    padding-bottom: max(3rem, env(safe-area-inset-bottom));
+}
+
+@media (max-width: 768px) {
+    body.sbi-admin-space .content-wrapper,
+    body.sbi-profile-page.sbi-admin-surface .content-wrapper {
+        padding-bottom: max(4rem, env(safe-area-inset-bottom));
+    }
+}
