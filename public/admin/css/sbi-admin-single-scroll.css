@@ -1,17 +1,14 @@
 /* ==========================================================================
-   SBI 8.0P.167.20 — Rollback from rejected rich grid, safe admin display
+   SBI 8.0P.167.21 — Main cockpit decor restored safely
    --------------------------------------------------------------------------
-   Base stable : 8.0P.167.8
-   Objectif : rendre le décor admin plus premium et plus discret sans recréer
-   de scroll parasite ni colonne centrale visible.
-
-   Règles conservées :
-   - un seul scroll vertical : #main-content ;
-   - aucun fixed pour le décor ;
-   - aucun background-attachment local/fixed ;
-   - aucun pseudo-élément décoratif qui déborde ;
-   - aucun top/bottom négatif ;
-   - aucun décor porté par .content-wrapper.
+   Base stable : 8.0P.167.20
+   Objectif : récupérer le décor cockpit proche de main sans recréer les bugs :
+   - single-scroll conservé : #main-content uniquement ;
+   - pas de fixed ;
+   - pas de background-attachment ;
+   - aucun décor sur .content-wrapper ;
+   - profil explicitement exclu du décor grille ;
+   - aucun style appliqué aux cartes, boutons, inputs ou selects.
    ========================================================================== */
 
 body.sbi-admin-space,
@@ -21,9 +18,9 @@ body.sbi-internal-ui.sbi-admin-space {
 }
 
 /*
-   Décor principal : porté uniquement par le conteneur scrollable validé.
-   On évite les pseudo-éléments afin de ne jamais agrandir le flux ni créer
-   d'effet de colonne centrale sur le max-width de .content-wrapper.
+   Fond de base : sombre, lisible, en pleine largeur du conteneur scrollable.
+   Le décor ne doit jamais être porté par .content-wrapper, sinon il devient
+   une colonne centrale à cause du max-width.
 */
 body.sbi-admin-space #main-content,
 body.sbi-profile-page.sbi-admin-surface #main-content {
@@ -39,11 +36,15 @@ body.sbi-profile-page.sbi-admin-surface #main-content {
     background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100% !important;
 }
 
-/* Neutralisation ferme des anciens décors hérités : grille, points et layers fixed. */
+/* Le fond body hérité de main est gardé sobre : le décor réel vit dans #main-content. */
 body.sbi-admin-space.sbi-dashboard-page {
     background: var(--sbi-admin-bg, #050812) !important;
 }
 
+/*
+   Nettoyage général des anciens calques.
+   On réactive ensuite uniquement le décor index admin avec des sélecteurs plus précis.
+*/
 body.sbi-admin-space #main-content::before,
 body.sbi-admin-space #main-content::after,
 body.sbi-profile-page.sbi-admin-surface #main-content::before,
@@ -55,6 +56,56 @@ body.sbi-course-editor-page #main-content::after {
     animation: none !important;
     transform: none !important;
     background: none !important;
+}
+
+/*
+   Décor cockpit type main, version sûre :
+   - pas de position fixed ;
+   - pas de calque sur .content-wrapper ;
+   - masque radial comme main pour éviter le rendu papier millimétré plein écran ;
+   - profil exclu.
+*/
+body.sbi-admin-space.sbi-dashboard-page:not(.sbi-profile-page) #main-content::before {
+    content: '' !important;
+    display: block !important;
+    position: absolute !important;
+    inset: 0 !important;
+    pointer-events: none !important;
+    z-index: 0 !important;
+    opacity: 0.14 !important;
+    background-image:
+        linear-gradient(rgba(255, 255, 255, 0.075) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.075) 1px, transparent 1px) !important;
+    background-size: 72px 72px !important;
+    background-position: 0 0 !important;
+    mask-image: radial-gradient(circle at 50% 22%, black 0%, rgba(0, 0, 0, 0.82) 28%, rgba(0, 0, 0, 0.34) 54%, transparent 74%) !important;
+    -webkit-mask-image: radial-gradient(circle at 50% 22%, black 0%, rgba(0, 0, 0, 0.82) 28%, rgba(0, 0, 0, 0.34) 54%, transparent 74%) !important;
+    contain: paint;
+}
+
+body.sbi-admin-space.sbi-dashboard-page:not(.sbi-profile-page) #main-content::after {
+    content: '' !important;
+    display: block !important;
+    position: absolute !important;
+    inset: 0 !important;
+    pointer-events: none !important;
+    z-index: 0 !important;
+    opacity: 0.105 !important;
+    background:
+        radial-gradient(circle at 22% 18%, rgba(255,255,255,0.72) 0 1px, transparent 2px),
+        radial-gradient(circle at 72% 38%, rgba(42,87,255,0.72) 0 1px, transparent 2px),
+        radial-gradient(circle at 54% 78%, rgba(255,255,255,0.52) 0 1px, transparent 2px) !important;
+    background-size: 260px 220px, 320px 260px, 380px 300px !important;
+    mask-image: radial-gradient(circle at 52% 28%, black 0%, rgba(0,0,0,0.72) 30%, rgba(0,0,0,0.28) 56%, transparent 76%) !important;
+    -webkit-mask-image: radial-gradient(circle at 52% 28%, black 0%, rgba(0,0,0,0.72) 30%, rgba(0,0,0,0.28) 56%, transparent 76%) !important;
+    contain: paint;
+}
+
+/* Profil admin : fond sobre uniquement, aucune grille ni points. */
+body.sbi-profile-page.sbi-admin-surface #main-content::before,
+body.sbi-profile-page.sbi-admin-surface #main-content::after {
+    content: none !important;
+    display: none !important;
 }
 
 /* Le wrapper reste un simple conteneur de contenu, jamais un support décoratif. */
@@ -75,7 +126,7 @@ body.sbi-profile-page.sbi-admin-surface .content-wrapper::after {
     display: none !important;
 }
 
-/* Les contenus restent toujours devant la nappe sombre. */
+/* Les contenus restent toujours devant les calques de décor. */
 body.sbi-admin-space .admin-view,
 body.sbi-admin-space .content-wrapper > *,
 body.sbi-profile-page.sbi-admin-surface .content-wrapper > * {
@@ -83,7 +134,14 @@ body.sbi-profile-page.sbi-admin-surface .content-wrapper > * {
     z-index: 1;
 }
 
-/* Petite profondeur sur les cartes sans effet de scroll ni repaint coûteux. */
+/* Correctif bulle assistant : aucun badge rouge si aucune notification réelle. */
+body.sbi-internal-ui .sbi-assistant:not(.has-notifications) .sbi-assistant__badge {
+    opacity: 0 !important;
+    scale: 0.72 !important;
+    pointer-events: none !important;
+}
+
+/* Petite profondeur sans effet de scroll ni repaint coûteux. */
 body.sbi-admin-space .admin-view > div,
 body.sbi-profile-page.sbi-admin-surface .profile-header-card,
 body.sbi-profile-page.sbi-admin-surface .gamification-box,
@@ -99,6 +157,17 @@ body.sbi-profile-page.sbi-admin-surface .data-group {
             radial-gradient(ellipse at 94% 10%, rgba(174, 196, 255, 0.045) 0%, transparent 38%),
             linear-gradient(135deg, #050812 0%, #070c18 48%, #05070d 100%) !important;
         background-size: 100% 100%, 100% 100%, 100% 100% !important;
+    }
+
+    body.sbi-admin-space.sbi-dashboard-page:not(.sbi-profile-page) #main-content::before {
+        opacity: 0.105 !important;
+        background-size: 60px 60px !important;
+        mask-image: radial-gradient(circle at 50% 20%, black 0%, rgba(0, 0, 0, 0.64) 34%, transparent 76%) !important;
+        -webkit-mask-image: radial-gradient(circle at 50% 20%, black 0%, rgba(0, 0, 0, 0.64) 34%, transparent 76%) !important;
+    }
+
+    body.sbi-admin-space.sbi-dashboard-page:not(.sbi-profile-page) #main-content::after {
+        opacity: 0.075 !important;
     }
 
     body.sbi-admin-space .content-wrapper,
