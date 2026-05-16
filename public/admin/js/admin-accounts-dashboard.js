@@ -30,7 +30,7 @@ function injectStyle() {
   const link = document.createElement('link');
   link.id = 'sbi-admin-accounts-css';
   link.rel = 'stylesheet';
-  link.href = '/admin/css/admin-accounts.css?v=8.0P.167.30';
+  link.href = '/admin/css/admin-accounts.css?v=8.0P.167.31';
   document.head.append(link);
 }
 
@@ -559,7 +559,7 @@ function startAccountsSnapshot() {
     enhanceRenderedAccountRows();
 
     window.SBI_ACCOUNTS_DASHBOARD_STATE = {
-      version: '8.0P.167.30',
+      version: '8.0P.167.31',
       users: users.length,
       updatedAt: new Date().toISOString()
     };
