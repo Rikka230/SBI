@@ -187,25 +187,26 @@
   }
 }
 
-/* SBI 8.0P.167.29 v3 - Scroll interne liste Comptes, sans JS de hauteur */
-@media (min-width: 1281px) {
+/* SBI 8.0P.167.30 - Hauteur commune CSS-only pour Comptes, sans JS et sans lag */
+@media (min-width: 1025px) {
   .sbi-accounts-workspace {
-    align-items: start;
+    --sbi-account-panel-height: 432px;
+    align-items: start !important;
   }
 
   .sbi-account-create-card,
   .sbi-account-list-card {
-    align-self: start;
+    align-self: start !important;
+    box-sizing: border-box !important;
+    height: var(--sbi-account-panel-height) !important;
+    min-height: var(--sbi-account-panel-height) !important;
+    max-height: var(--sbi-account-panel-height) !important;
+    overflow: hidden !important;
   }
 
   .sbi-account-list-card {
     display: flex !important;
     flex-direction: column !important;
-    box-sizing: border-box;
-    height: 396px;
-    max-height: 396px;
-    min-height: 0;
-    overflow: hidden;
   }
 
   .sbi-account-list-card h3 {
@@ -220,6 +221,7 @@
     overflow-x: hidden;
     overscroll-behavior: contain;
     padding-right: 0;
+    padding-bottom: 0.15rem;
     scrollbar-width: none;
     -ms-overflow-style: none;
   }
@@ -231,11 +233,25 @@
   }
 }
 
-@media (max-width: 1280px) {
+@media (min-width: 1025px) and (max-height: 860px) {
+  .sbi-accounts-workspace {
+    --sbi-account-panel-height: 408px;
+  }
+}
+
+@media (min-width: 1025px) and (min-height: 980px) {
+  .sbi-accounts-workspace {
+    --sbi-account-panel-height: 456px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .sbi-account-create-card,
   .sbi-account-list-card {
     height: auto !important;
+    min-height: 0 !important;
     max-height: none !important;
-    overflow: hidden;
+    overflow: hidden !important;
   }
 
   #users-list-container {
