@@ -101,6 +101,86 @@ function getRoleLabel(user) {
   return 'Non défini';
 }
 
+const SUSPICIOUS_EMAIL_DOMAINS = new Map([
+  ['gmal.com', 'gmail.com'],
+  ['gmial.com', 'gmail.com'],
+  ['gmai.com', 'gmail.com'],
+  ['gmail.con', 'gmail.com'],
+  ['gmail.cmo', 'gmail.com'],
+  ['gmail.comm', 'gmail.com'],
+  ['hotmial.com', 'hotmail.com'],
+  ['hotmai.com', 'hotmail.com'],
+  ['hotmail.con', 'hotmail.com'],
+  ['outlok.com', 'outlook.com'],
+  ['outlook.con', 'outlook.com'],
+  ['yaho.com', 'yahoo.com'],
+  ['yahoo.con', 'yahoo.com'],
+  ['icloud.con', 'icloud.com']
+]);
+
+function isEmailSyntaxValid(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || '').trim());
+}
+
+function getEmailDomain(email) {
+  return String(email || '').trim().toLowerCase().split('@').pop() || '';
+}
+
+function getSuspiciousEmailSuggestion(email) {
+  const domain = getEmailDomain(email);
+  if (!domain || !domain.includes('.')) return '';
+  if (SUSPICIOUS_EMAIL_DOMAINS.has(domain)) return SUSPICIOUS_EMAIL_DOMAINS.get(domain);
+
+  if (domain.endsWith('.con')) return `${domain.slice(0, -4)}.com`;
+  if (domain.endsWith('.cmo')) return `${domain.slice(0, -4)}.com`;
+  if (domain.endsWith('.comm')) return `${domain.slice(0, -5)}.com`;
+
+  return '';
+}
+
+function getFinalizationEmailIssue(user = {}) {
+  const issueCode = user?.accountStatus?.finalizationIssueCode || '';
+  const issueMessage = user?.accountStatus?.finalizationIssueMessage || '';
+  const issueEvent = user?.accountStatus?.finalizationIssueEvent || '';
+  const email = user?.email || '';
+
+  if (issueCode === 'email_bounced') {
+    return {
+      code: 'email_bounced',
+      label: 'Email rejeté',
+      tone: 'danger',
+      detail: issueMessage || 'Retour Brevo : adresse à corriger',
+      blocking: true,
+      event: issueEvent
+    };
+  }
+
+  if (issueCode === 'invalid_email' || !isEmailSyntaxValid(email)) {
+    return {
+      code: 'invalid_email',
+      label: 'Email invalide',
+      tone: 'danger',
+      detail: issueMessage || 'Adresse à corriger',
+      blocking: true,
+      event: issueEvent
+    };
+  }
+
+  const suggestion = getSuspiciousEmailSuggestion(email);
+  if (suggestion) {
+    return {
+      code: 'suspicious_email',
+      label: 'Email suspect',
+      tone: 'warning',
+      detail: `Vérifier le domaine, possible ${suggestion}`,
+      blocking: false,
+      suggestion
+    };
+  }
+
+  return null;
+}
+
 function needsDirectFinalizationContact(user) {
   return Boolean(user?.accountStatus?.finalizationEscalationAt && !user?.accountStatus?.finalizationEscalationResolvedAt);
 }
@@ -110,7 +190,7 @@ function hasResolvedFinalizationContact(user) {
 }
 
 function hasInvalidFinalizationEmail(user) {
-  return user?.accountStatus?.finalizationIssueCode === 'invalid_email';
+  return Boolean(getFinalizationEmailIssue(user));
 }
 
 function hasOldFinalizationLink(user) {
@@ -151,11 +231,12 @@ function getActivationInfo(user) {
     };
   }
 
-  if (hasInvalidFinalizationEmail(user)) {
+  const emailIssue = getFinalizationEmailIssue(user);
+  if (emailIssue) {
     return {
-      label: 'Email invalide',
-      tone: 'danger',
-      detail: 'Adresse à corriger'
+      label: emailIssue.label,
+      tone: emailIssue.tone,
+      detail: emailIssue.detail
     };
   }
 
@@ -403,8 +484,9 @@ function enhanceRenderedAccountRows() {
     if (statusCell) {
       statusCell.classList.add('sbi-account-status-cell');
       const notePreview = getEscalationNotePreview(user);
-      const escalationText = hasInvalidFinalizationEmail(user)
-        ? '<small style="color:#ff9b9b; font-weight:800;">Adresse à corriger</small>'
+      const emailIssue = getFinalizationEmailIssue(user);
+      const escalationText = emailIssue
+        ? `<small style="color:${emailIssue.tone === 'danger' ? '#ff9b9b' : '#ffe39a'}; font-weight:800;">${escapeHtml(emailIssue.detail)}</small>`
         : needsDirectFinalizationContact(user)
           ? '<small style="color:#ff9b9b; font-weight:800;">3 relances · contact élève</small>'
           : hasResolvedFinalizationContact(user)

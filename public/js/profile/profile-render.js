@@ -341,6 +341,87 @@ function hasFinalizedFirstAccess(data = {}) {
   );
 }
 
+const SUSPICIOUS_EMAIL_DOMAINS = new Map([
+  ['gmal.com', 'gmail.com'],
+  ['gmial.com', 'gmail.com'],
+  ['gmai.com', 'gmail.com'],
+  ['gmail.con', 'gmail.com'],
+  ['gmail.cmo', 'gmail.com'],
+  ['gmail.comm', 'gmail.com'],
+  ['hotmial.com', 'hotmail.com'],
+  ['hotmai.com', 'hotmail.com'],
+  ['hotmail.con', 'hotmail.com'],
+  ['outlok.com', 'outlook.com'],
+  ['outlook.con', 'outlook.com'],
+  ['yaho.com', 'yahoo.com'],
+  ['yahoo.con', 'yahoo.com'],
+  ['icloud.con', 'icloud.com']
+]);
+
+function isEmailSyntaxValid(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || '').trim());
+}
+
+function getEmailDomain(email) {
+  return String(email || '').trim().toLowerCase().split('@').pop() || '';
+}
+
+function getSuspiciousEmailSuggestion(email) {
+  const domain = getEmailDomain(email);
+  if (!domain || !domain.includes('.')) return '';
+  if (SUSPICIOUS_EMAIL_DOMAINS.has(domain)) return SUSPICIOUS_EMAIL_DOMAINS.get(domain);
+
+  if (domain.endsWith('.con')) return `${domain.slice(0, -4)}.com`;
+  if (domain.endsWith('.cmo')) return `${domain.slice(0, -4)}.com`;
+  if (domain.endsWith('.comm')) return `${domain.slice(0, -5)}.com`;
+
+  return '';
+}
+
+function getFinalizationEmailIssue(data = {}) {
+  const accountStatus = data.accountStatus || {};
+  const issueCode = accountStatus.finalizationIssueCode || '';
+  const issueMessage = accountStatus.finalizationIssueMessage || '';
+  const issueEvent = accountStatus.finalizationIssueEvent || '';
+  const email = data.email || '';
+
+  if (issueCode === 'email_bounced') {
+    return {
+      code: 'email_bounced',
+      label: 'Email rejeté',
+      detail: issueMessage || 'Retour Brevo : adresse rejetée. Corrigez l’adresse avant de renvoyer une finalisation.',
+      tone: '#ff4a4a',
+      blocking: true,
+      event: issueEvent
+    };
+  }
+
+  if (issueCode === 'invalid_email' || !isEmailSyntaxValid(email)) {
+    return {
+      code: 'invalid_email',
+      label: 'Email invalide',
+      detail: issueMessage || 'Adresse email invalide ou manquante. Corrigez l’adresse avant de relancer la finalisation.',
+      tone: '#ff4a4a',
+      blocking: true,
+      event: issueEvent
+    };
+  }
+
+  const suggestion = getSuspiciousEmailSuggestion(email);
+  if (suggestion) {
+    return {
+      code: 'suspicious_email',
+      label: 'Email suspect',
+      detail: `Le domaine de l’adresse semble suspect. Vérifiez l’adresse avant relance, possible : ${suggestion}.`,
+      tone: '#fbbc04',
+      blocking: false,
+      suggestion
+    };
+  }
+
+  return null;
+}
+
 function getFinalizationInfo(data = {}) {
   const finalized = hasFinalizedFirstAccess(data);
   const accountStatus = data.accountStatus || {};
@@ -361,6 +442,7 @@ function getFinalizationInfo(data = {}) {
     toMillis(lastAccessEmailAt)
   );
   const isOldFinalizationLink = Boolean(lastSignalMs && Date.now() - lastSignalMs >= 48 * 60 * 60 * 1000);
+  const emailIssue = getFinalizationEmailIssue(data);
 
   if (finalized) {
     return {
@@ -373,19 +455,20 @@ function getFinalizationInfo(data = {}) {
     };
   }
 
-  if (issueCode === 'invalid_email') {
+  if (emailIssue) {
     return {
       finalized,
-      label: 'Email invalide',
-      detail: issueMessage || 'Adresse email invalide ou manquante. Corrigez l’adresse avant de relancer la finalisation.',
-      tone: '#ff4a4a',
+      label: emailIssue.label,
+      detail: emailIssue.detail,
+      tone: emailIssue.tone,
       inviteCount,
       reminderCount,
       lastInviteAt,
       lastReminderAt,
-      issueCode,
-      issueMessage,
-      needsEmailCorrection: true
+      issueCode: emailIssue.code,
+      issueMessage: emailIssue.detail,
+      needsEmailCorrection: emailIssue.blocking,
+      needsEmailVerification: !emailIssue.blocking
     };
   }
 
@@ -540,10 +623,28 @@ function renderAccountActionsPanel({ uid, data = {}, reloadProfile }) {
           background:rgba(255,74,74,0.09);
         ">
           <strong style="display:block; color:#ff9b9b; font-size:0.9rem; margin-bottom:0.35rem;">
-            Email invalide : correction requise
+            ${escapeHTML(finalizationInfo.label)} : correction requise
           </strong>
           <p style="margin:0; color:#ffd6d6; font-size:0.82rem; line-height:1.5;">
-            L’adresse email du compte est invalide ou manquante. Corrigez l’adresse email avant de renvoyer une finalisation.
+            ${escapeHTML(finalizationInfo.detail)}
+          </p>
+        </div>
+      ` : ''}
+
+      ${finalizationInfo.needsEmailVerification ? `
+        <div style="
+          margin:0 0 0.85rem 0;
+          padding:0.9rem 1rem;
+          border:1px solid rgba(251,188,4,0.32);
+          border-left:4px solid #fbbc04;
+          border-radius:12px;
+          background:rgba(251,188,4,0.08);
+        ">
+          <strong style="display:block; color:#ffe39a; font-size:0.88rem; margin-bottom:0.35rem;">
+            Email suspect : vérification recommandée
+          </strong>
+          <p style="margin:0; color:rgba(255,239,190,0.84); font-size:0.8rem; line-height:1.5;">
+            ${escapeHTML(finalizationInfo.detail)}
           </p>
         </div>
       ` : ''}
@@ -713,11 +814,13 @@ function renderAccountActionsPanel({ uid, data = {}, reloadProfile }) {
   const notePreviewText = panel.querySelector('#prof-account-note-preview-text');
   const notePreviewMeta = panel.querySelector('#prof-account-note-meta');
 
-  if (finalizationInfo.finalized && finalizationButton) {
+  if ((finalizationInfo.finalized || finalizationInfo.needsEmailCorrection) && finalizationButton) {
     finalizationButton.disabled = true;
     finalizationButton.style.opacity = '0.55';
     finalizationButton.style.cursor = 'not-allowed';
-    finalizationButton.title = 'Le compte a déjà finalisé sa première connexion.';
+    finalizationButton.title = finalizationInfo.needsEmailCorrection
+      ? 'Corrigez l’adresse email avant de renvoyer une finalisation.'
+      : 'Le compte a déjà finalisé sa première connexion.';
   }
 
   saveButton?.addEventListener('click', async () => {
@@ -797,7 +900,7 @@ function renderAccountActionsPanel({ uid, data = {}, reloadProfile }) {
   });
 
   finalizationButton?.addEventListener('click', async () => {
-    if (finalizationInfo.finalized) return;
+    if (finalizationInfo.finalized || finalizationInfo.needsEmailCorrection) return;
 
     const confirmed = window.confirm('Renvoyer une invitation de finalisation à ce compte ?');
     if (!confirmed) return;
@@ -966,6 +1069,14 @@ function getAccountLogMeta(type = '') {
       label: 'Relance non envoyée',
       color: '#ff4a4a'
     },
+    'account.email_bounced': {
+      label: 'Email rejeté par Brevo',
+      color: '#ff4a4a'
+    },
+    'account.email_bounce_unmatched': {
+      label: 'Bounce Brevo sans compte',
+      color: '#fbbc04'
+    },
     'account.finalization_escalation_resolved': {
       label: 'Contact direct traité',
       color: '#2ed573'
@@ -1028,6 +1139,9 @@ function getAccountLogDetails(log = {}) {
   if (log.type === 'account.finalization_invite_sent') details.push('Email finalisation envoyé');
   if (log.type === 'account.finalization_reminder_sent') details.push('Relance automatique envoyée');
   if (log.type === 'account.finalization_reminder_skipped' && log.reason === 'invalid-email') details.push('Email invalide ou manquant');
+  if (log.type === 'account.email_bounced') details.push('Retour Brevo : email rejeté');
+  if (log.event) details.push(`Événement : ${log.event}`);
+  if (log.reason && log.type === 'account.email_bounced') details.push(`Raison : ${log.reason}`);
   if (log.type === 'account.finalization_escalation_required') details.push('Alerte générée après 3 relances');
   if (log.type === 'account.finalization_escalation_resolved' && log.note) details.push(`Note : ${log.note}`);
   if (log.emailSent === true) details.push('Email envoyé');

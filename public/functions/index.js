@@ -33,6 +33,7 @@ admin.initializeApp();
  * ======================================================================= */
 
 const BREVO_API_KEY = defineSecret("BREVO_API_KEY");
+const BREVO_WEBHOOK_TOKEN = defineSecret("BREVO_WEBHOOK_TOKEN");
 const BREVO_LIST_ID = 77;
 const BREVO_NEWSLETTER_LIST_ID = 77;
 const SBI_CONTACT_EMAIL = "contact@sbigroup.fr";
@@ -667,6 +668,85 @@ function isValidEmail(email) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email || "");
 }
 
+const ACCOUNT_EMAIL_BLOCKING_ISSUES = ["invalid_email", "email_bounced"];
+const BREVO_BOUNCE_EVENTS = new Set([
+    "hard_bounce",
+    "hardbounce",
+    "soft_bounce",
+    "softbounce",
+    "blocked",
+    "spam",
+    "complaint",
+    "invalid",
+    "invalid_email",
+    "email_invalid"
+]);
+
+function hasBlockingFinalizationEmailIssue(accountData = {}) {
+    const issueCode = cleanString(accountData.accountStatus?.finalizationIssueCode || "", 80);
+    return ACCOUNT_EMAIL_BLOCKING_ISSUES.includes(issueCode);
+}
+
+function normalizeBrevoEventName(value) {
+    return cleanString(value, 80)
+        .toLowerCase()
+        .replace(/[\s-]+/g, "_");
+}
+
+function isBrevoBounceEvent(value) {
+    const normalized = normalizeBrevoEventName(value);
+    return BREVO_BOUNCE_EVENTS.has(normalized);
+}
+
+function extractBrevoWebhookEvents(body) {
+    if (!body) return [];
+
+    if (typeof body === "string") {
+        try {
+            const parsed = JSON.parse(body);
+            return extractBrevoWebhookEvents(parsed);
+        } catch {
+            return [];
+        }
+    }
+
+    if (Array.isArray(body)) return body.filter(Boolean);
+    if (Array.isArray(body.events)) return body.events.filter(Boolean);
+    return [body];
+}
+
+function extractBrevoEventEmail(event = {}) {
+    const candidate = event.email
+        || event.recipient
+        || event.recipientEmail
+        || event.to
+        || event.emailTo
+        || event.contact?.email
+        || "";
+
+    if (Array.isArray(candidate)) return cleanEmail(candidate[0] || "");
+    return cleanEmail(candidate);
+}
+
+function extractBrevoEventType(event = {}) {
+    return event.event
+        || event.eventType
+        || event.type
+        || event.reason
+        || "";
+}
+
+function extractBrevoBounceMessage(event = {}) {
+    return cleanString(
+        event.reason
+        || event.message
+        || event.description
+        || event.subject
+        || "Email transactionnel rejeté par Brevo.",
+        500
+    );
+}
+
 function normalizeAccountRole(role) {
     const normalized = cleanString(role, 40).toLowerCase();
     return ACCOUNT_ROLES.includes(normalized) ? normalized : "student";
@@ -1233,6 +1313,8 @@ function buildInitialAccountStatus() {
         finalizationIssueCode: "",
         finalizationIssueAt: null,
         finalizationIssueMessage: "",
+        finalizationIssueSource: "",
+        finalizationIssueEvent: "",
         finalizationIssueResolvedAt: null,
         finalizationEscalationAt: null,
         finalizationEscalationResolvedAt: null,
@@ -1273,7 +1355,7 @@ function shouldSendFinalizationReminder(accountData = {}, nowMs = Date.now()) {
 
     const accountStatus = accountData.accountStatus || {};
     if (accountStatus.finalizationReminderEnabled === false) return false;
-    if (accountStatus.finalizationIssueCode === "invalid_email") return false;
+    if (hasBlockingFinalizationEmailIssue(accountData)) return false;
 
     const activationState = accountStatus.activationState || accountData.activationState || "";
     if (activationState && activationState !== "pending_password") return false;
@@ -1650,6 +1732,8 @@ exports.runFinalizationReminders = onSchedule({
                     finalizationIssueCode: "invalid_email",
                     finalizationIssueAt: admin.firestore.FieldValue.serverTimestamp(),
                     finalizationIssueMessage: "Email utilisateur invalide ou manquant.",
+                    finalizationIssueSource: "scheduler",
+                    finalizationIssueEvent: "invalid_email",
                     finalizationReminderEnabled: false,
                     preparationState: "to_check"
                 },
@@ -1737,6 +1821,114 @@ exports.runFinalizationReminders = onSchedule({
         failed
     });
 });
+
+
+exports.brevoTransactionalWebhook = onRequest({
+    region: "europe-west1",
+    secrets: [BREVO_WEBHOOK_TOKEN],
+    timeoutSeconds: 30,
+    memory: "256MiB"
+}, async (req, res) => {
+    res.set("Cache-Control", "no-store");
+    res.set("X-Content-Type-Options", "nosniff");
+
+    if (req.method === "OPTIONS") {
+        res.status(204).send("");
+        return;
+    }
+
+    if (req.method !== "POST") {
+        res.status(405).json({ success: false, message: "Méthode non autorisée." });
+        return;
+    }
+
+    const expectedToken = cleanString(BREVO_WEBHOOK_TOKEN.value(), 240);
+    const providedToken = cleanString(
+        req.query?.token
+        || req.get("x-sbi-brevo-token")
+        || req.get("x-webhook-token")
+        || "",
+        240
+    );
+
+    if (!expectedToken || providedToken !== expectedToken) {
+        res.status(403).json({ success: false, message: "Webhook non autorisé." });
+        return;
+    }
+
+    const db = admin.firestore();
+    const events = extractBrevoWebhookEvents(req.body);
+    let received = events.length;
+    let handled = 0;
+    let matchedUsers = 0;
+
+    for (const event of events) {
+        const rawEventType = extractBrevoEventType(event);
+        if (!isBrevoBounceEvent(rawEventType)) continue;
+
+        const email = extractBrevoEventEmail(event);
+        if (!isValidEmail(email)) continue;
+
+        handled += 1;
+        const normalizedEvent = normalizeBrevoEventName(rawEventType);
+        const bounceMessage = extractBrevoBounceMessage(event);
+        const usersSnap = await db.collection("users")
+            .where("email", "==", email)
+            .limit(10)
+            .get();
+
+        if (usersSnap.empty) {
+            await safeWriteAccountAuditLog(db, {
+                type: "account.email_bounce_unmatched",
+                actorUid: "brevo",
+                actorEmail: "webhook",
+                targetUid: "",
+                targetEmail: email,
+                targetRole: "",
+                source: "brevo-webhook",
+                event: normalizedEvent,
+                reason: bounceMessage
+            });
+            continue;
+        }
+
+        for (const userDoc of usersSnap.docs) {
+            matchedUsers += 1;
+            const userData = userDoc.data() || {};
+
+            await userDoc.ref.update({
+                "accountStatus.finalizationIssueCode": "email_bounced",
+                "accountStatus.finalizationIssueAt": admin.firestore.FieldValue.serverTimestamp(),
+                "accountStatus.finalizationIssueMessage": bounceMessage || "Email rejeté par Brevo.",
+                "accountStatus.finalizationIssueSource": "brevo",
+                "accountStatus.finalizationIssueEvent": normalizedEvent,
+                "accountStatus.finalizationReminderEnabled": false,
+                "accountStatus.preparationState": "to_check",
+                updatedAt: admin.firestore.FieldValue.serverTimestamp()
+            });
+
+            await safeWriteAccountAuditLog(db, {
+                type: "account.email_bounced",
+                actorUid: "brevo",
+                actorEmail: "webhook",
+                targetUid: userDoc.id,
+                targetEmail: email,
+                targetRole: userData.role || "",
+                source: "brevo-webhook",
+                event: normalizedEvent,
+                reason: bounceMessage
+            });
+        }
+    }
+
+    res.status(200).json({
+        success: true,
+        received,
+        handled,
+        matchedUsers
+    });
+});
+
 
 exports.requestPasswordReset = onRequest({
     region: "europe-west1",
@@ -2204,9 +2396,12 @@ exports.adminChangeUserEmail = onCall({
         updatedBy: caller.uid
     };
 
-    if (!hasAccountFinalizedAccess(targetData) && targetData.accountStatus?.finalizationIssueCode === "invalid_email") {
+    if (!hasAccountFinalizedAccess(targetData) && hasBlockingFinalizationEmailIssue(targetData)) {
         emailUpdatePayload["accountStatus.finalizationIssueCode"] = "";
+        emailUpdatePayload["accountStatus.finalizationIssueAt"] = null;
         emailUpdatePayload["accountStatus.finalizationIssueMessage"] = "";
+        emailUpdatePayload["accountStatus.finalizationIssueSource"] = "";
+        emailUpdatePayload["accountStatus.finalizationIssueEvent"] = "";
         emailUpdatePayload["accountStatus.finalizationIssueResolvedAt"] = admin.firestore.FieldValue.serverTimestamp();
         emailUpdatePayload["accountStatus.finalizationReminderEnabled"] = true;
         emailUpdatePayload["accountStatus.preparationState"] = "to_check";
