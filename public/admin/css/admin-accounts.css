@@ -187,65 +187,76 @@
   }
 }
 
-/* SBI 8.0P.167.29 - Scroll interne liste Comptes */
-.sbi-accounts-workspace {
-  align-items: start;
-}
+/* SBI 8.0P.167.29 v3 - Scroll interne liste Comptes, sans JS de hauteur */
+@media (min-width: 1281px) {
+  .sbi-accounts-workspace {
+    align-items: start;
+  }
 
-.sbi-account-list-card {
-  display: flex !important;
-  flex-direction: column !important;
-  min-height: 0;
-  overflow: hidden;
-}
+  .sbi-account-create-card,
+  .sbi-account-list-card {
+    align-self: start;
+  }
 
-.sbi-account-list-card h3 {
-  flex: 0 0 auto;
-  margin-bottom: 1rem;
-}
+  .sbi-account-list-card {
+    display: flex !important;
+    flex-direction: column !important;
+    box-sizing: border-box;
+    height: 396px;
+    max-height: 396px;
+    min-height: 0;
+    overflow: hidden;
+  }
 
-#users-list-container {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-  overscroll-behavior: contain;
-  padding-right: 0.35rem;
-  scrollbar-width: thin;
-}
+  .sbi-account-list-card h3 {
+    flex: 0 0 auto;
+    margin-bottom: 1rem;
+  }
 
-#users-list-container::-webkit-scrollbar {
-  width: 8px;
-}
+  #users-list-container {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    padding-right: 0;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
 
-#users-list-container::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.035);
-  border-radius: 999px;
-}
-
-#users-list-container::-webkit-scrollbar-thumb {
-  background: rgba(42, 87, 255, 0.42);
-  border-radius: 999px;
-}
-
-#users-list-container::-webkit-scrollbar-thumb:hover {
-  background: rgba(42, 87, 255, 0.62);
+  #users-list-container::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
+  }
 }
 
 @media (max-width: 1280px) {
   .sbi-account-list-card {
     height: auto !important;
     max-height: none !important;
+    overflow: hidden;
   }
 
   #users-list-container {
-    max-height: min(62vh, 620px) !important;
+    max-height: min(62vh, 560px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  #users-list-container::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
   }
 }
 
 @media (max-width: 720px) {
   #users-list-container {
-    max-height: min(68vh, 560px);
-    min-height: 260px;
+    max-height: min(68vh, 520px);
+    min-height: 240px;
   }
 }

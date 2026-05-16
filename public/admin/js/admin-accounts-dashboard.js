@@ -20,7 +20,6 @@ let mounted = false;
 let unsubscribeAccounts = null;
 let accountsById = new Map();
 let listObserver = null;
-let accountCardsResizeObserver = null;
 
 const ONLINE_TTL_MS = 90000;
 const FINALIZATION_LINK_OLD_MS = 48 * 60 * 60 * 1000;
@@ -33,54 +32,6 @@ function injectStyle() {
   link.rel = 'stylesheet';
   link.href = '/admin/css/admin-accounts.css?v=8.0P.167.29';
   document.head.append(link);
-}
-
-function syncAccountsListHeight() {
-  const workspace = document.querySelector('.sbi-accounts-workspace');
-  const createCard = workspace?.querySelector?.('.sbi-account-create-card');
-  const listCard = workspace?.querySelector?.('.sbi-account-list-card');
-  const listContainer = document.getElementById('users-list-container');
-
-  if (!workspace || !createCard || !listCard || !listContainer) return;
-
-  const createRect = createCard.getBoundingClientRect();
-  const listRect = listCard.getBoundingClientRect();
-  const cardsAreStacked = Math.abs(createRect.top - listRect.top) > 24 || window.innerWidth <= 1280;
-
-  if (cardsAreStacked || !createRect.height) {
-    listCard.style.height = '';
-    listCard.style.maxHeight = '';
-    listContainer.style.maxHeight = '';
-    return;
-  }
-
-  const targetHeight = Math.max(0, Math.round(createRect.height));
-  listCard.style.height = `${targetHeight}px`;
-  listCard.style.maxHeight = `${targetHeight}px`;
-
-  const heading = listCard.querySelector('h3');
-  const listStyles = window.getComputedStyle(listCard);
-  const paddingTop = parseFloat(listStyles.paddingTop) || 0;
-  const paddingBottom = parseFloat(listStyles.paddingBottom) || 0;
-  const headingHeight = heading ? heading.getBoundingClientRect().height : 0;
-  const headingMarginBottom = heading ? (parseFloat(window.getComputedStyle(heading).marginBottom) || 0) : 0;
-  const availableHeight = Math.max(120, Math.floor(targetHeight - paddingTop - paddingBottom - headingHeight - headingMarginBottom));
-
-  listContainer.style.maxHeight = `${availableHeight}px`;
-}
-
-function scheduleAccountsListHeightSync() {
-  window.requestAnimationFrame(syncAccountsListHeight);
-}
-
-function observeAccountCardHeights() {
-  if (accountCardsResizeObserver || typeof ResizeObserver === 'undefined') return;
-
-  const createCard = document.querySelector('.sbi-account-create-card');
-  if (!createCard) return;
-
-  accountCardsResizeObserver = new ResizeObserver(() => scheduleAccountsListHeightSync());
-  accountCardsResizeObserver.observe(createCard);
 }
 
 function toMillis(value) {
@@ -477,9 +428,6 @@ function ensureAccountsShell() {
     }
   }
 
-  observeAccountCardHeights();
-  scheduleAccountsListHeightSync();
-
   return true;
 }
 
@@ -587,10 +535,7 @@ function observeUsersList() {
   if (!container || listObserver) return;
 
   listObserver = new MutationObserver(() => {
-    window.requestAnimationFrame(() => {
-      enhanceRenderedAccountRows();
-      syncAccountsListHeight();
-    });
+    window.requestAnimationFrame(enhanceRenderedAccountRows);
   });
 
   listObserver.observe(container, { childList: true, subtree: true });
@@ -612,7 +557,6 @@ function startAccountsSnapshot() {
     accountsById = nextMap;
     renderCounters(users);
     enhanceRenderedAccountRows();
-    scheduleAccountsListHeightSync();
 
     window.SBI_ACCOUNTS_DASHBOARD_STATE = {
       version: '8.0P.167.29',
@@ -689,7 +633,6 @@ function mount() {
   if (mounted) {
     ensureAccountsShell();
     enhanceRenderedAccountRows();
-    scheduleAccountsListHeightSync();
     return;
   }
 
@@ -699,10 +642,8 @@ function mount() {
   injectStyle();
   bindProfileNavigation();
   observeUsersList();
-  observeAccountCardHeights();
   startAccountsSnapshot();
   enhanceRenderedAccountRows();
-  scheduleAccountsListHeightSync();
 }
 
 export function mountAdminAccountsDashboard() {
@@ -728,10 +669,6 @@ window.addEventListener('sbi:accounts-rendered', () => {
 
 window.addEventListener('sbi:components-ready', () => {
   window.requestAnimationFrame(mount);
-});
-
-window.addEventListener('resize', () => {
-  scheduleAccountsListHeightSync();
 });
 
 function escapeHtml(value) {
