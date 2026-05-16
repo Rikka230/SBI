@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.28',
+  version: '8.0P.167.29',
   branch: 'private-admin-accounts-mail-workflow',
   channel: 'ADMIN MAIL WORKFLOW EMAIL QUALITY UX',
-  stage: 'CLEAN BOUNCE DISPLAY AND ACCOUNT CREATE REFRESH',
+  stage: 'INTERNAL ACCOUNT LIST SCROLL',
   updatedAt: '2026-05-16',
-  label: 'SBI 8.0P.167.28 - CLEAN BOUNCE DISPLAY AND ACCOUNT CREATE REFRESH'
+  label: 'SBI 8.0P.167.29 - INTERNAL ACCOUNT LIST SCROLL'
 };
 
 export function getSbiVersionLabel() {

@@ -15,6 +15,7 @@
  * 8.0P.167.24 : surface admin claire homogène sans grille.
  * 8.0P.167.25 : alertes admin légères pour escalades après 3 relances.
  * 8.0P.167.28 : cache-bust admin-core après correction refresh création compte.
+ * 8.0P.167.29 : cache-bust comptes après scroll interne liste comptes.
  */
 
 (function bootstrapSbiComponents(){
@@ -140,7 +141,7 @@
     loadAccountEscalationsModule();
 
     if (!accountsModulePromise) {
-      accountsModulePromise = import('/admin/js/admin-accounts-dashboard.js?v=8.0P.166.4')
+      accountsModulePromise = import('/admin/js/admin-accounts-dashboard.js?v=8.0P.167.29')
         .catch((error) => {
           accountsModulePromise = null;
           console.warn('[SBI Accounts] Module comptes non chargé :', error);

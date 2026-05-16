@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.167.28 / P2H.2-F.2 UX
+ * SBI 8.0P.167.29 / P2H.2-F.3 UX
  * Structure lecture seule "Comptes & accès".
  *
  * Objectif :
@@ -30,7 +30,7 @@ function injectStyle() {
   const link = document.createElement('link');
   link.id = 'sbi-admin-accounts-css';
   link.rel = 'stylesheet';
-  link.href = '/admin/css/admin-accounts.css?v=8.0P.166.3';
+  link.href = '/admin/css/admin-accounts.css?v=8.0P.167.29';
   document.head.append(link);
 }
 
@@ -559,7 +559,7 @@ function startAccountsSnapshot() {
     enhanceRenderedAccountRows();
 
     window.SBI_ACCOUNTS_DASHBOARD_STATE = {
-      version: '8.0P.167.28',
+      version: '8.0P.167.29',
       users: users.length,
       updatedAt: new Date().toISOString()
     };
