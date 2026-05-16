@@ -13,7 +13,17 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
 
-    <script src="js/components.js?v=8.0P.166.3"></script>
+    <script src="js/components.js?v=8.0P.166.8"></script>
+    <script>
+        // SBI 8.0P.166.8
+        // Si cette page profil est refresh puis que l’admin revient vers index,
+        // on force un retour propre sur Comptes + réhydratation users.
+        try {
+            sessionStorage.setItem('activeAdminTab', 'view-users');
+            sessionStorage.setItem('sbiAdminReturnTarget', 'view-users');
+            sessionStorage.setItem('sbiAdminReturnFromProfile', String(Date.now()));
+        } catch (_) {}
+    </script>
 </head>
 <body class="preload sbi-profile-page sbi-admin-surface">
 
@@ -180,7 +190,7 @@
 </div> 
 
 <script type="module" src="js/admin-ui.js"></script>
-<script type="module" src="js/tracker.js"></script>
+<script type="module" src="js/tracker.js?v=8.0P.166.5"></script>
 <script type="module" src="js/admin-notifications.js"></script>
 <script type="module" src="/js/profile-core.js?v=8.0P.166.6"></script>
 

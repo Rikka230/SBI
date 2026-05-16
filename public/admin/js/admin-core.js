@@ -22,11 +22,8 @@ let isCurrentUserGod = false;
 let unsubscribeUsersRealtime = null;
 let presenceRefreshIntervalId = null;
 let lastUsersSnapshotAt = 0;
-let lastUsersResumeCheckAt = 0;
 
 const ONLINE_TTL_MS = 90000;
-const USERS_SNAPSHOT_STALE_MS = 120000;
-const USERS_RESUME_THROTTLE_MS = 1200;
 
 const runAfterPaint = (callback) => {
     window.requestAnimationFrame(() => window.setTimeout(callback, 0));
@@ -148,7 +145,7 @@ const fetchUsers = () => {
     }
 };
 
-const safelyDisconnectUsersRealtime = () => {
+const disconnectUsersRealtime = () => {
     if (typeof unsubscribeUsersRealtime === 'function') {
         try {
             unsubscribeUsersRealtime();
@@ -160,81 +157,41 @@ const safelyDisconnectUsersRealtime = () => {
     unsubscribeUsersRealtime = null;
 };
 
-const shouldForceUsersReconnect = (container, force = false) => {
-    if (force) return true;
+const consumeProfileReturnRehydrateFlag = () => {
+    const shouldForce = window.__SBI_ADMIN_FORCE_USERS_REHYDRATE === true
+        || sessionStorage.getItem('sbiAdminForceUsersRehydrate') === '1';
 
-    const now = Date.now();
-    const snapshotIsStale = lastUsersSnapshotAt > 0 && (now - lastUsersSnapshotAt) > USERS_SNAPSHOT_STALE_MS;
-    const hasNoData = allUsersData.length === 0;
-    const text = (container?.textContent || '').toLowerCase();
-    const hasNoRows = !container?.querySelector?.('.btn-view-profile, .btn-edit-user');
-    const looksEmptyOrStuck = hasNoRows && (
-        text.includes('aucun compte trouvé')
-        || text.includes('chargement')
-        || text.trim() === ''
-    );
+    if (!shouldForce) return false;
 
-    return snapshotIsStale || (hasNoData && looksEmptyOrStuck);
+    window.__SBI_ADMIN_FORCE_USERS_REHYDRATE = false;
+    sessionStorage.removeItem('sbiAdminForceUsersRehydrate');
+    sessionStorage.removeItem('sbiAdminReturnFromProfile');
+
+    return true;
 };
 
-const ensureUsersRealtimeFresh = (reason = 'resume', options = {}) => {
+const forceUsersRehydrateFromProfile = () => {
     const container = document.getElementById('users-list-container');
     if (!container || !currentUid) return;
 
-    const now = Date.now();
-    if (!options.force && now - lastUsersResumeCheckAt < USERS_RESUME_THROTTLE_MS) {
-        return;
-    }
-    lastUsersResumeCheckAt = now;
+    container.innerHTML = '<div class="empty-state">Actualisation des comptes...</div>';
 
-    if (!shouldForceUsersReconnect(container, options.force === true)) {
-        renderCurrentFilteredUsers();
-        return;
-    }
-
-    if (!container.querySelector('.btn-view-profile, .btn-edit-user')) {
-        container.innerHTML = '<div class="empty-state">Reconnexion aux comptes...</div>';
-    }
-
-    safelyDisconnectUsersRealtime();
+    disconnectUsersRealtime();
     fetchUsers();
 
     window.setTimeout(() => {
         const retryContainer = document.getElementById('users-list-container');
         if (!retryContainer) return;
 
-        const stillEmpty = !retryContainer.querySelector('.btn-view-profile, .btn-edit-user')
-            && (allUsersData.length === 0 || (retryContainer.textContent || '').toLowerCase().includes('reconnexion'));
+        const hasRows = Boolean(retryContainer.querySelector('.btn-view-profile, .btn-edit-user'));
+        const looksStuck = !hasRows && (retryContainer.textContent || '').toLowerCase().includes('actualisation');
 
-        if (stillEmpty) {
-            safelyDisconnectUsersRealtime();
+        if (looksStuck) {
+            disconnectUsersRealtime();
             fetchUsers();
         }
-    }, 1500);
+    }, 1200);
 };
-
-const scheduleUsersResumeRehydrate = (reason = 'resume', options = {}) => {
-    window.setTimeout(() => ensureUsersRealtimeFresh(reason, options), 80);
-    window.setTimeout(() => ensureUsersRealtimeFresh(reason, options), 650);
-};
-
-window.addEventListener('pageshow', (event) => {
-    scheduleUsersResumeRehydrate('pageshow', { force: event.persisted === true });
-});
-
-window.addEventListener('focus', () => {
-    scheduleUsersResumeRehydrate('focus');
-});
-
-document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) {
-        scheduleUsersResumeRehydrate('visibility');
-    }
-});
-
-window.addEventListener('sbi:admin-users-rehydrate', () => {
-    scheduleUsersResumeRehydrate('manual', { force: true });
-});
 
 const renderUsersList = (usersToRender) => {
     const container = document.getElementById('users-list-container');
@@ -678,11 +635,20 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof initUserCreation === "function") initUserCreation();
     if (typeof initModalLogic === "function") initModalLogic();
 
+    window.addEventListener('sbi:admin-tab-changed', (event) => {
+        if (event?.detail?.tab === 'view-users' && consumeProfileReturnRehydrateFlag()) {
+            window.setTimeout(forceUsersRehydrateFromProfile, 80);
+        }
+    });
+
     onAuthStateChanged(auth, (user) => {
         if (user) {
             currentUid = user.uid;
             if (typeof fetchUsers === "function") fetchUsers();
-            scheduleUsersResumeRehydrate('auth-ready');
+
+            if (consumeProfileReturnRehydrateFlag()) {
+                window.setTimeout(forceUsersRehydrateFromProfile, 120);
+            }
         } else {
             window.location.replace('/login.html');
         }

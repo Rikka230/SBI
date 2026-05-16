@@ -12,8 +12,23 @@
     
     <script>
         const urlParams = new URLSearchParams(window.location.search);
-        const activeTab = urlParams.get('tab') || sessionStorage.getItem('activeAdminTab') || 'view-dashboard';
+        const profileReturnTarget = sessionStorage.getItem('sbiAdminReturnTarget');
+        const profileReturnStamp = Number(sessionStorage.getItem('sbiAdminReturnFromProfile') || 0);
+        const profileReturnIsFresh = profileReturnStamp && (Date.now() - profileReturnStamp < 6 * 60 * 60 * 1000);
+
+        const activeTab = urlParams.get('tab')
+            || (profileReturnIsFresh ? profileReturnTarget : '')
+            || sessionStorage.getItem('activeAdminTab')
+            || 'view-dashboard';
+
         sessionStorage.setItem('activeAdminTab', activeTab);
+
+        if (profileReturnIsFresh && activeTab === 'view-users') {
+            window.__SBI_ADMIN_FORCE_USERS_REHYDRATE = true;
+            sessionStorage.setItem('sbiAdminForceUsersRehydrate', '1');
+        }
+
+        sessionStorage.removeItem('sbiAdminReturnTarget');
         
         document.write(`<style id="anti-flash-style">
             .admin-view { display: none; }
@@ -318,7 +333,7 @@
 
 <script type="module" src="js/admin-ui.js?v=8.0P.119"></script>
 <script type="module" src="js/sbi-admin-inp-fix.js?v=8.0P.127"></script>
-<script type="module" src="js/admin-core.js?v=8.0P.166.7"></script>
+<script type="module" src="js/admin-core.js?v=8.0P.166.8"></script>
 <script type="module" src="js/tracker.js?v=8.0P.166.5"></script>
 <script type="module" src="js/admin-notifications.js"></script>
 <script type="module" src="js/admin-dashboard.js"></script>
