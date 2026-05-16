@@ -17,7 +17,7 @@
  * 8.0P.167.28 : cache-bust admin-core après correction refresh création compte.
  * 8.0P.167.29 : tentative scroll interne liste comptes rejetée visuellement.
  * 8.0P.167.30 : tentative hauteur fixe commune, rejetée car bloc création tronqué.
- * 8.0P.167.31 : hauteur saine sans tronquer le formulaire de création.
+ * 8.0P.167.32 : hauteur saine sans tronquer le formulaire de création.
  */
 
 (function bootstrapSbiComponents(){
@@ -143,7 +143,7 @@
     loadAccountEscalationsModule();
 
     if (!accountsModulePromise) {
-      accountsModulePromise = import('/admin/js/admin-accounts-dashboard.js?v=8.0P.167.31')
+      accountsModulePromise = import('/admin/js/admin-accounts-dashboard.js?v=8.0P.167.32')
         .catch((error) => {
           accountsModulePromise = null;
           console.warn('[SBI Accounts] Module comptes non chargé :', error);

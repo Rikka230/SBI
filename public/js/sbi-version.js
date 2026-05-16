@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.31',
+  version: '8.0P.167.32',
   branch: 'private-admin-accounts-mail-workflow',
   channel: 'ADMIN MAIL WORKFLOW EMAIL QUALITY UX',
-  stage: 'ACCOUNT LIST HEIGHT FIX WITHOUT TRUNCATING CREATE FORM',
+  stage: 'ACCOUNT LIST TALL CSS ONLY CREATE BUTTON VISIBLE',
   updatedAt: '2026-05-16',
-  label: 'SBI 8.0P.167.31 - ACCOUNT LIST HEIGHT FIX WITHOUT TRUNCATING CREATE FORM'
+  label: 'SBI 8.0P.167.32 - ACCOUNT LIST TALL CSS ONLY CREATE BUTTON VISIBLE'
 };
 
 export function getSbiVersionLabel() {
