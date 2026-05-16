@@ -21,8 +21,12 @@ let currentUid = null;
 let isCurrentUserGod = false;
 let unsubscribeUsersRealtime = null;
 let presenceRefreshIntervalId = null;
+let lastUsersSnapshotAt = 0;
+let lastUsersResumeCheckAt = 0;
 
 const ONLINE_TTL_MS = 90000;
+const USERS_SNAPSHOT_STALE_MS = 120000;
+const USERS_RESUME_THROTTLE_MS = 1200;
 
 const runAfterPaint = (callback) => {
     window.requestAnimationFrame(() => window.setTimeout(callback, 0));
@@ -122,6 +126,8 @@ const fetchUsers = () => {
                 allUsersData.push({ id: snapDoc.id, ...snapDoc.data() });
             });
 
+            lastUsersSnapshotAt = Date.now();
+
             const godExists = allUsersData.some(u => u.isGod === true);
             const myProfile = allUsersData.find(u => u.id === currentUid);
             isCurrentUserGod = godExists ? (myProfile && myProfile.isGod === true) : true;
@@ -141,6 +147,94 @@ const fetchUsers = () => {
         container.innerHTML = `<div class="sys-msg error" style="display:block;">Erreur de chargement.</div>`;
     }
 };
+
+const safelyDisconnectUsersRealtime = () => {
+    if (typeof unsubscribeUsersRealtime === 'function') {
+        try {
+            unsubscribeUsersRealtime();
+        } catch (error) {
+            console.warn('[SBI Admin] Déconnexion users listener ignorée :', error);
+        }
+    }
+
+    unsubscribeUsersRealtime = null;
+};
+
+const shouldForceUsersReconnect = (container, force = false) => {
+    if (force) return true;
+
+    const now = Date.now();
+    const snapshotIsStale = lastUsersSnapshotAt > 0 && (now - lastUsersSnapshotAt) > USERS_SNAPSHOT_STALE_MS;
+    const hasNoData = allUsersData.length === 0;
+    const text = (container?.textContent || '').toLowerCase();
+    const hasNoRows = !container?.querySelector?.('.btn-view-profile, .btn-edit-user');
+    const looksEmptyOrStuck = hasNoRows && (
+        text.includes('aucun compte trouvé')
+        || text.includes('chargement')
+        || text.trim() === ''
+    );
+
+    return snapshotIsStale || (hasNoData && looksEmptyOrStuck);
+};
+
+const ensureUsersRealtimeFresh = (reason = 'resume', options = {}) => {
+    const container = document.getElementById('users-list-container');
+    if (!container || !currentUid) return;
+
+    const now = Date.now();
+    if (!options.force && now - lastUsersResumeCheckAt < USERS_RESUME_THROTTLE_MS) {
+        return;
+    }
+    lastUsersResumeCheckAt = now;
+
+    if (!shouldForceUsersReconnect(container, options.force === true)) {
+        renderCurrentFilteredUsers();
+        return;
+    }
+
+    if (!container.querySelector('.btn-view-profile, .btn-edit-user')) {
+        container.innerHTML = '<div class="empty-state">Reconnexion aux comptes...</div>';
+    }
+
+    safelyDisconnectUsersRealtime();
+    fetchUsers();
+
+    window.setTimeout(() => {
+        const retryContainer = document.getElementById('users-list-container');
+        if (!retryContainer) return;
+
+        const stillEmpty = !retryContainer.querySelector('.btn-view-profile, .btn-edit-user')
+            && (allUsersData.length === 0 || (retryContainer.textContent || '').toLowerCase().includes('reconnexion'));
+
+        if (stillEmpty) {
+            safelyDisconnectUsersRealtime();
+            fetchUsers();
+        }
+    }, 1500);
+};
+
+const scheduleUsersResumeRehydrate = (reason = 'resume', options = {}) => {
+    window.setTimeout(() => ensureUsersRealtimeFresh(reason, options), 80);
+    window.setTimeout(() => ensureUsersRealtimeFresh(reason, options), 650);
+};
+
+window.addEventListener('pageshow', (event) => {
+    scheduleUsersResumeRehydrate('pageshow', { force: event.persisted === true });
+});
+
+window.addEventListener('focus', () => {
+    scheduleUsersResumeRehydrate('focus');
+});
+
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+        scheduleUsersResumeRehydrate('visibility');
+    }
+});
+
+window.addEventListener('sbi:admin-users-rehydrate', () => {
+    scheduleUsersResumeRehydrate('manual', { force: true });
+});
 
 const renderUsersList = (usersToRender) => {
     const container = document.getElementById('users-list-container');
@@ -588,6 +682,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (user) {
             currentUid = user.uid;
             if (typeof fetchUsers === "function") fetchUsers();
+            scheduleUsersResumeRehydrate('auth-ready');
         } else {
             window.location.replace('/login.html');
         }
