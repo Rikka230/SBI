@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.25',
+  version: '8.0P.167.26',
   branch: 'private-admin-accounts-mail-workflow',
-  channel: 'ADMIN MAIL WORKFLOW ALERTS',
-  stage: 'LIGHTWEIGHT ACCOUNT ESCALATION ALERTS',
+  channel: 'ADMIN MAIL WORKFLOW ISSUE STATES',
+  stage: 'ACCOUNT FINALIZATION ISSUE STATES',
   updatedAt: '2026-05-16',
-  label: 'SBI 8.0P.167.25 - LIGHTWEIGHT ACCOUNT ESCALATION ALERTS'
+  label: 'SBI 8.0P.167.26 - ACCOUNT FINALIZATION ISSUE STATES'
 };
 
 export function getSbiVersionLabel() {

@@ -22,6 +22,7 @@ let accountsById = new Map();
 let listObserver = null;
 
 const ONLINE_TTL_MS = 90000;
+const FINALIZATION_LINK_OLD_MS = 48 * 60 * 60 * 1000;
 
 function injectStyle() {
   if (document.getElementById('sbi-admin-accounts-css')) return;
@@ -108,6 +109,25 @@ function hasResolvedFinalizationContact(user) {
   return Boolean(user?.accountStatus?.finalizationEscalationAt && user?.accountStatus?.finalizationEscalationResolvedAt);
 }
 
+function hasInvalidFinalizationEmail(user) {
+  return user?.accountStatus?.finalizationIssueCode === 'invalid_email';
+}
+
+function hasOldFinalizationLink(user) {
+  if (!user || hasConnected(user) || needsDirectFinalizationContact(user) || hasResolvedFinalizationContact(user) || hasInvalidFinalizationEmail(user)) return false;
+
+  const accountStatus = user.accountStatus || {};
+  const lastSignalMs = Math.max(
+    toMillis(accountStatus.lastReminderSentAt),
+    toMillis(accountStatus.finalizationInviteSentAt),
+    toMillis(accountStatus.lastAccessEmailSentAt),
+    toMillis(accountStatus.passwordResetSentAt),
+    toMillis(accountStatus.invitationSentAt)
+  );
+
+  return Boolean(lastSignalMs && Date.now() - lastSignalMs >= FINALIZATION_LINK_OLD_MS);
+}
+
 function getEscalationNotePreview(user) {
   const note = String(user?.accountStatus?.finalizationEscalationResolutionNote || '').trim();
   if (!note) return '';
@@ -128,6 +148,14 @@ function getActivationInfo(user) {
       label: 'Suspendu',
       tone: 'danger',
       detail: 'Accès bloqué'
+    };
+  }
+
+  if (hasInvalidFinalizationEmail(user)) {
+    return {
+      label: 'Email invalide',
+      tone: 'danger',
+      detail: 'Adresse à corriger'
     };
   }
 
@@ -175,6 +203,14 @@ function getActivationInfo(user) {
       label: 'Activité détectée',
       tone: 'success',
       detail: formatDate(getLastActivityDate(user), 'Activité enregistrée')
+    };
+  }
+
+  if (hasOldFinalizationLink(user)) {
+    return {
+      label: 'Lien ancien',
+      tone: 'warning',
+      detail: 'Renvoyer finalisation recommandé'
     };
   }
 
@@ -312,7 +348,7 @@ function renderCounters(users) {
 
     const activation = getActivationInfo(user);
     const preparation = user.accountStatus?.preparationState || user.preparationState;
-    if (activation.tone === 'warning' || activation.tone === 'danger' || preparation === 'to_check' || needsDirectFinalizationContact(user)) {
+    if (activation.tone === 'warning' || activation.tone === 'danger' || preparation === 'to_check' || needsDirectFinalizationContact(user) || hasInvalidFinalizationEmail(user)) {
       acc.tocheck += 1;
     }
 
@@ -367,11 +403,15 @@ function enhanceRenderedAccountRows() {
     if (statusCell) {
       statusCell.classList.add('sbi-account-status-cell');
       const notePreview = getEscalationNotePreview(user);
-      const escalationText = needsDirectFinalizationContact(user)
-        ? '<small style="color:#ff9b9b; font-weight:800;">3 relances · contact élève</small>'
-        : hasResolvedFinalizationContact(user)
-          ? `<small style="color:#9ff3bd; font-weight:800;">Traité${notePreview ? ` · ${escapeHtml(notePreview)}` : ''}</small>`
-          : `<small>${escapeHtml(getAccountPreparationInfo(user))}</small>`;
+      const escalationText = hasInvalidFinalizationEmail(user)
+        ? '<small style="color:#ff9b9b; font-weight:800;">Adresse à corriger</small>'
+        : needsDirectFinalizationContact(user)
+          ? '<small style="color:#ff9b9b; font-weight:800;">3 relances · contact élève</small>'
+          : hasResolvedFinalizationContact(user)
+            ? `<small style="color:#9ff3bd; font-weight:800;">Traité${notePreview ? ` · ${escapeHtml(notePreview)}` : ''}</small>`
+            : hasOldFinalizationLink(user)
+              ? '<small style="color:#ffe39a; font-weight:800;">Renvoyer finalisation recommandé</small>'
+              : `<small>${escapeHtml(getAccountPreparationInfo(user))}</small>`;
 
       statusCell.innerHTML = `
         <span class="sbi-status-dot sbi-status-${activation.tone}">${escapeHtml(activation.label)}</span>
@@ -418,7 +458,7 @@ function startAccountsSnapshot() {
     enhanceRenderedAccountRows();
 
     window.SBI_ACCOUNTS_DASHBOARD_STATE = {
-      version: '8.0P.166.3',
+      version: '8.0P.167.26',
       users: users.length,
       updatedAt: new Date().toISOString()
     };

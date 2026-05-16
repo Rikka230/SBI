@@ -343,14 +343,24 @@ function hasFinalizedFirstAccess(data = {}) {
 
 function getFinalizationInfo(data = {}) {
   const finalized = hasFinalizedFirstAccess(data);
-  const inviteCount = Number(data.accountStatus?.finalizationInviteCount || 0);
-  const reminderCount = Number(data.accountStatus?.reminderCount || 0);
-  const lastInviteAt = data.accountStatus?.finalizationInviteSentAt || null;
-  const lastReminderAt = data.accountStatus?.lastReminderSentAt || null;
-  const escalationAt = data.accountStatus?.finalizationEscalationAt || null;
-  const escalationResolvedAt = data.accountStatus?.finalizationEscalationResolvedAt || null;
-  const escalationResolutionNote = data.accountStatus?.finalizationEscalationResolutionNote || '';
-  const escalationResolvedByEmail = data.accountStatus?.finalizationEscalationResolvedByEmail || '';
+  const accountStatus = data.accountStatus || {};
+  const inviteCount = Number(accountStatus.finalizationInviteCount || 0);
+  const reminderCount = Number(accountStatus.reminderCount || 0);
+  const lastInviteAt = accountStatus.finalizationInviteSentAt || null;
+  const lastReminderAt = accountStatus.lastReminderSentAt || null;
+  const escalationAt = accountStatus.finalizationEscalationAt || null;
+  const escalationResolvedAt = accountStatus.finalizationEscalationResolvedAt || null;
+  const escalationResolutionNote = accountStatus.finalizationEscalationResolutionNote || '';
+  const escalationResolvedByEmail = accountStatus.finalizationEscalationResolvedByEmail || '';
+  const issueCode = accountStatus.finalizationIssueCode || '';
+  const issueMessage = accountStatus.finalizationIssueMessage || '';
+  const lastAccessEmailAt = accountStatus.lastAccessEmailSentAt || accountStatus.passwordResetSentAt || accountStatus.invitationSentAt || null;
+  const lastSignalMs = Math.max(
+    toMillis(lastReminderAt),
+    toMillis(lastInviteAt),
+    toMillis(lastAccessEmailAt)
+  );
+  const isOldFinalizationLink = Boolean(lastSignalMs && Date.now() - lastSignalMs >= 48 * 60 * 60 * 1000);
 
   if (finalized) {
     return {
@@ -360,6 +370,22 @@ function getFinalizationInfo(data = {}) {
       tone: '#2ed573',
       inviteCount,
       lastInviteAt
+    };
+  }
+
+  if (issueCode === 'invalid_email') {
+    return {
+      finalized,
+      label: 'Email invalide',
+      detail: issueMessage || 'Adresse email invalide ou manquante. Corrigez l’adresse avant de relancer la finalisation.',
+      tone: '#ff4a4a',
+      inviteCount,
+      reminderCount,
+      lastInviteAt,
+      lastReminderAt,
+      issueCode,
+      issueMessage,
+      needsEmailCorrection: true
     };
   }
 
@@ -397,6 +423,22 @@ function getFinalizationInfo(data = {}) {
     };
   }
 
+  if (isOldFinalizationLink) {
+    return {
+      finalized,
+      label: 'Lien ancien',
+      detail: 'Dernier lien envoyé il y a plus de 48h. Renvoyer une finalisation est recommandé si le compte n’a jamais été activé.',
+      tone: '#fbbc04',
+      inviteCount,
+      reminderCount,
+      lastInviteAt,
+      lastReminderAt,
+      lastAccessEmailAt,
+      escalationAt,
+      linkLikelyOld: true
+    };
+  }
+
   return {
     finalized,
     label: 'Finalisation en attente',
@@ -410,6 +452,7 @@ function getFinalizationInfo(data = {}) {
     reminderCount,
     lastInviteAt,
     lastReminderAt,
+    lastAccessEmailAt,
     escalationAt
   };
 }
@@ -486,6 +529,42 @@ function renderAccountActionsPanel({ uid, data = {}, reloadProfile }) {
           ${escapeHTML(finalizationInfo.detail)}
         </p>
       </div>
+
+      ${finalizationInfo.needsEmailCorrection ? `
+        <div style="
+          margin:0 0 0.85rem 0;
+          padding:0.95rem 1rem;
+          border:1px solid rgba(255,74,74,0.38);
+          border-left:4px solid #ff4a4a;
+          border-radius:12px;
+          background:rgba(255,74,74,0.09);
+        ">
+          <strong style="display:block; color:#ff9b9b; font-size:0.9rem; margin-bottom:0.35rem;">
+            Email invalide : correction requise
+          </strong>
+          <p style="margin:0; color:#ffd6d6; font-size:0.82rem; line-height:1.5;">
+            L’adresse email du compte est invalide ou manquante. Corrigez l’adresse email avant de renvoyer une finalisation.
+          </p>
+        </div>
+      ` : ''}
+
+      ${finalizationInfo.linkLikelyOld ? `
+        <div style="
+          margin:0 0 0.85rem 0;
+          padding:0.9rem 1rem;
+          border:1px solid rgba(251,188,4,0.32);
+          border-left:4px solid #fbbc04;
+          border-radius:12px;
+          background:rgba(251,188,4,0.08);
+        ">
+          <strong style="display:block; color:#ffe39a; font-size:0.88rem; margin-bottom:0.35rem;">
+            Lien de finalisation ancien
+          </strong>
+          <p style="margin:0; color:rgba(255,239,190,0.84); font-size:0.8rem; line-height:1.5;">
+            Le dernier lien envoyé date de plus de 48h. Utilisez “Renvoyer finalisation” si l’utilisateur n’a pas activé son accès.
+          </p>
+        </div>
+      ` : ''}
 
       ${finalizationInfo.needsDirectContact ? `
         <div style="
@@ -883,6 +962,10 @@ function getAccountLogMeta(type = '') {
       label: 'Contact direct requis',
       color: '#ff4a4a'
     },
+    'account.finalization_reminder_skipped': {
+      label: 'Relance non envoyée',
+      color: '#ff4a4a'
+    },
     'account.finalization_escalation_resolved': {
       label: 'Contact direct traité',
       color: '#2ed573'
@@ -944,6 +1027,7 @@ function getAccountLogDetails(log = {}) {
 
   if (log.type === 'account.finalization_invite_sent') details.push('Email finalisation envoyé');
   if (log.type === 'account.finalization_reminder_sent') details.push('Relance automatique envoyée');
+  if (log.type === 'account.finalization_reminder_skipped' && log.reason === 'invalid-email') details.push('Email invalide ou manquant');
   if (log.type === 'account.finalization_escalation_required') details.push('Alerte générée après 3 relances');
   if (log.type === 'account.finalization_escalation_resolved' && log.note) details.push(`Note : ${log.note}`);
   if (log.emailSent === true) details.push('Email envoyé');

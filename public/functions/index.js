@@ -1230,6 +1230,10 @@ function buildInitialAccountStatus() {
         finalizationReminderEnabled: true,
         reminderCount: 0,
         lastReminderSentAt: null,
+        finalizationIssueCode: "",
+        finalizationIssueAt: null,
+        finalizationIssueMessage: "",
+        finalizationIssueResolvedAt: null,
         finalizationEscalationAt: null,
         finalizationEscalationResolvedAt: null,
         finalizationEscalationResolvedBy: ""
@@ -1269,6 +1273,7 @@ function shouldSendFinalizationReminder(accountData = {}, nowMs = Date.now()) {
 
     const accountStatus = accountData.accountStatus || {};
     if (accountStatus.finalizationReminderEnabled === false) return false;
+    if (accountStatus.finalizationIssueCode === "invalid_email") return false;
 
     const activationState = accountStatus.activationState || accountData.activationState || "";
     if (activationState && activationState !== "pending_password") return false;
@@ -1640,6 +1645,16 @@ exports.runFinalizationReminders = onSchedule({
         const email = cleanEmail(userData.email);
         if (!isValidEmail(email)) {
             skipped += 1;
+            await userDoc.ref.set({
+                accountStatus: {
+                    finalizationIssueCode: "invalid_email",
+                    finalizationIssueAt: admin.firestore.FieldValue.serverTimestamp(),
+                    finalizationIssueMessage: "Email utilisateur invalide ou manquant.",
+                    finalizationReminderEnabled: false,
+                    preparationState: "to_check"
+                },
+                updatedAt: admin.firestore.FieldValue.serverTimestamp()
+            }, { merge: true });
             await safeWriteAccountAuditLog(db, {
                 type: "account.finalization_reminder_skipped",
                 actorUid: "system",
@@ -2127,12 +2142,10 @@ exports.adminChangeUserEmail = onCall({
     const targetRole = normalizeAccountRole(targetData.role);
     const isSelfEdit = targetUid === caller.uid;
     const oldEmail = cleanEmail(targetData.email);
+    const oldEmailIsValid = isValidEmail(oldEmail);
+    const oldEmailLabel = oldEmail || cleanString(targetData.email || "", 180) || "Adresse précédente invalide";
 
-    if (!oldEmail || !isValidEmail(oldEmail)) {
-        throw new HttpsError("failed-precondition", "Ancienne adresse email invalide ou manquante dans Firestore.");
-    }
-
-    if (newEmail === oldEmail) {
+    if (oldEmailIsValid && newEmail === oldEmail) {
         return { success: true, message: "Adresse email inchangée." };
     }
 
@@ -2183,14 +2196,24 @@ exports.adminChangeUserEmail = onCall({
         throw new HttpsError("internal", `Modification email Auth impossible : ${error.message}`);
     }
 
+    const emailUpdatePayload = {
+        email: newEmail,
+        emailUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        emailUpdatedBy: caller.uid,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedBy: caller.uid
+    };
+
+    if (!hasAccountFinalizedAccess(targetData) && targetData.accountStatus?.finalizationIssueCode === "invalid_email") {
+        emailUpdatePayload["accountStatus.finalizationIssueCode"] = "";
+        emailUpdatePayload["accountStatus.finalizationIssueMessage"] = "";
+        emailUpdatePayload["accountStatus.finalizationIssueResolvedAt"] = admin.firestore.FieldValue.serverTimestamp();
+        emailUpdatePayload["accountStatus.finalizationReminderEnabled"] = true;
+        emailUpdatePayload["accountStatus.preparationState"] = "to_check";
+    }
+
     try {
-        await targetRef.set({
-            email: newEmail,
-            emailUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
-            emailUpdatedBy: caller.uid,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-            updatedBy: caller.uid
-        }, { merge: true });
+        await targetRef.set(emailUpdatePayload, { merge: true });
     } catch (error) {
         console.error("Erreur changement email Firestore SBI, tentative rollback Auth :", error.message);
         try {
@@ -2214,13 +2237,15 @@ exports.adminChangeUserEmail = onCall({
 
     try {
         if (!apiKey) throw new Error("BREVO_API_KEY manquant.");
-        await sendAccountEmailChangedOldAddressEmail(nextProfile, oldEmail, newEmail, apiKey);
-        await sendAccountEmailChangedNewAddressEmail(nextProfile, oldEmail, newEmail, apiKey);
+        if (oldEmailIsValid) {
+            await sendAccountEmailChangedOldAddressEmail(nextProfile, oldEmail, newEmail, apiKey);
+        }
+        await sendAccountEmailChangedNewAddressEmail(nextProfile, oldEmailLabel, newEmail, apiKey);
         await sendAccountInternalEmail("Email compte modifié", {
             "Admin": caller.name,
             "Admin email": caller.email,
             "Utilisateur": getAccountDisplayName(nextProfile),
-            "Ancien email": oldEmail,
+            "Ancien email": oldEmailLabel,
             "Nouvel email": newEmail,
             "Rôle": getAccountRoleLabel(nextProfile.role),
             "UID": targetUid
@@ -2239,7 +2264,7 @@ exports.adminChangeUserEmail = onCall({
         targetRole: nextProfile.role || "",
         changes: {
             email: {
-                before: oldEmail,
+                before: oldEmailLabel,
                 after: newEmail
             }
         }
