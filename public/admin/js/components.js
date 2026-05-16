@@ -11,7 +11,7 @@
  * présence réelle des panels/topbars attendus pour la page courante.
  * 8.0P.151 : suppression des bridges conformité, intégration directe dans
  * public-formations-admin.js et sbi-public-pages.js.
- * 8.0P.166.4 : chargement rapide panel profil droit.
+ * 8.0P.167.3 : background admin global léger attaché au contenu scrollable.
  */
 
 (function bootstrapSbiComponents(){
@@ -47,7 +47,7 @@
   scheduleEarlyDisplay();
 
   const injectAdminBackgroundScrollFix = () => {
-    const href = '/admin/css/sbi-admin-background-scroll.css?v=8.0P.167.2';
+    const href = '/admin/css/sbi-admin-background-scroll.css?v=8.0P.167.3';
     const absoluteHref = new URL(href, window.location.origin).href;
 
     const exists = Array.from(document.querySelectorAll('link[rel="stylesheet"][href]'))

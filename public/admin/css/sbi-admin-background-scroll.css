@@ -1,107 +1,100 @@
 /* ==========================================================================
-   SBI 8.0P.167.2 — Global admin background scroll fix
+   SBI 8.0P.167.3 — Global admin background scroll fix, LIGHT
    --------------------------------------------------------------------------
-   Le décor admin doit suivre le conteneur scrollable (#main-content).
-   Avant, certains fonds étaient posés sur body ou en fixed : ils restaient
-   visuellement en haut pendant le scroll interne des pages admin.
+   8.0P.167.2 est rejeté : trop lourd et lag au scroll.
+   Ici, le décor est porté par .content-wrapper::before, donc il scrolle
+   naturellement avec le contenu, sans background-attachment: local/fixed.
    ========================================================================== */
 
 body.sbi-admin-space,
 body.sbi-profile-page.sbi-admin-surface,
 body.sbi-internal-ui.sbi-admin-space {
-    background-color: var(--sbi-admin-bg, #050812) !important;
+    background: var(--sbi-admin-bg, #050812) !important;
 }
 
-/* Le vrai scroll admin vit dans #main-content. Le fond doit donc être ici. */
+/* Le conteneur scrollable reste sobre : aucun gros gradient mouvant dessus. */
 body.sbi-admin-space #main-content,
 body.sbi-profile-page.sbi-admin-surface #main-content {
-    background:
-        radial-gradient(circle at 18% 10%, rgba(42, 87, 255, 0.22), transparent 34%),
-        radial-gradient(circle at 88% 18%, rgba(255, 255, 255, 0.060), transparent 28%),
-        radial-gradient(circle at 50% 96%, rgba(42, 87, 255, 0.08), transparent 38%),
-        linear-gradient(135deg, #050812 0%, #0a1020 48%, #05070d 100%) !important;
-    background-attachment: local, local, local, local !important;
-    background-repeat: no-repeat !important;
-    background-size:
-        100% max(100%, 1500px),
-        100% max(100%, 1500px),
-        100% max(100%, 1500px),
-        100% 100% !important;
-    background-position:
-        0 0,
-        0 0,
-        0 0,
-        0 0 !important;
+    position: relative;
+    isolation: isolate;
+    background: var(--sbi-admin-bg, #050812) !important;
 }
 
-/* On neutralise les fonds body qui donnaient l’illusion d’un décor bloqué en haut. */
+/* Neutralise les décors fixed hérités qui restent visuellement collés en haut. */
+body.sbi-admin-space.sbi-dashboard-page #main-content::before,
+body.sbi-profile-page #main-content::before,
+body.sbi-course-editor-page #main-content::before {
+    display: none !important;
+}
+
+/* Neutralise le fond body dashboard : le décor vivant est maintenant dans le flux scrollé. */
 body.sbi-admin-space.sbi-dashboard-page {
     background: var(--sbi-admin-bg, #050812) !important;
 }
 
-/* La grille décorative doit aussi vivre dans le scroll, pas en fixed viewport. */
-body.sbi-admin-space.sbi-dashboard-page #main-content::before {
-    content: '' !important;
-    position: absolute !important;
-    inset: 0 !important;
-    pointer-events: none !important;
-    opacity: 0.14 !important;
-    background-image:
-        linear-gradient(rgba(255,255,255,0.075) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255,255,255,0.075) 1px, transparent 1px) !important;
-    background-size: 72px 72px !important;
-    mask-image: linear-gradient(to bottom, rgba(0,0,0,0.90), rgba(0,0,0,0.32) 70%, transparent 100%) !important;
-    z-index: 0 !important;
-}
-
-body.sbi-profile-page #main-content::before,
-body.sbi-course-editor-page #main-content::before {
-    position: absolute !important;
-    inset: 0 !important;
-    min-height: 100% !important;
-}
-
-/* Les contenus doivent rester au-dessus du décor local. */
-body.sbi-admin-space #main-content > *,
-body.sbi-profile-page.sbi-admin-surface #main-content > * {
-    position: relative;
-    z-index: 1;
-}
-
+/* Le wrapper scrolle avec le contenu. Son ::before aussi. */
 body.sbi-admin-space .content-wrapper,
 body.sbi-profile-page.sbi-admin-surface .content-wrapper {
+    position: relative;
+    isolation: isolate;
+    z-index: 1;
     min-height: calc(100vh - var(--header-height, 60px));
     padding-bottom: max(3rem, env(safe-area-inset-bottom));
 }
 
-/* Sur les très longues pages, on ajoute un fond bas doux pour éviter une fin plate. */
-body.sbi-admin-space #main-content::after,
-body.sbi-profile-page.sbi-admin-surface #main-content::after {
+/* Décor léger : un seul pseudo-élément, aucun fixed, aucun background-attachment. */
+body.sbi-admin-space .content-wrapper::before,
+body.sbi-profile-page.sbi-admin-surface .content-wrapper::before {
     content: '';
     position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    height: 38vh;
+    top: calc(-1 * var(--header-height, 60px));
+    bottom: -4rem;
+    left: 50%;
+    width: 100vw;
+    transform: translateX(-50%);
+    z-index: -1;
     pointer-events: none;
-    z-index: 0;
     background:
-        radial-gradient(circle at 50% 100%, rgba(42,87,255,0.10), transparent 58%),
-        linear-gradient(to bottom, transparent, rgba(5,8,18,0.72));
+        radial-gradient(circle at 16% 9%, rgba(42, 87, 255, 0.22), transparent 34rem),
+        radial-gradient(circle at 86% 18%, rgba(255, 255, 255, 0.060), transparent 28rem),
+        linear-gradient(135deg, #050812 0%, #0a1020 50%, #05070d 100%);
+    background-repeat: no-repeat;
+}
+
+/* Un très léger filet de profondeur en bas, dans le flux scrollé aussi. */
+body.sbi-admin-space .content-wrapper::after,
+body.sbi-profile-page.sbi-admin-surface .content-wrapper::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    bottom: -4rem;
+    width: 100vw;
+    height: 18rem;
+    transform: translateX(-50%);
+    z-index: -1;
+    pointer-events: none;
+    background: linear-gradient(to bottom, transparent, rgba(42, 87, 255, 0.06), rgba(5, 8, 18, 0.82));
+}
+
+/* Les cartes et vues restent au-dessus du décor. */
+body.sbi-admin-space .admin-view,
+body.sbi-admin-space .content-wrapper > *,
+body.sbi-profile-page.sbi-admin-surface .content-wrapper > * {
+    position: relative;
+    z-index: 1;
 }
 
 @media (max-width: 768px) {
-    body.sbi-admin-space #main-content,
-    body.sbi-profile-page.sbi-admin-surface #main-content {
-        background-size:
-            100% max(100%, 1900px),
-            100% max(100%, 1900px),
-            100% max(100%, 1900px),
-            100% 100% !important;
-    }
-
     body.sbi-admin-space .content-wrapper,
     body.sbi-profile-page.sbi-admin-surface .content-wrapper {
         padding-bottom: max(4rem, env(safe-area-inset-bottom));
+    }
+
+    body.sbi-admin-space .content-wrapper::before,
+    body.sbi-profile-page.sbi-admin-surface .content-wrapper::before {
+        background:
+            radial-gradient(circle at 12% 7%, rgba(42, 87, 255, 0.20), transparent 24rem),
+            radial-gradient(circle at 92% 15%, rgba(255, 255, 255, 0.050), transparent 22rem),
+            linear-gradient(135deg, #050812 0%, #0a1020 50%, #05070d 100%);
     }
 }
