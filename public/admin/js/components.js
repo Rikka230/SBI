@@ -47,7 +47,7 @@
   scheduleEarlyDisplay();
 
   const injectAdminSingleScrollFix = () => {
-    const href = '/admin/css/sbi-admin-single-scroll.css?v=8.0P.167.4';
+    const href = '/admin/css/sbi-admin-single-scroll.css?v=8.0P.167.5';
     const absoluteHref = new URL(href, window.location.origin).href;
 
     const exists = Array.from(document.querySelectorAll('link[rel="stylesheet"][href]'))

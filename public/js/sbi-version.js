@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.4',
+  version: '8.0P.167.5',
   branch: 'private-admin-accounts-mail-workflow',
-  channel: 'ADMIN MAIL WORKFLOW SINGLE SCROLL FIX',
-  stage: 'ADMIN DOUBLE SCROLL FIX',
+  channel: 'ADMIN MAIL WORKFLOW FULL DECOR SINGLE SCROLL',
+  stage: 'FULL ADMIN DECOR ON SINGLE SCROLL',
   updatedAt: '2026-05-15',
-  label: 'SBI 8.0P.167.4 - ADMIN DOUBLE SCROLL FIX'
+  label: 'SBI 8.0P.167.5 - FULL ADMIN DECOR SINGLE SCROLL'
 };
 
 export function getSbiVersionLabel() {
