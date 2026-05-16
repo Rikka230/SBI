@@ -12,7 +12,7 @@
  * 8.0P.151 : suppression des bridges conformité, intégration directe dans
  * public-formations-admin.js et sbi-public-pages.js.
  * 8.0P.166.4 : chargement rapide panel profil droit.
- * 8.0P.167.18 : rollback cache-bust vers base safe affichable.
+ * 8.0P.167.19 : décor riche admin index, single-scroll safe.
  */
 
 (function bootstrapSbiComponents(){
@@ -48,7 +48,7 @@
   scheduleEarlyDisplay();
 
   const injectAdminSingleScrollFix = () => {
-    const href = '/admin/css/sbi-admin-single-scroll.css?v=8.0P.167.18';
+    const href = '/admin/css/sbi-admin-single-scroll.css?v=8.0P.167.19';
     const absoluteHref = new URL(href, window.location.origin).href;
 
     const existingLink = Array.from(document.querySelectorAll('link[rel="stylesheet"][href]'))
