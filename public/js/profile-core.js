@@ -6,6 +6,10 @@
  * 6.9 : découpe du moteur monolithique en modules lisibles.
  * 8.0D : export mountProfileCore() pour montage PJAX avec cleanup.
  * 8.0H.1 : droits profil appliqués plus tôt pour éviter le pop visuel.
+ * 8.0P.160 : cache-bust du rendu profil pour journal compte lisible.
+ * 8.0P.164 : cache-bust rendu profil pour relance finalisation compte.
+ * 8.0P.165 : affichage relances automatiques et escalade.
+ * 8.0P.163 : cache-bust du rendu profil pour notes internes persistantes.
  * =======================================================================
  */
 
@@ -15,7 +19,7 @@ import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.1/fi
 import { waitForSbiTopbar } from '/admin/js/components/ready.js';
 import { waitForSbiComponents } from '/js/profile/profile-utils.js';
 import { hydrateLoggedInTopbar } from '/js/profile/profile-topbar.js';
-import { renderProfileShell } from '/js/profile/profile-render.js';
+import { renderProfileShell } from '/js/profile/profile-render.js?v=8.0P.166.6';
 import { renderUserFormations } from '/js/profile/profile-formations.js';
 import { renderLearningTracking } from '/js/profile/profile-tracking.js';
 import { setupSaveButtons, setupSecurityAndEditMode } from '/js/profile/profile-edit.js';

@@ -3,15 +3,11 @@
  * TRACKER DE SESSION - Statut en ligne, Temps & Affichage Profil Menu
  * =======================================================================
  *
- * Présence robuste :
- * - isOnline indique l'état demandé par l'onglet actif.
- * - lastSeenAt est rafraîchi régulièrement avec serverTimestamp().
- * - les écrans admin / profil ne considèrent l'utilisateur en ligne que si
- *   isOnline === true ET lastSeenAt est récent.
- *
- * Sécurité :
- * - auth.js est importé ici pour déclencher le route guard sur toutes les
- *   pages privées qui chargent tracker.js.
+ * 8.0P.166.5 :
+ * - le profil du panel droit n’attend plus la mise à jour présence Firestore ;
+ * - hydrateNavProfile réessaie si le Web Component admin-right-panel n’est pas encore monté ;
+ * - cache session pour afficher nom/avatar/rôle plus vite ;
+ * - présence conservée, mais en arrière-plan.
  * =======================================================================
  */
 
@@ -31,9 +27,12 @@ let sessionStart = Date.now();
 let activeUid = null;
 let connectionSyncIntervalId = null;
 let heartbeatIntervalId = null;
+let lastNavProfilePayload = null;
 
 const CONNECTION_SYNC_INTERVAL_MS = 300000;
 const PRESENCE_HEARTBEAT_INTERVAL_MS = 30000;
+const NAV_PROFILE_CACHE_PREFIX = 'sbi:navProfile:';
+const NAV_PROFILE_MAX_ATTEMPTS = 20;
 
 const clearTrackerIntervals = () => {
     if (connectionSyncIntervalId) {
@@ -115,58 +114,168 @@ const startTrackerIntervals = () => {
     }, PRESENCE_HEARTBEAT_INTERVAL_MS);
 };
 
+function getNavProfileCacheKey(uid) {
+    return `${NAV_PROFILE_CACHE_PREFIX}${uid}`;
+}
+
+function readNavProfileCache(uid) {
+    try {
+        const raw = sessionStorage.getItem(getNavProfileCacheKey(uid));
+        return raw ? JSON.parse(raw) : null;
+    } catch (_) {
+        return null;
+    }
+}
+
+function writeNavProfileCache(uid, payload) {
+    try {
+        sessionStorage.setItem(getNavProfileCacheKey(uid), JSON.stringify({
+            ...payload,
+            cachedAt: Date.now()
+        }));
+    } catch (_) {}
+}
+
+function getDisplayName(data = {}) {
+    return `${data.prenom || ''} ${data.nom || ''}`.trim()
+        || data.displayName
+        || data.email
+        || 'Utilisateur';
+}
+
+function getRoleLabel(data = {}) {
+    if (data.isGod) return 'Admin Suprême';
+    if (data.role === 'admin') return 'Administrateur';
+    if (data.role === 'teacher') return 'Professeur';
+    if (data.role === 'student') return 'Élève';
+    return 'Compte';
+}
+
+function getFallbackAvatarLabel(data = {}) {
+    const name = getDisplayName(data);
+    return (name || 'U').charAt(0).toUpperCase();
+}
+
+function renderNavProfile(data, attempt = 0) {
+    if (!data) return false;
+
+    const navName = document.getElementById('nav-name');
+    const navRole = document.getElementById('nav-role');
+    const navAvatar = document.getElementById('nav-avatar');
+
+    if (!navName && !navRole && !navAvatar) {
+        if (attempt < NAV_PROFILE_MAX_ATTEMPTS) {
+            window.setTimeout(() => renderNavProfile(data, attempt + 1), attempt < 6 ? 80 : 160);
+        }
+        return false;
+    }
+
+    const displayName = getDisplayName(data);
+
+    if (navName) {
+        navName.textContent = displayName;
+    }
+
+    if (navRole) {
+        navRole.textContent = getRoleLabel(data);
+    }
+
+    if (navAvatar) {
+        if (data.photoURL) {
+            navAvatar.innerHTML = `<img src="${escapeHTML(data.photoURL)}" style="width:100%; height:100%; object-fit:cover;" alt="${escapeHTML(displayName)}">`;
+        } else {
+            navAvatar.textContent = getFallbackAvatarLabel(data);
+        }
+    }
+
+    return true;
+}
+
+function escapeHTML(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
 const hydrateNavProfile = async (uid) => {
+    if (!uid) return;
+
+    const cached = readNavProfileCache(uid);
+    if (cached) {
+        lastNavProfilePayload = cached;
+        renderNavProfile(cached);
+    }
+
     try {
         const snap = await getDoc(doc(db, "users", uid));
         if (!snap.exists()) return;
 
-        const data = snap.data();
+        const data = snap.data() || {};
+        const payload = {
+            uid,
+            prenom: data.prenom || '',
+            nom: data.nom || '',
+            email: data.email || '',
+            role: data.role || '',
+            isGod: data.isGod === true,
+            photoURL: data.photoURL || '',
+            displayName: data.displayName || ''
+        };
 
-        const navName = document.getElementById('nav-name');
-        const navRole = document.getElementById('nav-role');
-        const navAvatar = document.getElementById('nav-avatar');
-
-        if (navName) {
-            navName.textContent = `${data.prenom || ''} ${data.nom || ''}`.trim();
-        }
-
-        if (navRole) {
-            if (data.isGod) navRole.textContent = 'Admin Suprême';
-            else if (data.role === 'admin') navRole.textContent = 'Administrateur';
-            else if (data.role === 'teacher') navRole.textContent = 'Professeur';
-            else navRole.textContent = 'Élève';
-        }
-
-        if (navAvatar) {
-            if (data.photoURL) {
-                navAvatar.innerHTML = `<img src="${data.photoURL}" style="width:100%; height:100%; object-fit:cover;">`;
-            } else {
-                navAvatar.textContent = data.prenom ? data.prenom.charAt(0).toUpperCase() : 'U';
-            }
-        }
+        lastNavProfilePayload = payload;
+        writeNavProfileCache(uid, payload);
+        renderNavProfile(payload);
     } catch (error) {
         console.error("Erreur chargement profil panel", error);
     }
 };
 
+function replayNavProfile() {
+    if (lastNavProfilePayload) {
+        renderNavProfile(lastNavProfilePayload);
+        return;
+    }
+
+    const uid = activeUid || auth.currentUser?.uid;
+    if (!uid) return;
+
+    const cached = readNavProfileCache(uid);
+    if (cached) {
+        lastNavProfilePayload = cached;
+        renderNavProfile(cached);
+    }
+}
+
 onAuthStateChanged(auth, async (user) => {
     clearTrackerIntervals();
 
     if (activeUid && (!user || user.uid !== activeUid)) {
-        await markOffline();
+        markOffline().catch(() => {});
     }
 
     if (user) {
         activeUid = user.uid;
         sessionStart = Date.now();
 
-        await markOnline();
+        hydrateNavProfile(activeUid).catch(() => {});
+        markOnline().catch(() => {});
         startTrackerIntervals();
-        hydrateNavProfile(activeUid);
     } else {
         activeUid = null;
+        lastNavProfilePayload = null;
     }
 });
+
+window.addEventListener('sbi:component-mounted', (event) => {
+    if (event?.detail?.name === 'admin-right-panel') {
+        replayNavProfile();
+    }
+});
+
+window.addEventListener('sbi:components-ready', replayNavProfile);
 
 document.addEventListener("visibilitychange", () => {
     if (!activeUid) return;
@@ -176,6 +285,7 @@ document.addEventListener("visibilitychange", () => {
     } else if (document.visibilityState === 'visible') {
         sessionStart = Date.now();
         markOnline().catch(() => {});
+        replayNavProfile();
     }
 });
 

@@ -6,6 +6,7 @@
 
 // Importation spécifique pour la V2
 const { onCall, onRequest, HttpsError } = require("firebase-functions/v2/https");
+const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { defineSecret } = require("firebase-functions/params");
 const admin = require("firebase-admin");
 
@@ -32,6 +33,7 @@ admin.initializeApp();
  * ======================================================================= */
 
 const BREVO_API_KEY = defineSecret("BREVO_API_KEY");
+const BREVO_WEBHOOK_TOKEN = defineSecret("BREVO_WEBHOOK_TOKEN");
 const BREVO_LIST_ID = 77;
 const BREVO_NEWSLETTER_LIST_ID = 77;
 const SBI_CONTACT_EMAIL = "contact@sbigroup.fr";
@@ -197,6 +199,9 @@ const SBI_AUTH_ACTION_SETTINGS = {
     url: SBI_PASSWORD_RESET_URL,
     handleCodeInApp: true
 };
+
+const SBI_FINALIZATION_REMINDER_MAX_COUNT = 3;
+const SBI_FINALIZATION_REMINDER_DELAY_MS = 48 * 60 * 60 * 1000;
 
 function readActionParamsFromUrl(rawUrl) {
     const parsed = new URL(rawUrl);
@@ -646,6 +651,14 @@ async function sendBrevoNewsletterConfirmation(data, apiKey) {
  * ======================================================================= */
 
 const ACCOUNT_ROLES = ["student", "teacher", "admin"];
+const ACCOUNT_PREPARATION_STATES = ["not_prepared", "to_check", "ready", "completed"];
+const ACCOUNT_PREPARATION_LABELS = {
+    not_prepared: "Compte à préparer",
+    to_check: "À vérifier",
+    ready: "Prêt",
+    completed: "Terminé"
+};
+
 
 function cleanEmail(value) {
     return cleanString(value, 180).toLowerCase();
@@ -653,6 +666,85 @@ function cleanEmail(value) {
 
 function isValidEmail(email) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email || "");
+}
+
+const ACCOUNT_EMAIL_BLOCKING_ISSUES = ["invalid_email", "email_bounced"];
+const BREVO_BOUNCE_EVENTS = new Set([
+    "hard_bounce",
+    "hardbounce",
+    "soft_bounce",
+    "softbounce",
+    "blocked",
+    "spam",
+    "complaint",
+    "invalid",
+    "invalid_email",
+    "email_invalid"
+]);
+
+function hasBlockingFinalizationEmailIssue(accountData = {}) {
+    const issueCode = cleanString(accountData.accountStatus?.finalizationIssueCode || "", 80);
+    return ACCOUNT_EMAIL_BLOCKING_ISSUES.includes(issueCode);
+}
+
+function normalizeBrevoEventName(value) {
+    return cleanString(value, 80)
+        .toLowerCase()
+        .replace(/[\s-]+/g, "_");
+}
+
+function isBrevoBounceEvent(value) {
+    const normalized = normalizeBrevoEventName(value);
+    return BREVO_BOUNCE_EVENTS.has(normalized);
+}
+
+function extractBrevoWebhookEvents(body) {
+    if (!body) return [];
+
+    if (typeof body === "string") {
+        try {
+            const parsed = JSON.parse(body);
+            return extractBrevoWebhookEvents(parsed);
+        } catch {
+            return [];
+        }
+    }
+
+    if (Array.isArray(body)) return body.filter(Boolean);
+    if (Array.isArray(body.events)) return body.events.filter(Boolean);
+    return [body];
+}
+
+function extractBrevoEventEmail(event = {}) {
+    const candidate = event.email
+        || event.recipient
+        || event.recipientEmail
+        || event.to
+        || event.emailTo
+        || event.contact?.email
+        || "";
+
+    if (Array.isArray(candidate)) return cleanEmail(candidate[0] || "");
+    return cleanEmail(candidate);
+}
+
+function extractBrevoEventType(event = {}) {
+    return event.event
+        || event.eventType
+        || event.type
+        || event.reason
+        || "";
+}
+
+function extractBrevoBounceMessage(event = {}) {
+    return cleanString(
+        event.reason
+        || event.message
+        || event.description
+        || event.subject
+        || "Email transactionnel rejeté par Brevo.",
+        500
+    );
 }
 
 function normalizeAccountRole(role) {
@@ -665,6 +757,20 @@ function getAccountRoleLabel(role) {
     if (normalized === "teacher") return "Enseignant";
     if (normalized === "admin") return "Administrateur";
     return "Étudiant";
+}
+
+function normalizeAccountPreparationState(value) {
+    const normalized = cleanString(value, 40).toLowerCase();
+    return ACCOUNT_PREPARATION_STATES.includes(normalized) ? normalized : "not_prepared";
+}
+
+function getAccountPreparationLabel(value) {
+    const normalized = normalizeAccountPreparationState(value);
+    return ACCOUNT_PREPARATION_LABELS[normalized] || ACCOUNT_PREPARATION_LABELS.not_prepared;
+}
+
+function getNoteAuditState(value) {
+    return cleanString(value, 2000) ? "renseignée" : "vide";
 }
 
 function formatAccountPrenom(value) {
@@ -998,6 +1104,38 @@ async function sendAccountResetEmail(account, resetLink, apiKey) {
     }, apiKey);
 }
 
+async function sendAccountFinalizationEmail(account, finalizationLink, apiKey) {
+    return sendBrevoEmail({
+        sender: {
+            name: SBI_SENDER_NAME,
+            email: SBI_SENDER_EMAIL
+        },
+        to: [{
+            email: account.email,
+            name: getAccountDisplayName(account)
+        }],
+        replyTo: {
+            email: SBI_CONTACT_EMAIL,
+            name: "Sport Business Institute"
+        },
+        subject: "SBI - Finalisez votre accès à la plateforme",
+        htmlContent: renderSbiEmailTemplate({
+            prenom: account.prenom || "",
+            nomExpediteur: "L’équipe SBI",
+            posteExpediteur: "Administration",
+            preheader: "Finalisez votre accès à votre espace SBI.",
+            messageHtml: `
+                <p style="margin:0 0 16px 0;">Votre compte Sport Business Institute a été créé, mais votre accès n’a pas encore été finalisé.</p>
+                <p style="margin:0 0 16px 0;">Pour activer votre espace personnel, cliquez sur le bouton ci-dessous et définissez votre mot de passe.</p>
+                ${buildActionButtonHtml(finalizationLink, "Finaliser mon compte")}
+                <p style="margin:0 0 16px 0;">Ce lien vous permet de finaliser votre accès à la plateforme SBI.</p>
+                <p style="margin:0;">Si vous avez déjà finalisé votre compte, vous pouvez ignorer ce message.</p>
+            `
+        }),
+        textContent: `Bonjour ${account.prenom || ""},\n\nVotre compte SBI a été créé, mais votre accès n’a pas encore été finalisé.\n\nFinalisez votre compte avec ce lien :\n${finalizationLink}\n\nSport Business Institute`
+    }, apiKey);
+}
+
 async function sendAccountDeletedEmail(account, apiKey) {
     return sendBrevoEmail({
         sender: {
@@ -1157,6 +1295,87 @@ function mapAuthCreateError(error) {
     return new HttpsError("internal", `Création Auth impossible : ${error.message}`);
 }
 
+function buildInitialAccountStatus() {
+    return {
+        activationState: "pending_password",
+        preparationState: "not_prepared",
+        invitationSentAt: null,
+        passwordResetSentAt: null,
+        firstLoginAt: null,
+        lastLoginAt: null,
+        lastAccessEmailSentAt: null,
+        emailVerifiedAt: null,
+        finalizationInviteSentAt: null,
+        finalizationInviteCount: 0,
+        finalizationReminderEnabled: true,
+        reminderCount: 0,
+        lastReminderSentAt: null,
+        finalizationIssueCode: "",
+        finalizationIssueAt: null,
+        finalizationIssueMessage: "",
+        finalizationIssueSource: "",
+        finalizationIssueEvent: "",
+        finalizationIssueResolvedAt: null,
+        finalizationEscalationAt: null,
+        finalizationEscalationResolvedAt: null,
+        finalizationEscalationResolvedBy: ""
+    };
+}
+
+function keepActiveOrPendingPassword(accountData = {}) {
+    const currentActivation = accountData.accountStatus?.activationState || accountData.activationState || "";
+    return currentActivation === "active" ? "active" : "pending_password";
+}
+
+function hasAccountFinalizedAccess(accountData = {}) {
+    return Boolean(
+        accountData.accountStatus?.firstLoginAt
+        || accountData.firstLoginAt
+        || accountData.accountStatus?.activationState === "active"
+        || accountData.activationState === "active"
+    );
+}
+
+function toAccountReminderMillis(value) {
+    if (!value) return 0;
+    if (typeof value.toMillis === "function") return value.toMillis();
+    if (typeof value.seconds === "number") return value.seconds * 1000;
+    if (value instanceof Date) return value.getTime();
+    if (typeof value === "number") return value;
+    if (typeof value === "string") {
+        const parsed = Date.parse(value);
+        return Number.isNaN(parsed) ? 0 : parsed;
+    }
+    return 0;
+}
+
+function shouldSendFinalizationReminder(accountData = {}, nowMs = Date.now()) {
+    if (accountData.statut === "suspendu") return false;
+    if (hasAccountFinalizedAccess(accountData)) return false;
+
+    const accountStatus = accountData.accountStatus || {};
+    if (accountStatus.finalizationReminderEnabled === false) return false;
+    if (hasBlockingFinalizationEmailIssue(accountData)) return false;
+
+    const activationState = accountStatus.activationState || accountData.activationState || "";
+    if (activationState && activationState !== "pending_password") return false;
+
+    const reminderCount = Number(accountStatus.reminderCount || 0);
+    if (reminderCount >= SBI_FINALIZATION_REMINDER_MAX_COUNT) return false;
+
+    const lastReminderMs = toAccountReminderMillis(accountStatus.lastReminderSentAt);
+    const manualInviteMs = toAccountReminderMillis(accountStatus.finalizationInviteSentAt);
+    const invitationMs = toAccountReminderMillis(accountStatus.invitationSentAt);
+    const passwordResetMs = toAccountReminderMillis(accountStatus.passwordResetSentAt);
+    const lastAccessMs = toAccountReminderMillis(accountStatus.lastAccessEmailSentAt);
+    const createdMs = toAccountReminderMillis(accountData.createdAt || accountData.dateCreation);
+
+    const lastSignalMs = Math.max(lastReminderMs, manualInviteMs, invitationMs, passwordResetMs, lastAccessMs, createdMs);
+
+    if (!lastSignalMs) return true;
+    return nowMs - lastSignalMs >= SBI_FINALIZATION_REMINDER_DELAY_MS;
+}
+
 exports.adminCreateUserAccount = onCall({
     region: "europe-west1",
     secrets: [BREVO_API_KEY],
@@ -1194,7 +1413,8 @@ exports.adminCreateUserAccount = onCall({
         dateCreation: new Date().toISOString(),
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         createdBy: caller.uid,
-        formationsAcces: []
+        formationsAcces: [],
+        accountStatus: buildInitialAccountStatus()
     };
 
     try {
@@ -1226,6 +1446,10 @@ exports.adminCreateUserAccount = onCall({
         const firebaseResetLink = await admin.auth().generatePasswordResetLink(email, SBI_AUTH_ACTION_SETTINGS);
         const resetLink = buildSbiPasswordResetLink(firebaseResetLink);
         await sendAccountInviteEmail(accountData, resetLink, apiKey);
+        await db.collection("users").doc(createdUser.uid).update({
+            "accountStatus.invitationSentAt": admin.firestore.FieldValue.serverTimestamp(),
+            "accountStatus.lastAccessEmailSentAt": admin.firestore.FieldValue.serverTimestamp()
+        });
         await sendAccountInternalEmail("Compte créé", {
             "Admin": caller.name,
             "Admin email": caller.email,
@@ -1288,6 +1512,11 @@ exports.adminSendPasswordReset = onCall({
         const firebaseResetLink = await admin.auth().generatePasswordResetLink(email, SBI_AUTH_ACTION_SETTINGS);
         const resetLink = buildSbiPasswordResetLink(firebaseResetLink);
         await sendAccountResetEmail({ ...targetData, email }, resetLink, apiKey);
+        await targetDoc.ref.update({
+            "accountStatus.passwordResetSentAt": admin.firestore.FieldValue.serverTimestamp(),
+            "accountStatus.lastAccessEmailSentAt": admin.firestore.FieldValue.serverTimestamp(),
+            "accountStatus.activationState": keepActiveOrPendingPassword(targetData)
+        });
         await sendAccountInternalEmail("Reset mot de passe envoyé", {
             "Admin": caller.name,
             "Admin email": caller.email,
@@ -1314,6 +1543,390 @@ exports.adminSendPasswordReset = onCall({
         success: true,
         message: `Email de réinitialisation envoyé à ${email}.`
     };
+});
+
+
+
+exports.adminSendFinalizationInvite = onCall({
+    region: "europe-west1",
+    secrets: [BREVO_API_KEY],
+    timeoutSeconds: 20,
+    memory: "256MiB"
+}, async (request) => {
+    const db = admin.firestore();
+    const caller = await requireAdminCaller(request, db);
+    const data = request.data || {};
+    const targetUid = cleanString(data.uid, 160);
+
+    if (!targetUid) throw new HttpsError("invalid-argument", "UID utilisateur manquant.");
+
+    const targetDoc = await db.collection("users").doc(targetUid).get();
+    if (!targetDoc.exists) throw new HttpsError("not-found", "Compte utilisateur introuvable dans Firestore.");
+
+    const targetData = targetDoc.data() || {};
+    if (targetData.isGod === true && caller.data.isGod !== true) {
+        throw new HttpsError("permission-denied", "Seul le compte Suprême peut relancer le compte Suprême.");
+    }
+
+    if (targetData.statut === "suspendu") {
+        throw new HttpsError("failed-precondition", "Le compte est suspendu. Réactivez-le avant de renvoyer une invitation.");
+    }
+
+    if (hasAccountFinalizedAccess(targetData)) {
+        throw new HttpsError("failed-precondition", "Ce compte a déjà finalisé sa première connexion. Utilisez plutôt le reset mot de passe si nécessaire.");
+    }
+
+    const email = cleanEmail(targetData.email);
+    if (!isValidEmail(email)) throw new HttpsError("failed-precondition", "Email utilisateur invalide ou manquant.");
+
+    const apiKey = BREVO_API_KEY.value();
+    if (!apiKey) throw new HttpsError("failed-precondition", "Configuration Brevo manquante côté serveur.");
+
+    try {
+        const firebaseResetLink = await admin.auth().generatePasswordResetLink(email, SBI_AUTH_ACTION_SETTINGS);
+        const finalizationLink = buildSbiPasswordResetLink(firebaseResetLink);
+        await sendAccountFinalizationEmail({ ...targetData, email }, finalizationLink, apiKey);
+
+        const accountStatus = targetData.accountStatus || {};
+        const finalizationReminderEnabled = accountStatus.finalizationReminderEnabled === false ? false : true;
+
+        await targetDoc.ref.update({
+            "accountStatus.finalizationInviteSentAt": admin.firestore.FieldValue.serverTimestamp(),
+            "accountStatus.lastAccessEmailSentAt": admin.firestore.FieldValue.serverTimestamp(),
+            "accountStatus.activationState": "pending_password",
+            "accountStatus.finalizationReminderEnabled": finalizationReminderEnabled,
+            "accountStatus.finalizationInviteCount": admin.firestore.FieldValue.increment(1)
+        });
+
+        await sendAccountInternalEmail("Invitation finalisation envoyée", {
+            "Admin": caller.name,
+            "Admin email": caller.email,
+            "Utilisateur": getAccountDisplayName(targetData),
+            "Email": email,
+            "Rôle": getAccountRoleLabel(targetData.role),
+            "UID": targetUid
+        }, apiKey);
+    } catch (error) {
+        console.error("Erreur invitation finalisation SBI :", error.message, error.payload || "");
+        throw new HttpsError("internal", `Impossible d'envoyer l'invitation de finalisation : ${error.message}`);
+    }
+
+    await safeWriteAccountAuditLog(db, {
+        type: "account.finalization_invite_sent",
+        actorUid: caller.uid,
+        actorEmail: caller.email,
+        targetUid,
+        targetEmail: email,
+        targetRole: targetData.role || "",
+        source: "admin-manual"
+    });
+
+    return {
+        success: true,
+        message: `Invitation de finalisation envoyée à ${email}.`
+    };
+});
+
+
+
+
+exports.adminResolveFinalizationEscalation = onCall({
+    region: "europe-west1",
+    timeoutSeconds: 20,
+    memory: "256MiB"
+}, async (request) => {
+    const db = admin.firestore();
+    const caller = await requireAdminCaller(request, db);
+    const data = request.data || {};
+    const targetUid = cleanString(data.uid, 160);
+    const resolutionNote = cleanMultiline(data.note || "", 600);
+
+    if (!targetUid) throw new HttpsError("invalid-argument", "UID utilisateur manquant.");
+
+    const targetDoc = await db.collection("users").doc(targetUid).get();
+    if (!targetDoc.exists) throw new HttpsError("not-found", "Compte utilisateur introuvable.");
+
+    const targetData = targetDoc.data() || {};
+    if (!targetData.accountStatus?.finalizationEscalationAt) {
+        throw new HttpsError("failed-precondition", "Aucune alerte de finalisation à traiter pour ce compte.");
+    }
+
+    if (targetData.accountStatus?.finalizationEscalationResolvedAt) {
+        return {
+            success: true,
+            message: "Cette alerte était déjà traitée."
+        };
+    }
+
+    const updatePayload = {
+        "accountStatus.finalizationEscalationResolvedAt": admin.firestore.FieldValue.serverTimestamp(),
+        "accountStatus.finalizationEscalationResolvedBy": caller.uid,
+        "accountStatus.finalizationEscalationResolvedByEmail": caller.email || "",
+        "accountStatus.finalizationEscalationResolutionNote": resolutionNote,
+        "accountStatus.preparationState": "to_check"
+    };
+
+    await targetDoc.ref.update(updatePayload);
+
+    await safeWriteAccountAuditLog(db, {
+        type: "account.finalization_escalation_resolved",
+        actorUid: caller.uid,
+        actorEmail: caller.email,
+        targetUid,
+        targetEmail: targetData.email || "",
+        targetRole: targetData.role || "",
+        source: "admin-profile",
+        note: resolutionNote
+    });
+
+    return {
+        success: true,
+        message: "Alerte marquée comme traitée."
+    };
+});
+
+
+exports.runFinalizationReminders = onSchedule({
+    region: "europe-west1",
+    schedule: "every 24 hours",
+    timeZone: "Europe/Paris",
+    secrets: [BREVO_API_KEY],
+    timeoutSeconds: 540,
+    memory: "512MiB"
+}, async () => {
+    const db = admin.firestore();
+    const apiKey = BREVO_API_KEY.value();
+
+    if (!apiKey) {
+        console.error("[SBI Finalization] BREVO_API_KEY manquant.");
+        return;
+    }
+
+    const nowMs = Date.now();
+    const usersSnap = await db.collection("users")
+        .where("statut", "==", "actif")
+        .limit(500)
+        .get();
+
+    let checked = 0;
+    let sent = 0;
+    let skipped = 0;
+    let escalated = 0;
+    let failed = 0;
+
+    for (const userDoc of usersSnap.docs) {
+        checked += 1;
+        const userData = userDoc.data() || {};
+        const uid = userDoc.id;
+
+        if (!shouldSendFinalizationReminder(userData, nowMs)) {
+            skipped += 1;
+            continue;
+        }
+
+        const email = cleanEmail(userData.email);
+        if (!isValidEmail(email)) {
+            skipped += 1;
+            await userDoc.ref.set({
+                accountStatus: {
+                    finalizationIssueCode: "invalid_email",
+                    finalizationIssueAt: admin.firestore.FieldValue.serverTimestamp(),
+                    finalizationIssueMessage: "Email utilisateur invalide ou manquant.",
+                    finalizationIssueSource: "scheduler",
+                    finalizationIssueEvent: "invalid_email",
+                    finalizationReminderEnabled: false,
+                    preparationState: "to_check"
+                },
+                updatedAt: admin.firestore.FieldValue.serverTimestamp()
+            }, { merge: true });
+            await safeWriteAccountAuditLog(db, {
+                type: "account.finalization_reminder_skipped",
+                actorUid: "system",
+                actorEmail: "scheduler",
+                targetUid: uid,
+                targetEmail: email,
+                targetRole: userData.role || "",
+                source: "auto-finalization-reminder",
+                reason: "invalid-email"
+            });
+            continue;
+        }
+
+        const accountStatus = userData.accountStatus || {};
+        const previousReminderCount = Number(accountStatus.reminderCount || 0);
+        const nextReminderCount = previousReminderCount + 1;
+        const isFinalReminder = nextReminderCount >= SBI_FINALIZATION_REMINDER_MAX_COUNT;
+
+        try {
+            const firebaseResetLink = await admin.auth().generatePasswordResetLink(email, SBI_AUTH_ACTION_SETTINGS);
+            const finalizationLink = buildSbiPasswordResetLink(firebaseResetLink);
+
+            await sendAccountFinalizationEmail({ ...userData, email }, finalizationLink, apiKey);
+
+            const updatePayload = {
+                "accountStatus.activationState": "pending_password",
+                "accountStatus.finalizationReminderEnabled": accountStatus.finalizationReminderEnabled === false ? false : true,
+                "accountStatus.lastReminderSentAt": admin.firestore.FieldValue.serverTimestamp(),
+                "accountStatus.lastAccessEmailSentAt": admin.firestore.FieldValue.serverTimestamp(),
+                "accountStatus.reminderCount": admin.firestore.FieldValue.increment(1)
+            };
+
+            if (isFinalReminder) {
+                updatePayload["accountStatus.finalizationEscalationAt"] = admin.firestore.FieldValue.serverTimestamp();
+                updatePayload["accountStatus.finalizationEscalationResolvedAt"] = null;
+                updatePayload["accountStatus.finalizationEscalationResolvedBy"] = "";
+                updatePayload["accountStatus.finalizationReminderEnabled"] = false;
+            }
+
+            await userDoc.ref.update(updatePayload);
+
+            await safeWriteAccountAuditLog(db, {
+                type: isFinalReminder ? "account.finalization_escalation_required" : "account.finalization_reminder_sent",
+                actorUid: "system",
+                actorEmail: "scheduler",
+                targetUid: uid,
+                targetEmail: email,
+                targetRole: userData.role || "",
+                source: "auto-finalization-reminder",
+                reminderCount: nextReminderCount,
+                maxReminderCount: SBI_FINALIZATION_REMINDER_MAX_COUNT
+            });
+
+            if (isFinalReminder) {
+                escalated += 1;
+            } else {
+                sent += 1;
+            }
+        } catch (error) {
+            failed += 1;
+            console.error("[SBI Finalization] Relance impossible :", uid, email, error.message);
+            await safeWriteAccountAuditLog(db, {
+                type: "account.finalization_reminder_failed",
+                actorUid: "system",
+                actorEmail: "scheduler",
+                targetUid: uid,
+                targetEmail: email,
+                targetRole: userData.role || "",
+                source: "auto-finalization-reminder",
+                errorMessage: cleanString(error.message, 300)
+            });
+        }
+    }
+
+    console.log("[SBI Finalization] Rapport relances", {
+        checked,
+        sent,
+        skipped,
+        escalated,
+        failed
+    });
+});
+
+
+exports.brevoTransactionalWebhook = onRequest({
+    region: "europe-west1",
+    secrets: [BREVO_WEBHOOK_TOKEN],
+    timeoutSeconds: 30,
+    memory: "256MiB"
+}, async (req, res) => {
+    res.set("Cache-Control", "no-store");
+    res.set("X-Content-Type-Options", "nosniff");
+
+    if (req.method === "OPTIONS") {
+        res.status(204).send("");
+        return;
+    }
+
+    if (req.method !== "POST") {
+        res.status(405).json({ success: false, message: "Méthode non autorisée." });
+        return;
+    }
+
+    const expectedToken = cleanString(BREVO_WEBHOOK_TOKEN.value(), 240);
+    const providedToken = cleanString(
+        req.query?.token
+        || req.get("x-sbi-brevo-token")
+        || req.get("x-webhook-token")
+        || "",
+        240
+    );
+
+    if (!expectedToken || providedToken !== expectedToken) {
+        res.status(403).json({ success: false, message: "Webhook non autorisé." });
+        return;
+    }
+
+    const db = admin.firestore();
+    const events = extractBrevoWebhookEvents(req.body);
+    let received = events.length;
+    let handled = 0;
+    let matchedUsers = 0;
+
+    for (const event of events) {
+        const rawEventType = extractBrevoEventType(event);
+        if (!isBrevoBounceEvent(rawEventType)) continue;
+
+        const email = extractBrevoEventEmail(event);
+        if (!isValidEmail(email)) continue;
+
+        handled += 1;
+        const normalizedEvent = normalizeBrevoEventName(rawEventType);
+        const bounceMessage = extractBrevoBounceMessage(event);
+        const usersSnap = await db.collection("users")
+            .where("email", "==", email)
+            .limit(10)
+            .get();
+
+        if (usersSnap.empty) {
+            await safeWriteAccountAuditLog(db, {
+                type: "account.email_bounce_unmatched",
+                actorUid: "brevo",
+                actorEmail: "webhook",
+                targetUid: "",
+                targetEmail: email,
+                targetRole: "",
+                source: "brevo-webhook",
+                event: normalizedEvent,
+                reason: bounceMessage
+            });
+            continue;
+        }
+
+        for (const userDoc of usersSnap.docs) {
+            matchedUsers += 1;
+            const userData = userDoc.data() || {};
+
+            await userDoc.ref.update({
+                "accountStatus.finalizationIssueCode": "email_bounced",
+                "accountStatus.finalizationIssueAt": admin.firestore.FieldValue.serverTimestamp(),
+                "accountStatus.finalizationIssueMessage": bounceMessage || "Email rejeté par Brevo.",
+                "accountStatus.finalizationIssueSource": "brevo",
+                "accountStatus.finalizationIssueEvent": normalizedEvent,
+                "accountStatus.finalizationReminderEnabled": false,
+                "accountStatus.preparationState": "to_check",
+                updatedAt: admin.firestore.FieldValue.serverTimestamp()
+            });
+
+            await safeWriteAccountAuditLog(db, {
+                type: "account.email_bounced",
+                actorUid: "brevo",
+                actorEmail: "webhook",
+                targetUid: userDoc.id,
+                targetEmail: email,
+                targetRole: userData.role || "",
+                source: "brevo-webhook",
+                event: normalizedEvent,
+                reason: bounceMessage
+            });
+        }
+    }
+
+    res.status(200).json({
+        success: true,
+        received,
+        handled,
+        matchedUsers
+    });
 });
 
 
@@ -1381,6 +1994,13 @@ exports.requestPasswordReset = onRequest({
             const firebaseResetLink = await admin.auth().generatePasswordResetLink(email, SBI_AUTH_ACTION_SETTINGS);
             const resetLink = buildSbiPasswordResetLink(firebaseResetLink);
             await sendAccountResetEmail({ ...targetData, email }, resetLink, apiKey);
+            if (targetDoc.exists) {
+                await targetDoc.ref.update({
+                    "accountStatus.passwordResetSentAt": admin.firestore.FieldValue.serverTimestamp(),
+                    "accountStatus.lastAccessEmailSentAt": admin.firestore.FieldValue.serverTimestamp(),
+                    "accountStatus.activationState": keepActiveOrPendingPassword(targetData)
+                });
+            }
             emailSent = true;
         }
     } catch (error) {
@@ -1412,7 +2032,62 @@ exports.requestPasswordReset = onRequest({
 });
 
 
+exports.trackAccountLogin = onCall({
+    region: "europe-west1",
+    timeoutSeconds: 15,
+    memory: "256MiB"
+}, async (request) => {
+    const uid = request.auth?.uid || "";
+    if (!uid) {
+        throw new HttpsError("unauthenticated", "Connexion requise.");
+    }
 
+    const db = admin.firestore();
+    const userRef = db.collection("users").doc(uid);
+    const userDoc = await userRef.get();
+
+    if (!userDoc.exists) {
+        throw new HttpsError("not-found", "Compte utilisateur introuvable.");
+    }
+
+    const userData = userDoc.data() || {};
+    if (userData.statut === "suspendu") {
+        throw new HttpsError("permission-denied", "Compte suspendu.");
+    }
+
+    const now = admin.firestore.FieldValue.serverTimestamp();
+    const hasFirstLogin = Boolean(userData.accountStatus?.firstLoginAt || userData.firstLoginAt);
+    const preparationState = userData.accountStatus?.preparationState || userData.preparationState || "not_prepared";
+
+    const payload = {
+        "accountStatus.activationState": "active",
+        "accountStatus.preparationState": preparationState,
+        "accountStatus.lastLoginAt": now,
+        lastLoginAt: now,
+        updatedAt: now
+    };
+
+    if (!hasFirstLogin) {
+        payload["accountStatus.firstLoginAt"] = now;
+        payload.firstLoginAt = now;
+    }
+
+    await userRef.set(payload, { merge: true });
+
+    await safeWriteAccountAuditLog(db, {
+        type: "account.login_tracked",
+        actorUid: uid,
+        actorEmail: request.auth.token?.email || userData.email || "",
+        targetUid: uid,
+        targetEmail: userData.email || request.auth.token?.email || "",
+        targetRole: userData.role || ""
+    });
+
+    return {
+        success: true,
+        firstLoginCreated: !hasFirstLogin
+    };
+});
 
 
 /* =======================================================================
@@ -1659,12 +2334,10 @@ exports.adminChangeUserEmail = onCall({
     const targetRole = normalizeAccountRole(targetData.role);
     const isSelfEdit = targetUid === caller.uid;
     const oldEmail = cleanEmail(targetData.email);
+    const oldEmailIsValid = isValidEmail(oldEmail);
+    const oldEmailLabel = oldEmail || cleanString(targetData.email || "", 180) || "Adresse précédente invalide";
 
-    if (!oldEmail || !isValidEmail(oldEmail)) {
-        throw new HttpsError("failed-precondition", "Ancienne adresse email invalide ou manquante dans Firestore.");
-    }
-
-    if (newEmail === oldEmail) {
+    if (oldEmailIsValid && newEmail === oldEmail) {
         return { success: true, message: "Adresse email inchangée." };
     }
 
@@ -1715,14 +2388,27 @@ exports.adminChangeUserEmail = onCall({
         throw new HttpsError("internal", `Modification email Auth impossible : ${error.message}`);
     }
 
+    const emailUpdatePayload = {
+        email: newEmail,
+        emailUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        emailUpdatedBy: caller.uid,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedBy: caller.uid
+    };
+
+    if (!hasAccountFinalizedAccess(targetData) && hasBlockingFinalizationEmailIssue(targetData)) {
+        emailUpdatePayload["accountStatus.finalizationIssueCode"] = "";
+        emailUpdatePayload["accountStatus.finalizationIssueAt"] = null;
+        emailUpdatePayload["accountStatus.finalizationIssueMessage"] = "";
+        emailUpdatePayload["accountStatus.finalizationIssueSource"] = "";
+        emailUpdatePayload["accountStatus.finalizationIssueEvent"] = "";
+        emailUpdatePayload["accountStatus.finalizationIssueResolvedAt"] = admin.firestore.FieldValue.serverTimestamp();
+        emailUpdatePayload["accountStatus.finalizationReminderEnabled"] = true;
+        emailUpdatePayload["accountStatus.preparationState"] = "to_check";
+    }
+
     try {
-        await targetRef.set({
-            email: newEmail,
-            emailUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
-            emailUpdatedBy: caller.uid,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-            updatedBy: caller.uid
-        }, { merge: true });
+        await targetRef.set(emailUpdatePayload, { merge: true });
     } catch (error) {
         console.error("Erreur changement email Firestore SBI, tentative rollback Auth :", error.message);
         try {
@@ -1746,13 +2432,15 @@ exports.adminChangeUserEmail = onCall({
 
     try {
         if (!apiKey) throw new Error("BREVO_API_KEY manquant.");
-        await sendAccountEmailChangedOldAddressEmail(nextProfile, oldEmail, newEmail, apiKey);
-        await sendAccountEmailChangedNewAddressEmail(nextProfile, oldEmail, newEmail, apiKey);
+        if (oldEmailIsValid) {
+            await sendAccountEmailChangedOldAddressEmail(nextProfile, oldEmail, newEmail, apiKey);
+        }
+        await sendAccountEmailChangedNewAddressEmail(nextProfile, oldEmailLabel, newEmail, apiKey);
         await sendAccountInternalEmail("Email compte modifié", {
             "Admin": caller.name,
             "Admin email": caller.email,
             "Utilisateur": getAccountDisplayName(nextProfile),
-            "Ancien email": oldEmail,
+            "Ancien email": oldEmailLabel,
             "Nouvel email": newEmail,
             "Rôle": getAccountRoleLabel(nextProfile.role),
             "UID": targetUid
@@ -1771,7 +2459,7 @@ exports.adminChangeUserEmail = onCall({
         targetRole: nextProfile.role || "",
         changes: {
             email: {
-                before: oldEmail,
+                before: oldEmailLabel,
                 after: newEmail
             }
         }
@@ -1880,6 +2568,50 @@ exports.adminUpdateUserAccount = onCall({
         }
     }
 
+    if (Object.prototype.hasOwnProperty.call(data, "preparationState")) {
+        const requestedPreparationState = normalizeAccountPreparationState(data.preparationState);
+        const currentPreparationState = normalizeAccountPreparationState(
+            targetData.accountStatus?.preparationState || targetData.preparationState || "not_prepared"
+        );
+
+        if (requestedPreparationState !== currentPreparationState) {
+            updates.accountStatus = {
+                ...(targetData.accountStatus || {}),
+                ...(updates.accountStatus || {}),
+                preparationState: requestedPreparationState,
+                preparationUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                preparationUpdatedBy: caller.uid
+            };
+            auditChanges.preparationState = {
+                before: currentPreparationState,
+                after: requestedPreparationState,
+                beforeLabel: getAccountPreparationLabel(currentPreparationState),
+                afterLabel: getAccountPreparationLabel(requestedPreparationState)
+            };
+        }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(data, "accountNote")) {
+        const accountNote = cleanMultiline(data.accountNote, 2000);
+        const previousAccountNote = cleanMultiline(targetData.adminNotes?.accountNote || "", 2000);
+
+        if (accountNote !== previousAccountNote) {
+            updates.adminNotes = {
+                ...(targetData.adminNotes || {}),
+                ...(updates.adminNotes || {}),
+                accountNote,
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                updatedBy: caller.uid,
+                updatedByEmail: caller.email,
+                updatedByName: caller.name
+            };
+            auditChanges.accountNote = {
+                before: getNoteAuditState(previousAccountNote),
+                after: getNoteAuditState(accountNote)
+            };
+        }
+    }
+
     if (data.isGod === true) {
         const currentGodSnapshot = await db.collection("users").where("isGod", "==", true).limit(2).get();
         const currentGodDocs = currentGodSnapshot.docs;
@@ -1985,8 +2717,12 @@ exports.adminUpdateUserAccount = onCall({
         }
     }
 
+    const auditChangeKeys = Object.keys(auditChanges);
+    const onlyFollowupChanges = auditChangeKeys.length > 0
+        && auditChangeKeys.every((key) => ["preparationState", "accountNote"].includes(key));
+
     await safeWriteAccountAuditLog(db, {
-        type: auditChanges.isGod ? "account.god_updated" : "account.updated",
+        type: auditChanges.isGod ? "account.god_updated" : onlyFollowupChanges ? "account.followup_updated" : "account.updated",
         actorUid: caller.uid,
         actorEmail: caller.email,
         targetUid,

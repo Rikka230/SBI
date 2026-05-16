@@ -143,3 +143,56 @@ body.auth-ready .app-container {
 ::-webkit-scrollbar-track { background: #0a0a0c; }
 ::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
 ::-webkit-scrollbar-thumb:hover { background: #555; }
+
+
+/* ==========================================================================
+   SBI 8.0P.167.4 — Admin single scroll model
+   --------------------------------------------------------------------------
+   Le layout admin ne doit avoir qu’un seul scroll vertical : #main-content.
+   Le double scroll body + #main-content causait lag, inertie bizarre et fonds
+   incohérents sur les pages longues.
+   ========================================================================== */
+
+html {
+    height: 100%;
+    overflow: hidden;
+}
+
+body {
+    min-height: 100%;
+    height: 100%;
+    overflow: hidden !important;
+}
+
+.app-container {
+    height: 100dvh;
+    min-height: 100dvh;
+    overflow: hidden;
+}
+
+#main-content {
+    min-height: 0;
+    height: 100dvh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: auto;
+}
+
+#main-content .content-wrapper {
+    min-height: calc(100dvh - var(--header-height, 60px));
+    box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+    .app-container {
+        height: 100dvh;
+        min-height: 100dvh;
+    }
+
+    #main-content {
+        height: 100dvh;
+    }
+}
+

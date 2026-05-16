@@ -8,12 +8,27 @@
     <link rel="stylesheet" href="css/admin.css">
     <link rel="stylesheet" href="css/admin-notifications.css">
     
-    <script src="js/components.js"></script>
+    <script src="js/components.js?v=8.0P.167.33"></script>
     
     <script>
         const urlParams = new URLSearchParams(window.location.search);
-        const activeTab = urlParams.get('tab') || sessionStorage.getItem('activeAdminTab') || 'view-dashboard';
+        const profileReturnTarget = sessionStorage.getItem('sbiAdminReturnTarget');
+        const profileReturnStamp = Number(sessionStorage.getItem('sbiAdminReturnFromProfile') || 0);
+        const profileReturnIsFresh = profileReturnStamp && (Date.now() - profileReturnStamp < 6 * 60 * 60 * 1000);
+
+        const activeTab = urlParams.get('tab')
+            || (profileReturnIsFresh ? profileReturnTarget : '')
+            || sessionStorage.getItem('activeAdminTab')
+            || 'view-dashboard';
+
         sessionStorage.setItem('activeAdminTab', activeTab);
+
+        if (profileReturnIsFresh && activeTab === 'view-users') {
+            window.__SBI_ADMIN_FORCE_USERS_REHYDRATE = true;
+            sessionStorage.setItem('sbiAdminForceUsersRehydrate', '1');
+        }
+
+        sessionStorage.removeItem('sbiAdminReturnTarget');
         
         document.write(`<style id="anti-flash-style">
             .admin-view { display: none; }
@@ -24,10 +39,15 @@
         document.addEventListener('DOMContentLoaded', () => {
             const styleNode = document.getElementById('anti-flash-style');
             if(styleNode) styleNode.remove();
+            window.dispatchEvent(new CustomEvent('sbi:admin-index-dom-present'));
         });
+
+        window.setTimeout(() => {
+            window.dispatchEvent(new CustomEvent('sbi:admin-index-dom-present'));
+        }, 60);
     </script>
 </head>
-<body class="preload">
+<body class="preload sbi-admin-surface">
 
 <div class="app-container" id="app-container">
 
@@ -318,10 +338,10 @@
 
 <script type="module" src="js/admin-ui.js?v=8.0P.119"></script>
 <script type="module" src="js/sbi-admin-inp-fix.js?v=8.0P.127"></script>
-<script type="module" src="js/admin-core.js?v=8.0P.135"></script>
-<script type="module" src="js/tracker.js"></script>
+<script type="module" src="js/admin-core.js?v=8.0P.167.28"></script>
+<script type="module" src="js/tracker.js?v=8.0P.166.5"></script>
 <script type="module" src="js/admin-notifications.js"></script>
-<script type="module" src="js/admin-dashboard.js"></script>
+<script type="module" src="js/admin-dashboard.js?v=8.0P.167.0"></script>
 
 <script type="module" src="js/storage-diagnostics.js"></script>
 

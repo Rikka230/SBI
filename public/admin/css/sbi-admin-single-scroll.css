@@ -1,0 +1,147 @@
+/* ==========================================================================
+   SBI 8.0P.167.24 — Stable clear admin surface, no grid
+   --------------------------------------------------------------------------
+   Base stable : 8.0P.167.20
+   Objectif : revenir à une surface admin claire, lisible, homogène sur toutes
+   les pages admin, profil compris, sans grille et sans saut visuel PJAX.
+
+   Règles conservées :
+   - un seul scroll vertical : #main-content ;
+   - aucun fixed pour le décor ;
+   - aucun background-attachment local/fixed ;
+   - aucun pseudo-élément décoratif ;
+   - aucun décor porté par .content-wrapper ;
+   - aucun style sur cartes, boutons, inputs, selects ;
+   - admin-layout.css non touché.
+   ========================================================================== */
+
+body.sbi-admin-space,
+body.sbi-admin-surface,
+body.sbi-profile-page.sbi-admin-surface,
+body.sbi-course-editor-page.sbi-admin-surface,
+body:has(admin-left-panel) {
+    --sbi-admin-surface-bg: #071226;
+    --sbi-admin-surface-deep: #050a16;
+    --sbi-admin-surface-mid: #0a1a38;
+    --sbi-admin-surface-blue: rgba(72, 119, 255, 0.30);
+    --sbi-admin-surface-cyan: rgba(42, 210, 255, 0.08);
+    background: var(--sbi-admin-surface-bg) !important;
+}
+
+/* Surface unique et stable : même fond sur index, comptes, formations et profil. */
+body.sbi-admin-space #main-content,
+body.sbi-admin-surface #main-content,
+body.sbi-profile-page.sbi-admin-surface #main-content,
+body.sbi-course-editor-page.sbi-admin-surface #main-content,
+body:has(admin-left-panel) #main-content {
+    position: relative;
+    isolation: isolate;
+    background-color: var(--sbi-admin-surface-bg) !important;
+    background-image:
+        radial-gradient(ellipse at 12% 0%, rgba(72, 119, 255, 0.34) 0%, rgba(42, 87, 255, 0.16) 27%, transparent 64%),
+        radial-gradient(ellipse at 96% 8%, rgba(180, 205, 255, 0.12) 0%, rgba(72, 119, 255, 0.055) 28%, transparent 62%),
+        radial-gradient(ellipse at 78% 96%, rgba(42, 210, 255, 0.075) 0%, rgba(42, 87, 255, 0.045) 34%, transparent 70%),
+        linear-gradient(135deg, var(--sbi-admin-surface-bg) 0%, var(--sbi-admin-surface-mid) 46%, #08152e 68%, var(--sbi-admin-surface-deep) 100%) !important;
+    background-repeat: no-repeat !important;
+    background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100% !important;
+    background-position: 0 0, 0 0, 0 0, 0 0 !important;
+    animation: none !important;
+}
+
+/* Neutralisation ferme de toutes les grilles et anciens calques de décor. */
+body.sbi-admin-space.sbi-dashboard-page,
+body.sbi-admin-surface.sbi-dashboard-page,
+body:has(admin-left-panel).sbi-dashboard-page {
+    background: var(--sbi-admin-surface-bg) !important;
+}
+
+body.sbi-admin-space #main-content::before,
+body.sbi-admin-space #main-content::after,
+body.sbi-admin-surface #main-content::before,
+body.sbi-admin-surface #main-content::after,
+body.sbi-profile-page.sbi-admin-surface #main-content::before,
+body.sbi-profile-page.sbi-admin-surface #main-content::after,
+body.sbi-course-editor-page.sbi-admin-surface #main-content::before,
+body.sbi-course-editor-page.sbi-admin-surface #main-content::after,
+body:has(admin-left-panel) #main-content::before,
+body:has(admin-left-panel) #main-content::after {
+    content: none !important;
+    display: none !important;
+    position: static !important;
+    inset: auto !important;
+    width: auto !important;
+    height: auto !important;
+    animation: none !important;
+    transform: none !important;
+    background: none !important;
+    box-shadow: none !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
+/* Le wrapper reste un conteneur de contenu, jamais une colonne de décor. */
+body.sbi-admin-space .content-wrapper,
+body.sbi-admin-surface .content-wrapper,
+body.sbi-profile-page.sbi-admin-surface .content-wrapper,
+body.sbi-course-editor-page.sbi-admin-surface .content-wrapper,
+body:has(admin-left-panel) .content-wrapper {
+    position: relative;
+    isolation: isolate;
+    z-index: 1;
+    min-height: calc(100dvh - var(--header-height, 60px));
+    padding-bottom: max(3rem, env(safe-area-inset-bottom));
+}
+
+body.sbi-admin-space .content-wrapper::before,
+body.sbi-admin-space .content-wrapper::after,
+body.sbi-admin-surface .content-wrapper::before,
+body.sbi-admin-surface .content-wrapper::after,
+body.sbi-profile-page.sbi-admin-surface .content-wrapper::before,
+body.sbi-profile-page.sbi-admin-surface .content-wrapper::after,
+body.sbi-course-editor-page.sbi-admin-surface .content-wrapper::before,
+body.sbi-course-editor-page.sbi-admin-surface .content-wrapper::after,
+body:has(admin-left-panel) .content-wrapper::before,
+body:has(admin-left-panel) .content-wrapper::after {
+    content: none !important;
+    display: none !important;
+}
+
+body.sbi-admin-space .admin-view,
+body.sbi-admin-space .content-wrapper > *,
+body.sbi-admin-surface .admin-view,
+body.sbi-admin-surface .content-wrapper > *,
+body:has(admin-left-panel) .admin-view,
+body:has(admin-left-panel) .content-wrapper > * {
+    position: relative;
+    z-index: 1;
+}
+
+/* Sécurité assistant : aucune bulle rouge quand il n'y a aucune notification. */
+body.sbi-internal-ui .sbi-assistant:not(.has-notifications) .sbi-assistant__badge,
+body.sbi-internal-ui .sbi-assistant .sbi-assistant__badge:empty {
+    opacity: 0 !important;
+    scale: 0.74 !important;
+    pointer-events: none !important;
+}
+
+@media (max-width: 768px) {
+    body.sbi-admin-space #main-content,
+    body.sbi-admin-surface #main-content,
+    body.sbi-profile-page.sbi-admin-surface #main-content,
+    body.sbi-course-editor-page.sbi-admin-surface #main-content,
+    body:has(admin-left-panel) #main-content {
+        background-image:
+            radial-gradient(ellipse at 10% 0%, rgba(72, 119, 255, 0.28) 0%, rgba(42, 87, 255, 0.13) 25%, transparent 60%),
+            radial-gradient(ellipse at 92% 10%, rgba(180, 205, 255, 0.10) 0%, transparent 56%),
+            linear-gradient(135deg, var(--sbi-admin-surface-bg) 0%, #0a1834 52%, var(--sbi-admin-surface-deep) 100%) !important;
+        background-size: 100% 100%, 100% 100%, 100% 100% !important;
+    }
+
+    body.sbi-admin-space .content-wrapper,
+    body.sbi-admin-surface .content-wrapper,
+    body.sbi-profile-page.sbi-admin-surface .content-wrapper,
+    body.sbi-course-editor-page.sbi-admin-surface .content-wrapper,
+    body:has(admin-left-panel) .content-wrapper {
+        padding-bottom: max(4rem, env(safe-area-inset-bottom));
+    }
+}

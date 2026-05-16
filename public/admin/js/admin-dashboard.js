@@ -18,7 +18,14 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
-document.addEventListener('DOMContentLoaded', () => {
+function initAdminDashboardStats() {
+    if (window.__SBI_ADMIN_DASHBOARD_READY === true) {
+        if (auth.currentUser) loadDashboardStats();
+        return;
+    }
+
+    window.__SBI_ADMIN_DASHBOARD_READY = true;
+
     onAuthStateChanged(auth, (user) => {
         if (user) {
             loadDashboardStats();
@@ -31,7 +38,23 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.href = 'formations-cours.html';
         });
     }
-});
+
+    window.addEventListener('sbi:admin-tab-changed', (event) => {
+        if (event?.detail?.tab === 'view-dashboard') {
+            loadDashboardStats();
+        }
+    });
+}
+
+window.SBI_ADMIN_DASHBOARD_REINIT = () => {
+    if (auth.currentUser) loadDashboardStats();
+};
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initAdminDashboardStats, { once: true });
+} else {
+    initAdminDashboardStats();
+}
 
 async function countCollection(collectionName, constraints = []) {
     const baseRef = collection(db, collectionName);

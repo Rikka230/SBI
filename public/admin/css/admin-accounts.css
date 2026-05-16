@@ -1,0 +1,322 @@
+.sbi-accounts-view {
+  --sbi-account-card: rgba(255, 255, 255, 0.035);
+  --sbi-account-border: rgba(255, 255, 255, 0.11);
+  --sbi-account-muted: var(--text-muted, #9ca3af);
+}
+
+.sbi-accounts-header {
+  align-items: flex-start !important;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.sbi-accounts-header h2 {
+  margin-bottom: 0.35rem;
+}
+
+.sbi-accounts-header-note {
+  margin: 0;
+  max-width: 760px;
+  color: var(--text-muted, #9ca3af);
+  line-height: 1.55;
+}
+
+
+.sbi-accounts-counters {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(92px, 1fr));
+  gap: 0.7rem;
+  margin: 0 0 1.25rem;
+}
+
+.sbi-account-counter {
+  padding: 0.85rem;
+  border: 1px solid var(--sbi-account-border);
+  border-radius: 11px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.025));
+}
+
+.sbi-account-counter span {
+  display: block;
+  color: var(--text-muted, #9ca3af);
+  font-size: 0.73rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.sbi-account-counter strong {
+  display: block;
+  margin-top: 0.35rem;
+  color: #ffffff;
+  font-size: 1.45rem;
+  line-height: 1;
+}
+
+.sbi-accounts-workspace {
+  grid-template-columns: minmax(280px, 0.8fr) minmax(520px, 1.6fr) !important;
+}
+
+.sbi-account-create-card,
+.sbi-account-list-card {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.025)) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  border-radius: 14px !important;
+}
+
+.sbi-account-create-card h3,
+.sbi-account-list-card h3 {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: #ffffff;
+}
+
+.sbi-account-create-card h3::after,
+.sbi-account-list-card h3::after {
+  content: "P2H.2-A";
+  display: inline-flex;
+  padding: 0.18rem 0.45rem;
+  border: 1px solid rgba(42, 87, 255, 0.3);
+  border-radius: 999px;
+  color: var(--accent-blue, #2A57FF);
+  font-size: 0.64rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+}
+
+.sbi-account-row {
+  min-height: 64px;
+  transition: border-color 0.18s ease, transform 0.18s ease, background 0.18s ease;
+}
+
+.sbi-account-row:hover {
+  border-color: rgba(42, 87, 255, 0.34) !important;
+  background: rgba(42, 87, 255, 0.055) !important;
+}
+
+.sbi-account-email-cell,
+.sbi-account-status-cell {
+  flex-direction: column;
+  align-items: flex-start !important;
+  justify-content: center !important;
+  gap: 0.22rem;
+}
+
+.sbi-account-email-line {
+  color: #dbe5ff;
+  word-break: break-word;
+}
+
+.sbi-account-card-meta {
+  color: var(--text-muted, #9ca3af);
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+.sbi-account-status-cell small {
+  color: var(--text-muted, #9ca3af);
+  font-size: 0.68rem;
+}
+
+.sbi-status-dot {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.sbi-status-dot::before {
+  content: "";
+  width: 0.46rem;
+  height: 0.46rem;
+  border-radius: 999px;
+  background: currentColor;
+  box-shadow: 0 0 10px currentColor;
+}
+
+.sbi-status-success {
+  color: var(--accent-green, #2ed573);
+}
+
+.sbi-status-warning {
+  color: var(--accent-yellow, #fbbc04);
+}
+
+.sbi-status-danger {
+  color: var(--accent-red, #ff4a4a);
+}
+
+.sbi-status-muted {
+  color: var(--text-muted, #9ca3af);
+}
+
+@media (max-width: 1280px) {
+  .sbi-accounts-counters {
+    grid-template-columns: repeat(4, minmax(110px, 1fr));
+  }
+
+  .sbi-accounts-workspace {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .sbi-accounts-counters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sbi-account-row {
+    grid-template-columns: 1fr !important;
+  }
+
+  .sbi-account-row > * {
+    min-height: 44px;
+    border-left: 0 !important;
+    border-right: 0 !important;
+    border-bottom: 1px solid #222;
+  }
+
+  .sbi-account-row button {
+    min-height: 44px;
+  }
+}
+
+/* SBI 8.0P.167.32 - Liste comptes grande, formulaire complet, CSS-only */
+@media (min-width: 1025px) {
+  .sbi-accounts-workspace {
+    --sbi-account-panel-height: 600px;
+    align-items: stretch !important;
+  }
+
+  .sbi-account-create-card,
+  .sbi-account-list-card {
+    box-sizing: border-box !important;
+    min-height: var(--sbi-account-panel-height) !important;
+  }
+
+  .sbi-account-create-card {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .sbi-account-create-card form {
+    height: auto !important;
+  }
+
+  .sbi-account-create-card button[type="submit"] {
+    flex-shrink: 0 !important;
+  }
+
+  .sbi-account-list-card {
+    display: flex !important;
+    flex-direction: column !important;
+    height: var(--sbi-account-panel-height) !important;
+    max-height: var(--sbi-account-panel-height) !important;
+    overflow: hidden !important;
+  }
+
+  .sbi-account-list-card h3 {
+    flex: 0 0 auto;
+    margin-bottom: 1rem;
+  }
+
+  #users-list-container {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    padding-right: 0;
+    padding-bottom: 0.25rem;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  #users-list-container::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
+  }
+}
+
+@media (min-width: 1025px) and (min-height: 980px) {
+  .sbi-accounts-workspace {
+    --sbi-account-panel-height: 640px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .sbi-account-create-card,
+  .sbi-account-list-card {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  #users-list-container {
+    max-height: min(68vh, 560px);
+    min-height: 260px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  #users-list-container::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
+  }
+}
+
+/* SBI 8.0P.167.33 - Smooth 60fps account list scroll, CSS-only */
+@media (min-width: 1025px) {
+  #users-list-container {
+    contain: layout paint style;
+    isolation: isolate;
+    will-change: scroll-position;
+    scroll-behavior: auto;
+    -webkit-overflow-scrolling: touch;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+  }
+
+  #users-list-container .sbi-account-row {
+    contain: layout paint style;
+    content-visibility: auto;
+    contain-intrinsic-size: 66px;
+    transform: translateZ(0);
+    transition: background-color 0.12s ease, border-color 0.12s ease !important;
+    box-shadow: none !important;
+  }
+
+  #users-list-container .sbi-account-row:hover {
+    transform: none !important;
+  }
+
+  #users-list-container .sbi-status-dot::before {
+    box-shadow: none !important;
+  }
+
+  #users-list-container * {
+    animation: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #users-list-container,
+  #users-list-container * {
+    scroll-behavior: auto !important;
+    transition: none !important;
+    animation: none !important;
+  }
+}

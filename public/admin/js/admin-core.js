@@ -21,6 +21,7 @@ let currentUid = null;
 let isCurrentUserGod = false;
 let unsubscribeUsersRealtime = null;
 let presenceRefreshIntervalId = null;
+let lastUsersSnapshotAt = 0;
 
 const ONLINE_TTL_MS = 90000;
 
@@ -122,6 +123,8 @@ const fetchUsers = () => {
                 allUsersData.push({ id: snapDoc.id, ...snapDoc.data() });
             });
 
+            lastUsersSnapshotAt = Date.now();
+
             const godExists = allUsersData.some(u => u.isGod === true);
             const myProfile = allUsersData.find(u => u.id === currentUid);
             isCurrentUserGod = godExists ? (myProfile && myProfile.isGod === true) : true;
@@ -140,6 +143,86 @@ const fetchUsers = () => {
     } catch (error) {
         container.innerHTML = `<div class="sys-msg error" style="display:block;">Erreur de chargement.</div>`;
     }
+};
+
+const disconnectUsersRealtime = () => {
+    if (typeof unsubscribeUsersRealtime === 'function') {
+        try {
+            unsubscribeUsersRealtime();
+        } catch (error) {
+            console.warn('[SBI Admin] Déconnexion users listener ignorée :', error);
+        }
+    }
+
+    unsubscribeUsersRealtime = null;
+};
+
+const consumeProfileReturnRehydrateFlag = () => {
+    const shouldForce = window.__SBI_ADMIN_FORCE_USERS_REHYDRATE === true
+        || sessionStorage.getItem('sbiAdminForceUsersRehydrate') === '1';
+
+    if (!shouldForce) return false;
+
+    window.__SBI_ADMIN_FORCE_USERS_REHYDRATE = false;
+    sessionStorage.removeItem('sbiAdminForceUsersRehydrate');
+    sessionStorage.removeItem('sbiAdminReturnFromProfile');
+
+    return true;
+};
+
+const forceUsersRehydrateFromProfile = () => {
+    const container = document.getElementById('users-list-container');
+    if (!container || !currentUid) return;
+
+    container.innerHTML = '<div class="empty-state">Actualisation des comptes...</div>';
+
+    disconnectUsersRealtime();
+    fetchUsers();
+
+    window.setTimeout(() => {
+        const retryContainer = document.getElementById('users-list-container');
+        if (!retryContainer) return;
+
+        const hasRows = Boolean(retryContainer.querySelector('.btn-view-profile, .btn-edit-user'));
+        const looksStuck = !hasRows && (retryContainer.textContent || '').toLowerCase().includes('actualisation');
+
+        if (looksStuck) {
+            disconnectUsersRealtime();
+            fetchUsers();
+        }
+    }, 1200);
+};
+
+const resetUserListFilters = () => {
+    const searchInput = document.getElementById('search-user');
+    const roleFilter = document.getElementById('filter-role');
+
+    if (searchInput) searchInput.value = '';
+    if (roleFilter) roleFilter.value = 'all';
+};
+
+const forceUsersRefreshAfterCreate = (createdUser = {}) => {
+    const container = document.getElementById('users-list-container');
+    if (container) {
+        container.innerHTML = '<div class="empty-state">Actualisation du nouveau compte...</div>';
+    }
+
+    resetUserListFilters();
+    disconnectUsersRealtime();
+    fetchUsers();
+
+    window.dispatchEvent(new CustomEvent('sbi:account-created', {
+        detail: {
+            uid: createdUser.uid || '',
+            email: createdUser.email || '',
+            at: Date.now()
+        }
+    }));
+
+    window.setTimeout(() => {
+        disconnectUsersRealtime();
+        fetchUsers();
+    }, 450);
 };
 
 const renderUsersList = (usersToRender) => {
@@ -276,7 +359,10 @@ const initUserCreation = () => {
             msgBox.textContent = warning || `Compte créé pour ${prenom}. Email d’invitation envoyé.`;
 
             form.reset();
-            fetchUsers();
+            forceUsersRefreshAfterCreate({
+                uid: result?.data?.uid || '',
+                email
+            });
         } catch (error) {
             msgBox.style.color = 'var(--accent-red)';
             msgBox.textContent = 'Erreur : ' + getCallableErrorMessage(error, 'Création du compte impossible.');
@@ -552,7 +638,17 @@ const initModalLogic = () => {
     });
 };
 
-document.addEventListener('DOMContentLoaded', () => {
+function initAdminCore() {
+    if (window.__SBI_ADMIN_CORE_READY === true) {
+        if (auth.currentUser) {
+            currentUid = auth.currentUser.uid;
+            fetchUsers();
+        }
+        return;
+    }
+
+    window.__SBI_ADMIN_CORE_READY = true;
+
     const myProfileBtn = document.getElementById('btn-my-profile');
 
     if (myProfileBtn) {
@@ -584,12 +680,35 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof initUserCreation === "function") initUserCreation();
     if (typeof initModalLogic === "function") initModalLogic();
 
+    window.addEventListener('sbi:admin-tab-changed', (event) => {
+        if (event?.detail?.tab === 'view-users' && consumeProfileReturnRehydrateFlag()) {
+            window.setTimeout(forceUsersRehydrateFromProfile, 80);
+        }
+    });
+
     onAuthStateChanged(auth, (user) => {
         if (user) {
             currentUid = user.uid;
             if (typeof fetchUsers === "function") fetchUsers();
+
+            if (consumeProfileReturnRehydrateFlag()) {
+                window.setTimeout(forceUsersRehydrateFromProfile, 120);
+            }
         } else {
             window.location.replace('/login.html');
         }
     });
-});
+}
+
+window.SBI_ADMIN_CORE_REINIT = () => {
+    if (auth.currentUser) {
+        currentUid = auth.currentUser.uid;
+        fetchUsers();
+    }
+};
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initAdminCore, { once: true });
+} else {
+    initAdminCore();
+}
