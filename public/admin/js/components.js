@@ -11,7 +11,7 @@
  * présence réelle des panels/topbars attendus pour la page courante.
  * 8.0P.151 : suppression des bridges conformité, intégration directe dans
  * public-formations-admin.js et sbi-public-pages.js.
- * 8.0P.166.4 : chargement rapide panel profil droit.
+ * 8.0P.166.5 : correction réelle panel droit admin nav-name/nav-avatar/nav-role.
  */
 
 (function bootstrapSbiComponents(){
@@ -45,7 +45,7 @@
 
   scheduleEarlyDisplay();
 
-  import('/admin/js/admin-profile-panel-fast.js?v=8.0P.166.4')
+  import('/admin/js/admin-profile-panel-fast.js?v=8.0P.166.5')
     .catch((error) => {
       if (window.localStorage?.getItem('sbiDebugAccess') === 'true') {
         console.warn('[SBI Profile Panel] Chargement rapide indisponible :', error);
@@ -60,7 +60,7 @@
     if (!shouldMountAccountsModule()) return Promise.resolve(false);
 
     if (!accountsModulePromise) {
-      accountsModulePromise = import('/admin/js/admin-accounts-dashboard.js?v=8.0P.166.4')
+      accountsModulePromise = import('/admin/js/admin-accounts-dashboard.js?v=8.0P.166.5')
         .catch((error) => {
           accountsModulePromise = null;
           console.warn('[SBI Accounts] Module comptes non chargé :', error);

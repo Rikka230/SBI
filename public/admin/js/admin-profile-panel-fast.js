@@ -1,11 +1,12 @@
 /**
- * SBI 8.0P.166.4 — Chargement rapide du panel profil droit
+ * SBI 8.0P.166.5 — Chargement rapide du panel profil droit
  *
  * Objectif :
- * - ne pas attendre waitForSbiTopbar() pour afficher le profil admin ;
+ * - remplir le vrai panel admin : nav-name / nav-avatar / nav-role ;
+ * - garder aussi la compatibilité topbar : top-user-name / top-user-avatar / top-user-level ;
  * - afficher un cache session immédiatement si disponible ;
  * - lire Firestore une seule fois au login ;
- * - appliquer les données dès que les éléments du panel existent ;
+ * - réessayer jusqu’à apparition réelle du web component admin-right-panel ;
  * - ne pas toucher à la logique notifications existante.
  */
 
@@ -14,10 +15,10 @@ import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js';
 
 const CACHE_PREFIX = 'sbi:fastProfilePanel:';
-const MAX_APPLY_ATTEMPTS = 12;
+const MAX_APPLY_ATTEMPTS = 20;
 
-let lastAppliedUid = '';
 let currentApplyToken = 0;
+let lastPayload = null;
 
 function getCacheKey(uid) {
   return `${CACHE_PREFIX}${uid}`;
@@ -48,6 +49,14 @@ function getDisplayName(profile = {}) {
     || 'Utilisateur';
 }
 
+function getRoleLabel(profile = {}) {
+  if (profile.isGod === true) return 'Admin Suprême';
+  if (profile.role === 'admin') return 'Administrateur';
+  if (profile.role === 'teacher') return 'Professeur';
+  if (profile.role === 'student') return 'Élève';
+  return 'Compte';
+}
+
 function getAvatarUrl(profile = {}, displayName = 'Utilisateur') {
   if (profile.photoURL) return profile.photoURL;
 
@@ -65,42 +74,58 @@ function getAvatarUrl(profile = {}, displayName = 'Utilisateur') {
   return `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=${bgColor}&color=${textColor}`;
 }
 
-function applyProfileToPanel(uid, profile, attempt = 0, token = currentApplyToken) {
-  if (!uid || !profile || token !== currentApplyToken) return;
-
-  const topName = document.getElementById('top-user-name');
-  const topAvatar = document.getElementById('top-user-avatar');
-  const topLevel = document.getElementById('top-user-level');
-
-  if (!topName && !topAvatar && !topLevel) {
-    if (attempt < MAX_APPLY_ATTEMPTS) {
-      window.setTimeout(() => applyProfileToPanel(uid, profile, attempt + 1, token), attempt < 4 ? 80 : 160);
-    }
-    return;
-  }
-
-  const displayName = getDisplayName(profile);
-  const avatarUrl = getAvatarUrl(profile, displayName);
-  const userXp = Number(profile.xp || 0);
-  const userLevel = Math.floor(userXp / 100) + 1;
-
-  if (topName) topName.textContent = displayName;
-
-  if (topAvatar) {
-    topAvatar.innerHTML = `<img src="${avatarUrl}" style="width:100%; height:100%; object-fit:cover;" alt="${escapeAttr(displayName)}" onerror="this.remove(); this.parentElement.textContent='${escapeAttr(displayName.charAt(0).toUpperCase() || 'U')}';">`;
-  }
-
-  if (topLevel) topLevel.textContent = `Niveau ${userLevel}`;
-
-  lastAppliedUid = uid;
-}
-
 function escapeAttr(value) {
   return String(value ?? '')
     .replace(/&/g, '&amp;')
     .replace(/"/g, '&quot;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
+}
+
+function setAvatarElement(element, avatarUrl, displayName) {
+  if (!element) return;
+
+  element.innerHTML = `<img src="${avatarUrl}" style="width:100%; height:100%; object-fit:cover;" alt="${escapeAttr(displayName)}" onerror="this.remove(); this.parentElement.textContent='${escapeAttr(displayName.charAt(0).toUpperCase() || 'U')}';">`;
+}
+
+function applyProfileToPanel(uid, profile, attempt = 0, token = currentApplyToken) {
+  if (!uid || !profile || token !== currentApplyToken) return false;
+
+  const navName = document.getElementById('nav-name');
+  const navAvatar = document.getElementById('nav-avatar');
+  const navRole = document.getElementById('nav-role');
+
+  const topName = document.getElementById('top-user-name');
+  const topAvatar = document.getElementById('top-user-avatar');
+  const topLevel = document.getElementById('top-user-level');
+
+  const hasAnyTarget = Boolean(navName || navAvatar || navRole || topName || topAvatar || topLevel);
+
+  if (!hasAnyTarget) {
+    if (attempt < MAX_APPLY_ATTEMPTS) {
+      window.setTimeout(
+        () => applyProfileToPanel(uid, profile, attempt + 1, token),
+        attempt < 6 ? 80 : 160
+      );
+    }
+    return false;
+  }
+
+  const displayName = getDisplayName(profile);
+  const roleLabel = getRoleLabel(profile);
+  const avatarUrl = getAvatarUrl(profile, displayName);
+  const userXp = Number(profile.xp || 0);
+  const userLevel = Math.floor(userXp / 100) + 1;
+
+  if (navName) navName.textContent = displayName;
+  if (navRole) navRole.textContent = roleLabel;
+  setAvatarElement(navAvatar, avatarUrl, displayName);
+
+  if (topName) topName.textContent = displayName;
+  if (topLevel) topLevel.textContent = `Niveau ${userLevel}`;
+  setAvatarElement(topAvatar, avatarUrl, displayName);
+
+  return true;
 }
 
 async function loadFreshProfile(uid) {
@@ -123,13 +148,24 @@ async function loadFreshProfile(uid) {
   return payload;
 }
 
+function replayLastPayload() {
+  const user = auth.currentUser;
+  if (!user?.uid) return;
+
+  const payload = lastPayload || readCachedProfile(user.uid);
+  if (!payload) return;
+
+  currentApplyToken += 1;
+  applyProfileToPanel(user.uid, payload, 0, currentApplyToken);
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   onAuthStateChanged(auth, async (user) => {
     currentApplyToken += 1;
     const token = currentApplyToken;
 
     if (!user?.uid) {
-      lastAppliedUid = '';
+      lastPayload = null;
       return;
     }
 
@@ -137,12 +173,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const cached = readCachedProfile(uid);
 
     if (cached) {
+      lastPayload = cached;
       applyProfileToPanel(uid, cached, 0, token);
     }
 
     try {
       const fresh = await loadFreshProfile(uid);
       if (fresh && token === currentApplyToken) {
+        lastPayload = fresh;
         applyProfileToPanel(uid, fresh, 0, token);
       }
     } catch (error) {
@@ -153,13 +191,8 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-window.addEventListener('sbi:components-ready', () => {
-  const user = auth.currentUser;
-  if (!user?.uid || lastAppliedUid === user.uid) return;
-
-  const cached = readCachedProfile(user.uid);
-  if (cached) {
-    currentApplyToken += 1;
-    applyProfileToPanel(user.uid, cached, 0, currentApplyToken);
-  }
+window.addEventListener('sbi:components-ready', replayLastPayload);
+window.addEventListener('sbi:topbar-ready', replayLastPayload);
+window.addEventListener('sbi:component-mounted', (event) => {
+  if (event?.detail?.name === 'admin-right-panel') replayLastPayload();
 });
