@@ -14,7 +14,7 @@
  * 8.0P.166.4 : chargement rapide panel profil droit.
  * 8.0P.167.14 : rollback des styles composants, grille index admin scopée.
  * 8.0P.167.15 : fond corrigé, grille type main douce, profil exclu, badge 0 masqué.
- * 8.0P.167.16 : décor pleine largeur et garde badge assistant zéro.
+ * 8.0P.167.17 : rollback sécurité depuis 8.0P.167.16 écran vide.
  */
 
 (function bootstrapSbiComponents(){
@@ -89,55 +89,8 @@
 
   scheduleAdminGridScope();
 
-  const syncAssistantZeroBadge = () => {
-    const assistant = document.querySelector('.sbi-assistant');
-    const badge = assistant?.querySelector('.sbi-assistant__badge');
-    const bell = document.getElementById('bell-badge');
-
-    if (!assistant || !badge) return;
-
-    const raw = (bell?.textContent || badge.textContent || '0').trim();
-    const count = raw === '9+' ? 10 : (parseInt(raw, 10) || 0);
-    const bellVisible = Boolean(bell) && bell.style.display !== 'none';
-    const shouldShow = bellVisible && count > 0;
-
-    assistant.classList.toggle('has-notifications', shouldShow);
-    if (!shouldShow) {
-      assistant.classList.remove('has-new-notification');
-      badge.textContent = '0';
-      badge.setAttribute('aria-hidden', 'true');
-      badge.style.display = 'none';
-    } else {
-      badge.textContent = raw;
-      badge.removeAttribute('aria-hidden');
-      badge.style.display = '';
-    }
-  };
-
-  const startAssistantBadgeGuard = () => {
-    syncAssistantZeroBadge();
-    window.setTimeout(syncAssistantZeroBadge, 160);
-    window.setTimeout(syncAssistantZeroBadge, 700);
-    window.setTimeout(syncAssistantZeroBadge, 1600);
-
-    if (!document.body || window.__SBI_ASSISTANT_ZERO_BADGE_GUARD === true) return;
-    window.__SBI_ASSISTANT_ZERO_BADGE_GUARD = true;
-
-    const observer = new MutationObserver(syncAssistantZeroBadge);
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: ['class', 'style', 'aria-hidden']
-    });
-
-    window.setTimeout(() => observer.disconnect(), 8000);
-  };
-
-  startAssistantBadgeGuard();
-
   const injectAdminSingleScrollFix = () => {
-    const href = '/admin/css/sbi-admin-single-scroll.css?v=8.0P.167.16';
+    const href = '/admin/css/sbi-admin-single-scroll.css?v=8.0P.167.17';
     const absoluteHref = new URL(href, window.location.origin).href;
 
     Array.from(document.querySelectorAll('link[rel="stylesheet"][href*="/admin/css/sbi-admin-single-scroll.css?v="]'))
@@ -163,8 +116,8 @@
   injectAdminSingleScrollFix();
   window.setTimeout(injectAdminSingleScrollFix, 250);
   window.setTimeout(injectAdminSingleScrollFix, 900);
-  window.addEventListener('sbi:components-ready', () => { applyAdminGridScope(); injectAdminSingleScrollFix(); startAssistantBadgeGuard(); });
-  window.addEventListener('sbi:app-shell-rendered', () => { applyAdminGridScope(); injectAdminSingleScrollFix(); startAssistantBadgeGuard(); });
+  window.addEventListener('sbi:components-ready', () => { applyAdminGridScope(); injectAdminSingleScrollFix(); });
+  window.addEventListener('sbi:app-shell-rendered', () => { applyAdminGridScope(); injectAdminSingleScrollFix(); });
 
 
   import('/admin/js/admin-profile-panel-fast.js?v=8.0P.166.4')
