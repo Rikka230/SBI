@@ -12,6 +12,9 @@
  * 8.0P.151 : suppression des bridges conformité, intégration directe dans
  * public-formations-admin.js et sbi-public-pages.js.
  * 8.0P.166.4 : chargement rapide panel profil droit.
+ * 8.0P.167.14 : rollback des styles composants, grille index admin scopée.
+ * 8.0P.167.15 : fond corrigé, grille type main douce, profil exclu, badge 0 masqué.
+ * 8.0P.167.16 : décor pleine largeur et garde badge assistant zéro.
  */
 
 (function bootstrapSbiComponents(){
@@ -46,14 +49,110 @@
 
   scheduleEarlyDisplay();
 
+
+  const applyAdminGridScope = () => {
+    const body = document.body;
+    if (!body) return;
+
+    const path = window.location.pathname || '';
+    const isProfileView = path.includes('admin-profile.html')
+      || Boolean(document.querySelector('.profile-header-card, .profile-grid, #prof-name'));
+
+    const isAdminIndex = !isProfileView
+      && !path.includes('formations-cours.html')
+      && !path.includes('formations-live.html')
+      && !path.includes('site-index-settings.html')
+      && (
+        path.endsWith('/admin/')
+        || path.endsWith('/admin/index.html')
+        || Boolean(document.getElementById('view-dashboard'))
+        || Boolean(document.getElementById('view-users'))
+      );
+
+    body.classList.toggle('sbi-admin-grid-page', Boolean(isAdminIndex));
+
+    // Nettoyage explicite des classes ajoutées par 8.0P.167.11/13.
+    // Ces classes activaient des styles larges sur profil, cartes, inputs/selects.
+    body.classList.remove('sbi-internal-ui', 'sbi-admin-space', 'sbi-dashboard-page');
+  };
+
+  const scheduleAdminGridScope = () => {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', applyAdminGridScope, { once: true });
+    } else {
+      applyAdminGridScope();
+    }
+
+    window.setTimeout(applyAdminGridScope, 0);
+    window.setTimeout(applyAdminGridScope, 120);
+  };
+
+  scheduleAdminGridScope();
+
+  const syncAssistantZeroBadge = () => {
+    const assistant = document.querySelector('.sbi-assistant');
+    const badge = assistant?.querySelector('.sbi-assistant__badge');
+    const bell = document.getElementById('bell-badge');
+
+    if (!assistant || !badge) return;
+
+    const raw = (bell?.textContent || badge.textContent || '0').trim();
+    const count = raw === '9+' ? 10 : (parseInt(raw, 10) || 0);
+    const bellVisible = Boolean(bell) && bell.style.display !== 'none';
+    const shouldShow = bellVisible && count > 0;
+
+    assistant.classList.toggle('has-notifications', shouldShow);
+    if (!shouldShow) {
+      assistant.classList.remove('has-new-notification');
+      badge.textContent = '0';
+      badge.setAttribute('aria-hidden', 'true');
+      badge.style.display = 'none';
+    } else {
+      badge.textContent = raw;
+      badge.removeAttribute('aria-hidden');
+      badge.style.display = '';
+    }
+  };
+
+  const startAssistantBadgeGuard = () => {
+    syncAssistantZeroBadge();
+    window.setTimeout(syncAssistantZeroBadge, 160);
+    window.setTimeout(syncAssistantZeroBadge, 700);
+    window.setTimeout(syncAssistantZeroBadge, 1600);
+
+    if (!document.body || window.__SBI_ASSISTANT_ZERO_BADGE_GUARD === true) return;
+    window.__SBI_ASSISTANT_ZERO_BADGE_GUARD = true;
+
+    const observer = new MutationObserver(syncAssistantZeroBadge);
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['class', 'style', 'aria-hidden']
+    });
+
+    window.setTimeout(() => observer.disconnect(), 8000);
+  };
+
+  startAssistantBadgeGuard();
+
   const injectAdminSingleScrollFix = () => {
-    const href = '/admin/css/sbi-admin-single-scroll.css?v=8.0P.167.7';
+    const href = '/admin/css/sbi-admin-single-scroll.css?v=8.0P.167.16';
     const absoluteHref = new URL(href, window.location.origin).href;
 
-    const exists = Array.from(document.querySelectorAll('link[rel="stylesheet"][href]'))
-      .some((link) => new URL(link.getAttribute('href'), window.location.origin).href === absoluteHref);
+    Array.from(document.querySelectorAll('link[rel="stylesheet"][href*="/admin/css/sbi-admin-single-scroll.css?v="]'))
+      .forEach((link) => {
+        const currentHref = new URL(link.getAttribute('href'), window.location.origin).href;
+        if (currentHref !== absoluteHref) link.remove();
+      });
 
-    if (exists) return;
+    const existingLink = Array.from(document.querySelectorAll('link[rel="stylesheet"][href]'))
+      .find((link) => new URL(link.getAttribute('href'), window.location.origin).href === absoluteHref);
+
+    if (existingLink) {
+      document.head.appendChild(existingLink);
+      return;
+    }
 
     const link = document.createElement('link');
     link.rel = 'stylesheet';
@@ -62,6 +161,10 @@
   };
 
   injectAdminSingleScrollFix();
+  window.setTimeout(injectAdminSingleScrollFix, 250);
+  window.setTimeout(injectAdminSingleScrollFix, 900);
+  window.addEventListener('sbi:components-ready', () => { applyAdminGridScope(); injectAdminSingleScrollFix(); startAssistantBadgeGuard(); });
+  window.addEventListener('sbi:app-shell-rendered', () => { applyAdminGridScope(); injectAdminSingleScrollFix(); startAssistantBadgeGuard(); });
 
 
   import('/admin/js/admin-profile-panel-fast.js?v=8.0P.166.4')

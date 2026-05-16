@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.7',
+  version: '8.0P.167.16',
   branch: 'private-admin-accounts-mail-workflow',
-  channel: 'ADMIN MAIL WORKFLOW CONTAINED DECOR',
-  stage: 'CONTAINED ADMIN DECOR NO OVERFLOW',
-  updatedAt: '2026-05-15',
-  label: 'SBI 8.0P.167.7 - CONTAINED ADMIN DECOR NO OVERFLOW'
+  channel: 'ADMIN MAIL WORKFLOW DECOR FIX',
+  stage: 'FULL WIDTH MAIN DECOR FIX',
+  updatedAt: '2026-05-16',
+  label: 'SBI 8.0P.167.16 - FULL WIDTH MAIN DECOR FIX'
 };
 
 export function getSbiVersionLabel() {
