@@ -480,6 +480,17 @@ service cloud.firestore {
     }
 
     /* ============================================================
+       PROMOTIONS / COHORTES
+       ============================================================ */
+
+    match /promotions/{promotionId} {
+      allow get, list: if isAdmin();
+      allow create, update: if isAdmin();
+      allow delete: if false;
+    }
+
+
+    /* ============================================================
        COURSES
        ============================================================ */
 

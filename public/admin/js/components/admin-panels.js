@@ -38,6 +38,10 @@ export class AdminLeftPanel extends HTMLElement {
             ${ICONS.bell}
             <span class="nav-text">Journal admin</span>
           </li>
+          <li class="nav-item" id="nav-promotions" data-href="/admin/admin-promotions.html" data-sbi-href="/admin/admin-promotions.html" role="link" tabindex="0">
+            ${ICONS.formations}
+            <span class="nav-text">Promotions</span>
+          </li>
           ${adminNavItem({ id:'nav-formations', target:'view-formations', label:'Formations', icon:ICONS.formations })}
           ${adminNavItem({ id:'nav-settings', target:'view-settings', label:'Serveur & Vidéos', icon:ICONS.settings })}
         </ul>
@@ -52,6 +56,8 @@ export class AdminLeftPanel extends HTMLElement {
       this.querySelector('#nav-users')?.classList.add('active');
     } else if (path.includes('admin-audit-log.html')) {
       this.querySelector('#nav-audit-log')?.classList.add('active');
+    } else if (path.includes('admin-promotions.html')) {
+      this.querySelector('#nav-promotions')?.classList.add('active');
     } else if (path.includes('formations-cours.html') || path.includes('formations-live.html')) {
       this.querySelector('#nav-formations')?.classList.add('active');
     } else if (path.includes('site-index-settings.html')) {

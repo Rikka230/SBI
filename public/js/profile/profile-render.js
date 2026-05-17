@@ -586,6 +586,8 @@ function renderAccountActionsPanel({ uid, data = {}, reloadProfile }) {
   const currentNote = getAccountInternalNote(data);
   const noteMeta = getAccountInternalNoteMeta(data);
   const finalizationInfo = getFinalizationInfo(data);
+  const promotionName = data.promotionName || '';
+  const promotionStatus = data.promotionStatus || '';
   const notePreviewHtml = currentNote
     ? escapeHTML(currentNote).replace(/\n/g, '<br>')
     : 'Aucune note interne enregistrée pour ce compte.';
@@ -625,6 +627,24 @@ function renderAccountActionsPanel({ uid, data = {}, reloadProfile }) {
             cursor:pointer;
           ">Reset accès</button>
         </div>
+      </div>
+
+      <div style="
+        margin:0 0 0.85rem 0;
+        padding:0.8rem 0.9rem;
+        border:1px solid rgba(42,87,255,0.18);
+        border-radius:10px;
+        background:rgba(42,87,255,0.06);
+      ">
+        <div style="display:flex; justify-content:space-between; gap:0.75rem; flex-wrap:wrap; align-items:center;">
+          <strong style="color:#dbe5ff; font-size:0.88rem;">Promotion</strong>
+          <span style="color:${promotionName ? '#9fb2ff' : 'var(--text-muted)'}; font-size:0.78rem; font-weight:800;">
+            ${promotionName ? escapeHTML(promotionName) : 'Aucune promotion affectée'}
+          </span>
+        </div>
+        <p style="margin:0.35rem 0 0; color:var(--text-muted); font-size:0.78rem; line-height:1.45;">
+          ${promotionName ? `Statut promotion : ${escapeHTML(promotionStatus || 'active')}` : 'Affectation à faire depuis la page Promotions & cohortes.'}
+        </p>
       </div>
 
       <div style="
@@ -1137,6 +1157,10 @@ function getAccountLogMeta(type = '') {
       label: 'Suivi compte mis à jour',
       color: '#2A57FF'
     },
+    'account.promotion_updated': {
+      label: 'Promotion élève modifiée',
+      color: '#2A57FF'
+    },
     'account.deleted': {
       label: 'Compte supprimé',
       color: '#ff4a4a'
@@ -1190,6 +1214,11 @@ function getAccountLogDetails(log = {}) {
   const changes = log.changes || {};
   if (changes.preparationState?.afterLabel) details.push(`Suivi : ${changes.preparationState.afterLabel}`);
   if (changes.accountNote) details.push('Note interne modifiée');
+  if (changes.promotion) {
+    const beforePromotion = changes.promotion.before?.name || 'Aucune promotion';
+    const afterPromotion = changes.promotion.after?.name || 'Aucune promotion';
+    details.push(`Promotion : ${beforePromotion} → ${afterPromotion}`);
+  }
 
   return details.join(' · ');
 }

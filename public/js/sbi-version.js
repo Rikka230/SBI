@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.57',
+  version: '8.0P.167.58',
   branch: 'main',
-  channel: 'ADMIN ACCOUNTS DEDICATED PAGE PERF FIX',
-  stage: 'ACCOUNTS PJAX SPLIT RAF LOOP FIX',
+  channel: 'P2I.1 PROMOTIONS COHORTES BASELINE',
+  stage: 'PROMOTIONS COHORTES ADMIN PAGE USER ASSIGNMENT',
   updatedAt: '2026-05-17',
-  label: 'SBI 8.0P.167.57 - ACCOUNTS PJAX SPLIT RAF LOOP FIX'
+  label: 'SBI 8.0P.167.58 - PROMOTIONS COHORTES BASELINE'
 };
 
 export function getSbiVersionLabel() {

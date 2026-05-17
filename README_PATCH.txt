@@ -1,30 +1,65 @@
-SBI 8.0P.144 / P2F.2
-======================
+SBI 8.0P.167.58 / P2I.1 — Promotions & cohortes
 
-Base attendue : branche private-admin-accounts-mail-workflow validée jusqu'à P2E.4, avec P2F.1 validé.
+Base attendue avant application : SBI 8.0P.167.57 validé.
 
-Contenu du patch :
-- storage.rules
+Objectif :
+- ajouter une page admin dédiée /admin/admin-promotions.html ;
+- créer / modifier / archiver des promotions ;
+- associer un élève à une promotion via la Function adminUpdateUserAccount ;
+- afficher la promotion dans Comptes & accès et dans la fiche profil admin ;
+- garder le LMS / cursus / checkpoints hors périmètre pour cette brique.
+
+Fichiers modifiés / ajoutés :
+- firestore.rules
 - public/functions/index.js
-- public/calculateur.html
-- public/js/sbi-aide-calculator.js
+- public/admin/admin-promotions.html
+- public/admin/css/admin-promotions.css
+- public/admin/js/admin-promotions.js
+- public/admin/js/components/admin-panels.js
+- public/admin/js/components/index.js
+- public/admin/js/components.js
+- public/admin/js/admin-ui.js
+- public/admin/js/admin-core.js
+- public/admin/js/admin-accounts-dashboard.js
+- public/admin/js/admin-global-audit-log.js
+- public/admin/admin-accounts.html
+- public/admin/admin-audit-log.html
+- public/admin/admin-profile.html
+- public/admin/formations-cours.html
+- public/admin/index.html
+- public/admin/site-index-settings.html
+- public/js/app-shell/app-shell.js
+- public/js/app-shell/route-registry.js
+- public/js/profile-core.js
+- public/js/profile/profile-render.js
 - public/js/sbi-version.js
+- public/student/mon-profil.html
+- public/teacher/mon-profil.html
 
-Changements :
-1. Reprise de P2F.1 validé : durcissement Storage des médias de cours.
-2. Page calculateur : ajout de l'astérisque sur le reste à charge mensuel / total.
-3. Page calculateur : ajout de la mention “* Hors charges si applicable.”.
-4. Message de transfert d'estimation : ajout de la mention hors charges.
-5. Functions : remplacement de l'URL reset password Firebase provisoire par le domaine final :
-   https://www.sbigroup.fr/password-reset.html
-6. Version bump : 8.0P.144.
+Déploiement requis :
+- hosting : nouvelle page + JS/CSS + cache-bust ;
+- functions : adminUpdateUserAccount accepte promotionId ;
+- firestore rules : nouvelle collection promotions.
 
-Déploiement conseillé :
-1. firebase deploy --only functions,storage --project sbi-web-4f6b4
-2. firebase hosting:channel:deploy admin-mail-workflow --project sbi-web-4f6b4 --expires 7d
+Commande recommandée :
+firebase deploy --only hosting,functions,firestore:rules --project sbi-web-4f6b4
 
-Avant migration domaine finale :
-- Ajouter/valider www.sbigroup.fr dans Firebase Auth > Authorized domains.
-- Vérifier que /password-reset.html est bien servi sur le domaine final.
-- Tester création compte + bouton “Définir mon mot de passe”.
-- Tester la page calculateur sur preview puis sur domaine final.
+Tests prioritaires :
+1. /admin/admin-promotions.html direct.
+2. Navigation PJAX Admin → Promotions → Comptes → Profil → Promotions.
+3. Créer une promotion active.
+4. Modifier dates / formation liée / statut.
+5. Archiver puis réactiver une promotion.
+6. Affecter un élève à une promotion.
+7. Vérifier la promotion dans /admin/admin-accounts.html.
+8. Ouvrir le profil élève et vérifier le bloc Promotion.
+9. Vérifier le journal admin : type account.promotion_updated.
+10. Vérifier que les comptes admin/prof ne peuvent pas être affectés comme élève.
+
+Non inclus volontairement :
+- cursus ;
+- checkpoints ;
+- progression ;
+- documents élèves ;
+- notifications promotion ;
+- suppression définitive de promotion.

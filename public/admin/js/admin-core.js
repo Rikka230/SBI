@@ -71,7 +71,7 @@ const readUsersCache = () => {
 const writeUsersCache = () => {
     try {
         window.localStorage?.setItem(USERS_CACHE_KEY, JSON.stringify({
-            version: '8.0P.167.57',
+            version: '8.0P.167.58',
             updatedAt: Date.now(),
             users: normalizeUsersArray(allUsersData)
         }));
@@ -90,7 +90,7 @@ const publishUsersState = (reason = 'sync') => {
     const users = normalizeUsersArray(allUsersData);
 
     window.SBI_ADMIN_USERS_CACHE = {
-        version: '8.0P.167.57',
+        version: '8.0P.167.58',
         users,
         updatedAt: Date.now(),
         reason
@@ -100,7 +100,7 @@ const publishUsersState = (reason = 'sync') => {
 
     window.dispatchEvent(new CustomEvent('sbi:accounts-data-updated', {
         detail: {
-            version: '8.0P.167.57',
+            version: '8.0P.167.58',
             reason,
             users,
             updatedAt: Date.now()
@@ -654,7 +654,7 @@ const renderUsersList = (usersToRender, reason = 'manual') => {
         container.innerHTML = '<div class="empty-state">Aucun compte trouvé.</div>';
         publishUsersState(`render:${reason}`);
         window.dispatchEvent(new CustomEvent('sbi:accounts-rendered', {
-            detail: { version: '8.0P.167.57', reason, count: 0 }
+            detail: { version: '8.0P.167.58', reason, count: 0 }
         }));
         return;
     }
@@ -662,6 +662,10 @@ const renderUsersList = (usersToRender, reason = 'manual') => {
     const html = usersToRender.map((user) => {
         const displayName = (user.prenom && user.nom) ? `${user.prenom} ${user.nom}` : (user.nom || user.prenom || "Sans nom");
         const statusLabel = getAccountStatusHtml(user);
+        const promotionLabel = user.promotionName || '';
+        const promotionHtml = promotionLabel
+            ? `<small style="display:block; margin-top:0.18rem; color:#9fb2ff; font-weight:800; font-size:0.66rem; line-height:1.25;">Promotion · ${escapeHtml(promotionLabel)}</small>`
+            : '<small style="display:block; margin-top:0.18rem; color:#6b7280; font-weight:700; font-size:0.66rem; line-height:1.25;">Sans promotion</small>';
 
         const isOnline = isUserReallyOnline(user);
         const lastSeenLabel = getLastSeenLabel(user);
@@ -702,8 +706,12 @@ const renderUsersList = (usersToRender, reason = 'manual') => {
                     ${escapeHtml(roleText)}
                 </div>
 
-                <div class="sbi-account-name-cell" style="color: white; font-weight: bold; word-break: break-word; min-width: 0; padding: 0.58rem 0.65rem; display: flex; align-items: center;">
-                    ${onlineIndicator} <span class="sbi-account-name-line">${escapeHtml(displayName)}</span>
+                <div class="sbi-account-name-cell" style="color: white; font-weight: bold; word-break: break-word; min-width: 0; padding: 0.58rem 0.65rem; display: flex; align-items: center; gap:0.35rem;">
+                    ${onlineIndicator}
+                    <span class="sbi-account-name-line" style="display:flex; flex-direction:column; min-width:0; line-height:1.25;">
+                        <span>${escapeHtml(displayName)}</span>
+                        ${promotionHtml}
+                    </span>
                 </div>
 
                 <div class="sbi-account-email-cell" style="color: #9ca3af; word-break: break-word; min-width: 0; padding: 0.58rem 0.65rem; display: flex; align-items: center;">
@@ -730,7 +738,7 @@ const renderUsersList = (usersToRender, reason = 'manual') => {
     publishUsersState(`render:${reason}`);
     window.dispatchEvent(new CustomEvent('sbi:accounts-rendered', {
         detail: {
-            version: '8.0P.167.57',
+            version: '8.0P.167.58',
             reason,
             count: usersToRender.length
         }

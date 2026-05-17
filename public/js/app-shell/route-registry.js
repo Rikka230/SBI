@@ -4,6 +4,7 @@
  * Admin shell :
  * - admin index tabs
  * - Comptes & accès dédié
+ * - Promotions & cohortes
  * - Gestion Accueil
  * - Formations & Cours
  * - Mon Profil
@@ -78,6 +79,10 @@ function isAdminAccounts(url) {
   return normalizePath(url.pathname).toLowerCase() === '/admin/admin-accounts.html';
 }
 
+function isAdminPromotions(url) {
+  return normalizePath(url.pathname).toLowerCase() === '/admin/admin-promotions.html';
+}
+
 function isAdminAuditLog(url) {
   return normalizePath(url.pathname).toLowerCase() === '/admin/admin-audit-log.html';
 }
@@ -121,6 +126,7 @@ function isAdminShellContext() {
     || path === '/admin/formations-cours.html'
     || path === '/admin/admin-profile.html'
     || path === '/admin/admin-accounts.html'
+    || path === '/admin/admin-promotions.html'
     || path === '/admin/admin-audit-log.html';
 }
 
@@ -326,7 +332,7 @@ async function mountAdminProfile({ url }) {
   window.__SBI_APP_SHELL_MOUNTING_PROFILE = true;
 
   try {
-    const module = await import('/js/profile-core.js?v=8.0P.167.48');
+    const module = await import('/js/profile-core.js?v=8.0P.167.58');
     const cleanupProfile = module.mountProfileCore?.({ source: 'pjax-admin-profile' });
 
     if (typeof cleanupProfile === 'function') {
@@ -359,9 +365,9 @@ async function mountAdminAccounts({ url }) {
   window.__SBI_APP_SHELL_MOUNTING_ACCOUNTS = true;
 
   try {
-    await import('/admin/js/admin-core.js?v=8.0P.167.57');
+    await import('/admin/js/admin-core.js?v=8.0P.167.58');
     window.SBI_ADMIN_CORE_REINIT?.();
-    const module = await import('/admin/js/admin-accounts-dashboard.js?v=8.0P.167.57');
+    const module = await import('/admin/js/admin-accounts-dashboard.js?v=8.0P.167.58');
     module.mountAdminAccountsDashboard?.();
   } finally {
     window.__SBI_APP_SHELL_MOUNTING_ACCOUNTS = false;
@@ -372,6 +378,34 @@ async function mountAdminAccounts({ url }) {
   if (typeof cleanupEditModal === 'function') registerCleanup(cleanupEditModal, 'admin-accounts-edit-modal');
 
   return { viewKey: 'admin:accounts' };
+}
+
+async function mountAdminPromotions({ url }) {
+  maybeCacheAdminIndexMain('leave-for-admin-promotions');
+
+  const doc = await fetchAdminDocument(url);
+
+  await ensureDocumentStyles(doc, url.href);
+  applyBodyRouteClassesFromDocument(doc, ['sbi-admin-surface']);
+  replaceMainFromDocument(doc);
+  updateAdminChromeFromDocument(doc, 'Promotions & cohortes - SBI Console');
+  setLeftNavActive('nav-promotions');
+  updateUrlContext(url);
+
+  window.__SBI_APP_SHELL_MOUNTING_PROMOTIONS = true;
+
+  try {
+    const module = await import('/admin/js/admin-promotions.js?v=8.0P.167.58');
+    const cleanupPromotions = module.mountAdminPromotions?.({ source: 'pjax-admin-promotions' });
+
+    if (typeof cleanupPromotions === 'function') {
+      registerCleanup(cleanupPromotions, 'admin-promotions');
+    }
+  } finally {
+    window.__SBI_APP_SHELL_MOUNTING_PROMOTIONS = false;
+  }
+
+  return { viewKey: 'admin:promotions' };
 }
 
 async function mountAdminAuditLog({ url }) {
@@ -389,7 +423,7 @@ async function mountAdminAuditLog({ url }) {
   window.__SBI_APP_SHELL_MOUNTING_AUDIT_LOG = true;
 
   try {
-    const module = await import('/admin/js/admin-global-audit-log.js?v=8.0P.167.42');
+    const module = await import('/admin/js/admin-global-audit-log.js?v=8.0P.167.58');
     const cleanupAuditLog = module.mountAdminGlobalAuditLog?.({ source: 'pjax-admin-audit-log' });
 
     if (typeof cleanupAuditLog === 'function') {
@@ -459,7 +493,7 @@ async function mountStudentProfile({ url }) {
   window.__SBI_APP_SHELL_MOUNTING_PROFILE = true;
 
   try {
-    const module = await import('/js/profile-core.js?v=8.0P.167.48');
+    const module = await import('/js/profile-core.js?v=8.0P.167.58');
     const cleanupProfile = module.mountProfileCore?.({ source: 'pjax-student-profile' });
 
     if (typeof cleanupProfile === 'function') registerCleanup(cleanupProfile, 'student-profile-core');
@@ -556,7 +590,7 @@ async function mountTeacherProfile({ url }) {
   window.__SBI_APP_SHELL_MOUNTING_PROFILE = true;
 
   try {
-    const module = await import('/js/profile-core.js?v=8.0P.167.48');
+    const module = await import('/js/profile-core.js?v=8.0P.167.58');
     const cleanupProfile = module.mountProfileCore?.({ source: 'pjax-teacher-profile' });
 
     if (typeof cleanupProfile === 'function') registerCleanup(cleanupProfile, 'teacher-profile-core');
@@ -643,6 +677,14 @@ export function createRouteRegistry() {
       return isAdminAccounts(url) && isAdminShellContext();
     },
     mount: mountAdminAccounts
+  });
+
+  routes.push({
+    id: 'admin-promotions',
+    canHandle(url) {
+      return isAdminPromotions(url) && isAdminShellContext();
+    },
+    mount: mountAdminPromotions
   });
 
   routes.push({

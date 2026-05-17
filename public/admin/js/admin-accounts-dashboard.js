@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.167.57 / P2H.2-I.13 UX
+ * SBI 8.0P.167.58 / P2I.1 UX
  * Structure lecture seule "Comptes & accès".
  *
  * Objectif :
@@ -32,7 +32,7 @@ function injectStyle() {
   const link = document.createElement('link');
   link.id = 'sbi-admin-accounts-css';
   link.rel = 'stylesheet';
-  link.href = '/admin/css/admin-accounts.css?v=8.0P.167.57';
+  link.href = '/admin/css/admin-accounts.css?v=8.0P.167.58';
   document.head.append(link);
 }
 
@@ -558,7 +558,7 @@ function setAccountsFromUsers(users = [], reason = 'core-cache') {
   renderCounters(safeUsers);
 
   window.SBI_ACCOUNTS_DASHBOARD_STATE = {
-    version: '8.0P.167.57',
+    version: '8.0P.167.58',
     users: safeUsers.length,
     reason,
     updatedAt: new Date().toISOString()
@@ -717,7 +717,8 @@ function enhanceRenderedAccountRows() {
       `Activation : ${activation.label}`,
       `Détail : ${activation.detail}`,
       `Dernière activité : ${lastActivity}`,
-      `Compte : ${getAccountPreparationInfo(user)}`
+      `Compte : ${getAccountPreparationInfo(user)}`,
+      `Promotion : ${user.promotionName || 'Aucune promotion'}`
     ].join('\n');
   });
 }

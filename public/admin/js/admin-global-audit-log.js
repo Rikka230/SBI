@@ -53,6 +53,7 @@ const TYPE_META = {
   'account.self_email_changed': { label: 'Email personnel modifié', color: '#2A57FF', tone: 'blue' },
   'account.updated': { label: 'Compte mis à jour', color: '#2A57FF', tone: 'blue' },
   'account.followup_updated': { label: 'Suivi compte mis à jour', color: '#2A57FF', tone: 'blue' },
+  'account.promotion_updated': { label: 'Promotion élève modifiée', color: '#2A57FF', tone: 'blue' },
   'account.god_updated': { label: 'Droits suprêmes modifiés', color: '#ff4a4a', tone: 'red' },
   'account.deleted': { label: 'Compte supprimé', color: '#ff4a4a', tone: 'red' },
   'account.login_tracked': { label: 'Connexion détectée', color: '#2ed573', tone: 'green' },
@@ -240,6 +241,11 @@ function getLogDetails(log = {}) {
   const changes = log.changes || {};
   if (changes.preparationState?.afterLabel) details.push(`Suivi : ${changes.preparationState.afterLabel}`);
   if (changes.accountNote) details.push('Note interne modifiée.');
+  if (changes.promotion) {
+    const beforePromotion = changes.promotion.before?.name || 'Aucune promotion';
+    const afterPromotion = changes.promotion.after?.name || 'Aucune promotion';
+    details.push(`Promotion : ${beforePromotion} → ${afterPromotion}`);
+  }
   if (changes.email || log.previousEmail || log.newEmail) {
     details.push(`Email : ${log.previousEmail || changes.email?.before || 'ancien'} → ${log.newEmail || changes.email?.after || 'nouveau'}`);
   }

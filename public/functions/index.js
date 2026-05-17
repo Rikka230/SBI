@@ -2711,6 +2711,71 @@ exports.adminUpdateUserAccount = onCall({
         }
     }
 
+    if (Object.prototype.hasOwnProperty.call(data, "promotionId")) {
+        const requestedPromotionId = cleanString(data.promotionId, 180);
+        const currentPromotionId = cleanString(targetData.promotionId || "", 180);
+        const currentPromotionName = cleanString(targetData.promotionName || "", 160);
+
+        if (requestedPromotionId && targetRole !== "student") {
+            throw new HttpsError("failed-precondition", "Seuls les comptes élèves peuvent être affectés à une promotion.");
+        }
+
+        if (requestedPromotionId) {
+            const promotionDoc = await db.collection("promotions").doc(requestedPromotionId).get();
+            if (!promotionDoc.exists) {
+                throw new HttpsError("not-found", "Promotion introuvable.");
+            }
+
+            const promotionData = promotionDoc.data() || {};
+            const promotionName = cleanString(promotionData.name || data.promotionName || "", 160);
+            const promotionStatus = promotionData.status === "archived" ? "archived" : "active";
+
+            if (!promotionName) {
+                throw new HttpsError("failed-precondition", "Nom de promotion manquant.");
+            }
+            if (promotionStatus === "archived") {
+                throw new HttpsError("failed-precondition", "Impossible d’affecter un élève à une promotion archivée.");
+            }
+
+            if (
+                requestedPromotionId !== currentPromotionId ||
+                promotionName !== currentPromotionName ||
+                promotionStatus !== (targetData.promotionStatus || "")
+            ) {
+                updates.promotionId = requestedPromotionId;
+                updates.promotionName = promotionName;
+                updates.promotionStatus = promotionStatus;
+                updates.promotionAssignedAt = admin.firestore.FieldValue.serverTimestamp();
+                updates.promotionAssignedBy = caller.uid;
+                updates.promotionAssignedByEmail = caller.email;
+                auditChanges.promotion = {
+                    before: currentPromotionId ? {
+                        id: currentPromotionId,
+                        name: currentPromotionName || currentPromotionId
+                    } : null,
+                    after: {
+                        id: requestedPromotionId,
+                        name: promotionName
+                    }
+                };
+            }
+        } else if (currentPromotionId || currentPromotionName) {
+            updates.promotionId = admin.firestore.FieldValue.delete();
+            updates.promotionName = admin.firestore.FieldValue.delete();
+            updates.promotionStatus = admin.firestore.FieldValue.delete();
+            updates.promotionAssignedAt = admin.firestore.FieldValue.delete();
+            updates.promotionAssignedBy = admin.firestore.FieldValue.delete();
+            updates.promotionAssignedByEmail = admin.firestore.FieldValue.delete();
+            auditChanges.promotion = {
+                before: currentPromotionId ? {
+                    id: currentPromotionId,
+                    name: currentPromotionName || currentPromotionId
+                } : null,
+                after: null
+            };
+        }
+    }
+
     if (data.isGod === true) {
         const currentGodSnapshot = await db.collection("users").where("isGod", "==", true).limit(2).get();
         const currentGodDocs = currentGodSnapshot.docs;
@@ -2821,7 +2886,13 @@ exports.adminUpdateUserAccount = onCall({
         && auditChangeKeys.every((key) => ["preparationState", "accountNote"].includes(key));
 
     await safeWriteAccountAuditLog(db, {
-        type: auditChanges.isGod ? "account.god_updated" : onlyFollowupChanges ? "account.followup_updated" : "account.updated",
+        type: auditChanges.isGod
+            ? "account.god_updated"
+            : auditChanges.promotion
+                ? "account.promotion_updated"
+                : onlyFollowupChanges
+                    ? "account.followup_updated"
+                    : "account.updated",
         actorUid: caller.uid,
         actorEmail: caller.email,
         targetUid,

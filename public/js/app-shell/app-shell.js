@@ -12,7 +12,7 @@
  * location.reload()
  */
 
-import { createRouteRegistry } from './route-registry.js?v=8.0P.167.57';
+import { createRouteRegistry } from './route-registry.js?v=8.0P.167.58';
 import { createRouter } from './router.js';
 import { injectAppShellStyles, markAppShellReady } from './transitions.js';
 import { initRoutePreload } from './preload.js';
@@ -129,6 +129,7 @@ function getPjaxProbeDefinitions() {
   return [
     { group: 'admin', path: '/admin/index.html?tab=view-dashboard', label: 'Admin dashboard' },
     { group: 'admin', path: '/admin/admin-accounts.html', label: 'Admin comptes & accès' },
+    { group: 'admin', path: '/admin/admin-promotions.html', label: 'Admin promotions & cohortes' },
     { group: 'admin', path: '/admin/site-index-settings.html', label: 'Admin gestion accueil' },
     { group: 'admin', path: '/admin/formations-cours.html', label: 'Admin formations & cours' },
     { group: 'admin', path: '/admin/admin-profile.html', label: 'Admin profil' },
