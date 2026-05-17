@@ -1,4 +1,4 @@
-/* SBI 8.0P.167.37 - Journal admin global cache/perf */
+/* SBI 8.0P.167.38 - Journal admin cache/manual load */
 
 .sbi-audit-view {
   display: flex;
@@ -291,4 +291,22 @@
   .sbi-audit-item-actions span {
     width: 100%;
   }
+}
+
+
+.sbi-audit-refresh-btn:disabled,
+.sbi-audit-load-more-btn:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.sbi-audit-item-actions button:disabled {
+  cursor: wait;
+  opacity: 0.68;
+}
+
+.sbi-audit-item-actions button.is-unavailable {
+  border-color: rgba(255, 74, 74, 0.35);
+  background: rgba(255, 74, 74, 0.12);
+  color: #ffb5b5;
 }

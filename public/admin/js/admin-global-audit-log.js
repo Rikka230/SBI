@@ -1,43 +1,39 @@
 /**
- * SBI 8.0P.167.37 / P2H.2-G.3
+ * SBI 8.0P.167.38 / P2H.2-G.4
  * Journal admin global.
  *
- * Lecture ponctuelle et paginée de accountAuditLogs.
- * Pas d'écoute temps réel, pas de recalcul DOM permanent.
+ * Principe important :
+ * - AUCUN chargement Firestore automatique.
+ * - Le journal affiche le cache local immédiatement.
+ * - Firestore ne charge que sur action utilisateur : Rafraîchir ou Charger plus.
+ * - Page size volontairement petite pour ne pas faire ramer index.html.
  */
 
 import { auth, db } from '/js/firebase-init.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js';
 import {
   collection,
-  doc,
-  getDoc,
   getDocs,
   limit,
   orderBy,
   query,
   startAfter,
-  Timestamp,
   where
 } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
 
-const PAGE_SIZE = 30;
+const PAGE_SIZE = 12;
 const MAX_DETAIL_LENGTH = 220;
 const MAX_RENDERED_ITEMS = 80;
-const MAX_CACHED_LOGS = 500;
-const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-const PROFILE_RETURN_TARGET = 'view-audit-log';
-const AUDIT_CACHE_VERSION = '8.0P.167.37';
+const MAX_CACHE_ITEMS = 500;
+const CACHE_KEY = 'sbiAdminAuditLogCacheV2';
+const CACHE_META_KEY = 'sbiAdminAuditLogCacheMetaV2';
 
-let currentUser = null;
 let currentProfile = null;
 let logs = [];
 let lastVisibleDoc = null;
-let lastCursorMs = 0;
 let hasMore = true;
-let restoredFromCache = false;
 let isLoading = false;
-let hasLoadedOnce = false;
+let hasLoadedFromCache = false;
 let isMounted = false;
 
 const TYPE_META = {
@@ -61,122 +57,16 @@ const TYPE_META = {
   'account.formation_indexes_synced': { label: 'Accès formations synchronisés', color: '#2A57FF', tone: 'blue' }
 };
 
-function isAdminLike(profile) {
-  return profile?.isGod === true || profile?.role === 'admin';
-}
-
-function getAuditCacheKey() {
-  return currentUser?.uid ? `sbi:audit-log-cache:${currentUser.uid}:v3` : '';
-}
-
-function clearAuditCache() {
-  const key = getAuditCacheKey();
-  if (!key) return;
-
-  try {
-    localStorage.removeItem(key);
-  } catch (_) {
-    // Cache local non critique.
-  }
-
-  restoredFromCache = false;
-}
-
-function normalizeLogForCache(log = {}) {
-  const normalized = { ...(log || {}) };
-  normalized.createdAt = toMillis(log.createdAt);
-  delete normalized.__searchIndex;
-  return normalized;
-}
-
-function sortLogsNewestFirst() {
-  logs.sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
-}
-
-function updateCursorFromLogs() {
-  if (!logs.length) {
-    lastCursorMs = 0;
+function scheduleIdle(callback) {
+  if ('requestIdleCallback' in window) {
+    window.requestIdleCallback(callback, { timeout: 800 });
     return;
   }
-
-  lastCursorMs = toMillis(logs[logs.length - 1]?.createdAt);
+  window.setTimeout(callback, 0);
 }
 
-function mergeLogs(nextLogs = [], { replace = false } = {}) {
-  const nextMap = new Map();
-
-  if (!replace) {
-    logs.forEach((log) => {
-      if (log?.id) nextMap.set(log.id, log);
-    });
-  }
-
-  nextLogs.forEach((log) => {
-    if (log?.id) nextMap.set(log.id, normalizeLogForCache(log));
-  });
-
-  logs = Array.from(nextMap.values());
-  sortLogsNewestFirst();
-
-  if (logs.length > MAX_CACHED_LOGS) {
-    logs = logs.slice(0, MAX_CACHED_LOGS);
-  }
-
-  updateCursorFromLogs();
-}
-
-function saveAuditCache() {
-  const key = getAuditCacheKey();
-  if (!key) return;
-
-  try {
-    const payload = {
-      version: AUDIT_CACHE_VERSION,
-      savedAt: Date.now(),
-      hasMore,
-      lastCursorMs,
-      logs: logs.slice(0, MAX_CACHED_LOGS).map(normalizeLogForCache)
-    };
-
-    localStorage.setItem(key, JSON.stringify(payload));
-    restoredFromCache = true;
-  } catch (error) {
-    console.warn('[SBI Audit] Cache local non disponible :', error);
-  }
-}
-
-function restoreAuditCache() {
-  const key = getAuditCacheKey();
-  if (!key) return false;
-
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return false;
-
-    const payload = JSON.parse(raw);
-    const isExpired = !payload?.savedAt || Date.now() - payload.savedAt > CACHE_TTL_MS;
-    const cachedLogs = Array.isArray(payload?.logs) ? payload.logs : [];
-
-    if (isExpired || cachedLogs.length === 0) {
-      localStorage.removeItem(key);
-      return false;
-    }
-
-    logs = cachedLogs.map(normalizeLogForCache);
-    sortLogsNewestFirst();
-    hasMore = payload.hasMore !== false;
-    lastCursorMs = Number(payload.lastCursorMs || 0) || 0;
-    if (!lastCursorMs) updateCursorFromLogs();
-    lastVisibleDoc = null;
-    hasLoadedOnce = true;
-    restoredFromCache = true;
-    render();
-    return true;
-  } catch (error) {
-    console.warn('[SBI Audit] Cache local illisible :', error);
-    clearAuditCache();
-    return false;
-  }
+function isAdminLike(profile) {
+  return profile?.isGod === true || profile?.role === 'admin';
 }
 
 function toMillis(value) {
@@ -190,6 +80,18 @@ function toMillis(value) {
   }
   if (typeof value.seconds === 'number') return value.seconds * 1000;
   return 0;
+}
+
+function serializeDate(value) {
+  const ms = toMillis(value);
+  return ms ? new Date(ms).toISOString() : '';
+}
+
+function normalizeLog(log = {}) {
+  return {
+    ...log,
+    createdAt: serializeDate(log.createdAt)
+  };
 }
 
 function formatDate(value, fallback = 'Date inconnue') {
@@ -276,15 +178,7 @@ function canTryOpenProfileFromLog(log = {}) {
 
 async function resolveProfileUidForLog(log = {}) {
   const uidCandidates = getTargetUidCandidates(log);
-
-  for (const uid of uidCandidates) {
-    try {
-      const snap = await getDoc(doc(db, 'users', uid));
-      if (snap.exists()) return uid;
-    } catch (error) {
-      console.warn('[SBI Audit] Vérification UID profil impossible :', uid, error);
-    }
-  }
+  if (uidCandidates[0]) return uidCandidates[0];
 
   const email = getTargetEmailCandidate(log).trim().toLowerCase();
   if (!email) return '';
@@ -353,37 +247,86 @@ function getLogDetails(log = {}) {
   return details.join(' · ');
 }
 
+function saveCache() {
+  scheduleIdle(() => {
+    try {
+      const limited = logs.slice(0, MAX_CACHE_ITEMS).map(normalizeLog);
+      localStorage.setItem(CACHE_KEY, JSON.stringify(limited));
+      localStorage.setItem(CACHE_META_KEY, JSON.stringify({
+        savedAt: new Date().toISOString(),
+        count: limited.length
+      }));
+    } catch (error) {
+      console.warn('[SBI Audit] Cache journal non sauvegardé :', error);
+    }
+  });
+}
+
+function loadCache() {
+  if (hasLoadedFromCache) return;
+  hasLoadedFromCache = true;
+
+  scheduleIdle(() => {
+    try {
+      const raw = localStorage.getItem(CACHE_KEY);
+      if (!raw) {
+        render();
+        return;
+      }
+
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        logs = parsed.slice(0, MAX_CACHE_ITEMS);
+      }
+    } catch (error) {
+      console.warn('[SBI Audit] Cache journal ignoré :', error);
+      logs = [];
+    }
+
+    render();
+  });
+}
+
+function clearCache() {
+  try {
+    localStorage.removeItem(CACHE_KEY);
+    localStorage.removeItem(CACHE_META_KEY);
+  } catch (_) {
+    // ignore
+  }
+}
+
 function getFilteredLogs() {
   const searchTerm = document.getElementById('audit-search')?.value?.trim().toLowerCase() || '';
   const typeFilter = document.getElementById('audit-type-filter')?.value || 'all';
 
   return logs.filter((log) => {
-    const matchesType = typeFilter === 'all' || log.type === typeFilter;
-    if (!matchesType) return false;
-
-    if (!searchTerm) return true;
-
     const meta = getTypeMeta(log.type);
-    const haystack = log.__searchIndex || [
+    const haystack = [
       log.type,
       meta.label,
       getActorLabel(log),
       getTargetLabel(log),
       getLogDetails(log),
-      log.targetName,
-      log.actorName,
-      log.displayName,
-      log.prenom,
-      log.nom,
       log.reason,
       log.message,
       log.event,
       log.source
     ].join(' ').toLowerCase();
 
-    log.__searchIndex = haystack;
-    return haystack.includes(searchTerm);
+    const matchesType = typeFilter === 'all' || log.type === typeFilter;
+    const matchesSearch = !searchTerm || haystack.includes(searchTerm);
+    return matchesType && matchesSearch;
   });
+}
+
+function renderStatCard(label, value) {
+  return `
+    <div class="sbi-audit-stat">
+      <span>${escapeHtml(label)}</span>
+      <strong>${escapeHtml(value)}</strong>
+    </div>
+  `;
 }
 
 function summarizeLoadedLogs() {
@@ -396,7 +339,7 @@ function summarizeLoadedLogs() {
   if (!stats) return;
 
   stats.innerHTML = `
-    ${renderStatCard('Logs chargés', logs.length)}
+    ${renderStatCard('Logs en cache', logs.length)}
     ${renderStatCard('Comptes créés', createdCount)}
     ${renderStatCard('Contacts requis', escalationCount)}
     ${renderStatCard('Emails rejetés', bounceCount)}
@@ -404,35 +347,13 @@ function summarizeLoadedLogs() {
   `;
 }
 
-function renderStatCard(label, value) {
-  return `
-    <div class="sbi-audit-stat">
-      <span>${escapeHtml(label)}</span>
-      <strong>${escapeHtml(value)}</strong>
-    </div>
-  `;
-}
-
 async function openAuditProfileFromLogId(logId, button) {
   const log = logs.find((entry) => entry.id === logId);
   if (!log || !button) return;
 
-  const navigate = (uid) => {
-    sessionStorage.setItem('activeAdminTab', PROFILE_RETURN_TARGET);
-    sessionStorage.setItem('sbiAdminReturnTarget', PROFILE_RETURN_TARGET);
-    sessionStorage.setItem('sbiAdminReturnFromProfile', String(Date.now()));
-    window.location.href = `/admin/admin-profile.html?id=${encodeURIComponent(uid)}&from=audit-log`;
-  };
-
-  const directUid = getTargetUidCandidates(log)[0];
-  if (directUid) {
-    navigate(directUid);
-    return;
-  }
-
   const originalText = button.textContent;
   button.disabled = true;
-  button.textContent = 'Recherche...';
+  button.textContent = 'Ouverture...';
 
   try {
     const uid = await resolveProfileUidForLog(log);
@@ -448,7 +369,11 @@ async function openAuditProfileFromLogId(logId, button) {
       return;
     }
 
-    navigate(uid);
+    sessionStorage.setItem('activeAdminTab', 'view-audit-log');
+    sessionStorage.setItem('sbiAdminReturnTarget', 'view-audit-log');
+    sessionStorage.setItem('sbiAdminReturnFromProfile', String(Date.now()));
+
+    window.location.href = `/admin/admin-profile.html?id=${encodeURIComponent(uid)}&from=audit-log`;
   } catch (error) {
     console.warn('[SBI Audit] Ouverture profil impossible :', error);
     button.disabled = false;
@@ -466,22 +391,6 @@ function getProfileActionMarkup(log = {}) {
   }
 
   return '<span>Sans profil</span>';
-}
-
-function bindAuditProfileButtons() {
-  const list = document.getElementById('audit-log-list');
-  if (!list || list.dataset.sbiAuditProfileBound === 'true') return;
-
-  list.dataset.sbiAuditProfileBound = 'true';
-  list.addEventListener('click', (event) => {
-    const button = event.target?.closest?.('[data-audit-log-id]');
-    if (!button) return;
-
-    event.preventDefault();
-    event.stopPropagation();
-
-    openAuditProfileFromLogId(button.getAttribute('data-audit-log-id'), button);
-  }, true);
 }
 
 function renderLogItem(log = {}) {
@@ -514,6 +423,7 @@ function render() {
   const list = document.getElementById('audit-log-list');
   const count = document.getElementById('audit-log-count');
   const loadMore = document.getElementById('audit-load-more-btn');
+  const refreshBtn = document.getElementById('audit-refresh-btn');
   if (!list) return;
 
   summarizeLoadedLogs();
@@ -521,52 +431,52 @@ function render() {
   const filtered = getFilteredLogs();
   const rendered = filtered.slice(0, MAX_RENDERED_ITEMS);
   const isCapped = filtered.length > rendered.length;
+  const hasSearch = Boolean(document.getElementById('audit-search')?.value?.trim());
 
-  if (isLoading && logs.length === 0) {
-    list.innerHTML = '<div class="sbi-audit-empty">Chargement du journal admin...</div>';
-  } else if (!isAdminLike(currentProfile)) {
+  if (!isAdminLike(currentProfile)) {
     list.innerHTML = '<div class="sbi-audit-empty sbi-audit-error">Accès réservé aux administrateurs.</div>';
+  } else if (isLoading && logs.length === 0) {
+    list.innerHTML = '<div class="sbi-audit-empty">Chargement léger en cours... Tu peux changer d’onglet, aucun chargement auto ne se relance.</div>';
   } else if (filtered.length === 0) {
-    const searchTerm = document.getElementById('audit-search')?.value?.trim() || '';
-    const cacheHint = searchTerm && hasMore
-      ? 'Aucun résultat dans le cache actuel. Clique sur “Charger plus” pour enrichir le cache, ou “Rafraîchir” pour le reconstruire.'
-      : logs.length ? 'Aucun log ne correspond aux filtres.' : 'Aucune entrée de journal disponible.';
-    list.innerHTML = `<div class="sbi-audit-empty">${escapeHtml(cacheHint)}</div>`;
+    if (logs.length === 0) {
+      list.innerHTML = '<div class="sbi-audit-empty">Aucun log en cache. Clique sur “Rafraîchir” pour charger les derniers événements.</div>';
+    } else if (hasSearch) {
+      list.innerHTML = '<div class="sbi-audit-empty">Aucun résultat dans le cache actuel. Clique sur “Charger plus” pour enrichir le cache, ou “Rafraîchir” pour reconstruire le journal.</div>';
+    } else {
+      list.innerHTML = '<div class="sbi-audit-empty">Aucun log ne correspond au filtre actuel.</div>';
+    }
   } else {
     list.innerHTML = [
       rendered.map(renderLogItem).join(''),
-      isCapped
-        ? `<div class="sbi-audit-empty">Affichage limité à ${MAX_RENDERED_ITEMS} lignes pour garder le journal fluide. Affine la recherche ou charge moins d'archives.</div>`
-        : ''
+      isCapped ? `<div class="sbi-audit-empty">Affichage limité à ${MAX_RENDERED_ITEMS} lignes pour garder le journal fluide. Affine la recherche ou charge moins d’archives.</div>` : ''
     ].join('');
   }
 
   if (count) {
     const filteredSuffix = filtered.length !== logs.length ? ` · ${filtered.length} trouvée${filtered.length > 1 ? 's' : ''}` : '';
     const capSuffix = isCapped ? ` · ${rendered.length} affichées` : '';
-    const cacheSuffix = restoredFromCache ? ' · cache local' : '';
-    count.textContent = `${logs.length} entrée${logs.length > 1 ? 's' : ''} chargée${logs.length > 1 ? 's' : ''}${filteredSuffix}${capSuffix}${cacheSuffix}`;
+    count.textContent = `${logs.length} entrée${logs.length > 1 ? 's' : ''} en cache${filteredSuffix}${capSuffix}`;
   }
 
   if (loadMore) {
     loadMore.disabled = isLoading || !hasMore || !isAdminLike(currentProfile);
     loadMore.textContent = isLoading ? 'Chargement...' : hasMore ? 'Charger plus' : 'Fin du journal chargé';
   }
+
+  if (refreshBtn) {
+    refreshBtn.disabled = isLoading || !isAdminLike(currentProfile);
+    refreshBtn.textContent = isLoading ? 'Chargement...' : 'Rafraîchir';
+  }
 }
 
-async function loadAuditLogs({ reset = false, clearCache = false } = {}) {
+async function loadAuditLogs({ reset = false } = {}) {
   if (isLoading || !isAdminLike(currentProfile)) return;
-
-  if (clearCache) {
-    clearAuditCache();
-  }
 
   if (reset) {
     logs = [];
     lastVisibleDoc = null;
-    lastCursorMs = 0;
     hasMore = true;
-    restoredFromCache = false;
+    clearCache();
   }
 
   isLoading = true;
@@ -574,27 +484,31 @@ async function loadAuditLogs({ reset = false, clearCache = false } = {}) {
 
   try {
     const clauses = [collection(db, 'accountAuditLogs'), orderBy('createdAt', 'desc')];
-
-    if (lastVisibleDoc) {
-      clauses.push(startAfter(lastVisibleDoc));
-    } else if (lastCursorMs) {
-      clauses.push(startAfter(Timestamp.fromMillis(lastCursorMs)));
-    }
-
+    if (lastVisibleDoc && !reset) clauses.push(startAfter(lastVisibleDoc));
     clauses.push(limit(PAGE_SIZE));
 
     const snap = await getDocs(query(...clauses));
     const nextLogs = [];
 
     snap.forEach((docSnap) => {
-      nextLogs.push({ id: docSnap.id, ...(docSnap.data() || {}) });
+      nextLogs.push(normalizeLog({ id: docSnap.id, ...(docSnap.data() || {}) }));
     });
 
-    lastVisibleDoc = snap.docs[snap.docs.length - 1] || null;
+    lastVisibleDoc = snap.docs[snap.docs.length - 1] || lastVisibleDoc;
     hasMore = snap.size === PAGE_SIZE;
-    mergeLogs(nextLogs, { replace: reset });
-    hasLoadedOnce = true;
-    saveAuditCache();
+
+    const merged = reset ? nextLogs : [...logs, ...nextLogs];
+    const deduped = [];
+    const seen = new Set();
+
+    merged.forEach((log) => {
+      if (!log.id || seen.has(log.id)) return;
+      seen.add(log.id);
+      deduped.push(log);
+    });
+
+    logs = deduped.slice(0, MAX_CACHE_ITEMS);
+    saveCache();
   } catch (error) {
     console.warn('[SBI Audit] Journal global indisponible :', error);
     const list = document.getElementById('audit-log-list');
@@ -607,38 +521,20 @@ async function loadAuditLogs({ reset = false, clearCache = false } = {}) {
   }
 }
 
-async function loadCurrentProfile(user) {
-  if (!user) {
-    currentProfile = null;
-    currentUser = null;
-    logs = [];
-    render();
-    return;
-  }
+function bindAuditProfileButtons() {
+  const list = document.getElementById('audit-log-list');
+  if (!list || list.dataset.sbiAuditProfileBound === 'true') return;
 
-  currentUser = user;
+  list.dataset.sbiAuditProfileBound = 'true';
+  list.addEventListener('click', (event) => {
+    const button = event.target?.closest?.('[data-audit-log-id]');
+    if (!button) return;
 
-  try {
-    const snap = await getDoc(doc(db, 'users', user.uid));
-    currentProfile = snap.exists() ? snap.data() : null;
-  } catch (error) {
-    currentProfile = null;
-    console.warn('[SBI Audit] Profil admin indisponible :', error);
-  }
+    event.preventDefault();
+    event.stopPropagation();
 
-  render();
-
-  if (isAdminLike(currentProfile) && isAuditViewActive() && !hasLoadedOnce) {
-    if (!restoreAuditCache()) {
-      window.setTimeout(() => loadAuditLogs({ reset: true }), 80);
-    }
-  }
-}
-
-function isAuditViewActive() {
-  return document.getElementById('view-audit-log')?.classList.contains('active')
-    || sessionStorage.getItem('activeAdminTab') === 'view-audit-log'
-    || new URLSearchParams(window.location.search).get('tab') === 'view-audit-log';
+    openAuditProfileFromLogId(button.getAttribute('data-audit-log-id'), button);
+  }, true);
 }
 
 function mount() {
@@ -647,21 +543,33 @@ function mount() {
 
   isMounted = true;
 
-  document.getElementById('audit-refresh-btn')?.addEventListener('click', () => loadAuditLogs({ reset: true, clearCache: true }));
+  document.getElementById('audit-refresh-btn')?.addEventListener('click', () => loadAuditLogs({ reset: true }));
   document.getElementById('audit-load-more-btn')?.addEventListener('click', () => loadAuditLogs());
   document.getElementById('audit-search')?.addEventListener('input', render);
   document.getElementById('audit-type-filter')?.addEventListener('change', render);
   bindAuditProfileButtons();
 
-  window.addEventListener('sbi:admin-tab-changed', (event) => {
-    if (event?.detail?.tab === 'view-audit-log' && isAdminLike(currentProfile) && !hasLoadedOnce) {
-      if (!restoreAuditCache()) {
-        window.setTimeout(() => loadAuditLogs({ reset: true }), 80);
-      }
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) {
+      currentProfile = null;
+      logs = [];
+      render();
+      return;
     }
+
+    try {
+      const profileQuery = query(collection(db, 'users'), where('__name__', '==', user.uid), limit(1));
+      const profileSnap = await getDocs(profileQuery);
+      currentProfile = profileSnap.empty ? null : profileSnap.docs[0].data();
+    } catch (error) {
+      currentProfile = null;
+      console.warn('[SBI Audit] Profil admin indisponible :', error);
+    }
+
+    render();
+    loadCache();
   });
 
-  onAuthStateChanged(auth, loadCurrentProfile);
   render();
 }
 
