@@ -10,7 +10,6 @@
  * 8.0P.164 : cache-bust rendu profil pour relance finalisation compte.
  * 8.0P.165 : affichage relances automatiques et escalade.
  * 8.0P.163 : cache-bust du rendu profil pour notes internes persistantes.
- * 8.0P.167.61 : verrouillage de l'URL/UID cible pour éviter le double montage PJAX sans données.
  * =======================================================================
  */
 
@@ -18,9 +17,9 @@ import { db, auth } from '/js/firebase-init.js';
 import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js';
 import { waitForSbiTopbar } from '/admin/js/components/ready.js';
-import { waitForSbiComponents } from '/js/profile/profile-utils.js?v=8.0P.167.60';
+import { waitForSbiComponents } from '/js/profile/profile-utils.js?v=8.0P.167.62';
 import { hydrateLoggedInTopbar } from '/js/profile/profile-topbar.js';
-import { renderProfileShell } from '/js/profile/profile-render.js?v=8.0P.167.60';
+import { renderProfileShell } from '/js/profile/profile-render.js?v=8.0P.167.62';
 import { renderUserFormations } from '/js/profile/profile-formations.js';
 import { renderLearningTracking } from '/js/profile/profile-tracking.js';
 import { setupSaveButtons, setupSecurityAndEditMode } from '/js/profile/profile-edit.js';
@@ -32,22 +31,28 @@ const context = {
   currentProfileData: null,
   loggedInUserId: null,
   loggedInUserData: null,
+  routeTargetUid: null,
+  routeTargetUrl: null,
+  source: '',
   isOwner: false,
   isAdmin: false,
   isEditMode: false
 };
 
 let activeCleanup = null;
+let activeMountToken = 0;
 let securityPrepared = false;
 let saveButtonsPrepared = false;
 let avatarCropperPrepared = false;
-let activeMountToken = 0;
 
 function resetContext() {
   context.currentProfileId = null;
   context.currentProfileData = null;
   context.loggedInUserId = null;
   context.loggedInUserData = null;
+  context.routeTargetUid = null;
+  context.routeTargetUrl = null;
+  context.source = '';
   context.isOwner = false;
   context.isAdmin = false;
   context.isEditMode = false;
@@ -59,57 +64,43 @@ function resetContext() {
 }
 
 function getCurrentProfileUrl() {
-  const rawUrl = window.__SBI_PROFILE_TARGET_URL
-    || window.SBI_APP_SHELL_CURRENT_URL
-    || window.location.href;
-
-  return new URL(rawUrl, window.location.origin);
+  const lockedUrl = context.routeTargetUrl || window.__SBI_ADMIN_PROFILE_TARGET_URL || '';
+  return new URL(lockedUrl || window.SBI_APP_SHELL_CURRENT_URL || window.location.href, window.location.origin);
 }
 
-function getRecentPendingAdminProfileUid() {
+function isAdminProfileRoute() {
   try {
-    const uid = sessionStorage.getItem('sbiAdminPendingProfileUid') || '';
-    const targetUrl = sessionStorage.getItem('sbiAdminPendingProfileUrl') || '';
-    const timestamp = Number(sessionStorage.getItem('sbiAdminPendingProfileAt') || 0);
-
-    if (!uid || !targetUrl || !timestamp) return '';
-    if (Date.now() - timestamp > 45000) return '';
-
-    const current = getCurrentProfileUrl();
-    const target = new URL(targetUrl, window.location.origin);
-
-    if (target.pathname !== '/admin/admin-profile.html') return '';
-    if (current.pathname !== '/admin/admin-profile.html') return '';
-
-    return uid;
+    return getCurrentProfileUrl().pathname.toLowerCase().endsWith('/admin/admin-profile.html');
   } catch {
-    return '';
+    return window.location.pathname.toLowerCase().endsWith('/admin/admin-profile.html');
   }
 }
 
-function resolveTargetProfileId(loggedInUserId) {
-  const urlParams = getCurrentProfileUrl().searchParams;
-  const explicitId = urlParams.get('id');
-  if (explicitId) return explicitId;
+function consumeLockedTargetUid() {
+  if (!isAdminProfileRoute()) return '';
 
-  const runtimeTargetId = window.__SBI_PROFILE_TARGET_ID || '';
-  if (runtimeTargetId) return runtimeTargetId;
+  const currentUrl = getCurrentProfileUrl();
+  const urlUid = currentUrl.searchParams.get('id') || '';
+  const candidates = [
+    context.routeTargetUid,
+    window.__SBI_ADMIN_PROFILE_TARGET_UID,
+    urlUid
+  ];
 
-  const pendingAdminUid = getRecentPendingAdminProfileUid();
-  if (pendingAdminUid) return pendingAdminUid;
+  try {
+    const storedUid = sessionStorage.getItem('sbiAdminProfileTargetUid') || '';
+    const storedUrl = sessionStorage.getItem('sbiAdminProfileTargetUrl') || '';
+    const storedMatchesCurrentUrl = storedUrl && new URL(storedUrl, window.location.origin).href === currentUrl.href;
+    if (storedUid && (urlUid || storedMatchesCurrentUrl)) candidates.push(storedUid);
+  } catch {}
 
-  return loggedInUserId;
+  return candidates
+    .map((value) => String(value || '').trim())
+    .find(Boolean) || '';
 }
 
-function clearConsumedPendingProfileUid(uid) {
-  try {
-    const pending = sessionStorage.getItem('sbiAdminPendingProfileUid') || '';
-    if (!uid || pending !== uid) return;
-
-    sessionStorage.removeItem('sbiAdminPendingProfileUid');
-    sessionStorage.removeItem('sbiAdminPendingProfileUrl');
-    sessionStorage.removeItem('sbiAdminPendingProfileAt');
-  } catch {}
+function resolveTargetProfileId(loggedInUserId) {
+  return consumeLockedTargetUid() || loggedInUserId;
 }
 
 async function loadLoggedInUserData(uid) {
@@ -126,24 +117,29 @@ function prepareProfileControlsEarly() {
   document.body.classList.add('sbi-profile-permissions-ready');
 }
 
-function prepareProfileActionButtons() {
+function prepareProfileActionButtons(token = activeMountToken) {
+  const reloadProfile = (nextUid = context.currentProfileId) => loadProfileData(nextUid, token);
+
   if (!saveButtonsPrepared) {
-    setupSaveButtons({ db, context, reloadProfile: loadProfileData });
+    setupSaveButtons({ db, context, reloadProfile });
     saveButtonsPrepared = true;
   }
 
   if (!avatarCropperPrepared) {
-    initProfileAvatarCropper({ context, reloadProfile: loadProfileData });
+    initProfileAvatarCropper({ context, reloadProfile });
     avatarCropperPrepared = true;
   }
 }
 
-async function loadProfileData(uid) {
+async function loadProfileData(uid, token = activeMountToken) {
+  if (token !== activeMountToken) return;
+
   try {
     const snap = await getDoc(doc(db, 'users', uid));
+    if (token !== activeMountToken) return;
     if (!snap.exists()) {
       console.warn('[SBI Profile] Utilisateur introuvable :', uid);
-      return false;
+      return;
     }
 
     context.currentProfileId = uid;
@@ -155,13 +151,13 @@ async function loadProfileData(uid) {
       uid,
       data: context.currentProfileData,
       context,
-      reloadProfile: loadProfileData
+      reloadProfile: (nextUid = uid) => loadProfileData(nextUid, token)
     });
 
-    clearConsumedPendingProfileUid(uid);
+    if (token !== activeMountToken) return;
 
     prepareProfileControlsEarly();
-    prepareProfileActionButtons();
+    prepareProfileActionButtons(token);
 
     await renderUserFormations({ uid, context });
 
@@ -170,14 +166,11 @@ async function loadProfileData(uid) {
         db,
         uid,
         context,
-        reloadProfile: loadProfileData
+        reloadProfile: (nextUid = uid) => loadProfileData(nextUid, token)
       });
     }
-
-    return true;
   } catch (error) {
     console.error('[SBI Profile] Erreur chargement profil :', error);
-    return false;
   } finally {
     document.body.classList.remove('preload');
     document.body.classList.add('sbi-preload-timeout');
@@ -194,16 +187,17 @@ function bindProfileShortcuts() {
   });
 }
 
-async function bootstrapProfile(user, mountToken = activeMountToken) {
+async function bootstrapProfile(user, token = activeMountToken) {
   context.loggedInUserId = user.uid;
 
   await waitForSbiTopbar();
+  if (token !== activeMountToken) return;
+
   await waitForSbiComponents();
-  if (mountToken !== activeMountToken) return;
+  if (token !== activeMountToken) return;
 
   context.loggedInUserData = await loadLoggedInUserData(context.loggedInUserId);
-  if (mountToken !== activeMountToken) return;
-
+  if (token !== activeMountToken) return;
   context.isAdmin = context.loggedInUserData?.role === 'admin' || context.loggedInUserData?.isGod === true;
 
   hydrateLoggedInTopbar(context.loggedInUserData);
@@ -220,32 +214,28 @@ async function bootstrapProfile(user, mountToken = activeMountToken) {
    */
   prepareProfileControlsEarly();
 
-  const loaded = await loadProfileData(context.currentProfileId);
-  if (mountToken !== activeMountToken || !loaded) return;
-
+  await loadProfileData(context.currentProfileId, token);
   startProfilePresenceListener(db, context.currentProfileId);
   bindProfileShortcuts();
 }
 
 export function mountProfileCore(options = {}) {
   activeCleanup?.({ reason: 'remount' });
-
-  activeMountToken += 1;
-  const mountToken = activeMountToken;
-
-  if (options && Object.prototype.hasOwnProperty.call(options, 'targetUrl')) {
-    window.__SBI_PROFILE_TARGET_URL = options.targetUrl || '';
-  } else {
-    window.__SBI_PROFILE_TARGET_URL = '';
-  }
-
-  if (options && Object.prototype.hasOwnProperty.call(options, 'targetId')) {
-    window.__SBI_PROFILE_TARGET_ID = options.targetId || '';
-  } else {
-    window.__SBI_PROFILE_TARGET_ID = '';
-  }
-
+  const token = activeMountToken + 1;
+  activeMountToken = token;
   resetContext();
+
+  context.routeTargetUid = String(options?.targetUid || '').trim() || null;
+  context.routeTargetUrl = options?.targetUrl || null;
+  context.source = options?.source || '';
+
+  if (context.routeTargetUid) {
+    try {
+      window.__SBI_ADMIN_PROFILE_TARGET_UID = context.routeTargetUid;
+      sessionStorage.setItem('sbiAdminProfileTargetUid', context.routeTargetUid);
+      if (context.routeTargetUrl) sessionStorage.setItem('sbiAdminProfileTargetUrl', context.routeTargetUrl);
+    } catch {}
+  }
 
   let disposed = false;
   let unsubscribeAuth = null;
@@ -259,7 +249,7 @@ export function mountProfileCore(options = {}) {
     }
 
     try {
-      await bootstrapProfile(user, mountToken);
+      await bootstrapProfile(user, token);
     } catch (error) {
       console.error('[SBI Profile] Initialisation impossible :', error);
       document.body.classList.remove('preload');
@@ -269,6 +259,7 @@ export function mountProfileCore(options = {}) {
 
   const cleanup = () => {
     disposed = true;
+    if (activeMountToken === token) activeMountToken += 1;
     stopProfilePresenceListener();
     unsubscribeAuth?.();
     if (activeCleanup === cleanup) activeCleanup = null;

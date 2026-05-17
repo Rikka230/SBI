@@ -7,7 +7,7 @@ import { initAdminVisitorShortcut } from '/admin/js/admin-ui/admin-visitor.js';
 import { initEmojiScrubber } from '/admin/js/admin-ui/emoji-scrubber.js';
 import { initSafeComponentPolish } from '/admin/js/admin-ui/component-polish.js';
 import { initSbiNavigationTransitions } from '/js/sbi-navigation-transitions.js';
-import { initSbiAppShell } from '/js/app-shell/app-shell.js?v=8.0P.167.61';
+import { initSbiAppShell } from '/js/app-shell/app-shell.js?v=8.0P.167.62';
 import { initSbiVersionBadge } from '/js/sbi-version-badge.js';
 import { installViewerDiagnostics } from '/js/app-shell/course-viewer-bridge.js';
 import { initCourseAccessDiagnostics } from '/admin/js/course-access-diagnostics.js';

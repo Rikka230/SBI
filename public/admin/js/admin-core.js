@@ -33,7 +33,6 @@ let usersRenderTimer = null;
 let usersCacheHydrated = false;
 let usersSnapshotInitialized = false;
 let usersListDelegationContainer = null;
-let documentEditDelegationBound = false;
 
 const boundSearchInputs = new WeakSet();
 const boundRoleFilters = new WeakSet();
@@ -72,7 +71,7 @@ const readUsersCache = () => {
 const writeUsersCache = () => {
     try {
         window.localStorage?.setItem(USERS_CACHE_KEY, JSON.stringify({
-            version: '8.0P.167.58',
+            version: '8.0P.167.62',
             updatedAt: Date.now(),
             users: normalizeUsersArray(allUsersData)
         }));
@@ -91,7 +90,7 @@ const publishUsersState = (reason = 'sync') => {
     const users = normalizeUsersArray(allUsersData);
 
     window.SBI_ADMIN_USERS_CACHE = {
-        version: '8.0P.167.58',
+        version: '8.0P.167.62',
         users,
         updatedAt: Date.now(),
         reason
@@ -101,7 +100,7 @@ const publishUsersState = (reason = 'sync') => {
 
     window.dispatchEvent(new CustomEvent('sbi:accounts-data-updated', {
         detail: {
-            version: '8.0P.167.58',
+            version: '8.0P.167.62',
             reason,
             users,
             updatedAt: Date.now()
@@ -215,27 +214,18 @@ const applyUsersSnapshot = (querySnapshot) => {
     scheduleUsersRender('server-snapshot');
 };
 
-const handleEditUserClick = (event) => {
-    const editButton = event.target?.closest?.('.btn-edit-user[data-id]');
-    if (!editButton) return;
-
-    event.preventDefault();
-    event.stopPropagation();
-    openEditModal(editButton.getAttribute('data-id'));
-};
-
 const bindUsersListDelegation = (container) => {
-    if (!container) return;
+    if (!container || usersListDelegationContainer === container) return;
 
-    if (usersListDelegationContainer !== container) {
-        usersListDelegationContainer = container;
-        container.addEventListener('click', handleEditUserClick);
-    }
+    usersListDelegationContainer = container;
 
-    if (!documentEditDelegationBound) {
-        documentEditDelegationBound = true;
-        document.addEventListener('click', handleEditUserClick, true);
-    }
+    container.addEventListener('click', (event) => {
+        const editButton = event.target?.closest?.('.btn-edit-user[data-id]');
+        if (editButton) {
+            event.preventDefault();
+            openEditModal(editButton.getAttribute('data-id'));
+        }
+    });
 };
 
 
@@ -666,7 +656,7 @@ const renderUsersList = (usersToRender, reason = 'manual') => {
         container.innerHTML = '<div class="empty-state">Aucun compte trouvé.</div>';
         publishUsersState(`render:${reason}`);
         window.dispatchEvent(new CustomEvent('sbi:accounts-rendered', {
-            detail: { version: '8.0P.167.58', reason, count: 0 }
+            detail: { version: '8.0P.167.62', reason, count: 0 }
         }));
         return;
     }
@@ -750,7 +740,7 @@ const renderUsersList = (usersToRender, reason = 'manual') => {
     publishUsersState(`render:${reason}`);
     window.dispatchEvent(new CustomEvent('sbi:accounts-rendered', {
         detail: {
-            version: '8.0P.167.58',
+            version: '8.0P.167.62',
             reason,
             count: usersToRender.length
         }
@@ -932,8 +922,6 @@ const openEditModal = (userId) => {
 
     document.getElementById('edit-user-modal').style.display = 'flex';
 };
-
-window.SBI_ADMIN_OPEN_EDIT_MODAL = openEditModal;
 
 const initModalLogic = () => {
     const modal = document.getElementById('edit-user-modal');
@@ -1135,10 +1123,7 @@ function initAdminCore() {
     if (myProfileBtn) {
         myProfileBtn.addEventListener('click', () => {
             if (currentUid) {
-                const href = `/admin/admin-profile.html?id=${encodeURIComponent(currentUid)}`;
-                window.__SBI_PROFILE_TARGET_ID = currentUid;
-                window.__SBI_PROFILE_TARGET_URL = new URL(href, window.location.origin).href;
-                window.SBI_APP_SHELL_NAVIGATE?.(href, { source: 'admin-my-profile' }) || (window.location.href = href);
+                window.location.href = `admin-profile.html?id=${currentUid}`;
             } else {
                 showAdminMessage("Veuillez patienter, chargement de l'utilisateur en cours...");
             }

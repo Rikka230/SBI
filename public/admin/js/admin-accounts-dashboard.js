@@ -32,7 +32,7 @@ function injectStyle() {
   const link = document.createElement('link');
   link.id = 'sbi-admin-accounts-css';
   link.rel = 'stylesheet';
-  link.href = '/admin/css/admin-accounts.css?v=8.0P.167.58';
+  link.href = '/admin/css/admin-accounts.css?v=8.0P.167.62';
   document.head.append(link);
 }
 
@@ -785,12 +785,11 @@ async function navigateToProfile(uid) {
     sessionStorage.setItem('sbiAdminReturnTarget', 'view-users');
     sessionStorage.setItem('sbiAdminReturnFromProfile', String(Date.now()));
     sessionStorage.setItem('sbiAdminForceUsersRehydrate', '1');
-    sessionStorage.setItem('sbiAdminPendingProfileUid', uid);
-    sessionStorage.setItem('sbiAdminPendingProfileUrl', url.href);
-    sessionStorage.setItem('sbiAdminPendingProfileAt', String(Date.now()));
+    sessionStorage.setItem('sbiAdminProfileTargetUid', String(uid));
+    sessionStorage.setItem('sbiAdminProfileTargetUrl', url.href);
     window.__SBI_ADMIN_FORCE_USERS_REHYDRATE = true;
-    window.__SBI_PROFILE_TARGET_ID = uid;
-    window.__SBI_PROFILE_TARGET_URL = url.href;
+    window.__SBI_ADMIN_PROFILE_TARGET_UID = String(uid);
+    window.__SBI_ADMIN_PROFILE_TARGET_URL = url.href;
   } catch {}
 
   try {
