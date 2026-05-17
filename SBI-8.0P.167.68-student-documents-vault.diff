@@ -1,0 +1,917 @@
+diff --git a/public/admin/admin-profile.html b/public/admin/admin-profile.html
+--- a/public/admin/admin-profile.html
++++ b/public/admin/admin-profile.html
+@@ -7,12 +7,13 @@
+     <link rel="stylesheet" href="css/admin-layout.css">
+     <link rel="stylesheet" href="css/admin.css?v=8.0P.167.51">
+     <link rel="stylesheet" href="css/admin-notifications.css">
+-    <link rel="stylesheet" href="css/admin-profile.css?v=8.0P.167.67">
++    <link rel="stylesheet" href="css/admin-profile.css?v=8.0P.167.68">
++    <link rel="stylesheet" href="css/admin-student-documents.css?v=8.0P.167.68">
+     <link rel="stylesheet" href="/css/sbi-7-1-harmonization.css?v=8.0P.167.48">
+@@ -14,7 +15,7 @@
+     <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" rel="stylesheet">
+     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
+ 
+-    <script src="js/components.js?v=8.0P.167.67"></script>
++    <script src="js/components.js?v=8.0P.167.68"></script>
+     <link rel="stylesheet" href="css/admin-surface-unified.css?v=8.0P.167.52">
+ </head>
+@@ -176,6 +177,10 @@
+                                 <p style="color: var(--text-muted); font-size: 0.9rem; font-style: italic; margin:0;">Chargement du suivi pédagogique...</p>
+                             </div>
+ 
++                            <div id="prof-student-documents-panel" class="data-group student-followup-section">
++                                <p style="color: var(--text-muted); font-size: 0.9rem; font-style: italic; margin:0;">Chargement du coffre documents...</p>
++                            </div>
++
+                             <div class="data-group">
+                                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
+                                     <h4 style="margin: 0; display:flex; align-items:center; gap:8px;">Progression détaillée</h4>
+@@ -227,11 +232,11 @@
+ 
+ </div> 
+ 
+-<script type="module" src="js/admin-ui.js?v=8.0P.167.67"></script>
++<script type="module" src="js/admin-ui.js?v=8.0P.167.68"></script>
+ <script type="module" src="js/tracker.js?v=8.0P.167.44"></script>
+ <script type="module" src="js/admin-notifications.js"></script>
+-<script type="module" src="/js/profile-core.js?v=8.0P.167.67"></script>
++<script type="module" src="/js/profile-core.js?v=8.0P.167.68"></script>
+ 
+ </body>
+ </html>
+
+diff --git a/public/js/profile-core.js b/public/js/profile-core.js
+--- a/public/js/profile-core.js
++++ b/public/js/profile-core.js
+@@ -8,6 +8,7 @@
+  * 8.0P.164 : cache-bust rendu profil pour relance finalisation compte.
+  * 8.0P.165 : affichage relances automatiques et escalade.
+  * 8.0P.167.64 : fix syntax rendu promotions + cible profil admin PJAX stable.
++ * 8.0P.167.68 : coffre documents élève admin-only dans Suivi pédagogique.
+  * 8.0P.163 : cache-bust du rendu profil pour notes internes persistantes.
+  * =======================================================================
+  */
+@@ -20,7 +21,8 @@
+ import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js';
+ import { waitForSbiTopbar } from '/admin/js/components/ready.js';
+-import { waitForSbiComponents } from '/js/profile/profile-utils.js?v=8.0P.167.67';
++import { waitForSbiComponents } from '/js/profile/profile-utils.js?v=8.0P.167.68';
+ import { hydrateLoggedInTopbar } from '/js/profile/profile-topbar.js';
+-import { renderProfileShell } from '/js/profile/profile-render.js?v=8.0P.167.67';
++import { renderProfileShell } from '/js/profile/profile-render.js?v=8.0P.167.68';
++import { renderStudentDocumentsPanel } from '/js/profile/profile-student-documents.js?v=8.0P.167.68';
+ import { renderUserFormations } from '/js/profile/profile-formations.js';
+ import { renderLearningTracking } from '/js/profile/profile-tracking.js';
+@@ -132,6 +134,15 @@
+         reloadProfile: loadProfileData
+       });
+     }
++
++    if (document.getElementById('prof-student-documents-panel')) {
++      await renderStudentDocumentsPanel({
++        db,
++        uid,
++        data: context.currentProfileData,
++        context
++      });
++    }
+   } catch (error) {
+     console.error('[SBI Profile] Erreur chargement profil :', error);
+   } finally {
+
+diff --git a/public/admin/js/admin-ui.js b/public/admin/js/admin-ui.js
+--- a/public/admin/js/admin-ui.js
++++ b/public/admin/js/admin-ui.js
+@@ -7,7 +7,7 @@
+ import { initSafeComponentPolish } from '/admin/js/admin-ui/component-polish.js';
+ import { initSbiNavigationTransitions } from '/js/sbi-navigation-transitions.js';
+-import { initSbiAppShell } from '/js/app-shell/app-shell.js?v=8.0P.167.67';
++import { initSbiAppShell } from '/js/app-shell/app-shell.js?v=8.0P.167.68';
+ import { initSbiVersionBadge } from '/js/sbi-version-badge.js';
+ import { installViewerDiagnostics } from '/js/app-shell/course-viewer-bridge.js';
+ import { initCourseAccessDiagnostics } from '/admin/js/course-access-diagnostics.js';
+
+diff --git a/public/js/app-shell/app-shell.js b/public/js/app-shell/app-shell.js
+--- a/public/js/app-shell/app-shell.js
++++ b/public/js/app-shell/app-shell.js
+@@ -10,7 +10,7 @@
+  * location.reload()
+  */
+ 
+-import { createRouteRegistry } from './route-registry.js?v=8.0P.167.67';
++import { createRouteRegistry } from './route-registry.js?v=8.0P.167.68';
+ import { createRouter } from './router.js';
+ import { injectAppShellStyles, markAppShellReady } from './transitions.js';
+ import { initRoutePreload } from './preload.js';
+
+diff --git a/public/js/app-shell/route-registry.js b/public/js/app-shell/route-registry.js
+--- a/public/js/app-shell/route-registry.js
++++ b/public/js/app-shell/route-registry.js
+@@ -350,7 +350,7 @@
+   window.__SBI_APP_SHELL_MOUNTING_PROFILE = true;
+ 
+   try {
+-    const module = await import('/js/profile-core.js?v=8.0P.167.67');
++    const module = await import('/js/profile-core.js?v=8.0P.167.68');
+     const cleanupProfile = module.mountProfileCore?.({
+       source: 'pjax-admin-profile',
+       targetUid,
+
+diff --git a/public/admin/admin-accounts.html b/public/admin/admin-accounts.html
+--- a/public/admin/admin-accounts.html
++++ b/public/admin/admin-accounts.html
+@@ -131,7 +131,7 @@
+     </div>
+ </div>
+ 
+-<script type="module" src="js/admin-ui.js?v=8.0P.167.67"></script>
++<script type="module" src="js/admin-ui.js?v=8.0P.167.68"></script>
+ <script type="module" src="js/sbi-admin-inp-fix.js?v=8.0P.127"></script>
+ <script type="module" src="js/admin-core.js?v=8.0P.167.64"></script>
+ <script type="module" src="js/tracker.js?v=8.0P.167.44"></script>
+
+diff --git a/public/admin/admin-promotions.html b/public/admin/admin-promotions.html
+--- a/public/admin/admin-promotions.html
++++ b/public/admin/admin-promotions.html
+@@ -153,7 +153,7 @@
+ 
+ </div>
+ 
+-<script type="module" src="js/admin-ui.js?v=8.0P.167.67"></script>
++<script type="module" src="js/admin-ui.js?v=8.0P.167.68"></script>
+ <script type="module" src="js/tracker.js?v=8.0P.167.44"></script>
+ <script type="module" src="js/admin-notifications.js"></script>
+ <script type="module" src="js/admin-promotions.js?v=8.0P.167.64"></script>
+
+diff --git a/storage.rules b/storage.rules
+--- a/storage.rules
++++ b/storage.rules
+@@ -31,6 +31,26 @@
+         );
+     }
+ 
++    function canReadStudentDocument(studentId) {
++      return isAdmin();
++    }
++
++    function canManageStudentDocument(studentId) {
++      return isAdmin();
++    }
++
++    function validStudentDocumentUpload(studentId, documentId) {
++      return isAdmin()
++        && request.resource.size < 40 * 1024 * 1024
++        && request.resource.metadata.keys().hasAny(['uploadedBy'])
++        && request.resource.metadata.keys().hasAny(['studentUid'])
++        && request.resource.metadata.keys().hasAny(['documentId'])
++        && request.resource.metadata.uploadedBy == request.auth.uid
++        && request.resource.metadata.studentUid == studentId
++        && request.resource.metadata.documentId == documentId
++        && (
++          request.resource.contentType.matches('image/.*') ||
++          request.resource.contentType == 'application/pdf' ||
++          request.resource.contentType == 'application/msword' ||
++          request.resource.contentType == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
++          request.resource.contentType == 'text/plain'
++        );
++    }
++
+     function canManageAvatar(userId) {
+       return isActiveUser()
+         && (
+@@ -274,6 +294,22 @@
+       allow delete: if canManageAvatar(userId);
+     }
+ 
++    /* ============================================================
++       DOCUMENTS ÉLÈVES — COFFRE ADMIN
++       ============================================================
++       Chemin utilisé par SBI 8.0P.167.68 :
++       student-documents/{studentId}/{documentId}/{fileName}
++
++       V1 : lecture et écriture admin uniquement. L'ouverture élève sera
++       étudiée dans une étape dédiée après validation des catégories/droits.
++       ============================================================ */
++    match /student-documents/{studentId}/{documentId}/{fileName} {
++      allow read: if canReadStudentDocument(studentId);
++
++      allow create, update: if canManageStudentDocument(studentId)
++        && validStudentDocumentUpload(studentId, documentId);
++
++      allow delete: if false;
++    }
++
+     /* ============================================================
+        SÉCURITÉ PAR DÉFAUT
+        ============================================================ */
+
+diff --git a/firestore.rules b/firestore.rules
+--- a/firestore.rules
++++ b/firestore.rules
+@@ -443,6 +443,18 @@
+       allow delete: if false;
+     }
+ 
++    /* ============================================================
++       DOCUMENTS ÉLÈVES — COFFRE ADMIN
++       ============================================================
++       V1 : lecture / écriture admin uniquement.
++       Les élèves ne lisent pas encore ces métadonnées.
++       ============================================================ */
++
++    match /studentDocuments/{documentId} {
++      allow get, list: if isAdmin();
++      allow create, update: if isAdmin();
++      allow delete: if false;
++    }
++
+ 
+     /* ============================================================
+        COURSES
+
+diff --git a/public/js/sbi-version.js b/public/js/sbi-version.js
+--- a/public/js/sbi-version.js
++++ b/public/js/sbi-version.js
+@@ -5,12 +5,12 @@
+  */
+ 
+ export const SBI_VERSION = {
+-  version: '8.0P.167.67',
++  version: '8.0P.167.68',
+   branch: 'main',
+-  channel: 'P2I.2 STUDENT PEDAGOGICAL FOLLOWUP INTEGRATED',
+-  stage: 'MERGE STUDENT FOLLOWUP INTO PEDAGOGICAL TRACKING',
++  channel: 'P2I.3 STUDENT DOCUMENT VAULT BASELINE',
++  stage: 'ADMIN STUDENT DOCUMENTS VAULT BASELINE',
+   updatedAt: '2026-05-17',
+-  label: 'SBI 8.0P.167.67 - STUDENT FOLLOWUP FORMATION LINK FIX'
++  label: 'SBI 8.0P.167.68 - STUDENT DOCUMENT VAULT BASELINE'
+ };
+ 
+ export function getSbiVersionLabel() {
+
+diff --git a/public/js/profile/profile-student-documents.js b/public/js/profile/profile-student-documents.js
+new file mode 100644
+index 0000000..0000000
+--- /dev/null
++++ b/public/js/profile/profile-student-documents.js
+@@ -0,0 +1,391 @@
++import {
++  addDoc,
++  collection,
++  doc,
++  getDocs,
++  query,
++  serverTimestamp,
++  updateDoc,
++  where
++} from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
++import {
++  getDownloadURL,
++  ref,
++  uploadBytes
++} from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js';
++import { storage } from '/js/firebase-init.js';
++import { escapeHTML } from './profile-utils.js';
++
++const DOCUMENT_CATEGORIES = {
++  administrative: 'Administratif',
++  identity: 'Identité',
++  contract: 'Convention / contrat',
++  proof: 'Justificatif',
++  pedagogical: 'Pédagogique',
++  other: 'Autre'
++};
++
++const MAX_STUDENT_DOCUMENT_SIZE = 40 * 1024 * 1024;
++
++const ALLOWED_STUDENT_DOCUMENT_TYPES = new Set([
++  'application/pdf',
++  'application/msword',
++  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
++  'text/plain'
++]);
++
++let activeMountToken = 0;
++
++function isStudentRole(profile = {}) {
++  const role = String(profile.role || '').toLowerCase();
++  return ['student', 'eleve', 'élève', 'etudiant', 'étudiant'].includes(role);
++}
++
++function normalizeText(value = '', max = 180) {
++  return String(value || '').replace(/\s+/g, ' ').trim().slice(0, max);
++}
++
++function sanitizeFileName(value = 'document') {
++  const clean = String(value || 'document')
++    .normalize('NFD')
++    .replace(/[\u0300-\u036f]/g, '')
++    .replace(/[^a-zA-Z0-9._-]+/g, '-')
++    .replace(/-+/g, '-')
++    .replace(/^-+|-+$/g, '')
++    .slice(0, 120);
++  return clean || 'document';
++}
++
++function formatBytes(bytes = 0) {
++  const value = Number(bytes) || 0;
++  if (value < 1024) return `${value} o`;
++  if (value < 1024 * 1024) return `${Math.round(value / 1024)} Ko`;
++  return `${(value / (1024 * 1024)).toFixed(value >= 10 * 1024 * 1024 ? 0 : 1)} Mo`;
++}
++
++function toMillis(value) {
++  if (!value) return 0;
++  if (typeof value.toMillis === 'function') return value.toMillis();
++  if (value instanceof Date) return value.getTime();
++  if (typeof value === 'number') return value;
++  if (typeof value === 'string') {
++    const parsed = Date.parse(value);
++    return Number.isNaN(parsed) ? 0 : parsed;
++  }
++  if (typeof value.seconds === 'number') return value.seconds * 1000;
++  return 0;
++}
++
++function formatDate(value, fallback = 'Date inconnue') {
++  const ms = toMillis(value);
++  if (!ms) return fallback;
++  try {
++    return new Intl.DateTimeFormat('fr-FR', {
++      day: '2-digit',
++      month: '2-digit',
++      year: 'numeric',
++      hour: '2-digit',
++      minute: '2-digit'
++    }).format(new Date(ms));
++  } catch (_) {
++    return fallback;
++  }
++}
++
++function isAllowedFile(file) {
++  if (!file) return false;
++  if (file.type && file.type.startsWith('image/')) return true;
++  return ALLOWED_STUDENT_DOCUMENT_TYPES.has(file.type || '');
++}
++
++function getCallableUiMessage(error, fallback) {
++  const raw = error?.message || error?.details?.message || fallback;
++  return String(raw).replace(/^Firebase:\s*/i, '').replace(/\s*\([^)]*\)\.?$/g, '').trim() || fallback;
++}
++
++function setStatus(panel, message = '', tone = 'muted') {
++  const status = panel?.querySelector?.('#prof-student-documents-status');
++  if (!status) return;
++  status.textContent = message;
++  status.dataset.tone = tone;
++}
++
++function renderEmptyDocuments() {
++  return `
++    <div class="sbi-student-documents-empty">
++      Aucun document élève actif pour le moment.
++    </div>
++  `;
++}
++
++function renderDocumentCard(item = {}) {
++  const category = DOCUMENT_CATEGORIES[item.category] || DOCUMENT_CATEGORIES.other;
++  const isArchived = item.status === 'archived';
++  return `
++    <article class="sbi-student-document-card ${isArchived ? 'is-archived' : ''}">
++      <div class="sbi-student-document-card__body">
++        <div class="sbi-student-document-card__title-row">
++          <strong>${escapeHTML(item.title || item.fileName || 'Document sans titre')}</strong>
++          <span>${escapeHTML(category)}</span>
++          ${isArchived ? '<em>Archivé</em>' : ''}
++        </div>
++        <p>${escapeHTML(item.fileName || 'Fichier')}</p>
++        <small>
++          ${escapeHTML(formatBytes(item.size))} · ${escapeHTML(formatDate(item.createdAt, 'Date inconnue'))}${item.createdByEmail ? ` · ${escapeHTML(item.createdByEmail)}` : ''}
++        </small>
++        ${item.note ? `<div class="sbi-student-document-card__note">${escapeHTML(item.note)}</div>` : ''}
++      </div>
++      <div class="sbi-student-document-card__actions">
++        <button type="button" data-doc-open="${escapeHTML(item.id)}">Ouvrir</button>
++        ${!isArchived ? `<button type="button" data-doc-archive="${escapeHTML(item.id)}">Archiver</button>` : ''}
++      </div>
++    </article>
++  `;
++}
++
++async function loadStudentDocuments(db, studentUid) {
++  const docsQuery = query(
++    collection(db, 'studentDocuments'),
++    where('studentUid', '==', studentUid)
++  );
++  const snap = await getDocs(docsQuery);
++  const rows = [];
++  snap.forEach((docSnap) => rows.push({ id: docSnap.id, ...(docSnap.data() || {}) }));
++  rows.sort((a, b) => toMillis(b.createdAt || b.updatedAt) - toMillis(a.createdAt || a.updatedAt));
++  return rows;
++}
++
++function renderDocumentsList(panel, documents = [], db = null) {
++  const list = panel.querySelector('#prof-student-documents-list');
++  const showArchived = panel.querySelector('#prof-student-documents-show-archived')?.checked === true;
++  if (!list) return;
++
++  const visible = documents.filter((item) => showArchived || item.status !== 'archived');
++  list.innerHTML = visible.length ? visible.map(renderDocumentCard).join('') : renderEmptyDocuments();
++
++  list.querySelectorAll('[data-doc-open]').forEach((button) => {
++    button.addEventListener('click', async () => {
++      const documentId = button.dataset.docOpen || '';
++      const item = documents.find((entry) => entry.id === documentId);
++      if (!item?.filePath) return;
++
++      button.disabled = true;
++      const previous = button.textContent;
++      button.textContent = 'Ouverture...';
++
++      try {
++        const url = await getDownloadURL(ref(storage, item.filePath));
++        window.open(url, '_blank', 'noopener,noreferrer');
++      } catch (error) {
++        console.warn('[SBI Documents] Ouverture impossible :', error);
++        setStatus(panel, getCallableUiMessage(error, 'Ouverture impossible.'), 'error');
++      } finally {
++        button.disabled = false;
++        button.textContent = previous;
++      }
++    });
++  });
++
++  list.querySelectorAll('[data-doc-archive]').forEach((button) => {
++    button.addEventListener('click', async () => {
++      const documentId = button.dataset.docArchive || '';
++      const confirmed = window.confirm('Archiver ce document élève ? Le fichier restera conservé mais masqué de la liste active.');
++      if (!confirmed) return;
++
++      button.disabled = true;
++      try {
++        await updateDoc(doc(collection(db, 'studentDocuments'), documentId), {
++          status: 'archived',
++          archivedAt: serverTimestamp(),
++          updatedAt: serverTimestamp()
++        });
++        setStatus(panel, 'Document archivé.', 'success');
++        const nextDocuments = await loadStudentDocuments(db, panel.dataset.studentUid || '');
++        renderDocumentsList(panel, nextDocuments, db);
++      } catch (error) {
++        console.warn('[SBI Documents] Archivage impossible :', error);
++        setStatus(panel, getCallableUiMessage(error, 'Archivage impossible.'), 'error');
++        button.disabled = false;
++      }
++    });
++  });
++}
++
++function getFormPayload(panel) {
++  const fileInput = panel.querySelector('#prof-student-document-file');
++  const file = fileInput?.files?.[0] || null;
++  const category = panel.querySelector('#prof-student-document-category')?.value || 'administrative';
++  const title = normalizeText(panel.querySelector('#prof-student-document-title')?.value || file?.name || '', 160);
++  const note = String(panel.querySelector('#prof-student-document-note')?.value || '').trim().slice(0, 2000);
++
++  if (!file) throw new Error('Ajoute un fichier avant de téléverser.');
++  if (file.size > MAX_STUDENT_DOCUMENT_SIZE) throw new Error('Fichier trop lourd. Limite : 40 Mo.');
++  if (!isAllowedFile(file)) throw new Error('Format refusé. Formats acceptés : PDF, image, DOC/DOCX ou TXT.');
++  if (!title) throw new Error('Le titre du document est obligatoire.');
++
++  return {
++    file,
++    category: DOCUMENT_CATEGORIES[category] ? category : 'other',
++    title,
++    note
++  };
++}
++
++async function uploadStudentDocument({ db, uid, context, panel }) {
++  const payload = getFormPayload(panel);
++  const submit = panel.querySelector('#prof-student-document-upload-btn');
++  const fileInput = panel.querySelector('#prof-student-document-file');
++  const titleInput = panel.querySelector('#prof-student-document-title');
++  const noteInput = panel.querySelector('#prof-student-document-note');
++  const categoryInput = panel.querySelector('#prof-student-document-category');
++
++  const documentRef = await addDoc(collection(db, 'studentDocuments'), {
++    studentUid: uid,
++    title: payload.title,
++    category: payload.category,
++    fileName: sanitizeFileName(payload.file.name),
++    contentType: payload.file.type || 'application/octet-stream',
++    size: payload.file.size,
++    status: 'uploading',
++    visibility: 'admin_only',
++    createdAt: serverTimestamp(),
++    createdBy: context.loggedInUserId || '',
++    createdByEmail: context.loggedInUserData?.email || '',
++    updatedAt: serverTimestamp()
++  });
++
++  const safeFileName = sanitizeFileName(payload.file.name);
++  const filePath = `student-documents/${uid}/${documentRef.id}/${safeFileName}`;
++
++  if (submit) {
++    submit.disabled = true;
++    submit.textContent = 'Téléversement...';
++  }
++  setStatus(panel, 'Téléversement du document...', 'muted');
++
++  try {
++    await uploadBytes(ref(storage, filePath), payload.file, {
++      contentType: payload.file.type || 'application/octet-stream',
++      customMetadata: {
++        uploadedBy: context.loggedInUserId || '',
++        studentUid: uid,
++        documentId: documentRef.id
++      }
++    });
++
++    await updateDoc(documentRef, {
++      filePath,
++      fileName: safeFileName,
++      status: 'active',
++      uploadedAt: serverTimestamp(),
++      updatedAt: serverTimestamp()
++    });
++
++    if (fileInput) fileInput.value = '';
++    if (titleInput) titleInput.value = '';
++    if (noteInput) noteInput.value = '';
++    if (categoryInput) categoryInput.value = 'administrative';
++
++    setStatus(panel, 'Document ajouté au coffre élève.', 'success');
++    const documents = await loadStudentDocuments(db, uid);
++    renderDocumentsList(panel, documents, db);
++  } catch (error) {
++    await updateDoc(documentRef, {
++      status: 'upload_failed',
++      uploadError: String(error?.message || error || 'Erreur inconnue').slice(0, 260),
++      updatedAt: serverTimestamp()
++    }).catch(() => {});
++    console.warn('[SBI Documents] Upload impossible :', error);
++    setStatus(panel, getCallableUiMessage(error, 'Téléversement impossible.'), 'error');
++  } finally {
++    if (submit) {
++      submit.disabled = false;
++      submit.textContent = 'Ajouter au coffre';
++    }
++  }
++}
++
++function renderPanelShell(panel) {
++  panel.innerHTML = `
++    <div class="sbi-student-documents">
++      <div class="sbi-student-documents__header">
++        <div>
++          <p>Coffre élève</p>
++          <h4>Documents élève</h4>
++        </div>
++        <span>Admin uniquement</span>
++      </div>
++
++      <form id="prof-student-document-form" class="sbi-student-documents__form">
++        <label>
++          <span>Titre du document</span>
++          <input id="prof-student-document-title" type="text" maxlength="160" placeholder="Ex : Pièce d’identité, convention, justificatif...">
++        </label>
++        <label>
++          <span>Catégorie</span>
++          <select id="prof-student-document-category">
++            ${Object.entries(DOCUMENT_CATEGORIES).map(([value, label]) => `<option value="${escapeHTML(value)}">${escapeHTML(label)}</option>`).join('')}
++          </select>
++        </label>
++        <label class="sbi-student-documents__file">
++          <span>Fichier</span>
++          <input id="prof-student-document-file" type="file" accept=".pdf,.doc,.docx,.txt,image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain">
++        </label>
++        <label class="sbi-student-documents__note">
++          <span>Note interne optionnelle</span>
++          <textarea id="prof-student-document-note" rows="3" maxlength="2000" placeholder="Contexte, vérification à faire, information utile...\nVisible admin uniquement dans cette première version."></textarea>
++        </label>
++        <div class="sbi-student-documents__actions">
++          <span id="prof-student-documents-status" aria-live="polite"></span>
++          <button id="prof-student-document-upload-btn" type="submit">Ajouter au coffre</button>
++        </div>
++      </form>
++
++      <div class="sbi-student-documents__toolbar">
++        <strong>Documents actifs</strong>
++        <label>
++          <input id="prof-student-documents-show-archived" type="checkbox">
++          Afficher archivés
++        </label>
++      </div>
++      <div id="prof-student-documents-list" class="sbi-student-documents__list">
++        <div class="sbi-student-documents-empty">Chargement des documents...</div>
++      </div>
++    </div>
++  `;
++}
++
++export async function renderStudentDocumentsPanel({ db, uid, data = {}, context = {} }) {
++  const token = ++activeMountToken;
++  const panel = document.getElementById('prof-student-documents-panel');
++  if (!panel) return;
++
++  const visible = Boolean(context?.isAdmin && isStudentRole(data));
++  panel.style.display = visible ? '' : 'none';
++  if (!visible) return;
++
++  panel.dataset.studentUid = uid;
++  renderPanelShell(panel);
++
++  const form = panel.querySelector('#prof-student-document-form');
++  const showArchived = panel.querySelector('#prof-student-documents-show-archived');
++
++  form?.addEventListener('submit', async (event) => {
++    event.preventDefault();
++    await uploadStudentDocument({ db, uid, context, panel });
++  });
++
++  try {
++    const documents = await loadStudentDocuments(db, uid);
++    if (token !== activeMountToken) return;
++    renderDocumentsList(panel, documents, db);
++    showArchived?.addEventListener('change', () => renderDocumentsList(panel, documents, db));
++  } catch (error) {
++    console.warn('[SBI Documents] Lecture documents élève impossible :', error);
++    const list = panel.querySelector('#prof-student-documents-list');
++    if (list) {
++      list.innerHTML = '<div class="sbi-student-documents-empty is-error">Documents indisponibles pour le moment.</div>';
++    }
++    setStatus(panel, getCallableUiMessage(error, 'Lecture documents impossible.'), 'error');
++  }
++}
+
+diff --git a/public/admin/css/admin-student-documents.css b/public/admin/css/admin-student-documents.css
+new file mode 100644
+index 0000000..0000000
+--- /dev/null
++++ b/public/admin/css/admin-student-documents.css
+@@ -0,0 +1,259 @@
++/* --- SBI 8.0P.167.68 — Coffre documents élève admin-only --- */
++.sbi-student-documents {
++    display: flex;
++    flex-direction: column;
++    gap: 1rem;
++}
++
++.sbi-student-documents__header {
++    display: flex;
++    justify-content: space-between;
++    gap: 1rem;
++    align-items: flex-start;
++    padding-bottom: 0.85rem;
++    border-bottom: 1px solid rgba(255,255,255,0.08);
++}
++
++.sbi-student-documents__header p {
++    margin: 0 0 0.28rem;
++    color: #9fb2ff;
++    font-size: 0.74rem;
++    font-weight: 900;
++    text-transform: uppercase;
++    letter-spacing: 0.08em;
++}
++
++.sbi-student-documents__header h4 {
++    margin: 0;
++    color: #fff;
++}
++
++.sbi-student-documents__header > span {
++    display: inline-flex;
++    align-items: center;
++    border: 1px solid rgba(42,87,255,0.32);
++    border-radius: 999px;
++    padding: 0.32rem 0.62rem;
++    background: rgba(42,87,255,0.12);
++    color: #dbe5ff;
++    font-size: 0.72rem;
++    font-weight: 900;
++    white-space: nowrap;
++}
++
++.sbi-student-documents__form {
++    display: grid;
++    grid-template-columns: minmax(180px, 1fr) minmax(160px, 0.7fr);
++    gap: 0.85rem;
++    padding: 1rem;
++    border: 1px solid rgba(255,255,255,0.08);
++    border-radius: 14px;
++    background: rgba(255,255,255,0.035);
++}
++
++.sbi-student-documents__form label span,
++.sbi-student-documents__note span,
++.sbi-student-documents__file span {
++    display: block;
++    color: var(--text-muted);
++    font-size: 0.74rem;
++    font-weight: 900;
++    text-transform: uppercase;
++    letter-spacing: 0.06em;
++    margin-bottom: 0.35rem;
++}
++
++.sbi-student-documents__form input,
++.sbi-student-documents__form select,
++.sbi-student-documents__form textarea {
++    width: 100%;
++    box-sizing: border-box;
++    border: 1px solid rgba(255,255,255,0.12);
++    border-radius: 11px;
++    background: rgba(3,7,18,0.72);
++    color: #fff;
++    padding: 0.72rem 0.82rem;
++    outline: none;
++    font-family: inherit;
++}
++
++.sbi-student-documents__note,
++.sbi-student-documents__file,
++.sbi-student-documents__actions {
++    grid-column: 1 / -1;
++}
++
++.sbi-student-documents__form textarea {
++    resize: vertical;
++    min-height: 76px;
++}
++
++.sbi-student-documents__actions,
++.sbi-student-documents__toolbar {
++    display: flex;
++    justify-content: space-between;
++    gap: 0.85rem;
++    align-items: center;
++    flex-wrap: wrap;
++}
++
++#prof-student-documents-status {
++    color: var(--text-muted);
++    font-size: 0.82rem;
++}
++
++#prof-student-documents-status[data-tone="success"] { color: #2ed573; }
++#prof-student-documents-status[data-tone="error"] { color: #ff7777; }
++
++#prof-student-document-upload-btn,
++.sbi-student-document-card__actions button {
++    border: 1px solid rgba(42,87,255,0.55);
++    border-radius: 999px;
++    background: rgba(42,87,255,0.16);
++    color: #fff;
++    padding: 0.62rem 0.9rem;
++    font-weight: 900;
++    cursor: pointer;
++    transition: 0.18s ease;
++}
++
++#prof-student-document-upload-btn:hover,
++.sbi-student-document-card__actions button:hover {
++    transform: translateY(-1px);
++    filter: brightness(1.08);
++}
++
++#prof-student-document-upload-btn:disabled,
++.sbi-student-document-card__actions button:disabled {
++    opacity: 0.6;
++    cursor: not-allowed;
++    transform: none;
++}
++
++.sbi-student-documents__toolbar {
++    padding: 0.25rem 0;
++}
++
++.sbi-student-documents__toolbar strong {
++    color: #fff;
++}
++
++.sbi-student-documents__toolbar label {
++    display: flex;
++    align-items: center;
++    gap: 0.45rem;
++    color: var(--text-muted);
++    font-size: 0.82rem;
++}
++
++.sbi-student-documents__list {
++    display: flex;
++    flex-direction: column;
++    gap: 0.72rem;
++    max-height: min(46vh, 460px);
++    overflow: auto;
++    padding-right: 0.2rem;
++    overscroll-behavior: contain;
++}
++
++.sbi-student-document-card {
++    display: grid;
++    grid-template-columns: 1fr auto;
++    gap: 1rem;
++    align-items: center;
++    padding: 0.92rem 1rem;
++    border: 1px solid rgba(255,255,255,0.10);
++    border-radius: 15px;
++    background: rgba(255,255,255,0.042);
++}
++
++.sbi-student-document-card.is-archived {
++    opacity: 0.66;
++}
++
++.sbi-student-document-card__title-row {
++    display: flex;
++    gap: 0.45rem;
++    align-items: center;
++    flex-wrap: wrap;
++}
++
++.sbi-student-document-card strong {
++    color: #fff;
++}
++
++.sbi-student-document-card span,
++.sbi-student-document-card em {
++    border-radius: 999px;
++    padding: 0.22rem 0.48rem;
++    font-size: 0.68rem;
++    font-weight: 900;
++    font-style: normal;
++}
++
++.sbi-student-document-card span {
++    background: rgba(42,87,255,0.12);
++    color: #dbe5ff;
++}
++
++.sbi-student-document-card em {
++    background: rgba(251,188,4,0.13);
++    color: #ffe39a;
++}
++
++.sbi-student-document-card p,
++.sbi-student-document-card small,
++.sbi-student-documents-empty {
++    margin: 0.35rem 0 0;
++    color: var(--text-muted);
++    font-size: 0.82rem;
++    line-height: 1.45;
++}
++
++.sbi-student-document-card__note {
++    margin-top: 0.55rem;
++    padding: 0.62rem 0.72rem;
++    border: 1px solid rgba(255,255,255,0.08);
++    border-radius: 10px;
++    background: rgba(0,0,0,0.16);
++    color: #dbe5ff;
++    font-size: 0.8rem;
++    line-height: 1.45;
++}
++
++.sbi-student-document-card__actions {
++    display: flex;
++    gap: 0.5rem;
++    flex-wrap: wrap;
++    justify-content: flex-end;
++}
++
++.sbi-student-document-card__actions button[data-doc-archive] {
++    border-color: rgba(251,188,4,0.4);
++    background: rgba(251,188,4,0.09);
++    color: #ffe39a;
++}
++
++.sbi-student-documents-empty {
++    padding: 0.95rem 1rem;
++    border: 1px dashed rgba(255,255,255,0.12);
++    border-radius: 12px;
++    background: rgba(255,255,255,0.026);
++}
++
++.sbi-student-documents-empty.is-error {
++    border-color: rgba(255,74,74,0.32);
++    color: #ff9b9b;
++}
++
++@media (max-width: 760px) {
++    .sbi-student-documents__form,
++    .sbi-student-document-card {
++        grid-template-columns: 1fr;
++    }
++
++    .sbi-student-document-card__actions button,
++    #prof-student-document-upload-btn {
++        width: 100%;
++    }
++}
