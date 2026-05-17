@@ -114,7 +114,7 @@ export async function renderProfileShell({ db, uid, data, context, reloadProfile
   renderRoleBadge(data);
   await renderXp({ db, uid, data, context, reloadProfile });
   renderPromotionSidebarPanel({ db, uid, data, context, reloadProfile });
-  renderStudentFollowupPanel({ uid, data, context, reloadProfile });
+  renderStudentFollowupPanel({ db, uid, data, context, reloadProfile });
   renderPrivateData(data, context);
   await renderActivity({ db, uid, data, context, reloadProfile });
 }
@@ -976,7 +976,7 @@ function setStudentFollowupVisibility(visible) {
   });
 }
 
-function renderStudentFollowupPanel({ uid, data = {}, context, reloadProfile }) {
+function renderStudentFollowupPanel({ db, uid, data = {}, context, reloadProfile }) {
   const panel = document.getElementById('prof-student-followup-panel');
   const isVisible = Boolean(context?.isAdmin && isStudentRole(data));
   setStudentFollowupVisibility(isVisible);
@@ -994,7 +994,11 @@ function renderStudentFollowupPanel({ uid, data = {}, context, reloadProfile }) 
 
   const followup = getStudentFollowup(data);
   const promotionLabel = data.promotionName || 'Aucune promotion affectée';
-  const formationLabel = data.promotionFormationName || data.formationName || data.formation || 'Formation non renseignée';
+  const formationLabel = data.promotionFormationName
+    || data.promotionFormationId
+    || data.formationName
+    || data.formation
+    || (data.promotionId ? 'Chargement formation...' : 'Formation non renseignée');
   const lastUpdate = followup.updatedAt
     ? `${formatSbiDate(followup.updatedAt, 'date inconnue')}${followup.updatedByEmail ? ` · ${followup.updatedByEmail}` : ''}`
     : 'Aucune mise à jour enregistrée';
@@ -1018,7 +1022,7 @@ function renderStudentFollowupPanel({ uid, data = {}, context, reloadProfile }) 
         </div>
         <div>
           <span>Formation liée</span>
-          <strong>${escapeHTML(formationLabel)}</strong>
+          <strong id="prof-student-followup-formation-label" data-promotion-id="${escapeHTML(data.promotionId || '')}">${escapeHTML(formationLabel)}</strong>
         </div>
         <div>
           <span>Dernière activité</span>
@@ -1077,6 +1081,9 @@ function renderStudentFollowupPanel({ uid, data = {}, context, reloadProfile }) 
   const statusLine = panel.querySelector('#prof-student-followup-status-line');
   const saveButton = panel.querySelector('#prof-save-student-followup-btn');
 
+  hydrateStudentFollowupFormationSnapshot({ db, data, panel });
+
+
   saveButton?.addEventListener('click', async () => {
     const payload = {
       status: panel.querySelector('#prof-student-followup-status')?.value || 'not_started',
@@ -1112,6 +1119,31 @@ function renderStudentFollowupPanel({ uid, data = {}, context, reloadProfile }) 
       saveButton.style.opacity = '';
     }
   });
+}
+
+
+async function hydrateStudentFollowupFormationSnapshot({ db, data = {}, panel }) {
+  const label = panel?.querySelector?.('#prof-student-followup-formation-label');
+  const promotionId = String(data.promotionId || label?.dataset?.promotionId || '').trim();
+  if (!label || !db || !promotionId) return;
+
+  const alreadyKnown = data.promotionFormationName || data.promotionFormationId || data.formationName || data.formation;
+  if (alreadyKnown) return;
+
+  try {
+    const snap = await getDoc(doc(db, 'promotions', promotionId));
+    if (!snap.exists()) {
+      label.textContent = 'Promotion introuvable';
+      return;
+    }
+
+    const promotion = snap.data() || {};
+    const formationLabel = promotion.formationName || promotion.formationId || 'Formation non renseignée';
+    label.textContent = formationLabel;
+  } catch (error) {
+    console.warn('[SBI Profile] Formation liée non chargée depuis la promotion :', error);
+    label.textContent = 'Formation non disponible';
+  }
 }
 
 function renderAccountActionsPanel({ db, uid, data = {}, reloadProfile }) {

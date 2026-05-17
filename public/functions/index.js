@@ -2799,6 +2799,14 @@ exports.adminUpdateUserAccount = onCall({
             const promotionData = promotionDoc.data() || {};
             const promotionName = cleanString(promotionData.name || data.promotionName || "", 160);
             const promotionStatus = promotionData.status === "archived" ? "archived" : "active";
+            const promotionFormationId = cleanString(promotionData.formationId || "", 180);
+            const promotionFormationName = cleanString(promotionData.formationName || promotionData.formationTitle || "", 180);
+            const promotionStartDate = cleanString(promotionData.startDate || "", 20);
+            const promotionEndDate = cleanString(promotionData.endDate || "", 20);
+            const currentPromotionFormationId = cleanString(targetData.promotionFormationId || "", 180);
+            const currentPromotionFormationName = cleanString(targetData.promotionFormationName || "", 180);
+            const currentPromotionStartDate = cleanString(targetData.promotionStartDate || "", 20);
+            const currentPromotionEndDate = cleanString(targetData.promotionEndDate || "", 20);
 
             if (!promotionName) {
                 throw new HttpsError("failed-precondition", "Nom de promotion manquant.");
@@ -2810,22 +2818,32 @@ exports.adminUpdateUserAccount = onCall({
             if (
                 requestedPromotionId !== currentPromotionId ||
                 promotionName !== currentPromotionName ||
-                promotionStatus !== (targetData.promotionStatus || "")
+                promotionStatus !== (targetData.promotionStatus || "") ||
+                promotionFormationId !== currentPromotionFormationId ||
+                promotionFormationName !== currentPromotionFormationName ||
+                promotionStartDate !== currentPromotionStartDate ||
+                promotionEndDate !== currentPromotionEndDate
             ) {
                 updates.promotionId = requestedPromotionId;
                 updates.promotionName = promotionName;
                 updates.promotionStatus = promotionStatus;
+                updates.promotionFormationId = promotionFormationId;
+                updates.promotionFormationName = promotionFormationName;
+                updates.promotionStartDate = promotionStartDate;
+                updates.promotionEndDate = promotionEndDate;
                 updates.promotionAssignedAt = admin.firestore.FieldValue.serverTimestamp();
                 updates.promotionAssignedBy = caller.uid;
                 updates.promotionAssignedByEmail = caller.email;
                 auditChanges.promotion = {
                     before: currentPromotionId ? {
                         id: currentPromotionId,
-                        name: currentPromotionName || currentPromotionId
+                        name: currentPromotionName || currentPromotionId,
+                        formation: currentPromotionFormationName || currentPromotionFormationId || ""
                     } : null,
                     after: {
                         id: requestedPromotionId,
-                        name: promotionName
+                        name: promotionName,
+                        formation: promotionFormationName || promotionFormationId || ""
                     }
                 };
             }
@@ -2833,6 +2851,10 @@ exports.adminUpdateUserAccount = onCall({
             updates.promotionId = admin.firestore.FieldValue.delete();
             updates.promotionName = admin.firestore.FieldValue.delete();
             updates.promotionStatus = admin.firestore.FieldValue.delete();
+            updates.promotionFormationId = admin.firestore.FieldValue.delete();
+            updates.promotionFormationName = admin.firestore.FieldValue.delete();
+            updates.promotionStartDate = admin.firestore.FieldValue.delete();
+            updates.promotionEndDate = admin.firestore.FieldValue.delete();
             updates.promotionAssignedAt = admin.firestore.FieldValue.delete();
             updates.promotionAssignedBy = admin.firestore.FieldValue.delete();
             updates.promotionAssignedByEmail = admin.firestore.FieldValue.delete();
