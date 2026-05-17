@@ -351,7 +351,7 @@ async function mountAdminAuditLog({ url }) {
   window.__SBI_APP_SHELL_MOUNTING_AUDIT_LOG = true;
 
   try {
-    const module = await import('/admin/js/admin-global-audit-log.js?v=8.0P.167.41');
+    const module = await import('/admin/js/admin-global-audit-log.js?v=8.0P.167.42');
     const cleanupAuditLog = module.mountAdminGlobalAuditLog?.({ source: 'pjax-admin-audit-log' });
 
     if (typeof cleanupAuditLog === 'function') {

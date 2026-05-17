@@ -2090,6 +2090,92 @@ exports.trackAccountLogin = onCall({
 });
 
 
+exports.completeFirstLoginOnboarding = onCall({
+    region: "europe-west1",
+    timeoutSeconds: 20,
+    memory: "256MiB"
+}, async (request) => {
+    const uid = request.auth?.uid || "";
+    if (!uid) {
+        throw new HttpsError("unauthenticated", "Connexion requise.");
+    }
+
+    const data = request.data || {};
+    const checklistVersion = cleanString(data.checklistVersion, 80) || "2026-05-SBI-FIRST-LOGIN-V1";
+
+    const requiredFlags = [
+        "termsAccepted",
+        "rulesAccepted",
+        "importantInfoAccepted",
+        "emailConfirmed"
+    ];
+
+    const missingFlag = requiredFlags.find((key) => data[key] !== true);
+    if (missingFlag) {
+        throw new HttpsError("invalid-argument", "Toutes les validations sont obligatoires.");
+    }
+
+    const db = admin.firestore();
+    const userRef = db.collection("users").doc(uid);
+    const userDoc = await userRef.get();
+
+    if (!userDoc.exists) {
+        throw new HttpsError("not-found", "Compte utilisateur introuvable.");
+    }
+
+    const userData = userDoc.data() || {};
+    if (userData.statut === "suspendu") {
+        throw new HttpsError("permission-denied", "Compte suspendu.");
+    }
+
+    const role = normalizeAccountRole(userData.role || "student");
+    if (userData.isGod === true || role === "admin") {
+        return {
+            success: true,
+            skipped: true,
+            reason: "admin-account"
+        };
+    }
+
+    if (!["student", "teacher"].includes(role)) {
+        throw new HttpsError("permission-denied", "Rôle non éligible à cette validation.");
+    }
+
+    const now = admin.firestore.FieldValue.serverTimestamp();
+
+    await userRef.set({
+        "accountStatus.firstLoginCompleted": true,
+        "accountStatus.firstLoginCompletedAt": now,
+        "accountStatus.firstLoginChecklistVersion": checklistVersion,
+        "accountStatus.termsAccepted": true,
+        "accountStatus.termsAcceptedAt": now,
+        "accountStatus.rulesAccepted": true,
+        "accountStatus.rulesAcceptedAt": now,
+        "accountStatus.importantInfoAccepted": true,
+        "accountStatus.importantInfoAcceptedAt": now,
+        "accountStatus.emailConfirmed": true,
+        "accountStatus.emailConfirmedAt": now,
+        updatedAt: now
+    }, { merge: true });
+
+    await safeWriteAccountAuditLog(db, {
+        type: "account.first_login_onboarding_completed",
+        actorUid: uid,
+        actorEmail: request.auth.token?.email || userData.email || "",
+        targetUid: uid,
+        targetEmail: userData.email || request.auth.token?.email || "",
+        targetRole: role,
+        checklistVersion,
+        source: "first-login-gate"
+    });
+
+    return {
+        success: true,
+        completed: true
+    };
+});
+
+
 /* =======================================================================
  * SBI 8.0P.137 - SELF EMAIL CHANGE WORKFLOW
  * -----------------------------------------------------------------------

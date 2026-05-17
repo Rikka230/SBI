@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.41',
+  version: '8.0P.167.42',
   branch: 'main',
-  channel: 'ADMIN GLOBAL AUDIT LOG',
-  stage: 'DEDICATED AUDIT LOG PJAX ROUTE',
+  channel: 'FIRST LOGIN CHECKLIST',
+  stage: 'MANDATORY FIRST LOGIN VALIDATION',
   updatedAt: '2026-05-16',
-  label: 'SBI 8.0P.167.41 - DEDICATED AUDIT LOG PJAX ROUTE'
+  label: 'SBI 8.0P.167.42 - MANDATORY FIRST LOGIN VALIDATION'
 };
 
 export function getSbiVersionLabel() {

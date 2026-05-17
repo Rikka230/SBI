@@ -8,10 +8,13 @@
  * - hydrateNavProfile réessaie si le Web Component admin-right-panel n’est pas encore monté ;
  * - cache session pour afficher nom/avatar/rôle plus vite ;
  * - présence conservée, mais en arrière-plan.
+ * 8.0P.167.42 :
+ * - première connexion : import du gate de validation obligatoire.
  * =======================================================================
  */
 
 import '/js/auth.js';
+import '/js/first-login-gate.js?v=8.0P.167.42';
 
 import { db, auth } from '/js/firebase-init.js';
 import {

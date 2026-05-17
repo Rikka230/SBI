@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.167.41 / P2H.2-G.7
+ * SBI 8.0P.167.42 / P2H.2-H
  * Journal admin global.
  *
  * Principe important :
@@ -55,6 +55,7 @@ const TYPE_META = {
   'account.god_updated': { label: 'Droits suprêmes modifiés', color: '#ff4a4a', tone: 'red' },
   'account.deleted': { label: 'Compte supprimé', color: '#ff4a4a', tone: 'red' },
   'account.login_tracked': { label: 'Connexion détectée', color: '#2ed573', tone: 'green' },
+  'account.first_login_onboarding_completed': { label: 'Première connexion validée', color: '#2ed573', tone: 'green' },
   'account.formation_indexes_synced': { label: 'Accès formations synchronisés', color: '#2A57FF', tone: 'blue' }
 };
 
@@ -226,6 +227,7 @@ function getLogDetails(log = {}) {
   if (log.type === 'account.finalization_escalation_resolved') details.push(log.note ? `Note : ${log.note}` : 'Contact direct marqué traité.');
   if (log.type === 'account.email_bounced') details.push(getFriendlyBounceDetail(log.reason || log.message || ''));
   if (log.type === 'account.email_bounce_unmatched') details.push('Aucun compte trouvé pour cet email.');
+  if (log.type === 'account.first_login_onboarding_completed') details.push('Cases obligatoires validées.');
   if (log.event) details.push(`Événement : ${log.event}`);
   if (log.emailSent === true) details.push('Email envoyé.');
   if (log.emailSent === false) details.push('Email non envoyé.');
