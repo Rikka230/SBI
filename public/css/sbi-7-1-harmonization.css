@@ -661,3 +661,42 @@ body.sbi-profile-page.sbi-student-surface [class*="timeline"] small {
     color: #64748b !important;
 }
 
+
+/* ==========================================================================
+   SBI 8.0P.167.48 — Profil prof/élève : activité lisible sans sbi-profile-page
+   --------------------------------------------------------------------------
+   Depuis 8.0P.167.47, les profils prof/élève ne reçoivent plus
+   .sbi-profile-page. Les overrides de contraste doivent donc aussi cibler les
+   surfaces réelles sbi-teacher-surface / sbi-student-surface.
+   ========================================================================== */
+
+body.sbi-teacher-surface #prof-activity-list,
+body.sbi-student-surface #prof-activity-list {
+    color: var(--text-muted, #6b7280) !important;
+}
+
+body.sbi-teacher-surface #prof-activity-list li,
+body.sbi-student-surface #prof-activity-list li {
+    color: var(--text-muted, #6b7280) !important;
+}
+
+body.sbi-teacher-surface #prof-activity-list strong,
+body.sbi-student-surface #prof-activity-list strong {
+    color: var(--text-main, #111827) !important;
+}
+
+body.sbi-teacher-surface #prof-activity-list span,
+body.sbi-teacher-surface #prof-activity-list p,
+body.sbi-teacher-surface #prof-activity-list small,
+body.sbi-student-surface #prof-activity-list span,
+body.sbi-student-surface #prof-activity-list p,
+body.sbi-student-surface #prof-activity-list small {
+    color: var(--text-muted, #6b7280) !important;
+}
+
+body.sbi-teacher-surface,
+body.sbi-student-surface {
+    --sbi-profile-activity-border: rgba(15, 23, 42, 0.08);
+    --sbi-profile-activity-bg: rgba(255, 255, 255, 0.72);
+}
+

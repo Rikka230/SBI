@@ -190,9 +190,9 @@ async function renderActivity({ db, uid, data = {}, context, reloadProfile }) {
 
 function renderAccountLogsReadOnlyCreation(fallbackCreationDate) {
   return `
-    <li style="line-height:1.7;">
-      <strong style="color:#fff;">Création du compte</strong>
-      <span style="color:var(--text-muted);"> · ${escapeHTML(fallbackCreationDate)}</span>
+    <li class="sbi-profile-activity-entry" style="line-height:1.7;">
+      <strong style="color:var(--text-main, #111827);">Création du compte</strong>
+      <span style="color:var(--text-muted, #6b7280);"> · ${escapeHTML(fallbackCreationDate)}</span>
     </li>
   `;
 }
@@ -202,9 +202,9 @@ function renderAccountLogsLoading() {
     <li style="
       list-style:none;
       padding:0.95rem 1rem;
-      border:1px solid rgba(255,255,255,0.08);
+      border:1px solid var(--sbi-profile-activity-border, rgba(255,255,255,0.08));
       border-radius:12px;
-      background:rgba(255,255,255,0.035);
+      background:var(--sbi-profile-activity-bg, rgba(255,255,255,0.035));
       color:var(--text-muted);
     ">
       Chargement du journal compte...
@@ -217,9 +217,9 @@ function renderAccountLogsEmpty(fallbackCreationDate) {
     <li style="
       list-style:none;
       padding:1rem;
-      border:1px solid rgba(255,255,255,0.08);
+      border:1px solid var(--sbi-profile-activity-border, rgba(255,255,255,0.08));
       border-radius:12px;
-      background:rgba(255,255,255,0.035);
+      background:var(--sbi-profile-activity-bg, rgba(255,255,255,0.035));
     ">
       <div style="display:flex; justify-content:space-between; gap:0.85rem; flex-wrap:wrap;">
         <strong style="color:#fff;">Journal du compte</strong>
@@ -267,9 +267,9 @@ function renderAccountLogsPanel({ logs = [], compactCount = 0, rawCount = 0, fal
       padding:0;
     ">
       <div style="
-        border:1px solid rgba(255,255,255,0.08);
+        border:1px solid var(--sbi-profile-activity-border, rgba(255,255,255,0.08));
         border-radius:14px;
-        background:rgba(255,255,255,0.032);
+        background:var(--sbi-profile-activity-bg, rgba(255,255,255,0.032));
         overflow:hidden;
       ">
         <div style="
@@ -632,7 +632,7 @@ function renderAccountActionsPanel({ uid, data = {}, reloadProfile }) {
         padding:0.8rem 0.9rem;
         border:1px solid rgba(255,255,255,0.10);
         border-radius:10px;
-        background:rgba(255,255,255,0.035);
+        background:var(--sbi-profile-activity-bg, rgba(255,255,255,0.035));
       ">
         <div style="display:flex; justify-content:space-between; gap:0.75rem; flex-wrap:wrap; align-items:center;">
           <strong style="color:${finalizationInfo.tone}; font-size:0.88rem;">${escapeHTML(finalizationInfo.label)}</strong>
@@ -795,7 +795,7 @@ function renderAccountActionsPanel({ uid, data = {}, reloadProfile }) {
         padding:0.85rem;
         border:1px solid rgba(255,255,255,0.10);
         border-radius:10px;
-        background:rgba(255,255,255,0.035);
+        background:var(--sbi-profile-activity-bg, rgba(255,255,255,0.035));
       ">
         <div style="display:flex; justify-content:space-between; gap:0.75rem; flex-wrap:wrap; margin-bottom:0.35rem;">
           <strong style="color:#fff; font-size:0.86rem;">Note enregistrée</strong>
@@ -1062,10 +1062,10 @@ function renderAccountLogItem(log = {}) {
       list-style:none;
       margin:0 0 0.75rem 0;
       padding:0.85rem 0.95rem;
-      border:1px solid rgba(255,255,255,0.08);
+      border:1px solid var(--sbi-profile-activity-border, rgba(255,255,255,0.08));
       border-left:3px solid ${meta.color};
       border-radius:10px;
-      background:rgba(255,255,255,0.035);
+      background:var(--sbi-profile-activity-bg, rgba(255,255,255,0.035));
     ">
       <div style="display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap; align-items:flex-start;">
         <strong style="color:#fff; font-size:0.92rem;">${escapeHTML(meta.label)}</strong>

@@ -320,7 +320,7 @@ async function mountAdminProfile({ url }) {
   window.__SBI_APP_SHELL_MOUNTING_PROFILE = true;
 
   try {
-    const module = await import('/js/profile-core.js?v=8.0P.167.47');
+    const module = await import('/js/profile-core.js?v=8.0P.167.48');
     const cleanupProfile = module.mountProfileCore?.({ source: 'pjax-admin-profile' });
 
     if (typeof cleanupProfile === 'function') {
@@ -421,7 +421,7 @@ async function mountStudentProfile({ url }) {
   window.__SBI_APP_SHELL_MOUNTING_PROFILE = true;
 
   try {
-    const module = await import('/js/profile-core.js?v=8.0P.167.47');
+    const module = await import('/js/profile-core.js?v=8.0P.167.48');
     const cleanupProfile = module.mountProfileCore?.({ source: 'pjax-student-profile' });
 
     if (typeof cleanupProfile === 'function') registerCleanup(cleanupProfile, 'student-profile-core');
@@ -518,7 +518,7 @@ async function mountTeacherProfile({ url }) {
   window.__SBI_APP_SHELL_MOUNTING_PROFILE = true;
 
   try {
-    const module = await import('/js/profile-core.js?v=8.0P.167.47');
+    const module = await import('/js/profile-core.js?v=8.0P.167.48');
     const cleanupProfile = module.mountProfileCore?.({ source: 'pjax-teacher-profile' });
 
     if (typeof cleanupProfile === 'function') registerCleanup(cleanupProfile, 'teacher-profile-core');
