@@ -139,6 +139,7 @@ function getAdminExternalMatchId(pathname = getEffectiveUrl().pathname) {
   const path = normalizePath(pathname).toLowerCase();
 
   if (path.endsWith('/admin/admin-profile.html')) return 'nav-users';
+  if (path.endsWith('/admin/admin-accounts.html')) return 'nav-users';
   if (path.endsWith('/admin/formations-cours.html')) return 'nav-formations';
   if (path.endsWith('/admin/formations-live.html')) return 'nav-formations';
   if (path.endsWith('/admin/site-index-settings.html')) return 'nav-site-index';

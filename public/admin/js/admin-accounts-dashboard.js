@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.167.56 / P2H.2-I.12 UX
+ * SBI 8.0P.167.57 / P2H.2-I.13 UX
  * Structure lecture seule "Comptes & accès".
  *
  * Objectif :
@@ -32,7 +32,7 @@ function injectStyle() {
   const link = document.createElement('link');
   link.id = 'sbi-admin-accounts-css';
   link.rel = 'stylesheet';
-  link.href = '/admin/css/admin-accounts.css?v=8.0P.167.56';
+  link.href = '/admin/css/admin-accounts.css?v=8.0P.167.57';
   document.head.append(link);
 }
 
@@ -558,7 +558,7 @@ function setAccountsFromUsers(users = [], reason = 'core-cache') {
   renderCounters(safeUsers);
 
   window.SBI_ACCOUNTS_DASHBOARD_STATE = {
-    version: '8.0P.167.56',
+    version: '8.0P.167.57',
     users: safeUsers.length,
     reason,
     updatedAt: new Date().toISOString()
@@ -584,7 +584,7 @@ function scheduleEnhanceRenderedAccountRows() {
   if (enhanceFrame) window.cancelAnimationFrame(enhanceFrame);
   enhanceFrame = window.requestAnimationFrame(() => {
     enhanceFrame = 0;
-    scheduleEnhanceRenderedAccountRows();
+    enhanceRenderedAccountRows();
   });
 }
 
@@ -776,6 +776,12 @@ function startAccountsSnapshot() {
 function navigateToProfile(uid) {
   if (!uid) return;
 
+  try {
+    sessionStorage.setItem('activeAdminTab', 'view-users');
+    sessionStorage.setItem('sbiAdminReturnTarget', 'view-users');
+    sessionStorage.setItem('sbiAdminReturnFromProfile', String(Date.now()));
+  } catch {}
+
   const href = `/admin/admin-profile.html?id=${encodeURIComponent(uid)}`;
   const url = new URL(href, window.location.origin);
 
@@ -850,6 +856,20 @@ function mount() {
   startAccountsSnapshot();
   scheduleEnhanceRenderedAccountRows();
 }
+
+function unmountAdminAccountsDashboard() {
+  if (enhanceFrame) window.cancelAnimationFrame(enhanceFrame);
+  enhanceFrame = 0;
+
+  listObserver?.disconnect?.();
+  listObserver = null;
+  unsubscribeAccounts?.();
+  unsubscribeAccounts = null;
+  fallbackAccountsSnapshotStarted = false;
+  mounted = false;
+}
+
+window.SBI_ADMIN_ACCOUNTS_DASHBOARD_UNMOUNT = unmountAdminAccountsDashboard;
 
 export function mountAdminAccountsDashboard() {
   const tryMount = () => {

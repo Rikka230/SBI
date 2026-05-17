@@ -34,6 +34,11 @@ let usersCacheHydrated = false;
 let usersSnapshotInitialized = false;
 let usersListDelegationBound = false;
 
+const boundSearchInputs = new WeakSet();
+const boundRoleFilters = new WeakSet();
+const boundCreateForms = new WeakSet();
+const boundModals = new WeakSet();
+
 const escapeHtml = (value) => String(value ?? '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -66,7 +71,7 @@ const readUsersCache = () => {
 const writeUsersCache = () => {
     try {
         window.localStorage?.setItem(USERS_CACHE_KEY, JSON.stringify({
-            version: '8.0P.167.56',
+            version: '8.0P.167.57',
             updatedAt: Date.now(),
             users: normalizeUsersArray(allUsersData)
         }));
@@ -85,7 +90,7 @@ const publishUsersState = (reason = 'sync') => {
     const users = normalizeUsersArray(allUsersData);
 
     window.SBI_ADMIN_USERS_CACHE = {
-        version: '8.0P.167.56',
+        version: '8.0P.167.57',
         users,
         updatedAt: Date.now(),
         reason
@@ -95,7 +100,7 @@ const publishUsersState = (reason = 'sync') => {
 
     window.dispatchEvent(new CustomEvent('sbi:accounts-data-updated', {
         detail: {
-            version: '8.0P.167.56',
+            version: '8.0P.167.57',
             reason,
             users,
             updatedAt: Date.now()
@@ -559,6 +564,17 @@ const disconnectUsersRealtime = () => {
     }
 
     unsubscribeUsersRealtime = null;
+    usersSnapshotInitialized = false;
+
+    if (presenceRefreshIntervalId) {
+        window.clearInterval(presenceRefreshIntervalId);
+        presenceRefreshIntervalId = null;
+    }
+
+    if (usersRenderTimer) {
+        window.clearTimeout(usersRenderTimer);
+        usersRenderTimer = null;
+    }
 };
 
 const consumeProfileReturnRehydrateFlag = () => {
@@ -638,7 +654,7 @@ const renderUsersList = (usersToRender, reason = 'manual') => {
         container.innerHTML = '<div class="empty-state">Aucun compte trouvé.</div>';
         publishUsersState(`render:${reason}`);
         window.dispatchEvent(new CustomEvent('sbi:accounts-rendered', {
-            detail: { version: '8.0P.167.56', reason, count: 0 }
+            detail: { version: '8.0P.167.57', reason, count: 0 }
         }));
         return;
     }
@@ -714,7 +730,7 @@ const renderUsersList = (usersToRender, reason = 'manual') => {
     publishUsersState(`render:${reason}`);
     window.dispatchEvent(new CustomEvent('sbi:accounts-rendered', {
         detail: {
-            version: '8.0P.167.56',
+            version: '8.0P.167.57',
             reason,
             count: usersToRender.length
         }
@@ -726,8 +742,15 @@ const initFilters = () => {
     const roleFilter = document.getElementById('filter-role');
     if (!searchInput || !roleFilter) return;
 
-    searchInput.addEventListener('input', () => scheduleUsersRender('filter', 120));
-    roleFilter.addEventListener('change', () => scheduleUsersRender('filter', 0));
+    if (!boundSearchInputs.has(searchInput)) {
+        boundSearchInputs.add(searchInput);
+        searchInput.addEventListener('input', () => scheduleUsersRender('filter', 120));
+    }
+
+    if (!boundRoleFilters.has(roleFilter)) {
+        boundRoleFilters.add(roleFilter);
+        roleFilter.addEventListener('change', () => scheduleUsersRender('filter', 0));
+    }
 };
 
 const formatNom = (str) => str.toUpperCase();
@@ -735,7 +758,8 @@ const formatPrenom = (str) => str.toLowerCase().replace(/(^|\s|-)\S/g, l => l.to
 
 const initUserCreation = () => {
     const form = document.getElementById('create-user-form');
-    if (!form) return;
+    if (!form || boundCreateForms.has(form)) return;
+    boundCreateForms.add(form);
 
     const submitBtn = form.querySelector('button[type="submit"]');
     const adminCreateUserAccount = httpsCallable(functionsInstance, 'adminCreateUserAccount');
@@ -891,11 +915,12 @@ const openEditModal = (userId) => {
 
 const initModalLogic = () => {
     const modal = document.getElementById('edit-user-modal');
-    if (!modal) return;
+    if (!modal || boundModals.has(modal)) return;
+    boundModals.add(modal);
 
-    document.getElementById('close-modal-btn').addEventListener('click', () => modal.style.display = 'none');
+    document.getElementById('close-modal-btn')?.addEventListener('click', () => modal.style.display = 'none');
 
-    document.getElementById('edit-user-form').addEventListener('submit', async (e) => {
+    document.getElementById('edit-user-form')?.addEventListener('submit', async (e) => {
         e.preventDefault();
 
         const submitBtn = e.currentTarget.querySelector('button[type="submit"]');
@@ -1062,8 +1087,18 @@ const initModalLogic = () => {
     });
 };
 
+function bindAdminAccountsDom() {
+    if (typeof initFilters === "function") initFilters();
+    if (typeof initUserCreation === "function") initUserCreation();
+    if (typeof initModalLogic === "function") initModalLogic();
+
+    const container = document.getElementById('users-list-container');
+    if (container) bindUsersListDelegation(container);
+}
+
 function initAdminCore() {
     if (window.__SBI_ADMIN_CORE_READY === true) {
+        bindAdminAccountsDom();
         if (auth.currentUser) {
             currentUid = auth.currentUser.uid;
             fetchUsers();
@@ -1100,9 +1135,7 @@ function initAdminCore() {
         });
     }
 
-    if (typeof initFilters === "function") initFilters();
-    if (typeof initUserCreation === "function") initUserCreation();
-    if (typeof initModalLogic === "function") initModalLogic();
+    bindAdminAccountsDom();
 
     window.addEventListener('sbi:admin-tab-changed', (event) => {
         if (event?.detail?.tab === 'view-users' && consumeProfileReturnRehydrateFlag()) {
@@ -1125,10 +1158,16 @@ function initAdminCore() {
 }
 
 window.SBI_ADMIN_CORE_REINIT = () => {
+    bindAdminAccountsDom();
+
     if (auth.currentUser) {
         currentUid = auth.currentUser.uid;
         fetchUsers();
     }
+};
+
+window.SBI_ADMIN_CORE_DISCONNECT_USERS = () => {
+    disconnectUsersRealtime();
 };
 
 if (document.readyState === 'loading') {

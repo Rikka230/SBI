@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comptes & accès - SBI Console</title>
+    <link rel="stylesheet" href="css/admin-layout.css">
+    <link rel="stylesheet" href="css/admin.css?v=8.0P.167.51">
+    <link rel="stylesheet" href="css/admin-notifications.css">
+    <link rel="stylesheet" href="css/admin-accounts.css?v=8.0P.167.57">
+    <script src="js/components.js?v=8.0P.167.57"></script>
+    <link rel="stylesheet" href="css/admin-surface-unified.css?v=8.0P.167.52">
+</head>
+<body class="preload sbi-admin-surface">
+
+<div class="app-container" id="app-container">
+
+    <script>
+        sessionStorage.setItem('activeAdminTab', 'view-users');
+        if (window.innerWidth > 1024) {
+            const app = document.getElementById('app-container');
+            if (localStorage.getItem('leftPanelCollapsed') === 'true') app.classList.add('left-collapsed');
+            if (localStorage.getItem('rightPanelCollapsed') === 'true') app.classList.add('right-collapsed');
+        }
+    </script>
+
+    <admin-left-panel></admin-left-panel>
+
+    <header class="top-bar">
+        <button class="mobile-toggle left-toggle" id="btn-toggle-mobile"><svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg></button>
+        <span class="page-title" style="font-weight: 600;">Comptes & accès</span>
+        <button class="mobile-toggle right-toggle" id="btn-toggle-right" style="position: relative;">
+            <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+            <span class="notif-badge" id="avatar-badge" style="display:none; top: 0; right: 0;">0</span>
+        </button>
+    </header>
+
+    <main id="main-content">
+        <div class="content-wrapper">
+
+            <section id="view-users" class="admin-view active">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                    <h2>Gestion des Utilisateurs</h2>
+                    <div style="display: flex; gap: 1rem;">
+                        <input type="text" id="search-user" placeholder="🔍 Rechercher..." style="padding: 0.5rem; background: var(--bg-card); color: white; border: 1px solid var(--border-color); border-radius: 4px;">
+                        <select id="filter-role" style="padding: 0.5rem; background: var(--bg-card); color: white; border: 1px solid var(--border-color); border-radius: 4px;">
+                            <option value="all">Tous les rôles</option>
+                            <option value="admin">Administrateurs</option>
+                            <option value="teacher">Enseignants</option>
+                            <option value="student">Étudiants</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem;">
+                    <div style="background: var(--bg-card); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); height: fit-content;">
+                        <h3 style="margin-top: 0;">Créer un compte</h3>
+                        <form id="create-user-form" style="display: flex; flex-direction: column; gap: 1rem;">
+                            <input type="text" id="new-user-prenom" placeholder="Prénom" required style="padding: 0.8rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px;">
+                            <input type="text" id="new-user-nom" placeholder="Nom" required style="padding: 0.8rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px;">
+                            <input type="email" id="new-user-email" placeholder="Email" required style="padding: 0.8rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px;">
+                            <div style="padding: 0.85rem; background: rgba(42,87,255,0.08); color: #aeb8d4; border: 1px solid rgba(42,87,255,0.28); border-radius: 4px; font-size: 0.9rem; line-height: 1.5;">
+                                Un email d’invitation sera envoyé automatiquement. L’utilisateur définira lui-même son mot de passe via un lien sécurisé.
+                            </div>
+                            <select id="new-user-role" style="padding: 0.8rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px;">
+                                <option value="student">Étudiant</option>
+                                <option value="teacher">Enseignant</option>
+                                <option value="admin">Administrateur</option>
+                            </select>
+                            <button type="submit" style="padding: 1rem; background: var(--accent-blue); color: #000; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">Créer le compte</button>
+                        </form>
+                        <div id="user-creation-msg" style="display: none; margin-top: 1rem; padding: 1rem; border-radius: 4px;"></div>
+                    </div>
+                    <div style="background: var(--bg-card); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color);">
+                        <h3 style="margin-top: 0;">Comptes existants</h3>
+                        <div id="users-list-container" style="display: flex; flex-direction: column; gap: 0.5rem;"></div>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <admin-right-panel></admin-right-panel>
+
+</div>
+
+<div id="edit-user-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center;">
+    <div style="background: var(--bg-card); padding: 2rem; border-radius: 8px; border: 1px solid var(--border-color); width: 100%; max-width: 500px;">
+        <h3 style="margin-top: 0;">Gestion Rapide</h3>
+        <form id="edit-user-form" style="display: flex; flex-direction: column; gap: 1rem;">
+            <input type="hidden" id="edit-user-id">
+            <input type="text" id="edit-user-prenom" placeholder="Prénom" style="padding: 0.8rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px;">
+            <input type="text" id="edit-user-nom" placeholder="Nom" style="padding: 0.8rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px;">
+            <input type="email" id="edit-user-email" placeholder="Email de connexion" style="padding: 0.8rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px;">
+            <div style="padding: 0.75rem; background: rgba(42,87,255,0.08); color: #aeb8d4; border: 1px solid rgba(42,87,255,0.22); border-radius: 4px; font-size: 0.84rem; line-height: 1.45;">
+                Changement sensible : l’ancienne et la nouvelle adresse recevront une notification. Le mot de passe reste inchangé.
+            </div>
+            
+            <select id="edit-user-role" style="padding: 0.8rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px;">
+                <option value="student">Étudiant</option>
+                <option value="teacher">Enseignant</option>
+                <option value="admin">Administrateur</option>
+            </select>
+            
+            <select id="edit-user-statut" style="padding: 0.8rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px;">
+                <option value="actif">Actif</option>
+                <option value="suspendu">Suspendu</option>
+            </select>
+
+            <div id="god-mode-container" style="background: rgba(255, 215, 0, 0.1); padding: 1rem; border: 1px solid rgba(255, 215, 0, 0.3); border-radius: 4px; display: none;">
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: #ffd700; font-weight: bold;">
+                    <input type="checkbox" id="edit-user-isgod"> Rôle Suprême (God Mode)
+                </label>
+                <p id="god-mode-desc" style="margin: 0.5rem 0 0 0; font-size: 0.85rem; color: #aaa;"></p>
+            </div>
+
+            <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                <button type="submit" style="flex: 1; padding: 1rem; background: var(--accent-green); color: #000; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">Enregistrer</button>
+                <button type="button" id="reset-pwd-btn" style="flex: 1; padding: 1rem; background: #444; color: white; border: none; border-radius: 4px; cursor: pointer;">Reset Mdp</button>
+                <button type="button" id="close-modal-btn" style="flex: 1; padding: 1rem; background: transparent; color: white; border: 1px solid #555; border-radius: 4px; cursor: pointer;">Annuler</button>
+            </div>
+        </form>
+        
+        <div id="delete-zone" style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #444;">
+            <button id="delete-user-btn" style="width: 100%; padding: 1rem; background: rgba(255, 74, 74, 0.1); color: var(--accent-red); border: 1px solid var(--accent-red); border-radius: 4px; font-weight: bold; cursor: pointer;">Supprimer définitivement</button>
+        </div>
+    </div>
+</div>
+
+<script type="module" src="js/admin-ui.js?v=8.0P.167.53"></script>
+<script type="module" src="js/sbi-admin-inp-fix.js?v=8.0P.127"></script>
+<script type="module" src="js/admin-core.js?v=8.0P.167.57"></script>
+<script type="module" src="js/tracker.js?v=8.0P.167.44"></script>
+<script type="module" src="js/admin-notifications.js"></script>
+<script type="module" src="js/admin-accounts-dashboard.js?v=8.0P.167.57"></script>
+
+</body>
+</html>

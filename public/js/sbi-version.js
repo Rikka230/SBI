@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.56',
+  version: '8.0P.167.57',
   branch: 'main',
-  channel: 'ADMIN ACCOUNT EMAIL ISSUE PRIORITY FIX',
-  stage: 'EMAIL REJECTED INVALID PRIORITY BEFORE PASSWORD WAITING',
+  channel: 'ADMIN ACCOUNTS DEDICATED PAGE PERF FIX',
+  stage: 'ACCOUNTS PJAX SPLIT RAF LOOP FIX',
   updatedAt: '2026-05-17',
-  label: 'SBI 8.0P.167.56 - EMAIL REJECTED INVALID PRIORITY BEFORE PASSWORD WAITING'
+  label: 'SBI 8.0P.167.57 - ACCOUNTS PJAX SPLIT RAF LOOP FIX'
 };
 
 export function getSbiVersionLabel() {

@@ -3,6 +3,7 @@
  *
  * Admin shell :
  * - admin index tabs
+ * - Comptes & accès dédié
  * - Gestion Accueil
  * - Formations & Cours
  * - Mon Profil
@@ -73,6 +74,10 @@ function isAdminProfile(url) {
   return normalizePath(url.pathname).toLowerCase() === '/admin/admin-profile.html';
 }
 
+function isAdminAccounts(url) {
+  return normalizePath(url.pathname).toLowerCase() === '/admin/admin-accounts.html';
+}
+
 function isAdminAuditLog(url) {
   return normalizePath(url.pathname).toLowerCase() === '/admin/admin-audit-log.html';
 }
@@ -115,6 +120,7 @@ function isAdminShellContext() {
     || path === '/admin/site-index-settings.html'
     || path === '/admin/formations-cours.html'
     || path === '/admin/admin-profile.html'
+    || path === '/admin/admin-accounts.html'
     || path === '/admin/admin-audit-log.html';
 }
 
@@ -334,6 +340,38 @@ async function mountAdminProfile({ url }) {
   if (typeof cleanupTabs === 'function') registerCleanup(cleanupTabs, 'admin-profile-tabs');
 
   return { viewKey: 'admin:profile' };
+}
+
+async function mountAdminAccounts({ url }) {
+  maybeCacheAdminIndexMain('leave-for-admin-accounts');
+
+  const doc = await fetchAdminDocument(url);
+
+  await ensureDocumentStyles(doc, url.href);
+  applyBodyRouteClassesFromDocument(doc, ['sbi-admin-surface']);
+  replaceMainFromDocument(doc);
+  const cleanupEditModal = replaceRouteNodeFromDocument(doc, '#edit-user-modal');
+  updateAdminChromeFromDocument(doc, 'Comptes & accès - SBI Console');
+  setLeftNavActive('nav-users');
+  updateUrlContext(url);
+  sessionStorage.setItem('activeAdminTab', 'view-users');
+
+  window.__SBI_APP_SHELL_MOUNTING_ACCOUNTS = true;
+
+  try {
+    await import('/admin/js/admin-core.js?v=8.0P.167.57');
+    window.SBI_ADMIN_CORE_REINIT?.();
+    const module = await import('/admin/js/admin-accounts-dashboard.js?v=8.0P.167.57');
+    module.mountAdminAccountsDashboard?.();
+  } finally {
+    window.__SBI_APP_SHELL_MOUNTING_ACCOUNTS = false;
+  }
+
+  registerCleanup(() => window.SBI_ADMIN_CORE_DISCONNECT_USERS?.(), 'admin-accounts-users-listener');
+  registerCleanup(() => window.SBI_ADMIN_ACCOUNTS_DASHBOARD_UNMOUNT?.(), 'admin-accounts-dashboard');
+  if (typeof cleanupEditModal === 'function') registerCleanup(cleanupEditModal, 'admin-accounts-edit-modal');
+
+  return { viewKey: 'admin:accounts' };
 }
 
 async function mountAdminAuditLog({ url }) {
@@ -597,6 +635,14 @@ export function createRouteRegistry() {
       return isAdminProfile(url) && isAdminShellContext();
     },
     mount: mountAdminProfile
+  });
+
+  routes.push({
+    id: 'admin-accounts',
+    canHandle(url) {
+      return isAdminAccounts(url) && isAdminShellContext();
+    },
+    mount: mountAdminAccounts
   });
 
   routes.push({

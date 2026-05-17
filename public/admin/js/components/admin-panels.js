@@ -30,7 +30,10 @@ export class AdminLeftPanel extends HTMLElement {
         </div>
         <ul class="nav-menu">
           ${adminNavItem({ id:'nav-dashboard', target:'view-dashboard', label:'Tableau de Bord', icon:ICONS.dashboard })}
-          ${adminNavItem({ id:'nav-users', target:'view-users', label:'Comptes', icon:ICONS.users })}
+          <li class="nav-item" id="nav-users" data-href="/admin/admin-accounts.html" data-sbi-href="/admin/admin-accounts.html" role="link" tabindex="0">
+            ${ICONS.users}
+            <span class="nav-text">Comptes</span>
+          </li>
           <li class="nav-item" id="nav-audit-log" data-href="/admin/admin-audit-log.html" data-sbi-href="/admin/admin-audit-log.html" role="link" tabindex="0">
             ${ICONS.bell}
             <span class="nav-text">Journal admin</span>
@@ -45,7 +48,7 @@ export class AdminLeftPanel extends HTMLElement {
     const urlParams = new URLSearchParams(window.location.search);
     const tab = urlParams.get('tab') || sessionStorage.getItem('activeAdminTab') || 'view-dashboard';
 
-    if (path.includes('admin-profile.html')) {
+    if (path.includes('admin-profile.html') || path.includes('admin-accounts.html')) {
       this.querySelector('#nav-users')?.classList.add('active');
     } else if (path.includes('admin-audit-log.html')) {
       this.querySelector('#nav-audit-log')?.classList.add('active');

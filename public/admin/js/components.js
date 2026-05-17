@@ -112,22 +112,24 @@
       }
     });
 
-  const shouldMountAccountsModule = () => Boolean(document.getElementById('view-users'))
-    || window.location.pathname.endsWith('/admin/')
-    || window.location.pathname.endsWith('/admin/index.html');
+  const isAccountsPagePath = () => window.location.pathname.endsWith('/admin/admin-accounts.html');
+  const hasAccountsDom = () => Boolean(document.getElementById('view-users'));
+  const hasDashboardDom = () => Boolean(document.getElementById('view-dashboard'));
+
+  const shouldMountAccountsModule = () => hasAccountsDom() || isAccountsPagePath();
 
   const shouldBootAdminIndexModules = () => Boolean(document.getElementById('main-content'))
-    && Boolean(document.getElementById('view-dashboard') || document.getElementById('view-users'))
+    && Boolean(hasDashboardDom() || hasAccountsDom())
     && !window.location.pathname.includes('admin-profile.html');
 
   const bootAdminIndexModules = () => {
     if (!shouldBootAdminIndexModules()) return Promise.resolve(false);
 
     if (!adminIndexModulesPromise) {
-      adminIndexModulesPromise = Promise.allSettled([
-        import('/admin/js/admin-core.js?v=8.0P.167.28'),
-        import('/admin/js/admin-dashboard.js?v=8.0P.167.0')
-      ]).then((results) => {
+      const imports = [import('/admin/js/admin-core.js?v=8.0P.167.57')];
+      if (hasDashboardDom()) imports.push(import('/admin/js/admin-dashboard.js?v=8.0P.167.0'));
+
+      adminIndexModulesPromise = Promise.allSettled(imports).then((results) => {
         const failed = results.filter((result) => result.status === 'rejected');
 
         if (failed.length) {
@@ -137,7 +139,7 @@
         }
 
         window.SBI_ADMIN_CORE_REINIT?.();
-        window.SBI_ADMIN_DASHBOARD_REINIT?.();
+        if (hasDashboardDom()) window.SBI_ADMIN_DASHBOARD_REINIT?.();
         window.dispatchEvent(new CustomEvent('sbi:admin-index-modules-booted'));
         return true;
       });
@@ -147,7 +149,7 @@
   };
 
   const loadAccountEscalationsModule = () => {
-    if (!shouldBootAdminIndexModules()) return Promise.resolve(false);
+    if (!shouldMountAccountsModule()) return Promise.resolve(false);
 
     if (!accountEscalationsModulePromise) {
       accountEscalationsModulePromise = import('/admin/js/admin-account-escalations-lite.js?v=8.0P.167.25')
@@ -170,7 +172,7 @@
     loadAccountEscalationsModule();
 
     if (!accountsModulePromise) {
-      accountsModulePromise = import('/admin/js/admin-accounts-dashboard.js?v=8.0P.167.56')
+      accountsModulePromise = import('/admin/js/admin-accounts-dashboard.js?v=8.0P.167.57')
         .catch((error) => {
           accountsModulePromise = null;
           console.warn('[SBI Accounts] Module comptes non chargé :', error);
@@ -196,18 +198,11 @@
     if (accountsWatchStarted) return;
     accountsWatchStarted = true;
 
-    const observer = new MutationObserver(() => {
-      if (document.getElementById('view-users')) scheduleAccountsMount();
-    });
-
-    observer.observe(document.documentElement, { childList: true, subtree: true });
-
     window.addEventListener('popstate', scheduleAccountsMount);
     window.addEventListener('pageshow', scheduleAccountsMount);
     window.addEventListener('focus', scheduleAccountsMount);
     window.addEventListener('sbi:components-ready', scheduleAccountsMount);
     window.addEventListener('sbi:app-shell-rendered', scheduleAccountsMount);
-    window.addEventListener('sbi:accounts-rendered', scheduleAccountsMount);
     window.addEventListener('sbi:admin-index-dom-present', scheduleAccountsMount);
     window.addEventListener('sbi:admin-tab-changed', scheduleAccountsMount);
   };
