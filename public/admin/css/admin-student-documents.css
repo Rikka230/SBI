@@ -1,4 +1,4 @@
-/* --- SBI 8.0P.167.69 — Coffre documents élève admin-only --- */
+/* --- SBI 8.0P.167.70 — Coffre documents élève admin-only --- */
 .sbi-student-documents {
     display: flex;
     flex-direction: column;
@@ -258,7 +258,7 @@
     }
 }
 
-/* --- SBI 8.0P.167.69 — Accordéons Suivi pédagogique --- */
+/* --- SBI 8.0P.167.70 — Accordéons Suivi pédagogique --- */
 .sbi-profile-accordion {
     padding: 0;
     overflow: hidden;
@@ -348,4 +348,30 @@
     .sbi-profile-accordion-body {
         padding: 1rem;
     }
+}
+
+/* --- SBI 8.0P.167.70 — Actions documents : téléchargement, suppression, compression image --- */
+.sbi-student-documents__file small {
+    display: block;
+    margin-top: 0.42rem;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    line-height: 1.4;
+}
+
+.sbi-student-document-card em.is-compressed {
+    background: rgba(46,213,115,0.12);
+    color: #9ff3bd;
+}
+
+.sbi-student-document-card__actions button[data-doc-download] {
+    border-color: rgba(46,213,115,0.42);
+    background: rgba(46,213,115,0.10);
+    color: #9ff3bd;
+}
+
+.sbi-student-document-card__actions button[data-doc-delete] {
+    border-color: rgba(255,74,74,0.44);
+    background: rgba(255,74,74,0.10);
+    color: #ffb4b4;
 }

@@ -1,6 +1,7 @@
 import {
   addDoc,
   collection,
+  deleteDoc,
   doc,
   getDocs,
   query,
@@ -9,6 +10,7 @@ import {
   where
 } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
 import {
+  deleteObject,
   getDownloadURL,
   ref,
   uploadBytes
@@ -26,6 +28,8 @@ const DOCUMENT_CATEGORIES = {
 };
 
 const MAX_STUDENT_DOCUMENT_SIZE = 40 * 1024 * 1024;
+const MAX_IMAGE_DIMENSION = 1800;
+const IMAGE_COMPRESSION_QUALITY = 0.84;
 
 const ALLOWED_STUDENT_DOCUMENT_TYPES = new Set([
   'application/pdf',
@@ -45,6 +49,18 @@ function normalizeText(value = '', max = 180) {
   return String(value || '').replace(/\s+/g, ' ').trim().slice(0, max);
 }
 
+function slugSegment(value = 'document', max = 90) {
+  const clean = String(value || 'document')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, max);
+  return clean || 'document';
+}
+
 function sanitizeFileName(value = 'document') {
   const clean = String(value || 'document')
     .normalize('NFD')
@@ -52,7 +68,7 @@ function sanitizeFileName(value = 'document') {
     .replace(/[^a-zA-Z0-9._-]+/g, '-')
     .replace(/-+/g, '-')
     .replace(/^-+|-+$/g, '')
-    .slice(0, 120);
+    .slice(0, 160);
   return clean || 'document';
 }
 
@@ -92,10 +108,154 @@ function formatDate(value, fallback = 'Date inconnue') {
   }
 }
 
+function getTodayStamp() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function getStudentFileSegment(data = {}, uid = '') {
+  const lastFirst = normalizeText(`${data.nom || ''} ${data.prenom || ''}`, 140);
+  if (lastFirst) return slugSegment(lastFirst, 80);
+
+  const firstLast = normalizeText(`${data.firstName || ''} ${data.lastName || ''}`, 140);
+  if (firstLast) return slugSegment(firstLast, 80);
+
+  const displayName = normalizeText(data.displayName || data.name || data.fullName || '', 140);
+  if (displayName) return slugSegment(displayName, 80);
+
+  const emailLocal = String(data.email || '').split('@')[0] || '';
+  if (emailLocal) return slugSegment(emailLocal, 80);
+
+  return slugSegment(uid || 'eleve', 80);
+}
+
+function getExtensionFromFile(file) {
+  const nameExt = String(file?.name || '').split('.').pop()?.toLowerCase() || '';
+  const byType = {
+    'image/jpeg': 'jpg',
+    'image/png': 'png',
+    'image/webp': 'webp',
+    'image/gif': 'gif',
+    'application/pdf': 'pdf',
+    'application/msword': 'doc',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+    'text/plain': 'txt'
+  }[file?.type || ''];
+
+  return byType || nameExt || 'file';
+}
+
+function buildStudentDocumentFileName({ title, studentData, uid, file }) {
+  const titlePart = slugSegment(title || file?.name || 'document', 80);
+  const studentPart = getStudentFileSegment(studentData, uid);
+  const datePart = getTodayStamp();
+  const extension = getExtensionFromFile(file).replace(/[^a-z0-9]/g, '') || 'file';
+  return sanitizeFileName(`${titlePart}__${studentPart}__${datePart}.${extension}`);
+}
+
 function isAllowedFile(file) {
   if (!file) return false;
   if (file.type && file.type.startsWith('image/')) return true;
   return ALLOWED_STUDENT_DOCUMENT_TYPES.has(file.type || '');
+}
+
+function isCompressibleImage(file) {
+  const type = String(file?.type || '').toLowerCase();
+  return ['image/jpeg', 'image/png', 'image/webp'].includes(type);
+}
+
+function loadImageElement(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(image);
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('Image illisible.'));
+    };
+    image.src = url;
+  });
+}
+
+async function getImageSource(file) {
+  if (typeof createImageBitmap === 'function') {
+    try {
+      return await createImageBitmap(file);
+    } catch (_) {
+      // Fallback image classique ci-dessous.
+    }
+  }
+  return loadImageElement(file);
+}
+
+async function compressImageForUpload(file) {
+  if (!isCompressibleImage(file)) {
+    return {
+      file,
+      compressed: false,
+      originalSize: file?.size || 0,
+      originalContentType: file?.type || ''
+    };
+  }
+
+  try {
+    const source = await getImageSource(file);
+    const width = source.width || source.naturalWidth || 0;
+    const height = source.height || source.naturalHeight || 0;
+
+    if (!width || !height) {
+      return { file, compressed: false, originalSize: file.size, originalContentType: file.type || '' };
+    }
+
+    const scale = Math.min(1, MAX_IMAGE_DIMENSION / Math.max(width, height));
+    const targetWidth = Math.max(1, Math.round(width * scale));
+    const targetHeight = Math.max(1, Math.round(height * scale));
+
+    const canvas = document.createElement('canvas');
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+
+    const ctx = canvas.getContext('2d', { alpha: false });
+    if (!ctx) {
+      source.close?.();
+      return { file, compressed: false, originalSize: file.size, originalContentType: file.type || '' };
+    }
+
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, targetWidth, targetHeight);
+    ctx.drawImage(source, 0, 0, targetWidth, targetHeight);
+    source.close?.();
+
+    const blob = await new Promise((resolve) => {
+      canvas.toBlob(resolve, 'image/jpeg', IMAGE_COMPRESSION_QUALITY);
+    });
+
+    if (!blob || blob.size <= 0 || blob.size >= file.size * 0.96) {
+      return { file, compressed: false, originalSize: file.size, originalContentType: file.type || '' };
+    }
+
+    const compressedFile = new File([blob], `${slugSegment(file.name.replace(/\.[^.]+$/, ''), 80)}.jpg`, {
+      type: 'image/jpeg',
+      lastModified: Date.now()
+    });
+
+    return {
+      file: compressedFile,
+      compressed: true,
+      originalSize: file.size,
+      originalContentType: file.type || '',
+      originalName: file.name || ''
+    };
+  } catch (error) {
+    console.warn('[SBI Documents] Compression image ignorée :', error);
+    return { file, compressed: false, originalSize: file.size, originalContentType: file.type || '' };
+  }
 }
 
 function getCallableUiMessage(error, fallback) {
@@ -123,10 +283,10 @@ function rerenderStoredDocuments(panel, db) {
   renderDocumentsList(panel, getPanelDocuments(panel), db);
 }
 
-function renderEmptyDocuments() {
+function renderEmptyDocuments(showArchived = false) {
   return `
     <div class="sbi-student-documents-empty">
-      Aucun document élève actif pour le moment.
+      ${showArchived ? 'Aucun document élève, actif ou archivé, pour le moment.' : 'Aucun document élève actif pour le moment.'}
     </div>
   `;
 }
@@ -134,6 +294,8 @@ function renderEmptyDocuments() {
 function renderDocumentCard(item = {}) {
   const category = DOCUMENT_CATEGORIES[item.category] || DOCUMENT_CATEGORIES.other;
   const isArchived = item.status === 'archived';
+  const safeId = escapeHTML(item.id || '');
+
   return `
     <article class="sbi-student-document-card ${isArchived ? 'is-archived' : ''}">
       <div class="sbi-student-document-card__body">
@@ -141,16 +303,19 @@ function renderDocumentCard(item = {}) {
           <strong>${escapeHTML(item.title || item.fileName || 'Document sans titre')}</strong>
           <span>${escapeHTML(category)}</span>
           ${isArchived ? '<em>Archivé</em>' : ''}
+          ${item.compressed === true ? '<em class="is-compressed">Compressé</em>' : ''}
         </div>
         <p>${escapeHTML(item.fileName || 'Fichier')}</p>
         <small>
-          ${escapeHTML(formatBytes(item.size))} · ${escapeHTML(formatDate(item.createdAt, 'Date inconnue'))}${item.createdByEmail ? ` · ${escapeHTML(item.createdByEmail)}` : ''}
+          ${escapeHTML(formatBytes(item.size))}${item.originalSize && item.originalSize > item.size ? ` · original ${escapeHTML(formatBytes(item.originalSize))}` : ''} · ${escapeHTML(formatDate(item.createdAt, 'Date inconnue'))}${item.createdByEmail ? ` · ${escapeHTML(item.createdByEmail)}` : ''}
         </small>
         ${item.note ? `<div class="sbi-student-document-card__note">${escapeHTML(item.note)}</div>` : ''}
       </div>
       <div class="sbi-student-document-card__actions">
-        <button type="button" data-doc-open="${escapeHTML(item.id)}">Ouvrir</button>
-        ${!isArchived ? `<button type="button" data-doc-archive="${escapeHTML(item.id)}">Archiver</button>` : ''}
+        <button type="button" data-doc-open="${safeId}">Ouvrir</button>
+        <button type="button" data-doc-download="${safeId}">Télécharger</button>
+        ${!isArchived ? `<button type="button" data-doc-archive="${safeId}">Archiver</button>` : ''}
+        <button type="button" data-doc-delete="${safeId}">Supprimer</button>
       </div>
     </article>
   `;
@@ -168,6 +333,127 @@ async function loadStudentDocuments(db, studentUid) {
   return rows;
 }
 
+async function getStudentDocumentDownloadUrl(item) {
+  if (!item?.filePath) throw new Error('Chemin fichier manquant.');
+  return getDownloadURL(ref(storage, item.filePath));
+}
+
+async function openStudentDocument(panel, item, button) {
+  if (!item?.filePath) return;
+  const previous = button?.textContent || 'Ouvrir';
+  if (button) {
+    button.disabled = true;
+    button.textContent = 'Ouverture...';
+  }
+
+  try {
+    const url = await getStudentDocumentDownloadUrl(item);
+    window.open(url, '_blank', 'noopener,noreferrer');
+  } catch (error) {
+    console.warn('[SBI Documents] Ouverture impossible :', error);
+    setStatus(panel, getCallableUiMessage(error, 'Ouverture impossible.'), 'error');
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.textContent = previous;
+    }
+  }
+}
+
+async function downloadStudentDocument(panel, item, button) {
+  if (!item?.filePath) return;
+  const previous = button?.textContent || 'Télécharger';
+  if (button) {
+    button.disabled = true;
+    button.textContent = 'Téléchargement...';
+  }
+
+  try {
+    const url = await getStudentDocumentDownloadUrl(item);
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Téléchargement refusé.');
+
+    const blob = await response.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = sanitizeFileName(item.fileName || item.title || 'document-eleve');
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(blobUrl), 1500);
+    setStatus(panel, 'Téléchargement lancé.', 'success');
+  } catch (error) {
+    console.warn('[SBI Documents] Téléchargement direct impossible, ouverture de secours :', error);
+    setStatus(panel, 'Téléchargement direct indisponible, ouverture du fichier en secours.', 'error');
+    try {
+      const fallbackUrl = await getStudentDocumentDownloadUrl(item);
+      window.open(fallbackUrl, '_blank', 'noopener,noreferrer');
+    } catch (_) {}
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.textContent = previous;
+    }
+  }
+}
+
+async function archiveStudentDocument(panel, db, documentId, button) {
+  const confirmed = window.confirm('Archiver ce document élève ? Le fichier restera conservé mais masqué de la liste active.');
+  if (!confirmed) return;
+
+  if (button) button.disabled = true;
+
+  try {
+    await updateDoc(doc(db, 'studentDocuments', documentId), {
+      status: 'archived',
+      archivedAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+    setStatus(panel, 'Document archivé.', 'success');
+    const nextDocuments = await loadStudentDocuments(db, panel.dataset.studentUid || '');
+    setPanelDocuments(panel, nextDocuments);
+    renderDocumentsList(panel, nextDocuments, db);
+  } catch (error) {
+    console.warn('[SBI Documents] Archivage impossible :', error);
+    setStatus(panel, getCallableUiMessage(error, 'Archivage impossible.'), 'error');
+    if (button) button.disabled = false;
+  }
+}
+
+async function deleteStudentDocument(panel, db, item, button) {
+  const confirmed = window.confirm('Supprimer définitivement ce document élève ? Le fichier et sa fiche seront retirés du coffre.');
+  if (!confirmed) return;
+
+  const previous = button?.textContent || 'Supprimer';
+  if (button) {
+    button.disabled = true;
+    button.textContent = 'Suppression...';
+  }
+
+  try {
+    if (item?.filePath) {
+      await deleteObject(ref(storage, item.filePath)).catch((error) => {
+        if (error?.code === 'storage/object-not-found') return;
+        throw error;
+      });
+    }
+
+    await deleteDoc(doc(db, 'studentDocuments', item.id));
+    setStatus(panel, 'Document supprimé.', 'success');
+    const nextDocuments = await loadStudentDocuments(db, panel.dataset.studentUid || '');
+    setPanelDocuments(panel, nextDocuments);
+    renderDocumentsList(panel, nextDocuments, db);
+  } catch (error) {
+    console.warn('[SBI Documents] Suppression impossible :', error);
+    setStatus(panel, getCallableUiMessage(error, 'Suppression impossible.'), 'error');
+    if (button) {
+      button.disabled = false;
+      button.textContent = previous;
+    }
+  }
+}
+
 function renderDocumentsList(panel, documents = [], db = null) {
   const list = panel.querySelector('#prof-student-documents-list');
   const showArchived = panel.querySelector('#prof-student-documents-show-archived')?.checked === true;
@@ -180,53 +466,37 @@ function renderDocumentsList(panel, documents = [], db = null) {
   }
 
   const visible = getPanelDocuments(panel).filter((item) => showArchived || item.status !== 'archived');
-  list.innerHTML = visible.length ? visible.map(renderDocumentCard).join('') : renderEmptyDocuments();
+  list.innerHTML = visible.length ? visible.map(renderDocumentCard).join('') : renderEmptyDocuments(showArchived);
 
   list.querySelectorAll('[data-doc-open]').forEach((button) => {
     button.addEventListener('click', async () => {
       const documentId = button.dataset.docOpen || '';
-      const item = documents.find((entry) => entry.id === documentId);
-      if (!item?.filePath) return;
+      const item = getPanelDocuments(panel).find((entry) => entry.id === documentId);
+      await openStudentDocument(panel, item, button);
+    });
+  });
 
-      button.disabled = true;
-      const previous = button.textContent;
-      button.textContent = 'Ouverture...';
-
-      try {
-        const url = await getDownloadURL(ref(storage, item.filePath));
-        window.open(url, '_blank', 'noopener,noreferrer');
-      } catch (error) {
-        console.warn('[SBI Documents] Ouverture impossible :', error);
-        setStatus(panel, getCallableUiMessage(error, 'Ouverture impossible.'), 'error');
-      } finally {
-        button.disabled = false;
-        button.textContent = previous;
-      }
+  list.querySelectorAll('[data-doc-download]').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const documentId = button.dataset.docDownload || '';
+      const item = getPanelDocuments(panel).find((entry) => entry.id === documentId);
+      await downloadStudentDocument(panel, item, button);
     });
   });
 
   list.querySelectorAll('[data-doc-archive]').forEach((button) => {
     button.addEventListener('click', async () => {
       const documentId = button.dataset.docArchive || '';
-      const confirmed = window.confirm('Archiver ce document élève ? Le fichier restera conservé mais masqué de la liste active.');
-      if (!confirmed) return;
+      await archiveStudentDocument(panel, db, documentId, button);
+    });
+  });
 
-      button.disabled = true;
-      try {
-        await updateDoc(doc(collection(db, 'studentDocuments'), documentId), {
-          status: 'archived',
-          archivedAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
-        });
-        setStatus(panel, 'Document archivé.', 'success');
-        const nextDocuments = await loadStudentDocuments(db, panel.dataset.studentUid || '');
-        setPanelDocuments(panel, nextDocuments);
-        renderDocumentsList(panel, nextDocuments, db);
-      } catch (error) {
-        console.warn('[SBI Documents] Archivage impossible :', error);
-        setStatus(panel, getCallableUiMessage(error, 'Archivage impossible.'), 'error');
-        button.disabled = false;
-      }
+  list.querySelectorAll('[data-doc-delete]').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const documentId = button.dataset.docDelete || '';
+      const item = getPanelDocuments(panel).find((entry) => entry.id === documentId);
+      if (!item) return;
+      await deleteStudentDocument(panel, db, item, button);
     });
   });
 }
@@ -251,7 +521,7 @@ function getFormPayload(panel) {
   };
 }
 
-async function uploadStudentDocument({ db, uid, context, panel }) {
+async function uploadStudentDocument({ db, uid, data = {}, context, panel }) {
   const payload = getFormPayload(panel);
   const submit = panel.querySelector('#prof-student-document-upload-btn');
   const fileInput = panel.querySelector('#prof-student-document-file');
@@ -259,13 +529,37 @@ async function uploadStudentDocument({ db, uid, context, panel }) {
   const noteInput = panel.querySelector('#prof-student-document-note');
   const categoryInput = panel.querySelector('#prof-student-document-category');
 
+  if (submit) {
+    submit.disabled = true;
+    submit.textContent = 'Préparation...';
+  }
+
+  setStatus(panel, payload.file.type?.startsWith('image/') ? 'Compression de l’image...' : 'Préparation du document...', 'muted');
+
+  const prepared = await compressImageForUpload(payload.file);
+  const uploadFile = prepared.file;
+  const safeFileName = buildStudentDocumentFileName({
+    title: payload.title,
+    studentData: data,
+    uid,
+    file: uploadFile
+  });
+
+  if (uploadFile.size > MAX_STUDENT_DOCUMENT_SIZE) {
+    throw new Error('Fichier trop lourd après préparation. Limite : 40 Mo.');
+  }
+
   const documentRef = await addDoc(collection(db, 'studentDocuments'), {
     studentUid: uid,
     title: payload.title,
     category: payload.category,
-    fileName: sanitizeFileName(payload.file.name),
-    contentType: payload.file.type || 'application/octet-stream',
-    size: payload.file.size,
+    fileName: safeFileName,
+    originalFileName: sanitizeFileName(payload.file.name || 'document'),
+    contentType: uploadFile.type || 'application/octet-stream',
+    originalContentType: prepared.originalContentType || payload.file.type || '',
+    size: uploadFile.size,
+    originalSize: prepared.originalSize || payload.file.size,
+    compressed: prepared.compressed === true,
     status: 'uploading',
     visibility: 'admin_only',
     createdAt: serverTimestamp(),
@@ -274,22 +568,22 @@ async function uploadStudentDocument({ db, uid, context, panel }) {
     updatedAt: serverTimestamp()
   });
 
-  const safeFileName = sanitizeFileName(payload.file.name);
   const filePath = `student-documents/${uid}/${documentRef.id}/${safeFileName}`;
 
   if (submit) {
-    submit.disabled = true;
     submit.textContent = 'Téléversement...';
   }
   setStatus(panel, 'Téléversement du document...', 'muted');
 
   try {
-    await uploadBytes(ref(storage, filePath), payload.file, {
-      contentType: payload.file.type || 'application/octet-stream',
+    await uploadBytes(ref(storage, filePath), uploadFile, {
+      contentType: uploadFile.type || 'application/octet-stream',
       customMetadata: {
         uploadedBy: context.loggedInUserId || '',
         studentUid: uid,
-        documentId: documentRef.id
+        documentId: documentRef.id,
+        originalFileName: payload.file.name || '',
+        compressed: prepared.compressed === true ? 'true' : 'false'
       }
     });
 
@@ -306,7 +600,7 @@ async function uploadStudentDocument({ db, uid, context, panel }) {
     if (noteInput) noteInput.value = '';
     if (categoryInput) categoryInput.value = 'administrative';
 
-    setStatus(panel, 'Document ajouté au coffre élève.', 'success');
+    setStatus(panel, prepared.compressed ? 'Document ajouté au coffre élève. Image compressée.' : 'Document ajouté au coffre élève.', 'success');
     const documents = await loadStudentDocuments(db, uid);
     setPanelDocuments(panel, documents);
     renderDocumentsList(panel, documents, db);
@@ -351,6 +645,7 @@ function renderPanelShell(panel) {
         <label class="sbi-student-documents__file">
           <span>Fichier</span>
           <input id="prof-student-document-file" type="file" accept=".pdf,.doc,.docx,.txt,image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain">
+          <small>Les images JPG/PNG/WEBP sont compressées automatiquement avant envoi. Les PDF/DOC sont conservés tels quels.</small>
         </label>
         <label class="sbi-student-documents__note">
           <span>Note interne optionnelle</span>
@@ -393,7 +688,7 @@ export async function renderStudentDocumentsPanel({ db, uid, data = {}, context 
 
   form?.addEventListener('submit', async (event) => {
     event.preventDefault();
-    await uploadStudentDocument({ db, uid, context, panel });
+    await uploadStudentDocument({ db, uid, data, context, panel });
   });
 
   try {
