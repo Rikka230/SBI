@@ -3364,6 +3364,93 @@ async function sendStudentDocumentRequestEmail({ student, items, requestLink, no
     }, apiKey);
 }
 
+
+function serializeStudentDocumentRequestItem(item = {}) {
+    const status = cleanString(item?.status || 'pending', 40).toLowerCase();
+    return {
+        type: cleanString(item?.type || 'other', 80),
+        title: cleanString(item?.title || 'Document demandé', 140) || 'Document demandé',
+        category: cleanString(item?.category || 'administrative', 60) || 'administrative',
+        acceptLabel: cleanString(item?.acceptLabel || 'PDF, JPG ou PNG', 80) || 'PDF, JPG ou PNG',
+        required: item?.required !== false,
+        status: ['pending', 'submitted', 'validated', 'rejected'].includes(status) ? status : 'pending',
+        documentId: cleanString(item?.documentId || '', 180),
+        fileName: cleanString(item?.fileName || '', 180),
+        submittedAt: cleanString(item?.submittedAt || '', 80)
+    };
+}
+
+function serializeStudentDocumentRequestForClient(requestId, requestData = {}) {
+    const items = Array.isArray(requestData.items)
+        ? requestData.items.map(serializeStudentDocumentRequestItem)
+        : [];
+
+    return {
+        id: requestId,
+        studentUid: cleanString(requestData.studentUid || '', 160),
+        studentEmail: cleanEmail(requestData.studentEmail || ''),
+        studentName: cleanString(requestData.studentName || '', 180),
+        status: cleanString(requestData.status || 'requested', 40).toLowerCase() || 'requested',
+        note: cleanMultiline(requestData.note || '', 1200),
+        requestLink: cleanString(requestData.requestLink || '', 600),
+        visibility: cleanString(requestData.visibility || 'student', 40),
+        items
+    };
+}
+
+exports.studentGetDocumentRequest = onCall({
+    region: 'europe-west1',
+    timeoutSeconds: 20,
+    memory: '256MiB'
+}, async (request) => {
+    const uid = request.auth?.uid || '';
+    if (!uid) {
+        throw new HttpsError('unauthenticated', 'Connexion requise pour déposer les documents.');
+    }
+
+    const db = admin.firestore();
+    const requestId = cleanString(request.data?.requestId || request.data?.id || '', 180);
+
+    if (!requestId) {
+        throw new HttpsError('invalid-argument', 'Identifiant de demande manquant.');
+    }
+
+    const [requestDoc, userDoc] = await Promise.all([
+        db.collection('studentDocumentRequests').doc(requestId).get(),
+        db.collection('users').doc(uid).get()
+    ]);
+
+    if (!requestDoc.exists) {
+        throw new HttpsError('not-found', 'Demande introuvable ou expirée.');
+    }
+    if (!userDoc.exists) {
+        throw new HttpsError('failed-precondition', 'Compte utilisateur introuvable.');
+    }
+
+    const requestData = requestDoc.data() || {};
+    if (cleanString(requestData.studentUid || '', 160) !== uid) {
+        throw new HttpsError('permission-denied', 'Cette demande ne correspond pas au compte connecté.');
+    }
+
+    const userData = userDoc.data() || {};
+    if (cleanString(userData.statut || 'actif', 40).toLowerCase() === 'suspendu') {
+        throw new HttpsError('permission-denied', 'Compte suspendu.');
+    }
+
+    return {
+        success: true,
+        request: serializeStudentDocumentRequestForClient(requestDoc.id, requestData),
+        student: {
+            uid,
+            email: cleanEmail(userData.email || ''),
+            prenom: cleanString(userData.prenom || userData.firstName || '', 80),
+            nom: cleanString(userData.nom || userData.lastName || '', 80),
+            displayName: cleanString(getAccountDisplayName(userData) || userData.displayName || '', 160)
+        }
+    };
+});
+
+
 exports.adminCreateStudentDocumentRequest = onCall({
     region: 'europe-west1',
     secrets: [BREVO_API_KEY],
