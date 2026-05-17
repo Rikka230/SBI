@@ -79,13 +79,15 @@ function getLastActivityDate(user) {
     || user.lastLoginAt
     || user.accountStatus?.firstLoginAt
     || user.firstLoginAt
+    || user.accountStatus?.firstLoginCompletedAt
     || user.lastSeenAt
     || null;
 }
 
 function hasConnected(user) {
   return Boolean(
-    user.accountStatus?.firstLoginAt
+    user.accountStatus?.firstLoginCompleted === true
+    || user.accountStatus?.firstLoginAt
     || user.firstLoginAt
     || user.accountStatus?.lastLoginAt
     || user.lastLoginAt
@@ -205,7 +207,17 @@ function needsDirectFinalizationContact(user) {
 }
 
 function hasResolvedFinalizationContact(user) {
-  return Boolean(user?.accountStatus?.finalizationEscalationAt && user?.accountStatus?.finalizationEscalationResolvedAt);
+  /*
+   * 8.0P.167.43 :
+   * Le contact direct traité reste un historique de support.
+   * Dès qu'une vraie activité est détectée, l'état courant doit redevenir
+   * “Activité détectée” et non rester bloqué sur “Contact direct traité”.
+   */
+  return Boolean(
+    user?.accountStatus?.finalizationEscalationAt
+    && user?.accountStatus?.finalizationEscalationResolvedAt
+    && !hasConnected(user)
+  );
 }
 
 function hasInvalidFinalizationEmail(user) {
@@ -267,14 +279,6 @@ function getActivationInfo(user) {
     };
   }
 
-  if (hasResolvedFinalizationContact(user)) {
-    return {
-      label: 'Contact direct traité',
-      tone: 'success',
-      detail: getEscalationNotePreview(user) || 'Alerte traitée'
-    };
-  }
-
   const explicitState = user.accountStatus?.activationState || user.activationState || '';
 
   if (explicitState === 'blocked') {
@@ -303,6 +307,14 @@ function getActivationInfo(user) {
       label: 'Activité détectée',
       tone: 'success',
       detail: formatDate(getLastActivityDate(user), 'Activité enregistrée')
+    };
+  }
+
+  if (hasResolvedFinalizationContact(user)) {
+    return {
+      label: 'Contact direct traité',
+      tone: 'success',
+      detail: getEscalationNotePreview(user) || 'Alerte traitée'
     };
   }
 

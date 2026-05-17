@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.42',
+  version: '8.0P.167.43',
   branch: 'main',
-  channel: 'FIRST LOGIN CHECKLIST',
-  stage: 'MANDATORY FIRST LOGIN VALIDATION',
+  channel: 'FIRST LOGIN ACTIVITY STATE',
+  stage: 'CONTACT RESOLVED NO LONGER MASKS DETECTED ACTIVITY',
   updatedAt: '2026-05-16',
-  label: 'SBI 8.0P.167.42 - MANDATORY FIRST LOGIN VALIDATION'
+  label: 'SBI 8.0P.167.43 - CONTACT RESOLVED NO LONGER MASKS DETECTED ACTIVITY'
 };
 
 export function getSbiVersionLabel() {

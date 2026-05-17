@@ -334,8 +334,11 @@ function normalizePreparationState(value) {
 
 function hasFinalizedFirstAccess(data = {}) {
   return Boolean(
-    data.accountStatus?.firstLoginAt
+    data.accountStatus?.firstLoginCompleted === true
+    || data.accountStatus?.firstLoginAt
     || data.firstLoginAt
+    || data.accountStatus?.lastLoginAt
+    || data.lastLoginAt
     || data.accountStatus?.activationState === 'active'
     || data.activationState === 'active'
   );
@@ -473,7 +476,7 @@ function getFinalizationInfo(data = {}) {
     return {
       finalized,
       label: 'Compte finalisé',
-      detail: formatSbiDate(data.accountStatus?.firstLoginAt || data.firstLoginAt || data.accountStatus?.lastLoginAt || data.lastLoginAt, 'Première connexion validée'),
+      detail: formatSbiDate(data.accountStatus?.firstLoginAt || data.firstLoginAt || data.accountStatus?.lastLoginAt || data.lastLoginAt || data.accountStatus?.firstLoginCompletedAt, 'Première connexion validée'),
       tone: '#2ed573',
       inviteCount,
       lastInviteAt

@@ -2142,8 +2142,11 @@ exports.completeFirstLoginOnboarding = onCall({
     }
 
     const now = admin.firestore.FieldValue.serverTimestamp();
+    const hasFirstLogin = Boolean(userData.accountStatus?.firstLoginAt || userData.firstLoginAt);
 
-    await userRef.set({
+    const onboardingUpdate = {
+        "accountStatus.activationState": "active",
+        "accountStatus.lastLoginAt": now,
         "accountStatus.firstLoginCompleted": true,
         "accountStatus.firstLoginCompletedAt": now,
         "accountStatus.firstLoginChecklistVersion": checklistVersion,
@@ -2155,8 +2158,16 @@ exports.completeFirstLoginOnboarding = onCall({
         "accountStatus.importantInfoAcceptedAt": now,
         "accountStatus.emailConfirmed": true,
         "accountStatus.emailConfirmedAt": now,
+        lastLoginAt: now,
         updatedAt: now
-    }, { merge: true });
+    };
+
+    if (!hasFirstLogin) {
+        onboardingUpdate["accountStatus.firstLoginAt"] = now;
+        onboardingUpdate.firstLoginAt = now;
+    }
+
+    await userRef.set(onboardingUpdate, { merge: true });
 
     await safeWriteAccountAuditLog(db, {
         type: "account.first_login_onboarding_completed",
@@ -2166,7 +2177,9 @@ exports.completeFirstLoginOnboarding = onCall({
         targetEmail: userData.email || request.auth.token?.email || "",
         targetRole: role,
         checklistVersion,
-        source: "first-login-gate"
+        source: "first-login-gate",
+        activationState: "active",
+        firstLoginCreated: !hasFirstLogin
     });
 
     return {
