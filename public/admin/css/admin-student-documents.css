@@ -577,3 +577,100 @@
     .sbi-doc-request-modal__footer { align-items: stretch; flex-direction: column; }
     .sbi-doc-request-modal__footer > div { display:flex; gap:0.6rem; flex-direction:column; }
 }
+
+
+/* --- SBI 8.0P.167.71.2 — Suivi des demandes documents envoyées --- */
+.sbi-student-documents__requests[hidden] {
+    display: none !important;
+}
+
+.sbi-student-doc-request-admin {
+    display: flex;
+    flex-direction: column;
+    gap: 0.72rem;
+    padding: 0.95rem;
+    border: 1px solid rgba(251,188,4,0.20);
+    border-radius: 14px;
+    background: rgba(251,188,4,0.055);
+}
+
+.sbi-student-doc-request-admin__title,
+.sbi-student-doc-request-admin-card__head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.sbi-student-doc-request-admin__title strong,
+.sbi-student-doc-request-admin-card__head strong {
+    color: #fff;
+}
+
+.sbi-student-doc-request-admin__title span,
+.sbi-student-doc-request-admin-card__head span,
+.sbi-student-doc-request-admin-card p {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    line-height: 1.45;
+}
+
+.sbi-student-doc-request-admin-card {
+    padding: 0.85rem;
+    border: 1px solid rgba(255,255,255,0.09);
+    border-radius: 12px;
+    background: rgba(0,0,0,0.15);
+}
+
+.sbi-student-doc-request-admin-card.is-received {
+    border-color: rgba(46,213,115,0.25);
+    background: rgba(46,213,115,0.045);
+}
+
+.sbi-student-doc-request-admin-card__head em {
+    border-radius: 999px;
+    padding: 0.24rem 0.52rem;
+    background: rgba(251,188,4,0.13);
+    color: #ffe39a;
+    font-size: 0.7rem;
+    font-style: normal;
+    font-weight: 900;
+}
+
+.sbi-student-doc-request-admin-card.is-received .sbi-student-doc-request-admin-card__head em {
+    background: rgba(46,213,115,0.12);
+    color: #9bffc2;
+}
+
+.sbi-student-doc-request-admin-card ul {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.48rem;
+    margin: 0.7rem 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.sbi-student-doc-request-admin-card li {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.6rem;
+    align-items: center;
+    padding: 0.5rem 0.58rem;
+    border-radius: 9px;
+    background: rgba(255,255,255,0.045);
+    color: #dbe5ff;
+    font-size: 0.78rem;
+}
+
+.sbi-student-doc-request-admin-card li em {
+    color: #ffe39a;
+    font-style: normal;
+    font-weight: 900;
+    white-space: nowrap;
+}
+
+.sbi-student-doc-request-admin-card li.is-done em {
+    color: #9bffc2;
+}

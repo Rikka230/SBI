@@ -61,6 +61,14 @@ const DEFAULT_REQUEST_DOCUMENTS = [
 
 const FUNCTIONS_REGION = 'europe-west1';
 
+const DOCUMENT_REQUEST_STATUS_LABELS = {
+  requested: 'En attente de réception',
+  partial: 'Réception partielle',
+  submitted: 'Transmis, à vérifier',
+  completed: 'Terminé',
+  archived: 'Archivé'
+};
+
 const MAX_STUDENT_DOCUMENT_SIZE = 40 * 1024 * 1024;
 const MAX_IMAGE_DIMENSION = 1800;
 const IMAGE_COMPRESSION_QUALITY = 0.84;
@@ -365,6 +373,85 @@ async function loadStudentDocuments(db, studentUid) {
   snap.forEach((docSnap) => rows.push({ id: docSnap.id, ...(docSnap.data() || {}) }));
   rows.sort((a, b) => toMillis(b.createdAt || b.updatedAt) - toMillis(a.createdAt || a.updatedAt));
   return rows;
+}
+
+
+async function loadStudentDocumentRequests(db, studentUid) {
+  const requestsQuery = query(
+    collection(db, 'studentDocumentRequests'),
+    where('studentUid', '==', studentUid)
+  );
+  const snap = await getDocs(requestsQuery);
+  const rows = [];
+  snap.forEach((docSnap) => rows.push({ id: docSnap.id, ...(docSnap.data() || {}) }));
+  rows.sort((a, b) => toMillis(b.createdAt || b.updatedAt) - toMillis(a.createdAt || a.updatedAt));
+  return rows;
+}
+
+function getRequestProgress(request = {}) {
+  const items = Array.isArray(request.items) ? request.items : [];
+  const submitted = items.filter((item) => ['submitted', 'validated'].includes(String(item.status || '').toLowerCase())).length;
+  const total = items.length;
+  return { submitted, total, items };
+}
+
+function renderStudentDocumentRequestCard(request = {}) {
+  const { submitted, total, items } = getRequestProgress(request);
+  const status = String(request.status || 'requested').toLowerCase();
+  const label = DOCUMENT_REQUEST_STATUS_LABELS[status] || DOCUMENT_REQUEST_STATUS_LABELS.requested;
+  const waiting = status === 'requested' || status === 'partial';
+
+  return `
+    <article class="sbi-student-doc-request-admin-card ${waiting ? 'is-waiting' : 'is-received'}">
+      <div class="sbi-student-doc-request-admin-card__head">
+        <div>
+          <strong>${waiting ? 'Documents en attente de réception' : 'Documents transmis par l’élève'}</strong>
+          <span>${escapeHTML(formatDate(request.createdAt, 'Date inconnue'))}</span>
+        </div>
+        <em>${escapeHTML(label)} · ${submitted}/${total}</em>
+      </div>
+      ${request.note ? `<p>${escapeHTML(request.note)}</p>` : ''}
+      <ul>
+        ${items.map((item) => {
+          const itemStatus = String(item.status || 'pending').toLowerCase();
+          const done = ['submitted', 'validated'].includes(itemStatus);
+          return `<li class="${done ? 'is-done' : 'is-pending'}"><span>${escapeHTML(item.title || 'Document demandé')}</span><em>${done ? 'Reçu' : 'En attente'}</em></li>`;
+        }).join('')}
+      </ul>
+    </article>
+  `;
+}
+
+function renderStudentDocumentRequests(panel, requests = []) {
+  const container = panel.querySelector('#prof-student-document-requests');
+  if (!container) return;
+
+  const activeRequests = requests.filter((request) => String(request.status || '').toLowerCase() !== 'archived');
+  if (!activeRequests.length) {
+    container.innerHTML = '';
+    container.hidden = true;
+    return;
+  }
+
+  container.hidden = false;
+  container.innerHTML = `
+    <div class="sbi-student-doc-request-admin">
+      <div class="sbi-student-doc-request-admin__title">
+        <strong>Demandes envoyées à l’élève</strong>
+        <span>${activeRequests.length} demande(s)</span>
+      </div>
+      ${activeRequests.map(renderStudentDocumentRequestCard).join('')}
+    </div>
+  `;
+}
+
+async function refreshStudentDocumentRequests(panel, db, uid) {
+  try {
+    const requests = await loadStudentDocumentRequests(db, uid);
+    renderStudentDocumentRequests(panel, requests);
+  } catch (error) {
+    console.warn('[SBI Documents] Lecture demandes documents impossible :', error);
+  }
 }
 
 async function getStudentDocumentDownloadUrl(item) {
@@ -781,11 +868,11 @@ function collectRequestedDocuments(modal) {
   return documents.filter((item, index, list) => list.findIndex((other) => other.type === item.type) === index);
 }
 
-async function openStudentDocumentRequestModal({ panel, uid, data = {}, context = {} }) {
+async function openStudentDocumentRequestModal({ panel, db, uid, data = {}, context = {} }) {
   const modal = getOrCreateRequestModal();
   const studentName = getStudentDisplayName(data, uid);
   modal.dataset.studentUid = uid;
-  modal.__sbiRequestContext = { panel, uid, data, context };
+  modal.__sbiRequestContext = { panel, db, uid, data, context };
   const title = modal.querySelector('#sbi-doc-request-student-name');
   if (title) title.textContent = studentName;
   modal.querySelectorAll('.sbi-doc-request-choice input').forEach((input) => {
@@ -822,6 +909,7 @@ async function openStudentDocumentRequestModal({ panel, uid, data = {}, context 
         const requestLink = response?.data?.requestLink || buildStudentDocumentRequestLink(requestId);
         setRequestModalStatus(modal, `Demande envoyée. Lien : ${requestLink}`, response?.data?.warning ? 'error' : 'success');
         setStatus(ctx.panel, response?.data?.warning || 'Demande de documents envoyée à l’élève.', response?.data?.warning ? 'error' : 'success');
+        await refreshStudentDocumentRequests(ctx.panel, ctx.db, ctx.uid);
         await navigator.clipboard?.writeText?.(requestLink).catch(() => {});
         window.setTimeout(closeStudentDocumentRequestModal, 1200);
       } catch (error) {
@@ -851,6 +939,8 @@ function renderPanelShell(panel, { uid = '', data = {}, context = {} } = {}) {
           <button type="button" id="prof-request-student-documents-btn">Demander documents</button>
         </div>
       </div>
+
+      <div id="prof-student-document-requests" class="sbi-student-documents__requests" hidden></div>
 
       <form id="prof-student-document-form" class="sbi-student-documents__form">
         <label>
@@ -908,7 +998,7 @@ export async function renderStudentDocumentsPanel({ db, uid, data = {}, context 
   const showArchived = panel.querySelector('#prof-student-documents-show-archived');
   const requestButton = panel.querySelector('#prof-request-student-documents-btn');
 
-  requestButton?.addEventListener('click', () => openStudentDocumentRequestModal({ panel, uid, data, context }));
+  requestButton?.addEventListener('click', () => openStudentDocumentRequestModal({ panel, db, uid, data, context }));
 
   form?.addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -916,9 +1006,13 @@ export async function renderStudentDocumentsPanel({ db, uid, data = {}, context 
   });
 
   try {
-    const documents = await loadStudentDocuments(db, uid);
+    const [documents, requests] = await Promise.all([
+      loadStudentDocuments(db, uid),
+      loadStudentDocumentRequests(db, uid)
+    ]);
     if (token !== activeMountToken) return;
     setPanelDocuments(panel, documents);
+    renderStudentDocumentRequests(panel, requests);
     renderDocumentsList(panel, documents, db);
     showArchived?.addEventListener('change', () => rerenderStoredDocuments(panel, db));
   } catch (error) {

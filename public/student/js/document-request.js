@@ -9,6 +9,7 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js';
 import { ref, uploadBytes } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js';
+import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js';
 
 const MAX_FILE_SIZE = 40 * 1024 * 1024;
 const MAX_IMAGE_DIMENSION = 1800;
@@ -17,6 +18,9 @@ const FUNCTIONS_REGION = 'europe-west1';
 
 const status = document.getElementById('student-doc-request-status');
 const content = document.getElementById('student-doc-request-content');
+const functions = getFunctions(app, 'europe-west1');
+const studentGetDocumentRequestCallable = httpsCallable(functions, 'studentGetDocumentRequest');
+const studentNotifyDocumentRequestSubmittedCallable = httpsCallable(functions, 'studentNotifyDocumentRequestSubmitted');
 
 let activeRequest = null;
 let activeUserData = null;
@@ -213,15 +217,20 @@ async function submitDocuments(request, userData) {
     if (file) pendingUploads.push({ index, item, file });
   });
 
-  const missing = nextItems.some((item, index) => {
+  const missingBeforeUpload = nextItems.some((item, index) => {
     return item.required !== false
       && item.status !== 'submitted'
       && item.status !== 'validated'
       && !pendingUploads.some((upload) => upload.index === index);
   });
 
-  if (missing) {
-    setStatus('Ajoute tous les documents obligatoires avant l’envoi. Tu peux revenir plus tard avec ce même lien.', 'error');
+  if (!pendingUploads.length) {
+    setStatus(
+      missingBeforeUpload
+        ? 'Ajoute au moins un document avant d’enregistrer. Tu pourras revenir plus tard avec le même lien pour le reste.'
+        : 'Tous les documents obligatoires sont déjà transmis.',
+      missingBeforeUpload ? 'error' : 'success'
+    );
     return;
   }
 
@@ -234,11 +243,6 @@ async function submitDocuments(request, userData) {
       setStatus(`Format refusé pour “${upload.item.title || 'document'}”. Formats acceptés : ${upload.item.acceptLabel || 'PDF, JPG ou PNG'}.`, 'error');
       return;
     }
-  }
-
-  if (!pendingUploads.length) {
-    setStatus('Aucun nouveau fichier à envoyer.', 'muted');
-    return;
   }
 
   const button = content.querySelector('#student-doc-request-submit');
@@ -310,13 +314,25 @@ async function submitDocuments(request, userData) {
       updatedAt: serverTimestamp()
     });
 
+    if (completed) {
+      await studentNotifyDocumentRequestSubmittedCallable({ requestId }).catch((error) => {
+        console.warn('[SBI Student Documents] Notification admin non bloquante :', error);
+      });
+    }
+
     const nextRequest = {
       ...request,
       items: nextItems,
       status: completed ? 'submitted' : 'partial'
     };
 
-    setStatus(completed ? 'Documents envoyés. L’équipe SBI va les vérifier.' : 'Documents enregistrés. Tu peux compléter le reste plus tard avec le même lien.', 'success');
+    const submittedCount = nextItems.filter((item) => item.status === 'submitted' || item.status === 'validated').length;
+    setStatus(
+      completed
+        ? 'Documents envoyés. L’équipe SBI va les vérifier.'
+        : `${submittedCount}/${nextItems.length} document(s) enregistré(s). Tu peux compléter le reste plus tard avec le même lien.`,
+      'success'
+    );
     renderRequest(nextRequest, userData);
   } catch (error) {
     console.error('[SBI Student Documents] Envoi impossible :', error);

@@ -21,6 +21,8 @@
  * - suivi serveur de première connexion / dernière connexion.
  * SBI 8.0P.161 :
  * - throttle local du suivi connexion pour éviter le spam de logs.
+ * SBI 8.0P.167.71.2 :
+ * - login respecte le paramètre next pour revenir sur les demandes de documents.
  * =======================================================================
  */
 
@@ -418,6 +420,39 @@ const canAccessCurrentPath = (userData, path = normalizePath()) => {
     return canAccessSbiRoute(userData, path);
 };
 
+
+const getSafeNextPath = () => {
+    try {
+        const rawNext = new URL(window.location.href).searchParams.get('next') || '';
+        if (!rawNext) return '';
+
+        const decoded = decodeURIComponent(rawNext);
+        if (!decoded || !decoded.startsWith('/') || decoded.startsWith('//')) return '';
+
+        const nextUrl = new URL(decoded, window.location.origin);
+        if (nextUrl.origin !== window.location.origin) return '';
+
+        const nextPath = normalizeSbiPath(nextUrl.pathname);
+        if (isLoginPage(nextPath)) return '';
+
+        return `${nextPath}${nextUrl.search || ''}${nextUrl.hash || ''}`;
+    } catch (_) {
+        return '';
+    }
+};
+
+const getPostLoginTarget = (userData) => {
+    const nextPath = getSafeNextPath();
+    if (!nextPath) return getDashboardForUser(userData);
+
+    const nextUrl = new URL(nextPath, window.location.origin);
+    if (!canAccessSbiRoute(userData, normalizeSbiPath(nextUrl.pathname))) {
+        return getDashboardForUser(userData);
+    }
+
+    return `${normalizeSbiPath(nextUrl.pathname)}${nextUrl.search || ''}${nextUrl.hash || ''}`;
+};
+
 const redirectTo = (targetUrl, useLoginFeedback = false) => {
     if (redirectInProgress) return;
 
@@ -449,7 +484,7 @@ const redirectTo = (targetUrl, useLoginFeedback = false) => {
 };
 
 const redirectToDashboard = (userData, useLoginFeedback = false) => {
-    redirectTo(getDashboardForUser(userData), useLoginFeedback);
+    redirectTo(getPostLoginTarget(userData), useLoginFeedback);
 };
 
 /* --- 1.6 GESTION DU FORMULAIRE DE CONNEXION --- */
@@ -561,7 +596,8 @@ const enforceSecurityPolicies = async (user, userData) => {
      */
     if (!user) {
         if (isProtectedPath(currentPath)) {
-            redirectTo('/login.html');
+            const next = encodeURIComponent(`${currentPath}${window.location.search || ''}${window.location.hash || ''}`);
+            redirectTo(`/login.html?next=${next}`);
             return;
         }
 

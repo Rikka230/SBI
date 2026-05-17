@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.71.1',
+  version: '8.0P.167.71.2',
   branch: 'main',
-  channel: 'P2I.4 STUDENT DOCUMENT REQUESTS ACCESS FIX',
-  stage: 'STUDENT DOCUMENT REQUEST PAGE ACCESS AND REOPEN FIX',
+  channel: 'P2I.4 STUDENT DOCUMENT REQUESTS FIXES',
+  stage: 'REQUEST PARTIAL UPLOADS ADMIN VISIBILITY LOGIN RETURN',
   updatedAt: '2026-05-17',
-  label: 'SBI 8.0P.167.71.1 - STUDENT DOCUMENT REQUESTS ACCESS FIX'
+  label: 'SBI 8.0P.167.71.2 - STUDENT DOCUMENT REQUESTS FIXES'
 };
 
 export function getSbiVersionLabel() {

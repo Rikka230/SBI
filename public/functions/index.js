@@ -3451,6 +3451,86 @@ exports.studentGetDocumentRequest = onCall({
 });
 
 
+
+exports.studentNotifyDocumentRequestSubmitted = onCall({
+    region: 'europe-west1',
+    secrets: [BREVO_API_KEY],
+    timeoutSeconds: 30,
+    memory: '256MiB'
+}, async (request) => {
+    const uid = request.auth?.uid || '';
+    if (!uid) throw new HttpsError('unauthenticated', 'Connexion requise.');
+
+    const db = admin.firestore();
+    const requestId = cleanString(request.data?.requestId || request.data?.id || '', 180);
+    if (!requestId) throw new HttpsError('invalid-argument', 'Identifiant de demande manquant.');
+
+    const requestRef = db.collection('studentDocumentRequests').doc(requestId);
+    const requestDoc = await requestRef.get();
+    if (!requestDoc.exists) throw new HttpsError('not-found', 'Demande introuvable.');
+
+    const requestData = requestDoc.data() || {};
+    if (cleanString(requestData.studentUid || '', 160) !== uid) {
+        throw new HttpsError('permission-denied', 'Cette demande ne correspond pas au compte connecté.');
+    }
+
+    const items = Array.isArray(requestData.items) ? requestData.items.map(serializeStudentDocumentRequestItem) : [];
+    const completed = items.length > 0 && items.every((item) => item.required === false || item.status === 'submitted' || item.status === 'validated');
+    if (!completed) {
+        throw new HttpsError('failed-precondition', 'Tous les documents obligatoires ne sont pas encore transmis.');
+    }
+
+    if (requestData.adminNotifiedAt) {
+        return { success: true, alreadyNotified: true, message: 'Notification déjà envoyée.' };
+    }
+
+    const studentDoc = await db.collection('users').doc(uid).get();
+    const student = studentDoc.exists ? (studentDoc.data() || {}) : { email: requestData.studentEmail || '', prenom: '', nom: '' };
+    const submittedItems = items.filter((item) => item.status === 'submitted' || item.status === 'validated');
+    const apiKey = BREVO_API_KEY.value();
+    let warning = '';
+
+    try {
+        if (!apiKey) throw new Error('BREVO_API_KEY manquant.');
+        await sendStudentDocumentSubmittedAdminEmail({
+            student,
+            requestData: { ...requestData, studentUid: uid },
+            submittedItems,
+            apiKey
+        });
+    } catch (error) {
+        warning = 'Documents reçus, mais l’email interne n’a pas pu être envoyé.';
+        console.error('Erreur notification documents reçus SBI :', error.message, error.payload || '');
+    }
+
+    await requestRef.set({
+        status: 'submitted',
+        adminNotifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+        adminNotificationWarning: warning,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+
+    await safeWriteAccountAuditLog(db, {
+        type: 'student_documents.submitted',
+        actorUid: uid,
+        actorEmail: cleanEmail(student.email || requestData.studentEmail || ''),
+        targetUid: uid,
+        targetEmail: cleanEmail(student.email || requestData.studentEmail || ''),
+        targetRole: student.role || 'student',
+        changes: {
+            documents: {
+                requestId,
+                submitted: submittedItems.map((item) => item.title),
+                submittedCount: submittedItems.length,
+                requestedCount: items.length
+            }
+        },
+        emailSent: !warning
+    });
+
+    return { success: true, warning, message: warning || 'Notification envoyée.' };
+});
+
 exports.adminCreateStudentDocumentRequest = onCall({
     region: 'europe-west1',
     secrets: [BREVO_API_KEY],

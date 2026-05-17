@@ -1721,6 +1721,14 @@ function getAccountLogMeta(type = '') {
       label: 'Promotion élève modifiée',
       color: '#2A57FF'
     },
+    'student_documents.requested': {
+      label: 'Demande de documents envoyée',
+      color: '#fbbc04'
+    },
+    'student_documents.submitted': {
+      label: 'Documents élève transmis',
+      color: '#2ed573'
+    },
     'account.deleted': {
       label: 'Compte supprimé',
       color: '#ff4a4a'
@@ -1778,6 +1786,13 @@ function getAccountLogDetails(log = {}) {
     const beforePromotion = changes.promotion.before?.name || 'Aucune promotion';
     const afterPromotion = changes.promotion.after?.name || 'Aucune promotion';
     details.push(`Promotion : ${beforePromotion} → ${afterPromotion}`);
+  }
+  if (changes.documents) {
+    if (changes.documents.count !== undefined) details.push(`${changes.documents.count} document(s) demandé(s)`);
+    if (changes.documents.submittedCount !== undefined && changes.documents.requestedCount !== undefined) {
+      details.push(`${changes.documents.submittedCount}/${changes.documents.requestedCount} document(s) transmis`);
+    }
+    if (changes.documents.requestId) details.push(`Demande : ${changes.documents.requestId}`);
   }
 
   return details.join(' · ');
