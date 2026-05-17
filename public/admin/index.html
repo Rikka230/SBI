@@ -7,7 +7,6 @@
     <link rel="stylesheet" href="css/admin-layout.css">
     <link rel="stylesheet" href="css/admin.css">
     <link rel="stylesheet" href="css/admin-notifications.css">
-    <link rel="stylesheet" href="css/admin-global-audit-log.css?v=8.0P.167.38">
     
     <script src="js/components.js?v=8.0P.167.34"></script>
     
@@ -140,47 +139,6 @@
                     </div>
                 </div>
             </section>
-
-
-            <section id="view-audit-log" class="admin-view">
-                <div class="sbi-audit-view">
-                    <div class="sbi-audit-header">
-                        <div>
-                            <h2>Journal admin</h2>
-                            <p>Vue globale des actions sensibles : comptes, relances, emails, connexions et traitements manuels.</p>
-                        </div>
-                        <button type="button" id="audit-refresh-btn" class="sbi-audit-refresh-btn">Rafraîchir</button>
-                    </div>
-
-                    <div class="sbi-audit-toolbar">
-                        <input type="search" id="audit-search" placeholder="Rechercher un compte, un email, un admin...">
-                        <select id="audit-type-filter">
-                            <option value="all">Toutes les actions</option>
-                            <option value="account.created">Comptes créés</option>
-                            <option value="account.password_reset_sent">Reset mot de passe</option>
-                            <option value="account.finalization_invite_sent">Invitations finalisation</option>
-                            <option value="account.finalization_reminder_sent">Relances automatiques</option>
-                            <option value="account.finalization_escalation_required">Contacts directs requis</option>
-                            <option value="account.finalization_escalation_resolved">Contacts traités</option>
-                            <option value="account.email_bounced">Emails rejetés Brevo</option>
-                            <option value="account.finalization_reminder_skipped">Emails invalides</option>
-                            <option value="account.email_changed">Emails modifiés</option>
-                            <option value="account.login_tracked">Connexions détectées</option>
-                            <option value="account.deleted">Comptes supprimés</option>
-                        </select>
-                    </div>
-
-                    <div class="sbi-audit-stats" id="audit-stats"></div>
-                    <div class="sbi-audit-list" id="audit-log-list">
-                        <div class="sbi-audit-empty">Chargement du journal admin...</div>
-                    </div>
-                    <div class="sbi-audit-footer">
-                        <span id="audit-log-count">0 entrée chargée</span>
-                        <button type="button" id="audit-load-more-btn" class="sbi-audit-load-more-btn">Charger plus</button>
-                    </div>
-                </div>
-            </section>
-
             <section id="view-formations" class="admin-view">
                 <h2>Structure de Formations</h2>
                 <div class="formations-grid">
@@ -383,7 +341,6 @@
 <script type="module" src="js/tracker.js?v=8.0P.166.5"></script>
 <script type="module" src="js/admin-notifications.js"></script>
 <script type="module" src="js/admin-dashboard.js?v=8.0P.167.0"></script>
-<script type="module" src="js/admin-global-audit-log.js?v=8.0P.167.38"></script>
 
 <script type="module" src="js/storage-diagnostics.js"></script>
 

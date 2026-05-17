@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.167.38 / P2H.2-G.4
+ * SBI 8.0P.167.39 / P2H.2-G.5
  * Journal admin global.
  *
  * Principe important :
@@ -369,8 +369,8 @@ async function openAuditProfileFromLogId(logId, button) {
       return;
     }
 
-    sessionStorage.setItem('activeAdminTab', 'view-audit-log');
-    sessionStorage.setItem('sbiAdminReturnTarget', 'view-audit-log');
+    sessionStorage.setItem('activeAdminTab', 'view-dashboard');
+    sessionStorage.setItem('sbiAdminReturnTarget', 'view-dashboard');
     sessionStorage.setItem('sbiAdminReturnFromProfile', String(Date.now()));
 
     window.location.href = `/admin/admin-profile.html?id=${encodeURIComponent(uid)}&from=audit-log`;

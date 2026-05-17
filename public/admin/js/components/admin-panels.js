@@ -31,7 +31,10 @@ export class AdminLeftPanel extends HTMLElement {
         <ul class="nav-menu">
           ${adminNavItem({ id:'nav-dashboard', target:'view-dashboard', label:'Tableau de Bord', icon:ICONS.dashboard })}
           ${adminNavItem({ id:'nav-users', target:'view-users', label:'Comptes', icon:ICONS.users })}
-          ${adminNavItem({ id:'nav-audit-log', target:'view-audit-log', label:'Journal admin', icon:ICONS.bell })}
+          <li class="nav-item" id="nav-audit-log" data-href="/admin/admin-audit-log.html" data-sbi-external="true" role="link" tabindex="0">
+            ${ICONS.bell}
+            <span class="nav-text">Journal admin</span>
+          </li>
           ${adminNavItem({ id:'nav-formations', target:'view-formations', label:'Formations', icon:ICONS.formations })}
           ${adminNavItem({ id:'nav-settings', target:'view-settings', label:'Serveur & Vidéos', icon:ICONS.settings })}
         </ul>
@@ -44,6 +47,8 @@ export class AdminLeftPanel extends HTMLElement {
 
     if (path.includes('admin-profile.html')) {
       this.querySelector('#nav-users')?.classList.add('active');
+    } else if (path.includes('admin-audit-log.html')) {
+      this.querySelector('#nav-audit-log')?.classList.add('active');
     } else if (path.includes('formations-cours.html') || path.includes('formations-live.html')) {
       this.querySelector('#nav-formations')?.classList.add('active');
     } else if (path.includes('site-index-settings.html')) {
