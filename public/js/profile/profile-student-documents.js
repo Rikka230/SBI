@@ -348,6 +348,8 @@ function renderDocumentCard(item = {}) {
           <strong>${escapeHTML(item.title || item.fileName || 'Document sans titre')}</strong>
           <span>${escapeHTML(category)}</span>
           ${isArchived ? '<em>Archivé</em>' : ''}
+          ${item.validationStatus === 'validated' ? '<em class="is-validated">Validé</em>' : ''}
+          ${item.validationStatus === 'rejected' || item.status === 'rejected' ? '<em class="is-rejected">À refaire</em>' : ''}
           ${item.compressed === true ? '<em class="is-compressed">Compressé</em>' : ''}
         </div>
         <p>${escapeHTML(item.fileName || 'Fichier')}</p>
@@ -425,7 +427,7 @@ function renderStudentDocumentRequestCard(request = {}) {
         }).join('')}
       </ul>
       <div class="sbi-student-doc-request-admin-card__actions">
-        ${waiting ? `<button type="button" data-request-cancel="${safeRequestId}">Annuler la demande</button>` : ''}
+        ${(waiting || received) ? `<button type="button" data-request-cancel="${safeRequestId}">Annuler la demande</button>` : ''}
         ${received ? `<button type="button" data-request-review="${safeRequestId}">Vérifier les documents</button>` : ''}
       </div>
     </article>
@@ -444,11 +446,8 @@ async function cancelStudentDocumentRequest(panel, db, uid, requestId, button) {
   }
 
   try {
-    await updateDoc(doc(db, 'studentDocumentRequests', requestId), {
-      status: 'canceled',
-      canceledAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    });
+    const callable = getAdminCancelStudentDocumentRequestCallable();
+    await callable({ requestId });
     setStatus(panel, 'Demande de documents annulée.', 'success');
     await refreshStudentDocumentRequests(panel, db, uid);
   } catch (error) {
@@ -493,7 +492,7 @@ function getOrCreateReviewModal() {
         <span id="sbi-doc-review-status" aria-live="polite"></span>
         <div>
           <button type="button" class="sbi-doc-request-modal__ghost" data-doc-review-close>Fermer</button>
-          <button type="button" id="sbi-doc-review-validate-btn" class="sbi-doc-request-modal__primary">Valider la demande</button>
+          <button type="button" id="sbi-doc-review-validate-btn" class="sbi-doc-request-modal__primary">Enregistrer la vérification</button>
         </div>
       </footer>
     </section>
@@ -519,40 +518,70 @@ function setReviewModalStatus(modal, message = '', tone = 'muted') {
   status.dataset.tone = tone;
 }
 
+function getReviewItemStatus(item = {}, document = null) {
+  const status = String(item.status || '').toLowerCase();
+  if (status === 'validated') return 'validated';
+  if (status === 'rejected') return 'rejected';
+  if (document || status === 'submitted') return 'submitted';
+  return 'missing';
+}
+
 async function openStudentDocumentReviewModal({ panel, db, uid, request }) {
   const modal = getOrCreateReviewModal();
   const documents = getPanelDocuments(panel);
   const rows = getRequestDocumentItems(request, documents);
   const content = modal.querySelector('#sbi-doc-review-content');
   const validateButton = modal.querySelector('#sbi-doc-review-validate-btn');
-  const missing = rows.filter(({ item, document }) => item.required !== false && !document);
 
   if (content) {
     content.innerHTML = `
       <div class="sbi-doc-review-summary">
-        <strong>Demande à vérifier</strong>
+        <strong>Vérification des documents</strong>
         <span>${escapeHTML(formatDate(request.updatedAt || request.createdAt, 'Date inconnue'))}</span>
       </div>
+      <p class="sbi-doc-review-help">Sélectionne les pièces conformes. Les documents refusés ou manquants resteront à fournir par l’élève via le même lien.</p>
       <div class="sbi-doc-review-list">
         ${rows.map(({ item, document }, index) => {
-          const done = Boolean(document);
+          const state = getReviewItemStatus(item, document);
+          const ready = Boolean(document) || state === 'validated';
+          const rejected = state === 'rejected';
+          const validated = state === 'validated';
+          const currentNote = item.reviewNote || item.rejectionNote || '';
           return `
-            <article class="sbi-doc-review-item ${done ? 'is-ready' : 'is-missing'}" data-doc-review-index="${index}">
+            <article class="sbi-doc-review-item ${ready ? 'is-ready' : 'is-missing'} ${validated ? 'is-validated' : ''} ${rejected ? 'is-rejected' : ''}" data-doc-review-index="${index}">
               <div>
                 <strong>${escapeHTML(item.title || 'Document demandé')}</strong>
-                <span>${done ? escapeHTML(document.fileName || item.fileName || 'Fichier reçu') : 'Document non transmis'}</span>
+                <span>${document ? escapeHTML(document.fileName || item.fileName || 'Fichier reçu') : validated ? 'Document déjà validé' : 'Document non transmis / à refaire'}</span>
+                ${currentNote ? `<small>${escapeHTML(currentNote)}</small>` : ''}
               </div>
-              <em>${done ? 'Reçu' : 'Manquant'}</em>
-              ${done ? `
+              <em>${validated ? 'Validé' : document ? 'Reçu' : rejected ? 'À refaire' : 'Manquant'}</em>
+              ${document ? `
                 <div class="sbi-doc-review-item__actions">
                   <button type="button" data-review-open="${escapeHTML(document.id)}">Ouvrir</button>
                   <button type="button" data-review-download="${escapeHTML(document.id)}">Télécharger</button>
                 </div>
               ` : ''}
+              <div class="sbi-doc-review-decision">
+                <label>
+                  <span>Décision</span>
+                  <select data-review-decision="${index}" ${!document && !validated ? '' : ''}>
+                    <option value="validated" ${(document || validated) && !rejected ? 'selected' : ''} ${!document && !validated ? 'disabled' : ''}>Valider</option>
+                    <option value="rejected" ${(!document && !validated) || rejected ? 'selected' : ''}>À refaire / refuser</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Note pour l’élève si refus</span>
+                  <input type="text" data-review-note="${index}" maxlength="260" value="${escapeHTML(currentNote)}" placeholder="Ex : photo floue, document incomplet, justificatif trop ancien...">
+                </label>
+              </div>
             </article>
           `;
         }).join('')}
       </div>
+      <label class="sbi-doc-review-global-note">
+        <span>Message optionnel à l’élève</span>
+        <textarea id="sbi-doc-review-global-note" rows="3" maxlength="1200" placeholder="Message global ajouté au mail si une pièce est à refaire."></textarea>
+      </label>
     `;
   }
 
@@ -571,37 +600,73 @@ async function openStudentDocumentReviewModal({ panel, db, uid, request }) {
   });
 
   if (validateButton) {
-    validateButton.disabled = missing.length > 0;
-    validateButton.textContent = missing.length > 0 ? 'Documents manquants' : 'Valider la demande';
+    validateButton.disabled = false;
+    validateButton.textContent = 'Enregistrer la vérification';
     validateButton.onclick = async () => {
-      if (missing.length > 0) return;
-      const confirmed = window.confirm('Valider cette demande ? Elle disparaîtra des demandes envoyées et les pièces resteront dans le coffre actif.');
+      const decisions = rows.map(({ item, document }, index) => {
+        const select = modal.querySelector(`[data-review-decision="${index}"]`);
+        const note = normalizeText(modal.querySelector(`[data-review-note="${index}"]`)?.value || '', 260);
+        const status = select?.value === 'validated' && (document || item.status === 'validated') ? 'validated' : 'rejected';
+        return {
+          itemIndex: index,
+          type: item.type || '',
+          title: item.title || 'Document demandé',
+          documentId: document?.id || item.documentId || '',
+          status,
+          note
+        };
+      });
+      const rejectedCount = decisions.filter((item) => item.status === 'rejected').length;
+      const confirmed = window.confirm(
+        rejectedCount > 0
+          ? `${rejectedCount} document(s) seront redemandés à l’élève. Continuer ?`
+          : 'Tous les documents seront validés et un email de confirmation sera envoyé à l’élève. Continuer ?'
+      );
       if (!confirmed) return;
+
       validateButton.disabled = true;
-      validateButton.textContent = 'Validation...';
-      setReviewModalStatus(modal, 'Validation de la demande...', 'muted');
+      validateButton.textContent = 'Enregistrement...';
+      setReviewModalStatus(modal, 'Enregistrement de la vérification...', 'muted');
+
       try {
-        const callable = getAdminValidateStudentDocumentRequestCallable();
-        await callable({ requestId: request.id });
-        setReviewModalStatus(modal, 'Demande validée.', 'success');
-        setStatus(panel, 'Demande validée. Les documents restent disponibles dans le coffre actif.', 'success');
+        const callable = getAdminReviewStudentDocumentRequestCallable();
+        const response = await callable({
+          requestId: request.id,
+          decisions,
+          note: normalizeText(modal.querySelector('#sbi-doc-review-global-note')?.value || '', 1200)
+        });
+        const nextStatus = response?.data?.status || '';
+        setReviewModalStatus(
+          modal,
+          nextStatus === 'completed'
+            ? 'Demande validée. Email de confirmation envoyé à l’élève.'
+            : 'Vérification enregistrée. Les pièces à refaire ont été redemandées à l’élève.',
+          'success'
+        );
+        setStatus(
+          panel,
+          nextStatus === 'completed'
+            ? 'Demande validée. Les documents restent disponibles dans le coffre actif.'
+            : 'Demande partiellement validée. Les documents refusés sont à refaire par l’élève.',
+          'success'
+        );
         const [nextDocuments] = await Promise.all([
           loadStudentDocuments(db, uid),
           refreshStudentDocumentRequests(panel, db, uid)
         ]);
         setPanelDocuments(panel, nextDocuments);
         renderDocumentsList(panel, nextDocuments, db);
-        window.setTimeout(closeStudentDocumentReviewModal, 900);
+        window.setTimeout(closeStudentDocumentReviewModal, 1100);
       } catch (error) {
-        console.warn('[SBI Documents] Validation demande impossible :', error);
-        setReviewModalStatus(modal, getCallableUiMessage(error, 'Validation impossible.'), 'error');
+        console.warn('[SBI Documents] Vérification demande impossible :', error);
+        setReviewModalStatus(modal, getCallableUiMessage(error, 'Vérification impossible.'), 'error');
         validateButton.disabled = false;
-        validateButton.textContent = 'Valider la demande';
+        validateButton.textContent = 'Enregistrer la vérification';
       }
     };
   }
 
-  setReviewModalStatus(modal, missing.length > 0 ? 'Certains documents obligatoires sont encore manquants.' : 'Ouvre les pièces, puis valide la demande si tout est conforme.', missing.length > 0 ? 'error' : 'muted');
+  setReviewModalStatus(modal, 'Ouvre les pièces, choisis Valider ou À refaire, puis enregistre la vérification.', 'muted');
   modal.classList.add('is-open');
   document.body.classList.add('sbi-doc-request-modal-open');
 }
@@ -958,14 +1023,24 @@ function getAdminCreateStudentDocumentRequestCallable() {
   return window.__SBI_ADMIN_CREATE_STUDENT_DOCUMENT_REQUEST__;
 }
 
-function getAdminValidateStudentDocumentRequestCallable() {
-  if (!window.__SBI_ADMIN_VALIDATE_STUDENT_DOCUMENT_REQUEST__) {
-    window.__SBI_ADMIN_VALIDATE_STUDENT_DOCUMENT_REQUEST__ = httpsCallable(
+function getAdminReviewStudentDocumentRequestCallable() {
+  if (!window.__SBI_ADMIN_REVIEW_STUDENT_DOCUMENT_REQUEST__) {
+    window.__SBI_ADMIN_REVIEW_STUDENT_DOCUMENT_REQUEST__ = httpsCallable(
       getFunctionsInstance(),
-      'adminValidateStudentDocumentRequest'
+      'adminReviewStudentDocumentRequest'
     );
   }
-  return window.__SBI_ADMIN_VALIDATE_STUDENT_DOCUMENT_REQUEST__;
+  return window.__SBI_ADMIN_REVIEW_STUDENT_DOCUMENT_REQUEST__;
+}
+
+function getAdminCancelStudentDocumentRequestCallable() {
+  if (!window.__SBI_ADMIN_CANCEL_STUDENT_DOCUMENT_REQUEST__) {
+    window.__SBI_ADMIN_CANCEL_STUDENT_DOCUMENT_REQUEST__ = httpsCallable(
+      getFunctionsInstance(),
+      'adminCancelStudentDocumentRequest'
+    );
+  }
+  return window.__SBI_ADMIN_CANCEL_STUDENT_DOCUMENT_REQUEST__;
 }
 
 function getStudentDisplayName(data = {}, uid = '') {

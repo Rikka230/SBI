@@ -125,6 +125,10 @@ function isRequestCanceled(request = {}) {
   return ['canceled', 'cancelled', 'archived'].includes(String(request.status || '').toLowerCase());
 }
 
+function isRequestValidated(request = {}) {
+  return ['completed', 'validated'].includes(String(request.status || '').toLowerCase());
+}
+
 function getFunctionsInstance() {
   if (!window.__SBI_STUDENT_DOC_REQUEST_FUNCTIONS__) {
     window.__SBI_STUDENT_DOC_REQUEST_FUNCTIONS__ = getFunctions(app, FUNCTIONS_REGION);
@@ -169,7 +173,7 @@ function renderRequest(request, userData) {
       </div>
     ` : completed ? `
       <div class="sbi-doc-request-complete">
-        Documents envoyés. L’équipe SBI va vérifier ton dossier.
+        ${isRequestValidated(request) ? 'Documents validés. Ton dossier est à jour pour cette demande.' : 'Documents envoyés. L’équipe SBI va vérifier ton dossier.'}
       </div>
     ` : ''}
 
@@ -185,8 +189,9 @@ function renderRequest(request, userData) {
                 <h3>${escapeHTML(item.title || 'Document demandé')}</h3>
                 <span>${escapeHTML(item.acceptLabel || 'PDF, JPG ou PNG')}</span>
               </div>
-              <em>${sent ? 'Envoyé' : 'À fournir'}</em>
+              <em>${item.status === 'validated' ? 'Validé' : sent ? 'Envoyé' : item.reviewNote ? 'À refaire' : 'À fournir'}</em>
             </div>
+            ${!sent && item.reviewNote ? `<p class="sbi-doc-request-review-note">${escapeHTML(item.reviewNote)}</p>` : ''}
             <input type="file" accept=".pdf,image/*,application/pdf" ${sent || canceled ? 'disabled' : ''}>
           </article>
         `;
@@ -202,7 +207,7 @@ function renderRequest(request, userData) {
             : 'Tu peux revenir plus tard avec le même lien tant que les documents obligatoires ne sont pas tous envoyés.'}
       </span>
       <button id="student-doc-request-submit" type="button" ${!hasPendingRequired ? 'disabled' : ''}>
-        ${canceled ? 'Demande annulée' : completed ? 'Dossier transmis' : 'Envoyer les documents'}
+        ${canceled ? 'Demande annulée' : completed ? (isRequestValidated(request) ? 'Dossier validé' : 'Dossier transmis') : 'Envoyer les documents'}
       </button>
     </div>
   `;

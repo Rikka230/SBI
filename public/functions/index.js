@@ -3375,8 +3375,12 @@ function serializeStudentDocumentRequestItem(item = {}) {
         required: item?.required !== false,
         status: ['pending', 'submitted', 'validated', 'rejected'].includes(status) ? status : 'pending',
         documentId: cleanString(item?.documentId || '', 180),
+        rejectedDocumentId: cleanString(item?.rejectedDocumentId || '', 180),
         fileName: cleanString(item?.fileName || '', 180),
-        submittedAt: cleanString(item?.submittedAt || '', 80)
+        submittedAt: cleanString(item?.submittedAt || '', 80),
+        validatedAt: cleanString(item?.validatedAt || '', 80),
+        rejectedAt: cleanString(item?.rejectedAt || '', 80),
+        reviewNote: cleanMultiline(item?.reviewNote || item?.rejectionNote || '', 260)
     };
 }
 
@@ -3517,6 +3521,133 @@ async function sendStudentDocumentSubmittedAdminEmail({ student, requestData, su
     }, apiKey);
 }
 
+
+async function listAdminNotificationRecipients(db) {
+    const recipients = new Map();
+    try {
+        const adminSnap = await db.collection('users').where('role', '==', 'admin').get();
+        adminSnap.forEach((docSnap) => recipients.set(docSnap.id, docSnap.data() || {}));
+    } catch (error) {
+        console.error('Lecture admins notifications documents impossible :', error.message || error);
+    }
+    try {
+        const godSnap = await db.collection('users').where('isGod', '==', true).get();
+        godSnap.forEach((docSnap) => recipients.set(docSnap.id, docSnap.data() || {}));
+    } catch (error) {
+        console.error('Lecture isGod notifications documents impossible :', error.message || error);
+    }
+    return Array.from(recipients.entries()).map(([uid, data]) => ({ uid, data }));
+}
+
+async function createStudentDocumentSubmittedAdminNotifications(db, { requestId, studentUid, student, requestData, submittedItems }) {
+    const recipients = await listAdminNotificationRecipients(db);
+    if (!recipients.length) return;
+    const studentName = getAccountDisplayName(student) || requestData.studentName || requestData.studentEmail || 'Élève SBI';
+    const studentEmail = cleanEmail(student.email || requestData.studentEmail || '');
+    const now = admin.firestore.FieldValue.serverTimestamp();
+    const batch = db.batch();
+    recipients.forEach(({ uid }) => {
+        if (!uid) return;
+        const notificationRef = db.collection('notifications').doc(`student_documents_submitted_${requestId}_${uid}`);
+        batch.set(notificationRef, {
+            type: 'student_documents.submitted',
+            status: 'active',
+            destinataireId: uid,
+            dateCreation: now,
+            updatedAt: now,
+            requestId,
+            studentUid,
+            studentName,
+            studentEmail,
+            documentCount: submittedItems.length,
+            courseId: studentUid,
+            courseTitle: `Documents à vérifier - ${studentName}`,
+            auteurName: studentName,
+            dismissedBy: []
+        }, { merge: true });
+    });
+    await batch.commit();
+}
+
+async function resolveStudentDocumentRequestNotifications(db, requestId) {
+    if (!requestId) return;
+    const snap = await db.collection('notifications')
+        .where('type', '==', 'student_documents.submitted')
+        .where('requestId', '==', requestId)
+        .get();
+    if (snap.empty) return;
+    const now = admin.firestore.FieldValue.serverTimestamp();
+    const batch = db.batch();
+    snap.forEach((docSnap) => {
+        batch.set(docSnap.ref, {
+            status: 'resolved',
+            resolvedAt: now,
+            updatedAt: now
+        }, { merge: true });
+    });
+    await batch.commit();
+}
+
+function buildStudentDocumentApprovedMessageHtml({ studentName }) {
+    return `
+        <p style="margin:0 0 16px 0;">Tes documents ont bien été reçus et validés par l’équipe SBI.</p>
+        <div style="padding:14px 16px;border:1px solid #dce4f2;background:#f7f9fd;border-radius:12px;color:#253047;line-height:1.7;margin:18px 0;">
+            Ton dossier administratif est à jour pour cette demande.
+        </div>
+        <p style="margin:0;color:#667085;font-size:14px;line-height:22px;">Si l’équipe SBI a besoin d’un complément plus tard, tu recevras une nouvelle demande dédiée.</p>`;
+}
+
+function buildStudentDocumentRejectedMessageHtml({ rejectedItems, requestLink, note }) {
+    const list = rejectedItems.map((item) => `
+        <li style="margin:0 0 10px 0;">
+            <strong>${escapeHtml(item.title || 'Document demandé')}</strong>
+            ${item.reviewNote ? `<br><span style="color:#667085;">${escapeHtml(item.reviewNote)}</span>` : ''}
+        </li>`).join('');
+    return `
+        <p style="margin:0 0 16px 0;">Nous avons vérifié les documents transmis. Certains éléments doivent être renvoyés ou corrigés.</p>
+        <div style="padding:14px 16px;border:1px solid #dce4f2;background:#f7f9fd;border-radius:12px;color:#253047;line-height:1.7;margin:18px 0;">
+            <strong style="color:#101828;">Documents à refaire</strong>
+            <ul style="margin:12px 0 0 18px;padding:0;">${list}</ul>
+        </div>
+        ${note ? `<div style="padding:14px 16px;border:1px solid #dce4f2;background:#fff;border-radius:12px;color:#253047;line-height:1.7;margin:18px 0;"><strong style="color:#101828;">Message SBI</strong><br>${escapeHtmlMultiline(note)}</div>` : ''}
+        <p style="margin:22px 0;text-align:center;">
+            <a href="${escapeHtml(requestLink)}" style="display:inline-block;background:#0051ff;color:#ffffff;font-weight:bold;padding:13px 20px;border-radius:999px;text-decoration:none;">Renvoyer les documents</a>
+        </p>
+        <p style="margin:0;color:#667085;font-size:14px;line-height:22px;">Le même lien reste utilisable pour déposer uniquement les pièces à refaire.</p>`;
+}
+
+async function sendStudentDocumentReviewResultEmail({ student, requestData, rejectedItems, note, apiKey }) {
+    const email = cleanEmail(student.email || requestData.studentEmail || '');
+    if (!isValidEmail(email)) throw new Error('Email élève invalide.');
+    const studentName = getAccountDisplayName(student) || requestData.studentName || email;
+    const hasRejected = Array.isArray(rejectedItems) && rejectedItems.length > 0;
+    const requestLink = requestData.requestLink || buildStudentDocumentRequestLink(requestData.id || requestData.requestId || '');
+    const htmlContent = renderSbiEmailTemplate({
+        prenom: student.prenom || studentName || 'à toi',
+        messageHtml: hasRejected
+            ? buildStudentDocumentRejectedMessageHtml({ rejectedItems, requestLink, note })
+            : buildStudentDocumentApprovedMessageHtml({ studentName }),
+        nomExpediteur: 'L’équipe SBI',
+        posteExpediteur: 'Service administratif',
+        preheader: hasRejected ? 'Certains documents SBI sont à renvoyer.' : 'Tes documents SBI ont été validés.'
+    });
+    return sendBrevoEmail({
+        sender: { name: SBI_SENDER_NAME, email: SBI_SENDER_EMAIL },
+        to: [{ email, name: studentName || email }],
+        subject: hasRejected ? 'SBI - Documents à corriger pour ton dossier' : 'SBI - Documents validés pour ton dossier',
+        htmlContent,
+        textContent: hasRejected
+            ? [
+                `Bonjour ${student.prenom || ''},`, '',
+                'Certains documents doivent être corrigés ou renvoyés :',
+                ...rejectedItems.map((item) => `- ${item.title}${item.reviewNote ? ` : ${item.reviewNote}` : ''}`),
+                note ? `Message SBI : ${note}` : '',
+                `Lien : ${requestLink}`, '', 'Bien cordialement,', 'L’équipe SBI'
+            ].filter(Boolean).join('\n')
+            : [`Bonjour ${student.prenom || ''},`, '', 'Tes documents ont bien été reçus et validés par l’équipe SBI.', '', 'Bien cordialement,', 'L’équipe SBI'].join('\n')
+    }, apiKey);
+}
+
 exports.studentNotifyDocumentRequestSubmitted = onCall({
     region: 'europe-west1',
     secrets: [BREVO_API_KEY],
@@ -3593,25 +3724,80 @@ exports.studentNotifyDocumentRequestSubmitted = onCall({
         emailSent: !warning
     });
 
+    try {
+        await createStudentDocumentSubmittedAdminNotifications(db, {
+            requestId,
+            studentUid: uid,
+            student,
+            requestData: { ...requestData, id: requestId, requestId, studentUid: uid },
+            submittedItems
+        });
+    } catch (error) {
+        console.error('Erreur notification admin documents reçus SBI :', error.message || error);
+    }
+
     return { success: true, warning, message: warning || 'Notification envoyée.' };
 });
 
 
-exports.adminValidateStudentDocumentRequest = onCall({
+exports.adminCancelStudentDocumentRequest = onCall({
     region: 'europe-west1',
-    timeoutSeconds: 30,
+    timeoutSeconds: 20,
     memory: '256MiB'
 }, async (request) => {
     const db = admin.firestore();
     const caller = await requireAdminCaller(request, db);
     const requestId = cleanString(request.data?.requestId || request.data?.id || '', 180);
-
     if (!requestId) throw new HttpsError('invalid-argument', 'Identifiant de demande manquant.');
 
     const requestRef = db.collection('studentDocumentRequests').doc(requestId);
     const requestDoc = await requestRef.get();
     if (!requestDoc.exists) throw new HttpsError('not-found', 'Demande introuvable.');
 
+    const requestData = requestDoc.data() || {};
+    const studentUid = cleanString(requestData.studentUid || '', 160);
+    const now = admin.firestore.FieldValue.serverTimestamp();
+
+    await requestRef.set({
+        status: 'canceled',
+        canceledAt: now,
+        canceledBy: caller.uid,
+        canceledByEmail: caller.email,
+        updatedAt: now
+    }, { merge: true });
+
+    await resolveStudentDocumentRequestNotifications(db, requestId);
+
+    await safeWriteAccountAuditLog(db, {
+        type: 'student_documents.request_canceled',
+        actorUid: caller.uid,
+        actorEmail: caller.email,
+        targetUid: studentUid,
+        targetEmail: cleanEmail(requestData.studentEmail || ''),
+        targetRole: 'student',
+        changes: { documents: { requestId, status: 'canceled' } }
+    });
+
+    return { success: true, requestId, status: 'canceled', message: 'Demande annulée.' };
+});
+
+exports.adminReviewStudentDocumentRequest = onCall({
+    region: 'europe-west1',
+    secrets: [BREVO_API_KEY],
+    timeoutSeconds: 35,
+    memory: '256MiB'
+}, async (request) => {
+    const db = admin.firestore();
+    const caller = await requireAdminCaller(request, db);
+    const requestId = cleanString(request.data?.requestId || request.data?.id || '', 180);
+    const decisions = Array.isArray(request.data?.decisions) ? request.data.decisions : [];
+    const note = cleanMultiline(request.data?.note || '', 1200);
+    if (!requestId) throw new HttpsError('invalid-argument', 'Identifiant de demande manquant.');
+    if (!decisions.length) throw new HttpsError('invalid-argument', 'Aucune décision de vérification transmise.');
+
+    const requestRef = db.collection('studentDocumentRequests').doc(requestId);
+    const requestDoc = await requestRef.get();
+    if (!requestDoc.exists) throw new HttpsError('not-found', 'Demande introuvable.');
     const requestData = requestDoc.data() || {};
     const currentStatus = cleanString(requestData.status || 'requested', 40).toLowerCase();
     if (['canceled', 'cancelled', 'archived', 'completed', 'validated'].includes(currentStatus)) {
@@ -3620,81 +3806,88 @@ exports.adminValidateStudentDocumentRequest = onCall({
 
     const studentUid = cleanString(requestData.studentUid || '', 160);
     if (!studentUid) throw new HttpsError('failed-precondition', 'UID élève manquant sur la demande.');
+    const items = Array.isArray(requestData.items) ? requestData.items.map(serializeStudentDocumentRequestItem) : [];
+    if (!items.length) throw new HttpsError('failed-precondition', 'Aucun document dans cette demande.');
 
-    const items = Array.isArray(requestData.items)
-        ? requestData.items.map(serializeStudentDocumentRequestItem)
-        : [];
-
-    const missingRequired = items.filter((item) => {
-        return item.required !== false && !['submitted', 'validated'].includes(cleanString(item.status || '', 40).toLowerCase());
+    const decisionMap = new Map();
+    decisions.slice(0, 50).forEach((decision) => {
+        const index = Number(decision?.itemIndex);
+        if (!Number.isInteger(index) || index < 0 || index >= items.length) return;
+        decisionMap.set(index, {
+            status: cleanString(decision?.status || 'rejected', 40).toLowerCase() === 'validated' ? 'validated' : 'rejected',
+            documentId: cleanString(decision?.documentId || '', 180),
+            note: cleanMultiline(decision?.note || '', 260)
+        });
     });
-
-    if (!items.length || missingRequired.length) {
-        throw new HttpsError('failed-precondition', 'Tous les documents obligatoires doivent être transmis avant validation.');
-    }
 
     const now = admin.firestore.FieldValue.serverTimestamp();
+    const nowIso = new Date().toISOString();
     const batch = db.batch();
-    const nextItems = items.map((item) => ({
-        ...item,
-        status: ['submitted', 'validated'].includes(cleanString(item.status || '', 40).toLowerCase()) ? 'validated' : item.status,
-        validatedAt: item.validatedAt || new Date().toISOString(),
-        validatedBy: caller.uid,
-        validatedByEmail: caller.email
-    }));
+    const rejectedItems = [];
+    const validatedItems = [];
 
-    batch.set(requestRef, {
-        status: 'completed',
-        items: nextItems,
-        completedAt: now,
-        validatedAt: now,
-        validatedBy: caller.uid,
-        validatedByEmail: caller.email,
-        updatedAt: now
-    }, { merge: true });
-
-    nextItems.forEach((item) => {
-        const documentId = cleanString(item.documentId || '', 180);
-        if (!documentId) return;
-        const documentRef = db.collection('studentDocuments').doc(documentId);
-        batch.set(documentRef, {
-            status: 'active',
-            validationStatus: 'validated',
-            validatedAt: now,
-            validatedBy: caller.uid,
-            validatedByEmail: caller.email,
-            updatedAt: now
-        }, { merge: true });
+    const nextItems = items.map((item, index) => {
+        const decision = decisionMap.get(index) || { status: 'rejected', documentId: item.documentId || '', note: '' };
+        const currentItemStatus = cleanString(item.status || '', 40).toLowerCase();
+        const existingDocumentId = cleanString(item.documentId || decision.documentId || '', 180);
+        const canValidate = decision.status === 'validated' && (existingDocumentId || currentItemStatus === 'validated');
+        if (canValidate) {
+            const nextItem = { ...item, status: 'validated', documentId: existingDocumentId, validatedAt: item.validatedAt || nowIso, validatedBy: caller.uid, validatedByEmail: caller.email, reviewNote: '' };
+            validatedItems.push(nextItem);
+            if (existingDocumentId) {
+                batch.set(db.collection('studentDocuments').doc(existingDocumentId), { status: 'active', validationStatus: 'validated', validatedAt: now, validatedBy: caller.uid, validatedByEmail: caller.email, updatedAt: now }, { merge: true });
+            }
+            return nextItem;
+        }
+        const rejectedDocumentId = existingDocumentId;
+        const nextItem = { ...item, status: 'pending', documentId: '', fileName: '', rejectedDocumentId, rejectedAt: nowIso, rejectedBy: caller.uid, rejectedByEmail: caller.email, reviewNote: decision.note || note || 'Document à renvoyer.' };
+        rejectedItems.push(nextItem);
+        if (rejectedDocumentId) {
+            batch.set(db.collection('studentDocuments').doc(rejectedDocumentId), { status: 'rejected', validationStatus: 'rejected', rejectedAt: now, rejectedBy: caller.uid, rejectedByEmail: caller.email, rejectionNote: nextItem.reviewNote, updatedAt: now }, { merge: true });
+        }
+        return nextItem;
     });
 
+    const completed = rejectedItems.length === 0 && nextItems.every((item) => item.required === false || item.status === 'validated');
+    const nextStatus = completed ? 'completed' : 'partial';
+    batch.set(requestRef, {
+        status: nextStatus,
+        items: nextItems,
+        lastReviewedAt: now,
+        lastReviewedBy: caller.uid,
+        lastReviewedByEmail: caller.email,
+        reviewNote: note,
+        updatedAt: now,
+        ...(completed ? { completedAt: now, validatedAt: now, validatedBy: caller.uid, validatedByEmail: caller.email } : { adminNotifiedAt: admin.firestore.FieldValue.delete(), adminNotificationWarning: admin.firestore.FieldValue.delete(), completedAt: admin.firestore.FieldValue.delete(), validatedAt: admin.firestore.FieldValue.delete() })
+    }, { merge: true });
+
     await batch.commit();
+    await resolveStudentDocumentRequestNotifications(db, requestId);
 
     const studentDoc = await db.collection('users').doc(studentUid).get();
-    const student = studentDoc.exists ? (studentDoc.data() || {}) : {};
+    const student = studentDoc.exists ? (studentDoc.data() || {}) : { email: requestData.studentEmail || '' };
+    const apiKey = BREVO_API_KEY.value();
+    let warning = '';
+    try {
+        if (!apiKey) throw new Error('BREVO_API_KEY manquant.');
+        await sendStudentDocumentReviewResultEmail({ student, requestData: { ...requestData, id: requestId, requestId, studentUid, items: nextItems }, rejectedItems, note, apiKey });
+    } catch (error) {
+        warning = completed ? 'Demande validée, mais l’email de confirmation élève n’a pas pu être envoyé.' : 'Vérification enregistrée, mais l’email de correction élève n’a pas pu être envoyé.';
+        console.error('Erreur email vérification documents SBI :', error.message, error.payload || '');
+    }
 
     await safeWriteAccountAuditLog(db, {
-        type: 'student_documents.validated',
+        type: completed ? 'student_documents.validated' : 'student_documents.partial_review',
         actorUid: caller.uid,
         actorEmail: caller.email,
         targetUid: studentUid,
         targetEmail: cleanEmail(student.email || requestData.studentEmail || ''),
         targetRole: student.role || 'student',
-        changes: {
-            documents: {
-                requestId,
-                validated: nextItems.map((item) => item.title),
-                validatedCount: nextItems.filter((item) => item.status === 'validated').length,
-                requestedCount: items.length
-            }
-        }
+        changes: { documents: { requestId, status: nextStatus, validated: validatedItems.map((item) => item.title), rejected: rejectedItems.map((item) => item.title), validatedCount: validatedItems.length, rejectedCount: rejectedItems.length, requestedCount: items.length } },
+        emailSent: !warning
     });
 
-    return {
-        success: true,
-        requestId,
-        status: 'completed',
-        message: 'Demande validée.'
-    };
+    return { success: true, requestId, status: nextStatus, rejectedCount: rejectedItems.length, validatedCount: validatedItems.length, warning, message: warning || (completed ? 'Demande validée.' : 'Documents à refaire redemandés à l’élève.') };
 });
 
 exports.adminCreateStudentDocumentRequest = onCall({
