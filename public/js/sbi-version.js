@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.48',
+  version: '8.0P.167.49',
   branch: 'main',
-  channel: 'PROFILE ACTIVITY RENDER CONTRAST FIX',
-  stage: 'FIX ACTIVITY TEXT AT PROFILE RENDERER SOURCE',
+  channel: 'PJAX SCROLLBAR STABILITY',
+  stage: 'RESERVE MAIN SCROLLBAR GUTTER',
   updatedAt: '2026-05-16',
-  label: 'SBI 8.0P.167.48 - FIX ACTIVITY TEXT AT PROFILE RENDERER SOURCE'
+  label: 'SBI 8.0P.167.49 - RESERVE MAIN SCROLLBAR GUTTER'
 };
 
 export function getSbiVersionLabel() {

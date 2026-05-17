@@ -196,3 +196,26 @@ body {
     }
 }
 
+
+/* ==========================================================================
+   SBI 8.0P.167.49 — Scrollbar stable pendant chargement PJAX
+   --------------------------------------------------------------------------
+   Pendant un changement de page/onglet, le contenu peut passer de court à long.
+   Si la scrollbar apparaît après rendu, le contenu centré se décale. On réserve
+   donc une gouttière stable sur le conteneur de scroll principal.
+   ========================================================================== */
+
+#main-content {
+    scrollbar-gutter: stable;
+}
+
+/* Fallback doux pour les navigateurs sans scrollbar-gutter : on garde le modèle
+   single-scroll, mais on évite le va-et-vient du rail sur desktop. */
+@supports not (scrollbar-gutter: stable) {
+    @media (min-width: 769px) {
+        #main-content {
+            overflow-y: scroll;
+        }
+    }
+}
+
