@@ -25,6 +25,206 @@ let lastUsersSnapshotAt = 0;
 
 const ONLINE_TTL_MS = 90000;
 
+const USERS_CACHE_KEY = 'sbi.admin.users.cache.v16753';
+const USERS_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+const USERS_RENDER_DEBOUNCE_MS = 80;
+
+let usersRenderTimer = null;
+let usersCacheHydrated = false;
+let usersSnapshotInitialized = false;
+let usersListDelegationBound = false;
+
+const escapeHtml = (value) => String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+
+const normalizeUsersArray = (users = []) => Array.isArray(users)
+    ? users.filter((user) => user && user.id).map((user) => ({ ...user }))
+    : [];
+
+const readUsersCache = () => {
+    try {
+        const raw = window.localStorage?.getItem(USERS_CACHE_KEY);
+        if (!raw) return null;
+
+        const parsed = JSON.parse(raw);
+        if (!parsed || !Array.isArray(parsed.users)) return null;
+
+        const updatedAt = Number(parsed.updatedAt || 0);
+        if (!updatedAt || Date.now() - updatedAt > USERS_CACHE_TTL_MS) return null;
+
+        return normalizeUsersArray(parsed.users);
+    } catch (error) {
+        console.warn('[SBI Admin] Cache comptes illisible :', error);
+        return null;
+    }
+};
+
+const writeUsersCache = () => {
+    try {
+        window.localStorage?.setItem(USERS_CACHE_KEY, JSON.stringify({
+            version: '8.0P.167.53',
+            updatedAt: Date.now(),
+            users: normalizeUsersArray(allUsersData)
+        }));
+    } catch (error) {
+        console.warn('[SBI Admin] Cache comptes non enregistré :', error);
+    }
+};
+
+const updateCurrentUserPrivileges = () => {
+    const godExists = allUsersData.some(u => u.isGod === true);
+    const myProfile = allUsersData.find(u => u.id === currentUid);
+    isCurrentUserGod = godExists ? (myProfile && myProfile.isGod === true) : true;
+};
+
+const publishUsersState = (reason = 'sync') => {
+    const users = normalizeUsersArray(allUsersData);
+
+    window.SBI_ADMIN_USERS_CACHE = {
+        version: '8.0P.167.53',
+        users,
+        updatedAt: Date.now(),
+        reason
+    };
+
+    window.__SBI_ADMIN_CORE_ACCOUNTS_OWNER = true;
+
+    window.dispatchEvent(new CustomEvent('sbi:accounts-data-updated', {
+        detail: {
+            version: '8.0P.167.53',
+            reason,
+            users,
+            updatedAt: Date.now()
+        }
+    }));
+};
+
+const scheduleUsersRender = (reason = 'sync', delay = USERS_RENDER_DEBOUNCE_MS) => {
+    if (usersRenderTimer) window.clearTimeout(usersRenderTimer);
+
+    usersRenderTimer = window.setTimeout(() => {
+        usersRenderTimer = null;
+        renderCurrentFilteredUsers(reason);
+    }, delay);
+};
+
+const hydrateUsersFromLocalCache = () => {
+    if (usersCacheHydrated) return false;
+    usersCacheHydrated = true;
+
+    const cachedUsers = readUsersCache();
+    if (!cachedUsers || cachedUsers.length === 0) return false;
+
+    allUsersData = cachedUsers;
+    updateCurrentUserPrivileges();
+    publishUsersState('local-cache');
+    scheduleUsersRender('local-cache', 0);
+    return true;
+};
+
+const mergeUserIntoCache = (uid, patch = {}) => {
+    if (!uid) return;
+
+    const index = allUsersData.findIndex((user) => user.id === uid);
+    if (index >= 0) {
+        allUsersData[index] = {
+            ...allUsersData[index],
+            ...patch,
+            id: uid
+        };
+    } else {
+        allUsersData = [
+            {
+                id: uid,
+                statut: 'actif',
+                role: 'student',
+                ...patch
+            },
+            ...allUsersData
+        ];
+    }
+
+    updateCurrentUserPrivileges();
+    writeUsersCache();
+    publishUsersState('optimistic-local-change');
+    scheduleUsersRender('optimistic-local-change', 0);
+};
+
+const removeUserFromCache = (uid) => {
+    if (!uid) return;
+
+    const before = allUsersData.length;
+    allUsersData = allUsersData.filter((user) => user.id !== uid);
+
+    if (allUsersData.length === before) return;
+
+    updateCurrentUserPrivileges();
+    writeUsersCache();
+    publishUsersState('optimistic-local-delete');
+    scheduleUsersRender('optimistic-local-delete', 0);
+};
+
+const applyUsersSnapshot = (querySnapshot) => {
+    const hadLocalCache = allUsersData.length > 0;
+    const changes = typeof querySnapshot.docChanges === 'function' ? querySnapshot.docChanges() : [];
+    let changed = !usersSnapshotInitialized;
+
+    if (!usersSnapshotInitialized || !hadLocalCache) {
+        allUsersData = [];
+        querySnapshot.forEach((snapDoc) => {
+            allUsersData.push({ id: snapDoc.id, ...(snapDoc.data() || {}) });
+        });
+        changed = true;
+    } else if (changes.length > 0) {
+        const usersMap = new Map(allUsersData.map((user) => [user.id, user]));
+
+        changes.forEach((change) => {
+            const uid = change.doc.id;
+
+            if (change.type === 'removed') {
+                usersMap.delete(uid);
+                changed = true;
+                return;
+            }
+
+            usersMap.set(uid, { id: uid, ...(change.doc.data() || {}) });
+            changed = true;
+        });
+
+        allUsersData = Array.from(usersMap.values());
+    }
+
+    usersSnapshotInitialized = true;
+    lastUsersSnapshotAt = Date.now();
+
+    if (!changed) return;
+
+    updateCurrentUserPrivileges();
+    writeUsersCache();
+    publishUsersState('server-snapshot');
+    scheduleUsersRender('server-snapshot');
+};
+
+const bindUsersListDelegation = (container) => {
+    if (!container || usersListDelegationBound) return;
+
+    usersListDelegationBound = true;
+
+    container.addEventListener('click', (event) => {
+        const editButton = event.target?.closest?.('.btn-edit-user[data-id]');
+        if (editButton) {
+            event.preventDefault();
+            openEditModal(editButton.getAttribute('data-id'));
+        }
+    });
+};
+
+
+
 const runAfterPaint = (callback) => {
     window.requestAnimationFrame(() => window.setTimeout(callback, 0));
 };
@@ -102,46 +302,42 @@ const getFilteredUsers = () => {
     });
 };
 
-const renderCurrentFilteredUsers = () => {
-    renderUsersList(getFilteredUsers());
+const renderCurrentFilteredUsers = (reason = 'manual') => {
+    renderUsersList(getFilteredUsers(), reason);
 };
 
 const fetchUsers = () => {
     const container = document.getElementById('users-list-container');
     if (!container) return;
 
+    bindUsersListDelegation(container);
+    hydrateUsersFromLocalCache();
+
     if (unsubscribeUsersRealtime) {
-        renderCurrentFilteredUsers();
+        renderCurrentFilteredUsers('listener-already-open');
+        publishUsersState('listener-already-open');
         return;
     }
 
     try {
         unsubscribeUsersRealtime = onSnapshot(collection(db, "users"), (querySnapshot) => {
-            allUsersData = [];
-
-            querySnapshot.forEach((snapDoc) => {
-                allUsersData.push({ id: snapDoc.id, ...snapDoc.data() });
-            });
-
-            lastUsersSnapshotAt = Date.now();
-
-            const godExists = allUsersData.some(u => u.isGod === true);
-            const myProfile = allUsersData.find(u => u.id === currentUid);
-            isCurrentUserGod = godExists ? (myProfile && myProfile.isGod === true) : true;
-
-            renderCurrentFilteredUsers();
+            applyUsersSnapshot(querySnapshot);
         }, (error) => {
             console.error("Erreur écoute users :", error);
-            container.innerHTML = `<div class="sys-msg error" style="display:block;">Erreur de chargement.</div>`;
+            if (allUsersData.length === 0) {
+                container.innerHTML = `<div class="sys-msg error" style="display:block;">Erreur de chargement.</div>`;
+            }
         });
 
         if (!presenceRefreshIntervalId) {
             presenceRefreshIntervalId = window.setInterval(() => {
-                if (allUsersData.length > 0) renderCurrentFilteredUsers();
+                if (allUsersData.length > 0) scheduleUsersRender('presence-tick', 160);
             }, 30000);
         }
     } catch (error) {
-        container.innerHTML = `<div class="sys-msg error" style="display:block;">Erreur de chargement.</div>`;
+        if (allUsersData.length === 0) {
+            container.innerHTML = `<div class="sys-msg error" style="display:block;">Erreur de chargement.</div>`;
+        }
     }
 };
 
@@ -174,23 +370,12 @@ const forceUsersRehydrateFromProfile = () => {
     const container = document.getElementById('users-list-container');
     if (!container || !currentUid) return;
 
-    container.innerHTML = '<div class="empty-state">Actualisation des comptes...</div>';
+    hydrateUsersFromLocalCache();
+    scheduleUsersRender('profile-return', 0);
 
-    disconnectUsersRealtime();
-    fetchUsers();
-
-    window.setTimeout(() => {
-        const retryContainer = document.getElementById('users-list-container');
-        if (!retryContainer) return;
-
-        const hasRows = Boolean(retryContainer.querySelector('.btn-view-profile, .btn-edit-user'));
-        const looksStuck = !hasRows && (retryContainer.textContent || '').toLowerCase().includes('actualisation');
-
-        if (looksStuck) {
-            disconnectUsersRealtime();
-            fetchUsers();
-        }
-    }, 1200);
+    if (!unsubscribeUsersRealtime) {
+        fetchUsers();
+    }
 };
 
 const resetUserListFilters = () => {
@@ -202,44 +387,56 @@ const resetUserListFilters = () => {
 };
 
 const forceUsersRefreshAfterCreate = (createdUser = {}) => {
-    const container = document.getElementById('users-list-container');
-    if (container) {
-        container.innerHTML = '<div class="empty-state">Actualisation du nouveau compte...</div>';
-    }
-
     resetUserListFilters();
-    disconnectUsersRealtime();
-    fetchUsers();
+
+    const uid = createdUser.uid || createdUser.id || '';
+    if (uid) {
+        mergeUserIntoCache(uid, {
+            uid,
+            prenom: createdUser.prenom || '',
+            nom: createdUser.nom || '',
+            email: createdUser.email || '',
+            role: createdUser.role || 'student',
+            statut: createdUser.statut || 'actif',
+            createdAt: createdUser.createdAt || Date.now(),
+            accountStatus: {
+                ...(createdUser.accountStatus || {}),
+                preparationState: createdUser.accountStatus?.preparationState || 'pending_password'
+            }
+        });
+    } else {
+        scheduleUsersRender('account-created-pending-server', 0);
+    }
 
     window.dispatchEvent(new CustomEvent('sbi:account-created', {
         detail: {
-            uid: createdUser.uid || '',
+            uid,
             email: createdUser.email || '',
             at: Date.now()
         }
     }));
-
-    window.setTimeout(() => {
-        disconnectUsersRealtime();
-        fetchUsers();
-    }, 450);
 };
 
-const renderUsersList = (usersToRender) => {
+const renderUsersList = (usersToRender, reason = 'manual') => {
     const container = document.getElementById('users-list-container');
     if (!container) return;
 
-    container.innerHTML = '';
+    bindUsersListDelegation(container);
+
     container.style.overflowX = 'hidden';
     container.style.paddingBottom = '0';
 
     if (usersToRender.length === 0) {
         container.innerHTML = '<div class="empty-state">Aucun compte trouvé.</div>';
+        publishUsersState(`render:${reason}`);
+        window.dispatchEvent(new CustomEvent('sbi:accounts-rendered', {
+            detail: { version: '8.0P.167.53', reason, count: 0 }
+        }));
         return;
     }
 
-    usersToRender.forEach(user => {
-        const displayName = (user.prenom && user.nom) ? `${user.prenom} ${user.nom}` : (user.nom || "Sans nom");
+    const html = usersToRender.map((user) => {
+        const displayName = (user.prenom && user.nom) ? `${user.prenom} ${user.nom}` : (user.nom || user.prenom || "Sans nom");
         const statusLabel = user.statut === 'suspendu'
             ? '<span style="color: #ff4a4a; font-weight:bold;">Suspendu</span>'
             : '<span style="color: #2ed573; font-weight:bold;">Actif</span>';
@@ -247,8 +444,8 @@ const renderUsersList = (usersToRender) => {
         const isOnline = isUserReallyOnline(user);
         const lastSeenLabel = getLastSeenLabel(user);
         const onlineIndicator = isOnline
-            ? '<span style="display:inline-block; min-width:8px; height:8px; background-color:#00ffa3; border-radius:50%; margin-right:8px; box-shadow: 0 0 6px #00ffa3;" title="En ligne"></span>'
-            : `<span style="display:inline-block; min-width:8px; height:8px; background-color:#4b4b52; border-radius:50%; margin-right:8px;" title="${lastSeenLabel}"></span>`;
+            ? '<span class="sbi-account-online-dot is-online" title="En ligne"></span>'
+            : `<span class="sbi-account-online-dot" title="${escapeHtml(lastSeenLabel)}"></span>`;
 
         let roleBgColor = '';
         let roleTextColor = '';
@@ -270,49 +467,52 @@ const renderUsersList = (usersToRender) => {
             roleBgColor = 'rgba(0, 255, 163, 0.15)';
             roleTextColor = '#00ffa3';
             roleText = 'Élève';
+        } else {
+            roleBgColor = 'rgba(156, 163, 175, 0.12)';
+            roleTextColor = '#9ca3af';
+            roleText = 'Compte';
         }
 
-        const userCardHTML = `
-            <div style="background: #0a0a0c; border: 1px solid #222; border-radius: 6px; margin-bottom: 0.4rem; display: grid; grid-template-columns: 85px 1fr 1.5fr 70px 75px 75px; align-items: stretch; opacity: ${user.statut === 'suspendu' ? '0.6' : '1'}; font-size: 0.8rem; overflow: hidden;">
+        return `
+            <div class="sbi-account-row" data-sbi-account-id="${escapeHtml(user.id)}" style="background: #0a0a0c; border: 1px solid #222; border-radius: 6px; margin-bottom: 0.4rem; display: grid; grid-template-columns: 64px minmax(104px, .92fr) minmax(136px, 1.22fr) minmax(132px, 1fr) 62px 62px; align-items: stretch; opacity: ${user.statut === 'suspendu' ? '0.6' : '1'}; font-size: 0.8rem; overflow: hidden;">
 
-                <div style="background: ${roleBgColor}; color: ${roleTextColor}; display: flex; align-items: center; justify-content: center; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; font-size: 0.7rem; border-right: 1px solid #222; text-align: center;">
-                    ${roleText}
+                <div class="sbi-account-role-cell" style="background: ${roleBgColor}; color: ${roleTextColor}; display: flex; align-items: center; justify-content: center; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; font-size: 0.68rem; border-right: 1px solid #222; text-align: center;">
+                    ${escapeHtml(roleText)}
                 </div>
 
-                <div style="color: white; font-weight: bold; word-break: break-word; min-width: 0; padding: 0.6rem 0.8rem; display: flex; align-items: center;">
-                    ${onlineIndicator} ${displayName}
+                <div class="sbi-account-name-cell" style="color: white; font-weight: bold; word-break: break-word; min-width: 0; padding: 0.58rem 0.65rem; display: flex; align-items: center;">
+                    ${onlineIndicator} <span class="sbi-account-name-line">${escapeHtml(displayName)}</span>
                 </div>
 
-                <div style="color: #9ca3af; word-break: break-word; min-width: 0; padding: 0.6rem 0.8rem; display: flex; align-items: center;">
-                    ${user.email}
+                <div class="sbi-account-email-cell" style="color: #9ca3af; word-break: break-word; min-width: 0; padding: 0.58rem 0.65rem; display: flex; align-items: center;">
+                    ${escapeHtml(user.email || 'Email manquant')}
                 </div>
 
-                <div style="text-align: center; padding: 0.6rem 0.8rem; display: flex; align-items: center; justify-content: center;">
+                <div class="sbi-account-status-cell" style="text-align: center; padding: 0.58rem 0.65rem; display: flex; align-items: center; justify-content: center;">
                     ${statusLabel}
                 </div>
 
-                <button class="btn-view-profile" data-id="${user.id}" style="background: rgba(46, 213, 115, 0.1); color: #2ed573; border: none; border-left: 1px solid #222; cursor: pointer; transition: background-color 0.2s; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; font-size: 0.7rem; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; padding: 0;" onmouseover="this.style.background='rgba(46, 213, 115, 0.2)'" onmouseout="this.style.background='rgba(46, 213, 115, 0.1)'">
+                <button class="btn-view-profile" data-id="${escapeHtml(user.id)}" style="background: rgba(46, 213, 115, 0.1); color: #2ed573; border: none; border-left: 1px solid #222; cursor: pointer; transition: background-color 0.12s; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; font-size: 0.66rem; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; padding: 0;">
                     Profil
                 </button>
 
-                <button class="btn-edit-user" data-id="${user.id}" style="background: rgba(42, 87, 255, 0.1); color: #2A57FF; border: none; border-left: 1px solid #222; cursor: pointer; transition: background-color 0.2s; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; font-size: 0.7rem; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; padding: 0;" onmouseover="this.style.background='rgba(42, 87, 255, 0.2)'" onmouseout="this.style.background='rgba(42, 87, 255, 0.1)'">
+                <button class="btn-edit-user" data-id="${escapeHtml(user.id)}" style="background: rgba(42, 87, 255, 0.1); color: #2A57FF; border: none; border-left: 1px solid #222; cursor: pointer; transition: background-color 0.12s; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; font-size: 0.66rem; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; padding: 0;">
                     Éditer
                 </button>
             </div>
         `;
+    }).join('');
 
-        container.insertAdjacentHTML('beforeend', userCardHTML);
-    });
+    container.innerHTML = html;
 
-    document.querySelectorAll('.btn-view-profile').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            window.location.href = `admin-profile.html?id=${e.target.getAttribute('data-id')}`;
-        });
-    });
-
-    document.querySelectorAll('.btn-edit-user').forEach(btn => {
-        btn.addEventListener('click', (e) => openEditModal(e.target.getAttribute('data-id')));
-    });
+    publishUsersState(`render:${reason}`);
+    window.dispatchEvent(new CustomEvent('sbi:accounts-rendered', {
+        detail: {
+            version: '8.0P.167.53',
+            reason,
+            count: usersToRender.length
+        }
+    }));
 };
 
 const initFilters = () => {
@@ -320,8 +520,8 @@ const initFilters = () => {
     const roleFilter = document.getElementById('filter-role');
     if (!searchInput || !roleFilter) return;
 
-    searchInput.addEventListener('input', renderCurrentFilteredUsers);
-    roleFilter.addEventListener('change', renderCurrentFilteredUsers);
+    searchInput.addEventListener('input', () => scheduleUsersRender('filter', 120));
+    roleFilter.addEventListener('change', () => scheduleUsersRender('filter', 0));
 };
 
 const formatNom = (str) => str.toUpperCase();
@@ -361,7 +561,11 @@ const initUserCreation = () => {
             form.reset();
             forceUsersRefreshAfterCreate({
                 uid: result?.data?.uid || '',
-                email
+                prenom,
+                nom,
+                email,
+                role,
+                statut: 'actif'
             });
         } catch (error) {
             msgBox.style.color = 'var(--accent-red)';
@@ -555,7 +759,21 @@ const initModalLogic = () => {
             }
 
             modal.style.display = 'none';
-            fetchUsers();
+
+            const optimisticPatch = { ...profilePayload };
+            const changedEmail = emailInput && !emailInput.disabled
+                ? emailInput.value.trim().toLowerCase()
+                : '';
+
+            if (changedEmail && changedEmail !== (targetUser.email || '').trim().toLowerCase()) {
+                optimisticPatch.email = changedEmail;
+            }
+
+            if (Object.keys(optimisticPatch).length > 0) {
+                mergeUserIntoCache(userId, optimisticPatch);
+            } else {
+                scheduleUsersRender('edit-no-local-change', 0);
+            }
 
             const warningMessage = [emailWarning, updateWarning].filter(Boolean).join('\n');
             if (warningMessage) {
@@ -608,7 +826,7 @@ const initModalLogic = () => {
             const deleteUserAccount = httpsCallable(functionsInstance, 'deleteUserAccount');
             await deleteUserAccount({ uid: userId });
             modal.style.display = 'none';
-            fetchUsers();
+            removeUserFromCache(userId);
         } catch (error) {
             showAdminMessage(getCallableErrorMessage(error, "Erreur serveur pendant la suppression."));
         } finally {

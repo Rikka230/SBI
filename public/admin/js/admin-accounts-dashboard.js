@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.167.33 / P2H.2-F.7 UX
+ * SBI 8.0P.167.53 / P2H.2-I.9 UX
  * Structure lecture seule "Comptes & accès".
  *
  * Objectif :
@@ -20,6 +20,8 @@ let mounted = false;
 let unsubscribeAccounts = null;
 let accountsById = new Map();
 let listObserver = null;
+let fallbackAccountsSnapshotStarted = false;
+let enhanceFrame = 0;
 
 const ONLINE_TTL_MS = 90000;
 const FINALIZATION_LINK_OLD_MS = 48 * 60 * 60 * 1000;
@@ -30,7 +32,7 @@ function injectStyle() {
   const link = document.createElement('link');
   link.id = 'sbi-admin-accounts-css';
   link.rel = 'stylesheet';
-  link.href = '/admin/css/admin-accounts.css?v=8.0P.167.33';
+  link.href = '/admin/css/admin-accounts.css?v=8.0P.167.53';
   document.head.append(link);
 }
 
@@ -479,6 +481,44 @@ function renderCounters(users) {
   Object.entries(stats).forEach(([key, value]) => updateStat(key, value));
 }
 
+
+function setAccountsFromUsers(users = [], reason = 'core-cache') {
+  const safeUsers = Array.isArray(users) ? users.filter(Boolean) : [];
+  accountsById = new Map(safeUsers.map((user) => [user.id, user]));
+
+  renderCounters(safeUsers);
+
+  window.SBI_ACCOUNTS_DASHBOARD_STATE = {
+    version: '8.0P.167.53',
+    users: safeUsers.length,
+    reason,
+    updatedAt: new Date().toISOString()
+  };
+
+  scheduleEnhanceRenderedAccountRows();
+}
+
+function getCoreAccountsUsers() {
+  const coreState = window.SBI_ADMIN_USERS_CACHE;
+  return Array.isArray(coreState?.users) ? coreState.users : [];
+}
+
+function syncAccountsFromCoreState(reason = 'core-state') {
+  const users = getCoreAccountsUsers();
+  if (!users.length) return false;
+
+  setAccountsFromUsers(users, reason);
+  return true;
+}
+
+function scheduleEnhanceRenderedAccountRows() {
+  if (enhanceFrame) window.cancelAnimationFrame(enhanceFrame);
+  enhanceFrame = window.requestAnimationFrame(() => {
+    enhanceFrame = 0;
+    scheduleEnhanceRenderedAccountRows();
+  });
+}
+
 function enhanceRenderedAccountRows() {
   const container = document.getElementById('users-list-container');
   if (!container || accountsById.size === 0) return;
@@ -493,7 +533,7 @@ function enhanceRenderedAccountRows() {
 
     row.dataset.sbiAccountEnhanced = 'true';
     row.classList.add('sbi-account-row');
-    row.style.gridTemplateColumns = '85px minmax(150px, 1fr) minmax(190px, 1.45fr) minmax(110px, .8fr) 75px 75px';
+    row.style.gridTemplateColumns = '64px minmax(104px, .92fr) minmax(136px, 1.22fr) minmax(132px, 1fr) 62px 62px';
 
     const emailCell = row.children?.[2];
     const statusCell = row.children?.[3];
@@ -517,7 +557,7 @@ function enhanceRenderedAccountRows() {
       const notePreview = getEscalationNotePreview(user);
       const emailIssue = getFinalizationEmailIssue(user);
       const escalationText = emailIssue
-        ? `<small style="display:block; max-width:150px; color:${emailIssue.tone === 'danger' ? '#ff9b9b' : '#ffe39a'}; font-weight:800; line-height:1.25; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(emailIssue.detail)}</small>`
+        ? `<small style="display:block; max-width:100%; color:${emailIssue.tone === 'danger' ? '#ff9b9b' : '#ffe39a'}; font-weight:800; line-height:1.22; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(emailIssue.detail)}</small>`
         : needsDirectFinalizationContact(user)
           ? '<small style="color:#ff9b9b; font-weight:800;">3 relances · contact élève</small>'
           : hasResolvedFinalizationContact(user)
@@ -543,41 +583,54 @@ function enhanceRenderedAccountRows() {
 }
 
 function observeUsersList() {
-  const container = document.getElementById('users-list-container');
-  if (!container || listObserver) return;
+  // 8.0P.167.53 : plus de MutationObserver sur toute la liste.
+  // L'enhancement est déclenché par l'évènement sbi:accounts-rendered / sbi:accounts-data-updated.
+  return;
+}
 
-  listObserver = new MutationObserver(() => {
-    window.requestAnimationFrame(enhanceRenderedAccountRows);
+function startFallbackAccountsSnapshot() {
+  if (fallbackAccountsSnapshotStarted) return;
+  fallbackAccountsSnapshotStarted = true;
+
+  const fallbackUnsubscribe = onSnapshot(collection(db, 'users'), (snapshot) => {
+    const users = [];
+    snapshot.forEach((docSnap) => {
+      users.push({ id: docSnap.id, ...(docSnap.data() || {}) });
+    });
+
+    setAccountsFromUsers(users, 'fallback-snapshot');
+  }, (error) => {
+    console.warn('[SBI Accounts] Lecture comptes impossible :', error);
   });
 
-  listObserver.observe(container, { childList: true, subtree: true });
+  const previousUnsubscribe = unsubscribeAccounts;
+  unsubscribeAccounts = () => {
+    previousUnsubscribe?.();
+    fallbackUnsubscribe?.();
+  };
 }
 
 function startAccountsSnapshot() {
   if (unsubscribeAccounts) return;
 
-  unsubscribeAccounts = onSnapshot(collection(db, 'users'), (snapshot) => {
-    const users = [];
-    const nextMap = new Map();
+  const onCoreAccountsUpdated = (event) => {
+    const users = event?.detail?.users || getCoreAccountsUsers();
+    setAccountsFromUsers(users, event?.detail?.reason || 'core-event');
+  };
 
-    snapshot.forEach((docSnap) => {
-      const user = { id: docSnap.id, ...(docSnap.data() || {}) };
-      users.push(user);
-      nextMap.set(docSnap.id, user);
-    });
+  window.addEventListener('sbi:accounts-data-updated', onCoreAccountsUpdated);
 
-    accountsById = nextMap;
-    renderCounters(users);
-    enhanceRenderedAccountRows();
+  unsubscribeAccounts = () => {
+    window.removeEventListener('sbi:accounts-data-updated', onCoreAccountsUpdated);
+  };
 
-    window.SBI_ACCOUNTS_DASHBOARD_STATE = {
-      version: '8.0P.167.33',
-      users: users.length,
-      updatedAt: new Date().toISOString()
-    };
-  }, (error) => {
-    console.warn('[SBI Accounts] Lecture comptes impossible :', error);
-  });
+  syncAccountsFromCoreState('core-cache-existing');
+
+  window.setTimeout(() => {
+    if (accountsById.size === 0 && window.__SBI_ADMIN_CORE_ACCOUNTS_OWNER !== true) {
+      startFallbackAccountsSnapshot();
+    }
+  }, 1600);
 }
 
 function navigateToProfile(uid) {
@@ -644,7 +697,7 @@ function mount() {
 
   if (mounted) {
     ensureAccountsShell();
-    enhanceRenderedAccountRows();
+    scheduleEnhanceRenderedAccountRows();
     return;
   }
 
@@ -655,7 +708,7 @@ function mount() {
   bindProfileNavigation();
   observeUsersList();
   startAccountsSnapshot();
-  enhanceRenderedAccountRows();
+  scheduleEnhanceRenderedAccountRows();
 }
 
 export function mountAdminAccountsDashboard() {
@@ -676,7 +729,15 @@ export function mountAdminAccountsDashboard() {
 }
 
 window.addEventListener('sbi:accounts-rendered', () => {
-  window.requestAnimationFrame(mount);
+  window.requestAnimationFrame(() => {
+    mount();
+    syncAccountsFromCoreState('accounts-rendered');
+    scheduleEnhanceRenderedAccountRows();
+  });
+});
+
+window.addEventListener('sbi:accounts-data-updated', (event) => {
+  setAccountsFromUsers(event?.detail?.users || getCoreAccountsUsers(), event?.detail?.reason || 'accounts-data-updated');
 });
 
 window.addEventListener('sbi:components-ready', () => {

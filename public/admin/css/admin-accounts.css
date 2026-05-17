@@ -320,3 +320,108 @@
     animation: none !important;
   }
 }
+
+
+/* ==========================================================================
+   SBI 8.0P.167.53 — Comptes : lignes stables + scroll fluide
+   --------------------------------------------------------------------------
+   Les lignes pouvaient être compressées quand les statuts longs entraient dans
+   une colonne trop courte. Le rendu est maintenant stable, avec moins de
+   repaint pendant le scroll.
+   ========================================================================== */
+
+#users-list-container {
+  overflow-anchor: none;
+}
+
+#users-list-container .sbi-account-row {
+  grid-template-columns: 64px minmax(104px, .92fr) minmax(136px, 1.22fr) minmax(132px, 1fr) 62px 62px !important;
+  min-height: 72px !important;
+  contain: layout paint style;
+  contain-intrinsic-size: 72px;
+  transform: translateZ(0);
+  box-shadow: none !important;
+}
+
+#users-list-container .sbi-account-row > * {
+  min-width: 0;
+}
+
+#users-list-container .sbi-account-role-cell {
+  padding: 0.45rem 0.3rem;
+  line-height: 1.05;
+}
+
+#users-list-container .sbi-account-name-cell,
+#users-list-container .sbi-account-email-cell,
+#users-list-container .sbi-account-status-cell {
+  overflow: hidden;
+}
+
+#users-list-container .sbi-account-name-line,
+#users-list-container .sbi-account-email-line {
+  display: block;
+  max-width: 100%;
+  line-height: 1.18;
+  overflow-wrap: anywhere;
+}
+
+#users-list-container .sbi-account-card-meta {
+  display: block;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+#users-list-container .sbi-account-status-cell {
+  text-align: left !important;
+  align-items: flex-start !important;
+  justify-content: center !important;
+  gap: 0.22rem;
+}
+
+#users-list-container .sbi-status-dot {
+  max-width: 100%;
+  white-space: normal;
+  line-height: 1.12;
+}
+
+#users-list-container .sbi-account-status-cell small {
+  display: block;
+  max-width: 100% !important;
+  line-height: 1.18 !important;
+  overflow-wrap: anywhere;
+}
+
+.sbi-account-online-dot {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  min-width: 8px;
+  margin-right: 8px;
+  border-radius: 999px;
+  background: #4b4b52;
+}
+
+.sbi-account-online-dot.is-online {
+  background: #00ffa3;
+  box-shadow: none;
+}
+
+#users-list-container .btn-view-profile,
+#users-list-container .btn-edit-user {
+  min-width: 0;
+}
+
+@media (max-width: 1180px) and (min-width: 1025px) {
+  #users-list-container .sbi-account-row {
+    grid-template-columns: 58px minmax(96px, .9fr) minmax(118px, 1.15fr) minmax(120px, 1fr) 56px 56px !important;
+    font-size: 0.74rem !important;
+  }
+
+  #users-list-container .btn-view-profile,
+  #users-list-container .btn-edit-user {
+    font-size: 0.62rem !important;
+  }
+}
+
