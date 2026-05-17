@@ -73,6 +73,10 @@ function isAdminProfile(url) {
   return normalizePath(url.pathname).toLowerCase() === '/admin/admin-profile.html';
 }
 
+function isAdminAuditLog(url) {
+  return normalizePath(url.pathname).toLowerCase() === '/admin/admin-audit-log.html';
+}
+
 function isStudentDashboard(url) {
   return normalizePath(url.pathname).toLowerCase() === '/student/dashboard.html';
 }
@@ -110,7 +114,8 @@ function isAdminShellContext() {
   return path === '/admin/index.html'
     || path === '/admin/site-index-settings.html'
     || path === '/admin/formations-cours.html'
-    || path === '/admin/admin-profile.html';
+    || path === '/admin/admin-profile.html'
+    || path === '/admin/admin-audit-log.html';
 }
 
 function isStudentShellContext() {
@@ -329,6 +334,34 @@ async function mountAdminProfile({ url }) {
   if (typeof cleanupTabs === 'function') registerCleanup(cleanupTabs, 'admin-profile-tabs');
 
   return { viewKey: 'admin:profile' };
+}
+
+async function mountAdminAuditLog({ url }) {
+  maybeCacheAdminIndexMain('leave-for-admin-audit-log');
+
+  const doc = await fetchAdminDocument(url);
+
+  await ensureDocumentStyles(doc, url.href);
+  applyBodyRouteClassesFromDocument(doc, ['sbi-admin-surface']);
+  replaceMainFromDocument(doc);
+  updateAdminChromeFromDocument(doc, 'Journal admin - SBI Console');
+  setLeftNavActive('nav-audit-log');
+  updateUrlContext(url);
+
+  window.__SBI_APP_SHELL_MOUNTING_AUDIT_LOG = true;
+
+  try {
+    const module = await import('/admin/js/admin-global-audit-log.js?v=8.0P.167.41');
+    const cleanupAuditLog = module.mountAdminGlobalAuditLog?.({ source: 'pjax-admin-audit-log' });
+
+    if (typeof cleanupAuditLog === 'function') {
+      registerCleanup(cleanupAuditLog, 'admin-global-audit-log');
+    }
+  } finally {
+    window.__SBI_APP_SHELL_MOUNTING_AUDIT_LOG = false;
+  }
+
+  return { viewKey: 'admin:audit-log' };
 }
 
 async function mountStudentPage({ url }) {
@@ -564,6 +597,14 @@ export function createRouteRegistry() {
       return isAdminProfile(url) && isAdminShellContext();
     },
     mount: mountAdminProfile
+  });
+
+  routes.push({
+    id: 'admin-audit-log',
+    canHandle(url) {
+      return isAdminAuditLog(url) && isAdminShellContext();
+    },
+    mount: mountAdminAuditLog
   });
 
   routes.push({

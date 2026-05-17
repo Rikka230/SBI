@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.167.39 / P2H.2-G.5
+ * SBI 8.0P.167.41 / P2H.2-G.7
  * Journal admin global.
  *
  * Principe important :
@@ -35,6 +35,7 @@ let hasMore = true;
 let isLoading = false;
 let hasLoadedFromCache = false;
 let isMounted = false;
+let unsubscribeAuth = null;
 
 const TYPE_META = {
   'account.created': { label: 'Compte créé', color: '#2A57FF', tone: 'blue' },
@@ -537,6 +538,15 @@ function bindAuditProfileButtons() {
   }, true);
 }
 
+export function mountAdminGlobalAuditLog() {
+  mount();
+  return () => {
+    unsubscribeAuth?.();
+    unsubscribeAuth = null;
+    isMounted = false;
+  };
+}
+
 function mount() {
   if (isMounted) return;
   if (!document.getElementById('view-audit-log')) return;
@@ -549,7 +559,8 @@ function mount() {
   document.getElementById('audit-type-filter')?.addEventListener('change', render);
   bindAuditProfileButtons();
 
-  onAuthStateChanged(auth, async (user) => {
+  unsubscribeAuth?.();
+  unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
     if (!user) {
       currentProfile = null;
       logs = [];
@@ -573,8 +584,13 @@ function mount() {
   render();
 }
 
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', mount, { once: true });
-} else {
+function autoMountAuditLog() {
+  if (window.__SBI_APP_SHELL_MOUNTING_AUDIT_LOG) return;
   mount();
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', autoMountAuditLog, { once: true });
+} else {
+  autoMountAuditLog();
 }

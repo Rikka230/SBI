@@ -31,7 +31,7 @@ export class AdminLeftPanel extends HTMLElement {
         <ul class="nav-menu">
           ${adminNavItem({ id:'nav-dashboard', target:'view-dashboard', label:'Tableau de Bord', icon:ICONS.dashboard })}
           ${adminNavItem({ id:'nav-users', target:'view-users', label:'Comptes', icon:ICONS.users })}
-          <li class="nav-item" id="nav-audit-log" data-sbi-hard-link="/admin/admin-audit-log.html" role="link" tabindex="0" aria-label="Ouvrir le journal admin">
+          <li class="nav-item" id="nav-audit-log" data-href="/admin/admin-audit-log.html" data-sbi-href="/admin/admin-audit-log.html" role="link" tabindex="0">
             ${ICONS.bell}
             <span class="nav-text">Journal admin</span>
           </li>
@@ -40,25 +40,6 @@ export class AdminLeftPanel extends HTMLElement {
         </ul>
       </aside>
     `;
-
-    const auditLogNav = this.querySelector('#nav-audit-log');
-    const openAuditLog = () => {
-      const href = auditLogNav?.getAttribute('data-sbi-hard-link') || '/admin/admin-audit-log.html';
-      window.location.assign(href);
-    };
-
-    auditLogNav?.addEventListener('click', (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      openAuditLog();
-    });
-
-    auditLogNav?.addEventListener('keydown', (event) => {
-      if (event.key !== 'Enter' && event.key !== ' ') return;
-      event.preventDefault();
-      event.stopPropagation();
-      openAuditLog();
-    });
 
     const path = window.location.pathname;
     const urlParams = new URLSearchParams(window.location.search);
