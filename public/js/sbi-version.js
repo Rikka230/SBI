@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.33',
+  version: '8.0P.167.34',
   branch: 'private-admin-accounts-mail-workflow',
-  channel: 'ADMIN MAIL WORKFLOW EMAIL QUALITY UX',
-  stage: 'SMOOTH ACCOUNT LIST SCROLL 60FPS CSS ONLY',
+  channel: 'ADMIN GLOBAL AUDIT LOG',
+  stage: 'GLOBAL ADMIN AUDIT LOG VIEW',
   updatedAt: '2026-05-16',
-  label: 'SBI 8.0P.167.33 - SMOOTH ACCOUNT LIST SCROLL 60FPS CSS ONLY'
+  label: 'SBI 8.0P.167.34 - GLOBAL ADMIN AUDIT LOG VIEW'
 };
 
 export function getSbiVersionLabel() {

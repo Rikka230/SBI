@@ -1,0 +1,250 @@
+/* SBI 8.0P.167.34 - Journal admin global */
+
+.sbi-audit-view {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-height: min(72vh, 760px);
+}
+
+.sbi-audit-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.sbi-audit-header h2 {
+  margin: 0;
+  color: #fff;
+}
+
+.sbi-audit-header p {
+  margin: 0.4rem 0 0;
+  color: var(--text-muted, #9ca3af);
+  line-height: 1.55;
+  max-width: 780px;
+}
+
+.sbi-audit-refresh-btn,
+.sbi-audit-load-more-btn {
+  border: 1px solid rgba(42, 87, 255, 0.38);
+  border-radius: 999px;
+  background: rgba(42, 87, 255, 0.12);
+  color: #dbe5ff;
+  font-weight: 900;
+  cursor: pointer;
+  padding: 0.72rem 1rem;
+  transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+}
+
+.sbi-audit-refresh-btn:hover,
+.sbi-audit-load-more-btn:hover:not(:disabled) {
+  background: rgba(42, 87, 255, 0.2);
+  border-color: rgba(42, 87, 255, 0.58);
+  transform: translateY(-1px);
+}
+
+.sbi-audit-load-more-btn:disabled {
+  cursor: default;
+  opacity: 0.55;
+  transform: none;
+}
+
+.sbi-audit-toolbar {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(220px, 320px);
+  gap: 0.8rem;
+}
+
+.sbi-audit-toolbar input,
+.sbi-audit-toolbar select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.82rem 0.95rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.28);
+  color: #fff;
+  outline: none;
+}
+
+.sbi-audit-toolbar input:focus,
+.sbi-audit-toolbar select:focus {
+  border-color: rgba(42, 87, 255, 0.58);
+}
+
+.sbi-audit-stats {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(120px, 1fr));
+  gap: 0.7rem;
+}
+
+.sbi-audit-stat {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 0.9rem;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.025));
+}
+
+.sbi-audit-stat span {
+  display: block;
+  color: var(--text-muted, #9ca3af);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.sbi-audit-stat strong {
+  display: block;
+  margin-top: 0.35rem;
+  color: #fff;
+  font-size: 1.55rem;
+  line-height: 1;
+}
+
+.sbi-audit-list {
+  flex: 1 1 auto;
+  min-height: 360px;
+  max-height: min(62vh, 720px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  contain: layout paint;
+  isolation: isolate;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.028);
+  padding: 0.9rem;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(42, 87, 255, 0.55) rgba(255, 255, 255, 0.05);
+}
+
+.sbi-audit-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.sbi-audit-list::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 999px;
+}
+
+.sbi-audit-list::-webkit-scrollbar-thumb {
+  background: rgba(42, 87, 255, 0.55);
+  border-radius: 999px;
+}
+
+.sbi-audit-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: center;
+  padding: 0.95rem 1rem;
+  margin-bottom: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.085);
+  border-left: 3px solid var(--audit-color, #8a93a6);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.sbi-audit-item:last-child {
+  margin-bottom: 0;
+}
+
+.sbi-audit-item-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.sbi-audit-item-head strong {
+  color: #fff;
+  font-size: 0.93rem;
+}
+
+.sbi-audit-item-head span {
+  color: var(--text-muted, #9ca3af);
+  font-size: 0.78rem;
+}
+
+.sbi-audit-item-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.9rem;
+  margin-top: 0.42rem;
+  color: var(--text-muted, #9ca3af);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.sbi-audit-item p {
+  margin: 0.42rem 0 0;
+  color: #dbe5ff;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.sbi-audit-item-actions a,
+.sbi-audit-item-actions span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 82px;
+  border-radius: 999px;
+  padding: 0.5rem 0.72rem;
+  text-decoration: none;
+  font-size: 0.76rem;
+  font-weight: 900;
+  color: #dbe5ff;
+  border: 1px solid rgba(42, 87, 255, 0.32);
+  background: rgba(42, 87, 255, 0.1);
+}
+
+.sbi-audit-item-actions span {
+  opacity: 0.55;
+}
+
+.sbi-audit-empty {
+  padding: 1.2rem;
+  color: var(--text-muted, #9ca3af);
+  text-align: center;
+}
+
+.sbi-audit-error {
+  color: #ff9c9c;
+}
+
+.sbi-audit-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  color: var(--text-muted, #9ca3af);
+  font-size: 0.82rem;
+}
+
+@media (max-width: 1100px) {
+  .sbi-audit-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sbi-audit-toolbar {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .sbi-audit-item {
+    grid-template-columns: 1fr;
+  }
+
+  .sbi-audit-item-actions a,
+  .sbi-audit-item-actions span {
+    width: 100%;
+  }
+}

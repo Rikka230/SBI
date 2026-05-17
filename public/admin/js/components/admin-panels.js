@@ -31,6 +31,7 @@ export class AdminLeftPanel extends HTMLElement {
         <ul class="nav-menu">
           ${adminNavItem({ id:'nav-dashboard', target:'view-dashboard', label:'Tableau de Bord', icon:ICONS.dashboard })}
           ${adminNavItem({ id:'nav-users', target:'view-users', label:'Comptes', icon:ICONS.users })}
+          ${adminNavItem({ id:'nav-audit-log', target:'view-audit-log', label:'Journal admin', icon:ICONS.bell })}
           ${adminNavItem({ id:'nav-formations', target:'view-formations', label:'Formations', icon:ICONS.formations })}
           ${adminNavItem({ id:'nav-settings', target:'view-settings', label:'Serveur & Vidéos', icon:ICONS.settings })}
         </ul>

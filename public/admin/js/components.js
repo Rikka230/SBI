@@ -19,6 +19,7 @@
  * 8.0P.167.30 : tentative hauteur fixe commune, rejetée car bloc création tronqué.
  * 8.0P.167.32 : hauteur saine sans tronquer le formulaire de création.
  * 8.0P.167.33 : scroll liste comptes optimisé 60fps CSS-only.
+ * 8.0P.167.34 : vue Journal admin globale.
  */
 
 (function bootstrapSbiComponents(){
@@ -193,7 +194,7 @@
     scheduleAccountsMount();
   }, 900);
 
-  window.SBI_COMPONENTS_READY = import('/admin/js/components/index.js')
+  window.SBI_COMPONENTS_READY = import('/admin/js/components/index.js?v=8.0P.167.34')
     .then(async (module) => {
       if (module?.waitForExpectedComponents) {
         await module.waitForExpectedComponents(650);
