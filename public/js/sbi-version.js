@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.49',
+  version: '8.0P.167.50',
   branch: 'main',
-  channel: 'PJAX SCROLLBAR STABILITY',
-  stage: 'RESERVE MAIN SCROLLBAR GUTTER',
+  channel: 'ADMIN GLOBAL LIGHTING',
+  stage: 'ALIGN ADMIN COCKPIT LIGHTING WITH PROFILE',
   updatedAt: '2026-05-16',
-  label: 'SBI 8.0P.167.49 - RESERVE MAIN SCROLLBAR GUTTER'
+  label: 'SBI 8.0P.167.50 - ALIGN ADMIN COCKPIT LIGHTING WITH PROFILE'
 };
 
 export function getSbiVersionLabel() {

@@ -281,3 +281,59 @@ input[type="checkbox"].q-correct-cb:checked::after {
     font-weight: bold;
     font-size: 14px;
 }
+
+
+/* ==========================================================================
+   SBI 8.0P.167.50 — Éclairage global admin aligné sur le profil
+   --------------------------------------------------------------------------
+   Le profil admin avait un éclairage plus qualitatif que le reste du cockpit.
+   On applique le même socle lumineux à toutes les surfaces admin, sans toucher
+   aux espaces prof/élève.
+   ========================================================================== */
+
+body.sbi-admin-surface {
+    --sbi-admin-light-soft: rgba(42, 87, 255, 0.14);
+    --sbi-admin-light-white: rgba(255, 255, 255, 0.055);
+    --sbi-admin-light-wash: rgba(42, 87, 255, 0.10);
+    background:
+        radial-gradient(circle at 12% 8%, var(--sbi-admin-light-soft), transparent 34%),
+        radial-gradient(circle at 86% 18%, var(--sbi-admin-light-white), transparent 30%),
+        linear-gradient(135deg, var(--sbi-admin-light-wash), transparent 54%),
+        var(--bg-dark, #050812) !important;
+    background-attachment: fixed;
+}
+
+body.sbi-admin-surface #main-content {
+    position: relative;
+    isolation: isolate;
+    background:
+        radial-gradient(circle at 14% 10%, var(--sbi-admin-light-soft), transparent 33%),
+        radial-gradient(circle at 86% 18%, var(--sbi-admin-light-white), transparent 30%),
+        linear-gradient(135deg, rgba(42, 87, 255, 0.08), transparent 58%),
+        var(--bg-dark, #050812) !important;
+    background-attachment: local, local, local, local;
+    background-repeat: no-repeat;
+    background-size: 100% max(100%, 1200px), 100% max(100%, 1200px), 100% max(100%, 1200px), 100% 100%;
+}
+
+body.sbi-admin-surface #main-content::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    min-height: max(100%, 100vh);
+    pointer-events: none;
+    z-index: 0;
+    background:
+        radial-gradient(circle at 12% 8%, rgba(42, 87, 255, 0.13), transparent 32%),
+        radial-gradient(circle at 86% 18%, rgba(255, 255, 255, 0.07), transparent 28%),
+        linear-gradient(135deg, rgba(255, 255, 255, 0.02), transparent 52%);
+}
+
+body.sbi-admin-surface #main-content > .content-wrapper {
+    position: relative;
+    z-index: 1;
+}
+
+/* Le profil admin garde ses règles dédiées chargées après admin.css, mais les
+   pages dashboard/comptes/journal/formations récupèrent désormais la même lumière. */
+
