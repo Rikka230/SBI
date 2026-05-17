@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.167.53 / P2H.2-I.9 UX
+ * SBI 8.0P.167.54 / P2H.2-I.10 UX
  * Structure lecture seule "Comptes & accès".
  *
  * Objectif :
@@ -32,7 +32,7 @@ function injectStyle() {
   const link = document.createElement('link');
   link.id = 'sbi-admin-accounts-css';
   link.rel = 'stylesheet';
-  link.href = '/admin/css/admin-accounts.css?v=8.0P.167.53';
+  link.href = '/admin/css/admin-accounts.css?v=8.0P.167.54';
   document.head.append(link);
 }
 
@@ -489,7 +489,7 @@ function setAccountsFromUsers(users = [], reason = 'core-cache') {
   renderCounters(safeUsers);
 
   window.SBI_ACCOUNTS_DASHBOARD_STATE = {
-    version: '8.0P.167.53',
+    version: '8.0P.167.54',
     users: safeUsers.length,
     reason,
     updatedAt: new Date().toISOString()
@@ -533,7 +533,7 @@ function enhanceRenderedAccountRows() {
 
     row.dataset.sbiAccountEnhanced = 'true';
     row.classList.add('sbi-account-row');
-    row.style.gridTemplateColumns = '64px minmax(104px, .92fr) minmax(136px, 1.22fr) minmax(132px, 1fr) 62px 62px';
+    row.style.gridTemplateColumns = '64px minmax(108px, .88fr) minmax(138px, 1.1fr) minmax(156px, 1.24fr) 62px 62px';
 
     const emailCell = row.children?.[2];
     const statusCell = row.children?.[3];
@@ -565,11 +565,7 @@ function enhanceRenderedAccountRows() {
             : hasOldFinalizationLink(user)
               ? '<small style="color:#ffe39a; font-weight:800;">Renvoyer finalisation recommandé</small>'
               : `<small>${escapeHtml(getAccountPreparationInfo(user))}</small>`;
-
-      statusCell.innerHTML = `
-        <span class="sbi-status-dot sbi-status-${activation.tone}">${escapeHtml(activation.label)}</span>
-        ${escalationText}
-      `;
+      // 8.0P.167.54 : le statut détaillé est rendu directement par admin-core pour éviter un second repaint.
     }
 
     row.title = [

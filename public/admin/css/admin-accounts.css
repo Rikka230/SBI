@@ -323,7 +323,7 @@
 
 
 /* ==========================================================================
-   SBI 8.0P.167.53 — Comptes : lignes stables + scroll fluide
+   SBI 8.0P.167.54 — Comptes : lignes stables + scroll fluide
    --------------------------------------------------------------------------
    Les lignes pouvaient être compressées quand les statuts longs entraient dans
    une colonne trop courte. Le rendu est maintenant stable, avec moins de
@@ -422,6 +422,92 @@
   #users-list-container .btn-view-profile,
   #users-list-container .btn-edit-user {
     font-size: 0.62rem !important;
+  }
+}
+
+
+/* ==========================================================================
+   SBI 8.0P.167.54 — États visibles + scroll 60fps
+   --------------------------------------------------------------------------
+   8.0P.167.53 cachait les statuts détaillés dans le rendu source. Les états
+   sont restaurés dans admin-core et ce CSS évite les compressions.
+   ========================================================================== */
+
+#users-list-container {
+  overscroll-behavior: contain;
+  will-change: scroll-position;
+}
+
+#users-list-container .sbi-account-row {
+  grid-template-columns: 64px minmax(108px, .88fr) minmax(138px, 1.1fr) minmax(156px, 1.24fr) 62px 62px !important;
+  min-height: 74px !important;
+  max-height: none !important;
+  content-visibility: auto;
+  contain-intrinsic-size: 74px;
+}
+
+#users-list-container .sbi-account-status-cell {
+  text-align: left !important;
+  align-items: flex-start !important;
+  justify-content: center !important;
+  gap: 0.18rem !important;
+  line-height: 1.12 !important;
+}
+
+#users-list-container .sbi-account-status-cell .sbi-status-dot {
+  display: block !important;
+  max-width: 100% !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  line-height: 1.08 !important;
+  font-size: 0.65rem !important;
+}
+
+#users-list-container .sbi-account-status-cell small {
+  display: block !important;
+  max-width: 100% !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  line-height: 1.12 !important;
+  font-size: 0.58rem !important;
+}
+
+#users-list-container .sbi-status-success {
+  color: #2ed573 !important;
+}
+
+#users-list-container .sbi-status-warning {
+  color: #ffd23f !important;
+}
+
+#users-list-container .sbi-status-danger {
+  color: #ff6b6b !important;
+}
+
+#users-list-container .sbi-status-muted {
+  color: #aeb8d4 !important;
+}
+
+#users-list-container .sbi-account-row * {
+  backface-visibility: hidden;
+}
+
+#users-list-container .sbi-account-row:hover {
+  transform: none !important;
+}
+
+@media (max-width: 1180px) and (min-width: 1025px) {
+  #users-list-container .sbi-account-row {
+    grid-template-columns: 58px minmax(92px, .8fr) minmax(112px, 1fr) minmax(140px, 1.25fr) 56px 56px !important;
+    min-height: 78px !important;
+  }
+
+  #users-list-container .sbi-account-status-cell .sbi-status-dot {
+    font-size: 0.6rem !important;
+  }
+
+  #users-list-container .sbi-account-status-cell small {
+    font-size: 0.54rem !important;
   }
 }
 

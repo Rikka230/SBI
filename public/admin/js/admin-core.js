@@ -306,6 +306,194 @@ const renderCurrentFilteredUsers = (reason = 'manual') => {
     renderUsersList(getFilteredUsers(), reason);
 };
 
+
+const toMillisForAccountStatus = (value) => {
+    if (!value) return 0;
+    if (typeof value === 'number') return value;
+    if (typeof value?.toMillis === 'function') return value.toMillis();
+    if (typeof value?.seconds === 'number') return value.seconds * 1000;
+    const parsed = Date.parse(value);
+    return Number.isNaN(parsed) ? 0 : parsed;
+};
+
+const getStatusDateLabel = (value, fallback = '') => {
+    const millis = toMillisForAccountStatus(value);
+    if (!millis) return fallback;
+
+    try {
+        return new Date(millis).toLocaleDateString('fr-FR', {
+            day: '2-digit',
+            month: '2-digit',
+            year: '2-digit'
+        });
+    } catch (_) {
+        return fallback;
+    }
+};
+
+const getRelanceCount = (user = {}) => {
+    const status = user.accountStatus || {};
+    const raw = status.finalizationReminderCount ?? status.reminderCount ?? user.finalizationReminderCount ?? 0;
+    const count = Number(raw);
+    return Number.isFinite(count) ? count : 0;
+};
+
+const hasConnectedForStatus = (user = {}) => Boolean(
+    user.accountStatus?.firstLoginCompleted === true
+    || user.accountStatus?.firstLoginAt
+    || user.firstLoginAt
+    || user.accountStatus?.lastLoginAt
+    || user.lastLoginAt
+    || user.lastSeenAt
+);
+
+const getLastActivityForStatus = (user = {}) => {
+    return user.accountStatus?.lastLoginAt
+        || user.lastLoginAt
+        || user.accountStatus?.firstLoginAt
+        || user.firstLoginAt
+        || user.accountStatus?.firstLoginCompletedAt
+        || user.lastSeenAt
+        || null;
+};
+
+const hasEmailBounceForStatus = (user = {}) => {
+    const status = user.accountStatus || {};
+    const issueType = String(status.emailIssueType || status.emailIssue || '').toLowerCase();
+    const bounceState = String(status.emailBounceState || status.emailDeliveryState || '').toLowerCase();
+
+    return Boolean(
+        status.emailBouncedAt
+        || status.lastEmailBounceAt
+        || status.emailRejectedAt
+        || issueType.includes('bounce')
+        || issueType.includes('reject')
+        || bounceState.includes('bounce')
+        || bounceState.includes('blocked')
+        || bounceState.includes('reject')
+        || bounceState.includes('invalid')
+    );
+};
+
+const hasEmailSuspicionForStatus = (user = {}) => {
+    const status = user.accountStatus || {};
+    const issueType = String(status.emailIssueType || status.emailIssue || '').toLowerCase();
+    const warning = String(status.emailWarning || '').toLowerCase();
+
+    return Boolean(
+        status.emailSuspiciousAt
+        || status.emailIssueDetectedAt
+        || issueType.includes('suspect')
+        || issueType.includes('suspicious')
+        || warning.includes('suspect')
+    );
+};
+
+const isInvalidEmailForStatus = (email = '') => {
+    const value = String(email || '').trim();
+    if (!value) return true;
+    return !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i.test(value);
+};
+
+const needsDirectContactForStatus = (user = {}) => {
+    const status = user.accountStatus || {};
+    return Boolean(status.finalizationEscalationAt && !status.finalizationEscalationResolvedAt);
+};
+
+const hasResolvedDirectContactForStatus = (user = {}) => {
+    const status = user.accountStatus || {};
+    return Boolean(status.finalizationEscalationAt && status.finalizationEscalationResolvedAt && !hasConnectedForStatus(user));
+};
+
+const hasOldFinalizationLinkForStatus = (user = {}) => {
+    const status = user.accountStatus || {};
+    const sentAt = toMillisForAccountStatus(status.finalizationEmailSentAt || status.invitationSentAt || user.invitationSentAt);
+    if (!sentAt || hasConnectedForStatus(user)) return false;
+
+    const ageMs = Date.now() - sentAt;
+    return ageMs > 7 * 24 * 60 * 60 * 1000;
+};
+
+const getAccountStatusHtml = (user = {}) => {
+    if (user.statut === 'suspendu') {
+        return `
+            <span class="sbi-status-dot sbi-status-muted">Suspendu</span>
+            <small>Compte suspendu</small>
+        `;
+    }
+
+    if (hasEmailBounceForStatus(user)) {
+        return `
+            <span class="sbi-status-dot sbi-status-danger">Email rejeté</span>
+            <small>Adresse inexistante ou refusée</small>
+        `;
+    }
+
+    if (isInvalidEmailForStatus(user.email)) {
+        return `
+            <span class="sbi-status-dot sbi-status-danger">Email invalide</span>
+            <small>Adresse à corriger</small>
+        `;
+    }
+
+    if (hasEmailSuspicionForStatus(user)) {
+        return `
+            <span class="sbi-status-dot sbi-status-warning">Email suspect</span>
+            <small>À vérifier</small>
+        `;
+    }
+
+    if (needsDirectContactForStatus(user)) {
+        return `
+            <span class="sbi-status-dot sbi-status-danger">Contact direct requis</span>
+            <small>${getRelanceCount(user) || 3} relances</small>
+        `;
+    }
+
+    if (hasConnectedForStatus(user)) {
+        return `
+            <span class="sbi-status-dot sbi-status-success">Activité détectée</span>
+            <small>${getStatusDateLabel(getLastActivityForStatus(user), 'Compte à préparer')}</small>
+        `;
+    }
+
+    if (hasResolvedDirectContactForStatus(user)) {
+        return `
+            <span class="sbi-status-dot sbi-status-success">Contact traité</span>
+            <small>Alerte traitée</small>
+        `;
+    }
+
+    if (hasOldFinalizationLinkForStatus(user)) {
+        return `
+            <span class="sbi-status-dot sbi-status-warning">Mot de passe attendu</span>
+            <small>Lien ancien</small>
+        `;
+    }
+
+    const relances = getRelanceCount(user);
+    if (relances > 0) {
+        return `
+            <span class="sbi-status-dot sbi-status-warning">Mot de passe attendu</span>
+            <small>${relances} relance${relances > 1 ? 's' : ''}</small>
+        `;
+    }
+
+    const state = String(user.accountStatus?.preparationState || user.accountStatus?.activationState || '').toLowerCase();
+    if (state.includes('pending') || state.includes('password') || state.includes('invite')) {
+        return `
+            <span class="sbi-status-dot sbi-status-warning">Mot de passe attendu</span>
+            <small>Invitation envoyée</small>
+        `;
+    }
+
+    return `
+        <span class="sbi-status-dot sbi-status-muted">Compte à préparer</span>
+        <small>En attente</small>
+    `;
+};
+
+
 const fetchUsers = () => {
     const container = document.getElementById('users-list-container');
     if (!container) return;
@@ -437,9 +625,7 @@ const renderUsersList = (usersToRender, reason = 'manual') => {
 
     const html = usersToRender.map((user) => {
         const displayName = (user.prenom && user.nom) ? `${user.prenom} ${user.nom}` : (user.nom || user.prenom || "Sans nom");
-        const statusLabel = user.statut === 'suspendu'
-            ? '<span style="color: #ff4a4a; font-weight:bold;">Suspendu</span>'
-            : '<span style="color: #2ed573; font-weight:bold;">Actif</span>';
+        const statusLabel = getAccountStatusHtml(user);
 
         const isOnline = isUserReallyOnline(user);
         const lastSeenLabel = getLastSeenLabel(user);
@@ -474,7 +660,7 @@ const renderUsersList = (usersToRender, reason = 'manual') => {
         }
 
         return `
-            <div class="sbi-account-row" data-sbi-account-id="${escapeHtml(user.id)}" style="background: #0a0a0c; border: 1px solid #222; border-radius: 6px; margin-bottom: 0.4rem; display: grid; grid-template-columns: 64px minmax(104px, .92fr) minmax(136px, 1.22fr) minmax(132px, 1fr) 62px 62px; align-items: stretch; opacity: ${user.statut === 'suspendu' ? '0.6' : '1'}; font-size: 0.8rem; overflow: hidden;">
+            <div class="sbi-account-row" data-sbi-account-id="${escapeHtml(user.id)}" style="background: #0a0a0c; border: 1px solid #222; border-radius: 6px; margin-bottom: 0.4rem; display: grid; grid-template-columns: 64px minmax(108px, .88fr) minmax(138px, 1.1fr) minmax(156px, 1.24fr) 62px 62px; align-items: stretch; opacity: ${user.statut === 'suspendu' ? '0.6' : '1'}; font-size: 0.8rem; overflow: hidden;">
 
                 <div class="sbi-account-role-cell" style="background: ${roleBgColor}; color: ${roleTextColor}; display: flex; align-items: center; justify-content: center; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; font-size: 0.68rem; border-right: 1px solid #222; text-align: center;">
                     ${escapeHtml(roleText)}
@@ -488,7 +674,7 @@ const renderUsersList = (usersToRender, reason = 'manual') => {
                     ${escapeHtml(user.email || 'Email manquant')}
                 </div>
 
-                <div class="sbi-account-status-cell" style="text-align: center; padding: 0.58rem 0.65rem; display: flex; align-items: center; justify-content: center;">
+                <div class="sbi-account-status-cell" style="text-align: left; padding: 0.58rem 0.65rem; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 0.18rem; min-width: 0;">
                     ${statusLabel}
                 </div>
 
