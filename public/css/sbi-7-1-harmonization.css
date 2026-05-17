@@ -551,3 +551,48 @@
     }
 }
 
+
+/* ==========================================================================
+   SBI 8.0P.167.45 — Profils prof/élève : fond clair après PJAX formations
+   --------------------------------------------------------------------------
+   Quand la page formations charge cette CSS, elle reste en mémoire pendant la
+   navigation PJAX. Le profil prof/élève reçoit ensuite .sbi-profile-page et
+   héritait du décor sombre prévu pour l'admin. On garde donc le décor sombre
+   uniquement pour l'admin, et on force un fond clair pour les surfaces prof/élève.
+   ========================================================================== */
+
+body.sbi-profile-page.sbi-teacher-surface,
+body.sbi-profile-page.sbi-student-surface {
+    background:
+        radial-gradient(circle at 12% 8%, var(--sbi-role-soft), transparent 34%),
+        radial-gradient(circle at 88% 12%, rgba(15, 23, 42, 0.045), transparent 30%),
+        linear-gradient(135deg, rgba(255, 255, 255, 0.72), transparent 58%),
+        var(--bg-body, #f4f7f6) !important;
+    background-attachment: fixed;
+}
+
+body.sbi-profile-page.sbi-teacher-surface #main-content,
+body.sbi-profile-page.sbi-student-surface #main-content {
+    background:
+        radial-gradient(circle at 14% 10%, var(--sbi-role-soft), transparent 33%),
+        radial-gradient(circle at 86% 18%, rgba(15, 23, 42, 0.045), transparent 30%),
+        linear-gradient(135deg, rgba(255, 255, 255, 0.78), transparent 58%),
+        var(--bg-body, #f4f7f6) !important;
+    background-attachment: local, local, local, local;
+    background-repeat: no-repeat;
+    background-size: 100% max(100%, 1200px), 100% max(100%, 1200px), 100% max(100%, 1200px), 100% 100%;
+}
+
+body.sbi-profile-page.sbi-teacher-surface #main-content::before,
+body.sbi-profile-page.sbi-student-surface #main-content::before {
+    background:
+        radial-gradient(circle at 12% 8%, var(--sbi-role-soft), transparent 32%),
+        radial-gradient(circle at 86% 18%, rgba(15, 23, 42, 0.035), transparent 28%),
+        linear-gradient(135deg, rgba(255, 255, 255, 0.55), transparent 52%) !important;
+}
+
+body.sbi-profile-page.sbi-teacher-surface .content-wrapper,
+body.sbi-profile-page.sbi-student-surface .content-wrapper {
+    background: transparent !important;
+}
+
