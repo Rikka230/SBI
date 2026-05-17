@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.35',
+  version: '8.0P.167.36',
   branch: 'main',
   channel: 'ADMIN GLOBAL AUDIT LOG',
-  stage: 'AUDIT LOG FILTER UI AND PROFILE NAV FIX',
+  stage: 'AUDIT LOG PROFILE RESOLUTION AND PERFORMANCE',
   updatedAt: '2026-05-16',
-  label: 'SBI 8.0P.167.35 - AUDIT LOG FILTER UI AND PROFILE NAV FIX'
+  label: 'SBI 8.0P.167.36 - AUDIT LOG PROFILE RESOLUTION AND PERFORMANCE'
 };
 
 export function getSbiVersionLabel() {

@@ -1,4 +1,4 @@
-/* SBI 8.0P.167.35 - Journal admin global polish */
+/* SBI 8.0P.167.36 - Journal admin global profile/perf */
 
 .sbi-audit-view {
   display: flex;
@@ -234,6 +234,17 @@
 .sbi-audit-item-actions button:hover {
   border-color: rgba(42, 87, 255, 0.62);
   background: rgba(42, 87, 255, 0.2);
+}
+
+.sbi-audit-item-actions button:disabled {
+  cursor: wait;
+  opacity: 0.68;
+}
+
+.sbi-audit-item-actions button.is-unavailable {
+  border-color: rgba(255, 74, 74, 0.35);
+  background: rgba(255, 74, 74, 0.12);
+  color: #ffb5b5;
 }
 
 .sbi-audit-item-actions span {

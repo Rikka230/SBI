@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.167.35 / P2H.2-G.1
+ * SBI 8.0P.167.36 / P2H.2-G.2
  * Journal admin global.
  *
  * Lecture ponctuelle et paginée de accountAuditLogs.
@@ -16,11 +16,13 @@ import {
   limit,
   orderBy,
   query,
-  startAfter
+  startAfter,
+  where
 } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
 
-const PAGE_SIZE = 60;
+const PAGE_SIZE = 30;
 const MAX_DETAIL_LENGTH = 220;
+const MAX_RENDERED_ITEMS = 80;
 const PROFILE_RETURN_TARGET = 'view-audit-log';
 
 let currentUser = null;
@@ -124,6 +126,58 @@ function getTargetLabel(log = {}) {
   if (log.newEmail) return log.newEmail;
   if (log.targetUid) return `UID ${log.targetUid}`;
   return 'Compte non identifié';
+}
+
+function getTargetEmailCandidate(log = {}) {
+  return [
+    log.targetEmail,
+    log.email,
+    log.newEmail,
+    log.previousEmail,
+    log.recipientEmail,
+    log.to
+  ].find((value) => typeof value === 'string' && value.includes('@')) || '';
+}
+
+function getTargetUidCandidates(log = {}) {
+  return [
+    log.targetUid,
+    log.uid,
+    log.userUid,
+    log.accountUid,
+    log.targetUserId
+  ].filter((value, index, array) => typeof value === 'string' && value.trim() && array.indexOf(value) === index);
+}
+
+function canTryOpenProfileFromLog(log = {}) {
+  if (log.type === 'account.deleted') return false;
+  return getTargetUidCandidates(log).length > 0 || Boolean(getTargetEmailCandidate(log));
+}
+
+async function resolveProfileUidForLog(log = {}) {
+  const uidCandidates = getTargetUidCandidates(log);
+
+  for (const uid of uidCandidates) {
+    try {
+      const snap = await getDoc(doc(db, 'users', uid));
+      if (snap.exists()) return uid;
+    } catch (error) {
+      console.warn('[SBI Audit] Vérification UID profil impossible :', uid, error);
+    }
+  }
+
+  const email = getTargetEmailCandidate(log).trim().toLowerCase();
+  if (!email) return '';
+
+  try {
+    const emailQuery = query(collection(db, 'users'), where('email', '==', email), limit(1));
+    const snap = await getDocs(emailQuery);
+    if (!snap.empty) return snap.docs[0].id;
+  } catch (error) {
+    console.warn('[SBI Audit] Résolution profil par email impossible :', email, error);
+  }
+
+  return '';
 }
 
 function getFriendlyBounceDetail(message = '') {
@@ -230,38 +284,50 @@ function renderStatCard(label, value) {
   `;
 }
 
-function canOpenProfileFromLog(log = {}) {
-  if (!log.targetUid) return false;
+async function openAuditProfileFromLogId(logId, button) {
+  const log = logs.find((entry) => entry.id === logId);
+  if (!log || !button) return;
 
-  /*
-   * Les logs de suppression gardent parfois l'ancien UID.
-   * On n'ouvre pas une fiche qui n'existe plus : cela donnait un profil vide.
-   */
-  return log.type !== 'account.deleted';
-}
+  const originalText = button.textContent;
+  button.disabled = true;
+  button.textContent = 'Ouverture...';
 
-function openAuditProfile(uid) {
-  if (!uid) return;
+  try {
+    const uid = await resolveProfileUidForLog(log);
 
-  const href = `/admin/admin-profile.html?id=${encodeURIComponent(uid)}`;
+    if (!uid) {
+      button.textContent = 'Introuvable';
+      button.classList.add('is-unavailable');
+      window.setTimeout(() => {
+        button.disabled = false;
+        button.textContent = originalText;
+        button.classList.remove('is-unavailable');
+      }, 1600);
+      return;
+    }
 
-  sessionStorage.setItem('sbiAdminReturnTarget', PROFILE_RETURN_TARGET);
-  sessionStorage.setItem('sbiAdminReturnFromProfile', String(Date.now()));
+    sessionStorage.setItem('activeAdminTab', PROFILE_RETURN_TARGET);
+    sessionStorage.setItem('sbiAdminReturnTarget', PROFILE_RETURN_TARGET);
+    sessionStorage.setItem('sbiAdminReturnFromProfile', String(Date.now()));
 
-  /*
-   * Navigation volontairement classique.
-   * Le profil admin a besoin de son bootstrap complet, donc on évite
-   * l'interception PJAX/data-sbi-href depuis la vue Journal.
-   */
-  window.location.assign(href);
+    /*
+     * Navigation classique obligatoire.
+     * Le profil admin charge ses modules via sa page dédiée.
+     */
+    window.location.href = `/admin/admin-profile.html?id=${encodeURIComponent(uid)}&from=audit-log`;
+  } catch (error) {
+    console.warn('[SBI Audit] Ouverture profil impossible :', error);
+    button.disabled = false;
+    button.textContent = originalText;
+  }
 }
 
 function getProfileActionMarkup(log = {}) {
-  if (canOpenProfileFromLog(log)) {
-    return `<button type="button" class="sbi-audit-profile-btn" data-audit-profile-uid="${escapeHtml(log.targetUid)}">Profil</button>`;
+  if (canTryOpenProfileFromLog(log)) {
+    return `<button type="button" class="sbi-audit-profile-btn" data-audit-log-id="${escapeHtml(log.id)}">Profil</button>`;
   }
 
-  if (log.targetUid && log.type === 'account.deleted') {
+  if (log.type === 'account.deleted') {
     return '<span>Supprimé</span>';
   }
 
@@ -274,13 +340,13 @@ function bindAuditProfileButtons() {
 
   list.dataset.sbiAuditProfileBound = 'true';
   list.addEventListener('click', (event) => {
-    const button = event.target?.closest?.('[data-audit-profile-uid]');
+    const button = event.target?.closest?.('[data-audit-log-id]');
     if (!button) return;
 
     event.preventDefault();
     event.stopPropagation();
 
-    openAuditProfile(button.getAttribute('data-audit-profile-uid'));
+    openAuditProfileFromLogId(button.getAttribute('data-audit-log-id'), button);
   }, true);
 }
 
@@ -319,6 +385,8 @@ function render() {
   summarizeLoadedLogs();
 
   const filtered = getFilteredLogs();
+  const rendered = filtered.slice(0, MAX_RENDERED_ITEMS);
+  const isCapped = filtered.length > rendered.length;
 
   if (isLoading && logs.length === 0) {
     list.innerHTML = '<div class="sbi-audit-empty">Chargement du journal admin...</div>';
@@ -327,12 +395,18 @@ function render() {
   } else if (filtered.length === 0) {
     list.innerHTML = `<div class="sbi-audit-empty">${logs.length ? 'Aucun log ne correspond aux filtres.' : 'Aucune entrée de journal disponible.'}</div>`;
   } else {
-    list.innerHTML = filtered.map(renderLogItem).join('');
+    list.innerHTML = [
+      rendered.map(renderLogItem).join(''),
+      isCapped
+        ? `<div class="sbi-audit-empty">Affichage limité à ${MAX_RENDERED_ITEMS} lignes pour garder le journal fluide. Affine la recherche ou charge moins d'archives.</div>`
+        : ''
+    ].join('');
   }
 
   if (count) {
-    const filteredSuffix = filtered.length !== logs.length ? ` · ${filtered.length} affichée${filtered.length > 1 ? 's' : ''}` : '';
-    count.textContent = `${logs.length} entrée${logs.length > 1 ? 's' : ''} chargée${logs.length > 1 ? 's' : ''}${filteredSuffix}`;
+    const filteredSuffix = filtered.length !== logs.length ? ` · ${filtered.length} trouvée${filtered.length > 1 ? 's' : ''}` : '';
+    const capSuffix = isCapped ? ` · ${rendered.length} affichées` : '';
+    count.textContent = `${logs.length} entrée${logs.length > 1 ? 's' : ''} chargée${logs.length > 1 ? 's' : ''}${filteredSuffix}${capSuffix}`;
   }
 
   if (loadMore) {
@@ -344,14 +418,14 @@ function render() {
 async function loadAuditLogs({ reset = false } = {}) {
   if (isLoading || !isAdminLike(currentProfile)) return;
 
-  isLoading = true;
-  render();
-
   if (reset) {
     logs = [];
     lastVisibleDoc = null;
     hasMore = true;
   }
+
+  isLoading = true;
+  render();
 
   try {
     const clauses = [collection(db, 'accountAuditLogs'), orderBy('createdAt', 'desc')];
@@ -403,7 +477,7 @@ async function loadCurrentProfile(user) {
   render();
 
   if (isAdminLike(currentProfile) && isAuditViewActive() && !hasLoadedOnce) {
-    loadAuditLogs({ reset: true });
+    window.setTimeout(() => loadAuditLogs({ reset: true }), 80);
   }
 }
 
@@ -427,7 +501,7 @@ function mount() {
 
   window.addEventListener('sbi:admin-tab-changed', (event) => {
     if (event?.detail?.tab === 'view-audit-log' && isAdminLike(currentProfile) && !hasLoadedOnce) {
-      loadAuditLogs({ reset: true });
+      window.setTimeout(() => loadAuditLogs({ reset: true }), 80);
     }
   });
 
