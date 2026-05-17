@@ -66,6 +66,8 @@ const DOCUMENT_REQUEST_STATUS_LABELS = {
   partial: 'Réception partielle',
   submitted: 'Transmis, à vérifier',
   completed: 'Terminé',
+  canceled: 'Annulée',
+  cancelled: 'Annulée',
   archived: 'Archivé'
 };
 
@@ -400,12 +402,15 @@ function renderStudentDocumentRequestCard(request = {}) {
   const status = String(request.status || 'requested').toLowerCase();
   const label = DOCUMENT_REQUEST_STATUS_LABELS[status] || DOCUMENT_REQUEST_STATUS_LABELS.requested;
   const waiting = status === 'requested' || status === 'partial';
+  const canceled = status === 'canceled' || status === 'cancelled';
+  const received = status === 'submitted' || status === 'completed';
+  const safeRequestId = escapeHTML(request.id || '');
 
   return `
-    <article class="sbi-student-doc-request-admin-card ${waiting ? 'is-waiting' : 'is-received'}">
+    <article class="sbi-student-doc-request-admin-card ${waiting ? 'is-waiting' : ''} ${received ? 'is-received' : ''} ${canceled ? 'is-canceled' : ''}">
       <div class="sbi-student-doc-request-admin-card__head">
         <div>
-          <strong>${waiting ? 'Documents en attente de réception' : 'Documents transmis par l’élève'}</strong>
+          <strong>${canceled ? 'Demande annulée' : waiting ? 'Documents en attente de réception' : 'Documents transmis par l’élève'}</strong>
           <span>${escapeHTML(formatDate(request.createdAt, 'Date inconnue'))}</span>
         </div>
         <em>${escapeHTML(label)} · ${submitted}/${total}</em>
@@ -415,14 +420,47 @@ function renderStudentDocumentRequestCard(request = {}) {
         ${items.map((item) => {
           const itemStatus = String(item.status || 'pending').toLowerCase();
           const done = ['submitted', 'validated'].includes(itemStatus);
-          return `<li class="${done ? 'is-done' : 'is-pending'}"><span>${escapeHTML(item.title || 'Document demandé')}</span><em>${done ? 'Reçu' : 'En attente'}</em></li>`;
+          return `<li class="${done ? 'is-done' : 'is-pending'}"><span>${escapeHTML(item.title || 'Document demandé')}</span><em>${done ? 'Reçu' : canceled ? 'Annulé' : 'En attente'}</em></li>`;
         }).join('')}
       </ul>
+      <div class="sbi-student-doc-request-admin-card__actions">
+        ${waiting ? `<button type="button" data-request-cancel="${safeRequestId}">Annuler la demande</button>` : ''}
+        ${received ? `<button type="button" disabled>Vérification à venir</button>` : ''}
+      </div>
     </article>
   `;
 }
 
-function renderStudentDocumentRequests(panel, requests = []) {
+async function cancelStudentDocumentRequest(panel, db, uid, requestId, button) {
+  if (!requestId) return;
+  const confirmed = window.confirm('Annuler cette demande de documents ? Le lien élève ne permettra plus de déposer les pièces restantes.');
+  if (!confirmed) return;
+
+  const previous = button?.textContent || 'Annuler la demande';
+  if (button) {
+    button.disabled = true;
+    button.textContent = 'Annulation...';
+  }
+
+  try {
+    await updateDoc(doc(db, 'studentDocumentRequests', requestId), {
+      status: 'canceled',
+      canceledAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+    setStatus(panel, 'Demande de documents annulée.', 'success');
+    await refreshStudentDocumentRequests(panel, db, uid);
+  } catch (error) {
+    console.warn('[SBI Documents] Annulation demande impossible :', error);
+    setStatus(panel, getCallableUiMessage(error, 'Annulation impossible.'), 'error');
+    if (button) {
+      button.disabled = false;
+      button.textContent = previous;
+    }
+  }
+}
+
+function renderStudentDocumentRequests(panel, requests = [], db = null, uid = '') {
   const container = panel.querySelector('#prof-student-document-requests');
   if (!container) return;
 
@@ -443,12 +481,18 @@ function renderStudentDocumentRequests(panel, requests = []) {
       ${activeRequests.map(renderStudentDocumentRequestCard).join('')}
     </div>
   `;
+
+  container.querySelectorAll('[data-request-cancel]').forEach((button) => {
+    button.addEventListener('click', async () => {
+      await cancelStudentDocumentRequest(panel, db, uid, button.dataset.requestCancel || '', button);
+    });
+  });
 }
 
 async function refreshStudentDocumentRequests(panel, db, uid) {
   try {
     const requests = await loadStudentDocumentRequests(db, uid);
-    renderStudentDocumentRequests(panel, requests);
+    renderStudentDocumentRequests(panel, requests, db, uid);
   } catch (error) {
     console.warn('[SBI Documents] Lecture demandes documents impossible :', error);
   }
@@ -1012,7 +1056,7 @@ export async function renderStudentDocumentsPanel({ db, uid, data = {}, context 
     ]);
     if (token !== activeMountToken) return;
     setPanelDocuments(panel, documents);
-    renderStudentDocumentRequests(panel, requests);
+    renderStudentDocumentRequests(panel, requests, db, uid);
     renderDocumentsList(panel, documents, db);
     showArchived?.addEventListener('change', () => rerenderStoredDocuments(panel, db));
   } catch (error) {

@@ -674,3 +674,46 @@
 .sbi-student-doc-request-admin-card li.is-done em {
     color: #9bffc2;
 }
+
+
+/* --- SBI 8.0P.167.71.3 — Annulation demandes documents --- */
+.sbi-student-doc-request-admin-card.is-canceled {
+    border-color: rgba(255, 74, 74, 0.24);
+    background: rgba(255, 74, 74, 0.045);
+    opacity: 0.82;
+}
+
+.sbi-student-doc-request-admin-card.is-canceled .sbi-student-doc-request-admin-card__head em {
+    background: rgba(255, 74, 74, 0.13);
+    color: #ffb4b4;
+}
+
+.sbi-student-doc-request-admin-card__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.55rem;
+    margin-top: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.sbi-student-doc-request-admin-card__actions button {
+    border: 1px solid rgba(255,255,255,0.14);
+    border-radius: 999px;
+    background: rgba(255,255,255,0.055);
+    color: var(--text-muted);
+    padding: 0.5rem 0.72rem;
+    font-size: 0.74rem;
+    font-weight: 900;
+    cursor: pointer;
+}
+
+.sbi-student-doc-request-admin-card__actions button[data-request-cancel] {
+    border-color: rgba(255,74,74,0.38);
+    background: rgba(255,74,74,0.09);
+    color: #ffb4b4;
+}
+
+.sbi-student-doc-request-admin-card__actions button:disabled {
+    opacity: 0.62;
+    cursor: not-allowed;
+}

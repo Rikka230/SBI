@@ -327,8 +327,8 @@ service firebase.storage {
        Chemin utilisé par SBI 8.0P.167.68+ :
        student-documents/{studentId}/{documentId}/{fileName}
 
-       V1 : lecture et écriture admin uniquement. L'ouverture élève sera
-       étudiée dans une étape dédiée après validation des catégories/droits.
+       V1 : lecture admin-only. Upload autorisé pour l’élève concerné
+       uniquement dans le cadre d'une demande de documents active côté app.
        ============================================================ */
     match /student-documents/{studentId}/{documentId}/{fileName} {
       allow read: if canReadStudentDocument(studentId);

@@ -627,7 +627,7 @@ const enforceSecurityPolicies = async (user, userData) => {
      * il repart vers son espace.
      */
     if (isPublicIndex(currentPath) || isLoginPage(currentPath)) {
-        redirectToDashboard(userData, true);
+        redirectTo(getPostLoginTarget(userData), true);
         return;
     }
 

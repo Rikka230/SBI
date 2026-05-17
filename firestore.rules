@@ -600,6 +600,7 @@ service cloud.firestore {
         || (isActiveUser()
           && resource.data.keys().hasAny(['studentUid'])
           && resource.data.studentUid == request.auth.uid
+          && !(resource.data.keys().hasAny(['status']) && resource.data.status in ['canceled', 'cancelled', 'archived'])
           && request.resource.data.studentUid == resource.data.studentUid
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
             'items', 'status', 'submittedAt', 'updatedAt'
