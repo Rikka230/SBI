@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.73',
+  version: '8.0P.167.74',
   branch: 'main',
   channel: 'P2I.4 STUDENT DOCUMENT ADMIN REVIEW',
-  stage: 'PARTIAL REVIEW RESUBMIT VALIDATION EMAIL ADMIN ALERT',
+  stage: 'RESUBMIT ALERT PROFILE ROUTE REVIEW LOCK',
   updatedAt: '2026-05-17',
-  label: 'SBI 8.0P.167.73 - STUDENT DOCUMENT ADMIN REVIEW'
+  label: 'SBI 8.0P.167.74 - STUDENT DOCUMENT REVIEW RESUBMIT ALERT FIX'
 };
 
 export function getSbiVersionLabel() {

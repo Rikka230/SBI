@@ -1009,3 +1009,15 @@
     background: rgba(255,74,74,0.12);
     color: #ffb4b4;
 }
+
+/* --- SBI 8.0P.167.74 — Vérification documents : pièces déjà validées verrouillées --- */
+.sbi-doc-review-item.is-locked {
+    opacity: 0.58;
+    filter: saturate(0.72);
+}
+
+.sbi-doc-review-item.is-locked .sbi-doc-review-decision select,
+.sbi-doc-review-item.is-locked .sbi-doc-review-decision input {
+    cursor: not-allowed;
+    opacity: 0.75;
+}

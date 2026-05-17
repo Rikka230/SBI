@@ -3563,7 +3563,9 @@ async function createStudentDocumentSubmittedAdminNotifications(db, { requestId,
             courseId: studentUid,
             courseTitle: `Documents à vérifier - ${studentName}`,
             auteurName: studentName,
-            dismissedBy: []
+            dismissedBy: [],
+            resolvedAt: admin.firestore.FieldValue.delete(),
+            resolvedBy: admin.firestore.FieldValue.delete()
         }, { merge: true });
     });
     await batch.commit();

@@ -4,6 +4,7 @@ import {
   arrayUnion,
   collection,
   doc,
+  getDoc,
   limit,
   onSnapshot,
   query,
@@ -34,7 +35,19 @@ function isActive(alert) {
 
 function getProfileUrl(alert = {}) {
   const uid = encodeURIComponent(String(alert.studentUid || alert.courseId || ''));
-  return `/admin/admin-profile.html?id=${uid}`;
+  return uid ? `/admin/admin-profile.html?id=${uid}` : '/admin/admin-accounts.html';
+}
+
+async function getNotificationById(notifId = '') {
+  if (!notifId) return null;
+  try {
+    const snap = await getDoc(doc(db, 'notifications', notifId));
+    if (!snap.exists()) return null;
+    return { id: snap.id, ...(snap.data() || {}) };
+  } catch (error) {
+    console.warn('[SBI Documents] Lecture notification impossible :', error?.message || error);
+    return null;
+  }
 }
 
 function ensureToast() {
@@ -96,18 +109,28 @@ function patchNotificationPanel() {
   document.querySelectorAll('.notif-item[data-type="student_documents.submitted"]').forEach((item) => {
     if (item.dataset.studentDocsPatched === 'true') return;
     item.dataset.studentDocsPatched = 'true';
-    const studentUid = item.getAttribute('data-course') || '';
+    const studentUid = item.getAttribute('data-student-uid') || item.getAttribute('data-course') || '';
     const studentName = item.getAttribute('data-author') || item.getAttribute('data-title') || 'Élève SBI';
     const title = item.querySelector('p:first-of-type');
     const body = item.querySelector('p:nth-of-type(2)');
     if (title) title.textContent = 'Documents élève à vérifier';
     if (body) body.innerHTML = `<strong>${escapeHTML(studentName)}</strong> a transmis des documents.`;
-    item.addEventListener('click', (event) => {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      window.location.assign(`/admin/admin-profile.html?id=${encodeURIComponent(studentUid)}`);
-    }, true);
+    if (studentUid) item.setAttribute('data-student-uid', studentUid);
   });
+}
+
+async function openStudentProfileFromNotificationItem(item) {
+  if (!item) return;
+  const notifId = item.getAttribute('data-id') || '';
+  let studentUid = item.getAttribute('data-student-uid') || item.getAttribute('data-course') || '';
+
+  if (!studentUid && notifId) {
+    const notification = await getNotificationById(notifId);
+    studentUid = notification?.studentUid || notification?.courseId || '';
+  }
+
+  if (notifId) await dismissAlert(notifId).catch(() => {});
+  window.location.assign(studentUid ? `/admin/admin-profile.html?id=${encodeURIComponent(studentUid)}` : '/admin/admin-accounts.html');
 }
 
 function startAlerts(uid) {
@@ -138,6 +161,16 @@ function startAlerts(uid) {
 }
 
 window.addEventListener('sbi:notifications-updated', patchNotificationPanel);
+
+document.addEventListener('click', async (event) => {
+  const item = event.target.closest?.('.notif-item[data-type="student_documents.submitted"]');
+  if (!item) return;
+
+  event.preventDefault();
+  event.stopPropagation();
+  event.stopImmediatePropagation();
+  await openStudentProfileFromNotificationItem(item);
+}, true);
 
 document.addEventListener('DOMContentLoaded', () => {
   onAuthStateChanged(auth, (user) => {

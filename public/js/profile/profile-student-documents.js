@@ -546,15 +546,16 @@ async function openStudentDocumentReviewModal({ panel, db, uid, request }) {
           const ready = Boolean(document) || state === 'validated';
           const rejected = state === 'rejected';
           const validated = state === 'validated';
+          const locked = validated && !document;
           const currentNote = item.reviewNote || item.rejectionNote || '';
           return `
-            <article class="sbi-doc-review-item ${ready ? 'is-ready' : 'is-missing'} ${validated ? 'is-validated' : ''} ${rejected ? 'is-rejected' : ''}" data-doc-review-index="${index}">
+            <article class="sbi-doc-review-item ${ready ? 'is-ready' : 'is-missing'} ${validated ? 'is-validated' : ''} ${rejected ? 'is-rejected' : ''} ${locked ? 'is-locked' : ''}" data-doc-review-index="${index}">
               <div>
                 <strong>${escapeHTML(item.title || 'Document demandé')}</strong>
-                <span>${document ? escapeHTML(document.fileName || item.fileName || 'Fichier reçu') : validated ? 'Document déjà validé' : 'Document non transmis / à refaire'}</span>
+                <span>${document ? escapeHTML(document.fileName || item.fileName || 'Fichier reçu') : validated ? 'Document déjà validé lors du précédent contrôle' : 'Document non transmis / à refaire'}</span>
                 ${currentNote ? `<small>${escapeHTML(currentNote)}</small>` : ''}
               </div>
-              <em>${validated ? 'Validé' : document ? 'Reçu' : rejected ? 'À refaire' : 'Manquant'}</em>
+              <em>${validated ? 'Déjà validé' : document ? 'Reçu à vérifier' : rejected ? 'À refaire' : 'Manquant'}</em>
               ${document ? `
                 <div class="sbi-doc-review-item__actions">
                   <button type="button" data-review-open="${escapeHTML(document.id)}">Ouvrir</button>
@@ -564,14 +565,14 @@ async function openStudentDocumentReviewModal({ panel, db, uid, request }) {
               <div class="sbi-doc-review-decision">
                 <label>
                   <span>Décision</span>
-                  <select data-review-decision="${index}" ${!document && !validated ? '' : ''}>
+                  <select data-review-decision="${index}" ${locked ? 'disabled' : ''}>
                     <option value="validated" ${(document || validated) && !rejected ? 'selected' : ''} ${!document && !validated ? 'disabled' : ''}>Valider</option>
-                    <option value="rejected" ${(!document && !validated) || rejected ? 'selected' : ''}>À refaire / refuser</option>
+                    <option value="rejected" ${(!document && !validated) || rejected ? 'selected' : ''} ${locked ? 'disabled' : ''}>À refaire / refuser</option>
                   </select>
                 </label>
                 <label>
-                  <span>Note pour l’élève si refus</span>
-                  <input type="text" data-review-note="${index}" maxlength="260" value="${escapeHTML(currentNote)}" placeholder="Ex : photo floue, document incomplet, justificatif trop ancien...">
+                  <span>${locked ? 'Statut' : 'Note pour l’élève si refus'}</span>
+                  <input type="text" data-review-note="${index}" maxlength="260" value="${escapeHTML(locked ? 'Document déjà validé.' : currentNote)}" placeholder="Ex : photo floue, document incomplet, justificatif trop ancien..." ${locked ? 'readonly' : ''}>
                 </label>
               </div>
             </article>
@@ -605,8 +606,9 @@ async function openStudentDocumentReviewModal({ panel, db, uid, request }) {
     validateButton.onclick = async () => {
       const decisions = rows.map(({ item, document }, index) => {
         const select = modal.querySelector(`[data-review-decision="${index}"]`);
-        const note = normalizeText(modal.querySelector(`[data-review-note="${index}"]`)?.value || '', 260);
-        const status = select?.value === 'validated' && (document || item.status === 'validated') ? 'validated' : 'rejected';
+        const lockedValidated = String(item.status || '').toLowerCase() === 'validated' && !document;
+        const note = lockedValidated ? '' : normalizeText(modal.querySelector(`[data-review-note="${index}"]`)?.value || '', 260);
+        const status = lockedValidated || (select?.value === 'validated' && (document || item.status === 'validated')) ? 'validated' : 'rejected';
         return {
           itemIndex: index,
           type: item.type || '',
