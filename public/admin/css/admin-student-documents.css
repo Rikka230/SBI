@@ -1,4 +1,4 @@
-/* --- SBI 8.0P.167.68 — Coffre documents élève admin-only --- */
+/* --- SBI 8.0P.167.69 — Coffre documents élève admin-only --- */
 .sbi-student-documents {
     display: flex;
     flex-direction: column;
@@ -255,5 +255,97 @@
     .sbi-student-document-card__actions button,
     #prof-student-document-upload-btn {
         width: 100%;
+    }
+}
+
+/* --- SBI 8.0P.167.69 — Accordéons Suivi pédagogique --- */
+.sbi-profile-accordion {
+    padding: 0;
+    overflow: hidden;
+}
+
+.sbi-profile-accordion-toggle {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1.15rem;
+    border: 0;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.025);
+    color: #fff;
+    cursor: pointer;
+    font: inherit;
+    text-align: left;
+}
+
+.sbi-profile-accordion-toggle:hover {
+    background: rgba(42,87,255,0.075);
+}
+
+.sbi-profile-accordion-toggle__text {
+    min-width: 0;
+}
+
+.sbi-profile-accordion-toggle__text strong {
+    display: block;
+    color: #fff;
+    font-size: 0.98rem;
+    line-height: 1.25;
+}
+
+.sbi-profile-accordion-toggle__text em {
+    display: block;
+    margin-top: 0.2rem;
+    color: var(--text-muted);
+    font-size: 0.76rem;
+    font-style: normal;
+    line-height: 1.35;
+}
+
+.sbi-profile-accordion-toggle__chevron {
+    width: 30px;
+    height: 30px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 999px;
+    background: rgba(255,255,255,0.05);
+    color: #dbe5ff;
+    font-size: 1rem;
+    font-weight: 900;
+    transform: rotate(0deg);
+    transition: transform 0.18s ease, background 0.18s ease;
+    flex-shrink: 0;
+}
+
+.sbi-profile-accordion.is-collapsed .sbi-profile-accordion-toggle__chevron {
+    transform: rotate(-90deg);
+    background: rgba(42,87,255,0.10);
+}
+
+.sbi-profile-accordion-body {
+    padding: 1.5rem;
+}
+
+.sbi-profile-accordion-body[hidden] {
+    display: none !important;
+}
+
+.sbi-profile-accordion-body > .sbi-student-followup,
+.sbi-profile-accordion-body > .sbi-student-documents {
+    margin: 0;
+}
+
+@media (max-width: 760px) {
+    .sbi-profile-accordion-toggle {
+        align-items: flex-start;
+        padding: 0.95rem 1rem;
+    }
+
+    .sbi-profile-accordion-body {
+        padding: 1rem;
     }
 }

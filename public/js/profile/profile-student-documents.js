@@ -110,6 +110,19 @@ function setStatus(panel, message = '', tone = 'muted') {
   status.dataset.tone = tone;
 }
 
+function setPanelDocuments(panel, documents = []) {
+  if (!panel) return;
+  panel.__sbiStudentDocuments = Array.isArray(documents) ? documents : [];
+}
+
+function getPanelDocuments(panel) {
+  return Array.isArray(panel?.__sbiStudentDocuments) ? panel.__sbiStudentDocuments : [];
+}
+
+function rerenderStoredDocuments(panel, db) {
+  renderDocumentsList(panel, getPanelDocuments(panel), db);
+}
+
 function renderEmptyDocuments() {
   return `
     <div class="sbi-student-documents-empty">
@@ -158,9 +171,15 @@ async function loadStudentDocuments(db, studentUid) {
 function renderDocumentsList(panel, documents = [], db = null) {
   const list = panel.querySelector('#prof-student-documents-list');
   const showArchived = panel.querySelector('#prof-student-documents-show-archived')?.checked === true;
+  const toolbarTitle = panel.querySelector('#prof-student-documents-toolbar-title');
   if (!list) return;
 
-  const visible = documents.filter((item) => showArchived || item.status !== 'archived');
+  setPanelDocuments(panel, documents);
+  if (toolbarTitle) {
+    toolbarTitle.textContent = showArchived ? 'Documents actifs + archivés' : 'Documents actifs';
+  }
+
+  const visible = getPanelDocuments(panel).filter((item) => showArchived || item.status !== 'archived');
   list.innerHTML = visible.length ? visible.map(renderDocumentCard).join('') : renderEmptyDocuments();
 
   list.querySelectorAll('[data-doc-open]').forEach((button) => {
@@ -201,6 +220,7 @@ function renderDocumentsList(panel, documents = [], db = null) {
         });
         setStatus(panel, 'Document archivé.', 'success');
         const nextDocuments = await loadStudentDocuments(db, panel.dataset.studentUid || '');
+        setPanelDocuments(panel, nextDocuments);
         renderDocumentsList(panel, nextDocuments, db);
       } catch (error) {
         console.warn('[SBI Documents] Archivage impossible :', error);
@@ -288,6 +308,7 @@ async function uploadStudentDocument({ db, uid, context, panel }) {
 
     setStatus(panel, 'Document ajouté au coffre élève.', 'success');
     const documents = await loadStudentDocuments(db, uid);
+    setPanelDocuments(panel, documents);
     renderDocumentsList(panel, documents, db);
   } catch (error) {
     await updateDoc(documentRef, {
@@ -342,7 +363,7 @@ function renderPanelShell(panel) {
       </form>
 
       <div class="sbi-student-documents__toolbar">
-        <strong>Documents actifs</strong>
+        <strong id="prof-student-documents-toolbar-title">Documents actifs</strong>
         <label>
           <input id="prof-student-documents-show-archived" type="checkbox">
           Afficher archivés
@@ -378,8 +399,9 @@ export async function renderStudentDocumentsPanel({ db, uid, data = {}, context 
   try {
     const documents = await loadStudentDocuments(db, uid);
     if (token !== activeMountToken) return;
+    setPanelDocuments(panel, documents);
     renderDocumentsList(panel, documents, db);
-    showArchived?.addEventListener('change', () => renderDocumentsList(panel, documents, db));
+    showArchived?.addEventListener('change', () => rerenderStoredDocuments(panel, db));
   } catch (error) {
     console.warn('[SBI Documents] Lecture documents élève impossible :', error);
     const list = panel.querySelector('#prof-student-documents-list');

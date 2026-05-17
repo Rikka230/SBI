@@ -10,7 +10,7 @@
  * 8.0P.164 : cache-bust rendu profil pour relance finalisation compte.
  * 8.0P.165 : affichage relances automatiques et escalade.
  * 8.0P.167.64 : fix syntax rendu promotions + cible profil admin PJAX stable.
- * 8.0P.167.68 : coffre documents élève admin-only dans Suivi pédagogique.
+ * 8.0P.167.69 : accordéons Suivi pédagogique + filtre archives documents corrigé.
  * 8.0P.163 : cache-bust du rendu profil pour notes internes persistantes.
  * =======================================================================
  */
@@ -19,11 +19,11 @@ import { db, auth } from '/js/firebase-init.js';
 import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js';
 import { waitForSbiTopbar } from '/admin/js/components/ready.js';
-import { waitForSbiComponents } from '/js/profile/profile-utils.js?v=8.0P.167.68';
+import { waitForSbiComponents } from '/js/profile/profile-utils.js?v=8.0P.167.69';
 import { hydrateLoggedInTopbar } from '/js/profile/profile-topbar.js';
-import { renderProfileShell } from '/js/profile/profile-render.js?v=8.0P.167.68';
+import { renderProfileShell } from '/js/profile/profile-render.js?v=8.0P.167.69';
 import { renderUserFormations } from '/js/profile/profile-formations.js';
-import { renderStudentDocumentsPanel } from '/js/profile/profile-student-documents.js?v=8.0P.167.68';
+import { renderStudentDocumentsPanel } from '/js/profile/profile-student-documents.js?v=8.0P.167.69';
 import { renderLearningTracking } from '/js/profile/profile-tracking.js';
 import { setupSaveButtons, setupSecurityAndEditMode } from '/js/profile/profile-edit.js';
 import { initProfileAvatarCropper } from '/js/profile/profile-avatar-cropper.js';
@@ -94,6 +94,95 @@ function prepareProfileActionButtons() {
   }
 }
 
+
+function getAccordionStorageKey(panelId) {
+  return `sbi.profile.accordion.${panelId}`;
+}
+
+function readAccordionCollapsed(panelId, defaultCollapsed = false) {
+  try {
+    const stored = window.sessionStorage.getItem(getAccordionStorageKey(panelId));
+    if (stored === '1') return true;
+    if (stored === '0') return false;
+  } catch (_) {}
+  return defaultCollapsed;
+}
+
+function writeAccordionCollapsed(panelId, collapsed) {
+  try {
+    window.sessionStorage.setItem(getAccordionStorageKey(panelId), collapsed ? '1' : '0');
+  } catch (_) {}
+}
+
+function applyAccordionState(container, toggle, body, collapsed) {
+  container.classList.toggle('is-collapsed', collapsed);
+  toggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+  body.hidden = collapsed;
+}
+
+function installProfileAccordion(container, { id, title, subtitle = '', defaultCollapsed = false } = {}) {
+  if (!container || !id || container.querySelector(':scope > .sbi-profile-accordion-toggle')) return;
+
+  const body = document.createElement('div');
+  body.className = 'sbi-profile-accordion-body';
+  body.id = `${id}-body`;
+
+  const nodes = Array.from(container.childNodes);
+  nodes.forEach((node) => body.appendChild(node));
+
+  const toggle = document.createElement('button');
+  toggle.type = 'button';
+  toggle.className = 'sbi-profile-accordion-toggle';
+  toggle.setAttribute('aria-controls', body.id);
+  toggle.innerHTML = `
+    <span class="sbi-profile-accordion-toggle__text">
+      <strong>${title}</strong>
+      ${subtitle ? `<em>${subtitle}</em>` : ''}
+    </span>
+    <span class="sbi-profile-accordion-toggle__chevron" aria-hidden="true">⌄</span>
+  `;
+
+  container.classList.add('sbi-profile-accordion');
+  container.dataset.sbiAccordionId = id;
+  container.appendChild(toggle);
+  container.appendChild(body);
+
+  const collapsed = readAccordionCollapsed(id, defaultCollapsed);
+  applyAccordionState(container, toggle, body, collapsed);
+
+  toggle.addEventListener('click', () => {
+    const nextCollapsed = !container.classList.contains('is-collapsed');
+    applyAccordionState(container, toggle, body, nextCollapsed);
+    writeAccordionCollapsed(id, nextCollapsed);
+  });
+}
+
+function installStudentTrackingAccordions() {
+  installProfileAccordion(document.getElementById('prof-student-followup-panel'), {
+    id: 'student-followup',
+    title: 'Fiche élève',
+    subtitle: 'Suivi pédagogique, statut, vigilance et référent'
+  });
+
+  installProfileAccordion(document.getElementById('prof-student-documents-panel'), {
+    id: 'student-documents',
+    title: 'Coffre documents',
+    subtitle: 'Pièces administratives et fichiers élève'
+  });
+
+  const trackingList = document.getElementById('prof-tracking-list');
+  const trackingPanel = trackingList?.closest?.('.data-group');
+  if (trackingPanel) {
+    trackingPanel.id = trackingPanel.id || 'prof-tracking-panel';
+    installProfileAccordion(trackingPanel, {
+      id: 'student-tracking',
+      title: 'Progression détaillée',
+      subtitle: 'Cours, avancement et suivi pédagogique détaillé',
+      defaultCollapsed: true
+    });
+  }
+}
+
 async function loadProfileData(uid) {
   try {
     const snap = await getDoc(doc(db, 'users', uid));
@@ -136,6 +225,8 @@ async function loadProfileData(uid) {
         context
       });
     }
+
+    installStudentTrackingAccordions();
   } catch (error) {
     console.error('[SBI Profile] Erreur chargement profil :', error);
   } finally {
