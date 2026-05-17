@@ -26,6 +26,41 @@ const ACCOUNT_PREPARATION_LABELS = {
   completed: 'Terminé'
 };
 
+function isStudentRole(profile = {}) {
+  const role = String(profile.role || '').toLowerCase();
+  return ['student', 'eleve', 'élève', 'etudiant', 'étudiant'].includes(role);
+}
+
+function getPromotionLabelForProfile(promotion = {}) {
+  return promotion?.name || promotion?.promotionName || 'Promotion sans nom';
+}
+
+async function loadActivePromotionsForProfile(db) {
+  try {
+    const snap = await getDocs(query(collection(db, 'promotions')));
+    const rows = [];
+    snap.forEach((docSnap) => {
+      const data = docSnap.data() || {};
+      if (data.status === 'archived') return;
+      rows.push({ id: docSnap.id, ...data });
+    });
+    rows.sort((a, b) => getPromotionLabelForProfile(a).localeCompare(getPromotionLabelForProfile(b), 'fr', { sensitivity: 'base' }));
+    return rows;
+  } catch (error) {
+    console.warn('[SBI Profile] Promotions non chargées :', error);
+    return [];
+  }
+}
+
+function renderPromotionOptions(promotions = [], currentPromotionId = '') {
+  return `
+    <option value="">Aucune promotion</option>
+    ${promotions.map((promotion) => `
+      <option value="${escapeHTML(promotion.id)}"${promotion.id === currentPromotionId ? ' selected' : ''}>${escapeHTML(getPromotionLabelForProfile(promotion))}</option>
+    `).join('')}
+  `;
+}
+
 export async function renderProfileShell({ db, uid, data, context, reloadProfile }) {
   const displayName = getDisplayName(data, 'Utilisateur Sans Nom');
   const nameEl = document.getElementById('prof-name');
@@ -150,7 +185,7 @@ async function renderActivity({ db, uid, data = {}, context, reloadProfile }) {
     return;
   }
 
-  renderAccountActionsPanel({ uid, data, reloadProfile });
+  renderAccountActionsPanel({ db, uid, data, reloadProfile });
 
   list.innerHTML = renderAccountLogsLoading();
 
@@ -570,7 +605,7 @@ function getFinalizationInfo(data = {}) {
   };
 }
 
-function renderAccountActionsPanel({ uid, data = {}, reloadProfile }) {
+function renderAccountActionsPanel({ db, uid, data = {}, reloadProfile }) {
   const list = document.getElementById('prof-activity-list');
   const group = list?.closest?.('.data-group');
   if (!group || !uid) return;
@@ -629,22 +664,56 @@ function renderAccountActionsPanel({ uid, data = {}, reloadProfile }) {
         </div>
       </div>
 
-      <div style="
+      <div id="prof-promotion-assignment-panel" style="
         margin:0 0 0.85rem 0;
         padding:0.8rem 0.9rem;
         border:1px solid rgba(42,87,255,0.18);
         border-radius:10px;
         background:rgba(42,87,255,0.06);
       ">
-        <div style="display:flex; justify-content:space-between; gap:0.75rem; flex-wrap:wrap; align-items:center;">
+        <div style="display:flex; justify-content:space-between; gap:0.75rem; flex-wrap:wrap; align-items:center; margin-bottom:0.55rem;">
           <strong style="color:#dbe5ff; font-size:0.88rem;">Promotion</strong>
-          <span style="color:${promotionName ? '#9fb2ff' : 'var(--text-muted)'}; font-size:0.78rem; font-weight:800;">
+          <span id="prof-current-promotion-label" style="color:${promotionName ? '#9fb2ff' : 'var(--text-muted)'}; font-size:0.78rem; font-weight:800;">
             ${promotionName ? escapeHTML(promotionName) : 'Aucune promotion affectée'}
           </span>
         </div>
-        <p style="margin:0.35rem 0 0; color:var(--text-muted); font-size:0.78rem; line-height:1.45;">
-          ${promotionName ? `Statut promotion : ${escapeHTML(promotionStatus || 'active')}` : 'Affectation à faire depuis la page Promotions & cohortes.'}
+        <p style="margin:0 0 0.65rem 0; color:var(--text-muted); font-size:0.78rem; line-height:1.45;">
+          ${promotionName ? `Statut promotion : ${escapeHTML(promotionStatus || 'active')}` : 'Affectation à faire directement depuis cette fiche élève.'}
         </p>
+        ${isStudentRole(data) ? `
+          <div style="display:grid; grid-template-columns:minmax(180px,1fr) auto; gap:0.6rem; align-items:end;">
+            <div>
+              <label style="display:block; color:var(--text-muted); font-size:0.72rem; font-weight:900; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:0.35rem;">Affectation</label>
+              <select id="prof-promotion-select" data-current-promotion-id="${escapeHTML(data.promotionId || '')}" style="
+                width:100%;
+                box-sizing:border-box;
+                padding:0.7rem 0.75rem;
+                background:#111827;
+                color:#fff;
+                border:1px solid rgba(255,255,255,0.12);
+                border-radius:8px;
+                outline:none;
+              ">
+                <option value="">Chargement des promotions...</option>
+              </select>
+            </div>
+            <button id="prof-save-promotion-btn" type="button" style="
+              border:1px solid rgba(42,87,255,0.55);
+              background:rgba(42,87,255,0.14);
+              color:#dbe5ff;
+              border-radius:8px;
+              padding:0.72rem 0.85rem;
+              font-weight:900;
+              cursor:pointer;
+              white-space:nowrap;
+            ">Sauvegarder</button>
+          </div>
+          <p id="prof-promotion-status" style="margin:0.45rem 0 0; color:var(--text-muted); font-size:0.76rem; min-height:1rem;"></p>
+        ` : `
+          <p style="margin:0; color:var(--text-muted); font-size:0.78rem; line-height:1.45;">
+            L’affectation promotion est disponible uniquement sur les comptes élèves.
+          </p>
+        `}
       </div>
 
       <div style="
@@ -863,12 +932,71 @@ function renderAccountActionsPanel({ uid, data = {}, reloadProfile }) {
 
   const status = panel.querySelector('#prof-account-actions-status');
   const saveButton = panel.querySelector('#prof-save-account-followup-btn');
+  const promotionSelect = panel.querySelector('#prof-promotion-select');
+  const promotionSaveButton = panel.querySelector('#prof-save-promotion-btn');
+  const promotionStatus = panel.querySelector('#prof-promotion-status');
+  const promotionLabel = panel.querySelector('#prof-current-promotion-label');
   const resendButton = panel.querySelector('#prof-resend-access-btn');
   const finalizationButton = panel.querySelector('#prof-send-finalization-btn');
   const resolveEscalationButton = panel.querySelector('#prof-resolve-escalation-btn');
   const noteTextarea = panel.querySelector('#prof-account-note');
   const notePreviewText = panel.querySelector('#prof-account-note-preview-text');
   const notePreviewMeta = panel.querySelector('#prof-account-note-meta');
+
+  if (promotionSelect) {
+    loadActivePromotionsForProfile(db).then((rows) => {
+      const currentPromotionId = promotionSelect.dataset.currentPromotionId || '';
+      promotionSelect.innerHTML = renderPromotionOptions(rows, currentPromotionId);
+      if (!rows.length && promotionStatus) {
+        promotionStatus.style.color = 'var(--text-muted)';
+        promotionStatus.textContent = 'Aucune promotion active disponible.';
+      }
+    });
+  }
+
+  promotionSaveButton?.addEventListener('click', async () => {
+    const promotionId = promotionSelect?.value || '';
+    const currentPromotionId = promotionSelect?.dataset.currentPromotionId || '';
+
+    if (promotionId === currentPromotionId) {
+      if (promotionStatus) {
+        promotionStatus.style.color = 'var(--text-muted)';
+        promotionStatus.textContent = 'Aucun changement à sauvegarder.';
+      }
+      return;
+    }
+
+    promotionSaveButton.disabled = true;
+    promotionSaveButton.style.opacity = '0.65';
+    if (promotionStatus) {
+      promotionStatus.style.color = 'var(--text-muted)';
+      promotionStatus.textContent = 'Affectation en cours...';
+    }
+
+    try {
+      await adminUpdateUserAccountCallable({ uid, promotionId });
+      const selectedLabel = promotionSelect?.selectedOptions?.[0]?.textContent || '';
+      if (promotionSelect) promotionSelect.dataset.currentPromotionId = promotionId;
+      if (promotionLabel) {
+        promotionLabel.textContent = promotionId ? selectedLabel : 'Aucune promotion affectée';
+        promotionLabel.style.color = promotionId ? '#9fb2ff' : 'var(--text-muted)';
+      }
+      if (promotionStatus) {
+        promotionStatus.style.color = '#2ed573';
+        promotionStatus.textContent = promotionId ? 'Promotion affectée.' : 'Promotion retirée.';
+      }
+      await reloadProfile?.(uid);
+    } catch (error) {
+      console.warn('[SBI Profile] Affectation promotion impossible :', error);
+      if (promotionStatus) {
+        promotionStatus.style.color = '#ff4a4a';
+        promotionStatus.textContent = getCallableUiMessage(error, 'Affectation impossible.');
+      }
+    } finally {
+      promotionSaveButton.disabled = false;
+      promotionSaveButton.style.opacity = '';
+    }
+  });
 
   if ((finalizationInfo.finalized || finalizationInfo.needsEmailCorrection) && finalizationButton) {
     finalizationButton.disabled = true;

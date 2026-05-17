@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.58',
+  version: '8.0P.167.59',
   branch: 'main',
-  channel: 'P2I.1 PROMOTIONS COHORTES BASELINE',
-  stage: 'PROMOTIONS COHORTES ADMIN PAGE USER ASSIGNMENT',
+  channel: 'P2I.1 PROMOTIONS COHORTES UX BASELINE',
+  stage: 'PROMOTIONS UX PROFILE ASSIGNMENT AND ROSTER',
   updatedAt: '2026-05-17',
-  label: 'SBI 8.0P.167.58 - PROMOTIONS COHORTES BASELINE'
+  label: 'SBI 8.0P.167.59 - PROMOTIONS UX PROFILE ASSIGNMENT'
 };
 
 export function getSbiVersionLabel() {

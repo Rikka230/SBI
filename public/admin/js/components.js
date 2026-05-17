@@ -22,6 +22,7 @@
  * 8.0P.167.34 : vue Journal admin globale.
  * 8.0P.167.52 : surface admin canonique réinjectée après les anciens effets dynamiques.
  * 8.0P.167.58 : ajout navigation Promotions / Cohortes.
+ * 8.0P.167.59 : icône Promotions distincte et cache-bust ergonomie promotions.
  */
 
 (function bootstrapSbiComponents(){
@@ -215,7 +216,7 @@
     scheduleAccountsMount();
   }, 900);
 
-  window.SBI_COMPONENTS_READY = import('/admin/js/components/index.js?v=8.0P.167.58')
+  window.SBI_COMPONENTS_READY = import('/admin/js/components/index.js?v=8.0P.167.59')
     .then(async (module) => {
       if (module?.waitForExpectedComponents) {
         await module.waitForExpectedComponents(650);

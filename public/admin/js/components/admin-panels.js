@@ -2,6 +2,8 @@ import { ICONS, brand, defineOnce } from './shared-icons.js';
 import { clearCacheAndReload, signOutToLogin } from './shared-actions.js';
 import { dispatchComponentMounted } from './ready.js';
 
+const PROMOTIONS_ICON = '<svg viewBox="0 0 24 24"><path d="M7 3h10a2 2 0 0 1 2 2v3h-2V5H7v14h3v2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Zm3 4h4v2h-4V7Zm0 4h5v2h-5v-2Zm6.5 1A4.5 4.5 0 0 1 21 16.5c0 .84-.23 1.63-.63 2.3L22 20.43 20.43 22l-1.63-1.63A4.5 4.5 0 1 1 16.5 12Zm0 2a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Z"/></svg>';
+
 function adminNavItem({ id, target, label, icon }) {
   const href = `/admin/index.html?tab=${target}`;
 
@@ -39,7 +41,7 @@ export class AdminLeftPanel extends HTMLElement {
             <span class="nav-text">Journal admin</span>
           </li>
           <li class="nav-item" id="nav-promotions" data-href="/admin/admin-promotions.html" data-sbi-href="/admin/admin-promotions.html" role="link" tabindex="0">
-            ${ICONS.formations}
+            ${PROMOTIONS_ICON}
             <span class="nav-text">Promotions</span>
           </li>
           ${adminNavItem({ id:'nav-formations', target:'view-formations', label:'Formations', icon:ICONS.formations })}

@@ -7,8 +7,8 @@
     <link rel="stylesheet" href="css/admin-layout.css">
     <link rel="stylesheet" href="css/admin.css?v=8.0P.167.51">
     <link rel="stylesheet" href="css/admin-notifications.css">
-    <link rel="stylesheet" href="css/admin-promotions.css?v=8.0P.167.58">
-    <script src="js/components.js?v=8.0P.167.58"></script>
+    <link rel="stylesheet" href="css/admin-promotions.css?v=8.0P.167.59">
+    <script src="js/components.js?v=8.0P.167.59"></script>
     <link rel="stylesheet" href="css/admin-surface-unified.css?v=8.0P.167.52">
 </head>
 <body class="preload sbi-admin-surface">
@@ -41,13 +41,13 @@
                     <div>
                         <p class="sbi-kicker">Socle étudiant</p>
                         <h2>Promotions & cohortes</h2>
-                        <p>Créez les promotions, reliez-les à une formation, puis affectez les élèves sans ouvrir le chantier LMS complet.</p>
+                        <p>Créez les promotions, reliez-les à une formation, puis affectez les élèves depuis leur profil.</p>
                     </div>
                     <button type="button" id="promotions-refresh-btn" class="sbi-promotions-ghost-btn">Rafraîchir</button>
                 </div>
 
                 <div class="sbi-promotions-grid">
-                    <form id="promotion-form" class="sbi-promotions-card">
+                    <form id="promotion-form" class="sbi-promotions-card sbi-promotions-editor-card">
                         <div class="sbi-card-title-row">
                             <div>
                                 <h3 id="promotion-form-title">Créer une promotion</h3>
@@ -87,7 +87,7 @@
                         <p id="promotion-form-status" class="sbi-promotions-status" aria-live="polite"></p>
                     </form>
 
-                    <div class="sbi-promotions-card">
+                    <div class="sbi-promotions-card sbi-promotions-list-card">
                         <div class="sbi-card-title-row">
                             <div>
                                 <h3>Liste des promotions</h3>
@@ -100,34 +100,32 @@
                     </div>
                 </div>
 
-                <div class="sbi-promotions-card sbi-promotions-assignment-card">
+                <div class="sbi-promotions-card sbi-promotions-roster-card">
                     <div class="sbi-card-title-row">
                         <div>
-                            <h3>Affecter un élève</h3>
-                            <p>Association simple : élève → promotion. Les cursus et checkpoints seront branchés ensuite.</p>
+                            <h3>Élèves par promotion</h3>
+                            <p>Sélectionnez une promotion pour voir uniquement les élèves rattachés. L’affectation se fait depuis le profil élève.</p>
                         </div>
-                        <button type="button" id="students-refresh-btn" class="sbi-promotions-ghost-btn is-small">Recharger élèves</button>
                     </div>
 
-                    <form id="promotion-assign-form" class="sbi-promotions-assignment-form">
+                    <div class="sbi-promotions-roster-toolbar">
                         <div>
-                            <label for="promotion-student-select">Élève</label>
-                            <select id="promotion-student-select" required>
-                                <option value="">Chargement des élèves...</option>
+                            <label for="promotion-roster-select">Promotion</label>
+                            <select id="promotion-roster-select">
+                                <option value="">Sélectionner une promotion</option>
                             </select>
                         </div>
                         <div>
-                            <label for="promotion-assign-select">Promotion</label>
-                            <select id="promotion-assign-select">
-                                <option value="">Aucune promotion</option>
-                            </select>
+                            <label for="promotion-roster-search">Recherche dans la promotion</label>
+                            <input id="promotion-roster-search" type="search" placeholder="Nom, prénom ou email">
                         </div>
-                        <button id="promotion-assign-btn" type="submit" class="sbi-promotions-primary-btn">Affecter</button>
-                    </form>
-                    <p id="promotion-assign-status" class="sbi-promotions-status" aria-live="polite"></p>
+                        <button type="button" id="promotion-roster-refresh-btn" class="sbi-promotions-ghost-btn">Charger</button>
+                    </div>
 
-                    <div id="promotion-students-list" class="sbi-promotions-students-list">
-                        <div class="sbi-promotions-empty">Aucun élève chargé.</div>
+                    <p id="promotion-roster-status" class="sbi-promotions-status" aria-live="polite"></p>
+
+                    <div id="promotion-roster-list" class="sbi-promotions-students-list">
+                        <div class="sbi-promotions-empty">Sélectionnez une promotion pour afficher ses élèves.</div>
                     </div>
                 </div>
             </section>
@@ -138,10 +136,10 @@
 
 </div>
 
-<script type="module" src="js/admin-ui.js?v=8.0P.167.58"></script>
+<script type="module" src="js/admin-ui.js?v=8.0P.167.59"></script>
 <script type="module" src="js/tracker.js?v=8.0P.167.44"></script>
 <script type="module" src="js/admin-notifications.js"></script>
-<script type="module" src="js/admin-promotions.js?v=8.0P.167.58"></script>
+<script type="module" src="js/admin-promotions.js?v=8.0P.167.59"></script>
 
 <script>
     document.addEventListener('DOMContentLoaded', () => {

@@ -1,14 +1,15 @@
 /**
- * SBI 8.0P.167.58 / P2I.1
+ * SBI 8.0P.167.59 / P2I.1 UX
  * Promotions / cohortes admin.
  *
  * Périmètre volontairement borné :
  * - CRUD léger des promotions côté admin ;
- * - association élève -> promotion via Function serveur adminUpdateUserAccount ;
+ * - lecture des élèves par promotion sélectionnée ;
+ * - affectation élève -> promotion déplacée dans le profil élève ;
  * - aucun LMS, aucun cursus/checkpoint dans cette brique.
  */
 
-import { auth, db, app } from '/js/firebase-init.js';
+import { auth, db } from '/js/firebase-init.js';
 import { isSbiAdminLike } from '/js/sbi-permissions.js?v=8.0P.167.44';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js';
 import {
@@ -21,20 +22,18 @@ import {
   query,
   serverTimestamp,
   setDoc,
-  updateDoc
+  updateDoc,
+  where
 } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
-import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js';
-
-const functionsInstance = getFunctions(app, 'europe-west1');
-const adminUpdateUserAccount = httpsCallable(functionsInstance, 'adminUpdateUserAccount');
 
 let mounted = false;
 let unsubscribeAuth = null;
 let unsubscribePromotions = null;
 let currentAdmin = null;
 let promotions = [];
-let students = [];
+let rosterStudents = [];
 let formations = [];
+let activeRosterPromotionId = '';
 
 const dom = {};
 
@@ -113,6 +112,14 @@ function isStudent(profile = {}) {
   return ['student', 'eleve', 'élève', 'etudiant', 'étudiant'].includes(role);
 }
 
+function normalizeSearch(value = '') {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
 function setStatus(el, message = '', tone = 'muted') {
   if (!el) return;
   el.textContent = message;
@@ -138,13 +145,11 @@ function cacheDom() {
   dom.refresh = $('promotions-refresh-btn');
   dom.list = $('promotions-list');
   dom.count = $('promotions-count');
-  dom.assignForm = $('promotion-assign-form');
-  dom.studentSelect = $('promotion-student-select');
-  dom.assignSelect = $('promotion-assign-select');
-  dom.assignBtn = $('promotion-assign-btn');
-  dom.assignStatus = $('promotion-assign-status');
-  dom.studentsRefresh = $('students-refresh-btn');
-  dom.studentsList = $('promotion-students-list');
+  dom.rosterSelect = $('promotion-roster-select');
+  dom.rosterSearch = $('promotion-roster-search');
+  dom.rosterRefresh = $('promotion-roster-refresh-btn');
+  dom.rosterStatus = $('promotion-roster-status');
+  dom.rosterList = $('promotion-roster-list');
 }
 
 function getSelectedFormation() {
@@ -264,28 +269,38 @@ async function toggleArchivePromotion(id) {
   }
 }
 
-function renderPromotionSelects() {
-  const activePromotions = promotions.filter((promotion) => promotion.status !== 'archived');
+function sortedPromotions() {
+  return [...promotions].sort((a, b) => {
+    if ((a.status || 'active') !== (b.status || 'active')) return (a.status || 'active') === 'active' ? -1 : 1;
+    return getPromotionLabel(a).localeCompare(getPromotionLabel(b), 'fr', { sensitivity: 'base' });
+  });
+}
 
-  if (dom.assignSelect) {
-    const current = dom.assignSelect.value;
-    dom.assignSelect.innerHTML = `
-      <option value="">Aucune promotion</option>
-      ${activePromotions.map((promotion) => `
-        <option value="${escapeHtml(promotion.id)}">${escapeHtml(getPromotionLabel(promotion))}</option>
-      `).join('')}
-    `;
-    if (current && activePromotions.some((promotion) => promotion.id === current)) dom.assignSelect.value = current;
+function renderRosterSelect() {
+  if (!dom.rosterSelect) return;
+
+  const current = dom.rosterSelect.value || activeRosterPromotionId || '';
+  const rows = sortedPromotions();
+
+  dom.rosterSelect.innerHTML = `
+    <option value="">Sélectionner une promotion</option>
+    ${rows.map((promotion) => `
+      <option value="${escapeHtml(promotion.id)}">${escapeHtml(getPromotionLabel(promotion))}${promotion.status === 'archived' ? ' · archivée' : ''}</option>
+    `).join('')}
+  `;
+
+  if (current && rows.some((promotion) => promotion.id === current)) {
+    dom.rosterSelect.value = current;
+    activeRosterPromotionId = current;
+  } else {
+    activeRosterPromotionId = '';
   }
 }
 
 function renderPromotions() {
   if (!dom.list) return;
 
-  const sorted = [...promotions].sort((a, b) => {
-    if ((a.status || 'active') !== (b.status || 'active')) return (a.status || 'active') === 'active' ? -1 : 1;
-    return getPromotionLabel(a).localeCompare(getPromotionLabel(b), 'fr', { sensitivity: 'base' });
-  });
+  const sorted = sortedPromotions();
 
   if (dom.count) {
     const activeCount = sorted.filter((promotion) => promotion.status !== 'archived').length;
@@ -294,13 +309,12 @@ function renderPromotions() {
 
   if (!sorted.length) {
     dom.list.innerHTML = '<div class="sbi-promotions-empty">Aucune promotion créée pour l’instant.</div>';
-    renderPromotionSelects();
+    renderRosterSelect();
     return;
   }
 
   dom.list.innerHTML = sorted.map((promotion) => {
     const status = promotion.status === 'archived' ? 'archived' : 'active';
-    const assignedCount = students.filter((student) => student.promotionId === promotion.id).length;
     const dates = [
       promotion.startDate ? `Début ${formatDate(promotion.startDate)}` : '',
       promotion.endDate ? `Fin ${formatDate(promotion.endDate)}` : ''
@@ -313,11 +327,11 @@ function renderPromotions() {
           <p>${escapeHtml(promotion.formationName || 'Formation non liée')}</p>
           <div class="sbi-promotions-meta">
             <span class="sbi-promotions-pill ${status === 'archived' ? 'is-archived' : 'is-active'}">${status === 'archived' ? 'Archivée' : 'Active'}</span>
-            <span class="sbi-promotions-pill">${assignedCount} élève${assignedCount > 1 ? 's' : ''}</span>
             ${dates ? `<span class="sbi-promotions-pill">${escapeHtml(dates)}</span>` : ''}
           </div>
         </div>
         <div class="sbi-promotions-actions">
+          <button type="button" data-action="roster" data-id="${escapeHtml(promotion.id)}" class="is-primary">Voir élèves</button>
           <button type="button" data-action="edit" data-id="${escapeHtml(promotion.id)}">Modifier</button>
           <button type="button" data-action="archive" data-id="${escapeHtml(promotion.id)}" class="${status === 'archived' ? '' : 'is-danger'}">${status === 'archived' ? 'Réactiver' : 'Archiver'}</button>
         </div>
@@ -325,7 +339,7 @@ function renderPromotions() {
     `;
   }).join('');
 
-  renderPromotionSelects();
+  renderRosterSelect();
 }
 
 function renderFormationSelect() {
@@ -343,49 +357,53 @@ function renderFormationSelect() {
   if (current && formations.some((formation) => formation.id === current)) dom.formation.value = current;
 }
 
-function renderStudents() {
-  const sortedStudents = [...students].sort((a, b) => getStudentName(a).localeCompare(getStudentName(b), 'fr', { sensitivity: 'base' }));
+function renderRosterStudents() {
+  if (!dom.rosterList) return;
 
-  if (dom.studentSelect) {
-    const current = dom.studentSelect.value;
-    dom.studentSelect.innerHTML = sortedStudents.length
-      ? `
-        <option value="">Sélectionner un élève</option>
-        ${sortedStudents.map((student) => `
-          <option value="${escapeHtml(student.id)}">${escapeHtml(getStudentName(student))}${student.promotionName ? ` · ${escapeHtml(student.promotionName)}` : ''}</option>
-        `).join('')}
-      `
-      : '<option value="">Aucun élève disponible</option>';
-
-    if (current && sortedStudents.some((student) => student.id === current)) dom.studentSelect.value = current;
-  }
-
-  if (!dom.studentsList) return;
-
-  if (!sortedStudents.length) {
-    dom.studentsList.innerHTML = '<div class="sbi-promotions-empty">Aucun élève trouvé.</div>';
+  if (!activeRosterPromotionId) {
+    dom.rosterList.innerHTML = '<div class="sbi-promotions-empty">Sélectionnez une promotion pour afficher ses élèves.</div>';
+    setStatus(dom.rosterStatus, '');
     return;
   }
 
-  dom.studentsList.innerHTML = sortedStudents.map((student) => {
-    const promotion = student.promotionId
-      ? promotions.find((item) => item.id === student.promotionId)
-      : null;
-    const promotionName = promotion?.name || student.promotionName || 'Aucune promotion';
-    const promotionTone = student.promotionId ? 'is-active' : '';
+  const search = normalizeSearch(dom.rosterSearch?.value || '');
+  const selectedPromotion = promotions.find((promotion) => promotion.id === activeRosterPromotionId);
+  const filtered = rosterStudents
+    .filter((student) => {
+      if (!search) return true;
+      const haystack = normalizeSearch(`${getStudentName(student)} ${student.email || ''}`);
+      return haystack.includes(search);
+    })
+    .sort((a, b) => getStudentName(a).localeCompare(getStudentName(b), 'fr', { sensitivity: 'base' }));
 
-    return `
-      <article class="sbi-promotions-student-row" data-student-id="${escapeHtml(student.id)}">
-        <div>
-          <strong>${escapeHtml(getStudentName(student))}</strong>
-          <p>${escapeHtml(student.email || 'Email manquant')}</p>
-        </div>
-        <div class="sbi-promotions-meta" style="justify-content:flex-end;">
-          <span class="sbi-promotions-pill ${promotionTone}">${escapeHtml(promotionName)}</span>
-        </div>
-      </article>
-    `;
-  }).join('');
+  if (dom.rosterStatus) {
+    dom.rosterStatus.textContent = selectedPromotion
+      ? `${filtered.length}/${rosterStudents.length} élève${rosterStudents.length > 1 ? 's' : ''} affiché${filtered.length > 1 ? 's' : ''} · ${getPromotionLabel(selectedPromotion)}`
+      : `${filtered.length} élève${filtered.length > 1 ? 's' : ''} affiché${filtered.length > 1 ? 's' : ''}`;
+    dom.rosterStatus.style.color = 'var(--text-muted, #9ca3af)';
+  }
+
+  if (!rosterStudents.length) {
+    dom.rosterList.innerHTML = '<div class="sbi-promotions-empty">Aucun élève rattaché à cette promotion pour l’instant.</div>';
+    return;
+  }
+
+  if (!filtered.length) {
+    dom.rosterList.innerHTML = '<div class="sbi-promotions-empty">Aucun élève ne correspond à cette recherche dans la promotion sélectionnée.</div>';
+    return;
+  }
+
+  dom.rosterList.innerHTML = filtered.map((student) => `
+    <article class="sbi-promotions-student-row" data-student-id="${escapeHtml(student.id)}">
+      <div>
+        <strong>${escapeHtml(getStudentName(student))}</strong>
+        <p>${escapeHtml(student.email || 'Email manquant')}</p>
+      </div>
+      <div class="sbi-promotions-actions">
+        <button type="button" data-action="profile" data-id="${escapeHtml(student.id)}" class="is-primary">Ouvrir profil</button>
+      </div>
+    </article>
+  `).join('');
 }
 
 async function loadFormations() {
@@ -405,29 +423,42 @@ async function loadFormations() {
   renderFormationSelect();
 }
 
-async function loadStudents() {
-  if (dom.studentsRefresh) {
-    dom.studentsRefresh.disabled = true;
-    dom.studentsRefresh.style.opacity = '0.65';
+async function loadPromotionStudents(promotionId = activeRosterPromotionId) {
+  activeRosterPromotionId = promotionId || '';
+  rosterStudents = [];
+
+  if (dom.rosterSelect && dom.rosterSelect.value !== activeRosterPromotionId) {
+    dom.rosterSelect.value = activeRosterPromotionId;
   }
 
+  if (!activeRosterPromotionId) {
+    renderRosterStudents();
+    return;
+  }
+
+  if (dom.rosterRefresh) {
+    dom.rosterRefresh.disabled = true;
+    dom.rosterRefresh.style.opacity = '0.65';
+  }
+
+  setStatus(dom.rosterStatus, 'Chargement des élèves de la promotion...');
+
   try {
-    const snap = await getDocs(collection(db, 'users'));
-    students = [];
+    const snap = await getDocs(query(collection(db, 'users'), where('promotionId', '==', activeRosterPromotionId)));
+    rosterStudents = [];
     snap.forEach((docSnap) => {
       const data = docSnap.data() || {};
-      if (isStudent(data)) students.push({ id: docSnap.id, ...data });
+      if (isStudent(data)) rosterStudents.push({ id: docSnap.id, ...data });
     });
-    renderStudents();
-    renderPromotions();
-    setStatus(dom.assignStatus, `${students.length} élève${students.length > 1 ? 's' : ''} chargé${students.length > 1 ? 's' : ''}.`, 'success');
+    renderRosterStudents();
   } catch (error) {
-    console.warn('[SBI Promotions] Élèves non chargés :', error);
-    setStatus(dom.assignStatus, 'Chargement élèves impossible.', 'error');
+    console.warn('[SBI Promotions] Élèves de la promotion non chargés :', error);
+    setStatus(dom.rosterStatus, 'Chargement des élèves impossible.', 'error');
+    if (dom.rosterList) dom.rosterList.innerHTML = '<div class="sbi-promotions-empty">Lecture élèves impossible.</div>';
   } finally {
-    if (dom.studentsRefresh) {
-      dom.studentsRefresh.disabled = false;
-      dom.studentsRefresh.style.opacity = '';
+    if (dom.rosterRefresh) {
+      dom.rosterRefresh.disabled = false;
+      dom.rosterRefresh.style.opacity = '';
     }
   }
 }
@@ -441,56 +472,23 @@ function startPromotionsSnapshot() {
       promotions.push({ id: docSnap.id, ...(docSnap.data() || {}) });
     });
     renderPromotions();
-    renderStudents();
+
+    if (activeRosterPromotionId && promotions.some((promotion) => promotion.id === activeRosterPromotionId)) {
+      loadPromotionStudents(activeRosterPromotionId);
+    } else {
+      rosterStudents = [];
+      renderRosterStudents();
+    }
   }, (error) => {
     console.warn('[SBI Promotions] Snapshot promotions impossible :', error);
     if (dom.list) dom.list.innerHTML = '<div class="sbi-promotions-empty">Lecture promotions impossible. Vérifiez les règles Firestore.</div>';
   });
 }
 
-async function assignStudent(event) {
-  event?.preventDefault?.();
-
-  const uid = dom.studentSelect?.value || '';
-  const promotionId = dom.assignSelect?.value || '';
-
-  if (!uid) {
-    setStatus(dom.assignStatus, 'Sélectionnez un élève.', 'error');
-    return;
-  }
-
-  const promotion = promotionId ? promotions.find((item) => item.id === promotionId) : null;
-  if (promotionId && !promotion) {
-    setStatus(dom.assignStatus, 'Promotion introuvable.', 'error');
-    return;
-  }
-
-  if (dom.assignBtn) {
-    dom.assignBtn.disabled = true;
-    dom.assignBtn.style.opacity = '0.65';
-  }
-
-  setStatus(dom.assignStatus, 'Affectation en cours...');
-
-  try {
-    await adminUpdateUserAccount({
-      uid,
-      promotionId,
-      promotionName: promotion ? getPromotionLabel(promotion) : '',
-      promotionStatus: promotion ? (promotion.status || 'active') : ''
-    });
-
-    setStatus(dom.assignStatus, promotion ? 'Élève affecté à la promotion.' : 'Promotion retirée de l’élève.', 'success');
-    await loadStudents();
-  } catch (error) {
-    console.warn('[SBI Promotions] Affectation impossible :', error);
-    setStatus(dom.assignStatus, String(error?.message || 'Affectation impossible.').replace(/^Firebase:\s*/i, ''), 'error');
-  } finally {
-    if (dom.assignBtn) {
-      dom.assignBtn.disabled = false;
-      dom.assignBtn.style.opacity = '';
-    }
-  }
+function openProfile(uid) {
+  if (!uid) return;
+  const href = `/admin/admin-profile.html?id=${encodeURIComponent(uid)}`;
+  window.SBI_APP_SHELL_NAVIGATE?.(href) || (window.location.href = href);
 }
 
 function bindEvents() {
@@ -498,11 +496,12 @@ function bindEvents() {
   dom.reset?.addEventListener('click', resetForm);
   dom.refresh?.addEventListener('click', () => {
     loadFormations();
-    loadStudents();
     startPromotionsSnapshot();
+    if (activeRosterPromotionId) loadPromotionStudents(activeRosterPromotionId);
   });
-  dom.studentsRefresh?.addEventListener('click', loadStudents);
-  dom.assignForm?.addEventListener('submit', assignStudent);
+  dom.rosterRefresh?.addEventListener('click', () => loadPromotionStudents(dom.rosterSelect?.value || activeRosterPromotionId));
+  dom.rosterSelect?.addEventListener('change', () => loadPromotionStudents(dom.rosterSelect.value));
+  dom.rosterSearch?.addEventListener('input', renderRosterStudents);
 
   dom.list?.addEventListener('click', (event) => {
     const button = event.target.closest?.('button[data-action][data-id]');
@@ -513,6 +512,13 @@ function bindEvents() {
 
     if (button.dataset.action === 'edit') fillForm(promotion);
     if (button.dataset.action === 'archive') toggleArchivePromotion(promotion.id);
+    if (button.dataset.action === 'roster') loadPromotionStudents(promotion.id);
+  });
+
+  dom.rosterList?.addEventListener('click', (event) => {
+    const button = event.target.closest?.('button[data-action="profile"][data-id]');
+    if (!button) return;
+    openProfile(button.dataset.id);
   });
 }
 
@@ -550,12 +556,13 @@ export function mountAdminPromotions() {
   cacheDom();
   bindEvents();
   resetForm();
+  renderRosterStudents();
 
   unsubscribeAuth?.();
   unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
     try {
       await loadCurrentAdmin(user);
-      await Promise.all([loadFormations(), loadStudents()]);
+      await loadFormations();
       startPromotionsSnapshot();
     } catch (error) {
       console.warn('[SBI Promotions] Accès refusé :', error);
