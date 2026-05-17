@@ -320,7 +320,7 @@ service firebase.storage {
     /* ============================================================
        DOCUMENTS ÉLÈVES — COFFRE ADMIN
        ============================================================
-       Chemin utilisé par SBI 8.0P.167.68 :
+       Chemin utilisé par SBI 8.0P.167.68+ :
        student-documents/{studentId}/{documentId}/{fileName}
 
        V1 : lecture et écriture admin uniquement. L'ouverture élève sera
@@ -332,7 +332,7 @@ service firebase.storage {
       allow create, update: if canManageStudentDocument(studentId)
         && validStudentDocumentUpload(studentId, documentId);
 
-      allow delete: if false;
+      allow delete: if canManageStudentDocument(studentId);
     }
 
     /* ============================================================
