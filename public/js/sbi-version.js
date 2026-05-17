@@ -6,7 +6,7 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.74',
+  version: '8.0P.167.75',
   branch: 'main',
   channel: 'P2I.4 STUDENT DOCUMENT ADMIN REVIEW',
   stage: 'RESUBMIT ALERT PROFILE ROUTE REVIEW LOCK',

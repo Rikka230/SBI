@@ -3783,6 +3783,157 @@ exports.adminCancelStudentDocumentRequest = onCall({
     return { success: true, requestId, status: 'canceled', message: 'Demande annulée.' };
 });
 
+exports.adminLogStudentDocumentManualUpload = onCall({
+    region: 'europe-west1',
+    timeoutSeconds: 20,
+    memory: '256MiB'
+}, async (request) => {
+    const db = admin.firestore();
+    const caller = await requireAdminCaller(request, db);
+    const documentId = cleanString(request.data?.documentId || request.data?.id || '', 180);
+    if (!documentId) throw new HttpsError('invalid-argument', 'Identifiant document manquant.');
+
+    const documentSnap = await db.collection('studentDocuments').doc(documentId).get();
+    if (!documentSnap.exists) throw new HttpsError('not-found', 'Document introuvable.');
+
+    const documentData = documentSnap.data() || {};
+    const studentUid = cleanString(documentData.studentUid || '', 160);
+    let student = {};
+    if (studentUid) {
+        const studentDoc = await db.collection('users').doc(studentUid).get();
+        student = studentDoc.exists ? (studentDoc.data() || {}) : {};
+    }
+
+    await safeWriteAccountAuditLog(db, {
+        type: 'student_documents.document_uploaded_admin',
+        actorUid: caller.uid,
+        actorEmail: caller.email,
+        targetUid: studentUid,
+        targetEmail: cleanEmail(student.email || ''),
+        targetRole: student.role || 'student',
+        changes: {
+            documents: {
+                documentId,
+                title: cleanString(documentData.title || documentData.fileName || '', 180),
+                fileName: cleanString(documentData.fileName || '', 220),
+                category: cleanString(documentData.category || '', 80),
+                status: cleanString(documentData.status || 'active', 80)
+            }
+        }
+    });
+
+    return { success: true, documentId, message: 'Upload document enregistré dans le journal admin.' };
+});
+
+exports.adminArchiveStudentDocument = onCall({
+    region: 'europe-west1',
+    timeoutSeconds: 20,
+    memory: '256MiB'
+}, async (request) => {
+    const db = admin.firestore();
+    const caller = await requireAdminCaller(request, db);
+    const documentId = cleanString(request.data?.documentId || request.data?.id || '', 180);
+    if (!documentId) throw new HttpsError('invalid-argument', 'Identifiant document manquant.');
+
+    const documentRef = db.collection('studentDocuments').doc(documentId);
+    const documentSnap = await documentRef.get();
+    if (!documentSnap.exists) throw new HttpsError('not-found', 'Document introuvable.');
+
+    const documentData = documentSnap.data() || {};
+    const studentUid = cleanString(documentData.studentUid || '', 160);
+    const now = admin.firestore.FieldValue.serverTimestamp();
+    let student = {};
+    if (studentUid) {
+        const studentDoc = await db.collection('users').doc(studentUid).get();
+        student = studentDoc.exists ? (studentDoc.data() || {}) : {};
+    }
+
+    await documentRef.set({
+        status: 'archived',
+        archivedAt: now,
+        archivedBy: caller.uid,
+        archivedByEmail: caller.email,
+        updatedAt: now
+    }, { merge: true });
+
+    await safeWriteAccountAuditLog(db, {
+        type: 'student_documents.document_archived',
+        actorUid: caller.uid,
+        actorEmail: caller.email,
+        targetUid: studentUid,
+        targetEmail: cleanEmail(student.email || ''),
+        targetRole: student.role || 'student',
+        changes: {
+            documents: {
+                documentId,
+                title: cleanString(documentData.title || documentData.fileName || '', 180),
+                fileName: cleanString(documentData.fileName || '', 220),
+                status: 'archived'
+            }
+        }
+    });
+
+    return { success: true, documentId, status: 'archived', message: 'Document archivé.' };
+});
+
+exports.adminDeleteStudentDocument = onCall({
+    region: 'europe-west1',
+    timeoutSeconds: 25,
+    memory: '256MiB'
+}, async (request) => {
+    const db = admin.firestore();
+    const caller = await requireAdminCaller(request, db);
+    const documentId = cleanString(request.data?.documentId || request.data?.id || '', 180);
+    if (!documentId) throw new HttpsError('invalid-argument', 'Identifiant document manquant.');
+
+    const documentRef = db.collection('studentDocuments').doc(documentId);
+    const documentSnap = await documentRef.get();
+    if (!documentSnap.exists) throw new HttpsError('not-found', 'Document introuvable.');
+
+    const documentData = documentSnap.data() || {};
+    const studentUid = cleanString(documentData.studentUid || '', 160);
+    const filePath = cleanString(documentData.filePath || '', 800);
+    let student = {};
+    if (studentUid) {
+        const studentDoc = await db.collection('users').doc(studentUid).get();
+        student = studentDoc.exists ? (studentDoc.data() || {}) : {};
+    }
+
+    if (filePath) {
+        try {
+            await admin.storage().bucket().file(filePath).delete();
+        } catch (error) {
+            const code = String(error?.code || error?.statusCode || '');
+            const message = String(error?.message || '').toLowerCase();
+            if (code !== '404' && !message.includes('not found') && !message.includes('no such object')) {
+                throw new HttpsError('internal', 'Suppression du fichier Storage impossible.');
+            }
+        }
+    }
+
+    await documentRef.delete();
+
+    await safeWriteAccountAuditLog(db, {
+        type: 'student_documents.document_deleted',
+        actorUid: caller.uid,
+        actorEmail: caller.email,
+        targetUid: studentUid,
+        targetEmail: cleanEmail(student.email || ''),
+        targetRole: student.role || 'student',
+        changes: {
+            documents: {
+                documentId,
+                title: cleanString(documentData.title || documentData.fileName || '', 180),
+                fileName: cleanString(documentData.fileName || '', 220),
+                filePath,
+                status: 'deleted'
+            }
+        }
+    });
+
+    return { success: true, documentId, status: 'deleted', message: 'Document supprimé.' };
+});
+
 exports.adminReviewStudentDocumentRequest = onCall({
     region: 'europe-west1',
     secrets: [BREVO_API_KEY],

@@ -15,6 +15,8 @@ import {
 let currentUid = '';
 let unsubscribeAlerts = null;
 let latestAlert = null;
+let toastHideTimer = null;
+const shownAlertIds = new Set();
 
 function escapeHTML(value = '') {
   return String(value ?? '')
@@ -73,12 +75,14 @@ function ensureToast() {
 
   toast.querySelector('[data-student-doc-alert-open]')?.addEventListener('click', async () => {
     if (!latestAlert) return;
+    window.clearTimeout(toastHideTimer);
     await dismissAlert(latestAlert.id).catch(() => {});
     window.location.assign(getProfileUrl(latestAlert));
   });
 
-  toast.querySelector('[data-student-doc-alert-close]')?.addEventListener('click', async () => {
-    if (latestAlert?.id) await dismissAlert(latestAlert.id).catch(() => {});
+  toast.querySelector('[data-student-doc-alert-close]')?.addEventListener('click', () => {
+    // Masque seulement la pancarte temporaire. La notification reste dans l’assistant.
+    window.clearTimeout(toastHideTimer);
     toast.classList.remove('is-visible');
   });
 
@@ -86,16 +90,26 @@ function ensureToast() {
 }
 
 function renderToast(alert) {
+  if (!alert?.id || shownAlertIds.has(alert.id)) return;
+
   const toast = ensureToast();
   const studentName = alert?.studentName || 'Un élève';
   const count = Number(alert?.documentCount || 0) || '';
   latestAlert = alert;
+  shownAlertIds.add(alert.id);
 
   const title = toast.querySelector('[data-student-doc-alert-title]');
   const body = toast.querySelector('[data-student-doc-alert-body]');
   if (title) title.textContent = `${studentName} a envoyé ses documents`;
   if (body) body.textContent = count ? `${count} document(s) à vérifier dans le coffre élève.` : 'Documents à vérifier dans le coffre élève.';
+
+  window.clearTimeout(toastHideTimer);
   toast.classList.add('is-visible');
+  toastHideTimer = window.setTimeout(() => {
+    if (latestAlert?.id === alert.id) {
+      toast.classList.remove('is-visible');
+    }
+  }, 6500);
 }
 
 async function dismissAlert(alertId) {
@@ -162,7 +176,7 @@ function startAlerts(uid) {
 
 window.addEventListener('sbi:notifications-updated', patchNotificationPanel);
 
-document.addEventListener('click', async (event) => {
+async function handleStudentDocumentNotificationActivation(event) {
   const item = event.target.closest?.('.notif-item[data-type="student_documents.submitted"]');
   if (!item) return;
 
@@ -170,6 +184,12 @@ document.addEventListener('click', async (event) => {
   event.stopPropagation();
   event.stopImmediatePropagation();
   await openStudentProfileFromNotificationItem(item);
+}
+
+document.addEventListener('click', handleStudentDocumentNotificationActivation, true);
+document.addEventListener('keydown', async (event) => {
+  if (event.key !== 'Enter' && event.key !== ' ') return;
+  await handleStudentDocumentNotificationActivation(event);
 }, true);
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -179,6 +199,8 @@ document.addEventListener('DOMContentLoaded', () => {
       unsubscribeAlerts?.();
       unsubscribeAlerts = null;
       latestAlert = null;
+      shownAlertIds.clear();
+      window.clearTimeout(toastHideTimer);
       document.getElementById('sbi-student-doc-alert-toast')?.classList.remove('is-visible');
       return;
     }

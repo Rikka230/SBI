@@ -1021,3 +1021,172 @@
     cursor: not-allowed;
     opacity: 0.75;
 }
+
+/* --- SBI 8.0P.167.75 — UX finale coffre documents : fichier custom + confirmations SBI --- */
+.sbi-file-picker {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    flex-wrap: wrap;
+}
+
+.sbi-file-picker__input {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
+.sbi-file-picker__button {
+    border: 1px solid rgba(46, 213, 115, 0.42);
+    border-radius: 999px;
+    background: rgba(46, 213, 115, 0.10);
+    color: #a8f7c3;
+    padding: 0.68rem 0.92rem;
+    font-weight: 900;
+    cursor: pointer;
+    transition: 0.18s ease;
+}
+
+.sbi-file-picker__button:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.08);
+}
+
+.sbi-file-picker__name {
+    min-width: min(280px, 100%);
+    display: inline-flex;
+    align-items: center;
+    min-height: 40px;
+    border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 12px;
+    background: rgba(3,7,18,0.46);
+    color: #dbe5ff;
+    padding: 0.56rem 0.72rem;
+    font-size: 0.8rem;
+    line-height: 1.35;
+}
+
+.sbi-student-doc-confirm-open { overflow: hidden; }
+
+.sbi-student-doc-confirm-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 7000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+.sbi-student-doc-confirm-modal.is-open { display: flex; }
+
+.sbi-student-doc-confirm-modal__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(3, 7, 18, 0.76);
+    backdrop-filter: blur(10px);
+}
+
+.sbi-student-doc-confirm-modal__panel {
+    position: relative;
+    width: min(520px, calc(100vw - 2rem));
+    border: 1px solid rgba(42,87,255,0.28);
+    border-radius: 20px;
+    background: linear-gradient(145deg, rgba(10,17,38,0.98), rgba(3,8,24,0.98));
+    box-shadow: 0 24px 80px rgba(0,0,0,0.55);
+    overflow: hidden;
+}
+
+.sbi-student-doc-confirm-modal__panel header {
+    padding: 1.15rem 1.25rem 0.75rem;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.sbi-student-doc-confirm-modal__panel header p {
+    margin: 0 0 0.25rem;
+    color: #9fb2ff;
+    font-size: 0.72rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.sbi-student-doc-confirm-modal__panel header h3 {
+    margin: 0;
+    color: #fff;
+    font-size: 1.12rem;
+}
+
+.sbi-student-doc-confirm-modal__body {
+    padding: 1.15rem 1.25rem;
+    color: #dbe5ff;
+    line-height: 1.55;
+    font-size: 0.92rem;
+}
+
+.sbi-student-doc-confirm-modal__body p {
+    margin: 0 0 0.55rem;
+}
+
+.sbi-student-doc-confirm-modal__body p:last-child { margin-bottom: 0; }
+
+.sbi-student-doc-confirm-modal__panel footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.7rem;
+    padding: 0.95rem 1.25rem 1.2rem;
+    border-top: 1px solid rgba(255,255,255,0.08);
+}
+
+.sbi-student-doc-confirm-modal__ghost,
+.sbi-student-doc-confirm-modal__primary {
+    border-radius: 999px;
+    padding: 0.68rem 0.95rem;
+    font-weight: 900;
+    cursor: pointer;
+}
+
+.sbi-student-doc-confirm-modal__ghost {
+    border: 1px solid rgba(255,255,255,0.14);
+    background: rgba(255,255,255,0.05);
+    color: #c7d2fe;
+}
+
+.sbi-student-doc-confirm-modal__primary {
+    border: 1px solid rgba(42,87,255,0.58);
+    background: rgba(42,87,255,0.18);
+    color: #fff;
+}
+
+.sbi-student-doc-confirm-modal__primary.is-danger {
+    border-color: rgba(255,74,74,0.52);
+    background: rgba(255,74,74,0.14);
+    color: #ffb4b4;
+}
+
+.sbi-student-doc-alert-toast {
+    transition: opacity 0.22s ease, transform 0.22s ease;
+}
+
+.sbi-student-doc-alert-toast:not(.is-visible) {
+    pointer-events: none;
+}
+
+@media (max-width: 760px) {
+    .sbi-file-picker,
+    .sbi-file-picker__button,
+    .sbi-file-picker__name {
+        width: 100%;
+    }
+
+    .sbi-student-doc-confirm-modal__panel footer {
+        flex-direction: column-reverse;
+    }
+
+    .sbi-student-doc-confirm-modal__ghost,
+    .sbi-student-doc-confirm-modal__primary {
+        width: 100%;
+    }
+}

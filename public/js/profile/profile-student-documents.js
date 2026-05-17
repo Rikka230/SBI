@@ -315,6 +315,72 @@ function setStatus(panel, message = '', tone = 'muted') {
   status.dataset.tone = tone;
 }
 
+function ensureSbiDocumentConfirmModal() {
+  let modal = document.getElementById('sbi-student-doc-confirm-modal');
+  if (modal) return modal;
+
+  modal = document.createElement('div');
+  modal.id = 'sbi-student-doc-confirm-modal';
+  modal.className = 'sbi-student-doc-confirm-modal';
+  modal.innerHTML = `
+    <div class="sbi-student-doc-confirm-modal__backdrop" data-sbi-doc-confirm-cancel></div>
+    <section class="sbi-student-doc-confirm-modal__panel" role="dialog" aria-modal="true" aria-labelledby="sbi-student-doc-confirm-title">
+      <header>
+        <p>Confirmation SBI</p>
+        <h3 id="sbi-student-doc-confirm-title">Confirmer l’action</h3>
+      </header>
+      <div class="sbi-student-doc-confirm-modal__body" data-sbi-doc-confirm-message></div>
+      <footer>
+        <button type="button" class="sbi-student-doc-confirm-modal__ghost" data-sbi-doc-confirm-cancel>Annuler</button>
+        <button type="button" class="sbi-student-doc-confirm-modal__primary" data-sbi-doc-confirm-ok>Confirmer</button>
+      </footer>
+    </section>
+  `;
+  document.body.appendChild(modal);
+  return modal;
+}
+
+function askSbiDocumentConfirmation({ title = 'Confirmer l’action', message = '', confirmText = 'Confirmer', danger = false } = {}) {
+  const modal = ensureSbiDocumentConfirmModal();
+  const titleNode = modal.querySelector('#sbi-student-doc-confirm-title');
+  const messageNode = modal.querySelector('[data-sbi-doc-confirm-message]');
+  const okButton = modal.querySelector('[data-sbi-doc-confirm-ok]');
+  const cancelButtons = modal.querySelectorAll('[data-sbi-doc-confirm-cancel]');
+
+  if (titleNode) titleNode.textContent = title;
+  if (messageNode) messageNode.innerHTML = message;
+  if (okButton) {
+    okButton.textContent = confirmText;
+    okButton.classList.toggle('is-danger', danger === true);
+  }
+
+  modal.classList.add('is-open');
+  document.body.classList.add('sbi-student-doc-confirm-open');
+
+  return new Promise((resolve) => {
+    let settled = false;
+    const close = (value) => {
+      if (settled) return;
+      settled = true;
+      modal.classList.remove('is-open');
+      document.body.classList.remove('sbi-student-doc-confirm-open');
+      okButton?.removeEventListener('click', onOk);
+      cancelButtons.forEach((button) => button.removeEventListener('click', onCancel));
+      document.removeEventListener('keydown', onKeydown, true);
+      resolve(value);
+    };
+    const onOk = () => close(true);
+    const onCancel = () => close(false);
+    const onKeydown = (event) => {
+      if (event.key === 'Escape') close(false);
+    };
+
+    okButton?.addEventListener('click', onOk);
+    cancelButtons.forEach((button) => button.addEventListener('click', onCancel));
+    document.addEventListener('keydown', onKeydown, true);
+  });
+}
+
 function setPanelDocuments(panel, documents = []) {
   if (!panel) return;
   panel.__sbiStudentDocuments = Array.isArray(documents) ? documents : [];
@@ -436,7 +502,12 @@ function renderStudentDocumentRequestCard(request = {}) {
 
 async function cancelStudentDocumentRequest(panel, db, uid, requestId, button) {
   if (!requestId) return;
-  const confirmed = window.confirm('Annuler cette demande de documents ? Le lien élève ne permettra plus de déposer les pièces restantes.');
+  const confirmed = await askSbiDocumentConfirmation({
+    title: 'Annuler la demande de documents',
+    message: '<p>Le lien élève ne permettra plus de déposer les pièces restantes.</p><p>Les documents déjà présents dans le coffre ne sont pas supprimés.</p>',
+    confirmText: 'Annuler la demande',
+    danger: true
+  });
   if (!confirmed) return;
 
   const previous = button?.textContent || 'Annuler la demande';
@@ -619,11 +690,14 @@ async function openStudentDocumentReviewModal({ panel, db, uid, request }) {
         };
       });
       const rejectedCount = decisions.filter((item) => item.status === 'rejected').length;
-      const confirmed = window.confirm(
-        rejectedCount > 0
-          ? `${rejectedCount} document(s) seront redemandés à l’élève. Continuer ?`
-          : 'Tous les documents seront validés et un email de confirmation sera envoyé à l’élève. Continuer ?'
-      );
+      const confirmed = await askSbiDocumentConfirmation({
+        title: rejectedCount > 0 ? 'Redemander des documents à l’élève' : 'Valider tous les documents',
+        message: rejectedCount > 0
+          ? `<p>${rejectedCount} document(s) seront redemandés à l’élève.</p><p>Un email SBI sera envoyé avec le même lien de dépôt.</p>`
+          : '<p>Tous les documents seront validés.</p><p>Un email de confirmation sera envoyé à l’élève.</p>',
+        confirmText: rejectedCount > 0 ? 'Envoyer la demande de correction' : 'Valider le dossier',
+        danger: rejectedCount > 0
+      });
       if (!confirmed) return;
 
       validateButton.disabled = true;
@@ -786,17 +860,23 @@ async function downloadStudentDocument(panel, item, button) {
 }
 
 async function archiveStudentDocument(panel, db, documentId, button) {
-  const confirmed = window.confirm('Archiver ce document élève ? Le fichier restera conservé mais masqué de la liste active.');
+  const confirmed = await askSbiDocumentConfirmation({
+    title: 'Archiver ce document',
+    message: '<p>Le fichier restera conservé, mais il sera masqué de la liste active.</p>',
+    confirmText: 'Archiver',
+    danger: false
+  });
   if (!confirmed) return;
 
-  if (button) button.disabled = true;
+  const previous = button?.textContent || 'Archiver';
+  if (button) {
+    button.disabled = true;
+    button.textContent = 'Archivage...';
+  }
 
   try {
-    await updateDoc(doc(db, 'studentDocuments', documentId), {
-      status: 'archived',
-      archivedAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    });
+    const callable = getAdminArchiveStudentDocumentCallable();
+    await callable({ documentId });
     setStatus(panel, 'Document archivé.', 'success');
     const nextDocuments = await loadStudentDocuments(db, panel.dataset.studentUid || '');
     setPanelDocuments(panel, nextDocuments);
@@ -804,12 +884,20 @@ async function archiveStudentDocument(panel, db, documentId, button) {
   } catch (error) {
     console.warn('[SBI Documents] Archivage impossible :', error);
     setStatus(panel, getCallableUiMessage(error, 'Archivage impossible.'), 'error');
-    if (button) button.disabled = false;
+    if (button) {
+      button.disabled = false;
+      button.textContent = previous;
+    }
   }
 }
 
 async function deleteStudentDocument(panel, db, item, button) {
-  const confirmed = window.confirm('Supprimer définitivement ce document élève ? Le fichier et sa fiche seront retirés du coffre.');
+  const confirmed = await askSbiDocumentConfirmation({
+    title: 'Supprimer définitivement ce document',
+    message: '<p>Le fichier et sa fiche seront retirés du coffre élève.</p><p>Cette action est enregistrée dans le journal admin.</p>',
+    confirmText: 'Supprimer définitivement',
+    danger: true
+  });
   if (!confirmed) return;
 
   const previous = button?.textContent || 'Supprimer';
@@ -819,14 +907,8 @@ async function deleteStudentDocument(panel, db, item, button) {
   }
 
   try {
-    if (item?.filePath) {
-      await deleteObject(ref(storage, item.filePath)).catch((error) => {
-        if (error?.code === 'storage/object-not-found') return;
-        throw error;
-      });
-    }
-
-    await deleteDoc(doc(db, 'studentDocuments', item.id));
+    const callable = getAdminDeleteStudentDocumentCallable();
+    await callable({ documentId: item.id });
     setStatus(panel, 'Document supprimé.', 'success');
     const nextDocuments = await loadStudentDocuments(db, panel.dataset.studentUid || '');
     setPanelDocuments(panel, nextDocuments);
@@ -982,7 +1064,16 @@ async function uploadStudentDocument({ db, uid, data = {}, context, panel }) {
       updatedAt: serverTimestamp()
     });
 
+    try {
+      const logCallable = getAdminLogStudentDocumentManualUploadCallable();
+      await logCallable({ documentId: documentRef.id });
+    } catch (logError) {
+      console.warn('[SBI Documents] Journal admin upload manuel non bloquant :', logError);
+    }
+
     if (fileInput) fileInput.value = '';
+    const displayedFileName = panel.querySelector('#prof-student-document-file-name');
+    if (displayedFileName) displayedFileName.textContent = 'Aucun fichier sélectionné';
     if (titleInput) titleInput.value = '';
     if (noteInput) noteInput.value = '';
     if (categoryInput) categoryInput.value = 'administrative';
@@ -1043,6 +1134,36 @@ function getAdminCancelStudentDocumentRequestCallable() {
     );
   }
   return window.__SBI_ADMIN_CANCEL_STUDENT_DOCUMENT_REQUEST__;
+}
+
+function getAdminLogStudentDocumentManualUploadCallable() {
+  if (!window.__SBI_ADMIN_LOG_STUDENT_DOCUMENT_MANUAL_UPLOAD__) {
+    window.__SBI_ADMIN_LOG_STUDENT_DOCUMENT_MANUAL_UPLOAD__ = httpsCallable(
+      getFunctionsInstance(),
+      'adminLogStudentDocumentManualUpload'
+    );
+  }
+  return window.__SBI_ADMIN_LOG_STUDENT_DOCUMENT_MANUAL_UPLOAD__;
+}
+
+function getAdminArchiveStudentDocumentCallable() {
+  if (!window.__SBI_ADMIN_ARCHIVE_STUDENT_DOCUMENT__) {
+    window.__SBI_ADMIN_ARCHIVE_STUDENT_DOCUMENT__ = httpsCallable(
+      getFunctionsInstance(),
+      'adminArchiveStudentDocument'
+    );
+  }
+  return window.__SBI_ADMIN_ARCHIVE_STUDENT_DOCUMENT__;
+}
+
+function getAdminDeleteStudentDocumentCallable() {
+  if (!window.__SBI_ADMIN_DELETE_STUDENT_DOCUMENT__) {
+    window.__SBI_ADMIN_DELETE_STUDENT_DOCUMENT__ = httpsCallable(
+      getFunctionsInstance(),
+      'adminDeleteStudentDocument'
+    );
+  }
+  return window.__SBI_ADMIN_DELETE_STUDENT_DOCUMENT__;
 }
 
 function getStudentDisplayName(data = {}, uid = '') {
@@ -1239,9 +1360,13 @@ function renderPanelShell(panel, { uid = '', data = {}, context = {} } = {}) {
             ${Object.entries(DOCUMENT_CATEGORIES).map(([value, label]) => `<option value="${escapeHTML(value)}">${escapeHTML(label)}</option>`).join('')}
           </select>
         </label>
-        <label class="sbi-student-documents__file">
+        <label class="sbi-student-documents__file sbi-file-picker-field">
           <span>Fichier</span>
-          <input id="prof-student-document-file" type="file" accept=".pdf,.doc,.docx,.txt,image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain">
+          <div class="sbi-file-picker">
+            <input id="prof-student-document-file" class="sbi-file-picker__input" type="file" accept=".pdf,.doc,.docx,.txt,image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain">
+            <button type="button" class="sbi-file-picker__button" data-file-trigger>Choisir un fichier</button>
+            <strong id="prof-student-document-file-name" class="sbi-file-picker__name">Aucun fichier sélectionné</strong>
+          </div>
           <small>Les images JPG/PNG/WEBP sont compressées automatiquement avant envoi. Les PDF/DOC sont conservés tels quels.</small>
         </label>
         <label class="sbi-student-documents__note">
@@ -1283,6 +1408,15 @@ export async function renderStudentDocumentsPanel({ db, uid, data = {}, context 
   const form = panel.querySelector('#prof-student-document-form');
   const showArchived = panel.querySelector('#prof-student-documents-show-archived');
   const requestButton = panel.querySelector('#prof-request-student-documents-btn');
+  const fileInput = panel.querySelector('#prof-student-document-file');
+  const fileName = panel.querySelector('#prof-student-document-file-name');
+  const fileTrigger = panel.querySelector('[data-file-trigger]');
+
+  fileTrigger?.addEventListener('click', () => fileInput?.click());
+  fileInput?.addEventListener('change', () => {
+    const file = fileInput.files?.[0] || null;
+    if (fileName) fileName.textContent = file ? `${file.name} · ${formatBytes(file.size)}` : 'Aucun fichier sélectionné';
+  });
 
   requestButton?.addEventListener('click', () => openStudentDocumentRequestModal({ panel, db, uid, data, context }));
 
