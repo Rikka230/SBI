@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.167.59 / P2I.1 UX
+ * SBI 8.0P.167.63 / P2I.1 UX
  * Promotions / cohortes admin.
  *
  * Périmètre volontairement borné :
@@ -485,10 +485,39 @@ function startPromotionsSnapshot() {
   });
 }
 
-function openProfile(uid) {
+async function openProfile(uid) {
   if (!uid) return;
   const href = `/admin/admin-profile.html?id=${encodeURIComponent(uid)}`;
-  window.SBI_APP_SHELL_NAVIGATE?.(href) || (window.location.href = href);
+  const url = new URL(href, window.location.origin);
+
+  try {
+    window.__SBI_ADMIN_PROFILE_TARGET_UID = uid;
+    window.__SBI_ADMIN_PROFILE_TARGET_URL = url.href;
+    sessionStorage.setItem('sbiAdminProfileTargetUid', uid);
+    sessionStorage.setItem('sbiAdminProfileTargetUrl', url.href);
+  } catch {}
+
+  try {
+    if (window.SBI_APP_SHELL && typeof window.SBI_APP_SHELL.navigate === 'function') {
+      const handled = await window.SBI_APP_SHELL.navigate(url, {
+        historyMode: 'push',
+        source: 'promotions-profile-button'
+      });
+      if (handled) return;
+    }
+
+    if (typeof window.SBI_APP_SHELL_NAVIGATE === 'function') {
+      const handled = await window.SBI_APP_SHELL_NAVIGATE(url.href, {
+        historyMode: 'push',
+        source: 'promotions-profile-button'
+      });
+      if (handled) return;
+    }
+  } catch (error) {
+    console.warn('[SBI Promotions] Navigation profil PJAX indisponible, fallback reload :', error);
+  }
+
+  window.location.assign(url.pathname + url.search);
 }
 
 function bindEvents() {
