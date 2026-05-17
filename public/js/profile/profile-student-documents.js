@@ -464,7 +464,8 @@ function renderStudentDocumentRequests(panel, requests = [], db = null, uid = ''
   const container = panel.querySelector('#prof-student-document-requests');
   if (!container) return;
 
-  const activeRequests = requests.filter((request) => String(request.status || '').toLowerCase() !== 'archived');
+  const hiddenStatuses = new Set(['archived', 'canceled', 'cancelled', 'completed', 'validated']);
+  const activeRequests = requests.filter((request) => !hiddenStatuses.has(String(request.status || '').toLowerCase()));
   if (!activeRequests.length) {
     container.innerHTML = '';
     container.hidden = true;

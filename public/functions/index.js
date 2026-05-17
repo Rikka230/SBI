@@ -3452,6 +3452,71 @@ exports.studentGetDocumentRequest = onCall({
 
 
 
+
+
+function buildStudentDocumentSubmittedAdminMessageHtml({ student, requestData, submittedItems }) {
+    const studentName = getAccountDisplayName(student) || requestData.studentName || requestData.studentEmail || 'Élève SBI';
+    const requestId = cleanString(requestData.id || requestData.requestId || '', 180);
+    const profileLink = `${SBI_SITE_URL}/admin/admin-profile.html?uid=${encodeURIComponent(cleanString(requestData.studentUid || '', 180))}`;
+    const rows = submittedItems.map((item) => `
+        <tr>
+            <td style="padding:10px 12px;border-bottom:1px solid #dce4f2;color:#101828;font-weight:bold;">${escapeHtml(item.title || 'Document')}</td>
+            <td style="padding:10px 12px;border-bottom:1px solid #dce4f2;color:#344054;">${escapeHtml(item.fileName || 'Fichier transmis')}</td>
+        </tr>`).join('');
+
+    return `
+        <p style="margin:0 0 16px 0;">Un élève vient de transmettre les documents demandés pour son dossier SBI.</p>
+        <div style="padding:14px 16px;border:1px solid #dce4f2;background:#f7f9fd;border-radius:12px;color:#253047;line-height:1.7;margin:18px 0;">
+            <strong style="color:#101828;">Élève</strong><br>
+            ${escapeHtml(studentName)}<br>
+            ${escapeHtml(cleanEmail(student.email || requestData.studentEmail || ''))}
+        </div>
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;border-collapse:collapse;margin:18px 0;border:1px solid #dce4f2;border-radius:12px;overflow:hidden;">
+            <tr>
+                <td style="padding:10px 12px;border-bottom:1px solid #dce4f2;color:#0051ff;font-weight:bold;width:38%;">Demande</td>
+                <td style="padding:10px 12px;border-bottom:1px solid #dce4f2;color:#101828;">${escapeHtml(requestId || 'Non précisée')}</td>
+            </tr>
+            <tr>
+                <td style="padding:10px 12px;border-bottom:1px solid #dce4f2;color:#0051ff;font-weight:bold;width:38%;">Documents reçus</td>
+                <td style="padding:10px 12px;border-bottom:1px solid #dce4f2;color:#101828;">${submittedItems.length}</td>
+            </tr>
+            ${rows}
+        </table>
+        <p style="margin:22px 0;text-align:center;">
+            <a href="${escapeHtml(profileLink)}" style="display:inline-block;background:#0051ff;color:#ffffff;font-weight:bold;padding:13px 20px;border-radius:999px;text-decoration:none;">Ouvrir le profil élève</a>
+        </p>
+        <p style="margin:0;color:#667085;font-size:14px;line-height:22px;">Les pièces sont disponibles dans l’espace admin SBI, onglet Suivi pédagogique → Coffre documents.</p>`;
+}
+
+async function sendStudentDocumentSubmittedAdminEmail({ student, requestData, submittedItems, apiKey }) {
+    const studentName = getAccountDisplayName(student) || requestData.studentName || requestData.studentEmail || 'Élève SBI';
+    const email = cleanEmail(student.email || requestData.studentEmail || '');
+    const htmlContent = renderSbiEmailTemplate({
+        prenom: 'équipe SBI',
+        messageHtml: buildStudentDocumentSubmittedAdminMessageHtml({ student, requestData, submittedItems }),
+        nomExpediteur: 'Notification automatique SBI',
+        posteExpediteur: 'Documents élèves',
+        preheader: `${studentName} a transmis des documents à vérifier.`
+    });
+
+    return sendBrevoEmail({
+        sender: { name: SBI_SENDER_NAME, email: SBI_SENDER_EMAIL },
+        to: [{ email: SBI_CONTACT_EMAIL, name: 'Sport Business Institute' }],
+        replyTo: email ? { email, name: studentName } : undefined,
+        subject: `SBI - Documents élèves reçus - ${studentName}`,
+        htmlContent,
+        textContent: [
+            `Documents élèves reçus`,
+            ``,
+            `Élève : ${studentName}`,
+            email ? `Email : ${email}` : '',
+            `Documents : ${submittedItems.map((item) => item.title || 'Document').join(', ')}`,
+            ``,
+            `À vérifier dans l’espace admin SBI.`
+        ].filter(Boolean).join('\n')
+    }, apiKey);
+}
+
 exports.studentNotifyDocumentRequestSubmitted = onCall({
     region: 'europe-west1',
     secrets: [BREVO_API_KEY],
@@ -3480,7 +3545,7 @@ exports.studentNotifyDocumentRequestSubmitted = onCall({
         throw new HttpsError('failed-precondition', 'Tous les documents obligatoires ne sont pas encore transmis.');
     }
 
-    if (requestData.adminNotifiedAt) {
+    if (requestData.adminNotifiedAt && !requestData.adminNotificationWarning) {
         return { success: true, alreadyNotified: true, message: 'Notification déjà envoyée.' };
     }
 
@@ -3494,7 +3559,7 @@ exports.studentNotifyDocumentRequestSubmitted = onCall({
         if (!apiKey) throw new Error('BREVO_API_KEY manquant.');
         await sendStudentDocumentSubmittedAdminEmail({
             student,
-            requestData: { ...requestData, studentUid: uid },
+            requestData: { ...requestData, id: requestId, requestId, studentUid: uid },
             submittedItems,
             apiKey
         });

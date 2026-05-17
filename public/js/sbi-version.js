@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.71.3',
+  version: '8.0P.167.71.4',
   branch: 'main',
   channel: 'P2I.4 STUDENT DOCUMENT REQUESTS FIXES',
-  stage: 'REQUEST PAGE LOAD CANCEL REQUESTS LOGIN RETURN',
+  stage: 'REQUEST HIDE CLOSED NOTIFY ADMIN FIX',
   updatedAt: '2026-05-17',
-  label: 'SBI 8.0P.167.71.3 - STUDENT DOCUMENT REQUESTS FLOW HOTFIX'
+  label: 'SBI 8.0P.167.71.4 - STUDENT DOCUMENT REQUESTS NOTIFY FIX'
 };
 
 export function getSbiVersionLabel() {

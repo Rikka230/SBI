@@ -329,9 +329,7 @@ async function submitDocuments(request, userData) {
     });
 
     if (completed) {
-      await studentNotifyDocumentRequestSubmittedCallable({ requestId }).catch((error) => {
-        console.warn('[SBI Student Documents] Notification admin non bloquante :', error);
-      });
+      await notifyAdminIfRequestComplete(requestId);
     }
 
     const nextRequest = {
@@ -352,6 +350,16 @@ async function submitDocuments(request, userData) {
     console.error('[SBI Student Documents] Envoi impossible :', error);
     setStatus(getCallableMessage(error, 'Envoi impossible pour le moment. Réessaie ou contacte SBI.'), 'error');
     if (button) button.disabled = false;
+  }
+}
+
+
+async function notifyAdminIfRequestComplete(requestId) {
+  if (!requestId) return;
+  try {
+    await studentNotifyDocumentRequestSubmittedCallable({ requestId });
+  } catch (error) {
+    console.warn('[SBI Student Documents] Notification admin non bloquante :', error);
   }
 }
 
@@ -397,6 +405,10 @@ onAuthStateChanged(auth, async (user) => {
     }
 
     renderRequest(request, userData);
+
+    if (!isRequestCanceled(request) && isRequestComplete(request)) {
+      notifyAdminIfRequestComplete(requestId);
+    }
   } catch (error) {
     console.error('[SBI Student Documents] Chargement impossible :', error);
     const message = getCallableMessage(error, 'Chargement impossible pour le moment.');
