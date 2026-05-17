@@ -777,16 +777,21 @@ function startAccountsSnapshot() {
 async function navigateToProfile(uid) {
   if (!uid) return;
 
+  const href = `/admin/admin-profile.html?id=${encodeURIComponent(uid)}`;
+  const url = new URL(href, window.location.origin);
+
   try {
     sessionStorage.setItem('activeAdminTab', 'view-users');
     sessionStorage.setItem('sbiAdminReturnTarget', 'view-users');
     sessionStorage.setItem('sbiAdminReturnFromProfile', String(Date.now()));
     sessionStorage.setItem('sbiAdminForceUsersRehydrate', '1');
+    sessionStorage.setItem('sbiAdminPendingProfileUid', uid);
+    sessionStorage.setItem('sbiAdminPendingProfileUrl', url.href);
+    sessionStorage.setItem('sbiAdminPendingProfileAt', String(Date.now()));
     window.__SBI_ADMIN_FORCE_USERS_REHYDRATE = true;
+    window.__SBI_PROFILE_TARGET_ID = uid;
+    window.__SBI_PROFILE_TARGET_URL = url.href;
   } catch {}
-
-  const href = `/admin/admin-profile.html?id=${encodeURIComponent(uid)}`;
-  const url = new URL(href, window.location.origin);
 
   try {
     if (window.SBI_APP_SHELL && typeof window.SBI_APP_SHELL.navigate === 'function') {

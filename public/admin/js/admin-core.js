@@ -33,6 +33,7 @@ let usersRenderTimer = null;
 let usersCacheHydrated = false;
 let usersSnapshotInitialized = false;
 let usersListDelegationContainer = null;
+let documentEditDelegationBound = false;
 
 const boundSearchInputs = new WeakSet();
 const boundRoleFilters = new WeakSet();
@@ -214,18 +215,27 @@ const applyUsersSnapshot = (querySnapshot) => {
     scheduleUsersRender('server-snapshot');
 };
 
+const handleEditUserClick = (event) => {
+    const editButton = event.target?.closest?.('.btn-edit-user[data-id]');
+    if (!editButton) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    openEditModal(editButton.getAttribute('data-id'));
+};
+
 const bindUsersListDelegation = (container) => {
-    if (!container || usersListDelegationContainer === container) return;
+    if (!container) return;
 
-    usersListDelegationContainer = container;
+    if (usersListDelegationContainer !== container) {
+        usersListDelegationContainer = container;
+        container.addEventListener('click', handleEditUserClick);
+    }
 
-    container.addEventListener('click', (event) => {
-        const editButton = event.target?.closest?.('.btn-edit-user[data-id]');
-        if (editButton) {
-            event.preventDefault();
-            openEditModal(editButton.getAttribute('data-id'));
-        }
-    });
+    if (!documentEditDelegationBound) {
+        documentEditDelegationBound = true;
+        document.addEventListener('click', handleEditUserClick, true);
+    }
 };
 
 
@@ -923,6 +933,8 @@ const openEditModal = (userId) => {
     document.getElementById('edit-user-modal').style.display = 'flex';
 };
 
+window.SBI_ADMIN_OPEN_EDIT_MODAL = openEditModal;
+
 const initModalLogic = () => {
     const modal = document.getElementById('edit-user-modal');
     if (!modal || boundModals.has(modal)) return;
@@ -1123,7 +1135,10 @@ function initAdminCore() {
     if (myProfileBtn) {
         myProfileBtn.addEventListener('click', () => {
             if (currentUid) {
-                window.location.href = `admin-profile.html?id=${currentUid}`;
+                const href = `/admin/admin-profile.html?id=${encodeURIComponent(currentUid)}`;
+                window.__SBI_PROFILE_TARGET_ID = currentUid;
+                window.__SBI_PROFILE_TARGET_URL = new URL(href, window.location.origin).href;
+                window.SBI_APP_SHELL_NAVIGATE?.(href, { source: 'admin-my-profile' }) || (window.location.href = href);
             } else {
                 showAdminMessage("Veuillez patienter, chargement de l'utilisateur en cours...");
             }

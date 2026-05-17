@@ -10,6 +10,7 @@
  * 8.0P.164 : cache-bust rendu profil pour relance finalisation compte.
  * 8.0P.165 : affichage relances automatiques et escalade.
  * 8.0P.163 : cache-bust du rendu profil pour notes internes persistantes.
+ * 8.0P.167.61 : verrouillage de l'URL/UID cible pour éviter le double montage PJAX sans données.
  * =======================================================================
  */
 
@@ -40,6 +41,7 @@ let activeCleanup = null;
 let securityPrepared = false;
 let saveButtonsPrepared = false;
 let avatarCropperPrepared = false;
+let activeMountToken = 0;
 
 function resetContext() {
   context.currentProfileId = null;
@@ -57,12 +59,57 @@ function resetContext() {
 }
 
 function getCurrentProfileUrl() {
-  return new URL(window.SBI_APP_SHELL_CURRENT_URL || window.location.href, window.location.origin);
+  const rawUrl = window.__SBI_PROFILE_TARGET_URL
+    || window.SBI_APP_SHELL_CURRENT_URL
+    || window.location.href;
+
+  return new URL(rawUrl, window.location.origin);
+}
+
+function getRecentPendingAdminProfileUid() {
+  try {
+    const uid = sessionStorage.getItem('sbiAdminPendingProfileUid') || '';
+    const targetUrl = sessionStorage.getItem('sbiAdminPendingProfileUrl') || '';
+    const timestamp = Number(sessionStorage.getItem('sbiAdminPendingProfileAt') || 0);
+
+    if (!uid || !targetUrl || !timestamp) return '';
+    if (Date.now() - timestamp > 45000) return '';
+
+    const current = getCurrentProfileUrl();
+    const target = new URL(targetUrl, window.location.origin);
+
+    if (target.pathname !== '/admin/admin-profile.html') return '';
+    if (current.pathname !== '/admin/admin-profile.html') return '';
+
+    return uid;
+  } catch {
+    return '';
+  }
 }
 
 function resolveTargetProfileId(loggedInUserId) {
   const urlParams = getCurrentProfileUrl().searchParams;
-  return urlParams.get('id') || loggedInUserId;
+  const explicitId = urlParams.get('id');
+  if (explicitId) return explicitId;
+
+  const runtimeTargetId = window.__SBI_PROFILE_TARGET_ID || '';
+  if (runtimeTargetId) return runtimeTargetId;
+
+  const pendingAdminUid = getRecentPendingAdminProfileUid();
+  if (pendingAdminUid) return pendingAdminUid;
+
+  return loggedInUserId;
+}
+
+function clearConsumedPendingProfileUid(uid) {
+  try {
+    const pending = sessionStorage.getItem('sbiAdminPendingProfileUid') || '';
+    if (!uid || pending !== uid) return;
+
+    sessionStorage.removeItem('sbiAdminPendingProfileUid');
+    sessionStorage.removeItem('sbiAdminPendingProfileUrl');
+    sessionStorage.removeItem('sbiAdminPendingProfileAt');
+  } catch {}
 }
 
 async function loadLoggedInUserData(uid) {
@@ -96,7 +143,7 @@ async function loadProfileData(uid) {
     const snap = await getDoc(doc(db, 'users', uid));
     if (!snap.exists()) {
       console.warn('[SBI Profile] Utilisateur introuvable :', uid);
-      return;
+      return false;
     }
 
     context.currentProfileId = uid;
@@ -111,6 +158,8 @@ async function loadProfileData(uid) {
       reloadProfile: loadProfileData
     });
 
+    clearConsumedPendingProfileUid(uid);
+
     prepareProfileControlsEarly();
     prepareProfileActionButtons();
 
@@ -124,8 +173,11 @@ async function loadProfileData(uid) {
         reloadProfile: loadProfileData
       });
     }
+
+    return true;
   } catch (error) {
     console.error('[SBI Profile] Erreur chargement profil :', error);
+    return false;
   } finally {
     document.body.classList.remove('preload');
     document.body.classList.add('sbi-preload-timeout');
@@ -142,13 +194,16 @@ function bindProfileShortcuts() {
   });
 }
 
-async function bootstrapProfile(user) {
+async function bootstrapProfile(user, mountToken = activeMountToken) {
   context.loggedInUserId = user.uid;
 
   await waitForSbiTopbar();
   await waitForSbiComponents();
+  if (mountToken !== activeMountToken) return;
 
   context.loggedInUserData = await loadLoggedInUserData(context.loggedInUserId);
+  if (mountToken !== activeMountToken) return;
+
   context.isAdmin = context.loggedInUserData?.role === 'admin' || context.loggedInUserData?.isGod === true;
 
   hydrateLoggedInTopbar(context.loggedInUserData);
@@ -165,13 +220,31 @@ async function bootstrapProfile(user) {
    */
   prepareProfileControlsEarly();
 
-  await loadProfileData(context.currentProfileId);
+  const loaded = await loadProfileData(context.currentProfileId);
+  if (mountToken !== activeMountToken || !loaded) return;
+
   startProfilePresenceListener(db, context.currentProfileId);
   bindProfileShortcuts();
 }
 
-export function mountProfileCore() {
+export function mountProfileCore(options = {}) {
   activeCleanup?.({ reason: 'remount' });
+
+  activeMountToken += 1;
+  const mountToken = activeMountToken;
+
+  if (options && Object.prototype.hasOwnProperty.call(options, 'targetUrl')) {
+    window.__SBI_PROFILE_TARGET_URL = options.targetUrl || '';
+  } else {
+    window.__SBI_PROFILE_TARGET_URL = '';
+  }
+
+  if (options && Object.prototype.hasOwnProperty.call(options, 'targetId')) {
+    window.__SBI_PROFILE_TARGET_ID = options.targetId || '';
+  } else {
+    window.__SBI_PROFILE_TARGET_ID = '';
+  }
+
   resetContext();
 
   let disposed = false;
@@ -186,7 +259,7 @@ export function mountProfileCore() {
     }
 
     try {
-      await bootstrapProfile(user);
+      await bootstrapProfile(user, mountToken);
     } catch (error) {
       console.error('[SBI Profile] Initialisation impossible :', error);
       document.body.classList.remove('preload');

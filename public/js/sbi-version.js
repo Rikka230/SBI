@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.60',
+  version: '8.0P.167.61',
   branch: 'main',
   channel: 'P2I.1 PROMOTIONS COHORTES UX BASELINE',
-  stage: 'PROMOTIONS UX PROFILE ASSIGNMENT AND ROSTER',
+  stage: 'ADMIN PROFILE PJAX TARGET LOCK AND EDIT REBINDING',
   updatedAt: '2026-05-17',
-  label: 'SBI 8.0P.167.60 - PROMOTIONS PROFILE NAVIGATION FIX'
+  label: 'SBI 8.0P.167.61 - ADMIN PROFILE PJAX TARGET LOCK'
 };
 
 export function getSbiVersionLabel() {

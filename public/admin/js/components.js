@@ -24,6 +24,7 @@
  * 8.0P.167.58 : ajout navigation Promotions / Cohortes.
  * 8.0P.167.59 : icône Promotions distincte et cache-bust ergonomie promotions.
  * 8.0P.167.60 : navigation Profil depuis Comptes stabilisée + rebinding édition après PJAX.
+ * 8.0P.167.61 : garde-fou profil PJAX + cache-bust core/comptes.
  */
 
 (function bootstrapSbiComponents(){
@@ -129,7 +130,7 @@
     if (!shouldBootAdminIndexModules()) return Promise.resolve(false);
 
     if (!adminIndexModulesPromise) {
-      const imports = [import('/admin/js/admin-core.js?v=8.0P.167.60')];
+      const imports = [import('/admin/js/admin-core.js?v=8.0P.167.61')];
       if (hasDashboardDom()) imports.push(import('/admin/js/admin-dashboard.js?v=8.0P.167.0'));
 
       adminIndexModulesPromise = Promise.allSettled(imports).then((results) => {
@@ -175,7 +176,7 @@
     loadAccountEscalationsModule();
 
     if (!accountsModulePromise) {
-      accountsModulePromise = import('/admin/js/admin-accounts-dashboard.js?v=8.0P.167.60')
+      accountsModulePromise = import('/admin/js/admin-accounts-dashboard.js?v=8.0P.167.61')
         .catch((error) => {
           accountsModulePromise = null;
           console.warn('[SBI Accounts] Module comptes non chargé :', error);
@@ -217,7 +218,7 @@
     scheduleAccountsMount();
   }, 900);
 
-  window.SBI_COMPONENTS_READY = import('/admin/js/components/index.js?v=8.0P.167.60')
+  window.SBI_COMPONENTS_READY = import('/admin/js/components/index.js?v=8.0P.167.61')
     .then(async (module) => {
       if (module?.waitForExpectedComponents) {
         await module.waitForExpectedComponents(650);
