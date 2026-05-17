@@ -97,17 +97,31 @@ export async function waitForElements(ids, timeoutMs = 1200) {
   return false;
 }
 
+function getProfileShellSpace() {
+  const href = window.SBI_APP_SHELL_CURRENT_URL || window.location.href;
+  const path = new URL(href, window.location.origin).pathname.toLowerCase();
+  if (path.startsWith('/admin/')) return 'admin';
+  if (path.startsWith('/teacher/')) return 'teacher';
+  if (path.startsWith('/student/')) return 'student';
+  return 'student';
+}
+
 export async function waitForSbiComponents() {
+  const space = getProfileShellSpace();
+  const expectedIds = space === 'admin'
+    ? ['nav-name', 'nav-avatar']
+    : ['top-user-name', 'top-user-avatar'];
+
   if (window.__SBI_COMPONENTS_READY === true) {
-    await waitForElements(['top-user-name', 'top-user-avatar'], 1200);
+    await waitForElements(expectedIds, 900);
     return;
   }
 
   if (window.SBI_COMPONENTS_READY && typeof window.SBI_COMPONENTS_READY.then === 'function') {
-    await Promise.race([window.SBI_COMPONENTS_READY.catch(() => {}), sleep(1500)]);
+    await Promise.race([window.SBI_COMPONENTS_READY.catch(() => {}), sleep(1200)]);
   } else {
     await new Promise((resolve) => {
-      const timeout = window.setTimeout(resolve, 1500);
+      const timeout = window.setTimeout(resolve, 1200);
       window.addEventListener('sbi:components-ready', () => {
         window.clearTimeout(timeout);
         resolve();
@@ -115,5 +129,5 @@ export async function waitForSbiComponents() {
     });
   }
 
-  await waitForElements(['top-user-name', 'top-user-avatar'], 1200);
+  await waitForElements(expectedIds, 900);
 }

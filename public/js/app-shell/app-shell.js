@@ -12,7 +12,7 @@
  * location.reload()
  */
 
-import { createRouteRegistry } from './route-registry.js?v=8.0P.167.59';
+import { createRouteRegistry } from './route-registry.js?v=8.0P.167.60';
 import { createRouter } from './router.js';
 import { injectAppShellStyles, markAppShellReady } from './transitions.js';
 import { initRoutePreload } from './preload.js';
@@ -445,6 +445,14 @@ function installEmergencySwitches(api) {
 
   window.SBI_PRE_PR_FILES = () => printPrePrFileAudit();
   window.SBI_PRE_PR_CHECK = () => printPrePrCheck(api);
+
+  window.SBI_APP_SHELL_NAVIGATE = (href, options = {}) => {
+    const url = new URL(href, window.location.href);
+    return api.navigate(url, {
+      historyMode: options.historyMode || 'push',
+      source: options.source || 'programmatic-api'
+    });
+  };
 
   window.SBI_APP_SHELL = api;
 }

@@ -32,7 +32,7 @@ const USERS_RENDER_DEBOUNCE_MS = 80;
 let usersRenderTimer = null;
 let usersCacheHydrated = false;
 let usersSnapshotInitialized = false;
-let usersListDelegationBound = false;
+let usersListDelegationContainer = null;
 
 const boundSearchInputs = new WeakSet();
 const boundRoleFilters = new WeakSet();
@@ -215,9 +215,9 @@ const applyUsersSnapshot = (querySnapshot) => {
 };
 
 const bindUsersListDelegation = (container) => {
-    if (!container || usersListDelegationBound) return;
+    if (!container || usersListDelegationContainer === container) return;
 
-    usersListDelegationBound = true;
+    usersListDelegationContainer = container;
 
     container.addEventListener('click', (event) => {
         const editButton = event.target?.closest?.('.btn-edit-user[data-id]');
@@ -575,6 +575,8 @@ const disconnectUsersRealtime = () => {
         window.clearTimeout(usersRenderTimer);
         usersRenderTimer = null;
     }
+
+    usersListDelegationContainer = null;
 };
 
 const consumeProfileReturnRehydrateFlag = () => {

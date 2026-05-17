@@ -774,41 +774,41 @@ function startAccountsSnapshot() {
   }, 1600);
 }
 
-function navigateToProfile(uid) {
+async function navigateToProfile(uid) {
   if (!uid) return;
 
   try {
     sessionStorage.setItem('activeAdminTab', 'view-users');
     sessionStorage.setItem('sbiAdminReturnTarget', 'view-users');
     sessionStorage.setItem('sbiAdminReturnFromProfile', String(Date.now()));
+    sessionStorage.setItem('sbiAdminForceUsersRehydrate', '1');
+    window.__SBI_ADMIN_FORCE_USERS_REHYDRATE = true;
   } catch {}
 
   const href = `/admin/admin-profile.html?id=${encodeURIComponent(uid)}`;
   const url = new URL(href, window.location.origin);
 
-  /*
-   * On laisse le routeur PJAX interne intercepter un vrai lien si possible.
-   * En fallback, on garde une navigation classique propre.
-   */
-  const ghostLink = document.createElement('a');
-  ghostLink.href = href;
-  ghostLink.setAttribute('data-sbi-href', href);
-  ghostLink.style.display = 'none';
-  document.body.appendChild(ghostLink);
+  try {
+    if (window.SBI_APP_SHELL && typeof window.SBI_APP_SHELL.navigate === 'function') {
+      const handled = await window.SBI_APP_SHELL.navigate(url, {
+        historyMode: 'push',
+        source: 'accounts-profile-button'
+      });
+      if (handled) return;
+    }
 
-  const clickEvent = new MouseEvent('click', {
-    bubbles: true,
-    cancelable: true,
-    view: window,
-    button: 0
-  });
-
-  const intercepted = !ghostLink.dispatchEvent(clickEvent);
-  ghostLink.remove();
-
-  if (!intercepted) {
-    window.location.href = url.pathname + url.search;
+    if (typeof window.SBI_APP_SHELL_NAVIGATE === 'function') {
+      const handled = await window.SBI_APP_SHELL_NAVIGATE(url.href, {
+        historyMode: 'push',
+        source: 'accounts-profile-button'
+      });
+      if (handled) return;
+    }
+  } catch (error) {
+    console.warn('[SBI Accounts] Navigation profil PJAX indisponible, fallback reload :', error);
   }
+
+  window.location.assign(url.pathname + url.search);
 }
 
 function bindProfileNavigation() {
