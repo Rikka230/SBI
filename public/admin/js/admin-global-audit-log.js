@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.167.42 / P2H.2-H
+ * SBI 8.0P.167.44 / P2H.2-I
  * Journal admin global.
  *
  * Principe important :
@@ -20,6 +20,7 @@ import {
   startAfter,
   where
 } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
+import { isSbiAdminLike } from '/js/sbi-permissions.js?v=8.0P.167.44';
 
 const PAGE_SIZE = 12;
 const MAX_DETAIL_LENGTH = 220;
@@ -68,7 +69,7 @@ function scheduleIdle(callback) {
 }
 
 function isAdminLike(profile) {
-  return profile?.isGod === true || profile?.role === 'admin';
+  return isSbiAdminLike(profile);
 }
 
 function toMillis(value) {

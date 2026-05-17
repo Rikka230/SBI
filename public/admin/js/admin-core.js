@@ -4,7 +4,7 @@
  * =======================================================================
  */
 
-import { logoutUser } from '/js/auth.js';
+import { logoutUser } from '/js/auth.js?v=8.0P.167.44';
 import { db, auth, app } from '/js/firebase-init.js';
 import {
     collection,

@@ -35,6 +35,13 @@ import {
     getDoc
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js";
+import {
+    canAccessSbiRoute,
+    getSbiLandingPath,
+    isSbiAdminLike,
+    isSbiProtectedPath,
+    normalizeSbiPath
+} from "/js/sbi-permissions.js?v=8.0P.167.44";
 
 /* --- 1.1 ELEMENTS LOGIN --- */
 let loginForm = null;
@@ -82,17 +89,11 @@ const shouldTrackAccountLogin = (uid) => {
 };
 
 /* --- 1.2 CONSTANTES ROUTES --- */
-const ROLE_DASHBOARDS = {
-    admin: '/admin/index.html',
-    teacher: '/teacher/dashboard.html',
-    student: '/student/dashboard.html'
-};
-
-const PROTECTED_PATHS = {
-    admin: '/admin',
-    teacher: '/teacher',
-    student: '/student'
-};
+/*
+ * 8.0P.167.44 :
+ * Les rôles / routes / permissions sont centralisés dans /js/sbi-permissions.js.
+ * Les constantes historiques restent supprimées pour éviter les doubles vérités.
+ */
 
 /* --- 1.3 ANTI-FLASH UI --- */
 const releasePrivateInterface = () => {
@@ -390,7 +391,7 @@ const bindPasswordResetForm = () => {
 
 /* --- 1.5 HELPERS ROLES / ROUTES --- */
 const normalizePath = () => {
-    return window.location.pathname.toLowerCase();
+    return normalizeSbiPath(window.location.pathname);
 };
 
 const isLoginPage = (path = normalizePath()) => {
@@ -402,51 +403,19 @@ const isPublicIndex = (path = normalizePath()) => {
 };
 
 const isProtectedPath = (path = normalizePath()) => {
-    return (
-        path.startsWith(PROTECTED_PATHS.admin) ||
-        path.startsWith(PROTECTED_PATHS.teacher) ||
-        path.startsWith(PROTECTED_PATHS.student)
-    );
+    return isSbiProtectedPath(path);
 };
 
 const isAdminLike = (userData) => {
-    return userData?.isGod === true || userData?.role === 'admin';
+    return isSbiAdminLike(userData);
 };
 
 const getDashboardForUser = (userData) => {
-    if (isAdminLike(userData)) {
-        return ROLE_DASHBOARDS.admin;
-    }
-
-    if (userData?.role === 'teacher') {
-        return ROLE_DASHBOARDS.teacher;
-    }
-
-    return ROLE_DASHBOARDS.student;
+    return getSbiLandingPath(userData);
 };
 
 const canAccessCurrentPath = (userData, path = normalizePath()) => {
-    if (!isProtectedPath(path)) {
-        return true;
-    }
-
-    if (isAdminLike(userData)) {
-        return true;
-    }
-
-    if (path.startsWith(PROTECTED_PATHS.admin)) {
-        return false;
-    }
-
-    if (path.startsWith(PROTECTED_PATHS.teacher)) {
-        return userData?.role === 'teacher';
-    }
-
-    if (path.startsWith(PROTECTED_PATHS.student)) {
-        return userData?.role === 'student';
-    }
-
-    return false;
+    return canAccessSbiRoute(userData, path);
 };
 
 const redirectTo = (targetUrl, useLoginFeedback = false) => {

@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.167.42 / P2H.2-H
+ * SBI 8.0P.167.44 / P2H.2-I
  * Première connexion : validation obligatoire légère.
  *
  * Objectif :
@@ -13,6 +13,7 @@ import { app, auth, db } from '/js/firebase-init.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js';
 import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js';
+import { isSbiAdminLike, isSbiTeacherOrStudent } from '/js/sbi-permissions.js?v=8.0P.167.44';
 
 const CHECKLIST_VERSION = '2026-05-SBI-FIRST-LOGIN-V1';
 const MODAL_ID = 'sbi-first-login-gate';
@@ -42,14 +43,6 @@ function writeSessionCompleted(uid) {
   try {
     sessionStorage.setItem(getSessionKey(uid), '1');
   } catch (_) {}
-}
-
-function isAdminLike(data = {}) {
-  return data?.isGod === true || data?.role === 'admin';
-}
-
-function isTeacherOrStudent(data = {}) {
-  return ['teacher', 'prof', 'professeur', 'enseignant', 'student', 'eleve', 'élève', 'etudiant', 'étudiant'].includes(String(data?.role || '').toLowerCase());
 }
 
 function hasCompletedFirstLogin(data = {}) {
@@ -384,8 +377,8 @@ async function checkFirstLoginGate(user) {
     currentUserData = data;
 
     if (data.statut === 'suspendu') return;
-    if (isAdminLike(data)) return;
-    if (!isTeacherOrStudent(data)) return;
+    if (isSbiAdminLike(data)) return;
+    if (!isSbiTeacherOrStudent(data)) return;
 
     if (hasCompletedFirstLogin(data)) {
       writeSessionCompleted(currentUid);

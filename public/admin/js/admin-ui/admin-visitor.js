@@ -1,6 +1,7 @@
 import { auth, db } from '/js/firebase-init.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js';
 import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
+import { isSbiAdminLike } from '/js/sbi-permissions.js?v=8.0P.167.44';
 
 function setAdminReturnVisible(isVisible) {
     document.body.classList.toggle('sbi-admin-visitor', isVisible);
@@ -31,7 +32,7 @@ export function initAdminVisitorShortcut() {
         try {
             const userSnap = await getDoc(doc(db, 'users', user.uid));
             const userData = userSnap.exists() ? userSnap.data() : null;
-            const canReturnToAdmin = userData?.isGod === true || userData?.role === 'admin';
+            const canReturnToAdmin = isSbiAdminLike(userData);
             setAdminReturnVisible(canReturnToAdmin);
         } catch (error) {
             console.warn('[SBI UI] Impossible de vérifier le raccourci admin :', error);

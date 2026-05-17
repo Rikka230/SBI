@@ -10,11 +10,13 @@
  * - présence conservée, mais en arrière-plan.
  * 8.0P.167.42 :
  * - première connexion : import du gate de validation obligatoire.
+ * 8.0P.167.44 :
+ * - permissions/rôles centralisés via sbi-permissions.js.
  * =======================================================================
  */
 
-import '/js/auth.js';
-import '/js/first-login-gate.js?v=8.0P.167.42';
+import '/js/auth.js?v=8.0P.167.44';
+import '/js/first-login-gate.js?v=8.0P.167.44';
 
 import { db, auth } from '/js/firebase-init.js';
 import {
@@ -25,6 +27,7 @@ import {
     serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+import { getSbiRoleLabel } from "/js/sbi-permissions.js?v=8.0P.167.44";
 
 let sessionStart = Date.now();
 let activeUid = null;
@@ -147,11 +150,7 @@ function getDisplayName(data = {}) {
 }
 
 function getRoleLabel(data = {}) {
-    if (data.isGod) return 'Admin Suprême';
-    if (data.role === 'admin') return 'Administrateur';
-    if (data.role === 'teacher') return 'Professeur';
-    if (data.role === 'student') return 'Élève';
-    return 'Compte';
+    return getSbiRoleLabel(data);
 }
 
 function getFallbackAvatarLabel(data = {}) {

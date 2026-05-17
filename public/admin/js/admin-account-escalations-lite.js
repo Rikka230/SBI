@@ -18,6 +18,7 @@ import {
   query,
   where
 } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
+import { isSbiAdminLike } from '/js/sbi-permissions.js?v=8.0P.167.44';
 
 const MODULE_VERSION = '8.0P.167.25';
 const MAX_ALERTS_RENDERED = 12;
@@ -30,7 +31,7 @@ let baseNotificationCount = 0;
 let renderRetryCount = 0;
 
 function isAdminLike(profile) {
-  return profile?.isGod === true || profile?.role === 'admin';
+  return isSbiAdminLike(profile);
 }
 
 function toMillis(value) {

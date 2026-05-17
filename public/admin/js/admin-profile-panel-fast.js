@@ -12,6 +12,7 @@
 
 import { db, auth } from '/js/firebase-init.js';
 import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
+import { getSbiRoleLabel } from '/js/sbi-permissions.js?v=8.0P.167.44';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js';
 
 const CACHE_PREFIX = 'sbi:fastProfilePanel:';
@@ -50,11 +51,7 @@ function getDisplayName(profile = {}) {
 }
 
 function getRoleLabel(profile = {}) {
-  if (profile.isGod === true) return 'Admin Suprême';
-  if (profile.role === 'admin') return 'Administrateur';
-  if (profile.role === 'teacher') return 'Professeur';
-  if (profile.role === 'student') return 'Élève';
-  return 'Compte';
+  return getSbiRoleLabel(profile);
 }
 
 function getAvatarUrl(profile = {}, displayName = 'Utilisateur') {

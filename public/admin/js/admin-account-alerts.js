@@ -15,6 +15,7 @@ import {
   query,
   where
 } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
+import { isSbiAdminLike } from '/js/sbi-permissions.js?v=8.0P.167.44';
 
 let mounted = false;
 let currentUid = null;
@@ -25,7 +26,7 @@ let observer = null;
 let renderingNotifications = false;
 
 function isAdminLike(profile) {
-  return profile?.isGod === true || profile?.role === 'admin';
+  return isSbiAdminLike(profile);
 }
 
 function toMillis(value) {

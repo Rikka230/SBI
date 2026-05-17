@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.43',
+  version: '8.0P.167.44',
   branch: 'main',
-  channel: 'FIRST LOGIN ACTIVITY STATE',
-  stage: 'CONTACT RESOLVED NO LONGER MASKS DETECTED ACTIVITY',
+  channel: 'ROLE PERMISSIONS BASELINE',
+  stage: 'CENTRALIZED ROLE AND PERMISSION HELPERS',
   updatedAt: '2026-05-16',
-  label: 'SBI 8.0P.167.43 - CONTACT RESOLVED NO LONGER MASKS DETECTED ACTIVITY'
+  label: 'SBI 8.0P.167.44 - CENTRALIZED ROLE AND PERMISSION HELPERS'
 };
 
 export function getSbiVersionLabel() {

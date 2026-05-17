@@ -21,7 +21,7 @@ import {
     setDoc
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-import { logoutUser } from '/js/auth.js';
+import { logoutUser } from '/js/auth.js?v=8.0P.167.44';
 import {
     setPendingImageFile,
     setPendingVideoFile,

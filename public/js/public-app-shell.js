@@ -729,7 +729,7 @@ async function runPageInitializers(pageId) {
 
   if (pageId === 'login') {
     try {
-      const authModule = await import('/js/auth.js?v=8.0P.154');
+      const authModule = await import('/js/auth.js?v=8.0P.167.44');
       const initAuth = authModule.initSbiAuthPage || window.SBI_INIT_AUTH_PAGE;
       if (typeof initAuth === 'function') await initAuth();
     } catch (error) {
