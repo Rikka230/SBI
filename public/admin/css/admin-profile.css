@@ -540,27 +540,9 @@
     }
 }
 
-/* --- SBI 8.0P.167.65 — Fiche étudiant détaillée / suivi admin --- */
+/* --- SBI 8.0P.167.66 — Suivi pédagogique intégré / fiche élève --- */
 .sbi-student-followup {
     position: relative;
-    overflow: hidden;
-}
-
-.sbi-student-followup::before {
-    content: "";
-    position: absolute;
-    inset: -20% -10% auto auto;
-    width: 280px;
-    height: 280px;
-    pointer-events: none;
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(42, 87, 255, 0.16), transparent 62%);
-    opacity: 0.9;
-}
-
-.sbi-student-followup > * {
-    position: relative;
-    z-index: 1;
 }
 
 .sbi-student-followup__header,

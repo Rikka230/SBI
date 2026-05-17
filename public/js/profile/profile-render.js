@@ -974,13 +974,6 @@ function setStudentFollowupVisibility(visible) {
   document.querySelectorAll('.student-followup-section').forEach((node) => {
     node.style.display = visible ? '' : 'none';
   });
-
-  if (!visible && document.getElementById('ptab-student-followup')?.classList.contains('active')) {
-    document.querySelectorAll('.p-tab').forEach((tab) => tab.classList.remove('active'));
-    document.querySelectorAll('.p-tab-content').forEach((content) => content.classList.remove('active'));
-    document.querySelector('.p-tab')?.classList.add('active');
-    document.getElementById('ptab-public')?.classList.add('active');
-  }
 }
 
 function renderStudentFollowupPanel({ uid, data = {}, context, reloadProfile }) {
@@ -993,7 +986,7 @@ function renderStudentFollowupPanel({ uid, data = {}, context, reloadProfile }) 
   if (!isVisible) {
     panel.innerHTML = `
       <p style="color:var(--text-muted); font-size:0.9rem; margin:0; line-height:1.5;">
-        Le suivi étudiant détaillé est disponible uniquement pour les comptes élèves.
+        Le suivi pédagogique détaillé est disponible uniquement pour les comptes élèves.
       </p>
     `;
     return;
@@ -1010,8 +1003,8 @@ function renderStudentFollowupPanel({ uid, data = {}, context, reloadProfile }) 
     <div class="sbi-student-followup">
       <div class="sbi-student-followup__header">
         <div>
-          <p>Fiche étudiant</p>
-          <h4>Suivi étudiant</h4>
+          <p>Fiche élève</p>
+          <h4>Suivi pédagogique</h4>
         </div>
         <span class="sbi-student-followup__pill" data-priority="${escapeHTML(followup.priority)}">
           ${escapeHTML(STUDENT_FOLLOWUP_PRIORITY_LABELS[followup.priority])}
@@ -1069,14 +1062,14 @@ function renderStudentFollowupPanel({ uid, data = {}, context, reloadProfile }) 
       </div>
 
       <label class="sbi-student-followup__note">
-        <span>Notes de suivi étudiant</span>
-        <textarea id="prof-student-followup-note" rows="6" maxlength="3000" placeholder="Ex : dossier à vérifier, point d’appel prévu, besoin de relance administrative, vigilance pédagogique...">${escapeHTML(followup.note)}</textarea>
+        <span>Notes de suivi pédagogique</span>
+        <textarea id="prof-student-followup-note" rows="6" maxlength="3000" placeholder="Ex : dossier à vérifier, point pédagogique prévu, besoin de relance administrative, vigilance ou blocage...">${escapeHTML(followup.note)}</textarea>
       </label>
 
       <div class="sbi-student-followup__footer">
         <span id="prof-student-followup-meta">Dernière mise à jour : ${escapeHTML(lastUpdate)}</span>
         <span id="prof-student-followup-status-line"></span>
-        <button id="prof-save-student-followup-btn" type="button">Sauvegarder le suivi étudiant</button>
+        <button id="prof-save-student-followup-btn" type="button">Sauvegarder le suivi pédagogique</button>
       </div>
     </div>
   `;
@@ -1105,11 +1098,11 @@ function renderStudentFollowupPanel({ uid, data = {}, context, reloadProfile }) 
       await adminUpdateUserAccountCallable({ uid, studentFollowup: payload });
       if (statusLine) {
         statusLine.dataset.tone = 'success';
-        statusLine.textContent = 'Suivi étudiant sauvegardé.';
+        statusLine.textContent = 'Suivi pédagogique sauvegardé.';
       }
       await reloadProfile?.(uid);
     } catch (error) {
-      console.warn('[SBI Profile] Sauvegarde suivi étudiant impossible :', error);
+      console.warn('[SBI Profile] Sauvegarde suivi pédagogique impossible :', error);
       if (statusLine) {
         statusLine.dataset.tone = 'error';
         statusLine.textContent = getCallableUiMessage(error, 'Sauvegarde impossible.');
