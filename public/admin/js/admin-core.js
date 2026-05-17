@@ -66,7 +66,7 @@ const readUsersCache = () => {
 const writeUsersCache = () => {
     try {
         window.localStorage?.setItem(USERS_CACHE_KEY, JSON.stringify({
-            version: '8.0P.167.55',
+            version: '8.0P.167.56',
             updatedAt: Date.now(),
             users: normalizeUsersArray(allUsersData)
         }));
@@ -85,7 +85,7 @@ const publishUsersState = (reason = 'sync') => {
     const users = normalizeUsersArray(allUsersData);
 
     window.SBI_ADMIN_USERS_CACHE = {
-        version: '8.0P.167.55',
+        version: '8.0P.167.56',
         users,
         updatedAt: Date.now(),
         reason
@@ -95,7 +95,7 @@ const publishUsersState = (reason = 'sync') => {
 
     window.dispatchEvent(new CustomEvent('sbi:accounts-data-updated', {
         detail: {
-            version: '8.0P.167.55',
+            version: '8.0P.167.56',
             reason,
             users,
             updatedAt: Date.now()
@@ -359,29 +359,41 @@ const getLastActivityForStatus = (user = {}) => {
 
 const hasEmailBounceForStatus = (user = {}) => {
     const status = user.accountStatus || {};
-    const issueType = String(status.emailIssueType || status.emailIssue || '').toLowerCase();
-    const bounceState = String(status.emailBounceState || status.emailDeliveryState || '').toLowerCase();
+    const issueType = String(status.finalizationIssueCode || status.emailIssueCode || status.emailIssueType || status.emailIssue || '').toLowerCase();
+    const bounceState = String(status.emailBounceState || status.emailDeliveryState || status.emailStatus || status.deliveryStatus || status.brevoEvent || status.finalizationIssueEvent || '').toLowerCase();
 
     return Boolean(
         status.emailBouncedAt
         || status.lastEmailBounceAt
         || status.emailRejectedAt
+        || status.lastBounceAt
+        || status.bouncedAt
+        || status.rejectedAt
+        || status.brevoBounceAt
         || issueType.includes('bounce')
+        || issueType.includes('bounced')
         || issueType.includes('reject')
+        || issueType.includes('rejected')
+        || issueType.includes('blocked')
+        || issueType.includes('blacklist')
         || bounceState.includes('bounce')
+        || bounceState.includes('bounced')
         || bounceState.includes('blocked')
         || bounceState.includes('reject')
+        || bounceState.includes('rejected')
         || bounceState.includes('invalid')
+        || bounceState.includes('blacklist')
     );
 };
 
 const hasEmailSuspicionForStatus = (user = {}) => {
     const status = user.accountStatus || {};
-    const issueType = String(status.emailIssueType || status.emailIssue || '').toLowerCase();
-    const warning = String(status.emailWarning || '').toLowerCase();
+    const issueType = String(status.finalizationIssueCode || status.emailIssueCode || status.emailIssueType || status.emailIssue || '').toLowerCase();
+    const warning = String(status.emailWarning || status.finalizationIssueMessage || status.emailIssueMessage || '').toLowerCase();
 
     return Boolean(
         status.emailSuspiciousAt
+        || status.suspiciousEmailAt
         || status.emailIssueDetectedAt
         || issueType.includes('suspect')
         || issueType.includes('suspicious')
@@ -626,7 +638,7 @@ const renderUsersList = (usersToRender, reason = 'manual') => {
         container.innerHTML = '<div class="empty-state">Aucun compte trouvé.</div>';
         publishUsersState(`render:${reason}`);
         window.dispatchEvent(new CustomEvent('sbi:accounts-rendered', {
-            detail: { version: '8.0P.167.55', reason, count: 0 }
+            detail: { version: '8.0P.167.56', reason, count: 0 }
         }));
         return;
     }
@@ -702,7 +714,7 @@ const renderUsersList = (usersToRender, reason = 'manual') => {
     publishUsersState(`render:${reason}`);
     window.dispatchEvent(new CustomEvent('sbi:accounts-rendered', {
         detail: {
-            version: '8.0P.167.55',
+            version: '8.0P.167.56',
             reason,
             count: usersToRender.length
         }

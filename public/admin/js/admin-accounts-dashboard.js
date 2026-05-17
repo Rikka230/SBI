@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.167.55 / P2H.2-I.11 UX
+ * SBI 8.0P.167.56 / P2H.2-I.12 UX
  * Structure lecture seule "Comptes & accès".
  *
  * Objectif :
@@ -32,7 +32,7 @@ function injectStyle() {
   const link = document.createElement('link');
   link.id = 'sbi-admin-accounts-css';
   link.rel = 'stylesheet';
-  link.href = '/admin/css/admin-accounts.css?v=8.0P.167.55';
+  link.href = '/admin/css/admin-accounts.css?v=8.0P.167.56';
   document.head.append(link);
 }
 
@@ -161,24 +161,86 @@ function getFriendlyBounceDetail(message = '') {
 }
 
 function getFinalizationEmailIssue(user = {}) {
-  const issueCode = user?.accountStatus?.finalizationIssueCode || '';
-  const issueMessage = user?.accountStatus?.finalizationIssueMessage || '';
-  const issueEvent = user?.accountStatus?.finalizationIssueEvent || '';
+  const status = user?.accountStatus || {};
   const email = user?.email || '';
 
-  if (issueCode === 'email_bounced') {
+  const issueCode = String(
+    status.finalizationIssueCode
+    || status.emailIssueCode
+    || status.emailIssueType
+    || status.emailIssue
+    || status.emailProblem
+    || ''
+  ).toLowerCase();
+
+  const deliveryState = String(
+    status.emailBounceState
+    || status.emailDeliveryState
+    || status.emailStatus
+    || status.deliveryStatus
+    || status.brevoEvent
+    || status.finalizationIssueEvent
+    || ''
+  ).toLowerCase();
+
+  const issueMessage = String(
+    status.finalizationIssueMessage
+    || status.emailIssueMessage
+    || status.emailBounceReason
+    || status.emailRejectedReason
+    || status.bounceReason
+    || status.brevoReason
+    || ''
+  );
+
+  const issueEvent = status.finalizationIssueEvent || status.brevoEvent || status.emailEvent || '';
+
+  const hasBounceSignal = Boolean(
+    status.emailBouncedAt
+    || status.lastEmailBounceAt
+    || status.emailRejectedAt
+    || status.lastBounceAt
+    || status.bouncedAt
+    || status.rejectedAt
+    || status.brevoBounceAt
+    || issueCode.includes('bounce')
+    || issueCode.includes('bounced')
+    || issueCode.includes('reject')
+    || issueCode.includes('rejected')
+    || issueCode.includes('blocked')
+    || issueCode.includes('blacklist')
+    || deliveryState.includes('bounce')
+    || deliveryState.includes('bounced')
+    || deliveryState.includes('reject')
+    || deliveryState.includes('rejected')
+    || deliveryState.includes('blocked')
+    || deliveryState.includes('blacklist')
+    || deliveryState.includes('invalid')
+  );
+
+  if (hasBounceSignal) {
     return {
       code: 'email_bounced',
       label: 'Email rejeté',
       tone: 'danger',
-      detail: getFriendlyBounceDetail(issueMessage),
+      detail: getFriendlyBounceDetail(issueMessage || deliveryState || issueCode),
       technicalDetail: issueMessage,
       blocking: true,
       event: issueEvent
     };
   }
 
-  if (issueCode === 'invalid_email' || !isEmailSyntaxValid(email)) {
+  const invalidSignal = Boolean(
+    issueCode.includes('invalid')
+    || issueCode.includes('syntax')
+    || issueCode.includes('malformed')
+    || deliveryState.includes('invalid')
+    || status.emailInvalidAt
+    || status.invalidEmailAt
+    || status.finalizationInvalidEmailAt
+  );
+
+  if (invalidSignal || !isEmailSyntaxValid(email)) {
     return {
       code: 'invalid_email',
       label: 'Email invalide',
@@ -189,13 +251,20 @@ function getFinalizationEmailIssue(user = {}) {
     };
   }
 
+  const suspiciousSignal = Boolean(
+    issueCode.includes('suspect')
+    || issueCode.includes('suspicious')
+    || status.emailSuspiciousAt
+    || status.suspiciousEmailAt
+  );
+
   const suggestion = getSuspiciousEmailSuggestion(email);
-  if (suggestion) {
+  if (suspiciousSignal || suggestion) {
     return {
       code: 'suspicious_email',
       label: 'Email suspect',
       tone: 'warning',
-      detail: `Vérifier le domaine, possible ${suggestion}`,
+      detail: issueMessage || (suggestion ? `Vérifier le domaine, possible ${suggestion}` : 'Adresse à vérifier'),
       blocking: false,
       suggestion
     };
@@ -489,7 +558,7 @@ function setAccountsFromUsers(users = [], reason = 'core-cache') {
   renderCounters(safeUsers);
 
   window.SBI_ACCOUNTS_DASHBOARD_STATE = {
-    version: '8.0P.167.55',
+    version: '8.0P.167.56',
     users: safeUsers.length,
     reason,
     updatedAt: new Date().toISOString()
@@ -524,7 +593,7 @@ function renderAccountStatusCellHtml(user) {
   const activation = getActivationInfo(user);
   if (!activation) return '';
 
-  const emailIssue = getEmailIssueInfo(user);
+  const emailIssue = getFinalizationEmailIssue(user);
   const detail = emailIssue ? emailIssue.detail : activation.detail;
 
   return `
@@ -545,14 +614,28 @@ function updateAccountStatusCell(statusCell, user) {
     user.email || '',
     user.accountStatus?.activationState || '',
     user.accountStatus?.preparationState || '',
+    user.accountStatus?.finalizationIssueCode || '',
+    user.accountStatus?.finalizationIssueMessage || '',
+    user.accountStatus?.finalizationIssueEvent || '',
+    user.accountStatus?.emailIssueCode || '',
     user.accountStatus?.emailIssueType || '',
     user.accountStatus?.emailIssue || '',
+    user.accountStatus?.emailIssueMessage || '',
     user.accountStatus?.emailBounceState || '',
     user.accountStatus?.emailDeliveryState || '',
+    user.accountStatus?.emailStatus || '',
+    user.accountStatus?.deliveryStatus || '',
+    user.accountStatus?.brevoEvent || '',
     user.accountStatus?.emailBouncedAt?.seconds || user.accountStatus?.emailBouncedAt || '',
     user.accountStatus?.lastEmailBounceAt?.seconds || user.accountStatus?.lastEmailBounceAt || '',
     user.accountStatus?.emailRejectedAt?.seconds || user.accountStatus?.emailRejectedAt || '',
+    user.accountStatus?.lastBounceAt?.seconds || user.accountStatus?.lastBounceAt || '',
+    user.accountStatus?.bouncedAt?.seconds || user.accountStatus?.bouncedAt || '',
+    user.accountStatus?.rejectedAt?.seconds || user.accountStatus?.rejectedAt || '',
+    user.accountStatus?.emailInvalidAt?.seconds || user.accountStatus?.emailInvalidAt || '',
+    user.accountStatus?.invalidEmailAt?.seconds || user.accountStatus?.invalidEmailAt || '',
     user.accountStatus?.emailSuspiciousAt?.seconds || user.accountStatus?.emailSuspiciousAt || '',
+    user.accountStatus?.suspiciousEmailAt?.seconds || user.accountStatus?.suspiciousEmailAt || '',
     user.accountStatus?.finalizationEscalationAt?.seconds || user.accountStatus?.finalizationEscalationAt || '',
     user.accountStatus?.finalizationEscalationResolvedAt?.seconds || user.accountStatus?.finalizationEscalationResolvedAt || '',
     user.accountStatus?.finalizationReminderCount ?? '',

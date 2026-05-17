@@ -323,7 +323,7 @@
 
 
 /* ==========================================================================
-   SBI 8.0P.167.55 — Comptes : lignes stables + scroll fluide
+   SBI 8.0P.167.56 — Comptes : lignes stables + scroll fluide
    --------------------------------------------------------------------------
    Les lignes pouvaient être compressées quand les statuts longs entraient dans
    une colonne trop courte. Le rendu est maintenant stable, avec moins de
@@ -427,7 +427,7 @@
 
 
 /* ==========================================================================
-   SBI 8.0P.167.55 — États visibles + scroll 60fps
+   SBI 8.0P.167.56 — États visibles + scroll 60fps
    --------------------------------------------------------------------------
    8.0P.167.53 cachait les statuts détaillés dans le rendu source. Les états
    sont restaurés dans admin-core et ce CSS évite les compressions.
@@ -513,7 +513,7 @@
 
 
 /* ==========================================================================
-   SBI 8.0P.167.55 — Statuts détaillés restaurés sans repaint lourd
+   SBI 8.0P.167.56 — Statuts détaillés restaurés sans repaint lourd
    ========================================================================== */
 
 #users-list-container .sbi-account-status-cell {
