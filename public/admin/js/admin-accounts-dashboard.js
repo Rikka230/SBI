@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.167.54 / P2H.2-I.10 UX
+ * SBI 8.0P.167.55 / P2H.2-I.11 UX
  * Structure lecture seule "Comptes & accès".
  *
  * Objectif :
@@ -32,7 +32,7 @@ function injectStyle() {
   const link = document.createElement('link');
   link.id = 'sbi-admin-accounts-css';
   link.rel = 'stylesheet';
-  link.href = '/admin/css/admin-accounts.css?v=8.0P.167.54';
+  link.href = '/admin/css/admin-accounts.css?v=8.0P.167.55';
   document.head.append(link);
 }
 
@@ -281,7 +281,7 @@ function getActivationInfo(user) {
     };
   }
 
-  const explicitState = user.accountStatus?.activationState || user.activationState || '';
+  const explicitState = user.accountStatus?.activationState || user.accountStatus?.preparationState || user.activationState || user.preparationState || '';
 
   if (explicitState === 'blocked') {
     return {
@@ -489,7 +489,7 @@ function setAccountsFromUsers(users = [], reason = 'core-cache') {
   renderCounters(safeUsers);
 
   window.SBI_ACCOUNTS_DASHBOARD_STATE = {
-    version: '8.0P.167.54',
+    version: '8.0P.167.55',
     users: safeUsers.length,
     reason,
     updatedAt: new Date().toISOString()
@@ -517,6 +517,67 @@ function scheduleEnhanceRenderedAccountRows() {
     enhanceFrame = 0;
     scheduleEnhanceRenderedAccountRows();
   });
+}
+
+
+function renderAccountStatusCellHtml(user) {
+  const activation = getActivationInfo(user);
+  if (!activation) return '';
+
+  const emailIssue = getEmailIssueInfo(user);
+  const detail = emailIssue ? emailIssue.detail : activation.detail;
+
+  return `
+    <span class="sbi-status-dot sbi-status-${escapeHtml(activation.tone)}">${escapeHtml(activation.label)}</span>
+    ${detail ? `<small>${escapeHtml(detail)}</small>` : ''}
+  `;
+}
+
+function updateAccountStatusCell(statusCell, user) {
+  if (!statusCell || !user) return;
+
+  const html = renderAccountStatusCellHtml(user);
+  if (!html) return;
+
+  const signature = [
+    user.id || '',
+    user.statut || '',
+    user.email || '',
+    user.accountStatus?.activationState || '',
+    user.accountStatus?.preparationState || '',
+    user.accountStatus?.emailIssueType || '',
+    user.accountStatus?.emailIssue || '',
+    user.accountStatus?.emailBounceState || '',
+    user.accountStatus?.emailDeliveryState || '',
+    user.accountStatus?.emailBouncedAt?.seconds || user.accountStatus?.emailBouncedAt || '',
+    user.accountStatus?.lastEmailBounceAt?.seconds || user.accountStatus?.lastEmailBounceAt || '',
+    user.accountStatus?.emailRejectedAt?.seconds || user.accountStatus?.emailRejectedAt || '',
+    user.accountStatus?.emailSuspiciousAt?.seconds || user.accountStatus?.emailSuspiciousAt || '',
+    user.accountStatus?.finalizationEscalationAt?.seconds || user.accountStatus?.finalizationEscalationAt || '',
+    user.accountStatus?.finalizationEscalationResolvedAt?.seconds || user.accountStatus?.finalizationEscalationResolvedAt || '',
+    user.accountStatus?.finalizationReminderCount ?? '',
+    user.accountStatus?.reminderCount ?? '',
+    user.accountStatus?.firstLoginCompleted === true ? 'first-ok' : '',
+    user.accountStatus?.firstLoginAt?.seconds || user.accountStatus?.firstLoginAt || '',
+    user.accountStatus?.lastLoginAt?.seconds || user.accountStatus?.lastLoginAt || '',
+    user.lastLoginAt?.seconds || user.lastLoginAt || '',
+    user.lastSeenAt?.seconds || user.lastSeenAt || ''
+  ].join('|');
+
+  if (statusCell.dataset.sbiStatusSignature === signature && statusCell.dataset.sbiStatusHtml === html) {
+    return;
+  }
+
+  statusCell.dataset.sbiStatusSignature = signature;
+  statusCell.dataset.sbiStatusHtml = html;
+  statusCell.innerHTML = html;
+  statusCell.style.display = 'flex';
+  statusCell.style.flexDirection = 'column';
+  statusCell.style.alignItems = 'flex-start';
+  statusCell.style.justifyContent = 'center';
+  statusCell.style.gap = '0.18rem';
+  statusCell.style.textAlign = 'left';
+  statusCell.style.minWidth = '0';
 }
 
 function enhanceRenderedAccountRows() {

@@ -66,7 +66,7 @@ const readUsersCache = () => {
 const writeUsersCache = () => {
     try {
         window.localStorage?.setItem(USERS_CACHE_KEY, JSON.stringify({
-            version: '8.0P.167.53',
+            version: '8.0P.167.55',
             updatedAt: Date.now(),
             users: normalizeUsersArray(allUsersData)
         }));
@@ -85,7 +85,7 @@ const publishUsersState = (reason = 'sync') => {
     const users = normalizeUsersArray(allUsersData);
 
     window.SBI_ADMIN_USERS_CACHE = {
-        version: '8.0P.167.53',
+        version: '8.0P.167.55',
         users,
         updatedAt: Date.now(),
         reason
@@ -95,7 +95,7 @@ const publishUsersState = (reason = 'sync') => {
 
     window.dispatchEvent(new CustomEvent('sbi:accounts-data-updated', {
         detail: {
-            version: '8.0P.167.53',
+            version: '8.0P.167.55',
             reason,
             users,
             updatedAt: Date.now()
@@ -479,8 +479,16 @@ const getAccountStatusHtml = (user = {}) => {
         `;
     }
 
-    const state = String(user.accountStatus?.preparationState || user.accountStatus?.activationState || '').toLowerCase();
-    if (state.includes('pending') || state.includes('password') || state.includes('invite')) {
+    const state = String(user.accountStatus?.preparationState || user.accountStatus?.activationState || user.preparationState || user.activationState || '').toLowerCase();
+    const hasInvite = Boolean(
+        user.accountStatus?.finalizationEmailSentAt
+        || user.accountStatus?.invitationSentAt
+        || user.invitationSentAt
+        || user.accountStatus?.passwordSetupEmailSentAt
+        || user.accountStatus?.passwordResetSentAt
+    );
+
+    if (state.includes('pending') || state.includes('password') || state.includes('invite') || state.includes('finalization') || hasInvite) {
         return `
             <span class="sbi-status-dot sbi-status-warning">Mot de passe attendu</span>
             <small>Invitation envoyée</small>
@@ -618,7 +626,7 @@ const renderUsersList = (usersToRender, reason = 'manual') => {
         container.innerHTML = '<div class="empty-state">Aucun compte trouvé.</div>';
         publishUsersState(`render:${reason}`);
         window.dispatchEvent(new CustomEvent('sbi:accounts-rendered', {
-            detail: { version: '8.0P.167.53', reason, count: 0 }
+            detail: { version: '8.0P.167.55', reason, count: 0 }
         }));
         return;
     }
@@ -694,7 +702,7 @@ const renderUsersList = (usersToRender, reason = 'manual') => {
     publishUsersState(`render:${reason}`);
     window.dispatchEvent(new CustomEvent('sbi:accounts-rendered', {
         detail: {
-            version: '8.0P.167.53',
+            version: '8.0P.167.55',
             reason,
             count: usersToRender.length
         }

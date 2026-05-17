@@ -170,7 +170,7 @@
     loadAccountEscalationsModule();
 
     if (!accountsModulePromise) {
-      accountsModulePromise = import('/admin/js/admin-accounts-dashboard.js?v=8.0P.167.54')
+      accountsModulePromise = import('/admin/js/admin-accounts-dashboard.js?v=8.0P.167.55')
         .catch((error) => {
           accountsModulePromise = null;
           console.warn('[SBI Accounts] Module comptes non chargé :', error);
