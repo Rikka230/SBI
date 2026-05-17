@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.50',
+  version: '8.0P.167.51',
   branch: 'main',
-  channel: 'ADMIN GLOBAL LIGHTING',
-  stage: 'ALIGN ADMIN COCKPIT LIGHTING WITH PROFILE',
+  channel: 'ADMIN CANONICAL SURFACE',
+  stage: 'ONE ADMIN BACKGROUND BASED ON PROFILE',
   updatedAt: '2026-05-16',
-  label: 'SBI 8.0P.167.50 - ALIGN ADMIN COCKPIT LIGHTING WITH PROFILE'
+  label: 'SBI 8.0P.167.51 - ONE ADMIN BACKGROUND BASED ON PROFILE'
 };
 
 export function getSbiVersionLabel() {
