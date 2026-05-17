@@ -3457,7 +3457,7 @@ exports.studentGetDocumentRequest = onCall({
 function buildStudentDocumentSubmittedAdminMessageHtml({ student, requestData, submittedItems }) {
     const studentName = getAccountDisplayName(student) || requestData.studentName || requestData.studentEmail || 'Élève SBI';
     const requestId = cleanString(requestData.id || requestData.requestId || '', 180);
-    const profileLink = `${SBI_SITE_URL}/admin/admin-profile.html?uid=${encodeURIComponent(cleanString(requestData.studentUid || '', 180))}`;
+    const profileLink = `${SBI_SITE_URL}/admin/admin-profile.html?id=${encodeURIComponent(cleanString(requestData.studentUid || '', 180))}`;
     const rows = submittedItems.map((item) => `
         <tr>
             <td style="padding:10px 12px;border-bottom:1px solid #dce4f2;color:#101828;font-weight:bold;">${escapeHtml(item.title || 'Document')}</td>
@@ -3594,6 +3594,107 @@ exports.studentNotifyDocumentRequestSubmitted = onCall({
     });
 
     return { success: true, warning, message: warning || 'Notification envoyée.' };
+});
+
+
+exports.adminValidateStudentDocumentRequest = onCall({
+    region: 'europe-west1',
+    timeoutSeconds: 30,
+    memory: '256MiB'
+}, async (request) => {
+    const db = admin.firestore();
+    const caller = await requireAdminCaller(request, db);
+    const requestId = cleanString(request.data?.requestId || request.data?.id || '', 180);
+
+    if (!requestId) throw new HttpsError('invalid-argument', 'Identifiant de demande manquant.');
+
+    const requestRef = db.collection('studentDocumentRequests').doc(requestId);
+    const requestDoc = await requestRef.get();
+    if (!requestDoc.exists) throw new HttpsError('not-found', 'Demande introuvable.');
+
+    const requestData = requestDoc.data() || {};
+    const currentStatus = cleanString(requestData.status || 'requested', 40).toLowerCase();
+    if (['canceled', 'cancelled', 'archived', 'completed', 'validated'].includes(currentStatus)) {
+        throw new HttpsError('failed-precondition', 'Cette demande n’est plus en attente de vérification.');
+    }
+
+    const studentUid = cleanString(requestData.studentUid || '', 160);
+    if (!studentUid) throw new HttpsError('failed-precondition', 'UID élève manquant sur la demande.');
+
+    const items = Array.isArray(requestData.items)
+        ? requestData.items.map(serializeStudentDocumentRequestItem)
+        : [];
+
+    const missingRequired = items.filter((item) => {
+        return item.required !== false && !['submitted', 'validated'].includes(cleanString(item.status || '', 40).toLowerCase());
+    });
+
+    if (!items.length || missingRequired.length) {
+        throw new HttpsError('failed-precondition', 'Tous les documents obligatoires doivent être transmis avant validation.');
+    }
+
+    const now = admin.firestore.FieldValue.serverTimestamp();
+    const batch = db.batch();
+    const nextItems = items.map((item) => ({
+        ...item,
+        status: ['submitted', 'validated'].includes(cleanString(item.status || '', 40).toLowerCase()) ? 'validated' : item.status,
+        validatedAt: item.validatedAt || new Date().toISOString(),
+        validatedBy: caller.uid,
+        validatedByEmail: caller.email
+    }));
+
+    batch.set(requestRef, {
+        status: 'completed',
+        items: nextItems,
+        completedAt: now,
+        validatedAt: now,
+        validatedBy: caller.uid,
+        validatedByEmail: caller.email,
+        updatedAt: now
+    }, { merge: true });
+
+    nextItems.forEach((item) => {
+        const documentId = cleanString(item.documentId || '', 180);
+        if (!documentId) return;
+        const documentRef = db.collection('studentDocuments').doc(documentId);
+        batch.set(documentRef, {
+            status: 'active',
+            validationStatus: 'validated',
+            validatedAt: now,
+            validatedBy: caller.uid,
+            validatedByEmail: caller.email,
+            updatedAt: now
+        }, { merge: true });
+    });
+
+    await batch.commit();
+
+    const studentDoc = await db.collection('users').doc(studentUid).get();
+    const student = studentDoc.exists ? (studentDoc.data() || {}) : {};
+
+    await safeWriteAccountAuditLog(db, {
+        type: 'student_documents.validated',
+        actorUid: caller.uid,
+        actorEmail: caller.email,
+        targetUid: studentUid,
+        targetEmail: cleanEmail(student.email || requestData.studentEmail || ''),
+        targetRole: student.role || 'student',
+        changes: {
+            documents: {
+                requestId,
+                validated: nextItems.map((item) => item.title),
+                validatedCount: nextItems.filter((item) => item.status === 'validated').length,
+                requestedCount: items.length
+            }
+        }
+    });
+
+    return {
+        success: true,
+        requestId,
+        status: 'completed',
+        message: 'Demande validée.'
+    };
 });
 
 exports.adminCreateStudentDocumentRequest = onCall({

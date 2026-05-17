@@ -65,7 +65,8 @@ const DOCUMENT_REQUEST_STATUS_LABELS = {
   requested: 'En attente de réception',
   partial: 'Réception partielle',
   submitted: 'Transmis, à vérifier',
-  completed: 'Terminé',
+  completed: 'Validée',
+  validated: 'Validée',
   canceled: 'Annulée',
   cancelled: 'Annulée',
   archived: 'Archivé'
@@ -425,7 +426,7 @@ function renderStudentDocumentRequestCard(request = {}) {
       </ul>
       <div class="sbi-student-doc-request-admin-card__actions">
         ${waiting ? `<button type="button" data-request-cancel="${safeRequestId}">Annuler la demande</button>` : ''}
-        ${received ? `<button type="button" disabled>Vérification à venir</button>` : ''}
+        ${received ? `<button type="button" data-request-review="${safeRequestId}">Vérifier les documents</button>` : ''}
       </div>
     </article>
   `;
@@ -460,6 +461,151 @@ async function cancelStudentDocumentRequest(panel, db, uid, requestId, button) {
   }
 }
 
+
+function getRequestDocumentItems(request = {}, documents = []) {
+  const items = Array.isArray(request.items) ? request.items : [];
+  return items.map((item) => {
+    const documentId = String(item.documentId || '');
+    const document = documents.find((entry) => entry.id === documentId) || null;
+    return { item, document };
+  });
+}
+
+function getOrCreateReviewModal() {
+  let modal = document.getElementById('sbi-student-doc-review-modal');
+  if (modal) return modal;
+
+  modal = document.createElement('div');
+  modal.id = 'sbi-student-doc-review-modal';
+  modal.className = 'sbi-doc-request-modal sbi-doc-review-modal';
+  modal.innerHTML = `
+    <div class="sbi-doc-request-modal__backdrop" data-doc-review-close></div>
+    <section class="sbi-doc-request-modal__panel" role="dialog" aria-modal="true" aria-labelledby="sbi-doc-review-title">
+      <header class="sbi-doc-request-modal__header">
+        <div>
+          <p>Vérification admin</p>
+          <h3 id="sbi-doc-review-title">Documents transmis par l’élève</h3>
+        </div>
+        <button type="button" class="sbi-doc-request-modal__close" data-doc-review-close aria-label="Fermer">×</button>
+      </header>
+      <div class="sbi-doc-request-modal__content" id="sbi-doc-review-content"></div>
+      <footer class="sbi-doc-request-modal__footer">
+        <span id="sbi-doc-review-status" aria-live="polite"></span>
+        <div>
+          <button type="button" class="sbi-doc-request-modal__ghost" data-doc-review-close>Fermer</button>
+          <button type="button" id="sbi-doc-review-validate-btn" class="sbi-doc-request-modal__primary">Valider la demande</button>
+        </div>
+      </footer>
+    </section>
+  `;
+  document.body.appendChild(modal);
+  modal.querySelectorAll('[data-doc-review-close]').forEach((button) => {
+    button.addEventListener('click', closeStudentDocumentReviewModal);
+  });
+  return modal;
+}
+
+function closeStudentDocumentReviewModal() {
+  const modal = document.getElementById('sbi-student-doc-review-modal');
+  if (!modal) return;
+  modal.classList.remove('is-open');
+  document.body.classList.remove('sbi-doc-request-modal-open');
+}
+
+function setReviewModalStatus(modal, message = '', tone = 'muted') {
+  const status = modal?.querySelector?.('#sbi-doc-review-status');
+  if (!status) return;
+  status.textContent = message;
+  status.dataset.tone = tone;
+}
+
+async function openStudentDocumentReviewModal({ panel, db, uid, request }) {
+  const modal = getOrCreateReviewModal();
+  const documents = getPanelDocuments(panel);
+  const rows = getRequestDocumentItems(request, documents);
+  const content = modal.querySelector('#sbi-doc-review-content');
+  const validateButton = modal.querySelector('#sbi-doc-review-validate-btn');
+  const missing = rows.filter(({ item, document }) => item.required !== false && !document);
+
+  if (content) {
+    content.innerHTML = `
+      <div class="sbi-doc-review-summary">
+        <strong>Demande à vérifier</strong>
+        <span>${escapeHTML(formatDate(request.updatedAt || request.createdAt, 'Date inconnue'))}</span>
+      </div>
+      <div class="sbi-doc-review-list">
+        ${rows.map(({ item, document }, index) => {
+          const done = Boolean(document);
+          return `
+            <article class="sbi-doc-review-item ${done ? 'is-ready' : 'is-missing'}" data-doc-review-index="${index}">
+              <div>
+                <strong>${escapeHTML(item.title || 'Document demandé')}</strong>
+                <span>${done ? escapeHTML(document.fileName || item.fileName || 'Fichier reçu') : 'Document non transmis'}</span>
+              </div>
+              <em>${done ? 'Reçu' : 'Manquant'}</em>
+              ${done ? `
+                <div class="sbi-doc-review-item__actions">
+                  <button type="button" data-review-open="${escapeHTML(document.id)}">Ouvrir</button>
+                  <button type="button" data-review-download="${escapeHTML(document.id)}">Télécharger</button>
+                </div>
+              ` : ''}
+            </article>
+          `;
+        }).join('')}
+      </div>
+    `;
+  }
+
+  modal.querySelectorAll('[data-review-open]').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const item = documents.find((entry) => entry.id === button.dataset.reviewOpen);
+      await openStudentDocument(panel, item, button);
+    });
+  });
+
+  modal.querySelectorAll('[data-review-download]').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const item = documents.find((entry) => entry.id === button.dataset.reviewDownload);
+      await downloadStudentDocument(panel, item, button);
+    });
+  });
+
+  if (validateButton) {
+    validateButton.disabled = missing.length > 0;
+    validateButton.textContent = missing.length > 0 ? 'Documents manquants' : 'Valider la demande';
+    validateButton.onclick = async () => {
+      if (missing.length > 0) return;
+      const confirmed = window.confirm('Valider cette demande ? Elle disparaîtra des demandes envoyées et les pièces resteront dans le coffre actif.');
+      if (!confirmed) return;
+      validateButton.disabled = true;
+      validateButton.textContent = 'Validation...';
+      setReviewModalStatus(modal, 'Validation de la demande...', 'muted');
+      try {
+        const callable = getAdminValidateStudentDocumentRequestCallable();
+        await callable({ requestId: request.id });
+        setReviewModalStatus(modal, 'Demande validée.', 'success');
+        setStatus(panel, 'Demande validée. Les documents restent disponibles dans le coffre actif.', 'success');
+        const [nextDocuments] = await Promise.all([
+          loadStudentDocuments(db, uid),
+          refreshStudentDocumentRequests(panel, db, uid)
+        ]);
+        setPanelDocuments(panel, nextDocuments);
+        renderDocumentsList(panel, nextDocuments, db);
+        window.setTimeout(closeStudentDocumentReviewModal, 900);
+      } catch (error) {
+        console.warn('[SBI Documents] Validation demande impossible :', error);
+        setReviewModalStatus(modal, getCallableUiMessage(error, 'Validation impossible.'), 'error');
+        validateButton.disabled = false;
+        validateButton.textContent = 'Valider la demande';
+      }
+    };
+  }
+
+  setReviewModalStatus(modal, missing.length > 0 ? 'Certains documents obligatoires sont encore manquants.' : 'Ouvre les pièces, puis valide la demande si tout est conforme.', missing.length > 0 ? 'error' : 'muted');
+  modal.classList.add('is-open');
+  document.body.classList.add('sbi-doc-request-modal-open');
+}
+
 function renderStudentDocumentRequests(panel, requests = [], db = null, uid = '') {
   const container = panel.querySelector('#prof-student-document-requests');
   if (!container) return;
@@ -486,6 +632,14 @@ function renderStudentDocumentRequests(panel, requests = [], db = null, uid = ''
   container.querySelectorAll('[data-request-cancel]').forEach((button) => {
     button.addEventListener('click', async () => {
       await cancelStudentDocumentRequest(panel, db, uid, button.dataset.requestCancel || '', button);
+    });
+  });
+
+  container.querySelectorAll('[data-request-review]').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const request = activeRequests.find((entry) => entry.id === button.dataset.requestReview);
+      if (!request) return;
+      await openStudentDocumentReviewModal({ panel, db, uid, request });
     });
   });
 }
@@ -802,6 +956,16 @@ function getAdminCreateStudentDocumentRequestCallable() {
     );
   }
   return window.__SBI_ADMIN_CREATE_STUDENT_DOCUMENT_REQUEST__;
+}
+
+function getAdminValidateStudentDocumentRequestCallable() {
+  if (!window.__SBI_ADMIN_VALIDATE_STUDENT_DOCUMENT_REQUEST__) {
+    window.__SBI_ADMIN_VALIDATE_STUDENT_DOCUMENT_REQUEST__ = httpsCallable(
+      getFunctionsInstance(),
+      'adminValidateStudentDocumentRequest'
+    );
+  }
+  return window.__SBI_ADMIN_VALIDATE_STUDENT_DOCUMENT_REQUEST__;
 }
 
 function getStudentDisplayName(data = {}, uid = '') {
