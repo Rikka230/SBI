@@ -15,7 +15,8 @@ import {
   ref,
   uploadBytes
 } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js';
-import { storage } from '/js/firebase-init.js';
+import { app, storage } from '/js/firebase-init.js';
+import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js';
 import { escapeHTML } from './profile-utils.js';
 
 const DOCUMENT_CATEGORIES = {
@@ -26,6 +27,39 @@ const DOCUMENT_CATEGORIES = {
   pedagogical: 'Pédagogique',
   other: 'Autre'
 };
+
+
+const DOCUMENT_REQUEST_TYPES = {
+  identity: { label: 'Pièce d’identité', category: 'identity', accept: 'PDF, JPG ou PNG' },
+  domicile: { label: 'Justificatif de domicile', category: 'proof', accept: 'PDF, JPG ou PNG' },
+  photo: { label: 'Photo d’identité', category: 'identity', accept: 'JPG ou PNG' },
+  civil_liability: { label: 'Attestation responsabilité civile', category: 'administrative', accept: 'PDF, JPG ou PNG' },
+  cv: { label: 'CV', category: 'administrative', accept: 'PDF' },
+  diploma: { label: 'Diplôme / relevé de notes', category: 'administrative', accept: 'PDF, JPG ou PNG' },
+  school_certificate: { label: 'Certificat de scolarité', category: 'administrative', accept: 'PDF, JPG ou PNG' },
+  parental_authorization: { label: 'Autorisation parentale si mineur', category: 'administrative', accept: 'PDF, JPG ou PNG' },
+  rib: { label: 'RIB si nécessaire', category: 'administrative', accept: 'PDF, JPG ou PNG' },
+  signed_contract: { label: 'Convention / contrat signé', category: 'contract', accept: 'PDF' },
+  employer_certificate: { label: 'Attestation employeur / alternance', category: 'administrative', accept: 'PDF, JPG ou PNG' },
+  other: { label: 'Autre document personnalisé', category: 'other', accept: 'PDF, JPG ou PNG' }
+};
+
+const DEFAULT_REQUEST_DOCUMENTS = [
+  'identity',
+  'domicile',
+  'photo',
+  'civil_liability',
+  'cv',
+  'diploma',
+  'school_certificate',
+  'parental_authorization',
+  'rib',
+  'signed_contract',
+  'employer_certificate',
+  'other'
+];
+
+const FUNCTIONS_REGION = 'europe-west1';
 
 const MAX_STUDENT_DOCUMENT_SIZE = 40 * 1024 * 1024;
 const MAX_IMAGE_DIMENSION = 1800;
@@ -620,7 +654,191 @@ async function uploadStudentDocument({ db, uid, data = {}, context, panel }) {
   }
 }
 
-function renderPanelShell(panel) {
+
+function getFunctionsInstance() {
+  if (!window.__SBI_STUDENT_DOCUMENTS_FUNCTIONS__) {
+    window.__SBI_STUDENT_DOCUMENTS_FUNCTIONS__ = getFunctions(app, FUNCTIONS_REGION);
+  }
+  return window.__SBI_STUDENT_DOCUMENTS_FUNCTIONS__;
+}
+
+function getAdminCreateStudentDocumentRequestCallable() {
+  if (!window.__SBI_ADMIN_CREATE_STUDENT_DOCUMENT_REQUEST__) {
+    window.__SBI_ADMIN_CREATE_STUDENT_DOCUMENT_REQUEST__ = httpsCallable(
+      getFunctionsInstance(),
+      'adminCreateStudentDocumentRequest'
+    );
+  }
+  return window.__SBI_ADMIN_CREATE_STUDENT_DOCUMENT_REQUEST__;
+}
+
+function getStudentDisplayName(data = {}, uid = '') {
+  const full = normalizeText(`${data.prenom || ''} ${data.nom || ''}`, 140)
+    || normalizeText(data.displayName || data.name || data.fullName || '', 140)
+    || normalizeText(data.email || '', 140)
+    || uid;
+  return full || 'Élève';
+}
+
+function buildStudentDocumentRequestLink(requestId = '') {
+  const url = new URL('/student/document-request.html', window.location.origin);
+  url.searchParams.set('request', requestId);
+  return url.toString();
+}
+
+function renderRequestTypeCheckbox(typeKey) {
+  const def = DOCUMENT_REQUEST_TYPES[typeKey] || DOCUMENT_REQUEST_TYPES.other;
+  return `
+    <label class="sbi-doc-request-choice">
+      <input type="checkbox" value="${escapeHTML(typeKey)}" ${['identity','domicile','photo'].includes(typeKey) ? 'checked' : ''}>
+      <span>
+        <strong>${escapeHTML(def.label)}</strong>
+        <em>${escapeHTML(def.accept)}</em>
+      </span>
+    </label>
+  `;
+}
+
+function getOrCreateRequestModal() {
+  let modal = document.getElementById('sbi-student-doc-request-modal');
+  if (modal) return modal;
+
+  modal = document.createElement('div');
+  modal.id = 'sbi-student-doc-request-modal';
+  modal.className = 'sbi-doc-request-modal';
+  modal.innerHTML = `
+    <div class="sbi-doc-request-modal__backdrop" data-doc-request-close></div>
+    <section class="sbi-doc-request-modal__panel" role="dialog" aria-modal="true" aria-labelledby="sbi-doc-request-title">
+      <header class="sbi-doc-request-modal__header">
+        <div>
+          <p>Demande élève</p>
+          <h3 id="sbi-doc-request-title">Demander des documents</h3>
+        </div>
+        <button type="button" class="sbi-doc-request-modal__close" data-doc-request-close aria-label="Fermer">×</button>
+      </header>
+      <div class="sbi-doc-request-modal__content">
+        <div class="sbi-doc-request-modal__intro">
+          <strong id="sbi-doc-request-student-name">Élève</strong>
+          <span>Choisis les pièces à demander. L’élève recevra un email SBI avec un lien vers une page dédiée.</span>
+        </div>
+        <div class="sbi-doc-request-grid">
+          ${DEFAULT_REQUEST_DOCUMENTS.map(renderRequestTypeCheckbox).join('')}
+        </div>
+        <label class="sbi-doc-request-custom">
+          <span>Nom du document personnalisé</span>
+          <input id="sbi-doc-request-custom-title" type="text" maxlength="120" placeholder="Ex : Attestation spécifique, document complémentaire...">
+        </label>
+        <label class="sbi-doc-request-custom">
+          <span>Message optionnel à l’élève</span>
+          <textarea id="sbi-doc-request-note" rows="4" maxlength="1200" placeholder="Ex : Merci de déposer les documents lisibles au format PDF, JPG ou PNG."></textarea>
+        </label>
+      </div>
+      <footer class="sbi-doc-request-modal__footer">
+        <span id="sbi-doc-request-status" aria-live="polite"></span>
+        <div>
+          <button type="button" class="sbi-doc-request-modal__ghost" data-doc-request-close>Annuler</button>
+          <button type="button" id="sbi-doc-request-send-btn" class="sbi-doc-request-modal__primary">Envoyer la demande</button>
+        </div>
+      </footer>
+    </section>
+  `;
+  document.body.appendChild(modal);
+  modal.querySelectorAll('[data-doc-request-close]').forEach((button) => {
+    button.addEventListener('click', closeStudentDocumentRequestModal);
+  });
+  return modal;
+}
+
+function closeStudentDocumentRequestModal() {
+  const modal = document.getElementById('sbi-student-doc-request-modal');
+  if (!modal) return;
+  modal.classList.remove('is-open');
+  document.body.classList.remove('sbi-doc-request-modal-open');
+}
+
+function setRequestModalStatus(modal, message = '', tone = 'muted') {
+  const status = modal?.querySelector?.('#sbi-doc-request-status');
+  if (!status) return;
+  status.textContent = message;
+  status.dataset.tone = tone;
+}
+
+function collectRequestedDocuments(modal) {
+  const selected = Array.from(modal.querySelectorAll('.sbi-doc-request-choice input:checked'))
+    .map((input) => input.value)
+    .filter(Boolean);
+  const customTitle = normalizeText(modal.querySelector('#sbi-doc-request-custom-title')?.value || '', 120);
+  const documents = selected.map((type) => {
+    const def = DOCUMENT_REQUEST_TYPES[type] || DOCUMENT_REQUEST_TYPES.other;
+    return {
+      type,
+      title: type === 'other' && customTitle ? customTitle : def.label,
+      category: def.category,
+      acceptLabel: def.accept,
+      required: true
+    };
+  });
+  return documents.filter((item, index, list) => list.findIndex((other) => other.type === item.type) === index);
+}
+
+async function openStudentDocumentRequestModal({ panel, uid, data = {}, context = {} }) {
+  const modal = getOrCreateRequestModal();
+  const studentName = getStudentDisplayName(data, uid);
+  modal.dataset.studentUid = uid;
+  modal.__sbiRequestContext = { panel, uid, data, context };
+  const title = modal.querySelector('#sbi-doc-request-student-name');
+  if (title) title.textContent = studentName;
+  modal.querySelectorAll('.sbi-doc-request-choice input').forEach((input) => {
+    input.checked = ['identity','domicile','photo'].includes(input.value);
+  });
+  const customTitle = modal.querySelector('#sbi-doc-request-custom-title');
+  const note = modal.querySelector('#sbi-doc-request-note');
+  if (customTitle) customTitle.value = '';
+  if (note) note.value = '';
+  setRequestModalStatus(modal, '', 'muted');
+
+  const sendButton = modal.querySelector('#sbi-doc-request-send-btn');
+  if (sendButton && sendButton.dataset.bound !== 'true') {
+    sendButton.dataset.bound = 'true';
+    sendButton.addEventListener('click', async () => {
+      const ctx = modal.__sbiRequestContext || {};
+      const documents = collectRequestedDocuments(modal);
+      const requestNote = String(modal.querySelector('#sbi-doc-request-note')?.value || '').trim().slice(0, 1200);
+      if (!documents.length) {
+        setRequestModalStatus(modal, 'Sélectionne au moins un document à demander.', 'error');
+        return;
+      }
+      sendButton.disabled = true;
+      sendButton.textContent = 'Envoi...';
+      setRequestModalStatus(modal, 'Création de la demande et envoi email...', 'muted');
+      try {
+        const callable = getAdminCreateStudentDocumentRequestCallable();
+        const response = await callable({
+          studentUid: ctx.uid,
+          documents,
+          note: requestNote
+        });
+        const requestId = response?.data?.requestId || '';
+        const requestLink = response?.data?.requestLink || buildStudentDocumentRequestLink(requestId);
+        setRequestModalStatus(modal, `Demande envoyée. Lien : ${requestLink}`, response?.data?.warning ? 'error' : 'success');
+        setStatus(ctx.panel, response?.data?.warning || 'Demande de documents envoyée à l’élève.', response?.data?.warning ? 'error' : 'success');
+        await navigator.clipboard?.writeText?.(requestLink).catch(() => {});
+        window.setTimeout(closeStudentDocumentRequestModal, 1200);
+      } catch (error) {
+        console.warn('[SBI Documents] Demande documents impossible :', error);
+        setRequestModalStatus(modal, getCallableUiMessage(error, 'Demande impossible.'), 'error');
+      } finally {
+        sendButton.disabled = false;
+        sendButton.textContent = 'Envoyer la demande';
+      }
+    });
+  }
+
+  modal.classList.add('is-open');
+  document.body.classList.add('sbi-doc-request-modal-open');
+}
+
+function renderPanelShell(panel, { uid = '', data = {}, context = {} } = {}) {
   panel.innerHTML = `
     <div class="sbi-student-documents">
       <div class="sbi-student-documents__header">
@@ -628,7 +846,10 @@ function renderPanelShell(panel) {
           <p>Coffre élève</p>
           <h4>Documents élève</h4>
         </div>
-        <span>Admin uniquement</span>
+        <div class="sbi-student-documents__header-actions">
+          <span>Admin uniquement</span>
+          <button type="button" id="prof-request-student-documents-btn">Demander documents</button>
+        </div>
       </div>
 
       <form id="prof-student-document-form" class="sbi-student-documents__form">
@@ -681,10 +902,13 @@ export async function renderStudentDocumentsPanel({ db, uid, data = {}, context 
   if (!visible) return;
 
   panel.dataset.studentUid = uid;
-  renderPanelShell(panel);
+  renderPanelShell(panel, { uid, data, context });
 
   const form = panel.querySelector('#prof-student-document-form');
   const showArchived = panel.querySelector('#prof-student-documents-show-archived');
+  const requestButton = panel.querySelector('#prof-request-student-documents-btn');
+
+  requestButton?.addEventListener('click', () => openStudentDocumentRequestModal({ panel, uid, data, context }));
 
   form?.addEventListener('submit', async (event) => {
     event.preventDefault();

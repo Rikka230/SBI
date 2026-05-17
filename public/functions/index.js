@@ -3280,3 +3280,166 @@ exports.subscribeNewsletter = onRequest({
     }
 });
 
+
+/* =======================================================================
+ * SBI 8.0P.167.71 — Demande de documents élève
+ * ======================================================================= */
+
+function normalizeRequestedDocumentItems(items = []) {
+    const allowedTypes = new Set([
+        'identity', 'domicile', 'photo', 'civil_liability', 'cv', 'diploma',
+        'school_certificate', 'parental_authorization', 'rib', 'signed_contract',
+        'employer_certificate', 'other'
+    ]);
+
+    if (!Array.isArray(items)) return [];
+
+    return items.slice(0, 18).map((item, index) => {
+        const type = cleanString(item?.type || `custom_${index + 1}`, 60).toLowerCase();
+        const safeType = allowedTypes.has(type) ? type : 'other';
+        const title = cleanString(item?.title || 'Document demandé', 140);
+        return {
+            type: safeType,
+            title: title || 'Document demandé',
+            category: cleanString(item?.category || 'administrative', 60) || 'administrative',
+            acceptLabel: cleanString(item?.acceptLabel || 'PDF, JPG ou PNG', 80) || 'PDF, JPG ou PNG',
+            required: item?.required !== false,
+            status: 'pending'
+        };
+    }).filter((item) => item.title);
+}
+
+function buildStudentDocumentRequestLink(requestId) {
+    const url = new URL('/student/document-request.html', SBI_SITE_URL);
+    url.searchParams.set('request', requestId);
+    return url.toString();
+}
+
+function buildStudentDocumentRequestMessageHtml({ studentName, items, requestLink, note }) {
+    const list = items.map((item) => `<li style="margin:0 0 8px 0;"><strong>${escapeHtml(item.title)}</strong> <span style="color:#667085;">${escapeHtml(item.acceptLabel || 'PDF, JPG ou PNG')}</span></li>`).join('');
+    return `
+        <p style="margin:0 0 16px 0;">L’équipe SBI a besoin de récupérer certains documents pour compléter ton dossier.</p>
+        <p style="margin:0 0 16px 0;">Merci de déposer les fichiers demandés depuis la page sécurisée ci-dessous.</p>
+        <div style="padding:14px 16px;border:1px solid #dce4f2;background:#f7f9fd;border-radius:12px;color:#253047;line-height:1.7;margin:18px 0;">
+            <strong style="color:#101828;">Documents demandés</strong>
+            <ul style="margin:12px 0 0 18px;padding:0;">${list}</ul>
+        </div>
+        ${note ? `<div style="padding:14px 16px;border:1px solid #dce4f2;background:#fff;border-radius:12px;color:#253047;line-height:1.7;margin:18px 0;"><strong style="color:#101828;">Message SBI</strong><br>${escapeHtmlMultiline(note)}</div>` : ''}
+        <p style="margin:22px 0;text-align:center;">
+            <a href="${escapeHtml(requestLink)}" style="display:inline-block;background:#0051ff;color:#ffffff;font-weight:bold;padding:13px 20px;border-radius:999px;text-decoration:none;">Déposer mes documents</a>
+        </p>
+        <p style="margin:0;color:#667085;font-size:14px;line-height:22px;">Si le bouton ne fonctionne pas, copie ce lien dans ton navigateur :<br>${escapeHtml(requestLink)}</p>`;
+}
+
+async function sendStudentDocumentRequestEmail({ student, items, requestLink, note, apiKey }) {
+    const email = cleanEmail(student.email);
+    if (!isValidEmail(email)) throw new Error('Email élève invalide.');
+
+    const studentName = getAccountDisplayName(student);
+    const htmlContent = renderSbiEmailTemplate({
+        prenom: student.prenom || studentName || 'à toi',
+        messageHtml: buildStudentDocumentRequestMessageHtml({ studentName, items, requestLink, note }),
+        nomExpediteur: 'L’équipe SBI',
+        posteExpediteur: 'Service administratif',
+        preheader: 'Documents demandés pour compléter ton dossier SBI.'
+    });
+
+    return sendBrevoEmail({
+        sender: { name: SBI_SENDER_NAME, email: SBI_SENDER_EMAIL },
+        to: [{ email, name: studentName || email }],
+        subject: 'SBI - Documents à déposer pour ton dossier',
+        htmlContent,
+        textContent: [
+            `Bonjour ${student.prenom || ''},`,
+            '',
+            'L’équipe SBI a besoin de récupérer certains documents pour compléter ton dossier.',
+            '',
+            ...items.map((item) => `- ${item.title} (${item.acceptLabel || 'PDF, JPG ou PNG'})`),
+            '',
+            `Lien : ${requestLink}`,
+            '',
+            'Bien cordialement,',
+            'L’équipe SBI'
+        ].join('\n')
+    }, apiKey);
+}
+
+exports.adminCreateStudentDocumentRequest = onCall({
+    region: 'europe-west1',
+    secrets: [BREVO_API_KEY],
+    timeoutSeconds: 30,
+    memory: '256MiB'
+}, async (request) => {
+    const db = admin.firestore();
+    const caller = await requireAdminCaller(request, db);
+    const data = request.data || {};
+    const studentUid = cleanString(data.studentUid || data.uid || '', 160);
+    const items = normalizeRequestedDocumentItems(data.documents || data.items || []);
+    const note = cleanMultiline(data.note || '', 1200);
+
+    if (!studentUid) throw new HttpsError('invalid-argument', 'UID élève manquant.');
+    if (!items.length) throw new HttpsError('invalid-argument', 'Aucun document demandé.');
+
+    const studentRef = db.collection('users').doc(studentUid);
+    const studentDoc = await studentRef.get();
+    if (!studentDoc.exists) throw new HttpsError('not-found', 'Compte élève introuvable.');
+
+    const student = studentDoc.data() || {};
+    const role = normalizeAccountRole(student.role);
+    if (role !== 'student') {
+        throw new HttpsError('failed-precondition', 'La demande de documents est disponible uniquement pour les comptes élèves.');
+    }
+
+    const requestRef = db.collection('studentDocumentRequests').doc();
+    const requestLink = buildStudentDocumentRequestLink(requestRef.id);
+    const createdAt = admin.firestore.FieldValue.serverTimestamp();
+
+    await requestRef.set({
+        studentUid,
+        studentEmail: cleanEmail(student.email),
+        studentName: getAccountDisplayName(student),
+        status: 'requested',
+        items,
+        note,
+        requestLink,
+        createdAt,
+        createdBy: caller.uid,
+        createdByEmail: caller.email,
+        updatedAt: createdAt,
+        visibility: 'student'
+    });
+
+    const apiKey = BREVO_API_KEY.value();
+    let warning = '';
+    try {
+        if (!apiKey) throw new Error('BREVO_API_KEY manquant.');
+        await sendStudentDocumentRequestEmail({ student, items, requestLink, note, apiKey });
+    } catch (error) {
+        warning = 'Demande créée, mais l’email élève n’a pas pu être envoyé.';
+        console.error('Erreur email demande documents SBI :', error.message, error.payload || '');
+    }
+
+    await safeWriteAccountAuditLog(db, {
+        type: 'student_documents.requested',
+        actorUid: caller.uid,
+        actorEmail: caller.email,
+        targetUid: studentUid,
+        targetEmail: cleanEmail(student.email),
+        targetRole: student.role || '',
+        changes: {
+            documents: {
+                requested: items.map((item) => item.title),
+                count: items.length,
+                requestId: requestRef.id
+            }
+        }
+    });
+
+    return {
+        success: true,
+        requestId: requestRef.id,
+        requestLink,
+        warning,
+        message: warning || 'Demande de documents envoyée.'
+    };
+});

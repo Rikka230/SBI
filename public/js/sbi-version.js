@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.70',
+  version: '8.0P.167.71',
   branch: 'main',
-  channel: 'P2I.3 STUDENT DOCUMENT VAULT ACTIONS',
-  stage: 'DIRECT DOWNLOAD DELETE RENAME AND IMAGE COMPRESSION',
+  channel: 'P2I.4 STUDENT DOCUMENT REQUESTS',
+  stage: 'REQUEST DOCUMENTS FROM STUDENTS',
   updatedAt: '2026-05-17',
-  label: 'SBI 8.0P.167.70 - STUDENT DOCUMENT VAULT ACTIONS'
+  label: 'SBI 8.0P.167.71 - STUDENT DOCUMENT REQUESTS'
 };
 
 export function getSbiVersionLabel() {

@@ -1,0 +1,30 @@
+:root { color-scheme: dark; --bg:#050913; --line:rgba(255,255,255,.11); --text:#f8fbff; --muted:#9aa8c7; --blue:#2a57ff; --green:#2ed573; --red:#ff6b6b; }
+* { box-sizing:border-box; }
+body { margin:0; min-height:100vh; font-family:Inter,Arial,Helvetica,sans-serif; background:radial-gradient(circle at 12% 8%, rgba(42,87,255,.28), transparent 30%), var(--bg); color:var(--text); }
+.sbi-doc-request-page { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:32px 16px; }
+.sbi-doc-request-shell { width:min(920px,100%); border:1px solid var(--line); border-radius:26px; background:linear-gradient(145deg, rgba(10,17,38,.96), rgba(3,8,24,.96)); box-shadow:0 28px 90px rgba(0,0,0,.52); padding:28px; }
+.sbi-doc-request-brand { display:flex; gap:18px; align-items:center; padding-bottom:22px; border-bottom:1px solid var(--line); }
+.sbi-doc-request-brand img { width:58px; height:58px; object-fit:contain; }
+.sbi-doc-request-brand p { margin:0 0 4px; color:#9fb2ff; text-transform:uppercase; letter-spacing:.08em; font-size:12px; font-weight:900; }
+.sbi-doc-request-brand h1 { margin:0; font-size:clamp(24px, 4vw, 38px); }
+.sbi-doc-request-status { margin:18px 0; color:var(--muted); line-height:1.55; }
+.sbi-doc-request-status[data-tone="success"] { color:var(--green); }
+.sbi-doc-request-status[data-tone="error"] { color:var(--red); }
+.sbi-doc-request-summary { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin:18px 0; }
+.sbi-doc-request-summary div { border:1px solid var(--line); border-radius:16px; background:rgba(255,255,255,.04); padding:14px; }
+.sbi-doc-request-summary span { display:block; color:var(--muted); font-size:12px; text-transform:uppercase; font-weight:900; letter-spacing:.06em; margin-bottom:6px; }
+.sbi-doc-request-summary strong { display:block; color:#fff; overflow-wrap:anywhere; }
+.sbi-doc-request-list { display:flex; flex-direction:column; gap:14px; }
+.sbi-doc-request-item { border:1px solid var(--line); border-radius:18px; background:rgba(255,255,255,.045); padding:16px; }
+.sbi-doc-request-item.is-submitted { border-color:rgba(46,213,115,.32); background:rgba(46,213,115,.055); }
+.sbi-doc-request-item__head { display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:12px; }
+.sbi-doc-request-item__head h3 { margin:0; font-size:18px; }
+.sbi-doc-request-item__head span { color:var(--muted); font-size:13px; }
+.sbi-doc-request-item em { font-style:normal; border-radius:999px; padding:5px 9px; background:rgba(42,87,255,.15); color:#dbe5ff; font-size:12px; font-weight:900; }
+.sbi-doc-request-item.is-submitted em { background:rgba(46,213,115,.14); color:#a8f7c3; }
+.sbi-doc-request-item input { width:100%; border:1px solid var(--line); border-radius:14px; background:rgba(3,7,18,.74); color:#fff; padding:12px; }
+.sbi-doc-request-actions { display:flex; justify-content:space-between; align-items:center; gap:14px; flex-wrap:wrap; margin-top:18px; }
+.sbi-doc-request-actions button { border:0; border-radius:999px; background:var(--blue); color:white; padding:13px 18px; font-weight:900; cursor:pointer; }
+.sbi-doc-request-actions button:disabled { opacity:.55; cursor:not-allowed; }
+.sbi-doc-request-note { color:var(--muted); font-size:14px; line-height:1.55; }
+@media (max-width:760px){ .sbi-doc-request-shell{padding:20px;border-radius:20px}.sbi-doc-request-summary{grid-template-columns:1fr}.sbi-doc-request-actions button{width:100%} }

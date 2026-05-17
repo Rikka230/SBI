@@ -375,3 +375,205 @@
     background: rgba(255,74,74,0.10);
     color: #ffb4b4;
 }
+
+/* --- SBI 8.0P.167.71 — Demande de documents à l’élève --- */
+.sbi-student-documents__header-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.65rem;
+    flex-wrap: wrap;
+}
+
+.sbi-student-documents__header-actions > span {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid rgba(42,87,255,0.32);
+    border-radius: 999px;
+    padding: 0.32rem 0.62rem;
+    background: rgba(42,87,255,0.12);
+    color: #dbe5ff;
+    font-size: 0.72rem;
+    font-weight: 900;
+    white-space: nowrap;
+}
+
+#prof-request-student-documents-btn {
+    border: 1px solid rgba(46, 213, 115, 0.42);
+    border-radius: 999px;
+    background: rgba(46, 213, 115, 0.12);
+    color: #a8f7c3;
+    padding: 0.58rem 0.85rem;
+    font-weight: 900;
+    cursor: pointer;
+}
+
+.sbi-doc-request-modal-open { overflow: hidden; }
+
+.sbi-doc-request-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 5000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+}
+
+.sbi-doc-request-modal.is-open { display: flex; }
+
+.sbi-doc-request-modal__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(3, 7, 18, 0.78);
+    backdrop-filter: blur(10px);
+}
+
+.sbi-doc-request-modal__panel {
+    position: relative;
+    z-index: 1;
+    width: min(960px, calc(100vw - 2rem));
+    max-height: min(86vh, 820px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid rgba(42,87,255,0.24);
+    border-radius: 22px;
+    background: linear-gradient(145deg, rgba(10,17,38,0.98), rgba(3,8,24,0.98));
+    box-shadow: 0 28px 90px rgba(0,0,0,0.55);
+}
+
+.sbi-doc-request-modal__header,
+.sbi-doc-request-modal__footer {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: flex-start;
+    padding: 1.2rem 1.35rem;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.sbi-doc-request-modal__footer {
+    border-top: 1px solid rgba(255,255,255,0.08);
+    border-bottom: 0;
+    align-items: center;
+}
+
+.sbi-doc-request-modal__header p {
+    margin: 0 0 0.25rem;
+    color: #9fb2ff;
+    font-size: 0.74rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.sbi-doc-request-modal__header h3 { margin: 0; color: #fff; }
+.sbi-doc-request-modal__close {
+    width: 38px;
+    height: 38px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.06);
+    color: #fff;
+    font-size: 1.4rem;
+    cursor: pointer;
+}
+
+.sbi-doc-request-modal__content {
+    overflow: auto;
+    padding: 1.25rem 1.35rem;
+}
+
+.sbi-doc-request-modal__intro {
+    padding: 0.95rem 1rem;
+    border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 14px;
+    background: rgba(255,255,255,0.04);
+    margin-bottom: 1rem;
+}
+
+.sbi-doc-request-modal__intro strong,
+.sbi-doc-request-modal__intro span { display: block; }
+.sbi-doc-request-modal__intro span { margin-top: 0.25rem; color: var(--text-muted); font-size: 0.84rem; line-height: 1.45; }
+
+.sbi-doc-request-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+}
+
+.sbi-doc-request-choice {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.75rem;
+    align-items: flex-start;
+    padding: 0.82rem;
+    border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 14px;
+    background: rgba(255,255,255,0.035);
+}
+
+.sbi-doc-request-choice strong,
+.sbi-doc-request-choice em { display: block; }
+.sbi-doc-request-choice strong { color: #fff; font-size: 0.9rem; }
+.sbi-doc-request-choice em { margin-top: 0.2rem; color: var(--text-muted); font-size: 0.76rem; font-style: normal; }
+
+.sbi-doc-request-custom {
+    display: block;
+    margin-top: 0.9rem;
+}
+
+.sbi-doc-request-custom span {
+    display: block;
+    color: var(--text-muted);
+    font-size: 0.72rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 0.35rem;
+}
+
+.sbi-doc-request-custom input,
+.sbi-doc-request-custom textarea {
+    width: 100%;
+    box-sizing: border-box;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 12px;
+    background: rgba(3,7,18,0.72);
+    color: #fff;
+    padding: 0.75rem 0.85rem;
+    outline: none;
+    font-family: inherit;
+}
+
+#sbi-doc-request-status { color: var(--text-muted); font-size: 0.82rem; }
+#sbi-doc-request-status[data-tone="success"] { color: #2ed573; }
+#sbi-doc-request-status[data-tone="error"] { color: #ff7777; }
+
+.sbi-doc-request-modal__primary,
+.sbi-doc-request-modal__ghost {
+    border-radius: 999px;
+    padding: 0.68rem 0.95rem;
+    font-weight: 900;
+    cursor: pointer;
+}
+
+.sbi-doc-request-modal__primary {
+    border: 1px solid rgba(42,87,255,0.58);
+    background: rgba(42,87,255,0.16);
+    color: #fff;
+}
+
+.sbi-doc-request-modal__ghost {
+    border: 1px solid rgba(255,255,255,0.14);
+    background: rgba(255,255,255,0.05);
+    color: var(--text-muted);
+}
+
+@media (max-width: 760px) {
+    .sbi-doc-request-grid { grid-template-columns: 1fr; }
+    .sbi-doc-request-modal { padding: 0.75rem; }
+    .sbi-doc-request-modal__footer { align-items: stretch; flex-direction: column; }
+    .sbi-doc-request-modal__footer > div { display:flex; gap:0.6rem; flex-direction:column; }
+}

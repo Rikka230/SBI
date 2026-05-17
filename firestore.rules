@@ -480,17 +480,6 @@ service cloud.firestore {
     }
 
     /* ============================================================
-       PROMOTIONS / COHORTES
-       ============================================================ */
-
-    match /promotions/{promotionId} {
-      allow get, list: if isAdmin();
-      allow create, update: if isAdmin();
-      allow delete: if false;
-    }
-
-
-    /* ============================================================
        COURSES
        ============================================================ */
 
@@ -564,6 +553,58 @@ service cloud.firestore {
       allow create: if canWriteProgressDoc(resultId, request.resource.data);
       allow update: if canWriteProgressDoc(resultId, resource.data)
         && canWriteProgressDoc(resultId, request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+
+    /* ============================================================
+       STUDENT DOCUMENTS / REQUESTS
+       ============================================================ */
+
+    match /studentDocuments/{documentId} {
+      allow get, list: if isAdmin()
+        || (isActiveUser()
+          && resource.data.keys().hasAny(['studentUid'])
+          && resource.data.studentUid == request.auth.uid);
+
+      allow create: if isAdmin()
+        || (isActiveUser()
+          && request.resource.data.keys().hasAny(['studentUid'])
+          && request.resource.data.studentUid == request.auth.uid
+          && request.resource.data.keys().hasAny(['source'])
+          && request.resource.data.source == 'student_request');
+
+      allow update: if isAdmin()
+        || (isActiveUser()
+          && resource.data.keys().hasAny(['studentUid'])
+          && resource.data.studentUid == request.auth.uid
+          && request.resource.data.studentUid == resource.data.studentUid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'filePath', 'fileName', 'status', 'submittedAt', 'uploadedAt', 'updatedAt'
+          ]));
+
+      allow delete: if isAdmin();
+    }
+
+    match /studentDocumentRequests/{requestId} {
+      allow get: if isAdmin()
+        || (isActiveUser()
+          && resource.data.keys().hasAny(['studentUid'])
+          && resource.data.studentUid == request.auth.uid);
+
+      allow list: if isAdmin();
+
+      allow create: if isAdmin();
+
+      allow update: if isAdmin()
+        || (isActiveUser()
+          && resource.data.keys().hasAny(['studentUid'])
+          && resource.data.studentUid == request.auth.uid
+          && request.resource.data.studentUid == resource.data.studentUid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'items', 'status', 'submittedAt', 'updatedAt'
+          ]));
+
       allow delete: if isAdmin();
     }
 

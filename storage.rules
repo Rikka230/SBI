@@ -37,15 +37,19 @@ service firebase.storage {
     }
 
     function canReadStudentDocument(studentId) {
-      return isAdmin();
+      return isAdmin() || (isActiveUser() && request.auth.uid == studentId);
     }
 
     function canManageStudentDocument(studentId) {
       return isAdmin();
     }
 
+    function canStudentUploadOwnDocument(studentId) {
+      return isActiveUser() && request.auth.uid == studentId;
+    }
+
     function validStudentDocumentUpload(studentId, documentId) {
-      return isAdmin()
+      return (isAdmin() || canStudentUploadOwnDocument(studentId))
         && request.resource.size < 40 * 1024 * 1024
         && request.resource.metadata.keys().hasAny(['uploadedBy'])
         && request.resource.metadata.keys().hasAny(['studentUid'])
@@ -329,7 +333,9 @@ service firebase.storage {
     match /student-documents/{studentId}/{documentId}/{fileName} {
       allow read: if canReadStudentDocument(studentId);
 
-      allow create, update: if canManageStudentDocument(studentId)
+      allow create: if validStudentDocumentUpload(studentId, documentId);
+
+      allow update: if canManageStudentDocument(studentId)
         && validStudentDocumentUpload(studentId, documentId);
 
       allow delete: if canManageStudentDocument(studentId);
