@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.75',
+  version: '8.0P.167.76',
   branch: 'main',
-  channel: 'P2I.4 STUDENT DOCUMENT FINAL LOGS UX',
-  stage: 'FINAL LOGS NOTIFICATIONS MODALS FILE INPUT UX',
+  channel: 'P2I.4 STUDENT DOCUMENT REQUEST EXPIRATION',
+  stage: 'REQUEST EXPIRATION AND CLEANUP',
   updatedAt: '2026-05-17',
-  label: 'SBI 8.0P.167.75 - STUDENT DOCUMENT FINAL LOGS UX'
+  label: 'SBI 8.0P.167.76 - STUDENT DOCUMENT REQUEST EXPIRATION'
 };
 
 export function getSbiVersionLabel() {

@@ -11,6 +11,7 @@
  * 8.0P.165 : affichage relances automatiques et escalade.
  * 8.0P.167.64 : fix syntax rendu promotions + cible profil admin PJAX stable.
  * 8.0P.167.75 : logs coffre documents + UX finale modales/fichier.
+ * 8.0P.167.76 : expiration et nettoyage automatique des demandes documents.
  * 8.0P.163 : cache-bust du rendu profil pour notes internes persistantes.
  * =======================================================================
  */
@@ -23,7 +24,7 @@ import { waitForSbiComponents } from '/js/profile/profile-utils.js?v=8.0P.167.74
 import { hydrateLoggedInTopbar } from '/js/profile/profile-topbar.js';
 import { renderProfileShell } from '/js/profile/profile-render.js?v=8.0P.167.74';
 import { renderUserFormations } from '/js/profile/profile-formations.js';
-import { renderStudentDocumentsPanel } from '/js/profile/profile-student-documents.js?v=8.0P.167.75';
+import { renderStudentDocumentsPanel } from '/js/profile/profile-student-documents.js?v=8.0P.167.76';
 import { renderLearningTracking } from '/js/profile/profile-tracking.js';
 import { setupSaveButtons, setupSecurityAndEditMode } from '/js/profile/profile-edit.js';
 import { initProfileAvatarCropper } from '/js/profile/profile-avatar-cropper.js';

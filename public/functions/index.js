@@ -3282,7 +3282,7 @@ exports.subscribeNewsletter = onRequest({
 
 
 /* =======================================================================
- * SBI 8.0P.167.71 — Demande de documents élève
+ * SBI 8.0P.167.76 — Demande de documents élève + expiration
  * ======================================================================= */
 
 function normalizeRequestedDocumentItems(items = []) {
@@ -3313,6 +3313,65 @@ function buildStudentDocumentRequestLink(requestId) {
     const url = new URL('/student/document-request.html', SBI_SITE_URL);
     url.searchParams.set('request', requestId);
     return url.toString();
+}
+
+const STUDENT_DOCUMENT_REQUEST_ACTIVE_DAYS = 45;
+const STUDENT_DOCUMENT_REQUEST_CLOSED_RETENTION_DAYS = 30;
+const STUDENT_DOCUMENT_REQUEST_PURGE_BATCH_LIMIT = 200;
+const SBI_DAY_MS = 24 * 60 * 60 * 1000;
+
+function buildFutureTimestamp(days = 30) {
+    return admin.firestore.Timestamp.fromDate(new Date(Date.now() + (Number(days) || 30) * SBI_DAY_MS));
+}
+
+function getTimestampMillis(value) {
+    if (!value) return 0;
+    if (typeof value.toMillis === 'function') return value.toMillis();
+    if (typeof value.toDate === 'function') return value.toDate().getTime();
+    if (value instanceof Date) return value.getTime();
+    if (typeof value === 'number') return value;
+    if (typeof value === 'string') {
+        const parsed = Date.parse(value);
+        return Number.isNaN(parsed) ? 0 : parsed;
+    }
+    if (typeof value.seconds === 'number') return value.seconds * 1000;
+    return 0;
+}
+
+function serializeTimestampForClient(value) {
+    const millis = getTimestampMillis(value);
+    return millis ? new Date(millis).toISOString() : '';
+}
+
+function isStudentDocumentRequestActiveStatus(status = '') {
+    return ['requested', 'partial'].includes(cleanString(status || '', 40).toLowerCase());
+}
+
+function isStudentDocumentRequestClosedStatus(status = '') {
+    return ['canceled', 'cancelled', 'completed', 'validated', 'archived', 'expired'].includes(cleanString(status || '', 40).toLowerCase());
+}
+
+function isStudentDocumentRequestPastExpiry(requestData = {}, nowMs = Date.now()) {
+    const status = cleanString(requestData.status || 'requested', 40).toLowerCase();
+    if (!isStudentDocumentRequestActiveStatus(status)) return false;
+    const expiresAtMs = getTimestampMillis(requestData.requestExpiresAt);
+    return expiresAtMs > 0 && expiresAtMs <= nowMs;
+}
+
+async function markStudentDocumentRequestExpired(requestRef, requestData = {}) {
+    const now = admin.firestore.FieldValue.serverTimestamp();
+    await requestRef.set({
+        status: 'expired',
+        expiredAt: now,
+        cleanupAt: buildFutureTimestamp(STUDENT_DOCUMENT_REQUEST_CLOSED_RETENTION_DAYS),
+        updatedAt: now
+    }, { merge: true });
+
+    return {
+        ...requestData,
+        status: 'expired',
+        expiredAt: new Date().toISOString()
+    };
 }
 
 function buildStudentDocumentRequestMessageHtml({ studentName, items, requestLink, note }) {
@@ -3398,6 +3457,9 @@ function serializeStudentDocumentRequestForClient(requestId, requestData = {}) {
         note: cleanMultiline(requestData.note || '', 1200),
         requestLink: cleanString(requestData.requestLink || '', 600),
         visibility: cleanString(requestData.visibility || 'student', 40),
+        requestExpiresAt: serializeTimestampForClient(requestData.requestExpiresAt),
+        cleanupAt: serializeTimestampForClient(requestData.cleanupAt),
+        expiredAt: serializeTimestampForClient(requestData.expiredAt),
         items
     };
 }
@@ -3431,9 +3493,14 @@ exports.studentGetDocumentRequest = onCall({
         throw new HttpsError('failed-precondition', 'Compte utilisateur introuvable.');
     }
 
-    const requestData = requestDoc.data() || {};
+    let requestData = requestDoc.data() || {};
     if (cleanString(requestData.studentUid || '', 160) !== uid) {
         throw new HttpsError('permission-denied', 'Cette demande ne correspond pas au compte connecté.');
+    }
+
+    if (isStudentDocumentRequestPastExpiry(requestData)) {
+        requestData = await markStudentDocumentRequestExpired(requestDoc.ref, requestData);
+        await resolveStudentDocumentRequestNotifications(db, requestId).catch(() => {});
     }
 
     const userData = userDoc.data() || {};
@@ -3667,9 +3734,14 @@ exports.studentNotifyDocumentRequestSubmitted = onCall({
     const requestDoc = await requestRef.get();
     if (!requestDoc.exists) throw new HttpsError('not-found', 'Demande introuvable.');
 
-    const requestData = requestDoc.data() || {};
+    let requestData = requestDoc.data() || {};
     if (cleanString(requestData.studentUid || '', 160) !== uid) {
         throw new HttpsError('permission-denied', 'Cette demande ne correspond pas au compte connecté.');
+    }
+
+    if (isStudentDocumentRequestPastExpiry(requestData)) {
+        requestData = await markStudentDocumentRequestExpired(requestDoc.ref, requestData);
+        await resolveStudentDocumentRequestNotifications(db, requestId).catch(() => {});
     }
 
     const items = Array.isArray(requestData.items) ? requestData.items.map(serializeStudentDocumentRequestItem) : [];
@@ -3765,6 +3837,8 @@ exports.adminCancelStudentDocumentRequest = onCall({
         canceledAt: now,
         canceledBy: caller.uid,
         canceledByEmail: caller.email,
+        cleanupAt: buildFutureTimestamp(STUDENT_DOCUMENT_REQUEST_CLOSED_RETENTION_DAYS),
+        requestExpiresAt: admin.firestore.FieldValue.delete(),
         updatedAt: now
     }, { merge: true });
 
@@ -4011,7 +4085,23 @@ exports.adminReviewStudentDocumentRequest = onCall({
         lastReviewedByEmail: caller.email,
         reviewNote: note,
         updatedAt: now,
-        ...(completed ? { completedAt: now, validatedAt: now, validatedBy: caller.uid, validatedByEmail: caller.email } : { adminNotifiedAt: admin.firestore.FieldValue.delete(), adminNotificationWarning: admin.firestore.FieldValue.delete(), completedAt: admin.firestore.FieldValue.delete(), validatedAt: admin.firestore.FieldValue.delete() })
+        ...(completed
+            ? {
+                completedAt: now,
+                validatedAt: now,
+                validatedBy: caller.uid,
+                validatedByEmail: caller.email,
+                cleanupAt: buildFutureTimestamp(STUDENT_DOCUMENT_REQUEST_CLOSED_RETENTION_DAYS),
+                requestExpiresAt: admin.firestore.FieldValue.delete()
+            }
+            : {
+                adminNotifiedAt: admin.firestore.FieldValue.delete(),
+                adminNotificationWarning: admin.firestore.FieldValue.delete(),
+                completedAt: admin.firestore.FieldValue.delete(),
+                validatedAt: admin.firestore.FieldValue.delete(),
+                cleanupAt: admin.firestore.FieldValue.delete(),
+                requestExpiresAt: buildFutureTimestamp(STUDENT_DOCUMENT_REQUEST_ACTIVE_DAYS)
+            })
     }, { merge: true });
 
     await batch.commit();
@@ -4042,6 +4132,64 @@ exports.adminReviewStudentDocumentRequest = onCall({
 
     return { success: true, requestId, status: nextStatus, rejectedCount: rejectedItems.length, validatedCount: validatedItems.length, warning, message: warning || (completed ? 'Demande validée.' : 'Documents à refaire redemandés à l’élève.') };
 });
+
+
+exports.cleanupStudentDocumentRequests = onSchedule({
+    region: 'europe-west1',
+    schedule: 'every day 03:20',
+    timeZone: 'Europe/Paris',
+    timeoutSeconds: 60,
+    memory: '256MiB'
+}, async () => {
+    const db = admin.firestore();
+    const nowTimestamp = admin.firestore.Timestamp.now();
+    const now = admin.firestore.FieldValue.serverTimestamp();
+    let expiredCount = 0;
+    let deletedCount = 0;
+
+    const expirableSnap = await db.collection('studentDocumentRequests')
+        .where('requestExpiresAt', '<=', nowTimestamp)
+        .limit(STUDENT_DOCUMENT_REQUEST_PURGE_BATCH_LIMIT)
+        .get();
+
+    if (!expirableSnap.empty) {
+        const batch = db.batch();
+        expirableSnap.forEach((docSnap) => {
+            const data = docSnap.data() || {};
+            const status = cleanString(data.status || 'requested', 40).toLowerCase();
+            if (!isStudentDocumentRequestActiveStatus(status)) return;
+            batch.set(docSnap.ref, {
+                status: 'expired',
+                expiredAt: now,
+                cleanupAt: buildFutureTimestamp(STUDENT_DOCUMENT_REQUEST_CLOSED_RETENTION_DAYS),
+                updatedAt: now
+            }, { merge: true });
+            expiredCount += 1;
+        });
+        if (expiredCount > 0) await batch.commit();
+    }
+
+    const cleanupSnap = await db.collection('studentDocumentRequests')
+        .where('cleanupAt', '<=', nowTimestamp)
+        .limit(STUDENT_DOCUMENT_REQUEST_PURGE_BATCH_LIMIT)
+        .get();
+
+    if (!cleanupSnap.empty) {
+        const batch = db.batch();
+        cleanupSnap.forEach((docSnap) => {
+            const data = docSnap.data() || {};
+            const status = cleanString(data.status || '', 40).toLowerCase();
+            if (!isStudentDocumentRequestClosedStatus(status)) return;
+            batch.delete(docSnap.ref);
+            deletedCount += 1;
+        });
+        if (deletedCount > 0) await batch.commit();
+    }
+
+    console.log(`SBI cleanupStudentDocumentRequests: ${expiredCount} expirée(s), ${deletedCount} supprimée(s).`);
+    return { expiredCount, deletedCount };
+});
+
 
 exports.adminCreateStudentDocumentRequest = onCall({
     region: 'europe-west1',
@@ -4081,6 +4229,7 @@ exports.adminCreateStudentDocumentRequest = onCall({
         items,
         note,
         requestLink,
+        requestExpiresAt: buildFutureTimestamp(STUDENT_DOCUMENT_REQUEST_ACTIVE_DAYS),
         createdAt,
         createdBy: caller.uid,
         createdByEmail: caller.email,

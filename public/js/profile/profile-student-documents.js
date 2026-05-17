@@ -69,6 +69,7 @@ const DOCUMENT_REQUEST_STATUS_LABELS = {
   validated: 'Validée',
   canceled: 'Annulée',
   cancelled: 'Annulée',
+  expired: 'Expirée',
   archived: 'Archivé'
 };
 
@@ -751,7 +752,7 @@ function renderStudentDocumentRequests(panel, requests = [], db = null, uid = ''
   const container = panel.querySelector('#prof-student-document-requests');
   if (!container) return;
 
-  const hiddenStatuses = new Set(['archived', 'canceled', 'cancelled', 'completed', 'validated']);
+  const hiddenStatuses = new Set(['archived', 'canceled', 'cancelled', 'completed', 'validated', 'expired']);
   const activeRequests = requests.filter((request) => !hiddenStatuses.has(String(request.status || '').toLowerCase()));
   if (!activeRequests.length) {
     container.innerHTML = '';

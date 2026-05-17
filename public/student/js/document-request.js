@@ -125,6 +125,10 @@ function isRequestCanceled(request = {}) {
   return ['canceled', 'cancelled', 'archived'].includes(String(request.status || '').toLowerCase());
 }
 
+function isRequestExpired(request = {}) {
+  return String(request.status || '').toLowerCase() === 'expired';
+}
+
 function isRequestValidated(request = {}) {
   return ['completed', 'validated'].includes(String(request.status || '').toLowerCase());
 }
@@ -158,7 +162,9 @@ function renderRequest(request, userData) {
   const submittedCount = items.filter((item) => item.status === 'submitted' || item.status === 'validated').length;
   const completed = isRequestComplete(request);
   const canceled = isRequestCanceled(request);
-  const hasPendingRequired = !canceled && getRequiredItems(items).some((item) => item.status !== 'submitted' && item.status !== 'validated');
+  const expired = isRequestExpired(request);
+  const inactive = canceled || expired;
+  const hasPendingRequired = !inactive && getRequiredItems(items).some((item) => item.status !== 'submitted' && item.status !== 'validated');
 
   content.innerHTML = `
     <div class="sbi-doc-request-summary">
@@ -170,6 +176,10 @@ function renderRequest(request, userData) {
     ${canceled ? `
       <div class="sbi-doc-request-complete is-canceled">
         Cette demande a été annulée par l’équipe SBI. Aucun dépôt n’est attendu sur ce lien.
+      </div>
+    ` : expired ? `
+      <div class="sbi-doc-request-complete is-canceled">
+        Cette demande a expiré. Si tu dois encore déposer des documents, contacte l’équipe SBI pour recevoir une nouvelle demande.
       </div>
     ` : completed ? `
       <div class="sbi-doc-request-complete">
@@ -183,7 +193,7 @@ function renderRequest(request, userData) {
       ${items.map((item, index) => {
         const sent = item.status === 'submitted' || item.status === 'validated';
         return `
-          <article class="sbi-doc-request-item ${sent ? 'is-submitted' : ''} ${canceled ? 'is-canceled' : ''}" data-index="${index}">
+          <article class="sbi-doc-request-item ${sent ? 'is-submitted' : ''} ${inactive ? 'is-canceled' : ''}" data-index="${index}">
             <div class="sbi-doc-request-item__head">
               <div>
                 <h3>${escapeHTML(item.title || 'Document demandé')}</h3>
@@ -192,7 +202,7 @@ function renderRequest(request, userData) {
               <em>${item.status === 'validated' ? 'Validé' : sent ? 'Envoyé' : item.reviewNote ? 'À refaire' : 'À fournir'}</em>
             </div>
             ${!sent && item.reviewNote ? `<p class="sbi-doc-request-review-note">${escapeHTML(item.reviewNote)}</p>` : ''}
-            <input type="file" accept=".pdf,image/*,application/pdf" ${sent || canceled ? 'disabled' : ''}>
+            <input type="file" accept=".pdf,image/*,application/pdf" ${sent || inactive ? 'disabled' : ''}>
           </article>
         `;
       }).join('')}
@@ -202,18 +212,20 @@ function renderRequest(request, userData) {
       <span class="sbi-doc-request-note">
         ${canceled
           ? 'Cette demande n’est plus active.'
-          : completed
-            ? 'Ton lien reste consultable, mais le dossier a déjà été transmis.'
-            : 'Tu peux revenir plus tard avec le même lien tant que les documents obligatoires ne sont pas tous envoyés.'}
+          : expired
+            ? 'Cette demande a expiré. Demande un nouveau lien à SBI si nécessaire.'
+            : completed
+              ? 'Ton lien reste consultable, mais le dossier a déjà été transmis.'
+              : 'Tu peux revenir plus tard avec le même lien tant que les documents obligatoires ne sont pas tous envoyés.'}
       </span>
       <button id="student-doc-request-submit" type="button" ${!hasPendingRequired ? 'disabled' : ''}>
-        ${canceled ? 'Demande annulée' : completed ? (isRequestValidated(request) ? 'Dossier validé' : 'Dossier transmis') : 'Envoyer les documents'}
+        ${canceled ? 'Demande annulée' : expired ? 'Demande expirée' : completed ? (isRequestValidated(request) ? 'Dossier validé' : 'Dossier transmis') : 'Envoyer les documents'}
       </button>
     </div>
   `;
 
   content.querySelector('#student-doc-request-submit')?.addEventListener('click', () => {
-    if (!isRequestComplete(activeRequest) && !isRequestCanceled(activeRequest)) submitDocuments(activeRequest, activeUserData);
+    if (!isRequestComplete(activeRequest) && !isRequestCanceled(activeRequest) && !isRequestExpired(activeRequest)) submitDocuments(activeRequest, activeUserData);
   });
 }
 
@@ -221,6 +233,10 @@ async function submitDocuments(request, userData) {
   const requestId = getRequestId();
   if (isRequestCanceled(request)) {
     setStatus('Cette demande a été annulée par SBI.', 'error');
+    return;
+  }
+  if (isRequestExpired(request)) {
+    setStatus('Cette demande a expiré. Demande un nouveau lien à SBI si nécessaire.', 'error');
     return;
   }
   const items = Array.isArray(request.items) ? request.items : [];
@@ -403,6 +419,8 @@ onAuthStateChanged(auth, async (user) => {
 
     if (isRequestCanceled(request)) {
       setStatus('Cette demande de documents a été annulée par SBI.', 'error');
+    } else if (isRequestExpired(request)) {
+      setStatus('Cette demande de documents a expiré. Contacte SBI pour recevoir une nouvelle demande si nécessaire.', 'error');
     } else if (isRequestComplete(request)) {
       setStatus('Documents déjà transmis. Tu peux consulter le récapitulatif ci-dessous.', 'success');
     } else {
@@ -411,7 +429,7 @@ onAuthStateChanged(auth, async (user) => {
 
     renderRequest(request, userData);
 
-    if (!isRequestCanceled(request) && isRequestComplete(request)) {
+    if (!isRequestCanceled(request) && !isRequestExpired(request) && isRequestComplete(request)) {
       notifyAdminIfRequestComplete(requestId);
     }
   } catch (error) {
