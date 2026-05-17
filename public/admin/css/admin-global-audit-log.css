@@ -1,4 +1,4 @@
-/* SBI 8.0P.167.34 - Journal admin global */
+/* SBI 8.0P.167.35 - Journal admin global polish */
 
 .sbi-audit-view {
   display: flex;
@@ -68,6 +68,27 @@
   background: rgba(0, 0, 0, 0.28);
   color: #fff;
   outline: none;
+}
+
+.sbi-audit-toolbar select {
+  appearance: none;
+  cursor: pointer;
+  padding-right: 2.6rem;
+  background:
+    linear-gradient(45deg, transparent 50%, #dbe5ff 50%) calc(100% - 18px) 50% / 6px 6px no-repeat,
+    linear-gradient(135deg, #dbe5ff 50%, transparent 50%) calc(100% - 13px) 50% / 6px 6px no-repeat,
+    linear-gradient(145deg, rgba(42, 87, 255, 0.14), rgba(0, 0, 0, 0.32));
+}
+
+.sbi-audit-toolbar select option {
+  background: #0b1020;
+  color: #dbe5ff;
+  font-weight: 700;
+}
+
+.sbi-audit-toolbar select option:checked {
+  background: #17357a;
+  color: #fff;
 }
 
 .sbi-audit-toolbar input:focus,
@@ -189,6 +210,7 @@
 }
 
 .sbi-audit-item-actions a,
+.sbi-audit-item-actions button,
 .sbi-audit-item-actions span {
   display: inline-flex;
   align-items: center;
@@ -202,6 +224,16 @@
   color: #dbe5ff;
   border: 1px solid rgba(42, 87, 255, 0.32);
   background: rgba(42, 87, 255, 0.1);
+}
+
+.sbi-audit-item-actions button {
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.sbi-audit-item-actions button:hover {
+  border-color: rgba(42, 87, 255, 0.62);
+  background: rgba(42, 87, 255, 0.2);
 }
 
 .sbi-audit-item-actions span {
@@ -244,6 +276,7 @@
   }
 
   .sbi-audit-item-actions a,
+  .sbi-audit-item-actions button,
   .sbi-audit-item-actions span {
     width: 100%;
   }

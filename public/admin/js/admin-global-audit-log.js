@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.167.34 / P2H.2-G
+ * SBI 8.0P.167.35 / P2H.2-G.1
  * Journal admin global.
  *
  * Lecture ponctuelle et paginée de accountAuditLogs.
@@ -21,6 +21,7 @@ import {
 
 const PAGE_SIZE = 60;
 const MAX_DETAIL_LENGTH = 220;
+const PROFILE_RETURN_TARGET = 'view-audit-log';
 
 let currentUser = null;
 let currentProfile = null;
@@ -229,12 +230,65 @@ function renderStatCard(label, value) {
   `;
 }
 
+function canOpenProfileFromLog(log = {}) {
+  if (!log.targetUid) return false;
+
+  /*
+   * Les logs de suppression gardent parfois l'ancien UID.
+   * On n'ouvre pas une fiche qui n'existe plus : cela donnait un profil vide.
+   */
+  return log.type !== 'account.deleted';
+}
+
+function openAuditProfile(uid) {
+  if (!uid) return;
+
+  const href = `/admin/admin-profile.html?id=${encodeURIComponent(uid)}`;
+
+  sessionStorage.setItem('sbiAdminReturnTarget', PROFILE_RETURN_TARGET);
+  sessionStorage.setItem('sbiAdminReturnFromProfile', String(Date.now()));
+
+  /*
+   * Navigation volontairement classique.
+   * Le profil admin a besoin de son bootstrap complet, donc on évite
+   * l'interception PJAX/data-sbi-href depuis la vue Journal.
+   */
+  window.location.assign(href);
+}
+
+function getProfileActionMarkup(log = {}) {
+  if (canOpenProfileFromLog(log)) {
+    return `<button type="button" class="sbi-audit-profile-btn" data-audit-profile-uid="${escapeHtml(log.targetUid)}">Profil</button>`;
+  }
+
+  if (log.targetUid && log.type === 'account.deleted') {
+    return '<span>Supprimé</span>';
+  }
+
+  return '<span>Sans profil</span>';
+}
+
+function bindAuditProfileButtons() {
+  const list = document.getElementById('audit-log-list');
+  if (!list || list.dataset.sbiAuditProfileBound === 'true') return;
+
+  list.dataset.sbiAuditProfileBound = 'true';
+  list.addEventListener('click', (event) => {
+    const button = event.target?.closest?.('[data-audit-profile-uid]');
+    if (!button) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    openAuditProfile(button.getAttribute('data-audit-profile-uid'));
+  }, true);
+}
+
 function renderLogItem(log = {}) {
   const meta = getTypeMeta(log.type);
   const actor = getActorLabel(log);
   const target = getTargetLabel(log);
   const details = getLogDetails(log);
-  const profileHref = log.targetUid ? `/admin/admin-profile.html?id=${encodeURIComponent(log.targetUid)}` : '';
 
   return `
     <article class="sbi-audit-item" style="--audit-color:${meta.color};">
@@ -250,7 +304,7 @@ function renderLogItem(log = {}) {
         ${details ? `<p>${escapeHtml(truncate(details))}</p>` : ''}
       </div>
       <div class="sbi-audit-item-actions">
-        ${profileHref ? `<a href="${profileHref}" data-sbi-href="${profileHref}">Profil</a>` : '<span>Sans profil</span>'}
+        ${getProfileActionMarkup(log)}
       </div>
     </article>
   `;
@@ -369,6 +423,7 @@ function mount() {
   document.getElementById('audit-load-more-btn')?.addEventListener('click', () => loadAuditLogs());
   document.getElementById('audit-search')?.addEventListener('input', render);
   document.getElementById('audit-type-filter')?.addEventListener('change', render);
+  bindAuditProfileButtons();
 
   window.addEventListener('sbi:admin-tab-changed', (event) => {
     if (event?.detail?.tab === 'view-audit-log' && isAdminLike(currentProfile) && !hasLoadedOnce) {
