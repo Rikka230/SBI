@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.46',
+  version: '8.0P.167.47',
   branch: 'main',
-  channel: 'PROFILE ACTIVITY CONTRAST FIX',
-  stage: 'TEACHER STUDENT PROFILE ACTIVITY TEXT CONTRAST',
+  channel: 'PROFILE PJAX CLASS FIX',
+  stage: 'KEEP PROFILE PAGE CLASS ADMIN ONLY',
   updatedAt: '2026-05-16',
-  label: 'SBI 8.0P.167.46 - TEACHER STUDENT PROFILE ACTIVITY TEXT CONTRAST'
+  label: 'SBI 8.0P.167.47 - KEEP PROFILE PAGE CLASS ADMIN ONLY'
 };
 
 export function getSbiVersionLabel() {

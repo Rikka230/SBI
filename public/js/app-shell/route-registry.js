@@ -320,7 +320,7 @@ async function mountAdminProfile({ url }) {
   window.__SBI_APP_SHELL_MOUNTING_PROFILE = true;
 
   try {
-    const module = await import('/js/profile-core.js?v=8.0P.167.43');
+    const module = await import('/js/profile-core.js?v=8.0P.167.47');
     const cleanupProfile = module.mountProfileCore?.({ source: 'pjax-admin-profile' });
 
     if (typeof cleanupProfile === 'function') {
@@ -410,7 +410,7 @@ async function mountStudentProfile({ url }) {
   await ensureDocumentStyles(doc, url.href);
   await loadScriptOnce(CROPPER_SCRIPT, { globalName: 'Cropper' });
 
-  applyBodyRouteClassesFromDocument(doc, ['sbi-profile-page', 'sbi-student-surface', 'no-right-panel']);
+  applyBodyRouteClassesFromDocument(doc, ['sbi-student-surface', 'no-right-panel']);
   replaceMainFromDocument(doc);
   const cleanupCropModal = replaceRouteNodeFromDocument(doc, '#crop-modal');
   const cleanupTabs = bindProfileTabs();
@@ -421,7 +421,7 @@ async function mountStudentProfile({ url }) {
   window.__SBI_APP_SHELL_MOUNTING_PROFILE = true;
 
   try {
-    const module = await import('/js/profile-core.js?v=8.0P.167.43');
+    const module = await import('/js/profile-core.js?v=8.0P.167.47');
     const cleanupProfile = module.mountProfileCore?.({ source: 'pjax-student-profile' });
 
     if (typeof cleanupProfile === 'function') registerCleanup(cleanupProfile, 'student-profile-core');
@@ -507,7 +507,7 @@ async function mountTeacherProfile({ url }) {
   await ensureDocumentStyles(doc, url.href);
   await loadScriptOnce(CROPPER_SCRIPT, { globalName: 'Cropper' });
 
-  applyBodyRouteClassesFromDocument(doc, ['sbi-profile-page', 'sbi-teacher-surface', 'no-right-panel']);
+  applyBodyRouteClassesFromDocument(doc, ['sbi-teacher-surface', 'no-right-panel']);
   replaceMainFromDocument(doc);
   const cleanupCropModal = replaceRouteNodeFromDocument(doc, '#crop-modal');
   const cleanupTabs = bindProfileTabs();
@@ -518,7 +518,7 @@ async function mountTeacherProfile({ url }) {
   window.__SBI_APP_SHELL_MOUNTING_PROFILE = true;
 
   try {
-    const module = await import('/js/profile-core.js?v=8.0P.167.43');
+    const module = await import('/js/profile-core.js?v=8.0P.167.47');
     const cleanupProfile = module.mountProfileCore?.({ source: 'pjax-teacher-profile' });
 
     if (typeof cleanupProfile === 'function') registerCleanup(cleanupProfile, 'teacher-profile-core');
