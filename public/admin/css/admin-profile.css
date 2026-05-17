@@ -228,3 +228,314 @@
     cursor: not-allowed !important;
     transform: none !important;
 }
+
+/* --- SBI 8.0P.167.64 — Bloc promotion élève + picker searchable --- */
+.sbi-profile-promotion-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.sbi-profile-promotion-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+        radial-gradient(circle at 18% 0%, rgba(42, 87, 255, 0.16), transparent 34%),
+        linear-gradient(135deg, rgba(42, 87, 255, 0.08), rgba(255,255,255,0.015));
+    opacity: 0.9;
+}
+
+.sbi-profile-promotion-card > * {
+    position: relative;
+    z-index: 1;
+}
+
+.sbi-profile-promotion-card__head,
+.sbi-profile-promotion-card__actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.sbi-profile-promotion-card__head h4 {
+    margin: 0;
+    color: var(--text-main);
+}
+
+.sbi-profile-promotion-card__badge {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid rgba(42, 87, 255, 0.32);
+    border-radius: 999px;
+    padding: 0.26rem 0.55rem;
+    background: rgba(42, 87, 255, 0.12);
+    color: #dbe5ff;
+    font-size: 0.72rem;
+    font-weight: 900;
+}
+
+.sbi-profile-promotion-card__badge.is-archived {
+    border-color: rgba(251, 188, 4, 0.36);
+    background: rgba(251, 188, 4, 0.12);
+    color: #ffe39a;
+}
+
+.sbi-profile-promotion-card__current {
+    margin: 0.95rem 0;
+}
+
+.sbi-profile-promotion-card__current strong {
+    display: block;
+    color: #fff;
+    font-size: 0.96rem;
+    line-height: 1.3;
+}
+
+.sbi-profile-promotion-card__current p,
+.sbi-profile-promotion-card__status {
+    margin: 0.35rem 0 0;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    line-height: 1.45;
+}
+
+.sbi-profile-promotion-card__status[data-tone="success"] { color: #2ed573; }
+.sbi-profile-promotion-card__status[data-tone="error"] { color: #ff7777; }
+
+.sbi-profile-promotion-card__primary,
+.sbi-profile-promotion-card__ghost {
+    border-radius: 999px;
+    padding: 0.58rem 0.82rem;
+    font-weight: 900;
+    cursor: pointer;
+    transition: 0.18s ease;
+}
+
+.sbi-profile-promotion-card__primary {
+    border: 1px solid rgba(42, 87, 255, 0.58);
+    background: rgba(42, 87, 255, 0.18);
+    color: #fff;
+}
+
+.sbi-profile-promotion-card__ghost {
+    border: 1px solid rgba(255,255,255,0.14);
+    background: rgba(255,255,255,0.05);
+    color: var(--text-muted);
+}
+
+.sbi-profile-promotion-card__primary:hover,
+.sbi-profile-promotion-card__ghost:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.08);
+}
+
+.sbi-promotion-picker-open {
+    overflow: hidden;
+}
+
+.sbi-promotion-picker-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 4000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+}
+
+.sbi-promotion-picker-modal.is-open {
+    display: flex;
+}
+
+.sbi-promotion-picker-modal__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(3, 7, 18, 0.78);
+    backdrop-filter: blur(10px);
+}
+
+.sbi-promotion-picker-modal__panel {
+    position: relative;
+    z-index: 1;
+    width: min(920px, calc(100vw - 2rem));
+    max-height: min(82vh, 760px);
+    display: flex;
+    flex-direction: column;
+    border: 1px solid rgba(42, 87, 255, 0.24);
+    border-radius: 22px;
+    background: linear-gradient(145deg, rgba(10, 17, 38, 0.98), rgba(3, 8, 24, 0.98));
+    box-shadow: 0 28px 90px rgba(0, 0, 0, 0.55);
+    overflow: hidden;
+}
+
+.sbi-promotion-picker-modal__header {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: flex-start;
+    padding: 1.25rem 1.35rem 1rem;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.sbi-promotion-picker-modal__header p {
+    margin: 0 0 0.25rem;
+    color: #9fb2ff;
+    font-size: 0.74rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.sbi-promotion-picker-modal__header h3 {
+    margin: 0;
+    color: #fff;
+    font-size: 1.22rem;
+}
+
+.sbi-promotion-picker-modal__close {
+    width: 38px;
+    height: 38px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.06);
+    color: #fff;
+    font-size: 1.4rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.sbi-promotion-picker-modal__filters {
+    display: grid;
+    grid-template-columns: minmax(220px, 1.4fr) minmax(180px, 1fr) minmax(130px, 0.65fr);
+    gap: 0.85rem;
+    padding: 1rem 1.35rem;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.sbi-promotion-picker-modal__filters label span {
+    display: block;
+    color: var(--text-muted);
+    font-size: 0.72rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 0.35rem;
+}
+
+.sbi-promotion-picker-modal__filters input,
+.sbi-promotion-picker-modal__filters select {
+    width: 100%;
+    box-sizing: border-box;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 12px;
+    background: rgba(3, 7, 18, 0.72);
+    color: #fff;
+    padding: 0.78rem 0.85rem;
+    outline: none;
+}
+
+.sbi-promotion-picker-modal__status {
+    padding: 0.85rem 1.35rem 0;
+    color: var(--text-muted);
+    font-size: 0.82rem;
+}
+
+.sbi-promotion-picker-modal__results {
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+    padding: 1rem 1.35rem 1.35rem;
+    overflow: auto;
+}
+
+.sbi-promotion-picker-card {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 1rem;
+    align-items: center;
+    border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 16px;
+    background: rgba(255,255,255,0.045);
+    padding: 0.9rem 1rem;
+}
+
+.sbi-promotion-picker-card.is-current {
+    border-color: rgba(46, 213, 115, 0.32);
+    background: rgba(46, 213, 115, 0.07);
+}
+
+.sbi-promotion-picker-card.is-archived {
+    opacity: 0.72;
+}
+
+.sbi-promotion-picker-card__title {
+    display: flex;
+    gap: 0.45rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.sbi-promotion-picker-card strong {
+    color: #fff;
+}
+
+.sbi-promotion-picker-card span,
+.sbi-promotion-picker-card em {
+    border-radius: 999px;
+    padding: 0.2rem 0.45rem;
+    font-size: 0.68rem;
+    font-weight: 900;
+    font-style: normal;
+}
+
+.sbi-promotion-picker-card span {
+    background: rgba(46,213,115,0.13);
+    color: #9ff3bd;
+}
+
+.sbi-promotion-picker-card em {
+    background: rgba(251,188,4,0.13);
+    color: #ffe39a;
+}
+
+.sbi-promotion-picker-card p,
+.sbi-promotion-picker-empty {
+    margin: 0.35rem 0 0;
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    line-height: 1.45;
+}
+
+.sbi-promotion-picker-card button {
+    border: 1px solid rgba(42,87,255,0.58);
+    background: rgba(42,87,255,0.16);
+    color: #fff;
+    border-radius: 999px;
+    padding: 0.62rem 0.85rem;
+    font-weight: 900;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.sbi-promotion-picker-card button:disabled {
+    cursor: not-allowed;
+    opacity: 0.58;
+}
+
+@media (max-width: 760px) {
+    .sbi-promotion-picker-modal {
+        padding: 0.75rem;
+    }
+
+    .sbi-promotion-picker-modal__filters,
+    .sbi-promotion-picker-card {
+        grid-template-columns: 1fr;
+    }
+
+    .sbi-promotion-picker-card button {
+        width: 100%;
+    }
+}

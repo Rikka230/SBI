@@ -352,7 +352,7 @@ async function mountAdminProfile({ url }) {
   window.__SBI_APP_SHELL_MOUNTING_PROFILE = true;
 
   try {
-    const module = await import('/js/profile-core.js?v=8.0P.167.63');
+    const module = await import('/js/profile-core.js?v=8.0P.167.64');
     const cleanupProfile = module.mountProfileCore?.({
       source: 'pjax-admin-profile',
       targetUid,
@@ -393,9 +393,9 @@ async function mountAdminAccounts({ url }) {
   window.__SBI_APP_SHELL_MOUNTING_ACCOUNTS = true;
 
   try {
-    await import('/admin/js/admin-core.js?v=8.0P.167.63');
+    await import('/admin/js/admin-core.js?v=8.0P.167.64');
     window.SBI_ADMIN_CORE_REINIT?.();
-    const module = await import('/admin/js/admin-accounts-dashboard.js?v=8.0P.167.63');
+    const module = await import('/admin/js/admin-accounts-dashboard.js?v=8.0P.167.64');
     module.mountAdminAccountsDashboard?.();
   } finally {
     window.__SBI_APP_SHELL_MOUNTING_ACCOUNTS = false;
@@ -423,7 +423,7 @@ async function mountAdminPromotions({ url }) {
   window.__SBI_APP_SHELL_MOUNTING_PROMOTIONS = true;
 
   try {
-    const module = await import('/admin/js/admin-promotions.js?v=8.0P.167.63');
+    const module = await import('/admin/js/admin-promotions.js?v=8.0P.167.64');
     const cleanupPromotions = module.mountAdminPromotions?.({ source: 'pjax-admin-promotions' });
 
     if (typeof cleanupPromotions === 'function') {
@@ -521,7 +521,7 @@ async function mountStudentProfile({ url }) {
   window.__SBI_APP_SHELL_MOUNTING_PROFILE = true;
 
   try {
-    const module = await import('/js/profile-core.js?v=8.0P.167.63');
+    const module = await import('/js/profile-core.js?v=8.0P.167.64');
     const cleanupProfile = module.mountProfileCore?.({
       source: 'pjax-student-profile',
       targetUrl: url.href
@@ -621,7 +621,7 @@ async function mountTeacherProfile({ url }) {
   window.__SBI_APP_SHELL_MOUNTING_PROFILE = true;
 
   try {
-    const module = await import('/js/profile-core.js?v=8.0P.167.63');
+    const module = await import('/js/profile-core.js?v=8.0P.167.64');
     const cleanupProfile = module.mountProfileCore?.({
       source: 'pjax-teacher-profile',
       targetUrl: url.href

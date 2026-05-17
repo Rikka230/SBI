@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.167.63 / P2I.1 UX
+ * SBI 8.0P.167.64 / P2I.1 UX
  * Promotions / cohortes admin.
  *
  * Périmètre volontairement borné :

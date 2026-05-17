@@ -9,7 +9,7 @@
  * 8.0P.160 : cache-bust du rendu profil pour journal compte lisible.
  * 8.0P.164 : cache-bust rendu profil pour relance finalisation compte.
  * 8.0P.165 : affichage relances automatiques et escalade.
- * 8.0P.167.63 : fix syntax rendu promotions + cible profil admin PJAX stable.
+ * 8.0P.167.64 : fix syntax rendu promotions + cible profil admin PJAX stable.
  * 8.0P.163 : cache-bust du rendu profil pour notes internes persistantes.
  * =======================================================================
  */
@@ -18,9 +18,9 @@ import { db, auth } from '/js/firebase-init.js';
 import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js';
 import { waitForSbiTopbar } from '/admin/js/components/ready.js';
-import { waitForSbiComponents } from '/js/profile/profile-utils.js?v=8.0P.167.63';
+import { waitForSbiComponents } from '/js/profile/profile-utils.js?v=8.0P.167.64';
 import { hydrateLoggedInTopbar } from '/js/profile/profile-topbar.js';
-import { renderProfileShell } from '/js/profile/profile-render.js?v=8.0P.167.63';
+import { renderProfileShell } from '/js/profile/profile-render.js?v=8.0P.167.64';
 import { renderUserFormations } from '/js/profile/profile-formations.js';
 import { renderLearningTracking } from '/js/profile/profile-tracking.js';
 import { setupSaveButtons, setupSecurityAndEditMode } from '/js/profile/profile-edit.js';

@@ -1,14 +1,29 @@
-SBI 8.0P.167.62 - Admin profile PJAX target lock / no hard reload
+SBI 8.0P.167.64 - PROFILE PROMOTION PICKER UX
 
-Objectif : corriger le bug Comptes -> Profil eleve ou le profil commence a charger puis le shell PJAX saute en reload complet.
+Objectif :
+- Sortir l'affectation promotion du Journal du compte.
+- Ajouter un bloc Promotion visible dans la colonne gauche du profil eleve.
+- Remplacer la liste deroulante de promotions par un picker searchable avec filtres.
 
-Changements :
-- verrouille l'UID cible avant navigation depuis Comptes ;
-- transmet explicitement targetUid / targetUrl a profile-core ;
-- empeche un ancien montage async de profil de continuer apres remount ;
-- rend Cropper non critique en PJAX pour eviter un fallback reload si le CDN echoue ;
-- evite le fallback reload force si l'import/montage profile-core echoue apres injection DOM ;
-- cache-bust admin-ui/app-shell/route-registry/profile-core/components/admin-core/admin-accounts-dashboard ;
-- bump version centrale en 8.0P.167.62.
+Modifications :
+- Bloc Promotion dans la sidebar profil eleve admin.
+- Boutons Modifier / Retirer sur la promotion actuelle.
+- Modal de selection avec recherche texte, filtre formation, filtre statut.
+- Resultats en cartes compactes avec bouton Assigner.
+- Le Journal du compte garde uniquement les actions compte / logs / relances.
+- Cache-bust admin/PJAX/profile en 8.0P.167.64.
 
-Deploy : hosting seulement.
+Non touche :
+- Firebase Functions.
+- Firestore rules.
+- Storage rules.
+- Schema de donnees.
+
+Tests :
+1. Ouvrir /admin/admin-accounts.html.
+2. Profil d'un eleve.
+3. Verifier le bloc Promotion dans la colonne gauche.
+4. Modifier : rechercher une promotion et l'assigner.
+5. Retirer la promotion.
+6. Retour Comptes puis retour Profil.
+7. Verifier absence d'erreur console profile-render/profile-core.
