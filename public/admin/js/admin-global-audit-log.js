@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.167.36 / P2H.2-G.2
+ * SBI 8.0P.167.37 / P2H.2-G.3
  * Journal admin global.
  *
  * Lecture ponctuelle et paginée de accountAuditLogs.
@@ -17,19 +17,25 @@ import {
   orderBy,
   query,
   startAfter,
+  Timestamp,
   where
 } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
 
 const PAGE_SIZE = 30;
 const MAX_DETAIL_LENGTH = 220;
 const MAX_RENDERED_ITEMS = 80;
+const MAX_CACHED_LOGS = 500;
+const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const PROFILE_RETURN_TARGET = 'view-audit-log';
+const AUDIT_CACHE_VERSION = '8.0P.167.37';
 
 let currentUser = null;
 let currentProfile = null;
 let logs = [];
 let lastVisibleDoc = null;
+let lastCursorMs = 0;
 let hasMore = true;
+let restoredFromCache = false;
 let isLoading = false;
 let hasLoadedOnce = false;
 let isMounted = false;
@@ -57,6 +63,120 @@ const TYPE_META = {
 
 function isAdminLike(profile) {
   return profile?.isGod === true || profile?.role === 'admin';
+}
+
+function getAuditCacheKey() {
+  return currentUser?.uid ? `sbi:audit-log-cache:${currentUser.uid}:v3` : '';
+}
+
+function clearAuditCache() {
+  const key = getAuditCacheKey();
+  if (!key) return;
+
+  try {
+    localStorage.removeItem(key);
+  } catch (_) {
+    // Cache local non critique.
+  }
+
+  restoredFromCache = false;
+}
+
+function normalizeLogForCache(log = {}) {
+  const normalized = { ...(log || {}) };
+  normalized.createdAt = toMillis(log.createdAt);
+  delete normalized.__searchIndex;
+  return normalized;
+}
+
+function sortLogsNewestFirst() {
+  logs.sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
+}
+
+function updateCursorFromLogs() {
+  if (!logs.length) {
+    lastCursorMs = 0;
+    return;
+  }
+
+  lastCursorMs = toMillis(logs[logs.length - 1]?.createdAt);
+}
+
+function mergeLogs(nextLogs = [], { replace = false } = {}) {
+  const nextMap = new Map();
+
+  if (!replace) {
+    logs.forEach((log) => {
+      if (log?.id) nextMap.set(log.id, log);
+    });
+  }
+
+  nextLogs.forEach((log) => {
+    if (log?.id) nextMap.set(log.id, normalizeLogForCache(log));
+  });
+
+  logs = Array.from(nextMap.values());
+  sortLogsNewestFirst();
+
+  if (logs.length > MAX_CACHED_LOGS) {
+    logs = logs.slice(0, MAX_CACHED_LOGS);
+  }
+
+  updateCursorFromLogs();
+}
+
+function saveAuditCache() {
+  const key = getAuditCacheKey();
+  if (!key) return;
+
+  try {
+    const payload = {
+      version: AUDIT_CACHE_VERSION,
+      savedAt: Date.now(),
+      hasMore,
+      lastCursorMs,
+      logs: logs.slice(0, MAX_CACHED_LOGS).map(normalizeLogForCache)
+    };
+
+    localStorage.setItem(key, JSON.stringify(payload));
+    restoredFromCache = true;
+  } catch (error) {
+    console.warn('[SBI Audit] Cache local non disponible :', error);
+  }
+}
+
+function restoreAuditCache() {
+  const key = getAuditCacheKey();
+  if (!key) return false;
+
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return false;
+
+    const payload = JSON.parse(raw);
+    const isExpired = !payload?.savedAt || Date.now() - payload.savedAt > CACHE_TTL_MS;
+    const cachedLogs = Array.isArray(payload?.logs) ? payload.logs : [];
+
+    if (isExpired || cachedLogs.length === 0) {
+      localStorage.removeItem(key);
+      return false;
+    }
+
+    logs = cachedLogs.map(normalizeLogForCache);
+    sortLogsNewestFirst();
+    hasMore = payload.hasMore !== false;
+    lastCursorMs = Number(payload.lastCursorMs || 0) || 0;
+    if (!lastCursorMs) updateCursorFromLogs();
+    lastVisibleDoc = null;
+    hasLoadedOnce = true;
+    restoredFromCache = true;
+    render();
+    return true;
+  } catch (error) {
+    console.warn('[SBI Audit] Cache local illisible :', error);
+    clearAuditCache();
+    return false;
+  }
 }
 
 function toMillis(value) {
@@ -238,22 +358,31 @@ function getFilteredLogs() {
   const typeFilter = document.getElementById('audit-type-filter')?.value || 'all';
 
   return logs.filter((log) => {
+    const matchesType = typeFilter === 'all' || log.type === typeFilter;
+    if (!matchesType) return false;
+
+    if (!searchTerm) return true;
+
     const meta = getTypeMeta(log.type);
-    const haystack = [
+    const haystack = log.__searchIndex || [
       log.type,
       meta.label,
       getActorLabel(log),
       getTargetLabel(log),
       getLogDetails(log),
+      log.targetName,
+      log.actorName,
+      log.displayName,
+      log.prenom,
+      log.nom,
       log.reason,
       log.message,
       log.event,
       log.source
     ].join(' ').toLowerCase();
 
-    const matchesType = typeFilter === 'all' || log.type === typeFilter;
-    const matchesSearch = !searchTerm || haystack.includes(searchTerm);
-    return matchesType && matchesSearch;
+    log.__searchIndex = haystack;
+    return haystack.includes(searchTerm);
   });
 }
 
@@ -288,9 +417,22 @@ async function openAuditProfileFromLogId(logId, button) {
   const log = logs.find((entry) => entry.id === logId);
   if (!log || !button) return;
 
+  const navigate = (uid) => {
+    sessionStorage.setItem('activeAdminTab', PROFILE_RETURN_TARGET);
+    sessionStorage.setItem('sbiAdminReturnTarget', PROFILE_RETURN_TARGET);
+    sessionStorage.setItem('sbiAdminReturnFromProfile', String(Date.now()));
+    window.location.href = `/admin/admin-profile.html?id=${encodeURIComponent(uid)}&from=audit-log`;
+  };
+
+  const directUid = getTargetUidCandidates(log)[0];
+  if (directUid) {
+    navigate(directUid);
+    return;
+  }
+
   const originalText = button.textContent;
   button.disabled = true;
-  button.textContent = 'Ouverture...';
+  button.textContent = 'Recherche...';
 
   try {
     const uid = await resolveProfileUidForLog(log);
@@ -306,15 +448,7 @@ async function openAuditProfileFromLogId(logId, button) {
       return;
     }
 
-    sessionStorage.setItem('activeAdminTab', PROFILE_RETURN_TARGET);
-    sessionStorage.setItem('sbiAdminReturnTarget', PROFILE_RETURN_TARGET);
-    sessionStorage.setItem('sbiAdminReturnFromProfile', String(Date.now()));
-
-    /*
-     * Navigation classique obligatoire.
-     * Le profil admin charge ses modules via sa page dédiée.
-     */
-    window.location.href = `/admin/admin-profile.html?id=${encodeURIComponent(uid)}&from=audit-log`;
+    navigate(uid);
   } catch (error) {
     console.warn('[SBI Audit] Ouverture profil impossible :', error);
     button.disabled = false;
@@ -393,7 +527,11 @@ function render() {
   } else if (!isAdminLike(currentProfile)) {
     list.innerHTML = '<div class="sbi-audit-empty sbi-audit-error">Accès réservé aux administrateurs.</div>';
   } else if (filtered.length === 0) {
-    list.innerHTML = `<div class="sbi-audit-empty">${logs.length ? 'Aucun log ne correspond aux filtres.' : 'Aucune entrée de journal disponible.'}</div>`;
+    const searchTerm = document.getElementById('audit-search')?.value?.trim() || '';
+    const cacheHint = searchTerm && hasMore
+      ? 'Aucun résultat dans le cache actuel. Clique sur “Charger plus” pour enrichir le cache, ou “Rafraîchir” pour le reconstruire.'
+      : logs.length ? 'Aucun log ne correspond aux filtres.' : 'Aucune entrée de journal disponible.';
+    list.innerHTML = `<div class="sbi-audit-empty">${escapeHtml(cacheHint)}</div>`;
   } else {
     list.innerHTML = [
       rendered.map(renderLogItem).join(''),
@@ -406,7 +544,8 @@ function render() {
   if (count) {
     const filteredSuffix = filtered.length !== logs.length ? ` · ${filtered.length} trouvée${filtered.length > 1 ? 's' : ''}` : '';
     const capSuffix = isCapped ? ` · ${rendered.length} affichées` : '';
-    count.textContent = `${logs.length} entrée${logs.length > 1 ? 's' : ''} chargée${logs.length > 1 ? 's' : ''}${filteredSuffix}${capSuffix}`;
+    const cacheSuffix = restoredFromCache ? ' · cache local' : '';
+    count.textContent = `${logs.length} entrée${logs.length > 1 ? 's' : ''} chargée${logs.length > 1 ? 's' : ''}${filteredSuffix}${capSuffix}${cacheSuffix}`;
   }
 
   if (loadMore) {
@@ -415,13 +554,19 @@ function render() {
   }
 }
 
-async function loadAuditLogs({ reset = false } = {}) {
+async function loadAuditLogs({ reset = false, clearCache = false } = {}) {
   if (isLoading || !isAdminLike(currentProfile)) return;
+
+  if (clearCache) {
+    clearAuditCache();
+  }
 
   if (reset) {
     logs = [];
     lastVisibleDoc = null;
+    lastCursorMs = 0;
     hasMore = true;
+    restoredFromCache = false;
   }
 
   isLoading = true;
@@ -429,7 +574,13 @@ async function loadAuditLogs({ reset = false } = {}) {
 
   try {
     const clauses = [collection(db, 'accountAuditLogs'), orderBy('createdAt', 'desc')];
-    if (lastVisibleDoc) clauses.push(startAfter(lastVisibleDoc));
+
+    if (lastVisibleDoc) {
+      clauses.push(startAfter(lastVisibleDoc));
+    } else if (lastCursorMs) {
+      clauses.push(startAfter(Timestamp.fromMillis(lastCursorMs)));
+    }
+
     clauses.push(limit(PAGE_SIZE));
 
     const snap = await getDocs(query(...clauses));
@@ -439,10 +590,11 @@ async function loadAuditLogs({ reset = false } = {}) {
       nextLogs.push({ id: docSnap.id, ...(docSnap.data() || {}) });
     });
 
-    lastVisibleDoc = snap.docs[snap.docs.length - 1] || lastVisibleDoc;
+    lastVisibleDoc = snap.docs[snap.docs.length - 1] || null;
     hasMore = snap.size === PAGE_SIZE;
-    logs = reset ? nextLogs : [...logs, ...nextLogs];
+    mergeLogs(nextLogs, { replace: reset });
     hasLoadedOnce = true;
+    saveAuditCache();
   } catch (error) {
     console.warn('[SBI Audit] Journal global indisponible :', error);
     const list = document.getElementById('audit-log-list');
@@ -477,7 +629,9 @@ async function loadCurrentProfile(user) {
   render();
 
   if (isAdminLike(currentProfile) && isAuditViewActive() && !hasLoadedOnce) {
-    window.setTimeout(() => loadAuditLogs({ reset: true }), 80);
+    if (!restoreAuditCache()) {
+      window.setTimeout(() => loadAuditLogs({ reset: true }), 80);
+    }
   }
 }
 
@@ -493,7 +647,7 @@ function mount() {
 
   isMounted = true;
 
-  document.getElementById('audit-refresh-btn')?.addEventListener('click', () => loadAuditLogs({ reset: true }));
+  document.getElementById('audit-refresh-btn')?.addEventListener('click', () => loadAuditLogs({ reset: true, clearCache: true }));
   document.getElementById('audit-load-more-btn')?.addEventListener('click', () => loadAuditLogs());
   document.getElementById('audit-search')?.addEventListener('input', render);
   document.getElementById('audit-type-filter')?.addEventListener('change', render);
@@ -501,7 +655,9 @@ function mount() {
 
   window.addEventListener('sbi:admin-tab-changed', (event) => {
     if (event?.detail?.tab === 'view-audit-log' && isAdminLike(currentProfile) && !hasLoadedOnce) {
-      window.setTimeout(() => loadAuditLogs({ reset: true }), 80);
+      if (!restoreAuditCache()) {
+        window.setTimeout(() => loadAuditLogs({ reset: true }), 80);
+      }
     }
   });
 
