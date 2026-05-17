@@ -1,5 +1,5 @@
 import { waitForSbiComponents as waitForComponentsReady } from '/admin/js/components/ready.js';
-import { initSpaceTheme } from '/admin/js/admin-ui/theme.js';
+import { initSpaceTheme } from '/admin/js/admin-ui/theme.js?v=8.0P.167.52';
 import { initPanelControls, initAdminTabs } from '/admin/js/admin-ui/panels.js';
 import { initAdminMediaNav } from '/admin/js/admin-ui/admin-media-nav.js';
 import { initAssistantPrototype } from '/admin/js/admin-ui/assistant.js';

@@ -18,6 +18,7 @@ export function initSpaceTheme() {
     injectInternalThemeStylesheet('/admin/css/sbi-ui-polish.css');
     injectInternalThemeStylesheet('/admin/css/sbi-ui-fixes.css');
     injectInternalThemeStylesheet('/admin/css/sbi-admin-chrome-harmonization.css');
+    injectInternalThemeStylesheet('/admin/css/admin-surface-unified.css?v=8.0P.167.52', 'admin-surface-unified');
 
     document.body.classList.add('sbi-internal-ui');
 
@@ -53,16 +54,29 @@ function getEffectivePath() {
     }
 }
 
-function injectInternalThemeStylesheet(themeHref) {
+function injectInternalThemeStylesheet(themeHref, markerName = '') {
     const absoluteHref = new URL(themeHref, window.location.origin).href;
+    const markerSelector = markerName ? `link[rel="stylesheet"][data-sbi-style="${markerName}"]` : '';
 
-    const exists = Array.from(document.querySelectorAll('link[rel="stylesheet"][href]'))
-        .some((link) => new URL(link.getAttribute('href'), window.location.origin).href === absoluteHref);
+    const existingByMarker = markerSelector
+        ? document.querySelector(markerSelector)
+        : null;
 
-    if (exists) return;
+    const existingByHref = Array.from(document.querySelectorAll('link[rel="stylesheet"][href]'))
+        .find((link) => new URL(link.getAttribute('href'), window.location.origin).href === absoluteHref);
+
+    const existingLink = existingByMarker || existingByHref;
+
+    if (existingLink) {
+        existingLink.href = themeHref;
+        if (markerName) existingLink.dataset.sbiStyle = markerName;
+        document.head.appendChild(existingLink);
+        return;
+    }
 
     const link = document.createElement('link');
     link.rel = 'stylesheet';
     link.href = themeHref;
+    if (markerName) link.dataset.sbiStyle = markerName;
     document.head.appendChild(link);
 }

@@ -20,6 +20,7 @@
  * 8.0P.167.32 : hauteur saine sans tronquer le formulaire de création.
  * 8.0P.167.33 : scroll liste comptes optimisé 60fps CSS-only.
  * 8.0P.167.34 : vue Journal admin globale.
+ * 8.0P.167.52 : surface admin canonique réinjectée après les anciens effets dynamiques.
  */
 
 (function bootstrapSbiComponents(){
@@ -55,29 +56,53 @@
 
   scheduleEarlyDisplay();
 
-  const injectAdminSingleScrollFix = () => {
-    const href = '/admin/css/sbi-admin-single-scroll.css?v=8.0P.167.24';
+  const moveOrCreateStylesheet = (href, markerName = '') => {
     const absoluteHref = new URL(href, window.location.origin).href;
+    const markerSelector = markerName ? `link[rel="stylesheet"][data-sbi-style="${markerName}"]` : '';
 
-    const existingLink = Array.from(document.querySelectorAll('link[rel="stylesheet"][href]'))
+    const existingByMarker = markerSelector
+      ? document.querySelector(markerSelector)
+      : null;
+
+    const existingByHref = Array.from(document.querySelectorAll('link[rel="stylesheet"][href]'))
       .find((link) => new URL(link.getAttribute('href'), window.location.origin).href === absoluteHref);
 
+    const existingLink = existingByMarker || existingByHref;
+
     if (existingLink) {
+      existingLink.href = href;
+      if (markerName) existingLink.dataset.sbiStyle = markerName;
       document.head.appendChild(existingLink);
-      return;
+      return existingLink;
     }
 
     const link = document.createElement('link');
     link.rel = 'stylesheet';
     link.href = href;
+    if (markerName) link.dataset.sbiStyle = markerName;
     document.head.appendChild(link);
+    return link;
   };
 
-  injectAdminSingleScrollFix();
-  window.setTimeout(injectAdminSingleScrollFix, 250);
-  window.setTimeout(injectAdminSingleScrollFix, 900);
-  window.addEventListener('sbi:components-ready', injectAdminSingleScrollFix);
-  window.addEventListener('sbi:app-shell-rendered', injectAdminSingleScrollFix);
+  const injectAdminSingleScrollFix = () => {
+    moveOrCreateStylesheet('/admin/css/sbi-admin-single-scroll.css?v=8.0P.167.24', 'admin-single-scroll');
+  };
+
+  const injectAdminCanonicalSurface = () => {
+    moveOrCreateStylesheet('/admin/css/admin-surface-unified.css?v=8.0P.167.52', 'admin-surface-unified');
+  };
+
+  const injectAdminSurfaceStack = () => {
+    injectAdminSingleScrollFix();
+    injectAdminCanonicalSurface();
+  };
+
+  injectAdminSurfaceStack();
+  window.setTimeout(injectAdminSurfaceStack, 250);
+  window.setTimeout(injectAdminSurfaceStack, 900);
+  window.setTimeout(injectAdminSurfaceStack, 1400);
+  window.addEventListener('sbi:components-ready', injectAdminSurfaceStack);
+  window.addEventListener('sbi:app-shell-rendered', injectAdminSurfaceStack);
 
 
   import('/admin/js/admin-profile-panel-fast.js?v=8.0P.166.4')

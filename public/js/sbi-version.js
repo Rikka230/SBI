@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.51',
+  version: '8.0P.167.52',
   branch: 'main',
-  channel: 'ADMIN CANONICAL SURFACE',
-  stage: 'ONE ADMIN BACKGROUND BASED ON PROFILE',
+  channel: 'ADMIN CANONICAL SURFACE LOAD ORDER',
+  stage: 'REINJECT CANONICAL SURFACE AFTER DYNAMIC EFFECTS',
   updatedAt: '2026-05-16',
-  label: 'SBI 8.0P.167.51 - ONE ADMIN BACKGROUND BASED ON PROFILE'
+  label: 'SBI 8.0P.167.52 - REINJECT CANONICAL SURFACE AFTER DYNAMIC EFFECTS'
 };
 
 export function getSbiVersionLabel() {

@@ -1,96 +1,96 @@
 /* ==========================================================================
-   SBI 8.0P.167.51 — Admin surface unifiée, profil comme référence
+   SBI 8.0P.167.52 — Admin surface canonique chargée en dernier
    --------------------------------------------------------------------------
-   Source de vérité visuelle pour le fond admin.
-   Objectif : Dashboard / Comptes / Journal / Médias / Formations / Profil
-   doivent partager exactement le même éclairage que le profil admin validé.
+   Source de vérité visuelle du fond admin.
+   Important : ce fichier est aussi réinjecté dynamiquement APRÈS
+   sbi-admin-single-scroll.css et APRÈS les CSS de thème PJAX.
+   Référence visuelle : profil admin validé.
    ========================================================================== */
 
 body.sbi-admin-surface,
 body.sbi-admin-space,
 body.sbi-internal-ui.sbi-admin-space,
 body:has(admin-left-panel) {
-    --sbi-admin-canonical-bg: var(--bg-dark, #050812);
-    --sbi-admin-canonical-soft: var(--sbi-role-soft, rgba(42, 87, 255, 0.14));
+    --sbi-admin-canonical-bg: #071226;
+    --sbi-admin-canonical-deep: #050a16;
+    --sbi-admin-canonical-mid: #0a1a38;
+    --sbi-admin-canonical-blue: rgba(72, 119, 255, 0.34);
+    --sbi-admin-canonical-white: rgba(255, 255, 255, 0.115);
     min-height: 100vh;
     background:
-        radial-gradient(circle at 12% 8%, var(--sbi-admin-canonical-soft), transparent 34%),
-        radial-gradient(circle at 86% 18%, rgba(255, 255, 255, 0.055), transparent 30%),
-        linear-gradient(135deg, rgba(42, 87, 255, 0.10), transparent 54%),
-        var(--sbi-admin-canonical-bg) !important;
-    background-attachment: fixed;
+        radial-gradient(ellipse at 12% 0%, var(--sbi-admin-canonical-blue) 0%, rgba(42, 87, 255, 0.16) 27%, transparent 64%),
+        radial-gradient(ellipse at 96% 8%, var(--sbi-admin-canonical-white) 0%, rgba(72, 119, 255, 0.055) 28%, transparent 62%),
+        radial-gradient(ellipse at 78% 96%, rgba(42, 210, 255, 0.075) 0%, rgba(42, 87, 255, 0.045) 34%, transparent 70%),
+        linear-gradient(135deg, var(--sbi-admin-canonical-bg) 0%, var(--sbi-admin-canonical-mid) 46%, #08152e 68%, var(--sbi-admin-canonical-deep) 100%) !important;
+    background-attachment: fixed !important;
 }
 
 body.sbi-admin-surface #main-content,
 body.sbi-admin-space #main-content,
 body.sbi-internal-ui.sbi-admin-space #main-content,
-body:has(admin-left-panel) #main-content {
-    position: relative;
-    isolation: isolate;
-    min-height: 100vh;
-    background:
-        radial-gradient(circle at 14% 10%, var(--sbi-admin-canonical-soft), transparent 33%),
-        radial-gradient(circle at 86% 18%, rgba(255, 255, 255, 0.055), transparent 30%),
-        linear-gradient(135deg, rgba(42, 87, 255, 0.08), transparent 58%),
-        var(--sbi-admin-canonical-bg) !important;
-    background-attachment: local, local, local, local;
-    background-repeat: no-repeat;
-    background-size: 100% max(100%, 1200px), 100% max(100%, 1200px), 100% max(100%, 1200px), 100% 100%;
+body:has(admin-left-panel) #main-content,
+body.sbi-admin-surface.sbi-profile-page #main-content,
+body.sbi-admin-surface.sbi-course-editor-page #main-content {
+    position: relative !important;
+    isolation: isolate !important;
+    min-height: 100vh !important;
+    background-color: var(--sbi-admin-canonical-bg) !important;
+    background-image:
+        radial-gradient(ellipse at 12% 0%, var(--sbi-admin-canonical-blue) 0%, rgba(42, 87, 255, 0.16) 27%, transparent 64%),
+        radial-gradient(ellipse at 96% 8%, var(--sbi-admin-canonical-white) 0%, rgba(72, 119, 255, 0.055) 28%, transparent 62%),
+        radial-gradient(ellipse at 78% 96%, rgba(42, 210, 255, 0.075) 0%, rgba(42, 87, 255, 0.045) 34%, transparent 70%),
+        linear-gradient(135deg, var(--sbi-admin-canonical-bg) 0%, var(--sbi-admin-canonical-mid) 46%, #08152e 68%, var(--sbi-admin-canonical-deep) 100%) !important;
+    background-attachment: local, local, local, local !important;
+    background-repeat: no-repeat !important;
+    background-size: 100% max(100%, 1200px), 100% max(100%, 1200px), 100% max(100%, 1200px), 100% 100% !important;
 }
 
-/* Pseudo fond unique.
-   On neutralise les anciens filets/décors en remplaçant leurs règles par la
-   même lumière canonique, chargée après les CSS spécifiques de page. */
 body.sbi-admin-surface #main-content::before,
 body.sbi-admin-space #main-content::before,
 body.sbi-internal-ui.sbi-admin-space #main-content::before,
-body:has(admin-left-panel) #main-content::before {
-    content: '';
+body:has(admin-left-panel) #main-content::before,
+body.sbi-admin-surface.sbi-profile-page #main-content::before,
+body.sbi-admin-surface.sbi-course-editor-page #main-content::before {
+    content: '' !important;
     display: block !important;
     position: absolute !important;
     inset: 0 !important;
-    min-height: max(100%, 100vh);
-    pointer-events: none;
-    z-index: 0;
+    min-height: max(100%, 100vh) !important;
+    pointer-events: none !important;
+    z-index: 0 !important;
+    opacity: 1 !important;
     background:
-        radial-gradient(circle at 12% 8%, var(--sbi-admin-canonical-soft), transparent 32%),
-        radial-gradient(circle at 86% 18%, rgba(255, 255, 255, 0.07), transparent 28%),
-        linear-gradient(135deg, rgba(255, 255, 255, 0.02), transparent 52%) !important;
+        radial-gradient(ellipse at 10% 0%, rgba(72, 119, 255, 0.28) 0%, rgba(42, 87, 255, 0.13) 25%, transparent 60%),
+        radial-gradient(ellipse at 92% 10%, rgba(180, 205, 255, 0.10) 0%, transparent 56%),
+        linear-gradient(135deg, rgba(255, 255, 255, 0.028), transparent 52%) !important;
+    box-shadow: none !important;
 }
 
-/* Certains anciens fichiers ajoutaient un ::after décoratif sur les pages hors
-   dashboard. Il créait une troisième ambiance sur Journal / Médias. */
 body.sbi-admin-surface #main-content::after,
 body.sbi-admin-space #main-content::after,
 body.sbi-internal-ui.sbi-admin-space #main-content::after,
-body:has(admin-left-panel) #main-content::after {
+body:has(admin-left-panel) #main-content::after,
+body.sbi-admin-surface.sbi-profile-page #main-content::after,
+body.sbi-admin-surface.sbi-course-editor-page #main-content::after {
     content: none !important;
     display: none !important;
+    background: none !important;
+    box-shadow: none !important;
 }
 
 body.sbi-admin-surface #main-content > .content-wrapper,
 body.sbi-admin-space #main-content > .content-wrapper,
 body.sbi-internal-ui.sbi-admin-space #main-content > .content-wrapper,
 body:has(admin-left-panel) #main-content > .content-wrapper {
-    position: relative;
-    z-index: 1;
+    position: relative !important;
+    z-index: 1 !important;
     background: transparent !important;
-}
-
-/* Le profil admin reste la référence, donc aucune exception sombre ou média
-   ne doit reprendre la main sur le fond global. */
-body.sbi-admin-surface.sbi-profile-page #main-content,
-body.sbi-admin-surface.sbi-course-editor-page #main-content {
-    background:
-        radial-gradient(circle at 14% 10%, var(--sbi-admin-canonical-soft), transparent 33%),
-        radial-gradient(circle at 86% 18%, rgba(255, 255, 255, 0.055), transparent 30%),
-        linear-gradient(135deg, rgba(42, 87, 255, 0.08), transparent 58%),
-        var(--sbi-admin-canonical-bg) !important;
 }
 
 @media (min-width: 769px) {
     body.sbi-admin-surface #main-content,
-    body.sbi-admin-space #main-content {
-        scrollbar-gutter: stable;
+    body.sbi-admin-space #main-content,
+    body.sbi-internal-ui.sbi-admin-space #main-content {
+        scrollbar-gutter: stable !important;
     }
 }
