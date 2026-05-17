@@ -2711,6 +2711,76 @@ exports.adminUpdateUserAccount = onCall({
         }
     }
 
+    if (Object.prototype.hasOwnProperty.call(data, "studentFollowup")) {
+        if (targetRole !== "student") {
+            throw new HttpsError("failed-precondition", "Le suivi étudiant détaillé est disponible uniquement pour les comptes élèves.");
+        }
+
+        const rawFollowup = data.studentFollowup || {};
+        const allowedStatuses = ["not_started", "watching", "in_progress", "blocked", "ok"];
+        const allowedPriorities = ["normal", "medium", "high", "urgent"];
+        const requestedStatus = cleanString(rawFollowup.status || "not_started", 40).toLowerCase();
+        const requestedPriority = cleanString(rawFollowup.priority || "normal", 40).toLowerCase();
+        const nextActionAt = cleanString(rawFollowup.nextActionAt || "", 20);
+        const referentName = cleanString(rawFollowup.referentName || "", 120);
+        const referentEmail = cleanEmail(rawFollowup.referentEmail || "");
+        const note = cleanMultiline(rawFollowup.note || "", 3000);
+
+        if (!allowedStatuses.includes(requestedStatus)) {
+            throw new HttpsError("invalid-argument", "Statut de suivi étudiant invalide.");
+        }
+        if (!allowedPriorities.includes(requestedPriority)) {
+            throw new HttpsError("invalid-argument", "Priorité de suivi étudiant invalide.");
+        }
+        if (nextActionAt && !/^\d{4}-\d{2}-\d{2}$/.test(nextActionAt)) {
+            throw new HttpsError("invalid-argument", "Date de prochaine action invalide.");
+        }
+        if (referentEmail && !isValidEmail(referentEmail)) {
+            throw new HttpsError("invalid-argument", "Email référent invalide.");
+        }
+
+        const previousFollowup = targetData.studentFollowup || {};
+        const normalizedPreviousFollowup = {
+            status: cleanString(previousFollowup.status || "not_started", 40).toLowerCase(),
+            priority: cleanString(previousFollowup.priority || "normal", 40).toLowerCase(),
+            referentName: cleanString(previousFollowup.referentName || "", 120),
+            referentEmail: cleanEmail(previousFollowup.referentEmail || ""),
+            nextActionAt: cleanString(previousFollowup.nextActionAt || "", 20),
+            note: cleanMultiline(previousFollowup.note || "", 3000)
+        };
+        const normalizedNextFollowup = {
+            status: requestedStatus,
+            priority: requestedPriority,
+            referentName,
+            referentEmail,
+            nextActionAt,
+            note
+        };
+
+        if (JSON.stringify(normalizedPreviousFollowup) !== JSON.stringify(normalizedNextFollowup)) {
+            updates.studentFollowup = {
+                ...(previousFollowup || {}),
+                ...normalizedNextFollowup,
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                updatedBy: caller.uid,
+                updatedByEmail: caller.email,
+                updatedByName: caller.name
+            };
+            auditChanges.studentFollowup = {
+                before: {
+                    status: normalizedPreviousFollowup.status,
+                    priority: normalizedPreviousFollowup.priority,
+                    hasNote: Boolean(normalizedPreviousFollowup.note)
+                },
+                after: {
+                    status: normalizedNextFollowup.status,
+                    priority: normalizedNextFollowup.priority,
+                    hasNote: Boolean(normalizedNextFollowup.note)
+                }
+            };
+        }
+    }
+
     if (Object.prototype.hasOwnProperty.call(data, "promotionId")) {
         const requestedPromotionId = cleanString(data.promotionId, 180);
         const currentPromotionId = cleanString(targetData.promotionId || "", 180);
@@ -2883,16 +2953,18 @@ exports.adminUpdateUserAccount = onCall({
 
     const auditChangeKeys = Object.keys(auditChanges);
     const onlyFollowupChanges = auditChangeKeys.length > 0
-        && auditChangeKeys.every((key) => ["preparationState", "accountNote"].includes(key));
+        && auditChangeKeys.every((key) => ["preparationState", "accountNote", "studentFollowup"].includes(key));
 
     await safeWriteAccountAuditLog(db, {
         type: auditChanges.isGod
             ? "account.god_updated"
             : auditChanges.promotion
                 ? "account.promotion_updated"
-                : onlyFollowupChanges
-                    ? "account.followup_updated"
-                    : "account.updated",
+                : auditChanges.studentFollowup
+                    ? "account.student_followup_updated"
+                    : onlyFollowupChanges
+                        ? "account.followup_updated"
+                        : "account.updated",
         actorUid: caller.uid,
         actorEmail: caller.email,
         targetUid,

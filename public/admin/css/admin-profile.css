@@ -539,3 +539,186 @@
         width: 100%;
     }
 }
+
+/* --- SBI 8.0P.167.65 — Fiche étudiant détaillée / suivi admin --- */
+.sbi-student-followup {
+    position: relative;
+    overflow: hidden;
+}
+
+.sbi-student-followup::before {
+    content: "";
+    position: absolute;
+    inset: -20% -10% auto auto;
+    width: 280px;
+    height: 280px;
+    pointer-events: none;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(42, 87, 255, 0.16), transparent 62%);
+    opacity: 0.9;
+}
+
+.sbi-student-followup > * {
+    position: relative;
+    z-index: 1;
+}
+
+.sbi-student-followup__header,
+.sbi-student-followup__footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.sbi-student-followup__header {
+    margin-bottom: 1rem;
+}
+
+.sbi-student-followup__header p {
+    margin: 0 0 0.25rem;
+    color: #9fb2ff;
+    font-size: 0.74rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.sbi-student-followup__header h4 {
+    margin: 0;
+    color: #fff;
+    font-size: 1.15rem;
+}
+
+.sbi-student-followup__pill {
+    border: 1px solid rgba(42, 87, 255, 0.34);
+    border-radius: 999px;
+    padding: 0.36rem 0.68rem;
+    background: rgba(42, 87, 255, 0.12);
+    color: #dbe5ff;
+    font-size: 0.72rem;
+    font-weight: 900;
+}
+
+.sbi-student-followup__pill[data-priority="high"],
+.sbi-student-followup__pill[data-priority="urgent"] {
+    border-color: rgba(255, 74, 74, 0.38);
+    background: rgba(255, 74, 74, 0.11);
+    color: #ffb4b4;
+}
+
+.sbi-student-followup__pill[data-priority="medium"] {
+    border-color: rgba(251, 188, 4, 0.36);
+    background: rgba(251, 188, 4, 0.10);
+    color: #ffe39a;
+}
+
+.sbi-student-followup__snapshot {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.8rem;
+    margin-bottom: 1rem;
+}
+
+.sbi-student-followup__snapshot > div {
+    border: 1px solid rgba(255,255,255,0.09);
+    border-radius: 14px;
+    background: rgba(255,255,255,0.04);
+    padding: 0.85rem;
+    min-width: 0;
+}
+
+.sbi-student-followup__snapshot span,
+.sbi-student-followup__grid label span,
+.sbi-student-followup__note span {
+    display: block;
+    color: var(--text-muted);
+    font-size: 0.72rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 0.35rem;
+}
+
+.sbi-student-followup__snapshot strong {
+    display: block;
+    color: #fff;
+    font-size: 0.88rem;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+}
+
+.sbi-student-followup__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.85rem;
+    margin-bottom: 0.95rem;
+}
+
+.sbi-student-followup__grid input,
+.sbi-student-followup__grid select,
+.sbi-student-followup__note textarea {
+    width: 100%;
+    box-sizing: border-box;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 12px;
+    background: rgba(3, 7, 18, 0.72);
+    color: #fff;
+    padding: 0.78rem 0.85rem;
+    outline: none;
+    font-family: inherit;
+}
+
+.sbi-student-followup__note {
+    display: block;
+}
+
+.sbi-student-followup__note textarea {
+    min-height: 150px;
+    resize: vertical;
+    line-height: 1.5;
+}
+
+.sbi-student-followup__footer {
+    align-items: center;
+    margin-top: 0.95rem;
+}
+
+#prof-student-followup-meta,
+#prof-student-followup-status-line {
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    line-height: 1.4;
+}
+
+#prof-student-followup-status-line[data-tone="success"] { color: #2ed573; }
+#prof-student-followup-status-line[data-tone="error"] { color: #ff7777; }
+
+#prof-save-student-followup-btn {
+    border: 0;
+    border-radius: 999px;
+    background: var(--accent-blue, #2A57FF);
+    color: #fff;
+    padding: 0.72rem 1rem;
+    font-weight: 900;
+    cursor: pointer;
+    transition: 0.18s ease;
+}
+
+#prof-save-student-followup-btn:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.08);
+}
+
+#prof-save-student-followup-btn:disabled {
+    cursor: not-allowed;
+    transform: none;
+}
+
+@media (max-width: 980px) {
+    .sbi-student-followup__snapshot,
+    .sbi-student-followup__grid {
+        grid-template-columns: 1fr;
+    }
+}

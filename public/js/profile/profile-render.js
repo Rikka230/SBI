@@ -27,6 +27,21 @@ const ACCOUNT_PREPARATION_LABELS = {
   completed: 'Terminé'
 };
 
+const STUDENT_FOLLOWUP_STATUS_LABELS = {
+  not_started: 'À cadrer',
+  watching: 'À surveiller',
+  in_progress: 'Suivi en cours',
+  blocked: 'Point bloquant',
+  ok: 'OK'
+};
+
+const STUDENT_FOLLOWUP_PRIORITY_LABELS = {
+  normal: 'Normale',
+  medium: 'À suivre',
+  high: 'Prioritaire',
+  urgent: 'Urgent'
+};
+
 function isStudentRole(profile = {}) {
   const role = String(profile.role || '').toLowerCase();
   return ['student', 'eleve', 'élève', 'etudiant', 'étudiant'].includes(role);
@@ -99,6 +114,7 @@ export async function renderProfileShell({ db, uid, data, context, reloadProfile
   renderRoleBadge(data);
   await renderXp({ db, uid, data, context, reloadProfile });
   renderPromotionSidebarPanel({ db, uid, data, context, reloadProfile });
+  renderStudentFollowupPanel({ uid, data, context, reloadProfile });
   renderPrivateData(data, context);
   await renderActivity({ db, uid, data, context, reloadProfile });
 }
@@ -928,6 +944,181 @@ async function openPromotionPickerModal({ db, uid, data = {}, reloadProfile }) {
 
   rerender();
   setTimeout(() => searchInput?.focus(), 80);
+}
+
+
+function normalizeStudentFollowupStatus(value) {
+  return Object.prototype.hasOwnProperty.call(STUDENT_FOLLOWUP_STATUS_LABELS, value) ? value : 'not_started';
+}
+
+function normalizeStudentFollowupPriority(value) {
+  return Object.prototype.hasOwnProperty.call(STUDENT_FOLLOWUP_PRIORITY_LABELS, value) ? value : 'normal';
+}
+
+function getStudentFollowup(data = {}) {
+  const followup = data.studentFollowup || {};
+  return {
+    status: normalizeStudentFollowupStatus(followup.status || 'not_started'),
+    priority: normalizeStudentFollowupPriority(followup.priority || 'normal'),
+    referentName: followup.referentName || '',
+    referentEmail: followup.referentEmail || '',
+    nextActionAt: followup.nextActionAt || '',
+    note: followup.note || '',
+    updatedAt: followup.updatedAt || null,
+    updatedByEmail: followup.updatedByEmail || '',
+    updatedByName: followup.updatedByName || ''
+  };
+}
+
+function setStudentFollowupVisibility(visible) {
+  document.querySelectorAll('.student-followup-section').forEach((node) => {
+    node.style.display = visible ? '' : 'none';
+  });
+
+  if (!visible && document.getElementById('ptab-student-followup')?.classList.contains('active')) {
+    document.querySelectorAll('.p-tab').forEach((tab) => tab.classList.remove('active'));
+    document.querySelectorAll('.p-tab-content').forEach((content) => content.classList.remove('active'));
+    document.querySelector('.p-tab')?.classList.add('active');
+    document.getElementById('ptab-public')?.classList.add('active');
+  }
+}
+
+function renderStudentFollowupPanel({ uid, data = {}, context, reloadProfile }) {
+  const panel = document.getElementById('prof-student-followup-panel');
+  const isVisible = Boolean(context?.isAdmin && isStudentRole(data));
+  setStudentFollowupVisibility(isVisible);
+
+  if (!panel) return;
+
+  if (!isVisible) {
+    panel.innerHTML = `
+      <p style="color:var(--text-muted); font-size:0.9rem; margin:0; line-height:1.5;">
+        Le suivi étudiant détaillé est disponible uniquement pour les comptes élèves.
+      </p>
+    `;
+    return;
+  }
+
+  const followup = getStudentFollowup(data);
+  const promotionLabel = data.promotionName || 'Aucune promotion affectée';
+  const formationLabel = data.promotionFormationName || data.formationName || data.formation || 'Formation non renseignée';
+  const lastUpdate = followup.updatedAt
+    ? `${formatSbiDate(followup.updatedAt, 'date inconnue')}${followup.updatedByEmail ? ` · ${followup.updatedByEmail}` : ''}`
+    : 'Aucune mise à jour enregistrée';
+
+  panel.innerHTML = `
+    <div class="sbi-student-followup">
+      <div class="sbi-student-followup__header">
+        <div>
+          <p>Fiche étudiant</p>
+          <h4>Suivi étudiant</h4>
+        </div>
+        <span class="sbi-student-followup__pill" data-priority="${escapeHTML(followup.priority)}">
+          ${escapeHTML(STUDENT_FOLLOWUP_PRIORITY_LABELS[followup.priority])}
+        </span>
+      </div>
+
+      <div class="sbi-student-followup__snapshot">
+        <div>
+          <span>Promotion</span>
+          <strong>${escapeHTML(promotionLabel)}</strong>
+        </div>
+        <div>
+          <span>Formation liée</span>
+          <strong>${escapeHTML(formationLabel)}</strong>
+        </div>
+        <div>
+          <span>Dernière activité</span>
+          <strong>${escapeHTML(formatSbiDate(data.accountStatus?.lastLoginAt || data.lastLoginAt || data.lastSeenAt, 'Aucune activité'))}</strong>
+        </div>
+        <div>
+          <span>Prochaine action</span>
+          <strong>${escapeHTML(followup.nextActionAt ? formatSbiDate(followup.nextActionAt, 'À définir') : 'À définir')}</strong>
+        </div>
+      </div>
+
+      <div class="sbi-student-followup__grid">
+        <label>
+          <span>Statut de suivi</span>
+          <select id="prof-student-followup-status">
+            ${Object.entries(STUDENT_FOLLOWUP_STATUS_LABELS).map(([value, label]) => `
+              <option value="${escapeHTML(value)}"${value === followup.status ? ' selected' : ''}>${escapeHTML(label)}</option>
+            `).join('')}
+          </select>
+        </label>
+        <label>
+          <span>Priorité / vigilance</span>
+          <select id="prof-student-followup-priority">
+            ${Object.entries(STUDENT_FOLLOWUP_PRIORITY_LABELS).map(([value, label]) => `
+              <option value="${escapeHTML(value)}"${value === followup.priority ? ' selected' : ''}>${escapeHTML(label)}</option>
+            `).join('')}
+          </select>
+        </label>
+        <label>
+          <span>Contact référent</span>
+          <input id="prof-student-followup-referent-name" type="text" maxlength="120" placeholder="Nom du référent" value="${escapeHTML(followup.referentName)}">
+        </label>
+        <label>
+          <span>Email référent</span>
+          <input id="prof-student-followup-referent-email" type="email" maxlength="160" placeholder="referent@sbi..." value="${escapeHTML(followup.referentEmail)}">
+        </label>
+        <label>
+          <span>Prochaine action prévue</span>
+          <input id="prof-student-followup-next-action" type="date" value="${escapeHTML(followup.nextActionAt)}">
+        </label>
+      </div>
+
+      <label class="sbi-student-followup__note">
+        <span>Notes de suivi étudiant</span>
+        <textarea id="prof-student-followup-note" rows="6" maxlength="3000" placeholder="Ex : dossier à vérifier, point d’appel prévu, besoin de relance administrative, vigilance pédagogique...">${escapeHTML(followup.note)}</textarea>
+      </label>
+
+      <div class="sbi-student-followup__footer">
+        <span id="prof-student-followup-meta">Dernière mise à jour : ${escapeHTML(lastUpdate)}</span>
+        <span id="prof-student-followup-status-line"></span>
+        <button id="prof-save-student-followup-btn" type="button">Sauvegarder le suivi étudiant</button>
+      </div>
+    </div>
+  `;
+
+  const statusLine = panel.querySelector('#prof-student-followup-status-line');
+  const saveButton = panel.querySelector('#prof-save-student-followup-btn');
+
+  saveButton?.addEventListener('click', async () => {
+    const payload = {
+      status: panel.querySelector('#prof-student-followup-status')?.value || 'not_started',
+      priority: panel.querySelector('#prof-student-followup-priority')?.value || 'normal',
+      referentName: panel.querySelector('#prof-student-followup-referent-name')?.value || '',
+      referentEmail: panel.querySelector('#prof-student-followup-referent-email')?.value || '',
+      nextActionAt: panel.querySelector('#prof-student-followup-next-action')?.value || '',
+      note: panel.querySelector('#prof-student-followup-note')?.value || ''
+    };
+
+    saveButton.disabled = true;
+    saveButton.style.opacity = '0.65';
+    if (statusLine) {
+      statusLine.dataset.tone = 'muted';
+      statusLine.textContent = 'Sauvegarde...';
+    }
+
+    try {
+      await adminUpdateUserAccountCallable({ uid, studentFollowup: payload });
+      if (statusLine) {
+        statusLine.dataset.tone = 'success';
+        statusLine.textContent = 'Suivi étudiant sauvegardé.';
+      }
+      await reloadProfile?.(uid);
+    } catch (error) {
+      console.warn('[SBI Profile] Sauvegarde suivi étudiant impossible :', error);
+      if (statusLine) {
+        statusLine.dataset.tone = 'error';
+        statusLine.textContent = getCallableUiMessage(error, 'Sauvegarde impossible.');
+      }
+    } finally {
+      saveButton.disabled = false;
+      saveButton.style.opacity = '';
+    }
+  });
 }
 
 function renderAccountActionsPanel({ db, uid, data = {}, reloadProfile }) {

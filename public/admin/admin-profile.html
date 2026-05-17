@@ -7,13 +7,13 @@
     <link rel="stylesheet" href="css/admin-layout.css">
     <link rel="stylesheet" href="css/admin.css?v=8.0P.167.51">
     <link rel="stylesheet" href="css/admin-notifications.css">
-    <link rel="stylesheet" href="css/admin-profile.css?v=8.0P.167.64">
+    <link rel="stylesheet" href="css/admin-profile.css?v=8.0P.167.65">
     <link rel="stylesheet" href="/css/sbi-7-1-harmonization.css?v=8.0P.167.48">
 
     <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
 
-    <script src="js/components.js?v=8.0P.167.64"></script>
+    <script src="js/components.js?v=8.0P.167.65"></script>
     <link rel="stylesheet" href="css/admin-surface-unified.css?v=8.0P.167.52">
 </head>
 <body class="preload sbi-profile-page sbi-admin-surface">
@@ -84,6 +84,7 @@
                         <div class="profile-tabs-header">
                             <div class="p-tab active" onclick="document.querySelectorAll('.p-tab').forEach(t=>t.classList.remove('active')); this.classList.add('active'); document.querySelectorAll('.p-tab-content').forEach(c=>c.classList.remove('active')); document.getElementById('ptab-public').classList.add('active');">Profil Public</div>
                             <div class="p-tab private-section" onclick="document.querySelectorAll('.p-tab').forEach(t=>t.classList.remove('active')); this.classList.add('active'); document.querySelectorAll('.p-tab-content').forEach(c=>c.classList.remove('active')); document.getElementById('ptab-private').classList.add('active');">Données privées</div>
+                            <div class="p-tab student-followup-section" onclick="document.querySelectorAll('.p-tab').forEach(t=>t.classList.remove('active')); this.classList.add('active'); document.querySelectorAll('.p-tab-content').forEach(c=>c.classList.remove('active')); document.getElementById('ptab-student-followup').classList.add('active');">Suivi étudiant</div>
                             <div class="p-tab" onclick="document.querySelectorAll('.p-tab').forEach(t=>t.classList.remove('active')); this.classList.add('active'); document.querySelectorAll('.p-tab-content').forEach(c=>c.classList.remove('active')); document.getElementById('ptab-activity').classList.add('active');">Activité</div>
 
                             <div class="p-tab" onclick="document.querySelectorAll('.p-tab').forEach(t=>t.classList.remove('active')); this.classList.add('active'); document.querySelectorAll('.p-tab-content').forEach(c=>c.classList.remove('active')); document.getElementById('ptab-tracking').classList.add('active');">
@@ -125,6 +126,12 @@
                                 <input type="text" id="prof-address" placeholder="123 rue..." style="width: 100%; box-sizing: border-box; padding: 0.8rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px;">
 
                                 <button id="btn-save-private" class="action-btn" style="width:auto; margin-top: 1rem; background: var(--accent-red); border:none; color:white;">Enregistrer les données privées</button>
+                            </div>
+                        </div>
+
+                        <div id="ptab-student-followup" class="p-tab-content student-followup-section">
+                            <div id="prof-student-followup-panel" class="data-group">
+                                <p style="color: var(--text-muted); font-size: 0.9rem; font-style: italic; margin:0;">Chargement du suivi étudiant...</p>
                             </div>
                         </div>
 
@@ -180,10 +187,10 @@
 
 </div> 
 
-<script type="module" src="js/admin-ui.js?v=8.0P.167.64"></script>
+<script type="module" src="js/admin-ui.js?v=8.0P.167.65"></script>
 <script type="module" src="js/tracker.js?v=8.0P.167.44"></script>
 <script type="module" src="js/admin-notifications.js"></script>
-<script type="module" src="/js/profile-core.js?v=8.0P.167.64"></script>
+<script type="module" src="/js/profile-core.js?v=8.0P.167.65"></script>
 
 </body>
 </html>
