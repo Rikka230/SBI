@@ -596,3 +596,68 @@ body.sbi-profile-page.sbi-student-surface .content-wrapper {
     background: transparent !important;
 }
 
+
+/* ==========================================================================
+   SBI 8.0P.167.46 — Profil prof/élève : contraste activité sur fond clair
+   --------------------------------------------------------------------------
+   Après navigation PJAX, certains blocs d'activité conservaient une couleur
+   texte claire héritée du thème sombre. Sur les cartes blanches prof/élève,
+   le descriptif devenait illisible.
+   ========================================================================== */
+
+body.sbi-profile-page.sbi-teacher-surface .activity-card,
+body.sbi-profile-page.sbi-teacher-surface .activity-item,
+body.sbi-profile-page.sbi-teacher-surface .timeline-card,
+body.sbi-profile-page.sbi-teacher-surface .timeline-item,
+body.sbi-profile-page.sbi-student-surface .activity-card,
+body.sbi-profile-page.sbi-student-surface .activity-item,
+body.sbi-profile-page.sbi-student-surface .timeline-card,
+body.sbi-profile-page.sbi-student-surface .timeline-item {
+    color: var(--text-main, #1f2937) !important;
+}
+
+body.sbi-profile-page.sbi-teacher-surface .activity-card p,
+body.sbi-profile-page.sbi-teacher-surface .activity-item p,
+body.sbi-profile-page.sbi-teacher-surface .timeline-card p,
+body.sbi-profile-page.sbi-teacher-surface .timeline-item p,
+body.sbi-profile-page.sbi-teacher-surface .activity-card span,
+body.sbi-profile-page.sbi-teacher-surface .activity-item span,
+body.sbi-profile-page.sbi-teacher-surface .timeline-card span,
+body.sbi-profile-page.sbi-teacher-surface .timeline-item span,
+body.sbi-profile-page.sbi-student-surface .activity-card p,
+body.sbi-profile-page.sbi-student-surface .activity-item p,
+body.sbi-profile-page.sbi-student-surface .timeline-card p,
+body.sbi-profile-page.sbi-student-surface .timeline-item p,
+body.sbi-profile-page.sbi-student-surface .activity-card span,
+body.sbi-profile-page.sbi-student-surface .activity-item span,
+body.sbi-profile-page.sbi-student-surface .timeline-card span,
+body.sbi-profile-page.sbi-student-surface .timeline-item span {
+    color: var(--text-muted, #6b7280) !important;
+}
+
+body.sbi-profile-page.sbi-teacher-surface .activity-card strong,
+body.sbi-profile-page.sbi-teacher-surface .activity-item strong,
+body.sbi-profile-page.sbi-teacher-surface .timeline-card strong,
+body.sbi-profile-page.sbi-teacher-surface .timeline-item strong,
+body.sbi-profile-page.sbi-student-surface .activity-card strong,
+body.sbi-profile-page.sbi-student-surface .activity-item strong,
+body.sbi-profile-page.sbi-student-surface .timeline-card strong,
+body.sbi-profile-page.sbi-student-surface .timeline-item strong {
+    color: var(--text-main, #111827) !important;
+}
+
+/* Couvre aussi les noms de classes plus génériques utilisés par le renderer profil. */
+body.sbi-profile-page.sbi-teacher-surface [class*="activity"] p,
+body.sbi-profile-page.sbi-teacher-surface [class*="timeline"] p,
+body.sbi-profile-page.sbi-student-surface [class*="activity"] p,
+body.sbi-profile-page.sbi-student-surface [class*="timeline"] p {
+    color: var(--text-muted, #6b7280) !important;
+}
+
+body.sbi-profile-page.sbi-teacher-surface [class*="activity"] small,
+body.sbi-profile-page.sbi-teacher-surface [class*="timeline"] small,
+body.sbi-profile-page.sbi-student-surface [class*="activity"] small,
+body.sbi-profile-page.sbi-student-surface [class*="timeline"] small {
+    color: #64748b !important;
+}
+
