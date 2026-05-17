@@ -36,6 +36,32 @@ service firebase.storage {
         );
     }
 
+    function canReadStudentDocument(studentId) {
+      return isAdmin();
+    }
+
+    function canManageStudentDocument(studentId) {
+      return isAdmin();
+    }
+
+    function validStudentDocumentUpload(studentId, documentId) {
+      return isAdmin()
+        && request.resource.size < 40 * 1024 * 1024
+        && request.resource.metadata.keys().hasAny(['uploadedBy'])
+        && request.resource.metadata.keys().hasAny(['studentUid'])
+        && request.resource.metadata.keys().hasAny(['documentId'])
+        && request.resource.metadata.uploadedBy == request.auth.uid
+        && request.resource.metadata.studentUid == studentId
+        && request.resource.metadata.documentId == documentId
+        && (
+          request.resource.contentType.matches('image/.*') ||
+          request.resource.contentType == 'application/pdf' ||
+          request.resource.contentType == 'application/msword' ||
+          request.resource.contentType == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+          request.resource.contentType == 'text/plain'
+        );
+    }
+
     function canManageAvatar(userId) {
       return isActiveUser()
         && (
@@ -289,6 +315,24 @@ service firebase.storage {
         && request.resource.contentType.matches('image/.*');
 
       allow delete: if canManageAvatar(userId);
+    }
+
+    /* ============================================================
+       DOCUMENTS ÉLÈVES — COFFRE ADMIN
+       ============================================================
+       Chemin utilisé par SBI 8.0P.167.68 :
+       student-documents/{studentId}/{documentId}/{fileName}
+
+       V1 : lecture et écriture admin uniquement. L'ouverture élève sera
+       étudiée dans une étape dédiée après validation des catégories/droits.
+       ============================================================ */
+    match /student-documents/{studentId}/{documentId}/{fileName} {
+      allow read: if canReadStudentDocument(studentId);
+
+      allow create, update: if canManageStudentDocument(studentId)
+        && validStudentDocumentUpload(studentId, documentId);
+
+      allow delete: if false;
     }
 
     /* ============================================================

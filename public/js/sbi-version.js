@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.67',
+  version: '8.0P.167.68',
   branch: 'main',
-  channel: 'P2I.2 STUDENT PEDAGOGICAL FOLLOWUP INTEGRATED',
-  stage: 'MERGE STUDENT FOLLOWUP INTO PEDAGOGICAL TRACKING',
+  channel: 'P2I.3 STUDENT DOCUMENT VAULT BASELINE',
+  stage: 'ADMIN STUDENT DOCUMENTS VAULT BASELINE',
   updatedAt: '2026-05-17',
-  label: 'SBI 8.0P.167.67 - STUDENT FOLLOWUP FORMATION LINK FIX'
+  label: 'SBI 8.0P.167.68 - STUDENT DOCUMENT VAULT BASELINE'
 };
 
 export function getSbiVersionLabel() {

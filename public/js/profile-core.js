@@ -10,6 +10,7 @@
  * 8.0P.164 : cache-bust rendu profil pour relance finalisation compte.
  * 8.0P.165 : affichage relances automatiques et escalade.
  * 8.0P.167.64 : fix syntax rendu promotions + cible profil admin PJAX stable.
+ * 8.0P.167.68 : coffre documents élève admin-only dans Suivi pédagogique.
  * 8.0P.163 : cache-bust du rendu profil pour notes internes persistantes.
  * =======================================================================
  */
@@ -18,10 +19,11 @@ import { db, auth } from '/js/firebase-init.js';
 import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js';
 import { waitForSbiTopbar } from '/admin/js/components/ready.js';
-import { waitForSbiComponents } from '/js/profile/profile-utils.js?v=8.0P.167.67';
+import { waitForSbiComponents } from '/js/profile/profile-utils.js?v=8.0P.167.68';
 import { hydrateLoggedInTopbar } from '/js/profile/profile-topbar.js';
-import { renderProfileShell } from '/js/profile/profile-render.js?v=8.0P.167.67';
+import { renderProfileShell } from '/js/profile/profile-render.js?v=8.0P.167.68';
 import { renderUserFormations } from '/js/profile/profile-formations.js';
+import { renderStudentDocumentsPanel } from '/js/profile/profile-student-documents.js?v=8.0P.167.68';
 import { renderLearningTracking } from '/js/profile/profile-tracking.js';
 import { setupSaveButtons, setupSecurityAndEditMode } from '/js/profile/profile-edit.js';
 import { initProfileAvatarCropper } from '/js/profile/profile-avatar-cropper.js';
@@ -123,6 +125,15 @@ async function loadProfileData(uid) {
         uid,
         context,
         reloadProfile: loadProfileData
+      });
+    }
+
+    if (document.getElementById('prof-student-documents-panel')) {
+      await renderStudentDocumentsPanel({
+        db,
+        uid,
+        data: context.currentProfileData,
+        context
       });
     }
   } catch (error) {
