@@ -2143,27 +2143,33 @@ exports.completeFirstLoginOnboarding = onCall({
 
     const now = admin.firestore.FieldValue.serverTimestamp();
     const hasFirstLogin = Boolean(userData.accountStatus?.firstLoginAt || userData.firstLoginAt);
+    const previousAccountStatus = userData.accountStatus || {};
 
     const onboardingUpdate = {
-        "accountStatus.activationState": "active",
-        "accountStatus.lastLoginAt": now,
-        "accountStatus.firstLoginCompleted": true,
-        "accountStatus.firstLoginCompletedAt": now,
-        "accountStatus.firstLoginChecklistVersion": checklistVersion,
-        "accountStatus.termsAccepted": true,
-        "accountStatus.termsAcceptedAt": now,
-        "accountStatus.rulesAccepted": true,
-        "accountStatus.rulesAcceptedAt": now,
-        "accountStatus.importantInfoAccepted": true,
-        "accountStatus.importantInfoAcceptedAt": now,
-        "accountStatus.emailConfirmed": true,
-        "accountStatus.emailConfirmedAt": now,
+        accountStatus: {
+            ...previousAccountStatus,
+            activationState: "active",
+            lastLoginAt: now,
+            firstLoginCompleted: true,
+            firstLoginCompletedAt: now,
+            firstLoginChecklistVersion: checklistVersion,
+            termsAccepted: true,
+            termsAcceptedAt: now,
+            rulesAccepted: true,
+            rulesAcceptedAt: now,
+            importantInfoAccepted: true,
+            importantInfoAcceptedAt: now,
+            emailConfirmed: true,
+            emailConfirmedAt: now
+        },
+        firstLoginCompleted: true,
+        firstLoginCompletedAt: now,
         lastLoginAt: now,
         updatedAt: now
     };
 
     if (!hasFirstLogin) {
-        onboardingUpdate["accountStatus.firstLoginAt"] = now;
+        onboardingUpdate.accountStatus.firstLoginAt = now;
         onboardingUpdate.firstLoginAt = now;
     }
 

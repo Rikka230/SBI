@@ -278,16 +278,22 @@
                     </div>
 
                     <div id="tab-tracking" class="student-view">
-                        <div class="hub-card student-visible-documents-panel" id="student-visible-documents">
-                            <div class="student-visible-documents-head">
-                                <div>
-                                    <h3 class="section-title" style="margin-bottom: 0.35rem;">Mes documents SBI</h3>
-                                    <p>Retrouve ici uniquement les documents que l’équipe SBI a rendus accessibles depuis ton espace.</p>
+                        <div class="hub-card student-visible-documents-panel is-collapsed" id="student-visible-documents">
+                            <button type="button" class="student-visible-documents-summary" id="student-visible-documents-toggle" aria-expanded="false" style="width:100%; border:0; background:transparent; padding:0; text-align:left;">
+                                <span class="student-visible-documents-summary-title">
+                                    <span class="student-visible-documents-arrow" aria-hidden="true">›</span>
+                                    <span>
+                                        <strong class="section-title" style="margin:0; display:block;">Mes documents SBI</strong>
+                                        <small id="student-visible-documents-count" class="student-visible-documents-count">Chargement...</small>
+                                    </span>
+                                </span>
+                            </button>
+                            <div class="student-visible-documents-content">
+                                <p>Retrouve ici uniquement les documents que l’équipe SBI a rendus accessibles depuis ton espace.</p>
+                                <span id="student-visible-documents-status" class="student-visible-documents-status" aria-live="polite"></span>
+                                <div id="student-visible-documents-list" class="student-visible-documents-list">
+                                    <div class="student-visible-doc-empty">Chargement des documents SBI...</div>
                                 </div>
-                            </div>
-                            <span id="student-visible-documents-status" class="student-visible-documents-status" aria-live="polite"></span>
-                            <div id="student-visible-documents-list" class="student-visible-documents-list">
-                                <div class="student-visible-doc-empty">Chargement des documents SBI...</div>
                             </div>
                         </div>
 
@@ -335,8 +341,8 @@
 <script type="module" src="/admin/js/admin-notifications.js?v=8.0P.167.96.1-GPT2.2"></script>
 <script src="/admin/js/sbi-safe-fixes.js"></script>
 <script type="module" src="/admin/js/admin-ui.js?v=8.0P.167.87"></script>
-<script type="module" src="/admin/js/tracker.js?v=8.0P.167.96.1-GPT2.2"></script>
-<script type="module" src="/js/profile-core.js?v=8.0P.167.96.1-GPT2.2"></script>\n<script type="module" src="/student/js/student-visible-documents.js?v=8.0P.167.96.1-GPT2.2"></script>
+<script type="module" src="/admin/js/tracker.js?v=8.0P.167.96.1-GPT2.3"></script>
+<script type="module" src="/js/profile-core.js?v=8.0P.167.96.1-GPT2.3"></script>\n<script type="module" src="/student/js/student-visible-documents.js?v=8.0P.167.96.1-GPT2.3"></script>
 
 </body>
 </html>

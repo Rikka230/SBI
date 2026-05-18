@@ -7,6 +7,7 @@ import {
   where
 } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
 import {
+  getBlob,
   getDownloadURL,
   ref
 } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js';
@@ -14,6 +15,11 @@ import {
 const ROOT_ID = 'student-visible-documents';
 const LIST_ID = 'student-visible-documents-list';
 const STATUS_ID = 'student-visible-documents-status';
+const TOGGLE_ID = 'student-visible-documents-toggle';
+const COUNT_ID = 'student-visible-documents-count';
+
+let mounted = false;
+let lastDocuments = [];
 
 function escapeHTML(value = '') {
   return String(value ?? '')
@@ -72,6 +78,12 @@ function setStatus(message = '', tone = 'muted') {
   status.dataset.tone = tone;
 }
 
+function setCount(count = 0) {
+  const countEl = document.getElementById(COUNT_ID);
+  if (!countEl) return;
+  countEl.textContent = count > 0 ? `${count} document(s)` : 'Aucun document';
+}
+
 function injectStyle() {
   if (document.getElementById('student-visible-documents-style')) return;
   const style = document.createElement('style');
@@ -81,17 +93,58 @@ function injectStyle() {
       scroll-margin-top: 90px;
     }
 
-    .student-visible-documents-head {
+    .student-visible-documents-summary {
       display:flex;
       justify-content:space-between;
-      align-items:flex-start;
+      align-items:center;
       gap:1rem;
-      flex-wrap:wrap;
-      margin-bottom:1rem;
+      cursor:pointer;
     }
 
-    .student-visible-documents-head p {
-      margin:0.35rem 0 0;
+    .student-visible-documents-summary-title {
+      display:flex;
+      align-items:center;
+      gap:0.7rem;
+      min-width:0;
+    }
+
+    .student-visible-documents-arrow {
+      width:34px;
+      height:34px;
+      border-radius:999px;
+      border:1px solid rgba(42,87,255,0.22);
+      background:rgba(42,87,255,0.08);
+      color:var(--accent-blue);
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      font-weight:900;
+      transition:transform 0.2s ease, background 0.2s ease;
+      flex-shrink:0;
+    }
+
+    .student-visible-documents-panel:not(.is-collapsed) .student-visible-documents-arrow {
+      transform:rotate(90deg);
+      background:rgba(42,87,255,0.14);
+    }
+
+    .student-visible-documents-count {
+      color:var(--text-muted);
+      font-size:0.85rem;
+      font-weight:800;
+      white-space:nowrap;
+    }
+
+    .student-visible-documents-content {
+      margin-top:1rem;
+    }
+
+    .student-visible-documents-panel.is-collapsed .student-visible-documents-content {
+      display:none;
+    }
+
+    .student-visible-documents-content p {
+      margin:0 0 0.85rem;
       color:var(--text-muted);
       line-height:1.55;
       font-size:0.92rem;
@@ -150,7 +203,8 @@ function injectStyle() {
       justify-content:flex-end;
     }
 
-    .student-visible-doc-card__actions button {
+    .student-visible-doc-card__actions button,
+    .student-visible-doc-retry {
       border:1px solid rgba(42,87,255,0.25);
       border-radius:999px;
       padding:0.58rem 0.85rem;
@@ -160,7 +214,8 @@ function injectStyle() {
       cursor:pointer;
     }
 
-    .student-visible-doc-card__actions button:hover {
+    .student-visible-doc-card__actions button:hover,
+    .student-visible-doc-retry:hover {
       background:rgba(42,87,255,0.14);
     }
 
@@ -180,9 +235,34 @@ function injectStyle() {
       .student-visible-doc-card__actions {
         justify-content:flex-start;
       }
+
+      .student-visible-documents-summary {
+        align-items:flex-start;
+      }
     }
   `;
   document.head.appendChild(style);
+}
+
+function setCollapsed(collapsed) {
+  const root = document.getElementById(ROOT_ID);
+  const toggle = document.getElementById(TOGGLE_ID);
+  if (!root) return;
+  root.classList.toggle('is-collapsed', collapsed);
+  if (toggle) toggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+}
+
+function bindToggle() {
+  const root = document.getElementById(ROOT_ID);
+  const toggle = document.getElementById(TOGGLE_ID);
+  if (!root || !toggle || toggle.dataset.bound === '1') return;
+
+  toggle.dataset.bound = '1';
+  toggle.addEventListener('click', () => {
+    setCollapsed(!root.classList.contains('is-collapsed'));
+  });
+
+  setCollapsed(window.location.hash !== '#student-visible-documents');
 }
 
 function activateTrackingTabIfNeeded() {
@@ -196,6 +276,8 @@ function activateTrackingTabIfNeeded() {
 
   document.querySelectorAll('.student-view').forEach((view) => view.classList.remove('active'));
   document.getElementById('tab-tracking')?.classList.add('active');
+
+  setCollapsed(false);
 
   window.setTimeout(() => {
     document.getElementById(ROOT_ID)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -213,9 +295,28 @@ function renderEmpty() {
   `;
 }
 
+function renderError() {
+  const list = document.getElementById(LIST_ID);
+  if (!list) return;
+  list.innerHTML = `
+    <div class="student-visible-doc-empty">
+      Documents indisponibles pour le moment.
+      <br><br>
+      <button type="button" class="student-visible-doc-retry" id="student-visible-documents-retry">Réessayer</button>
+    </div>
+  `;
+  document.getElementById('student-visible-documents-retry')?.addEventListener('click', () => {
+    const user = auth.currentUser;
+    if (user) loadAndRender(user.uid);
+  });
+}
+
 function renderDocuments(documents = []) {
   const list = document.getElementById(LIST_ID);
   if (!list) return;
+
+  lastDocuments = documents;
+  setCount(documents.length);
 
   if (!documents.length) {
     renderEmpty();
@@ -238,7 +339,7 @@ function renderDocuments(documents = []) {
 
   list.querySelectorAll('[data-doc-open]').forEach((button) => {
     button.addEventListener('click', async () => {
-      const item = documents.find((entry) => entry.id === button.dataset.docOpen);
+      const item = lastDocuments.find((entry) => entry.id === button.dataset.docOpen);
       if (!item) return;
       await openDocument(item, button);
     });
@@ -246,7 +347,7 @@ function renderDocuments(documents = []) {
 
   list.querySelectorAll('[data-doc-download]').forEach((button) => {
     button.addEventListener('click', async () => {
-      const item = documents.find((entry) => entry.id === button.dataset.docDownload);
+      const item = lastDocuments.find((entry) => entry.id === button.dataset.docDownload);
       if (!item) return;
       await downloadDocument(item, button);
     });
@@ -287,23 +388,26 @@ async function downloadDocument(item, button) {
   }
 
   try {
-    const url = await getDocumentUrl(item);
-    const response = await fetch(url);
-    if (!response.ok) throw new Error('Téléchargement refusé.');
+    if (!item?.filePath) throw new Error('Chemin fichier manquant.');
 
-    const blob = await response.blob();
+    const fileRef = ref(storage, item.filePath);
+    const blob = await getBlob(fileRef);
     const blobUrl = URL.createObjectURL(blob);
     const link = document.createElement('a');
+
     link.href = blobUrl;
     link.download = sanitizeFileName(item.fileName || item.title || 'document-sbi');
+    link.rel = 'noopener';
     document.body.appendChild(link);
     link.click();
     link.remove();
-    window.setTimeout(() => URL.revokeObjectURL(blobUrl), 1500);
+
+    window.setTimeout(() => URL.revokeObjectURL(blobUrl), 1800);
     setStatus('Téléchargement lancé.', 'success');
   } catch (error) {
-    console.warn('[SBI Student Documents] Téléchargement direct impossible :', error);
-    setStatus('Téléchargement direct indisponible, ouverture du fichier.', 'error');
+    console.warn('[SBI Student Documents] Téléchargement impossible :', error);
+    setStatus('Téléchargement direct indisponible sur ce navigateur. Ouverture du fichier.', 'error');
+
     try {
       const fallbackUrl = await getDocumentUrl(item);
       window.open(fallbackUrl, '_blank', 'noopener,noreferrer');
@@ -331,37 +435,79 @@ async function loadVisibleDocuments(uid) {
   return rows;
 }
 
+async function loadAndRender(uid) {
+  setStatus('Chargement des documents SBI...', 'muted');
+
+  try {
+    const documents = await Promise.race([
+      loadVisibleDocuments(uid),
+      new Promise((_, reject) => window.setTimeout(() => reject(new Error('timeout')), 9000))
+    ]);
+
+    renderDocuments(documents);
+    setStatus(documents.length ? `${documents.length} document(s) disponible(s).` : '', documents.length ? 'success' : 'muted');
+    activateTrackingTabIfNeeded();
+  } catch (error) {
+    console.warn('[SBI Student Documents] Lecture impossible :', error);
+    setCount(0);
+    setStatus('Documents indisponibles pour le moment.', 'error');
+    renderError();
+  }
+}
+
 function mount() {
   const root = document.getElementById(ROOT_ID);
   if (!root) return;
 
+  if (mounted && root.dataset.studentDocumentsMounted === '1') {
+    activateTrackingTabIfNeeded();
+    return;
+  }
+
+  mounted = true;
+  root.dataset.studentDocumentsMounted = '1';
+
   injectStyle();
+  bindToggle();
   activateTrackingTabIfNeeded();
 
+  let authResolved = false;
+
   onAuthStateChanged(auth, async (user) => {
+    authResolved = true;
+
     if (!user) {
       setStatus('Connecte-toi pour consulter tes documents SBI.', 'error');
+      setCount(0);
       renderEmpty();
       return;
     }
 
-    setStatus('Chargement des documents SBI...', 'muted');
-
-    try {
-      const documents = await loadVisibleDocuments(user.uid);
-      renderDocuments(documents);
-      setStatus(documents.length ? `${documents.length} document(s) disponible(s).` : '', documents.length ? 'success' : 'muted');
-      activateTrackingTabIfNeeded();
-    } catch (error) {
-      console.warn('[SBI Student Documents] Lecture impossible :', error);
-      setStatus('Documents indisponibles pour le moment.', 'error');
-      renderEmpty();
-    }
+    await loadAndRender(user.uid);
   });
+
+  window.setTimeout(() => {
+    if (authResolved) return;
+    if (auth.currentUser) {
+      authResolved = true;
+      loadAndRender(auth.currentUser.uid);
+    }
+  }, 900);
+}
+
+function boot() {
+  mount();
+  window.setTimeout(mount, 350);
+  window.setTimeout(mount, 1200);
 }
 
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', mount, { once: true });
+  document.addEventListener('DOMContentLoaded', boot, { once: true });
 } else {
-  mount();
+  boot();
 }
+
+window.addEventListener('pageshow', boot);
+window.addEventListener('hashchange', activateTrackingTabIfNeeded);
+window.addEventListener('sbi:pjax-ready', boot);
+window.addEventListener('sbi:page-loaded', boot);

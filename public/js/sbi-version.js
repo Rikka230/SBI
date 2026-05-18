@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.97',
+  version: '8.0P.167.96.1-GPT2.3',
   branch: 'main',
-  channel: 'P2I.5-G PROMOTION PLANNING MULTI LAYERS V1',
-  stage: 'TIMELINE MULTI LAYERS COURSES ASSIGNMENTS EXAMS LIVES BUFFERS',
+  channel: 'P2I-GPT2 STUDENT DOCUMENTS FIXES',
+  stage: 'MOBILE FIRST LOGIN FIX AND COLLAPSIBLE STUDENT DOCUMENTS',
   updatedAt: '2026-05-18',
-  label: 'SBI 8.0P.167.97 - PROMOTION PLANNING MULTI LAYERS V1'
+  label: 'SBI 8.0P.167.96.1-GPT2.3 - STUDENT DOCUMENTS FIXES'
 };
 
 export function getSbiVersionLabel() {

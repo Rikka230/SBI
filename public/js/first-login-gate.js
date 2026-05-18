@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.167.96.1-GPT2.2 / P2I-GPT2.2
+ * SBI 8.0P.167.96.1-GPT2.3 / P2I-GPT2.3
  * Première connexion : validation obligatoire légère + notice étudiant post-login.
  *
  * Objectif :
@@ -76,14 +76,18 @@ function writeStudentNoticeDismissed(uid) {
 
 function hasCompletedFirstLogin(data = {}) {
   const status = data?.accountStatus || {};
+  const legacy = (key) => data?.[`accountStatus.${key}`];
+
   return status.firstLoginCompleted === true
     || data?.firstLoginCompleted === true
+    || legacy('firstLoginCompleted') === true
     || Boolean(status.firstLoginCompletedAt)
+    || Boolean(legacy('firstLoginCompletedAt'))
     || (
-      status.termsAccepted === true
-      && status.rulesAccepted === true
-      && status.importantInfoAccepted === true
-      && status.emailConfirmed === true
+      (status.termsAccepted === true || legacy('termsAccepted') === true)
+      && (status.rulesAccepted === true || legacy('rulesAccepted') === true)
+      && (status.importantInfoAccepted === true || legacy('importantInfoAccepted') === true)
+      && (status.emailConfirmed === true || legacy('emailConfirmed') === true)
     );
 }
 
