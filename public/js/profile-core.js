@@ -22,10 +22,10 @@ import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.1/fi
 import { waitForSbiTopbar } from '/admin/js/components/ready.js';
 import { waitForSbiComponents } from '/js/profile/profile-utils.js?v=8.0P.167.74';
 import { hydrateLoggedInTopbar } from '/js/profile/profile-topbar.js';
-import { renderProfileShell } from '/js/profile/profile-render.js?v=8.0P.167.74';
+import { renderProfileShell } from '/js/profile/profile-render.js?v=8.0P.167.97-GPT2.2';
 import { renderUserFormations } from '/js/profile/profile-formations.js?v=8.0P.167.87';
 import { renderStudentDocumentsPanel } from '/js/profile/profile-student-documents.js?v=8.0P.167.96.1-GPT2.1';
-import { renderLearningTracking } from '/js/profile/profile-tracking.js';
+import { renderLearningTracking, renderTeacherStudentsList } from '/js/profile/profile-tracking.js?v=8.0P.167.97-GPT2.2';
 import { setupSaveButtons, setupSecurityAndEditMode } from '/js/profile/profile-edit.js';
 import { initProfileAvatarCropper } from '/js/profile/profile-avatar-cropper.js';
 import { startProfilePresenceListener, stopProfilePresenceListener } from '/js/profile/profile-presence.js';
@@ -39,6 +39,15 @@ const context = {
   isAdmin: false,
   isEditMode: false
 };
+
+
+function getProfileRole(data = {}) {
+  if (data?.isGod === true || data?.role === 'admin') return 'admin';
+  const raw = String(data.role || data.userRole || data.type || '').trim().toLowerCase();
+  if (['teacher', 'prof', 'professeur'].includes(raw)) return 'teacher';
+  if (['student', 'eleve', 'élève', 'etudiant', 'étudiant'].includes(raw)) return 'student';
+  return 'student';
+}
 
 let activeCleanup = null;
 let securityPrepared = false;
@@ -209,16 +218,26 @@ async function loadProfileData(uid) {
 
     await renderUserFormations({ uid, context });
 
-    if (document.getElementById('prof-tracking-list')) {
+    const profileRole = getProfileRole(context.currentProfileData || {});
+    const trackingList = document.getElementById('prof-tracking-list');
+
+    if (trackingList && profileRole === 'student') {
       await renderLearningTracking({
         db,
         uid,
         context,
         reloadProfile: loadProfileData
       });
+    } else if (trackingList && profileRole === 'teacher') {
+      await renderTeacherStudentsList({
+        uid,
+        context
+      });
+    } else if (trackingList) {
+      trackingList.innerHTML = '';
     }
 
-    if (document.getElementById('prof-student-documents-panel')) {
+    if (profileRole === 'student' && document.getElementById('prof-student-documents-panel')) {
       await renderStudentDocumentsPanel({
         db,
         uid,
@@ -227,7 +246,7 @@ async function loadProfileData(uid) {
       });
     }
 
-    installStudentTrackingAccordions();
+    if (profileRole === 'student') installStudentTrackingAccordions();
   } catch (error) {
     console.error('[SBI Profile] Erreur chargement profil :', error);
   } finally {

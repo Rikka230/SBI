@@ -11,6 +11,7 @@ import {
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js';
 import { app } from '/js/firebase-init.js';
 import { escapeHTML, getDisplayName, SVG_EDIT } from './profile-utils.js';
+import { roleOf } from '/js/learning-access.js';
 import { maybeMigrateVisibleLegacyAvatar } from './profile-avatar-cropper.js';
 import { updateProfilePresenceStatus } from './profile-presence.js';
 
@@ -42,9 +43,128 @@ const STUDENT_FOLLOWUP_PRIORITY_LABELS = {
   urgent: 'Urgent'
 };
 
+function normalizeProfileRoleForDisplay(profile = {}) {
+  if (profile?.isGod === true) return 'admin';
+  const role = roleOf(profile, profile.role || 'student');
+  if (['admin', 'teacher', 'student'].includes(role)) return role;
+  const raw = String(profile.role || profile.userRole || profile.type || '').trim().toLowerCase();
+  if (['prof', 'professeur', 'teacher'].includes(raw)) return 'teacher';
+  if (['admin', 'administrator'].includes(raw)) return 'admin';
+  if (['student', 'eleve', 'élève', 'etudiant', 'étudiant'].includes(raw)) return 'student';
+  return 'student';
+}
+
 function isStudentRole(profile = {}) {
-  const role = String(profile.role || '').toLowerCase();
-  return ['student', 'eleve', 'élève', 'etudiant', 'étudiant'].includes(role);
+  return normalizeProfileRoleForDisplay(profile) === 'student';
+}
+
+function isTeacherRole(profile = {}) {
+  return normalizeProfileRoleForDisplay(profile) === 'teacher';
+}
+
+function isAdminProfileRole(profile = {}) {
+  return normalizeProfileRoleForDisplay(profile) === 'admin';
+}
+
+function setDisplay(node, visible, displayValue = '') {
+  if (!node) return;
+  node.style.display = visible ? displayValue : 'none';
+}
+
+function safeClosest(node, selector) {
+  try {
+    return node?.closest?.(selector) || null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function getTrackingTabNode() {
+  return Array.from(document.querySelectorAll('.p-tab, .student-sub-nav-item')).find((node) => {
+    const action = String(node.getAttribute('onclick') || '');
+    return action.includes('ptab-tracking') || action.includes('tab-tracking');
+  }) || null;
+}
+
+function activateDefaultProfileTabIfNeeded(trackingTab) {
+  if (!trackingTab?.classList?.contains('active')) return;
+  const fallback = Array.from(document.querySelectorAll('.p-tab, .student-sub-nav-item')).find((node) => {
+    const action = String(node.getAttribute('onclick') || '');
+    return action.includes('ptab-public') || action.includes('tab-overview');
+  });
+  fallback?.click?.();
+}
+
+function setTrackingTabLabel(tab, data = {}) {
+  if (!tab) return;
+  const role = normalizeProfileRoleForDisplay(data);
+  const icon = '<svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24" style="vertical-align:text-bottom; margin-right:4px;"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zM8 11c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5C15 14.17 10.33 13 8 13zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>';
+  if (role === 'teacher') {
+    tab.innerHTML = `${icon} Élèves suivis`;
+    return;
+  }
+  if (role === 'student') {
+    tab.innerHTML = `${icon} Suivi pédagogique`;
+  }
+}
+
+function configureTrackingNavigationForRole(data = {}) {
+  const trackingTab = getTrackingTabNode();
+  const trackingPanel = document.getElementById('ptab-tracking') || document.getElementById('tab-tracking');
+  const isAdminProfile = isAdminProfileRole(data);
+
+  setDisplay(trackingTab, !isAdminProfile);
+  setDisplay(trackingPanel, !isAdminProfile);
+
+  if (isAdminProfile) {
+    activateDefaultProfileTabIfNeeded(trackingTab);
+    return;
+  }
+
+  setTrackingTabLabel(trackingTab, data);
+}
+
+function clearProfileXpUi() {
+  [document.getElementById('prof-xp'), document.getElementById('prof-xp-text')].forEach((el) => {
+    if (!el) return;
+    el.textContent = '';
+    el.onclick = null;
+    el.style.cursor = '';
+    el.removeAttribute('title');
+  });
+
+  const fill = document.getElementById('prof-xp-fill');
+  if (fill) fill.style.width = '0%';
+}
+
+function configureGamificationForRole(data = {}) {
+  const showGamification = isStudentRole(data);
+
+  setDisplay(document.getElementById('prof-gamification'), showGamification, 'block');
+
+  const levelEl = document.getElementById('prof-level');
+  const xpEl = document.getElementById('prof-xp');
+  const levelChip = safeClosest(xpEl, 'div') || safeClosest(levelEl, 'div');
+  setDisplay(levelChip, showGamification);
+
+  const xpFill = document.getElementById('prof-xp-fill');
+  const xpBar = safeClosest(xpFill, '.xp-bar-bg') || safeClosest(xpFill, '.xp-bar-container');
+  setDisplay(xpBar, showGamification);
+
+  const badgesCard = safeClosest(document.querySelector('.sbi-badges-grid'), '.hub-card');
+  setDisplay(badgesCard, showGamification);
+
+  if (!showGamification) clearProfileXpUi();
+}
+
+function applyRoleSpecificProfileChrome(data = {}) {
+  const role = normalizeProfileRoleForDisplay(data);
+  document.body.classList.toggle('sbi-profile-role-admin', role === 'admin');
+  document.body.classList.toggle('sbi-profile-role-teacher', role === 'teacher');
+  document.body.classList.toggle('sbi-profile-role-student', role === 'student');
+
+  configureGamificationForRole(data);
+  configureTrackingNavigationForRole(data);
 }
 
 function getPromotionLabelForProfile(promotion = {}) {
@@ -112,7 +232,12 @@ export async function renderProfileShell({ db, uid, data, context, reloadProfile
   updateProfilePresenceStatus(data);
 
   renderRoleBadge(data);
-  await renderXp({ db, uid, data, context, reloadProfile });
+  applyRoleSpecificProfileChrome(data);
+  if (isStudentRole(data)) {
+    await renderXp({ db, uid, data, context, reloadProfile });
+  } else {
+    clearProfileXpUi();
+  }
   renderPromotionSidebarPanel({ db, uid, data, context, reloadProfile });
   renderStudentFollowupPanel({ db, uid, data, context, reloadProfile });
   renderPrivateData(data, context);

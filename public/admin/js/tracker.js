@@ -12,8 +12,8 @@
  * - première connexion : import du gate de validation obligatoire.
  * 8.0P.167.44 :
  * - permissions/rôles centralisés via sbi-permissions.js.
- * 8.0P.167.94-GPT2.2 :
- * - notice étudiant affichée sur route /student/ à chaque nouvelle connexion.
+ * 8.0P.167.97-GPT2.2 :
+ * - profils : admin/prof sans XP/badges, prof avec liste élèves suivis.
  * =======================================================================
  */
 

@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.97-GPT2.1',
+  version: '8.0P.167.97-GPT2.2',
   branch: 'main',
-  channel: 'P2I-GPT2 STUDENT DOCUMENTS PJAX FIX',
-  stage: 'STUDENT DOCUMENTS NO F5 AND CLEAN COLLAPSE ICON',
+  channel: 'P2I-GPT2 PROFILE ROLE CLEANUP',
+  stage: 'ADMIN TEACHER PROFILE UX CLEANUP',
   updatedAt: '2026-05-18',
-  label: 'SBI 8.0P.167.97-GPT2.1 - STUDENT DOCUMENTS PJAX FIX'
+  label: 'SBI 8.0P.167.97-GPT2.2 - PROFILE ROLE CLEANUP'
 };
 
 export function getSbiVersionLabel() {

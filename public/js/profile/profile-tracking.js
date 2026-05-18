@@ -1,12 +1,13 @@
 import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
 import { getUserLearningProgress, resetCourseProgress, updateQuizScore } from '/js/course-engine.js';
-import { loadCoursesForUser, roleOf } from '/js/learning-access.js';
+import { loadAssignedFormationsForUser, loadCoursesForUser, loadSearchUsersForRole, roleOf } from '/js/learning-access.js';
 import { getVisibleFormationsForProfile } from './profile-formations.js';
 import {
   computeQuizMaxScore,
   escapeHTML,
   formatScore,
   getCourseChapterIds,
+  getDisplayName,
   normalizeList,
   parseGradeInput,
   SVG_EDIT,
@@ -125,6 +126,73 @@ export async function renderLearningTracking({ db, uid, context, reloadProfile }
     }
     console.error(error);
     list.innerHTML = '<p style="color: var(--accent-red); font-size: 0.9rem;">Erreur de chargement du suivi.</p>';
+  }
+}
+
+
+export async function renderTeacherStudentsList({ uid, context }) {
+  const list = document.getElementById('prof-tracking-list');
+  if (!list) return;
+
+  list.innerHTML = '<p style="color: var(--text-muted); font-size: 0.9rem; font-style: italic;">Chargement des élèves suivis...</p>';
+
+  try {
+    const targetUserData = context.currentProfileData || {};
+    const formations = await loadAssignedFormationsForUser({
+      uid,
+      userData: targetUserData,
+      role: 'teacher'
+    });
+
+    const students = await loadSearchUsersForRole({
+      uid,
+      userData: targetUserData,
+      role: 'teacher',
+      formations
+    });
+
+    const safeStudents = students
+      .filter((student) => ['student', 'eleve', 'élève'].includes(String(student.role || '').toLowerCase()))
+      .sort((a, b) => getDisplayName(a).localeCompare(getDisplayName(b), 'fr', { sensitivity: 'base' }));
+
+    if (!safeStudents.length) {
+      list.innerHTML = `
+        <div class="tracking-item" style="border:1px solid rgba(148,163,184,0.25); border-radius:12px; padding:1rem; color:var(--text-muted);">
+          Aucun élève rattaché aux formations de ce professeur pour le moment.
+        </div>
+      `;
+      return;
+    }
+
+    const profileBase = window.location.pathname.includes('/admin/')
+      ? '/admin/admin-profile.html'
+      : '/teacher/mon-profil.html';
+
+    list.innerHTML = `
+      <div style="display:grid; gap:0.75rem;">
+        ${safeStudents.map((student) => {
+          const displayName = getDisplayName(student, 'Élève SBI');
+          const promotion = student.promotionName || student.promotionFormationName || student.formationName || '';
+          return `
+            <article class="tracking-item" style="display:flex; justify-content:space-between; align-items:center; gap:1rem; border:1px solid rgba(148,163,184,0.24); border-radius:14px; padding:1rem; background:${window.location.pathname.includes('/admin/') ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.78)'};">
+              <div style="min-width:0;">
+                <strong style="display:block; color:var(--text-main); margin-bottom:0.25rem;">${escapeHTML(displayName)}</strong>
+                <span style="display:block; color:var(--text-muted); font-size:0.84rem; line-height:1.45;">${escapeHTML(student.email || 'Email non renseigné')}</span>
+                ${promotion ? `<small style="display:block; color:var(--text-muted); margin-top:0.2rem;">${escapeHTML(promotion)}</small>` : ''}
+              </div>
+              <a data-sbi-href="${profileBase}?id=${encodeURIComponent(student.id)}" href="${profileBase}?id=${encodeURIComponent(student.id)}" style="white-space:nowrap; text-decoration:none; border:1px solid rgba(42,87,255,0.3); color:var(--accent-blue); border-radius:999px; padding:0.55rem 0.8rem; font-weight:800; font-size:0.82rem;">Voir profil</a>
+            </article>
+          `;
+        }).join('')}
+      </div>
+    `;
+  } catch (error) {
+    if (isExpectedProfileAccessError(error)) {
+      list.innerHTML = '<p style="color: var(--text-muted); font-size: 0.9rem;">Aucun élève accessible pour ce professeur.</p>';
+      return;
+    }
+    console.error('[SBI Profile] Liste élèves prof indisponible :', error);
+    list.innerHTML = '<p style="color: var(--accent-red); font-size: 0.9rem;">Erreur de chargement des élèves suivis.</p>';
   }
 }
 
