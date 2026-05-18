@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.167.94-GPT2.2 / P2I.5-E-GPT2.2
+ * SBI 8.0P.167.96.1-GPT2.2 / P2I-GPT2.2
  * Première connexion : validation obligatoire légère + notice étudiant post-login.
  *
  * Objectif :
@@ -75,8 +75,16 @@ function writeStudentNoticeDismissed(uid) {
 }
 
 function hasCompletedFirstLogin(data = {}) {
-  return data?.accountStatus?.firstLoginCompleted === true
-    || data?.firstLoginCompleted === true;
+  const status = data?.accountStatus || {};
+  return status.firstLoginCompleted === true
+    || data?.firstLoginCompleted === true
+    || Boolean(status.firstLoginCompletedAt)
+    || (
+      status.termsAccepted === true
+      && status.rulesAccepted === true
+      && status.importantInfoAccepted === true
+      && status.emailConfirmed === true
+    );
 }
 
 function isSbiStudent(data = {}) {
@@ -636,7 +644,7 @@ function renderStudentConstructionNotice(userData = {}, { afterFirstLogin = fals
         <ul class="sbi-student-notice-patch" aria-label="Dernières nouveautés côté étudiant">
           <li><span class="sbi-student-notice-dot"></span><span><strong>Documents demandés</strong>Tu peux transmettre les pièces demandées, reprendre un envoi plus tard et renvoyer uniquement les documents à corriger.</span></li>
           <li><span class="sbi-student-notice-dot"></span><span><strong>Coffre documents</strong>Les documents validés sont mieux centralisés dans ton dossier étudiant.</span></li>
-          <li><span class="sbi-student-notice-dot"></span><span><strong>Documents SBI accessibles</strong>Certains documents peuvent maintenant être rendus disponibles directement dans ton espace avec notification et email.</span></li>
+          <li><span class="sbi-student-notice-dot"></span><span><strong>Mes documents SBI</strong>Les documents rendus accessibles par SBI apparaissent maintenant dans ton profil, onglet Mon Suivi, avec notification et email.</span></li>
           <li><span class="sbi-student-notice-dot"></span><span><strong>Suivi pédagogique</strong>La progression, les infos de formation et les futurs checkpoints sont progressivement regroupés dans ton espace.</span></li>
           <li><span class="sbi-student-notice-dot"></span><span><strong>Cours et planning</strong>Le planning pédagogique par promotion est en préparation pour clarifier l’ordre conseillé des cours.</span></li>
         </ul>
