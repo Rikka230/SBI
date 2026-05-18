@@ -309,7 +309,7 @@ async function mountAdminCourses({ url }) {
   window.__SBI_APP_SHELL_MOUNTING_COURSE_EDITOR = true;
 
   try {
-    const module = await import('/admin/js/admin-courses.js?v=8.0P.167.87');
+    const module = await import('/admin/js/admin-courses.js?v=8.0P.167.88');
     const cleanupCourses = module.mountAdminCourses?.({ source: 'pjax-admin-courses' });
 
     if (typeof cleanupCourses === 'function') {
@@ -352,7 +352,7 @@ async function mountAdminProfile({ url }) {
   window.__SBI_APP_SHELL_MOUNTING_PROFILE = true;
 
   try {
-    const module = await import('/js/profile-core.js?v=8.0P.167.87');
+    const module = await import('/js/profile-core.js?v=8.0P.167.88');
     const cleanupProfile = module.mountProfileCore?.({
       source: 'pjax-admin-profile',
       targetUid,
@@ -521,7 +521,7 @@ async function mountStudentProfile({ url }) {
   window.__SBI_APP_SHELL_MOUNTING_PROFILE = true;
 
   try {
-    const module = await import('/js/profile-core.js?v=8.0P.167.87');
+    const module = await import('/js/profile-core.js?v=8.0P.167.88');
     const cleanupProfile = module.mountProfileCore?.({
       source: 'pjax-student-profile',
       targetUrl: url.href
@@ -566,7 +566,6 @@ async function mountTeacherCourses({ url }) {
   const doc = await fetchAdminDocument(url);
 
   await ensureDocumentStyles(doc, url.href);
-  await loadQuillIfNeeded(loadScriptOnce);
 
   applyBodyRouteClassesFromDocument(doc, ['sbi-course-editor-page', 'sbi-teacher-surface', 'no-right-panel']);
   replaceMainFromDocument(doc);
@@ -575,43 +574,61 @@ async function mountTeacherCourses({ url }) {
   setLeftNavActive('/teacher/mes-cours.html');
   updateUrlContext(url);
 
-  if (!hasCourseEditorDom(document)) {
-    throw new Error('DOM éditeur cours introuvable après injection PJAX.');
-  }
-
-  const cleanupTabs = installCourseEditorTabs();
-  const cleanupMediaSwitch = installMediaTypeSwitch();
-  const cleanupQuill = initCourseEditorQuill();
-
-  window.__SBI_APP_SHELL_MOUNTING_COURSE_EDITOR = true;
-
+  /**
+   * 8.0P.167.88 : la bibliothèque professeur est le coeur de cette route.
+   * Elle doit rester PJAX stable même si l'éditeur lourd/Quill n'est pas prêt.
+   * Avant, une erreur non critique de l'éditeur provoquait un fallback reload,
+   * ce qui démontait visuellement la topbar, le panel gauche et l'assistant.
+   */
+  window.__SBI_APP_SHELL_MOUNTING_TEACHER_COURSES_LIBRARY = true;
   try {
-    const module = await import('/admin/js/admin-courses.js?v=8.0P.167.87');
-    const cleanupCourses = module.mountAdminCourses?.({ source: 'pjax-teacher-courses' });
+    const libraryModule = await import('/teacher/js/teacher-courses-library.js?v=8.0P.167.88');
+    const cleanupTeacherLibrary = libraryModule.mountTeacherCoursesLibrary?.({ source: 'pjax-teacher-courses' });
 
-    if (typeof cleanupCourses === 'function') {
-      registerCleanup(cleanupCourses, 'teacher-course-editor');
-    }
-
-    window.__SBI_APP_SHELL_MOUNTING_TEACHER_COURSES_LIBRARY = true;
-    try {
-      const libraryModule = await import('/teacher/js/teacher-courses-library.js?v=8.0P.167.87');
-      const cleanupTeacherLibrary = libraryModule.mountTeacherCoursesLibrary?.({ source: 'pjax-teacher-courses' });
-
-      if (typeof cleanupTeacherLibrary === 'function') {
-        registerCleanup(cleanupTeacherLibrary, 'teacher-courses-library');
-      }
-    } finally {
-      window.__SBI_APP_SHELL_MOUNTING_TEACHER_COURSES_LIBRARY = false;
+    if (typeof cleanupTeacherLibrary === 'function') {
+      registerCleanup(cleanupTeacherLibrary, 'teacher-courses-library');
     }
   } finally {
-    window.__SBI_APP_SHELL_MOUNTING_COURSE_EDITOR = false;
+    window.__SBI_APP_SHELL_MOUNTING_TEACHER_COURSES_LIBRARY = false;
   }
 
+  async function mountTeacherCourseEditorSoftly() {
+    if (!hasCourseEditorDom(document)) {
+      console.warn('[SBI AppShell] Éditeur cours prof non monté : DOM éditeur absent. La bibliothèque reste active.');
+      return;
+    }
+
+    try {
+      await loadQuillIfNeeded(loadScriptOnce);
+
+      const cleanupTabs = installCourseEditorTabs();
+      const cleanupMediaSwitch = installMediaTypeSwitch();
+      const cleanupQuill = initCourseEditorQuill();
+
+      window.__SBI_APP_SHELL_MOUNTING_COURSE_EDITOR = true;
+      try {
+        const module = await import('/admin/js/admin-courses.js?v=8.0P.167.88');
+        const cleanupCourses = module.mountAdminCourses?.({ source: 'pjax-teacher-courses' });
+
+        if (typeof cleanupCourses === 'function') {
+          registerCleanup(cleanupCourses, 'teacher-course-editor');
+        }
+      } finally {
+        window.__SBI_APP_SHELL_MOUNTING_COURSE_EDITOR = false;
+      }
+
+      if (typeof cleanupTabs === 'function') registerCleanup(cleanupTabs, 'teacher-course-tabs');
+      if (typeof cleanupMediaSwitch === 'function') registerCleanup(cleanupMediaSwitch, 'teacher-course-media-switch');
+      if (typeof cleanupQuill === 'function') registerCleanup(cleanupQuill, 'teacher-course-quill');
+    } catch (error) {
+      window.__SBI_APP_SHELL_MOUNTING_COURSE_EDITOR = false;
+      console.warn('[SBI AppShell] Éditeur cours prof non critique indisponible. Aucun reload forcé.', error);
+    }
+  }
+
+  window.setTimeout(mountTeacherCourseEditorSoftly, 0);
+
   if (typeof cleanupFormationModal === 'function') registerCleanup(cleanupFormationModal, 'teacher-course-formation-modal');
-  if (typeof cleanupTabs === 'function') registerCleanup(cleanupTabs, 'teacher-course-tabs');
-  if (typeof cleanupMediaSwitch === 'function') registerCleanup(cleanupMediaSwitch, 'teacher-course-media-switch');
-  if (typeof cleanupQuill === 'function') registerCleanup(cleanupQuill, 'teacher-course-quill');
 
   return { viewKey: 'teacher:courses' };
 }
@@ -633,7 +650,7 @@ async function mountTeacherProfile({ url }) {
   window.__SBI_APP_SHELL_MOUNTING_PROFILE = true;
 
   try {
-    const module = await import('/js/profile-core.js?v=8.0P.167.87');
+    const module = await import('/js/profile-core.js?v=8.0P.167.88');
     const cleanupProfile = module.mountProfileCore?.({
       source: 'pjax-teacher-profile',
       targetUrl: url.href

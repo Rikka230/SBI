@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.87',
+  version: '8.0P.167.88',
   branch: 'main',
-  channel: 'P2I.5-A TEACHER LIBRARY PJAX AND SIGNATURE',
-  stage: 'TEACHER LIBRARY COURSE SIGNATURE AND STABLE VIEWER LINK',
+  channel: 'P2I.5-A TEACHER COURSES PJAX SOFT MOUNT',
+  stage: 'TEACHER COURSES ROUTE SOFT MOUNT NO HARD RELOAD',
   updatedAt: '2026-05-18',
-  label: 'SBI 8.0P.167.87 - INTERNAL PJAX CHROME STABILITY'
+  label: 'SBI 8.0P.167.88 - TEACHER COURSES PJAX SOFT MOUNT'
 };
 
 export function getSbiVersionLabel() {
