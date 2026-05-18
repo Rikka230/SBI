@@ -130,6 +130,7 @@ function getPjaxProbeDefinitions() {
     { group: 'admin', path: '/admin/index.html?tab=view-dashboard', label: 'Admin dashboard' },
     { group: 'admin', path: '/admin/admin-accounts.html', label: 'Admin comptes & accès' },
     { group: 'admin', path: '/admin/admin-promotions.html', label: 'Admin promotions & cohortes' },
+    { group: 'admin', path: '/admin/admin-cursus.html', label: 'Admin cursus' },
     { group: 'admin', path: '/admin/site-index-settings.html', label: 'Admin gestion accueil' },
     { group: 'admin', path: '/admin/formations-cours.html', label: 'Admin formations & cours' },
     { group: 'admin', path: '/admin/admin-profile.html', label: 'Admin profil' },

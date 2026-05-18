@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cursus - SBI Console</title>
+    <link rel="stylesheet" href="css/admin-layout.css">
+    <link rel="stylesheet" href="css/admin.css?v=8.0P.167.51">
+    <link rel="stylesheet" href="css/admin-notifications.css">
+    <link rel="stylesheet" href="css/admin-cursus.css?v=8.0P.167.98">
+    <script src="js/components.js?v=8.0P.167.64"></script>
+    <link rel="stylesheet" href="css/admin-surface-unified.css?v=8.0P.167.52">
+</head>
+<body class="preload sbi-admin-surface">
+
+<div class="app-container" id="app-container">
+    <script>
+        if (window.innerWidth > 1024) {
+            const app = document.getElementById('app-container');
+            if (localStorage.getItem('leftPanelCollapsed') === 'true') app.classList.add('left-collapsed');
+            if (localStorage.getItem('rightPanelCollapsed') === 'true') app.classList.add('right-collapsed');
+        }
+    </script>
+
+    <admin-left-panel></admin-left-panel>
+
+    <header class="top-bar">
+        <button class="mobile-toggle left-toggle" id="btn-toggle-mobile"><svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg></button>
+        <span class="page-title" style="font-weight: 600;">Cursus</span>
+        <button class="mobile-toggle right-toggle" id="btn-toggle-right" style="position: relative;">
+            <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+            <span class="notif-badge" id="avatar-badge" style="display:none; top: 0; right: 0;">0</span>
+        </button>
+    </header>
+
+    <main id="main-content">
+        <div class="content-wrapper sbi-cursus-wrapper">
+            <section id="view-cursus" class="admin-view active sbi-cursus-shell">
+                <div class="sbi-cursus-app" aria-label="Outil de construction de cursus">
+                    <header class="sbi-cursus-topbar">
+                        <div class="sbi-cursus-title-block">
+                            <div class="sbi-cursus-logo" aria-hidden="true">▦</div>
+                            <div>
+                                <p class="sbi-cursus-kicker">Timeline pédagogique</p>
+                                <h2>Planning pédagogique du cursus</h2>
+                                <div class="sbi-cursus-context">
+                                    <label>Formation</label>
+                                    <select id="cursus-formation-select"></select>
+                                    <label>Cursus actif</label>
+                                    <select id="cursus-template-select"></select>
+                                    <label>Nom</label>
+                                    <input id="cursus-title-input" type="text" maxlength="160" placeholder="Ex : Animateur E-Sport V1">
+                                    <span id="cursus-active-status" class="sbi-cursus-status-pill">Brouillon</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="sbi-cursus-toolbar">
+                            <button type="button" id="cursus-new-btn" class="sbi-cursus-tool-btn">Nouveau</button>
+                            <button type="button" id="cursus-save-btn" class="sbi-cursus-tool-btn is-primary">Sauvegarder</button>
+                            <button type="button" id="cursus-duplicate-btn" class="sbi-cursus-tool-btn">Créer une copie</button>
+                            <button type="button" id="cursus-recalc-btn" class="sbi-cursus-tool-btn">Recalculer</button>
+                            <button type="button" id="cursus-delete-btn" class="sbi-cursus-tool-btn is-danger">Supprimer</button>
+                        </div>
+                    </header>
+
+                    <div class="sbi-cursus-main-grid">
+                        <aside class="sbi-cursus-toolbox">
+                            <div class="sbi-cursus-panel-head">
+                                <h3>Boîte à outils</h3>
+                                <span id="cursus-course-count">0</span>
+                            </div>
+                            <div class="sbi-cursus-search-row">
+                                <input id="cursus-search" type="search" placeholder="Rechercher un élément...">
+                                <select id="cursus-source-filter" title="Source des cours">
+                                    <option value="linked">Formation liée</option>
+                                    <option value="shared">Cours transversaux</option>
+                                    <option value="other">Autres formations</option>
+                                    <option value="all">Tous les cours</option>
+                                </select>
+                            </div>
+                            <div class="sbi-cursus-filter-pills" aria-label="Filtres rapides">
+                                <button type="button" class="is-active" data-tool-filter="all">Tous</button>
+                                <button type="button" data-tool-filter="required">Obligatoires</button>
+                                <button type="button" data-tool-filter="optional">Optionnels</button>
+                            </div>
+
+                            <div class="sbi-cursus-tool-list" id="cursus-tool-list"></div>
+
+                            <div class="sbi-cursus-tool-actions">
+                                <button type="button" data-add-type="placeholder_course">+ Cours futur</button>
+                                <button type="button" data-add-type="buffer_period">+ Marge</button>
+                                <button type="button" data-add-type="assignment">+ Devoir</button>
+                                <button type="button" data-add-type="exam">+ Examen</button>
+                                <button type="button" data-add-type="live_session">+ Live</button>
+                            </div>
+                        </aside>
+
+                        <section class="sbi-cursus-timeline-panel">
+                            <div class="sbi-cursus-timeline-head">
+                                <div>
+                                    <p class="sbi-cursus-kicker">Timeline</p>
+                                    <h3>Structure du cursus</h3>
+                                    <span id="cursus-timeline-hint">Les dates sont relatives : semaines et durées estimées, sans promotion datée.</span>
+                                </div>
+                                <div class="sbi-cursus-timeline-tools">
+                                    <button type="button" id="cursus-zoom-out">−</button>
+                                    <button type="button" id="cursus-zoom-in">+</button>
+                                    <label><input id="cursus-grid-toggle" type="checkbox" checked> Quadrillage</label>
+                                </div>
+                            </div>
+
+                            <div class="sbi-cursus-timeline-scroll" id="cursus-timeline-scroll">
+                                <div class="sbi-cursus-timeline-canvas" id="cursus-timeline-canvas">
+                                    <div class="sbi-cursus-ruler" id="cursus-ruler"></div>
+                                    <div class="sbi-cursus-tracks" id="cursus-tracks"></div>
+                                </div>
+                            </div>
+                        </section>
+
+                        <aside class="sbi-cursus-inspector" id="cursus-inspector">
+                            <div class="sbi-cursus-panel-head">
+                                <h3>Élément sélectionné</h3>
+                                <button type="button" id="cursus-clear-selection" aria-label="Désélectionner">×</button>
+                            </div>
+                            <div id="cursus-inspector-content" class="sbi-cursus-inspector-empty">
+                                Sélectionnez un élément dans la timeline.
+                            </div>
+                        </aside>
+                    </div>
+
+                    <footer class="sbi-cursus-footer">
+                        <div class="sbi-cursus-stats">
+                            <div><strong id="cursus-stat-count">0</strong><span>éléments</span></div>
+                            <div><strong id="cursus-stat-period">S1 → S1</strong><span>période</span></div>
+                            <div><strong id="cursus-stat-duration">0 j</strong><span>durée</span></div>
+                            <div class="sbi-cursus-coherence"><span>✓</span><p><strong id="cursus-coherence-title">Planning cohérent</strong><small id="cursus-coherence-detail">Aucune anomalie détectée</small></p></div>
+                        </div>
+                        <p id="cursus-save-status" class="sbi-cursus-save-status" aria-live="polite"></p>
+                        <div class="sbi-cursus-footer-actions">
+                            <button type="button" id="cursus-reset-btn">Réinitialiser</button>
+                            <button type="button" id="cursus-save-footer-btn" class="is-primary">Enregistrer le cursus</button>
+                        </div>
+                    </footer>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <admin-right-panel></admin-right-panel>
+</div>
+
+<script type="module" src="js/admin-ui.js?v=8.0P.167.88"></script>
+<script type="module" src="js/tracker.js?v=8.0P.167.44"></script>
+<script type="module" src="js/admin-notifications.js"></script>
+<script type="module" src="js/admin-cursus.js?v=8.0P.167.98"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        document.body.classList.remove('preload');
+        document.body.classList.add('sbi-preload-timeout');
+    });
+</script>
+</body>
+</html>

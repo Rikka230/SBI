@@ -5,6 +5,7 @@
  * - admin index tabs
  * - Comptes & accès dédié
  * - Promotions & cohortes
+ * - Cursus
  * - Gestion Accueil
  * - Formations & Cours
  * - Mon Profil
@@ -83,6 +84,10 @@ function isAdminPromotions(url) {
   return normalizePath(url.pathname).toLowerCase() === '/admin/admin-promotions.html';
 }
 
+function isAdminCursus(url) {
+  return normalizePath(url.pathname).toLowerCase() === '/admin/admin-cursus.html';
+}
+
 function isAdminAuditLog(url) {
   return normalizePath(url.pathname).toLowerCase() === '/admin/admin-audit-log.html';
 }
@@ -127,6 +132,7 @@ function isAdminShellContext() {
     || path === '/admin/admin-profile.html'
     || path === '/admin/admin-accounts.html'
     || path === '/admin/admin-promotions.html'
+    || path === '/admin/admin-cursus.html'
     || path === '/admin/admin-audit-log.html';
 }
 
@@ -434,6 +440,34 @@ async function mountAdminPromotions({ url }) {
   }
 
   return { viewKey: 'admin:promotions' };
+}
+
+async function mountAdminCursus({ url }) {
+  maybeCacheAdminIndexMain('leave-for-admin-cursus');
+
+  const doc = await fetchAdminDocument(url);
+
+  await ensureDocumentStyles(doc, url.href);
+  applyBodyRouteClassesFromDocument(doc, ['sbi-admin-surface']);
+  replaceMainFromDocument(doc);
+  updateAdminChromeFromDocument(doc, 'Cursus - SBI Console');
+  setLeftNavActive('nav-cursus');
+  updateUrlContext(url);
+
+  window.__SBI_APP_SHELL_MOUNTING_CURSUS = true;
+
+  try {
+    const module = await import('/admin/js/admin-cursus.js?v=8.0P.167.98');
+    const cleanupCursus = module.mountAdminCursus?.({ source: 'pjax-admin-cursus' });
+
+    if (typeof cleanupCursus === 'function') {
+      registerCleanup(cleanupCursus, 'admin-cursus');
+    }
+  } finally {
+    window.__SBI_APP_SHELL_MOUNTING_CURSUS = false;
+  }
+
+  return { viewKey: 'admin:cursus' };
 }
 
 async function mountAdminAuditLog({ url }) {
@@ -748,6 +782,14 @@ export function createRouteRegistry() {
       return isAdminPromotions(url) && isAdminShellContext();
     },
     mount: mountAdminPromotions
+  });
+
+  routes.push({
+    id: 'admin-cursus',
+    canHandle(url) {
+      return isAdminCursus(url) && isAdminShellContext();
+    },
+    mount: mountAdminCursus
   });
 
   routes.push({
