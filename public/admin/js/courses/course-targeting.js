@@ -47,6 +47,21 @@ export function getTargetStudentsFromFormations(formations = []) {
     return Array.from(targetStudents);
 }
 
+export function getTargetTeachersFromFormations(formations = []) {
+    const targetTeachers = new Set();
+
+    formations.forEach((formation) => {
+        const teachers = Array.isArray(formation?.profs) ? formation.profs : [];
+
+        teachers.forEach((teacherId) => {
+            const safeTeacherId = normalizeCourseTargetValue(teacherId);
+            if (safeTeacherId) targetTeachers.add(safeTeacherId);
+        });
+    });
+
+    return Array.from(targetTeachers);
+}
+
 export function getTargetFormationIdsFromFormations(formations = [], selectedValues = [], allFormationsData = []) {
     const ids = new Set();
 
@@ -98,6 +113,7 @@ export function getCourseTargetingSnapshot(selectedValues = [], allFormationsDat
         targetFormations,
         targetFormationIds: getTargetFormationIdsFromFormations(targetFormations, selectedValues, allFormationsData),
         targetFormationTitles: getTargetFormationTitlesFromFormations(targetFormations, selectedValues, allFormationsData),
-        targetStudents: includeStudents ? getTargetStudentsFromFormations(targetFormations) : []
+        targetStudents: includeStudents ? getTargetStudentsFromFormations(targetFormations) : [],
+        targetTeacherIds: getTargetTeachersFromFormations(targetFormations)
     };
 }

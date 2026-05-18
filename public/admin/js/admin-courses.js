@@ -44,7 +44,7 @@ import {
     loadFormationsForCourseAccess,
     loadCoursesForCourseAccess,
     loadCoursesForMediaSafety
-} from '/admin/js/course-data-access.js?v=8.0P.167.80';
+} from '/admin/js/course-data-access.js?v=8.0P.167.81';
 import { renderCourseActionButtons } from '/admin/js/course-action-buttons.js';
 import { notifyCourseDeletedIfNeeded } from '/admin/js/course-delete-notifications.js';
 import { SVG_PREVIEW, SVG_QUIZ_LIST } from '/admin/js/courses/course-icons.js';
@@ -71,8 +71,8 @@ import {
 import {
     resolveCourseValidationNotifications as resolveCourseValidationNotificationsService,
     handleCourseNotifications as handleCourseNotificationsService
-} from '/admin/js/courses/course-notifications.js';
-import { getCourseTargetingSnapshot } from '/admin/js/courses/course-targeting.js';
+} from '/admin/js/courses/course-notifications.js?v=8.0P.167.81';
+import { getCourseTargetingSnapshot } from '/admin/js/courses/course-targeting.js?v=8.0P.167.81';
 let currentUid = null;
 let currentUserProfile = null;
 let currentChapters = [];
@@ -86,6 +86,7 @@ let editingCourseOriginalStatus = null;
 let editingCourseOriginalActive = false;
 
 let formationIndexSyncedOnce = false;
+let courseTeacherTargetsSyncedOnce = false;
 
 window.addOptionToQuestion = addOptionToQuestion;
 
@@ -282,6 +283,7 @@ function resetAdminCoursesStateForMount() {
     editingCourseOriginalStatus = null;
     editingCourseOriginalActive = false;
     formationIndexSyncedOnce = false;
+    courseTeacherTargetsSyncedOnce = false;
     clearAllPendingMedia();
 }
 
@@ -461,6 +463,89 @@ async function syncFormationIndexesIfAllowed() {
         }
     } catch (error) {
         console.warn("[SBI Index] Synchronisation formationIds impossible :", error);
+    }
+}
+
+function normalizeCourseAccessValues(values = []) {
+    if (!Array.isArray(values)) return [];
+
+    return Array.from(new Set(values
+        .map((value) => typeof value === 'string' ? value.trim() : '')
+        .filter(Boolean)));
+}
+
+function getCourseFormationRefs(courseData = {}) {
+    return normalizeCourseAccessValues([
+        ...(Array.isArray(courseData.formations) ? courseData.formations : []),
+        ...(Array.isArray(courseData.formationIds) ? courseData.formationIds : []),
+        ...(Array.isArray(courseData.formationsIds) ? courseData.formationsIds : []),
+        ...(Array.isArray(courseData.targetFormationIds) ? courseData.targetFormationIds : []),
+        ...(Array.isArray(courseData.targetFormationTitles) ? courseData.targetFormationTitles : [])
+    ]);
+}
+
+function resolveTeacherTargetsForCourse(courseData = {}) {
+    const refs = getCourseFormationRefs(courseData);
+    if (!refs.length || !Array.isArray(allFormationsData)) return [];
+
+    const teachers = new Set();
+
+    allFormationsData.forEach((formation) => {
+        const formationId = formation?.id ? String(formation.id).trim() : '';
+        const formationTitle = formation?.titre ? String(formation.titre).trim() : '';
+
+        if (!refs.includes(formationId) && !refs.includes(formationTitle)) return;
+
+        if (Array.isArray(formation.profs)) {
+            formation.profs.forEach((teacherId) => {
+                const safeTeacherId = typeof teacherId === 'string' ? teacherId.trim() : '';
+                if (safeTeacherId) teachers.add(safeTeacherId);
+            });
+        }
+    });
+
+    return normalizeCourseAccessValues(Array.from(teachers));
+}
+
+function listsAreSame(a = [], b = []) {
+    const left = normalizeCourseAccessValues(a).sort();
+    const right = normalizeCourseAccessValues(b).sort();
+
+    if (left.length !== right.length) return false;
+    return left.every((value, index) => value === right[index]);
+}
+
+async function syncCourseTeacherTargetsIfAllowedOnce() {
+    if (courseTeacherTargetsSyncedOnce) return;
+    if (!isAdminLikeUser()) return;
+
+    courseTeacherTargetsSyncedOnce = true;
+
+    try {
+        const updates = [];
+
+        allCoursesData.forEach((courseData) => {
+            if (!courseData?.id) return;
+
+            const targetTeacherIds = resolveTeacherTargetsForCourse(courseData);
+            if (!targetTeacherIds.length) return;
+            if (listsAreSame(courseData.targetTeacherIds, targetTeacherIds)) return;
+
+            updates.push(updateDoc(doc(db, 'courses', courseData.id), {
+                targetTeacherIds
+            }));
+        });
+
+        if (updates.length > 0) {
+            await Promise.all(updates);
+            console.log(`[SBI Courses] targetTeacherIds synchronisés pour ${updates.length} cours.`);
+            allCoursesData = await loadCoursesForCourseAccess({
+                currentUid,
+                currentUserProfile
+            });
+        }
+    } catch (error) {
+        console.warn('[SBI Courses] Synchronisation targetTeacherIds impossible :', error);
     }
 }
 
@@ -1101,6 +1186,7 @@ async function saveCourseToFirebase(actionType = 'admin_save') {
         const targetFormationIds = courseTargeting.targetFormationIds;
         const targetFormationTitles = courseTargeting.targetFormationTitles;
         const targetStudentsForCourse = courseTargeting.targetStudents;
+        const targetTeacherIdsForCourse = Array.isArray(courseTargeting.targetTeacherIds) ? courseTargeting.targetTeacherIds : [];
 
         const lmsCourseFields = buildLmsCourseFields({
             chapters: currentChapters,
@@ -1119,6 +1205,7 @@ async function saveCourseToFirebase(actionType = 'admin_save') {
             targetFormationIds,
             targetFormationTitles,
             targetStudents: targetStudentsForCourse,
+            targetTeacherIds: targetTeacherIdsForCourse,
             auteurId: finalAuteurId,
             chapitres: currentChapters,
             ...lmsCourseFields
@@ -1142,6 +1229,7 @@ async function saveCourseToFirebase(actionType = 'admin_save') {
                 title,
                 selectedPills,
                 targetStudentsForCourse,
+                targetTeacherIds: targetTeacherIdsForCourse,
                 targetFormationIds,
                 targetFormationTitles,
                 isPublishing,
@@ -1187,6 +1275,8 @@ async function loadCourses() {
             currentUid,
             currentUserProfile
         });
+
+        await syncCourseTeacherTargetsIfAllowedOnce();
 
         if (isAdminLikeUser()) allCoursesData = allCoursesData.filter(courseData => !shouldHideDraftForAdmin(courseData));
 
@@ -1268,6 +1358,7 @@ window.duplicateCourse = async (id) => {
                 const copiedChapters = Array.isArray(data.chapitres) ? data.chapitres : [];
                 const copiedFormations = Array.isArray(data.formations) ? data.formations : [];
                 const copiedTargetFormationIds = Array.isArray(data.targetFormationIds) ? data.targetFormationIds : [];
+                const copiedTargetTeacherIds = Array.isArray(data.targetTeacherIds) ? data.targetTeacherIds : [];
 
                 const copyData = {
                     titre: data.titre + " (Copie)",
@@ -1278,6 +1369,7 @@ window.duplicateCourse = async (id) => {
                     targetFormationIds: copiedTargetFormationIds,
                     targetFormationTitles: Array.isArray(data.targetFormationTitles) ? data.targetFormationTitles : [],
                     targetStudents: [],
+                    targetTeacherIds: copiedTargetTeacherIds,
                     auteurId: currentUid,
                     chapitres: copiedChapters,
                     dateCreation: serverTimestamp(),

@@ -244,6 +244,18 @@ async function loadOwnTeacherCourses(currentUid) {
     return snap ? snapToArray(snap) : [];
 }
 
+async function loadCoursesTargetingTeacher(currentUid) {
+    if (!currentUid) return [];
+
+    const coursesQuery = query(
+        collection(db, "courses"),
+        where("targetTeacherIds", "array-contains", currentUid)
+    );
+
+    const snap = await safeGetDocs(coursesQuery, 'cours ciblant directement le professeur');
+    return snap ? snapToArray(snap) : [];
+}
+
 function isCourseActiveForSharedAccess(course = {}) {
     return course?.actif === true
         || (course?.statutValidation === 'approved' && course?.actif !== false);
@@ -316,13 +328,6 @@ async function loadSharedCoursesForFormationKeys({ formationIds = [], formationT
     const titles = normalizeList(formationTitles);
     const allKeys = normalizeList([...ids, ...titles]);
 
-    /**
-     * 8.0P.167.80 : compatibilité renforcée.
-     * Certains comptes profs peuvent avoir les index users/{uid} synchronisés
-     * sans que la requête membership formations.profs ne ramène tout de suite
-     * les documents formation. On utilise donc à la fois les IDs/titres déjà
-     * connus sur le profil et ceux retrouvés via les documents formations.
-     */
     courses.push(...await loadCoursesByArrayField('formations', allKeys, { activeOnly }));
     courses.push(...await loadCoursesByArrayField('formationIds', ids, { activeOnly }));
     courses.push(...await loadCoursesByArrayField('formationsIds', ids, { activeOnly }));
@@ -352,6 +357,7 @@ export async function loadCoursesForCourseAccess({
     const formationKeys = getFormationAccessKeysForProfile(currentUserProfile, assignedFormations);
 
     courses.push(...await loadOwnTeacherCourses(currentUid));
+    courses.push(...await loadCoursesTargetingTeacher(currentUid));
 
     const activeOnly = !isTeacherProfile(currentUserProfile);
 

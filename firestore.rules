@@ -200,12 +200,6 @@ service cloud.firestore {
         && courseData.formationIds.size() > 0;
     }
 
-    function courseHasLegacyFormationsIds(courseData) {
-      return courseData.keys().hasAny(['formationsIds'])
-        && courseData.formationsIds is list
-        && courseData.formationsIds.size() > 0;
-    }
-
     function courseHasTargetFormationIds(courseData) {
       return courseData.keys().hasAny(['targetFormationIds'])
         && courseData.targetFormationIds is list
@@ -238,12 +232,6 @@ service cloud.firestore {
         && courseData.formationIds.hasAny(currentUser().formationIds);
     }
 
-    function courseSharedByLegacyFormationsIds(courseData) {
-      return courseHasLegacyFormationsIds(courseData)
-        && currentUserHasFormationIds()
-        && courseData.formationsIds.hasAny(currentUser().formationIds);
-    }
-
     function courseSharedByTargetFormationIds(courseData) {
       return courseHasTargetFormationIds(courseData)
         && currentUserHasFormationIds()
@@ -259,7 +247,6 @@ service cloud.firestore {
     function courseSharedWithCurrentUser(courseData) {
       return courseSharedByFormationsField(courseData)
         || courseSharedByFormationIds(courseData)
-        || courseSharedByLegacyFormationsIds(courseData)
         || courseSharedByTargetFormationIds(courseData)
         || courseSharedByTargetFormationTitles(courseData);
     }
@@ -268,6 +255,13 @@ service cloud.firestore {
       return courseData.keys().hasAny(['targetStudents'])
         && courseData.targetStudents is list
         && request.auth.uid in courseData.targetStudents;
+    }
+
+    function courseTargetedToCurrentTeacher(courseData) {
+      return isTeacher()
+        && courseData.keys().hasAny(['targetTeacherIds'])
+        && courseData.targetTeacherIds is list
+        && request.auth.uid in courseData.targetTeacherIds;
     }
 
     function formationDocHasCurrentUser(formationId) {
@@ -306,6 +300,7 @@ service cloud.firestore {
       return isTeacher()
         && (
           courseSharedWithCurrentUser(courseData)
+          || courseTargetedToCurrentTeacher(courseData)
           || courseLinkedToReadableFormation(courseData)
         );
     }

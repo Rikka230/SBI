@@ -42,6 +42,22 @@ function getTargetStudentsFromFormations(selectedPills = [], allFormationsData =
     return Array.from(targetStudents);
 }
 
+function getTargetTeachersFromFormations(selectedPills = [], allFormationsData = []) {
+    const targetTeachers = new Set();
+
+    selectedPills.forEach((formationValue) => {
+        const formation = allFormationsData.find((item) => courseFormationMatches(item, formationValue));
+        const teachers = Array.isArray(formation?.profs) ? formation.profs : [];
+
+        teachers.forEach((teacherId) => {
+            const safeTeacherId = normalizeId(teacherId);
+            if (safeTeacherId) targetTeachers.add(safeTeacherId);
+        });
+    });
+
+    return Array.from(targetTeachers);
+}
+
 function normalizeAudienceList(items = []) {
     if (!Array.isArray(items)) return [];
     return Array.from(new Set(items.map((item) => normalizeId(item)).filter(Boolean)));
@@ -93,6 +109,7 @@ export async function handleCourseNotifications({
     title,
     selectedPills = [],
     targetStudentsForCourse = [],
+    targetTeacherIds = [],
     targetFormationIds = [],
     targetFormationTitles = [],
     isPublishing = false,
@@ -134,6 +151,26 @@ export async function handleCourseNotifications({
             : getTargetStudentsFromFormations(selectedPills, allFormationsData);
         const safeTargetFormationIds = normalizeAudienceList(targetFormationIds);
         const safeTargetFormationTitles = normalizeAudienceList(targetFormationTitles);
+
+        const targetTeachersArray = normalizeAudienceList(targetTeacherIds).length > 0
+            ? normalizeAudienceList(targetTeacherIds)
+            : getTargetTeachersFromFormations(selectedPills, allFormationsData);
+
+        const teachersToNotify = targetTeachersArray.filter((teacherId) => teacherId && teacherId !== currentUid);
+
+        if (teachersToNotify.length > 0) {
+            await Promise.all(teachersToNotify.map((teacherId) => safeAddNotification({
+                type: 'new_course_for_teacher',
+                courseId: courseRefId,
+                courseTitle: title,
+                destinataireId: teacherId,
+                targetTeacherIds: [teacherId],
+                targetFormationIds: safeTargetFormationIds,
+                targetFormationTitles: safeTargetFormationTitles,
+                dateCreation: serverTimestamp(),
+                dismissedBy: []
+            }, `Notification prof nouveau cours ${teacherId}`)));
+        }
 
         if (targetStudentsArray.length > 0) {
             await Promise.all(targetStudentsArray.map((studentId) => safeAddNotification({
