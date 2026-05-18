@@ -18,7 +18,8 @@
  */
 
 import '/js/auth.js?v=8.0P.167.44';
-import '/js/first-login-gate.js?v=8.0P.167.96.1-GPT2.3';
+import '/js/first-login-gate.js?v=8.0P.167.97-GPT2.1';
+import '/student/js/student-visible-documents.js?v=8.0P.167.97-GPT2.1';
 
 import { db, auth } from '/js/firebase-init.js';
 import {

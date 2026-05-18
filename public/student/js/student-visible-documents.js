@@ -17,9 +17,16 @@ const LIST_ID = 'student-visible-documents-list';
 const STATUS_ID = 'student-visible-documents-status';
 const TOGGLE_ID = 'student-visible-documents-toggle';
 const COUNT_ID = 'student-visible-documents-count';
+const STYLE_ID = 'student-visible-documents-style';
 
-let mounted = false;
 let lastDocuments = [];
+let authUnsubscribe = null;
+let bootScheduled = false;
+let loadRequestId = 0;
+
+function isStudentPath() {
+  return window.location.pathname.startsWith('/student/');
+}
 
 function escapeHTML(value = '') {
   return String(value ?? '')
@@ -78,19 +85,24 @@ function setStatus(message = '', tone = 'muted') {
   status.dataset.tone = tone;
 }
 
-function setCount(count = 0) {
+function setCount(count = 0, label = '') {
   const countEl = document.getElementById(COUNT_ID);
   if (!countEl) return;
+  if (label) {
+    countEl.textContent = label;
+    return;
+  }
   countEl.textContent = count > 0 ? `${count} document(s)` : 'Aucun document';
 }
 
 function injectStyle() {
-  if (document.getElementById('student-visible-documents-style')) return;
+  if (document.getElementById(STYLE_ID)) return;
   const style = document.createElement('style');
-  style.id = 'student-visible-documents-style';
+  style.id = STYLE_ID;
   style.textContent = `
     .student-visible-documents-panel {
       scroll-margin-top: 90px;
+      transition: border-color .18s ease, box-shadow .18s ease;
     }
 
     .student-visible-documents-summary {
@@ -104,35 +116,53 @@ function injectStyle() {
     .student-visible-documents-summary-title {
       display:flex;
       align-items:center;
-      gap:0.7rem;
+      gap:0.78rem;
       min-width:0;
     }
 
     .student-visible-documents-arrow {
       width:34px;
       height:34px;
-      border-radius:999px;
-      border:1px solid rgba(42,87,255,0.22);
-      background:rgba(42,87,255,0.08);
+      border-radius:12px;
+      border:1px solid rgba(42,87,255,0.2);
+      background:linear-gradient(180deg, rgba(42,87,255,0.08), rgba(42,87,255,0.03));
       color:var(--accent-blue);
       display:inline-flex;
       align-items:center;
       justify-content:center;
-      font-weight:900;
-      transition:transform 0.2s ease, background 0.2s ease;
       flex-shrink:0;
+      box-shadow:0 8px 18px rgba(42,87,255,0.08);
+      transition:transform .2s ease, background .2s ease, box-shadow .2s ease;
+    }
+
+    .student-visible-documents-arrow svg {
+      width:16px;
+      height:16px;
+      display:block;
+      stroke:currentColor;
+      stroke-width:2.4;
+      fill:none;
+      stroke-linecap:round;
+      stroke-linejoin:round;
+      transition:transform .2s ease;
     }
 
     .student-visible-documents-panel:not(.is-collapsed) .student-visible-documents-arrow {
+      background:rgba(42,87,255,0.13);
+      box-shadow:0 10px 24px rgba(42,87,255,0.12);
+    }
+
+    .student-visible-documents-panel:not(.is-collapsed) .student-visible-documents-arrow svg {
       transform:rotate(90deg);
-      background:rgba(42,87,255,0.14);
     }
 
     .student-visible-documents-count {
+      display:block;
       color:var(--text-muted);
       font-size:0.85rem;
       font-weight:800;
       white-space:nowrap;
+      margin-top:.16rem;
     }
 
     .student-visible-documents-content {
@@ -158,13 +188,8 @@ function injectStyle() {
       margin-bottom:0.85rem;
     }
 
-    .student-visible-documents-status[data-tone="error"] {
-      color:#ef4444;
-    }
-
-    .student-visible-documents-status[data-tone="success"] {
-      color:#10b981;
-    }
+    .student-visible-documents-status[data-tone="error"] { color:#ef4444; }
+    .student-visible-documents-status[data-tone="success"] { color:#10b981; }
 
     .student-visible-documents-list {
       display:grid;
@@ -228,24 +253,20 @@ function injectStyle() {
     }
 
     @media (max-width: 720px) {
-      .student-visible-doc-card {
-        grid-template-columns:1fr;
-      }
-
-      .student-visible-doc-card__actions {
-        justify-content:flex-start;
-      }
-
-      .student-visible-documents-summary {
-        align-items:flex-start;
-      }
+      .student-visible-doc-card { grid-template-columns:1fr; }
+      .student-visible-doc-card__actions { justify-content:flex-start; }
+      .student-visible-documents-summary { align-items:flex-start; }
     }
   `;
   document.head.appendChild(style);
 }
 
+function getRoot() {
+  return document.getElementById(ROOT_ID);
+}
+
 function setCollapsed(collapsed) {
-  const root = document.getElementById(ROOT_ID);
+  const root = getRoot();
   const toggle = document.getElementById(TOGGLE_ID);
   if (!root) return;
   root.classList.toggle('is-collapsed', collapsed);
@@ -253,7 +274,7 @@ function setCollapsed(collapsed) {
 }
 
 function bindToggle() {
-  const root = document.getElementById(ROOT_ID);
+  const root = getRoot();
   const toggle = document.getElementById(TOGGLE_ID);
   if (!root || !toggle || toggle.dataset.bound === '1') return;
 
@@ -276,11 +297,10 @@ function activateTrackingTabIfNeeded() {
 
   document.querySelectorAll('.student-view').forEach((view) => view.classList.remove('active'));
   document.getElementById('tab-tracking')?.classList.add('active');
-
   setCollapsed(false);
 
   window.setTimeout(() => {
-    document.getElementById(ROOT_ID)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    getRoot()?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, 180);
 }
 
@@ -359,6 +379,17 @@ async function getDocumentUrl(item) {
   return getDownloadURL(ref(storage, item.filePath));
 }
 
+function withDownloadDisposition(url, fileName) {
+  try {
+    const parsed = new URL(url);
+    parsed.searchParams.set('response-content-disposition', `attachment; filename="${sanitizeFileName(fileName)}"`);
+    return parsed.toString();
+  } catch (_) {
+    const separator = String(url).includes('?') ? '&' : '?';
+    return `${url}${separator}response-content-disposition=${encodeURIComponent(`attachment; filename="${sanitizeFileName(fileName)}"`)}`;
+  }
+}
+
 async function openDocument(item, button) {
   const previous = button?.textContent || 'Ouvrir';
   if (button) {
@@ -387,6 +418,8 @@ async function downloadDocument(item, button) {
     button.textContent = 'Téléchargement...';
   }
 
+  const fileName = sanitizeFileName(item?.fileName || item?.title || 'document-sbi');
+
   try {
     if (!item?.filePath) throw new Error('Chemin fichier manquant.');
 
@@ -396,7 +429,7 @@ async function downloadDocument(item, button) {
     const link = document.createElement('a');
 
     link.href = blobUrl;
-    link.download = sanitizeFileName(item.fileName || item.title || 'document-sbi');
+    link.download = fileName;
     link.rel = 'noopener';
     document.body.appendChild(link);
     link.click();
@@ -405,13 +438,22 @@ async function downloadDocument(item, button) {
     window.setTimeout(() => URL.revokeObjectURL(blobUrl), 1800);
     setStatus('Téléchargement lancé.', 'success');
   } catch (error) {
-    console.warn('[SBI Student Documents] Téléchargement impossible :', error);
-    setStatus('Téléchargement direct indisponible sur ce navigateur. Ouverture du fichier.', 'error');
+    console.warn('[SBI Student Documents] Téléchargement blob impossible, fallback lien direct :', error);
 
     try {
-      const fallbackUrl = await getDocumentUrl(item);
-      window.open(fallbackUrl, '_blank', 'noopener,noreferrer');
-    } catch (_) {}
+      const fallbackUrl = withDownloadDisposition(await getDocumentUrl(item), fileName);
+      const link = document.createElement('a');
+      link.href = fallbackUrl;
+      link.download = fileName;
+      link.rel = 'noopener';
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setStatus('Téléchargement lancé. Si le navigateur ouvre le fichier, utilise “Enregistrer sous”.', 'success');
+    } catch (_) {
+      setStatus('Téléchargement impossible pour le moment.', 'error');
+    }
   } finally {
     if (button) {
       button.disabled = false;
@@ -436,7 +478,9 @@ async function loadVisibleDocuments(uid) {
 }
 
 async function loadAndRender(uid) {
+  const requestId = ++loadRequestId;
   setStatus('Chargement des documents SBI...', 'muted');
+  setCount(0, 'Chargement...');
 
   try {
     const documents = await Promise.race([
@@ -444,61 +488,63 @@ async function loadAndRender(uid) {
       new Promise((_, reject) => window.setTimeout(() => reject(new Error('timeout')), 9000))
     ]);
 
+    if (requestId !== loadRequestId) return;
     renderDocuments(documents);
     setStatus(documents.length ? `${documents.length} document(s) disponible(s).` : '', documents.length ? 'success' : 'muted');
     activateTrackingTabIfNeeded();
   } catch (error) {
+    if (requestId !== loadRequestId) return;
     console.warn('[SBI Student Documents] Lecture impossible :', error);
-    setCount(0);
+    setCount(0, 'Indisponible');
     setStatus('Documents indisponibles pour le moment.', 'error');
     renderError();
   }
 }
 
 function mount() {
-  const root = document.getElementById(ROOT_ID);
+  if (!isStudentPath()) return;
+
+  const root = getRoot();
   if (!root) return;
 
-  if (mounted && root.dataset.studentDocumentsMounted === '1') {
+  if (root.dataset.studentDocumentsMounted === '1') {
     activateTrackingTabIfNeeded();
     return;
   }
 
-  mounted = true;
   root.dataset.studentDocumentsMounted = '1';
 
   injectStyle();
   bindToggle();
   activateTrackingTabIfNeeded();
 
-  let authResolved = false;
+  if (auth.currentUser) {
+    loadAndRender(auth.currentUser.uid);
+  }
 
-  onAuthStateChanged(auth, async (user) => {
-    authResolved = true;
+  if (!authUnsubscribe) {
+    authUnsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (!getRoot()) return;
 
-    if (!user) {
-      setStatus('Connecte-toi pour consulter tes documents SBI.', 'error');
-      setCount(0);
-      renderEmpty();
-      return;
-    }
+      if (!user) {
+        setStatus('Connecte-toi pour consulter tes documents SBI.', 'error');
+        setCount(0);
+        renderEmpty();
+        return;
+      }
 
-    await loadAndRender(user.uid);
-  });
-
-  window.setTimeout(() => {
-    if (authResolved) return;
-    if (auth.currentUser) {
-      authResolved = true;
-      loadAndRender(auth.currentUser.uid);
-    }
-  }, 900);
+      await loadAndRender(user.uid);
+    });
+  }
 }
 
 function boot() {
-  mount();
-  window.setTimeout(mount, 350);
-  window.setTimeout(mount, 1200);
+  if (bootScheduled) return;
+  bootScheduled = true;
+  window.requestAnimationFrame(() => {
+    bootScheduled = false;
+    mount();
+  });
 }
 
 if (document.readyState === 'loading') {
@@ -507,7 +553,14 @@ if (document.readyState === 'loading') {
   boot();
 }
 
+const observer = new MutationObserver(() => boot());
+observer.observe(document.documentElement, { childList: true, subtree: true });
+
 window.addEventListener('pageshow', boot);
-window.addEventListener('hashchange', activateTrackingTabIfNeeded);
+window.addEventListener('hashchange', () => {
+  boot();
+  activateTrackingTabIfNeeded();
+});
 window.addEventListener('sbi:pjax-ready', boot);
 window.addEventListener('sbi:page-loaded', boot);
+window.addEventListener('popstate', boot);
