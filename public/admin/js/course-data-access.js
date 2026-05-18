@@ -291,6 +291,47 @@ async function loadCoursesByArrayField(fieldName, formationValues, { activeOnly 
     return courses;
 }
 
+function getFormationAccessKeysForProfile(profile = {}, assignedFormations = []) {
+    const ids = new Set(getFormationIdsFromProfile(profile));
+    const titles = new Set(getFormationTitlesFromProfile(profile));
+
+    assignedFormations.forEach((formation) => {
+        const id = formation?.id ? String(formation.id).trim() : '';
+        const title = formation?.titre ? String(formation.titre).trim() : '';
+
+        if (id) ids.add(id);
+        if (title) titles.add(title);
+    });
+
+    return {
+        ids: normalizeList(Array.from(ids)),
+        titles: normalizeList(Array.from(titles)),
+        all: normalizeList([...ids, ...titles])
+    };
+}
+
+async function loadSharedCoursesForFormationKeys({ formationIds = [], formationTitles = [], activeOnly = true } = {}) {
+    const courses = [];
+    const ids = normalizeList(formationIds);
+    const titles = normalizeList(formationTitles);
+    const allKeys = normalizeList([...ids, ...titles]);
+
+    /**
+     * 8.0P.167.80 : compatibilité renforcée.
+     * Certains comptes profs peuvent avoir les index users/{uid} synchronisés
+     * sans que la requête membership formations.profs ne ramène tout de suite
+     * les documents formation. On utilise donc à la fois les IDs/titres déjà
+     * connus sur le profil et ceux retrouvés via les documents formations.
+     */
+    courses.push(...await loadCoursesByArrayField('formations', allKeys, { activeOnly }));
+    courses.push(...await loadCoursesByArrayField('formationIds', ids, { activeOnly }));
+    courses.push(...await loadCoursesByArrayField('formationsIds', ids, { activeOnly }));
+    courses.push(...await loadCoursesByArrayField('targetFormationIds', ids, { activeOnly }));
+    courses.push(...await loadCoursesByArrayField('targetFormationTitles', titles, { activeOnly }));
+
+    return courses;
+}
+
 export async function loadCoursesForCourseAccess({
     currentUid,
     currentUserProfile
@@ -308,23 +349,17 @@ export async function loadCoursesForCourseAccess({
         currentUserProfile
     });
 
-    const formationIds = assignedFormations.map(f => f.id).filter(Boolean).map(String);
-    const formationTitles = assignedFormations.map(f => f.titre).filter(Boolean).map(String);
+    const formationKeys = getFormationAccessKeysForProfile(currentUserProfile, assignedFormations);
 
     courses.push(...await loadOwnTeacherCourses(currentUid));
 
     const activeOnly = !isTeacherProfile(currentUserProfile);
 
-    courses.push(...await loadCoursesByArrayField('formations', formationIds, { activeOnly }));
-    courses.push(...await loadCoursesByArrayField('formationIds', formationIds, { activeOnly }));
-    courses.push(...await loadCoursesByArrayField('targetFormationIds', formationIds, { activeOnly }));
-
-    /**
-     * Compatibilité anciens cours : certains documents ont encore stocké le
-     * titre de formation au lieu de son ID dans courses/{id}.formations.
-     */
-    courses.push(...await loadCoursesByArrayField('formations', formationTitles, { activeOnly }));
-    courses.push(...await loadCoursesByArrayField('targetFormationTitles', formationTitles, { activeOnly }));
+    courses.push(...await loadSharedCoursesForFormationKeys({
+        formationIds: formationKeys.ids,
+        formationTitles: formationKeys.titles,
+        activeOnly
+    }));
 
     return uniqById(courses).sort((a, b) => {
         const aDate = a.dateCreation?.toMillis ? a.dateCreation.toMillis() : 0;

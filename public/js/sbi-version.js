@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.79',
+  version: '8.0P.167.80',
   branch: 'main',
-  channel: 'P2I.5-A TEACHER SHARED COURSE ACCESS',
-  stage: 'TEACHER COURSES BY SHARED FORMATION',
+  channel: 'P2I.5-A TEACHER SHARED COURSE ACCESS HARDENING',
+  stage: 'TEACHER COURSES BY SHARED FORMATION KEYS',
   updatedAt: '2026-05-18',
-  label: 'SBI 8.0P.167.79 - P2I.5-A TEACHER SHARED COURSE ACCESS'
+  label: 'SBI 8.0P.167.80 - P2I.5-A TEACHER SHARED COURSE ACCESS HARDENING'
 };
 
 export function getSbiVersionLabel() {
