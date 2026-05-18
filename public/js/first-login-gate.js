@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.167.94-GPT2 / P2I.5-E-GPT2
+ * SBI 8.0P.167.94-GPT2.1 / P2I.5-E-GPT2.1
  * Première connexion : validation obligatoire légère + notice étudiant post-login.
  *
  * Objectif :
@@ -51,8 +51,13 @@ function writeSessionCompleted(uid) {
   } catch (_) {}
 }
 
+function getCurrentSignInToken() {
+  const raw = auth.currentUser?.metadata?.lastSignInTime || '';
+  return raw ? String(raw).replace(/[^a-zA-Z0-9_-]/g, '_') : 'active-session';
+}
+
 function getStudentNoticeSessionKey(uid) {
-  return `${STUDENT_NOTICE_SESSION_PREFIX}${STUDENT_NOTICE_VERSION}:${uid}`;
+  return `${STUDENT_NOTICE_SESSION_PREFIX}${STUDENT_NOTICE_VERSION}:${uid}:${getCurrentSignInToken()}`;
 }
 
 function readStudentNoticeDismissed(uid) {
@@ -601,7 +606,7 @@ function maybeRenderStudentConstructionNotice(userData = {}, options = {}) {
   if (readStudentNoticeDismissed(currentUid)) return;
   if (userData?.statut === 'suspendu') return;
   if (isSbiAdminLike(userData)) return;
-  if (!isSbiStudent(userData)) return;
+  if (!isSbiStudent(userData) && !window.location.pathname.startsWith('/student/')) return;
   if (!hasCompletedFirstLogin(userData)) return;
 
   renderStudentConstructionNotice(userData, options);
@@ -637,7 +642,7 @@ function renderStudentConstructionNotice(userData = {}, { afterFirstLogin = fals
         </ul>
 
         <div class="sbi-student-notice-actions">
-          <div class="sbi-student-notice-footnote">Ce message revient une fois par session pendant la phase de construction.</div>
+          <div class="sbi-student-notice-footnote">Ce message revient à chaque nouvelle connexion pendant la phase de construction.</div>
           <button type="button" class="sbi-student-notice-button" id="sbi-student-notice-dismiss">J’ai compris, ouvrir mon espace</button>
         </div>
       </div>
@@ -678,7 +683,8 @@ async function checkFirstLoginGate(user) {
 
     if (data.statut === 'suspendu') return;
     if (isSbiAdminLike(data)) return;
-    if (!isSbiTeacherOrStudent(data)) return;
+    const isStudentRoute = window.location.pathname.startsWith('/student/');
+    if (!isSbiTeacherOrStudent(data) && !isStudentRoute) return;
 
     if (hasCompletedFirstLogin(data)) {
       writeSessionCompleted(currentUid);
