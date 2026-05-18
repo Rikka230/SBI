@@ -907,3 +907,65 @@ body.sbi-planning-open {
     align-items: stretch;
   }
 }
+
+/* SBI 8.0P.167.93 - Planning placeholders and pedagogical buffers */
+.sbi-planning-column-head.is-with-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.85rem;
+  align-items: flex-start;
+}
+
+.sbi-planning-head-actions {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.sbi-planning-head-actions .sbi-promotions-ghost-btn {
+  padding: 0.48rem 0.68rem;
+  font-size: 0.72rem;
+}
+
+.sbi-planning-timeline-row.is-placeholder_course {
+  border-color: rgba(0, 212, 255, 0.28);
+  background: linear-gradient(135deg, rgba(0, 212, 255, 0.08), rgba(255,255,255,0.035));
+}
+
+.sbi-planning-timeline-row.is-buffer_period,
+.sbi-planning-timeline-row.is-revision_period,
+.sbi-planning-timeline-row.is-catchup_period {
+  border-style: dashed;
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.sbi-planning-timeline-row.is-revision_period {
+  border-color: rgba(126, 211, 33, 0.28);
+}
+
+.sbi-planning-timeline-row.is-catchup_period {
+  border-color: rgba(255, 193, 7, 0.30);
+}
+
+.sbi-planning-inspector-card input[type="text"] {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.74rem 0.82rem;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 10px;
+  background: rgba(3, 7, 18, 0.86);
+  color: #fff;
+  outline: none;
+}
+
+@media (max-width: 980px) {
+  .sbi-planning-column-head.is-with-actions {
+    flex-direction: column;
+  }
+
+  .sbi-planning-head-actions {
+    justify-content: flex-start;
+  }
+}

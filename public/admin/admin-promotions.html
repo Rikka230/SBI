@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="css/admin-layout.css">
     <link rel="stylesheet" href="css/admin.css?v=8.0P.167.51">
     <link rel="stylesheet" href="css/admin-notifications.css">
-    <link rel="stylesheet" href="css/admin-promotions.css?v=8.0P.167.91">
+    <link rel="stylesheet" href="css/admin-promotions.css?v=8.0P.167.93">
     <script src="js/components.js?v=8.0P.167.64"></script>
     <link rel="stylesheet" href="css/admin-surface-unified.css?v=8.0P.167.52">
 </head>
@@ -87,7 +87,7 @@
                         <div class="sbi-promotions-curriculum-box">
                             <div class="sbi-promotions-section-title">
                                 <span>Planning pédagogique de la promotion</span>
-                                <small>P2I.5-C</small>
+                                <small>P2I.5-D</small>
                             </div>
 
                             <p class="sbi-promotions-help">Construisez l’ordre conseillé des cours pour cette promotion. Cette première version prépare la timeline pédagogique sans bloquer l’accès libre aux contenus.</p>
@@ -186,9 +186,15 @@
                             </aside>
 
                             <main class="sbi-planning-column is-timeline">
-                                <div class="sbi-planning-column-head">
-                                    <h4>Timeline cours</h4>
-                                    <p>Glissez ou utilisez les flèches pour ordonner. Les layers devoirs/examens arrivent ensuite.</p>
+                                <div class="sbi-planning-column-head is-with-actions">
+                                    <div>
+                                        <h4>Timeline pédagogique</h4>
+                                        <p>Glissez ou utilisez les flèches pour ordonner. Ajoutez aussi des cours futurs ou marges pédagogiques.</p>
+                                    </div>
+                                    <div class="sbi-planning-head-actions">
+                                        <button type="button" id="promotion-planning-add-placeholder-btn" class="sbi-promotions-ghost-btn is-small">+ Cours futur</button>
+                                        <button type="button" id="promotion-planning-add-buffer-btn" class="sbi-promotions-ghost-btn is-small">+ Marge</button>
+                                    </div>
                                 </div>
                                 <div id="promotion-planning-timeline-list" class="sbi-planning-timeline">
                                     <div class="sbi-promotions-empty">Ajoutez des cours à la timeline.</div>
@@ -224,7 +230,7 @@
 <script type="module" src="js/admin-ui.js?v=8.0P.167.88"></script>
 <script type="module" src="js/tracker.js?v=8.0P.167.44"></script>
 <script type="module" src="js/admin-notifications.js"></script>
-<script type="module" src="js/admin-promotions.js?v=8.0P.167.92"></script>
+<script type="module" src="js/admin-promotions.js?v=8.0P.167.93"></script>
 
 <script>
     document.addEventListener('DOMContentLoaded', () => {
