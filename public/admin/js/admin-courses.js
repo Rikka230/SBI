@@ -44,7 +44,7 @@ import {
     loadFormationsForCourseAccess,
     loadCoursesForCourseAccess,
     loadCoursesForMediaSafety
-} from '/admin/js/course-data-access.js?v=8.0P.167.82';
+} from '/admin/js/course-data-access.js?v=8.0P.167.83';
 import { renderCourseActionButtons } from '/admin/js/course-action-buttons.js';
 import { notifyCourseDeletedIfNeeded } from '/admin/js/course-delete-notifications.js';
 import { SVG_PREVIEW, SVG_QUIZ_LIST } from '/admin/js/courses/course-icons.js';
@@ -72,7 +72,7 @@ import {
     resolveCourseValidationNotifications as resolveCourseValidationNotificationsService,
     handleCourseNotifications as handleCourseNotificationsService
 } from '/admin/js/courses/course-notifications.js?v=8.0P.167.82';
-import { getCourseTargetingSnapshot } from '/admin/js/courses/course-targeting.js?v=8.0P.167.81';
+import { getCourseTargetingSnapshot } from '/admin/js/courses/course-targeting.js?v=8.0P.167.83';
 let currentUid = null;
 let currentUserProfile = null;
 let currentChapters = [];
@@ -1248,6 +1248,10 @@ async function saveCourseToFirebase(actionType = 'admin_save') {
         window.editingCourseOriginalActive = editingCourseOriginalActive;
 
         await loadCourses();
+
+        window.dispatchEvent(new CustomEvent('sbi:teacher-library-refresh', {
+            detail: { source: 'course-saved', courseId: courseRefId, actionType }
+        }));
 
         if (actionType === 'preview') {
             openCoursePreview(courseRefId);
