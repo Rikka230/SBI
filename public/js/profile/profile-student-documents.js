@@ -949,8 +949,13 @@ async function setStudentDocumentVisibility(panel, db, item, button) {
 
   try {
     const callable = getAdminSetStudentDocumentVisibilityCallable();
-    await callable({ documentId: item.id, visible: makeVisible });
-    setStatus(panel, makeVisible ? 'Document rendu accessible à l’élève.' : 'Document masqué à l’élève.', 'success');
+    const response = await callable({ documentId: item.id, visible: makeVisible });
+    const warning = response?.data?.warning || '';
+    setStatus(
+      panel,
+      warning || (makeVisible ? 'Document rendu accessible à l’élève. Notification + email envoyés.' : 'Document masqué à l’élève.'),
+      warning ? 'error' : 'success'
+    );
     const nextDocuments = await loadStudentDocuments(db, panel.dataset.studentUid || '');
     setPanelDocuments(panel, nextDocuments);
     renderDocumentsList(panel, nextDocuments, db);

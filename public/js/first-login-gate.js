@@ -636,6 +636,7 @@ function renderStudentConstructionNotice(userData = {}, { afterFirstLogin = fals
         <ul class="sbi-student-notice-patch" aria-label="Dernières nouveautés côté étudiant">
           <li><span class="sbi-student-notice-dot"></span><span><strong>Documents demandés</strong>Tu peux transmettre les pièces demandées, reprendre un envoi plus tard et renvoyer uniquement les documents à corriger.</span></li>
           <li><span class="sbi-student-notice-dot"></span><span><strong>Coffre documents</strong>Les documents validés sont mieux centralisés dans ton dossier étudiant.</span></li>
+          <li><span class="sbi-student-notice-dot"></span><span><strong>Documents SBI accessibles</strong>Certains documents peuvent maintenant être rendus disponibles directement dans ton espace avec notification et email.</span></li>
           <li><span class="sbi-student-notice-dot"></span><span><strong>Suivi pédagogique</strong>La progression, les infos de formation et les futurs checkpoints sont progressivement regroupés dans ton espace.</span></li>
           <li><span class="sbi-student-notice-dot"></span><span><strong>Cours et planning</strong>Le planning pédagogique par promotion est en préparation pour clarifier l’ordre conseillé des cours.</span></li>
         </ul>

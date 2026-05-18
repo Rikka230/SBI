@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.96.1',
+  version: '8.0P.167.96.1-GPT2.1',
   branch: 'main',
-  channel: 'P2I.5-F.1 CURRICULUM TEMPLATE SAVE UX',
-  stage: 'PROMOTION PLANNING SHARED COURSES SOURCE DISPLAY CONTEXT',
+  channel: 'P2I-GPT2 STUDENT DOCUMENT NOTIFY EMAIL',
+  stage: 'STUDENT VISIBLE DOCUMENT NOTIFICATION AND BREVO EMAIL',
   updatedAt: '2026-05-18',
-  label: 'SBI 8.0P.167.96.1 - CURRICULUM TEMPLATE SAVE UX'
+  label: 'SBI 8.0P.167.96.1-GPT2.1 - STUDENT DOCUMENT NOTIFY EMAIL'
 };
 
 export function getSbiVersionLabel() {

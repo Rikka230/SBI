@@ -3003,8 +3003,60 @@ exports.adminUpdateUserAccount = onCall({
 });
 
 
+
+function buildStudentVisibleDocumentUrl() {
+    return `${SBI_SITE_URL}/student/mon-profil.html#student-visible-documents`;
+}
+
+async function sendStudentVisibleDocumentEmail(studentData, documentData, documentUrl, apiKey) {
+    const studentEmail = cleanEmail(studentData.email || "");
+    if (!isValidEmail(studentEmail)) {
+        throw new Error("Email élève invalide ou manquant.");
+    }
+
+    const documentTitle = cleanString(documentData.title || documentData.fileName || "Document SBI", 160);
+    const studentName = getAccountDisplayName(studentData) || "Élève SBI";
+
+    return sendBrevoEmail({
+        sender: {
+            name: SBI_SENDER_NAME,
+            email: SBI_SENDER_EMAIL
+        },
+        to: [{
+            email: studentEmail,
+            name: studentName
+        }],
+        replyTo: {
+            email: SBI_CONTACT_EMAIL,
+            name: "Sport Business Institute"
+        },
+        subject: "SBI - Nouveau document disponible dans votre espace",
+        htmlContent: renderSbiEmailTemplate({
+            prenom: studentData.prenom || "",
+            nomExpediteur: "L’équipe SBI",
+            posteExpediteur: "Administration",
+            preheader: "Un nouveau document est disponible dans votre espace SBI.",
+            messageHtml: `
+                <p style="margin:0 0 16px 0;">Un nouveau document vient d’être rendu disponible dans votre espace personnel Sport Business Institute.</p>
+                <p style="margin:0 0 16px 0;"><strong>Document :</strong> ${escapeHtml(documentTitle)}</p>
+                ${buildActionButtonHtml(documentUrl, "Ouvrir mes documents SBI")}
+                <p style="margin:0;">Si vous avez une question sur ce document, contactez l’équipe SBI.</p>
+            `
+        }),
+        textContent: `Bonjour ${studentData.prenom || ""},
+
+Un nouveau document est disponible dans votre espace SBI.
+
+Document : ${documentTitle}
+Lien : ${documentUrl}
+
+Sport Business Institute`
+    }, apiKey);
+}
+
 exports.adminSetStudentDocumentVisibility = onCall({
     region: "europe-west1",
+    secrets: [BREVO_API_KEY],
     timeoutSeconds: 30,
     memory: "256MiB"
 }, async (request) => {
@@ -3067,6 +3119,41 @@ exports.adminSetStudentDocumentVisibility = onCall({
 
     await documentRef.set(updatePayload, { merge: true });
 
+    const documentTitle = documentData.title || documentData.fileName || "Document SBI";
+    const documentUrl = buildStudentVisibleDocumentUrl();
+    let warning = "";
+
+    if (visible && previousVisibility !== "student_visible") {
+        const studentDoc = await db.collection("users").doc(studentUid).get();
+        const studentData = studentDoc.exists ? (studentDoc.data() || {}) : {};
+
+        await db.collection("notifications").add({
+            type: "student_document_visible",
+            destinataireId: studentUid,
+            targetStudents: [studentUid],
+            status: "open",
+            title: "Nouveau document disponible",
+            body: `Le document “${documentTitle}” est disponible dans votre espace SBI.`,
+            documentId,
+            documentTitle,
+            actionUrl: documentUrl,
+            createdBy: caller.uid,
+            createdByEmail: caller.email,
+            dateCreation: admin.firestore.FieldValue.serverTimestamp(),
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            dismissedBy: []
+        });
+
+        try {
+            const apiKey = BREVO_API_KEY.value();
+            if (!apiKey) throw new Error("BREVO_API_KEY manquant.");
+            await sendStudentVisibleDocumentEmail(studentData, documentData, documentUrl, apiKey);
+        } catch (emailError) {
+            warning = "Document rendu visible, notification interne créée, mais l’email Brevo n’a pas pu être envoyé.";
+            console.error("Erreur email Brevo document visible SBI :", emailError.message, emailError.payload || "");
+        }
+    }
+
     await safeWriteAccountAuditLog(db, {
         type: visible ? "student_document.visibility_enabled" : "student_document.visibility_disabled",
         actorUid: caller.uid,
@@ -3075,15 +3162,18 @@ exports.adminSetStudentDocumentVisibility = onCall({
         targetEmail: "",
         targetRole: "student",
         documentId,
-        documentTitle: documentData.title || documentData.fileName || "",
+        documentTitle,
         previousVisibility,
-        nextVisibility
+        nextVisibility,
+        notificationSent: visible && previousVisibility !== "student_visible",
+        emailWarning: warning
     });
 
     return {
         success: true,
         visibility: nextVisibility,
-        message: visible ? "Document rendu accessible à l’élève." : "Document masqué à l’élève."
+        warning,
+        message: warning || (visible ? "Document rendu accessible à l’élève." : "Document masqué à l’élève.")
     };
 });
 

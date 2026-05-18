@@ -411,6 +411,10 @@ function renderNotificationsList(notifs) {
             titleText = "Cours supprimé";
             bodyText = `Votre cours "<strong>${notif.courseTitle}</strong>" a été supprimé par l'administration.`;
             iconSvg = `<svg width="20" height="20" style="min-width:20px; flex-shrink:0;" fill="var(--accent-red, #ff4a4a)" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM8 9h8v10H8V9zm7.5-5l-1-1h-5l-1 1H5v2h14V4z"/></svg>`;
+        } else if (notif.type === 'student_document_visible') {
+            titleText = "Nouveau document disponible";
+            bodyText = `Le document <strong>${notif.documentTitle || 'Document SBI'}</strong> est disponible dans votre espace.`;
+            iconSvg = `<svg width="20" height="20" style="min-width:20px; flex-shrink:0;" fill="var(--accent-blue, #2A57FF)" viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm1 7V3.5L19.5 9H15zM8 13h8v2H8v-2zm0 4h8v2H8v-2zm0-8h4v2H8V9z"/></svg>`;
         } else {
             titleText = "Validation requise";
             bodyText = `<strong>${notif.auteurName}</strong> a soumis "<strong>${notif.courseTitle}</strong>".`;
@@ -419,9 +423,10 @@ function renderNotificationsList(notifs) {
 
         const safeTitle = notif.courseTitle ? String(notif.courseTitle).replace(/"/g, '&quot;') : 'Cours';
         const safeAuthor = notif.auteurName ? String(notif.auteurName).replace(/"/g, '&quot;') : 'Professeur';
+        const safeActionUrl = notif.actionUrl ? String(notif.actionUrl).replace(/"/g, '&quot;') : '';
 
         const html = `
-            <div class="notif-item" data-id="${notif.id}" data-type="${notif.type}" data-course="${notif.courseId}" data-title="${safeTitle}" data-author="${safeAuthor}" style="display: flex; align-items: flex-start; gap: 1rem; padding: 1rem; border-bottom: 1px solid var(--border-color, #333); cursor: pointer; transition: background 0.2s; background: rgba(128, 128, 128, 0.05);">
+            <div class="notif-item" data-id="${notif.id}" data-type="${notif.type}" data-course="${notif.courseId}" data-title="${safeTitle}" data-author="${safeAuthor}" data-action-url="${safeActionUrl}" style="display: flex; align-items: flex-start; gap: 1rem; padding: 1rem; border-bottom: 1px solid var(--border-color, #333); cursor: pointer; transition: background 0.2s; background: rgba(128, 128, 128, 0.05);">
                 ${dotIndicator}
                 <div style="flex-shrink:0;">${iconSvg}</div>
                 <div>
@@ -444,6 +449,15 @@ function renderNotificationsList(notifs) {
             const courseId = e.currentTarget.getAttribute('data-course');
             const courseTitle = e.currentTarget.getAttribute('data-title');
             const auteurName = e.currentTarget.getAttribute('data-author');
+            const actionUrl = e.currentTarget.getAttribute('data-action-url') || '';
+
+            if (notifType === 'student_document_visible') {
+                e.currentTarget.style.display = 'none';
+                await dismissNotificationForCurrentUser(notifId);
+                closeNotificationsPanel();
+                window.location.assign(actionUrl || '/student/mon-profil.html#student-visible-documents');
+                return;
+            }
 
             if (notifType === 'course_validation') {
                 if (!isAdminLike()) {
