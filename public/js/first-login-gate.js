@@ -1,12 +1,13 @@
 /**
- * SBI 8.0P.167.44 / P2H.2-I
- * Première connexion : validation obligatoire légère.
+ * SBI 8.0P.167.94-GPT2 / P2I.5-E-GPT2
+ * Première connexion : validation obligatoire légère + notice étudiant post-login.
  *
  * Objectif :
  * - bloquer l'accès visuel tant que l'utilisateur student/teacher
  *   n'a pas confirmé les cases de première connexion ;
  * - écrire la validation via Cloud Function pour garder l'audit serveur ;
- * - ne pas impacter les admins / isGod.
+ * - ne pas impacter les admins / isGod ;
+ * - afficher ensuite aux étudiants un rappel non bloquant sur la phase de construction.
  */
 
 import { app, auth, db } from '/js/firebase-init.js';
@@ -19,6 +20,11 @@ const CHECKLIST_VERSION = '2026-05-SBI-FIRST-LOGIN-V1';
 const MODAL_ID = 'sbi-first-login-gate';
 const STYLE_ID = 'sbi-first-login-gate-style';
 const SESSION_PREFIX = 'sbi:firstLoginGate:completed:';
+
+const STUDENT_NOTICE_VERSION = '2026-05-SBI-STUDENT-CONSTRUCTION-V1';
+const STUDENT_NOTICE_ID = 'sbi-student-construction-notice';
+const STUDENT_NOTICE_STYLE_ID = 'sbi-student-construction-notice-style';
+const STUDENT_NOTICE_SESSION_PREFIX = 'sbi:studentConstructionNotice:dismissed:';
 
 const functionsInstance = getFunctions(app, 'europe-west1');
 const completeFirstLoginOnboarding = httpsCallable(functionsInstance, 'completeFirstLoginOnboarding');
@@ -45,9 +51,42 @@ function writeSessionCompleted(uid) {
   } catch (_) {}
 }
 
+function getStudentNoticeSessionKey(uid) {
+  return `${STUDENT_NOTICE_SESSION_PREFIX}${STUDENT_NOTICE_VERSION}:${uid}`;
+}
+
+function readStudentNoticeDismissed(uid) {
+  try {
+    return sessionStorage.getItem(getStudentNoticeSessionKey(uid)) === '1';
+  } catch (_) {
+    return false;
+  }
+}
+
+function writeStudentNoticeDismissed(uid) {
+  try {
+    sessionStorage.setItem(getStudentNoticeSessionKey(uid), '1');
+  } catch (_) {}
+}
+
 function hasCompletedFirstLogin(data = {}) {
   return data?.accountStatus?.firstLoginCompleted === true
     || data?.firstLoginCompleted === true;
+}
+
+function isSbiStudent(data = {}) {
+  const role = String(data.role || data.userRole || data.type || '').trim().toLowerCase();
+  const roles = Array.isArray(data.roles)
+    ? data.roles.map((item) => String(item || '').trim().toLowerCase())
+    : [];
+
+  return role === 'student'
+    || role === 'eleve'
+    || role === 'élève'
+    || roles.includes('student')
+    || roles.includes('eleve')
+    || roles.includes('élève')
+    || data.isStudent === true;
 }
 
 function getDisplayName(data = {}) {
@@ -226,9 +265,200 @@ function injectStyle() {
   document.head.appendChild(style);
 }
 
+function injectStudentNoticeStyle() {
+  if (document.getElementById(STUDENT_NOTICE_STYLE_ID)) return;
+
+  const style = document.createElement('style');
+  style.id = STUDENT_NOTICE_STYLE_ID;
+  style.textContent = `
+    body.sbi-student-notice-locked {
+      overflow: hidden;
+    }
+
+    .sbi-student-construction-notice {
+      position: fixed;
+      inset: 0;
+      z-index: 4990;
+      display: grid;
+      place-items: center;
+      padding: 1.2rem;
+      background:
+        radial-gradient(circle at 12% 12%, rgba(42, 87, 255, 0.24), transparent 32%),
+        radial-gradient(circle at 86% 18%, rgba(0, 212, 255, 0.12), transparent 28%),
+        rgba(3, 6, 14, 0.78);
+      backdrop-filter: blur(12px);
+    }
+
+    .sbi-student-notice-card {
+      width: min(720px, 100%);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 24px;
+      background:
+        linear-gradient(145deg, rgba(10, 17, 34, 0.98), rgba(5, 8, 17, 0.98));
+      color: #fff;
+      overflow: hidden;
+      box-shadow: 0 30px 90px rgba(0, 0, 0, 0.42);
+    }
+
+    .sbi-student-notice-head {
+      padding: 1.45rem 1.55rem 1.1rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .sbi-student-notice-eyebrow {
+      display: inline-flex;
+      margin-bottom: 0.75rem;
+      padding: 0.34rem 0.7rem;
+      border-radius: 999px;
+      background: rgba(42, 87, 255, 0.14);
+      border: 1px solid rgba(42, 87, 255, 0.34);
+      color: #cdd9ff;
+      font-size: 0.72rem;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .sbi-student-notice-head h2 {
+      margin: 0;
+      font-size: clamp(1.45rem, 3vw, 2.05rem);
+      line-height: 1.12;
+    }
+
+    .sbi-student-notice-head p {
+      margin: 0.75rem 0 0;
+      color: #aeb8d4;
+      line-height: 1.58;
+    }
+
+    .sbi-student-notice-body {
+      padding: 1.25rem 1.55rem 1.45rem;
+    }
+
+    .sbi-student-notice-advice {
+      display: grid;
+      gap: 0.7rem;
+      margin-bottom: 1.1rem;
+    }
+
+    .sbi-student-notice-advice-item {
+      padding: 0.9rem 1rem;
+      border-radius: 16px;
+      border: 1px solid rgba(42, 87, 255, 0.2);
+      background: rgba(42, 87, 255, 0.08);
+      color: #dbe5ff;
+      line-height: 1.48;
+      font-size: 0.92rem;
+    }
+
+    .sbi-student-notice-advice-item strong {
+      color: #fff;
+    }
+
+    .sbi-student-notice-patch {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 0.66rem;
+    }
+
+    .sbi-student-notice-patch li {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 0.66rem;
+      align-items: flex-start;
+      padding: 0.82rem 0.9rem;
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.045);
+      color: #aeb8d4;
+      font-size: 0.9rem;
+      line-height: 1.42;
+    }
+
+    .sbi-student-notice-dot {
+      width: 0.58rem;
+      height: 0.58rem;
+      margin-top: 0.36rem;
+      border-radius: 999px;
+      background: #2A57FF;
+      box-shadow: 0 0 16px rgba(42, 87, 255, 0.6);
+    }
+
+    .sbi-student-notice-patch strong {
+      display: block;
+      margin-bottom: 0.14rem;
+      color: #fff;
+      font-size: 0.92rem;
+    }
+
+    .sbi-student-notice-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.85rem;
+      flex-wrap: wrap;
+      margin-top: 1.15rem;
+    }
+
+    .sbi-student-notice-footnote {
+      color: #8290b3;
+      font-size: 0.82rem;
+      line-height: 1.4;
+    }
+
+    .sbi-student-notice-button {
+      border: none;
+      border-radius: 999px;
+      padding: 0.86rem 1.2rem;
+      background: linear-gradient(135deg, #2A57FF, #6f8cff);
+      color: #fff;
+      font-weight: 900;
+      cursor: pointer;
+      box-shadow: 0 12px 30px rgba(42, 87, 255, 0.25);
+    }
+
+    .sbi-student-notice-button:hover {
+      transform: translateY(-1px);
+    }
+
+    @media (max-width: 640px) {
+      .sbi-student-notice-card {
+        border-radius: 18px;
+      }
+
+      .sbi-student-notice-head,
+      .sbi-student-notice-body {
+        padding-left: 1.1rem;
+        padding-right: 1.1rem;
+      }
+
+      .sbi-student-notice-actions {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .sbi-student-notice-button {
+        width: 100%;
+      }
+    }
+  `;
+  document.head.appendChild(style);
+}
+
 function removeGate() {
   document.body.classList.remove('sbi-first-login-locked');
   document.getElementById(MODAL_ID)?.remove();
+}
+
+function removeStudentConstructionNotice({ persist = false } = {}) {
+  document.body.classList.remove('sbi-student-notice-locked');
+  document.getElementById(STUDENT_NOTICE_ID)?.remove();
+
+  if (persist && currentUid) {
+    writeStudentNoticeDismissed(currentUid);
+  }
 }
 
 function getCheckedPayload() {
@@ -280,8 +510,20 @@ async function submitFirstLogin() {
     });
 
     if (currentUid) writeSessionCompleted(currentUid);
+
+    currentUserData = {
+      ...(currentUserData || {}),
+      accountStatus: {
+        ...(currentUserData?.accountStatus || {}),
+        firstLoginCompleted: true
+      }
+    };
+
     setStatus('Validation enregistrée. Ouverture de ton espace...');
-    window.setTimeout(removeGate, 450);
+    window.setTimeout(() => {
+      removeGate();
+      maybeRenderStudentConstructionNotice(currentUserData, { afterFirstLogin: true });
+    }, 450);
   } catch (error) {
     console.error('[SBI First Login] Validation impossible :', error);
     setStatus('Validation impossible pour le moment. Réessaie dans un instant.', 'error');
@@ -352,23 +594,81 @@ function renderCheck(id, title, desc) {
   `;
 }
 
+function maybeRenderStudentConstructionNotice(userData = {}, options = {}) {
+  if (!currentUid) return;
+  if (document.getElementById(MODAL_ID)) return;
+  if (document.getElementById(STUDENT_NOTICE_ID)) return;
+  if (readStudentNoticeDismissed(currentUid)) return;
+  if (userData?.statut === 'suspendu') return;
+  if (isSbiAdminLike(userData)) return;
+  if (!isSbiStudent(userData)) return;
+  if (!hasCompletedFirstLogin(userData)) return;
+
+  renderStudentConstructionNotice(userData, options);
+}
+
+function renderStudentConstructionNotice(userData = {}, { afterFirstLogin = false } = {}) {
+  injectStudentNoticeStyle();
+
+  const displayName = getDisplayName(userData);
+  const root = document.createElement('div');
+  root.id = STUDENT_NOTICE_ID;
+  root.className = 'sbi-student-construction-notice';
+  root.setAttribute('role', 'dialog');
+  root.setAttribute('aria-modal', 'true');
+  root.innerHTML = `
+    <div class="sbi-student-notice-card">
+      <div class="sbi-student-notice-head">
+        <span class="sbi-student-notice-eyebrow">Info espace étudiant</span>
+        <h2>${afterFirstLogin ? 'Ton espace est ouvert' : `Bonjour ${escapeHtml(displayName)}`}</h2>
+        <p>L’espace étudiant SBI est en construction active. Les accès restent utilisables, mais certains écrans vont encore évoluer avec l’intégration des cours, du planning pédagogique et du suivi.</p>
+      </div>
+      <div class="sbi-student-notice-body">
+        <div class="sbi-student-notice-advice">
+          <div class="sbi-student-notice-advice-item"><strong>À privilégier pour le moment :</strong> utilise un ordinateur quand c’est possible. La navigation mobile reste en stabilisation pendant cette phase.</div>
+          <div class="sbi-student-notice-advice-item"><strong>Important :</strong> si une page paraît incomplète, recharge-la une fois puis préviens l’équipe SBI si le blocage persiste.</div>
+        </div>
+
+        <ul class="sbi-student-notice-patch" aria-label="Dernières nouveautés côté étudiant">
+          <li><span class="sbi-student-notice-dot"></span><span><strong>Documents demandés</strong>Tu peux transmettre les pièces demandées, reprendre un envoi plus tard et renvoyer uniquement les documents à corriger.</span></li>
+          <li><span class="sbi-student-notice-dot"></span><span><strong>Coffre documents</strong>Les documents validés sont mieux centralisés dans ton dossier étudiant.</span></li>
+          <li><span class="sbi-student-notice-dot"></span><span><strong>Suivi pédagogique</strong>La progression, les infos de formation et les futurs checkpoints sont progressivement regroupés dans ton espace.</span></li>
+          <li><span class="sbi-student-notice-dot"></span><span><strong>Cours et planning</strong>Le planning pédagogique par promotion est en préparation pour clarifier l’ordre conseillé des cours.</span></li>
+        </ul>
+
+        <div class="sbi-student-notice-actions">
+          <div class="sbi-student-notice-footnote">Ce message revient une fois par session pendant la phase de construction.</div>
+          <button type="button" class="sbi-student-notice-button" id="sbi-student-notice-dismiss">J’ai compris, ouvrir mon espace</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(root);
+  document.body.classList.add('sbi-student-notice-locked');
+
+  root.querySelector('#sbi-student-notice-dismiss')?.addEventListener('click', () => {
+    removeStudentConstructionNotice({ persist: true });
+  });
+}
+
 function escapeHtml(value) {
   return String(value ?? '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
+    .replace(/\"/g, '&quot;')
     .replace(/'/g, '&#039;');
 }
 
 async function checkFirstLoginGate(user) {
   currentUid = user?.uid || '';
   currentUserData = null;
+  submitInProgress = false;
   removeGate();
+  removeStudentConstructionNotice();
 
   if (!currentUid) return;
-  if (readSessionCompleted(currentUid)) return;
-
   try {
     const snap = await getDoc(doc(db, 'users', currentUid));
     if (!snap.exists()) return;
@@ -382,8 +682,11 @@ async function checkFirstLoginGate(user) {
 
     if (hasCompletedFirstLogin(data)) {
       writeSessionCompleted(currentUid);
+      maybeRenderStudentConstructionNotice(data);
       return;
     }
+
+    if (readSessionCompleted(currentUid)) return;
 
     renderGate(data);
   } catch (error) {
