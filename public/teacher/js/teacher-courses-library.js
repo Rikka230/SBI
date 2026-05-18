@@ -181,6 +181,19 @@ async function loadCoursesByArrayField(fieldName, values = [], label = fieldName
 
   const courses = [];
 
+  // Important : pour une seule valeur, utiliser array-contains.
+  // Firestore/rules le prouvent mieux que array-contains-any avec un seul UID,
+  // notamment pour targetTeacherIds côté professeur.
+  if (safeValues.length === 1) {
+    const snap = await safeGetDocs(
+      query(collection(db, 'courses'), where(fieldName, 'array-contains', safeValues[0])),
+      `cours par ${label}`
+    );
+
+    courses.push(...snapToArray(snap));
+    return courses;
+  }
+
   for (const chunk of chunkArray(safeValues)) {
     const snap = await safeGetDocs(
       query(collection(db, 'courses'), where(fieldName, 'array-contains-any', chunk)),
@@ -254,10 +267,18 @@ function resolveCourseFormations(course = {}, formationMap = new Map()) {
     ...normalizeList(course.targetFormationTitles)
   ]);
 
-  return formationRefs.map((ref) => {
+  const names = formationRefs.map((ref) => {
     const byId = formationMap.get(`id:${ref}`);
     const byTitle = formationMap.get(`title:${ref}`);
     return byId?.titre || byId?.title || byTitle?.titre || byTitle?.title || ref;
+  });
+
+  const seen = new Set();
+  return names.filter((name) => {
+    const key = normalizeString(name).toLowerCase();
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
   });
 }
 
@@ -284,24 +305,29 @@ function renderCourseCard(course, { uid, formationMap }) {
   const title = getCourseTitle(course);
   const chapterCount = Array.isArray(course.chapitres) ? course.chapitres.length : Number(course.lessonCount || 0) || 0;
   const isOwnCourse = normalizeString(course.auteurId) === normalizeString(uid);
-  const formationNames = resolveCourseFormations(course, formationMap).slice(0, 4);
+  const formationNames = resolveCourseFormations(course, formationMap).slice(0, 3);
+  const blocName = normalizeString(course.bloc || course.blockTitle || course.blockName);
   const formationTags = formationNames.length
-    ? formationNames.map((name) => `<span class="teacher-course-tag">${escapeHtml(name)}</span>`).join('')
+    ? formationNames.map((name) => `<span class="teacher-course-tag teacher-course-tag--formation">${escapeHtml(name)}</span>`).join('')
     : '<span class="teacher-course-tag teacher-course-tag--muted">Formation liée</span>';
+  const blocTag = blocName
+    ? `<span class="teacher-course-tag teacher-course-tag--bloc">Bloc : ${escapeHtml(blocName)}</span>`
+    : '';
+  const draftClass = status.tone === 'muted' ? ' teacher-course-card--draft' : '';
 
   const editButton = isOwnCourse
     ? `<button class="teacher-course-btn teacher-course-btn--secondary" type="button" data-teacher-edit-course="${escapeHtml(course.id)}">Éditer</button>`
     : '';
 
   return `
-    <article class="teacher-course-card" data-course-id="${escapeHtml(course.id)}">
+    <article class="teacher-course-card${draftClass}" data-course-id="${escapeHtml(course.id)}">
       <div class="teacher-course-card__body">
         <div class="teacher-course-card__meta">
           ${renderStatusBadge(status)}
           <span class="teacher-course-count">${chapterCount} étape${chapterCount > 1 ? 's' : ''}</span>
         </div>
         <h3 class="teacher-course-card__title">${escapeHtml(title)}</h3>
-        <div class="teacher-course-card__tags">${formationTags}</div>
+        <div class="teacher-course-card__tags">${formationTags}${blocTag}</div>
       </div>
       <div class="teacher-course-card__actions">
         <button class="teacher-course-btn teacher-course-btn--primary" type="button" data-teacher-open-course="${escapeHtml(course.id)}">Visualiser</button>

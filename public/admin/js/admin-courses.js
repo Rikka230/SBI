@@ -72,7 +72,7 @@ import {
     resolveCourseValidationNotifications as resolveCourseValidationNotificationsService,
     handleCourseNotifications as handleCourseNotificationsService
 } from '/admin/js/courses/course-notifications.js?v=8.0P.167.82';
-import { getCourseTargetingSnapshot } from '/admin/js/courses/course-targeting.js?v=8.0P.167.83';
+import { getCourseTargetingSnapshot } from '/admin/js/courses/course-targeting.js?v=8.0P.167.84';
 let currentUid = null;
 let currentUserProfile = null;
 let currentChapters = [];

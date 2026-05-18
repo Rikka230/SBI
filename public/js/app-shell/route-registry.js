@@ -309,7 +309,7 @@ async function mountAdminCourses({ url }) {
   window.__SBI_APP_SHELL_MOUNTING_COURSE_EDITOR = true;
 
   try {
-    const module = await import('/admin/js/admin-courses.js?v=8.0P.167.83');
+    const module = await import('/admin/js/admin-courses.js?v=8.0P.167.84');
     const cleanupCourses = module.mountAdminCourses?.({ source: 'pjax-admin-courses' });
 
     if (typeof cleanupCourses === 'function') {
@@ -586,7 +586,7 @@ async function mountTeacherCourses({ url }) {
   window.__SBI_APP_SHELL_MOUNTING_COURSE_EDITOR = true;
 
   try {
-    const module = await import('/admin/js/admin-courses.js?v=8.0P.167.83');
+    const module = await import('/admin/js/admin-courses.js?v=8.0P.167.84');
     const cleanupCourses = module.mountAdminCourses?.({ source: 'pjax-teacher-courses' });
 
     if (typeof cleanupCourses === 'function') {
@@ -595,7 +595,7 @@ async function mountTeacherCourses({ url }) {
 
     window.__SBI_APP_SHELL_MOUNTING_TEACHER_COURSES_LIBRARY = true;
     try {
-      const libraryModule = await import('/teacher/js/teacher-courses-library.js?v=8.0P.167.83');
+      const libraryModule = await import('/teacher/js/teacher-courses-library.js?v=8.0P.167.84');
       const cleanupTeacherLibrary = libraryModule.mountTeacherCoursesLibrary?.({ source: 'pjax-teacher-courses' });
 
       if (typeof cleanupTeacherLibrary === 'function') {
