@@ -1,4 +1,4 @@
-/* SBI 8.0P.167.59 - Promotions / Cohortes UX */
+/* SBI 8.0P.167.96 - Promotions / Cohortes / Planning / Shared courses */
 
 .sbi-promotions-shell {
   width: 100%;
@@ -1160,4 +1160,59 @@ body.sbi-planning-open {
   .sbi-planning-toolbar {
     grid-template-columns: minmax(240px, 1fr) minmax(220px, auto);
   }
+}
+
+/* SBI 8.0P.167.96 - Shared courses / cross access prep */
+.sbi-planning-filter-label {
+  margin: 0.75rem 0 0.35rem !important;
+  font-size: 0.66rem !important;
+}
+
+.sbi-planning-source-filter {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.62rem 0.7rem;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 10px;
+  background: rgba(3, 7, 18, 0.86);
+  color: #fff;
+  outline: none;
+}
+
+.sbi-planning-course-card.is-shared-course,
+.sbi-planning-timeline-row.is-shared-course {
+  border-color: rgba(0, 212, 255, 0.28);
+  background: linear-gradient(135deg, rgba(0, 212, 255, 0.075), rgba(42, 87, 255, 0.055));
+}
+
+.sbi-planning-source-line {
+  display: flex !important;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.35rem;
+  color: #9fb3ff !important;
+}
+
+.sbi-planning-source-line span,
+.sbi-planning-context-box span {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(0, 212, 255, 0.22);
+  border-radius: 999px;
+  padding: 0.16rem 0.42rem;
+  background: rgba(0, 212, 255, 0.065);
+  color: #cfe8ff;
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.sbi-planning-context-box {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.55rem 0 0.75rem;
+  padding: 0.62rem;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  background: rgba(255,255,255,0.035);
 }

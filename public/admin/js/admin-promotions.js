@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.167.95 / P2I.5-E
+ * SBI 8.0P.167.96 / P2I.5-F
  * Promotions / cohortes admin + overlay planning pédagogique V1.
  *
  * Périmètre volontairement borné :
@@ -10,6 +10,7 @@
  * - overlay V1 : cours disponibles / timeline / réglages ;
  * - curriculumTemplates V1 : sauvegarde et chargement de cursus réutilisables ;
  * - placeholders et marges pédagogiques pour réserver les cours futurs ;
+ * - préparation cours mutualisés / accès croisés via sourceFormation + displayContext ;
  * - aucun calcul progression/checkpoint bloquant dans cette brique.
  */
 
@@ -45,6 +46,7 @@ let selectedPlanningItemKey = '';
 let draggedPlanningItemKey = '';
 let replacePlaceholderItemKey = '';
 let activeCurriculumTemplateId = '';
+let courseSourceFilter = 'linked';
 let activeRosterPromotionId = '';
 
 const dom = {};
@@ -175,6 +177,7 @@ function cacheDom() {
   dom.planningOverlay = ensurePlanningOverlayPortal();
   dom.planningSubtitle = $('promotion-planning-subtitle');
   dom.planningAvailableCourses = $('promotion-planning-available-courses');
+  dom.planningCourseSource = $('promotion-planning-course-source');
   dom.planningTimelineList = $('promotion-planning-timeline-list');
   dom.planningInspector = $('promotion-planning-inspector');
   dom.planningAutoDates = $('promotion-planning-auto-dates-btn');
@@ -243,6 +246,91 @@ function courseMatchesFormation(course = {}, formation = {}) {
   return formationRefs.some((ref) => refs.includes(ref));
 }
 
+function getFormationLabelById(formationId = '') {
+  const found = formations.find((formation) => String(formation.id || '') === String(formationId || '')) || null;
+  return found?.titre || found?.title || found?.nom || found?.name || found?.slug || formationId || '';
+}
+
+function getCourseSharedFlag(course = {}) {
+  return course.sharedCourse === true || course.isSharedCourse === true || course.isTransversal === true || course.scope === 'shared';
+}
+
+function getCourseSourceInfo(course = {}) {
+  const explicitSourceId = clean(course.sourceFormationId || course.originFormationId || '', 160);
+  const explicitSourceName = clean(course.sourceFormationName || course.originFormationName || '', 180);
+  const ids = [
+    explicitSourceId,
+    ...normalizeArray(course.formationIds),
+    ...normalizeArray(course.formationsIds),
+    ...normalizeArray(course.targetFormationIds)
+  ].filter(Boolean);
+  const names = [
+    explicitSourceName,
+    ...normalizeArray(course.formationNames),
+    ...normalizeArray(course.targetFormationTitles),
+    ...normalizeArray(course.formations)
+  ].filter(Boolean);
+
+  const sourceFormationId = ids[0] || '';
+  const sourceFormationName = names[0] || getFormationLabelById(sourceFormationId) || '';
+
+  return {
+    sourceFormationId,
+    sourceFormationName,
+    hasFormationRef: Boolean(sourceFormationId || sourceFormationName),
+    isSharedCourse: getCourseSharedFlag(course) || (!sourceFormationId && !sourceFormationName)
+  };
+}
+
+function getDisplayContextFormation() {
+  const formation = getSelectedFormation();
+  return {
+    displayContextFormationId: formation.formationId || '',
+    displayContextFormationName: formation.formationName || ''
+  };
+}
+
+function isExternalCourseForSelectedFormation(course = {}) {
+  const formation = getSelectedFormation();
+  if (!formation.formationId) return false;
+  return !courseMatchesFormation(course, formation);
+}
+
+function getCourseSourceFilterLabel(value = courseSourceFilter) {
+  if (value === 'shared') return 'cours transversaux';
+  if (value === 'other') return 'cours d’autres formations';
+  if (value === 'all') return 'tous les cours';
+  return 'formation liée';
+}
+
+function courseMatchesSourceFilter(course = {}) {
+  const formation = getSelectedFormation();
+  const linked = courseMatchesFormation(course, formation);
+  const source = getCourseSourceInfo(course);
+  const filter = courseSourceFilter || 'linked';
+
+  if (filter === 'shared') return source.isSharedCourse;
+  if (filter === 'other') return !linked && source.hasFormationRef;
+  if (filter === 'all') return linked || source.isSharedCourse || source.hasFormationRef;
+  return linked;
+}
+
+function buildCourseContextPayload(course = {}, extra = {}) {
+  const source = getCourseSourceInfo(course);
+  const display = getDisplayContextFormation();
+  const external = isExternalCourseForSelectedFormation(course);
+  const shared = source.isSharedCourse || external;
+
+  return {
+    sourceFormationId: clean(extra.sourceFormationId || source.sourceFormationId || '', 160),
+    sourceFormationName: clean(extra.sourceFormationName || source.sourceFormationName || '', 180),
+    displayContextFormationId: clean(extra.displayContextFormationId || display.displayContextFormationId || '', 160),
+    displayContextFormationName: clean(extra.displayContextFormationName || display.displayContextFormationName || '', 180),
+    isSharedCourse: extra.isSharedCourse === true || shared,
+    grantedByCurriculum: extra.grantedByCurriculum === false ? false : true
+  };
+}
+
 function findPlanItem(coursePlan = [], courseId = '') {
   if (!Array.isArray(coursePlan) || !courseId) return null;
   return coursePlan.find((item) => item?.courseId === courseId) || null;
@@ -309,6 +397,14 @@ function normalizePlanItem(item = {}, index = 0) {
     80
   );
   const durationDays = getDefaultDurationDays(course, item);
+  const courseContext = isCourse ? buildCourseContextPayload(course, item) : {
+    sourceFormationId: clean(item.sourceFormationId || '', 160),
+    sourceFormationName: clean(item.sourceFormationName || '', 180),
+    displayContextFormationId: clean(item.displayContextFormationId || getDisplayContextFormation().displayContextFormationId || '', 160),
+    displayContextFormationName: clean(item.displayContextFormationName || getDisplayContextFormation().displayContextFormationName || '', 180),
+    isSharedCourse: item.isSharedCourse === true,
+    grantedByCurriculum: item.grantedByCurriculum === true
+  };
 
   return {
     type,
@@ -326,6 +422,12 @@ function normalizePlanItem(item = {}, index = 0) {
     isRequired: item.isRequired !== false,
     isLocked: item.isLocked === true,
     isBlockingPrerequisite: item.isBlockingPrerequisite === true,
+    sourceFormationId: courseContext.sourceFormationId || '',
+    sourceFormationName: courseContext.sourceFormationName || '',
+    displayContextFormationId: courseContext.displayContextFormationId || '',
+    displayContextFormationName: courseContext.displayContextFormationName || '',
+    isSharedCourse: courseContext.isSharedCourse === true,
+    grantedByCurriculum: courseContext.grantedByCurriculum === true,
     order: Number.isFinite(Number(item.order)) ? Number(item.order) : index,
     source: item.source || (isCourse ? 'promotion-course-plan-overlay-v1' : 'promotion-planning-placeholder-v1')
   };
@@ -348,8 +450,13 @@ function getMatchingCoursesForSelectedFormation() {
   const formation = getSelectedFormation();
   if (!formation.formationId) return [];
   return courses
-    .filter((course) => courseMatchesFormation(course, formation))
-    .sort((a, b) => getCourseTitle(a).localeCompare(getCourseTitle(b), 'fr', { sensitivity: 'base' }));
+    .filter(courseMatchesSourceFilter)
+    .sort((a, b) => {
+      const externalA = isExternalCourseForSelectedFormation(a) ? 1 : 0;
+      const externalB = isExternalCourseForSelectedFormation(b) ? 1 : 0;
+      if (externalA !== externalB) return externalA - externalB;
+      return getCourseTitle(a).localeCompare(getCourseTitle(b), 'fr', { sensitivity: 'base' });
+    });
 }
 
 function getPlanDurationDays(plan = activeCoursePlan) {
@@ -463,6 +570,12 @@ function getTemplateItemsForSave(plan = activeCoursePlan) {
       isRequired: item.isRequired !== false,
       isBlockingPrerequisite: item.isBlockingPrerequisite === true,
       isLocked: false,
+      sourceFormationId: clean(item.sourceFormationId || '', 160),
+      sourceFormationName: clean(item.sourceFormationName || '', 180),
+      displayContextFormationId: clean(item.displayContextFormationId || '', 160),
+      displayContextFormationName: clean(item.displayContextFormationName || '', 180),
+      isSharedCourse: item.isSharedCourse === true,
+      grantedByCurriculum: item.grantedByCurriculum === true,
       source: 'curriculum-template-v1'
     };
 
@@ -494,6 +607,12 @@ function getPlanItemsFromTemplate(template = {}) {
       recommendedEndAt: '',
       deadlineAt: '',
       isLocked: false,
+      sourceFormationId: item.sourceFormationId || '',
+      sourceFormationName: item.sourceFormationName || '',
+      displayContextFormationId: getDisplayContextFormation().displayContextFormationId || item.displayContextFormationId || '',
+      displayContextFormationName: getDisplayContextFormation().displayContextFormationName || item.displayContextFormationName || '',
+      isSharedCourse: item.isSharedCourse === true,
+      grantedByCurriculum: item.grantedByCurriculum === true,
       order: index,
       source: 'curriculum-template-applied-v1'
     };
@@ -535,6 +654,7 @@ function renderCurriculumTemplateList() {
             <span>${escapeHtml(template.formationName || 'Formation liée')}</span>
             <span>${count} élément${count > 1 ? 's' : ''}</span>
             <span>${duration} jour${duration > 1 ? 's' : ''} estimé${duration > 1 ? 's' : ''}</span>
+            ${Number(template.sharedItemCount || 0) > 0 ? `<span>${Number(template.sharedItemCount || 0)} transversal${Number(template.sharedItemCount || 0) > 1 ? 's' : ''}</span>` : ''}
             <span>${escapeHtml(getTemplateStatusLabel(template.status || 'active'))}</span>
           </small>
         </div>
@@ -576,6 +696,8 @@ async function saveCurrentPlanningAsCurriculum() {
   const title = clean(window.prompt('Nom du cursus à sauvegarder', defaultTitle) || '', 140);
   if (!title) return;
 
+  const sharedItemCount = items.filter((item) => item.isSharedCourse === true).length;
+
   try {
     const ref = await addDoc(collection(db, 'curriculumTemplates'), {
       title,
@@ -586,6 +708,7 @@ async function saveCurrentPlanningAsCurriculum() {
       version: 'curriculum-template-v1',
       items,
       itemCount: items.length,
+      sharedItemCount,
       durationDays: getPlanDurationDays(items),
       createdAt: serverTimestamp(),
       createdBy: currentAdmin.uid,
@@ -637,6 +760,10 @@ function renderPlanningAvailableCourses() {
     return;
   }
 
+  if (dom.planningCourseSource && dom.planningCourseSource.value !== courseSourceFilter) {
+    dom.planningCourseSource.value = courseSourceFilter;
+  }
+
   const replacingItem = replacePlaceholderItemKey
     ? activeCoursePlan.find((item) => getPlanItemKey(item) === replacePlaceholderItemKey && getPlanItemType(item) === 'placeholder_course')
     : null;
@@ -644,20 +771,21 @@ function renderPlanningAvailableCourses() {
   const placedIds = new Set(activeCoursePlan.filter(isCoursePlanItem).map((item) => item.courseId));
   const matchingCourses = getMatchingCoursesForSelectedFormation();
   const available = matchingCourses.filter((course) => !placedIds.has(course.id));
+  const sourceLabel = getCourseSourceFilterLabel();
 
   dom.coursePlanStatus.textContent = replacingItem
-    ? `Mode remplacement actif · choisissez un cours pour remplacer « ${replacingItem.courseTitle || replacingItem.title || 'Cours futur'} ».`
-    : `${matchingCourses.length} cours disponible${matchingCourses.length > 1 ? 's' : ''} · ${activeCoursePlan.length} placé${activeCoursePlan.length > 1 ? 's' : ''}.`;
+    ? `Mode remplacement actif · choisissez un cours ${sourceLabel} pour remplacer « ${replacingItem.courseTitle || replacingItem.title || 'Cours futur'} ».`
+    : `${matchingCourses.length} cours disponible${matchingCourses.length > 1 ? 's' : ''} · filtre ${sourceLabel} · ${activeCoursePlan.length} placé${activeCoursePlan.length > 1 ? 's' : ''}.`;
 
   if (!matchingCourses.length) {
-    dom.planningAvailableCourses.innerHTML = '<div class="sbi-promotions-empty">Aucun cours rattaché à cette formation pour l’instant.</div>';
+    dom.planningAvailableCourses.innerHTML = `<div class="sbi-promotions-empty">Aucun cours trouvé pour le filtre « ${escapeHtml(sourceLabel)} ».</div>`;
     return;
   }
 
   if (!available.length) {
     dom.planningAvailableCourses.innerHTML = replacingItem
-      ? '<div class="sbi-promotions-empty">Aucun cours disponible pour remplacer ce cours futur. Tous les cours sont déjà placés.</div>'
-      : '<div class="sbi-promotions-empty">Tous les cours de cette formation sont déjà dans la timeline.</div>';
+      ? '<div class="sbi-promotions-empty">Aucun cours disponible pour remplacer ce cours futur. Tous les cours de ce filtre sont déjà placés.</div>'
+      : '<div class="sbi-promotions-empty">Tous les cours de ce filtre sont déjà dans la timeline.</div>';
     return;
   }
 
@@ -666,13 +794,22 @@ function renderPlanningAvailableCourses() {
     const block = getCourseBlockLabel(course);
     const status = getCourseStatusLabel(course);
     const duration = getDefaultDurationDays(course);
+    const source = getCourseSourceInfo(course);
+    const external = isExternalCourseForSelectedFormation(course);
+    const isShared = source.isSharedCourse || external;
     const actionLabel = replacingItem ? 'Remplacer' : 'Ajouter';
     const dataAttr = replacingItem ? 'data-planning-replace-course' : 'data-planning-add-course';
+    const sourceText = source.sourceFormationName || (source.isSharedCourse ? 'Transversal' : 'Source non renseignée');
     return `
-      <article class="sbi-planning-course-card ${replacingItem ? 'is-replace-target' : ''}" data-course-id="${escapeHtml(course.id)}">
+      <article class="sbi-planning-course-card ${replacingItem ? 'is-replace-target' : ''} ${isShared ? 'is-shared-course' : ''}" data-course-id="${escapeHtml(course.id)}">
         <div>
           <strong>${escapeHtml(title)}</strong>
           <small>${escapeHtml(status)}${block ? ` · Bloc : ${escapeHtml(block)}` : ''} · ${duration} j estimés</small>
+          <small class="sbi-planning-source-line">
+            <span>Source : ${escapeHtml(sourceText)}</span>
+            ${external ? `<span>Affiché dans : ${escapeHtml(formation.formationName || 'promotion actuelle')}</span>` : ''}
+            ${isShared ? '<span>Accès via cursus</span>' : ''}
+          </small>
         </div>
         <button type="button" ${dataAttr}="${escapeHtml(course.id)}">${actionLabel}</button>
       </article>
@@ -698,9 +835,15 @@ function renderPlanningTimeline() {
       ? `<span>Auto : ${escapeHtml(formatDate(item.recommendedStartAt, 'Début ?'))} → ${escapeHtml(formatDate(item.recommendedEndAt, 'Fin ?'))}</span>`
       : '<span>Dates auto à calculer</span>';
     const title = item.courseTitle || item.title || typeLabel;
+    const sourceBadge = item.isSharedCourse && item.sourceFormationName
+      ? `<span>Source : ${escapeHtml(item.sourceFormationName)}</span>`
+      : '';
+    const contextBadge = item.isSharedCourse && item.displayContextFormationName
+      ? `<span>Contexte : ${escapeHtml(item.displayContextFormationName)}</span>`
+      : '';
 
     return `
-      <article class="sbi-planning-timeline-row is-${escapeHtml(type)} ${selected ? 'is-selected' : ''} ${replacePlaceholderItemKey ? 'is-replace-mode' : ''} ${replacePlaceholderItemKey === key ? 'is-replace-source' : ''}" draggable="true" data-plan-row data-plan-key="${escapeHtml(key)}">
+      <article class="sbi-planning-timeline-row is-${escapeHtml(type)} ${selected ? 'is-selected' : ''} ${item.isSharedCourse ? 'is-shared-course' : ''} ${replacePlaceholderItemKey ? 'is-replace-mode' : ''} ${replacePlaceholderItemKey === key ? 'is-replace-source' : ''}" draggable="true" data-plan-row data-plan-key="${escapeHtml(key)}">
         <button type="button" class="sbi-planning-order-badge" data-plan-select="${escapeHtml(key)}">${index + 1}</button>
         <div class="sbi-planning-timeline-content" data-plan-select="${escapeHtml(key)}">
           <strong>${escapeHtml(title)}</strong>
@@ -710,6 +853,9 @@ function renderPlanningTimeline() {
             <span>${Math.max(1, toNumber(item.durationDays, 7))} j</span>
             <span>${escapeHtml(getPriorityLabel(item.priorityLevel))}</span>
             ${block}
+            ${sourceBadge}
+            ${contextBadge}
+            ${item.grantedByCurriculum ? '<span>Accès cursus</span>' : ''}
             ${item.isLocked ? '<span>Dates verrouillées</span>' : ''}
             ${item.isBlockingPrerequisite ? '<span>Prérequis bloquant</span>' : ''}
           </small>
@@ -743,6 +889,14 @@ function renderPlanningInspector() {
     <div class="sbi-planning-inspector-card" data-inspector-key="${escapeHtml(key)}">
       <h5>${escapeHtml(item.courseTitle || item.title || typeLabel)}</h5>
       <p>${escapeHtml(isCourse ? (item.blockTitle || 'Aucun bloc assigné') : typeLabel)}</p>
+
+      ${isCourse ? `
+        <div class="sbi-planning-context-box">
+          <span>Source : ${escapeHtml(item.sourceFormationName || 'Formation source non renseignée')}</span>
+          <span>Affichage : ${escapeHtml(item.displayContextFormationName || 'Formation de la promotion')}</span>
+          ${item.isSharedCourse ? '<span>Cours mutualisé / accès via cursus</span>' : '<span>Cours de la formation liée</span>'}
+        </div>
+      ` : ''}
 
       ${isCourse ? '' : `
         <label>Titre</label>
@@ -871,6 +1025,7 @@ function replacePlaceholderWithCourse(placeholderKey = '', courseId = '') {
       courseTitle: getCourseTitle(course),
       courseStatus: getCourseStatusLabel(course),
       blockTitle: getCourseBlockLabel(course),
+      ...buildCourseContextPayload(course, item),
       durationDays: item.durationDays || getDefaultDurationDays(course),
       recommendedStartAt: item.recommendedStartAt || '',
       recommendedEndAt: item.recommendedEndAt || '',
@@ -915,6 +1070,7 @@ function addCourseToActivePlan(courseId = '') {
     courseTitle: getCourseTitle(course),
     courseStatus: getCourseStatusLabel(course),
     blockTitle: getCourseBlockLabel(course),
+    ...buildCourseContextPayload(course),
     durationDays: getDefaultDurationDays(course),
     priorityLevel: course.priorityLevel || 'normal',
     order: activeCoursePlan.length,
@@ -1492,11 +1648,17 @@ function bindEvents() {
   dom.formation?.addEventListener('change', () => {
     selectedPlanningItemKey = '';
     replacePlaceholderItemKey = '';
+    courseSourceFilter = 'linked';
+    if (dom.planningCourseSource) dom.planningCourseSource.value = 'linked';
     setActiveCoursePlan([]);
   });
   dom.startDate?.addEventListener('change', () => {
     if (!activeCoursePlan.length) return;
     maybeAutoRecalculatePlanningDates();
+  });
+  dom.planningCourseSource?.addEventListener('change', () => {
+    courseSourceFilter = ['linked', 'shared', 'other', 'all'].includes(dom.planningCourseSource.value) ? dom.planningCourseSource.value : 'linked';
+    renderPlanningOverlay();
   });
   dom.planningOpen?.addEventListener('click', openPlanningOverlay);
   dom.curriculumLoad?.addEventListener('click', openCurriculumTemplateModal);

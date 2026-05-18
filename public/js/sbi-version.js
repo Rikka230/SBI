@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.95-GPT2.1',
+  version: '8.0P.167.96',
   branch: 'main',
-  channel: 'P2I-GPT2 STUDENT DOCUMENT VISIBILITY ADMIN',
-  stage: 'ADMIN CONTROL FOR STUDENT VISIBLE DOCUMENTS',
+  channel: 'P2I.5-F SHARED COURSES CROSS ACCESS PREP',
+  stage: 'PROMOTION PLANNING SHARED COURSES SOURCE DISPLAY CONTEXT',
   updatedAt: '2026-05-18',
-  label: 'SBI 8.0P.167.95-GPT2.1 - STUDENT DOCUMENT VISIBILITY ADMIN'
+  label: 'SBI 8.0P.167.96 - SHARED COURSES CROSS ACCESS PREP'
 };
 
 export function getSbiVersionLabel() {
