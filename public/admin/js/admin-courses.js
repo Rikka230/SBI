@@ -44,7 +44,7 @@ import {
     loadFormationsForCourseAccess,
     loadCoursesForCourseAccess,
     loadCoursesForMediaSafety
-} from '/admin/js/course-data-access.js';
+} from '/admin/js/course-data-access.js?v=8.0P.167.79';
 import { renderCourseActionButtons } from '/admin/js/course-action-buttons.js';
 import { notifyCourseDeletedIfNeeded } from '/admin/js/course-delete-notifications.js';
 import { SVG_PREVIEW, SVG_QUIZ_LIST } from '/admin/js/courses/course-icons.js';

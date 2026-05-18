@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.78',
+  version: '8.0P.167.79',
   branch: 'main',
-  channel: 'P2I.5-A LMS FIELDS BASELINE',
-  stage: 'LMS NON-DESTRUCTIVE COURSE FIELDS',
+  channel: 'P2I.5-A TEACHER SHARED COURSE ACCESS',
+  stage: 'TEACHER COURSES BY SHARED FORMATION',
   updatedAt: '2026-05-18',
-  label: 'SBI 8.0P.167.78 - P2I.5-A LMS FIELDS BASELINE'
+  label: 'SBI 8.0P.167.79 - P2I.5-A TEACHER SHARED COURSE ACCESS'
 };
 
 export function getSbiVersionLabel() {

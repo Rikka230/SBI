@@ -13,7 +13,7 @@
  * Teacher :
  * - users : uniquement son propre profil pour éviter de polluer les accès
  * - formations : formationIds + formationsAcces legacy + formations où il est prof
- * - courses : ses cours + cours actifs liés à ses formations
+ * - courses : ses cours + cours liés à ses formations, même créés par admin/autre prof
  *
  * Important 6.7B : les requêtes membership peuvent être refusées selon les
  * rules actives ou les index Firestore. Elles ne doivent plus faire tomber
@@ -244,22 +244,48 @@ async function loadOwnTeacherCourses(currentUid) {
     return snap ? snapToArray(snap) : [];
 }
 
-async function loadActiveCoursesByFormationValues(formationValues) {
+function isCourseActiveForSharedAccess(course = {}) {
+    return course?.actif === true
+        || (course?.statutValidation === 'approved' && course?.actif !== false);
+}
+
+function isTeacherProfile(profile = {}) {
+    return ['teacher', 'prof', 'professeur', 'enseignant'].includes(String(profile?.role || '').toLowerCase());
+}
+
+async function loadCoursesByArrayField(fieldName, formationValues, { activeOnly = true } = {}) {
     const safeValues = normalizeList(formationValues);
-    if (!safeValues.length) return [];
+    if (!fieldName || !safeValues.length) return [];
 
     const courses = [];
     const chunks = chunkArray(safeValues, 10);
 
     for (const chunk of chunks) {
-        const coursesQuery = query(
-            collection(db, "courses"),
-            where("formations", "array-contains-any", chunk),
-            where("actif", "==", true)
-        );
+        let snap = null;
 
-        const snap = await safeGetDocs(coursesQuery, 'cours actifs par formation');
-        if (snap) courses.push(...snapToArray(snap));
+        if (activeOnly) {
+            const activeQuery = query(
+                collection(db, "courses"),
+                where(fieldName, "array-contains-any", chunk),
+                where("actif", "==", true)
+            );
+            snap = await safeGetDocs(activeQuery, `cours actifs par ${fieldName}`);
+        }
+
+        if (!snap) {
+            const fallbackQuery = query(
+                collection(db, "courses"),
+                where(fieldName, "array-contains-any", chunk)
+            );
+            snap = await safeGetDocs(fallbackQuery, `cours par ${fieldName}`);
+        }
+
+        if (!snap) continue;
+
+        const items = snapToArray(snap)
+            .filter((course) => !activeOnly || isCourseActiveForSharedAccess(course));
+
+        courses.push(...items);
     }
 
     return courses;
@@ -286,13 +312,19 @@ export async function loadCoursesForCourseAccess({
     const formationTitles = assignedFormations.map(f => f.titre).filter(Boolean).map(String);
 
     courses.push(...await loadOwnTeacherCourses(currentUid));
-    courses.push(...await loadActiveCoursesByFormationValues(formationIds));
+
+    const activeOnly = !isTeacherProfile(currentUserProfile);
+
+    courses.push(...await loadCoursesByArrayField('formations', formationIds, { activeOnly }));
+    courses.push(...await loadCoursesByArrayField('formationIds', formationIds, { activeOnly }));
+    courses.push(...await loadCoursesByArrayField('targetFormationIds', formationIds, { activeOnly }));
 
     /**
      * Compatibilité anciens cours : certains documents ont encore stocké le
      * titre de formation au lieu de son ID dans courses/{id}.formations.
      */
-    courses.push(...await loadActiveCoursesByFormationValues(formationTitles));
+    courses.push(...await loadCoursesByArrayField('formations', formationTitles, { activeOnly }));
+    courses.push(...await loadCoursesByArrayField('targetFormationTitles', formationTitles, { activeOnly }));
 
     return uniqById(courses).sort((a, b) => {
         const aDate = a.dateCreation?.toMillis ? a.dateCreation.toMillis() : 0;

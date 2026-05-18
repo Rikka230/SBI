@@ -194,6 +194,12 @@ service cloud.firestore {
         && courseData.formations.size() > 0;
     }
 
+    function courseHasFormationIds(courseData) {
+      return courseData.keys().hasAny(['formationIds'])
+        && courseData.formationIds is list
+        && courseData.formationIds.size() > 0;
+    }
+
     function courseHasTargetFormationIds(courseData) {
       return courseData.keys().hasAny(['targetFormationIds'])
         && courseData.targetFormationIds is list
@@ -220,6 +226,12 @@ service cloud.firestore {
         );
     }
 
+    function courseSharedByFormationIds(courseData) {
+      return courseHasFormationIds(courseData)
+        && currentUserHasFormationIds()
+        && courseData.formationIds.hasAny(currentUser().formationIds);
+    }
+
     function courseSharedByTargetFormationIds(courseData) {
       return courseHasTargetFormationIds(courseData)
         && currentUserHasFormationIds()
@@ -234,6 +246,7 @@ service cloud.firestore {
 
     function courseSharedWithCurrentUser(courseData) {
       return courseSharedByFormationsField(courseData)
+        || courseSharedByFormationIds(courseData)
         || courseSharedByTargetFormationIds(courseData)
         || courseSharedByTargetFormationTitles(courseData);
     }
@@ -276,12 +289,21 @@ service cloud.firestore {
         || courseFormationAtAllowsCurrentUser(courseData, 4);
     }
 
+    function canTeacherReadSharedCourse(courseData) {
+      return isTeacher()
+        && (
+          courseSharedWithCurrentUser(courseData)
+          || courseLinkedToReadableFormation(courseData)
+        );
+    }
+
     function canReadCourse(courseData) {
       return isAdmin()
         || (
           isTeacher()
           && courseData.auteurId == request.auth.uid
         )
+        || canTeacherReadSharedCourse(courseData)
         || (
           isActiveUser()
           && courseData.actif == true
