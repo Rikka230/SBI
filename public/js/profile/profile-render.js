@@ -28,16 +28,16 @@ function injectProfileRoleBadgeStyles() {
   style.id = 'sbi-profile-role-badge-style';
   style.textContent = `
     /*
-     * GPT2.2 : on restaure le visuel original du nom + badge.
-     * On corrige seulement la position verticale pour éviter que la ligne
-     * tombe exactement entre le bandeau bleu et la zone blanche.
+     * GPT2.3 : on garde le visuel original du nom + badge.
+     * Correction ciblée : déplacer l'identité du profil professeur
+     * dans la zone blanche, hors séparation bleu/blanc du bandeau.
      */
-    body.sbi-profile-role-teacher #prof-name {
-      margin-top: 18px;
+    body.sbi-profile-role-teacher .profile-info {
+      transform: translateY(36px);
     }
 
-    body.sbi-profile-role-teacher .profile-info h1#prof-name {
-      align-items: center;
+    body.sbi-profile-role-teacher #prof-name {
+      margin-top: 0;
     }
 
     body.sbi-profile-role-teacher #prof-badge-zone {
@@ -47,8 +47,8 @@ function injectProfileRoleBadgeStyles() {
     }
 
     @media (max-width: 720px) {
-      body.sbi-profile-role-teacher #prof-name {
-        margin-top: 10px;
+      body.sbi-profile-role-teacher .profile-info {
+        transform: translateY(24px);
       }
     }
   `;

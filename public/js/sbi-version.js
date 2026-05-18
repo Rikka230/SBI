@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.98-GPT2.2',
+  version: '8.0P.167.98-GPT2.3',
   branch: 'main',
-  channel: 'P2I-GPT2 PROFILE BADGE POSITION',
-  stage: 'RESTORE PROFILE BADGE VISUAL AND MOVE NAME OFF HEADER SEAM',
+  channel: 'P2I-GPT2 PROFILE BADGE WHITE ZONE',
+  stage: 'TEACHER PROFILE NAME AND BADGE WHITE ZONE POSITION',
   updatedAt: '2026-05-18',
-  label: 'SBI 8.0P.167.98-GPT2.2 - PROFILE BADGE POSITION'
+  label: 'SBI 8.0P.167.98-GPT2.3 - PROFILE BADGE WHITE ZONE'
 };
 
 export function getSbiVersionLabel() {
