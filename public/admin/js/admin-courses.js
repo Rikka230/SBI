@@ -44,7 +44,7 @@ import {
     loadFormationsForCourseAccess,
     loadCoursesForCourseAccess,
     loadCoursesForMediaSafety
-} from '/admin/js/course-data-access.js?v=8.0P.167.81';
+} from '/admin/js/course-data-access.js?v=8.0P.167.82';
 import { renderCourseActionButtons } from '/admin/js/course-action-buttons.js';
 import { notifyCourseDeletedIfNeeded } from '/admin/js/course-delete-notifications.js';
 import { SVG_PREVIEW, SVG_QUIZ_LIST } from '/admin/js/courses/course-icons.js';
@@ -71,7 +71,7 @@ import {
 import {
     resolveCourseValidationNotifications as resolveCourseValidationNotificationsService,
     handleCourseNotifications as handleCourseNotificationsService
-} from '/admin/js/courses/course-notifications.js?v=8.0P.167.81';
+} from '/admin/js/courses/course-notifications.js?v=8.0P.167.82';
 import { getCourseTargetingSnapshot } from '/admin/js/courses/course-targeting.js?v=8.0P.167.81';
 let currentUid = null;
 let currentUserProfile = null;

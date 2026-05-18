@@ -326,9 +326,18 @@ async function loadSharedCoursesForFormationKeys({ formationIds = [], formationT
     const courses = [];
     const ids = normalizeList(formationIds);
     const titles = normalizeList(formationTitles);
-    const allKeys = normalizeList([...ids, ...titles]);
 
-    courses.push(...await loadCoursesByArrayField('formations', allKeys, { activeOnly }));
+    // IMPORTANT 8.0P.167.82
+    // Ne pas mélanger IDs et titres dans une seule requête `formations`.
+    // Côté professeur, une requête trop large peut être refusée par les rules
+    // si certains documents ne sont pas prouvables comme lisibles.
+    // On interroge d'abord les IDs réels, car `formations` stocke les IDs depuis l'UI.
+    courses.push(...await loadCoursesByArrayField('formations', ids, { activeOnly }));
+
+    // Compatibilité legacy : certains anciens cours peuvent avoir stocké le titre.
+    // Si cette requête est refusée, safeGetDocs l'ignore sans casser la page.
+    courses.push(...await loadCoursesByArrayField('formations', titles, { activeOnly }));
+
     courses.push(...await loadCoursesByArrayField('formationIds', ids, { activeOnly }));
     courses.push(...await loadCoursesByArrayField('formationsIds', ids, { activeOnly }));
     courses.push(...await loadCoursesByArrayField('targetFormationIds', ids, { activeOnly }));

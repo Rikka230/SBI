@@ -395,6 +395,10 @@ function renderNotificationsList(notifs) {
             titleText = "Nouveau cours disponible !";
             bodyText = `Le cours <strong>${notif.courseTitle}</strong> est maintenant disponible.`;
             iconSvg = `<svg width="20" height="20" style="min-width:20px; flex-shrink:0;" fill="var(--accent-blue, #2A57FF)" viewBox="0 0 24 24"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3z"/></svg>`;
+        } else if (notif.type === 'new_course_for_teacher') {
+            titleText = "Nouveau cours dans votre formation";
+            bodyText = `Le cours <strong>${notif.courseTitle}</strong> est disponible dans une formation que vous accompagnez.`;
+            iconSvg = `<svg width="20" height="20" style="min-width:20px; flex-shrink:0;" fill="var(--accent-orange, #f59e0b)" viewBox="0 0 24 24"><path d="M12 3 1 9l11 6 9-4.91V17h2V9L12 3Zm0 14.2L5 13.4v3L12 20l7-3.6v-3l-7 3.8Z"/></svg>`;
         } else if (notif.type === 'course_approved') {
             titleText = "Cours Validé !";
             bodyText = `Votre cours "<strong>${notif.courseTitle}</strong>" a été publié.`;
@@ -442,6 +446,13 @@ function renderNotificationsList(notifs) {
             const auteurName = e.currentTarget.getAttribute('data-author');
 
             if (notifType === 'course_validation') {
+                if (!isAdminLike()) {
+                    e.currentTarget.style.display = 'none';
+                    await dismissNotificationForCurrentUser(notifId);
+                    closeNotificationsPanel();
+                    return;
+                }
+
                 showAdminValidationActionModal({
                     notifId,
                     courseId,
@@ -457,6 +468,14 @@ function renderNotificationsList(notifs) {
                     courseId,
                     courseTitle
                 });
+                return;
+            }
+
+            if (notifType === 'new_course_for_teacher') {
+                e.currentTarget.style.display = 'none';
+                await dismissNotificationForCurrentUser(notifId);
+                closeNotificationsPanel();
+                window.location.assign(`/teacher/cours-viewer.html?id=${encodeURIComponent(courseId)}&preview=true`);
                 return;
             }
 
