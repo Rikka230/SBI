@@ -137,6 +137,17 @@ function setStatus(el, message = '', tone = 'muted') {
       : 'var(--text-muted, #9ca3af)';
 }
 
+function ensurePlanningOverlayPortal() {
+  const overlay = $('promotion-planning-overlay');
+  if (!overlay) return null;
+
+  if (overlay.parentElement !== document.body) {
+    document.body.appendChild(overlay);
+  }
+
+  return overlay;
+}
+
 function cacheDom() {
   dom.form = $('promotion-form');
   dom.formTitle = $('promotion-form-title');
@@ -151,7 +162,7 @@ function cacheDom() {
   dom.planningSummaryTitle = $('promotion-planning-summary-title');
   dom.planningSummaryMeta = $('promotion-planning-summary-meta');
   dom.planningOpen = $('promotion-planning-open-btn');
-  dom.planningOverlay = $('promotion-planning-overlay');
+  dom.planningOverlay = ensurePlanningOverlayPortal();
   dom.planningSubtitle = $('promotion-planning-subtitle');
   dom.planningAvailableCourses = $('promotion-planning-available-courses');
   dom.planningTimelineList = $('promotion-planning-timeline-list');
@@ -1207,10 +1218,15 @@ export function mountAdminPromotions() {
 
   const cleanup = () => {
     mounted = false;
+    closePlanningOverlay();
     unsubscribeAuth?.();
     unsubscribeAuth = null;
     unsubscribePromotions?.();
     unsubscribePromotions = null;
+    if (dom.planningOverlay?.parentElement === document.body) {
+      dom.planningOverlay.remove();
+    }
+    dom.planningOverlay = null;
   };
 
   window.SBI_ADMIN_PROMOTIONS_UNMOUNT = cleanup;
