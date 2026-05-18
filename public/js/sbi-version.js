@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.94-GPT2',
+  version: '8.0P.167.94-GPT2.1',
   branch: 'main',
-  channel: 'P2I.5-E-GPT2 STUDENT CONSTRUCTION NOTICE',
-  stage: 'STUDENT POST-LOGIN NOTICE AND PATCH NOTES',
+  channel: 'P2I.5-E-GPT2.1 STUDENT NOTICE PER LOGIN',
+  stage: 'STUDENT CONSTRUCTION NOTICE EVERY NEW LOGIN',
   updatedAt: '2026-05-18',
-  label: 'SBI 8.0P.167.94-GPT2 - STUDENT CONSTRUCTION NOTICE'
+  label: 'SBI 8.0P.167.94-GPT2.1 - STUDENT NOTICE PER LOGIN'
 };
 
 export function getSbiVersionLabel() {
