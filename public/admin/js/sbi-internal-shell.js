@@ -149,6 +149,7 @@ function initHardNavigationMask() {
 
         if (!href || href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('tel:')) return;
         if (link?.target === '_blank' || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+        if (event.target.closest?.('[data-sbi-no-transition="true"], [data-sbi-no-pjax="true"]')) return;
 
         let url;
         try {

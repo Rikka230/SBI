@@ -83,6 +83,8 @@
         .teacher-course-card__body { min-width: 0; display: flex; flex-direction: column; gap: 0.65rem; }
         .teacher-course-card__meta { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem; }
         .teacher-course-card__title { margin: 0; color: var(--text-main, #fff); font-size: 1.1rem; line-height: 1.25; }
+        .teacher-course-card__signature { color: var(--text-muted, #9ca3af); font-size: 0.82rem; }
+        .teacher-course-card__signature strong { color: var(--text-main, #fff); font-weight: 800; }
         .teacher-course-card__tags { display: flex; flex-wrap: wrap; gap: 0.4rem; }
         .teacher-course-tag,
         .teacher-course-count,
@@ -114,6 +116,10 @@
             font-weight: 800;
             cursor: pointer;
             white-space: nowrap;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
         }
         .teacher-course-btn--primary { background: var(--accent-orange, #f59e0b); color: #fff; }
         .teacher-course-btn--secondary { background: rgba(255,255,255,0.07); color: var(--text-main, #fff); border: 1px solid var(--border-color, rgba(255,255,255,0.14)); }
@@ -429,9 +435,9 @@
     </script>
     
     <script type="module" src="/admin/js/admin-ui.js?v=8.0P.167.48"></script>
-    <script type="module" src="/admin/js/admin-notifications.js?v=8.0P.167.85"></script>
-    <script type="module" src="/admin/js/admin-courses.js?v=8.0P.167.85"></script>
-    <script type="module" src="/teacher/js/teacher-courses-library.js?v=8.0P.167.85"></script>
+    <script type="module" src="/admin/js/admin-notifications.js?v=8.0P.167.86"></script>
+    <script type="module" src="/admin/js/admin-courses.js?v=8.0P.167.86"></script>
+    <script type="module" src="/teacher/js/teacher-courses-library.js?v=8.0P.167.86"></script>
     <script type="module" src="/admin/js/tracker.js?v=8.0P.167.44"></script>
 </body>
 </html>

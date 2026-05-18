@@ -14,6 +14,7 @@ const COURSE_VIEWER_URL = '/teacher/cours-viewer.html';
 const MAX_QUERY_VALUES = 10;
 
 let activeMountCleanup = null;
+const authorCache = new Map();
 
 function normalizeString(value) {
   return value == null ? '' : String(value).trim();
@@ -97,6 +98,64 @@ async function loadProfile(uid) {
   const snap = await getDoc(doc(db, 'users', uid));
   if (!snap.exists()) return null;
   return { id: snap.id, ...snap.data() };
+}
+
+
+function getCourseAuthorId(course = {}) {
+  return normalizeString(course.auteurId || course.authorId || course.createdBy || course.creatorId);
+}
+
+function getUserDisplayName(user = {}) {
+  const firstName = normalizeString(user.prenom || user.firstName);
+  const lastName = normalizeString(user.nom || user.lastName);
+  const fullName = normalizeString(`${firstName} ${lastName}`);
+  return fullName || normalizeString(user.displayName || user.name || user.email);
+}
+
+function getInlineCourseAuthorLabel(course = {}) {
+  return normalizeString(
+    course.authorName
+    || course.auteurNom
+    || course.auteurName
+    || course.createdByName
+    || course.creatorName
+  );
+}
+
+async function loadAuthorById(authorId) {
+  const safeAuthorId = normalizeString(authorId);
+  if (!safeAuthorId) return null;
+  if (authorCache.has(safeAuthorId)) return authorCache.get(safeAuthorId);
+
+  try {
+    const snap = await getDoc(doc(db, 'users', safeAuthorId));
+    const author = snap.exists() ? { id: snap.id, ...snap.data() } : null;
+    authorCache.set(safeAuthorId, author);
+    return author;
+  } catch (error) {
+    console.warn('[SBI Teacher Library] Auteur non chargé :', safeAuthorId, error);
+    authorCache.set(safeAuthorId, null);
+    return null;
+  }
+}
+
+async function loadCourseAuthors(courses = []) {
+  const ids = normalizeList(courses.map(getCourseAuthorId));
+  const entries = await Promise.all(ids.map(async (id) => [id, await loadAuthorById(id)]));
+  return new Map(entries);
+}
+
+function resolveCourseAuthorLabel(course = {}, authorMap = new Map()) {
+  const inline = getInlineCourseAuthorLabel(course);
+  if (inline) return inline;
+
+  const authorId = getCourseAuthorId(course);
+  const author = authorId ? authorMap.get(authorId) : null;
+  const displayName = getUserDisplayName(author || {});
+
+  if (displayName) return displayName;
+  if (authorId) return 'Équipe SBI';
+  return 'Auteur inconnu';
 }
 
 async function loadFormationsByIds(ids = []) {
@@ -334,13 +393,14 @@ function renderStatusBadge(status) {
   return `<span class="teacher-course-status teacher-course-status--${escapeHtml(status.tone)}">${escapeHtml(status.label)}</span>`;
 }
 
-function renderCourseCard(course, { uid, formationMap }) {
+function renderCourseCard(course, { uid, formationMap, authorMap }) {
   const status = getCourseStatus(course);
   const title = getCourseTitle(course);
   const chapterCount = Array.isArray(course.chapitres) ? course.chapitres.length : Number(course.lessonCount || 0) || 0;
   const isOwnCourse = normalizeString(course.auteurId) === normalizeString(uid);
   const formationNames = resolveCourseFormations(course, formationMap).slice(0, 3);
   const blocName = normalizeString(course.bloc || course.blockTitle || course.blockName);
+  const authorLabel = resolveCourseAuthorLabel(course, authorMap);
   const formationTags = formationNames.length
     ? formationNames.map((name) => `<span class="teacher-course-tag teacher-course-tag--formation">${escapeHtml(name)}</span>`).join('')
     : '<span class="teacher-course-tag teacher-course-tag--muted">Formation liée</span>';
@@ -361,10 +421,11 @@ function renderCourseCard(course, { uid, formationMap }) {
           <span class="teacher-course-count">${chapterCount} étape${chapterCount > 1 ? 's' : ''}</span>
         </div>
         <h3 class="teacher-course-card__title">${escapeHtml(title)}</h3>
+        <div class="teacher-course-card__signature">Créé par <strong>${escapeHtml(authorLabel)}</strong></div>
         <div class="teacher-course-card__tags">${formationTags}${blocTag}</div>
       </div>
       <div class="teacher-course-card__actions">
-        <button class="teacher-course-btn teacher-course-btn--primary" type="button" data-teacher-open-course="${escapeHtml(course.id)}">Visualiser</button>
+        <a class="teacher-course-btn teacher-course-btn--primary" href="${COURSE_VIEWER_URL}?id=${encodeURIComponent(course.id)}&preview=true" data-sbi-no-pjax="true" data-sbi-no-transition="true">Visualiser</a>
         ${editButton}
       </div>
     </article>
@@ -402,6 +463,8 @@ function filterCourses(courses = []) {
       course.titre,
       course.title,
       course.bloc,
+      getInlineCourseAuthorLabel(course),
+      getCourseAuthorId(course),
       ...(Array.isArray(course.formations) ? course.formations : []),
       ...(Array.isArray(course.formationIds) ? course.formationIds : []),
       ...(Array.isArray(course.targetFormationTitles) ? course.targetFormationTitles : [])
@@ -411,7 +474,7 @@ function filterCourses(courses = []) {
   });
 }
 
-function renderLibrary({ root, courses, uid, formations }) {
+function renderLibrary({ root, courses, uid, formations, authorMap = new Map() }) {
   const visibleCourses = filterCourses(courses);
   const countEl = document.getElementById('teacher-courses-count');
   const formationMap = buildFormationMap(formations);
@@ -426,17 +489,8 @@ function renderLibrary({ root, courses, uid, formations }) {
   }
 
   root.innerHTML = visibleCourses
-    .map((course) => renderCourseCard(course, { uid, formationMap }))
+    .map((course) => renderCourseCard(course, { uid, formationMap, authorMap }))
     .join('');
-
-  root.querySelectorAll('[data-teacher-open-course]').forEach((button) => {
-    button.addEventListener('click', () => {
-      const courseId = button.getAttribute('data-teacher-open-course');
-      if (!courseId) return;
-      window.location.href = `${COURSE_VIEWER_URL}?id=${encodeURIComponent(courseId)}&preview=true`;
-    });
-  });
-
   root.querySelectorAll('[data-teacher-edit-course]').forEach((button) => {
     button.addEventListener('click', () => {
       const courseId = button.getAttribute('data-teacher-edit-course');
@@ -464,10 +518,13 @@ async function loadAndRender(state) {
   const formations = await loadTeacherFormations(uid, profile);
   const courses = await loadTeacherCourses(uid, profile, formations);
 
+  const authorMap = await loadCourseAuthors(courses);
+
   state.formations = formations;
   state.courses = courses;
+  state.authorMap = authorMap;
 
-  renderLibrary({ root, courses, uid, formations });
+  renderLibrary({ root, courses, uid, formations, authorMap });
 }
 
 export function mountTeacherCoursesLibrary({ source = 'standard' } = {}) {
@@ -482,7 +539,8 @@ export function mountTeacherCoursesLibrary({ source = 'standard' } = {}) {
     uid: null,
     profile: null,
     courses: [],
-    formations: []
+    formations: [],
+    authorMap: new Map()
   };
 
   const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
@@ -514,7 +572,8 @@ export function mountTeacherCoursesLibrary({ source = 'standard' } = {}) {
     root,
     courses: state.courses,
     uid: state.uid,
-    formations: state.formations
+    formations: state.formations,
+    authorMap: state.authorMap
   });
 
   const refreshButton = document.getElementById('teacher-courses-refresh');
