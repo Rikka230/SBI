@@ -44,7 +44,7 @@ import {
     loadFormationsForCourseAccess,
     loadCoursesForCourseAccess,
     loadCoursesForMediaSafety
-} from '/admin/js/course-data-access.js?v=8.0P.167.83';
+} from '/admin/js/course-data-access.js?v=8.0P.167.85';
 import { renderCourseActionButtons } from '/admin/js/course-action-buttons.js';
 import { notifyCourseDeletedIfNeeded } from '/admin/js/course-delete-notifications.js';
 import { SVG_PREVIEW, SVG_QUIZ_LIST } from '/admin/js/courses/course-icons.js';
@@ -71,8 +71,12 @@ import {
 import {
     resolveCourseValidationNotifications as resolveCourseValidationNotificationsService,
     handleCourseNotifications as handleCourseNotificationsService
-} from '/admin/js/courses/course-notifications.js?v=8.0P.167.82';
-import { getCourseTargetingSnapshot } from '/admin/js/courses/course-targeting.js?v=8.0P.167.84';
+} from '/admin/js/courses/course-notifications.js?v=8.0P.167.85';
+import { getCourseTargetingSnapshot } from '/admin/js/courses/course-targeting.js?v=8.0P.167.85';
+import {
+    syncTeacherCourseAccessIndexForCourse,
+    syncTeacherCourseAccessIndexForCourses
+} from '/admin/js/courses/teacher-course-access-index.js?v=8.0P.167.85';
 let currentUid = null;
 let currentUserProfile = null;
 let currentChapters = [];
@@ -544,8 +548,13 @@ async function syncCourseTeacherTargetsIfAllowedOnce() {
                 currentUserProfile
             });
         }
+
+        const indexedCount = await syncTeacherCourseAccessIndexForCourses(allCoursesData, allFormationsData);
+        if (indexedCount > 0) {
+            console.log(`[SBI Courses] Index accès prof synchronisé pour ${indexedCount} cours.`);
+        }
     } catch (error) {
-        console.warn('[SBI Courses] Synchronisation targetTeacherIds impossible :', error);
+        console.warn('[SBI Courses] Synchronisation targetTeacherIds / index accès prof impossible :', error);
     }
 }
 
@@ -1220,6 +1229,16 @@ async function saveCourseToFirebase(actionType = 'admin_save') {
             });
         } else {
             await updateDoc(doc(db, "courses", courseRefId), courseData);
+        }
+
+        try {
+            await syncTeacherCourseAccessIndexForCourse({
+                courseId: courseRefId,
+                courseData,
+                allFormationsData
+            });
+        } catch (teacherAccessError) {
+            console.warn('[SBI Courses] Cours sauvegardé, mais index accès prof non synchronisé :', teacherAccessError);
         }
 
         try {

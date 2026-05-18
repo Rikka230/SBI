@@ -559,6 +559,24 @@ service cloud.firestore {
     }
 
     /* ============================================================
+       TEACHER COURSE ACCESS INDEX
+       ============================================================ */
+
+    match /teacherCourseAccess/{teacherId} {
+      allow get, list: if isAdmin()
+        || (isTeacher() && request.auth.uid == teacherId);
+
+      allow create, update, delete: if isAdmin();
+
+      match /courses/{courseAccessId} {
+        allow get, list: if isAdmin()
+          || (isTeacher() && request.auth.uid == teacherId);
+
+        allow create, update, delete: if isAdmin();
+      }
+    }
+
+    /* ============================================================
        PROGRESS / TRACKING LEGACY COLLECTIONS
        ============================================================ */
 

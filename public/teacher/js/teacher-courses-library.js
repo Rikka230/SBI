@@ -218,9 +218,43 @@ async function loadCoursesByExactField(fieldName, value, label = fieldName) {
   return snapToArray(snap);
 }
 
+async function loadTeacherCourseAccessIndex(uid) {
+  const safeUid = normalizeString(uid);
+  if (!safeUid) return [];
+
+  const snap = await safeGetDocs(
+    collection(db, 'teacherCourseAccess', safeUid, 'courses'),
+    'index accès cours professeur'
+  );
+
+  return snapToArray(snap);
+}
+
+async function loadCoursesByIds(courseIds = []) {
+  const safeIds = normalizeList(courseIds);
+  if (!safeIds.length) return [];
+
+  const courses = [];
+
+  await Promise.all(safeIds.map(async (courseId) => {
+    try {
+      const snap = await getDoc(doc(db, 'courses', courseId));
+      if (snap.exists()) courses.push({ id: snap.id, ...snap.data() });
+    } catch (error) {
+      console.warn('[SBI Teacher Library] Cours indexé ignoré :', courseId, error);
+    }
+  }));
+
+  return courses;
+}
+
 async function loadTeacherCourses(uid, profile = {}, formations = []) {
   const formationKeys = getFormationKeys(profile, formations);
   const courses = [];
+
+  const accessIndex = await loadTeacherCourseAccessIndex(uid);
+  const indexedCourseIds = accessIndex.map((item) => item.courseId || item.id).filter(Boolean);
+  courses.push(...await loadCoursesByIds(indexedCourseIds));
 
   courses.push(...await loadCoursesByExactField('auteurId', uid, 'auteurId'));
   courses.push(...await loadCoursesByArrayField('targetTeacherIds', [uid], 'targetTeacherIds'));
