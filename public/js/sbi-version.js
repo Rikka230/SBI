@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.98-GPT2.1',
+  version: '8.0P.167.98-GPT2.2',
   branch: 'main',
-  channel: 'P2I.5 CURRICULUM TIMELINE REDESIGN + GPT2 PRESERVED',
-  stage: 'CURSUS PAGE HORIZONTAL MULTITRACK MOCKUP BASE',
+  channel: 'P2I-GPT2 PROFILE BADGE POSITION',
+  stage: 'RESTORE PROFILE BADGE VISUAL AND MOVE NAME OFF HEADER SEAM',
   updatedAt: '2026-05-18',
-  label: 'SBI 8.0P.167.98-GPT2.1 - CURSUS TIMELINE REDESIGN'
+  label: 'SBI 8.0P.167.98-GPT2.2 - PROFILE BADGE POSITION'
 };
 
 export function getSbiVersionLabel() {
