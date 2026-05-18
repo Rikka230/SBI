@@ -174,6 +174,15 @@ function isEquivalentCurrentUrl(url) {
   return url.search === current.search || !url.search;
 }
 
+
+function isHandledByAppShell(url) {
+  try {
+    return Boolean(window.SBI_APP_SHELL?.enabled && window.SBI_APP_SHELL.canHandle?.(url));
+  } catch {
+    return false;
+  }
+}
+
 function isEligibleInternalUrl(url) {
   if (!url || url.origin !== window.location.origin) return false;
   if (isEquivalentCurrentUrl(url)) return false;
@@ -191,6 +200,7 @@ function getNavigationIntent(event) {
   const rawHref = getRawHref(trigger);
   const url = normalizeHref(rawHref);
   if (!isEligibleInternalUrl(url)) return null;
+  if (isHandledByAppShell(url)) return null;
 
   return { trigger, url };
 }
@@ -250,6 +260,7 @@ function handleKeyboardNavigation(event) {
 
   const url = normalizeHref(getRawHref(trigger));
   if (!isEligibleInternalUrl(url)) return;
+  if (isHandledByAppShell(url)) return;
 
   event.preventDefault();
   navigateWithTransition(url);

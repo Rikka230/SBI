@@ -62,21 +62,21 @@ export async function renderUserFormations({ uid, context }) {
     const path = window.location.pathname;
     if (path.includes('admin')) {
       list.innerHTML = formations.map((formation) => `
-        <span style="color: white; display:flex; align-items:center; gap:8px; margin-bottom:5px; cursor:pointer;" onclick="window.location.href='/admin/index.html?tab=view-formations'">
+        <span style="color: white; display:flex; align-items:center; gap:8px; margin-bottom:5px; cursor:pointer;" data-sbi-href="/admin/index.html?tab=view-formations" role="link" tabindex="0">
           <span style="width:8px; height:8px; background:var(--accent-blue); transform:rotate(45deg); flex-shrink:0;"></span>
           ${escapeHTML(formation.titre || 'Formation')}
         </span>
       `).join('');
     } else if (path.includes('teacher')) {
       list.innerHTML = formations.map((formation) => `
-        <span style="display:flex; align-items:center; gap:8px; margin-bottom:5px; cursor:pointer; font-weight:bold; transition:0.2s;" onmouseover="this.style.color='var(--accent-orange)'" onmouseout="this.style.color='inherit'" onclick="window.location.href='/teacher/mes-cours.html'">
+        <span style="display:flex; align-items:center; gap:8px; margin-bottom:5px; cursor:pointer; font-weight:bold; transition:0.2s;" onmouseover="this.style.color='var(--accent-orange)'" onmouseout="this.style.color='inherit'" data-sbi-href="/teacher/mes-cours.html" role="link" tabindex="0">
           <span style="width:8px; height:8px; background:var(--accent-orange); border-radius:50%; flex-shrink:0;"></span>
           ${escapeHTML(formation.titre || 'Formation')}
         </span>
       `).join('');
     } else {
       list.innerHTML = formations.map((formation) => `
-        <span style="display:flex; align-items:center; gap:8px; margin-bottom:5px; cursor:pointer; font-weight:bold; transition:0.2s;" onmouseover="this.style.color='var(--accent-blue)'" onmouseout="this.style.color='inherit'" onclick="window.location.href='/student/mes-cours.html'">
+        <span style="display:flex; align-items:center; gap:8px; margin-bottom:5px; cursor:pointer; font-weight:bold; transition:0.2s;" onmouseover="this.style.color='var(--accent-blue)'" onmouseout="this.style.color='inherit'" data-sbi-href="/student/mes-cours.html" role="link" tabindex="0">
           <span style="width:8px; height:8px; background:var(--accent-blue); border-radius:50%; flex-shrink:0;"></span>
           ${escapeHTML(formation.titre || 'Formation')}
         </span>

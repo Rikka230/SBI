@@ -12,7 +12,7 @@
  * location.reload()
  */
 
-import { createRouteRegistry } from './route-registry.js?v=8.0P.167.71.3';
+import { createRouteRegistry } from './route-registry.js?v=8.0P.167.87';
 import { createRouter } from './router.js';
 import { injectAppShellStyles, markAppShellReady } from './transitions.js';
 import { initRoutePreload } from './preload.js';

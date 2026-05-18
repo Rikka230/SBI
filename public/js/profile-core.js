@@ -23,7 +23,7 @@ import { waitForSbiTopbar } from '/admin/js/components/ready.js';
 import { waitForSbiComponents } from '/js/profile/profile-utils.js?v=8.0P.167.74';
 import { hydrateLoggedInTopbar } from '/js/profile/profile-topbar.js';
 import { renderProfileShell } from '/js/profile/profile-render.js?v=8.0P.167.74';
-import { renderUserFormations } from '/js/profile/profile-formations.js';
+import { renderUserFormations } from '/js/profile/profile-formations.js?v=8.0P.167.87';
 import { renderStudentDocumentsPanel } from '/js/profile/profile-student-documents.js?v=8.0P.167.76';
 import { renderLearningTracking } from '/js/profile/profile-tracking.js';
 import { setupSaveButtons, setupSecurityAndEditMode } from '/js/profile/profile-edit.js';

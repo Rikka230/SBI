@@ -55,6 +55,10 @@
     try{return new URL(href,location.href);}catch{return null;}
   }
 
+  function isHandledByAppShell(url){
+    try{return Boolean(window.SBI_APP_SHELL?.enabled&&window.SBI_APP_SHELL.canHandle?.(url));}catch{return false;}
+  }
+
   function shouldMaskNavigation(link, url){
     if(!link||!url) return false;
     const href=link.getAttribute('href')||'';
@@ -62,7 +66,8 @@
     if(link.target==='_blank') return false;
     if(url.origin!==location.origin) return false;
     if(url.pathname===location.pathname&&url.search===location.search) return false;
-    if(link.closest('[data-no-transition]')) return false;
+    if(link.closest('[data-no-transition],[data-sbi-no-transition="true"],[data-sbi-no-pjax="true"]')) return false;
+    if(isHandledByAppShell(url)) return false;
     return true;
   }
 
