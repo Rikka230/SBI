@@ -1,6 +1,6 @@
 /**
- * SBI 8.0P.167.89 / P2I.5-B
- * Promotions / cohortes admin + mapping cursus/cours prioritaires.
+ * SBI 8.0P.167.90 / P2I.5-B-FIX
+ * Promotions / cohortes admin + source formations privée + suppression promotions.
  *
  * Périmètre volontairement borné :
  * - CRUD léger des promotions côté admin ;
@@ -19,6 +19,7 @@ import {
   doc,
   getDoc,
   getDocs,
+  deleteDoc,
   onSnapshot,
   query,
   serverTimestamp,
@@ -164,7 +165,7 @@ function getSelectedFormation() {
   const found = formations.find((formation) => formation.id === value) || null;
   return {
     formationId: found?.id || value,
-    formationName: found?.title || found?.nom || found?.name || found?.slug || value
+    formationName: found?.titre || found?.title || found?.nom || found?.name || found?.slug || value
   };
 }
 
@@ -422,6 +423,55 @@ async function toggleArchivePromotion(id) {
   }
 }
 
+async function countPromotionStudents(id) {
+  if (!id) return 0;
+
+  try {
+    const snap = await getDocs(query(collection(db, 'users'), where('promotionId', '==', id)));
+    return snap.docs.filter((docSnap) => isStudent(docSnap.data() || {})).length;
+  } catch (error) {
+    console.warn('[SBI Promotions] Comptage élèves avant suppression impossible :', error);
+    return 0;
+  }
+}
+
+async function deletePromotion(id) {
+  const promotion = promotions.find((item) => item.id === id);
+  if (!promotion) return;
+
+  const label = getPromotionLabel(promotion);
+  const studentCount = await countPromotionStudents(id);
+  const warning = studentCount > 0
+    ? `
+
+Attention : ${studentCount} élève${studentCount > 1 ? 's sont' : ' est'} encore rattaché${studentCount > 1 ? 's' : ''} à cette promotion. Supprimer la promotion ne retirera pas automatiquement leur rattachement.`
+    : '';
+
+  const firstConfirm = window.confirm(`Supprimer définitivement la promotion « ${label} » ?${warning}
+
+Cette action est irréversible.`);
+  if (!firstConfirm) return;
+
+  const secondConfirm = window.confirm(`Confirmez la suppression définitive de « ${label} ».
+
+Pour une promotion réelle avec élèves, préférez archiver.`);
+  if (!secondConfirm) return;
+
+  try {
+    await deleteDoc(doc(db, 'promotions', id));
+    if (dom.id?.value === id) resetForm();
+    if (activeRosterPromotionId === id) {
+      activeRosterPromotionId = '';
+      rosterStudents = [];
+      renderRosterStudents();
+    }
+    setStatus(dom.formStatus, 'Promotion supprimée définitivement.', 'success');
+  } catch (error) {
+    console.warn('[SBI Promotions] Suppression impossible :', error);
+    setStatus(dom.formStatus, 'Suppression impossible.', 'error');
+  }
+}
+
 function sortedPromotions() {
   return [...promotions].sort((a, b) => {
     if ((a.status || 'active') !== (b.status || 'active')) return (a.status || 'active') === 'active' ? -1 : 1;
@@ -489,6 +539,7 @@ function renderPromotions() {
           <button type="button" data-action="roster" data-id="${escapeHtml(promotion.id)}" class="is-primary">Voir élèves</button>
           <button type="button" data-action="edit" data-id="${escapeHtml(promotion.id)}">Modifier</button>
           <button type="button" data-action="archive" data-id="${escapeHtml(promotion.id)}" class="${status === 'archived' ? '' : 'is-danger'}">${status === 'archived' ? 'Réactiver' : 'Archiver'}</button>
+          <button type="button" data-action="delete" data-id="${escapeHtml(promotion.id)}" class="is-danger is-delete">Supprimer</button>
         </div>
       </article>
     `;
@@ -504,7 +555,7 @@ function renderFormationSelect() {
   dom.formation.innerHTML = `
     <option value="">Aucune formation liée pour l’instant</option>
     ${formations.map((formation) => {
-      const label = formation.title || formation.nom || formation.name || formation.slug || formation.id;
+      const label = formation.titre || formation.title || formation.nom || formation.name || formation.slug || formation.id;
       return `<option value="${escapeHtml(formation.id)}">${escapeHtml(label)}</option>`;
     }).join('')}
   `;
@@ -563,15 +614,15 @@ function renderRosterStudents() {
 
 async function loadFormations() {
   try {
-    const snap = await getDocs(collection(db, 'publicFormations'));
+    const snap = await getDocs(collection(db, 'formations'));
     formations = [];
     snap.forEach((docSnap) => {
       const data = docSnap.data() || {};
       formations.push({ id: docSnap.id, ...data });
     });
-    formations.sort((a, b) => String(a.title || a.nom || a.name || '').localeCompare(String(b.title || b.nom || b.name || ''), 'fr', { sensitivity: 'base' }));
+    formations.sort((a, b) => String(a.titre || a.title || a.nom || a.name || '').localeCompare(String(b.titre || b.title || b.nom || b.name || ''), 'fr', { sensitivity: 'base' }));
   } catch (error) {
-    console.warn('[SBI Promotions] Formations publiques non chargées :', error);
+    console.warn('[SBI Promotions] Catégories & Accès non chargées :', error);
     formations = [];
   }
 
@@ -721,6 +772,7 @@ function bindEvents() {
 
     if (button.dataset.action === 'edit') fillForm(promotion);
     if (button.dataset.action === 'archive') toggleArchivePromotion(promotion.id);
+    if (button.dataset.action === 'delete') deletePromotion(promotion.id);
     if (button.dataset.action === 'roster') loadPromotionStudents(promotion.id);
   });
 

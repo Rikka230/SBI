@@ -472,3 +472,67 @@
   background: rgba(255,255,255,0.16);
   border-radius: 999px;
 }
+
+/* SBI 8.0P.167.90 - Promotions cleanup: private formation source, delete action, scrollbars */
+.sbi-promotions-actions button.is-delete {
+  border-color: rgba(255, 74, 74, 0.42);
+  background: rgba(255, 74, 74, 0.09);
+  color: #ffd0d0;
+}
+
+.sbi-promotions-actions button.is-delete:hover {
+  border-color: rgba(255, 74, 74, 0.72);
+  background: rgba(255, 74, 74, 0.16);
+  color: #fff;
+}
+
+.sbi-promotions-help strong {
+  color: #dbe5ff;
+}
+
+.sbi-promotions-editor-card,
+.sbi-promotions-list,
+.sbi-promotions-students-list,
+.sbi-promotions-course-plan-list {
+  scrollbar-color: rgba(42, 87, 255, 0.48) rgba(255,255,255,0.04);
+  scrollbar-width: thin;
+}
+
+.sbi-promotions-editor-card::-webkit-scrollbar,
+.sbi-promotions-list::-webkit-scrollbar,
+.sbi-promotions-students-list::-webkit-scrollbar,
+.sbi-promotions-course-plan-list::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+
+.sbi-promotions-editor-card::-webkit-scrollbar-track,
+.sbi-promotions-list::-webkit-scrollbar-track,
+.sbi-promotions-students-list::-webkit-scrollbar-track,
+.sbi-promotions-course-plan-list::-webkit-scrollbar-track {
+  background: rgba(255,255,255,0.035);
+  border-radius: 999px;
+}
+
+.sbi-promotions-editor-card::-webkit-scrollbar-thumb,
+.sbi-promotions-list::-webkit-scrollbar-thumb,
+.sbi-promotions-students-list::-webkit-scrollbar-thumb,
+.sbi-promotions-course-plan-list::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(42,87,255,0.72), rgba(0,212,255,0.38));
+  border: 2px solid rgba(3, 7, 18, 0.85);
+  border-radius: 999px;
+}
+
+.sbi-promotions-editor-card::-webkit-scrollbar-thumb:hover,
+.sbi-promotions-list::-webkit-scrollbar-thumb:hover,
+.sbi-promotions-students-list::-webkit-scrollbar-thumb:hover,
+.sbi-promotions-course-plan-list::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(42,87,255,0.95), rgba(0,212,255,0.58));
+}
+
+.sbi-promotions-editor-card::-webkit-scrollbar-corner,
+.sbi-promotions-list::-webkit-scrollbar-corner,
+.sbi-promotions-students-list::-webkit-scrollbar-corner,
+.sbi-promotions-course-plan-list::-webkit-scrollbar-corner {
+  background: transparent;
+}

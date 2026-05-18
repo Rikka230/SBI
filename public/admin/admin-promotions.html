@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="css/admin-layout.css">
     <link rel="stylesheet" href="css/admin.css?v=8.0P.167.51">
     <link rel="stylesheet" href="css/admin-notifications.css">
-    <link rel="stylesheet" href="css/admin-promotions.css?v=8.0P.167.89">
+    <link rel="stylesheet" href="css/admin-promotions.css?v=8.0P.167.90">
     <script src="js/components.js?v=8.0P.167.64"></script>
     <link rel="stylesheet" href="css/admin-surface-unified.css?v=8.0P.167.52">
 </head>
@@ -61,9 +61,9 @@
                         <label for="promotion-name">Nom de la promotion</label>
                         <input id="promotion-name" type="text" maxlength="120" required placeholder="Ex : Animateur E-Sport 2026">
 
-                        <label for="promotion-formation">Formation liée</label>
+                        <label for="promotion-formation">Formation liée (Catégories & Accès)</label>
                         <select id="promotion-formation">
-                            <option value="">Aucune formation liée pour l’instant</option>
+                            <option value="">Aucune catégorie / formation liée pour l’instant</option>
                         </select>
 
                         <div class="sbi-promotions-two-cols">
@@ -93,7 +93,7 @@
                             <label for="promotion-curriculum-title">Cursus lié</label>
                             <input id="promotion-curriculum-title" type="text" maxlength="140" placeholder="Ex : Animateur E-Sport">
 
-                            <p class="sbi-promotions-help">Sélectionnez les cours attendus pour cette promotion. Cela définit l’ordre conseillé sans bloquer l’accès libre aux contenus.</p>
+                            <p class="sbi-promotions-help">Les cours sont chargés depuis la formation privée définie dans <strong>Catégories & Accès</strong>, pas depuis le catalogue public. Cette zone prépare le planning conseillé sans bloquer l’accès libre aux contenus.</p>
 
                             <div id="promotion-course-plan-status" class="sbi-promotions-plan-status">Choisissez une formation liée pour charger les cours.</div>
                             <div id="promotion-course-plan-list" class="sbi-promotions-course-plan-list"></div>
@@ -155,7 +155,7 @@
 <script type="module" src="js/admin-ui.js?v=8.0P.167.88"></script>
 <script type="module" src="js/tracker.js?v=8.0P.167.44"></script>
 <script type="module" src="js/admin-notifications.js"></script>
-<script type="module" src="js/admin-promotions.js?v=8.0P.167.89"></script>
+<script type="module" src="js/admin-promotions.js?v=8.0P.167.90"></script>
 
 <script>
     document.addEventListener('DOMContentLoaded', () => {
