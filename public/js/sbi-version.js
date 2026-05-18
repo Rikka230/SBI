@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.93',
+  version: '8.0P.167.93.1',
   branch: 'main',
-  channel: 'P2I.5-D PROMOTION PLANNING PLACEHOLDERS',
-  stage: 'PROMOTION PLANNING PLACEHOLDER COURSES AND PEDAGOGICAL BUFFERS',
+  channel: 'P2I.5-D.1 PROMOTION PLANNING AUTO DATES',
+  stage: 'AUTO DATE UX AND PLACEHOLDER REPLACEMENT',
   updatedAt: '2026-05-18',
-  label: 'SBI 8.0P.167.93 - PROMOTION PLANNING PLACEHOLDERS'
+  label: 'SBI 8.0P.167.93.1 - PROMOTION PLANNING AUTO DATES'
 };
 
 export function getSbiVersionLabel() {

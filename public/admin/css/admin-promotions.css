@@ -969,3 +969,54 @@ body.sbi-planning-open {
     justify-content: flex-start;
   }
 }
+
+
+/* SBI 8.0P.167.93.1 - Auto dates + placeholder replacement UX */
+.sbi-planning-auto-date-note {
+  margin: 0.75rem 0 0.85rem;
+  padding: 0.68rem 0.75rem;
+  border: 1px solid rgba(42, 87, 255, 0.18);
+  border-radius: 12px;
+  background: rgba(42, 87, 255, 0.07);
+  color: #b7c4ea;
+  font-size: 0.76rem;
+  line-height: 1.45;
+}
+
+.sbi-planning-inspector input:disabled,
+.sbi-planning-inspector select:disabled {
+  opacity: 0.58;
+  cursor: not-allowed;
+  background: rgba(255,255,255,0.045);
+  color: rgba(255,255,255,0.72);
+}
+
+.sbi-planning-timeline-row.is-replace-mode {
+  opacity: 0.48;
+  filter: grayscale(0.35);
+}
+
+.sbi-planning-timeline-row.is-replace-source {
+  opacity: 1;
+  filter: none;
+  border-color: rgba(0, 212, 255, 0.72);
+  background: linear-gradient(135deg, rgba(0, 212, 255, 0.16), rgba(42, 87, 255, 0.10));
+  box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.10);
+}
+
+.sbi-planning-timeline-actions button.is-replace {
+  border-color: rgba(0, 212, 255, 0.46);
+  background: rgba(0, 212, 255, 0.10);
+  color: #d9f7ff;
+}
+
+.sbi-planning-course-card.is-replace-target {
+  border-color: rgba(0, 212, 255, 0.24);
+  background: rgba(0, 212, 255, 0.055);
+}
+
+.sbi-planning-course-card.is-replace-target button {
+  border-color: rgba(0, 212, 255, 0.58);
+  background: rgba(0, 212, 255, 0.15);
+  color: #e0fbff;
+}
