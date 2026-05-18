@@ -1,17 +1,16 @@
 /**
- * SBI 8.0P.167.97 / P2I.5-G
- * Promotions / cohortes admin + overlay planning pédagogique V1.
+ * SBI 8.0P.167.98.2 / P2I.5-H
+ * Promotions / cohortes admin + sélection de cursus existant.
  *
  * Périmètre volontairement borné :
  * - CRUD léger des promotions côté admin ;
  * - lecture des élèves par promotion sélectionnée ;
  * - affectation élève -> promotion déplacée dans le profil élève ;
  * - planning pédagogique non destructif Promotion -> Cursus -> cours ;
- * - overlay V1 : cours disponibles / timeline multi-layers / réglages ;
- * - curriculumTemplates V1 : sauvegarde / mise à jour / suppression de cursus réutilisables ;
- * - placeholders et marges pédagogiques pour réserver les cours futurs ;
- * - préparation cours mutualisés / accès croisés via sourceFormation + displayContext ;
- * - timeline multi-layers V1 : cours, devoirs, examens, lives et marges en pistes séparées ;
+ * - la création/édition des cursus se fait désormais dans /admin/admin-cursus.html ;
+ * - cette page ne doit plus ouvrir l’ancien overlay de construction ;
+ * - Promotions sélectionne un cursus existant, le copie dans la promotion, puis recalcule ses dates ;
+ * - compatibilité conservée avec curriculumTemplates, cours mutualisés et coursePlan ;
  * - aucun calcul progression/checkpoint bloquant dans cette brique.
  */
 
@@ -166,6 +165,17 @@ function ensurePlanningOverlayPortal() {
   return overlay;
 }
 
+function ensureCurriculumTemplateModalPortal() {
+  const modal = $('promotion-curriculum-template-modal');
+  if (!modal) return null;
+
+  if (modal.parentElement !== document.body) {
+    document.body.appendChild(modal);
+  }
+
+  return modal;
+}
+
 function cacheDom() {
   dom.form = $('promotion-form');
   dom.formTitle = $('promotion-form-title');
@@ -178,7 +188,7 @@ function cacheDom() {
   dom.curriculumTitle = $('promotion-curriculum-title');
   dom.curriculumLoad = $('promotion-curriculum-load-btn');
   dom.curriculumSave = $('promotion-curriculum-save-btn');
-  dom.curriculumTemplateModal = $('promotion-curriculum-template-modal');
+  dom.curriculumTemplateModal = ensureCurriculumTemplateModalPortal();
   dom.curriculumTemplateList = $('promotion-curriculum-template-list');
   dom.curriculumTemplateStatus = $('promotion-curriculum-template-status');
   dom.curriculumSaveModal = $('promotion-curriculum-save-modal');
@@ -537,12 +547,12 @@ function renderPlanningSummary() {
 
   if (!planCount) {
     dom.planningSummaryTitle.textContent = curriculumTitle || 'Planning non défini';
-    dom.planningSummaryMeta.textContent = `${formation.formationName || 'Formation liée'} · aucun cours placé dans la timeline.`;
+    dom.planningSummaryMeta.textContent = `${formation.formationName || 'Formation liée'} · sélectionnez un cursus existant.`;
     return;
   }
 
-  dom.planningSummaryTitle.textContent = curriculumTitle || `Planning ${formation.formationName || ''}`.trim();
-  dom.planningSummaryMeta.textContent = `${planCount} élément${planCount > 1 ? 's' : ''} · ${durationDays} jour${durationDays > 1 ? 's' : ''} estimé${durationDays > 1 ? 's' : ''} · accès libre conservé.`;
+  dom.planningSummaryTitle.textContent = curriculumTitle || `Cursus ${formation.formationName || ''}`.trim();
+  dom.planningSummaryMeta.textContent = `${planCount} élément${planCount > 1 ? 's' : ''} · ${durationDays} jour${durationDays > 1 ? 's' : ''} estimé${durationDays > 1 ? 's' : ''} · cursus appliqué à la promotion.`;
 }
 
 function setActiveCoursePlan(coursePlan = []) {
@@ -591,7 +601,7 @@ function closePlanningOverlay() {
 function openCurriculumTemplateModal() {
   if (!dom.curriculumTemplateModal) return;
   if (!getSelectedFormation().formationId) {
-    if (dom.planningFooterStatus) dom.planningFooterStatus.textContent = 'Sélectionnez une formation liée avant de charger un cursus.';
+    setStatus(dom.formStatus, 'Sélectionnez une formation liée avant de choisir un cursus.', 'error');
     return;
   }
   dom.curriculumTemplateModal.classList.add('is-open');
@@ -702,7 +712,7 @@ function renderCurriculumTemplateList() {
     : `Aucun cursus sauvegardé pour ${formation.formationName || 'cette formation'}.`;
 
   if (!sameFormation.length) {
-    dom.curriculumTemplateList.innerHTML = '<div class="sbi-promotions-empty">Sauvegardez d’abord le planning actuel comme cursus pour le réutiliser plus tard.</div>';
+    dom.curriculumTemplateList.innerHTML = '<div class="sbi-promotions-empty">Aucun cursus n’est encore disponible pour cette formation. Créez-le depuis l’onglet Cursus, puis revenez le sélectionner ici.</div>';
     return;
   }
 
@@ -888,9 +898,12 @@ function applyCurriculumTemplate(templateId = '') {
   setActiveCoursePlan(getPlanItemsFromTemplate(template));
   maybeAutoRecalculatePlanningDates();
   closeCurriculumTemplateModal();
+  const message = `Cursus « ${template.title || 'sans nom'} » sélectionné. Sauvegardez la promotion pour enregistrer ce choix.`;
   if (dom.planningFooterStatus) {
-    dom.planningFooterStatus.textContent = `Cursus « ${template.title || 'sans nom'} » appliqué à cette promotion. Les dates sont recalculées depuis la date de début.`;
+    dom.planningFooterStatus.textContent = `${message} Les dates sont recalculées depuis la date de début.`;
   }
+  setStatus(dom.formStatus, message, 'success');
+  renderPlanningSummary();
 }
 
 function getPriorityLabel(priority = 'normal') {
@@ -1955,7 +1968,7 @@ function bindEvents() {
     courseSourceFilter = ['linked', 'shared', 'other', 'all'].includes(dom.planningCourseSource.value) ? dom.planningCourseSource.value : 'linked';
     renderPlanningOverlay();
   });
-  dom.planningOpen?.addEventListener('click', openPlanningOverlay);
+  dom.planningOpen?.addEventListener('click', openCurriculumTemplateModal);
   dom.curriculumLoad?.addEventListener('click', openCurriculumTemplateModal);
   dom.curriculumSave?.addEventListener('click', openCurriculumSaveModal);
   dom.planningApply?.addEventListener('click', closePlanningOverlay);
@@ -1973,6 +1986,32 @@ function bindEvents() {
     const saveNew = event.target.closest?.('[data-curriculum-save-new]');
     if (saveNew) {
       saveCurriculumTemplate('new');
+      return;
+    }
+
+    const deleteTemplate = event.target.closest?.('[data-curriculum-delete]');
+    if (deleteTemplate) {
+      if (deleteTemplate.dataset.confirmDelete === 'true') {
+        deleteCurriculumTemplate(deleteTemplate.dataset.curriculumDelete || '');
+      } else {
+        deleteTemplate.dataset.confirmDelete = 'true';
+        deleteTemplate.textContent = 'Confirmer ?';
+        setTimeout(() => {
+          if (!deleteTemplate.isConnected) return;
+          deleteTemplate.dataset.confirmDelete = '';
+          deleteTemplate.textContent = 'Supprimer';
+        }, 2600);
+      }
+      return;
+    }
+
+    const applyTemplate = event.target.closest?.('[data-curriculum-apply]');
+    if (applyTemplate) applyCurriculumTemplate(applyTemplate.dataset.curriculumApply || '');
+  });
+
+  dom.curriculumTemplateModal?.addEventListener('click', (event) => {
+    if (event.target.closest?.('[data-curriculum-modal-close]')) {
+      closeCurriculumTemplateModal();
       return;
     }
 

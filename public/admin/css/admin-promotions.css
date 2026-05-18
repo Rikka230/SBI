@@ -1034,7 +1034,7 @@ body.sbi-planning-open {
 }
 
 .sbi-curriculum-template-modal {
-  position: absolute;
+  position: fixed;
   inset: 0;
   z-index: 3;
   display: none;

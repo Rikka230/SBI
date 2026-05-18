@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.98.1-GPT2.1',
+  version: '8.0P.167.98.2-GPT2.1',
   branch: 'main',
-  channel: 'P2I.5 CURSUS NAV CACHE FIX + GPT2 PRESERVED',
-  stage: 'CURSUS NAVIGATION CACHE-BUST AND ROUTE FIX',
+  channel: 'P2I.5 PROMOTION CURSUS SELECTION + GPT2 PRESERVED',
+  stage: 'PROMOTIONS SELECT CURRICULUM TEMPLATE WITHOUT OLD PLANNING OVERLAY',
   updatedAt: '2026-05-18',
-  label: 'SBI 8.0P.167.98.1-GPT2.1 - CURSUS NAVIGATION FIX'
+  label: 'SBI 8.0P.167.98.2-GPT2.1 - PROMOTION CURSUS SELECTION'
 };
 
 export function getSbiVersionLabel() {
