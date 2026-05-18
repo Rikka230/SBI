@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="css/admin-layout.css">
     <link rel="stylesheet" href="css/admin.css?v=8.0P.167.51">
     <link rel="stylesheet" href="css/admin-notifications.css">
-    <link rel="stylesheet" href="css/admin-promotions.css?v=8.0P.167.93.1">
+    <link rel="stylesheet" href="css/admin-promotions.css?v=8.0P.167.95">
     <script src="js/components.js?v=8.0P.167.64"></script>
     <link rel="stylesheet" href="css/admin-surface-unified.css?v=8.0P.167.52">
 </head>
@@ -165,6 +165,13 @@
                                 <input id="promotion-curriculum-title" type="text" maxlength="140" placeholder="Ex : Animateur E-Sport">
                             </div>
                             <div>
+                                <label>Modèles de cursus</label>
+                                <div class="sbi-planning-template-actions">
+                                    <button type="button" id="promotion-curriculum-load-btn" class="sbi-promotions-ghost-btn">Charger un cursus</button>
+                                    <button type="button" id="promotion-curriculum-save-btn" class="sbi-promotions-ghost-btn">Sauvegarder comme cursus</button>
+                                </div>
+                            </div>
+                            <div>
                                 <label>Calcul rapide</label>
                                 <button type="button" id="promotion-planning-auto-dates-btn" class="sbi-promotions-ghost-btn">Recalculer les dates</button>
                             </div>
@@ -212,6 +219,24 @@
                             </aside>
                         </div>
 
+                        <div id="promotion-curriculum-template-modal" class="sbi-curriculum-template-modal" aria-hidden="true">
+                            <div class="sbi-curriculum-template-backdrop" data-curriculum-modal-close></div>
+                            <section class="sbi-curriculum-template-panel" role="dialog" aria-modal="true" aria-labelledby="promotion-curriculum-template-title">
+                                <header>
+                                    <div>
+                                        <p class="sbi-kicker">Cursus réutilisables</p>
+                                        <h4 id="promotion-curriculum-template-title">Charger un cursus</h4>
+                                        <p>Appliquez un modèle pédagogique à cette promotion. Les dates seront recalculées depuis la date de début de la promotion.</p>
+                                    </div>
+                                    <button type="button" class="sbi-promotions-ghost-btn is-small" data-curriculum-modal-close>Fermer</button>
+                                </header>
+                                <p id="promotion-curriculum-template-status" class="sbi-promotions-plan-status">Chargement des cursus...</p>
+                                <div id="promotion-curriculum-template-list" class="sbi-curriculum-template-list">
+                                    <div class="sbi-promotions-empty">Aucun cursus chargé.</div>
+                                </div>
+                            </section>
+                        </div>
+
                         <footer class="sbi-planning-footer">
                             <p id="promotion-planning-footer-status">Les dates sont calculées automatiquement avec la promotion.</p>
                             <button type="button" id="promotion-planning-apply-btn" class="sbi-promotions-primary-btn">Appliquer au formulaire</button>
@@ -230,7 +255,7 @@
 <script type="module" src="js/admin-ui.js?v=8.0P.167.88"></script>
 <script type="module" src="js/tracker.js?v=8.0P.167.44"></script>
 <script type="module" src="js/admin-notifications.js"></script>
-<script type="module" src="js/admin-promotions.js?v=8.0P.167.93.1"></script>
+<script type="module" src="js/admin-promotions.js?v=8.0P.167.95"></script>
 
 <script>
     document.addEventListener('DOMContentLoaded', () => {

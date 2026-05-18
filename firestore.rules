@@ -542,6 +542,16 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+
+    /* ============================================================
+       CURRICULUM TEMPLATES
+       ============================================================ */
+
+    match /curriculumTemplates/{curriculumId} {
+      allow get, list: if isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
     /* ============================================================
        NOTIFICATIONS
        ============================================================ */

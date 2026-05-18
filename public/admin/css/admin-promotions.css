@@ -1020,3 +1020,144 @@ body.sbi-planning-open {
   background: rgba(0, 212, 255, 0.15);
   color: #e0fbff;
 }
+
+
+/* SBI 8.0P.167.95 - Curriculum templates V1 */
+.sbi-planning-template-actions {
+  display: flex;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+.sbi-planning-template-actions .sbi-promotions-ghost-btn {
+  padding: 0.62rem 0.82rem;
+}
+
+.sbi-curriculum-template-modal {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.sbi-curriculum-template-modal.is-open {
+  display: flex;
+}
+
+.sbi-curriculum-template-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(3, 7, 18, 0.76);
+  backdrop-filter: blur(10px);
+}
+
+.sbi-curriculum-template-panel {
+  position: relative;
+  z-index: 1;
+  width: min(860px, calc(100vw - 42px));
+  max-height: min(760px, calc(100dvh - 80px));
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 0.9rem;
+  padding: 1.15rem;
+  border: 1px solid rgba(255,255,255,0.13);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at top left, rgba(42,87,255,0.18), transparent 42%),
+    linear-gradient(180deg, rgba(8, 12, 24, 0.98), rgba(3, 7, 18, 0.98));
+  box-shadow: 0 30px 90px rgba(0,0,0,0.50);
+  overflow: hidden;
+}
+
+.sbi-curriculum-template-panel header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.sbi-curriculum-template-panel h4 {
+  margin: 0;
+  color: #fff;
+}
+
+.sbi-curriculum-template-panel p {
+  margin: 0.35rem 0 0;
+  color: var(--text-muted, #9ca3af);
+  line-height: 1.45;
+}
+
+.sbi-curriculum-template-list {
+  display: grid;
+  gap: 0.75rem;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 0.35rem;
+  scrollbar-color: rgba(42, 87, 255, 0.48) rgba(255,255,255,0.04);
+  scrollbar-width: thin;
+}
+
+.sbi-curriculum-template-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.85rem;
+  align-items: center;
+  padding: 0.9rem;
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 16px;
+  background: rgba(255,255,255,0.045);
+}
+
+.sbi-curriculum-template-row strong {
+  display: block;
+  color: #fff;
+}
+
+.sbi-curriculum-template-row small {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.38rem;
+  margin-top: 0.35rem;
+  color: var(--text-muted, #9ca3af);
+  font-size: 0.72rem;
+}
+
+.sbi-curriculum-template-row small span {
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 999px;
+  padding: 0.2rem 0.46rem;
+  background: rgba(255,255,255,0.045);
+}
+
+.sbi-curriculum-template-row button {
+  border: 1px solid rgba(42,87,255,0.48);
+  border-radius: 999px;
+  background: rgba(42,87,255,0.15);
+  color: #dbe5ff;
+  padding: 0.52rem 0.82rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+@media (max-width: 760px) {
+  .sbi-curriculum-template-panel header,
+  .sbi-curriculum-template-row {
+    grid-template-columns: 1fr;
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+/* SBI 8.0P.167.95 - Toolbar layout with curriculum template actions */
+.sbi-planning-toolbar {
+  grid-template-columns: minmax(220px, 0.9fr) auto auto minmax(260px, 1fr);
+}
+
+@media (max-width: 1280px) {
+  .sbi-planning-toolbar {
+    grid-template-columns: minmax(240px, 1fr) minmax(220px, auto);
+  }
+}
