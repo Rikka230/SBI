@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.167.94-GPT2.1 / P2I.5-E-GPT2.1
+ * SBI 8.0P.167.94-GPT2.2 / P2I.5-E-GPT2.2
  * Première connexion : validation obligatoire légère + notice étudiant post-login.
  *
  * Objectif :
@@ -601,13 +601,12 @@ function renderCheck(id, title, desc) {
 
 function maybeRenderStudentConstructionNotice(userData = {}, options = {}) {
   if (!currentUid) return;
+  if (!window.location.pathname.startsWith('/student/')) return;
   if (document.getElementById(MODAL_ID)) return;
   if (document.getElementById(STUDENT_NOTICE_ID)) return;
   if (readStudentNoticeDismissed(currentUid)) return;
   if (userData?.statut === 'suspendu') return;
   if (isSbiAdminLike(userData)) return;
-  if (!isSbiStudent(userData) && !window.location.pathname.startsWith('/student/')) return;
-  if (!hasCompletedFirstLogin(userData)) return;
 
   renderStudentConstructionNotice(userData, options);
 }
@@ -674,21 +673,47 @@ async function checkFirstLoginGate(user) {
   removeStudentConstructionNotice();
 
   if (!currentUid) return;
+
+  const isStudentRoute = window.location.pathname.startsWith('/student/');
+
   try {
     const snap = await getDoc(doc(db, 'users', currentUid));
-    if (!snap.exists()) return;
+    if (!snap.exists()) {
+      if (isStudentRoute) {
+        maybeRenderStudentConstructionNotice({
+          email: auth.currentUser?.email || '',
+          accountStatus: { firstLoginCompleted: true }
+        });
+      }
+      return;
+    }
 
     const data = snap.data() || {};
     currentUserData = data;
 
     if (data.statut === 'suspendu') return;
     if (isSbiAdminLike(data)) return;
-    const isStudentRoute = window.location.pathname.startsWith('/student/');
-    if (!isSbiTeacherOrStudent(data) && !isStudentRoute) return;
+
+    if (isStudentRoute) {
+      if (!hasCompletedFirstLogin(data) && isSbiTeacherOrStudent(data) && !readSessionCompleted(currentUid)) {
+        renderGate(data);
+        return;
+      }
+
+      maybeRenderStudentConstructionNotice({
+        ...data,
+        accountStatus: {
+          ...(data.accountStatus || {}),
+          firstLoginCompleted: true
+        }
+      });
+      return;
+    }
+
+    if (!isSbiTeacherOrStudent(data)) return;
 
     if (hasCompletedFirstLogin(data)) {
       writeSessionCompleted(currentUid);
-      maybeRenderStudentConstructionNotice(data);
       return;
     }
 
@@ -697,6 +722,13 @@ async function checkFirstLoginGate(user) {
     renderGate(data);
   } catch (error) {
     console.warn('[SBI First Login] Vérification ignorée :', error);
+
+    if (isStudentRoute) {
+      maybeRenderStudentConstructionNotice({
+        email: auth.currentUser?.email || '',
+        accountStatus: { firstLoginCompleted: true }
+      });
+    }
   }
 }
 
