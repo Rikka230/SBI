@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.96',
+  version: '8.0P.167.96.1',
   branch: 'main',
-  channel: 'P2I.5-F SHARED COURSES CROSS ACCESS PREP',
+  channel: 'P2I.5-F.1 CURRICULUM TEMPLATE SAVE UX',
   stage: 'PROMOTION PLANNING SHARED COURSES SOURCE DISPLAY CONTEXT',
   updatedAt: '2026-05-18',
-  label: 'SBI 8.0P.167.96 - SHARED COURSES CROSS ACCESS PREP'
+  label: 'SBI 8.0P.167.96.1 - CURRICULUM TEMPLATE SAVE UX'
 };
 
 export function getSbiVersionLabel() {

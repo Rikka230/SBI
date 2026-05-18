@@ -1151,6 +1151,93 @@ body.sbi-planning-open {
   }
 }
 
+/* SBI 8.0P.167.96.1 - Curriculum template save/delete UX */
+.sbi-curriculum-template-row.is-active-template {
+  border-color: rgba(46, 213, 115, 0.42);
+  background: rgba(46, 213, 115, 0.075);
+}
+
+.sbi-curriculum-template-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  justify-content: flex-end;
+}
+
+.sbi-curriculum-template-actions button.is-danger {
+  border-color: rgba(255, 74, 74, 0.38);
+  background: rgba(255, 74, 74, 0.09);
+  color: #ffd0d0;
+}
+
+.sbi-curriculum-save-panel label {
+  margin: 0.35rem 0 0.3rem;
+  color: var(--text-muted, #9ca3af);
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.sbi-curriculum-save-panel input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.78rem 0.85rem;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 12px;
+  background: rgba(3, 7, 18, 0.86);
+  color: #fff;
+  outline: none;
+}
+
+.sbi-curriculum-save-current {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 14px;
+  background: rgba(255,255,255,0.045);
+}
+
+.sbi-curriculum-save-current span {
+  color: var(--text-muted, #9ca3af);
+  font-size: 0.74rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.sbi-curriculum-save-current strong {
+  color: #fff;
+  text-align: right;
+}
+
+.sbi-curriculum-save-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.7rem;
+  align-items: center;
+}
+
+.sbi-curriculum-save-actions .sbi-promotions-primary-btn {
+  margin-top: 0;
+}
+
+.sbi-curriculum-save-actions button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+@media (max-width: 760px) {
+  .sbi-curriculum-save-actions,
+  .sbi-curriculum-template-actions {
+    grid-template-columns: 1fr;
+    justify-content: stretch;
+  }
+}
+
 /* SBI 8.0P.167.95 - Toolbar layout with curriculum template actions */
 .sbi-planning-toolbar {
   grid-template-columns: minmax(220px, 0.9fr) auto auto minmax(260px, 1fr);
