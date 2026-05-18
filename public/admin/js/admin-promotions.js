@@ -1,12 +1,13 @@
 /**
- * SBI 8.0P.167.64 / P2I.1 UX
- * Promotions / cohortes admin.
+ * SBI 8.0P.167.89 / P2I.5-B
+ * Promotions / cohortes admin + mapping cursus/cours prioritaires.
  *
  * Périmètre volontairement borné :
  * - CRUD léger des promotions côté admin ;
  * - lecture des élèves par promotion sélectionnée ;
  * - affectation élève -> promotion déplacée dans le profil élève ;
- * - aucun LMS, aucun cursus/checkpoint dans cette brique.
+ * - mapping non destructif Promotion -> Cursus -> cours prioritaires ;
+ * - aucun calcul progression/checkpoint bloquant dans cette brique.
  */
 
 import { auth, db } from '/js/firebase-init.js';
@@ -33,6 +34,7 @@ let currentAdmin = null;
 let promotions = [];
 let rosterStudents = [];
 let formations = [];
+let courses = [];
 let activeRosterPromotionId = '';
 
 const dom = {};
@@ -139,6 +141,9 @@ function cacheDom() {
   dom.startDate = $('promotion-start-date');
   dom.endDate = $('promotion-end-date');
   dom.status = $('promotion-status');
+  dom.curriculumTitle = $('promotion-curriculum-title');
+  dom.coursePlanStatus = $('promotion-course-plan-status');
+  dom.coursePlanList = $('promotion-course-plan-list');
   dom.submit = $('promotion-submit-btn');
   dom.reset = $('promotion-reset-btn');
   dom.formStatus = $('promotion-form-status');
@@ -163,6 +168,142 @@ function getSelectedFormation() {
   };
 }
 
+function normalizeArray(value) {
+  if (Array.isArray(value)) return value.map((item) => clean(item, 160)).filter(Boolean);
+  if (typeof value === 'string') return clean(value, 160) ? [clean(value, 160)] : [];
+  return [];
+}
+
+function getCourseTitle(course = {}) {
+  return clean(course.titre || course.title || course.nom || course.name || 'Cours sans titre', 180);
+}
+
+function getCourseBlockLabel(course = {}) {
+  return clean(course.bloc || course.blockTitle || course.blockName || course.moduleTitle || '', 100);
+}
+
+function getCourseStatusLabel(course = {}) {
+  if (course.actif === true || course.lmsStatus === 'published' || course.statutValidation === 'approved') return 'Publié';
+  if (course.lmsStatus === 'pending_review' || course.statutValidation === 'pending') return 'En attente';
+  return 'Brouillon';
+}
+
+function getCourseFormationRefs(course = {}) {
+  return Array.from(new Set([
+    ...normalizeArray(course.formationIds),
+    ...normalizeArray(course.formationsIds),
+    ...normalizeArray(course.targetFormationIds),
+    ...normalizeArray(course.formations),
+    ...normalizeArray(course.targetFormationTitles)
+  ].map((item) => normalizeSearch(item)).filter(Boolean)));
+}
+
+function courseMatchesFormation(course = {}, formation = {}) {
+  if (!formation.formationId && !formation.formationName) return false;
+  const refs = getCourseFormationRefs(course);
+  const formationRefs = [formation.formationId, formation.formationName]
+    .map((item) => normalizeSearch(item))
+    .filter(Boolean);
+  return formationRefs.some((ref) => refs.includes(ref));
+}
+
+function findPlanItem(coursePlan = [], courseId = '') {
+  if (!Array.isArray(coursePlan) || !courseId) return null;
+  return coursePlan.find((item) => item?.courseId === courseId) || null;
+}
+
+function getActiveCoursePlanFromDom() {
+  if (!dom.coursePlanList) return [];
+  return Array.from(dom.coursePlanList.querySelectorAll('[data-course-plan-row]'))
+    .filter((row) => row.querySelector('[data-course-plan-check]')?.checked)
+    .map((row, index) => ({
+      courseId: row.dataset.courseId || '',
+      courseTitle: clean(row.dataset.courseTitle || '', 180),
+      courseStatus: clean(row.dataset.courseStatus || '', 80),
+      blockTitle: clean(row.dataset.blockTitle || '', 120),
+      recommendedStartAt: row.querySelector('[data-course-plan-start]')?.value || '',
+      recommendedEndAt: row.querySelector('[data-course-plan-end]')?.value || '',
+      deadlineAt: row.querySelector('[data-course-plan-deadline]')?.value || '',
+      priorityLevel: row.querySelector('[data-course-plan-priority]')?.value || 'normal',
+      isBlockingPrerequisite: false,
+      order: index,
+      source: 'promotion-course-plan-v1'
+    }))
+    .filter((item) => item.courseId);
+}
+
+function setCoursePlanInputsDisabled(row, disabled) {
+  row.querySelectorAll('[data-course-plan-start], [data-course-plan-end], [data-course-plan-deadline], [data-course-plan-priority]')
+    .forEach((input) => { input.disabled = disabled; });
+  row.classList.toggle('is-selected', !disabled);
+}
+
+function renderCoursePlanOptions(coursePlan = getActiveCoursePlanFromDom()) {
+  if (!dom.coursePlanList || !dom.coursePlanStatus) return;
+
+  const formation = getSelectedFormation();
+  if (!formation.formationId) {
+    dom.coursePlanStatus.textContent = 'Choisissez une formation liée pour charger les cours.';
+    dom.coursePlanList.innerHTML = '';
+    return;
+  }
+
+  const matchingCourses = courses
+    .filter((course) => courseMatchesFormation(course, formation))
+    .sort((a, b) => getCourseTitle(a).localeCompare(getCourseTitle(b), 'fr', { sensitivity: 'base' }));
+
+  if (!matchingCourses.length) {
+    dom.coursePlanStatus.textContent = 'Aucun cours rattaché à cette formation pour l’instant.';
+    dom.coursePlanList.innerHTML = '';
+    return;
+  }
+
+  dom.coursePlanStatus.textContent = `${matchingCourses.length} cours disponible${matchingCourses.length > 1 ? 's' : ''} pour cette formation.`;
+  dom.coursePlanList.innerHTML = matchingCourses.map((course) => {
+    const saved = findPlanItem(coursePlan, course.id);
+    const checked = Boolean(saved);
+    const title = getCourseTitle(course);
+    const block = getCourseBlockLabel(course);
+    const status = getCourseStatusLabel(course);
+    const priority = saved?.priorityLevel || course.priorityLevel || 'normal';
+
+    return `
+      <article class="sbi-course-plan-row ${checked ? 'is-selected' : ''}" data-course-plan-row data-course-id="${escapeHtml(course.id)}" data-course-title="${escapeHtml(title)}" data-course-status="${escapeHtml(status)}" data-block-title="${escapeHtml(block)}">
+        <label class="sbi-course-plan-main">
+          <input type="checkbox" data-course-plan-check ${checked ? 'checked' : ''}>
+          <span>
+            <strong>${escapeHtml(title)}</strong>
+            <small>
+              <span>${escapeHtml(status)}</span>
+              ${block ? `<span>Bloc : ${escapeHtml(block)}</span>` : ''}
+            </small>
+          </span>
+        </label>
+        <div class="sbi-course-plan-fields">
+          <div>
+            <label>Début conseillé</label>
+            <input type="date" data-course-plan-start value="${escapeHtml(saved?.recommendedStartAt || '')}" ${checked ? '' : 'disabled'}>
+          </div>
+          <div>
+            <label>Fin conseillée</label>
+            <input type="date" data-course-plan-end value="${escapeHtml(saved?.recommendedEndAt || '')}" ${checked ? '' : 'disabled'}>
+          </div>
+          <div>
+            <label>Deadline</label>
+            <input type="date" data-course-plan-deadline value="${escapeHtml(saved?.deadlineAt || '')}" ${checked ? '' : 'disabled'}>
+          </div>
+          <div>
+            <label>Priorité</label>
+            <select data-course-plan-priority ${checked ? '' : 'disabled'}>
+              ${['normal', 'high', 'urgent'].map((level) => `<option value="${level}" ${priority === level ? 'selected' : ''}>${level === 'normal' ? 'Normal' : level === 'high' ? 'Haute' : 'Urgente'}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+      </article>
+    `;
+  }).join('');
+}
+
 function resetForm() {
   if (!dom.form) return;
   dom.id.value = '';
@@ -171,6 +312,8 @@ function resetForm() {
   dom.startDate.value = '';
   dom.endDate.value = '';
   dom.status.value = 'active';
+  if (dom.curriculumTitle) dom.curriculumTitle.value = '';
+  renderCoursePlanOptions([]);
   if (dom.formTitle) dom.formTitle.textContent = 'Créer une promotion';
   if (dom.submit) dom.submit.textContent = 'Créer la promotion';
   setStatus(dom.formStatus, '');
@@ -184,6 +327,8 @@ function fillForm(promotion) {
   dom.startDate.value = promotion.startDate || '';
   dom.endDate.value = promotion.endDate || '';
   dom.status.value = promotion.status || 'active';
+  if (dom.curriculumTitle) dom.curriculumTitle.value = promotion.curriculumTitle || '';
+  renderCoursePlanOptions(Array.isArray(promotion.coursePlan) ? promotion.coursePlan : []);
   if (dom.formTitle) dom.formTitle.textContent = 'Modifier la promotion';
   if (dom.submit) dom.submit.textContent = 'Sauvegarder';
   setStatus(dom.formStatus, 'Mode édition actif.');
@@ -196,6 +341,9 @@ function buildPromotionPayload() {
   const status = dom.status?.value === 'archived' ? 'archived' : 'active';
   const formation = getSelectedFormation();
 
+  const curriculumTitle = clean(dom.curriculumTitle?.value || formation.formationName || name, 140);
+  const coursePlan = getActiveCoursePlanFromDom();
+
   return {
     name,
     slug: slugify(name),
@@ -204,6 +352,11 @@ function buildPromotionPayload() {
     formationName: formation.formationName,
     startDate: dom.startDate?.value || '',
     endDate: dom.endDate?.value || '',
+    curriculumId: slugify(curriculumTitle || name),
+    curriculumTitle,
+    coursePlan,
+    coursePlanVersion: 'promotion-course-plan-v1',
+    coursePlanCount: coursePlan.length,
     updatedAt: serverTimestamp(),
     updatedBy: currentAdmin?.uid || '',
     updatedByEmail: currentAdmin?.email || ''
@@ -328,6 +481,8 @@ function renderPromotions() {
           <div class="sbi-promotions-meta">
             <span class="sbi-promotions-pill ${status === 'archived' ? 'is-archived' : 'is-active'}">${status === 'archived' ? 'Archivée' : 'Active'}</span>
             ${dates ? `<span class="sbi-promotions-pill">${escapeHtml(dates)}</span>` : ''}
+            ${promotion.curriculumTitle ? `<span class="sbi-promotions-pill is-curriculum">Cursus : ${escapeHtml(promotion.curriculumTitle)}</span>` : ''}
+            ${Number(promotion.coursePlanCount || 0) > 0 ? `<span class="sbi-promotions-pill">${Number(promotion.coursePlanCount || 0)} cours prioritaire${Number(promotion.coursePlanCount || 0) > 1 ? 's' : ''}</span>` : ''}
           </div>
         </div>
         <div class="sbi-promotions-actions">
@@ -421,6 +576,23 @@ async function loadFormations() {
   }
 
   renderFormationSelect();
+}
+
+async function loadCoursesForPlan() {
+  try {
+    const snap = await getDocs(collection(db, 'courses'));
+    courses = [];
+    snap.forEach((docSnap) => {
+      const data = docSnap.data() || {};
+      courses.push({ id: docSnap.id, ...data });
+    });
+  } catch (error) {
+    console.warn('[SBI Promotions] Cours non chargés pour le plan de promotion :', error);
+    courses = [];
+    if (dom.coursePlanStatus) dom.coursePlanStatus.textContent = 'Chargement des cours impossible.';
+  }
+
+  renderCoursePlanOptions();
 }
 
 async function loadPromotionStudents(promotionId = activeRosterPromotionId) {
@@ -524,13 +696,21 @@ function bindEvents() {
   dom.form?.addEventListener('submit', savePromotion);
   dom.reset?.addEventListener('click', resetForm);
   dom.refresh?.addEventListener('click', () => {
-    loadFormations();
+    loadFormations().then(loadCoursesForPlan);
     startPromotionsSnapshot();
     if (activeRosterPromotionId) loadPromotionStudents(activeRosterPromotionId);
   });
   dom.rosterRefresh?.addEventListener('click', () => loadPromotionStudents(dom.rosterSelect?.value || activeRosterPromotionId));
   dom.rosterSelect?.addEventListener('change', () => loadPromotionStudents(dom.rosterSelect.value));
   dom.rosterSearch?.addEventListener('input', renderRosterStudents);
+  dom.formation?.addEventListener('change', () => renderCoursePlanOptions([]));
+  dom.coursePlanList?.addEventListener('change', (event) => {
+    const row = event.target.closest?.('[data-course-plan-row]');
+    if (!row) return;
+    if (event.target.matches?.('[data-course-plan-check]')) {
+      setCoursePlanInputsDisabled(row, !event.target.checked);
+    }
+  });
 
   dom.list?.addEventListener('click', (event) => {
     const button = event.target.closest?.('button[data-action][data-id]');
@@ -592,6 +772,7 @@ export function mountAdminPromotions() {
     try {
       await loadCurrentAdmin(user);
       await loadFormations();
+      await loadCoursesForPlan();
       startPromotionsSnapshot();
     } catch (error) {
       console.warn('[SBI Promotions] Accès refusé :', error);

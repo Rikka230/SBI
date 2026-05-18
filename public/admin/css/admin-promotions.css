@@ -316,3 +316,159 @@
     justify-content: flex-start;
   }
 }
+
+/* SBI 8.0P.167.89 - P2I.5-B Promotion curriculum mapping */
+.sbi-promotions-curriculum-box {
+  margin-top: 1rem;
+  padding: 0.9rem;
+  border: 1px solid rgba(42, 87, 255, 0.18);
+  border-radius: 16px;
+  background: rgba(42, 87, 255, 0.055);
+}
+
+.sbi-promotions-section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  color: #fff;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+}
+
+.sbi-promotions-section-title small {
+  color: #9fb3ff;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.sbi-promotions-help,
+.sbi-promotions-plan-status {
+  color: var(--text-muted, #9ca3af);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.sbi-promotions-plan-status {
+  margin: 0.7rem 0 0.55rem;
+}
+
+.sbi-promotions-course-plan-list {
+  display: grid;
+  gap: 0.65rem;
+  max-height: 360px;
+  overflow-y: auto;
+  padding-right: 0.3rem;
+}
+
+.sbi-course-plan-row {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.75rem;
+  border: 1px solid rgba(255,255,255,0.09);
+  border-radius: 14px;
+  background: rgba(3, 7, 18, 0.52);
+  opacity: 0.78;
+}
+
+.sbi-course-plan-row.is-selected {
+  opacity: 1;
+  border-color: rgba(42, 87, 255, 0.38);
+  background: rgba(42, 87, 255, 0.08);
+}
+
+.sbi-course-plan-main {
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.7rem;
+  align-items: flex-start;
+  margin: 0 !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+  color: inherit !important;
+  cursor: pointer;
+}
+
+.sbi-course-plan-main input {
+  width: auto !important;
+  margin-top: 0.2rem;
+  accent-color: var(--accent-blue, #2A57FF);
+}
+
+.sbi-course-plan-main strong {
+  display: block;
+  color: #fff;
+  font-size: 0.86rem;
+}
+
+.sbi-course-plan-main small {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.25rem;
+  color: var(--text-muted, #9ca3af);
+  font-size: 0.72rem;
+}
+
+.sbi-course-plan-main small span {
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 999px;
+  padding: 0.18rem 0.42rem;
+  background: rgba(255,255,255,0.045);
+}
+
+.sbi-course-plan-fields {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.sbi-course-plan-fields label {
+  margin-top: 0 !important;
+  font-size: 0.64rem;
+}
+
+.sbi-course-plan-fields input,
+.sbi-course-plan-fields select {
+  padding: 0.58rem 0.62rem;
+  font-size: 0.76rem;
+}
+
+.sbi-course-plan-fields input:disabled,
+.sbi-course-plan-fields select:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.sbi-promotions-pill.is-curriculum {
+  border-color: rgba(42,87,255,0.35);
+  background: rgba(42,87,255,0.12);
+  color: #cbd7ff;
+}
+
+@media (max-width: 980px) {
+  .sbi-course-plan-fields {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .sbi-course-plan-fields {
+    grid-template-columns: 1fr;
+  }
+}
+
+.sbi-promotions-editor-card {
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.sbi-promotions-editor-card::-webkit-scrollbar {
+  width: 8px;
+}
+
+.sbi-promotions-editor-card::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.16);
+  border-radius: 999px;
+}

@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.88',
+  version: '8.0P.167.89',
   branch: 'main',
-  channel: 'P2I.5-A TEACHER COURSES PJAX SOFT MOUNT',
-  stage: 'TEACHER COURSES ROUTE SOFT MOUNT NO HARD RELOAD',
+  channel: 'P2I.5-B PROMOTION CURRICULUM LINK',
+  stage: 'PROMOTION CURRICULUM COURSE PLAN BASELINE',
   updatedAt: '2026-05-18',
-  label: 'SBI 8.0P.167.88 - TEACHER COURSES PJAX SOFT MOUNT'
+  label: 'SBI 8.0P.167.89 - PROMOTION CURRICULUM LINK'
 };
 
 export function getSbiVersionLabel() {
