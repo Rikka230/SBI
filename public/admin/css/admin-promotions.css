@@ -1303,3 +1303,141 @@ body.sbi-planning-open {
   border-radius: 12px;
   background: rgba(255,255,255,0.035);
 }
+
+
+/* SBI 8.0P.167.97 - Timeline multi-layers V1 */
+.sbi-planning-grid {
+  grid-template-columns: minmax(280px, 0.78fr) minmax(520px, 1.75fr) minmax(300px, 0.82fr);
+}
+
+.sbi-planning-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  overflow: auto;
+  padding-right: 0.45rem;
+}
+
+.sbi-planning-layer {
+  border: 1px solid rgba(255,255,255,0.085);
+  border-radius: 18px;
+  background: rgba(3, 7, 18, 0.36);
+  overflow: hidden;
+}
+
+.sbi-planning-layer-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.8rem;
+  align-items: center;
+  padding: 0.72rem 0.8rem;
+  border-bottom: 1px solid rgba(255,255,255,0.075);
+  background: linear-gradient(90deg, rgba(42,87,255,0.10), rgba(255,255,255,0.025));
+}
+
+.sbi-planning-layer-head strong {
+  display: block;
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 950;
+  letter-spacing: 0.02em;
+}
+
+.sbi-planning-layer-head p {
+  margin: 0.18rem 0 0;
+  color: var(--text-muted, #9ca3af);
+  font-size: 0.69rem;
+  line-height: 1.35;
+}
+
+.sbi-planning-layer-head span {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 999px;
+  border: 1px solid rgba(42,87,255,0.36);
+  background: rgba(42,87,255,0.12);
+  color: #dbe5ff;
+  font-size: 0.72rem;
+  font-weight: 950;
+}
+
+.sbi-planning-layer-track {
+  display: grid;
+  gap: 0.58rem;
+  padding: 0.7rem;
+  min-height: 70px;
+}
+
+.sbi-planning-layer-empty {
+  display: grid;
+  place-items: center;
+  min-height: 54px;
+  border: 1px dashed rgba(255,255,255,0.12);
+  border-radius: 14px;
+  color: rgba(255,255,255,0.42);
+  background: rgba(255,255,255,0.025);
+  font-size: 0.74rem;
+}
+
+.sbi-planning-timeline-row.is-layer-assignments {
+  border-color: rgba(255, 193, 7, 0.28);
+  background: linear-gradient(135deg, rgba(255, 193, 7, 0.10), rgba(255,255,255,0.035));
+}
+
+.sbi-planning-timeline-row.is-layer-assessments {
+  border-color: rgba(255, 74, 115, 0.32);
+  background: linear-gradient(135deg, rgba(255, 74, 115, 0.11), rgba(255,255,255,0.035));
+}
+
+.sbi-planning-timeline-row.is-layer-lives {
+  border-color: rgba(160, 120, 255, 0.32);
+  background: linear-gradient(135deg, rgba(160, 120, 255, 0.11), rgba(255,255,255,0.035));
+}
+
+.sbi-planning-timeline-row.is-layer-buffers {
+  border-style: dashed;
+  border-color: rgba(126, 211, 33, 0.26);
+  background: rgba(126, 211, 33, 0.045);
+}
+
+.sbi-planning-timeline-row.is-assignment .sbi-planning-order-badge {
+  border-color: rgba(255,193,7,0.52);
+  background: rgba(255,193,7,0.13);
+}
+
+.sbi-planning-timeline-row.is-exam .sbi-planning-order-badge,
+.sbi-planning-timeline-row.is-evaluation .sbi-planning-order-badge {
+  border-color: rgba(255,74,115,0.52);
+  background: rgba(255,74,115,0.13);
+}
+
+.sbi-planning-timeline-row.is-live_session .sbi-planning-order-badge,
+.sbi-planning-timeline-row.is-workshop .sbi-planning-order-badge {
+  border-color: rgba(160,120,255,0.52);
+  background: rgba(160,120,255,0.13);
+}
+
+.sbi-planning-timeline-row.is-buffer_period .sbi-planning-order-badge,
+.sbi-planning-timeline-row.is-revision_period .sbi-planning-order-badge,
+.sbi-planning-timeline-row.is-catchup_period .sbi-planning-order-badge {
+  border-color: rgba(126,211,33,0.44);
+  background: rgba(126,211,33,0.12);
+}
+
+.sbi-planning-head-actions {
+  max-width: 560px;
+}
+
+@media (max-width: 1300px) {
+  .sbi-planning-grid {
+    grid-template-columns: minmax(250px, 0.8fr) minmax(440px, 1.4fr) minmax(280px, 0.9fr);
+  }
+}
+
+@media (max-width: 1100px) {
+  .sbi-planning-layer-track {
+    min-height: 60px;
+  }
+}

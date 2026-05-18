@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.167.96.1 / P2I.5-F.1
+ * SBI 8.0P.167.97 / P2I.5-G
  * Promotions / cohortes admin + overlay planning pédagogique V1.
  *
  * Périmètre volontairement borné :
@@ -7,10 +7,11 @@
  * - lecture des élèves par promotion sélectionnée ;
  * - affectation élève -> promotion déplacée dans le profil élève ;
  * - planning pédagogique non destructif Promotion -> Cursus -> cours ;
- * - overlay V1 : cours disponibles / timeline / réglages ;
+ * - overlay V1 : cours disponibles / timeline multi-layers / réglages ;
  * - curriculumTemplates V1 : sauvegarde / mise à jour / suppression de cursus réutilisables ;
  * - placeholders et marges pédagogiques pour réserver les cours futurs ;
  * - préparation cours mutualisés / accès croisés via sourceFormation + displayContext ;
+ * - timeline multi-layers V1 : cours, devoirs, examens, lives et marges en pistes séparées ;
  * - aucun calcul progression/checkpoint bloquant dans cette brique.
  */
 
@@ -50,6 +51,16 @@ let courseSourceFilter = 'linked';
 let activeRosterPromotionId = '';
 
 const dom = {};
+
+const PLANNING_STRUCTURAL_TYPES = ['real_course', 'placeholder_course', 'buffer_period', 'revision_period', 'catchup_period'];
+const PLANNING_PARALLEL_TYPES = ['assignment', 'exam', 'evaluation', 'live_session', 'workshop'];
+const PLANNING_LAYERS = [
+  { key: 'courses', label: 'Cours', hint: 'Cours réels et cours futurs qui structurent le parcours.', types: ['real_course', 'placeholder_course'] },
+  { key: 'assignments', label: 'Devoirs / livrables', hint: 'Travaux à rendre en parallèle d’un cours ou d’une période.', types: ['assignment'] },
+  { key: 'assessments', label: 'Examens / évaluations', hint: 'Évaluations, examens et validations placés sur une piste dédiée.', types: ['exam', 'evaluation'] },
+  { key: 'lives', label: 'Lives / ateliers', hint: 'Interventions, ateliers, lives et sessions synchrones.', types: ['live_session', 'workshop'] },
+  { key: 'buffers', label: 'Marges / révisions', hint: 'Marge, révisions et rattrapage qui consomment du temps pédagogique.', types: ['buffer_period', 'revision_period', 'catchup_period'] }
+];
 
 function $(id) {
   return document.getElementById(id);
@@ -369,7 +380,35 @@ function getPlanningTypeLabel(type = 'real_course') {
   if (type === 'buffer_period') return 'Marge';
   if (type === 'revision_period') return 'Révisions';
   if (type === 'catchup_period') return 'Rattrapage';
+  if (type === 'assignment') return 'Devoir';
+  if (type === 'exam') return 'Examen';
+  if (type === 'evaluation') return 'Évaluation';
+  if (type === 'live_session') return 'Live';
+  if (type === 'workshop') return 'Atelier';
   return 'Cours';
+}
+
+function isStructuralPlanningType(type = 'real_course') {
+  return PLANNING_STRUCTURAL_TYPES.includes(type);
+}
+
+function isParallelPlanningType(type = 'real_course') {
+  return PLANNING_PARALLEL_TYPES.includes(type);
+}
+
+function getPlanningLayerKey(type = 'real_course') {
+  const found = PLANNING_LAYERS.find((layer) => layer.types.includes(type));
+  return found?.key || 'courses';
+}
+
+function getPlanningLayer(type = 'real_course') {
+  return PLANNING_LAYERS.find((layer) => layer.key === getPlanningLayerKey(type)) || PLANNING_LAYERS[0];
+}
+
+function getDefaultParallelDurationDays(type = 'assignment') {
+  if (type === 'exam' || type === 'evaluation') return 1;
+  if (type === 'live_session' || type === 'workshop') return 1;
+  return 3;
 }
 
 function toNumber(value, fallback = 0) {
@@ -378,13 +417,16 @@ function toNumber(value, fallback = 0) {
 }
 
 function getDefaultDurationDays(course = {}, item = {}) {
+  const type = getPlanItemType(item);
+  const fallback = isParallelPlanningType(type) ? getDefaultParallelDurationDays(type) : 7;
   return Math.max(1, Math.round(toNumber(
     item.durationDays ||
+    item.estimatedDurationDays ||
     course.estimatedDurationDays ||
     course.estimatedDurationMinDays ||
     course.durationDays ||
-    7,
-    7
+    fallback,
+    fallback
   )));
 }
 
@@ -399,7 +441,7 @@ function normalizePlanItem(item = {}, index = 0) {
   );
   const block = clean(item.blockTitle || getCourseBlockLabel(course), 120);
   const status = clean(
-    item.courseStatus || (isCourse ? getCourseStatusLabel(course) : 'Prévu'),
+    item.courseStatus || item.status || (isCourse ? getCourseStatusLabel(course) : getPlanningTypeLabel(type)),
     80
   );
   const durationDays = getDefaultDurationDays(course, item);
@@ -411,9 +453,12 @@ function normalizePlanItem(item = {}, index = 0) {
     isSharedCourse: item.isSharedCourse === true,
     grantedByCurriculum: item.grantedByCurriculum === true
   };
+  const relatedCourseId = clean(item.relatedCourseId || '', 160);
+  const relatedCourse = relatedCourseId ? getCourseById(relatedCourseId) : null;
 
   return {
     type,
+    layer: item.layer || getPlanningLayerKey(type),
     itemId,
     courseId: isCourse ? (item.courseId || '') : '',
     courseTitle: title,
@@ -421,13 +466,18 @@ function normalizePlanItem(item = {}, index = 0) {
     courseStatus: status,
     blockTitle: block,
     durationDays,
-    recommendedStartAt: item.recommendedStartAt || item.plannedStartAt || '',
-    recommendedEndAt: item.recommendedEndAt || item.plannedEndAt || '',
-    deadlineAt: item.deadlineAt || '',
+    recommendedStartAt: item.recommendedStartAt || item.plannedStartAt || item.startAt || '',
+    recommendedEndAt: item.recommendedEndAt || item.plannedEndAt || item.endAt || '',
+    deadlineAt: item.deadlineAt || item.dueAt || '',
+    dueAt: item.dueAt || item.deadlineAt || '',
+    relatedCourseId,
+    relatedCourseTitle: clean(item.relatedCourseTitle || (relatedCourse ? getCourseTitle(relatedCourse) : ''), 180),
     priorityLevel: ['normal', 'high', 'urgent'].includes(item.priorityLevel) ? item.priorityLevel : 'normal',
     isRequired: item.isRequired !== false,
     isLocked: item.isLocked === true,
     isBlockingPrerequisite: item.isBlockingPrerequisite === true,
+    isBlocking: item.isBlocking === true || item.isBlockingPrerequisite === true,
+    isQualiopiEvidence: item.isQualiopiEvidence === true,
     sourceFormationId: courseContext.sourceFormationId || '',
     sourceFormationName: courseContext.sourceFormationName || '',
     displayContextFormationId: courseContext.displayContextFormationId || '',
@@ -435,7 +485,7 @@ function normalizePlanItem(item = {}, index = 0) {
     isSharedCourse: courseContext.isSharedCourse === true,
     grantedByCurriculum: courseContext.grantedByCurriculum === true,
     order: Number.isFinite(Number(item.order)) ? Number(item.order) : index,
-    source: item.source || (isCourse ? 'promotion-course-plan-overlay-v1' : 'promotion-planning-placeholder-v1')
+    source: item.source || (isCourse ? 'promotion-course-plan-overlay-v1' : isParallelPlanningType(type) ? 'promotion-planning-layer-v1' : 'promotion-planning-placeholder-v1')
   };
 }
 
@@ -466,7 +516,9 @@ function getMatchingCoursesForSelectedFormation() {
 }
 
 function getPlanDurationDays(plan = activeCoursePlan) {
-  return plan.reduce((total, item) => total + Math.max(1, toNumber(item.durationDays, 7)), 0);
+  return plan
+    .filter((item) => isStructuralPlanningType(getPlanItemType(item)))
+    .reduce((total, item) => total + Math.max(1, toNumber(item.durationDays, 7)), 0);
 }
 
 function renderPlanningSummary() {
@@ -565,17 +617,22 @@ function getTemplateItemsForSave(plan = activeCoursePlan) {
     const type = getPlanItemType(item);
     const payload = {
       type,
+      layer: item.layer || getPlanningLayerKey(type),
       order: index,
       courseId: type === 'real_course' ? (item.courseId || '') : '',
       courseTitle: clean(item.courseTitle || item.title || getPlanningTypeLabel(type), 180),
       title: clean(item.title || item.courseTitle || getPlanningTypeLabel(type), 180),
-      courseStatus: clean(item.courseStatus || (type === 'real_course' ? 'Cours' : 'Prévu'), 80),
+      courseStatus: clean(item.courseStatus || (type === 'real_course' ? 'Cours' : getPlanningTypeLabel(type)), 80),
       blockTitle: clean(item.blockTitle || '', 120),
-      durationDays: Math.max(1, toNumber(item.durationDays, 7)),
+      durationDays: Math.max(1, toNumber(item.durationDays, isParallelPlanningType(type) ? getDefaultParallelDurationDays(type) : 7)),
       priorityLevel: ['normal', 'high', 'urgent'].includes(item.priorityLevel) ? item.priorityLevel : 'normal',
       isRequired: item.isRequired !== false,
       isBlockingPrerequisite: item.isBlockingPrerequisite === true,
+      isBlocking: item.isBlocking === true || item.isBlockingPrerequisite === true,
+      isQualiopiEvidence: item.isQualiopiEvidence === true,
       isLocked: false,
+      relatedCourseId: clean(item.relatedCourseId || '', 160),
+      relatedCourseTitle: clean(item.relatedCourseTitle || '', 180),
       sourceFormationId: clean(item.sourceFormationId || '', 160),
       sourceFormationName: clean(item.sourceFormationName || '', 180),
       displayContextFormationId: clean(item.displayContextFormationId || '', 160),
@@ -908,56 +965,90 @@ function renderPlanningAvailableCourses() {
   }).join('');
 }
 
+function getPlanningItemDatesLabel(item = {}) {
+  if (item.recommendedStartAt || item.recommendedEndAt) {
+    return `Auto : ${formatDate(item.recommendedStartAt, 'Début ?')} → ${formatDate(item.recommendedEndAt, 'Fin ?')}`;
+  }
+  if (isParallelPlanningType(getPlanItemType(item))) return 'À placer en parallèle';
+  return 'Dates auto à calculer';
+}
+
+function renderPlanningItemRow(item, index, layerItems = []) {
+  const key = getPlanItemKey(item);
+  const selected = key === selectedPlanningItemKey;
+  const type = getPlanItemType(item);
+  const typeLabel = getPlanningTypeLabel(type);
+  const layer = getPlanningLayer(type);
+  const block = item.blockTitle ? `<span>Bloc : ${escapeHtml(item.blockTitle)}</span>` : '';
+  const related = item.relatedCourseTitle ? `<span>Lié à : ${escapeHtml(item.relatedCourseTitle)}</span>` : '';
+  const title = item.courseTitle || item.title || typeLabel;
+  const sourceBadge = item.isSharedCourse && item.sourceFormationName
+    ? `<span>Source : ${escapeHtml(item.sourceFormationName)}</span>`
+    : '';
+  const contextBadge = item.isSharedCourse && item.displayContextFormationName
+    ? `<span>Contexte : ${escapeHtml(item.displayContextFormationName)}</span>`
+    : '';
+  const laneIndex = layerItems.findIndex((entry) => getPlanItemKey(entry) === key);
+  const canMoveUp = index > 0;
+  const canMoveDown = index < activeCoursePlan.length - 1;
+
+  return `
+    <article class="sbi-planning-timeline-row is-${escapeHtml(type)} is-layer-${escapeHtml(layer.key)} ${selected ? 'is-selected' : ''} ${item.isSharedCourse ? 'is-shared-course' : ''} ${replacePlaceholderItemKey ? 'is-replace-mode' : ''} ${replacePlaceholderItemKey === key ? 'is-replace-source' : ''}" draggable="true" data-plan-row data-plan-key="${escapeHtml(key)}" data-plan-layer="${escapeHtml(layer.key)}">
+      <button type="button" class="sbi-planning-order-badge" data-plan-select="${escapeHtml(key)}">${index + 1}</button>
+      <div class="sbi-planning-timeline-content" data-plan-select="${escapeHtml(key)}">
+        <strong>${escapeHtml(title)}</strong>
+        <small>
+          <span>${escapeHtml(typeLabel)}</span>
+          <span>${escapeHtml(getPlanningItemDatesLabel(item))}</span>
+          <span>${Math.max(1, toNumber(item.durationDays, isParallelPlanningType(type) ? getDefaultParallelDurationDays(type) : 7))} j</span>
+          <span>${escapeHtml(getPriorityLabel(item.priorityLevel))}</span>
+          ${block}
+          ${related}
+          ${sourceBadge}
+          ${contextBadge}
+          ${item.grantedByCurriculum ? '<span>Accès cursus</span>' : ''}
+          ${item.isLocked ? '<span>Dates verrouillées</span>' : ''}
+          ${item.isBlocking || item.isBlockingPrerequisite ? '<span>Bloquant</span>' : ''}
+          ${item.isQualiopiEvidence ? '<span>Preuve Qualiopi</span>' : ''}
+        </small>
+      </div>
+      <div class="sbi-planning-timeline-actions">
+        ${type === 'placeholder_course' ? `<button type="button" data-plan-replace="${escapeHtml(key)}" class="is-replace">Remplacer par...</button>` : ''}
+        <button type="button" data-plan-move="up" data-plan-key="${escapeHtml(key)}" ${!canMoveUp ? 'disabled' : ''}>↑</button>
+        <button type="button" data-plan-move="down" data-plan-key="${escapeHtml(key)}" ${!canMoveDown ? 'disabled' : ''}>↓</button>
+        <button type="button" data-plan-remove="${escapeHtml(key)}" class="is-danger">Retirer</button>
+      </div>
+    </article>
+  `;
+}
+
 function renderPlanningTimeline() {
   if (!dom.planningTimelineList) return;
 
   if (!activeCoursePlan.length) {
-    dom.planningTimelineList.innerHTML = '<div class="sbi-promotions-empty">Ajoutez des cours, cours futurs ou marges pédagogiques pour construire la timeline.</div>';
+    dom.planningTimelineList.innerHTML = '<div class="sbi-promotions-empty">Ajoutez des cours, cours futurs, marges ou événements parallèles pour construire la timeline.</div>';
     return;
   }
 
-  dom.planningTimelineList.innerHTML = activeCoursePlan.map((item, index) => {
-    const key = getPlanItemKey(item);
-    const selected = key === selectedPlanningItemKey;
-    const type = getPlanItemType(item);
-    const typeLabel = getPlanningTypeLabel(type);
-    const block = item.blockTitle ? `<span>Bloc : ${escapeHtml(item.blockTitle)}</span>` : '';
-    const dates = item.recommendedStartAt || item.recommendedEndAt
-      ? `<span>Auto : ${escapeHtml(formatDate(item.recommendedStartAt, 'Début ?'))} → ${escapeHtml(formatDate(item.recommendedEndAt, 'Fin ?'))}</span>`
-      : '<span>Dates auto à calculer</span>';
-    const title = item.courseTitle || item.title || typeLabel;
-    const sourceBadge = item.isSharedCourse && item.sourceFormationName
-      ? `<span>Source : ${escapeHtml(item.sourceFormationName)}</span>`
-      : '';
-    const contextBadge = item.isSharedCourse && item.displayContextFormationName
-      ? `<span>Contexte : ${escapeHtml(item.displayContextFormationName)}</span>`
-      : '';
+  dom.planningTimelineList.innerHTML = PLANNING_LAYERS.map((layer) => {
+    const layerItems = activeCoursePlan.filter((item) => layer.types.includes(getPlanItemType(item)));
+    const rows = layerItems.length
+      ? layerItems.map((item) => renderPlanningItemRow(item, activeCoursePlan.findIndex((entry) => getPlanItemKey(entry) === getPlanItemKey(item)), layerItems)).join('')
+      : `<div class="sbi-planning-layer-empty">Aucun élément sur cette piste.</div>`;
 
     return `
-      <article class="sbi-planning-timeline-row is-${escapeHtml(type)} ${selected ? 'is-selected' : ''} ${item.isSharedCourse ? 'is-shared-course' : ''} ${replacePlaceholderItemKey ? 'is-replace-mode' : ''} ${replacePlaceholderItemKey === key ? 'is-replace-source' : ''}" draggable="true" data-plan-row data-plan-key="${escapeHtml(key)}">
-        <button type="button" class="sbi-planning-order-badge" data-plan-select="${escapeHtml(key)}">${index + 1}</button>
-        <div class="sbi-planning-timeline-content" data-plan-select="${escapeHtml(key)}">
-          <strong>${escapeHtml(title)}</strong>
-          <small>
-            <span>${escapeHtml(typeLabel)}</span>
-            ${dates}
-            <span>${Math.max(1, toNumber(item.durationDays, 7))} j</span>
-            <span>${escapeHtml(getPriorityLabel(item.priorityLevel))}</span>
-            ${block}
-            ${sourceBadge}
-            ${contextBadge}
-            ${item.grantedByCurriculum ? '<span>Accès cursus</span>' : ''}
-            ${item.isLocked ? '<span>Dates verrouillées</span>' : ''}
-            ${item.isBlockingPrerequisite ? '<span>Prérequis bloquant</span>' : ''}
-          </small>
+      <section class="sbi-planning-layer" data-planning-layer="${escapeHtml(layer.key)}">
+        <div class="sbi-planning-layer-head">
+          <div>
+            <strong>${escapeHtml(layer.label)}</strong>
+            <p>${escapeHtml(layer.hint)}</p>
+          </div>
+          <span>${layerItems.length}</span>
         </div>
-        <div class="sbi-planning-timeline-actions">
-          ${type === 'placeholder_course' ? `<button type="button" data-plan-replace="${escapeHtml(key)}" class="is-replace">Remplacer par...</button>` : ''}
-          <button type="button" data-plan-move="up" data-plan-key="${escapeHtml(key)}" ${index === 0 ? 'disabled' : ''}>↑</button>
-          <button type="button" data-plan-move="down" data-plan-key="${escapeHtml(key)}" ${index === activeCoursePlan.length - 1 ? 'disabled' : ''}>↓</button>
-          <button type="button" data-plan-remove="${escapeHtml(key)}" class="is-danger">Retirer</button>
+        <div class="sbi-planning-layer-track">
+          ${rows}
         </div>
-      </article>
+      </section>
     `;
   }).join('');
 }
@@ -974,12 +1065,22 @@ function renderPlanningInspector() {
   const key = getPlanItemKey(item);
   const type = getPlanItemType(item);
   const typeLabel = getPlanningTypeLabel(type);
+  const layer = getPlanningLayer(type);
   const isCourse = type === 'real_course';
+  const isParallel = isParallelPlanningType(type);
+  const isMargin = ['buffer_period', 'revision_period', 'catchup_period'].includes(type);
+  const relatedOptions = activeCoursePlan
+    .filter((entry) => ['real_course', 'placeholder_course'].includes(getPlanItemType(entry)))
+    .map((entry) => {
+      const entryKey = getPlanItemKey(entry);
+      const label = entry.courseTitle || entry.title || getPlanningTypeLabel(getPlanItemType(entry));
+      return `<option value="${escapeHtml(entry.courseId || entryKey)}" ${item.relatedCourseId === (entry.courseId || entryKey) ? 'selected' : ''}>${escapeHtml(label)}</option>`;
+    }).join('');
 
   dom.planningInspector.innerHTML = `
     <div class="sbi-planning-inspector-card" data-inspector-key="${escapeHtml(key)}">
       <h5>${escapeHtml(item.courseTitle || item.title || typeLabel)}</h5>
-      <p>${escapeHtml(isCourse ? (item.blockTitle || 'Aucun bloc assigné') : typeLabel)}</p>
+      <p>${escapeHtml(layer.label)} · ${escapeHtml(isCourse ? (item.blockTitle || 'Aucun bloc assigné') : typeLabel)}</p>
 
       ${isCourse ? `
         <div class="sbi-planning-context-box">
@@ -994,18 +1095,33 @@ function renderPlanningInspector() {
         <input type="text" maxlength="180" data-plan-field="courseTitle" value="${escapeHtml(item.courseTitle || item.title || '')}">
       `}
 
-      ${type === 'buffer_period' || type === 'revision_period' || type === 'catchup_period' ? `
+      ${isMargin ? `
         <label>Type de marge</label>
         <select data-plan-field="type">
           ${['buffer_period', 'revision_period', 'catchup_period'].map((level) => `<option value="${level}" ${type === level ? 'selected' : ''}>${getPlanningTypeLabel(level)}</option>`).join('')}
         </select>
       ` : ''}
 
-      <label>Durée estimée en jours</label>
-      <input type="number" min="1" max="365" data-plan-field="durationDays" value="${escapeHtml(item.durationDays || 7)}">
+      ${isParallel ? `
+        <label>Type d’élément parallèle</label>
+        <select data-plan-field="type">
+          ${['assignment', 'exam', 'evaluation', 'live_session', 'workshop'].map((level) => `<option value="${level}" ${type === level ? 'selected' : ''}>${getPlanningTypeLabel(level)}</option>`).join('')}
+        </select>
+
+        <label>Cours lié</label>
+        <select data-plan-field="relatedCourseId">
+          <option value="">Aucun lien direct</option>
+          ${relatedOptions}
+        </select>
+      ` : ''}
+
+      <label>${isParallel ? 'Durée / fenêtre estimée en jours' : 'Durée estimée en jours'}</label>
+      <input type="number" min="1" max="365" data-plan-field="durationDays" value="${escapeHtml(item.durationDays || (isParallel ? getDefaultParallelDurationDays(type) : 7))}">
 
       <div class="sbi-planning-auto-date-note">
-        Les dates sont calculées automatiquement depuis la date de début de la promotion. Activez le verrouillage seulement pour ajuster manuellement un élément précis.
+        ${isParallel
+          ? 'Cet élément est placé sur sa propre piste. Il se superpose au planning principal et ne décale pas les cours.'
+          : 'Les dates sont calculées automatiquement depuis la date de début de la promotion. Activez le verrouillage seulement pour ajuster manuellement un élément précis.'}
       </div>
 
       <label>Début calculé</label>
@@ -1014,8 +1130,8 @@ function renderPlanningInspector() {
       <label>Fin calculée</label>
       <input type="date" data-plan-field="recommendedEndAt" value="${escapeHtml(item.recommendedEndAt || '')}" ${item.isLocked ? '' : 'disabled'}>
 
-      <label>Deadline calculée</label>
-      <input type="date" data-plan-field="deadlineAt" value="${escapeHtml(item.deadlineAt || '')}" ${item.isLocked ? '' : 'disabled'}>
+      <label>${isParallel ? 'Échéance / date clé' : 'Deadline calculée'}</label>
+      <input type="date" data-plan-field="deadlineAt" value="${escapeHtml(item.deadlineAt || item.dueAt || '')}" ${item.isLocked ? '' : 'disabled'}>
 
       <label>Priorité</label>
       <select data-plan-field="priorityLevel">
@@ -1038,6 +1154,17 @@ function renderPlanningInspector() {
           <span>Prérequis bloquant</span>
         </label>
       ` : ''}
+
+      ${isParallel ? `
+        <label class="sbi-planning-checkline">
+          <input type="checkbox" data-plan-field="isBlocking" ${item.isBlocking ? 'checked' : ''}>
+          <span>Événement bloquant</span>
+        </label>
+        <label class="sbi-planning-checkline">
+          <input type="checkbox" data-plan-field="isQualiopiEvidence" ${item.isQualiopiEvidence ? 'checked' : ''}>
+          <span>Preuve Qualiopi potentielle</span>
+        </label>
+      ` : ''}
     </div>
   `;
 }
@@ -1051,8 +1178,8 @@ function renderPlanningOverlay() {
   if (dom.planningFooterStatus) {
     const duration = getPlanDurationDays(activeCoursePlan);
     dom.planningFooterStatus.textContent = activeCoursePlan.length
-      ? `${activeCoursePlan.length} élément${activeCoursePlan.length > 1 ? 's' : ''} · ${duration} jour${duration > 1 ? 's' : ''} estimé${duration > 1 ? 's' : ''}. Les dates sont calculées automatiquement avec la promotion.`
-      : 'Ajoutez des cours, cours futurs ou marges à la timeline. Les dates sont calculées automatiquement avec la promotion.';
+      ? `${activeCoursePlan.length} élément${activeCoursePlan.length > 1 ? 's' : ''} · ${duration} jour${duration > 1 ? 's' : ''} structurel${duration > 1 ? 's' : ''}. Les pistes parallèles ne décalent pas les cours.`
+      : 'Ajoutez des cours, cours futurs, marges ou événements parallèles. Les dates sont calculées automatiquement avec la promotion.';
   }
 }
 
@@ -1092,6 +1219,41 @@ function addBufferToActivePlan(type = 'buffer_period') {
     isBlockingPrerequisite: false,
     order: activeCoursePlan.length,
     source: 'promotion-planning-buffer-v1'
+  }, activeCoursePlan.length);
+  activeCoursePlan = [...activeCoursePlan, item].map((entry, index) => ({ ...entry, order: index }));
+  selectedPlanningItemKey = getPlanItemKey(item);
+  replacePlaceholderItemKey = '';
+  if (!maybeAutoRecalculatePlanningDates()) renderPlanningOverlay();
+}
+
+function addParallelItemToActivePlan(type = 'assignment') {
+  const safeType = PLANNING_PARALLEL_TYPES.includes(type) ? type : 'assignment';
+  const title = safeType === 'assignment'
+    ? 'Nouveau devoir'
+    : safeType === 'exam'
+      ? 'Nouvel examen'
+      : safeType === 'evaluation'
+        ? 'Nouvelle évaluation'
+        : safeType === 'live_session'
+          ? 'Nouveau live'
+          : 'Nouvel atelier';
+  const firstRelated = activeCoursePlan.find((item) => ['real_course', 'placeholder_course'].includes(getPlanItemType(item))) || null;
+  const item = normalizePlanItem({
+    type: safeType,
+    itemId: makePlanningItemId(safeType),
+    courseTitle: title,
+    title,
+    courseStatus: getPlanningTypeLabel(safeType),
+    durationDays: getDefaultParallelDurationDays(safeType),
+    relatedCourseId: firstRelated ? (firstRelated.courseId || getPlanItemKey(firstRelated)) : '',
+    relatedCourseTitle: firstRelated ? (firstRelated.courseTitle || firstRelated.title || '') : '',
+    priorityLevel: safeType === 'exam' || safeType === 'evaluation' ? 'high' : 'normal',
+    isRequired: safeType !== 'live_session' && safeType !== 'workshop',
+    isBlocking: safeType === 'exam' || safeType === 'evaluation',
+    isQualiopiEvidence: safeType === 'exam' || safeType === 'evaluation',
+    isLocked: false,
+    order: activeCoursePlan.length,
+    source: 'promotion-planning-multilayer-v1'
   }, activeCoursePlan.length);
   activeCoursePlan = [...activeCoursePlan, item].map((entry, index) => ({ ...entry, order: index }));
   selectedPlanningItemKey = getPlanItemKey(item);
@@ -1210,16 +1372,21 @@ function updateSelectedPlanItem(field = '', value) {
   activeCoursePlan = activeCoursePlan.map((item) => {
     if (getPlanItemKey(item) !== selectedPlanningItemKey) return item;
     const next = { ...item };
-    if (['isRequired', 'isLocked', 'isBlockingPrerequisite'].includes(field)) {
+    if (['isRequired', 'isLocked', 'isBlockingPrerequisite', 'isBlocking', 'isQualiopiEvidence'].includes(field)) {
       next[field] = Boolean(value);
     } else if (field === 'durationDays') {
       next.durationDays = Math.max(1, Math.round(toNumber(value, item.durationDays || 7)));
     } else if (field === 'courseTitle') {
       next.courseTitle = clean(value, 180) || getPlanningTypeLabel(getPlanItemType(next));
       next.title = next.courseTitle;
+    } else if (field === 'relatedCourseId') {
+      next.relatedCourseId = clean(value, 160);
+      const related = activeCoursePlan.find((entry) => (entry.courseId || getPlanItemKey(entry)) === next.relatedCourseId) || null;
+      next.relatedCourseTitle = related ? (related.courseTitle || related.title || '') : '';
     } else if (field === 'type') {
       const previousType = getPlanItemType(next);
-      next.type = ['buffer_period', 'revision_period', 'catchup_period', 'placeholder_course', 'real_course'].includes(value) ? value : previousType;
+      next.type = [...PLANNING_STRUCTURAL_TYPES, ...PLANNING_PARALLEL_TYPES].includes(value) ? value : previousType;
+      next.layer = getPlanningLayerKey(next.type);
       if (!isCoursePlanItem(next) && (!next.courseTitle || next.courseTitle === getPlanningTypeLabel(previousType))) {
         next.courseTitle = getPlanningTypeLabel(next.type);
         next.title = next.courseTitle;
@@ -1233,7 +1400,7 @@ function updateSelectedPlanItem(field = '', value) {
     renderPlanningOverlay();
     return;
   }
-  if (['durationDays', 'isLocked'].includes(field)) {
+  if (['durationDays', 'isLocked', 'relatedCourseId', 'type'].includes(field)) {
     if (!maybeAutoRecalculatePlanningDates()) renderPlanningOverlay();
     return;
   }
@@ -1257,9 +1424,17 @@ function recalculatePlanningDates(options = {}) {
   }
 
   let cursor = baseDate;
-  activeCoursePlan = activeCoursePlan.map((item) => {
+  const structuralDateMap = new Map();
+  const structural = activeCoursePlan
+    .filter((item) => isStructuralPlanningType(getPlanItemType(item)))
+    .sort((a, b) => toNumber(a.order, 0) - toNumber(b.order, 0));
+
+  const recalculatedStructural = structural.map((item) => {
+    const key = getPlanItemKey(item);
     if (item.isLocked && item.recommendedStartAt && item.recommendedEndAt) {
       cursor = addDaysToDateString(item.recommendedEndAt, 1) || cursor;
+      structuralDateMap.set(key, item);
+      if (item.courseId) structuralDateMap.set(item.courseId, item);
       return item;
     }
 
@@ -1268,11 +1443,40 @@ function recalculatePlanningDates(options = {}) {
     const end = addDaysToDateString(start, duration - 1) || start;
     cursor = addDaysToDateString(end, 1) || cursor;
 
-    return {
+    const next = {
       ...item,
       recommendedStartAt: start,
       recommendedEndAt: end,
-      deadlineAt: item.deadlineAt || end
+      deadlineAt: item.deadlineAt || end,
+      dueAt: item.dueAt || item.deadlineAt || end
+    };
+    structuralDateMap.set(key, next);
+    if (next.courseId) structuralDateMap.set(next.courseId, next);
+    return next;
+  });
+
+  const structuralByKey = new Map(recalculatedStructural.map((item) => [getPlanItemKey(item), item]));
+
+  activeCoursePlan = activeCoursePlan.map((item) => {
+    const key = getPlanItemKey(item);
+    if (structuralByKey.has(key)) return structuralByKey.get(key);
+
+    if (!isParallelPlanningType(getPlanItemType(item))) return item;
+    if (item.isLocked && item.recommendedStartAt && item.recommendedEndAt) return item;
+
+    const related = item.relatedCourseId ? structuralDateMap.get(item.relatedCourseId) : null;
+    const start = related?.recommendedStartAt || baseDate;
+    const duration = Math.max(1, toNumber(item.durationDays, getDefaultParallelDurationDays(getPlanItemType(item))));
+    const end = addDaysToDateString(start, duration - 1) || start;
+    const deadline = related?.recommendedEndAt || end;
+
+    return {
+      ...item,
+      relatedCourseTitle: related ? (related.courseTitle || related.title || item.relatedCourseTitle || '') : item.relatedCourseTitle || '',
+      recommendedStartAt: start,
+      recommendedEndAt: end,
+      deadlineAt: item.deadlineAt || item.dueAt || deadline,
+      dueAt: item.dueAt || item.deadlineAt || deadline
     };
   });
 
@@ -1338,7 +1542,7 @@ function buildPromotionPayload() {
     curriculumTitle,
     curriculumTemplateId: activeCurriculumTemplateId || '',
     coursePlan,
-    coursePlanVersion: 'promotion-course-plan-overlay-v2-placeholders',
+    coursePlanVersion: 'promotion-course-plan-multilayer-v1',
     coursePlanCount: coursePlan.length,
     updatedAt: serverTimestamp(),
     updatedBy: currentAdmin?.uid || '',
@@ -1794,6 +1998,9 @@ function bindEvents() {
   dom.planningAutoDates?.addEventListener('click', recalculatePlanningDates);
   document.getElementById('promotion-planning-add-placeholder-btn')?.addEventListener('click', addPlaceholderToActivePlan);
   document.getElementById('promotion-planning-add-buffer-btn')?.addEventListener('click', () => addBufferToActivePlan('buffer_period'));
+  document.getElementById('promotion-planning-add-assignment-btn')?.addEventListener('click', () => addParallelItemToActivePlan('assignment'));
+  document.getElementById('promotion-planning-add-exam-btn')?.addEventListener('click', () => addParallelItemToActivePlan('exam'));
+  document.getElementById('promotion-planning-add-live-btn')?.addEventListener('click', () => addParallelItemToActivePlan('live_session'));
   dom.planningAvailableCourses?.addEventListener('click', (event) => {
     const replaceButton = event.target.closest?.('[data-planning-replace-course]');
     if (replaceButton) {
