@@ -214,6 +214,59 @@ function getAuthorName(authorId, courseData = null) {
 }
 
 
+function normalizeLmsFormationIds(targetFormationIds = [], selectedFormationRefs = []) {
+    const ids = Array.isArray(targetFormationIds) ? targetFormationIds : [];
+    const refs = Array.isArray(selectedFormationRefs) ? selectedFormationRefs : [];
+
+    return Array.from(new Set([...ids, ...refs]
+        .map(value => typeof value === 'string' ? value.trim() : '')
+        .filter(Boolean)));
+}
+
+function getLmsStatusFromCourseState(statutValidation, isActive) {
+    if (statutValidation === 'pending') return 'pending_review';
+    if (isActive === true || statutValidation === 'approved') return 'published';
+    return 'draft';
+}
+
+function countChapterResources(chapter) {
+    if (!chapter || typeof chapter !== 'object') return 0;
+
+    let total = 0;
+
+    if (chapter.mediaImage || chapter.mediaImagePath || chapter.imageUrl) total += 1;
+    if (chapter.mediaVideo || chapter.mediaVideoPath || chapter.videoUrl) total += 1;
+    if (Array.isArray(chapter.resources)) total += chapter.resources.filter(Boolean).length;
+    if (Array.isArray(chapter.documents)) total += chapter.documents.filter(Boolean).length;
+
+    return total;
+}
+
+function buildLmsCourseFields({ chapters = [], selectedFormationRefs = [], targetFormationIds = [], statutValidation = 'draft', isActive = false } = {}) {
+    const safeChapters = Array.isArray(chapters) ? chapters : [];
+    const lessonCount = safeChapters.filter(chapter => chapter?.type !== 'quiz').length;
+    const quizCount = safeChapters.filter(chapter => chapter?.type === 'quiz' || Array.isArray(chapter?.questions)).length;
+    const resourceCount = safeChapters.reduce((total, chapter) => total + countChapterResources(chapter), 0);
+
+    return {
+        schemaVersion: 'lms-course-v1',
+        lmsStatus: getLmsStatusFromCourseState(statutValidation, isActive),
+        formationIds: normalizeLmsFormationIds(targetFormationIds, selectedFormationRefs),
+        lessonCount,
+        quizCount,
+        resourceCount,
+        lessonType: safeChapters.some(chapter => chapter?.type === 'quiz') ? 'mixed' : 'text',
+        xpEnabled: true,
+        xpRules: [],
+        rewardRuleIds: [],
+        checkpointIds: [],
+        recommendedStartAt: null,
+        recommendedEndAt: null,
+        priorityLevel: 'normal'
+    };
+}
+
+
 
 let activeAdminCoursesCleanup = null;
 
@@ -1049,6 +1102,14 @@ async function saveCourseToFirebase(actionType = 'admin_save') {
         const targetFormationTitles = courseTargeting.targetFormationTitles;
         const targetStudentsForCourse = courseTargeting.targetStudents;
 
+        const lmsCourseFields = buildLmsCourseFields({
+            chapters: currentChapters,
+            selectedFormationRefs: selectedPills,
+            targetFormationIds,
+            statutValidation: finalStatut,
+            isActive
+        });
+
         const courseData = {
             titre: title,
             bloc: bloc,
@@ -1059,7 +1120,8 @@ async function saveCourseToFirebase(actionType = 'admin_save') {
             targetFormationTitles,
             targetStudents: targetStudentsForCourse,
             auteurId: finalAuteurId,
-            chapitres: currentChapters
+            chapitres: currentChapters,
+            ...lmsCourseFields
         };
 
         validateCourseDocumentSize(courseData);
@@ -1203,15 +1265,29 @@ window.duplicateCourse = async (id) => {
             if (docSnap.exists()) {
                 const data = docSnap.data();
 
+                const copiedChapters = Array.isArray(data.chapitres) ? data.chapitres : [];
+                const copiedFormations = Array.isArray(data.formations) ? data.formations : [];
+                const copiedTargetFormationIds = Array.isArray(data.targetFormationIds) ? data.targetFormationIds : [];
+
                 const copyData = {
                     titre: data.titre + " (Copie)",
                     bloc: data.bloc || "",
                     actif: false,
                     statutValidation: "draft",
-                    formations: data.formations,
+                    formations: copiedFormations,
+                    targetFormationIds: copiedTargetFormationIds,
+                    targetFormationTitles: Array.isArray(data.targetFormationTitles) ? data.targetFormationTitles : [],
+                    targetStudents: [],
                     auteurId: currentUid,
-                    chapitres: data.chapitres,
-                    dateCreation: serverTimestamp()
+                    chapitres: copiedChapters,
+                    dateCreation: serverTimestamp(),
+                    ...buildLmsCourseFields({
+                        chapters: copiedChapters,
+                        selectedFormationRefs: copiedFormations,
+                        targetFormationIds: copiedTargetFormationIds,
+                        statutValidation: 'draft',
+                        isActive: false
+                    })
                 };
 
                 validateCourseDocumentSize(copyData);

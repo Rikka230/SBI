@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.77',
+  version: '8.0P.167.78',
   branch: 'main',
-  channel: 'P2I.4 AUDIT REMOTE SEARCH',
-  stage: 'ADMIN AUDIT GLOBAL SEARCH',
+  channel: 'P2I.5-A LMS FIELDS BASELINE',
+  stage: 'LMS NON-DESTRUCTIVE COURSE FIELDS',
   updatedAt: '2026-05-18',
-  label: 'SBI 8.0P.167.77 - ADMIN AUDIT REMOTE SEARCH'
+  label: 'SBI 8.0P.167.78 - P2I.5-A LMS FIELDS BASELINE'
 };
 
 export function getSbiVersionLabel() {
