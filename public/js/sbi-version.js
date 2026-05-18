@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.94-GPT2.2',
+  version: '8.0P.167.95-GPT2.1',
   branch: 'main',
-  channel: 'P2I.5-E-GPT2.2 STUDENT NOTICE ROUTE TRIGGER',
-  stage: 'STUDENT CONSTRUCTION NOTICE ON STUDENT ROUTES',
+  channel: 'P2I-GPT2 STUDENT DOCUMENT VISIBILITY ADMIN',
+  stage: 'ADMIN CONTROL FOR STUDENT VISIBLE DOCUMENTS',
   updatedAt: '2026-05-18',
-  label: 'SBI 8.0P.167.94-GPT2.2 - STUDENT NOTICE ROUTE TRIGGER'
+  label: 'SBI 8.0P.167.95-GPT2.1 - STUDENT DOCUMENT VISIBILITY ADMIN'
 };
 
 export function getSbiVersionLabel() {

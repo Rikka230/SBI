@@ -3002,6 +3002,91 @@ exports.adminUpdateUserAccount = onCall({
     };
 });
 
+
+exports.adminSetStudentDocumentVisibility = onCall({
+    region: "europe-west1",
+    timeoutSeconds: 30,
+    memory: "256MiB"
+}, async (request) => {
+    const db = admin.firestore();
+    const caller = await requireAdminCaller(request, db);
+    const documentId = cleanString(request.data?.documentId, 180);
+    const visible = request.data?.visible === true;
+
+    if (!documentId) {
+        throw new HttpsError("invalid-argument", "Identifiant document manquant.");
+    }
+
+    const documentRef = db.collection("studentDocuments").doc(documentId);
+    const documentSnap = await documentRef.get();
+
+    if (!documentSnap.exists) {
+        throw new HttpsError("not-found", "Document introuvable.");
+    }
+
+    const documentData = documentSnap.data() || {};
+    const studentUid = cleanString(documentData.studentUid || "", 180);
+    const status = cleanString(documentData.status || "", 60).toLowerCase();
+    const validationStatus = cleanString(documentData.validationStatus || "", 60).toLowerCase();
+
+    if (!studentUid) {
+        throw new HttpsError("failed-precondition", "Document sans élève associé.");
+    }
+
+    if (visible && (["archived", "upload_failed", "rejected"].includes(status) || validationStatus === "rejected")) {
+        throw new HttpsError("failed-precondition", "Ce document ne peut pas être rendu visible à l’élève dans son état actuel.");
+    }
+
+    const previousVisibility = cleanString(documentData.visibility || "admin_only", 80) || "admin_only";
+    const nextVisibility = visible ? "student_visible" : "admin_only";
+
+    if (previousVisibility === nextVisibility) {
+        return {
+            success: true,
+            visibility: nextVisibility,
+            message: visible ? "Document déjà visible élève." : "Document déjà masqué élève."
+        };
+    }
+
+    const updatePayload = {
+        visibility: nextVisibility,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedBy: caller.uid,
+        updatedByEmail: caller.email
+    };
+
+    if (visible) {
+        updatePayload.studentVisibleAt = admin.firestore.FieldValue.serverTimestamp();
+        updatePayload.studentVisibleBy = caller.uid;
+        updatePayload.studentVisibleByEmail = caller.email;
+    } else {
+        updatePayload.studentHiddenAt = admin.firestore.FieldValue.serverTimestamp();
+        updatePayload.studentHiddenBy = caller.uid;
+        updatePayload.studentHiddenByEmail = caller.email;
+    }
+
+    await documentRef.set(updatePayload, { merge: true });
+
+    await safeWriteAccountAuditLog(db, {
+        type: visible ? "student_document.visibility_enabled" : "student_document.visibility_disabled",
+        actorUid: caller.uid,
+        actorEmail: caller.email,
+        targetUid: studentUid,
+        targetEmail: "",
+        targetRole: "student",
+        documentId,
+        documentTitle: documentData.title || documentData.fileName || "",
+        previousVisibility,
+        nextVisibility
+    });
+
+    return {
+        success: true,
+        visibility: nextVisibility,
+        message: visible ? "Document rendu accessible à l’élève." : "Document masqué à l’élève."
+    };
+});
+
 exports.deleteUserAccount = onCall({
     region: "europe-west1",
     secrets: [BREVO_API_KEY],

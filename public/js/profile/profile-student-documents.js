@@ -418,6 +418,7 @@ function renderDocumentCard(item = {}) {
           ${item.validationStatus === 'validated' ? '<em class="is-validated">Validé</em>' : ''}
           ${item.validationStatus === 'rejected' || item.status === 'rejected' ? '<em class="is-rejected">À refaire</em>' : ''}
           ${item.compressed === true ? '<em class="is-compressed">Compressé</em>' : ''}
+          ${item.visibility === 'student_visible' ? '<em class="is-student-visible">Visible élève</em>' : '<em class="is-admin-only">Admin uniquement</em>'}
         </div>
         <p>${escapeHTML(item.fileName || 'Fichier')}</p>
         <small>
@@ -428,6 +429,7 @@ function renderDocumentCard(item = {}) {
       <div class="sbi-student-document-card__actions">
         <button type="button" data-doc-open="${safeId}">Ouvrir</button>
         <button type="button" data-doc-download="${safeId}">Télécharger</button>
+        ${!isArchived ? `<button type="button" data-doc-visibility="${safeId}">${item.visibility === 'student_visible' ? 'Masquer élève' : 'Rendre visible élève'}</button>` : ''}
         ${!isArchived ? `<button type="button" data-doc-archive="${safeId}">Archiver</button>` : ''}
         <button type="button" data-doc-delete="${safeId}">Supprimer</button>
       </div>
@@ -924,6 +926,44 @@ async function deleteStudentDocument(panel, db, item, button) {
   }
 }
 
+
+async function setStudentDocumentVisibility(panel, db, item, button) {
+  if (!item?.id) return;
+  const makeVisible = item.visibility !== 'student_visible';
+
+  const confirmed = await askSbiDocumentConfirmation({
+    title: makeVisible ? 'Rendre ce document accessible à l’élève' : 'Masquer ce document à l’élève',
+    message: makeVisible
+      ? '<p>Ce document pourra être vu, ouvert et téléchargé par l’élève depuis son espace.</p><p>Vérifie qu’il ne contient pas d’information réservée à l’administration.</p>'
+      : '<p>Ce document restera dans le coffre admin, mais ne sera plus accessible à l’élève.</p>',
+    confirmText: makeVisible ? 'Rendre visible élève' : 'Masquer élève',
+    danger: false
+  });
+  if (!confirmed) return;
+
+  const previous = button?.textContent || (makeVisible ? 'Rendre visible élève' : 'Masquer élève');
+  if (button) {
+    button.disabled = true;
+    button.textContent = makeVisible ? 'Activation...' : 'Masquage...';
+  }
+
+  try {
+    const callable = getAdminSetStudentDocumentVisibilityCallable();
+    await callable({ documentId: item.id, visible: makeVisible });
+    setStatus(panel, makeVisible ? 'Document rendu accessible à l’élève.' : 'Document masqué à l’élève.', 'success');
+    const nextDocuments = await loadStudentDocuments(db, panel.dataset.studentUid || '');
+    setPanelDocuments(panel, nextDocuments);
+    renderDocumentsList(panel, nextDocuments, db);
+  } catch (error) {
+    console.warn('[SBI Documents] Modification visibilité impossible :', error);
+    setStatus(panel, getCallableUiMessage(error, 'Modification visibilité impossible.'), 'error');
+    if (button) {
+      button.disabled = false;
+      button.textContent = previous;
+    }
+  }
+}
+
 function renderDocumentsList(panel, documents = [], db = null) {
   const list = panel.querySelector('#prof-student-documents-list');
   const showArchived = panel.querySelector('#prof-student-documents-show-archived')?.checked === true;
@@ -951,6 +991,15 @@ function renderDocumentsList(panel, documents = [], db = null) {
       const documentId = button.dataset.docDownload || '';
       const item = getPanelDocuments(panel).find((entry) => entry.id === documentId);
       await downloadStudentDocument(panel, item, button);
+    });
+  });
+
+  list.querySelectorAll('[data-doc-visibility]').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const documentId = button.dataset.docVisibility || '';
+      const item = getPanelDocuments(panel).find((entry) => entry.id === documentId);
+      if (!item) return;
+      await setStudentDocumentVisibility(panel, db, item, button);
     });
   });
 
@@ -1165,6 +1214,17 @@ function getAdminDeleteStudentDocumentCallable() {
     );
   }
   return window.__SBI_ADMIN_DELETE_STUDENT_DOCUMENT__;
+}
+
+
+function getAdminSetStudentDocumentVisibilityCallable() {
+  if (!window.__SBI_ADMIN_SET_STUDENT_DOCUMENT_VISIBILITY__) {
+    window.__SBI_ADMIN_SET_STUDENT_DOCUMENT_VISIBILITY__ = httpsCallable(
+      getFunctionsInstance(),
+      'adminSetStudentDocumentVisibility'
+    );
+  }
+  return window.__SBI_ADMIN_SET_STUDENT_DOCUMENT_VISIBILITY__;
 }
 
 function getStudentDisplayName(data = {}, uid = '') {

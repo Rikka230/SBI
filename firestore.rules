@@ -622,8 +622,10 @@ service cloud.firestore {
     match /studentDocuments/{documentId} {
       allow get, list: if isAdmin()
         || (isActiveUser()
-          && resource.data.keys().hasAny(['studentUid'])
-          && resource.data.studentUid == request.auth.uid);
+          && resource.data.keys().hasAll(['studentUid', 'visibility', 'status'])
+          && resource.data.studentUid == request.auth.uid
+          && resource.data.visibility == 'student_visible'
+          && resource.data.status in ['active', 'submitted', 'validated']);
 
       allow create: if isAdmin()
         || (isActiveUser()

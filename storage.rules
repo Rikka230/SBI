@@ -36,8 +36,21 @@ service firebase.storage {
         );
     }
 
-    function canReadStudentDocument(studentId) {
-      return isAdmin() || (isActiveUser() && request.auth.uid == studentId);
+    function studentDocumentDocPath(documentId) {
+      return /databases/(default)/documents/studentDocuments/$(documentId);
+    }
+
+    function studentDocumentVisibleToCurrentStudent(studentId, documentId) {
+      return isActiveUser()
+        && request.auth.uid == studentId
+        && firestore.exists(studentDocumentDocPath(documentId))
+        && firestore.get(studentDocumentDocPath(documentId)).data.studentUid == studentId
+        && firestore.get(studentDocumentDocPath(documentId)).data.visibility == 'student_visible'
+        && firestore.get(studentDocumentDocPath(documentId)).data.status in ['active', 'submitted', 'validated'];
+    }
+
+    function canReadStudentDocument(studentId, documentId) {
+      return isAdmin() || studentDocumentVisibleToCurrentStudent(studentId, documentId);
     }
 
     function canManageStudentDocument(studentId) {
@@ -327,11 +340,11 @@ service firebase.storage {
        Chemin utilisé par SBI 8.0P.167.68+ :
        student-documents/{studentId}/{documentId}/{fileName}
 
-       V1 : lecture admin-only. Upload autorisé pour l’élève concerné
+       Lecture : admin, ou élève concerné seulement si le document est marqué student_visible.
        uniquement dans le cadre d'une demande de documents active côté app.
        ============================================================ */
     match /student-documents/{studentId}/{documentId}/{fileName} {
-      allow read: if canReadStudentDocument(studentId);
+      allow read: if canReadStudentDocument(studentId, documentId);
 
       allow create: if validStudentDocumentUpload(studentId, documentId);
 
