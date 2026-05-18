@@ -1,12 +1,13 @@
 /**
- * SBI 8.0P.167.90 / P2I.5-B-FIX
- * Promotions / cohortes admin + source formations privée + suppression promotions.
+ * SBI 8.0P.167.91 / P2I.5-C
+ * Promotions / cohortes admin + overlay planning pédagogique V1.
  *
  * Périmètre volontairement borné :
  * - CRUD léger des promotions côté admin ;
  * - lecture des élèves par promotion sélectionnée ;
  * - affectation élève -> promotion déplacée dans le profil élève ;
- * - mapping non destructif Promotion -> Cursus -> cours prioritaires ;
+ * - planning pédagogique non destructif Promotion -> Cursus -> cours ;
+ * - overlay V1 : cours disponibles / timeline / réglages ;
  * - aucun calcul progression/checkpoint bloquant dans cette brique.
  */
 
@@ -36,6 +37,9 @@ let promotions = [];
 let rosterStudents = [];
 let formations = [];
 let courses = [];
+let activeCoursePlan = [];
+let selectedPlanningItemKey = '';
+let draggedPlanningItemKey = '';
 let activeRosterPromotionId = '';
 
 const dom = {};
@@ -144,7 +148,17 @@ function cacheDom() {
   dom.status = $('promotion-status');
   dom.curriculumTitle = $('promotion-curriculum-title');
   dom.coursePlanStatus = $('promotion-course-plan-status');
-  dom.coursePlanList = $('promotion-course-plan-list');
+  dom.planningSummaryTitle = $('promotion-planning-summary-title');
+  dom.planningSummaryMeta = $('promotion-planning-summary-meta');
+  dom.planningOpen = $('promotion-planning-open-btn');
+  dom.planningOverlay = $('promotion-planning-overlay');
+  dom.planningSubtitle = $('promotion-planning-subtitle');
+  dom.planningAvailableCourses = $('promotion-planning-available-courses');
+  dom.planningTimelineList = $('promotion-planning-timeline-list');
+  dom.planningInspector = $('promotion-planning-inspector');
+  dom.planningAutoDates = $('promotion-planning-auto-dates-btn');
+  dom.planningApply = $('promotion-planning-apply-btn');
+  dom.planningFooterStatus = $('promotion-planning-footer-status');
   dom.submit = $('promotion-submit-btn');
   dom.reset = $('promotion-reset-btn');
   dom.formStatus = $('promotion-form-status');
@@ -213,96 +227,399 @@ function findPlanItem(coursePlan = [], courseId = '') {
   return coursePlan.find((item) => item?.courseId === courseId) || null;
 }
 
+function getCourseById(courseId = '') {
+  return courses.find((course) => course.id === courseId) || null;
+}
+
+function getPlanItemKey(item = {}) {
+  return item.courseId || item.itemId || '';
+}
+
+function toNumber(value, fallback = 0) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
+}
+
+function getDefaultDurationDays(course = {}, item = {}) {
+  return Math.max(1, Math.round(toNumber(
+    item.durationDays ||
+    course.estimatedDurationDays ||
+    course.estimatedDurationMinDays ||
+    course.durationDays ||
+    7,
+    7
+  )));
+}
+
+function normalizePlanItem(item = {}, index = 0) {
+  const course = getCourseById(item.courseId || '') || {};
+  const title = clean(item.courseTitle || getCourseTitle(course), 180);
+  const block = clean(item.blockTitle || getCourseBlockLabel(course), 120);
+  const status = clean(item.courseStatus || getCourseStatusLabel(course), 80);
+  const durationDays = getDefaultDurationDays(course, item);
+
+  return {
+    courseId: item.courseId || '',
+    courseTitle: title,
+    courseStatus: status,
+    blockTitle: block,
+    durationDays,
+    recommendedStartAt: item.recommendedStartAt || '',
+    recommendedEndAt: item.recommendedEndAt || '',
+    deadlineAt: item.deadlineAt || '',
+    priorityLevel: ['normal', 'high', 'urgent'].includes(item.priorityLevel) ? item.priorityLevel : 'normal',
+    isRequired: item.isRequired !== false,
+    isLocked: item.isLocked === true,
+    isBlockingPrerequisite: item.isBlockingPrerequisite === true,
+    order: Number.isFinite(Number(item.order)) ? Number(item.order) : index,
+    source: item.source || 'promotion-course-plan-overlay-v1'
+  };
+}
+
+function normalizeCoursePlan(coursePlan = []) {
+  if (!Array.isArray(coursePlan)) return [];
+  return coursePlan
+    .map((item, index) => normalizePlanItem(item, index))
+    .filter((item) => item.courseId)
+    .sort((a, b) => toNumber(a.order, 0) - toNumber(b.order, 0))
+    .map((item, index) => ({ ...item, order: index }));
+}
+
 function getActiveCoursePlanFromDom() {
-  if (!dom.coursePlanList) return [];
-  return Array.from(dom.coursePlanList.querySelectorAll('[data-course-plan-row]'))
-    .filter((row) => row.querySelector('[data-course-plan-check]')?.checked)
-    .map((row, index) => ({
-      courseId: row.dataset.courseId || '',
-      courseTitle: clean(row.dataset.courseTitle || '', 180),
-      courseStatus: clean(row.dataset.courseStatus || '', 80),
-      blockTitle: clean(row.dataset.blockTitle || '', 120),
-      recommendedStartAt: row.querySelector('[data-course-plan-start]')?.value || '',
-      recommendedEndAt: row.querySelector('[data-course-plan-end]')?.value || '',
-      deadlineAt: row.querySelector('[data-course-plan-deadline]')?.value || '',
-      priorityLevel: row.querySelector('[data-course-plan-priority]')?.value || 'normal',
-      isBlockingPrerequisite: false,
-      order: index,
-      source: 'promotion-course-plan-v1'
-    }))
-    .filter((item) => item.courseId);
+  return normalizeCoursePlan(activeCoursePlan);
 }
 
-function setCoursePlanInputsDisabled(row, disabled) {
-  row.querySelectorAll('[data-course-plan-start], [data-course-plan-end], [data-course-plan-deadline], [data-course-plan-priority]')
-    .forEach((input) => { input.disabled = disabled; });
-  row.classList.toggle('is-selected', !disabled);
+function getMatchingCoursesForSelectedFormation() {
+  const formation = getSelectedFormation();
+  if (!formation.formationId) return [];
+  return courses
+    .filter((course) => courseMatchesFormation(course, formation))
+    .sort((a, b) => getCourseTitle(a).localeCompare(getCourseTitle(b), 'fr', { sensitivity: 'base' }));
 }
 
-function renderCoursePlanOptions(coursePlan = getActiveCoursePlanFromDom()) {
-  if (!dom.coursePlanList || !dom.coursePlanStatus) return;
+function getPlanDurationDays(plan = activeCoursePlan) {
+  return plan.reduce((total, item) => total + Math.max(1, toNumber(item.durationDays, 7)), 0);
+}
 
+function renderPlanningSummary() {
+  if (!dom.planningSummaryTitle || !dom.planningSummaryMeta) return;
+
+  const formation = getSelectedFormation();
+  const planCount = activeCoursePlan.length;
+  const durationDays = getPlanDurationDays(activeCoursePlan);
+  const curriculumTitle = clean(dom.curriculumTitle?.value || '', 140);
+
+  if (!formation.formationId) {
+    dom.planningSummaryTitle.textContent = 'Aucune formation liée';
+    dom.planningSummaryMeta.textContent = 'Sélectionnez une formation privée pour préparer le planning pédagogique.';
+    return;
+  }
+
+  if (!planCount) {
+    dom.planningSummaryTitle.textContent = curriculumTitle || 'Planning non défini';
+    dom.planningSummaryMeta.textContent = `${formation.formationName || 'Formation liée'} · aucun cours placé dans la timeline.`;
+    return;
+  }
+
+  dom.planningSummaryTitle.textContent = curriculumTitle || `Planning ${formation.formationName || ''}`.trim();
+  dom.planningSummaryMeta.textContent = `${planCount} cours · ${durationDays} jour${durationDays > 1 ? 's' : ''} estimé${durationDays > 1 ? 's' : ''} · accès libre conservé.`;
+}
+
+function setActiveCoursePlan(coursePlan = []) {
+  activeCoursePlan = normalizeCoursePlan(coursePlan);
+  if (selectedPlanningItemKey && !activeCoursePlan.some((item) => getPlanItemKey(item) === selectedPlanningItemKey)) {
+    selectedPlanningItemKey = activeCoursePlan[0] ? getPlanItemKey(activeCoursePlan[0]) : '';
+  }
+  renderPlanningSummary();
+  renderPlanningOverlay();
+}
+
+function renderCoursePlanOptions(coursePlan = activeCoursePlan) {
+  setActiveCoursePlan(Array.isArray(coursePlan) ? coursePlan : activeCoursePlan);
+}
+
+function isPlanningOverlayOpen() {
+  return Boolean(dom.planningOverlay?.classList.contains('is-open'));
+}
+
+function openPlanningOverlay() {
+  if (!dom.planningOverlay) return;
+  const formation = getSelectedFormation();
+  if (!formation.formationId && dom.formStatus) {
+    setStatus(dom.formStatus, 'Sélectionnez d’abord une formation liée.', 'error');
+  }
+  if (dom.planningSubtitle) {
+    dom.planningSubtitle.textContent = formation.formationId
+      ? `${formation.formationName || 'Formation'} · organisez les cours de cette promotion.`
+      : 'Sélectionnez une formation liée pour charger les cours disponibles.';
+  }
+  dom.planningOverlay.classList.add('is-open');
+  dom.planningOverlay.setAttribute('aria-hidden', 'false');
+  document.body.classList.add('sbi-planning-open');
+  renderPlanningOverlay();
+}
+
+function closePlanningOverlay() {
+  if (!dom.planningOverlay) return;
+  dom.planningOverlay.classList.remove('is-open');
+  dom.planningOverlay.setAttribute('aria-hidden', 'true');
+  document.body.classList.remove('sbi-planning-open');
+  renderPlanningSummary();
+}
+
+function getPriorityLabel(priority = 'normal') {
+  if (priority === 'urgent') return 'Urgente';
+  if (priority === 'high') return 'Haute';
+  return 'Normale';
+}
+
+function renderPlanningAvailableCourses() {
+  if (!dom.planningAvailableCourses || !dom.coursePlanStatus) return;
   const formation = getSelectedFormation();
   if (!formation.formationId) {
     dom.coursePlanStatus.textContent = 'Choisissez une formation liée pour charger les cours.';
-    dom.coursePlanList.innerHTML = '';
+    dom.planningAvailableCourses.innerHTML = '<div class="sbi-promotions-empty">Aucune formation liée.</div>';
     return;
   }
 
-  const matchingCourses = courses
-    .filter((course) => courseMatchesFormation(course, formation))
-    .sort((a, b) => getCourseTitle(a).localeCompare(getCourseTitle(b), 'fr', { sensitivity: 'base' }));
+  const placedIds = new Set(activeCoursePlan.map((item) => item.courseId));
+  const matchingCourses = getMatchingCoursesForSelectedFormation();
+  const available = matchingCourses.filter((course) => !placedIds.has(course.id));
+
+  dom.coursePlanStatus.textContent = `${matchingCourses.length} cours disponible${matchingCourses.length > 1 ? 's' : ''} · ${activeCoursePlan.length} placé${activeCoursePlan.length > 1 ? 's' : ''}.`;
 
   if (!matchingCourses.length) {
-    dom.coursePlanStatus.textContent = 'Aucun cours rattaché à cette formation pour l’instant.';
-    dom.coursePlanList.innerHTML = '';
+    dom.planningAvailableCourses.innerHTML = '<div class="sbi-promotions-empty">Aucun cours rattaché à cette formation pour l’instant.</div>';
     return;
   }
 
-  dom.coursePlanStatus.textContent = `${matchingCourses.length} cours disponible${matchingCourses.length > 1 ? 's' : ''} pour cette formation.`;
-  dom.coursePlanList.innerHTML = matchingCourses.map((course) => {
-    const saved = findPlanItem(coursePlan, course.id);
-    const checked = Boolean(saved);
+  if (!available.length) {
+    dom.planningAvailableCourses.innerHTML = '<div class="sbi-promotions-empty">Tous les cours de cette formation sont déjà dans la timeline.</div>';
+    return;
+  }
+
+  dom.planningAvailableCourses.innerHTML = available.map((course) => {
     const title = getCourseTitle(course);
     const block = getCourseBlockLabel(course);
     const status = getCourseStatusLabel(course);
-    const priority = saved?.priorityLevel || course.priorityLevel || 'normal';
+    const duration = getDefaultDurationDays(course);
+    return `
+      <article class="sbi-planning-course-card" data-course-id="${escapeHtml(course.id)}">
+        <div>
+          <strong>${escapeHtml(title)}</strong>
+          <small>${escapeHtml(status)}${block ? ` · Bloc : ${escapeHtml(block)}` : ''} · ${duration} j estimés</small>
+        </div>
+        <button type="button" data-planning-add-course="${escapeHtml(course.id)}">Ajouter</button>
+      </article>
+    `;
+  }).join('');
+}
+
+function renderPlanningTimeline() {
+  if (!dom.planningTimelineList) return;
+
+  if (!activeCoursePlan.length) {
+    dom.planningTimelineList.innerHTML = '<div class="sbi-promotions-empty">Ajoutez des cours depuis la colonne de gauche pour construire la timeline.</div>';
+    return;
+  }
+
+  dom.planningTimelineList.innerHTML = activeCoursePlan.map((item, index) => {
+    const key = getPlanItemKey(item);
+    const selected = key === selectedPlanningItemKey;
+    const block = item.blockTitle ? `<span>Bloc : ${escapeHtml(item.blockTitle)}</span>` : '';
+    const dates = item.recommendedStartAt || item.recommendedEndAt
+      ? `<span>${escapeHtml(formatDate(item.recommendedStartAt, 'Début ?'))} → ${escapeHtml(formatDate(item.recommendedEndAt, 'Fin ?'))}</span>`
+      : '<span>Dates à calculer</span>';
 
     return `
-      <article class="sbi-course-plan-row ${checked ? 'is-selected' : ''}" data-course-plan-row data-course-id="${escapeHtml(course.id)}" data-course-title="${escapeHtml(title)}" data-course-status="${escapeHtml(status)}" data-block-title="${escapeHtml(block)}">
-        <label class="sbi-course-plan-main">
-          <input type="checkbox" data-course-plan-check ${checked ? 'checked' : ''}>
-          <span>
-            <strong>${escapeHtml(title)}</strong>
-            <small>
-              <span>${escapeHtml(status)}</span>
-              ${block ? `<span>Bloc : ${escapeHtml(block)}</span>` : ''}
-            </small>
-          </span>
-        </label>
-        <div class="sbi-course-plan-fields">
-          <div>
-            <label>Début conseillé</label>
-            <input type="date" data-course-plan-start value="${escapeHtml(saved?.recommendedStartAt || '')}" ${checked ? '' : 'disabled'}>
-          </div>
-          <div>
-            <label>Fin conseillée</label>
-            <input type="date" data-course-plan-end value="${escapeHtml(saved?.recommendedEndAt || '')}" ${checked ? '' : 'disabled'}>
-          </div>
-          <div>
-            <label>Deadline</label>
-            <input type="date" data-course-plan-deadline value="${escapeHtml(saved?.deadlineAt || '')}" ${checked ? '' : 'disabled'}>
-          </div>
-          <div>
-            <label>Priorité</label>
-            <select data-course-plan-priority ${checked ? '' : 'disabled'}>
-              ${['normal', 'high', 'urgent'].map((level) => `<option value="${level}" ${priority === level ? 'selected' : ''}>${level === 'normal' ? 'Normal' : level === 'high' ? 'Haute' : 'Urgente'}</option>`).join('')}
-            </select>
-          </div>
+      <article class="sbi-planning-timeline-row ${selected ? 'is-selected' : ''}" draggable="true" data-plan-row data-plan-key="${escapeHtml(key)}">
+        <button type="button" class="sbi-planning-order-badge" data-plan-select="${escapeHtml(key)}">${index + 1}</button>
+        <div class="sbi-planning-timeline-content" data-plan-select="${escapeHtml(key)}">
+          <strong>${escapeHtml(item.courseTitle || 'Cours sans titre')}</strong>
+          <small>
+            ${dates}
+            <span>${Math.max(1, toNumber(item.durationDays, 7))} j</span>
+            <span>${escapeHtml(getPriorityLabel(item.priorityLevel))}</span>
+            ${block}
+            ${item.isLocked ? '<span>Dates verrouillées</span>' : ''}
+          </small>
+        </div>
+        <div class="sbi-planning-timeline-actions">
+          <button type="button" data-plan-move="up" data-plan-key="${escapeHtml(key)}" ${index === 0 ? 'disabled' : ''}>↑</button>
+          <button type="button" data-plan-move="down" data-plan-key="${escapeHtml(key)}" ${index === activeCoursePlan.length - 1 ? 'disabled' : ''}>↓</button>
+          <button type="button" data-plan-remove="${escapeHtml(key)}" class="is-danger">Retirer</button>
         </div>
       </article>
     `;
   }).join('');
+}
+
+function renderPlanningInspector() {
+  if (!dom.planningInspector) return;
+  const item = activeCoursePlan.find((entry) => getPlanItemKey(entry) === selectedPlanningItemKey) || null;
+
+  if (!item) {
+    dom.planningInspector.innerHTML = '<div class="sbi-promotions-empty">Sélectionnez un cours dans la timeline.</div>';
+    return;
+  }
+
+  dom.planningInspector.innerHTML = `
+    <div class="sbi-planning-inspector-card" data-inspector-key="${escapeHtml(getPlanItemKey(item))}">
+      <h5>${escapeHtml(item.courseTitle || 'Cours sans titre')}</h5>
+      <p>${escapeHtml(item.blockTitle || 'Aucun bloc assigné')}</p>
+
+      <label>Durée estimée en jours</label>
+      <input type="number" min="1" max="365" data-plan-field="durationDays" value="${escapeHtml(item.durationDays || 7)}">
+
+      <label>Début conseillé</label>
+      <input type="date" data-plan-field="recommendedStartAt" value="${escapeHtml(item.recommendedStartAt || '')}">
+
+      <label>Fin conseillée</label>
+      <input type="date" data-plan-field="recommendedEndAt" value="${escapeHtml(item.recommendedEndAt || '')}">
+
+      <label>Deadline</label>
+      <input type="date" data-plan-field="deadlineAt" value="${escapeHtml(item.deadlineAt || '')}">
+
+      <label>Priorité</label>
+      <select data-plan-field="priorityLevel">
+        ${['normal', 'high', 'urgent'].map((level) => `<option value="${level}" ${item.priorityLevel === level ? 'selected' : ''}>${getPriorityLabel(level)}</option>`).join('')}
+      </select>
+
+      <label class="sbi-planning-checkline">
+        <input type="checkbox" data-plan-field="isRequired" ${item.isRequired !== false ? 'checked' : ''}>
+        <span>Cours obligatoire dans le planning</span>
+      </label>
+
+      <label class="sbi-planning-checkline">
+        <input type="checkbox" data-plan-field="isLocked" ${item.isLocked ? 'checked' : ''}>
+        <span>Verrouiller les dates au recalcul</span>
+      </label>
+
+      <label class="sbi-planning-checkline">
+        <input type="checkbox" data-plan-field="isBlockingPrerequisite" ${item.isBlockingPrerequisite ? 'checked' : ''}>
+        <span>Prérequis bloquant</span>
+      </label>
+    </div>
+  `;
+}
+
+function renderPlanningOverlay() {
+  renderPlanningSummary();
+  if (!isPlanningOverlayOpen()) return;
+  renderPlanningAvailableCourses();
+  renderPlanningTimeline();
+  renderPlanningInspector();
+  if (dom.planningFooterStatus) {
+    const duration = getPlanDurationDays(activeCoursePlan);
+    dom.planningFooterStatus.textContent = activeCoursePlan.length
+      ? `${activeCoursePlan.length} cours · ${duration} jour${duration > 1 ? 's' : ''} estimé${duration > 1 ? 's' : ''}. Le planning sera sauvegardé avec la promotion.`
+      : 'Ajoutez des cours à la timeline. Le planning sera sauvegardé avec la promotion.';
+  }
+}
+
+function addCourseToActivePlan(courseId = '') {
+  const course = getCourseById(courseId);
+  if (!course || activeCoursePlan.some((item) => item.courseId === courseId)) return;
+  const item = normalizePlanItem({
+    courseId,
+    courseTitle: getCourseTitle(course),
+    courseStatus: getCourseStatusLabel(course),
+    blockTitle: getCourseBlockLabel(course),
+    durationDays: getDefaultDurationDays(course),
+    priorityLevel: course.priorityLevel || 'normal',
+    order: activeCoursePlan.length,
+    source: 'promotion-course-plan-overlay-v1'
+  }, activeCoursePlan.length);
+  activeCoursePlan = [...activeCoursePlan, item].map((entry, index) => ({ ...entry, order: index }));
+  selectedPlanningItemKey = getPlanItemKey(item);
+  renderPlanningOverlay();
+}
+
+function removeCourseFromActivePlan(key = '') {
+  activeCoursePlan = activeCoursePlan.filter((item) => getPlanItemKey(item) !== key)
+    .map((item, index) => ({ ...item, order: index }));
+  if (selectedPlanningItemKey === key) selectedPlanningItemKey = activeCoursePlan[0] ? getPlanItemKey(activeCoursePlan[0]) : '';
+  renderPlanningOverlay();
+}
+
+function movePlanItem(key = '', direction = 'up') {
+  const index = activeCoursePlan.findIndex((item) => getPlanItemKey(item) === key);
+  if (index < 0) return;
+  const target = direction === 'down' ? index + 1 : index - 1;
+  if (target < 0 || target >= activeCoursePlan.length) return;
+  const next = [...activeCoursePlan];
+  [next[index], next[target]] = [next[target], next[index]];
+  activeCoursePlan = next.map((item, itemIndex) => ({ ...item, order: itemIndex }));
+  selectedPlanningItemKey = key;
+  renderPlanningOverlay();
+}
+
+function movePlanItemTo(key = '', targetKey = '') {
+  if (!key || !targetKey || key === targetKey) return;
+  const from = activeCoursePlan.findIndex((item) => getPlanItemKey(item) === key);
+  const to = activeCoursePlan.findIndex((item) => getPlanItemKey(item) === targetKey);
+  if (from < 0 || to < 0) return;
+  const next = [...activeCoursePlan];
+  const [item] = next.splice(from, 1);
+  next.splice(to, 0, item);
+  activeCoursePlan = next.map((entry, index) => ({ ...entry, order: index }));
+  selectedPlanningItemKey = key;
+  renderPlanningOverlay();
+}
+
+function updateSelectedPlanItem(field = '', value) {
+  if (!selectedPlanningItemKey || !field) return;
+  activeCoursePlan = activeCoursePlan.map((item) => {
+    if (getPlanItemKey(item) !== selectedPlanningItemKey) return item;
+    const next = { ...item };
+    if (['isRequired', 'isLocked', 'isBlockingPrerequisite'].includes(field)) {
+      next[field] = Boolean(value);
+    } else if (field === 'durationDays') {
+      next.durationDays = Math.max(1, Math.round(toNumber(value, item.durationDays || 7)));
+    } else {
+      next[field] = clean(value, 180);
+    }
+    return next;
+  });
+  renderPlanningOverlay();
+}
+
+function addDaysToDateString(dateString = '', days = 0) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateString)) return '';
+  const date = new Date(`${dateString}T12:00:00`);
+  if (Number.isNaN(date.getTime())) return '';
+  date.setDate(date.getDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+function recalculatePlanningDates() {
+  const baseDate = dom.startDate?.value || '';
+  if (!baseDate) {
+    if (dom.planningFooterStatus) dom.planningFooterStatus.textContent = 'Ajoutez une date de début à la promotion avant le recalcul.';
+    return;
+  }
+
+  let cursor = baseDate;
+  activeCoursePlan = activeCoursePlan.map((item) => {
+    if (item.isLocked && item.recommendedStartAt && item.recommendedEndAt) {
+      cursor = addDaysToDateString(item.recommendedEndAt, 1) || cursor;
+      return item;
+    }
+
+    const duration = Math.max(1, toNumber(item.durationDays, 7));
+    const start = cursor;
+    const end = addDaysToDateString(start, duration - 1) || start;
+    cursor = addDaysToDateString(end, 1) || cursor;
+
+    return {
+      ...item,
+      recommendedStartAt: start,
+      recommendedEndAt: end,
+      deadlineAt: item.deadlineAt || end
+    };
+  });
+
+  renderPlanningOverlay();
 }
 
 function resetForm() {
@@ -314,7 +631,8 @@ function resetForm() {
   dom.endDate.value = '';
   dom.status.value = 'active';
   if (dom.curriculumTitle) dom.curriculumTitle.value = '';
-  renderCoursePlanOptions([]);
+  selectedPlanningItemKey = '';
+  setActiveCoursePlan([]);
   if (dom.formTitle) dom.formTitle.textContent = 'Créer une promotion';
   if (dom.submit) dom.submit.textContent = 'Créer la promotion';
   setStatus(dom.formStatus, '');
@@ -329,7 +647,8 @@ function fillForm(promotion) {
   dom.endDate.value = promotion.endDate || '';
   dom.status.value = promotion.status || 'active';
   if (dom.curriculumTitle) dom.curriculumTitle.value = promotion.curriculumTitle || '';
-  renderCoursePlanOptions(Array.isArray(promotion.coursePlan) ? promotion.coursePlan : []);
+  selectedPlanningItemKey = '';
+  setActiveCoursePlan(Array.isArray(promotion.coursePlan) ? promotion.coursePlan : []);
   if (dom.formTitle) dom.formTitle.textContent = 'Modifier la promotion';
   if (dom.submit) dom.submit.textContent = 'Sauvegarder';
   setStatus(dom.formStatus, 'Mode édition actif.');
@@ -356,7 +675,7 @@ function buildPromotionPayload() {
     curriculumId: slugify(curriculumTitle || name),
     curriculumTitle,
     coursePlan,
-    coursePlanVersion: 'promotion-course-plan-v1',
+    coursePlanVersion: 'promotion-course-plan-overlay-v1',
     coursePlanCount: coursePlan.length,
     updatedAt: serverTimestamp(),
     updatedBy: currentAdmin?.uid || '',
@@ -754,13 +1073,67 @@ function bindEvents() {
   dom.rosterRefresh?.addEventListener('click', () => loadPromotionStudents(dom.rosterSelect?.value || activeRosterPromotionId));
   dom.rosterSelect?.addEventListener('change', () => loadPromotionStudents(dom.rosterSelect.value));
   dom.rosterSearch?.addEventListener('input', renderRosterStudents);
-  dom.formation?.addEventListener('change', () => renderCoursePlanOptions([]));
-  dom.coursePlanList?.addEventListener('change', (event) => {
-    const row = event.target.closest?.('[data-course-plan-row]');
-    if (!row) return;
-    if (event.target.matches?.('[data-course-plan-check]')) {
-      setCoursePlanInputsDisabled(row, !event.target.checked);
+  dom.formation?.addEventListener('change', () => {
+    selectedPlanningItemKey = '';
+    setActiveCoursePlan([]);
+  });
+  dom.planningOpen?.addEventListener('click', openPlanningOverlay);
+  dom.planningApply?.addEventListener('click', closePlanningOverlay);
+  dom.planningOverlay?.addEventListener('click', (event) => {
+    if (event.target.closest?.('[data-planning-close]')) closePlanningOverlay();
+  });
+  dom.planningAutoDates?.addEventListener('click', recalculatePlanningDates);
+  dom.planningAvailableCourses?.addEventListener('click', (event) => {
+    const button = event.target.closest?.('[data-planning-add-course]');
+    if (!button) return;
+    addCourseToActivePlan(button.dataset.planningAddCourse || '');
+  });
+  dom.planningTimelineList?.addEventListener('click', (event) => {
+    const select = event.target.closest?.('[data-plan-select]');
+    const move = event.target.closest?.('[data-plan-move]');
+    const remove = event.target.closest?.('[data-plan-remove]');
+
+    if (remove) {
+      removeCourseFromActivePlan(remove.dataset.planRemove || '');
+      return;
     }
+
+    if (move) {
+      movePlanItem(move.dataset.planKey || '', move.dataset.planMove || 'up');
+      return;
+    }
+
+    if (select) {
+      selectedPlanningItemKey = select.dataset.planSelect || '';
+      renderPlanningOverlay();
+    }
+  });
+  dom.planningTimelineList?.addEventListener('dragstart', (event) => {
+    const row = event.target.closest?.('[data-plan-row]');
+    if (!row) return;
+    draggedPlanningItemKey = row.dataset.planKey || '';
+    row.classList.add('is-dragging');
+  });
+  dom.planningTimelineList?.addEventListener('dragend', () => {
+    draggedPlanningItemKey = '';
+    dom.planningTimelineList?.querySelectorAll('.is-dragging').forEach((row) => row.classList.remove('is-dragging'));
+  });
+  dom.planningTimelineList?.addEventListener('dragover', (event) => {
+    if (!draggedPlanningItemKey) return;
+    event.preventDefault();
+  });
+  dom.planningTimelineList?.addEventListener('drop', (event) => {
+    if (!draggedPlanningItemKey) return;
+    const row = event.target.closest?.('[data-plan-row]');
+    if (!row) return;
+    event.preventDefault();
+    movePlanItemTo(draggedPlanningItemKey, row.dataset.planKey || '');
+  });
+  dom.planningInspector?.addEventListener('change', (event) => {
+    const field = event.target?.dataset?.planField || '';
+    if (!field) return;
+    const value = event.target.type === 'checkbox' ? event.target.checked : event.target.value;
+    updateSelectedPlanItem(field, value);
   });
 
   dom.list?.addEventListener('click', (event) => {

@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="css/admin-layout.css">
     <link rel="stylesheet" href="css/admin.css?v=8.0P.167.51">
     <link rel="stylesheet" href="css/admin-notifications.css">
-    <link rel="stylesheet" href="css/admin-promotions.css?v=8.0P.167.90">
+    <link rel="stylesheet" href="css/admin-promotions.css?v=8.0P.167.91">
     <script src="js/components.js?v=8.0P.167.64"></script>
     <link rel="stylesheet" href="css/admin-surface-unified.css?v=8.0P.167.52">
 </head>
@@ -86,17 +86,19 @@
 
                         <div class="sbi-promotions-curriculum-box">
                             <div class="sbi-promotions-section-title">
-                                <span>Cursus & cours prioritaires</span>
-                                <small>P2I.5-B</small>
+                                <span>Planning pédagogique de la promotion</span>
+                                <small>P2I.5-C</small>
                             </div>
 
-                            <label for="promotion-curriculum-title">Cursus lié</label>
-                            <input id="promotion-curriculum-title" type="text" maxlength="140" placeholder="Ex : Animateur E-Sport">
+                            <p class="sbi-promotions-help">Construisez l’ordre conseillé des cours pour cette promotion. Cette première version prépare la timeline pédagogique sans bloquer l’accès libre aux contenus.</p>
 
-                            <p class="sbi-promotions-help">Les cours sont chargés depuis la formation privée définie dans <strong>Catégories & Accès</strong>, pas depuis le catalogue public. Cette zone prépare le planning conseillé sans bloquer l’accès libre aux contenus.</p>
-
-                            <div id="promotion-course-plan-status" class="sbi-promotions-plan-status">Choisissez une formation liée pour charger les cours.</div>
-                            <div id="promotion-course-plan-list" class="sbi-promotions-course-plan-list"></div>
+                            <div class="sbi-promotions-planning-summary">
+                                <div>
+                                    <strong id="promotion-planning-summary-title">Aucun planning défini</strong>
+                                    <p id="promotion-planning-summary-meta">Choisissez une formation liée puis ouvrez le planning.</p>
+                                </div>
+                                <button type="button" id="promotion-planning-open-btn" class="sbi-promotions-ghost-btn is-small">Ouvrir le planning pédagogique</button>
+                            </div>
                         </div>
 
                         <button id="promotion-submit-btn" type="submit" class="sbi-promotions-primary-btn">Créer la promotion</button>
@@ -144,6 +146,73 @@
                         <div class="sbi-promotions-empty">Sélectionnez une promotion pour afficher ses élèves.</div>
                     </div>
                 </div>
+
+                <div id="promotion-planning-overlay" class="sbi-planning-overlay" aria-hidden="true">
+                    <div class="sbi-planning-backdrop" data-planning-close></div>
+                    <section class="sbi-planning-panel" role="dialog" aria-modal="true" aria-labelledby="promotion-planning-title">
+                        <header class="sbi-planning-header">
+                            <div>
+                                <p class="sbi-kicker">Timeline pédagogique</p>
+                                <h3 id="promotion-planning-title">Planning de la promotion</h3>
+                                <p id="promotion-planning-subtitle">Sélectionnez les cours de la formation, ordonnez-les, puis préparez les dates conseillées.</p>
+                            </div>
+                            <button type="button" class="sbi-promotions-ghost-btn is-small" data-planning-close>Fermer</button>
+                        </header>
+
+                        <div class="sbi-planning-toolbar">
+                            <div>
+                                <label for="promotion-curriculum-title">Cursus lié</label>
+                                <input id="promotion-curriculum-title" type="text" maxlength="140" placeholder="Ex : Animateur E-Sport">
+                            </div>
+                            <div>
+                                <label>Calcul rapide</label>
+                                <button type="button" id="promotion-planning-auto-dates-btn" class="sbi-promotions-ghost-btn">Recalculer depuis la date de début</button>
+                            </div>
+                            <div>
+                                <label>État</label>
+                                <p id="promotion-course-plan-status" class="sbi-promotions-plan-status">Choisissez une formation liée pour charger les cours.</p>
+                            </div>
+                        </div>
+
+                        <div class="sbi-planning-grid">
+                            <aside class="sbi-planning-column">
+                                <div class="sbi-planning-column-head">
+                                    <h4>Cours disponibles</h4>
+                                    <p>Depuis la formation privée liée.</p>
+                                </div>
+                                <div id="promotion-planning-available-courses" class="sbi-planning-list">
+                                    <div class="sbi-promotions-empty">Choisissez une formation liée.</div>
+                                </div>
+                            </aside>
+
+                            <main class="sbi-planning-column is-timeline">
+                                <div class="sbi-planning-column-head">
+                                    <h4>Timeline cours</h4>
+                                    <p>Glissez ou utilisez les flèches pour ordonner. Les layers devoirs/examens arrivent ensuite.</p>
+                                </div>
+                                <div id="promotion-planning-timeline-list" class="sbi-planning-timeline">
+                                    <div class="sbi-promotions-empty">Ajoutez des cours à la timeline.</div>
+                                </div>
+                            </main>
+
+                            <aside class="sbi-planning-column">
+                                <div class="sbi-planning-column-head">
+                                    <h4>Réglages</h4>
+                                    <p>Dates, durée et priorité du cours sélectionné.</p>
+                                </div>
+                                <div id="promotion-planning-inspector" class="sbi-planning-inspector">
+                                    <div class="sbi-promotions-empty">Sélectionnez un cours dans la timeline.</div>
+                                </div>
+                            </aside>
+                        </div>
+
+                        <footer class="sbi-planning-footer">
+                            <p id="promotion-planning-footer-status">Le planning sera sauvegardé avec la promotion.</p>
+                            <button type="button" id="promotion-planning-apply-btn" class="sbi-promotions-primary-btn">Appliquer au formulaire</button>
+                        </footer>
+                    </section>
+                </div>
+
             </section>
         </div>
     </main>
@@ -155,7 +224,7 @@
 <script type="module" src="js/admin-ui.js?v=8.0P.167.88"></script>
 <script type="module" src="js/tracker.js?v=8.0P.167.44"></script>
 <script type="module" src="js/admin-notifications.js"></script>
-<script type="module" src="js/admin-promotions.js?v=8.0P.167.90"></script>
+<script type="module" src="js/admin-promotions.js?v=8.0P.167.91"></script>
 
 <script>
     document.addEventListener('DOMContentLoaded', () => {

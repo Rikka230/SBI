@@ -536,3 +536,352 @@
 .sbi-promotions-course-plan-list::-webkit-scrollbar-corner {
   background: transparent;
 }
+
+/* SBI 8.0P.167.91 - P2I.5-C Promotion planning overlay V1 */
+body.sbi-planning-open {
+  overflow: hidden;
+}
+
+.sbi-promotions-planning-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.9rem;
+  align-items: center;
+  margin-top: 0.85rem;
+  padding: 0.85rem;
+  border: 1px solid rgba(255,255,255,0.09);
+  border-radius: 14px;
+  background: rgba(3, 7, 18, 0.46);
+}
+
+.sbi-promotions-planning-summary strong {
+  display: block;
+  color: #fff;
+  font-size: 0.92rem;
+}
+
+.sbi-promotions-planning-summary p {
+  margin: 0.25rem 0 0 !important;
+  font-size: 0.78rem;
+}
+
+.sbi-planning-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 12000;
+  display: none;
+}
+
+.sbi-planning-overlay.is-open {
+  display: block;
+}
+
+.sbi-planning-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(3, 7, 18, 0.74);
+  backdrop-filter: blur(12px);
+}
+
+.sbi-planning-panel {
+  position: absolute;
+  inset: clamp(12px, 3vh, 28px) clamp(12px, 3vw, 38px);
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  min-height: 0;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at top left, rgba(42,87,255,0.18), transparent 42%),
+    linear-gradient(180deg, rgba(8, 12, 24, 0.98), rgba(3, 7, 18, 0.98));
+  box-shadow: 0 34px 120px rgba(0,0,0,0.52);
+  overflow: hidden;
+}
+
+.sbi-planning-header,
+.sbi-planning-toolbar,
+.sbi-planning-footer {
+  padding: 1rem 1.15rem;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.sbi-planning-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.sbi-planning-header h3 {
+  margin: 0;
+  color: #fff;
+}
+
+.sbi-planning-header p {
+  margin: 0.35rem 0 0;
+  color: var(--text-muted, #9ca3af);
+}
+
+.sbi-planning-toolbar {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.9fr) auto minmax(260px, 1fr);
+  gap: 0.85rem;
+  align-items: end;
+}
+
+.sbi-planning-toolbar label,
+.sbi-planning-inspector label {
+  display: block;
+  margin: 0 0 0.32rem;
+  color: var(--text-muted, #9ca3af);
+  font-size: 0.68rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.sbi-planning-toolbar input,
+.sbi-planning-inspector input,
+.sbi-planning-inspector select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.7rem 0.78rem;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 10px;
+  background: rgba(3, 7, 18, 0.86);
+  color: #fff;
+  outline: none;
+}
+
+.sbi-planning-grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.85fr) minmax(360px, 1.45fr) minmax(260px, 0.85fr);
+  gap: 0;
+  min-height: 0;
+}
+
+.sbi-planning-column {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  border-right: 1px solid rgba(255,255,255,0.08);
+  padding: 1rem;
+}
+
+.sbi-planning-column:last-child {
+  border-right: 0;
+}
+
+.sbi-planning-column-head {
+  flex: 0 0 auto;
+  margin-bottom: 0.85rem;
+}
+
+.sbi-planning-column-head h4 {
+  margin: 0;
+  color: #fff;
+  font-size: 0.95rem;
+}
+
+.sbi-planning-column-head p {
+  margin: 0.25rem 0 0;
+  color: var(--text-muted, #9ca3af);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.sbi-planning-list,
+.sbi-planning-timeline,
+.sbi-planning-inspector {
+  display: grid;
+  gap: 0.7rem;
+  overflow-y: auto;
+  min-height: 0;
+  padding-right: 0.35rem;
+  scrollbar-color: rgba(42, 87, 255, 0.48) rgba(255,255,255,0.04);
+  scrollbar-width: thin;
+}
+
+.sbi-planning-course-card,
+.sbi-planning-timeline-row,
+.sbi-planning-inspector-card {
+  border: 1px solid rgba(255,255,255,0.09);
+  border-radius: 16px;
+  background: rgba(255,255,255,0.045);
+}
+
+.sbi-planning-course-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.7rem;
+  align-items: center;
+  padding: 0.8rem;
+}
+
+.sbi-planning-course-card strong,
+.sbi-planning-timeline-content strong {
+  display: block;
+  color: #fff;
+  font-size: 0.86rem;
+}
+
+.sbi-planning-course-card small,
+.sbi-planning-timeline-content small {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.3rem;
+  color: var(--text-muted, #9ca3af);
+  font-size: 0.7rem;
+}
+
+.sbi-planning-course-card button,
+.sbi-planning-timeline-actions button,
+.sbi-planning-order-badge {
+  border: 1px solid rgba(42,87,255,0.42);
+  border-radius: 999px;
+  background: rgba(42,87,255,0.14);
+  color: #dbe5ff;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.sbi-planning-course-card button {
+  padding: 0.48rem 0.7rem;
+}
+
+.sbi-planning-timeline-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.85rem;
+  cursor: grab;
+}
+
+.sbi-planning-timeline-row.is-selected {
+  border-color: rgba(42,87,255,0.62);
+  background: rgba(42,87,255,0.12);
+  box-shadow: 0 0 0 3px rgba(42,87,255,0.10);
+}
+
+.sbi-planning-timeline-row.is-dragging {
+  opacity: 0.55;
+}
+
+.sbi-planning-order-badge {
+  display: inline-grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+}
+
+.sbi-planning-timeline-actions {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.sbi-planning-timeline-actions button {
+  padding: 0.38rem 0.56rem;
+  font-size: 0.72rem;
+}
+
+.sbi-planning-timeline-actions button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.sbi-planning-timeline-actions button.is-danger {
+  border-color: rgba(255,74,74,0.35);
+  background: rgba(255,74,74,0.09);
+  color: #ffd0d0;
+}
+
+.sbi-planning-inspector-card {
+  padding: 0.9rem;
+}
+
+.sbi-planning-inspector-card h5 {
+  margin: 0;
+  color: #fff;
+  font-size: 0.95rem;
+}
+
+.sbi-planning-inspector-card p {
+  margin: 0.25rem 0 0.85rem;
+  color: var(--text-muted, #9ca3af);
+  font-size: 0.78rem;
+}
+
+.sbi-planning-inspector-card label:not(.sbi-planning-checkline) {
+  margin-top: 0.75rem;
+}
+
+.sbi-planning-checkline {
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.55rem;
+  align-items: center;
+  margin: 0.8rem 0 0 !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+  color: #dbe5ff !important;
+  font-size: 0.78rem !important;
+}
+
+.sbi-planning-checkline input {
+  width: auto !important;
+  accent-color: var(--accent-blue, #2A57FF);
+}
+
+.sbi-planning-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  border-bottom: 0;
+}
+
+.sbi-planning-footer p {
+  margin: 0;
+  color: var(--text-muted, #9ca3af);
+  font-size: 0.8rem;
+}
+
+.sbi-planning-footer .sbi-promotions-primary-btn {
+  width: auto;
+  margin-top: 0;
+}
+
+@media (max-width: 1100px) {
+  .sbi-planning-panel {
+    inset: 10px;
+  }
+
+  .sbi-planning-toolbar,
+  .sbi-planning-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .sbi-planning-column {
+    border-right: 0;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    max-height: 34vh;
+  }
+
+  .sbi-planning-column:last-child {
+    border-bottom: 0;
+  }
+
+  .sbi-promotions-planning-summary,
+  .sbi-planning-footer {
+    grid-template-columns: 1fr;
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
