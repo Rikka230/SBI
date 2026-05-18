@@ -22,7 +22,7 @@ import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.1/fi
 import { waitForSbiTopbar } from '/admin/js/components/ready.js';
 import { waitForSbiComponents } from '/js/profile/profile-utils.js?v=8.0P.167.74';
 import { hydrateLoggedInTopbar } from '/js/profile/profile-topbar.js';
-import { renderProfileShell } from '/js/profile/profile-render.js?v=8.0P.167.97-GPT2.2';
+import { renderProfileShell } from '/js/profile/profile-render.js?v=8.0P.167.97-GPT2.3';
 import { renderUserFormations } from '/js/profile/profile-formations.js?v=8.0P.167.87';
 import { renderStudentDocumentsPanel } from '/js/profile/profile-student-documents.js?v=8.0P.167.96.1-GPT2.1';
 import { renderLearningTracking, renderTeacherStudentsList } from '/js/profile/profile-tracking.js?v=8.0P.167.97-GPT2.2';

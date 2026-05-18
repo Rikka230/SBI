@@ -21,6 +21,87 @@ const adminSendPasswordResetCallable = httpsCallable(functionsInstance, 'adminSe
 const adminSendFinalizationInviteCallable = httpsCallable(functionsInstance, 'adminSendFinalizationInvite');
 const adminResolveFinalizationEscalationCallable = httpsCallable(functionsInstance, 'adminResolveFinalizationEscalation');
 
+function injectProfileRoleBadgeStyles() {
+  if (document.getElementById('sbi-profile-role-badge-style')) return;
+
+  const style = document.createElement('style');
+  style.id = 'sbi-profile-role-badge-style';
+  style.textContent = `
+    #prof-name {
+      display: flex;
+      align-items: center;
+      gap: 0.72rem;
+      flex-wrap: wrap;
+      line-height: 1.08;
+    }
+
+    .sbi-profile-name-text {
+      display: inline-block;
+      min-width: 0;
+    }
+
+    .sbi-profile-role-badge-zone {
+      display: inline-flex;
+      align-items: center;
+      transform: translateY(1px);
+    }
+
+    .sbi-profile-role-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 23px;
+      padding: 0.28rem 0.58rem;
+      border-radius: 999px;
+      font-size: 0.66rem;
+      font-weight: 900;
+      letter-spacing: 0.045em;
+      line-height: 1;
+      text-transform: uppercase;
+      white-space: nowrap;
+      box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
+    }
+
+    .sbi-profile-role-badge.is-god {
+      color: #8a5a00;
+      background: rgba(255, 215, 0, 0.16);
+      border: 1px solid rgba(255, 215, 0, 0.34);
+    }
+
+    .sbi-profile-role-badge.is-admin {
+      color: #b91c1c;
+      background: rgba(255, 74, 74, 0.12);
+      border: 1px solid rgba(255, 74, 74, 0.24);
+    }
+
+    .sbi-profile-role-badge.is-teacher {
+      color: #a16207;
+      background: rgba(251, 188, 4, 0.14);
+      border: 1px solid rgba(251, 188, 4, 0.28);
+    }
+
+    .sbi-profile-role-badge.is-student {
+      color: #2A57FF;
+      background: rgba(42, 87, 255, 0.12);
+      border: 1px solid rgba(42, 87, 255, 0.24);
+    }
+
+    @media (max-width: 720px) {
+      #prof-name {
+        gap: 0.5rem;
+      }
+
+      .sbi-profile-role-badge {
+        min-height: 21px;
+        padding: 0.24rem 0.5rem;
+        font-size: 0.61rem;
+      }
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+
 const ACCOUNT_PREPARATION_LABELS = {
   not_prepared: 'Compte à préparer',
   to_check: 'À vérifier',
@@ -211,6 +292,7 @@ function getPromotionMetaLine(promotion = {}) {
 }
 
 export async function renderProfileShell({ db, uid, data, context, reloadProfile }) {
+  injectProfileRoleBadgeStyles();
   const displayName = getDisplayName(data, 'Utilisateur Sans Nom');
   const nameEl = document.getElementById('prof-name');
 
@@ -248,15 +330,21 @@ function renderRoleBadge(data = {}) {
   const badgeZone = document.getElementById('prof-badge-zone');
   if (!badgeZone) return;
 
+  let label = 'ÉLÈVE';
+  let className = 'is-student';
+
   if (data.isGod) {
-    badgeZone.innerHTML = `<span style="background:rgba(255,215,0,0.15); color:#ffd700; padding:4px 8px; border-radius:4px; font-weight:bold;">SUPRÊME</span>`;
+    label = 'SUPRÊME';
+    className = 'is-god';
   } else if (data.role === 'admin') {
-    badgeZone.innerHTML = `<span style="background:rgba(255,74,74,0.15); color:#ff4a4a; padding:4px 8px; border-radius:4px; font-weight:bold;">ADMIN</span>`;
-  } else if (data.role === 'teacher') {
-    badgeZone.innerHTML = `<span style="background:rgba(251,188,4,0.15); color:#fbbc04; padding:4px 8px; border-radius:4px; font-weight:bold;">PROFESSEUR</span>`;
-  } else {
-    badgeZone.innerHTML = `<span style="background:rgba(42, 87, 255, 0.15); color:#2A57FF; padding:4px 8px; border-radius:4px; font-weight:bold;">ÉLÈVE</span>`;
+    label = 'ADMIN';
+    className = 'is-admin';
+  } else if (data.role === 'teacher' || data.role === 'prof') {
+    label = 'PROFESSEUR';
+    className = 'is-teacher';
   }
+
+  badgeZone.innerHTML = `<span class="sbi-profile-role-badge ${className}">${label}</span>`;
 }
 
 async function renderXp({ db, uid, data = {}, context, reloadProfile }) {
