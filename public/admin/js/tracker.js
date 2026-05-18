@@ -12,11 +12,13 @@
  * - première connexion : import du gate de validation obligatoire.
  * 8.0P.167.44 :
  * - permissions/rôles centralisés via sbi-permissions.js.
+ * 8.0P.167.94-GPT2 :
+ * - notice étudiant post-login : construction active, ordinateur conseillé, patch notes étudiant.
  * =======================================================================
  */
 
 import '/js/auth.js?v=8.0P.167.44';
-import '/js/first-login-gate.js?v=8.0P.167.44';
+import '/js/first-login-gate.js?v=8.0P.167.94-GPT2';
 
 import { db, auth } from '/js/firebase-init.js';
 import {
@@ -198,7 +200,7 @@ function escapeHTML(value) {
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
+        .replace(/\"/g, '&quot;')
         .replace(/'/g, '&#039;');
 }
 
