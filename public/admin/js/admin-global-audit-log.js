@@ -1,11 +1,11 @@
 /**
- * SBI 8.0P.167.44 / P2H.2-I
+ * SBI 8.0P.167.77 / P2I.4-AUDIT-REMOTE-SEARCH
  * Journal admin global.
  *
  * Principe important :
  * - AUCUN chargement Firestore automatique.
  * - Le journal affiche le cache local immédiatement.
- * - Firestore ne charge que sur action utilisateur : Rafraîchir ou Charger plus.
+ * - Firestore ne charge que sur action utilisateur : Rafraîchir, Charger plus ou Recherche globale ciblée.
  * - Page size volontairement petite pour ne pas faire ramer index.html.
  */
 
@@ -13,6 +13,7 @@ import { auth, db } from '/js/firebase-init.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js';
 import {
   collection,
+  documentId,
   getDocs,
   limit,
   orderBy,
@@ -23,6 +24,8 @@ import {
 import { isSbiAdminLike } from '/js/sbi-permissions.js?v=8.0P.167.44';
 
 const PAGE_SIZE = 12;
+const REMOTE_SEARCH_LIMIT = 30;
+const MAX_REMOTE_SEARCH_QUERIES = 12;
 const MAX_DETAIL_LENGTH = 220;
 const MAX_RENDERED_ITEMS = 80;
 const MAX_CACHE_ITEMS = 500;
@@ -34,6 +37,9 @@ let logs = [];
 let lastVisibleDoc = null;
 let hasMore = true;
 let isLoading = false;
+let isRemoteSearching = false;
+let remoteSearchStatus = '';
+let lastRemoteSearchKey = '';
 let hasLoadedFromCache = false;
 let isMounted = false;
 let unsubscribeAuth = null;
@@ -58,7 +64,15 @@ const TYPE_META = {
   'account.deleted': { label: 'Compte supprimé', color: '#ff4a4a', tone: 'red' },
   'account.login_tracked': { label: 'Connexion détectée', color: '#2ed573', tone: 'green' },
   'account.first_login_onboarding_completed': { label: 'Première connexion validée', color: '#2ed573', tone: 'green' },
-  'account.formation_indexes_synced': { label: 'Accès formations synchronisés', color: '#2A57FF', tone: 'blue' }
+  'account.formation_indexes_synced': { label: 'Accès formations synchronisés', color: '#2A57FF', tone: 'blue' },
+  'student_documents.requested': { label: 'Documents demandés', color: '#7c5cff', tone: 'purple' },
+  'student_documents.submitted': { label: 'Documents transmis', color: '#2A57FF', tone: 'blue' },
+  'student_documents.validated': { label: 'Documents validés', color: '#2ed573', tone: 'green' },
+  'student_documents.partial_review': { label: 'Documents à refaire', color: '#fbbc04', tone: 'yellow' },
+  'student_documents.request_canceled': { label: 'Demande documents annulée', color: '#ff4a4a', tone: 'red' },
+  'student_documents.document_uploaded_admin': { label: 'Document ajouté par admin', color: '#2A57FF', tone: 'blue' },
+  'student_documents.document_archived': { label: 'Document archivé', color: '#fbbc04', tone: 'yellow' },
+  'student_documents.document_deleted': { label: 'Document supprimé', color: '#ff4a4a', tone: 'red' }
 };
 
 function scheduleIdle(callback) {
@@ -136,6 +150,76 @@ function truncate(value = '', maxLength = MAX_DETAIL_LENGTH) {
   const text = String(value || '').replace(/\s+/g, ' ').trim();
   if (!text) return '';
   return text.length > maxLength ? `${text.slice(0, maxLength)}…` : text;
+}
+
+function normalizeSearchValue(value = '') {
+  return String(value || '').trim().toLowerCase();
+}
+
+function compactUniqueStrings(values = []) {
+  const seen = new Set();
+  const next = [];
+
+  values.forEach((value) => {
+    const text = String(value || '').trim();
+    if (!text || seen.has(text)) return;
+    seen.add(text);
+    next.push(text);
+  });
+
+  return next;
+}
+
+function formatSmallList(values = [], fallback = 'Aucun détail') {
+  const list = compactUniqueStrings(values).slice(0, 6);
+  if (!list.length) return fallback;
+  const suffix = compactUniqueStrings(values).length > list.length ? ` +${compactUniqueStrings(values).length - list.length}` : '';
+  return `${list.join(', ')}${suffix}`;
+}
+
+function getDocumentChanges(log = {}) {
+  return log.changes?.documents && typeof log.changes.documents === 'object'
+    ? log.changes.documents
+    : {};
+}
+
+function getSafeJsonText(value) {
+  try {
+    return JSON.stringify(value || {});
+  } catch (_) {
+    return '';
+  }
+}
+
+function getLogSearchHaystack(log = {}) {
+  const meta = getTypeMeta(log.type);
+  const documents = getDocumentChanges(log);
+
+  return [
+    log.id,
+    log.type,
+    meta.label,
+    getActorLabel(log),
+    getTargetLabel(log),
+    getLogDetails(log),
+    log.actorUid,
+    log.actorEmail,
+    log.targetUid,
+    log.targetEmail,
+    log.uid,
+    log.userUid,
+    log.accountUid,
+    log.targetUserId,
+    log.reason,
+    log.message,
+    log.event,
+    log.source,
+    documents.requestId,
+    documents.documentId,
+    documents.title,
+    documents.fileName,
+    getSafeJsonText(documents)
+  ].join(' ').toLowerCase();
 }
 
 function getActorLabel(log = {}) {
@@ -230,6 +314,31 @@ function getLogDetails(log = {}) {
   if (log.type === 'account.email_bounced') details.push(getFriendlyBounceDetail(log.reason || log.message || ''));
   if (log.type === 'account.email_bounce_unmatched') details.push('Aucun compte trouvé pour cet email.');
   if (log.type === 'account.first_login_onboarding_completed') details.push('Cases obligatoires validées.');
+
+  const documentChanges = getDocumentChanges(log);
+  if (log.type === 'student_documents.requested') {
+    details.push(`Demande envoyée : ${formatSmallList(documentChanges.requested, 'Documents demandés')}`);
+    if (documentChanges.count !== undefined) details.push(`${documentChanges.count} document(s) demandé(s)`);
+  }
+  if (log.type === 'student_documents.submitted') {
+    details.push(`Documents transmis : ${formatSmallList(documentChanges.submitted, 'Documents transmis')}`);
+    if (documentChanges.submittedCount !== undefined) details.push(`${documentChanges.submittedCount}/${documentChanges.requestedCount || '?'} transmis`);
+  }
+  if (log.type === 'student_documents.validated') {
+    details.push(`Validés : ${formatSmallList(documentChanges.validated, 'Documents validés')}`);
+    if (documentChanges.validatedCount !== undefined) details.push(`${documentChanges.validatedCount}/${documentChanges.requestedCount || '?'} validé(s)`);
+  }
+  if (log.type === 'student_documents.partial_review') {
+    details.push(`Validés : ${formatSmallList(documentChanges.validated, 'Aucun validé')}`);
+    details.push(`À refaire : ${formatSmallList(documentChanges.rejected, 'Aucun refusé')}`);
+  }
+  if (log.type === 'student_documents.request_canceled') details.push('Demande de documents annulée.');
+  if (log.type === 'student_documents.document_uploaded_admin') details.push(`Document ajouté : ${documentChanges.title || documentChanges.fileName || 'Document non nommé'}`);
+  if (log.type === 'student_documents.document_archived') details.push(`Document archivé : ${documentChanges.title || documentChanges.fileName || 'Document non nommé'}`);
+  if (log.type === 'student_documents.document_deleted') details.push(`Document supprimé : ${documentChanges.title || documentChanges.fileName || 'Document non nommé'}`);
+  if (documentChanges.requestId) details.push(`Demande : ${documentChanges.requestId}`);
+  if (documentChanges.documentId) details.push(`Document : ${documentChanges.documentId}`);
+
   if (log.event) details.push(`Événement : ${log.event}`);
   if (log.emailSent === true) details.push('Email envoyé.');
   if (log.emailSent === false) details.push('Email non envoyé.');
@@ -306,26 +415,21 @@ function clearCache() {
   }
 }
 
+function getAuditSearchTerm() {
+  return normalizeSearchValue(document.getElementById('audit-search')?.value || '');
+}
+
+function getAuditTypeFilter() {
+  return document.getElementById('audit-type-filter')?.value || 'all';
+}
+
 function getFilteredLogs() {
-  const searchTerm = document.getElementById('audit-search')?.value?.trim().toLowerCase() || '';
-  const typeFilter = document.getElementById('audit-type-filter')?.value || 'all';
+  const searchTerm = getAuditSearchTerm();
+  const typeFilter = getAuditTypeFilter();
 
   return logs.filter((log) => {
-    const meta = getTypeMeta(log.type);
-    const haystack = [
-      log.type,
-      meta.label,
-      getActorLabel(log),
-      getTargetLabel(log),
-      getLogDetails(log),
-      log.reason,
-      log.message,
-      log.event,
-      log.source
-    ].join(' ').toLowerCase();
-
     const matchesType = typeFilter === 'all' || log.type === typeFilter;
-    const matchesSearch = !searchTerm || haystack.includes(searchTerm);
+    const matchesSearch = !searchTerm || getLogSearchHaystack(log).includes(searchTerm);
     return matchesType && matchesSearch;
   });
 }
@@ -355,6 +459,157 @@ function summarizeLoadedLogs() {
     ${renderStatCard('Emails rejetés', bounceCount)}
     ${renderStatCard('Contacts traités', resolvedCount)}
   `;
+}
+
+function buildRemoteSearchKey() {
+  return `${getAuditSearchTerm()}::${getAuditTypeFilter()}`;
+}
+
+function canRunRemoteSearch() {
+  const searchTerm = getAuditSearchTerm();
+  const typeFilter = getAuditTypeFilter();
+  return isAdminLike(currentProfile) && !isLoading && !isRemoteSearching && (searchTerm.length >= 2 || typeFilter !== 'all');
+}
+
+function buildRemoteSearchQueries(searchTerm, typeFilter) {
+  const collectionRef = collection(db, 'accountAuditLogs');
+  const values = compactUniqueStrings([searchTerm, searchTerm.toLowerCase()]);
+  const queries = [];
+
+  if (typeFilter !== 'all') {
+    queries.push(query(collectionRef, where('type', '==', typeFilter), limit(REMOTE_SEARCH_LIMIT)));
+  }
+
+  if (searchTerm.length >= 2) {
+    queries.push(query(collectionRef, where(documentId(), '==', searchTerm), limit(1)));
+
+    if (searchTerm.includes('@')) {
+      [
+        'targetEmail',
+        'actorEmail',
+        'email',
+        'newEmail',
+        'previousEmail',
+        'recipientEmail',
+        'to'
+      ].forEach((field) => {
+        values.forEach((value) => {
+          queries.push(query(collectionRef, where(field, '==', value), limit(REMOTE_SEARCH_LIMIT)));
+        });
+      });
+    } else if (!/\s/.test(searchTerm)) {
+      [
+        'actorUid',
+        'targetUid',
+        'uid',
+        'userUid',
+        'accountUid',
+        'targetUserId',
+        'changes.documents.requestId',
+        'changes.documents.documentId'
+      ].forEach((field) => {
+        queries.push(query(collectionRef, where(field, '==', searchTerm), limit(REMOTE_SEARCH_LIMIT)));
+      });
+
+      if (TYPE_META[searchTerm]) {
+        queries.push(query(collectionRef, where('type', '==', searchTerm), limit(REMOTE_SEARCH_LIMIT)));
+      }
+    }
+  }
+
+  return queries.slice(0, MAX_REMOTE_SEARCH_QUERIES);
+}
+
+function mergeLogs(nextLogs = [], { keepIds = [] } = {}) {
+  const merged = [...nextLogs, ...logs];
+  const deduped = [];
+  const seen = new Set();
+  const protectedIds = new Set(keepIds.filter(Boolean));
+
+  merged.forEach((log) => {
+    if (!log.id || seen.has(log.id)) return;
+    seen.add(log.id);
+    deduped.push(log);
+  });
+
+  deduped.sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
+
+  if (!protectedIds.size || deduped.length <= MAX_CACHE_ITEMS) {
+    logs = deduped.slice(0, MAX_CACHE_ITEMS);
+    return;
+  }
+
+  const protectedLogs = deduped.filter((log) => protectedIds.has(log.id));
+  const regularLogs = deduped.filter((log) => !protectedIds.has(log.id));
+  logs = [...protectedLogs, ...regularLogs.slice(0, Math.max(0, MAX_CACHE_ITEMS - protectedLogs.length))]
+    .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
+}
+
+function updateRemoteSearchUi() {
+  const button = document.getElementById('audit-remote-search-btn');
+  const status = document.getElementById('audit-remote-search-status');
+  const searchTerm = getAuditSearchTerm();
+  const typeFilter = getAuditTypeFilter();
+
+  if (button) {
+    button.disabled = !canRunRemoteSearch();
+    button.textContent = isRemoteSearching ? 'Recherche...' : 'Rechercher dans tout le journal';
+    button.title = searchTerm || typeFilter !== 'all'
+      ? 'Lance une recherche Firestore ciblée sans charger tout le journal.'
+      : 'Saisis au moins 2 caractères ou choisis un type de log.';
+  }
+
+  if (status) {
+    status.textContent = remoteSearchStatus || '';
+    status.hidden = !remoteSearchStatus;
+  }
+}
+
+async function runRemoteAuditSearch() {
+  if (!canRunRemoteSearch()) return;
+
+  const searchTerm = getAuditSearchTerm();
+  const typeFilter = getAuditTypeFilter();
+  const remoteKey = buildRemoteSearchKey();
+  const searchQueries = buildRemoteSearchQueries(searchTerm, typeFilter);
+
+  if (!searchQueries.length) {
+    remoteSearchStatus = 'Recherche globale disponible surtout par email, UID, ID demande, ID document ou type de log.';
+    render();
+    return;
+  }
+
+  isRemoteSearching = true;
+  lastRemoteSearchKey = remoteKey;
+  remoteSearchStatus = 'Recherche globale ciblée en cours...';
+  render();
+
+  try {
+    const found = [];
+
+    for (const firestoreQuery of searchQueries) {
+      const snap = await getDocs(firestoreQuery);
+      snap.forEach((docSnap) => {
+        found.push(normalizeLog({ id: docSnap.id, ...(docSnap.data() || {}) }));
+      });
+    }
+
+    const before = logs.length;
+    mergeLogs(found, { keepIds: found.map((log) => log.id) });
+    saveCache();
+
+    const visibleMatches = getFilteredLogs().length;
+    const added = Math.max(0, logs.length - before);
+    remoteSearchStatus = visibleMatches > 0
+      ? `${visibleMatches} résultat${visibleMatches > 1 ? 's' : ''} trouvé${visibleMatches > 1 ? 's' : ''} après recherche globale${added ? `, ${added} ajouté${added > 1 ? 's' : ''} au cache` : ''}.`
+      : 'Aucun résultat exact trouvé dans le journal global.';
+  } catch (error) {
+    console.warn('[SBI Audit] Recherche globale impossible :', error);
+    remoteSearchStatus = 'Recherche globale indisponible pour cette valeur. Essaie avec un email, UID, ID demande ou ID document exact.';
+  } finally {
+    isRemoteSearching = false;
+    render();
+  }
 }
 
 async function openAuditProfileFromLogId(logId, button) {
@@ -451,7 +706,7 @@ function render() {
     if (logs.length === 0) {
       list.innerHTML = '<div class="sbi-audit-empty">Aucun log en cache. Clique sur “Rafraîchir” pour charger les derniers événements.</div>';
     } else if (hasSearch) {
-      list.innerHTML = '<div class="sbi-audit-empty">Aucun résultat dans le cache actuel. Clique sur “Charger plus” pour enrichir le cache, ou “Rafraîchir” pour reconstruire le journal.</div>';
+      list.innerHTML = '<div class="sbi-audit-empty">Aucun résultat dans le cache actuel. Lance “Rechercher dans tout le journal” pour chercher par email, UID, ID demande ou ID document sans charger toute la base.</div>';
     } else {
       list.innerHTML = '<div class="sbi-audit-empty">Aucun log ne correspond au filtre actuel.</div>';
     }
@@ -477,6 +732,8 @@ function render() {
     refreshBtn.disabled = isLoading || !isAdminLike(currentProfile);
     refreshBtn.textContent = isLoading ? 'Chargement...' : 'Rafraîchir';
   }
+
+  updateRemoteSearchUi();
 }
 
 async function loadAuditLogs({ reset = false } = {}) {
@@ -507,17 +764,11 @@ async function loadAuditLogs({ reset = false } = {}) {
     lastVisibleDoc = snap.docs[snap.docs.length - 1] || lastVisibleDoc;
     hasMore = snap.size === PAGE_SIZE;
 
-    const merged = reset ? nextLogs : [...logs, ...nextLogs];
-    const deduped = [];
-    const seen = new Set();
+    if (reset) {
+      logs = [];
+    }
 
-    merged.forEach((log) => {
-      if (!log.id || seen.has(log.id)) return;
-      seen.add(log.id);
-      deduped.push(log);
-    });
-
-    logs = deduped.slice(0, MAX_CACHE_ITEMS);
+    mergeLogs(nextLogs);
     saveCache();
   } catch (error) {
     console.warn('[SBI Audit] Journal global indisponible :', error);
@@ -564,8 +815,15 @@ function mount() {
 
   document.getElementById('audit-refresh-btn')?.addEventListener('click', () => loadAuditLogs({ reset: true }));
   document.getElementById('audit-load-more-btn')?.addEventListener('click', () => loadAuditLogs());
-  document.getElementById('audit-search')?.addEventListener('input', render);
-  document.getElementById('audit-type-filter')?.addEventListener('change', render);
+  document.getElementById('audit-remote-search-btn')?.addEventListener('click', runRemoteAuditSearch);
+  document.getElementById('audit-search')?.addEventListener('input', () => {
+    if (buildRemoteSearchKey() !== lastRemoteSearchKey) remoteSearchStatus = '';
+    render();
+  });
+  document.getElementById('audit-type-filter')?.addEventListener('change', () => {
+    if (buildRemoteSearchKey() !== lastRemoteSearchKey) remoteSearchStatus = '';
+    render();
+  });
   bindAuditProfileButtons();
 
   unsubscribeAuth?.();

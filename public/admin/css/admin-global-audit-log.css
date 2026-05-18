@@ -1,4 +1,4 @@
-/* SBI 8.0P.167.41 - Journal admin dedicated PJAX route */
+/* SBI 8.0P.167.77 - Journal admin remote search ciblée */
 
 .sbi-audit-view {
   display: flex;
@@ -28,7 +28,8 @@
 }
 
 .sbi-audit-refresh-btn,
-.sbi-audit-load-more-btn {
+.sbi-audit-load-more-btn,
+.sbi-audit-remote-search-btn {
   border: 1px solid rgba(42, 87, 255, 0.38);
   border-radius: 999px;
   background: rgba(42, 87, 255, 0.12);
@@ -40,13 +41,15 @@
 }
 
 .sbi-audit-refresh-btn:hover,
-.sbi-audit-load-more-btn:hover:not(:disabled) {
+.sbi-audit-load-more-btn:hover:not(:disabled),
+.sbi-audit-remote-search-btn:hover:not(:disabled) {
   background: rgba(42, 87, 255, 0.2);
   border-color: rgba(42, 87, 255, 0.58);
   transform: translateY(-1px);
 }
 
-.sbi-audit-load-more-btn:disabled {
+.sbi-audit-load-more-btn:disabled,
+.sbi-audit-remote-search-btn:disabled {
   cursor: default;
   opacity: 0.55;
   transform: none;
@@ -54,7 +57,7 @@
 
 .sbi-audit-toolbar {
   display: grid;
-  grid-template-columns: minmax(260px, 1fr) minmax(220px, 320px);
+  grid-template-columns: minmax(260px, 1fr) minmax(220px, 320px) auto;
   gap: 0.8rem;
 }
 
@@ -94,6 +97,26 @@
 .sbi-audit-toolbar input:focus,
 .sbi-audit-toolbar select:focus {
   border-color: rgba(42, 87, 255, 0.58);
+}
+
+.sbi-audit-remote-search-btn {
+  align-self: stretch;
+  white-space: nowrap;
+}
+
+.sbi-audit-remote-search-status {
+  border: 1px solid rgba(42, 87, 255, 0.26);
+  border-radius: 12px;
+  background: rgba(42, 87, 255, 0.09);
+  color: #dbe5ff;
+  font-size: 0.82rem;
+  font-weight: 800;
+  line-height: 1.45;
+  padding: 0.72rem 0.9rem;
+}
+
+.sbi-audit-remote-search-status[hidden] {
+  display: none;
 }
 
 .sbi-audit-stats {
@@ -278,6 +301,10 @@
 
   .sbi-audit-toolbar {
     grid-template-columns: 1fr;
+  }
+
+  .sbi-audit-remote-search-btn {
+    width: 100%;
   }
 }
 
