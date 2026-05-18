@@ -218,7 +218,7 @@
     scheduleAccountsMount();
   }, 900);
 
-  window.SBI_COMPONENTS_READY = import('/admin/js/components/index.js?v=8.0P.167.62')
+  window.SBI_COMPONENTS_READY = import('/admin/js/components/index.js?v=8.0P.167.98.1')
     .then(async (module) => {
       if (module?.waitForExpectedComponents) {
         await module.waitForExpectedComponents(650);

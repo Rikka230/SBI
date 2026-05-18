@@ -45,7 +45,7 @@ export class AdminLeftPanel extends HTMLElement {
             ${PROMOTIONS_ICON}
             <span class="nav-text">Promotions</span>
           </li>
-          <li class="nav-item" id="nav-cursus" data-href="/admin/admin-cursus.html" data-sbi-href="/admin/admin-cursus.html" role="link" tabindex="0">
+          <li class="nav-item" id="nav-cursus" data-href="/admin/admin-cursus.html" data-sbi-href="/admin/admin-cursus.html" data-sbi-route="admin-cursus" role="link" tabindex="0" title="Ouvrir la page Cursus">
             ${CURSUS_ICON}
             <span class="nav-text">Cursus</span>
           </li>

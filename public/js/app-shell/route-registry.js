@@ -457,7 +457,7 @@ async function mountAdminCursus({ url }) {
   window.__SBI_APP_SHELL_MOUNTING_CURSUS = true;
 
   try {
-    const module = await import('/admin/js/admin-cursus.js?v=8.0P.167.98');
+    const module = await import('/admin/js/admin-cursus.js?v=8.0P.167.98.1');
     const cleanupCursus = module.mountAdminCursus?.({ source: 'pjax-admin-cursus' });
 
     if (typeof cleanupCursus === 'function') {
