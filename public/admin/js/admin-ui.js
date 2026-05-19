@@ -13,6 +13,7 @@ import { installViewerDiagnostics } from '/js/app-shell/course-viewer-bridge.js'
 import { initCourseAccessDiagnostics } from '/admin/js/course-access-diagnostics.js';
 import { initAdminCursusDndBridge } from '/admin/js/admin-cursus-dnd.js?v=8.0P.167.102.2-GPT2.1';
 import { initAdminCursusPlaceholderReplaceBridge } from '/admin/js/admin-cursus-placeholder-replace.js?v=8.0P.167.102.1-GPT2.1';
+import { initAdminCursusWeeksControlsBridge } from '/admin/js/admin-cursus-weeks-controls.js?v=8.0P.167.103-GPT2.1';
 
 /**
  * =======================================================================
@@ -41,6 +42,7 @@ async function initAdminUi() {
         initSafeComponentPolish();
         initAdminCursusDndBridge();
         initAdminCursusPlaceholderReplaceBridge();
+        initAdminCursusWeeksControlsBridge();
         initPanelControls();
         initAdminTabs();
     } catch (error) {
