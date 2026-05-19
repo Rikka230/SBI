@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="css/admin.css?v=8.0P.167.51">
     <link rel="stylesheet" href="css/admin-notifications.css">
     <link rel="stylesheet" href="css/admin-cursus.css?v=8.0P.167.98.1">
+    <link rel="stylesheet" href="css/admin-cursus-stability.css?v=8.0P.167.99-GPT2.1">
     <script src="js/components.js?v=8.0P.167.98.1"></script>
     <link rel="stylesheet" href="css/admin-surface-unified.css?v=8.0P.167.52">
 </head>
@@ -123,7 +124,7 @@
                                 <h3>Élément sélectionné</h3>
                                 <button type="button" id="cursus-clear-selection" aria-label="Désélectionner">×</button>
                             </div>
-                            <div id="cursus-inspector-content" class="sbi-cursus-inspector-empty">
+                            <div id="cursus-inspector-content" class="sbi-cursus-inspector-content sbi-cursus-inspector-empty">
                                 Sélectionnez un élément dans la timeline.
                             </div>
                         </aside>
@@ -154,6 +155,7 @@
 <script type="module" src="js/tracker.js?v=8.0P.167.44"></script>
 <script type="module" src="js/admin-notifications.js"></script>
 <script type="module" src="js/admin-cursus.js?v=8.0P.167.98.1"></script>
+<script type="module" src="js/admin-cursus-pjax-guard.js?v=8.0P.167.99-GPT2.1"></script>
 
 <script>
     document.addEventListener('DOMContentLoaded', () => {

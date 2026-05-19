@@ -1,0 +1,119 @@
+/* SBI 8.0P.167.99-GPT2.1 - Cursus UX/PJAX stabilization */
+
+.sbi-cursus-wrapper {
+  box-sizing: border-box;
+  height: calc(100dvh - 74px);
+  min-height: 0;
+  overflow: hidden;
+  padding: 0.75rem;
+}
+
+.sbi-cursus-shell,
+.sbi-cursus-app {
+  min-height: 0;
+  height: 100%;
+}
+
+.sbi-cursus-app {
+  display: flex;
+  flex-direction: column;
+}
+
+.sbi-cursus-topbar,
+.sbi-cursus-footer {
+  flex: 0 0 auto;
+}
+
+.sbi-cursus-main-grid {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.sbi-cursus-toolbox,
+.sbi-cursus-inspector,
+.sbi-cursus-timeline-panel {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.sbi-cursus-tool-list,
+.sbi-cursus-inspector-content,
+.sbi-cursus-timeline-scroll {
+  min-height: 0;
+}
+
+.sbi-cursus-tool-list,
+.sbi-cursus-inspector-content {
+  flex: 1 1 auto;
+}
+
+.sbi-cursus-timeline-scroll {
+  flex: 1 1 auto;
+  overflow: auto;
+}
+
+.sbi-cursus-footer {
+  position: relative;
+  z-index: 4;
+  padding-bottom: max(0.9rem, env(safe-area-inset-bottom));
+}
+
+.sbi-cursus-save-status {
+  min-width: 180px;
+}
+
+.sbi-cursus-tool-card button[data-action="add-course"] {
+  border: 1px solid rgba(42, 87, 255, 0.42);
+  background: rgba(42, 87, 255, 0.16);
+  color: #edf4ff;
+  box-shadow: 0 10px 24px rgba(42, 87, 255, 0.14);
+}
+
+.sbi-cursus-tool-card.is-placed button[data-action="add-course"] {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.045);
+  color: #8fa1c2;
+  box-shadow: none;
+  cursor: default;
+}
+
+.sbi-cursus-inspector input[type="number"] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.sbi-cursus-inspector input[type="number"]::-webkit-outer-spin-button,
+.sbi-cursus-inspector input[type="number"]::-webkit-inner-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+
+@media (max-width: 1180px) {
+  .sbi-cursus-wrapper {
+    height: auto;
+    min-height: calc(100dvh - 74px);
+    overflow: visible;
+  }
+
+  .sbi-cursus-app {
+    height: auto;
+    min-height: calc(100dvh - 92px);
+  }
+
+  .sbi-cursus-main-grid {
+    overflow: visible;
+  }
+}
+
+@media (max-width: 760px) {
+  .sbi-cursus-wrapper {
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+  }
+
+  .sbi-cursus-app {
+    height: auto;
+  }
+}
