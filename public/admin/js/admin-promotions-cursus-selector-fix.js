@@ -1,16 +1,16 @@
 /**
- * SBI 8.0P.167.104.1-GPT2.1
- * Promotions cursus selector fix - hotfix anti-freeze.
+ * SBI 8.0P.167.105-GPT2.1
+ * Promotions cursus selector + preview.
  *
- * Le patch 8.0P.167.104 rendait bien les cursus visibles, mais utilisait
- * un MutationObserver trop large : l'ouverture du sélecteur pouvait provoquer
- * une boucle render -> mutation -> render.
+ * Base 8.0P.167.104.1 validée :
+ * - pas de MutationObserver agressif ;
+ * - chargement de curriculumTemplates au clic ;
+ * - affichage et application des cursus sans freeze.
  *
- * Cette version supprime totalement l'observer. Elle se contente :
- * - d'écouter les clics utiles ;
- * - de charger curriculumTemplates à la demande ;
- * - de repeindre la liste quelques frames après l'ouverture native du modal ;
- * - d'intercepter la sauvegarde uniquement si un cursus a été choisi via ce bridge.
+ * Ajout 8.0P.167.105 :
+ * - prévisualisation date début / date fin / nombre de semaines ;
+ * - recalcul des dates recommandées dans le coursePlan appliqué ;
+ * - synchronisation prudente de la date de fin quand un cursus est appliqué.
  */
 
 import { auth, db } from '/js/firebase-init.js';
@@ -104,12 +104,30 @@ function setTemplateStatus(message = '') {
   if (node) node.textContent = message;
 }
 
+function formatDateFr(dateString = '') {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateString || '')) return 'Non renseignée';
+  const [year, month, day] = dateString.split('-');
+  return `${day}/${month}/${year}`;
+}
+
+function addDaysToDateString(dateString = '', days = 0) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateString || '')) return '';
+  const date = new Date(`${dateString}T12:00:00`);
+  if (Number.isNaN(date.getTime())) return '';
+  date.setDate(date.getDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
 function getItemType(item = {}) {
   const rawType = item.type || item.itemType || '';
   if (rawType === 'course') return item.courseId ? 'real_course' : 'placeholder_course';
   if (rawType === 'real_course') return 'real_course';
   if (rawType) return rawType;
   return item.courseId ? 'real_course' : 'placeholder_course';
+}
+
+function getPlanItemKey(item = {}) {
+  return item.courseId || item.itemId || item.id || '';
 }
 
 function makePlanningItemId(prefix = 'item') {
@@ -123,14 +141,58 @@ function getDurationDays(item = {}) {
   )));
 }
 
+function isStructuralType(type = '') {
+  return ['real_course', 'course', 'placeholder_course', 'buffer_period', 'revision_period', 'catchup_period'].includes(type);
+}
+
+function isParallelType(type = '') {
+  return ['assignment', 'exam', 'evaluation', 'live_session', 'workshop'].includes(type);
+}
+
 function getPlanDurationDays(plan = []) {
   return plan.reduce((total, item) => {
     const type = getItemType(item);
-    if (['real_course', 'placeholder_course', 'buffer_period', 'revision_period', 'catchup_period'].includes(type)) {
-      return total + getDurationDays(item);
-    }
+    if (isStructuralType(type)) return total + getDurationDays(item);
     return total;
   }, 0);
+}
+
+function getExplicitWeeks(template = {}) {
+  return Math.max(0, Math.round(toNumber(
+    template.totalWeeks || template.weeksCount || template.durationWeeks || template.manualWeeks || 0,
+    0
+  )));
+}
+
+function getPreviewDurationDays(plan = [], template = selectedTemplate) {
+  const structuralDuration = getPlanDurationDays(plan);
+  const explicitWeeks = getExplicitWeeks(template);
+  return Math.max(structuralDuration, explicitWeeks > 0 ? explicitWeeks * 7 : 0, structuralDuration || 0);
+}
+
+function getPreviewWeeks(plan = [], template = selectedTemplate) {
+  const duration = getPreviewDurationDays(plan, template);
+  return Math.max(1, Math.ceil(Math.max(1, duration) / 7));
+}
+
+function buildPreview(plan = [], template = selectedTemplate) {
+  const startDate = $('promotion-start-date')?.value || '';
+  const duration = getPreviewDurationDays(plan, template);
+  const weeks = getPreviewWeeks(plan, template);
+  const endDate = startDate && duration > 0 ? addDaysToDateString(startDate, duration - 1) : '';
+  return {
+    startDate,
+    endDate,
+    duration,
+    weeks,
+    items: plan.length
+  };
+}
+
+function getPreviewLabel(preview = buildPreview(selectedPlan)) {
+  const base = `${preview.items} élément${preview.items > 1 ? 's' : ''} · ${preview.duration || 0} jour${(preview.duration || 0) > 1 ? 's' : ''} · ${preview.weeks} semaine${preview.weeks > 1 ? 's' : ''}`;
+  if (!preview.startDate) return `${base} · date de début à renseigner`;
+  return `${base} · ${formatDateFr(preview.startDate)} → ${formatDateFr(preview.endDate)}`;
 }
 
 function getTypeLabel(type = '') {
@@ -255,10 +317,94 @@ function buildPlanFromTemplate(template = {}) {
       isSharedCourse: item.isSharedCourse === true,
       grantedByCurriculum: item.grantedByCurriculum === false ? false : true,
       order: Number.isFinite(Number(item.order)) ? Number(item.order) : index,
-      source: 'curriculum-template-applied-by-promotions-bridge-v2'
+      source: 'curriculum-template-applied-by-promotions-bridge-v3'
     };
   }).sort((a, b) => toNumber(a.order, 0) - toNumber(b.order, 0))
     .map((item, index) => ({ ...item, order: index }));
+}
+
+function recalculatePlanDates(plan = selectedPlan) {
+  const startDate = $('promotion-start-date')?.value || '';
+  if (!startDate || !Array.isArray(plan) || !plan.length) return plan;
+
+  let cursor = startDate;
+  const structuralMap = new Map();
+
+  const structural = [...plan]
+    .filter((item) => isStructuralType(getItemType(item)))
+    .sort((a, b) => toNumber(a.order, 0) - toNumber(b.order, 0));
+
+  const updatedStructural = new Map();
+
+  structural.forEach((item) => {
+    const key = getPlanItemKey(item);
+    const duration = getDurationDays(item);
+    const start = cursor;
+    const end = addDaysToDateString(start, duration - 1) || start;
+    cursor = addDaysToDateString(end, 1) || cursor;
+
+    const next = {
+      ...item,
+      recommendedStartAt: start,
+      recommendedEndAt: end,
+      deadlineAt: item.deadlineAt || item.dueAt || end,
+      dueAt: item.dueAt || item.deadlineAt || end
+    };
+
+    updatedStructural.set(key, next);
+    structuralMap.set(key, next);
+    if (next.courseId) structuralMap.set(next.courseId, next);
+  });
+
+  return plan.map((item) => {
+    const key = getPlanItemKey(item);
+    const type = getItemType(item);
+
+    if (updatedStructural.has(key)) return updatedStructural.get(key);
+    if (!isParallelType(type)) return item;
+
+    const related = item.relatedCourseId ? structuralMap.get(item.relatedCourseId) : null;
+    const duration = getDurationDays(item);
+    const start = related?.recommendedStartAt || startDate;
+    const end = addDaysToDateString(start, duration - 1) || start;
+    const deadline = related?.recommendedEndAt || end;
+
+    return {
+      ...item,
+      relatedCourseTitle: related ? (related.courseTitle || related.title || item.relatedCourseTitle || '') : item.relatedCourseTitle || '',
+      recommendedStartAt: start,
+      recommendedEndAt: end,
+      deadlineAt: item.deadlineAt || item.dueAt || deadline,
+      dueAt: item.dueAt || item.deadlineAt || deadline
+    };
+  });
+}
+
+function syncEndDateFromPreview({ force = false } = {}) {
+  const endInput = $('promotion-end-date');
+  if (!endInput) return;
+
+  const preview = buildPreview(selectedPlan, selectedTemplate);
+  if (!preview.endDate) return;
+
+  const canWrite = force || !endInput.value || endInput.dataset.sbiAutoCursusEnd === 'true';
+  if (!canWrite) return;
+
+  endInput.value = preview.endDate;
+  endInput.dataset.sbiAutoCursusEnd = 'true';
+}
+
+function refreshSelectedPreview({ forceEndDate = false } = {}) {
+  if (!selectedTemplate) return;
+  selectedPlan = recalculatePlanDates(selectedPlan);
+  syncEndDateFromPreview({ force: forceEndDate });
+
+  const preview = buildPreview(selectedPlan, selectedTemplate);
+  setText('promotion-planning-summary-title', selectedTemplate.title || 'Cursus sélectionné');
+  setText('promotion-planning-summary-meta', `${getPreviewLabel(preview)} · sauvegardez la promotion pour confirmer.`);
+
+  const footer = $('promotion-planning-footer-status');
+  if (footer) footer.textContent = `Aperçu promotion : ${getPreviewLabel(preview)}.`;
 }
 
 function renderTemplateList() {
@@ -276,8 +422,10 @@ function renderTemplateList() {
 
   const rows = getVisibleTemplates();
   const matchingCount = rows.filter((template) => templateMatchesFormation(template, formation)).length;
+  const startDate = $('promotion-start-date')?.value || '';
   const signature = JSON.stringify({
     formationId: formation.formationId,
+    startDate,
     selected: selectedTemplate?.id || '',
     rows: rows.map((template) => [template.id, template.title, template.updatedAt?.seconds || template.updatedAt || ''])
   });
@@ -296,8 +444,11 @@ function renderTemplateList() {
   }
 
   list.innerHTML = rows.map((template) => {
-    const count = Number(template.itemCount || (Array.isArray(template.items) ? template.items.length : 0));
-    const duration = Number(template.durationDays || getPlanDurationDays(template.items || []));
+    const plan = buildPlanFromTemplate(template);
+    const count = Number(template.itemCount || plan.length);
+    const duration = getPreviewDurationDays(plan, template);
+    const weeks = getPreviewWeeks(plan, template);
+    const preview = buildPreview(plan, template);
     const isLinked = templateMatchesFormation(template, formation);
     const isActive = selectedTemplate?.id === template.id;
     return `
@@ -307,7 +458,9 @@ function renderTemplateList() {
           <small>
             <span>${escapeHtml(template.formationName || 'Formation non renseignée')}</span>
             <span>${count} élément${count > 1 ? 's' : ''}</span>
-            <span>${duration} jour${duration > 1 ? 's' : ''} estimé${duration > 1 ? 's' : ''}</span>
+            <span>${duration} jour${duration > 1 ? 's' : ''}</span>
+            <span>${weeks} semaine${weeks > 1 ? 's' : ''}</span>
+            ${startDate ? `<span>${escapeHtml(formatDateFr(preview.startDate))} → ${escapeHtml(formatDateFr(preview.endDate))}</span>` : '<span>Date début à renseigner</span>'}
             <span>${isLinked ? 'Formation liée' : 'Autre formation / secours'}</span>
           </small>
         </div>
@@ -344,19 +497,16 @@ function applyTemplate(templateId = '') {
   if (!template) return;
 
   selectedTemplate = template;
-  selectedPlan = buildPlanFromTemplate(template);
+  selectedPlan = recalculatePlanDates(buildPlanFromTemplate(template));
+  syncEndDateFromPreview({ force: true });
 
   const titleInput = $('promotion-curriculum-title');
   if (titleInput) titleInput.value = template.title || '';
 
-  const duration = getPlanDurationDays(selectedPlan);
-  setText('promotion-planning-summary-title', template.title || 'Cursus sélectionné');
-  setText(
-    'promotion-planning-summary-meta',
-    `${selectedPlan.length} élément${selectedPlan.length > 1 ? 's' : ''} · ${duration} jour${duration > 1 ? 's' : ''} estimé${duration > 1 ? 's' : ''} · sauvegardez la promotion pour confirmer.`
-  );
+  refreshSelectedPreview({ forceEndDate: true });
 
-  setFormStatus(`Cursus « ${template.title || 'sans nom'} » sélectionné. Sauvegardez la promotion pour enregistrer ce choix.`, 'success');
+  const preview = buildPreview(selectedPlan, selectedTemplate);
+  setFormStatus(`Cursus « ${template.title || 'sans nom'} » sélectionné. Aperçu : ${getPreviewLabel(preview)}. Sauvegardez la promotion.`, 'success');
   closeTemplateModal();
 }
 
@@ -366,6 +516,9 @@ function getPromotionPayload() {
 
   const formation = getSelectedFormation();
   const title = clean($('promotion-curriculum-title')?.value || selectedTemplate?.title || formation.formationName || name, 140);
+  selectedPlan = recalculatePlanDates(selectedPlan);
+  syncEndDateFromPreview({ force: false });
+
   const coursePlan = selectedPlan.length ? selectedPlan : [];
   const user = auth.currentUser;
 
@@ -383,6 +536,7 @@ function getPromotionPayload() {
     coursePlan,
     coursePlanVersion: 'promotion-course-plan-multilayer-v1',
     coursePlanCount: coursePlan.length,
+    coursePlanPreview: buildPreview(coursePlan, selectedTemplate),
     updatedAt: serverTimestamp(),
     updatedBy: user?.uid || '',
     updatedByEmail: user?.email || ''
@@ -438,8 +592,8 @@ function clearSelection() {
 }
 
 function bindEvents() {
-  if (document.body.dataset.sbiPromotionsCursusFixV1041 === 'true') return;
-  document.body.dataset.sbiPromotionsCursusFixV1041 = 'true';
+  if (document.body.dataset.sbiPromotionsCursusPreviewV105 === 'true') return;
+  document.body.dataset.sbiPromotionsCursusPreviewV105 = 'true';
 
   document.addEventListener('click', (event) => {
     if (!getView()) return;
@@ -473,10 +627,33 @@ function bindEvents() {
 
   document.addEventListener('change', (event) => {
     if (!getView()) return;
-    if (event.target?.id !== 'promotion-formation') return;
-    clearSelection();
-    if ($('promotion-curriculum-template-modal')?.classList.contains('is-open')) {
-      scheduleTemplateRender();
+
+    if (event.target?.id === 'promotion-formation') {
+      clearSelection();
+      if ($('promotion-curriculum-template-modal')?.classList.contains('is-open')) {
+        scheduleTemplateRender();
+      }
+      return;
+    }
+
+    if (event.target?.id === 'promotion-start-date') {
+      if (selectedTemplate) refreshSelectedPreview({ forceEndDate: false });
+      if ($('promotion-curriculum-template-modal')?.classList.contains('is-open')) {
+        lastRenderSignature = '';
+        renderTemplateList();
+      }
+      return;
+    }
+
+    if (event.target?.id === 'promotion-end-date') {
+      event.target.dataset.sbiAutoCursusEnd = 'false';
+    }
+  }, true);
+
+  document.addEventListener('input', (event) => {
+    if (!getView()) return;
+    if (event.target?.id === 'promotion-end-date') {
+      event.target.dataset.sbiAutoCursusEnd = 'false';
     }
   }, true);
 }

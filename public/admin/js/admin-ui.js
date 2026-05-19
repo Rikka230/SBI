@@ -14,7 +14,7 @@ import { initCourseAccessDiagnostics } from '/admin/js/course-access-diagnostics
 import { initAdminCursusDndBridge } from '/admin/js/admin-cursus-dnd.js?v=8.0P.167.103.1-GPT2.1';
 import { initAdminCursusPlaceholderReplaceBridge } from '/admin/js/admin-cursus-placeholder-replace.js?v=8.0P.167.102.1-GPT2.1';
 import { initAdminCursusWeeksControlsBridge } from '/admin/js/admin-cursus-weeks-controls.js?v=8.0P.167.103.1-GPT2.1';
-import { initAdminPromotionsCursusSelectorFix } from '/admin/js/admin-promotions-cursus-selector-fix.js?v=8.0P.167.104.1-GPT2.1';
+import { initAdminPromotionsCursusSelectorFix } from '/admin/js/admin-promotions-cursus-selector-fix.js?v=8.0P.167.105-GPT2.1';
 
 /**
  * =======================================================================
