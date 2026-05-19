@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.99-GPT2.1',
+  version: '8.0P.167.100-GPT2.1',
   branch: 'main',
-  channel: 'P2I.5 CURSUS UX PJAX STABILIZATION + GPT2 PRESERVED',
-  stage: 'CURSUS PAGE PJAX CLEANUP + INTERNAL SCROLL LAYOUT STABILIZATION',
+  channel: 'P2I.5 CURSUS UX CLEANUP + GPT2 PRESERVED',
+  stage: 'CURSUS FOOTER DUPLICATE SAVE CTA REMOVED',
   updatedAt: '2026-05-19',
-  label: 'SBI 8.0P.167.99-GPT2.1 - CURSUS UX/PJAX STABILIZATION'
+  label: 'SBI 8.0P.167.100-GPT2.1 - CURSUS FOOTER SAVE CTA CLEANUP'
 };
 
 export function getSbiVersionLabel() {
