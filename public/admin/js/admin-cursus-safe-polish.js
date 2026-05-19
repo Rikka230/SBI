@@ -1,23 +1,20 @@
 /**
- * SBI 8.0P.167.107.4-GPT2.1
+ * SBI 8.0P.167.107.5-GPT2.1
  * Cursus safe hardening - verrouillage UI progressif sans MutationObserver global.
  *
- * Objectifs :
- * - garder uniquement le bouton Supprimer dans l'inspecteur ;
- * - reformuler le message des éléments parallèles sans cours lié ;
- * - corriger le comportement verrouillé / déverrouillé sans recalcul violent ;
- * - empêcher le drag d'un bloc explicitement verrouillé ;
- * - laisser un bloc déverrouillé à sa position actuelle et déplaçable ;
- * - empêcher le drag & drop de reverrouiller automatiquement un bloc déverrouillé.
+ * Correctif ciblé :
+ * - après un drag, le bloc reste déverrouillé côté UI ;
+ * - le checkbox ne se recoche plus visuellement après déplacement ;
+ * - si l'admin reverrouille manuellement, le bloc est réellement bloqué au drag ;
+ * - si l'admin redéverrouille, le bloc reste à sa semaine et peut être déplacé.
  *
- * Note technique : le champ natif `isLocked` de l'ancien module sert aussi à autoriser
- * le placement manuel. Pour éviter les retours en S1 et les empilements, ce module
- * intercepte uniquement le checkbox de verrouillage et gère un verrou UI stable par item.
+ * Note : ce module évite de retoucher le gros coeur Cursus tant qu'il n'est pas refactoré.
  */
 
 let installed = false;
 let cleanupFrame = 0;
-let autoMoveUnlockUntil = 0;
+let draggedUnlockedItemId = '';
+let forceUnlockUntil = 0;
 
 const LOCK_STORAGE_PREFIX = 'sbi:cursus:ui-lock:';
 
@@ -58,20 +55,6 @@ function writeLockState(itemId = '', locked = false) {
   } catch {}
 }
 
-function armAutoMoveUnlockWindow(durationMs = 5200) {
-  autoMoveUnlockUntil = Math.max(autoMoveUnlockUntil, Date.now() + durationMs);
-}
-
-function keepAutoMoveUnlockWindow(durationMs = 2200) {
-  if (autoMoveUnlockUntil > Date.now()) {
-    armAutoMoveUnlockWindow(durationMs);
-  }
-}
-
-function isAutoMoveUnlockWindowActive() {
-  return autoMoveUnlockUntil > Date.now();
-}
-
 function setStatus(message = '', tone = 'muted') {
   const status = document.getElementById('cursus-save-status');
   if (!status) return;
@@ -86,7 +69,12 @@ function setStatus(message = '', tone = 'muted') {
 function blockHasNativeLockBadge(block) {
   if (!block) return false;
   const badges = Array.from(block.querySelectorAll('.sbi-cursus-block-badges span'));
-  return badges.some((badge) => badge.textContent.trim() === 'L');
+  return badges.some((badge) => badge.textContent.trim() === 'L' && badge.style.display !== 'none');
+}
+
+function getBlock(itemId = '') {
+  if (!itemId) return null;
+  return document.querySelector(`.sbi-cursus-block[data-id="${CSS.escape(itemId)}"]`);
 }
 
 function getEffectiveLockStateForBlock(block) {
@@ -96,12 +84,27 @@ function getEffectiveLockStateForBlock(block) {
   return blockHasNativeLockBadge(block);
 }
 
-function getEffectiveLockStateForSelectedInspector() {
-  const itemId = getSelectedItemId();
-  const stored = readLockState(itemId);
-  if (stored !== null) return stored;
-  const input = document.querySelector('#cursus-inspector-content input[data-field="isLocked"]');
-  return Boolean(input?.checked);
+function getInspectorLockInput() {
+  return document.querySelector('#cursus-inspector-content input[data-field="isLocked"]');
+}
+
+function forceItemUnlocked(itemId = '') {
+  if (!itemId) return;
+  writeLockState(itemId, false);
+  forceUnlockUntil = Date.now() + 3500;
+
+  const selectedId = getSelectedItemId();
+  const input = getInspectorLockInput();
+  if (input && selectedId === itemId) input.checked = false;
+
+  const block = getBlock(itemId);
+  if (block) {
+    block.classList.remove('sbi-is-locked');
+    block.classList.add('sbi-is-unlocked');
+    block.dataset.sbiLocked = 'false';
+    block.setAttribute('draggable', 'true');
+    block.setAttribute('aria-disabled', 'false');
+  }
 }
 
 function polishInspectorActions() {
@@ -149,9 +152,7 @@ function polishLockedBlocks() {
 
     const badges = Array.from(block.querySelectorAll('.sbi-cursus-block-badges span'));
     badges.forEach((badge) => {
-      if (badge.textContent.trim() === 'L') {
-        badge.style.display = locked ? '' : 'none';
-      }
+      if (badge.textContent.trim() === 'L') badge.style.display = locked ? '' : 'none';
     });
   });
 }
@@ -172,12 +173,18 @@ function runPolish() {
   polishCoherenceMessage();
 }
 
-function schedulePolish() {
+function schedulePolish(delay = 0) {
   window.cancelAnimationFrame(cleanupFrame);
+  if (delay > 0) {
+    window.setTimeout(() => {
+      cleanupFrame = window.requestAnimationFrame(runPolish);
+    }, delay);
+    return;
+  }
   cleanupFrame = window.requestAnimationFrame(runPolish);
 }
 
-function handleLockToggle(event) {
+function handleManualLockToggle(event) {
   const root = getRoot();
   if (!root) return;
 
@@ -187,27 +194,46 @@ function handleLockToggle(event) {
   const itemId = getSelectedItemId();
   if (!itemId) return;
 
-  // On empêche l'ancien handler de transformer le déverrouillage en recalcul complet.
-  event.stopImmediatePropagation();
-
-  if (target.checked && isAutoMoveUnlockWindowActive()) {
-    writeLockState(itemId, false);
-    target.checked = false;
+  // Les events synthétiques viennent du drag natif. Ils ne doivent pas recoller le verrou visuel.
+  if (!event.isTrusted && Date.now() < forceUnlockUntil && target.checked) {
+    event.stopImmediatePropagation();
+    forceItemUnlocked(itemId);
     setStatus('Bloc déplacé : il reste déverrouillé. Verrouille-le manuellement si besoin.', 'success');
     schedulePolish();
     return;
   }
 
-  writeLockState(itemId, Boolean(target.checked));
-  target.checked = Boolean(target.checked);
-
-  if (target.checked) {
-    setStatus('Bloc verrouillé : il ne peut plus être déplacé.', 'success');
-  } else {
-    setStatus('Bloc déverrouillé : il reste à sa position actuelle et peut être déplacé.', 'success');
+  // Seul le geste utilisateur décide de l'état final du verrou.
+  if (event.isTrusted) {
+    writeLockState(itemId, Boolean(target.checked));
+    if (target.checked) {
+      setStatus('Bloc verrouillé : il ne peut plus être déplacé.', 'success');
+    } else {
+      setStatus('Bloc déverrouillé : il reste à sa position actuelle et peut être déplacé.', 'success');
+    }
+    schedulePolish();
   }
+}
 
-  schedulePolish();
+function handleStartWeekSyntheticChange(event) {
+  const root = getRoot();
+  if (!root || !draggedUnlockedItemId) return;
+
+  const target = event.target?.closest?.('input[data-field="startWeek"]');
+  if (!target || !root.contains(target)) return;
+  if (event.isTrusted) return;
+
+  // Le vieux coeur Cursus coche le verrou après un déplacement via le champ startWeek.
+  // On laisse la position se mettre à jour, puis on réimpose l'état déverrouillé côté UI.
+  forceUnlockUntil = Date.now() + 3500;
+  window.setTimeout(() => {
+    forceItemUnlocked(draggedUnlockedItemId);
+    schedulePolish();
+  }, 35);
+  window.setTimeout(() => {
+    forceItemUnlocked(draggedUnlockedItemId);
+    schedulePolish();
+  }, 180);
 }
 
 function handleDragStart(event) {
@@ -217,12 +243,16 @@ function handleDragStart(event) {
   const block = event.target?.closest?.('.sbi-cursus-block[data-id]');
   if (!block || !root.contains(block)) return;
 
-  if (!getEffectiveLockStateForBlock(block)) {
-    writeLockState(block.dataset.id || '', false);
-    armAutoMoveUnlockWindow();
+  const locked = getEffectiveLockStateForBlock(block);
+
+  if (!locked) {
+    draggedUnlockedItemId = block.dataset.id || '';
+    forceItemUnlocked(draggedUnlockedItemId);
+    forceUnlockUntil = Date.now() + 3500;
     return;
   }
 
+  draggedUnlockedItemId = '';
   event.preventDefault();
   event.stopImmediatePropagation();
   block.classList.add('sbi-is-locked');
@@ -231,12 +261,34 @@ function handleDragStart(event) {
   setStatus('Bloc verrouillé : désactive le verrouillage pour le déplacer.', 'error');
 }
 
+function handleDragEndOrDrop() {
+  if (!draggedUnlockedItemId) return;
+  const itemId = draggedUnlockedItemId;
+  forceUnlockUntil = Date.now() + 3500;
+
+  window.setTimeout(() => {
+    forceItemUnlocked(itemId);
+    schedulePolish();
+  }, 60);
+  window.setTimeout(() => {
+    forceItemUnlocked(itemId);
+    schedulePolish();
+  }, 240);
+  window.setTimeout(() => {
+    forceItemUnlocked(itemId);
+    if (draggedUnlockedItemId === itemId) draggedUnlockedItemId = '';
+    schedulePolish();
+  }, 700);
+}
+
 function bindEvents() {
-  document.addEventListener('input', handleLockToggle, true);
-  document.addEventListener('change', handleLockToggle, true);
+  document.addEventListener('input', handleManualLockToggle, true);
+  document.addEventListener('change', handleManualLockToggle, true);
+  document.addEventListener('input', handleStartWeekSyntheticChange, true);
+  document.addEventListener('change', handleStartWeekSyntheticChange, true);
   document.addEventListener('dragstart', handleDragStart, true);
-  document.addEventListener('drop', () => keepAutoMoveUnlockWindow(), true);
-  document.addEventListener('dragend', () => keepAutoMoveUnlockWindow(), true);
+  document.addEventListener('drop', handleDragEndOrDrop, true);
+  document.addEventListener('dragend', handleDragEndOrDrop, true);
 
   ['click', 'keyup'].forEach((eventName) => {
     document.addEventListener(eventName, (event) => {
