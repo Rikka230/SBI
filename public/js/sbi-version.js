@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.101-GPT2.1',
+  version: '8.0P.167.101.1-GPT2.1',
   branch: 'main',
-  channel: 'P2I.5 CURSUS TIMELINE DRAG DROP + GPT2 PRESERVED',
-  stage: 'CURSUS TIMELINE HORIZONTAL WEEK DRAG DROP',
+  channel: 'P2I.5 CURSUS TIMELINE DRAG DROP COLLISION FIX + GPT2 PRESERVED',
+  stage: 'CURSUS TIMELINE DRAG DROP WITHOUT BLOCK OVERLAP',
   updatedAt: '2026-05-19',
-  label: 'SBI 8.0P.167.101-GPT2.1 - CURSUS TIMELINE DRAG DROP'
+  label: 'SBI 8.0P.167.101.1-GPT2.1 - CURSUS DND COLLISION FIX'
 };
 
 export function getSbiVersionLabel() {

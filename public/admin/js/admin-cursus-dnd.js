@@ -1,9 +1,11 @@
 /**
- * SBI 8.0P.167.101-GPT2.1
+ * SBI 8.0P.167.101.1-GPT2.1
  * Cursus timeline drag & drop bridge.
  *
- * Périmètre : ajout du déplacement horizontal par semaine sans modifier le
- * modèle interne de admin-cursus.js. Le bridge pilote l'inspecteur existant.
+ * Périmètre : déplacement horizontal par semaine sans superposition.
+ * Si la semaine visée est déjà occupée sur la même piste, le bloc est
+ * automatiquement calé sur la prochaine place libre à droite, puis à gauche
+ * si nécessaire.
  */
 
 let installed = false;
@@ -33,6 +35,14 @@ function getWeekWidth() {
   const styles = getComputedStyle(canvas);
   const value = parseFloat(styles.getPropertyValue('--cursus-week-width'));
   return Number.isFinite(value) && value > 20 ? value : 120;
+}
+
+function getWeeksCount() {
+  const canvas = getTimelineCanvas();
+  if (!canvas) return 8;
+  const styles = getComputedStyle(canvas);
+  const value = parseInt(styles.getPropertyValue('--cursus-weeks'), 10);
+  return Number.isFinite(value) && value > 0 ? value : 8;
 }
 
 function setStatus(message = '', tone = 'muted') {
@@ -75,8 +85,27 @@ function ensureStyles() {
       background-color: rgba(42, 87, 255, .12);
       box-shadow: inset 0 0 0 1px rgba(117, 242, 154, .32);
     }
+    .sbi-cursus-track-body.is-drop-conflict {
+      background-color: rgba(255, 167, 74, .12);
+      box-shadow: inset 0 0 0 1px rgba(255, 167, 74, .36);
+    }
   `;
   document.head.appendChild(style);
+}
+
+function parseCssNumber(node, propertyName, fallback = 0) {
+  if (!node) return fallback;
+  const styles = getComputedStyle(node);
+  const value = parseFloat(styles.getPropertyValue(propertyName));
+  return Number.isFinite(value) ? value : fallback;
+}
+
+function getBlockStartWeekZero(block) {
+  return Math.max(0, Math.round(parseCssNumber(block, '--start-week', 0)));
+}
+
+function getBlockSpanWeeks(block) {
+  return Math.max(1, Math.round(parseCssNumber(block, '--span-week', 1)));
 }
 
 function computeDropWeek(event, trackBody) {
@@ -84,6 +113,73 @@ function computeDropWeek(event, trackBody) {
   const x = Math.max(0, event.clientX - rect.left);
   const weekWidth = getWeekWidth();
   return Math.max(1, Math.floor(x / weekWidth) + 1);
+}
+
+function rangesOverlap(startA, spanA, startB, spanB) {
+  const endA = startA + spanA;
+  const endB = startB + spanB;
+  return startA < endB && startB < endA;
+}
+
+function getOriginalTrackBody(itemId) {
+  const block = $(`.sbi-cursus-block[data-id="${CSS.escape(itemId)}"]`);
+  return block?.closest?.('.sbi-cursus-track-body') || null;
+}
+
+function getDraggedSpan(itemId) {
+  const block = $(`.sbi-cursus-block[data-id="${CSS.escape(itemId)}"]`);
+  return getBlockSpanWeeks(block);
+}
+
+function getOccupiedRanges(trackBody, excludedItemId = '') {
+  if (!trackBody) return [];
+
+  return $all('.sbi-cursus-block[data-id]', trackBody)
+    .filter((block) => (block.dataset.id || '') !== excludedItemId)
+    .map((block) => ({
+      id: block.dataset.id || '',
+      start: getBlockStartWeekZero(block),
+      span: getBlockSpanWeeks(block),
+      title: block.textContent?.trim() || ''
+    }))
+    .filter((range) => range.span > 0);
+}
+
+function isSlotFree(startWeekOneBased, span, ranges) {
+  const startZero = Math.max(0, startWeekOneBased - 1);
+  return !ranges.some((range) => rangesOverlap(startZero, span, range.start, range.span));
+}
+
+function findFreeWeek(targetWeek, span, ranges) {
+  const safeTarget = Math.max(1, Number(targetWeek) || 1);
+  if (isSlotFree(safeTarget, span, ranges)) return safeTarget;
+
+  const weeks = getWeeksCount();
+  const maxProbe = Math.max(weeks + 24, safeTarget + 24);
+
+  for (let week = safeTarget + 1; week <= maxProbe; week += 1) {
+    if (isSlotFree(week, span, ranges)) return week;
+  }
+
+  for (let week = safeTarget - 1; week >= 1; week -= 1) {
+    if (isSlotFree(week, span, ranges)) return week;
+  }
+
+  return safeTarget;
+}
+
+function getResolvedDropWeek(itemId, targetWeek) {
+  const originalTrackBody = getOriginalTrackBody(itemId);
+  const ranges = getOccupiedRanges(originalTrackBody, itemId);
+  const span = getDraggedSpan(itemId);
+  const resolvedWeek = findFreeWeek(targetWeek, span, ranges);
+
+  return {
+    targetWeek,
+    resolvedWeek,
+    wasOccupied: resolvedWeek !== targetWeek,
+    span
+  };
 }
 
 function waitFrame() {
@@ -126,14 +222,14 @@ async function setSelectedItemStartWeek(week) {
   return true;
 }
 
-async function moveItemToWeek(itemId, week) {
+async function moveItemToWeek(itemId, dropInfo) {
   const selected = await selectItem(itemId);
   if (!selected) {
     setStatus('Déplacement impossible : élément introuvable.', 'error');
     return;
   }
 
-  const moved = await setSelectedItemStartWeek(week);
+  const moved = await setSelectedItemStartWeek(dropInfo.resolvedWeek);
   if (!moved) {
     setStatus('Déplacement impossible : inspecteur indisponible.', 'error');
     return;
@@ -141,11 +237,19 @@ async function moveItemToWeek(itemId, week) {
 
   await waitFrame();
   markBlocksDraggable();
-  setStatus(`Bloc déplacé en S${week}. Pense à sauvegarder le cursus.`, 'success');
+
+  if (dropInfo.wasOccupied) {
+    setStatus(`S${dropInfo.targetWeek} occupée : bloc placé en S${dropInfo.resolvedWeek}. Pense à sauvegarder.`, 'success');
+    return;
+  }
+
+  setStatus(`Bloc déplacé en S${dropInfo.resolvedWeek}. Pense à sauvegarder le cursus.`, 'success');
 }
 
 function clearDropTargets() {
-  $all('.sbi-cursus-track-body.is-drop-target').forEach((node) => node.classList.remove('is-drop-target'));
+  $all('.sbi-cursus-track-body.is-drop-target, .sbi-cursus-track-body.is-drop-conflict').forEach((node) => {
+    node.classList.remove('is-drop-target', 'is-drop-conflict');
+  });
 }
 
 function handleDragStart(event) {
@@ -179,7 +283,10 @@ function handleDragOver(event) {
   event.preventDefault();
   event.dataTransfer.dropEffect = 'move';
   clearDropTargets();
-  trackBody.classList.add('is-drop-target');
+
+  const targetWeek = computeDropWeek(event, trackBody);
+  const dropInfo = getResolvedDropWeek(draggedItemId, targetWeek);
+  trackBody.classList.add(dropInfo.wasOccupied ? 'is-drop-conflict' : 'is-drop-target');
 }
 
 function handleDrop(event) {
@@ -190,11 +297,12 @@ function handleDrop(event) {
   event.preventDefault();
   const droppedId = event.dataTransfer.getData('text/plain') || draggedItemId;
   const targetWeek = computeDropWeek(event, trackBody);
+  const dropInfo = getResolvedDropWeek(droppedId, targetWeek);
   const elapsed = Date.now() - dragStartedAt;
   clearDropTargets();
 
   if (!droppedId || elapsed < 80) return;
-  moveItemToWeek(droppedId, targetWeek);
+  moveItemToWeek(droppedId, dropInfo);
 }
 
 function observeCursus() {
