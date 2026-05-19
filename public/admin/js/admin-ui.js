@@ -17,6 +17,7 @@ import { initAdminCursusPlaceholderReplaceBridge } from '/admin/js/admin-cursus-
 import { initAdminCursusWeeksControlsBridge } from '/admin/js/admin-cursus-weeks-controls.js?v=8.0P.167.107.1-GPT2.1';
 import { initAdminCursusMetricsPersistence } from '/admin/js/admin-cursus-metrics-persistence.js?v=8.0P.167.108-GPT2.1';
 import { initAdminCursusToolFilters } from '/admin/js/admin-cursus-tool-filters.js?v=8.0P.167.109-GPT2.1';
+import { initAdminCursusQaFinal } from '/admin/js/admin-cursus-qa-final.js?v=8.0P.167.110';
 import { initAdminPromotionsCursusSelectorFix } from '/admin/js/admin-promotions-cursus-selector-fix.js?v=8.0P.167.105.1-GPT2.1';
 
 /**
@@ -50,6 +51,7 @@ async function initAdminUi() {
         initAdminCursusWeeksControlsBridge();
         initAdminCursusMetricsPersistence();
         initAdminCursusToolFilters();
+        initAdminCursusQaFinal();
         initAdminPromotionsCursusSelectorFix();
         initPanelControls();
         initAdminTabs();

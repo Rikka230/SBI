@@ -61,6 +61,7 @@
                             <button type="button" id="cursus-save-btn" class="sbi-cursus-tool-btn is-primary">Sauvegarder</button>
                             <button type="button" id="cursus-duplicate-btn" class="sbi-cursus-tool-btn">Créer une copie</button>
                             <button type="button" id="cursus-recalc-btn" class="sbi-cursus-tool-btn">Recalculer</button>
+                            <button type="button" id="cursus-qa-btn" class="sbi-cursus-tool-btn">Diagnostic</button>
                             <button type="button" id="cursus-delete-btn" class="sbi-cursus-tool-btn is-danger">Supprimer</button>
                         </div>
                     </header>
@@ -135,6 +136,8 @@
                         </aside>
                     </div>
 
+                    <section id="cursus-qa-panel" class="sbi-cursus-qa-panel" hidden aria-live="polite"></section>
+
                     <footer class="sbi-cursus-footer">
                         <div class="sbi-cursus-stats">
                             <div><strong id="cursus-stat-count">0</strong><span>éléments</span></div>
@@ -155,7 +158,7 @@
     <admin-right-panel></admin-right-panel>
 </div>
 
-<script type="module" src="js/admin-ui.js?v=8.0P.167.109-GPT2.1"></script>
+<script type="module" src="js/admin-ui.js?v=8.0P.167.110"></script>
 <script type="module" src="js/tracker.js?v=8.0P.167.44"></script>
 <script type="module" src="js/admin-notifications.js"></script>
 <script type="module" src="js/admin-cursus.js?v=8.0P.167.107.6-GPT2.1"></script>
@@ -166,6 +169,7 @@
 <script type="module" src="js/admin-cursus-weeks-controls.js?v=8.0P.167.107.1-GPT2.1"></script>
 <script type="module" src="js/admin-cursus-metrics-persistence.js?v=8.0P.167.108-GPT2.1"></script>
 <script type="module" src="js/admin-cursus-tool-filters.js?v=8.0P.167.109-GPT2.1"></script>
+<script type="module" src="js/admin-cursus-qa-final.js?v=8.0P.167.110"></script>
 
 <script>
     document.addEventListener('DOMContentLoaded', () => {
