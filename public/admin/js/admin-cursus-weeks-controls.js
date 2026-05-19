@@ -1,13 +1,19 @@
 /**
- * SBI 8.0P.167.103-GPT2.1
+ * SBI 8.0P.167.103.1-GPT2.1
  * Cursus weeks controls bridge.
  *
- * Périmètre : ajouter / retirer rapidement des semaines de marge en fin de timeline,
- * sans modifier le modèle lourd admin-cursus.js.
+ * Périmètre : ajouter / retirer des semaines VIDES dans l'affichage timeline.
+ * Important : ce module ne crée plus de marge, ne supprime plus de marge,
+ * et ne touche pas aux blocs pédagogiques. Une semaine est ici une colonne
+ * de timeline, pas un élément de cursus.
  */
 
 let installed = false;
 let observer = null;
+let manualWeeks = 0;
+let applying = false;
+
+const STORAGE_PREFIX = 'sbi:cursus:manualWeeks:';
 
 function $(selector, root = document) {
   return root.querySelector(selector);
@@ -19,6 +25,21 @@ function $all(selector, root = document) {
 
 function getRoot() {
   return document.getElementById('view-cursus');
+}
+
+function getCanvas() {
+  return document.getElementById('cursus-timeline-canvas');
+}
+
+function getRuler() {
+  return document.getElementById('cursus-ruler');
+}
+
+function getTemplateKey() {
+  const template = document.getElementById('cursus-template-select')?.value || 'new';
+  const formation = document.getElementById('cursus-formation-select')?.value || 'no-formation';
+  const title = document.getElementById('cursus-title-input')?.value?.trim() || '';
+  return `${STORAGE_PREFIX}${formation}:${template}:${title}`;
 }
 
 function setStatus(message = '', tone = 'muted') {
@@ -50,83 +71,114 @@ function getBlockEnd(block) {
   return getBlockStart(block) + getBlockSpan(block);
 }
 
-function isMarginBlock(block) {
-  return block?.classList?.contains('type-buffer_period')
-    || block?.classList?.contains('type-revision_period')
-    || block?.classList?.contains('type-catchup_period');
-}
-
 function getBlocks() {
   const root = getRoot();
   if (!root) return [];
   return $all('.sbi-cursus-block[data-id]', root);
 }
 
-function getTimelineEnd() {
-  return getBlocks().reduce((max, block) => Math.max(max, getBlockEnd(block)), 0);
+function getRequiredWeeks() {
+  const blockEnd = getBlocks().reduce((max, block) => Math.max(max, getBlockEnd(block)), 0);
+  return Math.max(8, blockEnd);
 }
 
-function getTrailingMarginBlock() {
-  const blocks = getBlocks();
-  const timelineEnd = getTimelineEnd();
-  if (!timelineEnd) return null;
-
-  return blocks
-    .filter(isMarginBlock)
-    .filter((block) => getBlockEnd(block) >= timelineEnd)
-    .sort((a, b) => getBlockStart(b) - getBlockStart(a))[0] || null;
+function getRenderedWeeks() {
+  const canvas = getCanvas();
+  if (!canvas) return getRequiredWeeks();
+  const raw = parseInt(getComputedStyle(canvas).getPropertyValue('--cursus-weeks'), 10);
+  return Number.isFinite(raw) && raw > 0 ? raw : getRequiredWeeks();
 }
 
-function waitFrame() {
-  return new Promise((resolve) => requestAnimationFrame(() => resolve()));
+function readStoredWeeks() {
+  try {
+    const value = Number(localStorage.getItem(getTemplateKey()) || 0);
+    return Number.isFinite(value) ? value : 0;
+  } catch {
+    return 0;
+  }
 }
 
-function clickAddMarginButton() {
+function storeWeeks(value) {
+  try {
+    localStorage.setItem(getTemplateKey(), String(Math.max(0, Number(value) || 0)));
+  } catch {}
+}
+
+function buildWeekCell(index) {
+  const cell = document.createElement('div');
+  cell.className = 'sbi-cursus-week';
+  cell.innerHTML = `<span>S${index + 1}</span><small>${index === 0 ? 'Départ' : `+${index * 7} j`}</small>`;
+  return cell;
+}
+
+function patchRuler(weeks) {
+  const ruler = getRuler();
+  if (!ruler) return;
+
+  let corner = ruler.querySelector('.sbi-cursus-ruler-corner');
+  if (!corner) {
+    corner = document.createElement('div');
+    corner.className = 'sbi-cursus-ruler-corner';
+    corner.textContent = 'Pistes';
+    ruler.prepend(corner);
+  }
+
+  const existing = $all('.sbi-cursus-week', ruler);
+  existing.forEach((node) => node.remove());
+
+  for (let index = 0; index < weeks; index += 1) {
+    ruler.appendChild(buildWeekCell(index));
+  }
+}
+
+function applyWeeks({ silent = true } = {}) {
+  if (applying) return;
   const root = getRoot();
-  if (!root) return false;
+  const canvas = getCanvas();
+  if (!root || !canvas) return;
 
-  const button = $('[data-add-type="buffer_period"]', root);
-  if (!button) return false;
+  applying = true;
+  try {
+    const required = getRequiredWeeks();
+    const stored = readStoredWeeks();
+    manualWeeks = Math.max(manualWeeks, stored, required);
+    const weeks = Math.max(required, manualWeeks);
 
-  button.click();
-  return true;
+    canvas.style.setProperty('--cursus-weeks', String(weeks));
+    patchRuler(weeks);
+
+    const statPeriod = document.getElementById('cursus-stat-period');
+    if (statPeriod) statPeriod.textContent = `S1 → S${weeks}`;
+
+    if (!silent) {
+      setStatus(`Timeline réglée sur ${weeks} semaines. Pense à sauvegarder le cursus si cette structure est définitive.`, 'success');
+    }
+  } finally {
+    applying = false;
+  }
 }
 
-async function addWeek() {
-  if (!getRoot()) return;
-
-  const added = clickAddMarginButton();
-  if (!added) {
-    setStatus('Impossible d’ajouter une semaine : bouton Marge introuvable.', 'error');
-    return;
-  }
-
-  await waitFrame();
-  setStatus('Semaine de marge ajoutée en fin de cursus. Pense à sauvegarder.', 'success');
+function addWeek() {
+  const base = Math.max(getRenderedWeeks(), manualWeeks, getRequiredWeeks());
+  manualWeeks = base + 1;
+  storeWeeks(manualWeeks);
+  applyWeeks({ silent: true });
+  setStatus(`Semaine ${manualWeeks} ajoutée. Aucun bloc ni marge n’a été créé.`, 'success');
 }
 
-async function removeTrailingWeek() {
-  const root = getRoot();
-  if (!root) return;
+function removeWeek() {
+  const required = getRequiredWeeks();
+  const current = Math.max(getRenderedWeeks(), manualWeeks, required);
 
-  const margin = getTrailingMarginBlock();
-  if (!margin) {
-    setStatus('Aucune semaine de marge en fin de timeline à retirer.', 'error');
+  if (current <= required) {
+    setStatus(`Impossible de retirer S${current} : cette semaine est nécessaire au contenu existant.`, 'error');
     return;
   }
 
-  margin.click();
-  await waitFrame();
-
-  const inspector = document.getElementById('cursus-inspector-content');
-  const deleteButton = inspector?.querySelector?.('button[data-action="delete-item"]');
-  if (!deleteButton) {
-    setStatus('Impossible de retirer la semaine : bouton Supprimer introuvable.', 'error');
-    return;
-  }
-
-  setStatus('Confirmation demandée : supprimer la dernière marge pour retirer une semaine.');
-  deleteButton.click();
+  manualWeeks = current - 1;
+  storeWeeks(manualWeeks);
+  applyWeeks({ silent: true });
+  setStatus(`Semaine ${current} retirée. Aucun bloc ni marge n’a été supprimé.`, 'success');
 }
 
 function bindButtons() {
@@ -138,12 +190,14 @@ function bindButtons() {
 
   if (addButton && addButton.dataset.sbiWeeksBound !== 'true') {
     addButton.dataset.sbiWeeksBound = 'true';
+    addButton.title = 'Ajouter une semaine vide à la timeline';
     addButton.addEventListener('click', addWeek);
   }
 
   if (removeButton && removeButton.dataset.sbiWeeksBound !== 'true') {
     removeButton.dataset.sbiWeeksBound = 'true';
-    removeButton.addEventListener('click', removeTrailingWeek);
+    removeButton.title = 'Retirer la dernière semaine vide';
+    removeButton.addEventListener('click', removeWeek);
   }
 }
 
@@ -172,7 +226,14 @@ function observeCursus() {
   if (!root) return;
 
   bindButtons();
-  observer = new MutationObserver(() => bindButtons());
+  applyWeeks({ silent: true });
+
+  observer = new MutationObserver(() => {
+    window.requestAnimationFrame(() => {
+      bindButtons();
+      applyWeeks({ silent: true });
+    });
+  });
   observer.observe(root, { childList: true, subtree: true });
 }
 

@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.103-GPT2.1',
+  version: '8.0P.167.103.1-GPT2.1',
   branch: 'main',
-  channel: 'P2I.5 CURSUS WEEKS CONTROLS + GPT2 PRESERVED',
-  stage: 'CURSUS QUICK ADD REMOVE MARGIN WEEKS',
+  channel: 'P2I.5 CURSUS PURE WEEK CONTROLS + MARGIN DROP GUARD + GPT2 PRESERVED',
+  stage: 'CURSUS WEEKS WITHOUT MARGIN ITEMS AND NO COURSE ON MARGIN',
   updatedAt: '2026-05-19',
-  label: 'SBI 8.0P.167.103-GPT2.1 - CURSUS WEEKS CONTROLS'
+  label: 'SBI 8.0P.167.103.1-GPT2.1 - CURSUS PURE WEEK CONTROLS'
 };
 
 export function getSbiVersionLabel() {
