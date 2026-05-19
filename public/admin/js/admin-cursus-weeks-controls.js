@@ -1,20 +1,23 @@
 /**
- * SBI 8.0P.167.107-GPT2.1
- * Cursus weeks / trimester controls bridge.
+ * SBI 8.0P.167.107.1-GPT2.1
+ * Cursus weeks / trimester controls bridge - hotfix anti-freeze.
  *
- * Périmètre : semaines visibles, trimestres visibles, zoom lisible et scroll horizontal.
- * Une semaine / un trimestre ajouté est une surface de travail, jamais un bloc pédagogique.
+ * Cette version retire la boucle d'observation large du patch 107.
+ * Elle ne recrée la règle des semaines que si le nombre de semaines change.
  */
 
 let installed = false;
 let observer = null;
 let manualWeeks = 0;
 let applying = false;
-let scrollBound = false;
+let wheelBound = false;
+let lastRenderedWeeks = 0;
+let pendingApply = 0;
 
 const STORAGE_PREFIX = 'sbi:cursus:manualWeeks:';
 const DEFAULT_DISPLAY_WEEKS = 52;
 const QUARTER_WEEKS = 13;
+const BASE_WEEK_WIDTH = 120;
 
 function $(selector, root = document) {
   return root.querySelector(selector);
@@ -38,6 +41,10 @@ function getScroll() {
 
 function getRuler() {
   return document.getElementById('cursus-ruler');
+}
+
+function getTracks() {
+  return document.getElementById('cursus-tracks');
 }
 
 function getTemplateKey() {
@@ -125,29 +132,37 @@ function patchRuler(weeks) {
   const ruler = getRuler();
   if (!ruler) return;
 
+  const current = ruler.querySelectorAll('.sbi-cursus-week').length;
+  if (current === weeks && lastRenderedWeeks === weeks) return;
+
   let corner = ruler.querySelector('.sbi-cursus-ruler-corner');
   if (!corner) {
     corner = document.createElement('div');
     corner.className = 'sbi-cursus-ruler-corner';
     corner.textContent = 'Pistes';
-    ruler.prepend(corner);
   }
 
-  const existing = $all('.sbi-cursus-week', ruler);
-  existing.forEach((node) => node.remove());
-
+  const fragment = document.createDocumentFragment();
+  fragment.appendChild(corner);
   for (let index = 0; index < weeks; index += 1) {
-    ruler.appendChild(buildWeekCell(index));
+    fragment.appendChild(buildWeekCell(index));
   }
+
+  ruler.replaceChildren(fragment);
+  lastRenderedWeeks = weeks;
+}
+
+function getWeekWidth() {
+  const canvas = getCanvas();
+  const width = parseCssNumber(canvas, '--cursus-week-width', BASE_WEEK_WIDTH);
+  return width > 0 ? width : BASE_WEEK_WIDTH;
 }
 
 function updateZoomLabel() {
-  const canvas = getCanvas();
   const label = document.getElementById('cursus-zoom-label');
-  if (!canvas || !label) return;
-  const weekWidth = parseCssNumber(canvas, '--cursus-week-width', 120);
-  const percent = Math.max(25, Math.round((weekWidth / 120) * 100));
-  label.textContent = `${percent}%`;
+  if (!label) return;
+  const percent = Math.round((getWeekWidth() / BASE_WEEK_WIDTH) * 100);
+  label.textContent = `${Math.max(45, Math.min(180, percent))}%`;
 }
 
 function applyWeeks({ silent = true } = {}) {
@@ -163,19 +178,25 @@ function applyWeeks({ silent = true } = {}) {
     manualWeeks = Math.max(manualWeeks, stored, required);
     const weeks = Math.max(required, manualWeeks);
 
-    canvas.style.setProperty('--cursus-weeks', String(weeks));
+    if (String(weeks) !== canvas.style.getPropertyValue('--cursus-weeks')) {
+      canvas.style.setProperty('--cursus-weeks', String(weeks));
+    }
+
     patchRuler(weeks);
     updateZoomLabel();
 
     const statPeriod = document.getElementById('cursus-stat-period');
     if (statPeriod) statPeriod.textContent = `S1 → S${weeks}`;
 
-    if (!silent) {
-      setStatus(`Timeline réglée sur ${weeks} semaines.`, 'success');
-    }
+    if (!silent) setStatus(`Timeline réglée sur ${weeks} semaines.`, 'success');
   } finally {
     applying = false;
   }
+}
+
+function scheduleApply() {
+  window.cancelAnimationFrame(pendingApply);
+  pendingApply = window.requestAnimationFrame(() => applyWeeks({ silent: true }));
 }
 
 function setDisplayWeeks(weeks, { persist = true, silent = true } = {}) {
@@ -199,7 +220,7 @@ function removeWeeks(count, label) {
   const current = Math.max(getRenderedWeeks(), manualWeeks, required);
 
   if (current - count < required) {
-    setStatus(`Impossible de retirer ce ${label.toLowerCase()} : ces semaines contiennent déjà du contenu.`, 'error');
+    setStatus(`Impossible de retirer ce ${label.toLowerCase()} : ces semaines contiennent du contenu.`, 'error');
     return;
   }
 
@@ -209,31 +230,15 @@ function removeWeeks(count, label) {
   setStatus(`${label} retiré${label === 'Trimestre' ? '' : 'e'}.`, 'success');
 }
 
-function addWeek() {
-  addWeeks(1, 'Semaine');
-}
-
-function removeWeek() {
-  removeWeeks(1, 'Semaine');
-}
-
-function addTrimester() {
-  addWeeks(QUARTER_WEEKS, 'Trimestre');
-}
-
-function removeTrimester() {
-  removeWeeks(QUARTER_WEEKS, 'Trimestre');
-}
-
 function bindButtons() {
   const root = getRoot();
   if (!root) return;
 
   const buttons = [
-    ['cursus-add-week-btn', addWeek, 'Ajouter une semaine vide à la timeline'],
-    ['cursus-remove-week-btn', removeWeek, 'Retirer la dernière semaine vide'],
-    ['cursus-add-trimester-btn', addTrimester, 'Ajouter 13 semaines vides'],
-    ['cursus-remove-trimester-btn', removeTrimester, 'Retirer 13 semaines vides']
+    ['cursus-add-week-btn', () => addWeeks(1, 'Semaine'), 'Ajouter une semaine vide'],
+    ['cursus-remove-week-btn', () => removeWeeks(1, 'Semaine'), 'Retirer la dernière semaine vide'],
+    ['cursus-add-trimester-btn', () => addWeeks(QUARTER_WEEKS, 'Trimestre'), 'Ajouter 13 semaines vides'],
+    ['cursus-remove-trimester-btn', () => removeWeeks(QUARTER_WEEKS, 'Trimestre'), 'Retirer 13 semaines vides']
   ];
 
   buttons.forEach(([id, handler, title]) => {
@@ -247,18 +252,20 @@ function bindButtons() {
 
 function bindHorizontalScroll() {
   const scroll = getScroll();
-  if (!scroll || scroll.dataset.sbiWheelBound === 'true') return;
-  scroll.dataset.sbiWheelBound = 'true';
-  scrollBound = true;
+  if (!scroll || wheelBound) return;
+  wheelBound = true;
 
   scroll.addEventListener('wheel', (event) => {
     if (!getRoot()) return;
-    const dominantVertical = Math.abs(event.deltaY) >= Math.abs(event.deltaX);
-    const hasHorizontalOverflow = scroll.scrollWidth > scroll.clientWidth + 8;
-    if (!hasHorizontalOverflow || !dominantVertical) return;
+    if (event.ctrlKey) return;
+    const hasOverflow = scroll.scrollWidth > scroll.clientWidth + 8;
+    if (!hasOverflow) return;
+
+    const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
+    if (!delta) return;
 
     event.preventDefault();
-    scroll.scrollLeft += event.deltaY;
+    scroll.scrollLeft += delta;
   }, { passive: false });
 }
 
@@ -280,24 +287,32 @@ function ensureStyles() {
     #cursus-remove-trimester-btn {
       border-color: rgba(255, 167, 74, .24);
     }
-    .sbi-cursus-zoom-label {
+    #cursus-add-trimester-btn,
+    #cursus-remove-trimester-btn {
+      background: rgba(42, 87, 255, .08);
+    }
+    #cursus-zoom-label {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      min-width: 3.4rem;
-      min-height: 2rem;
+      min-width: 3.25rem;
+      height: 2rem;
       padding: 0 .55rem;
+      border: 1px solid rgba(255, 255, 255, .12);
       border-radius: 999px;
-      border: 1px solid rgba(255,255,255,.14);
-      color: rgba(235, 242, 255, .84);
+      color: rgba(230, 238, 255, .82);
+      background: rgba(255, 255, 255, .045);
       font-size: .78rem;
       font-weight: 700;
       letter-spacing: .02em;
-      background: rgba(255,255,255,.055);
     }
     #cursus-timeline-scroll {
-      overscroll-behavior-inline: contain;
-      scrollbar-gutter: stable;
+      overscroll-behavior-x: contain;
+      cursor: grab;
+    }
+    .sbi-cursus-timeline-tools {
+      gap: .45rem;
+      flex-wrap: wrap;
     }
   `;
   document.head.appendChild(style);
@@ -306,20 +321,21 @@ function ensureStyles() {
 function observeCursus() {
   observer?.disconnect();
   const root = getRoot();
+  const tracks = getTracks();
   if (!root) return;
 
   bindButtons();
   bindHorizontalScroll();
   applyWeeks({ silent: true });
 
-  observer = new MutationObserver(() => {
-    window.requestAnimationFrame(() => {
-      bindButtons();
-      bindHorizontalScroll();
-      applyWeeks({ silent: true });
-    });
+  if (!tracks) return;
+  observer = new MutationObserver(() => scheduleApply());
+  observer.observe(tracks, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['style', 'class', 'data-id']
   });
-  observer.observe(root, { childList: true, subtree: true });
 }
 
 function installPublicApi() {
