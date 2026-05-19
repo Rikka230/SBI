@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.113',
+  version: '8.0P.167.114',
   branch: 'main',
-  channel: 'P2I.5 CURSUS DATES QA PAGE',
-  stage: 'CURSUS DATES QA PAGE',
+  channel: 'P2I.5 CURSUS PROMOTION AUTO SYNC',
+  stage: 'CURSUS PROMOTION AUTO SYNC',
   updatedAt: '2026-05-19',
-  label: 'SBI 8.0P.167.113 - CURSUS DATES QA PAGE'
+  label: 'SBI 8.0P.167.114 - CURSUS PROMOTION AUTO SYNC'
 };
 
 export function getSbiVersionLabel() {
