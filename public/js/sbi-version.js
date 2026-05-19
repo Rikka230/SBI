@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.110',
+  version: '8.0P.167.111',
   branch: 'main',
-  channel: 'P2I.5 CURSUS QA FINAL',
-  stage: 'CURSUS QA FINAL',
+  channel: 'P2I.5 CURSUS QUALIOPI CADRAGE',
+  stage: 'CURSUS QUALIOPI CADRAGE',
   updatedAt: '2026-05-19',
-  label: 'SBI 8.0P.167.110 - CURSUS QA FINAL'
+  label: 'SBI 8.0P.167.111 - CURSUS QUALIOPI CADRAGE'
 };
 
 export function getSbiVersionLabel() {
