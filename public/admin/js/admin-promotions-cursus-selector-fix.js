@@ -1,12 +1,16 @@
 /**
- * SBI 8.0P.167.104-GPT2.1
- * Promotions cursus selector fix.
+ * SBI 8.0P.167.104.1-GPT2.1
+ * Promotions cursus selector fix - hotfix anti-freeze.
  *
- * But : garantir que les curriculumTemplates créés dans /admin/admin-cursus.html
- * apparaissent dans Promotions et puissent être appliqués à une promotion,
- * même si l'ancien filtre strict formationId ne matche pas exactement.
+ * Le patch 8.0P.167.104 rendait bien les cursus visibles, mais utilisait
+ * un MutationObserver trop large : l'ouverture du sélecteur pouvait provoquer
+ * une boucle render -> mutation -> render.
  *
- * Règle : Promotions sélectionne un cursus existant, Cursus crée/modifie les modèles.
+ * Cette version supprime totalement l'observer. Elle se contente :
+ * - d'écouter les clics utiles ;
+ * - de charger curriculumTemplates à la demande ;
+ * - de repeindre la liste quelques frames après l'ouverture native du modal ;
+ * - d'intercepter la sauvegarde uniquement si un cursus a été choisi via ce bridge.
  */
 
 import { auth, db } from '/js/firebase-init.js';
@@ -24,14 +28,10 @@ let templates = [];
 let loadingPromise = null;
 let selectedTemplate = null;
 let selectedPlan = [];
-let observer = null;
+let lastRenderSignature = '';
 
 function $(id) {
   return document.getElementById(id);
-}
-
-function q(selector, root = document) {
-  return root.querySelector(selector);
 }
 
 function normalize(value = '') {
@@ -99,6 +99,11 @@ function setFormStatus(message = '', tone = 'muted') {
       : 'var(--text-muted, #9ca3af)';
 }
 
+function setTemplateStatus(message = '') {
+  const node = $('promotion-curriculum-template-status');
+  if (node) node.textContent = message;
+}
+
 function getItemType(item = {}) {
   const rawType = item.type || item.itemType || '';
   if (rawType === 'course') return item.courseId ? 'real_course' : 'placeholder_course';
@@ -128,6 +133,31 @@ function getPlanDurationDays(plan = []) {
   }, 0);
 }
 
+function getTypeLabel(type = '') {
+  const map = {
+    real_course: 'Cours',
+    course: 'Cours',
+    placeholder_course: 'Cours futur',
+    buffer_period: 'Marge',
+    revision_period: 'Révisions',
+    catchup_period: 'Rattrapage',
+    assignment: 'Devoir',
+    exam: 'Examen',
+    evaluation: 'Évaluation',
+    live_session: 'Live',
+    workshop: 'Atelier'
+  };
+  return map[type] || type || 'Élément';
+}
+
+function getLayerForType(type = '') {
+  if (['real_course', 'course', 'placeholder_course'].includes(type)) return 'courses';
+  if (type === 'assignment') return 'assignments';
+  if (['exam', 'evaluation'].includes(type)) return 'assessments';
+  if (['live_session', 'workshop'].includes(type)) return 'lives';
+  return 'buffers';
+}
+
 function templateMatchesFormation(template = {}, formation = getSelectedFormation()) {
   if (!formation.formationId && !formation.formationName) return false;
 
@@ -153,6 +183,37 @@ function sortTemplatesForFormation(rows = [], formation = getSelectedFormation()
       if (aMatch !== bMatch) return aMatch - bMatch;
       return String(a.title || '').localeCompare(String(b.title || ''), 'fr', { sensitivity: 'base' });
     });
+}
+
+function getVisibleTemplates() {
+  const formation = getSelectedFormation();
+  const rows = sortTemplatesForFormation(templates, formation);
+  const matching = rows.filter((template) => templateMatchesFormation(template, formation));
+
+  return matching.length ? matching : rows;
+}
+
+async function loadTemplates({ force = false } = {}) {
+  if (loadingPromise) return loadingPromise;
+  if (!force && templates.length) return templates;
+
+  loadingPromise = getDocs(collection(db, 'curriculumTemplates'))
+    .then((snap) => {
+      templates = [];
+      snap.forEach((docSnap) => templates.push({ id: docSnap.id, ...(docSnap.data() || {}) }));
+      return templates;
+    })
+    .catch((error) => {
+      console.warn('[SBI Promotions] Bridge cursus : chargement impossible', error);
+      templates = [];
+      setTemplateStatus('Chargement des cursus impossible.');
+      return templates;
+    })
+    .finally(() => {
+      loadingPromise = null;
+    });
+
+  return loadingPromise;
 }
 
 function buildPlanFromTemplate(template = {}) {
@@ -194,66 +255,10 @@ function buildPlanFromTemplate(template = {}) {
       isSharedCourse: item.isSharedCourse === true,
       grantedByCurriculum: item.grantedByCurriculum === false ? false : true,
       order: Number.isFinite(Number(item.order)) ? Number(item.order) : index,
-      source: 'curriculum-template-applied-by-promotions-bridge-v1'
+      source: 'curriculum-template-applied-by-promotions-bridge-v2'
     };
   }).sort((a, b) => toNumber(a.order, 0) - toNumber(b.order, 0))
     .map((item, index) => ({ ...item, order: index }));
-}
-
-function getTypeLabel(type = '') {
-  const map = {
-    real_course: 'Cours',
-    course: 'Cours',
-    placeholder_course: 'Cours futur',
-    buffer_period: 'Marge',
-    revision_period: 'Révisions',
-    catchup_period: 'Rattrapage',
-    assignment: 'Devoir',
-    exam: 'Examen',
-    evaluation: 'Évaluation',
-    live_session: 'Live',
-    workshop: 'Atelier'
-  };
-  return map[type] || type || 'Élément';
-}
-
-function getLayerForType(type = '') {
-  if (['real_course', 'course', 'placeholder_course'].includes(type)) return 'courses';
-  if (type === 'assignment') return 'assignments';
-  if (['exam', 'evaluation'].includes(type)) return 'assessments';
-  if (['live_session', 'workshop'].includes(type)) return 'lives';
-  return 'buffers';
-}
-
-async function loadTemplates() {
-  if (loadingPromise) return loadingPromise;
-
-  loadingPromise = getDocs(collection(db, 'curriculumTemplates'))
-    .then((snap) => {
-      templates = [];
-      snap.forEach((docSnap) => templates.push({ id: docSnap.id, ...(docSnap.data() || {}) }));
-      return templates;
-    })
-    .catch((error) => {
-      console.warn('[SBI Promotions] Bridge cursus : chargement impossible', error);
-      templates = [];
-      return templates;
-    })
-    .finally(() => {
-      loadingPromise = null;
-    });
-
-  return loadingPromise;
-}
-
-function getVisibleTemplates() {
-  const formation = getSelectedFormation();
-  const rows = sortTemplatesForFormation(templates, formation);
-  const matching = rows.filter((template) => templateMatchesFormation(template, formation));
-
-  // Si aucun ID ne matche, on affiche quand même les cursus non archivés.
-  // C'est le garde-fou contre les modèles créés avec un ancien champ formationId/name.
-  return matching.length ? matching : rows;
 }
 
 function renderTemplateList() {
@@ -265,15 +270,25 @@ function renderTemplateList() {
   if (!formation.formationId) {
     status.textContent = 'Sélectionnez une formation liée pour afficher les cursus disponibles.';
     list.innerHTML = '<div class="sbi-promotions-empty">Aucune formation liée.</div>';
+    lastRenderSignature = '';
     return;
   }
 
   const rows = getVisibleTemplates();
   const matchingCount = rows.filter((template) => templateMatchesFormation(template, formation)).length;
+  const signature = JSON.stringify({
+    formationId: formation.formationId,
+    selected: selectedTemplate?.id || '',
+    rows: rows.map((template) => [template.id, template.title, template.updatedAt?.seconds || template.updatedAt || ''])
+  });
+
+  if (signature === lastRenderSignature && list.dataset.sbiBridgeRendered === 'true') return;
+  lastRenderSignature = signature;
+  list.dataset.sbiBridgeRendered = 'true';
 
   status.textContent = rows.length
     ? `${rows.length} cursus disponible${rows.length > 1 ? 's' : ''}${matchingCount ? ` · ${matchingCount} lié${matchingCount > 1 ? 's' : ''} à ${formation.formationName || 'cette formation'}` : ' · affichage de secours tous cursus non archivés'}.`
-    : `Aucun cursus sauvegardé disponible.`;
+    : 'Aucun cursus sauvegardé disponible.';
 
   if (!rows.length) {
     list.innerHTML = '<div class="sbi-promotions-empty">Aucun cursus disponible. Créez-le depuis l’onglet Cursus, puis revenez le sélectionner ici.</div>';
@@ -304,20 +319,24 @@ function renderTemplateList() {
   }).join('');
 }
 
+async function refreshAndRenderTemplates({ force = false } = {}) {
+  if (!getView()) return;
+  setTemplateStatus('Chargement des cursus...');
+  await loadTemplates({ force });
+  renderTemplateList();
+}
+
+function scheduleTemplateRender() {
+  window.setTimeout(() => refreshAndRenderTemplates({ force: true }), 80);
+  window.setTimeout(() => renderTemplateList(), 260);
+  window.setTimeout(() => renderTemplateList(), 700);
+}
+
 function closeTemplateModal() {
   const modal = $('promotion-curriculum-template-modal');
   if (!modal) return;
   modal.classList.remove('is-open');
   modal.setAttribute('aria-hidden', 'true');
-}
-
-function openTemplateModal() {
-  const formation = getSelectedFormation();
-  if (!formation.formationId) return;
-  window.setTimeout(async () => {
-    await loadTemplates();
-    renderTemplateList();
-  }, 40);
 }
 
 function applyTemplate(templateId = '') {
@@ -330,10 +349,11 @@ function applyTemplate(templateId = '') {
   const titleInput = $('promotion-curriculum-title');
   if (titleInput) titleInput.value = template.title || '';
 
+  const duration = getPlanDurationDays(selectedPlan);
   setText('promotion-planning-summary-title', template.title || 'Cursus sélectionné');
   setText(
     'promotion-planning-summary-meta',
-    `${selectedPlan.length} élément${selectedPlan.length > 1 ? 's' : ''} · ${getPlanDurationDays(selectedPlan)} jour${getPlanDurationDays(selectedPlan) > 1 ? 's' : ''} estimé${getPlanDurationDays(selectedPlan) > 1 ? 's' : ''} · sauvegardez la promotion pour confirmer.`
+    `${selectedPlan.length} élément${selectedPlan.length > 1 ? 's' : ''} · ${duration} jour${duration > 1 ? 's' : ''} estimé${duration > 1 ? 's' : ''} · sauvegardez la promotion pour confirmer.`
   );
 
   setFormStatus(`Cursus « ${template.title || 'sans nom'} » sélectionné. Sauvegardez la promotion pour enregistrer ce choix.`, 'success');
@@ -414,76 +434,64 @@ async function savePromotionWithSelectedTemplate(event) {
 function clearSelection() {
   selectedTemplate = null;
   selectedPlan = [];
+  lastRenderSignature = '';
 }
 
 function bindEvents() {
-  const root = getView();
-  if (!root || root.dataset.sbiPromotionsCursusFixBound === 'true') return;
-  root.dataset.sbiPromotionsCursusFixBound = 'true';
-
-  root.addEventListener('click', (event) => {
-    const open = event.target.closest?.('#promotion-planning-open-btn, #promotion-curriculum-load-btn');
-    if (open) openTemplateModal();
-
-    const apply = event.target.closest?.('[data-sbi-bridge-apply-template]');
-    if (apply) {
-      event.preventDefault();
-      event.stopPropagation();
-      applyTemplate(apply.dataset.sbiBridgeApplyTemplate || '');
-    }
-  }, true);
+  if (document.body.dataset.sbiPromotionsCursusFixV1041 === 'true') return;
+  document.body.dataset.sbiPromotionsCursusFixV1041 = 'true';
 
   document.addEventListener('click', (event) => {
     if (!getView()) return;
+
+    const open = event.target.closest?.('#promotion-planning-open-btn, #promotion-curriculum-load-btn');
+    if (open) {
+      lastRenderSignature = '';
+      scheduleTemplateRender();
+      return;
+    }
+
     const apply = event.target.closest?.('[data-sbi-bridge-apply-template]');
     if (apply) {
       event.preventDefault();
       event.stopPropagation();
       applyTemplate(apply.dataset.sbiBridgeApplyTemplate || '');
+      return;
+    }
+
+    const edit = event.target.closest?.('button[data-action="edit"][data-id]');
+    if (edit) {
+      clearSelection();
     }
   }, true);
 
-  $('promotion-form')?.addEventListener('submit', savePromotionWithSelectedTemplate, true);
-  $('promotion-reset-btn')?.addEventListener('click', clearSelection);
-  $('promotion-formation')?.addEventListener('change', () => {
+  document.addEventListener('submit', (event) => {
+    if (!getView()) return;
+    if (event.target?.id !== 'promotion-form') return;
+    savePromotionWithSelectedTemplate(event);
+  }, true);
+
+  document.addEventListener('change', (event) => {
+    if (!getView()) return;
+    if (event.target?.id !== 'promotion-formation') return;
     clearSelection();
-    window.setTimeout(() => {
-      if ($('promotion-curriculum-template-modal')?.classList.contains('is-open')) {
-        openTemplateModal();
-      }
-    }, 80);
-  });
-}
-
-function observe() {
-  observer?.disconnect();
-  if (!getView()) return;
-
-  bindEvents();
-
-  observer = new MutationObserver(() => {
-    bindEvents();
-    if ($('promotion-curriculum-template-modal')?.classList.contains('is-open')) renderTemplateList();
-  });
-  observer.observe(document.body, { childList: true, subtree: true });
+    if ($('promotion-curriculum-template-modal')?.classList.contains('is-open')) {
+      scheduleTemplateRender();
+    }
+  }, true);
 }
 
 export function initAdminPromotionsCursusSelectorFix() {
   if (installed) {
-    observe();
+    bindEvents();
     return;
   }
 
   installed = true;
+  bindEvents();
 
-  window.addEventListener('sbi:app-shell:navigated', () => window.setTimeout(observe, 80));
-  window.addEventListener('sbi:app-shell:ready', () => window.setTimeout(observe, 80));
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', observe, { once: true });
-  } else {
-    observe();
-  }
+  window.addEventListener('sbi:app-shell:navigated', () => window.setTimeout(bindEvents, 80));
+  window.addEventListener('sbi:app-shell:ready', () => window.setTimeout(bindEvents, 80));
 }
 
 initAdminPromotionsCursusSelectorFix();
