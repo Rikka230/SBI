@@ -1,16 +1,20 @@
 /**
- * SBI 8.0P.167.101.2-GPT2.1
+ * SBI 8.0P.167.102.2-GPT2.1
  * Cursus timeline drag & drop bridge.
  *
  * Périmètre : déplacement horizontal par semaine avec insertion intelligente.
- * Si la période visée est occupée sur la même piste, le bloc est inséré à
- * l'endroit demandé et les blocs qui se chevauchent sont décalés vers la droite.
+ * - Cours / blocs classiques : insertion + décalage vers la droite.
+ * - Marges pédagogiques : déplacement de trou. La marge échange sa place avec
+ *   les blocs structurels croisés pour éviter de pousser les cours dans une collision.
  */
 
 let installed = false;
 let observer = null;
 let draggedItemId = '';
 let dragStartedAt = 0;
+
+const MARGIN_TYPES = new Set(['buffer_period', 'revision_period', 'catchup_period']);
+const STRUCTURAL_TYPES = new Set(['course', 'placeholder_course', 'buffer_period', 'revision_period', 'catchup_period']);
 
 function $(selector, root = document) {
   return root.querySelector(selector);
@@ -62,7 +66,9 @@ function markBlocksDraggable() {
   $all('.sbi-cursus-block[data-id]', root).forEach((block) => {
     block.setAttribute('draggable', 'true');
     block.setAttribute('aria-grabbed', 'false');
-    block.title = 'Glisser horizontalement pour insérer ou déplacer le bloc dans la timeline';
+    block.title = isMarginBlock(block)
+      ? 'Glisser horizontalement pour déplacer la marge et faire glisser les blocs autour'
+      : 'Glisser horizontalement pour insérer ou déplacer le bloc dans la timeline';
   });
 }
 
@@ -88,6 +94,10 @@ function ensureStyles() {
       background-color: rgba(255, 167, 74, .12);
       box-shadow: inset 0 0 0 1px rgba(255, 167, 74, .42);
     }
+    .sbi-cursus-track-body.is-drop-swap {
+      background-color: rgba(117, 242, 154, .11);
+      box-shadow: inset 0 0 0 1px rgba(117, 242, 154, .48);
+    }
     .sbi-cursus-track-body.is-drop-forbidden {
       background-color: rgba(255, 74, 104, .10);
       box-shadow: inset 0 0 0 1px rgba(255, 74, 104, .34);
@@ -109,6 +119,20 @@ function getBlockStartWeekZero(block) {
 
 function getBlockSpanWeeks(block) {
   return Math.max(1, Math.round(parseCssNumber(block, '--span-week', 1)));
+}
+
+function getBlockType(block) {
+  if (!block) return '';
+  const typeClass = Array.from(block.classList).find((className) => className.startsWith('type-'));
+  return typeClass ? typeClass.replace(/^type-/, '') : '';
+}
+
+function isMarginBlock(block) {
+  return MARGIN_TYPES.has(getBlockType(block));
+}
+
+function isStructuralBlock(block) {
+  return STRUCTURAL_TYPES.has(getBlockType(block));
 }
 
 function computeDropWeek(event, trackBody) {
@@ -138,22 +162,39 @@ function getDraggedSpan(itemId) {
   return getBlockSpanWeeks(getBlockByItemId(itemId));
 }
 
+function rangeFromBlock(block) {
+  return {
+    id: block.dataset.id || '',
+    start: getBlockStartWeekZero(block),
+    span: getBlockSpanWeeks(block),
+    type: getBlockType(block),
+    title: block.textContent?.trim() || ''
+  };
+}
+
 function getOccupiedRanges(trackBody, excludedItemId = '') {
   if (!trackBody) return [];
 
   return $all('.sbi-cursus-block[data-id]', trackBody)
     .filter((block) => (block.dataset.id || '') !== excludedItemId)
-    .map((block) => ({
-      id: block.dataset.id || '',
-      start: getBlockStartWeekZero(block),
-      span: getBlockSpanWeeks(block),
-      title: block.textContent?.trim() || ''
-    }))
+    .map(rangeFromBlock)
     .filter((range) => range.id && range.span > 0)
     .sort((a, b) => (a.start - b.start) || a.title.localeCompare(b.title, 'fr'));
 }
 
-function buildInsertionPlan(itemId, targetWeek, dropTrackBody) {
+function getStructuralRanges(excludedItemId = '') {
+  const root = getCursusRoot();
+  if (!root) return [];
+
+  return $all('.sbi-cursus-block[data-id]', root)
+    .filter((block) => (block.dataset.id || '') !== excludedItemId)
+    .filter(isStructuralBlock)
+    .map(rangeFromBlock)
+    .filter((range) => range.id && range.span > 0)
+    .sort((a, b) => (a.start - b.start) || a.title.localeCompare(b.title, 'fr'));
+}
+
+function buildContentInsertionPlan(itemId, targetWeek, dropTrackBody) {
   const originalTrackBody = getOriginalTrackBody(itemId);
   const targetTrackBody = dropTrackBody || originalTrackBody;
   const targetWeekSafe = Math.max(1, Number(targetWeek) || 1);
@@ -162,6 +203,7 @@ function buildInsertionPlan(itemId, targetWeek, dropTrackBody) {
 
   if (!originalTrackBody || !targetTrackBody || originalTrackBody !== targetTrackBody) {
     return {
+      mode: 'forbidden',
       itemId,
       allowed: false,
       reason: 'Le déplacement vertical entre pistes n’est pas encore actif.',
@@ -200,6 +242,7 @@ function buildInsertionPlan(itemId, targetWeek, dropTrackBody) {
   });
 
   return {
+    mode: 'insert',
     itemId,
     allowed: true,
     reason: '',
@@ -210,6 +253,96 @@ function buildInsertionPlan(itemId, targetWeek, dropTrackBody) {
     hasCollision,
     requiredWeeks: Math.max(getWeeksCount(), cursor)
   };
+}
+
+function buildMarginSlidePlan(itemId, targetWeek) {
+  const block = getBlockByItemId(itemId);
+  const targetWeekSafe = Math.max(1, Number(targetWeek) || 1);
+  const targetStart = targetWeekSafe - 1;
+
+  if (!block) {
+    return {
+      mode: 'forbidden',
+      itemId,
+      allowed: false,
+      reason: 'Marge introuvable.',
+      targetWeek: targetWeekSafe,
+      insertedWeek: targetWeekSafe,
+      shifts: [],
+      hasCollision: false
+    };
+  }
+
+  const oldStart = getBlockStartWeekZero(block);
+  const span = getBlockSpanWeeks(block);
+
+  if (targetStart === oldStart) {
+    return {
+      mode: 'margin-slide',
+      itemId,
+      allowed: true,
+      reason: '',
+      targetWeek: targetWeekSafe,
+      insertedWeek: targetWeekSafe,
+      insertedSpan: span,
+      shifts: [],
+      hasCollision: false
+    };
+  }
+
+  const ranges = getStructuralRanges(itemId);
+  const shifts = [];
+
+  if (targetStart > oldStart) {
+    const from = oldStart + span;
+    const to = targetStart + span;
+
+    ranges.forEach((range) => {
+      if (range.start < from || range.start >= to) return;
+      shifts.push({
+        id: range.id,
+        fromWeek: range.start + 1,
+        toWeek: Math.max(1, range.start - span + 1),
+        span: range.span,
+        title: range.title,
+        type: range.type
+      });
+    });
+  } else {
+    const from = targetStart;
+    const to = oldStart;
+
+    ranges.slice().reverse().forEach((range) => {
+      if (range.start < from || range.start >= to) return;
+      shifts.push({
+        id: range.id,
+        fromWeek: range.start + 1,
+        toWeek: range.start + span + 1,
+        span: range.span,
+        title: range.title,
+        type: range.type
+      });
+    });
+  }
+
+  return {
+    mode: 'margin-slide',
+    itemId,
+    allowed: true,
+    reason: '',
+    targetWeek: targetWeekSafe,
+    insertedWeek: targetWeekSafe,
+    insertedSpan: span,
+    shifts,
+    hasCollision: shifts.length > 0,
+    requiredWeeks: Math.max(getWeeksCount(), targetStart + span)
+  };
+}
+
+function buildMovePlan(itemId, targetWeek, dropTrackBody) {
+  const block = getBlockByItemId(itemId);
+  if (isMarginBlock(block)) return buildMarginSlidePlan(itemId, targetWeek);
+  return buildContentInsertionPlan(itemId, targetWeek, dropTrackBody);
 }
 
 function waitFrame() {
@@ -261,7 +394,7 @@ async function setItemStartWeek(itemId, week) {
   return moved;
 }
 
-async function applyInsertionPlan(plan) {
+async function applyMovePlan(plan) {
   if (!plan?.allowed) {
     setStatus(plan?.reason || 'Déplacement impossible.', 'error');
     return;
@@ -276,7 +409,7 @@ async function applyInsertionPlan(plan) {
   for (const shift of plan.shifts) {
     const shifted = await setItemStartWeek(shift.id, shift.toWeek);
     if (!shifted) {
-      setStatus('Insertion partielle : un bloc à décaler est introuvable. Vérifie puis sauvegarde.', 'error');
+      setStatus('Déplacement partiel : un bloc à réajuster est introuvable. Vérifie puis sauvegarde.', 'error');
       markBlocksDraggable();
       return;
     }
@@ -284,6 +417,15 @@ async function applyInsertionPlan(plan) {
 
   await waitFrame();
   markBlocksDraggable();
+
+  if (plan.mode === 'margin-slide') {
+    if (plan.shifts.length) {
+      setStatus(`Marge déplacée en S${plan.insertedWeek}. ${plan.shifts.length} bloc${plan.shifts.length > 1 ? 's' : ''} glissé${plan.shifts.length > 1 ? 's' : ''} dans l’espace libéré. Pense à sauvegarder.`, 'success');
+      return;
+    }
+    setStatus(`Marge déplacée en S${plan.insertedWeek}. Pense à sauvegarder le cursus.`, 'success');
+    return;
+  }
 
   if (plan.shifts.length) {
     setStatus(`Bloc inséré en S${plan.insertedWeek}. ${plan.shifts.length} bloc${plan.shifts.length > 1 ? 's' : ''} décalé${plan.shifts.length > 1 ? 's' : ''}. Pense à sauvegarder.`, 'success');
@@ -294,8 +436,8 @@ async function applyInsertionPlan(plan) {
 }
 
 function clearDropTargets() {
-  $all('.sbi-cursus-track-body.is-drop-target, .sbi-cursus-track-body.is-drop-insert, .sbi-cursus-track-body.is-drop-forbidden').forEach((node) => {
-    node.classList.remove('is-drop-target', 'is-drop-insert', 'is-drop-forbidden');
+  $all('.sbi-cursus-track-body.is-drop-target, .sbi-cursus-track-body.is-drop-insert, .sbi-cursus-track-body.is-drop-swap, .sbi-cursus-track-body.is-drop-forbidden').forEach((node) => {
+    node.classList.remove('is-drop-target', 'is-drop-insert', 'is-drop-swap', 'is-drop-forbidden');
   });
 }
 
@@ -310,7 +452,9 @@ function handleDragStart(event) {
 
   event.dataTransfer.effectAllowed = 'move';
   event.dataTransfer.setData('text/plain', draggedItemId);
-  setStatus('Déplacement en cours : dépose le bloc sur la semaine voulue. Les blocs gênants seront décalés.');
+  setStatus(isMarginBlock(block)
+    ? 'Déplacement de marge : les blocs croisés glisseront dans l’espace libéré.'
+    : 'Déplacement en cours : dépose le bloc sur la semaine voulue. Les blocs gênants seront décalés.');
 }
 
 function handleDragEnd() {
@@ -332,11 +476,16 @@ function handleDragOver(event) {
   clearDropTargets();
 
   const targetWeek = computeDropWeek(event, trackBody);
-  const plan = buildInsertionPlan(draggedItemId, targetWeek, trackBody);
+  const plan = buildMovePlan(draggedItemId, targetWeek, trackBody);
 
   if (!plan.allowed) {
     trackBody.classList.add('is-drop-forbidden');
     event.dataTransfer.dropEffect = 'none';
+    return;
+  }
+
+  if (plan.mode === 'margin-slide') {
+    trackBody.classList.add(plan.hasCollision ? 'is-drop-swap' : 'is-drop-target');
     return;
   }
 
@@ -351,12 +500,12 @@ function handleDrop(event) {
   event.preventDefault();
   const droppedId = event.dataTransfer.getData('text/plain') || draggedItemId;
   const targetWeek = computeDropWeek(event, trackBody);
-  const plan = buildInsertionPlan(droppedId, targetWeek, trackBody);
+  const plan = buildMovePlan(droppedId, targetWeek, trackBody);
   const elapsed = Date.now() - dragStartedAt;
   clearDropTargets();
 
   if (!droppedId || elapsed < 80) return;
-  applyInsertionPlan(plan);
+  applyMovePlan(plan);
 }
 
 function observeCursus() {
