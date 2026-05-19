@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.106-GPT2.1',
+  version: '8.0P.167.107-GPT2.1',
   branch: 'main',
-  channel: 'P2I.5 CURSUS TRIMESTER ZOOM SCROLL + GPT2 PRESERVED',
-  stage: 'CURSUS TRIMESTER CONTROLS ZOOM HORIZONTAL SCROLL',
+  channel: 'P2I.5 CURSUS HARDENING + GPT2 PRESERVED',
+  stage: 'CURSUS HARDENING 100 PERCENT PASS',
   updatedAt: '2026-05-19',
-  label: 'SBI 8.0P.167.106-GPT2.1 - CURSUS TRIMESTER ZOOM SCROLL'
+  label: 'SBI 8.0P.167.107-GPT2.1 - CURSUS HARDENING'
 };
 
 export function getSbiVersionLabel() {

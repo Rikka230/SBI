@@ -106,17 +106,17 @@
                                 </div>
                                 <div class="sbi-cursus-timeline-tools">
                                     <button type="button" id="cursus-remove-trimester-btn" title="Retirer 13 semaines vides">− trimestre</button>
+                                    <button type="button" id="cursus-add-trimester-btn" title="Ajouter 13 semaines vides">+ trimestre</button>
                                     <button type="button" id="cursus-remove-week-btn" title="Retirer la dernière semaine vide">− semaine</button>
                                     <button type="button" id="cursus-add-week-btn" title="Ajouter une semaine vide">+ semaine</button>
-                                    <button type="button" id="cursus-add-trimester-btn" title="Ajouter 13 semaines vides">+ trimestre</button>
-                                    <button type="button" id="cursus-zoom-out" title="Dézoomer la timeline">−</button>
-                                    <span id="cursus-zoom-label" class="sbi-cursus-zoom-label">100%</span>
-                                    <button type="button" id="cursus-zoom-in" title="Zoomer la timeline">+</button>
+                                    <button type="button" id="cursus-zoom-out" title="Dézoomer">−</button>
+                                    <span id="cursus-zoom-label" class="sbi-cursus-zoom-label" aria-live="polite">100%</span>
+                                    <button type="button" id="cursus-zoom-in" title="Zoomer">+</button>
                                     <label><input id="cursus-grid-toggle" type="checkbox" checked> Quadrillage</label>
                                 </div>
                             </div>
 
-                            <div class="sbi-cursus-timeline-scroll" id="cursus-timeline-scroll" tabindex="0" aria-label="Timeline horizontale du cursus">
+                            <div class="sbi-cursus-timeline-scroll" id="cursus-timeline-scroll">
                                 <div class="sbi-cursus-timeline-canvas" id="cursus-timeline-canvas">
                                     <div class="sbi-cursus-ruler" id="cursus-ruler"></div>
                                     <div class="sbi-cursus-tracks" id="cursus-tracks"></div>
@@ -155,14 +155,15 @@
     <admin-right-panel></admin-right-panel>
 </div>
 
-<script type="module" src="js/admin-ui.js?v=8.0P.167.106-GPT2.1"></script>
+<script type="module" src="js/admin-ui.js?v=8.0P.167.107-GPT2.1"></script>
 <script type="module" src="js/tracker.js?v=8.0P.167.44"></script>
 <script type="module" src="js/admin-notifications.js"></script>
 <script type="module" src="js/admin-cursus.js?v=8.0P.167.98.1"></script>
 <script type="module" src="js/admin-cursus-pjax-guard.js?v=8.0P.167.99-GPT2.1"></script>
 <script type="module" src="js/admin-cursus-dnd.js?v=8.0P.167.103.1-GPT2.1"></script>
 <script type="module" src="js/admin-cursus-placeholder-replace.js?v=8.0P.167.102.1-GPT2.1"></script>
-<script type="module" src="js/admin-cursus-weeks-controls.js?v=8.0P.167.106-GPT2.1"></script>
+<script type="module" src="js/admin-cursus-weeks-controls.js?v=8.0P.167.107-GPT2.1"></script>
+<script type="module" src="js/admin-cursus-hardening.js?v=8.0P.167.107-GPT2.1"></script>
 
 <script>
     document.addEventListener('DOMContentLoaded', () => {

@@ -1,25 +1,20 @@
 /**
- * SBI 8.0P.167.106-GPT2.1
- * Cursus weeks / trimester controls + zoom label + horizontal wheel scroll.
+ * SBI 8.0P.167.107-GPT2.1
+ * Cursus weeks / trimester controls bridge.
  *
- * Règles métier :
- * - une semaine est une colonne de travail, pas un bloc pédagogique ;
- * - + semaine / + trimestre n'ajoutent aucun bloc ni marge ;
- * - - semaine / - trimestre ne retirent que des colonnes vides ;
- * - la durée effective du cursus reste portée par le dernier bloc pédagogique placé.
+ * Périmètre : semaines visibles, trimestres visibles, zoom lisible et scroll horizontal.
+ * Une semaine / un trimestre ajouté est une surface de travail, jamais un bloc pédagogique.
  */
 
 let installed = false;
 let observer = null;
 let manualWeeks = 0;
 let applying = false;
-let pendingApply = 0;
-let wheelBound = false;
+let scrollBound = false;
 
 const STORAGE_PREFIX = 'sbi:cursus:manualWeeks:';
-const TRIMESTER_WEEKS = 13;
-const DEFAULT_WEEKS = 52;
-const BASE_WEEK_WIDTH = 120;
+const DEFAULT_DISPLAY_WEEKS = 52;
+const QUARTER_WEEKS = 13;
 
 function $(selector, root = document) {
   return root.querySelector(selector);
@@ -89,7 +84,12 @@ function getBlocks() {
 
 function getRequiredWeeks() {
   const blockEnd = getBlocks().reduce((max, block) => Math.max(max, getBlockEnd(block)), 0);
-  return Math.max(8, blockEnd);
+  return Math.max(DEFAULT_DISPLAY_WEEKS, blockEnd);
+}
+
+function getEffectiveWeeks() {
+  const blockEnd = getBlocks().reduce((max, block) => Math.max(max, getBlockEnd(block)), 0);
+  return Math.max(0, blockEnd);
 }
 
 function getRenderedWeeks() {
@@ -125,46 +125,29 @@ function patchRuler(weeks) {
   const ruler = getRuler();
   if (!ruler) return;
 
-  const target = String(weeks);
-  const existingCount = ruler.querySelectorAll('.sbi-cursus-week').length;
-  const hasCorner = Boolean(ruler.querySelector('.sbi-cursus-ruler-corner'));
+  let corner = ruler.querySelector('.sbi-cursus-ruler-corner');
+  if (!corner) {
+    corner = document.createElement('div');
+    corner.className = 'sbi-cursus-ruler-corner';
+    corner.textContent = 'Pistes';
+    ruler.prepend(corner);
+  }
 
-  if (ruler.dataset.sbiWeeksRendered === target && existingCount === weeks && hasCorner) return;
-
-  ruler.dataset.sbiWeeksRendered = target;
-  ruler.innerHTML = '';
-
-  const corner = document.createElement('div');
-  corner.className = 'sbi-cursus-ruler-corner';
-  corner.textContent = 'Pistes';
-  ruler.appendChild(corner);
+  const existing = $all('.sbi-cursus-week', ruler);
+  existing.forEach((node) => node.remove());
 
   for (let index = 0; index < weeks; index += 1) {
     ruler.appendChild(buildWeekCell(index));
   }
 }
 
-function getWeekWidth() {
-  const canvas = getCanvas();
-  if (!canvas) return BASE_WEEK_WIDTH;
-  const width = parseCssNumber(canvas, '--cursus-week-width', BASE_WEEK_WIDTH);
-  return width > 0 ? width : BASE_WEEK_WIDTH;
-}
-
 function updateZoomLabel() {
+  const canvas = getCanvas();
   const label = document.getElementById('cursus-zoom-label');
-  if (!label) return;
-  const percent = Math.round((getWeekWidth() / BASE_WEEK_WIDTH) * 100);
-  label.textContent = `${Math.max(45, Math.min(180, percent))}%`;
-}
-
-function ensureDefaultVisualWeeks() {
-  const required = getRequiredWeeks();
-  const stored = readStoredWeeks();
-
-  if (stored > 0) return Math.max(stored, required);
-  if (required <= DEFAULT_WEEKS) return DEFAULT_WEEKS;
-  return required;
+  if (!canvas || !label) return;
+  const weekWidth = parseCssNumber(canvas, '--cursus-week-width', 120);
+  const percent = Math.max(25, Math.round((weekWidth / 120) * 100));
+  label.textContent = `${percent}%`;
 }
 
 function applyWeeks({ silent = true } = {}) {
@@ -176,8 +159,8 @@ function applyWeeks({ silent = true } = {}) {
   applying = true;
   try {
     const required = getRequiredWeeks();
-    const preferred = ensureDefaultVisualWeeks();
-    manualWeeks = Math.max(manualWeeks, preferred, required);
+    const stored = readStoredWeeks();
+    manualWeeks = Math.max(manualWeeks, stored, required);
     const weeks = Math.max(required, manualWeeks);
 
     canvas.style.setProperty('--cursus-weeks', String(weeks));
@@ -188,104 +171,94 @@ function applyWeeks({ silent = true } = {}) {
     if (statPeriod) statPeriod.textContent = `S1 → S${weeks}`;
 
     if (!silent) {
-      setStatus(`Timeline affichée sur ${weeks} semaines. Les colonnes vides restent de l’espace de travail.`, 'success');
+      setStatus(`Timeline réglée sur ${weeks} semaines.`, 'success');
     }
   } finally {
     applying = false;
   }
 }
 
-function scheduleApply() {
-  window.cancelAnimationFrame(pendingApply);
-  pendingApply = window.requestAnimationFrame(() => applyWeeks({ silent: true }));
+function setDisplayWeeks(weeks, { persist = true, silent = true } = {}) {
+  const required = getRequiredWeeks();
+  const next = Math.max(required, Math.round(Number(weeks) || 0));
+  manualWeeks = next;
+  if (persist) storeWeeks(manualWeeks);
+  applyWeeks({ silent });
 }
 
-function addWeeks(count = 1, label = 'semaine') {
-  const safeCount = Math.max(1, Number(count) || 1);
-  const base = Math.max(getRenderedWeeks(), manualWeeks, getRequiredWeeks(), ensureDefaultVisualWeeks());
-  manualWeeks = base + safeCount;
+function addWeeks(count, label) {
+  const base = Math.max(getRenderedWeeks(), manualWeeks, getRequiredWeeks());
+  manualWeeks = base + count;
   storeWeeks(manualWeeks);
   applyWeeks({ silent: true });
-  setStatus(`+ ${safeCount} ${label}${safeCount > 1 ? 's' : ''} : timeline affichée sur ${manualWeeks} semaines. Aucun bloc ni marge créé.`, 'success');
+  setStatus(`${label} ajouté${label === 'Trimestre' ? '' : 'e'}.`, 'success');
 }
 
-function removeWeeks(count = 1, label = 'semaine') {
-  const safeCount = Math.max(1, Number(count) || 1);
+function removeWeeks(count, label) {
   const required = getRequiredWeeks();
-  const current = Math.max(getRenderedWeeks(), manualWeeks, required, ensureDefaultVisualWeeks());
-  const available = current - required;
+  const current = Math.max(getRenderedWeeks(), manualWeeks, required);
 
-  if (available < safeCount) {
-    setStatus(`Impossible de retirer ${safeCount} ${label}${safeCount > 1 ? 's' : ''} : seules ${available} semaine${available > 1 ? 's' : ''} vide${available > 1 ? 's' : ''} sont disponibles après le dernier bloc.`, 'error');
+  if (current - count < required) {
+    setStatus(`Impossible de retirer ce ${label.toLowerCase()} : ces semaines contiennent déjà du contenu.`, 'error');
     return;
   }
 
-  manualWeeks = current - safeCount;
+  manualWeeks = current - count;
   storeWeeks(manualWeeks);
   applyWeeks({ silent: true });
-  setStatus(`− ${safeCount} ${label}${safeCount > 1 ? 's' : ''} : aucun bloc ni marge supprimé.`, 'success');
+  setStatus(`${label} retiré${label === 'Trimestre' ? '' : 'e'}.`, 'success');
 }
 
 function addWeek() {
-  addWeeks(1, 'semaine');
+  addWeeks(1, 'Semaine');
 }
 
 function removeWeek() {
-  removeWeeks(1, 'semaine');
+  removeWeeks(1, 'Semaine');
 }
 
 function addTrimester() {
-  addWeeks(TRIMESTER_WEEKS, 'semaine');
+  addWeeks(QUARTER_WEEKS, 'Trimestre');
 }
 
 function removeTrimester() {
-  removeWeeks(TRIMESTER_WEEKS, 'semaine');
+  removeWeeks(QUARTER_WEEKS, 'Trimestre');
 }
 
 function bindButtons() {
   const root = getRoot();
   if (!root) return;
 
-  const bindings = [
-    ['cursus-add-week-btn', addWeek, 'Ajouter une semaine vide'],
+  const buttons = [
+    ['cursus-add-week-btn', addWeek, 'Ajouter une semaine vide à la timeline'],
     ['cursus-remove-week-btn', removeWeek, 'Retirer la dernière semaine vide'],
     ['cursus-add-trimester-btn', addTrimester, 'Ajouter 13 semaines vides'],
-    ['cursus-remove-trimester-btn', removeTrimester, 'Retirer 13 semaines vides uniquement si elles sont libres']
+    ['cursus-remove-trimester-btn', removeTrimester, 'Retirer 13 semaines vides']
   ];
 
-  bindings.forEach(([id, handler, title]) => {
+  buttons.forEach(([id, handler, title]) => {
     const button = document.getElementById(id);
     if (!button || button.dataset.sbiWeeksBound === 'true') return;
     button.dataset.sbiWeeksBound = 'true';
     button.title = title;
     button.addEventListener('click', handler);
   });
-
-  const zoomButtons = [document.getElementById('cursus-zoom-in'), document.getElementById('cursus-zoom-out')].filter(Boolean);
-  zoomButtons.forEach((button) => {
-    if (button.dataset.sbiZoomLabelBound === 'true') return;
-    button.dataset.sbiZoomLabelBound = 'true';
-    button.addEventListener('click', () => window.setTimeout(updateZoomLabel, 40));
-  });
 }
 
-function bindHorizontalWheel() {
-  if (wheelBound) return;
+function bindHorizontalScroll() {
   const scroll = getScroll();
-  if (!scroll) return;
+  if (!scroll || scroll.dataset.sbiWheelBound === 'true') return;
+  scroll.dataset.sbiWheelBound = 'true';
+  scrollBound = true;
 
-  wheelBound = true;
   scroll.addEventListener('wheel', (event) => {
     if (!getRoot()) return;
-    if (event.ctrlKey) return;
-    const canScroll = scroll.scrollWidth > scroll.clientWidth + 4;
-    if (!canScroll) return;
-
-    const dominantDelta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
-    if (!dominantDelta) return;
+    const dominantVertical = Math.abs(event.deltaY) >= Math.abs(event.deltaX);
+    const hasHorizontalOverflow = scroll.scrollWidth > scroll.clientWidth + 8;
+    if (!hasHorizontalOverflow || !dominantVertical) return;
 
     event.preventDefault();
-    scroll.scrollLeft += dominantDelta;
+    scroll.scrollLeft += event.deltaY;
   }, { passive: false });
 }
 
@@ -307,37 +280,24 @@ function ensureStyles() {
     #cursus-remove-trimester-btn {
       border-color: rgba(255, 167, 74, .24);
     }
-    #cursus-add-trimester-btn,
-    #cursus-remove-trimester-btn {
-      background: rgba(42, 87, 255, .08);
-    }
-    #cursus-zoom-label {
+    .sbi-cursus-zoom-label {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      min-width: 3.25rem;
-      height: 2rem;
+      min-width: 3.4rem;
+      min-height: 2rem;
       padding: 0 .55rem;
-      border: 1px solid rgba(255, 255, 255, .12);
       border-radius: 999px;
-      color: rgba(230, 238, 255, .82);
-      background: rgba(255, 255, 255, .045);
+      border: 1px solid rgba(255,255,255,.14);
+      color: rgba(235, 242, 255, .84);
       font-size: .78rem;
       font-weight: 700;
       letter-spacing: .02em;
+      background: rgba(255,255,255,.055);
     }
     #cursus-timeline-scroll {
-      scroll-behavior: smooth;
-      overscroll-behavior-x: contain;
-      cursor: grab;
-    }
-    #cursus-timeline-scroll:focus-visible {
-      outline: 1px solid rgba(117, 242, 154, .45);
-      outline-offset: 3px;
-    }
-    .sbi-cursus-timeline-tools {
-      gap: .45rem;
-      flex-wrap: wrap;
+      overscroll-behavior-inline: contain;
+      scrollbar-gutter: stable;
     }
   `;
   document.head.appendChild(style);
@@ -348,18 +308,28 @@ function observeCursus() {
   const root = getRoot();
   if (!root) return;
 
-  wheelBound = false;
   bindButtons();
-  bindHorizontalWheel();
+  bindHorizontalScroll();
   applyWeeks({ silent: true });
 
-  observer = new MutationObserver(() => scheduleApply());
-  observer.observe(root, {
-    childList: true,
-    subtree: true,
-    attributes: true,
-    attributeFilter: ['style', 'class', 'data-id']
+  observer = new MutationObserver(() => {
+    window.requestAnimationFrame(() => {
+      bindButtons();
+      bindHorizontalScroll();
+      applyWeeks({ silent: true });
+    });
   });
+  observer.observe(root, { childList: true, subtree: true });
+}
+
+function installPublicApi() {
+  window.SBI_CURSUS_WEEKS = {
+    getDisplayWeeks: () => Math.max(getRenderedWeeks(), manualWeeks, getRequiredWeeks()),
+    getEffectiveWeeks,
+    getEffectiveDurationDays: () => getEffectiveWeeks() * 7,
+    setDisplayWeeks,
+    refresh: () => applyWeeks({ silent: true })
+  };
 }
 
 export function initAdminCursusWeeksControlsBridge() {
@@ -370,9 +340,21 @@ export function initAdminCursusWeeksControlsBridge() {
 
   installed = true;
   ensureStyles();
+  installPublicApi();
 
   window.addEventListener('sbi:app-shell:navigated', () => window.setTimeout(observeCursus, 80));
   window.addEventListener('sbi:app-shell:ready', () => window.setTimeout(observeCursus, 80));
+  window.addEventListener('sbi:cursus:display-weeks', (event) => {
+    const weeks = Number(event.detail?.displayWeeks || 0);
+    if (weeks > 0) setDisplayWeeks(weeks, { persist: true, silent: true });
+  });
+
+  document.addEventListener('click', (event) => {
+    if (!getRoot()) return;
+    if (event.target?.id === 'cursus-zoom-in' || event.target?.id === 'cursus-zoom-out') {
+      window.setTimeout(updateZoomLabel, 60);
+    }
+  }, true);
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', observeCursus, { once: true });
