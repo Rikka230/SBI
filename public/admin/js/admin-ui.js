@@ -19,6 +19,7 @@ import { initAdminCursusMetricsPersistence } from '/admin/js/admin-cursus-metric
 import { initAdminCursusToolFilters } from '/admin/js/admin-cursus-tool-filters.js?v=8.0P.167.109-GPT2.1';
 import { initAdminCursusQaFinal } from '/admin/js/admin-cursus-qa-final.js?v=8.0P.167.110';
 import { initAdminCursusQualiopiAudit } from '/admin/js/admin-cursus-qualiopi-audit.js?v=8.0P.167.111';
+import { initAdminCursusQualiopiEvidenceBridge } from '/admin/js/admin-cursus-qualiopi-evidence-bridge.js?v=8.0P.167.112';
 import { initAdminPromotionsCursusSelectorFix } from '/admin/js/admin-promotions-cursus-selector-fix.js?v=8.0P.167.105.1-GPT2.1';
 
 /**
@@ -54,6 +55,7 @@ async function initAdminUi() {
         initAdminCursusToolFilters();
         initAdminCursusQaFinal();
         initAdminCursusQualiopiAudit();
+        initAdminCursusQualiopiEvidenceBridge();
         initAdminPromotionsCursusSelectorFix();
         initPanelControls();
         initAdminTabs();
