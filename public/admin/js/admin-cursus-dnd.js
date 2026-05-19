@@ -1,16 +1,14 @@
 /**
- * SBI 8.0P.167.103.1-GPT2.1
+ * SBI 8.0P.167.107.6-GPT2.1
  * Cursus timeline drag & drop bridge.
  *
- * Périmètre :
- * - déplacement horizontal par semaine ;
- * - insertion intelligente pour les blocs classiques ;
- * - comportement spécial marge = trou pédagogique mobile ;
- * - interdiction de placer un cours sur une semaine occupée par une marge.
+ * Verrouillage corrigé :
+ * - un bloc verrouillé ne part jamais en drag ;
+ * - un déplacement ne coche jamais le verrou ;
+ * - les blocs verrouillés ne sont pas poussés par insertion/décalage.
  */
 
 let installed = false;
-let observer = null;
 let draggedItemId = '';
 let dragStartedAt = 0;
 
@@ -36,16 +34,14 @@ function getTimelineCanvas() {
 function getWeekWidth() {
   const canvas = getTimelineCanvas();
   if (!canvas) return 120;
-  const styles = getComputedStyle(canvas);
-  const value = parseFloat(styles.getPropertyValue('--cursus-week-width'));
+  const value = parseFloat(getComputedStyle(canvas).getPropertyValue('--cursus-week-width'));
   return Number.isFinite(value) && value > 20 ? value : 120;
 }
 
 function getWeeksCount() {
   const canvas = getTimelineCanvas();
   if (!canvas) return 8;
-  const styles = getComputedStyle(canvas);
-  const value = parseInt(styles.getPropertyValue('--cursus-weeks'), 10);
+  const value = parseInt(getComputedStyle(canvas).getPropertyValue('--cursus-weeks'), 10);
   return Number.isFinite(value) && value > 0 ? value : 8;
 }
 
@@ -74,16 +70,27 @@ function isCourseBlock(block) {
   return COURSE_TYPES.has(getBlockType(block));
 }
 
+function isLockedBlock(block) {
+  if (!block) return false;
+  if (block.dataset.sbiLocked === 'true') return true;
+  return Array.from(block.querySelectorAll('.sbi-cursus-block-badges span'))
+    .some((badge) => badge.textContent.trim() === 'L');
+}
+
 function markBlocksDraggable() {
   const root = getCursusRoot();
   if (!root) return;
 
   $all('.sbi-cursus-block[data-id]', root).forEach((block) => {
-    block.setAttribute('draggable', 'true');
+    const locked = isLockedBlock(block);
+    block.setAttribute('draggable', locked ? 'false' : 'true');
     block.setAttribute('aria-grabbed', 'false');
-    block.title = isMarginBlock(block)
-      ? 'Glisser pour déplacer cette marge comme un trou pédagogique'
-      : 'Glisser horizontalement pour insérer ou déplacer le bloc dans la timeline';
+    block.setAttribute('aria-disabled', locked ? 'true' : 'false');
+    block.title = locked
+      ? 'Bloc verrouillé : décoche “Dates / position verrouillées” pour le déplacer.'
+      : isMarginBlock(block)
+        ? 'Glisser pour déplacer cette marge comme un trou pédagogique'
+        : 'Glisser horizontalement pour insérer ou déplacer le bloc dans la timeline';
   });
 }
 
@@ -95,6 +102,8 @@ function ensureStyles() {
   style.textContent = `
     .sbi-cursus-block[draggable="true"] { cursor: grab; }
     .sbi-cursus-block[draggable="true"]:active { cursor: grabbing; }
+    .sbi-cursus-block[draggable="false"],
+    .sbi-cursus-block[data-sbi-locked="true"] { cursor: not-allowed; }
     .sbi-cursus-block.is-dragging {
       opacity: .72;
       transform: translateY(-2px) scale(.995);
@@ -119,8 +128,7 @@ function ensureStyles() {
 
 function parseCssNumber(node, propertyName, fallback = 0) {
   if (!node) return fallback;
-  const styles = getComputedStyle(node);
-  const value = parseFloat(styles.getPropertyValue(propertyName));
+  const value = parseFloat(getComputedStyle(node).getPropertyValue(propertyName));
   return Number.isFinite(value) ? value : fallback;
 }
 
@@ -164,18 +172,23 @@ function getAllBlocks(excludedItemId = '') {
     .filter((block) => (block.dataset.id || '') !== excludedItemId);
 }
 
+function rangeFromBlock(block) {
+  return {
+    id: block.dataset.id || '',
+    start: getBlockStartWeekZero(block),
+    span: getBlockSpanWeeks(block),
+    type: getBlockType(block),
+    locked: isLockedBlock(block),
+    title: block.textContent?.trim() || ''
+  };
+}
+
 function getOccupiedRanges(trackBody, excludedItemId = '') {
   if (!trackBody) return [];
 
   return $all('.sbi-cursus-block[data-id]', trackBody)
     .filter((block) => (block.dataset.id || '') !== excludedItemId)
-    .map((block) => ({
-      id: block.dataset.id || '',
-      start: getBlockStartWeekZero(block),
-      span: getBlockSpanWeeks(block),
-      type: getBlockType(block),
-      title: block.textContent?.trim() || ''
-    }))
+    .map(rangeFromBlock)
     .filter((range) => range.id && range.span > 0)
     .sort((a, b) => (a.start - b.start) || a.title.localeCompare(b.title, 'fr'));
 }
@@ -183,13 +196,7 @@ function getOccupiedRanges(trackBody, excludedItemId = '') {
 function getGlobalStructuralRanges(excludedItemId = '') {
   return getAllBlocks(excludedItemId)
     .filter((block) => COURSE_TYPES.has(getBlockType(block)) || MARGIN_TYPES.has(getBlockType(block)))
-    .map((block) => ({
-      id: block.dataset.id || '',
-      start: getBlockStartWeekZero(block),
-      span: getBlockSpanWeeks(block),
-      type: getBlockType(block),
-      title: block.textContent?.trim() || ''
-    }))
+    .map(rangeFromBlock)
     .filter((range) => range.id)
     .sort((a, b) => (a.start - b.start) || a.title.localeCompare(b.title, 'fr'));
 }
@@ -202,6 +209,10 @@ function overlapsExistingMargin(itemId, insertedStart, insertedSpan) {
 
 function buildMarginSlidePlan(itemId, targetWeek, dropTrackBody) {
   const block = getBlockByItemId(itemId);
+  if (isLockedBlock(block)) {
+    return { itemId, allowed: false, reason: 'Bloc verrouillé : désactive le verrouillage pour le déplacer.', insertedWeek: targetWeek, shifts: [], hasCollision: false, isMarginSlide: true };
+  }
+
   const originalTrackBody = getOriginalTrackBody(itemId);
   const targetTrackBody = dropTrackBody || originalTrackBody;
   const targetWeekSafe = Math.max(1, Number(targetWeek) || 1);
@@ -210,27 +221,11 @@ function buildMarginSlidePlan(itemId, targetWeek, dropTrackBody) {
   const span = getDraggedSpan(itemId);
 
   if (!originalTrackBody || !targetTrackBody || originalTrackBody !== targetTrackBody) {
-    return {
-      itemId,
-      allowed: false,
-      reason: 'Le déplacement vertical entre pistes n’est pas encore actif.',
-      insertedWeek: targetWeekSafe,
-      shifts: [],
-      hasCollision: false,
-      isMarginSlide: true
-    };
+    return { itemId, allowed: false, reason: 'Le déplacement vertical entre pistes n’est pas encore actif.', insertedWeek: targetWeekSafe, shifts: [], hasCollision: false, isMarginSlide: true };
   }
 
   if (targetStart === oldStart) {
-    return {
-      itemId,
-      allowed: true,
-      reason: '',
-      insertedWeek: targetWeekSafe,
-      shifts: [],
-      hasCollision: false,
-      isMarginSlide: true
-    };
+    return { itemId, allowed: true, reason: '', insertedWeek: targetWeekSafe, shifts: [], hasCollision: false, isMarginSlide: true };
   }
 
   const ranges = getGlobalStructuralRanges(itemId);
@@ -239,83 +234,44 @@ function buildMarginSlidePlan(itemId, targetWeek, dropTrackBody) {
   if (targetStart > oldStart) {
     ranges.forEach((range) => {
       if (range.start >= oldStart + span && range.start < targetStart + span) {
-        shifts.push({
-          id: range.id,
-          fromWeek: range.start + 1,
-          toWeek: Math.max(1, range.start - span + 1),
-          span: range.span,
-          type: range.type,
-          title: range.title
-        });
+        shifts.push({ id: range.id, fromWeek: range.start + 1, toWeek: Math.max(1, range.start - span + 1), span: range.span, type: range.type, title: range.title, locked: range.locked });
       }
     });
   } else {
-    ranges
-      .slice()
-      .reverse()
-      .forEach((range) => {
-        if (range.start >= targetStart && range.start < oldStart) {
-          shifts.push({
-            id: range.id,
-            fromWeek: range.start + 1,
-            toWeek: range.start + span + 1,
-            span: range.span,
-            type: range.type,
-            title: range.title
-          });
-        }
-      });
+    ranges.slice().reverse().forEach((range) => {
+      if (range.start >= targetStart && range.start < oldStart) {
+        shifts.push({ id: range.id, fromWeek: range.start + 1, toWeek: range.start + span + 1, span: range.span, type: range.type, title: range.title, locked: range.locked });
+      }
+    });
   }
 
-  return {
-    itemId,
-    allowed: true,
-    reason: '',
-    insertedWeek: targetWeekSafe,
-    insertedSpan: span,
-    shifts,
-    hasCollision: shifts.length > 0,
-    isMarginSlide: true,
-    requiredWeeks: getWeeksCount()
-  };
+  if (shifts.some((shift) => shift.locked)) {
+    return { itemId, allowed: false, reason: 'Déplacement impossible : un bloc verrouillé serait déplacé.', insertedWeek: targetWeekSafe, shifts: [], hasCollision: true, isMarginSlide: true };
+  }
+
+  return { itemId, allowed: true, reason: '', insertedWeek: targetWeekSafe, insertedSpan: span, shifts, hasCollision: shifts.length > 0, isMarginSlide: true, requiredWeeks: getWeeksCount() };
 }
 
 function buildInsertionPlan(itemId, targetWeek, dropTrackBody) {
   const block = getBlockByItemId(itemId);
+  if (isLockedBlock(block)) {
+    return { itemId, allowed: false, reason: 'Bloc verrouillé : désactive le verrouillage pour le déplacer.', targetWeek, insertedWeek: targetWeek, insertedSpan: 1, shifts: [], hasCollision: false };
+  }
+
   const originalTrackBody = getOriginalTrackBody(itemId);
   const targetTrackBody = dropTrackBody || originalTrackBody;
   const targetWeekSafe = Math.max(1, Number(targetWeek) || 1);
   const insertedStart = targetWeekSafe - 1;
   const insertedSpan = getDraggedSpan(itemId);
 
-  if (isMarginBlock(block)) {
-    return buildMarginSlidePlan(itemId, targetWeekSafe, dropTrackBody);
-  }
+  if (isMarginBlock(block)) return buildMarginSlidePlan(itemId, targetWeekSafe, dropTrackBody);
 
   if (!originalTrackBody || !targetTrackBody || originalTrackBody !== targetTrackBody) {
-    return {
-      itemId,
-      allowed: false,
-      reason: 'Le déplacement vertical entre pistes n’est pas encore actif.',
-      targetWeek: targetWeekSafe,
-      insertedWeek: targetWeekSafe,
-      insertedSpan,
-      shifts: [],
-      hasCollision: false
-    };
+    return { itemId, allowed: false, reason: 'Le déplacement vertical entre pistes n’est pas encore actif.', targetWeek: targetWeekSafe, insertedWeek: targetWeekSafe, insertedSpan, shifts: [], hasCollision: false };
   }
 
   if (isCourseBlock(block) && overlapsExistingMargin(itemId, insertedStart, insertedSpan)) {
-    return {
-      itemId,
-      allowed: false,
-      reason: 'Déplacement impossible : une marge occupe cette semaine. Déplace d’abord la marge.',
-      targetWeek: targetWeekSafe,
-      insertedWeek: targetWeekSafe,
-      insertedSpan,
-      shifts: [],
-      hasCollision: true
-    };
+    return { itemId, allowed: false, reason: 'Déplacement impossible : une marge occupe cette semaine. Déplace d’abord la marge.', targetWeek: targetWeekSafe, insertedWeek: targetWeekSafe, insertedSpan, shifts: [], hasCollision: true };
   }
 
   const ranges = getOccupiedRanges(originalTrackBody, itemId);
@@ -325,36 +281,21 @@ function buildInsertionPlan(itemId, targetWeek, dropTrackBody) {
 
   ranges.forEach((range) => {
     const rangeEnd = range.start + range.span;
-
     if (rangeEnd <= insertedStart) return;
-
     if (range.start < cursor) {
-      shifts.push({
-        id: range.id,
-        fromWeek: range.start + 1,
-        toWeek: cursor + 1,
-        span: range.span,
-        title: range.title
-      });
+      shifts.push({ id: range.id, fromWeek: range.start + 1, toWeek: cursor + 1, span: range.span, title: range.title, locked: range.locked });
       cursor += range.span;
       hasCollision = true;
       return;
     }
-
     cursor = Math.max(cursor, rangeEnd);
   });
 
-  return {
-    itemId,
-    allowed: true,
-    reason: '',
-    targetWeek: targetWeekSafe,
-    insertedWeek: targetWeekSafe,
-    insertedSpan,
-    shifts,
-    hasCollision,
-    requiredWeeks: Math.max(getWeeksCount(), cursor)
-  };
+  if (shifts.some((shift) => shift.locked)) {
+    return { itemId, allowed: false, reason: 'Déplacement impossible : un bloc verrouillé serait décalé.', targetWeek: targetWeekSafe, insertedWeek: targetWeekSafe, insertedSpan, shifts: [], hasCollision: true };
+  }
+
+  return { itemId, allowed: true, reason: '', targetWeek: targetWeekSafe, insertedWeek: targetWeekSafe, insertedSpan, shifts, hasCollision, requiredWeeks: Math.max(getWeeksCount(), cursor) };
 }
 
 function waitFrame() {
@@ -368,7 +309,6 @@ function dispatchField(target, eventName = 'input') {
 async function selectItem(itemId) {
   const block = getBlockByItemId(itemId);
   if (!block) return false;
-
   block.click();
   await waitFrame();
   return Boolean($(`#cursus-inspector-content [data-field]`));
@@ -379,18 +319,11 @@ async function setSelectedItemStartWeek(week) {
   if (!inspector) return false;
 
   const lockInput = $('input[data-field="isLocked"]', inspector);
-  if (lockInput && !lockInput.checked) {
-    lockInput.checked = true;
-    dispatchField(lockInput, 'input');
-    dispatchField(lockInput, 'change');
-    await waitFrame();
-  }
+  if (lockInput?.checked) return false;
 
-  const refreshedInspector = document.getElementById('cursus-inspector-content');
-  const startWeekInput = refreshedInspector?.querySelector('input[data-field="startWeek"]');
-  if (!startWeekInput) return false;
+  const startWeekInput = inspector.querySelector('input[data-field="startWeek"]');
+  if (!startWeekInput || startWeekInput.disabled) return false;
 
-  startWeekInput.disabled = false;
   startWeekInput.value = String(week);
   dispatchField(startWeekInput, 'input');
   dispatchField(startWeekInput, 'change');
@@ -400,7 +333,6 @@ async function setSelectedItemStartWeek(week) {
 async function setItemStartWeek(itemId, week) {
   const selected = await selectItem(itemId);
   if (!selected) return false;
-
   const moved = await setSelectedItemStartWeek(week);
   await waitFrame();
   return moved;
@@ -414,14 +346,14 @@ async function applyInsertionPlan(plan) {
 
   const moved = await setItemStartWeek(plan.itemId, plan.insertedWeek);
   if (!moved) {
-    setStatus('Déplacement impossible : élément introuvable ou inspecteur indisponible.', 'error');
+    setStatus('Déplacement impossible : élément verrouillé ou inspecteur indisponible.', 'error');
     return;
   }
 
   for (const shift of plan.shifts) {
     const shifted = await setItemStartWeek(shift.id, shift.toWeek);
     if (!shifted) {
-      setStatus('Déplacement partiel : un bloc à repositionner est introuvable. Vérifie puis sauvegarde.', 'error');
+      setStatus('Déplacement partiel : un bloc à repositionner est verrouillé ou introuvable. Vérifie puis sauvegarde.', 'error');
       markBlocksDraggable();
       return;
     }
@@ -455,6 +387,13 @@ function handleDragStart(event) {
   const block = event.target?.closest?.('.sbi-cursus-block[data-id]');
   if (!block || !getCursusRoot()) return;
 
+  if (isLockedBlock(block)) {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    setStatus('Bloc verrouillé : désactive le verrouillage pour le déplacer.', 'error');
+    return;
+  }
+
   draggedItemId = block.dataset.id || '';
   dragStartedAt = Date.now();
   block.classList.add('is-dragging');
@@ -474,6 +413,7 @@ function handleDragEnd() {
   });
   clearDropTargets();
   draggedItemId = '';
+  window.requestAnimationFrame(markBlocksDraggable);
 }
 
 function handleDragOver(event) {
@@ -513,16 +453,6 @@ function handleDrop(event) {
   applyInsertionPlan(plan);
 }
 
-function observeCursus() {
-  observer?.disconnect();
-  const root = getCursusRoot();
-  if (!root) return;
-
-  markBlocksDraggable();
-  observer = new MutationObserver(() => markBlocksDraggable());
-  observer.observe(root, { childList: true, subtree: true });
-}
-
 function installListeners() {
   document.addEventListener('dragstart', handleDragStart, true);
   document.addEventListener('dragend', handleDragEnd, true);
@@ -532,18 +462,22 @@ function installListeners() {
   }, true);
   document.addEventListener('drop', handleDrop, true);
 
-  window.addEventListener('sbi:app-shell:navigated', () => {
-    window.setTimeout(observeCursus, 80);
+  ['click', 'input', 'change'].forEach((eventName) => {
+    document.addEventListener(eventName, (event) => {
+      const root = getCursusRoot();
+      if (root && event.target && root.contains(event.target)) {
+        window.requestAnimationFrame(markBlocksDraggable);
+      }
+    }, true);
   });
 
-  window.addEventListener('sbi:app-shell:ready', () => {
-    window.setTimeout(observeCursus, 80);
-  });
+  window.addEventListener('sbi:app-shell:navigated', () => window.setTimeout(markBlocksDraggable, 80));
+  window.addEventListener('sbi:app-shell:ready', () => window.setTimeout(markBlocksDraggable, 80));
 }
 
 export function initAdminCursusDndBridge() {
   if (installed) {
-    observeCursus();
+    markBlocksDraggable();
     return;
   }
 
@@ -552,9 +486,9 @@ export function initAdminCursusDndBridge() {
   installListeners();
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', observeCursus, { once: true });
+    document.addEventListener('DOMContentLoaded', markBlocksDraggable, { once: true });
   } else {
-    observeCursus();
+    markBlocksDraggable();
   }
 }
 

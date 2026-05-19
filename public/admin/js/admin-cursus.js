@@ -1,13 +1,11 @@
 /**
- * SBI 8.0P.167.98 / P2I.5-H
- * Page Cursus dédiée : timeline horizontale multi-pistes issue du mockup validé.
+ * SBI 8.0P.167.107.6-GPT2.1
+ * Page Cursus dédiée : timeline horizontale multi-pistes.
  *
- * Périmètre :
- * - CRUD curriculumTemplates côté admin ;
- * - vraie timeline horizontale multi-pistes ;
- * - modèle sans dates fixes, uniquement semaines / durées estimées ;
- * - ne touche pas au panneau connexion élève GPT2 ;
- * - ne touche pas à teacherCourseAccess.
+ * Correctif noyau verrouillage :
+ * - verrouillé = impossible à déplacer ;
+ * - déverrouillé = déplaçable sans retour automatique en S1 ;
+ * - déplacer un bloc ne le reverrouille jamais automatiquement.
  */
 
 import { auth, db } from '/js/firebase-init.js';
@@ -39,7 +37,6 @@ let zoomLevel = 1;
 
 const STRUCTURAL_TYPES = new Set(['course', 'placeholder_course', 'buffer_period', 'revision_period', 'catchup_period']);
 const COURSE_TRACK_TYPES = new Set(['course', 'placeholder_course']);
-const MARGIN_TRACK_TYPES = new Set(['buffer_period', 'revision_period', 'catchup_period']);
 const PARALLEL_TYPES = new Set(['assignment', 'exam', 'evaluation', 'live_session', 'workshop']);
 
 const TRACKS = [
@@ -270,14 +267,10 @@ function getStructuralItems() {
     .sort((a, b) => (Number(a.order || 0) - Number(b.order || 0)) || a.title.localeCompare(b.title, 'fr'));
 }
 
-function recalcStructuralOffsets() {
-  let cursor = 0;
+function normalizeStructuralOrders() {
   getStructuralItems().forEach((item, index) => {
-    item.order = index;
-    if (!item.isLocked || item.startOffsetDays === undefined) {
-      item.startOffsetDays = cursor;
-    }
-    cursor = Math.max(cursor, Number(item.startOffsetDays || 0) + Number(item.estimatedDurationDays || 1));
+    item.order = Number.isFinite(Number(item.order)) ? Number(item.order) : index;
+    if (!Number.isFinite(Number(item.startOffsetDays))) item.startOffsetDays = 0;
   });
 }
 
@@ -302,6 +295,11 @@ function getItemPeriodLabel(item = {}) {
   const startWeek = getItemWeekStart(item) + 1;
   const endWeek = startWeek + getItemWeekSpan(item) - 1;
   return startWeek === endWeek ? `S${startWeek}` : `S${startWeek}–S${endWeek}`;
+}
+
+function getAppendStartOffset(type = '') {
+  if (STRUCTURAL_TYPES.has(type)) return getTimelineDurationDays();
+  return Math.max(0, getTimelineDurationDays() - getDefaultDuration(type));
 }
 
 function renderFormationSelect() {
@@ -340,9 +338,12 @@ function getFilteredCourses() {
       const matchesLinked = courseMatchesSelectedFormation(course);
       const courseFormation = findCourseFormation(course);
       const isShared = Boolean(course.sharedCourse || course.isSharedCourse || normalizeArray(course.linkedFormationIds).length);
+      const required = course.isRequired !== false && course.required !== false;
       if (source === 'linked' && !matchesLinked) return false;
       if (source === 'shared' && !isShared) return false;
       if (source === 'other' && (matchesLinked || !courseFormation)) return false;
+      if (activeToolFilter === 'required' && !required) return false;
+      if (activeToolFilter === 'optional' && required) return false;
       if (search) {
         const haystack = normalizeSearch(`${getCourseTitle(course)} ${getCourseBlockLabel(course)} ${courseFormation ? getFormationLabel(courseFormation) : ''}`);
         if (!haystack.includes(search)) return false;
@@ -406,16 +407,17 @@ function renderBlock(item) {
   const start = getItemWeekStart(item);
   const span = getItemWeekSpan(item);
   const selected = selectedItemId === item.id;
+  const locked = Boolean(item.isLocked);
   const badges = [
     item.isRequired ? 'O' : '',
     item.isBlocking || item.isBlockingPrerequisite ? 'B' : '',
-    item.isLocked ? 'L' : '',
+    locked ? 'L' : '',
     item.isSharedCourse ? '↗' : ''
   ].filter(Boolean).map((badge) => `<span>${escapeHtml(badge)}</span>`).join('');
   const subtitle = `${getItemPeriodLabel(item)} · ${Number(item.estimatedDurationDays || 1)} j${item.blockTitle ? ` · ${item.blockTitle}` : ''}${item.isSharedCourse ? ' · Accès cursus' : ''}`;
 
   return `
-    <button type="button" class="sbi-cursus-block type-${escapeHtml(item.type)} ${selected ? 'is-selected' : ''}" data-action="select-item" data-id="${escapeHtml(item.id)}" style="--start-week:${start};--span-week:${span};">
+    <button type="button" class="sbi-cursus-block type-${escapeHtml(item.type)} ${selected ? 'is-selected' : ''} ${locked ? 'sbi-is-locked' : ''}" data-action="select-item" data-id="${escapeHtml(item.id)}" data-sbi-locked="${locked ? 'true' : 'false'}" draggable="${locked ? 'false' : 'true'}" style="--start-week:${start};--span-week:${span};">
       <span class="sbi-cursus-block-handle">⋮⋮</span>
       <span class="sbi-cursus-block-title"><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(subtitle)}</small></span>
       <span class="sbi-cursus-block-badges">${badges}</span>
@@ -453,7 +455,7 @@ function renderStats() {
   const warnings = [];
   if (!dom.formation?.value) warnings.push('Formation non liée');
   if (!structuralCount && timelineItems.length) warnings.push('Aucun cours / marge structurelle');
-  if (timelineItems.some((item) => PARALLEL_TYPES.has(item.type) && !item.relatedCourseId)) warnings.push('Éléments parallèles sans cours lié');
+  if (timelineItems.some((item) => PARALLEL_TYPES.has(item.type) && !item.relatedCourseId)) warnings.push('Un devoir, examen ou live n’est lié à aucun cours');
 
   if (dom.coherenceTitle) dom.coherenceTitle.textContent = warnings.length ? `${warnings.length} point${warnings.length > 1 ? 's' : ''} à vérifier` : 'Planning cohérent';
   if (dom.coherenceDetail) dom.coherenceDetail.textContent = warnings.length ? warnings.join(' · ') : 'Aucune anomalie détectée';
@@ -474,6 +476,7 @@ function renderInspector() {
 
   const isParallel = PARALLEL_TYPES.has(item.type);
   const startWeek = getItemWeekStart(item) + 1;
+  const locked = Boolean(item.isLocked);
 
   dom.inspector.innerHTML = `
     <div class="sbi-cursus-selected-card">
@@ -494,8 +497,8 @@ function renderInspector() {
         </div>
         <div class="sbi-cursus-form-row">
           <label>Semaine de début</label>
-          <input type="number" min="1" max="99" data-field="startWeek" value="${startWeek}" ${STRUCTURAL_TYPES.has(item.type) && !item.isLocked ? 'disabled' : ''}>
-          <small>${STRUCTURAL_TYPES.has(item.type) && !item.isLocked ? 'Calculée par l’ordre du cursus.' : 'Placement manuel relatif.'}</small>
+          <input type="number" min="1" max="999" data-field="startWeek" value="${startWeek}" ${locked ? 'disabled' : ''}>
+          <small>${locked ? 'Position verrouillée.' : 'Placement manuel relatif.'}</small>
         </div>
       </div>
       <div class="sbi-cursus-form-row">
@@ -517,16 +520,13 @@ function renderInspector() {
       ` : ''}
       <label class="sbi-cursus-check-row">Obligatoire <input type="checkbox" data-field="isRequired" ${item.isRequired ? 'checked' : ''}></label>
       <label class="sbi-cursus-check-row">Prérequis / élément bloquant <input type="checkbox" data-field="isBlocking" ${item.isBlocking || item.isBlockingPrerequisite ? 'checked' : ''}></label>
-      <label class="sbi-cursus-check-row">Dates / position verrouillées <input type="checkbox" data-field="isLocked" ${item.isLocked ? 'checked' : ''}></label>
+      <label class="sbi-cursus-check-row">Dates / position verrouillées <input type="checkbox" data-field="isLocked" ${locked ? 'checked' : ''}></label>
       <label class="sbi-cursus-check-row">Preuve Qualiopi <input type="checkbox" data-field="isQualiopiEvidence" ${item.isQualiopiEvidence ? 'checked' : ''}></label>
       <div class="sbi-cursus-form-row">
         <label>Notes</label>
         <textarea rows="4" data-field="notes">${escapeHtml(item.notes || '')}</textarea>
       </div>
       <div class="sbi-cursus-inline-actions">
-        <button type="button" data-action="move-left">← Déplacer</button>
-        <button type="button" data-action="move-right">Déplacer →</button>
-        ${STRUCTURAL_TYPES.has(item.type) ? '<button type="button" data-action="order-up">↑ Ordre</button><button type="button" data-action="order-down">↓ Ordre</button>' : ''}
         <button type="button" data-action="delete-item" class="is-danger">Supprimer</button>
       </div>
     </div>
@@ -534,7 +534,7 @@ function renderInspector() {
 }
 
 function renderAll({ recalc = false } = {}) {
-  if (recalc) recalcStructuralOffsets();
+  if (recalc) normalizeStructuralOrders();
   const weeks = getWeeksCount();
   renderRuler(weeks);
   renderTracks();
@@ -549,6 +549,7 @@ function renderAll({ recalc = false } = {}) {
     dom.activeStatus.textContent = status === 'active' ? 'Actif' : status === 'archived' ? 'Archivé' : 'Brouillon';
     dom.activeStatus.style.borderColor = status === 'active' ? 'rgba(64,223,128,.32)' : status === 'archived' ? 'rgba(255,255,255,.18)' : 'rgba(42,87,255,.28)';
   }
+  window.requestAnimationFrame(() => window.SBI_CURSUS_WEEKS?.refresh?.());
 }
 
 function addCourseToTimeline(courseId) {
@@ -572,7 +573,9 @@ function addCourseToTimeline(courseId) {
     displayContextFormationName: context.name,
     blockTitle: getCourseBlockLabel(course),
     estimatedDurationDays: Number(course.estimatedDurationDays || course.durationDays || 7) || 7,
+    startOffsetDays: getAppendStartOffset('course'),
     priorityLevel: course.priorityLevel || 'normal',
+    isRequired: course.isRequired !== false && course.required !== false,
     isSharedCourse: sourceFormation && context.id && sourceFormation.id !== context.id,
     grantedByCurriculum: true,
     order: getStructuralItems().length
@@ -602,7 +605,7 @@ function addItemByType(type) {
     type,
     title: titleMap[type] || 'Nouvel élément',
     estimatedDurationDays: getDefaultDuration(type),
-    startOffsetDays: STRUCTURAL_TYPES.has(type) ? 0 : Math.max(0, getTimelineDurationDays() - getDefaultDuration(type)),
+    startOffsetDays: getAppendStartOffset(type),
     formationId: context.id,
     formationName: context.name,
     displayContextFormationId: context.id,
@@ -621,9 +624,8 @@ function updateSelectedField(field, value, isCheckbox = false) {
 
   if (field === 'title') item.title = clean(finalValue, 180) || getTypeLabel(item.type);
   if (field === 'estimatedDurationDays') item.estimatedDurationDays = Math.max(1, Number(finalValue || 1));
-  if (field === 'startWeek') {
+  if (field === 'startWeek' && !item.isLocked) {
     item.startOffsetDays = Math.max(0, (Number(finalValue || 1) - 1) * 7);
-    item.isLocked = true;
   }
   if (field === 'priorityLevel') item.priorityLevel = finalValue || 'normal';
   if (field === 'relatedCourseId') {
@@ -641,27 +643,6 @@ function updateSelectedField(field, value, isCheckbox = false) {
   if (field === 'isQualiopiEvidence') item.isQualiopiEvidence = Boolean(finalValue);
   if (field === 'notes') item.notes = clean(finalValue, 600);
 
-  renderAll({ recalc: true });
-}
-
-function moveSelected(deltaDays) {
-  const item = timelineItems.find((entry) => entry.id === selectedItemId);
-  if (!item) return;
-  item.startOffsetDays = Math.max(0, Number(item.startOffsetDays || 0) + deltaDays);
-  item.isLocked = true;
-  renderAll({ recalc: true });
-}
-
-function reorderSelected(delta) {
-  const item = timelineItems.find((entry) => entry.id === selectedItemId);
-  if (!item || !STRUCTURAL_TYPES.has(item.type)) return;
-  const structural = getStructuralItems();
-  const index = structural.findIndex((entry) => entry.id === item.id);
-  const swap = structural[index + delta];
-  if (!swap) return;
-  const oldOrder = item.order;
-  item.order = swap.order;
-  swap.order = oldOrder;
   renderAll({ recalc: true });
 }
 
@@ -701,6 +682,9 @@ function loadTemplate(templateId) {
   if (dom.title) dom.title.value = template.title || '';
   setStatus(`Cursus « ${template.title || 'sans nom'} » chargé.`, 'success');
   renderAll({ recalc: true });
+  if (Number(template.displayWeeks || 0) > 0) {
+    window.dispatchEvent(new CustomEvent('sbi:cursus:display-weeks', { detail: { displayWeeks: Number(template.displayWeeks) } }));
+  }
 }
 
 function buildTemplatePayload({ duplicate = false } = {}) {
@@ -715,6 +699,14 @@ function buildTemplatePayload({ duplicate = false } = {}) {
     layer: getTrackForItem(item),
     source: 'curriculum-timeline-redesign-v1'
   }));
+  const weeksApi = window.SBI_CURSUS_WEEKS || null;
+  const effectiveWeeks = Math.max(0, ...items.map((item) => getItemWeekStart(item) + getItemWeekSpan(item)), 0);
+  const displayWeeks = Math.max(
+    Number(weeksApi?.getDisplayWeeks?.() || 0),
+    effectiveWeeks,
+    getWeeksCount()
+  );
+  const effectiveDurationDays = Math.max(getTimelineDurationDays(), effectiveWeeks * 7);
   return {
     title,
     slug: slugify(title),
@@ -725,6 +717,9 @@ function buildTemplatePayload({ duplicate = false } = {}) {
     uiModel: 'horizontal-multitrack-v1',
     items,
     itemCount: items.length,
+    displayWeeks,
+    effectiveWeeks,
+    effectiveDurationDays,
     durationDays: getTimelineDurationDays(),
     updatedAt: serverTimestamp(),
     updatedBy: currentAdmin?.uid || '',
@@ -861,7 +856,7 @@ function bindEvents() {
   dom.duplicateBtn?.addEventListener('click', () => saveTemplate({ duplicate: true }));
   dom.recalcBtn?.addEventListener('click', () => {
     renderAll({ recalc: true });
-    setStatus('Timeline recalculée.', 'success');
+    setStatus('Timeline recalculée sans modifier les positions.', 'success');
   });
   dom.deleteBtn?.addEventListener('click', deleteTemplate);
   dom.search?.addEventListener('input', renderToolList);
@@ -922,10 +917,6 @@ function bindEvents() {
     const button = event.target.closest?.('button[data-action]');
     if (!button) return;
     const action = button.dataset.action;
-    if (action === 'move-left') moveSelected(-7);
-    if (action === 'move-right') moveSelected(7);
-    if (action === 'order-up') reorderSelected(-1);
-    if (action === 'order-down') reorderSelected(1);
     if (action === 'delete-item') deleteSelectedItem();
   });
 }
