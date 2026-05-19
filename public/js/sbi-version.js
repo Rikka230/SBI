@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.107.3-GPT2.1',
+  version: '8.0P.167.107.4-GPT2.1',
   branch: 'main',
-  channel: 'P2I.5 CURSUS LOCK UX HOTFIX + GPT2 PRESERVED',
-  stage: 'CURSUS LOCK UNLOCK MICRO HOTFIX',
+  channel: 'P2I.5 CURSUS LOCK DRAG HOTFIX + GPT2 PRESERVED',
+  stage: 'CURSUS LOCK DRAG PRESERVE UNLOCKED',
   updatedAt: '2026-05-19',
-  label: 'SBI 8.0P.167.107.3-GPT2.1 - CURSUS LOCK HOTFIX'
+  label: 'SBI 8.0P.167.107.4-GPT2.1 - CURSUS LOCK DRAG HOTFIX'
 };
 
 export function getSbiVersionLabel() {

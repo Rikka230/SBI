@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.167.107.3-GPT2.1
+ * SBI 8.0P.167.107.4-GPT2.1
  * Cursus safe hardening - verrouillage UI progressif sans MutationObserver global.
  *
  * Objectifs :
@@ -7,7 +7,8 @@
  * - reformuler le message des éléments parallèles sans cours lié ;
  * - corriger le comportement verrouillé / déverrouillé sans recalcul violent ;
  * - empêcher le drag d'un bloc explicitement verrouillé ;
- * - laisser un bloc déverrouillé à sa position actuelle et déplaçable.
+ * - laisser un bloc déverrouillé à sa position actuelle et déplaçable ;
+ * - empêcher le drag & drop de reverrouiller automatiquement un bloc déverrouillé.
  *
  * Note technique : le champ natif `isLocked` de l'ancien module sert aussi à autoriser
  * le placement manuel. Pour éviter les retours en S1 et les empilements, ce module
@@ -16,6 +17,7 @@
 
 let installed = false;
 let cleanupFrame = 0;
+let autoMoveUnlockUntil = 0;
 
 const LOCK_STORAGE_PREFIX = 'sbi:cursus:ui-lock:';
 
@@ -54,6 +56,20 @@ function writeLockState(itemId = '', locked = false) {
   try {
     localStorage.setItem(getItemLockKey(itemId), locked ? 'locked' : 'unlocked');
   } catch {}
+}
+
+function armAutoMoveUnlockWindow(durationMs = 5200) {
+  autoMoveUnlockUntil = Math.max(autoMoveUnlockUntil, Date.now() + durationMs);
+}
+
+function keepAutoMoveUnlockWindow(durationMs = 2200) {
+  if (autoMoveUnlockUntil > Date.now()) {
+    armAutoMoveUnlockWindow(durationMs);
+  }
+}
+
+function isAutoMoveUnlockWindowActive() {
+  return autoMoveUnlockUntil > Date.now();
 }
 
 function setStatus(message = '', tone = 'muted') {
@@ -174,6 +190,14 @@ function handleLockToggle(event) {
   // On empêche l'ancien handler de transformer le déverrouillage en recalcul complet.
   event.stopImmediatePropagation();
 
+  if (target.checked && isAutoMoveUnlockWindowActive()) {
+    writeLockState(itemId, false);
+    target.checked = false;
+    setStatus('Bloc déplacé : il reste déverrouillé. Verrouille-le manuellement si besoin.', 'success');
+    schedulePolish();
+    return;
+  }
+
   writeLockState(itemId, Boolean(target.checked));
   target.checked = Boolean(target.checked);
 
@@ -193,7 +217,11 @@ function handleDragStart(event) {
   const block = event.target?.closest?.('.sbi-cursus-block[data-id]');
   if (!block || !root.contains(block)) return;
 
-  if (!getEffectiveLockStateForBlock(block)) return;
+  if (!getEffectiveLockStateForBlock(block)) {
+    writeLockState(block.dataset.id || '', false);
+    armAutoMoveUnlockWindow();
+    return;
+  }
 
   event.preventDefault();
   event.stopImmediatePropagation();
@@ -207,6 +235,8 @@ function bindEvents() {
   document.addEventListener('input', handleLockToggle, true);
   document.addEventListener('change', handleLockToggle, true);
   document.addEventListener('dragstart', handleDragStart, true);
+  document.addEventListener('drop', () => keepAutoMoveUnlockWindow(), true);
+  document.addEventListener('dragend', () => keepAutoMoveUnlockWindow(), true);
 
   ['click', 'keyup'].forEach((eventName) => {
     document.addEventListener(eventName, (event) => {
