@@ -1,16 +1,19 @@
 /**
- * SBI 8.0P.167.105-GPT2.1
- * Promotions cursus selector + preview.
+ * SBI 8.0P.167.105.1-GPT2.1
+ * Promotions cursus selector + prorata application.
  *
  * Base 8.0P.167.104.1 validée :
  * - pas de MutationObserver agressif ;
  * - chargement de curriculumTemplates au clic ;
  * - affichage et application des cursus sans freeze.
  *
- * Ajout 8.0P.167.105 :
- * - prévisualisation date début / date fin / nombre de semaines ;
- * - recalcul des dates recommandées dans le coursePlan appliqué ;
- * - synchronisation prudente de la date de fin quand un cursus est appliqué.
+ * Règle métier 8.0P.167.105.1 :
+ * - Cursus = modèle pédagogique relatif ;
+ * - Promotion = calendrier réel d'application ;
+ * - la durée effective du cursus vient du dernier bloc pédagogique placé ;
+ * - les semaines affichées mais vides ne prolongent pas le cursus ;
+ * - si date début + date fin promotion existent, le coursePlan est daté au prorata dans cette plage ;
+ * - si aucune date fin n'existe, une date fin est proposée depuis la durée effective du cursus.
  */
 
 import { auth, db } from '/js/firebase-init.js';
@@ -62,7 +65,7 @@ function escapeHtml(value = '') {
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
+    .replace(/\"/g, '&quot;')
     .replace(/'/g, '&#039;');
 }
 
@@ -118,6 +121,15 @@ function addDaysToDateString(dateString = '', days = 0) {
   return date.toISOString().slice(0, 10);
 }
 
+function diffDaysInclusive(startDate = '', endDate = '') {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate || '') || !/^\d{4}-\d{2}-\d{2}$/.test(endDate || '')) return 0;
+  const start = new Date(`${startDate}T12:00:00`);
+  const end = new Date(`${endDate}T12:00:00`);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return 0;
+  const diff = Math.round((end.getTime() - start.getTime()) / 86400000) + 1;
+  return diff > 0 ? diff : 0;
+}
+
 function getItemType(item = {}) {
   const rawType = item.type || item.itemType || '';
   if (rawType === 'course') return item.courseId ? 'real_course' : 'placeholder_course';
@@ -136,7 +148,7 @@ function makePlanningItemId(prefix = 'item') {
 
 function getDurationDays(item = {}) {
   return Math.max(1, Math.round(toNumber(
-    item.durationDays || item.estimatedDurationDays || item.estimatedDurationMinDays || 7,
+    item.relativeDurationDays || item.modelDurationDays || item.estimatedDurationDays || item.durationDays || item.estimatedDurationMinDays || 7,
     7
   )));
 }
@@ -149,50 +161,39 @@ function isParallelType(type = '') {
   return ['assignment', 'exam', 'evaluation', 'live_session', 'workshop'].includes(type);
 }
 
-function getPlanDurationDays(plan = []) {
-  return plan.reduce((total, item) => {
-    const type = getItemType(item);
-    if (isStructuralType(type)) return total + getDurationDays(item);
-    return total;
-  }, 0);
+function isPedagogicalBlockType(type = '') {
+  return [...['real_course', 'course', 'placeholder_course', 'buffer_period', 'revision_period', 'catchup_period'], ...['assignment', 'exam', 'evaluation', 'live_session', 'workshop']].includes(type);
 }
 
-function getExplicitWeeks(template = {}) {
-  return Math.max(0, Math.round(toNumber(
-    template.totalWeeks || template.weeksCount || template.durationWeeks || template.manualWeeks || 0,
-    0
-  )));
+function getExplicitStartOffset(item = {}) {
+  const candidates = [
+    item.relativeStartOffsetDays,
+    item.modelStartOffsetDays,
+    item.startOffsetDays,
+    item.offsetDays,
+    item.startDays,
+    item.startDay
+  ];
+  for (const candidate of candidates) {
+    const number = Number(candidate);
+    if (Number.isFinite(number) && number >= 0) return Math.round(number);
+  }
+  return null;
 }
 
-function getPreviewDurationDays(plan = [], template = selectedTemplate) {
-  const structuralDuration = getPlanDurationDays(plan);
-  const explicitWeeks = getExplicitWeeks(template);
-  return Math.max(structuralDuration, explicitWeeks > 0 ? explicitWeeks * 7 : 0, structuralDuration || 0);
+function getEffectiveModelDurationDays(plan = []) {
+  if (!Array.isArray(plan) || !plan.length) return 0;
+  const ends = plan
+    .filter((item) => isPedagogicalBlockType(getItemType(item)))
+    .map((item) => {
+      const start = Math.max(0, Number(item.relativeStartOffsetDays ?? item.modelStartOffsetDays ?? item.startOffsetDays ?? 0) || 0);
+      return start + getDurationDays(item);
+    });
+  return Math.max(0, ...ends);
 }
 
-function getPreviewWeeks(plan = [], template = selectedTemplate) {
-  const duration = getPreviewDurationDays(plan, template);
-  return Math.max(1, Math.ceil(Math.max(1, duration) / 7));
-}
-
-function buildPreview(plan = [], template = selectedTemplate) {
-  const startDate = $('promotion-start-date')?.value || '';
-  const duration = getPreviewDurationDays(plan, template);
-  const weeks = getPreviewWeeks(plan, template);
-  const endDate = startDate && duration > 0 ? addDaysToDateString(startDate, duration - 1) : '';
-  return {
-    startDate,
-    endDate,
-    duration,
-    weeks,
-    items: plan.length
-  };
-}
-
-function getPreviewLabel(preview = buildPreview(selectedPlan)) {
-  const base = `${preview.items} élément${preview.items > 1 ? 's' : ''} · ${preview.duration || 0} jour${(preview.duration || 0) > 1 ? 's' : ''} · ${preview.weeks} semaine${preview.weeks > 1 ? 's' : ''}`;
-  if (!preview.startDate) return `${base} · date de début à renseigner`;
-  return `${base} · ${formatDateFr(preview.startDate)} → ${formatDateFr(preview.endDate)}`;
+function getEffectiveModelWeeks(plan = []) {
+  return Math.max(1, Math.ceil(Math.max(1, getEffectiveModelDurationDays(plan)) / 7));
 }
 
 function getTypeLabel(type = '') {
@@ -251,7 +252,6 @@ function getVisibleTemplates() {
   const formation = getSelectedFormation();
   const rows = sortTemplatesForFormation(templates, formation);
   const matching = rows.filter((template) => templateMatchesFormation(template, formation));
-
   return matching.length ? matching : rows;
 }
 
@@ -279,17 +279,46 @@ async function loadTemplates({ force = false } = {}) {
 }
 
 function buildPlanFromTemplate(template = {}) {
-  const items = Array.isArray(template.items) ? template.items : [];
+  const sourceItems = Array.isArray(template.items) ? template.items : [];
   const formation = getSelectedFormation();
+  let structuralCursor = 0;
+  const knownStructuralOffsets = new Map();
 
-  return items.map((item, index) => {
+  const ordered = sourceItems
+    .map((item, index) => ({ item, index }))
+    .sort((a, b) => toNumber(a.item.order, a.index) - toNumber(b.item.order, b.index));
+
+  return ordered.map(({ item, index }) => {
     const type = getItemType(item);
-    const isCourse = type === 'real_course';
+    const isCourse = type === 'real_course' || type === 'course';
     const fallbackTitle = isCourse ? 'Cours sans titre' : getTypeLabel(type);
     const title = clean(item.courseTitle || item.title || item.label || fallbackTitle, 180);
+    const duration = Math.max(1, Math.round(toNumber(
+      item.relativeDurationDays || item.modelDurationDays || item.estimatedDurationDays || item.durationDays || item.estimatedDurationMinDays || 7,
+      7
+    )));
+    const explicitStart = getExplicitStartOffset(item);
+    let relativeStart = 0;
+
+    if (explicitStart !== null) {
+      relativeStart = explicitStart;
+    } else if (isStructuralType(type)) {
+      relativeStart = structuralCursor;
+    } else if (item.relatedCourseId && knownStructuralOffsets.has(item.relatedCourseId)) {
+      relativeStart = knownStructuralOffsets.get(item.relatedCourseId);
+    } else {
+      relativeStart = Math.max(0, structuralCursor - duration);
+    }
+
+    if (isStructuralType(type)) {
+      structuralCursor = Math.max(structuralCursor, relativeStart + duration);
+    }
+
+    const key = isCourse ? clean(item.courseId || '', 180) : clean(item.itemId || item.id || '', 180);
+    if (key) knownStructuralOffsets.set(key, relativeStart);
 
     return {
-      type,
+      type: type === 'course' ? 'real_course' : type,
       layer: item.layer || getLayerForType(type),
       itemId: isCourse ? '' : (item.itemId || item.id || makePlanningItemId(type)),
       courseId: isCourse ? clean(item.courseId || '', 180) : '',
@@ -297,7 +326,13 @@ function buildPlanFromTemplate(template = {}) {
       title,
       courseStatus: clean(item.courseStatus || item.status || (isCourse ? 'Cours' : getTypeLabel(type)), 80),
       blockTitle: clean(item.blockTitle || item.blockName || '', 120),
-      durationDays: getDurationDays(item),
+      durationDays: duration,
+      estimatedDurationDays: duration,
+      relativeDurationDays: duration,
+      modelDurationDays: duration,
+      startOffsetDays: relativeStart,
+      relativeStartOffsetDays: relativeStart,
+      modelStartOffsetDays: relativeStart,
       recommendedStartAt: '',
       recommendedEndAt: '',
       deadlineAt: '',
@@ -317,65 +352,105 @@ function buildPlanFromTemplate(template = {}) {
       isSharedCourse: item.isSharedCourse === true,
       grantedByCurriculum: item.grantedByCurriculum === false ? false : true,
       order: Number.isFinite(Number(item.order)) ? Number(item.order) : index,
-      source: 'curriculum-template-applied-by-promotions-bridge-v3'
+      source: 'curriculum-template-applied-prorata-v1'
     };
   }).sort((a, b) => toNumber(a.order, 0) - toNumber(b.order, 0))
     .map((item, index) => ({ ...item, order: index }));
+}
+
+function buildPreview(plan = selectedPlan, template = selectedTemplate) {
+  const startDate = $('promotion-start-date')?.value || '';
+  const manualEndDate = $('promotion-end-date')?.value || '';
+  const modelDurationDays = Math.max(1, getEffectiveModelDurationDays(plan));
+  const modelWeeks = Math.max(1, Math.ceil(modelDurationDays / 7));
+  const targetDurationDays = startDate && manualEndDate
+    ? diffDaysInclusive(startDate, manualEndDate)
+    : modelDurationDays;
+  const safeTargetDurationDays = Math.max(1, targetDurationDays || modelDurationDays);
+  const targetWeeks = Math.max(1, Math.ceil(safeTargetDurationDays / 7));
+  const proposedEndDate = startDate ? addDaysToDateString(startDate, modelDurationDays - 1) : '';
+  const effectiveEndDate = startDate
+    ? (manualEndDate && targetDurationDays > 0 ? manualEndDate : proposedEndDate)
+    : '';
+  const scale = modelDurationDays > 0 ? safeTargetDurationDays / modelDurationDays : 1;
+
+  return {
+    startDate,
+    manualEndDate,
+    endDate: effectiveEndDate,
+    proposedEndDate,
+    modelDurationDays,
+    modelWeeks,
+    targetDurationDays: safeTargetDurationDays,
+    targetWeeks,
+    scale,
+    mode: manualEndDate && startDate && targetDurationDays > 0 ? 'prorata' : 'proposal',
+    items: plan.length,
+    templateTitle: template?.title || ''
+  };
+}
+
+function getPreviewLabel(preview = buildPreview(selectedPlan)) {
+  const model = `modèle ${preview.modelDurationDays} j / ${preview.modelWeeks} sem.`;
+  const target = `promotion ${preview.targetDurationDays} j / ${preview.targetWeeks} sem.`;
+  if (!preview.startDate) return `${preview.items} élément${preview.items > 1 ? 's' : ''} · ${model} · renseignez une date de début`;
+  if (preview.mode === 'prorata') return `${preview.items} élément${preview.items > 1 ? 's' : ''} · ${model} → ${target} · ${formatDateFr(preview.startDate)} → ${formatDateFr(preview.endDate)}`;
+  return `${preview.items} élément${preview.items > 1 ? 's' : ''} · ${model} · fin proposée ${formatDateFr(preview.proposedEndDate)}`;
 }
 
 function recalculatePlanDates(plan = selectedPlan) {
   const startDate = $('promotion-start-date')?.value || '';
   if (!startDate || !Array.isArray(plan) || !plan.length) return plan;
 
-  let cursor = startDate;
+  const preview = buildPreview(plan, selectedTemplate);
+  const modelDuration = Math.max(1, preview.modelDurationDays);
+  const targetDuration = Math.max(1, preview.targetDurationDays || modelDuration);
+  const scale = targetDuration / modelDuration;
+
   const structuralMap = new Map();
+  const byKey = new Map();
 
-  const structural = [...plan]
-    .filter((item) => isStructuralType(getItemType(item)))
-    .sort((a, b) => toNumber(a.order, 0) - toNumber(b.order, 0));
-
-  const updatedStructural = new Map();
-
-  structural.forEach((item) => {
+  const nextPlan = plan.map((item) => {
     const key = getPlanItemKey(item);
-    const duration = getDurationDays(item);
-    const start = cursor;
-    const end = addDaysToDateString(start, duration - 1) || start;
-    cursor = addDaysToDateString(end, 1) || cursor;
+    const rawStart = Math.max(0, Number(item.relativeStartOffsetDays ?? item.modelStartOffsetDays ?? item.startOffsetDays ?? 0) || 0);
+    const rawDuration = getDurationDays(item);
+    const scaledStartOffset = Math.max(0, Math.round(rawStart * scale));
+    const scaledEndExclusive = Math.max(scaledStartOffset + 1, Math.round((rawStart + rawDuration) * scale));
+    const scaledDuration = Math.max(1, scaledEndExclusive - scaledStartOffset);
+    const start = addDaysToDateString(startDate, scaledStartOffset) || startDate;
+    const end = addDaysToDateString(start, scaledDuration - 1) || start;
 
     const next = {
       ...item,
+      durationDays: scaledDuration,
       recommendedStartAt: start,
       recommendedEndAt: end,
       deadlineAt: item.deadlineAt || item.dueAt || end,
-      dueAt: item.dueAt || item.deadlineAt || end
+      dueAt: item.dueAt || item.deadlineAt || end,
+      prorataScale: Number(scale.toFixed(6)),
+      modelStartOffsetDays: rawStart,
+      modelDurationDays: rawDuration,
+      targetStartOffsetDays: scaledStartOffset,
+      targetDurationDays: scaledDuration
     };
 
-    updatedStructural.set(key, next);
-    structuralMap.set(key, next);
-    if (next.courseId) structuralMap.set(next.courseId, next);
+    byKey.set(key, next);
+    if (isStructuralType(getItemType(next))) {
+      structuralMap.set(key, next);
+      if (next.courseId) structuralMap.set(next.courseId, next);
+    }
+    return next;
   });
 
-  return plan.map((item) => {
-    const key = getPlanItemKey(item);
-    const type = getItemType(item);
-
-    if (updatedStructural.has(key)) return updatedStructural.get(key);
-    if (!isParallelType(type)) return item;
-
+  return nextPlan.map((item) => {
+    if (!isParallelType(getItemType(item))) return item;
     const related = item.relatedCourseId ? structuralMap.get(item.relatedCourseId) : null;
-    const duration = getDurationDays(item);
-    const start = related?.recommendedStartAt || startDate;
-    const end = addDaysToDateString(start, duration - 1) || start;
-    const deadline = related?.recommendedEndAt || end;
-
+    if (!related) return item;
     return {
       ...item,
-      relatedCourseTitle: related ? (related.courseTitle || related.title || item.relatedCourseTitle || '') : item.relatedCourseTitle || '',
-      recommendedStartAt: start,
-      recommendedEndAt: end,
-      deadlineAt: item.deadlineAt || item.dueAt || deadline,
-      dueAt: item.dueAt || item.deadlineAt || deadline
+      relatedCourseTitle: related.courseTitle || related.title || item.relatedCourseTitle || '',
+      deadlineAt: item.deadlineAt || item.dueAt || related.recommendedEndAt || item.recommendedEndAt,
+      dueAt: item.dueAt || item.deadlineAt || related.recommendedEndAt || item.recommendedEndAt
     };
   });
 }
@@ -385,19 +460,20 @@ function syncEndDateFromPreview({ force = false } = {}) {
   if (!endInput) return;
 
   const preview = buildPreview(selectedPlan, selectedTemplate);
-  if (!preview.endDate) return;
+  if (!preview.proposedEndDate) return;
 
   const canWrite = force || !endInput.value || endInput.dataset.sbiAutoCursusEnd === 'true';
   if (!canWrite) return;
 
-  endInput.value = preview.endDate;
+  endInput.value = preview.proposedEndDate;
   endInput.dataset.sbiAutoCursusEnd = 'true';
 }
 
 function refreshSelectedPreview({ forceEndDate = false } = {}) {
   if (!selectedTemplate) return;
-  selectedPlan = recalculatePlanDates(selectedPlan);
+
   syncEndDateFromPreview({ force: forceEndDate });
+  selectedPlan = recalculatePlanDates(selectedPlan);
 
   const preview = buildPreview(selectedPlan, selectedTemplate);
   setText('promotion-planning-summary-title', selectedTemplate.title || 'Cursus sélectionné');
@@ -423,9 +499,11 @@ function renderTemplateList() {
   const rows = getVisibleTemplates();
   const matchingCount = rows.filter((template) => templateMatchesFormation(template, formation)).length;
   const startDate = $('promotion-start-date')?.value || '';
+  const endDate = $('promotion-end-date')?.value || '';
   const signature = JSON.stringify({
     formationId: formation.formationId,
     startDate,
+    endDate,
     selected: selectedTemplate?.id || '',
     rows: rows.map((template) => [template.id, template.title, template.updatedAt?.seconds || template.updatedAt || ''])
   });
@@ -445,22 +523,25 @@ function renderTemplateList() {
 
   list.innerHTML = rows.map((template) => {
     const plan = buildPlanFromTemplate(template);
-    const count = Number(template.itemCount || plan.length);
-    const duration = getPreviewDurationDays(plan, template);
-    const weeks = getPreviewWeeks(plan, template);
     const preview = buildPreview(plan, template);
     const isLinked = templateMatchesFormation(template, formation);
     const isActive = selectedTemplate?.id === template.id;
+    const targetBadge = preview.startDate
+      ? preview.mode === 'prorata'
+        ? `${formatDateFr(preview.startDate)} → ${formatDateFr(preview.endDate)}`
+        : `Fin proposée ${formatDateFr(preview.proposedEndDate)}`
+      : 'Date début à renseigner';
+
     return `
       <article class="sbi-curriculum-template-row ${isActive ? 'is-active-template' : ''}" data-sbi-bridge-template-id="${escapeHtml(template.id)}">
         <div>
           <strong>${escapeHtml(template.title || 'Cursus sans nom')}</strong>
           <small>
             <span>${escapeHtml(template.formationName || 'Formation non renseignée')}</span>
-            <span>${count} élément${count > 1 ? 's' : ''}</span>
-            <span>${duration} jour${duration > 1 ? 's' : ''}</span>
-            <span>${weeks} semaine${weeks > 1 ? 's' : ''}</span>
-            ${startDate ? `<span>${escapeHtml(formatDateFr(preview.startDate))} → ${escapeHtml(formatDateFr(preview.endDate))}</span>` : '<span>Date début à renseigner</span>'}
+            <span>${preview.items} élément${preview.items > 1 ? 's' : ''}</span>
+            <span>Modèle : ${preview.modelDurationDays} j / ${preview.modelWeeks} sem.</span>
+            <span>${preview.mode === 'prorata' ? `Prorata : ${preview.targetWeeks} sem.` : 'Durée modèle'}</span>
+            <span>${escapeHtml(targetBadge)}</span>
             <span>${isLinked ? 'Formation liée' : 'Autre formation / secours'}</span>
           </small>
         </div>
@@ -497,16 +578,17 @@ function applyTemplate(templateId = '') {
   if (!template) return;
 
   selectedTemplate = template;
-  selectedPlan = recalculatePlanDates(buildPlanFromTemplate(template));
-  syncEndDateFromPreview({ force: true });
+  selectedPlan = buildPlanFromTemplate(template);
+  syncEndDateFromPreview({ force: false });
+  selectedPlan = recalculatePlanDates(selectedPlan);
 
   const titleInput = $('promotion-curriculum-title');
   if (titleInput) titleInput.value = template.title || '';
 
-  refreshSelectedPreview({ forceEndDate: true });
+  refreshSelectedPreview({ forceEndDate: false });
 
   const preview = buildPreview(selectedPlan, selectedTemplate);
-  setFormStatus(`Cursus « ${template.title || 'sans nom'} » sélectionné. Aperçu : ${getPreviewLabel(preview)}. Sauvegardez la promotion.`, 'success');
+  setFormStatus(`Cursus « ${template.title || 'sans nom'} » sélectionné. ${getPreviewLabel(preview)}. Sauvegardez la promotion.`, 'success');
   closeTemplateModal();
 }
 
@@ -516,10 +598,11 @@ function getPromotionPayload() {
 
   const formation = getSelectedFormation();
   const title = clean($('promotion-curriculum-title')?.value || selectedTemplate?.title || formation.formationName || name, 140);
-  selectedPlan = recalculatePlanDates(selectedPlan);
   syncEndDateFromPreview({ force: false });
+  selectedPlan = recalculatePlanDates(selectedPlan);
 
   const coursePlan = selectedPlan.length ? selectedPlan : [];
+  const preview = buildPreview(coursePlan, selectedTemplate);
   const user = auth.currentUser;
 
   return {
@@ -534,9 +617,17 @@ function getPromotionPayload() {
     curriculumTitle: title,
     curriculumTemplateId: selectedTemplate?.id || '',
     coursePlan,
-    coursePlanVersion: 'promotion-course-plan-multilayer-v1',
+    coursePlanVersion: 'promotion-course-plan-prorata-v1',
     coursePlanCount: coursePlan.length,
-    coursePlanPreview: buildPreview(coursePlan, selectedTemplate),
+    coursePlanPreview: {
+      ...preview,
+      source: 'curriculum-prorata-v1'
+    },
+    modelDurationDays: preview.modelDurationDays,
+    modelWeeks: preview.modelWeeks,
+    promotionDurationDays: preview.targetDurationDays,
+    promotionWeeks: preview.targetWeeks,
+    prorataScale: Number(preview.scale.toFixed(6)),
     updatedAt: serverTimestamp(),
     updatedBy: user?.uid || '',
     updatedByEmail: user?.email || ''
@@ -555,7 +646,7 @@ async function savePromotionWithSelectedTemplate(event) {
     submit.style.opacity = '0.65';
   }
 
-  setFormStatus('Sauvegarde de la promotion avec le cursus sélectionné...');
+  setFormStatus('Sauvegarde de la promotion avec le cursus proratisé...');
 
   try {
     const payload = getPromotionPayload();
@@ -564,7 +655,7 @@ async function savePromotionWithSelectedTemplate(event) {
 
     if (editingId) {
       await setDoc(doc(db, 'promotions', editingId), payload, { merge: true });
-      setFormStatus('Promotion mise à jour avec le cursus sélectionné.', 'success');
+      setFormStatus('Promotion mise à jour avec le cursus adapté au calendrier.', 'success');
     } else {
       await addDoc(collection(db, 'promotions'), {
         ...payload,
@@ -572,7 +663,7 @@ async function savePromotionWithSelectedTemplate(event) {
         createdBy: user?.uid || '',
         createdByEmail: user?.email || ''
       });
-      setFormStatus('Promotion créée avec le cursus sélectionné.', 'success');
+      setFormStatus('Promotion créée avec le cursus adapté au calendrier.', 'success');
     }
   } catch (error) {
     console.warn('[SBI Promotions] Bridge cursus : sauvegarde impossible', error);
@@ -592,8 +683,8 @@ function clearSelection() {
 }
 
 function bindEvents() {
-  if (document.body.dataset.sbiPromotionsCursusPreviewV105 === 'true') return;
-  document.body.dataset.sbiPromotionsCursusPreviewV105 = 'true';
+  if (document.body.dataset.sbiPromotionsCursusProrataV1051 === 'true') return;
+  document.body.dataset.sbiPromotionsCursusProrataV1051 = 'true';
 
   document.addEventListener('click', (event) => {
     if (!getView()) return;
@@ -647,6 +738,11 @@ function bindEvents() {
 
     if (event.target?.id === 'promotion-end-date') {
       event.target.dataset.sbiAutoCursusEnd = 'false';
+      if (selectedTemplate) refreshSelectedPreview({ forceEndDate: false });
+      if ($('promotion-curriculum-template-modal')?.classList.contains('is-open')) {
+        lastRenderSignature = '';
+        renderTemplateList();
+      }
     }
   }, true);
 
@@ -654,6 +750,7 @@ function bindEvents() {
     if (!getView()) return;
     if (event.target?.id === 'promotion-end-date') {
       event.target.dataset.sbiAutoCursusEnd = 'false';
+      if (selectedTemplate) refreshSelectedPreview({ forceEndDate: false });
     }
   }, true);
 }

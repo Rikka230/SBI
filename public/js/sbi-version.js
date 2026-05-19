@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.105-GPT2.1',
+  version: '8.0P.167.105.1-GPT2.1',
   branch: 'main',
-  channel: 'P2I.5 PROMOTIONS CURSUS PREVIEW + GPT2 PRESERVED',
-  stage: 'PROMOTIONS CURRICULUM APPLICATION PREVIEW',
+  channel: 'P2I.5 PROMOTIONS CURSUS PRORATA + GPT2 PRESERVED',
+  stage: 'PROMOTIONS CURRICULUM PRORATA APPLICATION',
   updatedAt: '2026-05-19',
-  label: 'SBI 8.0P.167.105-GPT2.1 - PROMOTIONS CURSUS PREVIEW'
+  label: 'SBI 8.0P.167.105.1-GPT2.1 - PROMOTIONS CURSUS PRORATA'
 };
 
 export function getSbiVersionLabel() {
