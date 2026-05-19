@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.108-GPT2.1',
+  version: '8.0P.167.109-GPT2.1',
   branch: 'main',
-  channel: 'P2I.5 CURSUS METRICS PERSISTENCE + GPT2 PRESERVED',
-  stage: 'CURSUS DISPLAY/EFFECTIVE WEEKS PERSISTENCE',
+  channel: 'P2I.5 CURSUS TOOL FILTERS + GPT2 PRESERVED',
+  stage: 'CURSUS REQUIRED OPTIONAL FILTERS',
   updatedAt: '2026-05-19',
-  label: 'SBI 8.0P.167.108-GPT2.1 - CURSUS METRICS PERSISTENCE'
+  label: 'SBI 8.0P.167.109-GPT2.1 - CURSUS REQUIRED OPTIONAL FILTERS'
 };
 
 export function getSbiVersionLabel() {

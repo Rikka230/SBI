@@ -16,6 +16,7 @@ import { initAdminCursusDndBridge } from '/admin/js/admin-cursus-dnd.js?v=8.0P.1
 import { initAdminCursusPlaceholderReplaceBridge } from '/admin/js/admin-cursus-placeholder-replace.js?v=8.0P.167.102.1-GPT2.1';
 import { initAdminCursusWeeksControlsBridge } from '/admin/js/admin-cursus-weeks-controls.js?v=8.0P.167.107.1-GPT2.1';
 import { initAdminCursusMetricsPersistence } from '/admin/js/admin-cursus-metrics-persistence.js?v=8.0P.167.108-GPT2.1';
+import { initAdminCursusToolFilters } from '/admin/js/admin-cursus-tool-filters.js?v=8.0P.167.109-GPT2.1';
 import { initAdminPromotionsCursusSelectorFix } from '/admin/js/admin-promotions-cursus-selector-fix.js?v=8.0P.167.105.1-GPT2.1';
 
 /**
@@ -48,6 +49,7 @@ async function initAdminUi() {
         initAdminCursusPlaceholderReplaceBridge();
         initAdminCursusWeeksControlsBridge();
         initAdminCursusMetricsPersistence();
+        initAdminCursusToolFilters();
         initAdminPromotionsCursusSelectorFix();
         initPanelControls();
         initAdminTabs();
