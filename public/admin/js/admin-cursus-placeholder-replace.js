@@ -1,10 +1,9 @@
 /**
- * SBI 8.0P.167.102-GPT2.1
+ * SBI 8.0P.167.102.1-GPT2.1
  * Cursus placeholder replacement bridge.
  *
- * Objectif : remplacer un bloc "Cours futur" par un vrai cours sans rouvrir
- * le module lourd admin-cursus.js. Le remplacement est visible tout de suite
- * dans l'inspecteur, puis consolidé dans curriculumTemplates à la sauvegarde.
+ * Hotfix : l'observer ne surveille plus les attributs et les refresh UI sont
+ * débouncés pour éviter la boucle DOM au clic sur un bloc "Cours futur".
  */
 
 import { db } from '/js/firebase-init.js';
@@ -17,6 +16,8 @@ import {
 
 let installed = false;
 let observer = null;
+let refreshScheduled = false;
+let refreshingUi = false;
 const pendingReplacements = new Map();
 
 function $(selector, root = document) {
@@ -137,9 +138,15 @@ function ensureStyles() {
 
 function restoreToolButtons() {
   $all('#cursus-tool-list button[data-sbi-original-action]').forEach((button) => {
-    button.dataset.action = button.dataset.sbiOriginalAction || 'add-course';
-    button.textContent = button.dataset.sbiOriginalLabel || button.textContent || 'Ajouter';
+    const originalAction = button.dataset.sbiOriginalAction || 'add-course';
+    const originalLabel = button.dataset.sbiOriginalLabel || button.textContent || 'Ajouter';
+
+    if (button.dataset.action !== originalAction) button.dataset.action = originalAction;
+    if (button.textContent !== originalLabel) button.textContent = originalLabel;
+
     button.classList.remove('is-placeholder-replace-btn');
+    button.disabled = false;
+    button.title = '';
     delete button.dataset.sbiOriginalAction;
     delete button.dataset.sbiOriginalLabel;
   });
@@ -201,10 +208,29 @@ function renderInspectorHint() {
   inspector.appendChild(hint);
 }
 
-function refreshUi() {
-  refreshToolButtons();
-  markPendingBlocks();
-  renderInspectorHint();
+function refreshUiNow() {
+  if (refreshingUi || !getRoot()) return;
+
+  refreshingUi = true;
+  try {
+    refreshToolButtons();
+    markPendingBlocks();
+    renderInspectorHint();
+  } finally {
+    refreshingUi = false;
+  }
+}
+
+function scheduleRefresh(delay = 0) {
+  if (refreshScheduled) return;
+  refreshScheduled = true;
+
+  window.setTimeout(() => {
+    window.requestAnimationFrame(() => {
+      refreshScheduled = false;
+      refreshUiNow();
+    });
+  }, delay);
 }
 
 function dispatchInput(target, eventName = 'input') {
@@ -267,7 +293,7 @@ async function replaceSelectedPlaceholder(courseId, card = null) {
     updateInspectorTextField('title', replacement.title);
     updateInspectorTextField('estimatedDurationDays', replacement.estimatedDurationDays);
 
-    window.setTimeout(refreshUi, 80);
+    scheduleRefresh(80);
     setStatus(`Cours futur remplacé par « ${replacement.title} ». Sauvegarde le cursus pour confirmer.`, 'success');
   } catch (error) {
     console.warn('[SBI Cursus] Remplacement cours futur impossible :', error);
@@ -348,7 +374,7 @@ async function consolidateReplacementsAfterSave() {
     }, { merge: true });
 
     pendingReplacements.clear();
-    refreshUi();
+    scheduleRefresh(80);
     setStatus('Cours futur remplacé et sauvegardé dans le modèle. Recharge le cursus pour voir le bloc comme cours réel.', 'success');
   } catch (error) {
     console.warn('[SBI Cursus] Consolidation remplacement impossible :', error);
@@ -366,10 +392,24 @@ function bindClicks() {
       return;
     }
 
+    const cursusBlock = event.target?.closest?.('.sbi-cursus-block[data-id]');
+    if (cursusBlock) {
+      scheduleRefresh(80);
+      return;
+    }
+
     const saveButton = event.target?.closest?.('#cursus-save-btn');
     if (saveButton && pendingReplacements.size) {
       window.setTimeout(consolidateReplacementsAfterSave, 1200);
     }
+  }, true);
+
+  document.addEventListener('input', (event) => {
+    if (event.target?.closest?.('#cursus-search, #cursus-source-filter')) scheduleRefresh(120);
+  }, true);
+
+  document.addEventListener('change', (event) => {
+    if (event.target?.closest?.('#cursus-template-select, #cursus-formation-select, #cursus-source-filter')) scheduleRefresh(140);
   }, true);
 }
 
@@ -378,9 +418,9 @@ function observeCursus() {
   const root = getRoot();
   if (!root) return;
 
-  refreshUi();
-  observer = new MutationObserver(() => refreshUi());
-  observer.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'data-id'] });
+  scheduleRefresh(80);
+  observer = new MutationObserver(() => scheduleRefresh(80));
+  observer.observe(root, { childList: true, subtree: true });
 }
 
 function bindShellEvents() {
