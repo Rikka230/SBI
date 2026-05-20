@@ -1,9 +1,10 @@
 /**
- * SBI 8.0P.167.102.1-GPT2.1
+ * SBI 8.0P.167.119
  * Cursus placeholder replacement bridge.
  *
- * Hotfix : l'observer ne surveille plus les attributs et les refresh UI sont
- * débouncés pour éviter la boucle DOM au clic sur un bloc "Cours futur".
+ * Fix : quand un bloc "Cours futur" est remplacé par un vrai cours,
+ * son état est consolidé en vrai cours et les champs hérités du placeholder
+ * sont nettoyés pour éviter l'étiquette fantôme "Cours futur".
  */
 
 import { db } from '/js/firebase-init.js';
@@ -78,6 +79,12 @@ function getCourseTitle(course = {}) {
 
 function getCourseBlockLabel(course = {}) {
   return clean(course.bloc || course.blockTitle || course.blockName || course.moduleTitle || '', 120);
+}
+
+function getCourseStatusLabel(course = {}) {
+  if (course.actif === true || course.lmsStatus === 'published' || course.statutValidation === 'approved') return 'Publié';
+  if (course.lmsStatus === 'pending_review' || course.statutValidation === 'pending') return 'En attente';
+  return 'Cours';
 }
 
 function getCourseDuration(course = {}) {
@@ -263,6 +270,7 @@ function buildReplacementPayload({ course, card, placeholderId }) {
     courseId: course.id,
     title,
     courseTitle: title,
+    courseStatus: getCourseStatusLabel(course),
     sourceFormationId: source.id,
     sourceFormationName: source.name,
     displayContextFormationId: context.id,
@@ -274,6 +282,23 @@ function buildReplacementPayload({ course, card, placeholderId }) {
     grantedByCurriculum: true,
     replacedAt: Date.now()
   };
+}
+
+function coerceSelectedPlaceholderDom(replacement = {}) {
+  const block = $(`.sbi-cursus-block[data-id="${CSS.escape(replacement.placeholderId || '')}"]`);
+  if (!block) return;
+
+  block.classList.remove('type-placeholder_course');
+  block.classList.add('type-course', 'is-placeholder-replaced');
+  block.dataset.sbiReplacedPlaceholder = 'true';
+
+  const title = block.querySelector('.sbi-cursus-block-title strong');
+  if (title) title.textContent = replacement.title || replacement.courseTitle || title.textContent;
+
+  const selectedType = document.querySelector('.sbi-cursus-selected-card span');
+  if (selectedType && selectedType.textContent.includes('Cours futur')) {
+    selectedType.textContent = selectedType.textContent.replace('Cours futur', 'Cours');
+  }
 }
 
 async function replaceSelectedPlaceholder(courseId, card = null) {
@@ -292,6 +317,7 @@ async function replaceSelectedPlaceholder(courseId, card = null) {
 
     updateInspectorTextField('title', replacement.title);
     updateInspectorTextField('estimatedDurationDays', replacement.estimatedDurationDays);
+    coerceSelectedPlaceholderDom(replacement);
 
     scheduleRefresh(80);
     setStatus(`Cours futur remplacé par « ${replacement.title} ». Sauvegarde le cursus pour confirmer.`, 'success');
@@ -318,24 +344,32 @@ async function waitForTemplateId(timeoutMs = 5500) {
 function applyReplacementToItem(item = {}, replacement = null) {
   if (!replacement) return item;
 
-  return {
+  const next = {
     ...item,
     type: 'course',
+    itemType: 'course',
     layer: 'courses',
     title: replacement.title,
     courseId: replacement.courseId,
     courseTitle: replacement.courseTitle,
+    courseStatus: replacement.courseStatus || 'Cours',
+    itemId: '',
     sourceFormationId: replacement.sourceFormationId,
     sourceFormationName: replacement.sourceFormationName,
     displayContextFormationId: replacement.displayContextFormationId,
     displayContextFormationName: replacement.displayContextFormationName,
     blockTitle: replacement.blockTitle,
     estimatedDurationDays: replacement.estimatedDurationDays || item.estimatedDurationDays || 7,
+    durationDays: replacement.estimatedDurationDays || item.durationDays || item.estimatedDurationDays || 7,
     priorityLevel: replacement.priorityLevel || item.priorityLevel || 'normal',
     isSharedCourse: replacement.isSharedCourse,
     grantedByCurriculum: true,
-    replacementSource: 'placeholder-replace-v1'
+    replacementSource: 'placeholder-replace-v2',
+    replacedPlaceholderId: replacement.placeholderId || item.id || item.itemId || ''
   };
+
+  if (next.id === next.itemId) next.id = item.id || replacement.placeholderId || next.courseId;
+  return next;
 }
 
 async function consolidateReplacementsAfterSave() {
@@ -357,7 +391,8 @@ async function consolidateReplacementsAfterSave() {
     let changed = false;
 
     const patchedItems = items.map((item) => {
-      const replacement = pendingReplacements.get(item.id || item.itemId || '');
+      const replacement = pendingReplacements.get(item.id || item.itemId || '')
+        || pendingReplacements.get(item.replacedPlaceholderId || '');
       if (!replacement) return item;
       changed = true;
       return applyReplacementToItem(item, replacement);
@@ -370,12 +405,12 @@ async function consolidateReplacementsAfterSave() {
       itemCount: patchedItems.length,
       updatedAt: serverTimestamp(),
       replacementUpdatedAt: serverTimestamp(),
-      replacementSource: 'placeholder-replace-v1'
+      replacementSource: 'placeholder-replace-v2'
     }, { merge: true });
 
     pendingReplacements.clear();
     scheduleRefresh(80);
-    setStatus('Cours futur remplacé et sauvegardé dans le modèle. Recharge le cursus pour voir le bloc comme cours réel.', 'success');
+    setStatus('Cours futur remplacé et sauvegardé comme cours réel dans le modèle.', 'success');
   } catch (error) {
     console.warn('[SBI Cursus] Consolidation remplacement impossible :', error);
     setStatus('Le cursus est sauvegardé, mais le remplacement doit être vérifié.', 'error');
