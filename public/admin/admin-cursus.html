@@ -38,15 +38,16 @@
         }
 
 
-        /* SBI 8.0P.167.122 - compteurs de pistes fixés sur une ligne verticale */
+        /* SBI 8.0P.167.123 - compteurs de pistes sortis du flux texte */
         .sbi-cursus-track-label {
             position: sticky;
             left: 0;
-            display: grid;
-            grid-template-columns: 26px minmax(0, 1fr);
-            align-items: start;
-            column-gap: 0.65rem;
-            padding-right: 2.65rem;
+            display: grid !important;
+            grid-template-columns: 26px minmax(0, 1fr) 22px !important;
+            align-items: start !important;
+            column-gap: 0.58rem;
+            box-sizing: border-box;
+            padding: 1rem 0.65rem 1rem 1rem !important;
         }
 
         .sbi-cursus-track-label .sbi-cursus-track-icon {
@@ -60,33 +61,56 @@
         .sbi-cursus-track-label > div:not(.sbi-cursus-track-icon) {
             grid-column: 2;
             min-width: 0;
+            max-width: 100%;
+            padding-right: 0;
+        }
+
+        .sbi-cursus-track-label strong,
+        .sbi-cursus-track-label small {
+            max-width: 100%;
+            overflow-wrap: break-word;
         }
 
         .sbi-cursus-track-label .sbi-cursus-track-count {
-            position: absolute;
-            top: 1rem;
-            right: 0.75rem;
+            position: static !important;
+            grid-column: 3 !important;
+            justify-self: center !important;
+            align-self: start !important;
             display: inline-flex;
             align-items: center;
             justify-content: center;
             width: 22px;
             min-width: 22px;
             height: 22px;
-            margin: 0;
+            margin: 0 !important;
+            margin-top: 0.05rem !important;
             line-height: 1;
+            transform: none !important;
             z-index: 4;
         }
 
+        .sbi-cursus-footer-actions {
+            align-items: center;
+        }
+
+        .sbi-cursus-footer-actions button,
         .sbi-cursus-footer-qa-btn {
+            box-sizing: border-box;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            min-height: 40px;
+            height: 40px !important;
+            min-height: 0 !important;
+            padding: 0 0.82rem !important;
+            line-height: 1 !important;
+            font-size: 0.78rem;
+        }
+
+        .sbi-cursus-footer-qa-btn {
             border: 1px solid rgba(255, 255, 255, 0.12);
             border-radius: 11px;
             background: rgba(255, 255, 255, 0.055);
             color: #dbe6ff;
-            padding: 0.62rem 0.82rem;
             font-weight: 900;
             text-decoration: none;
             transition: border-color .18s ease, background .18s ease, transform .18s ease;
