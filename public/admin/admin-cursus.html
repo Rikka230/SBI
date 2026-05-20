@@ -38,12 +38,15 @@
         }
 
 
-        /* SBI 8.0P.167.121 - alignement des compteurs de pistes Cursus */
+        /* SBI 8.0P.167.122 - compteurs de pistes fixés sur une ligne verticale */
         .sbi-cursus-track-label {
+            position: sticky;
+            left: 0;
             display: grid;
-            grid-template-columns: 26px minmax(0, 1fr) 22px;
+            grid-template-columns: 26px minmax(0, 1fr);
             align-items: start;
             column-gap: 0.65rem;
+            padding-right: 2.65rem;
         }
 
         .sbi-cursus-track-label .sbi-cursus-track-icon {
@@ -60,11 +63,41 @@
         }
 
         .sbi-cursus-track-label .sbi-cursus-track-count {
-            grid-column: 3;
-            justify-self: end;
-            align-self: start;
-            flex: 0 0 22px;
-            margin-top: 0.05rem;
+            position: absolute;
+            top: 1rem;
+            right: 0.75rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 22px;
+            min-width: 22px;
+            height: 22px;
+            margin: 0;
+            line-height: 1;
+            z-index: 4;
+        }
+
+        .sbi-cursus-footer-qa-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 40px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 11px;
+            background: rgba(255, 255, 255, 0.055);
+            color: #dbe6ff;
+            padding: 0.62rem 0.82rem;
+            font-weight: 900;
+            text-decoration: none;
+            transition: border-color .18s ease, background .18s ease, transform .18s ease;
+        }
+
+        .sbi-cursus-footer-qa-btn:hover,
+        .sbi-cursus-footer-qa-btn:focus-visible {
+            border-color: rgba(42, 87, 255, 0.62);
+            background: rgba(42, 87, 255, 0.14);
+            color: #ffffff;
+            outline: none;
         }
 
         @media (max-width: 760px), (max-height: 740px) {
@@ -228,6 +261,7 @@
                         </div>
                         <p id="cursus-save-status" class="sbi-cursus-save-status" aria-live="polite"></p>
                         <div class="sbi-cursus-footer-actions">
+                            <a class="sbi-cursus-footer-qa-btn" href="/admin/admin-cursus-dates-qa.html">Page QA</a>
                             <button type="button" id="cursus-reset-btn">Réinitialiser</button>
                         </div>
                     </footer>

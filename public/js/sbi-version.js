@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.121',
+  version: '8.0P.167.122',
   branch: 'main',
-  channel: 'P2I.9 CURSUS track counter alignment',
-  stage: 'CURSUS TIMELINE TRACK COUNTERS ALIGNED',
+  channel: 'P2I.10 CURSUS track counters fixed QA access',
+  stage: 'CURSUS TRACK COUNTERS FIXED AND QA BUTTON ADDED',
   updatedAt: '2026-05-20',
-  label: 'SBI 8.0P.167.121 - CURSUS track counter alignment'
+  label: 'SBI 8.0P.167.122 - CURSUS track counters fixed and QA button'
 };
 
 export function getSbiVersionLabel() {
