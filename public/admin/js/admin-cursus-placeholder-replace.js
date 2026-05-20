@@ -1,10 +1,10 @@
 /**
- * SBI 8.0P.167.119
+ * SBI 8.0P.167.120
  * Cursus placeholder replacement bridge.
  *
- * Fix : quand un bloc "Cours futur" est remplacé par un vrai cours,
- * son état est consolidé en vrai cours et les champs hérités du placeholder
- * sont nettoyés pour éviter l'étiquette fantôme "Cours futur".
+ * Fix : après consolidation Firestore, la page recharge automatiquement
+ * le cursus actif pour éviter la copie locale périmée quand on change de cursus
+ * sans faire F5.
  */
 
 import { db } from '/js/firebase-init.js';
@@ -244,6 +244,64 @@ function dispatchInput(target, eventName = 'input') {
   target.dispatchEvent(new Event(eventName, { bubbles: true }));
 }
 
+function rememberTemplateReload(templateId = '') {
+  if (!templateId) return;
+  try {
+    sessionStorage.setItem('sbi:cursus:reload-template-after-placeholder-replace', JSON.stringify({
+      templateId,
+      at: Date.now()
+    }));
+  } catch (_) {}
+}
+
+function readTemplateReloadRequest() {
+  try {
+    const raw = sessionStorage.getItem('sbi:cursus:reload-template-after-placeholder-replace') || '';
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed?.templateId || Date.now() - Number(parsed.at || 0) > 90000) {
+      sessionStorage.removeItem('sbi:cursus:reload-template-after-placeholder-replace');
+      return null;
+    }
+    return parsed;
+  } catch (_) {
+    try {
+      sessionStorage.removeItem('sbi:cursus:reload-template-after-placeholder-replace');
+    } catch (__) {}
+    return null;
+  }
+}
+
+function restoreTemplateAfterReload(attempt = 0) {
+  const request = readTemplateReloadRequest();
+  if (!request) return;
+
+  const select = document.getElementById('cursus-template-select');
+  const option = select?.querySelector?.(`option[value="${CSS.escape(request.templateId)}"]`);
+
+  if (!select || !option) {
+    if (attempt < 40) window.setTimeout(() => restoreTemplateAfterReload(attempt + 1), 180);
+    return;
+  }
+
+  try {
+    sessionStorage.removeItem('sbi:cursus:reload-template-after-placeholder-replace');
+  } catch (_) {}
+
+  select.value = request.templateId;
+  dispatchInput(select, 'change');
+  window.setTimeout(() => {
+    setStatus('Cursus rechargé avec le remplacement consolidé.', 'success');
+  }, 240);
+}
+
+function reloadPageOnFreshTemplate(templateId = '') {
+  rememberTemplateReload(templateId);
+  window.setTimeout(() => {
+    window.location.reload();
+  }, 650);
+}
+
 async function fetchCourse(courseId) {
   const snap = await getDoc(doc(db, 'courses', courseId));
   if (!snap.exists()) throw new Error('Cours introuvable.');
@@ -410,7 +468,8 @@ async function consolidateReplacementsAfterSave() {
 
     pendingReplacements.clear();
     scheduleRefresh(80);
-    setStatus('Cours futur remplacé et sauvegardé comme cours réel dans le modèle.', 'success');
+    setStatus('Cours futur remplacé et sauvegardé comme cours réel. Rechargement du cursus...', 'success');
+    reloadPageOnFreshTemplate(templateId);
   } catch (error) {
     console.warn('[SBI Cursus] Consolidation remplacement impossible :', error);
     setStatus('Le cursus est sauvegardé, mais le remplacement doit être vérifié.', 'error');
@@ -466,6 +525,7 @@ function bindShellEvents() {
 export function initAdminCursusPlaceholderReplaceBridge() {
   if (installed) {
     observeCursus();
+    restoreTemplateAfterReload();
     return;
   }
 
@@ -475,9 +535,13 @@ export function initAdminCursusPlaceholderReplaceBridge() {
   bindShellEvents();
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', observeCursus, { once: true });
+    document.addEventListener('DOMContentLoaded', () => {
+      observeCursus();
+      restoreTemplateAfterReload();
+    }, { once: true });
   } else {
     observeCursus();
+    restoreTemplateAfterReload();
   }
 }
 
