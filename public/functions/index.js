@@ -202,6 +202,7 @@ const SBI_AUTH_ACTION_SETTINGS = {
 
 const SBI_FINALIZATION_REMINDER_MAX_COUNT = 3;
 const SBI_FINALIZATION_REMINDER_DELAY_MS = 48 * 60 * 60 * 1000;
+const SBI_ACCOUNT_CREATION_LOCK_TTL_MS = 5 * 60 * 1000;
 
 function readActionParamsFromUrl(rawUrl) {
     const parsed = new URL(rawUrl);
@@ -1349,6 +1350,80 @@ function toAccountReminderMillis(value) {
     return 0;
 }
 
+function getAccountCreationLockId(email) {
+    const normalizedEmail = cleanEmail(email);
+    return Buffer
+        .from(normalizedEmail, "utf8")
+        .toString("base64")
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_")
+        .replace(/=+$/g, "");
+}
+
+async function assertAccountEmailAvailableInAuth(email) {
+    try {
+        await admin.auth().getUserByEmail(email);
+        throw new HttpsError("already-exists", "Un compte Firebase Auth utilise déjà cette adresse email.");
+    } catch (error) {
+        if (error instanceof HttpsError) throw error;
+        if (error?.code === "auth/user-not-found") return;
+        throw new HttpsError("internal", `Vérification Auth impossible : ${error.message}`);
+    }
+}
+
+async function acquireAccountCreationLock(db, email, caller = {}) {
+    const normalizedEmail = cleanEmail(email);
+    const lockRef = db.collection("accountCreationEmailLocks").doc(getAccountCreationLockId(normalizedEmail));
+    const lockOwner = `${caller.uid || "unknown"}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+    await db.runTransaction(async (transaction) => {
+        const lockSnap = await transaction.get(lockRef);
+        const nowMs = Date.now();
+        const expiresAtMs = nowMs + SBI_ACCOUNT_CREATION_LOCK_TTL_MS;
+
+        if (lockSnap.exists) {
+            const lockData = lockSnap.data() || {};
+            const lockExpiresAtMs = toAccountReminderMillis(lockData.expiresAt || lockData.expiresAtIso);
+
+            if (lockData.status === "creating" && lockExpiresAtMs > nowMs) {
+                throw new HttpsError(
+                    "already-exists",
+                    "Une création de compte est déjà en cours pour cette adresse email. Réessayez dans quelques minutes."
+                );
+            }
+        }
+
+        transaction.set(lockRef, {
+            email: normalizedEmail,
+            status: "creating",
+            lockOwner,
+            actorUid: caller.uid || "",
+            actorEmail: caller.email || "",
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            expiresAt: admin.firestore.Timestamp.fromMillis(expiresAtMs),
+            expiresAtIso: new Date(expiresAtMs).toISOString()
+        }, { merge: false });
+    });
+
+    return { lockRef, lockOwner };
+}
+
+async function releaseAccountCreationLock(lock, status = "released", extra = {}) {
+    if (!lock?.lockRef) return;
+
+    try {
+        await lock.lockRef.set({
+            status,
+            lockOwner: lock.lockOwner || "",
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            ...extra
+        }, { merge: true });
+    } catch (error) {
+        console.error("Libération verrou création compte impossible :", error.message);
+    }
+}
+
 function shouldSendFinalizationReminder(accountData = {}, nowMs = Date.now()) {
     if (accountData.statut === "suspendu") return false;
     if (hasAccountFinalizedAccess(accountData)) return false;
@@ -1395,92 +1470,110 @@ exports.adminCreateUserAccount = onCall({
     if (!nom) throw new HttpsError("invalid-argument", "Le nom est obligatoire.");
     if (!isValidEmail(email)) throw new HttpsError("invalid-argument", "L'adresse email n'est pas valide.");
 
-    const existingUserByEmail = await db.collection("users").where("email", "==", email).limit(1).get();
-    if (!existingUserByEmail.empty) {
-        throw new HttpsError("already-exists", "Un document utilisateur existe déjà avec cette adresse email.");
-    }
-
+    let creationLock = null;
     let createdUser = null;
-    const accountData = {
-        prenom,
-        nom,
-        email,
-        role,
-        statut: "actif",
-        isGod: false,
-        isOnline: false,
-        lastSeenAt: null,
-        dateCreation: new Date().toISOString(),
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        createdBy: caller.uid,
-        formationsAcces: [],
-        accountStatus: buildInitialAccountStatus()
-    };
 
     try {
-        createdUser = await admin.auth().createUser({
-            email,
-            displayName: getAccountDisplayName(accountData),
-            disabled: false
-        });
-    } catch (error) {
-        throw mapAuthCreateError(error);
-    }
+        creationLock = await acquireAccountCreationLock(db, email, caller);
 
-    try {
-        await db.collection("users").doc(createdUser.uid).set(accountData, { merge: false });
-    } catch (error) {
-        try {
-            await admin.auth().deleteUser(createdUser.uid);
-        } catch (rollbackError) {
-            console.error("Rollback Auth impossible après échec Firestore :", rollbackError.message);
+        const existingUserByEmail = await db.collection("users").where("email", "==", email).limit(1).get();
+        if (!existingUserByEmail.empty) {
+            throw new HttpsError("already-exists", "Un document utilisateur existe déjà avec cette adresse email.");
         }
-        throw new HttpsError("internal", `Création Firestore impossible : ${error.message}`);
-    }
 
-    const apiKey = BREVO_API_KEY.value();
-    let warning = "";
+        await assertAccountEmailAvailableInAuth(email);
 
-    try {
-        if (!apiKey) throw new Error("BREVO_API_KEY manquant.");
-        const firebaseResetLink = await admin.auth().generatePasswordResetLink(email, SBI_AUTH_ACTION_SETTINGS);
-        const resetLink = buildSbiPasswordResetLink(firebaseResetLink);
-        await sendAccountInviteEmail(accountData, resetLink, apiKey);
-        await db.collection("users").doc(createdUser.uid).update({
-            "accountStatus.invitationSentAt": admin.firestore.FieldValue.serverTimestamp(),
-            "accountStatus.lastAccessEmailSentAt": admin.firestore.FieldValue.serverTimestamp()
+        const accountData = {
+            prenom,
+            nom,
+            email,
+            role,
+            statut: "actif",
+            isGod: false,
+            isOnline: false,
+            lastSeenAt: null,
+            dateCreation: new Date().toISOString(),
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            createdBy: caller.uid,
+            formationsAcces: [],
+            accountStatus: buildInitialAccountStatus()
+        };
+
+        try {
+            createdUser = await admin.auth().createUser({
+                email,
+                displayName: getAccountDisplayName(accountData),
+                disabled: false
+            });
+        } catch (error) {
+            throw mapAuthCreateError(error);
+        }
+
+        try {
+            await db.collection("users").doc(createdUser.uid).set(accountData, { merge: false });
+        } catch (error) {
+            try {
+                await admin.auth().deleteUser(createdUser.uid);
+            } catch (rollbackError) {
+                console.error("Rollback Auth impossible après échec Firestore :", rollbackError.message);
+            }
+            throw new HttpsError("internal", `Création Firestore impossible : ${error.message}`);
+        }
+
+        const apiKey = BREVO_API_KEY.value();
+        let warning = "";
+
+        try {
+            if (!apiKey) throw new Error("BREVO_API_KEY manquant.");
+            const firebaseResetLink = await admin.auth().generatePasswordResetLink(email, SBI_AUTH_ACTION_SETTINGS);
+            const resetLink = buildSbiPasswordResetLink(firebaseResetLink);
+            await sendAccountInviteEmail(accountData, resetLink, apiKey);
+            await db.collection("users").doc(createdUser.uid).update({
+                "accountStatus.invitationSentAt": admin.firestore.FieldValue.serverTimestamp(),
+                "accountStatus.lastAccessEmailSentAt": admin.firestore.FieldValue.serverTimestamp()
+            });
+            await sendAccountInternalEmail("Compte créé", {
+                "Admin": caller.name,
+                "Admin email": caller.email,
+                "Utilisateur": getAccountDisplayName(accountData),
+                "Email": email,
+                "Rôle": getAccountRoleLabel(role),
+                "UID": createdUser.uid
+            }, apiKey);
+        } catch (error) {
+            warning = "Compte créé, mais l’email d’invitation ou la notification interne n’a pas pu être envoyé.";
+            console.error("Erreur email création compte SBI :", error.message, error.payload || "");
+        }
+
+        await safeWriteAccountAuditLog(db, {
+            type: "account.created",
+            actorUid: caller.uid,
+            actorEmail: caller.email,
+            targetUid: createdUser.uid,
+            targetEmail: email,
+            targetRole: role
         });
-        await sendAccountInternalEmail("Compte créé", {
-            "Admin": caller.name,
-            "Admin email": caller.email,
-            "Utilisateur": getAccountDisplayName(accountData),
-            "Email": email,
-            "Rôle": getAccountRoleLabel(role),
-            "UID": createdUser.uid
-        }, apiKey);
-    } catch (error) {
-        warning = "Compte créé, mais l’email d’invitation ou la notification interne n’a pas pu être envoyé.";
-        console.error("Erreur email création compte SBI :", error.message, error.payload || "");
+
+        await releaseAccountCreationLock(creationLock, "created", {
+            targetUid: createdUser.uid,
+            targetRole: role,
+            completedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        creationLock = null;
+
+        return {
+            success: true,
+            uid: createdUser.uid,
+            email,
+            warning,
+            message: warning || "Compte créé. Email d’invitation envoyé."
+        };
+    } finally {
+        if (creationLock) {
+            await releaseAccountCreationLock(creationLock, "released");
+        }
     }
-
-    await safeWriteAccountAuditLog(db, {
-        type: "account.created",
-        actorUid: caller.uid,
-        actorEmail: caller.email,
-        targetUid: createdUser.uid,
-        targetEmail: email,
-        targetRole: role
-    });
-
-    return {
-        success: true,
-        uid: createdUser.uid,
-        email,
-        warning,
-        message: warning || "Compte créé. Email d’invitation envoyé."
-    };
 });
-
 exports.adminSendPasswordReset = onCall({
     region: "europe-west1",
     secrets: [BREVO_API_KEY],
