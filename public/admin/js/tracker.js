@@ -14,6 +14,8 @@
  * - permissions/rôles centralisés via sbi-permissions.js.
  * 8.0P.167.97-GPT2.2 :
  * - profils : admin/prof sans XP/badges, prof avec liste élèves suivis.
+ * 8.0P.167.116 :
+ * - correctif responsive des panneaux première connexion / information étudiant.
  * =======================================================================
  */
 
@@ -42,6 +44,128 @@ const CONNECTION_SYNC_INTERVAL_MS = 300000;
 const PRESENCE_HEARTBEAT_INTERVAL_MS = 30000;
 const NAV_PROFILE_CACHE_PREFIX = 'sbi:navProfile:';
 const NAV_PROFILE_MAX_ATTEMPTS = 20;
+const RESPONSIVE_PANEL_STYLE_ID = 'sbi-responsive-panel-fixes-8-0p-167-116';
+
+function injectResponsivePanelFixes() {
+    if (document.getElementById(RESPONSIVE_PANEL_STYLE_ID)) return;
+
+    const style = document.createElement('style');
+    style.id = RESPONSIVE_PANEL_STYLE_ID;
+    style.textContent = `
+        body.sbi-first-login-locked,
+        body.sbi-student-notice-locked {
+            overflow: hidden !important;
+        }
+
+        .sbi-first-login-gate,
+        .sbi-student-construction-notice {
+            display: flex !important;
+            align-items: flex-start !important;
+            justify-content: center !important;
+            min-height: 100dvh !important;
+            box-sizing: border-box !important;
+            overflow-x: hidden !important;
+            overflow-y: auto !important;
+            overscroll-behavior: contain !important;
+            -webkit-overflow-scrolling: touch !important;
+            padding: clamp(0.7rem, 2vw, 1.2rem) !important;
+        }
+
+        .sbi-first-login-card,
+        .sbi-student-notice-card {
+            display: flex !important;
+            flex-direction: column !important;
+            width: min(720px, 100%) !important;
+            max-height: calc(100dvh - 2rem) !important;
+            min-height: 0 !important;
+            overflow: hidden !important;
+        }
+
+        .sbi-first-login-head,
+        .sbi-student-notice-head {
+            flex: 0 0 auto !important;
+        }
+
+        .sbi-first-login-body,
+        .sbi-student-notice-body {
+            flex: 1 1 auto !important;
+            min-height: 0 !important;
+            overflow-y: auto !important;
+            overscroll-behavior: contain !important;
+            scrollbar-gutter: stable !important;
+            -webkit-overflow-scrolling: touch !important;
+        }
+
+        .sbi-first-login-actions,
+        .sbi-student-notice-actions {
+            position: sticky !important;
+            bottom: 0 !important;
+            z-index: 2 !important;
+            padding-top: 0.85rem !important;
+            background: linear-gradient(180deg, rgba(5, 8, 17, 0), rgba(5, 8, 17, 0.98) 28%) !important;
+        }
+
+        .sbi-first-login-body::-webkit-scrollbar,
+        .sbi-student-notice-body::-webkit-scrollbar {
+            width: 9px;
+        }
+
+        .sbi-first-login-body::-webkit-scrollbar-track,
+        .sbi-student-notice-body::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 999px;
+        }
+
+        .sbi-first-login-body::-webkit-scrollbar-thumb,
+        .sbi-student-notice-body::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, rgba(42, 87, 255, 0.72), rgba(0, 212, 255, 0.38));
+            border: 2px solid rgba(3, 7, 18, 0.85);
+            border-radius: 999px;
+        }
+
+        @media (max-width: 640px), (max-height: 740px) {
+            .sbi-first-login-gate,
+            .sbi-student-construction-notice {
+                padding: max(0.55rem, env(safe-area-inset-top)) 0.65rem max(0.65rem, env(safe-area-inset-bottom)) !important;
+            }
+
+            .sbi-first-login-card,
+            .sbi-student-notice-card {
+                width: 100% !important;
+                max-height: calc(100dvh - 1.2rem) !important;
+                border-radius: 18px !important;
+            }
+
+            .sbi-first-login-head,
+            .sbi-student-notice-head {
+                padding-top: 1rem !important;
+                padding-bottom: 0.85rem !important;
+            }
+
+            .sbi-first-login-body,
+            .sbi-student-notice-body {
+                padding-top: 0.95rem !important;
+                padding-bottom: 1rem !important;
+            }
+
+            .sbi-first-login-checks,
+            .sbi-student-notice-advice,
+            .sbi-student-notice-patch {
+                gap: 0.58rem !important;
+            }
+
+            .sbi-first-login-check,
+            .sbi-student-notice-advice-item,
+            .sbi-student-notice-patch li {
+                padding: 0.72rem 0.78rem !important;
+            }
+        }
+    `;
+
+    document.head.appendChild(style);
+}
+
+injectResponsivePanelFixes();
 
 const clearTrackerIntervals = () => {
     if (connectionSyncIntervalId) {

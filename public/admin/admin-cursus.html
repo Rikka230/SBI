@@ -11,6 +11,55 @@
     <link rel="stylesheet" href="css/admin-cursus-stability.css?v=8.0P.167.99-GPT2.1">
     <script src="js/components.js?v=8.0P.167.98.1"></script>
     <link rel="stylesheet" href="css/admin-surface-unified.css?v=8.0P.167.52">
+    <style>
+        /* SBI 8.0P.167.116 - Qualiopi panel responsive hardening */
+        .sbi-cursus-qualiopi-panel {
+            box-sizing: border-box;
+            max-height: min(720px, calc(100dvh - 156px));
+            overflow-y: auto;
+            overscroll-behavior: contain;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-gutter: stable;
+        }
+
+        .sbi-cursus-qualiopi-panel::-webkit-scrollbar {
+            width: 9px;
+        }
+
+        .sbi-cursus-qualiopi-panel::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 999px;
+        }
+
+        .sbi-cursus-qualiopi-panel::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, rgba(42,87,255,0.72), rgba(0,212,255,0.38));
+            border: 2px solid rgba(3, 7, 18, 0.85);
+            border-radius: 999px;
+        }
+
+        @media (max-width: 760px), (max-height: 740px) {
+            .sbi-cursus-qualiopi-panel {
+                margin: 0.65rem;
+                padding: 0.85rem;
+                max-height: calc(100dvh - 104px);
+                border-radius: 16px;
+            }
+
+            .sbi-cursus-qualiopi-head {
+                position: sticky;
+                top: -0.85rem;
+                z-index: 3;
+                padding-top: 0.2rem;
+                padding-bottom: 0.7rem;
+                background: linear-gradient(180deg, rgba(7, 14, 29, 0.98), rgba(7, 14, 29, 0.86));
+                backdrop-filter: blur(10px);
+            }
+
+            .sbi-cursus-qualiopi-close {
+                flex: 0 0 auto;
+            }
+        }
+    </style>
 </head>
 <body class="preload sbi-admin-surface">
 
@@ -161,7 +210,7 @@
 </div>
 
 <script type="module" src="js/admin-ui.js?v=8.0P.167.114"></script>
-<script type="module" src="js/tracker.js?v=8.0P.167.44"></script>
+<script type="module" src="js/tracker.js?v=8.0P.167.116"></script>
 <script type="module" src="js/admin-notifications.js"></script>
 <script type="module" src="js/admin-cursus.js?v=8.0P.167.107.6-GPT2.1"></script>
 <script type="module" src="js/admin-cursus-pjax-guard.js?v=8.0P.167.99-GPT2.1"></script>
