@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.132',
+  version: '8.0P.167.133',
   branch: 'main',
-  channel: 'P2I.20 ACCOUNT LINK DIAGNOSTICS',
-  stage: 'VISIBLE AND SERVER DIAGNOSTICS FOR FINALIZATION LINKS',
+  channel: 'P2I.21 PROFILE FINALIZATION DIRECT ACTION',
+  stage: 'MANUAL FINALIZATION ACTION BYPASSES CLIENT FIRESTORE REFRESH',
   updatedAt: '2026-05-20',
-  label: 'SBI 8.0P.167.132 - Account link diagnostics for finalization emails'
+  label: 'SBI 8.0P.167.133 - Manual finalization action independent from client Firestore refresh'
 };
 
 export function getSbiVersionLabel() {
