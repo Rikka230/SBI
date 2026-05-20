@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.131',
+  version: '8.0P.167.132',
   branch: 'main',
-  channel: 'P2I.19 DURABLE FINALIZATION FLOWS',
-  stage: 'DIRECT TOKEN FINALIZATION FOR INVITES AND REMINDERS',
+  channel: 'P2I.20 ACCOUNT LINK DIAGNOSTICS',
+  stage: 'VISIBLE AND SERVER DIAGNOSTICS FOR FINALIZATION LINKS',
   updatedAt: '2026-05-20',
-  label: 'SBI 8.0P.167.131 - Durable finalization links for invites and reminders'
+  label: 'SBI 8.0P.167.132 - Account link diagnostics for finalization emails'
 };
 
 export function getSbiVersionLabel() {
