@@ -1,11 +1,21 @@
 /**
  * =======================================================================
- * PASSWORD RESET - Flux de sécurité Firebase Auth (v10+)
+ * PASSWORD RESET / FINALISATION COMPTE - Flux SBI + Firebase Auth
+ * -----------------------------------------------------------------------
+ * 8.0P.167.118 :
+ * - conserve le reset Firebase classique pour les comptes actifs ;
+ * - ajoute la finalisation durable SBI par token pour les comptes qui
+ *   n'ont pas encore créé leur mot de passe initial.
  * =======================================================================
  */
 
-import { auth } from '/js/firebase-init.js'; // Assure-toi que le chemin vers ton init est correct
+import { app, auth } from '/js/firebase-init.js';
 import { verifyPasswordResetCode, confirmPasswordReset } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js";
+
+const functionsInstance = getFunctions(app, 'europe-west1');
+const verifyInitialPasswordToken = httpsCallable(functionsInstance, 'verifyInitialPasswordToken');
+const completeInitialPasswordWithToken = httpsCallable(functionsInstance, 'completeInitialPasswordWithToken');
 
 // Éléments de l'interface (Vues)
 const viewLoading = document.getElementById('state-loading');
@@ -21,9 +31,15 @@ const btnSubmit = document.getElementById('btn-submit');
 const btnText = btnSubmit.querySelector('.btn-text');
 const btnSpinner = btnSubmit.querySelector('.btn-spinner');
 const errorText = document.getElementById('form-error');
+const formTitle = document.getElementById('password-form-title');
+const formSubtitle = document.getElementById('password-form-subtitle');
+const successTitle = document.getElementById('success-title');
+const successMessage = document.getElementById('success-message');
 
 // Variables globales
 let actionCode = null;
+let finalizationToken = null;
+let currentFlow = 'firebase-reset';
 
 document.addEventListener('DOMContentLoaded', () => {
     handleInitialLoad();
@@ -43,7 +59,7 @@ function collectUrlParams(url = window.location.href) {
     return params;
 }
 
-function resolveActionCodeFromCurrentUrl() {
+function resolveParamFromCurrentUrl(paramNames = []) {
     const urlsToInspect = [window.location.href];
     const inspectedUrls = new Set();
 
@@ -53,8 +69,10 @@ function resolveActionCodeFromCurrentUrl() {
         inspectedUrls.add(currentUrl);
 
         const params = collectUrlParams(currentUrl);
-        const code = params.get('oobCode');
-        if (code) return code;
+        for (const paramName of paramNames) {
+            const value = params.get(paramName);
+            if (value) return value;
+        }
 
         ['link', 'continueUrl', 'continueURL', 'deep_link_id'].forEach((key) => {
             const nestedUrl = params.get(key);
@@ -74,8 +92,69 @@ function resolveActionCodeFromCurrentUrl() {
     return '';
 }
 
-// 1. INITIALISATION ET VÉRIFICATION DU CODE
+function resolveActionCodeFromCurrentUrl() {
+    return resolveParamFromCurrentUrl(['oobCode']);
+}
+
+function resolveFinalizationTokenFromCurrentUrl() {
+    return resolveParamFromCurrentUrl(['token', 'finalizationToken', 't']);
+}
+
+function resolveModeFromCurrentUrl() {
+    return resolveParamFromCurrentUrl(['mode']);
+}
+
+// 1. INITIALISATION ET VÉRIFICATION DU CODE / TOKEN
 async function handleInitialLoad() {
+    finalizationToken = resolveFinalizationTokenFromCurrentUrl();
+    const mode = resolveModeFromCurrentUrl();
+
+    if (finalizationToken || mode === 'finalizeAccount') {
+        await handleDurableFinalizationLoad();
+        return;
+    }
+
+    await handleFirebaseResetLoad();
+}
+
+async function handleDurableFinalizationLoad() {
+    currentFlow = 'durable-finalization';
+
+    if (!finalizationToken) {
+        showView(viewError);
+        document.getElementById('error-message').textContent = "Le token de finalisation est manquant. Utilisez le lien exact reçu par email.";
+        return;
+    }
+
+    try {
+        const response = await verifyInitialPasswordToken({ token: finalizationToken });
+        const data = response?.data || {};
+
+        document.getElementById('user-email-display').textContent = data.email || 'votre compte SBI';
+        if (formTitle) formTitle.textContent = 'Définir mon mot de passe';
+        if (formSubtitle) {
+            formSubtitle.innerHTML = `Activez votre accès SBI pour le compte <br><strong id="user-email-display" style="color: var(--text-main);">${escapeHtml(data.email || 'votre compte SBI')}</strong>`;
+        }
+        if (btnText) btnText.textContent = 'Activer mon compte';
+
+        showView(viewForm);
+    } catch (error) {
+        console.error("Erreur de vérification du token SBI:", error.code, error.message);
+        showView(viewError);
+
+        let errorMsg = "Ce lien de finalisation n’est plus valide, a déjà été utilisé ou ne correspond plus au compte. Demandez à l’équipe SBI de renvoyer une invitation.";
+        if (error.code === 'functions/failed-precondition') {
+            errorMsg = error.message || errorMsg;
+        } else if (error.code === 'functions/permission-denied') {
+            errorMsg = error.message || "Ce compte est suspendu. Contactez l’équipe SBI.";
+        }
+        document.getElementById('error-message').textContent = errorMsg;
+    }
+}
+
+async function handleFirebaseResetLoad() {
+    currentFlow = 'firebase-reset';
+
     // Extraction robuste du oobCode depuis l'URL générée par Firebase ou reconstruite par SBI.
     actionCode = resolveActionCodeFromCurrentUrl();
 
@@ -89,21 +168,23 @@ async function handleInitialLoad() {
     try {
         // Vérification de la validité du code auprès des serveurs Firebase
         const email = await verifyPasswordResetCode(auth, actionCode);
-        
+
         // Code valide : On affiche le formulaire et l'email cible
         document.getElementById('user-email-display').textContent = email;
+        if (formTitle) formTitle.textContent = 'Nouveau mot de passe';
+        if (btnText) btnText.textContent = 'Réinitialiser mon mot de passe';
         showView(viewForm);
 
     } catch (error) {
         // Code invalide ou expiré
         console.error("Erreur de vérification du code:", error.code);
         showView(viewError);
-        
+
         let errorMsg = "Ce lien a expiré, a déjà été utilisé ou provient d’un ancien email. Veuillez demander un nouveau lien depuis l’espace de connexion.";
         if (error.code === 'auth/invalid-action-code') {
             errorMsg = "Ce lien de réinitialisation est invalide, déjà utilisé ou généré avant la configuration du domaine final.";
         } else if (error.code === 'auth/expired-action-code') {
-            errorMsg = "Ce lien a expiré. Veuillez refaire une demande de mot de passe depuis la page de connexion.";
+            errorMsg = "Ce lien a expiré. Si votre compte n’est pas encore finalisé, demandez à l’équipe SBI de renvoyer l’invitation de finalisation.";
         }
         document.getElementById('error-message').textContent = errorMsg;
     }
@@ -131,17 +212,38 @@ resetForm.addEventListener('submit', async (e) => {
     setButtonLoading(true);
 
     try {
+        if (currentFlow === 'durable-finalization') {
+            await completeInitialPasswordWithToken({
+                token: finalizationToken,
+                password: pwd1
+            });
+
+            if (successTitle) successTitle.textContent = 'Compte activé !';
+            if (successMessage) successMessage.textContent = 'Votre mot de passe est créé. Vous pouvez maintenant vous connecter à votre espace SBI.';
+            showView(viewSuccess);
+            return;
+        }
+
         // Application du nouveau mot de passe via Firebase
         await confirmPasswordReset(auth, actionCode, pwd1);
+        if (successTitle) successTitle.textContent = 'Mot de passe modifié !';
+        if (successMessage) successMessage.textContent = 'Votre compte est désormais sécurisé avec votre nouveau mot de passe.';
         showView(viewSuccess);
     } catch (error) {
-        console.error("Erreur lors de la réinitialisation:", error.code);
+        console.error("Erreur lors de la validation du mot de passe:", error.code, error.message);
         setButtonLoading(false);
-        
-        if (error.code === 'auth/weak-password') {
-            showFormError("Ce mot de passe est trop faible.");
-        } else if (error.code === 'auth/expired-action-code' || error.code === 'auth/invalid-action-code') {
+
+        if (error.code === 'auth/weak-password' || error.code === 'functions/invalid-argument') {
+            showFormError(error.message || "Ce mot de passe est trop faible.");
+        } else if (
+            error.code === 'auth/expired-action-code'
+            || error.code === 'auth/invalid-action-code'
+            || error.code === 'functions/failed-precondition'
+            || error.code === 'functions/not-found'
+            || error.code === 'functions/permission-denied'
+        ) {
             showView(viewError);
+            document.getElementById('error-message').textContent = error.message || "Ce lien n’est plus valide. Demandez un nouveau lien à l’équipe SBI.";
         } else {
             showFormError("Une erreur réseau est survenue. Veuillez réessayer.");
         }
@@ -176,4 +278,13 @@ function setButtonLoading(isLoading) {
         btnText.style.display = 'block';
         btnSpinner.style.display = 'none';
     }
+}
+
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
 }
