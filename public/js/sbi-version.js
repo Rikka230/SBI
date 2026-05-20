@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.123',
+  version: '8.0P.167.124',
   branch: 'main',
-  channel: 'P2I.11 CURSUS track counters outside text flow',
-  stage: 'CURSUS TRACK COUNTERS ALIGNED OUTSIDE TEXT AND QA BUTTON SIZED',
+  channel: 'P2I.12 CURSUS count bubbles replace icons',
+  stage: 'CURSUS TRACK ICONS REMOVED COUNTERS USED AS LEFT MARKERS',
   updatedAt: '2026-05-20',
-  label: 'SBI 8.0P.167.123 - CURSUS counters outside text and QA button size'
+  label: 'SBI 8.0P.167.124 - CURSUS count bubbles replace track icons'
 };
 
 export function getSbiVersionLabel() {
