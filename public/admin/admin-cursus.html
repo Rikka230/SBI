@@ -37,6 +37,36 @@
             border-radius: 999px;
         }
 
+
+        /* SBI 8.0P.167.121 - alignement des compteurs de pistes Cursus */
+        .sbi-cursus-track-label {
+            display: grid;
+            grid-template-columns: 26px minmax(0, 1fr) 22px;
+            align-items: start;
+            column-gap: 0.65rem;
+        }
+
+        .sbi-cursus-track-label .sbi-cursus-track-icon {
+            grid-column: 1;
+            align-self: start;
+            width: 26px;
+            height: 26px;
+            margin-top: 0.05rem;
+        }
+
+        .sbi-cursus-track-label > div:not(.sbi-cursus-track-icon) {
+            grid-column: 2;
+            min-width: 0;
+        }
+
+        .sbi-cursus-track-label .sbi-cursus-track-count {
+            grid-column: 3;
+            justify-self: end;
+            align-self: start;
+            flex: 0 0 22px;
+            margin-top: 0.05rem;
+        }
+
         @media (max-width: 760px), (max-height: 740px) {
             .sbi-cursus-qualiopi-panel {
                 margin: 0.65rem;

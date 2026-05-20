@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.120',
+  version: '8.0P.167.121',
   branch: 'main',
-  channel: 'P2I.8 CURSUS placeholder replacement memory refresh',
-  stage: 'COURSE FUTURE BLOCK REPLACEMENT SAVES AS REAL COURSE',
+  channel: 'P2I.9 CURSUS track counter alignment',
+  stage: 'CURSUS TIMELINE TRACK COUNTERS ALIGNED',
   updatedAt: '2026-05-20',
-  label: 'SBI 8.0P.167.120 - CURSUS placeholder replacement memory refresh'
+  label: 'SBI 8.0P.167.121 - CURSUS track counter alignment'
 };
 
 export function getSbiVersionLabel() {
