@@ -998,55 +998,6 @@ function buildActionButtonHtml(url, label) {
         </p>`;
 }
 
-const SBI_ACCOUNT_LINK_DIAGNOSTIC_VERSION = "8.0P.167.132";
-
-function getAccountLinkDiagnostics(url, flow = "unknown") {
-    const diagnostic = {
-        version: SBI_ACCOUNT_LINK_DIAGNOSTIC_VERSION,
-        flow: cleanString(flow, 80) || "unknown",
-        linkMode: "UNKNOWN",
-        hasToken: false,
-        hasOobCode: false
-    };
-
-    try {
-        const parsed = new URL(url || "");
-        diagnostic.hasToken = Boolean(parsed.searchParams.get("token"));
-        diagnostic.hasOobCode = Boolean(parsed.searchParams.get("oobCode"));
-
-        if (diagnostic.hasToken) diagnostic.linkMode = "TOKEN";
-        else if (diagnostic.hasOobCode) diagnostic.linkMode = "OOBCODE";
-    } catch (error) {
-        diagnostic.linkMode = "UNKNOWN";
-    }
-
-    return diagnostic;
-}
-
-function buildAccountLinkDiagnosticHtml(diagnostic = {}) {
-    const label = `Diagnostic SBI ${diagnostic.version || SBI_ACCOUNT_LINK_DIAGNOSTIC_VERSION} · FLOW=${diagnostic.flow || "unknown"} · LINK=${diagnostic.linkMode || "UNKNOWN"}`;
-    return `
-        <p style="margin:18px 0 0 0;font-size:11px;line-height:18px;color:#98a2b3;border-top:1px solid #e4e7ec;padding-top:12px;">
-            ${escapeHtml(label)}
-        </p>`;
-}
-
-function buildAccountLinkDiagnosticText(diagnostic = {}) {
-    return `Diagnostic SBI ${diagnostic.version || SBI_ACCOUNT_LINK_DIAGNOSTIC_VERSION} · FLOW=${diagnostic.flow || "unknown"} · LINK=${diagnostic.linkMode || "UNKNOWN"}`;
-}
-
-function logAccountLinkMode(diagnostic = {}, details = {}) {
-    console.info("[SBI_ACCOUNT_LINK_MODE]", {
-        version: diagnostic.version || SBI_ACCOUNT_LINK_DIAGNOSTIC_VERSION,
-        flow: diagnostic.flow || "unknown",
-        linkMode: diagnostic.linkMode || "UNKNOWN",
-        hasToken: diagnostic.hasToken === true,
-        hasOobCode: diagnostic.hasOobCode === true,
-        uid: details.uid || "",
-        email: details.email || ""
-    });
-}
-
 function buildAccountInternalHtml(eventLabel, details = {}) {
     const rows = Object.entries(details)
         .filter(([, value]) => value !== undefined && value !== null && value !== "")
@@ -1098,10 +1049,8 @@ async function sendAccountInternalEmail(eventLabel, details, apiKey) {
     }, apiKey);
 }
 
-async function sendAccountInviteEmail(account, resetLink, apiKey, options = {}) {
+async function sendAccountInviteEmail(account, resetLink, apiKey) {
     const roleLabel = getAccountRoleLabel(account.role);
-    const diagnostic = getAccountLinkDiagnostics(resetLink, options.flow || "create");
-    logAccountLinkMode(diagnostic, { uid: options.uid || account.uid || "", email: account.email || "" });
     return sendBrevoEmail({
         sender: {
             name: SBI_SENDER_NAME,
@@ -1126,10 +1075,9 @@ async function sendAccountInviteEmail(account, resetLink, apiKey, options = {}) 
                 <p style="margin:0 0 16px 0;">Pour sécuriser votre accès, définissez votre mot de passe via le lien ci-dessous.</p>
                 ${buildActionButtonHtml(resetLink, "Définir mon mot de passe")}
                 <p style="margin:0;">Si vous n’êtes pas à l’origine de cette demande, contactez l’équipe SBI.</p>
-                ${buildAccountLinkDiagnosticHtml(diagnostic)}
             `
         }),
-        textContent: `Bonjour ${account.prenom || ""},\n\nVotre espace ${roleLabel} SBI est prêt. Définissez votre mot de passe avec ce lien :\n${resetLink}\n\n${buildAccountLinkDiagnosticText(diagnostic)}\n\nSport Business Institute`
+        textContent: `Bonjour ${account.prenom || ""},\n\nVotre espace ${roleLabel} SBI est prêt. Définissez votre mot de passe avec ce lien :\n${resetLink}\n\nSport Business Institute`
     }, apiKey);
 }
 
@@ -1164,10 +1112,7 @@ async function sendAccountResetEmail(account, resetLink, apiKey) {
     }, apiKey);
 }
 
-async function sendAccountFinalizationEmail(account, finalizationLink, apiKey, options = {}) {
-    const diagnostic = getAccountLinkDiagnostics(finalizationLink, options.flow || "manual-finalization");
-    logAccountLinkMode(diagnostic, { uid: options.uid || account.uid || "", email: account.email || "" });
-
+async function sendAccountFinalizationEmail(account, finalizationLink, apiKey) {
     return sendBrevoEmail({
         sender: {
             name: SBI_SENDER_NAME,
@@ -1192,11 +1137,10 @@ async function sendAccountFinalizationEmail(account, finalizationLink, apiKey, o
                 <p style="margin:0 0 16px 0;">Pour activer votre espace personnel, cliquez sur le bouton ci-dessous et définissez votre mot de passe.</p>
                 ${buildActionButtonHtml(finalizationLink, "Finaliser mon compte")}
                 <p style="margin:0 0 16px 0;">Ce lien vous permet de finaliser votre accès à la plateforme SBI.</p>
-                ${buildAccountLinkDiagnosticHtml(diagnostic)}
                 <p style="margin:0;">Si vous avez déjà finalisé votre compte, vous pouvez ignorer ce message.</p>
             `
         }),
-        textContent: `Bonjour ${account.prenom || ""},\n\nVotre compte SBI a été créé, mais votre accès n’a pas encore été finalisé.\n\nFinalisez votre compte avec ce lien :\n${finalizationLink}\n\n${buildAccountLinkDiagnosticText(diagnostic)}\n\nSport Business Institute`
+        textContent: `Bonjour ${account.prenom || ""},\n\nVotre compte SBI a été créé, mais votre accès n’a pas encore été finalisé.\n\nFinalisez votre compte avec ce lien :\n${finalizationLink}\n\nSport Business Institute`
     }, apiKey);
 }
 
@@ -1793,10 +1737,7 @@ exports.adminCreateUserAccount = onCall({
                 userRef: db.collection("users").doc(createdUser.uid),
                 source: "account-created"
             });
-            await sendAccountInviteEmail({ ...accountData, uid: createdUser.uid }, resetLink, apiKey, {
-                flow: "create",
-                uid: createdUser.uid
-            });
+            await sendAccountInviteEmail({ ...accountData, uid: createdUser.uid }, resetLink, apiKey);
             await db.collection("users").doc(createdUser.uid).update({
                 "accountStatus.invitationSentAt": admin.firestore.FieldValue.serverTimestamp(),
                 "accountStatus.lastAccessEmailSentAt": admin.firestore.FieldValue.serverTimestamp()
@@ -1952,10 +1893,7 @@ exports.adminSendFinalizationInvite = onCall({
             userRef: targetDoc.ref,
             source: "admin-manual-finalization"
         });
-        await sendAccountFinalizationEmail({ ...targetData, email, uid: targetUid }, finalizationLink, apiKey, {
-            flow: "manual-finalization",
-            uid: targetUid
-        });
+        await sendAccountFinalizationEmail({ ...targetData, email, uid: targetUid }, finalizationLink, apiKey);
 
         const accountStatus = targetData.accountStatus || {};
         const finalizationReminderEnabled = accountStatus.finalizationReminderEnabled === false ? false : true;
@@ -2242,10 +2180,7 @@ exports.runFinalizationReminders = onSchedule({
                 source: "auto-finalization-reminder"
             });
 
-            await sendAccountFinalizationEmail({ ...userData, email, uid }, finalizationLink, apiKey, {
-                flow: "auto-reminder",
-                uid
-            });
+            await sendAccountFinalizationEmail({ ...userData, email, uid }, finalizationLink, apiKey);
 
             const updatePayload = {
                 "accountStatus.activationState": "pending_password",

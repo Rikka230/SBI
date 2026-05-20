@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.134',
+  version: '8.0P.167.135',
   branch: 'main',
-  channel: 'P2I.21 PROFILE FINALIZATION NO JUMP',
-  stage: 'MANUAL FINALIZATION SEND WITHOUT PROFILE RELOAD JUMP',
+  channel: 'P2I.23 REMOVE ACCOUNT LINK DIAGNOSTICS',
+  stage: 'REMOVE TEMPORARY FINALIZATION LINK DIAGNOSTIC MARKERS',
   updatedAt: '2026-05-20',
-  label: 'SBI 8.0P.167.134 - Manual finalization action without profile reload jump'
+  label: 'SBI 8.0P.167.135 - Remove temporary account link diagnostics'
 };
 
 export function getSbiVersionLabel() {
