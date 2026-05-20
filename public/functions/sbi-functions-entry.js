@@ -1,6 +1,6 @@
 /**
  * =======================================================================
- * SBI 8.0P.167.118 — Durable account finalization links
+ * SBI 8.0P.167.126 — Durable finalization links, no silent Firebase fallback
  * -----------------------------------------------------------------------
  * Wrapper d'entrée Cloud Functions.
  *
@@ -135,42 +135,47 @@ async function createDurableFinalizationLinkForEmail({ authInstance, email, sour
     const now = admin.firestore.FieldValue.serverTimestamp();
     const finalizationUrl = buildDurableFinalizationUrl(rawToken);
 
-    await db.collection(SBI_FINALIZATION_TOKEN_COLLECTION).doc(tokenHash).set({
-        uid,
-        email: normalizedEmail,
-        purpose: SBI_FINALIZATION_TOKEN_PURPOSE,
-        status: "active",
-        source,
-        createdAt: now,
-        updatedAt: now,
-        lastSentAt: now,
-        usedAt: null,
-        revokedAt: null,
-        mode: SBI_FINALIZATION_TOKEN_MODE
-    }, { merge: false });
+    try {
+        await db.collection(SBI_FINALIZATION_TOKEN_COLLECTION).doc(tokenHash).set({
+            uid,
+            email: normalizedEmail,
+            purpose: SBI_FINALIZATION_TOKEN_PURPOSE,
+            status: "active",
+            source,
+            createdAt: now,
+            updatedAt: now,
+            lastSentAt: now,
+            usedAt: null,
+            revokedAt: null,
+            mode: SBI_FINALIZATION_TOKEN_MODE
+        }, { merge: false });
 
-    await userRef.set({
-        accountStatus: {
-            ...(userData.accountStatus || {}),
-            activationState: "pending_password",
-            finalizationLinkMode: "durable_token",
-            finalizationTokenLastSentAt: now,
-            finalizationTokenIssueCount: admin.firestore.FieldValue.increment(1)
-        },
-        updatedAt: now
-    }, { merge: true });
+        await userRef.set({
+            accountStatus: {
+                ...(userData.accountStatus || {}),
+                activationState: "pending_password",
+                finalizationLinkMode: "durable_token",
+                finalizationTokenLastSentAt: now,
+                finalizationTokenIssueCount: admin.firestore.FieldValue.increment(1)
+            },
+            updatedAt: now
+        }, { merge: true });
 
-    await safeWriteDurableFinalizationAuditLog(db, {
-        type: "account.finalization_token_created",
-        actorUid: "system",
-        actorEmail: source,
-        targetUid: uid,
-        targetEmail: normalizedEmail,
-        targetRole: userData.role || "",
-        source
-    });
+        await safeWriteDurableFinalizationAuditLog(db, {
+            type: "account.finalization_token_created",
+            actorUid: "system",
+            actorEmail: source,
+            targetUid: uid,
+            targetEmail: normalizedEmail,
+            targetRole: userData.role || "",
+            source
+        });
 
-    return finalizationUrl;
+        return finalizationUrl;
+    } catch (error) {
+        error.sbiPreventFirebaseFallback = true;
+        throw error;
+    }
 }
 
 function patchAuthInstance(authInstance) {
@@ -190,7 +195,12 @@ function patchAuthInstance(authInstance) {
 
             if (durableLink) return durableLink;
         } catch (error) {
-            console.error("[SBI Durable Finalization] Fallback lien Firebase classique :", error.message || error);
+            if (error?.sbiPreventFirebaseFallback === true) {
+                console.error("[SBI Durable Finalization] ERREUR BLOQUANTE : aucun lien Firebase court ne sera envoyé pour une finalisation initiale.", error.message || error);
+                throw error;
+            }
+
+            console.error("[SBI Durable Finalization] Fallback lien Firebase classique réservé aux resets actifs :", error.message || error);
         }
 
         return originalGeneratePasswordResetLink(email, actionCodeSettings);

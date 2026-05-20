@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.125',
+  version: '8.0P.167.126',
   branch: 'main',
-  channel: 'P2I.13 COURSE PLAN DATES',
-  stage: 'COURSE PAGES READ PROMOTIONS COURSEPLAN DATES',
+  channel: 'P2I.14 FINALIZATION LINKS NO FIREBASE FALLBACK',
+  stage: 'DURABLE FINALIZATION LINKS BLOCK SHORT FIREBASE FALLBACK',
   updatedAt: '2026-05-20',
-  label: 'SBI 8.0P.167.125 - Course pages show promotion coursePlan dates'
+  label: 'SBI 8.0P.167.126 - Durable finalization blocks short Firebase fallback'
 };
 
 export function getSbiVersionLabel() {
