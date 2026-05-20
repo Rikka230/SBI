@@ -9,7 +9,6 @@ const { onCall, onRequest, HttpsError } = require("firebase-functions/v2/https")
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { defineSecret } = require("firebase-functions/params");
 const admin = require("firebase-admin");
-const crypto = require("crypto");
 
 admin.initializeApp();
 
@@ -204,9 +203,6 @@ const SBI_AUTH_ACTION_SETTINGS = {
 const SBI_FINALIZATION_REMINDER_MAX_COUNT = 3;
 const SBI_FINALIZATION_REMINDER_DELAY_MS = 48 * 60 * 60 * 1000;
 const SBI_ACCOUNT_CREATION_LOCK_TTL_MS = 5 * 60 * 1000;
-const SBI_FINALIZATION_TOKEN_COLLECTION = "accountFinalizationTokens";
-const SBI_FINALIZATION_TOKEN_PURPOSE = "initial_password";
-const SBI_FINALIZATION_TOKEN_MODE = "finalizeAccount";
 
 function readActionParamsFromUrl(rawUrl) {
     const parsed = new URL(rawUrl);
@@ -266,88 +262,6 @@ function buildSbiPasswordResetLink(firebaseLink) {
         console.error("Erreur reconstruction lien reset SBI :", error);
         return firebaseLink;
     }
-}
-
-function createRawAccountFinalizationToken() {
-    return crypto.randomBytes(36).toString("base64url");
-}
-
-function hashAccountFinalizationToken(token) {
-    return crypto
-        .createHash("sha256")
-        .update(String(token || ""), "utf8")
-        .digest("hex");
-}
-
-function buildSbiAccountFinalizationLink(rawToken) {
-    const sbiLink = new URL(SBI_PASSWORD_RESET_URL);
-    sbiLink.searchParams.set("mode", SBI_FINALIZATION_TOKEN_MODE);
-    sbiLink.searchParams.set("token", rawToken);
-    return sbiLink.toString();
-}
-
-function shouldCreateDurableInitialPasswordLink(accountData = {}) {
-    if (!accountData || accountData.statut === "suspendu") return false;
-    return !hasAccountFinalizedAccess(accountData);
-}
-
-async function createAccountFinalizationLink(db, targetUid, accountData = {}, source = "account-finalization") {
-    const uid = cleanString(targetUid, 180);
-    const email = cleanEmail(accountData.email || "");
-
-    if (!uid) {
-        throw new Error("UID utilisateur manquant pour la génération du lien de finalisation durable.");
-    }
-
-    if (!isValidEmail(email)) {
-        throw new Error("Email utilisateur invalide pour la génération du lien de finalisation durable.");
-    }
-
-    if (!shouldCreateDurableInitialPasswordLink(accountData)) {
-        throw new Error("Ce compte ne peut pas recevoir de lien de finalisation durable.");
-    }
-
-    const rawToken = createRawAccountFinalizationToken();
-    const tokenHash = hashAccountFinalizationToken(rawToken);
-    const now = admin.firestore.FieldValue.serverTimestamp();
-    const finalizationLink = buildSbiAccountFinalizationLink(rawToken);
-
-    await db.collection(SBI_FINALIZATION_TOKEN_COLLECTION).doc(tokenHash).set({
-        uid,
-        email,
-        purpose: SBI_FINALIZATION_TOKEN_PURPOSE,
-        status: "active",
-        source,
-        createdAt: now,
-        updatedAt: now,
-        lastSentAt: now,
-        usedAt: null,
-        revokedAt: null,
-        mode: SBI_FINALIZATION_TOKEN_MODE
-    }, { merge: false });
-
-    await db.collection("users").doc(uid).set({
-        accountStatus: {
-            ...(accountData.accountStatus || {}),
-            activationState: "pending_password",
-            finalizationLinkMode: "durable_token_direct",
-            finalizationTokenLastSentAt: now,
-            finalizationTokenIssueCount: admin.firestore.FieldValue.increment(1)
-        },
-        updatedAt: now
-    }, { merge: true });
-
-    await safeWriteAccountAuditLog(db, {
-        type: "account.finalization_token_created",
-        actorUid: "system",
-        actorEmail: source,
-        targetUid: uid,
-        targetEmail: email,
-        targetRole: accountData.role || "",
-        source: "direct-durable-finalization"
-    });
-
-    return finalizationLink;
 }
 const SBI_TEMPLATE_PHONE_TEL = "tel:+33668603001";
 const SBI_SOCIAL_LINKS = {
@@ -1611,8 +1525,9 @@ exports.adminCreateUserAccount = onCall({
 
         try {
             if (!apiKey) throw new Error("BREVO_API_KEY manquant.");
-            const finalizationLink = await createAccountFinalizationLink(db, createdUser.uid, { ...accountData, email }, "adminCreateUserAccount");
-            await sendAccountInviteEmail(accountData, finalizationLink, apiKey);
+            const firebaseResetLink = await admin.auth().generatePasswordResetLink(email, SBI_AUTH_ACTION_SETTINGS);
+            const resetLink = buildSbiPasswordResetLink(firebaseResetLink);
+            await sendAccountInviteEmail(accountData, resetLink, apiKey);
             await db.collection("users").doc(createdUser.uid).update({
                 "accountStatus.invitationSentAt": admin.firestore.FieldValue.serverTimestamp(),
                 "accountStatus.lastAccessEmailSentAt": admin.firestore.FieldValue.serverTimestamp()
@@ -1761,7 +1676,8 @@ exports.adminSendFinalizationInvite = onCall({
     if (!apiKey) throw new HttpsError("failed-precondition", "Configuration Brevo manquante côté serveur.");
 
     try {
-        const finalizationLink = await createAccountFinalizationLink(db, targetUid, { ...targetData, email }, "adminSendFinalizationInvite");
+        const firebaseResetLink = await admin.auth().generatePasswordResetLink(email, SBI_AUTH_ACTION_SETTINGS);
+        const finalizationLink = buildSbiPasswordResetLink(firebaseResetLink);
         await sendAccountFinalizationEmail({ ...targetData, email }, finalizationLink, apiKey);
 
         const accountStatus = targetData.accountStatus || {};
@@ -1935,7 +1851,8 @@ exports.runFinalizationReminders = onSchedule({
         const isFinalReminder = nextReminderCount >= SBI_FINALIZATION_REMINDER_MAX_COUNT;
 
         try {
-            const finalizationLink = await createAccountFinalizationLink(db, uid, { ...userData, email }, "runFinalizationReminders");
+            const firebaseResetLink = await admin.auth().generatePasswordResetLink(email, SBI_AUTH_ACTION_SETTINGS);
+            const finalizationLink = buildSbiPasswordResetLink(firebaseResetLink);
 
             await sendAccountFinalizationEmail({ ...userData, email }, finalizationLink, apiKey);
 
