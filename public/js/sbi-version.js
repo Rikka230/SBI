@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.116',
+  version: '8.0P.167.117',
   branch: 'main',
-  channel: 'P2I.7 RESPONSIVE PANELS LOGIN QUALIOPI',
-  stage: 'RESPONSIVE PANELS LOGIN QUALIOPI',
+  channel: 'P2I.7.1 STUDENT NOTICE DEVICE RECOMMENDATION',
+  stage: 'STUDENT NOTICE PC RECOMMENDED MOBILE TEMPORARILY AVOIDED',
   updatedAt: '2026-05-20',
-  label: 'SBI 8.0P.167.116 - RESPONSIVE PANELS LOGIN QUALIOPI'
+  label: 'SBI 8.0P.167.117 - STUDENT NOTICE DEVICE RECOMMENDATION'
 };
 
 export function getSbiVersionLabel() {

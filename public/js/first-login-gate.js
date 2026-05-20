@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.167.96.1-GPT2.3 / P2I-GPT2.3
+ * SBI 8.0P.167.117 / P2I.7.1
  * Première connexion : validation obligatoire légère + notice étudiant post-login.
  *
  * Objectif :
@@ -7,7 +7,8 @@
  *   n'a pas confirmé les cases de première connexion ;
  * - écrire la validation via Cloud Function pour garder l'audit serveur ;
  * - ne pas impacter les admins / isGod ;
- * - afficher ensuite aux étudiants un rappel non bloquant sur la phase de construction.
+ * - afficher ensuite aux étudiants un rappel non bloquant sur la phase de construction ;
+ * - recommander explicitement l'ordinateur et déconseiller le mobile pendant la stabilisation.
  */
 
 import { app, auth, db } from '/js/firebase-init.js';
@@ -21,7 +22,7 @@ const MODAL_ID = 'sbi-first-login-gate';
 const STYLE_ID = 'sbi-first-login-gate-style';
 const SESSION_PREFIX = 'sbi:firstLoginGate:completed:';
 
-const STUDENT_NOTICE_VERSION = '2026-05-SBI-STUDENT-CONSTRUCTION-V1';
+const STUDENT_NOTICE_VERSION = '2026-05-SBI-STUDENT-CONSTRUCTION-V2';
 const STUDENT_NOTICE_ID = 'sbi-student-construction-notice';
 const STUDENT_NOTICE_STYLE_ID = 'sbi-student-construction-notice-style';
 const STUDENT_NOTICE_SESSION_PREFIX = 'sbi:studentConstructionNotice:dismissed:';
@@ -89,21 +90,6 @@ function hasCompletedFirstLogin(data = {}) {
       && (status.importantInfoAccepted === true || legacy('importantInfoAccepted') === true)
       && (status.emailConfirmed === true || legacy('emailConfirmed') === true)
     );
-}
-
-function isSbiStudent(data = {}) {
-  const role = String(data.role || data.userRole || data.type || '').trim().toLowerCase();
-  const roles = Array.isArray(data.roles)
-    ? data.roles.map((item) => String(item || '').trim().toLowerCase())
-    : [];
-
-  return role === 'student'
-    || role === 'eleve'
-    || role === 'élève'
-    || roles.includes('student')
-    || roles.includes('eleve')
-    || roles.includes('élève')
-    || data.isStudent === true;
 }
 
 function getDisplayName(data = {}) {
@@ -637,11 +623,12 @@ function renderStudentConstructionNotice(userData = {}, { afterFirstLogin = fals
       <div class="sbi-student-notice-head">
         <span class="sbi-student-notice-eyebrow">Info espace étudiant</span>
         <h2>${afterFirstLogin ? 'Ton espace est ouvert' : `Bonjour ${escapeHtml(displayName)}`}</h2>
-        <p>L’espace étudiant SBI est en construction active. Les accès restent utilisables, mais certains écrans vont encore évoluer avec l’intégration des cours, du planning pédagogique et du suivi.</p>
+        <p>L’espace étudiant SBI est en construction active. Pour le moment, utilise ton espace surtout depuis un ordinateur. Le mobile est à éviter tant que les écrans cours, documents et suivi ne sont pas totalement stabilisés.</p>
       </div>
       <div class="sbi-student-notice-body">
         <div class="sbi-student-notice-advice">
-          <div class="sbi-student-notice-advice-item"><strong>À privilégier pour le moment :</strong> utilise un ordinateur quand c’est possible. La navigation mobile reste en stabilisation pendant cette phase.</div>
+          <div class="sbi-student-notice-advice-item"><strong>Ordinateur recommandé :</strong> privilégie un PC ou un Mac pour naviguer dans ton espace SBI pendant cette phase de construction.</div>
+          <div class="sbi-student-notice-advice-item"><strong>Mobile à éviter pour le moment :</strong> certains écrans peuvent encore être incomplets, trop serrés ou moins confortables sur téléphone. Utilise le mobile seulement en dépannage.</div>
           <div class="sbi-student-notice-advice-item"><strong>Important :</strong> si une page paraît incomplète, recharge-la une fois puis préviens l’équipe SBI si le blocage persiste.</div>
         </div>
 
@@ -674,7 +661,7 @@ function escapeHtml(value) {
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-    .replace(/\"/g, '&quot;')
+    .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
 }
 

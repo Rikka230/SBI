@@ -16,11 +16,13 @@
  * - profils : admin/prof sans XP/badges, prof avec liste élèves suivis.
  * 8.0P.167.116 :
  * - correctif responsive des panneaux première connexion / information étudiant.
+ * 8.0P.167.117 :
+ * - wording panneau information étudiant : ordinateur recommandé, mobile à éviter temporairement.
  * =======================================================================
  */
 
 import '/js/auth.js?v=8.0P.167.44';
-import '/js/first-login-gate.js?v=8.0P.167.97-GPT2.1';
+import '/js/first-login-gate.js?v=8.0P.167.117';
 import '/student/js/student-visible-documents.js?v=8.0P.167.97-GPT2.1';
 
 import { db, auth } from '/js/firebase-init.js';
@@ -44,7 +46,7 @@ const CONNECTION_SYNC_INTERVAL_MS = 300000;
 const PRESENCE_HEARTBEAT_INTERVAL_MS = 30000;
 const NAV_PROFILE_CACHE_PREFIX = 'sbi:navProfile:';
 const NAV_PROFILE_MAX_ATTEMPTS = 20;
-const RESPONSIVE_PANEL_STYLE_ID = 'sbi-responsive-panel-fixes-8-0p-167-116';
+const RESPONSIVE_PANEL_STYLE_ID = 'sbi-responsive-panel-fixes-8-0p-167-117';
 
 function injectResponsivePanelFixes() {
     if (document.getElementById(RESPONSIVE_PANEL_STYLE_ID)) return;
@@ -325,7 +327,7 @@ function escapeHTML(value) {
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
-        .replace(/\"/g, '&quot;')
+        .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
 }
 
