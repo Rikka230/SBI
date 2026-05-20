@@ -1,6 +1,6 @@
 /**
  * =======================================================================
- * SBI 8.0P.167.126 — Durable finalization links, no silent Firebase fallback
+ * SBI 8.0P.167.127 — Durable finalization for every non-finalized account
  * -----------------------------------------------------------------------
  * Wrapper d'entrée Cloud Functions.
  *
@@ -78,10 +78,12 @@ function shouldUseDurableFinalizationLink(accountData = {}) {
     if (!accountData || accountData.statut === "suspendu") return false;
     if (isAccountFinalized(accountData)) return false;
 
-    const status = accountData.accountStatus || {};
-    const activationState = cleanString(status.activationState || accountData.activationState || "", 80).toLowerCase();
-
-    return !activationState || activationState === "pending_password";
+    // 8.0P.167.127
+    // Ne plus limiter le lien durable au seul état strict "pending_password".
+    // Certains comptes non finalisés peuvent porter un ancien état intermédiaire
+    // ou un état hérité. Pour toute finalisation initiale non active, on doit
+    // générer un token SBI durable, jamais retomber sur un oobCode Firebase court.
+    return true;
 }
 
 function createRawFinalizationToken() {

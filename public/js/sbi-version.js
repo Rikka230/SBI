@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.126',
+  version: '8.0P.167.127',
   branch: 'main',
-  channel: 'P2I.14 FINALIZATION LINKS NO FIREBASE FALLBACK',
-  stage: 'DURABLE FINALIZATION LINKS BLOCK SHORT FIREBASE FALLBACK',
+  channel: 'P2I.15 FINALIZATION ANY NON FINALIZED STATE',
+  stage: 'DURABLE FINALIZATION FOR EVERY NON FINALIZED ACCOUNT STATE',
   updatedAt: '2026-05-20',
-  label: 'SBI 8.0P.167.126 - Durable finalization blocks short Firebase fallback'
+  label: 'SBI 8.0P.167.127 - Durable finalization for every non-finalized account state'
 };
 
 export function getSbiVersionLabel() {
