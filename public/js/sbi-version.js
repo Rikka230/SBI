@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.127',
+  version: '8.0P.167.128',
   branch: 'main',
-  channel: 'P2I.15 FINALIZATION ANY NON FINALIZED STATE',
-  stage: 'DURABLE FINALIZATION FOR EVERY NON FINALIZED ACCOUNT STATE',
+  channel: 'P2I.16 DIRECT DURABLE FINALIZATION LINKS',
+  stage: 'DIRECT DURABLE FINALIZATION LINKS IN FUNCTIONS INDEX',
   updatedAt: '2026-05-20',
-  label: 'SBI 8.0P.167.127 - Durable finalization for every non-finalized account state'
+  label: 'SBI 8.0P.167.128 - Direct durable finalization links in Functions index'
 };
 
 export function getSbiVersionLabel() {
