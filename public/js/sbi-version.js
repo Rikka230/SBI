@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.114',
+  version: '8.0P.167.115',
   branch: 'main',
-  channel: 'P2I.5 CURSUS PROMOTION AUTO SYNC',
-  stage: 'CURSUS PROMOTION AUTO SYNC',
-  updatedAt: '2026-05-19',
-  label: 'SBI 8.0P.167.114 - CURSUS PROMOTION AUTO SYNC'
+  channel: 'P2I.6 ACCOUNT CREATE SERVER LOCK',
+  stage: 'ACCOUNT CREATE SERVER LOCK',
+  updatedAt: '2026-05-20',
+  label: 'SBI 8.0P.167.115 - ACCOUNT CREATE SERVER LOCK'
 };
 
 export function getSbiVersionLabel() {
