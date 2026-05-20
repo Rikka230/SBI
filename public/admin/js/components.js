@@ -7,10 +7,8 @@
  * classique. On garde ce point d'entrée non-module, puis on charge les
  * vrais composants depuis /admin/js/components/index.js.
  *
- * 6.7E : le signal ready attend DOMContentLoaded + définition des tags +
- * présence réelle des panels/topbars attendus pour la page courante.
- * 8.0P.151 : suppression des bridges conformité, intégration directe dans
- * public-formations-admin.js et sbi-public-pages.js.
+ * 6.7E : le signal ready attend DOMContentLoaded + définition des tags + présence réelle des panels/topbars attendus pour la page courante.
+ * 8.0P.151 : suppression des bridges conformité, intégration directe dans public-formations-admin.js et sbi-public-pages.js.
  * 8.0P.166.4 : chargement rapide panel profil droit.
  * 8.0P.167.24 : surface admin claire homogène sans grille.
  * 8.0P.167.25 : alertes admin légères pour escalades après 3 relances.
@@ -25,6 +23,7 @@
  * 8.0P.167.59 : icône Promotions distincte et cache-bust ergonomie promotions.
  * 8.0P.167.60 : navigation Profil depuis Comptes stabilisée + rebinding édition après PJAX.
  * 8.0P.167.62 : profil admin PJAX sans fallback reload parasite + verrou UID cible.
+ * 8.0P.167.125 : chargement léger des dates issues de promotions.coursePlan sur les pages cours élève/prof.
  */
 
 (function bootstrapSbiComponents(){
@@ -32,6 +31,8 @@
   let adminIndexModulesPromise = null;
   let accountEscalationsModulePromise = null;
   let accountsWatchStarted = false;
+  let studentCoursePlanEnhancementPromise = null;
+  let teacherCoursePlanEnhancementPromise = null;
 
   const releasePreload = () => {
     document.body?.classList?.remove('preload');
@@ -115,6 +116,56 @@
         console.warn('[SBI Profile Panel] Chargement rapide indisponible :', error);
       }
     });
+
+  const getCurrentPathname = () => {
+    try {
+      return new URL(window.SBI_APP_SHELL_CURRENT_URL || window.location.href, window.location.origin).pathname;
+    } catch {
+      return window.location.pathname || '';
+    }
+  };
+
+  const loadCoursePlanDateEnhancements = () => {
+    const path = getCurrentPathname();
+
+    if (path.endsWith('/student/mes-cours.html')) {
+      if (!studentCoursePlanEnhancementPromise) {
+        studentCoursePlanEnhancementPromise = import('/student/js/student-course-plan-dates.js?v=8.0P.167.125')
+          .catch((error) => {
+            studentCoursePlanEnhancementPromise = null;
+            if (window.localStorage?.getItem('sbiDebugAccess') === 'true') {
+              console.warn('[SBI Student CoursePlan] Dates promotion non chargées :', error);
+            }
+            return null;
+          });
+      }
+
+      studentCoursePlanEnhancementPromise.then((module) => {
+        module?.mountStudentCoursePlanDates?.({ source: 'components' });
+      });
+    }
+
+    if (path.endsWith('/teacher/mes-cours.html')) {
+      if (!teacherCoursePlanEnhancementPromise) {
+        teacherCoursePlanEnhancementPromise = import('/teacher/js/teacher-course-plan-dates.js?v=8.0P.167.125')
+          .catch((error) => {
+            teacherCoursePlanEnhancementPromise = null;
+            if (window.localStorage?.getItem('sbiDebugAccess') === 'true') {
+              console.warn('[SBI Teacher CoursePlan] Dates promotion non chargées :', error);
+            }
+            return null;
+          });
+      }
+
+      teacherCoursePlanEnhancementPromise.then((module) => {
+        module?.mountTeacherCoursePlanDates?.({ source: 'components' });
+      });
+    }
+  };
+
+  loadCoursePlanDateEnhancements();
+  window.addEventListener('sbi:components-ready', loadCoursePlanDateEnhancements);
+  window.addEventListener('sbi:app-shell-rendered', () => window.setTimeout(loadCoursePlanDateEnhancements, 80));
 
   const isAccountsPagePath = () => window.location.pathname.endsWith('/admin/admin-accounts.html');
   const hasAccountsDom = () => Boolean(document.getElementById('view-users'));
@@ -234,6 +285,7 @@
       releasePreload();
       startAccountsWatcher();
       scheduleAccountsMount();
+      loadCoursePlanDateEnhancements();
       return true;
     })
     .catch((error) => {
@@ -243,6 +295,7 @@
       releasePreload();
       startAccountsWatcher();
       scheduleAccountsMount();
+      loadCoursePlanDateEnhancements();
       return false;
     });
 })();
