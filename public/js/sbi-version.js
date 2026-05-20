@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.127',
+  version: '8.0P.167.130',
   branch: 'main',
-  channel: 'P2I.15 FINALIZATION ANY NON FINALIZED STATE',
-  stage: 'DURABLE FINALIZATION FOR EVERY NON FINALIZED ACCOUNT STATE',
+  channel: 'P2I.18 ACCOUNT CREATION LOCK RECOVERY',
+  stage: 'RESTORE FUNCTION ENTRY AND GUARD ACCOUNT CREATION SUBMIT',
   updatedAt: '2026-05-20',
-  label: 'SBI 8.0P.167.127 - Durable finalization for every non-finalized account state'
+  label: 'SBI 8.0P.167.130 - Account creation lock recovery'
 };
 
 export function getSbiVersionLabel() {

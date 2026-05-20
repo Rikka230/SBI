@@ -776,6 +776,14 @@ const initUserCreation = () => {
 
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
+
+        if (form.dataset.sbiCreateSubmitting === 'true') {
+            e.stopImmediatePropagation();
+            return;
+        }
+
+        form.dataset.sbiCreateSubmitting = 'true';
+
         const msgBox = document.getElementById('user-creation-msg');
         msgBox.style.display = 'block';
         msgBox.style.color = 'var(--text-muted)';
@@ -811,6 +819,8 @@ const initUserCreation = () => {
             msgBox.style.color = 'var(--accent-red)';
             msgBox.textContent = 'Erreur : ' + getCallableErrorMessage(error, 'Création du compte impossible.');
         } finally {
+            delete form.dataset.sbiCreateSubmitting;
+
             if (submitBtn) {
                 submitBtn.disabled = false;
                 submitBtn.style.opacity = '';

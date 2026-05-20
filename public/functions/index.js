@@ -203,6 +203,7 @@ const SBI_AUTH_ACTION_SETTINGS = {
 const SBI_FINALIZATION_REMINDER_MAX_COUNT = 3;
 const SBI_FINALIZATION_REMINDER_DELAY_MS = 48 * 60 * 60 * 1000;
 const SBI_ACCOUNT_CREATION_LOCK_TTL_MS = 5 * 60 * 1000;
+const SBI_ACCOUNT_CREATION_LOCK_ACTIVE_GRACE_MS = 8 * 1000;
 
 function readActionParamsFromUrl(rawUrl) {
     const parsed = new URL(rawUrl);
@@ -1381,16 +1382,32 @@ async function acquireAccountCreationLock(db, email, caller = {}) {
         const nowMs = Date.now();
         const expiresAtMs = nowMs + SBI_ACCOUNT_CREATION_LOCK_TTL_MS;
 
+        let previousLock = null;
+
         if (lockSnap.exists) {
             const lockData = lockSnap.data() || {};
             const lockExpiresAtMs = toAccountReminderMillis(lockData.expiresAt || lockData.expiresAtIso);
+            const lockUpdatedAtMs = toAccountReminderMillis(lockData.updatedAt || lockData.createdAt || lockData.expiresAtIso);
+            const lockAgeMs = lockUpdatedAtMs ? nowMs - lockUpdatedAtMs : Number.POSITIVE_INFINITY;
 
-            if (lockData.status === "creating" && lockExpiresAtMs > nowMs) {
+            if (
+                lockData.status === "creating"
+                && lockExpiresAtMs > nowMs
+                && lockAgeMs >= 0
+                && lockAgeMs < SBI_ACCOUNT_CREATION_LOCK_ACTIVE_GRACE_MS
+            ) {
                 throw new HttpsError(
                     "already-exists",
-                    "Une création de compte est déjà en cours pour cette adresse email. Réessayez dans quelques minutes."
+                    "Une création de compte est déjà en cours pour cette adresse email. Réessayez dans quelques secondes."
                 );
             }
+
+            previousLock = {
+                status: lockData.status || "",
+                lockOwner: lockData.lockOwner || "",
+                updatedAt: lockData.updatedAt || lockData.createdAt || null,
+                overriddenAt: admin.firestore.FieldValue.serverTimestamp()
+            };
         }
 
         transaction.set(lockRef, {
@@ -1402,7 +1419,8 @@ async function acquireAccountCreationLock(db, email, caller = {}) {
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             expiresAt: admin.firestore.Timestamp.fromMillis(expiresAtMs),
-            expiresAtIso: new Date(expiresAtMs).toISOString()
+            expiresAtIso: new Date(expiresAtMs).toISOString(),
+            recoveredPreviousLock: previousLock
         }, { merge: false });
     });
 
