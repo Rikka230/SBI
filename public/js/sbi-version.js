@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.129',
+  version: '8.0P.167.128',
   branch: 'main',
-  channel: 'P2I.17 RESTORE ACCOUNT EMAIL FLOWS',
-  stage: 'ROLLBACK DIRECT FINALIZATION PATCH AND RESTORE FUNCTIONS ENTRY',
+  channel: 'P2I.16 DIRECT DURABLE FINALIZATION LINKS',
+  stage: 'DIRECT DURABLE FINALIZATION LINKS IN FUNCTIONS INDEX',
   updatedAt: '2026-05-20',
-  label: 'SBI 8.0P.167.129 - Restore account email flows'
+  label: 'SBI 8.0P.167.128 - Direct durable finalization links in Functions index'
 };
 
 export function getSbiVersionLabel() {
