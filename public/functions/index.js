@@ -9,6 +9,7 @@ const { onCall, onRequest, HttpsError } = require("firebase-functions/v2/https")
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { defineSecret } = require("firebase-functions/params");
 const admin = require("firebase-admin");
+const crypto = require("crypto");
 
 admin.initializeApp();
 
@@ -204,6 +205,11 @@ const SBI_FINALIZATION_REMINDER_MAX_COUNT = 3;
 const SBI_FINALIZATION_REMINDER_DELAY_MS = 48 * 60 * 60 * 1000;
 const SBI_ACCOUNT_CREATION_LOCK_TTL_MS = 5 * 60 * 1000;
 const SBI_ACCOUNT_CREATION_LOCK_ACTIVE_GRACE_MS = 8 * 1000;
+const SBI_FINALIZATION_TOKEN_COLLECTION = "accountFinalizationTokens";
+const SBI_FINALIZATION_TOKEN_PURPOSE = "initial_password";
+const SBI_FINALIZATION_TOKEN_MODE = "finalizeAccount";
+const SBI_FINALIZATION_PROCESSING_TTL_MS = 10 * 60 * 1000;
+const SBI_MIN_PASSWORD_LENGTH = 8;
 
 function readActionParamsFromUrl(rawUrl) {
     const parsed = new URL(rawUrl);
@@ -1351,6 +1357,187 @@ function toAccountReminderMillis(value) {
     return 0;
 }
 
+function isAccountDurableFinalizationEligible(accountData = {}) {
+    if (!accountData || accountData.statut === "suspendu") return false;
+    return !hasAccountFinalizedAccess(accountData);
+}
+
+function createRawFinalizationToken() {
+    return crypto.randomBytes(36).toString("base64url");
+}
+
+function hashFinalizationToken(token) {
+    return crypto
+        .createHash("sha256")
+        .update(String(token || ""), "utf8")
+        .digest("hex");
+}
+
+function buildDurableFinalizationUrl(rawToken) {
+    const url = new URL(SBI_PASSWORD_RESET_URL);
+    url.searchParams.set("mode", SBI_FINALIZATION_TOKEN_MODE);
+    url.searchParams.set("token", rawToken);
+    return url.toString();
+}
+
+async function createDurableFinalizationLink(db, { uid, email, accountData = {}, userRef = null, source = "finalization" }) {
+    const targetUid = cleanString(uid, 180);
+    const normalizedEmail = cleanEmail(email || accountData.email || "");
+
+    if (!targetUid) throw new HttpsError("invalid-argument", "UID utilisateur manquant pour la finalisation.");
+    if (!isValidEmail(normalizedEmail)) throw new HttpsError("failed-precondition", "Email utilisateur invalide ou manquant.");
+    if (!isAccountDurableFinalizationEligible(accountData)) {
+        throw new HttpsError("failed-precondition", "Ce compte n’est pas éligible à une finalisation initiale.");
+    }
+
+    const finalUserRef = userRef || db.collection("users").doc(targetUid);
+    const rawToken = createRawFinalizationToken();
+    const tokenHash = hashFinalizationToken(rawToken);
+    const now = admin.firestore.FieldValue.serverTimestamp();
+    const finalizationUrl = buildDurableFinalizationUrl(rawToken);
+
+    await db.collection(SBI_FINALIZATION_TOKEN_COLLECTION).doc(tokenHash).set({
+        uid: targetUid,
+        email: normalizedEmail,
+        purpose: SBI_FINALIZATION_TOKEN_PURPOSE,
+        status: "active",
+        source,
+        createdAt: now,
+        updatedAt: now,
+        lastSentAt: now,
+        usedAt: null,
+        revokedAt: null,
+        mode: SBI_FINALIZATION_TOKEN_MODE
+    }, { merge: false });
+
+    await finalUserRef.set({
+        accountStatus: {
+            ...(accountData.accountStatus || {}),
+            activationState: "pending_password",
+            finalizationLinkMode: "durable_token",
+            finalizationTokenLastSentAt: now,
+            finalizationTokenIssueCount: admin.firestore.FieldValue.increment(1)
+        },
+        updatedAt: now
+    }, { merge: true });
+
+    await safeWriteAccountAuditLog(db, {
+        type: "account.finalization_token_created",
+        actorUid: "system",
+        actorEmail: source,
+        targetUid,
+        targetEmail: normalizedEmail,
+        targetRole: accountData.role || "",
+        source
+    });
+
+    return finalizationUrl;
+}
+
+async function assertDurableFinalizationTokenUsable(db, tokenRef, tokenData = {}, { transaction = null } = {}) {
+    if (tokenData.purpose !== SBI_FINALIZATION_TOKEN_PURPOSE) {
+        throw new HttpsError("failed-precondition", "Lien de finalisation invalide.");
+    }
+
+    const status = cleanString(tokenData.status || "", 80).toLowerCase();
+    const processingAgeMs = Date.now() - toAccountReminderMillis(tokenData.processingAt);
+    const processingIsStale = status === "processing" && processingAgeMs > SBI_FINALIZATION_PROCESSING_TTL_MS;
+
+    if (!["active", "processing"].includes(status) || (status === "processing" && !processingIsStale)) {
+        throw new HttpsError("failed-precondition", "Ce lien de finalisation a déjà été utilisé ou remplacé.");
+    }
+
+    const uid = cleanString(tokenData.uid || "", 180);
+    const email = cleanEmail(tokenData.email || "");
+    if (!uid || !isValidEmail(email)) {
+        throw new HttpsError("failed-precondition", "Lien de finalisation incomplet.");
+    }
+
+    const userRef = db.collection("users").doc(uid);
+    const userSnap = transaction ? await transaction.get(userRef) : await userRef.get();
+    if (!userSnap.exists) throw new HttpsError("not-found", "Compte utilisateur introuvable.");
+
+    const userData = userSnap.data() || {};
+    if (userData.statut === "suspendu") {
+        throw new HttpsError("permission-denied", "Compte suspendu. Contactez l’équipe SBI.");
+    }
+
+    if (hasAccountFinalizedAccess(userData)) {
+        if (transaction) {
+            transaction.set(tokenRef, {
+                status: "revoked",
+                revokedAt: admin.firestore.FieldValue.serverTimestamp(),
+                revokedReason: "account_already_finalized",
+                updatedAt: admin.firestore.FieldValue.serverTimestamp()
+            }, { merge: true });
+        }
+        throw new HttpsError("failed-precondition", "Ce compte est déjà activé. Connectez-vous ou demandez une réinitialisation classique.");
+    }
+
+    const accountEmail = cleanEmail(userData.email || "");
+    if (accountEmail && accountEmail !== email) {
+        throw new HttpsError("failed-precondition", "Ce lien ne correspond plus à l’adresse email actuelle du compte.");
+    }
+
+    tokenData.userData = userData;
+}
+
+async function readDurableFinalizationToken(rawToken, { reserve = false } = {}) {
+    const token = cleanString(rawToken, 500);
+    if (!token) throw new HttpsError("invalid-argument", "Token de finalisation manquant.");
+
+    const tokenHash = hashFinalizationToken(token);
+    const db = admin.firestore();
+    const tokenRef = db.collection(SBI_FINALIZATION_TOKEN_COLLECTION).doc(tokenHash);
+
+    if (!reserve) {
+        const tokenSnap = await tokenRef.get();
+        if (!tokenSnap.exists) throw new HttpsError("not-found", "Lien de finalisation introuvable ou déjà remplacé.");
+        const tokenData = tokenSnap.data() || {};
+        await assertDurableFinalizationTokenUsable(db, tokenRef, tokenData);
+        return { tokenRef, tokenData };
+    }
+
+    return db.runTransaction(async (transaction) => {
+        const tokenSnap = await transaction.get(tokenRef);
+        if (!tokenSnap.exists) throw new HttpsError("not-found", "Lien de finalisation introuvable ou déjà remplacé.");
+        const tokenData = tokenSnap.data() || {};
+        await assertDurableFinalizationTokenUsable(db, tokenRef, tokenData, { transaction });
+        transaction.set(tokenRef, {
+            status: "processing",
+            processingAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+        return { tokenRef, tokenData };
+    });
+}
+
+async function revokeSiblingFinalizationTokens(db, uid, currentTokenRef) {
+    const activeSnap = await db.collection(SBI_FINALIZATION_TOKEN_COLLECTION)
+        .where("uid", "==", uid)
+        .where("purpose", "==", SBI_FINALIZATION_TOKEN_PURPOSE)
+        .where("status", "in", ["active", "processing"])
+        .limit(100)
+        .get();
+
+    if (activeSnap.empty) return;
+
+    const batch = db.batch();
+    const now = admin.firestore.FieldValue.serverTimestamp();
+
+    activeSnap.forEach((docSnap) => {
+        if (docSnap.ref.path === currentTokenRef.path) return;
+        batch.set(docSnap.ref, {
+            status: "revoked",
+            revokedAt: now,
+            revokedReason: "password_created",
+            updatedAt: now
+        }, { merge: true });
+    });
+
+    await batch.commit();
+}
+
 function getAccountCreationLockId(email) {
     const normalizedEmail = cleanEmail(email);
     return Buffer
@@ -1543,8 +1730,13 @@ exports.adminCreateUserAccount = onCall({
 
         try {
             if (!apiKey) throw new Error("BREVO_API_KEY manquant.");
-            const firebaseResetLink = await admin.auth().generatePasswordResetLink(email, SBI_AUTH_ACTION_SETTINGS);
-            const resetLink = buildSbiPasswordResetLink(firebaseResetLink);
+            const resetLink = await createDurableFinalizationLink(db, {
+                uid: createdUser.uid,
+                email,
+                accountData,
+                userRef: db.collection("users").doc(createdUser.uid),
+                source: "account-created"
+            });
             await sendAccountInviteEmail(accountData, resetLink, apiKey);
             await db.collection("users").doc(createdUser.uid).update({
                 "accountStatus.invitationSentAt": admin.firestore.FieldValue.serverTimestamp(),
@@ -1694,8 +1886,13 @@ exports.adminSendFinalizationInvite = onCall({
     if (!apiKey) throw new HttpsError("failed-precondition", "Configuration Brevo manquante côté serveur.");
 
     try {
-        const firebaseResetLink = await admin.auth().generatePasswordResetLink(email, SBI_AUTH_ACTION_SETTINGS);
-        const finalizationLink = buildSbiPasswordResetLink(firebaseResetLink);
+        const finalizationLink = await createDurableFinalizationLink(db, {
+            uid: targetUid,
+            email,
+            accountData: targetData,
+            userRef: targetDoc.ref,
+            source: "admin-manual-finalization"
+        });
         await sendAccountFinalizationEmail({ ...targetData, email }, finalizationLink, apiKey);
 
         const accountStatus = targetData.accountStatus || {};
@@ -1740,6 +1937,112 @@ exports.adminSendFinalizationInvite = onCall({
 
 
 
+
+
+exports.verifyInitialPasswordToken = onCall({
+    region: "europe-west1",
+    timeoutSeconds: 15,
+    memory: "256MiB"
+}, async (request) => {
+    const token = cleanString(request.data?.token || "", 500);
+    const { tokenData } = await readDurableFinalizationToken(token, { reserve: false });
+    const userData = tokenData.userData || {};
+
+    return {
+        success: true,
+        mode: SBI_FINALIZATION_TOKEN_MODE,
+        email: cleanEmail(tokenData.email || userData.email || ""),
+        displayName: getAccountDisplayName(userData),
+        prenom: cleanString(userData.prenom || "", 80)
+    };
+});
+
+exports.completeInitialPasswordWithToken = onCall({
+    region: "europe-west1",
+    timeoutSeconds: 25,
+    memory: "256MiB"
+}, async (request) => {
+    const token = cleanString(request.data?.token || "", 500);
+    const password = String(request.data?.password || "");
+
+    if (password.length < SBI_MIN_PASSWORD_LENGTH) {
+        throw new HttpsError("invalid-argument", "Le mot de passe doit contenir au moins 8 caractères.");
+    }
+
+    const db = admin.firestore();
+    const { tokenRef, tokenData } = await readDurableFinalizationToken(token, { reserve: true });
+    const uid = cleanString(tokenData.uid || "", 180);
+    const email = cleanEmail(tokenData.email || "");
+    const userData = tokenData.userData || {};
+    const userRef = db.collection("users").doc(uid);
+    const now = admin.firestore.FieldValue.serverTimestamp();
+
+    try {
+        await admin.auth().updateUser(uid, {
+            password,
+            emailVerified: true,
+            disabled: false
+        });
+
+        await Promise.all([
+            tokenRef.set({
+                status: "used",
+                usedAt: now,
+                updatedAt: now
+            }, { merge: true }),
+            userRef.set({
+                accountStatus: {
+                    ...(userData.accountStatus || {}),
+                    activationState: "active",
+                    finalizationPasswordSetAt: now,
+                    passwordCreatedAt: now,
+                    finalizationTokenUsedAt: now,
+                    finalizationReminderEnabled: false,
+                    finalizationIssueCode: "",
+                    finalizationIssueMessage: "",
+                    finalizationIssueSource: "",
+                    finalizationIssueEvent: "",
+                    finalizationIssueResolvedAt: now
+                },
+                emailVerifiedAt: now,
+                updatedAt: now
+            }, { merge: true })
+        ]);
+
+        await revokeSiblingFinalizationTokens(db, uid, tokenRef).catch((error) => {
+            console.error("[SBI Durable Finalization] Révocation tokens frères impossible :", error.message || error);
+        });
+
+        await safeWriteAccountAuditLog(db, {
+            type: "account.initial_password_created",
+            actorUid: uid,
+            actorEmail: email,
+            targetUid: uid,
+            targetEmail: email,
+            targetRole: userData.role || "",
+            source: "durable-finalization-token"
+        });
+
+        return {
+            success: true,
+            email,
+            message: "Mot de passe créé. Vous pouvez maintenant vous connecter."
+        };
+    } catch (error) {
+        await tokenRef.set({
+            status: "active",
+            processingAt: null,
+            lastErrorAt: admin.firestore.FieldValue.serverTimestamp(),
+            lastErrorMessage: cleanString(error.message || error.code || "Erreur création mot de passe", 300),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        }, { merge: true }).catch(() => {});
+
+        if (error instanceof HttpsError) throw error;
+
+        console.error("[SBI Durable Finalization] Création mot de passe impossible :", error.message || error);
+        throw new HttpsError("internal", "Impossible de créer le mot de passe pour le moment.");
+    }
+});
 
 exports.adminResolveFinalizationEscalation = onCall({
     region: "europe-west1",
@@ -1869,8 +2172,13 @@ exports.runFinalizationReminders = onSchedule({
         const isFinalReminder = nextReminderCount >= SBI_FINALIZATION_REMINDER_MAX_COUNT;
 
         try {
-            const firebaseResetLink = await admin.auth().generatePasswordResetLink(email, SBI_AUTH_ACTION_SETTINGS);
-            const finalizationLink = buildSbiPasswordResetLink(firebaseResetLink);
+            const finalizationLink = await createDurableFinalizationLink(db, {
+                uid,
+                email,
+                accountData: userData,
+                userRef: userDoc.ref,
+                source: "auto-finalization-reminder"
+            });
 
             await sendAccountFinalizationEmail({ ...userData, email }, finalizationLink, apiKey);
 
