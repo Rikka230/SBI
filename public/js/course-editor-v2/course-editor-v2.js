@@ -41,6 +41,7 @@ const state = {
   selectedFormationIds: [],
   blockOptions: [],
   dirty: false,
+  dragBlockId: '',
   course: {
     title: '',
     bloc: '',
@@ -516,18 +517,19 @@ function renderStructure() {
   if (!list) return;
 
   const staticItems = [
-    { id: 'course_info', type: 'course_info', title: 'Course Info' },
-    { id: 'objectives', type: 'objectives', title: 'Objectifs' }
+    { id: 'course_info', type: 'course_info', title: 'Course Info', static: true },
+    { id: 'objectives', type: 'objectives', title: 'Objectifs', static: true }
   ];
   const items = [...staticItems, ...state.course.learningBlocks];
 
   list.innerHTML = items.map((item, index) => {
     const meta = getBlockMeta(item.type);
     const active = item.id === state.activeBlockId;
+    const canDrag = !item.static;
     return `
       <li>
-        <button class="sbi-structure-item" data-block-id="${escapeHtml(item.id)}" data-active="${active ? 'true' : 'false'}" type="button">
-          <span class="sbi-grip">⋮⋮</span>
+        <button class="sbi-structure-item" data-block-id="${escapeHtml(item.id)}" data-draggable-block-id="${canDrag ? escapeHtml(item.id) : ''}" data-active="${active ? 'true' : 'false'}" draggable="${canDrag ? 'true' : 'false'}" type="button">
+          <span class="sbi-grip" title="${canDrag ? 'Glisser pour réordonner' : 'Élément fixe'}">⋮⋮</span>
           <span class="sbi-block-icon">${escapeHtml(meta.icon)}</span>
           <span><span class="sbi-block-name">${escapeHtml(item.title || meta.label)}</span><span class="sbi-block-type">${index + 1}. ${escapeHtml(meta.subtitle)}</span></span>
         </button>
@@ -541,6 +543,73 @@ function renderStructure() {
       renderAll();
     });
   });
+
+  bindStructureDragAndDrop(list);
+}
+
+function bindStructureDragAndDrop(list) {
+  const draggableItems = $all('[data-draggable-block-id]', list)
+    .filter((button) => normalizeString(button.dataset.draggableBlockId));
+
+  draggableItems.forEach((button) => {
+    button.addEventListener('dragstart', (event) => {
+      state.dragBlockId = button.dataset.draggableBlockId;
+      button.classList.add('is-dragging');
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', state.dragBlockId);
+    });
+
+    button.addEventListener('dragend', () => {
+      state.dragBlockId = '';
+      $all('.sbi-structure-item.is-dragging, .sbi-structure-item.is-drag-over, .sbi-structure-item.is-drop-after', list)
+        .forEach((item) => item.classList.remove('is-dragging', 'is-drag-over', 'is-drop-after'));
+    });
+
+    button.addEventListener('dragover', (event) => {
+      const sourceId = state.dragBlockId;
+      const targetId = button.dataset.draggableBlockId;
+      if (!sourceId || sourceId === targetId) return;
+      event.preventDefault();
+      const rect = button.getBoundingClientRect();
+      const insertAfter = event.clientY > rect.top + rect.height / 2;
+      button.classList.toggle('is-drop-after', insertAfter);
+      button.classList.add('is-drag-over');
+      event.dataTransfer.dropEffect = 'move';
+    });
+
+    button.addEventListener('dragleave', () => {
+      button.classList.remove('is-drag-over', 'is-drop-after');
+    });
+
+    button.addEventListener('drop', (event) => {
+      event.preventDefault();
+      const sourceId = event.dataTransfer.getData('text/plain') || state.dragBlockId;
+      const targetId = button.dataset.draggableBlockId;
+      const rect = button.getBoundingClientRect();
+      const insertAfter = event.clientY > rect.top + rect.height / 2;
+      reorderLearningBlock(sourceId, targetId, { insertAfter });
+    });
+  });
+}
+
+function reorderLearningBlock(sourceId, targetId, { insertAfter = false } = {}) {
+  if (!sourceId || !targetId || sourceId === targetId) return;
+
+  const blocks = state.course.learningBlocks;
+  const fromIndex = blocks.findIndex((block) => block.id === sourceId);
+  let toIndex = blocks.findIndex((block) => block.id === targetId);
+  if (fromIndex < 0 || toIndex < 0) return;
+
+  const [moved] = blocks.splice(fromIndex, 1);
+  if (fromIndex < toIndex) toIndex -= 1;
+  if (insertAfter) toIndex += 1;
+  toIndex = Math.max(0, Math.min(blocks.length, toIndex));
+
+  blocks.splice(toIndex, 0, moved);
+  state.activeBlockId = sourceId;
+  state.dragBlockId = '';
+  markDirty();
+  renderAll();
 }
 
 function renderAddControls() {
@@ -557,7 +626,11 @@ function renderAddControls() {
     });
   });
 
-  $('#course-v2-add-default')?.addEventListener('click', () => addBlock('lesson'));
+  const defaultButton = $('#course-v2-add-default');
+  if (defaultButton && defaultButton.dataset.sbiAddBound !== 'true') {
+    defaultButton.dataset.sbiAddBound = 'true';
+    defaultButton.addEventListener('click', () => addBlock('lesson'));
+  }
 }
 
 function addBlock(type) {

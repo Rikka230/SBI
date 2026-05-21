@@ -254,6 +254,20 @@ body.sbi-editor-v2 {
 }
 
 .sbi-grip { color: var(--editor-muted); font-size: 1rem; letter-spacing: -0.16em; }
+
+.sbi-structure-item[draggable="true"] .sbi-grip { cursor: grab; }
+.sbi-structure-item.is-dragging {
+  opacity: 0.48;
+  transform: scale(0.99);
+}
+.sbi-structure-item.is-drag-over {
+  border-color: var(--accent);
+  box-shadow: 0 -3px 0 var(--accent), 0 0 0 3px var(--accent-soft);
+}
+.sbi-structure-item.is-drag-over.is-drop-after {
+  box-shadow: 0 3px 0 var(--accent), 0 0 0 3px var(--accent-soft);
+}
+
 .sbi-block-icon {
   display: grid;
   place-items: center;

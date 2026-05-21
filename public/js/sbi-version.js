@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.163',
+  version: '8.0P.167.164',
   branch: 'main',
-  channel: 'P2J.3A COURSE EDITOR V2 SHELL PANEL FIX',
-  stage: 'COURSE EDITOR V2 PANEL SCRIPTS AND SHELL SAFETY',
+  channel: 'P2J.3A COURSE EDITOR V2 STRUCTURE FIX',
+  stage: 'COURSE EDITOR V2 SINGLE ADD AND DRAG DROP',
   updatedAt: '2026-05-21',
-  label: 'SBI 8.0P.167.163 - Course editor V2 shell panel fix'
+  label: 'SBI 8.0P.167.164 - Course editor V2 single add and drag drop fix'
 };
 
 export function getSbiVersionLabel() {
