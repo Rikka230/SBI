@@ -1067,11 +1067,11 @@ function buildCourseItemHTML(course) {
     const title = course.titre || course.title || 'Cours';
     const bloc = course.bloc || course.blockTitle || course.blockName || 'Bloc non renseigné';
     const isPlanOnly = course.__planOnly === true;
+    const plan = getPrimaryCoursePlan(course);
     const returnTo = buildCourseReturnUrl(course);
     const promotionId = String(plan?.promotionId || '').trim();
     const promotionQuery = promotionId ? `&promotionId=${encodeURIComponent(promotionId)}` : '';
     const href = `/student/cours-viewer.html?id=${encodeURIComponent(course.id)}${promotionQuery}&returnTo=${encodeURIComponent(returnTo)}`;
-    const plan = getPrimaryCoursePlan(course);
     const planLabel = plan ? getCoursePlanDatesLabel(plan) : '';
     const priorityLabel = plan ? getPriorityLabel(plan.priorityLevel) : '';
     const priorityTone = plan ? getPriorityTone(plan.priorityLevel) : 'normal';

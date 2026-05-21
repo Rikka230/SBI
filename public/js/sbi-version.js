@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.149',
+  version: '8.0P.167.150',
   branch: 'main',
-  channel: 'P2I.37 STUDENT VIEWER PASS + LIBRARY LIST',
-  stage: 'STUDENT CROSS-FORMATION COURSE VIEWER ACCESS AND LIBRARY TAB FALLBACK',
+  channel: 'P2I.38 STUDENT PROGRAM RENDER FIX',
+  stage: 'STUDENT PROGRAM RENDER REGRESSION FIX',
   updatedAt: '2026-05-21',
-  label: 'SBI 8.0P.167.149 - Student viewer pass and library list fallback'
+  label: 'SBI 8.0P.167.150 - Student program render fix'
 };
 
 export function getSbiVersionLabel() {
