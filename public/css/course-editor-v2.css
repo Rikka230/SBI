@@ -566,6 +566,109 @@ body.sbi-editor-v2 {
   background: rgba(7, 17, 30, 0.98);
 }
 
+
+
+/* 8.0P.167.167 - Legacy media block restored in V2 lesson editor. */
+.sbi-field--media {
+  padding: 1rem;
+  border: 1px solid var(--editor-border);
+  border-radius: 16px;
+  background: var(--editor-surface-2);
+}
+
+.sbi-media-type-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  align-items: center;
+}
+
+.sbi-media-type-row label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: fit-content;
+  padding: 0.42rem 0.7rem;
+  border: 1px solid var(--editor-border);
+  border-radius: 999px;
+  background: var(--editor-surface);
+  color: var(--editor-text);
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.sbi-media-type-row input {
+  accent-color: var(--accent);
+}
+
+.sbi-media-zone {
+  gap: 0.75rem;
+}
+
+.sbi-media-dropzone {
+  display: grid;
+  gap: 0.2rem;
+  place-items: center;
+  min-height: 132px;
+  padding: 1rem;
+  border: 1.5px dashed var(--editor-border);
+  border-radius: 16px;
+  background: var(--editor-surface);
+  color: var(--editor-muted);
+  text-align: center;
+  cursor: pointer;
+  transition: border-color .18s ease, background .18s ease, transform .18s ease;
+}
+
+.sbi-media-dropzone:hover,
+.sbi-media-dropzone.is-dragover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  transform: translateY(-1px);
+}
+
+.sbi-media-dropzone strong {
+  color: var(--editor-text);
+  font-size: 0.92rem;
+}
+
+.sbi-media-dropzone small {
+  max-width: 520px;
+  line-height: 1.45;
+}
+
+.sbi-media-preview {
+  width: 100%;
+  max-height: 340px;
+  border: 1px solid var(--editor-border);
+  border-radius: 16px;
+  background: #000;
+  object-fit: contain;
+}
+
+.sbi-media-preview--image {
+  background: var(--editor-surface);
+}
+
+.sbi-preview-media {
+  width: 100%;
+  max-height: 180px;
+  object-fit: contain;
+  border: 1px solid var(--editor-border);
+  border-radius: 12px;
+  background: #000;
+  margin: 0 0 0.75rem;
+}
+
+.sbi-preview-media-empty {
+  margin: 0 0 0.75rem;
+  padding: 0.75rem;
+  border: 1px dashed var(--editor-border);
+  border-radius: 12px;
+  color: var(--editor-muted);
+  font-size: 0.82rem;
+}
+
 @media (max-width: 1280px) {
   .sbi-editor-grid { grid-template-columns: 260px minmax(0, 1fr); }
   .sbi-editor-right { grid-column: 1 / -1; position: static; max-height: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }

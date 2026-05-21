@@ -6,9 +6,9 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.166',
+  version: '8.0P.167.167',
   branch: 'main',
-  channel: 'P2J.3A COURSE EDITOR V2 QUILL TOOLTIPS',
+  channel: 'P2J.3A COURSE EDITOR V2 LEGACY MEDIA RESTORE',
   stage: 'COURSE EDITOR V2 LEGACY QUILL TOOLTIPS RESTORED',
   updatedAt: '2026-05-21',
   label: 'SBI 8.0P.167.166 - Course editor V2 Quill tooltips restored'

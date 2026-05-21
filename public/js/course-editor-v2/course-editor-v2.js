@@ -9,9 +9,21 @@ import {
   getDocs,
   query,
   serverTimestamp,
+  setDoc,
   updateDoc,
   where
 } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
+
+import {
+  clearPendingMediaForChapter,
+  hasPendingMedia,
+  restoreCurrentMediaPreview,
+  setPendingImageFile,
+  setPendingVideoFile,
+  syncChapterMediaFromDom,
+  uploadPendingMediaForChapters,
+  validateCourseDocumentSize
+} from '/admin/js/course-media-storage.js';
 
 const MAX_QUERY_VALUES = 10;
 const VERSION = '8.0P.167.166';
@@ -418,6 +430,9 @@ function createDefaultBlock(type = 'lesson') {
     title: type === 'lesson' ? `Leçon ${count}` : `${meta.label} ${count}`,
     content: '',
     instructions: '',
+    mediaType: type === 'lesson' ? 'image' : '',
+    mediaImage: '',
+    mediaVideo: '',
     durationMinutes: type === 'lesson' ? 15 : 10,
     visibleInProgram: true,
     qualiopiEvidence: '',
@@ -453,6 +468,8 @@ function convertLegacyChaptersToBlocks(chapters = []) {
       title: chapter.titre || `Leçon ${index + 1}`,
       content: chapter.contenu || '',
       mediaType: chapter.mediaType || 'image',
+      mediaImage: chapter.mediaImage || chapter.imageUrl || '',
+      mediaVideo: chapter.mediaVideo || chapter.videoUrl || '',
       durationMinutes: Number(chapter.durationMinutes || 15),
       visibleInProgram: true
     };
@@ -491,7 +508,9 @@ function convertBlocksToLegacyChapters(blocks = []) {
       type: 'text',
       titre: block.title || `Leçon ${index + 1}`,
       contenu: block.content || block.instructions || '',
-      mediaType: 'image',
+      mediaType: block.mediaType || 'image',
+      mediaImage: block.mediaImage || '',
+      mediaVideo: block.mediaVideo || '',
       questions: []
     };
   });
@@ -713,6 +732,7 @@ function deleteActiveBlock() {
   const active = getActiveBlock();
   if (!active) return;
   if (!confirm('Supprimer ce bloc du cours ?')) return;
+  clearPendingMediaForChapter(active.id);
   state.course.learningBlocks = state.course.learningBlocks.filter((block) => block.id !== active.id);
   state.activeBlockId = state.course.learningBlocks[0]?.id || 'course_info';
   markDirty();
@@ -805,6 +825,121 @@ function initLegacyQuillForActiveBlock(block) {
   }
 }
 
+
+function getActiveLessonBlock() {
+  const block = getActiveBlock();
+  return block && block.type === 'lesson' ? block : null;
+}
+
+function setMediaZonesVisibility(mediaType = 'image') {
+  const safeType = mediaType === 'video' ? 'video' : 'image';
+  const imageZone = $('#media-image-zone');
+  const videoZone = $('#media-video-zone');
+  if (imageZone) imageZone.style.display = safeType === 'image' ? 'grid' : 'none';
+  if (videoZone) videoZone.style.display = safeType === 'video' ? 'grid' : 'none';
+}
+
+function setupLessonMediaControls(block) {
+  if (!block || block.type !== 'lesson') return;
+  block.mediaType = block.mediaType === 'video' ? 'video' : 'image';
+  block.mediaImage = block.mediaImage || '';
+  block.mediaVideo = block.mediaVideo || '';
+
+  setMediaZonesVisibility(block.mediaType);
+  restoreCurrentMediaPreview(block.id, block);
+
+  $all('input[name="media_type"]').forEach((input) => {
+    input.addEventListener('change', () => {
+      if (!input.checked) return;
+      block.mediaType = input.value === 'video' ? 'video' : 'image';
+      setMediaZonesVisibility(block.mediaType);
+      restoreCurrentMediaPreview(block.id, block);
+      markDirty();
+      renderPreview();
+    });
+  });
+
+  setupV2DropZone('drop-zone-image', 'chapter-image-upload', 'image', block);
+  setupV2DropZone('drop-zone-video', 'chapter-video-upload', 'video', block);
+}
+
+function setupV2DropZone(dropZoneId, inputId, type, block) {
+  const dropZone = document.getElementById(dropZoneId);
+  const input = document.getElementById(inputId);
+  if (!dropZone || !input || !block) return;
+
+  const openPicker = () => input.click();
+  dropZone.addEventListener('click', openPicker);
+  dropZone.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    openPicker();
+  });
+
+  dropZone.addEventListener('dragover', (event) => {
+    event.preventDefault();
+    dropZone.classList.add('is-dragover');
+  });
+
+  dropZone.addEventListener('dragleave', (event) => {
+    event.preventDefault();
+    dropZone.classList.remove('is-dragover');
+  });
+
+  dropZone.addEventListener('drop', (event) => {
+    event.preventDefault();
+    dropZone.classList.remove('is-dragover');
+    const file = event.dataTransfer?.files?.[0];
+    if (file) handleV2MediaFile(type, file, block, input);
+  });
+
+  input.addEventListener('change', (event) => {
+    const file = event.target.files?.[0];
+    if (file) handleV2MediaFile(type, file, block, input);
+  });
+}
+
+function handleV2MediaFile(type, file, block, input = null) {
+  if (!file || !block?.id) return;
+
+  try {
+    if (type === 'video') {
+      setPendingVideoFile(block.id, file);
+      block.mediaType = 'video';
+    } else {
+      setPendingImageFile(block.id, file);
+      block.mediaType = 'image';
+    }
+
+    if (input) input.value = '';
+    setMediaZonesVisibility(block.mediaType);
+    restoreCurrentMediaPreview(block.id, block);
+    markDirty();
+    renderPreview();
+  } catch (error) {
+    if (input) input.value = '';
+    alert(error.message || 'Média impossible à ajouter.');
+  }
+}
+
+function syncActiveLessonMediaFromDom() {
+  const block = getActiveLessonBlock();
+  if (!block) return;
+  const mediaChecked = document.querySelector('input[name="media_type"]:checked');
+  if (mediaChecked) block.mediaType = mediaChecked.value === 'video' ? 'video' : 'image';
+  syncChapterMediaFromDom(block);
+}
+
+function syncUploadedMediaBackToBlocks(chapitres = []) {
+  chapitres.forEach((chapter) => {
+    const block = state.course.learningBlocks.find((item) => item.id === chapter.id);
+    if (!block) return;
+    block.mediaType = chapter.mediaType || block.mediaType || 'image';
+    block.mediaImage = chapter.mediaImage || block.mediaImage || '';
+    block.mediaVideo = chapter.mediaVideo || block.mediaVideo || '';
+  });
+}
+
 function renderMainEditor() {
   const main = $('#course-v2-main');
   if (!main) return;
@@ -889,12 +1024,47 @@ function renderBlockEditor(block) {
 }
 
 function renderGenericBlockEditor(block) {
+  const isLesson = block.type === 'lesson';
   return `
     <div class="sbi-editor-form">
       <div class="sbi-field"><label>Titre du bloc</label><input id="block-title" class="sbi-input" value="${escapeHtml(block.title)}"></div>
       <div class="sbi-field"><label>Consignes</label><input id="block-instructions" class="sbi-input" value="${escapeHtml(block.instructions || '')}" placeholder="Instruction courte pour l’élève"></div>
+      ${isLesson ? renderLessonMediaEditor(block) : ''}
       <div class="sbi-field sbi-field--quill"><label>Contenu</label><small>Éditeur identique au legacy : taille, gras, italique, couleurs, listes, alignement, liens, images et vidéos.</small><textarea id="block-content" class="sbi-quill-hidden" aria-hidden="true">${escapeHtml(block.content || '')}</textarea><div id="block-content-quill" class="sbi-quill-editor"></div></div>
       <div class="sbi-two-cols"><div class="sbi-field"><label>Durée estimée (min)</label><input id="block-duration" class="sbi-input" type="number" min="0" step="1" value="${Number(block.durationMinutes || 0)}"></div><div class="sbi-field"><label>Inclure dans le cours</label><select id="block-visible" class="sbi-select"><option value="true" ${block.visibleInProgram !== false ? 'selected' : ''}>Oui</option><option value="false" ${block.visibleInProgram === false ? 'selected' : ''}>Non</option></select></div></div>
+    </div>
+  `;
+}
+
+function renderLessonMediaEditor(block) {
+  const mediaType = block.mediaType === 'video' ? 'video' : 'image';
+  return `
+    <div class="sbi-field sbi-field--media">
+      <label>Média de la leçon</label>
+      <div class="sbi-media-type-row" role="radiogroup" aria-label="Type de média">
+        <label><input type="radio" name="media_type" value="image" ${mediaType === 'image' ? 'checked' : ''}> Image</label>
+        <label><input type="radio" name="media_type" value="video" ${mediaType === 'video' ? 'checked' : ''}> Vidéo</label>
+      </div>
+      <div id="media-image-zone" class="sbi-media-zone" data-media-zone="image" style="display:${mediaType === 'image' ? 'grid' : 'none'};">
+        <div class="sbi-media-dropzone" id="drop-zone-image" role="button" tabindex="0">
+          <strong>Image de leçon</strong>
+          <span>Glisse une image ici ou clique pour parcourir</span>
+          <small>Comme legacy : l’image sera compressée et envoyée dans Storage à la sauvegarde.</small>
+          <input type="file" id="chapter-image-upload" accept="image/*" hidden>
+        </div>
+        <input type="hidden" id="chapter-image-base64" value="${escapeHtml(block.mediaImage || '')}">
+        <img id="chapter-image-preview" class="sbi-media-preview sbi-media-preview--image" alt="Aperçu image" style="display:none;">
+      </div>
+      <div id="media-video-zone" class="sbi-media-zone" data-media-zone="video" style="display:${mediaType === 'video' ? 'grid' : 'none'};">
+        <div class="sbi-media-dropzone" id="drop-zone-video" role="button" tabindex="0">
+          <strong>Vidéo de leçon</strong>
+          <span>Glisse une vidéo ici ou clique pour parcourir</span>
+          <small>MP4/WebM recommandé. Le fichier sera envoyé dans Storage à la sauvegarde.</small>
+          <input type="file" id="chapter-video-upload" accept="video/mp4,video/webm,video/*" hidden>
+        </div>
+        <input type="hidden" id="chapter-video-base64" value="${escapeHtml(block.mediaVideo || '')}">
+        <video id="chapter-video-preview" class="sbi-media-preview sbi-media-preview--video" controls style="display:none;"></video>
+      </div>
     </div>
   `;
 }
@@ -1015,7 +1185,18 @@ function renderBlockPreview(block) {
     const question = block.questions?.[0];
     return `<h4>${escapeHtml(block.title || 'QCM')}</h4><p>${escapeHtml(question?.question || 'Question à compléter.')}</p>${(question?.options || []).map((option) => `<div class="sbi-input" style="margin:.4rem 0;height:auto;">${escapeHtml(option)}</div>`).join('')}`;
   }
-  return `<h4>${escapeHtml(block.title || getBlockMeta(block.type).label)}</h4><p>${escapeHtml(block.instructions || '')}</p><p>${escapeHtml(block.content || 'Contenu à compléter.')}</p>`;
+  const mediaPreview = block.type === 'lesson' ? renderLessonMediaPreview(block) : '';
+  return `<h4>${escapeHtml(block.title || getBlockMeta(block.type).label)}</h4>${mediaPreview}<p>${escapeHtml(block.instructions || '')}</p><p>${block.content || 'Contenu à compléter.'}</p>`;
+}
+
+function renderLessonMediaPreview(block) {
+  if (block.mediaType === 'video' && block.mediaVideo) {
+    return `<video class="sbi-preview-media" src="${escapeHtml(block.mediaVideo)}" controls></video>`;
+  }
+  if ((block.mediaType || 'image') === 'image' && block.mediaImage) {
+    return `<img class="sbi-preview-media" src="${escapeHtml(block.mediaImage)}" alt="Média de leçon">`;
+  }
+  return '<div class="sbi-preview-media-empty">Aucun média associé.</div>';
 }
 
 function bindEditorInputs() {
@@ -1057,6 +1238,7 @@ function bindEditorInputs() {
   $('#block-content')?.addEventListener('input', (event) => { active.content = event.target.value; markDirty(); renderPreview(); });
   $('#block-duration')?.addEventListener('input', (event) => { active.durationMinutes = Number(event.target.value || 0); markDirty(); });
   $('#block-visible')?.addEventListener('change', (event) => { active.visibleInProgram = event.target.value === 'true'; markDirty(); });
+  setupLessonMediaControls(active);
 
   bindFillBlankInputs(active);
   bindQuizInputs(active);
@@ -1156,6 +1338,7 @@ function bindSettingsInputs() {
 
 function saveActiveEditorValues() {
   syncQuillToActiveBlock();
+  syncActiveLessonMediaFromDom();
 
   const topTitle = $('#course-v2-title');
   if (topTitle) state.course.title = topTitle.value;
@@ -1276,16 +1459,33 @@ async function saveCourse(action = 'draft', { silent = false } = {}) {
   setStatus('Sauvegarde…');
 
   try {
+    let targetRef = null;
+    let targetCourseId = state.courseId;
+
+    if (!targetCourseId) {
+      targetRef = doc(collection(db, 'courses'));
+      targetCourseId = targetRef.id;
+    }
+
+    if (hasPendingMedia()) {
+      setStatus('Upload des médias…');
+      const mediaChapitres = convertBlocksToLegacyChapters(state.course.learningBlocks);
+      await uploadPendingMediaForChapters(targetCourseId, mediaChapitres);
+      syncUploadedMediaBackToBlocks(mediaChapitres);
+    }
+
     const payload = buildCoursePayload(action);
+    validateCourseDocumentSize(payload);
+
     if (state.courseId) {
       await updateDoc(doc(db, 'courses', state.courseId), payload);
     } else {
-      const ref = await addDoc(collection(db, 'courses'), {
+      await setDoc(targetRef, {
         ...payload,
         dateCreation: serverTimestamp(),
         createdAt: serverTimestamp()
       });
-      state.courseId = ref.id;
+      state.courseId = targetCourseId;
       history.replaceState({}, '', `${location.pathname}?id=${encodeURIComponent(state.courseId)}`);
     }
 
