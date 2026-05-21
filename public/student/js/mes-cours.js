@@ -252,24 +252,22 @@ function getPlanItemType(item = {}) {
     return item.courseId ? 'real_course' : '';
 }
 
+function getPlanCourseId(item = {}) {
+    return String(
+        item.courseId
+        || item.courseID
+        || item.courseDocId
+        || item.courseRef
+        || item.id
+        || ''
+    ).trim();
+}
+
 function isRealCoursePlanItem(item = {}) {
-    const courseId = String(item.courseId || '').trim();
-    if (!courseId) return false;
-
-    const type = getPlanItemType(item).toLowerCase();
-    const nonCourseTypes = [
-        'placeholder_course',
-        'buffer_period',
-        'revision_period',
-        'catchup_period',
-        'assignment',
-        'exam',
-        'evaluation',
-        'live_session',
-        'workshop'
-    ];
-
-    return !nonCourseTypes.includes(type);
+    // Le coursePlan est l'autorité du programme. On conserve tous les items
+    // qui pointent vers un cours, même si leur type legacy n'est pas
+    // exactement "real_course". Les périodes sans courseId restent exclues.
+    return Boolean(getPlanCourseId(item));
 }
 
 function getPriorityLabel(priority = 'normal') {
@@ -309,6 +307,8 @@ function getPromotionIdsForStudent() {
 function normalizePromotionPlanItem(item = {}, promotion = {}, index = 0) {
     return {
         ...item,
+        courseId: getPlanCourseId(item),
+        originalType: getPlanItemType(item),
         order: Number.isFinite(Number(item.order)) ? Number(item.order) : index,
         promotionId: promotion.id || '',
         promotionName: promotion.name || promotion.promotionName || 'Promotion',
@@ -330,14 +330,19 @@ function attachPromotionPlan(course = {}, plan = {}) {
 }
 
 function buildPlanOnlyCourse(item = {}) {
+    const title = item.courseTitle || item.title || item.label || 'Cours prévu';
+    const bloc = item.blockTitle || item.bloc || item.moduleTitle || item.moduleName || 'Programme';
     return {
-        id: String(item.courseId || '').trim(),
-        titre: item.courseTitle || item.title || 'Cours prévu',
-        title: item.courseTitle || item.title || 'Cours prévu',
-        bloc: item.blockTitle || item.bloc || item.moduleTitle || 'Programme',
-        blockTitle: item.blockTitle || item.bloc || item.moduleTitle || 'Programme',
+        id: getPlanCourseId(item),
+        titre: title,
+        title,
+        bloc,
+        blockTitle: bloc,
         chapitres: [],
-        __planOnly: true
+        actif: true,
+        statutValidation: 'planned',
+        __planOnly: true,
+        __planOnlyReason: 'course-document-not-hydrated'
     };
 }
 
@@ -390,7 +395,8 @@ async function loadPromotionPlanCourses() {
             const planItems = Array.isArray(promotion.coursePlan) ? promotion.coursePlan : [];
             const realItems = planItems
                 .map((item, index) => normalizePromotionPlanItem(item, promotion, index))
-                .filter(isRealCoursePlanItem);
+                .filter(isRealCoursePlanItem)
+                .sort((a, b) => Number(a.order || 0) - Number(b.order || 0));
 
             const courses = await fetchCoursesByIds(realItems.map((item) => item.courseId));
             const coursesById = new Map(courses.map((course) => [course.id, course]));
@@ -812,8 +818,8 @@ function renderCourseSections(container, coursesInFormation = []) {
 
     container.innerHTML = `
         <div class="student-course-switch" role="tablist" aria-label="Choisir le type de liste">
-            <button type="button" class="student-course-switch__btn" data-course-view="program" ${plannedCourses.length ? '' : 'disabled'}>Programme</button>
-            <button type="button" class="student-course-switch__btn" data-course-view="library" ${complementaryCourses.length ? '' : 'disabled'}>Liste bibliothèque</button>
+            <button type="button" class="student-course-switch__btn" data-course-view="program">Programme</button>
+            <button type="button" class="student-course-switch__btn" data-course-view="library">Liste bibliothèque</button>
         </div>
         <div class="student-course-view" data-course-view-panel="program"></div>
         <div class="student-course-view" data-course-view-panel="library"></div>
@@ -880,11 +886,11 @@ function getRequestedCourseViewMode() {
 }
 
 function resolveCourseViewMode(requestedMode, plannedCourses = [], complementaryCourses = []) {
-    if (requestedMode === 'library' && complementaryCourses.length) return 'library';
-    if (requestedMode === 'program' && plannedCourses.length) return 'program';
+    if (requestedMode === 'library') return 'library';
+    if (requestedMode === 'program') return 'program';
     if (plannedCourses.length) return 'program';
     if (complementaryCourses.length) return 'library';
-    return requestedMode === 'library' ? 'library' : 'program';
+    return 'program';
 }
 
 function getCoursesForCurrentMode(plannedCourses = [], complementaryCourses = []) {
@@ -892,7 +898,8 @@ function getCoursesForCurrentMode(plannedCourses = [], complementaryCourses = []
 }
 
 function getActivePromotionIdForCurrentFormation(courses = []) {
-    const plan = courses.map(getPrimaryCoursePlan).find(Boolean);
+    const safeCourses = Array.isArray(courses) ? courses.filter(Boolean) : [];
+    const plan = safeCourses.map(getPrimaryCoursePlan).find(Boolean);
     return String(plan?.promotionId || '').trim();
 }
 
@@ -947,9 +954,9 @@ function bindCourseCardNavigation(container) {
 }
 
 function ensureStudentCourseSwitchStyles() {
-    if (document.getElementById('student-course-switch-style-8-0p-167-147')) return;
+    if (document.getElementById('student-course-switch-style-8-0p-167-148')) return;
     const style = document.createElement('style');
-    style.id = 'student-course-switch-style-8-0p-167-147';
+    style.id = 'student-course-switch-style-8-0p-167-148';
     style.textContent = `
         .student-course-switch {
             display: flex;
@@ -980,13 +987,8 @@ function ensureStudentCourseSwitchStyles() {
             cursor: not-allowed;
             opacity: 0.45;
         }
-        .student-course-card.is-disabled {
-            cursor: default;
-            opacity: 0.72;
-        }
-        .student-course-card.is-disabled:hover {
-            transform: none;
-            border-color: var(--border-color);
+        .student-course-card.is-plan-only {
+            opacity: 0.92;
         }
         .student-course-view[hidden] { display: none !important; }
     `;
@@ -1061,7 +1063,7 @@ function buildCourseItemHTML(course) {
     const bloc = course.bloc || course.blockTitle || course.blockName || 'Bloc non renseigné';
     const isPlanOnly = course.__planOnly === true;
     const returnTo = buildCourseReturnUrl(course);
-    const href = isPlanOnly ? '' : `/student/cours-viewer.html?id=${encodeURIComponent(course.id)}&returnTo=${encodeURIComponent(returnTo)}`;
+    const href = `/student/cours-viewer.html?id=${encodeURIComponent(course.id)}&returnTo=${encodeURIComponent(returnTo)}`;
     const plan = getPrimaryCoursePlan(course);
     const planLabel = plan ? getCoursePlanDatesLabel(plan) : '';
     const priorityLabel = plan ? getPriorityLabel(plan.priorityLevel) : '';
@@ -1075,7 +1077,7 @@ function buildCourseItemHTML(course) {
         : '';
 
     return `
-        <article class="course-item student-course-card${isPlanOnly ? ' is-disabled' : ''}" ${href ? `data-href="${escapeAttr(href)}"` : ''} data-sbi-no-pjax="true" data-search="${escapeAttr(`${title} ${bloc} ${planLabel} ${priorityLabel}`)}">
+        <article class="course-item student-course-card${isPlanOnly ? ' is-plan-only' : ''}" data-href="${escapeAttr(href)}" data-sbi-no-pjax="true" data-search="${escapeAttr(`${title} ${bloc} ${planLabel} ${priorityLabel}`)}">
             <div class="student-course-card__main">
                 <div class="student-course-card__icon" aria-hidden="true">
                     <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
@@ -1091,7 +1093,7 @@ function buildCourseItemHTML(course) {
                 </div>
             </div>
             <div class="student-course-card__side">
-                ${isPlanOnly ? '<span class="student-course-badge student-course-badge--todo">En préparation</span>' : quizHtml}
+                ${isPlanOnly ? '<span class="student-course-badge student-course-badge--todo">Ouvrir</span>' : quizHtml}
                 ${isPlanOnly ? '' : statusBadge}
                 <svg width="24" height="24" fill="var(--text-muted)" viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
             </div>
@@ -1185,7 +1187,9 @@ window.SBI_STUDENT_COURSES_DEBUG = function() {
             id: course.id,
             titre: course.titre || course.title,
             bloc: course.bloc || course.blockTitle,
-            progress: userProgress.courses?.[course.id] || null
+            progress: userProgress.courses?.[course.id] || null,
+            planOnly: course.__planOnly === true,
+            promotionPlan: course.__promotionPlan || null
         })),
         progress: userProgress
     };

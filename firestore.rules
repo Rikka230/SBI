@@ -295,10 +295,30 @@ service cloud.firestore {
         && request.auth.uid in courseData.targetStudents;
     }
 
+    function courseTargetsCurrentUserPromotion(courseData) {
+      return courseData.keys().hasAny(['targetPromotionIds'])
+        && courseData.targetPromotionIds is list
+        && (
+          (currentUserHasPromotionId() && currentUser().promotionId in courseData.targetPromotionIds)
+          || (currentUserHasCurrentPromotionId() && currentUser().currentPromotionId in courseData.targetPromotionIds)
+          || (currentUserHasCohortId() && currentUser().cohortId in courseData.targetPromotionIds)
+          || (
+            currentUser().keys().hasAny(['promotionIds'])
+            && currentUser().promotionIds is list
+            && courseData.targetPromotionIds.hasAny(currentUser().promotionIds)
+          )
+        );
+    }
+
     function promotionPlanCourseIdAt(plan, courseId, index) {
       return plan.size() > index
-        && plan[index].keys().hasAny(['courseId'])
-        && plan[index].courseId == courseId;
+        && (
+          (plan[index].keys().hasAny(['courseId']) && plan[index].courseId == courseId)
+          || (plan[index].keys().hasAny(['courseID']) && plan[index].courseID == courseId)
+          || (plan[index].keys().hasAny(['courseDocId']) && plan[index].courseDocId == courseId)
+          || (plan[index].keys().hasAny(['courseRef']) && plan[index].courseRef == courseId)
+          || (plan[index].keys().hasAny(['id']) && plan[index].id == courseId)
+        );
     }
 
     function promotionPlanHasCourseId(plan, courseId) {
@@ -471,10 +491,12 @@ service cloud.firestore {
           && (
             courseSharedWithCurrentUser(courseData)
             || courseTargetedToCurrentUser(courseData)
+            || courseTargetsCurrentUserPromotion(courseData)
             || courseLinkedToReadableFormation(courseData)
           )
         )
-        || currentUserPromotionAllowsCourse(courseId);
+        || currentUserPromotionAllowsCourse(courseId)
+        || (isStudent() && courseTargetsCurrentUserPromotion(courseData));
     }
 
     function validTeacherCourseWrite() {
