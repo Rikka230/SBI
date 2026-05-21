@@ -8,7 +8,33 @@
   <link rel="stylesheet" href="/admin/css/admin.css?v=8.0P.167.51">
   <link rel="stylesheet" href="/admin/css/admin-notifications.css">
   <link rel="stylesheet" href="/admin/css/admin-surface-unified.css?v=8.0P.167.52">
-  <link rel="stylesheet" href="/css/course-editor-v2.css?v=8.0P.167.161">
+  <link rel="stylesheet" href="/css/course-editor-v2.css?v=8.0P.167.162">
+
+  <style id="sbi-course-editor-v2-hard-unblank">
+    html, body { min-height: 100vh !important; opacity: 1 !important; visibility: visible !important; }
+    body.sbi-editor-v2 { overflow-y: auto !important; }
+    body.sbi-editor-v2 #app-container,
+    body.sbi-editor-v2 #main-content,
+    body.sbi-editor-v2 .content-wrapper,
+    body.sbi-editor-v2 #sbi-course-editor-v2 {
+      opacity: 1 !important;
+      visibility: visible !important;
+    }
+    body.sbi-editor-v2 #main-content { display: block !important; min-height: 100vh !important; }
+    body.sbi-editor-v2 .content-wrapper { display: block !important; min-height: 60vh !important; }
+    body.sbi-editor-v2 #sbi-course-editor-v2 { display: block !important; min-height: 280px !important; }
+    body.sbi-editor-v2 #sbi-course-editor-v2:empty::before {
+      content: "Chargement de l’éditeur V2…";
+      display: block;
+      margin: 1rem;
+      padding: 1rem;
+      border: 1px solid #d9e1ec;
+      border-radius: 16px;
+      background: #fff;
+      color: #0f172a;
+      font-weight: 800;
+    }
+  </style>
   <script src="/admin/js/components.js?v=8.0P.167.64"></script>
 </head>
 <body class="sbi-editor-v2 sbi-editor-v2--admin sbi-editor-v2--embedded sbi-admin-surface no-right-panel" data-editor-role="admin">
@@ -28,6 +54,6 @@
       </div>
     </main>
   </div>
-  <script type="module" src="/js/course-editor-v2/course-editor-v2.js?v=8.0P.167.161"></script>
+  <script type="module" src="/js/course-editor-v2/course-editor-v2.js?v=8.0P.167.162"></script>
 </body>
 </html>

@@ -14,7 +14,7 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
 
 const MAX_QUERY_VALUES = 10;
-const VERSION = '8.0P.167.161';
+const VERSION = '8.0P.167.162';
 
 const BLOCK_TYPES = [
   { type: 'course_info', label: 'Course Info', subtitle: 'Informations générales', icon: 'i', static: true },
@@ -58,6 +58,21 @@ const state = {
 function releasePreloadSafety() {
   document.body?.classList?.remove('preload');
   document.documentElement?.classList?.add('sbi-admin-loader-released');
+
+  const hardVisibleNodes = [
+    document.getElementById('app-container'),
+    document.getElementById('main-content'),
+    document.querySelector('.content-wrapper'),
+    document.getElementById('sbi-course-editor-v2')
+  ].filter(Boolean);
+
+  hardVisibleNodes.forEach((node) => {
+    node.style.opacity = '1';
+    node.style.visibility = 'visible';
+  });
+
+  const main = document.getElementById('main-content');
+  if (main) main.style.display = 'block';
 }
 
 function renderFatalEditorError(error) {
@@ -1157,29 +1172,46 @@ function renderAll() {
   bindSettingsInputs();
 }
 
+let booted = false;
+
+export function mountCourseEditorV2() {
+  if (booted) return null;
+  booted = true;
+  boot();
+  return () => {};
+}
+
 function boot() {
   releasePreloadSafety();
-  mountShell();
-  bindGlobalActions();
+  try {
+    mountShell();
+    bindGlobalActions();
 
-  onAuthStateChanged(auth, async (user) => {
-    if (!user) {
-      window.location.replace('/login.html');
-      return;
-    }
+    onAuthStateChanged(auth, async (user) => {
+      releasePreloadSafety();
+      if (!user) {
+        window.location.replace('/login.html');
+        return;
+      }
 
-    try {
-      await initForUser(user);
-    } catch (error) {
-      console.error('[SBI Course Editor V2] Initialisation impossible :', error);
-      setStatus('Erreur d’initialisation', 'error');
-      renderFatalEditorError(error);
-    }
-  });
+      try {
+        await initForUser(user);
+      } catch (error) {
+        console.error('[SBI Course Editor V2] Initialisation impossible :', error);
+        releasePreloadSafety();
+        setStatus('Erreur d’initialisation', 'error');
+        renderFatalEditorError(error);
+      }
+    });
+  } catch (error) {
+    console.error('[SBI Course Editor V2] Boot impossible :', error);
+    releasePreloadSafety();
+    renderFatalEditorError(error);
+  }
 }
 
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', boot, { once: true });
+  document.addEventListener('DOMContentLoaded', mountCourseEditorV2, { once: true });
 } else {
-  boot();
+  mountCourseEditorV2();
 }

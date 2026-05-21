@@ -538,7 +538,7 @@ body.sbi-editor-v2 {
   .sbi-editor-title-stack input { width: 100%; }
 }
 
-/* 8.0P.167.161 - Safety fallback: the editor pages must never stay visually blank. */
+/* 8.0P.167.162 - Safety fallback: the editor pages must never stay visually blank. */
 .sbi-editor-v2-fallback {
   margin: 1.25rem;
   padding: 1.25rem;
