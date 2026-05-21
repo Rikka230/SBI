@@ -526,7 +526,7 @@ async function mountStudentPage({ url }) {
   window.__SBI_APP_SHELL_MOUNTING_STUDENT_COURSES = true;
 
   try {
-    const module = await import('/student/js/mes-cours.js?v=8.0P.167.150');
+    const module = await import('/student/js/mes-cours.js?v=8.0P.167.154');
     const cleanup = module.mountStudentCourses?.({ source: 'pjax-student-courses' });
 
     if (typeof cleanup === 'function') registerCleanup(cleanup, 'student-courses');

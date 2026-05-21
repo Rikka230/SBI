@@ -3,7 +3,7 @@
  * MES COURS - Bibliothèque étudiant SBI
  * =======================================================================
  *
- * 8.0P.167.146 : correction tri Programme élève, plus de page vide au clic formation.
+ * 8.0P.167.154 : les cours du coursePlan restent affichés même si le document cours existe mais n’est pas publié legacy.
  * Le viewer de cours reste en navigation classique.
  * =======================================================================
  */
@@ -476,7 +476,7 @@ async function loadAssignedCourses() {
     allCourses = uniqById([...coursesFromAccess, ...coursesFromNotifications, ...coursesFromPromotionPlan])
         .filter(Boolean)
         .filter((course) => course && course.id)
-        .filter((course) => course.__planOnly === true || isAdminPreview() || isCourseVisible(course, { allowProgress: true }));
+        .filter((course) => course.__planOnly === true || course.__promotionLinked === true || isAdminPreview() || isCourseVisible(course, { allowProgress: true }));
 }
 
 async function loadNotificationLinkedCourses() {

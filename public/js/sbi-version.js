@@ -6,7 +6,7 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.153',
+  version: '8.0P.167.154',
   branch: 'main',
   channel: 'P2I.40 STUDENT VIEWER DIRECT COURSE GET',
   stage: 'STUDENT VIEWER FIRESTORE DIRECT ACCESS FIX',
