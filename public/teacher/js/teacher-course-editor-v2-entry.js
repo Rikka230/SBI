@@ -1,11 +1,11 @@
 /**
- * SBI 8.0P.167.177 - Teacher course editor V2 entry bridge
+ * SBI 8.0P.167.178 - Teacher course editor V2 entry bridge
  *
  * Bridge léger et nettoyable :
  * - + Nouveau cours ouvre /teacher/course-editor.html
  * - Modifier ouvre /teacher/course-editor.html?id=...
  * - l'ancien éditeur n'est plus proposé côté prof
- * - aucun interval persistant, donc pas de freeze après PJAX
+ * - aucun interval persistant
  */
 
 const V2_EDITOR_PATH = '/teacher/course-editor.html';
@@ -49,7 +49,6 @@ function hideLegacyEditorAccess(root = document) {
   if (tabEditor) {
     tabEditor.classList.remove('active');
     tabEditor.style.display = 'none';
-    tabEditor.innerHTML = '';
   }
 
   const tabList = root.getElementById?.('tab-list') || document.getElementById('tab-list');

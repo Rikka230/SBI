@@ -12,7 +12,6 @@ import {
 
 const COURSE_VIEWER_URL = '/teacher/cours-viewer.html';
 const COURSE_EDITOR_V2_URL = '/teacher/course-editor.html';
-const COURSE_EDITOR_V2_URL = '/teacher/course-editor.html';
 const MAX_QUERY_VALUES = 10;
 
 let activeMountCleanup = null;
@@ -704,28 +703,7 @@ async function navigateTeacherCourseEditorV2(courseId = '', { source = 'teacher-
 function openTeacherCourseEditor(courseId = '') {
   const safeCourseId = normalizeString(courseId);
   if (!safeCourseId) return;
-
-  const targetUrl = `${COURSE_EDITOR_V2_URL}?id=${encodeURIComponent(safeCourseId)}`;
-
-  if (typeof window.SBI_APP_SHELL_NAVIGATE === 'function') {
-    try {
-      const result = window.SBI_APP_SHELL_NAVIGATE(targetUrl, {
-        historyMode: 'push',
-        source: 'teacher-library-edit-v2-direct'
-      });
-      if (result && typeof result.then === 'function') {
-        result.then((handled) => {
-          if (!handled) window.location.assign(targetUrl);
-        }).catch(() => window.location.assign(targetUrl));
-        return;
-      }
-      if (result) return;
-    } catch (error) {
-      console.warn('[SBI Teacher Library] Navigation V2 impossible, fallback classique :', error);
-    }
-  }
-
-  window.location.assign(targetUrl);
+  void navigateTeacherCourseEditorV2(safeCourseId, { source: 'teacher-library-edit-v2' });
 }
 
 function handleTeacherLibraryPopState() {

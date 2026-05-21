@@ -637,7 +637,7 @@ async function mountTeacherCourses({ url }) {
    */
   window.__SBI_APP_SHELL_MOUNTING_TEACHER_COURSES_LIBRARY = true;
   try {
-    const libraryModule = await import('/teacher/js/teacher-courses-library.js?v=8.0P.167.177');
+    const libraryModule = await import('/teacher/js/teacher-courses-library.js?v=8.0P.167.178');
     const cleanupTeacherLibrary = libraryModule.mountTeacherCoursesLibrary?.({ source: 'pjax-teacher-courses' });
 
     if (typeof cleanupTeacherLibrary === 'function') {
@@ -657,7 +657,7 @@ async function mountTeacherCourses({ url }) {
   // 8.0P.167.176 : l’ancien éditeur professeur n’est plus monté sur cette route.
   // La bibliothèque ouvre directement /teacher/course-editor.html en V2.
   try {
-    const entryModule = await import('/teacher/js/teacher-course-editor-v2-entry.js?v=8.0P.167.177');
+    const entryModule = await import('/teacher/js/teacher-course-editor-v2-entry.js?v=8.0P.167.178');
     const cleanupV2Entry = entryModule.mountTeacherCourseEditorV2Entry?.({ source: 'pjax-teacher-courses' });
     if (typeof cleanupV2Entry === 'function') registerCleanup(cleanupV2Entry, 'teacher-course-editor-v2-entry');
   } catch (error) {
@@ -698,7 +698,7 @@ async function mountCourseEditorV2Page({ url, role = 'teacher' }) {
   window.__SBI_APP_SHELL_MOUNTING_COURSE_EDITOR_V2 = true;
 
   try {
-    const module = await import('/js/course-editor-v2/course-editor-v2.js?v=8.0P.167.177');
+    const module = await import('/js/course-editor-v2/course-editor-v2.js?v=8.0P.167.178');
     const cleanup = module.mountCourseEditorV2?.({
       source: isAdmin ? 'pjax-admin-course-editor-v2' : 'pjax-teacher-course-editor-v2',
       force: true
