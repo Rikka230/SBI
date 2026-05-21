@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.167.168 - Teacher course editor V2 entry bridge
+ * SBI 8.0P.167.170 - Teacher course editor V2 entry bridge
  *
  * Transition contrôlée : la bibliothèque prof garde son rendu validé,
  * mais Nouveau cours / Modifier ouvrent la page dédiée V2.
@@ -19,8 +19,19 @@ function buildV2Url(courseId = '') {
   return safeCourseId ? `${V2_EDITOR_PATH}?id=${encodeURIComponent(safeCourseId)}` : V2_EDITOR_PATH;
 }
 
-function goToV2(courseId = '') {
+async function goToV2(courseId = '') {
   const target = buildV2Url(courseId);
+  if (typeof window.SBI_APP_SHELL_NAVIGATE === 'function') {
+    try {
+      const handled = await window.SBI_APP_SHELL_NAVIGATE(target, {
+        historyMode: 'push',
+        source: courseId ? 'teacher-library-edit-v2' : 'teacher-library-new-v2'
+      });
+      if (handled) return;
+    } catch (error) {
+      console.warn('[SBI Teacher Library] Navigation V2 PJAX indisponible, fallback classique :', error);
+    }
+  }
   window.location.href = target;
 }
 
@@ -104,7 +115,7 @@ function installClickGuards() {
       event.preventDefault();
       event.stopPropagation();
       event.stopImmediatePropagation?.();
-      goToV2(courseId);
+      void goToV2(courseId);
       return;
     }
 
@@ -113,7 +124,7 @@ function installClickGuards() {
       event.preventDefault();
       event.stopPropagation();
       event.stopImmediatePropagation?.();
-      goToV2();
+      void goToV2();
     }
   }, true);
 }

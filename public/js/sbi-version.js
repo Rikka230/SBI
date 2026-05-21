@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.168',
+  version: '8.0P.167.170',
   branch: 'main',
-  channel: 'P2J.3B COURSE EDITOR V2 CONTROLLED BRIDGE',
-  stage: 'TEACHER LIBRARY V2 ENTRY BRIDGE',
+  channel: 'P2J.3D COURSE EDITOR V2 PJAX BLOCKS FIX',
+  stage: 'EDITOR V2 PJAX ROUTES LIVE SETTINGS SHARED BLOCK ENTRY',
   updatedAt: '2026-05-21',
-  label: 'SBI 8.0P.167.168 - Course editor V2 controlled bridge'
+  label: 'SBI 8.0P.167.170 - Course editor V2 PJAX, live settings and shared block entry'
 };
 
 export function getSbiVersionLabel() {

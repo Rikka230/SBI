@@ -26,7 +26,7 @@ import {
 } from '/admin/js/course-media-storage.js';
 
 const MAX_QUERY_VALUES = 10;
-const VERSION = '8.0P.167.166';
+const VERSION = '8.0P.167.170';
 
 const BLOCK_TYPES = [
   { type: 'course_info', label: 'Course Info', subtitle: 'Informations générales', icon: 'i', static: true },
@@ -535,7 +535,7 @@ function mountShell() {
     <div class="sbi-editor-shell">
       <section class="sbi-editor-page-head">
         <div class="sbi-editor-page-head__main">
-          <a class="sbi-editor-link-btn sbi-editor-btn--ghost" href="${getBackUrl()}">← Retour bibliothèque</a>
+          <a id="course-v2-back-library" class="sbi-editor-link-btn sbi-editor-btn--ghost" href="${getBackUrl()}" data-sbi-href="${getBackUrl()}">← Retour bibliothèque</a>
           <div class="sbi-editor-title-stack">
             <span class="sbi-role-pill">${state.role === 'admin' ? 'Admin · validation' : 'Professeur · production'}</span>
             <input id="course-v2-title" type="text" placeholder="Titre du cours" autocomplete="off">
@@ -596,6 +596,56 @@ function setStatus(message, tone = '') {
 function markDirty() {
   state.dirty = true;
   setStatus('Modifications non enregistrées');
+}
+
+function normalizeBlockTitle(value = '') {
+  return normalizeString(value).replace(/\s+/g, ' ');
+}
+
+function syncBlockTitleUi(value, sourceId = '') {
+  const safeValue = normalizeBlockTitle(value);
+  ['editor-course-bloc', 'settings-bloc'].forEach((id) => {
+    if (id === sourceId) return;
+    const field = document.getElementById(id);
+    if (field && field.value !== safeValue) field.value = safeValue;
+  });
+}
+
+function addLocalSharedBlockOption(rawValue = '') {
+  const value = normalizeBlockTitle(rawValue || $('#editor-course-bloc')?.value || $('#settings-bloc')?.value);
+  if (!value) {
+    alert('Saisis d’abord un nom de bloc partagé.');
+    return false;
+  }
+
+  const exists = state.blockOptions.some((option) => normalizeBlockTitle(option).toLowerCase() === value.toLowerCase());
+  if (!exists) {
+    state.blockOptions.push(value);
+    state.blockOptions.sort((a, b) => a.localeCompare(b, 'fr', { sensitivity: 'base' }));
+  }
+
+  state.course.bloc = value;
+  syncBlockTitleUi(value);
+  markDirty();
+  setStatus('Bloc partagé ajouté au cours. Sauvegarde le cours pour le réutiliser dans cette formation.', 'success');
+  renderMainEditor();
+  renderSettings();
+  bindSettingsInputs();
+  return true;
+}
+
+async function navigateShellAware(href, { historyMode = 'push', source = 'course-editor-v2' } = {}) {
+  const target = new URL(href, window.location.href);
+  if (typeof window.SBI_APP_SHELL_NAVIGATE === 'function') {
+    try {
+      const handled = await window.SBI_APP_SHELL_NAVIGATE(target.href, { historyMode, source });
+      if (handled) return true;
+    } catch (error) {
+      console.warn('[SBI Course Editor V2] Navigation PJAX indisponible, fallback classique :', error);
+    }
+  }
+  window.location.assign(target.href);
+  return false;
 }
 
 function renderStructure() {
@@ -969,9 +1019,53 @@ function renderCourseInfoEditor() {
     </div>
     <div class="sbi-editor-form">
       <div class="sbi-field"><label>Titre du cours</label><input id="editor-course-title" class="sbi-input" value="${escapeHtml(state.course.title)}" placeholder="Ex : Management des risques en animation"></div>
-      <div class="sbi-field"><label>Formation(s)</label><div id="editor-formations" class="sbi-check-row">${renderFormationChecks()}</div><small>Les blocs et futurs référentiels se filtreront sur ces formations.</small></div>
+      <div class="sbi-field"><label>Formation(s)</label><div id="editor-formations" class="sbi-check-row">${renderFormationChecks()}</div><small>La formation définit la bibliothèque d’accès et le partage du cours. Elle ne remplace pas le Cursus ni la Promotion.</small></div>
+
+      <section class="sbi-course-creation-guide" aria-label="Champs nécessaires à la création d’un cours">
+        <div class="sbi-guide-head">
+          <span class="sbi-guide-kicker">Création de cours</span>
+          <h3>Champs à renseigner avant validation</h3>
+          <p>Cette zone sert de pense-bête pour créer un cours exploitable dans une formation, puis réutilisable dans un cursus et une promotion.</p>
+        </div>
+        <div class="sbi-guide-grid">
+          <article class="sbi-guide-card">
+            <strong>1. Identification</strong>
+            <ul>
+              <li>Titre clair du cours</li>
+              <li>Formation(s) concernée(s)</li>
+              <li>Bloc partagé / module pédagogique</li>
+              <li>Durée globale estimée en minutes</li>
+            </ul>
+          </article>
+          <article class="sbi-guide-card">
+            <strong>2. Cadrage pédagogique</strong>
+            <ul>
+              <li>Objectifs du cours</li>
+              <li>Compétence principale</li>
+              <li>Preuve Qualiopi si le contenu sert d’élément probant</li>
+              <li>Règle de validation et seuil attendu</li>
+            </ul>
+          </article>
+          <article class="sbi-guide-card">
+            <strong>3. Structure du contenu</strong>
+            <ul>
+              <li>Leçons avec texte riche Quill</li>
+              <li>Image ou vidéo par leçon si nécessaire</li>
+              <li>QCM / texte à trous / ressource / devoir / checkpoint</li>
+              <li>Ordre des blocs via drag & drop</li>
+            </ul>
+          </article>
+        </div>
+        <div class="sbi-guide-flow">
+          <span>Formation = bibliothèque</span>
+          <span>Cursus = ordre pédagogique</span>
+          <span>Promotion = dates réelles</span>
+          <span>Cours = contenu modulaire</span>
+        </div>
+      </section>
+
       <div class="sbi-two-cols">
-        <div class="sbi-field"><label>Bloc partagé</label><input id="editor-course-bloc" class="sbi-input" list="editor-block-options" value="${escapeHtml(state.course.bloc)}" placeholder="Ex : Module 3 · Animation"><datalist id="editor-block-options">${state.blockOptions.map((bloc) => `<option value="${escapeHtml(bloc)}"></option>`).join('')}</datalist></div>
+        <div class="sbi-field"><label>Bloc partagé</label><div class="sbi-inline-action"><input id="editor-course-bloc" class="sbi-input" list="editor-block-options" value="${escapeHtml(state.course.bloc)}" placeholder="Ex : Module 3 · Animation"><button id="editor-course-bloc-add" class="sbi-editor-btn sbi-editor-btn--tiny" type="button">+ Ajouter</button></div><datalist id="editor-block-options">${state.blockOptions.map((bloc) => `<option value="${escapeHtml(bloc)}"></option>`).join('')}</datalist><small>Saisis un nouveau bloc puis clique Ajouter. Après sauvegarde, il sera proposé pour les cours de la même formation.</small></div>
         <div class="sbi-field"><label>Durée estimée globale (min)</label><small>Indicatif pédagogique, ce n’est pas un timer automatique.</small><input id="editor-course-duration" class="sbi-input" type="number" min="0" step="5" value="${Number(state.course.estimatedDurationMinutes || 0)}"></div>
       </div>
       <div class="sbi-empty-state">Cette page prépare le contenu du cours. Le rattachement au cursus, l’ordre du programme et les dates restent gérés dans Cursus / Promotions.</div>
@@ -1141,10 +1235,10 @@ function renderSettings() {
     </div>
     <div class="sbi-right-card sbi-editor-form" style="padding:1rem;">
       <div class="sbi-field"><label>Formation</label><div class="sbi-input" style="height:auto;">${escapeHtml(selectedFormationLabel)}</div></div>
-      <div class="sbi-field"><label>Bloc partagé</label><input id="settings-bloc" class="sbi-input" list="settings-block-options" value="${escapeHtml(state.course.bloc)}"><datalist id="settings-block-options">${state.blockOptions.map((bloc) => `<option value="${escapeHtml(bloc)}"></option>`).join('')}</datalist></div>
+      <div class="sbi-field"><label>Bloc partagé</label><div class="sbi-inline-action"><input id="settings-bloc" class="sbi-input" list="settings-block-options" value="${escapeHtml(state.course.bloc)}" placeholder="Nom du bloc"><button id="settings-bloc-add" class="sbi-editor-btn sbi-editor-btn--tiny" type="button">+ Ajouter</button></div><datalist id="settings-block-options">${state.blockOptions.map((bloc) => `<option value="${escapeHtml(bloc)}"></option>`).join('')}</datalist><small>Ajout local au cours. La sauvegarde le rend récupérable par formation.</small></div>
       <div class="sbi-field"><label>Compétence ciblée</label><input id="settings-competency" class="sbi-input" value="${escapeHtml(active?.competency || state.course.competency || '')}" placeholder="Ex : C2. Assurer la sécurité"></div>
       <div class="sbi-field"><label>Preuve Qualiopi</label><select id="settings-qualiopi" class="sbi-select"><option value="">Non renseignée</option>${renderSelectOption('2.2 Moyens pédagogiques', active?.qualiopiEvidence || state.course.qualiopiEvidence)}${renderSelectOption('2.4 Modalités d’évaluation', active?.qualiopiEvidence || state.course.qualiopiEvidence)}${renderSelectOption('3.1 Adaptation pédagogique', active?.qualiopiEvidence || state.course.qualiopiEvidence)}</select></div>
-      <div class="sbi-two-cols"><div class="sbi-field"><label>Durée estimée (min)</label><input id="settings-duration" class="sbi-input" type="number" min="0" value="${Number(active?.durationMinutes || state.course.estimatedDurationMinutes || 0)}"></div><div class="sbi-field"><label>Score max</label><input id="settings-score" class="sbi-input" type="number" min="0" value="${getActiveScore(active)}"></div></div>
+      <div class="sbi-two-cols"><div class="sbi-field"><label>Durée estimée (min)</label><input id="settings-duration" class="sbi-input" type="number" min="0" value="${Number(active?.durationMinutes || state.course.estimatedDurationMinutes || 0)}"></div><div class="sbi-field"><label>Score max calculé</label><input id="settings-score" class="sbi-input" type="number" min="0" value="${getActiveScore(active)}" readonly aria-readonly="true"></div></div>
       <div class="sbi-field"><label>Inclure dans le cours</label><select id="settings-visible" class="sbi-select"><option value="true" ${(active?.visibleInProgram ?? state.course.visibleInProgram) !== false ? 'selected' : ''}>Oui</option><option value="false" ${(active?.visibleInProgram ?? state.course.visibleInProgram) === false ? 'selected' : ''}>Non</option></select></div>
       <div class="sbi-two-cols"><div class="sbi-field"><label>Règle</label><select id="settings-rule" class="sbi-select"><option value="score_minimum">Score minimum</option><option value="viewed">Consulté</option></select></div><div class="sbi-field"><label>Seuil %</label><input id="settings-validation-score" class="sbi-input" type="number" min="0" max="100" value="${Number(state.course.validationScore || 70)}"></div></div>
     </div>
@@ -1199,6 +1293,29 @@ function renderLessonMediaPreview(block) {
   return '<div class="sbi-preview-media-empty">Aucun média associé.</div>';
 }
 
+
+function syncDurationUi(value, sourceId = '') {
+  const safeValue = Number(value || 0);
+  ['editor-course-duration', 'block-duration', 'settings-duration'].forEach((id) => {
+    if (id === sourceId) return;
+    const field = document.getElementById(id);
+    if (!field) return;
+    const nextValue = String(Number.isFinite(safeValue) ? safeValue : 0);
+    if (String(field.value) !== nextValue) field.value = nextValue;
+  });
+}
+
+function syncScoreUi() {
+  const score = getActiveScore(getActiveBlock());
+  const field = document.getElementById('settings-score');
+  if (field && String(field.value) !== String(score)) field.value = String(score);
+}
+
+function rerenderSettingsPanel() {
+  renderSettings();
+  bindSettingsInputs();
+}
+
 function bindEditorInputs() {
   $('#course-v2-title')?.addEventListener('input', (event) => {
     state.course.title = event.target.value;
@@ -1221,8 +1338,19 @@ function bindEditorInputs() {
     renderAll();
   }));
 
-  $('#editor-course-bloc')?.addEventListener('input', (event) => { state.course.bloc = event.target.value; markDirty(); renderSettings(); });
-  $('#editor-course-duration')?.addEventListener('input', (event) => { state.course.estimatedDurationMinutes = Number(event.target.value || 0); markDirty(); });
+  $('#editor-course-bloc')?.addEventListener('input', (event) => {
+    state.course.bloc = event.target.value;
+    syncBlockTitleUi(event.target.value, 'editor-course-bloc');
+    markDirty();
+    renderSettings();
+    bindSettingsInputs();
+  });
+  $('#editor-course-bloc-add')?.addEventListener('click', () => addLocalSharedBlockOption($('#editor-course-bloc')?.value));
+  $('#editor-course-duration')?.addEventListener('input', (event) => {
+    state.course.estimatedDurationMinutes = Number(event.target.value || 0);
+    syncDurationUi(state.course.estimatedDurationMinutes, 'editor-course-duration');
+    markDirty();
+  });
   $('#editor-course-objectives')?.addEventListener('input', (event) => { state.course.objectives = event.target.value; markDirty(); renderPreview(); });
   $('#editor-course-competency')?.addEventListener('input', (event) => { state.course.competency = event.target.value; markDirty(); });
   $('#editor-course-qualiopi')?.addEventListener('change', (event) => { state.course.qualiopiEvidence = event.target.value; markDirty(); });
@@ -1236,7 +1364,11 @@ function bindEditorInputs() {
   $('#block-title')?.addEventListener('input', (event) => { active.title = event.target.value; markDirty(); renderStructure(); renderPreview(); });
   $('#block-instructions')?.addEventListener('input', (event) => { active.instructions = event.target.value; markDirty(); renderPreview(); });
   $('#block-content')?.addEventListener('input', (event) => { active.content = event.target.value; markDirty(); renderPreview(); });
-  $('#block-duration')?.addEventListener('input', (event) => { active.durationMinutes = Number(event.target.value || 0); markDirty(); });
+  $('#block-duration')?.addEventListener('input', (event) => {
+    active.durationMinutes = Number(event.target.value || 0);
+    syncDurationUi(active.durationMinutes, 'block-duration');
+    markDirty();
+  });
   $('#block-visible')?.addEventListener('change', (event) => { active.visibleInProgram = event.target.value === 'true'; markDirty(); });
   setupLessonMediaControls(active);
 
@@ -1253,6 +1385,7 @@ function bindFillBlankInputs(active) {
     active.blanks = tokens.map((token) => existing.get(token) || { id: makeId('blank'), token, answers: token, points: 1 });
     markDirty();
     renderMainEditor();
+    rerenderSettingsPanel();
     renderPreview();
   });
 
@@ -1267,6 +1400,7 @@ function bindFillBlankInputs(active) {
     active.prompt = `${active.prompt || ''} [[nouveau blanc]]`.trim();
     markDirty();
     renderMainEditor();
+    rerenderSettingsPanel();
     renderPreview();
   });
 
@@ -1275,6 +1409,7 @@ function bindFillBlankInputs(active) {
     active.blanks = normalizeFillBlankRows(active).filter((blank) => blank.id !== id);
     markDirty();
     renderMainEditor();
+    rerenderSettingsPanel();
     renderPreview();
   }));
 
@@ -1283,7 +1418,12 @@ function bindFillBlankInputs(active) {
     if (!blank) return;
     $('.fib-token', row)?.addEventListener('input', (event) => { blank.token = event.target.value; markDirty(); renderPreview(); });
     $('.fib-answers', row)?.addEventListener('input', (event) => { blank.answers = event.target.value; markDirty(); });
-    $('.fib-points', row)?.addEventListener('input', (event) => { blank.points = Number(event.target.value || 0); markDirty(); renderSettings(); renderPreview(); });
+    $('.fib-points', row)?.addEventListener('input', (event) => {
+      blank.points = Number(event.target.value || 0);
+      markDirty();
+      syncScoreUi();
+      renderPreview();
+    });
   });
 }
 
@@ -1292,7 +1432,11 @@ function bindQuizInputs(active) {
   if (!Array.isArray(active.questions) || !active.questions.length) active.questions = createDefaultBlock('quiz').questions;
   const question = active.questions[0];
   $('#quiz-question')?.addEventListener('input', (event) => { question.question = event.target.value; markDirty(); renderPreview(); });
-  $('#quiz-points')?.addEventListener('input', (event) => { question.points = Number(event.target.value || 0); markDirty(); renderSettings(); });
+  $('#quiz-points')?.addEventListener('input', (event) => {
+    question.points = Number(event.target.value || 0);
+    markDirty();
+    syncScoreUi();
+  });
   $all('.quiz-option').forEach((input, index) => input.addEventListener('input', (event) => {
     question.options[index] = event.target.value;
     markDirty();
@@ -1307,10 +1451,10 @@ function bindQuizInputs(active) {
 function bindSettingsInputs() {
   $('#settings-bloc')?.addEventListener('input', (event) => {
     state.course.bloc = event.target.value;
-    const field = $('#editor-course-bloc');
-    if (field && field.value !== event.target.value) field.value = event.target.value;
+    syncBlockTitleUi(event.target.value, 'settings-bloc');
     markDirty();
   });
+  $('#settings-bloc-add')?.addEventListener('click', () => addLocalSharedBlockOption($('#settings-bloc')?.value));
 
   const active = getActiveBlock();
   $('#settings-competency')?.addEventListener('input', (event) => {
@@ -1324,8 +1468,10 @@ function bindSettingsInputs() {
     markDirty();
   });
   $('#settings-duration')?.addEventListener('input', (event) => {
-    if (active) active.durationMinutes = Number(event.target.value || 0);
-    else state.course.estimatedDurationMinutes = Number(event.target.value || 0);
+    const value = Number(event.target.value || 0);
+    if (active) active.durationMinutes = value;
+    else state.course.estimatedDurationMinutes = value;
+    syncDurationUi(value, 'settings-duration');
     markDirty();
   });
   $('#settings-visible')?.addEventListener('change', (event) => {
@@ -1363,6 +1509,13 @@ function saveActiveEditorValues() {
 }
 
 function bindGlobalActions() {
+  $('#course-v2-back-library')?.addEventListener('click', async (event) => {
+    event.preventDefault();
+    if (state.dirty && !confirm('Des modifications ne sont pas enregistrées. Retourner à la bibliothèque ?')) return;
+    state.dirty = false;
+    await navigateShellAware(getBackUrl(), { source: 'course-editor-v2-back' });
+  });
+
   $('#course-v2-save')?.addEventListener('click', () => saveCourse('draft'));
   $('#course-v2-submit')?.addEventListener('click', () => saveCourse(state.role === 'admin' ? 'publish' : 'submit'));
   $('#course-v2-preview')?.addEventListener('click', async () => {
@@ -1370,11 +1523,13 @@ function bindGlobalActions() {
     if (state.courseId) window.open(`${getViewerUrl()}?id=${encodeURIComponent(state.courseId)}&preview=true&returnTo=${encodeURIComponent(location.pathname + location.search)}`, '_blank');
   });
 
-  window.addEventListener('beforeunload', (event) => {
+  if (activeBeforeUnloadHandler) window.removeEventListener('beforeunload', activeBeforeUnloadHandler);
+  activeBeforeUnloadHandler = (event) => {
     if (!state.dirty) return;
     event.preventDefault();
     event.returnValue = '';
-  });
+  };
+  window.addEventListener('beforeunload', activeBeforeUnloadHandler);
 }
 
 function buildCoursePayload(action = 'draft') {
@@ -1594,12 +1749,65 @@ function renderAll() {
 }
 
 let booted = false;
+let activeRoot = null;
+let activeAuthUnsubscribe = null;
+let activeBeforeUnloadHandler = null;
 
-export function mountCourseEditorV2() {
-  if (booted) return null;
+function resetEditorRuntimeState() {
+  state.uid = '';
+  state.profile = null;
+  state.courseId = '';
+  state.status = 'draft';
+  state.activeBlockId = 'course_info';
+  state.formations = [];
+  state.selectedFormationIds = [];
+  state.blockOptions = [];
+  state.dirty = false;
+  state.dragBlockId = '';
+  resetQuillInstance();
+  state.course = {
+    title: '',
+    bloc: '',
+    objectives: '',
+    estimatedDurationMinutes: 0,
+    competency: '',
+    qualiopiEvidence: '',
+    visibleInProgram: true,
+    validationRule: 'score_minimum',
+    validationScore: 70,
+    learningBlocks: []
+  };
+}
+
+export function mountCourseEditorV2({ force = false } = {}) {
+  const root = document.getElementById('sbi-course-editor-v2');
+  if (!root) return null;
+  if (booted && activeRoot === root && !force) return null;
+
+  activeAuthUnsubscribe?.();
+  activeAuthUnsubscribe = null;
+  if (activeBeforeUnloadHandler) {
+    window.removeEventListener('beforeunload', activeBeforeUnloadHandler);
+    activeBeforeUnloadHandler = null;
+  }
+
+  resetEditorRuntimeState();
   booted = true;
+  activeRoot = root;
   boot();
-  return () => {};
+
+  return () => {
+    activeAuthUnsubscribe?.();
+    activeAuthUnsubscribe = null;
+    if (activeBeforeUnloadHandler) {
+      window.removeEventListener('beforeunload', activeBeforeUnloadHandler);
+      activeBeforeUnloadHandler = null;
+    }
+    if (activeRoot === root) {
+      booted = false;
+      activeRoot = null;
+    }
+  };
 }
 
 function boot() {
@@ -1608,7 +1816,7 @@ function boot() {
     mountShell();
     bindGlobalActions();
 
-    onAuthStateChanged(auth, async (user) => {
+    activeAuthUnsubscribe = onAuthStateChanged(auth, async (user) => {
       releasePreloadSafety();
       if (!user) {
         window.location.replace('/login.html');
@@ -1632,7 +1840,7 @@ function boot() {
 }
 
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', mountCourseEditorV2, { once: true });
+  document.addEventListener('DOMContentLoaded', () => mountCourseEditorV2(), { once: true });
 } else {
   mountCourseEditorV2();
 }

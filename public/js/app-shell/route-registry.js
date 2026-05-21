@@ -72,6 +72,10 @@ function isAdminCourses(url) {
   return normalizePath(url.pathname).toLowerCase() === '/admin/formations-cours.html';
 }
 
+function isAdminCourseEditorV2(url) {
+  return normalizePath(url.pathname).toLowerCase() === '/admin/course-editor.html';
+}
+
 function isAdminProfile(url) {
   return normalizePath(url.pathname).toLowerCase() === '/admin/admin-profile.html';
 }
@@ -112,6 +116,10 @@ function isTeacherCourses(url) {
   return normalizePath(url.pathname).toLowerCase() === '/teacher/mes-cours.html';
 }
 
+function isTeacherCourseEditorV2(url) {
+  return normalizePath(url.pathname).toLowerCase() === '/teacher/course-editor.html';
+}
+
 function isTeacherProfile(url) {
   return normalizePath(url.pathname).toLowerCase() === '/teacher/mon-profil.html';
 }
@@ -129,6 +137,7 @@ function isAdminShellContext() {
   return path === '/admin/index.html'
     || path === '/admin/site-index-settings.html'
     || path === '/admin/formations-cours.html'
+    || path === '/admin/course-editor.html'
     || path === '/admin/admin-profile.html'
     || path === '/admin/admin-accounts.html'
     || path === '/admin/admin-promotions.html'
@@ -147,6 +156,7 @@ function isTeacherShellContext() {
   const path = getCurrentPath();
   return path === '/teacher/dashboard.html'
     || path === '/teacher/mes-cours.html'
+    || path === '/teacher/course-editor.html'
     || path === '/teacher/mon-profil.html';
 }
 
@@ -526,10 +536,15 @@ async function mountStudentPage({ url }) {
   window.__SBI_APP_SHELL_MOUNTING_STUDENT_COURSES = true;
 
   try {
-    const module = await import('/student/js/mes-cours.js?v=8.0P.167.156');
+    const module = await import('/student/js/mes-cours.js?v=8.0P.167.144');
     const cleanup = module.mountStudentCourses?.({ source: 'pjax-student-courses' });
 
     if (typeof cleanup === 'function') registerCleanup(cleanup, 'student-courses');
+
+    const promotionModule = await import('/student/js/student-promotion-course-view.js?v=8.0P.167.144');
+    const cleanupPromotionView = promotionModule.mountStudentPromotionCourseView?.({ source: 'pjax-student-courses' });
+
+    if (typeof cleanupPromotionView === 'function') registerCleanup(cleanupPromotionView, 'student-promotion-course-view');
   } finally {
     window.__SBI_APP_SHELL_MOUNTING_STUDENT_COURSES = false;
   }
@@ -613,14 +628,14 @@ async function mountTeacherCourses({ url }) {
    */
   window.__SBI_APP_SHELL_MOUNTING_TEACHER_COURSES_LIBRARY = true;
   try {
-    const libraryModule = await import('/teacher/js/teacher-courses-library.js?v=8.0P.167.146');
+    const libraryModule = await import('/teacher/js/teacher-courses-library.js?v=8.0P.167.138');
     const cleanupTeacherLibrary = libraryModule.mountTeacherCoursesLibrary?.({ source: 'pjax-teacher-courses' });
 
     if (typeof cleanupTeacherLibrary === 'function') {
       registerCleanup(cleanupTeacherLibrary, 'teacher-courses-library');
     }
 
-    const promotionModule = await import('/teacher/js/teacher-promotion-planning-select.js?v=8.0P.167.146');
+    const promotionModule = await import('/teacher/js/teacher-promotion-planning-select.js?v=8.0P.167.144');
     const cleanupPromotionSelect = promotionModule.mountTeacherPromotionPlanningSelect?.({ source: 'pjax-teacher-courses' });
 
     if (typeof cleanupPromotionSelect === 'function') {
@@ -671,6 +686,52 @@ async function mountTeacherCourses({ url }) {
   return { viewKey: 'teacher:courses' };
 }
 
+async function mountCourseEditorV2Page({ url, role = 'teacher' }) {
+  const isAdmin = role === 'admin';
+  if (isAdmin) maybeCacheAdminIndexMain('leave-for-admin-course-editor-v2');
+
+  const doc = await fetchAdminDocument(url);
+
+  await ensureDocumentStyles(doc, url.href);
+  await loadQuillIfNeeded(loadScriptOnce);
+
+  applyBodyRouteClassesFromDocument(doc, [
+    'sbi-course-editor-page',
+    isAdmin ? 'sbi-admin-surface' : 'sbi-teacher-surface',
+    !isAdmin ? 'no-right-panel' : ''
+  ].filter(Boolean));
+  replaceMainFromDocument(doc);
+  updateAdminChromeFromDocument(doc, isAdmin ? 'Éditeur cours V2 - SBI Admin' : 'Éditeur cours V2 - SBI Teacher');
+  setLeftNavActive(isAdmin ? 'nav-formations' : '/teacher/mes-cours.html');
+  updateUrlContext(url);
+
+  window.__SBI_APP_SHELL_MOUNTING_COURSE_EDITOR_V2 = true;
+
+  try {
+    const module = await import('/js/course-editor-v2/course-editor-v2.js?v=8.0P.167.170');
+    const cleanup = module.mountCourseEditorV2?.({
+      source: isAdmin ? 'pjax-admin-course-editor-v2' : 'pjax-teacher-course-editor-v2',
+      force: true
+    });
+
+    if (typeof cleanup === 'function') {
+      registerCleanup(cleanup, isAdmin ? 'admin-course-editor-v2' : 'teacher-course-editor-v2');
+    }
+  } finally {
+    window.__SBI_APP_SHELL_MOUNTING_COURSE_EDITOR_V2 = false;
+  }
+
+  return { viewKey: isAdmin ? 'admin:course-editor-v2' : 'teacher:course-editor-v2' };
+}
+
+async function mountTeacherCourseEditorV2({ url }) {
+  return mountCourseEditorV2Page({ url, role: 'teacher' });
+}
+
+async function mountAdminCourseEditorV2({ url }) {
+  return mountCourseEditorV2Page({ url, role: 'admin' });
+}
+
 async function mountTeacherProfile({ url }) {
   const doc = await fetchAdminDocument(url);
 
@@ -709,11 +770,13 @@ export function createRouteRegistry() {
   const routes = [];
 
   routes.push({ id: 'teacher-dashboard', canHandle(url) { return isTeacherDashboard(url) && isTeacherShellContext(); }, mount: mountTeacherDashboard });
+  routes.push({ id: 'teacher-course-editor-v2', canHandle(url) { return isTeacherCourseEditorV2(url) && isTeacherShellContext(); }, mount: mountTeacherCourseEditorV2 });
   routes.push({ id: 'teacher-courses', canHandle(url) { return isTeacherCourses(url) && isTeacherShellContext(); }, mount: mountTeacherCourses });
   routes.push({ id: 'teacher-profile', canHandle(url) { return isTeacherProfile(url) && isTeacherShellContext(); }, mount: mountTeacherProfile });
   routes.push({ id: 'student-profile', canHandle(url) { return isStudentProfile(url) && isStudentShellContext(); }, mount: mountStudentProfile });
   routes.push({ id: 'student-dashboard', canHandle(url) { return isStudentDashboard(url) && isStudentShellContext(); }, mount: mountStudentPage });
   routes.push({ id: 'student-courses', canHandle(url) { return isStudentCourses(url) && isStudentShellContext(); }, mount: mountStudentPage });
+  routes.push({ id: 'admin-course-editor-v2', canHandle(url) { return isAdminCourseEditorV2(url) && isAdminShellContext(); }, mount: mountAdminCourseEditorV2 });
   routes.push({ id: 'admin-courses', canHandle(url) { return isAdminCourses(url) && isAdminShellContext(); }, mount: mountAdminCourses });
   routes.push({ id: 'admin-profile', canHandle(url) { return isAdminProfile(url) && isAdminShellContext(); }, mount: mountAdminProfile });
   routes.push({ id: 'admin-accounts', canHandle(url) { return isAdminAccounts(url) && isAdminShellContext(); }, mount: mountAdminAccounts });
