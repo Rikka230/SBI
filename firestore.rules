@@ -726,12 +726,12 @@ service cloud.firestore {
        ============================================================ */
 
     match /courses/{courseId} {
-      // 8.0P.167.152 : passe-droit viewer direct par ID pour tout compte connecté actif.
-      // Le list reste strictement filtré : on ne permet pas l'exploration globale des cours.
-      // Objectif : un cours déjà connu via le coursePlan de promotion doit pouvoir s'ouvrir
-      // même s'il vient d'une autre formation et même si le rôle legacy n'est pas reconnu.
-      allow get: if canReadCourse(courseId, resource.data)
-        || signedIn();
+      // 8.0P.167.153 : passe-droit viewer direct strictement par ID.
+      // Important : on ne passe plus par canReadCourse() pour get, car certains anciens
+      // documents cours n'ont pas tous les champs attendus et peuvent faire échouer
+      // l'évaluation des règles avant d'arriver au signedIn().
+      // Le list reste filtré : pas d'exploration globale de la collection courses.
+      allow get: if signedIn();
       allow list: if canReadCourse(courseId, resource.data);
 
       allow create: if isAdmin()
