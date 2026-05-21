@@ -1,3 +1,64 @@
+function normalizeString(value) {
+    return value == null ? '' : String(value).trim();
+}
+
+function normalizeList(values) {
+    if (!Array.isArray(values)) return [];
+    return Array.from(new Set(values.map(normalizeString).filter(Boolean)));
+}
+
+function escapeHtml(value = '') {
+    return normalizeString(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function getFormationRefs(formation = {}) {
+    return normalizeList([
+        formation.id,
+        formation.titre,
+        ...(Array.isArray(formation.aliases) ? formation.aliases : [])
+    ]);
+}
+
+function getCourseFormationRefs(course = {}) {
+    return normalizeList([
+        ...(Array.isArray(course.formations) ? course.formations : []),
+        ...(Array.isArray(course.formationIds) ? course.formationIds : []),
+        ...(Array.isArray(course.formationsIds) ? course.formationsIds : []),
+        ...(Array.isArray(course.targetFormationIds) ? course.targetFormationIds : []),
+        ...(Array.isArray(course.targetFormationTitles) ? course.targetFormationTitles : [])
+    ]);
+}
+
+function courseMatchesFormationRefs(course = {}, refs = []) {
+    const safeRefs = normalizeList(refs);
+    if (!safeRefs.length) return true;
+
+    const courseRefs = getCourseFormationRefs(course);
+    return courseRefs.some((ref) => safeRefs.includes(ref));
+}
+
+function getSelectedFormationRefsFromDom() {
+    const refs = [];
+
+    document.querySelectorAll('.formation-pill.selected').forEach((pill) => {
+        refs.push(pill.getAttribute('data-val'));
+        refs.push(pill.textContent);
+    });
+
+    return normalizeList(refs);
+}
+
+function getVisibleFormationRefs(state) {
+    const refs = [];
+    getAccessibleFormations(state).forEach((formation) => refs.push(...getFormationRefs(formation)));
+    return normalizeList(refs);
+}
+
 export function getAccessibleFormations(state) {
     if (!state.currentUserProfile) return [];
 
@@ -63,8 +124,8 @@ export function renderFormationsList(state) {
         const html = `
             <div style="background: var(--bg-card); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); display: flex; flex-direction: column; justify-content: space-between;">
                 <div style="margin-bottom: 1rem;">
-                    <h3 style="margin-top: 0; margin-bottom: 0.2rem; color: var(--accent-blue);">${form.titre}</h3>
-                    <p style="font-size: 0.75rem; color: #666; margin: 0 0 1rem 0; font-style: italic;">Créé par ${authorName}</p>
+                    <h3 style="margin-top: 0; margin-bottom: 0.2rem; color: var(--accent-blue);">${escapeHtml(form.titre)}</h3>
+                    <p style="font-size: 0.75rem; color: #666; margin: 0 0 1rem 0; font-style: italic;">Créé par ${escapeHtml(authorName)}</p>
 
                     <p style="font-size: 0.85rem; color: var(--text-muted); margin:0; line-height: 1.4;">
                         <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24" style="vertical-align: middle; margin-right: 4px;"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
@@ -75,7 +136,7 @@ export function renderFormationsList(state) {
                         <span style="vertical-align: middle;">${sCount} élève(s) inscrit(s)</span>
                     </p>
                 </div>
-                <button class="action-btn btn-edit-formation" data-id="${form.id}" style="margin-bottom:0; justify-content:center;">Modifier les accès</button>
+                <button class="action-btn btn-edit-formation" data-id="${escapeHtml(form.id)}" style="margin-bottom:0; justify-content:center;">Modifier les accès</button>
             </div>
         `;
 
@@ -126,9 +187,9 @@ export function openFormationModal(state, formationId) {
         const checkboxHtml = `
             <div class="compact-user-row" style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; padding-right: 0.5rem;">
                 <label style="display: flex; align-items: center; gap: 0.5rem; flex-grow: 1; margin: 0; cursor: pointer; overflow: hidden;">
-                    <input type="checkbox" class="cb-formation-user compact-cb" data-uid="${u.id}" data-role="${u.role}" ${isChecked}>
+                    <input type="checkbox" class="cb-formation-user compact-cb" data-uid="${escapeHtml(u.id)}" data-role="${escapeHtml(u.role)}" ${isChecked}>
                     <span style="font-size: 0.85rem; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; width: 100%;">
-                        ${name}
+                        ${escapeHtml(name)}
                     </span>
                 </label>
             </div>
@@ -149,11 +210,14 @@ export function renderFormationsPillsAndFilters(state) {
         selector.innerHTML = '';
 
         visibleFormations.forEach(form => {
-            selector.insertAdjacentHTML('beforeend', `<span class="formation-pill" data-val="${form.id}">${form.titre}</span>`);
+            selector.insertAdjacentHTML('beforeend', `<span class="formation-pill" data-val="${escapeHtml(form.id)}">${escapeHtml(form.titre)}</span>`);
         });
 
         document.querySelectorAll('.formation-pill').forEach(pill => {
-            pill.addEventListener('click', (e) => e.target.classList.toggle('selected'));
+            pill.addEventListener('click', (e) => {
+                e.target.classList.toggle('selected');
+                refreshBlocsList(state);
+            });
         });
     }
 
@@ -163,7 +227,7 @@ export function renderFormationsPillsAndFilters(state) {
         filter.innerHTML = '<option value="all">Toutes les Catégories</option>';
 
         visibleFormations.forEach(form => {
-            filter.insertAdjacentHTML('beforeend', `<option value="${form.id}">${form.titre}</option>`);
+            filter.insertAdjacentHTML('beforeend', `<option value="${escapeHtml(form.id)}">${escapeHtml(form.titre)}</option>`);
         });
     }
 }
@@ -172,23 +236,52 @@ export function refreshBlocsList(state) {
     const select = document.getElementById('course-bloc-select');
     if (!select) return;
 
-    const currentVal = select.value;
+    const currentVal = normalizeString(select.value);
+    const selectedRefs = getSelectedFormationRefsFromDom();
+    const visibleFormationRefs = getVisibleFormationRefs(state);
+    const targetRefs = selectedRefs.length ? selectedRefs : visibleFormationRefs;
     const blocsSet = new Set();
 
-    state.allCoursesData.forEach(c => {
-        if (c.bloc) blocsSet.add(c.bloc);
+    state.allCoursesData.forEach((course) => {
+        const bloc = normalizeString(course?.bloc);
+        if (!bloc) return;
+
+        const courseRefs = getCourseFormationRefs(course);
+
+        if (selectedRefs.length > 0 && !courseMatchesFormationRefs(course, selectedRefs)) return;
+
+        if (selectedRefs.length === 0 && visibleFormationRefs.length > 0 && courseRefs.length > 0 && !courseMatchesFormationRefs(course, visibleFormationRefs)) return;
+
+        blocsSet.add(bloc);
     });
 
-    select.innerHTML = '<option value="">-- Aucun Bloc --</option>';
+    if (currentVal) blocsSet.add(currentVal);
 
-    Array.from(blocsSet).sort().forEach(bloc => {
+    const hasSelectedFormation = selectedRefs.length > 0;
+    const sortedBlocs = Array.from(blocsSet).sort((a, b) => a.localeCompare(b, 'fr', { sensitivity: 'base' }));
+
+    select.innerHTML = '<option value="">-- Aucun bloc --</option>';
+
+    if (sortedBlocs.length === 0) {
+        const emptyOpt = document.createElement('option');
+        emptyOpt.value = '';
+        emptyOpt.disabled = true;
+        emptyOpt.textContent = hasSelectedFormation
+            ? 'Aucun bloc partagé pour cette formation'
+            : 'Aucun bloc partagé disponible';
+        select.appendChild(emptyOpt);
+    }
+
+    sortedBlocs.forEach((bloc) => {
         const opt = document.createElement('option');
         opt.value = bloc;
-        opt.textContent = bloc;
+        opt.textContent = bloc === currentVal && !Array.from(blocsSet).includes(bloc)
+            ? `${bloc} (nouveau)`
+            : bloc;
         select.appendChild(opt);
     });
 
-    if (currentVal && blocsSet.has(currentVal)) {
+    if (currentVal) {
         select.value = currentVal;
     }
 }

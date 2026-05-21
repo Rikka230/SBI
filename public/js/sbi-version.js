@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.157',
+  version: '8.0P.167.158',
   branch: 'main',
-  channel: 'P2J.1 MODULAR COURSE AUTHORING FOUNDATION',
-  stage: 'COURSE ACTIVITY REGISTRY AND QUIZ SCHEMA FOUNDATION',
+  channel: 'P2J.2 SHARED COURSE BLOCKS',
+  stage: 'COURSE AUTHORING SHARED BLOCKS BY FORMATION',
   updatedAt: '2026-05-21',
-  label: 'SBI 8.0P.167.157 - Modular course authoring foundation'
+  label: 'SBI 8.0P.167.158 - Shared course blocks by formation'
 };
 
 export function getSbiVersionLabel() {
