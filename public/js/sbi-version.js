@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.173',
+  version: '8.0P.167.174',
   branch: 'main',
-  channel: 'P2J.3D COURSE EDITOR V2 UX PATCH',
-  stage: 'EDITOR V2 FIXED BANK SETTINGS PICKER PREVIEW AND NEW COURSE BRIDGE',
+  channel: 'P2J.3D COURSE EDITOR V2 POLISH PATCH',
+  stage: 'EDITOR V2 DOCKED BANK NO LEGACY AND SBI DIALOGS',
   updatedAt: '2026-05-21',
-  label: 'SBI 8.0P.167.173 - Course editor V2 bank fixed picker preview and bridge fixes'
+  label: 'SBI 8.0P.167.174 - Course editor V2 docked bank no legacy and SBI dialogs'
 };
 
 export function getSbiVersionLabel() {

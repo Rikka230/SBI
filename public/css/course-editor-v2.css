@@ -842,7 +842,7 @@ body.sbi-editor-v2 {
   font-size: 0.9rem;
 }
 
-/* 8.0P.167.172 - Shared block picker, left preview, fixed block bank, SBI Quill presets. */
+/* 8.0P.167.174 - Shared block picker, left preview, fixed block bank, SBI Quill presets. */
 #sbi-course-editor-v2.sbi-editor-v2--teacher,
 #sbi-course-editor-v2[data-editor-role="teacher"],
 .sbi-editor-v2--teacher #sbi-course-editor-v2 {
@@ -982,7 +982,7 @@ body.sbi-editor-v2 {
 }
 
 
-/* 8.0P.167.173 - UX fixes: settings picker, fixed viewport bank, mini viewer preview. */
+/* 8.0P.167.174 - UX fixes: settings picker, fixed viewport bank, mini viewer preview. */
 .sbi-shared-block-picker--select-only {
   grid-template-columns: 1fr;
 }
@@ -1083,4 +1083,99 @@ body.sbi-editor-v2 {
   #sbi-course-editor-v2 .sbi-editor-shell {
     padding-bottom: 132px !important;
   }
+}
+
+/* 8.0P.167.174 - Dock banque de blocs on the real viewport/app shell, not at page flow level. */
+#sbi-course-editor-v2 .sbi-editor-shell {
+  padding-bottom: 136px !important;
+}
+#sbi-course-editor-v2 .sbi-editor-grid {
+  margin-bottom: 1.5rem !important;
+}
+.app-container > .sbi-block-bank.sbi-block-bank--viewport,
+#app-container > .sbi-block-bank.sbi-block-bank--viewport {
+  position: fixed !important;
+  left: calc(var(--left-panel-width, 230px) + 2rem) !important;
+  right: 2rem !important;
+  bottom: 0 !important;
+  width: auto !important;
+  max-width: none !important;
+  margin: 0 !important;
+  z-index: 260 !important;
+  border-radius: 20px 20px 0 0 !important;
+  box-shadow: 0 -18px 48px rgba(15, 23, 42, 0.18) !important;
+  transform: none !important;
+}
+.app-container.left-collapsed > .sbi-block-bank.sbi-block-bank--viewport,
+#app-container.left-collapsed > .sbi-block-bank.sbi-block-bank--viewport {
+  left: calc(var(--left-panel-mini-width, 60px) + 2rem) !important;
+}
+.app-container > .sbi-block-bank.sbi-block-bank--viewport .sbi-bank-chips,
+#app-container > .sbi-block-bank.sbi-block-bank--viewport .sbi-bank-chips {
+  align-items: center;
+}
+@media (max-width: 1024px) {
+  .app-container > .sbi-block-bank.sbi-block-bank--viewport,
+  #app-container > .sbi-block-bank.sbi-block-bank--viewport {
+    left: calc(var(--left-panel-width, 230px) + 1rem) !important;
+    right: 1rem !important;
+  }
+}
+@media (max-width: 768px) {
+  .app-container > .sbi-block-bank.sbi-block-bank--viewport,
+  #app-container > .sbi-block-bank.sbi-block-bank--viewport {
+    left: 0.5rem !important;
+    right: 0.5rem !important;
+  }
+  #sbi-course-editor-v2 .sbi-editor-shell {
+    padding-bottom: 156px !important;
+  }
+}
+
+/* 8.0P.167.174 - SBI in-page dialog, no browser-native confirm/alert windows. */
+.sbi-editor-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(15, 23, 42, 0.46);
+  backdrop-filter: blur(10px);
+}
+.sbi-editor-dialog {
+  width: min(460px, calc(100vw - 2rem));
+  border: 1px solid var(--editor-border, rgba(15, 23, 42, 0.12));
+  border-radius: 22px;
+  background: var(--editor-surface, #fff);
+  color: var(--editor-text, #0f172a);
+  box-shadow: 0 26px 90px rgba(15, 23, 42, 0.28);
+  overflow: hidden;
+}
+.sbi-editor-dialog__head {
+  padding: 1.1rem 1.2rem 0.7rem;
+  border-bottom: 1px solid var(--editor-border, rgba(15, 23, 42, 0.12));
+}
+.sbi-editor-dialog__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 950;
+  letter-spacing: -0.02em;
+}
+.sbi-editor-dialog__body {
+  padding: 1rem 1.2rem;
+  color: var(--editor-muted, #667085);
+  line-height: 1.55;
+  font-size: 0.92rem;
+}
+.sbi-editor-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.65rem;
+  padding: 0 1.2rem 1.2rem;
+}
+.sbi-editor-dialog__confirm[data-tone="danger"] {
+  color: #fff;
+  border-color: transparent;
+  background: linear-gradient(135deg, #ef4444, #fb7185);
 }

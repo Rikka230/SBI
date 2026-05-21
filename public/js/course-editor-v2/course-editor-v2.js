@@ -26,7 +26,7 @@ import {
 } from '/admin/js/course-media-storage.js';
 
 const MAX_QUERY_VALUES = 10;
-const VERSION = '8.0P.167.173';
+const VERSION = '8.0P.167.174';
 
 const BLOCK_TYPES = [
   { type: 'course_info', label: 'Course Info', subtitle: 'Informations générales', icon: 'i', static: true },
@@ -243,18 +243,29 @@ function renderFatalEditorError(error) {
 
 
 function updateFixedBlockBankOffset() {
-  const bank = document.querySelector('#sbi-course-editor-v2 .sbi-block-bank');
-  const main = document.getElementById('main-content');
-  if (!bank || !main) return;
+  const bank = document.querySelector('.sbi-block-bank');
+  const app = document.getElementById('app-container');
+  if (!bank || !app) return;
 
-  const rect = main.getBoundingClientRect();
-  const left = Math.max(8, Math.round(rect.left + 16));
+  bank.classList.add('sbi-block-bank--viewport');
+  bank.dataset.editorBank = 'viewport';
+  if (bank.parentElement !== app) app.appendChild(bank);
+
+  const isMobile = window.matchMedia('(max-width: 768px)').matches;
+  const collapsed = app.classList.contains('left-collapsed');
+  const leftPanel = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--left-panel-width')) || 230;
+  const leftMini = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--left-panel-mini-width')) || 60;
+  const left = isMobile ? 8 : (collapsed ? leftMini + 24 : leftPanel + 24);
+  const right = isMobile ? 8 : 24;
+
   bank.style.position = 'fixed';
   bank.style.left = `${left}px`;
-  bank.style.right = '16px';
+  bank.style.right = `${right}px`;
   bank.style.bottom = '0px';
   bank.style.width = 'auto';
+  bank.style.maxWidth = 'none';
   bank.style.margin = '0';
+  bank.style.zIndex = '260';
 }
 
 function scheduleFixedBlockBankOffset() {
@@ -745,7 +756,7 @@ function renderSharedBlockPicker(prefix, value = state.course.bloc, { allowCreat
 function addLocalSharedBlockOption(rawValue = '') {
   const value = normalizeBlockTitle(rawValue || $('#editor-course-bloc')?.value || $('#settings-bloc')?.value);
   if (!value) {
-    alert('Saisis d’abord un nom de bloc partagé.');
+    void openSbiAlert('Bloc partagé', 'Saisis d’abord un nom de bloc partagé.');
     return false;
   }
 
@@ -777,6 +788,65 @@ async function navigateShellAware(href, { historyMode = 'push', source = 'course
   }
   window.location.assign(target.href);
   return false;
+}
+
+function openSbiDialog({
+  title = 'Confirmation',
+  message = '',
+  confirmText = 'Confirmer',
+  cancelText = 'Annuler',
+  tone = 'default',
+  showCancel = true
+} = {}) {
+  return new Promise((resolve) => {
+    const previous = document.querySelector('.sbi-editor-dialog-backdrop');
+    previous?.remove?.();
+
+    const backdrop = document.createElement('div');
+    backdrop.className = 'sbi-editor-dialog-backdrop';
+    backdrop.setAttribute('role', 'dialog');
+    backdrop.setAttribute('aria-modal', 'true');
+    backdrop.innerHTML = `
+      <div class="sbi-editor-dialog">
+        <div class="sbi-editor-dialog__head">
+          <h3 class="sbi-editor-dialog__title">${escapeHtml(title)}</h3>
+        </div>
+        <div class="sbi-editor-dialog__body">${escapeHtml(message)}</div>
+        <div class="sbi-editor-dialog__actions">
+          ${showCancel ? `<button class="sbi-editor-btn sbi-editor-dialog__cancel" type="button">${escapeHtml(cancelText)}</button>` : ''}
+          <button class="sbi-editor-btn sbi-editor-btn--primary sbi-editor-dialog__confirm" data-tone="${escapeHtml(tone)}" type="button">${escapeHtml(confirmText)}</button>
+        </div>
+      </div>
+    `;
+
+    const close = (value) => {
+      backdrop.remove();
+      resolve(value);
+    };
+
+    backdrop.querySelector('.sbi-editor-dialog__confirm')?.addEventListener('click', () => close(true));
+    backdrop.querySelector('.sbi-editor-dialog__cancel')?.addEventListener('click', () => close(false));
+    backdrop.addEventListener('click', (event) => {
+      if (event.target === backdrop) close(false);
+    });
+    backdrop.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') close(false);
+    });
+
+    document.body.appendChild(backdrop);
+    backdrop.tabIndex = -1;
+    backdrop.focus({ preventScroll: true });
+  });
+}
+
+function openSbiAlert(title, message, { tone = 'default' } = {}) {
+  return openSbiDialog({
+    title,
+    message,
+    confirmText: 'OK',
+    showCancel: false,
+    tone
+  });
 }
 
 function renderStructure() {
@@ -893,6 +963,8 @@ function renderAddControls() {
     });
   });
 
+  scheduleFixedBlockBankOffset();
+
   const defaultButton = $('#course-v2-add-default');
   if (defaultButton && defaultButton.dataset.sbiAddBound !== 'true') {
     defaultButton.dataset.sbiAddBound = 'true';
@@ -909,10 +981,17 @@ function addBlock(type) {
   renderAll();
 }
 
-function deleteActiveBlock() {
+async function deleteActiveBlock() {
   const active = getActiveBlock();
   if (!active) return;
-  if (!confirm('Supprimer ce bloc du cours ?')) return;
+  const confirmed = await openSbiDialog({
+    title: 'Supprimer ce bloc ?',
+    message: `Le bloc “${active.title || getBlockMeta(active.type).label}” sera retiré du cours. Cette action sera appliquée après sauvegarde.`,
+    confirmText: 'Supprimer',
+    cancelText: 'Annuler',
+    tone: 'danger'
+  });
+  if (!confirmed) return;
   clearPendingMediaForChapter(active.id);
   state.course.learningBlocks = state.course.learningBlocks.filter((block) => block.id !== active.id);
   state.activeBlockId = state.course.learningBlocks[0]?.id || 'course_info';
@@ -1100,7 +1179,7 @@ function handleV2MediaFile(type, file, block, input = null) {
     renderPreview();
   } catch (error) {
     if (input) input.value = '';
-    alert(error.message || 'Média impossible à ajouter.');
+    void openSbiAlert('Média impossible à ajouter', error.message || 'Vérifie le format du fichier.', { tone: 'danger' });
   }
 }
 
@@ -1496,7 +1575,7 @@ function bindEditorInputs() {
   $('#editor-course-competency')?.addEventListener('input', (event) => { state.course.competency = event.target.value; markDirty(); });
   $('#editor-course-qualiopi')?.addEventListener('change', (event) => { state.course.qualiopiEvidence = event.target.value; markDirty(); });
 
-  $('#editor-delete-block')?.addEventListener('click', deleteActiveBlock);
+  $('#editor-delete-block')?.addEventListener('click', () => { void deleteActiveBlock(); });
   $('#editor-duplicate-block')?.addEventListener('click', duplicateActiveBlock);
 
   const active = getActiveBlock();
@@ -1661,7 +1740,16 @@ function saveActiveEditorValues() {
 function bindGlobalActions() {
   $('#course-v2-back-library')?.addEventListener('click', async (event) => {
     event.preventDefault();
-    if (state.dirty && !confirm('Des modifications ne sont pas enregistrées. Retourner à la bibliothèque ?')) return;
+    if (state.dirty) {
+      const confirmed = await openSbiDialog({
+        title: 'Quitter sans enregistrer ?',
+        message: 'Des modifications ne sont pas enregistrées. Tu peux revenir à la bibliothèque, mais les changements non sauvegardés seront perdus.',
+        confirmText: 'Retour bibliothèque',
+        cancelText: 'Rester ici',
+        tone: 'danger'
+      });
+      if (!confirmed) return;
+    }
     state.dirty = false;
     await navigateShellAware(getBackUrl(), { source: 'course-editor-v2-back' });
   });
@@ -1754,7 +1842,7 @@ function buildCoursePayload(action = 'draft') {
 async function saveCourse(action = 'draft', { silent = false } = {}) {
   saveActiveEditorValues();
   if (!state.course.title.trim()) {
-    alert('Ajoute un titre de cours avant de sauvegarder.');
+    await openSbiAlert('Titre manquant', 'Ajoute un titre de cours avant de sauvegarder.');
     return;
   }
   if (!state.course.learningBlocks.length) {
@@ -1802,7 +1890,7 @@ async function saveCourse(action = 'draft', { silent = false } = {}) {
   } catch (error) {
     console.error('[SBI Course Editor V2] Sauvegarde impossible :', error);
     setStatus('Erreur de sauvegarde', 'error');
-    alert(`Sauvegarde impossible : ${error.message || 'erreur inconnue'}`);
+    await openSbiAlert('Sauvegarde impossible', error.message || 'Erreur inconnue', { tone: 'danger' });
   }
 }
 
@@ -1967,6 +2055,8 @@ function boot() {
   try {
     mountShell();
     bindGlobalActions();
+    scheduleFixedBlockBankOffset();
+    window.addEventListener('resize', scheduleFixedBlockBankOffset);
 
     activeAuthUnsubscribe = onAuthStateChanged(auth, async (user) => {
       releasePreloadSafety();

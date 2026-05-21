@@ -695,7 +695,7 @@ async function mountCourseEditorV2Page({ url, role = 'teacher' }) {
   await ensureDocumentStyles(doc, url.href);
   await loadQuillIfNeeded(loadScriptOnce);
 
-  // 8.0P.167.172 : en PJAX, le body du document courant ne garde pas
+  // 8.0P.167.174 : en PJAX, le body du document courant ne garde pas
   // automatiquement les classes de la page éditeur. Sans ces classes, les
   // variables CSS de l'éditeur V2 disparaissent et la page devient quasi
   // brute/minuscule. On force donc les classes complètes du thème embarqué.
@@ -715,7 +715,7 @@ async function mountCourseEditorV2Page({ url, role = 'teacher' }) {
   window.__SBI_APP_SHELL_MOUNTING_COURSE_EDITOR_V2 = true;
 
   try {
-    const module = await import('/js/course-editor-v2/course-editor-v2.js?v=8.0P.167.173');
+    const module = await import('/js/course-editor-v2/course-editor-v2.js?v=8.0P.167.174');
     const cleanup = module.mountCourseEditorV2?.({
       source: isAdmin ? 'pjax-admin-course-editor-v2' : 'pjax-teacher-course-editor-v2',
       force: true

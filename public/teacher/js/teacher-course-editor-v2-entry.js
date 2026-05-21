@@ -1,14 +1,13 @@
 /**
- * SBI 8.0P.167.173 - Teacher course editor V2 entry bridge
+ * SBI 8.0P.167.174 - Teacher course editor V2 entry bridge
  *
- * Transition contrôlée : la bibliothèque prof garde son rendu validé,
- * mais Nouveau cours / Modifier ouvrent la page dédiée V2.
- * L'ancien éditeur reste accessible en fallback par carte.
+ * La V2 devient l’entrée officielle côté professeur :
+ * - + Nouveau cours ouvre /teacher/course-editor.html
+ * - Modifier ouvre /teacher/course-editor.html?id=...
+ * - l’ancien éditeur n’est plus proposé dans l’interface.
  */
 
 const V2_EDITOR_PATH = '/teacher/course-editor.html';
-const LEGACY_WAIT_MAX = 24;
-const LEGACY_WAIT_DELAY = 125;
 
 function normalizeString(value) {
   return value == null ? '' : String(value).trim();
@@ -35,56 +34,35 @@ async function goToV2(courseId = '') {
   window.location.href = target;
 }
 
-function ensureLegacyTabVisible() {
+function hideLegacyEditorAccess() {
   const navEditor = document.getElementById('nav-tab-editor');
-  if (navEditor) navEditor.style.display = '';
-
-  if (typeof window.switchCourseTab === 'function') {
-    window.switchCourseTab('tab-editor');
-  } else {
-    document.querySelectorAll('.student-sub-nav-item').forEach((item) => item.classList.remove('active'));
-    document.querySelectorAll('.student-view').forEach((view) => view.classList.remove('active'));
-    navEditor?.classList.add('active');
-    document.getElementById('tab-editor')?.classList.add('active');
-  }
-}
-
-function openLegacyEditor(courseId, attempt = 0) {
-  const safeCourseId = normalizeString(courseId);
-  if (!safeCourseId) return;
-
-  ensureLegacyTabVisible();
-
-  if (typeof window.editCourse === 'function') {
-    window.editCourse(safeCourseId);
-    return;
+  if (navEditor) {
+    navEditor.style.display = 'none';
+    navEditor.classList.remove('active');
+    navEditor.dataset.sbiV2Hidden = 'true';
   }
 
-  if (attempt < LEGACY_WAIT_MAX) {
-    window.setTimeout(() => openLegacyEditor(safeCourseId, attempt + 1), LEGACY_WAIT_DELAY);
-    return;
-  }
+  const tabEditor = document.getElementById('tab-editor');
+  if (tabEditor) tabEditor.classList.remove('active');
 
-  window.location.href = `/teacher/mes-cours.html?edit=${encodeURIComponent(safeCourseId)}`;
+  const tabList = document.getElementById('tab-list');
+  if (tabList && !tabList.classList.contains('active')) tabList.classList.add('active');
+
+  const firstTab = document.querySelector('.student-sub-nav-item');
+  if (firstTab && !firstTab.classList.contains('active')) firstTab.classList.add('active');
+
+  document.querySelectorAll('[data-teacher-legacy-edit-course], .teacher-course-btn--legacy').forEach((node) => node.remove());
 }
 
 function decorateTeacherCourseCards(root = document) {
+  hideLegacyEditorAccess();
   root.querySelectorAll('[data-teacher-edit-course]').forEach((button) => {
     const courseId = normalizeString(button.getAttribute('data-teacher-edit-course'));
-    if (!courseId || button.dataset.sbiV2Decorated === 'true') return;
+    if (!courseId) return;
 
     button.dataset.sbiV2Decorated = 'true';
-    button.textContent = 'Modifier V2';
-    button.title = 'Ouvrir ce cours dans le nouvel éditeur dédié';
-
-    const fallback = document.createElement('button');
-    fallback.type = 'button';
-    fallback.className = `${button.className || 'teacher-course-btn teacher-course-btn--secondary'} teacher-course-btn--legacy`;
-    fallback.dataset.teacherLegacyEditCourse = courseId;
-    fallback.textContent = 'Ancien éditeur';
-    fallback.title = 'Ouvrir ce cours avec l’éditeur historique';
-
-    button.insertAdjacentElement('afterend', fallback);
+    button.textContent = 'Modifier';
+    button.title = 'Ouvrir ce cours dans l’éditeur V2';
   });
 }
 
@@ -93,8 +71,8 @@ function decorateNewCourseButton() {
   if (!button) return;
 
   button.dataset.sbiV2Decorated = 'true';
-  button.textContent = '+ Nouveau cours V2';
-  button.title = 'Créer un cours dans le nouvel éditeur dédié';
+  button.textContent = '+ Nouveau cours';
+  button.title = 'Créer un cours dans l’éditeur V2';
   button.removeAttribute('onclick');
   button.onclick = (event) => {
     event?.preventDefault?.();
@@ -104,16 +82,21 @@ function decorateNewCourseButton() {
   };
 }
 
-function handleV2EntryClick(event) {
-  const legacyButton = event.target.closest?.('[data-teacher-legacy-edit-course]');
-  if (legacyButton) {
-    event.preventDefault();
-    event.stopPropagation();
-    event.stopImmediatePropagation?.();
-    openLegacyEditor(legacyButton.getAttribute('data-teacher-legacy-edit-course'));
-    return true;
-  }
+function installLegacyTabOverride() {
+  if (window.__SBI_TEACHER_V2_SWITCH_OVERRIDE === true) return;
+  window.__SBI_TEACHER_V2_SWITCH_OVERRIDE = true;
 
+  const originalSwitch = window.switchCourseTab;
+  window.switchCourseTab = function patchedSwitchCourseTab(tabId, ...args) {
+    if (tabId === 'tab-editor') {
+      void goToV2();
+      return;
+    }
+    if (typeof originalSwitch === 'function') return originalSwitch.call(this, tabId, ...args);
+  };
+}
+
+function handleV2EntryClick(event) {
   const editButton = event.target.closest?.('[data-teacher-edit-course]');
   if (editButton) {
     const courseId = editButton.getAttribute('data-teacher-edit-course');
@@ -135,7 +118,7 @@ function handleV2EntryClick(event) {
   }
 
   const legacyEditorTab = event.target.closest?.('#nav-tab-editor');
-  if (legacyEditorTab && legacyEditorTab.dataset.sbiAllowLegacyClick !== 'true') {
+  if (legacyEditorTab) {
     event.preventDefault();
     event.stopPropagation();
     event.stopImmediatePropagation?.();
@@ -161,6 +144,7 @@ function installRenderObserver() {
 
   const observer = new MutationObserver(() => {
     decorateTeacherCourseCards(root);
+    decorateNewCourseButton();
   });
 
   observer.observe(root, { childList: true, subtree: true });
@@ -168,17 +152,22 @@ function installRenderObserver() {
 }
 
 function boot() {
+  hideLegacyEditorAccess();
   decorateNewCourseButton();
   decorateTeacherCourseCards();
+  installLegacyTabOverride();
   installClickGuards();
   installRenderObserver();
 
   window.addEventListener('sbi:teacher-library-mounted', () => {
+    hideLegacyEditorAccess();
     decorateNewCourseButton();
     decorateTeacherCourseCards();
+    installLegacyTabOverride();
   });
 
   window.setInterval(() => {
+    hideLegacyEditorAccess();
     decorateNewCourseButton();
     decorateTeacherCourseCards();
   }, 1000);
