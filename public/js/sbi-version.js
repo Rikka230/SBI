@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.145',
+  version: '8.0P.167.146',
   branch: 'main',
-  channel: 'P2I.33 STUDENT PROGRAM READ + TEACHER EDIT FIX',
-  stage: 'STUDENT PROMOTION COURSEPLAN RELAXED + TEACHER EDITOR HISTORY FIX',
+  channel: 'P2I.34 STUDENT PROGRAM SORT FIX',
+  stage: 'STUDENT PROGRAM LIST SORT FIX WITHOUT TEACHER CHANGES',
   updatedAt: '2026-05-21',
-  label: 'SBI 8.0P.167.145 - Student program list and teacher editor fixed'
+  label: 'SBI 8.0P.167.146 - Student program list sort fixed'
 };
 
 export function getSbiVersionLabel() {

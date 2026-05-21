@@ -3,7 +3,7 @@
  * MES COURS - Bibliothèque étudiant SBI
  * =======================================================================
  *
- * 8.0P.167.145 : stabilisation parcours promotion, anti page vide et retour viewer.
+ * 8.0P.167.146 : correction tri Programme élève, plus de page vide au clic formation.
  * Le viewer de cours reste en navigation classique.
  * =======================================================================
  */
@@ -846,7 +846,7 @@ function renderCourseSections(container, coursesInFormation = []) {
 
 function splitCoursesForFormationView(coursesInFormation = []) {
     const safeCourses = Array.isArray(coursesInFormation) ? coursesInFormation.filter((course) => course && course.id) : [];
-    const plannedCourses = sortCourses(safeCourses.filter((course) => getPrimaryCoursePlan(course)));
+    const plannedCourses = safeCourses.filter((course) => getPrimaryCoursePlan(course)).sort(sortCourses);
     const plannedIds = new Set(plannedCourses.map((course) => course.id));
     const complementaryCourses = safeCourses.filter((course) => !plannedIds.has(course.id));
     return { plannedCourses, complementaryCourses };
