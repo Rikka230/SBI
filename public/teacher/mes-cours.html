@@ -215,7 +215,7 @@
             <div class="content-wrapper">
                 <div class="teacher-library-header">
                     <h1 class="teacher-library-title">Mes <span style="color: var(--accent-orange);">Cours</span></h1>
-                    <button id="btn-trigger-new-course" class="action-btn" style="background: var(--accent-orange); color: white; border: none; font-weight: bold; padding: 0.8rem 1.5rem; border-radius: 10px;">
+                    <button id="btn-trigger-new-course" class="action-btn" data-teacher-new-course-v2="true" style="background: var(--accent-orange); color: white; border: none; font-weight: bold; padding: 0.8rem 1.5rem; border-radius: 10px;">
                         + Nouveau Cours
                     </button>
                 </div>
@@ -375,148 +375,33 @@
         </main>
     </div>
 
-    <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
     <script>
-        const toolbarOptions = [
-            [{ 'size': ['small', false, 'large', 'huge'] }],
-            ['bold', 'italic', 'underline', 'strike'],
-            [{ 'color': [] }, { 'background': [] }],
-            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-            [{ 'align': [] }],
-            ['link', 'image', 'video'],
-            ['clean']
-        ];
-
-        let lastQuillSelection = null;
-
-        function rememberQuillSelection(range) {
-            if (range && range.length > 0) {
-                lastQuillSelection = { index: range.index, length: range.length };
-            }
-        }
-
-        window.quill = new Quill('#quill-editor', {
-            theme: 'snow',
-            modules: {
-                toolbar: {
-                    container: toolbarOptions,
-                    handlers: {
-                        size: function(value) {
-                            const quill = this.quill;
-                            const currentRange = quill.getSelection();
-                            const range = currentRange && currentRange.length > 0 ? currentRange : lastQuillSelection;
-
-                            if (range && range.length > 0) {
-                                quill.focus();
-                                quill.setSelection(range.index, range.length, 'silent');
-                                quill.formatText(range.index, range.length, 'size', value || false, 'user');
-                                quill.setSelection(range.index, range.length, 'silent');
-                                rememberQuillSelection(range);
-                            }
-                        }
-                    }
-                }
-            }
-        });
-
-        window.quill.on('selection-change', function(range) { rememberQuillSelection(range); });
-
-        const toolbar = window.quill.getModule('toolbar')?.container;
-        if (toolbar) {
-            ['mousedown', 'pointerdown', 'touchstart'].forEach((eventName) => {
-                toolbar.addEventListener(eventName, function() {
-                    rememberQuillSelection(window.quill.getSelection());
-                }, true);
-            });
-            applyTeacherQuillTooltips(toolbar);
-        }
-
-        function applyTeacherQuillTooltips(toolbarRoot) {
-            const labels = [
-                ['.ql-size', 'Taille du texte'],
-                ['.ql-bold', 'Gras'],
-                ['.ql-italic', 'Italique'],
-                ['.ql-underline', 'Souligner'],
-                ['.ql-strike', 'Barrer'],
-                ['.ql-color', 'Couleur du caractère'],
-                ['.ql-background', 'Surlignage du caractère'],
-                ['.ql-list[value="ordered"]', 'Liste numérotée'],
-                ['.ql-list[value="bullet"]', 'Liste à puces'],
-                ['.ql-align', 'Alignement'],
-                ['.ql-link', 'Ajouter un lien'],
-                ['.ql-image', 'Insérer une image'],
-                ['.ql-video', 'Insérer une vidéo'],
-                ['.ql-clean', 'Nettoyer la mise en forme']
-            ];
-
-            labels.forEach(([selector, label]) => {
-                toolbarRoot.querySelectorAll(selector).forEach((element) => {
-                    decorateTeacherTooltip(element, label);
-
-                    if (element.tagName === 'SELECT') {
-                        const picker = element.nextElementSibling?.classList?.contains('ql-picker') ? element.nextElementSibling : null;
-                        if (picker) {
-                            decorateTeacherTooltip(picker, label);
-                            decorateTeacherTooltip(picker.querySelector('.ql-picker-label'), label);
-                        }
-                    }
-
-                    if (element.classList?.contains('ql-picker')) {
-                        decorateTeacherTooltip(element.querySelector('.ql-picker-label'), label);
-                    }
-                });
-            });
-        }
-
-        function decorateTeacherTooltip(element, label) {
-            if (!element || !label) return;
-            element.dataset.sbiTooltip = label;
-            element.classList.add('sbi-teacher-quill-tooltip-anchor');
-            if (element.tagName === 'BUTTON') element.setAttribute('type', 'button');
-        }
-
         function safeSwitchTab(tabId) {
-            const currentActive = document.querySelector('.student-view.active');
-            if (currentActive && currentActive.id === 'tab-editor' && tabId !== 'tab-editor') {
-                const confirmLeave = confirm("Attention : les modifications non enregistrées seront perdues.\n\nAvez-vous bien cliqué sur Enregistrer avant de quitter ?");
-                if (!confirmLeave) return;
+            if (tabId === 'tab-editor') {
+                const target = '/teacher/course-editor.html';
+                if (typeof window.SBI_APP_SHELL_NAVIGATE === 'function') {
+                    window.SBI_APP_SHELL_NAVIGATE(target, { historyMode: 'push', source: 'teacher-legacy-tab-v2-inline' });
+                    return;
+                }
+                window.location.href = target;
+                return;
             }
 
             document.querySelectorAll('.student-sub-nav-item').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.student-view').forEach(el => el.classList.remove('active'));
-
-            if (tabId === 'tab-list') {
-                document.querySelector('.student-sub-nav-item:nth-child(1)').classList.add('active');
-                document.getElementById('nav-tab-editor').style.display = 'none';
-            } else {
-                document.getElementById('nav-tab-editor').style.display = 'block';
-                document.getElementById('nav-tab-editor').classList.add('active');
-            }
-
-            document.getElementById(tabId).classList.add('active');
+            document.querySelector('.student-sub-nav-item:nth-child(1)')?.classList.add('active');
+            document.getElementById('tab-list')?.classList.add('active');
+            const navEditor = document.getElementById('nav-tab-editor');
+            if (navEditor) navEditor.style.display = 'none';
         }
-
         window.switchCourseTab = safeSwitchTab;
-
-        document.body.addEventListener('change', function(e) {
-            if (e.target.name === 'media_type') {
-                if (e.target.value === 'image') {
-                    document.getElementById('media-image-zone').style.display = 'flex';
-                    document.getElementById('media-video-zone').style.display = 'none';
-                } else {
-                    document.getElementById('media-image-zone').style.display = 'none';
-                    document.getElementById('media-video-zone').style.display = 'flex';
-                }
-            }
-        });
     </script>
 
     <script type="module" src="/admin/js/admin-ui.js?v=8.0P.167.88"></script>
     <script type="module" src="/admin/js/admin-notifications.js?v=8.0P.167.86"></script>
-    <script type="module" src="/admin/js/admin-courses.js?v=8.0P.167.88"></script>
-    <script type="module" src="/teacher/js/teacher-courses-library.js?v=8.0P.167.145"></script>
+    <script type="module" src="/teacher/js/teacher-courses-library.js?v=8.0P.167.176"></script>
     <script type="module" src="/admin/js/tracker.js?v=8.0P.167.44"></script>
-    <script type="module" src="/teacher/js/teacher-promotion-planning-select.js?v=8.0P.167.145"></script>
-    <script type="module" src="/teacher/js/teacher-course-editor-v2-entry.js?v=8.0P.167.168"></script>
+    <script type="module" src="/teacher/js/teacher-promotion-planning-select.js?v=8.0P.167.146"></script>
+    <script type="module" src="/teacher/js/teacher-course-editor-v2-entry.js?v=8.0P.167.176"></script>
 </body>
 </html>

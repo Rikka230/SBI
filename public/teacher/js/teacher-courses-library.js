@@ -11,6 +11,7 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
 
 const COURSE_VIEWER_URL = '/teacher/cours-viewer.html';
+const COURSE_EDITOR_V2_URL = '/teacher/course-editor.html';
 const MAX_QUERY_VALUES = 10;
 
 let activeMountCleanup = null;
@@ -652,7 +653,7 @@ function renderCourseCard(course, { uid, formationMap, authorMap }) {
     : '';
 
   const editButton = isOwnCourse
-    ? `<button class="teacher-course-btn teacher-course-btn--secondary" type="button" data-teacher-edit-course="${escapeHtml(course.id)}">Éditer</button>`
+    ? `<button class="teacher-course-btn teacher-course-btn--secondary" type="button" data-teacher-edit-course="${escapeHtml(course.id)}">Modifier</button>`
     : '';
 
   return `
@@ -680,78 +681,34 @@ function renderCourseCard(course, { uid, formationMap, authorMap }) {
 }
 
 
-function ensureTeacherCourseTabApi() {
-  if (typeof window.switchCourseTab === 'function') return;
-
-  window.switchCourseTab = function switchCourseTab(tabId) {
-    const target = document.getElementById(tabId);
-    if (!target) return;
-
-    document.querySelectorAll('.student-sub-nav-item').forEach((item) => item.classList.remove('active'));
-    document.querySelectorAll('.student-view').forEach((view) => view.classList.remove('active'));
-
-    const navList = document.querySelector('.student-sub-nav-item[onclick*="tab-list"], .student-sub-nav-item[data-sbi-course-tab="tab-list"]');
-    const navEditor = document.getElementById('nav-tab-editor');
-
-    if (tabId === 'tab-editor') {
-      if (navEditor) {
-        navEditor.style.display = '';
-        navEditor.classList.add('active');
-      }
-    } else if (navList) {
-      navList.classList.add('active');
-      if (navEditor) navEditor.style.display = 'none';
-    }
-
-    target.classList.add('active');
-  };
+function buildCourseEditorV2Url(courseId = '') {
+  const safeCourseId = normalizeString(courseId);
+  return safeCourseId ? `${COURSE_EDITOR_V2_URL}?id=${encodeURIComponent(safeCourseId)}` : COURSE_EDITOR_V2_URL;
 }
 
-function editCourseWhenReady(courseId, attempt = 0) {
-  if (typeof window.editCourse === 'function') {
-    window.editCourse(courseId);
-    return;
+async function navigateTeacherCourseEditorV2(courseId = '', { source = 'teacher-library-v2' } = {}) {
+  const target = buildCourseEditorV2Url(courseId);
+  if (typeof window.SBI_APP_SHELL_NAVIGATE === 'function') {
+    try {
+      const handled = await window.SBI_APP_SHELL_NAVIGATE(target, { historyMode: 'push', source });
+      if (handled) return true;
+    } catch (error) {
+      console.warn('[SBI Teacher Library] Navigation V2 PJAX indisponible, fallback classique :', error);
+    }
   }
-
-  if (attempt < 20) {
-    window.setTimeout(() => editCourseWhenReady(courseId, attempt + 1), 150);
-    return;
-  }
-
-  window.location.href = `/teacher/mes-cours.html?edit=${encodeURIComponent(courseId)}`;
+  window.location.href = target;
+  return false;
 }
 
 function openTeacherCourseEditor(courseId = '') {
   const safeCourseId = normalizeString(courseId);
   if (!safeCourseId) return;
-
-  const baseUrl = '/teacher/mes-cours.html';
-  const targetUrl = `${baseUrl}?edit=${encodeURIComponent(safeCourseId)}`;
-
-  try {
-    if (window.location.pathname.endsWith('/teacher/mes-cours.html')) {
-      window.history.replaceState({ sbiTeacherCourseTab: 'list' }, '', baseUrl);
-      window.history.pushState({ sbiTeacherCourseTab: 'editor', courseId: safeCourseId }, '', targetUrl);
-      window.SBI_APP_SHELL_CURRENT_URL = window.location.href;
-    }
-  } catch {}
-
-  ensureTeacherCourseTabApi();
-
-  if (typeof window.switchCourseTab === 'function') {
-    window.switchCourseTab('tab-editor');
-  }
-
-  editCourseWhenReady(safeCourseId);
+  void navigateTeacherCourseEditorV2(safeCourseId, { source: 'teacher-library-edit-v2' });
 }
 
 function handleTeacherLibraryPopState() {
-  const url = new URL(window.location.href);
-  if (!url.pathname.endsWith('/teacher/mes-cours.html')) return;
-  if (url.searchParams.get('edit')) return;
-  if (typeof window.switchCourseTab === 'function') {
-    window.switchCourseTab('tab-list');
-  }
+  // L'ancien onglet éditeur a été retiré côté prof. La navigation retour
+  // est maintenant gérée par le shell PJAX et /teacher/course-editor.html.
 }
 
 function renderEmpty(root, hasFilters = false) {
@@ -794,7 +751,9 @@ function renderLibrary({ root, courses, uid, formations, authorMap = new Map() }
     .join('');
 
   root.querySelectorAll('[data-teacher-edit-course]').forEach((button) => {
-    button.addEventListener('click', () => {
+    button.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
       const courseId = button.getAttribute('data-teacher-edit-course');
       if (!courseId) return;
 

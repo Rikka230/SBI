@@ -26,7 +26,7 @@ import {
 } from '/admin/js/course-media-storage.js';
 
 const MAX_QUERY_VALUES = 10;
-const VERSION = '8.0P.167.175';
+const VERSION = '8.0P.167.176';
 
 const BLOCK_TYPES = [
   { type: 'course_info', label: 'Course Info', subtitle: 'Informations générales', icon: 'i', static: true },
@@ -275,7 +275,7 @@ function scheduleFixedBlockBankOffset() {
 function cleanupEditorFloatingUi(root = activeRoot) {
   document.querySelectorAll('.sbi-editor-dialog-backdrop').forEach((node) => node.remove());
 
-  document.querySelectorAll('.sbi-block-bank.sbi-block-bank--viewport, #app-container > .sbi-block-bank[data-editor-bank="fixed"]').forEach((bank) => {
+  document.querySelectorAll('.sbi-block-bank, [data-editor-bank], .sbi-editor-dialog-backdrop').forEach((bank) => {
     bank.remove();
   });
 
