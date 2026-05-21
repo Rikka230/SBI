@@ -56,7 +56,7 @@ body.sbi-editor-v2 {
   flex-direction: column;
 }
 
-.sbi-editor-topbar {
+.sbi-editor-topbar { /* legacy standalone topbar, not used in embedded mode */
   position: sticky;
   top: 0;
   z-index: 20;
@@ -436,7 +436,7 @@ body.sbi-editor-v2 {
 }
 
 @media (max-width: 900px) {
-  .sbi-editor-topbar { grid-template-columns: 1fr; }
+  .sbi-editor-topbar { /* legacy standalone topbar, not used in embedded mode */ grid-template-columns: 1fr; }
   .sbi-editor-actions { justify-content: flex-start; }
   .sbi-editor-grid { grid-template-columns: 1fr; width: calc(100vw - 1rem); }
   .sbi-editor-left { position: static; max-height: none; }
@@ -444,4 +444,96 @@ body.sbi-editor-v2 {
   .sbi-two-cols,
   .sbi-three-cols { grid-template-columns: 1fr; }
   .sbi-block-bank { grid-template-columns: 1fr; width: calc(100vw - 1rem); }
+}
+
+
+/* 8.0P.167.160 - V2 embedded inside the existing SBI shells.
+   The global top bars and left panels stay owned by teacher/admin layout. */
+.sbi-editor-v2--embedded {
+  background: var(--editor-bg);
+}
+.sbi-editor-v2--embedded .sbi-course-editor-content-wrapper {
+  width: 100%;
+  max-width: none;
+  padding-top: 1.25rem;
+}
+.sbi-editor-v2--embedded .sbi-editor-shell {
+  min-height: auto;
+  gap: 1rem;
+}
+.sbi-editor-page-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  width: min(1880px, 100%);
+  margin: 0 auto;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--editor-border);
+  border-radius: 22px;
+  background: var(--editor-surface);
+  box-shadow: var(--editor-shadow);
+}
+.sbi-editor-page-head__main {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+  flex: 1;
+}
+.sbi-editor-title-stack {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 260px;
+  flex: 1;
+}
+.sbi-editor-title-stack input {
+  min-width: 180px;
+  width: min(560px, 100%);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--editor-text);
+  font-size: 1.05rem;
+  font-weight: 950;
+  outline: none;
+  padding: 0.6rem 0.7rem;
+  border-radius: 12px;
+}
+.sbi-editor-title-stack input:focus {
+  border-color: var(--accent-border);
+  background: var(--editor-surface-2);
+}
+.sbi-editor-grid {
+  width: min(1880px, 100%);
+  margin-top: 0;
+}
+.sbi-block-bank {
+  width: min(1880px, 100%);
+}
+.sbi-editor-left,
+.sbi-editor-right {
+  top: 1rem;
+}
+.sbi-editor-main {
+  min-height: calc(100vh - 220px);
+}
+.sbi-logic-note {
+  margin-top: 0.75rem;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--accent-border);
+  border-radius: 14px;
+  background: var(--accent-soft);
+  color: var(--editor-muted);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+@media (max-width: 1280px) {
+  .sbi-editor-page-head { align-items: stretch; flex-direction: column; }
+  .sbi-editor-page-head__main { width: 100%; flex-wrap: wrap; }
+  .sbi-editor-actions { width: 100%; justify-content: flex-start; }
+}
+@media (max-width: 900px) {
+  .sbi-editor-title-stack { flex-direction: column; align-items: flex-start; min-width: 0; }
+  .sbi-editor-title-stack input { width: 100%; }
 }

@@ -14,7 +14,7 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
 
 const MAX_QUERY_VALUES = 10;
-const VERSION = '8.0P.167.159';
+const VERSION = '8.0P.167.160';
 
 const BLOCK_TYPES = [
   { type: 'course_info', label: 'Course Info', subtitle: 'Informations générales', icon: 'i', static: true },
@@ -415,14 +415,13 @@ function mountShell() {
 
   root.innerHTML = `
     <div class="sbi-editor-shell">
-      <header class="sbi-editor-topbar">
-        <div class="sbi-editor-brand">
-          <a class="sbi-editor-link-btn sbi-editor-btn--ghost" href="${getBackUrl()}" data-sbi-no-pjax="true">← Retour bibliothèque</a>
-          <div class="sbi-editor-logo"><span>SBI</span><small>Solutions<br>Formation</small></div>
-          <span class="sbi-role-pill">${state.role === 'admin' ? 'Admin' : 'Professeur'}</span>
-        </div>
-        <div class="sbi-course-titlebar">
-          <input id="course-v2-title" type="text" placeholder="Titre du cours" autocomplete="off">
+      <section class="sbi-editor-page-head">
+        <div class="sbi-editor-page-head__main">
+          <a class="sbi-editor-link-btn sbi-editor-btn--ghost" href="${getBackUrl()}">← Retour bibliothèque</a>
+          <div class="sbi-editor-title-stack">
+            <span class="sbi-role-pill">${state.role === 'admin' ? 'Admin · validation' : 'Professeur · production'}</span>
+            <input id="course-v2-title" type="text" placeholder="Titre du cours" autocomplete="off">
+          </div>
           <span id="course-v2-status" class="sbi-status-pill" data-tone="draft">Brouillon</span>
           <span class="sbi-mini-pill">V2 modulaire</span>
         </div>
@@ -432,20 +431,20 @@ function mountShell() {
           <button id="course-v2-save" class="sbi-editor-btn" type="button">Enregistrer</button>
           <button id="course-v2-submit" class="sbi-editor-btn sbi-editor-btn--primary" type="button">${state.role === 'admin' ? 'Valider' : 'Soumettre'}</button>
         </div>
-      </header>
+      </section>
 
       <div class="sbi-editor-grid">
         <aside class="sbi-editor-panel sbi-editor-left">
           <section class="sbi-editor-section">
             <div class="sbi-check-row" style="justify-content:space-between;">
               <div><h2 class="sbi-panel-title">Structure du cours</h2><p class="sbi-panel-subtitle">Clique pour éditer. L’ordre sera conservé.</p></div>
-              <button id="course-v2-add-default" class="sbi-editor-btn sbi-editor-btn--tiny" type="button">+</button>
+              <button id="course-v2-add-default" class="sbi-editor-btn sbi-editor-btn--tiny" type="button" title="Ajouter une leçon">+</button>
             </div>
             <ul id="course-v2-structure" class="sbi-course-structure"></ul>
           </section>
           <section class="sbi-editor-section">
             <h2 class="sbi-panel-title">Ajouter un bloc</h2>
-            <p class="sbi-panel-subtitle">Leçon, QCM, texte à trous ou activité future.</p>
+            <p class="sbi-panel-subtitle">Chaque clic ajoute un seul bloc au cours.</p>
             <div id="course-v2-add-grid" class="sbi-add-grid"></div>
           </section>
         </aside>
@@ -461,7 +460,7 @@ function mountShell() {
       </div>
 
       <footer class="sbi-block-bank">
-        <div><div class="sbi-block-bank-title">Banque de blocs</div><div class="sbi-block-bank-subtitle">Ajout rapide au cours</div></div>
+        <div><div class="sbi-block-bank-title">Banque de blocs</div><div class="sbi-block-bank-subtitle">Ajout rapide au cours, un bloc à la fois.</div></div>
         <div id="course-v2-bank" class="sbi-bank-chips"></div>
       </footer>
     </div>
@@ -588,9 +587,9 @@ function renderCourseInfoEditor() {
       <div class="sbi-field"><label>Formation(s)</label><div id="editor-formations" class="sbi-check-row">${renderFormationChecks()}</div><small>Les blocs et futurs référentiels se filtreront sur ces formations.</small></div>
       <div class="sbi-two-cols">
         <div class="sbi-field"><label>Bloc partagé</label><input id="editor-course-bloc" class="sbi-input" list="editor-block-options" value="${escapeHtml(state.course.bloc)}" placeholder="Ex : Module 3 · Animation"><datalist id="editor-block-options">${state.blockOptions.map((bloc) => `<option value="${escapeHtml(bloc)}"></option>`).join('')}</datalist></div>
-        <div class="sbi-field"><label>Durée estimée globale</label><input id="editor-course-duration" class="sbi-input" type="number" min="0" step="5" value="${Number(state.course.estimatedDurationMinutes || 0)}"></div>
+        <div class="sbi-field"><label>Durée estimée globale (min)</label><small>Indicatif pédagogique, ce n’est pas un timer automatique.</small><input id="editor-course-duration" class="sbi-input" type="number" min="0" step="5" value="${Number(state.course.estimatedDurationMinutes || 0)}"></div>
       </div>
-      <div class="sbi-empty-state">Cette page est le nouvel atelier V2. L’ancien éditeur reste intact en fallback pendant les tests.</div>
+      <div class="sbi-empty-state">Cette page prépare le contenu du cours. Le rattachement au cursus, l’ordre du programme et les dates restent gérés dans Cursus / Promotions.</div>
     </div>
   `;
 }
@@ -645,7 +644,7 @@ function renderGenericBlockEditor(block) {
       <div class="sbi-field"><label>Titre du bloc</label><input id="block-title" class="sbi-input" value="${escapeHtml(block.title)}"></div>
       <div class="sbi-field"><label>Consignes</label><input id="block-instructions" class="sbi-input" value="${escapeHtml(block.instructions || '')}" placeholder="Instruction courte pour l’élève"></div>
       <div class="sbi-field"><label>Contenu</label><div class="sbi-rich-toolbar"><span>Paragraphe</span><button class="sbi-editor-btn sbi-editor-btn--tiny" type="button">B</button><button class="sbi-editor-btn sbi-editor-btn--tiny" type="button">I</button><button class="sbi-editor-btn sbi-editor-btn--tiny" type="button">Lien</button></div><textarea id="block-content" class="sbi-textarea" placeholder="Contenu pédagogique…">${escapeHtml(block.content || '')}</textarea></div>
-      <div class="sbi-two-cols"><div class="sbi-field"><label>Durée estimée</label><input id="block-duration" class="sbi-input" type="number" min="0" step="1" value="${Number(block.durationMinutes || 0)}"></div><div class="sbi-field"><label>Visible dans le programme</label><select id="block-visible" class="sbi-select"><option value="true" ${block.visibleInProgram !== false ? 'selected' : ''}>Oui</option><option value="false" ${block.visibleInProgram === false ? 'selected' : ''}>Non</option></select></div></div>
+      <div class="sbi-two-cols"><div class="sbi-field"><label>Durée estimée (min)</label><input id="block-duration" class="sbi-input" type="number" min="0" step="1" value="${Number(block.durationMinutes || 0)}"></div><div class="sbi-field"><label>Inclure dans le cours</label><select id="block-visible" class="sbi-select"><option value="true" ${block.visibleInProgram !== false ? 'selected' : ''}>Oui</option><option value="false" ${block.visibleInProgram === false ? 'selected' : ''}>Non</option></select></div></div>
     </div>
   `;
 }
@@ -681,7 +680,7 @@ function renderQuizEditor(block) {
       <div class="sbi-field"><label>Titre</label><input id="block-title" class="sbi-input" value="${escapeHtml(block.title || '')}"></div>
       <div class="sbi-field"><label>Question principale</label><input id="quiz-question" class="sbi-input" value="${escapeHtml(question.question || '')}"></div>
       <div class="sbi-field"><label>Réponses</label>${options.map((option, index) => `<label class="sbi-check-row"><input type="checkbox" class="quiz-correct" value="${index}" ${question.correctIndices?.includes(index) ? 'checked' : ''}><input class="sbi-input quiz-option" value="${escapeHtml(option)}" placeholder="Réponse ${index + 1}"></label>`).join('')}</div>
-      <div class="sbi-two-cols"><div class="sbi-field"><label>Points</label><input id="quiz-points" class="sbi-input" type="number" min="0" value="${Number(question.points || 1)}"></div><div class="sbi-field"><label>Durée estimée</label><input id="block-duration" class="sbi-input" type="number" min="0" value="${Number(block.durationMinutes || 5)}"></div></div>
+      <div class="sbi-two-cols"><div class="sbi-field"><label>Points</label><input id="quiz-points" class="sbi-input" type="number" min="0" value="${Number(question.points || 1)}"></div><div class="sbi-field"><label>Durée estimée (min)</label><input id="block-duration" class="sbi-input" type="number" min="0" value="${Number(block.durationMinutes || 5)}"></div></div>
     </div>
   `;
 }
@@ -718,15 +717,15 @@ function renderSettings() {
   settings.innerHTML = `
     <div class="sbi-right-card">
       <h2 class="sbi-panel-title">Paramètres pédagogiques</h2>
-      <p class="sbi-panel-subtitle">Appliqués au cours ou au bloc actif.</p>
+      <p class="sbi-panel-subtitle">Appliqués au cours ou au bloc actif.</p><div class="sbi-logic-note">Le programme reste piloté par Cursus / Promotions. Ici on compose seulement le contenu pédagogique.</div>
     </div>
     <div class="sbi-right-card sbi-editor-form" style="padding:1rem;">
       <div class="sbi-field"><label>Formation</label><div class="sbi-input" style="height:auto;">${escapeHtml(selectedFormationLabel)}</div></div>
       <div class="sbi-field"><label>Bloc partagé</label><input id="settings-bloc" class="sbi-input" list="settings-block-options" value="${escapeHtml(state.course.bloc)}"><datalist id="settings-block-options">${state.blockOptions.map((bloc) => `<option value="${escapeHtml(bloc)}"></option>`).join('')}</datalist></div>
       <div class="sbi-field"><label>Compétence ciblée</label><input id="settings-competency" class="sbi-input" value="${escapeHtml(active?.competency || state.course.competency || '')}" placeholder="Ex : C2. Assurer la sécurité"></div>
       <div class="sbi-field"><label>Preuve Qualiopi</label><select id="settings-qualiopi" class="sbi-select"><option value="">Non renseignée</option>${renderSelectOption('2.2 Moyens pédagogiques', active?.qualiopiEvidence || state.course.qualiopiEvidence)}${renderSelectOption('2.4 Modalités d’évaluation', active?.qualiopiEvidence || state.course.qualiopiEvidence)}${renderSelectOption('3.1 Adaptation pédagogique', active?.qualiopiEvidence || state.course.qualiopiEvidence)}</select></div>
-      <div class="sbi-two-cols"><div class="sbi-field"><label>Durée</label><input id="settings-duration" class="sbi-input" type="number" min="0" value="${Number(active?.durationMinutes || state.course.estimatedDurationMinutes || 0)}"></div><div class="sbi-field"><label>Score max</label><input id="settings-score" class="sbi-input" type="number" min="0" value="${getActiveScore(active)}"></div></div>
-      <div class="sbi-field"><label>Visible dans le programme</label><select id="settings-visible" class="sbi-select"><option value="true" ${(active?.visibleInProgram ?? state.course.visibleInProgram) !== false ? 'selected' : ''}>Oui</option><option value="false" ${(active?.visibleInProgram ?? state.course.visibleInProgram) === false ? 'selected' : ''}>Non</option></select></div>
+      <div class="sbi-two-cols"><div class="sbi-field"><label>Durée estimée (min)</label><input id="settings-duration" class="sbi-input" type="number" min="0" value="${Number(active?.durationMinutes || state.course.estimatedDurationMinutes || 0)}"></div><div class="sbi-field"><label>Score max</label><input id="settings-score" class="sbi-input" type="number" min="0" value="${getActiveScore(active)}"></div></div>
+      <div class="sbi-field"><label>Inclure dans le cours</label><select id="settings-visible" class="sbi-select"><option value="true" ${(active?.visibleInProgram ?? state.course.visibleInProgram) !== false ? 'selected' : ''}>Oui</option><option value="false" ${(active?.visibleInProgram ?? state.course.visibleInProgram) === false ? 'selected' : ''}>Non</option></select></div>
       <div class="sbi-two-cols"><div class="sbi-field"><label>Règle</label><select id="settings-rule" class="sbi-select"><option value="score_minimum">Score minimum</option><option value="viewed">Consulté</option></select></div><div class="sbi-field"><label>Seuil %</label><input id="settings-validation-score" class="sbi-input" type="number" min="0" max="100" value="${Number(state.course.validationScore || 70)}"></div></div>
     </div>
   `;
@@ -1123,7 +1122,7 @@ async function initForUser(user) {
 
   if (!state.course.title) state.course.title = '';
   if (!state.course.learningBlocks.length) {
-    state.course.learningBlocks = [createDefaultBlock('lesson'), createDefaultBlock('fill_blank')];
+    state.course.learningBlocks = [createDefaultBlock('lesson')];
     state.activeBlockId = state.course.learningBlocks[0].id;
   }
 
