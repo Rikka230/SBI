@@ -19,6 +19,10 @@ service cloud.firestore {
       return /databases/$(database)/documents/formations/$(formationId);
     }
 
+    function promotionPath(promotionId) {
+      return /databases/$(database)/documents/promotions/$(promotionId);
+    }
+
     function hasUserDoc() {
       return signedIn() && exists(userPath(request.auth.uid));
     }
@@ -148,6 +152,40 @@ service cloud.firestore {
         && currentUser().formationsAcces.size() > 0;
     }
 
+    function currentUserHasPromotionId() {
+      return currentUser().keys().hasAny(['promotionId'])
+        && currentUser().promotionId is string
+        && currentUser().promotionId != '';
+    }
+
+    function currentUserHasCurrentPromotionId() {
+      return currentUser().keys().hasAny(['currentPromotionId'])
+        && currentUser().currentPromotionId is string
+        && currentUser().currentPromotionId != '';
+    }
+
+    function currentUserHasCohortId() {
+      return currentUser().keys().hasAny(['cohortId'])
+        && currentUser().cohortId is string
+        && currentUser().cohortId != '';
+    }
+
+    function currentUserPromotionIdMatches(promotionId) {
+      return isActiveUser()
+        && promotionId is string
+        && promotionId != ''
+        && (
+          (currentUserHasPromotionId() && currentUser().promotionId == promotionId)
+          || (currentUserHasCurrentPromotionId() && currentUser().currentPromotionId == promotionId)
+          || (currentUserHasCohortId() && currentUser().cohortId == promotionId)
+          || (
+            currentUser().keys().hasAny(['promotionIds'])
+            && currentUser().promotionIds is list
+            && promotionId in currentUser().promotionIds
+          )
+        );
+    }
+
     function userDataHasFormationIds(userData) {
       return userData.keys().hasAny(['formationIds'])
         && userData.formationIds is list
@@ -257,6 +295,100 @@ service cloud.firestore {
         && request.auth.uid in courseData.targetStudents;
     }
 
+    function promotionPlanCourseIdAt(plan, courseId, index) {
+      return plan.size() > index
+        && plan[index].keys().hasAny(['courseId'])
+        && plan[index].courseId == courseId;
+    }
+
+    function promotionPlanHasCourseId(plan, courseId) {
+      return plan is list
+        && (
+          promotionPlanCourseIdAt(plan, courseId, 0)
+          || promotionPlanCourseIdAt(plan, courseId, 1)
+          || promotionPlanCourseIdAt(plan, courseId, 2)
+          || promotionPlanCourseIdAt(plan, courseId, 3)
+          || promotionPlanCourseIdAt(plan, courseId, 4)
+          || promotionPlanCourseIdAt(plan, courseId, 5)
+          || promotionPlanCourseIdAt(plan, courseId, 6)
+          || promotionPlanCourseIdAt(plan, courseId, 7)
+          || promotionPlanCourseIdAt(plan, courseId, 8)
+          || promotionPlanCourseIdAt(plan, courseId, 9)
+          || promotionPlanCourseIdAt(plan, courseId, 10)
+          || promotionPlanCourseIdAt(plan, courseId, 11)
+          || promotionPlanCourseIdAt(plan, courseId, 12)
+          || promotionPlanCourseIdAt(plan, courseId, 13)
+          || promotionPlanCourseIdAt(plan, courseId, 14)
+          || promotionPlanCourseIdAt(plan, courseId, 15)
+          || promotionPlanCourseIdAt(plan, courseId, 16)
+          || promotionPlanCourseIdAt(plan, courseId, 17)
+          || promotionPlanCourseIdAt(plan, courseId, 18)
+          || promotionPlanCourseIdAt(plan, courseId, 19)
+          || promotionPlanCourseIdAt(plan, courseId, 20)
+          || promotionPlanCourseIdAt(plan, courseId, 21)
+          || promotionPlanCourseIdAt(plan, courseId, 22)
+          || promotionPlanCourseIdAt(plan, courseId, 23)
+          || promotionPlanCourseIdAt(plan, courseId, 24)
+          || promotionPlanCourseIdAt(plan, courseId, 25)
+          || promotionPlanCourseIdAt(plan, courseId, 26)
+          || promotionPlanCourseIdAt(plan, courseId, 27)
+          || promotionPlanCourseIdAt(plan, courseId, 28)
+          || promotionPlanCourseIdAt(plan, courseId, 29)
+          || promotionPlanCourseIdAt(plan, courseId, 30)
+          || promotionPlanCourseIdAt(plan, courseId, 31)
+          || promotionPlanCourseIdAt(plan, courseId, 32)
+          || promotionPlanCourseIdAt(plan, courseId, 33)
+          || promotionPlanCourseIdAt(plan, courseId, 34)
+          || promotionPlanCourseIdAt(plan, courseId, 35)
+          || promotionPlanCourseIdAt(plan, courseId, 36)
+          || promotionPlanCourseIdAt(plan, courseId, 37)
+          || promotionPlanCourseIdAt(plan, courseId, 38)
+          || promotionPlanCourseIdAt(plan, courseId, 39)
+          || promotionPlanCourseIdAt(plan, courseId, 40)
+          || promotionPlanCourseIdAt(plan, courseId, 41)
+          || promotionPlanCourseIdAt(plan, courseId, 42)
+          || promotionPlanCourseIdAt(plan, courseId, 43)
+          || promotionPlanCourseIdAt(plan, courseId, 44)
+          || promotionPlanCourseIdAt(plan, courseId, 45)
+          || promotionPlanCourseIdAt(plan, courseId, 46)
+          || promotionPlanCourseIdAt(plan, courseId, 47)
+          || promotionPlanCourseIdAt(plan, courseId, 48)
+          || promotionPlanCourseIdAt(plan, courseId, 49)
+        );
+    }
+
+    function promotionCourseIdsAllowCourse(promotionData, courseId) {
+      return promotionData.keys().hasAny(['coursePlanCourseIds'])
+        && promotionData.coursePlanCourseIds is list
+        && courseId in promotionData.coursePlanCourseIds;
+    }
+
+    function promotionDataAllowsCourse(promotionData, courseId) {
+      return promotionCourseIdsAllowCourse(promotionData, courseId)
+        || (
+          promotionData.keys().hasAny(['coursePlan'])
+          && promotionPlanHasCourseId(promotionData.coursePlan, courseId)
+        );
+    }
+
+    function promotionAllowsCourse(promotionId, courseId) {
+      return promotionId is string
+        && promotionId != ''
+        && exists(promotionPath(promotionId))
+        && promotionDataAllowsCourse(get(promotionPath(promotionId)).data, courseId);
+    }
+
+    function currentUserPromotionAllowsCourse(courseId) {
+      return isStudent()
+        && courseId is string
+        && courseId != ''
+        && (
+          (currentUserHasPromotionId() && promotionAllowsCourse(currentUser().promotionId, courseId))
+          || (currentUserHasCurrentPromotionId() && promotionAllowsCourse(currentUser().currentPromotionId, courseId))
+          || (currentUserHasCohortId() && promotionAllowsCourse(currentUser().cohortId, courseId))
+        );
+    }
+
     function courseTargetedToCurrentTeacher(courseData) {
       return isTeacher()
         && courseData.keys().hasAny(['targetTeacherIds'])
@@ -305,7 +437,7 @@ service cloud.firestore {
         );
     }
 
-    function canReadCourse(courseData) {
+    function canReadCourse(courseId, courseData) {
       return isAdmin()
         || (
           isTeacher()
@@ -319,6 +451,7 @@ service cloud.firestore {
             courseSharedWithCurrentUser(courseData)
             || courseTargetedToCurrentUser(courseData)
             || courseLinkedToReadableFormation(courseData)
+            || currentUserPromotionAllowsCourse(courseId)
           )
         );
     }
@@ -374,6 +507,25 @@ service cloud.firestore {
               && currentUserHasFormationAccess(formationData.titre)
             )
           )
+        );
+    }
+
+    function canReadPromotion(promotionId, promotionData) {
+      return isAdmin()
+        || (
+          isStudent()
+          && currentUserPromotionIdMatches(promotionId)
+        )
+        || (
+          isActiveUser()
+          && promotionData.keys().hasAny(['formationId'])
+          && formationDocHasCurrentUser(promotionData.formationId)
+        )
+        || (
+          isActiveUser()
+          && promotionData.keys().hasAny(['formationId'])
+          && currentUserHasFormationIds()
+          && promotionData.formationId in currentUser().formationIds
         );
     }
 
@@ -514,8 +666,8 @@ service cloud.firestore {
        ============================================================ */
 
     match /courses/{courseId} {
-      allow get: if canReadCourse(resource.data);
-      allow list: if canReadCourse(resource.data);
+      allow get: if canReadCourse(courseId, resource.data);
+      allow list: if canReadCourse(courseId, resource.data);
 
       allow create: if isAdmin()
         || validTeacherCourseWrite();
@@ -542,6 +694,14 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    /* ============================================================
+       PROMOTIONS
+       ============================================================ */
+
+    match /promotions/{promotionId} {
+      allow get, list: if canReadPromotion(promotionId, resource.data);
+      allow create, update, delete: if isAdmin();
+    }
 
     /* ============================================================
        CURRICULUM TEMPLATES

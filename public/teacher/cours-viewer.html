@@ -35,20 +35,31 @@
     </div>
 
 <script>
-(function lockTeacherViewerBackTarget() {
-    const target = '/teacher/mes-cours.html';
+(function installSbiViewerReturnTarget() {
+    const fallbackTarget = '/teacher/mes-cours.html';
+
+    function getSafeReturnTarget() {
+        try {
+            const value = new URL(window.location.href).searchParams.get('returnTo') || '';
+            if (!value) return fallbackTarget;
+            const url = new URL(value, window.location.origin);
+            if (url.origin !== window.location.origin) return fallbackTarget;
+            if (url.pathname.endsWith('/cours-viewer.html')) return fallbackTarget;
+            return url.pathname + url.search + url.hash;
+        } catch (_) {
+            return fallbackTarget;
+        }
+    }
 
     function bindBackButton() {
         const button = document.getElementById('btn-back-dynamic');
-        if (!button || button.dataset.sbiTeacherBackLocked === 'true') return;
-
-        button.dataset.sbiTeacherBackLocked = 'true';
-        button.setAttribute('href', target);
-
+        if (!button || button.dataset.sbiReturnBound === 'true') return;
+        button.dataset.sbiReturnBound = 'true';
+        button.setAttribute('href', getSafeReturnTarget());
         button.addEventListener('click', function(event) {
             event.preventDefault();
             event.stopImmediatePropagation();
-            window.location.href = target;
+            window.location.href = getSafeReturnTarget();
         }, true);
     }
 
@@ -60,6 +71,6 @@
 })();
 </script>
 <script type="module" src="/admin/js/tracker.js?v=8.0P.167.44"></script>
-<script type="module" src="/student/js/cours-viewer.js?v=8.0P.167.137"></script>
+<script type="module" src="/student/js/cours-viewer.js?v=8.0P.167.138"></script>
 </body>
 </html>

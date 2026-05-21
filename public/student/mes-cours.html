@@ -152,6 +152,23 @@
         #search-course-input { width: 100%; box-sizing: border-box; padding: 0.78rem 1rem 0.78rem 2.8rem; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.14); border-radius: 14px; outline: none; font-size: 0.95rem; color: #fff; }
         #search-course-input::placeholder { color: rgba(255,255,255,0.55); }
         #btn-back-formations { width: auto; align-self: flex-start; background: rgba(255,255,255,0.08); color: #fff; border: 1px solid rgba(255,255,255,0.16); margin-bottom: 1rem; }
+        .student-course-section {
+            margin: 1.35rem 0;
+            padding: 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: 18px;
+            background: rgba(255,255,255,0.03);
+        }
+        .student-course-section__head {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 1rem;
+            margin-bottom: 0.9rem;
+        }
+        .student-course-section__head strong { display: block; color: var(--text-main); font-size: 1rem; }
+        .student-course-section__head span { display: block; margin-top: 0.2rem; color: var(--text-muted); font-size: 0.82rem; line-height: 1.4; }
+        .student-course-section__head em { flex: 0 0 auto; font-style: normal; color: var(--accent-blue); font-weight: 900; font-size: 0.78rem; }
         .student-course-bloc { margin-bottom: 1.35rem; }
         .bloc-title { font-size: 0.92rem; color: var(--accent-blue); font-weight: 950; margin: 1.5rem 0 0.8rem; padding-bottom: 0.55rem; border-bottom: 1px solid var(--border-color); text-transform: uppercase; letter-spacing: 0.12em; }
         .student-course-bloc__list { display: flex; flex-direction: column; gap: 0.8rem; }
@@ -262,7 +279,7 @@
 
 <script type="module" src="/admin/js/admin-ui.js?v=8.0P.167.87"></script>
 <script type="module" src="/admin/js/tracker.js?v=8.0P.167.97-GPT2.1"></script>
-<script type="module" src="/student/js/mes-cours.js?v=8.0P.167.137"></script>
+<script type="module" src="/student/js/mes-cours.js?v=8.0P.167.138"></script>
 <script type="module" src="/admin/js/admin-notifications.js?v=8.0P.167.96.1-GPT2.1"></script>
 </body>
 </html>

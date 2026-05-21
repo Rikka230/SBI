@@ -6,21 +6,20 @@
     <title>Mode Apprentissage</title>
     <link rel="stylesheet" href="/student/css/viewer.css">
     <link rel="stylesheet" href="/css/sbi-7-1-harmonization.css?v=8.0P.167.48">
-    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet"> 
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
 </head>
 <body class="learning-mode sbi-course-viewer-page sbi-student-surface">
 
     <header class="viewer-header">
-        <a href="#" id="btn-back-dynamic" class="btn-back-hub">
+        <a href="/student/mes-cours.html" id="btn-back-dynamic" class="btn-back-hub" data-sbi-no-pjax="true" data-sbi-no-transition="true">
             <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
-            Quitter la leçon
+            Retour à mes cours
         </a>
         <h2 id="viewer-course-title" style="margin: 0; font-size: 1.2rem; color: var(--text-main);">Chargement...</h2>
         <div style="width: 140px;"></div>
     </header>
 
     <div class="viewer-body">
-        
         <main class="viewer-main" id="viewer-main-content">
             <div style="text-align:center; margin-top: 20vh; color: var(--text-muted); font-size: 1.2rem; font-weight: bold;">
                 Préparation de votre leçon...
@@ -33,10 +32,45 @@
             </div>
             <div id="chapters-nav-list" style="display: flex; flex-direction: column; padding: 1rem 0;"></div>
         </aside>
-
     </div>
 
+<script>
+(function installSbiViewerReturnTarget() {
+    const fallbackTarget = '/student/mes-cours.html';
+
+    function getSafeReturnTarget() {
+        try {
+            const value = new URL(window.location.href).searchParams.get('returnTo') || '';
+            if (!value) return fallbackTarget;
+            const url = new URL(value, window.location.origin);
+            if (url.origin !== window.location.origin) return fallbackTarget;
+            if (url.pathname.endsWith('/cours-viewer.html')) return fallbackTarget;
+            return url.pathname + url.search + url.hash;
+        } catch (_) {
+            return fallbackTarget;
+        }
+    }
+
+    function bindBackButton() {
+        const button = document.getElementById('btn-back-dynamic');
+        if (!button || button.dataset.sbiReturnBound === 'true') return;
+        button.dataset.sbiReturnBound = 'true';
+        button.setAttribute('href', getSafeReturnTarget());
+        button.addEventListener('click', function(event) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            window.location.href = getSafeReturnTarget();
+        }, true);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', bindBackButton, { once: true });
+    } else {
+        bindBackButton();
+    }
+})();
+</script>
 <script type="module" src="/admin/js/tracker.js?v=8.0P.167.97-GPT2.1"></script>
-<script type="module" src="/student/js/cours-viewer.js"></script>
+<script type="module" src="/student/js/cours-viewer.js?v=8.0P.167.138"></script>
 </body>
 </html>

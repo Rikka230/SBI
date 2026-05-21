@@ -3,7 +3,7 @@
  * MES COURS - Bibliothèque étudiant SBI
  * =======================================================================
  *
- * 8.0P.167.137 : bibliothèque reliée au planning de promotion.
+ * 8.0P.167.138 : bibliothèque séparée entre planning de promotion et cours complémentaires.
  * Le viewer de cours reste en navigation classique.
  * =======================================================================
  */
@@ -35,6 +35,8 @@ let allCourses = [];
 let assignedFormations = [];
 let userProgress = { courses: {}, formations: {} };
 let activeCleanup = null;
+let currentOpenFormationId = '';
+let currentOpenFormationTitle = '';
 
 function resetState() {
     currentUid = null;
@@ -70,6 +72,7 @@ export function mountStudentCourses() {
             await hydrateStudentCourses();
             bindStudentCoursesEvents(addCleanup);
             renderAssignedFormations();
+            openRequestedFormationFromUrl();
         } catch (error) {
             console.error("Erreur d'initialisation :", error);
             showFormationsError();
@@ -652,9 +655,11 @@ window.openFormation = function(formationOrId, formationTitre = '') {
 
     if (viewFormations) viewFormations.style.display = 'none';
     if (viewCourses) viewCourses.style.display = 'flex';
+    currentOpenFormationId = formation.id || '';
+    currentOpenFormationTitle = formation.titre || formation.title || 'Formation';
     if (title) {
-        title.textContent = formation.titre || 'Formation';
-        title.dataset.formationId = formation.id || '';
+        title.textContent = currentOpenFormationTitle;
+        title.dataset.formationId = currentOpenFormationId;
     }
     if (searchInput) searchInput.value = '';
     if (!container) return;
@@ -669,11 +674,7 @@ window.openFormation = function(formationOrId, formationTitre = '') {
         return;
     }
 
-    const coursesByBloc = groupCoursesByBloc(coursesInFormation);
-
-    Object.entries(coursesByBloc).forEach(([blocName, courses]) => {
-        container.insertAdjacentHTML('beforeend', `<section class="student-course-bloc"><div class="bloc-title">${escapeHTML(blocName)}</div><div class="student-course-bloc__list">${courses.map(buildCourseItemHTML).join('')}</div></section>`);
-    });
+    renderCourseSections(container, coursesInFormation);
 
     container.querySelectorAll('.course-item').forEach((item) => {
         item.addEventListener('click', () => {
@@ -682,6 +683,62 @@ window.openFormation = function(formationOrId, formationTitre = '') {
         });
     });
 };
+
+
+function openRequestedFormationFromUrl() {
+    const params = new URL(window.location.href).searchParams;
+    const formId = params.get('formId') || params.get('formationId') || '';
+    if (!formId) return;
+
+    const cards = getFormationCardsToRender();
+    const target = cards.find((formation) => {
+        return String(formation.id || '') === formId
+            || String(formation.promotionId || '') === formId
+            || String(formation.titre || formation.title || '') === formId;
+    });
+
+    if (target) window.openFormation(target);
+}
+
+function renderCourseSections(container, coursesInFormation = []) {
+    const plannedCourses = sortCourses(coursesInFormation.filter((course) => getPrimaryCoursePlan(course)));
+    const plannedIds = new Set(plannedCourses.map((course) => course.id));
+    const complementaryCourses = coursesInFormation.filter((course) => !plannedIds.has(course.id));
+
+    if (plannedCourses.length) {
+        container.insertAdjacentHTML('beforeend', `
+            <section class="student-course-section student-course-section--planned">
+                <div class="student-course-section__head">
+                    <div>
+                        <strong>Parcours défini par la promotion</strong>
+                        <span>Cours ordonnés selon le planning pédagogique.</span>
+                    </div>
+                    <em>${plannedCourses.length} cours</em>
+                </div>
+                <div class="student-course-bloc__list">${plannedCourses.map(buildCourseItemHTML).join('')}</div>
+            </section>
+        `);
+    }
+
+    if (complementaryCourses.length) {
+        const coursesByBloc = groupCoursesByBloc(complementaryCourses);
+        container.insertAdjacentHTML('beforeend', `
+            <section class="student-course-section student-course-section--library">
+                <div class="student-course-section__head">
+                    <div>
+                        <strong>Cours complémentaires de la formation</strong>
+                        <span>Contenus accessibles hors planning daté.</span>
+                    </div>
+                    <em>${complementaryCourses.length} cours</em>
+                </div>
+            </section>
+        `);
+
+        Object.entries(coursesByBloc).forEach(([blocName, courses]) => {
+            container.insertAdjacentHTML('beforeend', `<section class="student-course-bloc"><div class="bloc-title">${escapeHTML(blocName)}</div><div class="student-course-bloc__list">${courses.map(buildCourseItemHTML).join('')}</div></section>`);
+        });
+    }
+}
 
 function renderCourseViewSummary(formation, courses = []) {
     const root = document.getElementById('student-course-summary');
@@ -716,7 +773,7 @@ function groupCoursesByBloc(courses) {
     const coursesByBloc = {};
 
     courses.forEach((course) => {
-        const blocName = course.bloc || course.blockTitle || course.blockName || "Autres Cours";
+        const blocName = course.bloc || course.blockTitle || course.blockName || "Cours sans bloc";
         if (!coursesByBloc[blocName]) coursesByBloc[blocName] = [];
         coursesByBloc[blocName].push(course);
     });
@@ -737,17 +794,20 @@ function buildCourseItemHTML(course) {
     const quizHtml = buildQuizScoreHTML(course, progressData);
     const title = course.titre || course.title || 'Cours';
     const bloc = course.bloc || course.blockTitle || course.blockName || 'Bloc non renseigné';
-    const href = `/student/cours-viewer.html?id=${encodeURIComponent(course.id)}`;
+    const returnTo = `/student/mes-cours.html?formId=${encodeURIComponent(currentOpenFormationId || '')}`;
+    const href = `/student/cours-viewer.html?id=${encodeURIComponent(course.id)}&returnTo=${encodeURIComponent(returnTo)}`;
     const plan = getPrimaryCoursePlan(course);
     const planLabel = plan ? getCoursePlanDatesLabel(plan) : '';
     const priorityLabel = plan ? getPriorityLabel(plan.priorityLevel) : '';
     const priorityTone = plan ? getPriorityTone(plan.priorityLevel) : 'normal';
+    const planSource = plan?.sourceFormationName && plan.sourceFormationName !== currentOpenFormationTitle ? ` · source : ${plan.sourceFormationName}` : '';
     const planMetaHtml = plan
         ? `<div class="student-course-card__plan">
             <span>${escapeHTML(planLabel)}</span>
             <span class="student-course-priority student-course-priority--${escapeAttr(priorityTone)}">${escapeHTML(priorityLabel)}</span>
+            ${planSource ? `<span>${escapeHTML(planSource.replace(/^ · /, ''))}</span>` : ''}
           </div>`
-        : `<div class="student-course-card__plan student-course-card__plan--muted">Dates et priorité non renseignées</div>`;
+        : '';
 
     return `
         <article class="course-item student-course-card" data-href="${escapeAttr(href)}" data-sbi-no-pjax="true" data-search="${escapeAttr(`${title} ${bloc} ${planLabel} ${priorityLabel}`)}">

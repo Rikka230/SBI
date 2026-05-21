@@ -526,7 +526,7 @@ async function mountStudentPage({ url }) {
   window.__SBI_APP_SHELL_MOUNTING_STUDENT_COURSES = true;
 
   try {
-    const module = await import('/student/js/mes-cours.js?v=8.0P.167.137');
+    const module = await import('/student/js/mes-cours.js?v=8.0P.167.138');
     const cleanup = module.mountStudentCourses?.({ source: 'pjax-student-courses' });
 
     if (typeof cleanup === 'function') registerCleanup(cleanup, 'student-courses');
@@ -608,12 +608,12 @@ async function mountTeacherCourses({ url }) {
   updateUrlContext(url);
 
   /**
-   * 8.0P.167.137 : la bibliothèque professeur reste le coeur de cette route.
+   * 8.0P.167.138 : la bibliothèque professeur reste le coeur de cette route.
    * Elle doit rester PJAX stable même si l'éditeur lourd/Quill n'est pas prêt.
    */
   window.__SBI_APP_SHELL_MOUNTING_TEACHER_COURSES_LIBRARY = true;
   try {
-    const libraryModule = await import('/teacher/js/teacher-courses-library.js?v=8.0P.167.137');
+    const libraryModule = await import('/teacher/js/teacher-courses-library.js?v=8.0P.167.138');
     const cleanupTeacherLibrary = libraryModule.mountTeacherCoursesLibrary?.({ source: 'pjax-teacher-courses' });
 
     if (typeof cleanupTeacherLibrary === 'function') {

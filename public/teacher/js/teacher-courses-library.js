@@ -373,14 +373,25 @@ async function loadCoursesByIds(courseIds = []) {
 }
 
 
-async function loadPromotionPlansForCourses(courses = []) {
+async function loadPromotionPlansForCourses(courses = [], formationKeys = {}) {
   const courseIds = new Set(normalizeList(courses.map((course) => course.id)));
   if (!courseIds.size) return new Map();
 
-  const snap = await safeGetDocs(collection(db, 'promotions'), 'planning des promotions');
+  const formationIds = normalizeList(formationKeys.ids || []);
+  if (!formationIds.length) return new Map();
+
+  const promotions = [];
+  for (const chunk of chunkArray(formationIds)) {
+    const snap = await safeGetDocs(
+      query(collection(db, 'promotions'), where('formationId', 'in', chunk)),
+      'planning des promotions par formation'
+    );
+    promotions.push(...snapToArray(snap));
+  }
+
   const planMap = new Map();
 
-  snapToArray(snap).forEach((promotion) => {
+  uniqById(promotions).forEach((promotion) => {
     if ((promotion.status || 'active') === 'archived') return;
     const plan = Array.isArray(promotion.coursePlan) ? promotion.coursePlan : [];
 
@@ -622,7 +633,7 @@ function renderCourseCard(course, { uid, formationMap, authorMap }) {
         <span class="teacher-course-priority teacher-course-priority--${escapeHtml(priorityTone)}">${escapeHtml(priorityLabel)}</span>
         ${planPromotionLabel ? `<span>${escapeHtml(planPromotionLabel)}</span>` : ''}
       </div>`
-    : `<div class="teacher-course-card__planning teacher-course-card__planning--muted">Aucune date de promotion renseignée</div>`;
+    : '';
 
   const editButton = isOwnCourse
     ? `<button class="teacher-course-btn teacher-course-btn--secondary" type="button" data-teacher-edit-course="${escapeHtml(course.id)}">Éditer</button>`
@@ -650,6 +661,38 @@ function renderCourseCard(course, { uid, formationMap, authorMap }) {
       </div>
     </article>
   `;
+}
+
+
+function openTeacherCourseEditor(courseId = '') {
+  const safeCourseId = normalizeString(courseId);
+  if (!safeCourseId) return;
+
+  try {
+    const targetUrl = `/teacher/mes-cours.html?edit=${encodeURIComponent(safeCourseId)}`;
+    if (window.location.pathname.endsWith('/teacher/mes-cours.html')) {
+      window.history.pushState({ sbiTeacherCourseTab: 'editor', courseId: safeCourseId }, '', targetUrl);
+    }
+  } catch {}
+
+  if (typeof window.switchCourseTab === 'function') {
+    window.switchCourseTab('tab-editor');
+  }
+
+  if (typeof window.editCourse === 'function') {
+    window.editCourse(safeCourseId);
+  } else {
+    window.location.href = `/teacher/mes-cours.html?edit=${encodeURIComponent(safeCourseId)}`;
+  }
+}
+
+function handleTeacherLibraryPopState() {
+  const url = new URL(window.location.href);
+  if (!url.pathname.endsWith('/teacher/mes-cours.html')) return;
+  if (url.searchParams.get('edit')) return;
+  if (typeof window.switchCourseTab === 'function') {
+    window.switchCourseTab('tab-list');
+  }
 }
 
 function renderEmpty(root, hasFilters = false) {
@@ -696,15 +739,7 @@ function renderLibrary({ root, courses, uid, formations, authorMap = new Map() }
       const courseId = button.getAttribute('data-teacher-edit-course');
       if (!courseId) return;
 
-      if (typeof window.switchCourseTab === 'function') {
-        window.switchCourseTab('tab-editor');
-      }
-
-      if (typeof window.editCourse === 'function') {
-        window.editCourse(courseId);
-      } else {
-        window.location.href = `/teacher/mes-cours.html?edit=${encodeURIComponent(courseId)}`;
-      }
+      openTeacherCourseEditor(courseId);
     });
   });
 }
@@ -717,7 +752,8 @@ async function loadAndRender(state) {
 
   const formations = await loadTeacherFormations(uid, profile);
   const rawCourses = await loadTeacherCourses(uid, profile, formations);
-  const planMap = await loadPromotionPlansForCourses(rawCourses);
+  const formationKeys = getFormationKeys(profile, formations);
+  const planMap = await loadPromotionPlansForCourses(rawCourses, formationKeys);
   const courses = attachPromotionPlansToCourses(rawCourses, planMap);
   const authorMap = await loadCourseAuthors(courses);
 
@@ -798,12 +834,14 @@ export function mountTeacherCoursesLibrary({ source = 'standard' } = {}) {
   const refreshButton = document.getElementById('teacher-courses-refresh');
   refreshButton?.addEventListener('click', refreshHandler);
   window.addEventListener('sbi:teacher-library-refresh', refreshHandler);
+  window.addEventListener('popstate', handleTeacherLibraryPopState);
 
   const cleanup = () => {
     disposed = true;
     unsubscribeAuth?.();
     refreshButton?.removeEventListener('click', refreshHandler);
     window.removeEventListener('sbi:teacher-library-refresh', refreshHandler);
+    window.removeEventListener('popstate', handleTeacherLibraryPopState);
     state.cleanupHandlers.splice(0).forEach((handler) => {
       try { handler(); } catch {}
     });
