@@ -16,6 +16,26 @@ const MAX_QUERY_VALUES = 10;
 
 let activeMountCleanup = null;
 const authorCache = new Map();
+const FIRESTORE_TIMEOUT_MS = 5500;
+
+function timeoutAfter(ms, label = 'opération') {
+  return new Promise((resolve) => {
+    window.setTimeout(() => {
+      console.warn(`[SBI Teacher Library] ${label} trop lente, étape ignorée.`);
+      resolve(null);
+    }, ms);
+  });
+}
+
+async function withTimeout(promise, label = 'opération', ms = FIRESTORE_TIMEOUT_MS) {
+  return Promise.race([promise, timeoutAfter(ms, label)]);
+}
+
+function setLibraryStage(message = '') {
+  const root = document.getElementById('teacher-courses-list-container');
+  if (!root || !message) return;
+  root.innerHTML = `<div class="teacher-course-loading">${escapeHtml(message)}</div>`;
+}
 
 function normalizeString(value) {
   return value == null ? '' : String(value).trim();
@@ -183,7 +203,16 @@ function sortCourses(courses = [], mode = getSortValue()) {
 
 async function safeGetDocs(queryRef, label) {
   try {
-    return await getDocs(queryRef);
+    return await withTimeout(getDocs(queryRef), label);
+  } catch (error) {
+    console.warn(`[SBI Teacher Library] ${label} ignoré :`, error);
+    return null;
+  }
+}
+
+async function safeGetDoc(docRef, label = 'document') {
+  try {
+    return await withTimeout(getDoc(docRef), label);
   } catch (error) {
     console.warn(`[SBI Teacher Library] ${label} ignoré :`, error);
     return null;
@@ -191,8 +220,8 @@ async function safeGetDocs(queryRef, label) {
 }
 
 async function loadProfile(uid) {
-  const snap = await getDoc(doc(db, 'users', uid));
-  if (!snap.exists()) return null;
+  const snap = await safeGetDoc(doc(db, 'users', uid), 'profil professeur');
+  if (!snap?.exists?.()) return null;
   return { id: snap.id, ...snap.data() };
 }
 
@@ -223,8 +252,8 @@ async function loadAuthorById(authorId) {
   if (authorCache.has(safeAuthorId)) return authorCache.get(safeAuthorId);
 
   try {
-    const snap = await getDoc(doc(db, 'users', safeAuthorId));
-    const author = snap.exists() ? { id: snap.id, ...snap.data() } : null;
+    const snap = await safeGetDoc(doc(db, 'users', safeAuthorId), `auteur ${safeAuthorId}`);
+    const author = snap?.exists?.() ? { id: snap.id, ...snap.data() } : null;
     authorCache.set(safeAuthorId, author);
     return author;
   } catch (error) {
@@ -379,8 +408,8 @@ async function loadCoursesByIds(courseIds = []) {
 
   await Promise.all(safeIds.map(async (courseId) => {
     try {
-      const snap = await getDoc(doc(db, 'courses', courseId));
-      if (snap.exists()) courses.push({ id: snap.id, ...snap.data() });
+      const snap = await safeGetDoc(doc(db, 'courses', courseId), `cours indexé ${courseId}`);
+      if (snap?.exists?.()) courses.push({ id: snap.id, ...snap.data() });
     } catch (error) {
       console.warn('[SBI Teacher Library] Cours indexé ignoré :', courseId, error);
     }
@@ -448,22 +477,30 @@ function attachPromotionPlansToCourses(courses = [], planMap = new Map()) {
 
 async function loadTeacherCourses(uid, profile = {}, formations = []) {
   const formationKeys = getFormationKeys(profile, formations);
+
+  const courseTasks = [
+    loadTeacherCourseAccessIndex(uid)
+      .then((accessIndex) => loadCoursesByIds(accessIndex.map((item) => item.courseId || item.id).filter(Boolean))),
+    loadCoursesByExactField('auteurId', uid, 'auteurId'),
+    loadCoursesByArrayField('targetTeacherIds', [uid], 'targetTeacherIds'),
+    loadCoursesByArrayField('formationIds', formationKeys.ids, 'formationIds'),
+    loadCoursesByArrayField('formationsIds', formationKeys.ids, 'formationsIds legacy'),
+    loadCoursesByArrayField('targetFormationIds', formationKeys.ids, 'targetFormationIds'),
+    loadCoursesByArrayField('formations', formationKeys.ids, 'formations IDs'),
+    loadCoursesByArrayField('targetFormationTitles', formationKeys.titles, 'targetFormationTitles'),
+    loadCoursesByArrayField('formations', formationKeys.titles, 'formations titres legacy')
+  ];
+
+  const results = await Promise.allSettled(courseTasks);
   const courses = [];
 
-  const accessIndex = await loadTeacherCourseAccessIndex(uid);
-  const indexedCourseIds = accessIndex.map((item) => item.courseId || item.id).filter(Boolean);
-  courses.push(...await loadCoursesByIds(indexedCourseIds));
-
-  courses.push(...await loadCoursesByExactField('auteurId', uid, 'auteurId'));
-  courses.push(...await loadCoursesByArrayField('targetTeacherIds', [uid], 'targetTeacherIds'));
-
-  courses.push(...await loadCoursesByArrayField('formationIds', formationKeys.ids, 'formationIds'));
-  courses.push(...await loadCoursesByArrayField('formationsIds', formationKeys.ids, 'formationsIds legacy'));
-  courses.push(...await loadCoursesByArrayField('targetFormationIds', formationKeys.ids, 'targetFormationIds'));
-  courses.push(...await loadCoursesByArrayField('formations', formationKeys.ids, 'formations IDs'));
-
-  courses.push(...await loadCoursesByArrayField('targetFormationTitles', formationKeys.titles, 'targetFormationTitles'));
-  courses.push(...await loadCoursesByArrayField('formations', formationKeys.titles, 'formations titres legacy'));
+  results.forEach((result, index) => {
+    if (result.status === 'fulfilled') {
+      courses.push(...(Array.isArray(result.value) ? result.value : []));
+      return;
+    }
+    console.warn('[SBI Teacher Library] Source cours ignorée :', index, result.reason);
+  });
 
   return sortCourses(uniqById(courses));
 }
@@ -729,6 +766,19 @@ function renderError(root, message) {
   `;
 }
 
+function bindNewCourseButton() {
+  const button = document.getElementById('btn-trigger-new-course');
+  if (!button || button.dataset.sbiV2Bound === 'true') return;
+  button.dataset.sbiV2Bound = 'true';
+  button.textContent = '+ Nouveau cours';
+  button.title = 'Créer un cours dans l’éditeur V2';
+  button.addEventListener('click', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    void navigateTeacherCourseEditorV2('', { source: 'teacher-library-new-v2' });
+  });
+}
+
 function renderLibrary({ root, courses, uid, formations, authorMap = new Map() }) {
   const formationMap = buildFormationMap(formations);
   const visibleCourses = sortCourses(filterCourses(courses, { uid, formationMap, authorMap }));
@@ -766,20 +816,61 @@ async function loadAndRender(state) {
   const { root, uid, profile } = state;
   if (!root || !uid || !profile) return;
 
-  root.innerHTML = '<div class="teacher-course-loading">Chargement de la bibliothèque…</div>';
+  setLibraryStage('Chargement de la bibliothèque…');
+  bindNewCourseButton();
 
-  const formations = await loadTeacherFormations(uid, profile);
-  const rawCourses = await loadTeacherCourses(uid, profile, formations);
-  const formationKeys = getFormationKeys(profile, formations);
-  const planMap = await loadPromotionPlansForCourses(rawCourses, formationKeys);
-  const courses = attachPromotionPlansToCourses(rawCourses, planMap);
-  const authorMap = await loadCourseAuthors(courses);
+  try {
+    setLibraryStage('Chargement des formations…');
+    const formations = await loadTeacherFormations(uid, profile);
 
-  state.formations = formations;
-  state.courses = courses;
-  state.authorMap = authorMap;
+    if (!root.isConnected) return;
+    setLibraryStage('Chargement des cours…');
+    const rawCourses = await loadTeacherCourses(uid, profile, formations);
 
-  renderLibrary({ root, courses, uid, formations, authorMap });
+    if (!root.isConnected) return;
+
+    state.formations = formations;
+    state.courses = rawCourses;
+    state.authorMap = new Map();
+
+    // Rendu immédiat : la bibliothèque doit rester utilisable même si les
+    // dates de promotion ou les auteurs prennent du temps. Les compléments
+    // arrivent ensuite comme une seconde couche.
+    renderLibrary({ root, courses: rawCourses, uid, formations, authorMap: state.authorMap });
+
+    window.dispatchEvent(new CustomEvent('sbi:teacher-library-mounted', {
+      detail: { source: 'progressive', uid, stage: 'courses', count: rawCourses.length }
+    }));
+
+    const formationKeys = getFormationKeys(profile, formations);
+
+    const [planMap, authorMap] = await Promise.all([
+      withTimeout(loadPromotionPlansForCourses(rawCourses, formationKeys), 'planning promotions bibliothèque', 7000).catch((error) => {
+        console.warn('[SBI Teacher Library] Planning ignoré :', error);
+        return new Map();
+      }),
+      withTimeout(loadCourseAuthors(rawCourses), 'auteurs bibliothèque', 7000).catch((error) => {
+        console.warn('[SBI Teacher Library] Auteurs ignorés :', error);
+        return new Map();
+      })
+    ]);
+
+    if (!root.isConnected) return;
+
+    const courses = attachPromotionPlansToCourses(rawCourses, planMap || new Map());
+    state.courses = courses;
+    state.authorMap = authorMap || new Map();
+
+    renderLibrary({ root, courses, uid, formations, authorMap: state.authorMap });
+
+    window.dispatchEvent(new CustomEvent('sbi:teacher-library-mounted', {
+      detail: { source: 'complete', uid, stage: 'complete', count: courses.length }
+    }));
+  } catch (error) {
+    console.error('[SBI Teacher Library] Chargement impossible :', error);
+    renderError(root, error?.message || 'Erreur de chargement.');
+    renderStats({ total: 0, published: 0, pending: 0, planned: 0, own: 0, shared: 0 });
+  }
 }
 
 function bindToolbarControls(state, rerender) {
@@ -835,19 +926,26 @@ export function mountTeacherCoursesLibrary({ source = 'standard' } = {}) {
       return;
     }
 
-    state.uid = user.uid;
-    state.profile = await loadProfile(user.uid);
+    try {
+      state.uid = user.uid;
+      state.profile = await loadProfile(user.uid);
 
-    if (disposed) return;
+      if (disposed) return;
 
-    await loadAndRender(state);
+      if (!state.profile) {
+        renderError(root, 'Profil professeur introuvable ou inaccessible.');
+        return;
+      }
 
-    window.dispatchEvent(new CustomEvent('sbi:teacher-library-mounted', {
-      detail: { source, uid: user.uid }
-    }));
+      await loadAndRender(state);
+    } catch (error) {
+      console.error('[SBI Teacher Library] Initialisation impossible :', error);
+      renderError(root, error?.message || 'Erreur d’initialisation.');
+    }
   });
 
   bindToolbarControls(state, rerender);
+  bindNewCourseButton();
 
   const refreshButton = document.getElementById('teacher-courses-refresh');
   refreshButton?.addEventListener('click', refreshHandler);

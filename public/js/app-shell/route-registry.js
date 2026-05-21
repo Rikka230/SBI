@@ -637,14 +637,14 @@ async function mountTeacherCourses({ url }) {
    */
   window.__SBI_APP_SHELL_MOUNTING_TEACHER_COURSES_LIBRARY = true;
   try {
-    const libraryModule = await import('/teacher/js/teacher-courses-library.js?v=8.0P.167.178');
+    const libraryModule = await import('/teacher/js/teacher-courses-library.js?v=8.0P.167.179');
     const cleanupTeacherLibrary = libraryModule.mountTeacherCoursesLibrary?.({ source: 'pjax-teacher-courses' });
 
     if (typeof cleanupTeacherLibrary === 'function') {
       registerCleanup(cleanupTeacherLibrary, 'teacher-courses-library');
     }
 
-    const promotionModule = await import('/teacher/js/teacher-promotion-planning-select.js?v=8.0P.167.146');
+    const promotionModule = await import('/teacher/js/teacher-promotion-planning-select.js?v=8.0P.167.179');
     const cleanupPromotionSelect = promotionModule.mountTeacherPromotionPlanningSelect?.({ source: 'pjax-teacher-courses' });
 
     if (typeof cleanupPromotionSelect === 'function') {
@@ -654,15 +654,7 @@ async function mountTeacherCourses({ url }) {
     window.__SBI_APP_SHELL_MOUNTING_TEACHER_COURSES_LIBRARY = false;
   }
 
-  // 8.0P.167.176 : l’ancien éditeur professeur n’est plus monté sur cette route.
-  // La bibliothèque ouvre directement /teacher/course-editor.html en V2.
-  try {
-    const entryModule = await import('/teacher/js/teacher-course-editor-v2-entry.js?v=8.0P.167.178');
-    const cleanupV2Entry = entryModule.mountTeacherCourseEditorV2Entry?.({ source: 'pjax-teacher-courses' });
-    if (typeof cleanupV2Entry === 'function') registerCleanup(cleanupV2Entry, 'teacher-course-editor-v2-entry');
-  } catch (error) {
-    console.warn('[SBI AppShell] Bridge éditeur V2 professeur indisponible. La bibliothèque reste utilisable.', error);
-  }
+  // 8.0P.167.179 : l’entrée V2 est gérée directement par teacher-courses-library.
 
   if (typeof cleanupFormationModal === 'function') registerCleanup(cleanupFormationModal, 'teacher-course-formation-modal');
 
@@ -698,7 +690,7 @@ async function mountCourseEditorV2Page({ url, role = 'teacher' }) {
   window.__SBI_APP_SHELL_MOUNTING_COURSE_EDITOR_V2 = true;
 
   try {
-    const module = await import('/js/course-editor-v2/course-editor-v2.js?v=8.0P.167.178');
+    const module = await import('/js/course-editor-v2/course-editor-v2.js?v=8.0P.167.179');
     const cleanup = module.mountCourseEditorV2?.({
       source: isAdmin ? 'pjax-admin-course-editor-v2' : 'pjax-teacher-course-editor-v2',
       force: true

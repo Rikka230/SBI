@@ -20,6 +20,18 @@ let promotions = [];
 let selectedPromotionId = ALL_PROMOTIONS_VALUE;
 let rootObserver = null;
 
+function isLibraryLoading() {
+  const root = document.getElementById('teacher-courses-list-container');
+  return Boolean(root?.querySelector('.teacher-course-loading'));
+}
+
+function isLibraryReady() {
+  const root = document.getElementById('teacher-courses-list-container');
+  if (!root) return false;
+  if (isLibraryLoading()) return false;
+  return Boolean(root.querySelector('.teacher-course-card[data-course-id], .teacher-course-empty, .teacher-course-empty--error'));
+}
+
 function clean(value = '') {
   return String(value ?? '').trim();
 }
@@ -285,7 +297,7 @@ function updateCountText(totalVisible, promotion = null) {
 
 function applySelectedPromotionContext() {
   const root = document.getElementById('teacher-courses-list-container');
-  if (!root) return;
+  if (!root || isLibraryLoading()) return;
 
   const cards = Array.from(root.querySelectorAll('.teacher-course-card[data-course-id]'));
   const promotion = getSelectedPromotion();
@@ -333,6 +345,7 @@ function installRootObserver() {
   if (!root || rootObserver) return;
   rootObserver = new MutationObserver(() => {
     window.requestAnimationFrame(() => {
+      if (!isLibraryReady()) return;
       renderSelect();
       applySelectedPromotionContext();
     });
@@ -385,9 +398,13 @@ async function bootForUser(user) {
   const profile = await loadProfile(user.uid);
   const formationIds = await loadTeacherFormationIds(user.uid, profile || {});
   promotions = await loadPromotionsForFormationIds(formationIds);
-  renderSelect();
-  installRootObserver();
-  applySelectedPromotionContext();
+  if (isLibraryReady()) {
+    renderSelect();
+    installRootObserver();
+    applySelectedPromotionContext();
+  } else {
+    installRootObserver();
+  }
 }
 
 function runLimitedRetry(disposedRef) {
@@ -398,6 +415,7 @@ function runLimitedRetry(disposedRef) {
       return;
     }
     count += 1;
+    if (!isLibraryReady()) return;
     renderSelect();
     installRootObserver();
     applySelectedPromotionContext();
@@ -413,7 +431,7 @@ export function mountTeacherPromotionPlanningSelect({ source = 'standard' } = {}
   const retryTimer = runLimitedRetry(disposedRef);
 
   const remountAfterLibrary = () => {
-    if (disposedRef.disposed) return;
+    if (disposedRef.disposed || !isLibraryReady()) return;
     renderSelect();
     installRootObserver();
     applySelectedPromotionContext();

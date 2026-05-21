@@ -6,7 +6,7 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.178',
+  version: '8.0P.167.179',
   branch: 'main',
   channel: 'P2J.3D COURSE EDITOR V2 LIBRARY RESTORE',
   stage: 'RESTORE FIREBASE LIBRARY LOAD AND KEEP V2 ENTRY',
