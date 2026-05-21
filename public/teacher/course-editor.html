@@ -9,45 +9,46 @@
   <link rel="stylesheet" href="/admin/css/admin-notifications.css">
   <link rel="stylesheet" href="/teacher/css/teacher.css?v=8.0P.130">
   <link rel="stylesheet" href="/css/sbi-7-1-harmonization.css?v=8.0P.167.48">
-  <link rel="stylesheet" href="/css/course-editor-v2.css?v=8.0P.167.162">
-
-  <style id="sbi-course-editor-v2-hard-unblank">
-    html, body { min-height: 100vh !important; opacity: 1 !important; visibility: visible !important; }
-    body.sbi-editor-v2 { overflow-y: auto !important; }
-    body.sbi-editor-v2 #app-container,
-    body.sbi-editor-v2 #main-content,
-    body.sbi-editor-v2 .content-wrapper,
-    body.sbi-editor-v2 #sbi-course-editor-v2 {
-      opacity: 1 !important;
+  <link rel="stylesheet" href="/css/course-editor-v2.css?v=8.0P.167.163">
+  <script src="/admin/js/components.js?v=8.0P.167.64"></script>
+  <style>
+    body.sbi-editor-v2--embedded #main-content,
+    body.sbi-editor-v2--embedded .content-wrapper,
+    body.sbi-editor-v2--embedded #sbi-course-editor-v2 {
+      display: block !important;
       visibility: visible !important;
-    }
-    body.sbi-editor-v2 #main-content { display: block !important; min-height: 100vh !important; }
-    body.sbi-editor-v2 .content-wrapper { display: block !important; min-height: 60vh !important; }
-    body.sbi-editor-v2 #sbi-course-editor-v2 { display: block !important; min-height: 280px !important; }
-    body.sbi-editor-v2 #sbi-course-editor-v2:empty::before {
-      content: "Chargement de l’éditeur V2…";
-      display: block;
-      margin: 1rem;
-      padding: 1rem;
-      border: 1px solid #d9e1ec;
-      border-radius: 16px;
-      background: #fff;
-      color: #0f172a;
-      font-weight: 800;
+      opacity: 1 !important;
     }
   </style>
-  <script src="/admin/js/components.js"></script>
 </head>
-<body class="sbi-editor-v2 sbi-editor-v2--teacher sbi-editor-v2--embedded sbi-teacher-surface no-right-panel" data-editor-role="teacher">
+<body class="preload sbi-editor-v2 sbi-editor-v2--teacher sbi-editor-v2--embedded sbi-teacher-surface no-right-panel" data-editor-role="teacher">
   <div class="app-container" id="app-container">
     <teacher-left-panel></teacher-left-panel>
     <teacher-top-bar></teacher-top-bar>
     <main id="main-content">
       <div class="content-wrapper sbi-course-editor-content-wrapper">
-        <div id="sbi-course-editor-v2" data-editor-role="teacher"><div class="sbi-editor-v2-fallback"><strong>Chargement de l’éditeur V2…</strong><span>Si cette zone reste visible, ouvre la console et recharge sans cache.</span></div></div>
+        <div id="sbi-course-editor-v2" data-editor-role="teacher">
+          <div class="sbi-editor-v2-fallback">
+            <strong>Chargement de l’éditeur V2…</strong>
+            <span>Si cette zone reste visible, recharge sans cache puis vérifie la console.</span>
+          </div>
+        </div>
       </div>
     </main>
   </div>
-  <script type="module" src="/js/course-editor-v2/course-editor-v2.js?v=8.0P.167.162"></script>
+  <script>
+    window.addEventListener('DOMContentLoaded', () => {
+      document.body?.classList?.remove('preload');
+      document.documentElement?.classList?.add('sbi-admin-loader-released');
+      const app = document.getElementById('app-container');
+      if (app && window.innerWidth > 1024 && localStorage.getItem('leftPanelCollapsed') === 'true') {
+        app.classList.add('left-collapsed');
+      }
+    });
+  </script>
+  <script type="module" src="/admin/js/admin-ui.js?v=8.0P.167.88"></script>
+  <script type="module" src="/admin/js/admin-notifications.js?v=8.0P.167.86"></script>
+  <script type="module" src="/admin/js/tracker.js?v=8.0P.167.44"></script>
+  <script type="module" src="/js/course-editor-v2/course-editor-v2.js?v=8.0P.167.163"></script>
 </body>
 </html>
