@@ -398,14 +398,17 @@ async function loadPromotionPlanCourses() {
             realItems.forEach((item) => {
                 const course = coursesById.get(item.courseId);
 
-                if (course && (isCourseVisible(course, { allowProgress: true }) || course.actif === true)) {
+                if (course) {
+                    // Le planning de promotion est l'autorité pédagogique : si un cours
+                    // est placé dans le cursus d'une promotion assignée, il doit rester
+                    // ouvrable par l'élève même s'il vient d'une autre formation source.
                     loadedCourses.push(attachPromotionPlan(course, item));
                     return;
                 }
 
-                // Filet de sécurité : on garde une ligne de programme même si le
-                // document du cours n'est pas encore lisible/publié. La carte sera
-                // non cliquable, mais la page n'est plus vide.
+                // Filet de sécurité : on garde une ligne de programme uniquement si le
+                // document du cours n'est pas lisible. Après déploiement des règles,
+                // les cours transversaux du cursus doivent normalement s'ouvrir.
                 loadedCourses.push(attachPromotionPlan(buildPlanOnlyCourse(item), item));
             });
         } catch (error) {
@@ -694,7 +697,12 @@ function getCoursesForFormation(formation) {
 
     if (formation?.__promotionLinked === true) {
         const promotionId = String(formation.promotionId || formation.id || '').trim();
-        let courses = allCourses.filter((course) => {
+        const sourceFormation = {
+            id: String(formation.__courseProgramFormationId || '').trim(),
+            titre: formation.titre || formation.title || ''
+        };
+
+        const plannedCourses = allCourses.filter((course) => {
             if (!course || !course.id) return false;
             const plans = Array.isArray(course.__promotionPlans)
                 ? course.__promotionPlans
@@ -703,6 +711,16 @@ function getCoursesForFormation(formation) {
                     : [];
             return plans.some((plan) => String(plan.promotionId || '').trim() === promotionId);
         });
+
+        const plannedIds = new Set(plannedCourses.map((course) => course.id));
+        const libraryCourses = allCourses.filter((course) => {
+            if (!course || !course.id || plannedIds.has(course.id)) return false;
+            if (course.__promotionLinked === true) return false;
+            return sharedCourseBelongsToFormation(course, sourceFormation, assignedFormations)
+                || courseBelongsToPromotionFormation(course, sourceFormation);
+        });
+
+        let courses = uniqById([...plannedCourses, ...libraryCourses]);
 
         if (!courses.length && loadedStudentPromotions.length === 1) {
             courses = allCourses.filter((course) => course && course.id && getPrimaryCoursePlan(course));
@@ -929,9 +947,9 @@ function bindCourseCardNavigation(container) {
 }
 
 function ensureStudentCourseSwitchStyles() {
-    if (document.getElementById('student-course-switch-style-8-0p-167-145')) return;
+    if (document.getElementById('student-course-switch-style-8-0p-167-147')) return;
     const style = document.createElement('style');
-    style.id = 'student-course-switch-style-8-0p-167-145';
+    style.id = 'student-course-switch-style-8-0p-167-147';
     style.textContent = `
         .student-course-switch {
             display: flex;

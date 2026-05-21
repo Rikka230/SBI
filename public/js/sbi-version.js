@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.146',
+  version: '8.0P.167.147',
   branch: 'main',
-  channel: 'P2I.34 STUDENT PROGRAM SORT FIX',
+  channel: 'P2I.35 STUDENT CROSS COURSE ACCESS FIX',
   stage: 'STUDENT PROGRAM LIST SORT FIX WITHOUT TEACHER CHANGES',
   updatedAt: '2026-05-21',
-  label: 'SBI 8.0P.167.146 - Student program list sort fixed'
+  label: 'SBI 8.0P.167.147 - Student cross-formation course access and library switch fixed'
 };
 
 export function getSbiVersionLabel() {

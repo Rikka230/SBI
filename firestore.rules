@@ -472,9 +472,9 @@ service cloud.firestore {
             courseSharedWithCurrentUser(courseData)
             || courseTargetedToCurrentUser(courseData)
             || courseLinkedToReadableFormation(courseData)
-            || currentUserPromotionAllowsCourse(courseId)
           )
-        );
+        )
+        || currentUserPromotionAllowsCourse(courseId);
     }
 
     function validTeacherCourseWrite() {
