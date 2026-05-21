@@ -104,7 +104,23 @@ function getPlanItemType(item = {}) {
 }
 
 function isRealCoursePlanItem(item = {}) {
-  return getPlanItemType(item) === 'real_course' && normalizeString(item.courseId);
+  const courseId = normalizeString(item.courseId);
+  if (!courseId) return false;
+
+  const type = getPlanItemType(item).toLowerCase();
+  const nonCourseTypes = [
+    'placeholder_course',
+    'buffer_period',
+    'revision_period',
+    'catchup_period',
+    'assignment',
+    'exam',
+    'evaluation',
+    'live_session',
+    'workshop'
+  ];
+
+  return !nonCourseTypes.includes(type);
 }
 
 function getCoursePlanStartMs(plan = {}) {
@@ -664,26 +680,69 @@ function renderCourseCard(course, { uid, formationMap, authorMap }) {
 }
 
 
+function ensureTeacherCourseTabApi() {
+  if (typeof window.switchCourseTab === 'function') return;
+
+  window.switchCourseTab = function switchCourseTab(tabId) {
+    const target = document.getElementById(tabId);
+    if (!target) return;
+
+    document.querySelectorAll('.student-sub-nav-item').forEach((item) => item.classList.remove('active'));
+    document.querySelectorAll('.student-view').forEach((view) => view.classList.remove('active'));
+
+    const navList = document.querySelector('.student-sub-nav-item[onclick*="tab-list"], .student-sub-nav-item[data-sbi-course-tab="tab-list"]');
+    const navEditor = document.getElementById('nav-tab-editor');
+
+    if (tabId === 'tab-editor') {
+      if (navEditor) {
+        navEditor.style.display = '';
+        navEditor.classList.add('active');
+      }
+    } else if (navList) {
+      navList.classList.add('active');
+      if (navEditor) navEditor.style.display = 'none';
+    }
+
+    target.classList.add('active');
+  };
+}
+
+function editCourseWhenReady(courseId, attempt = 0) {
+  if (typeof window.editCourse === 'function') {
+    window.editCourse(courseId);
+    return;
+  }
+
+  if (attempt < 20) {
+    window.setTimeout(() => editCourseWhenReady(courseId, attempt + 1), 150);
+    return;
+  }
+
+  window.location.href = `/teacher/mes-cours.html?edit=${encodeURIComponent(courseId)}`;
+}
+
 function openTeacherCourseEditor(courseId = '') {
   const safeCourseId = normalizeString(courseId);
   if (!safeCourseId) return;
 
+  const baseUrl = '/teacher/mes-cours.html';
+  const targetUrl = `${baseUrl}?edit=${encodeURIComponent(safeCourseId)}`;
+
   try {
-    const targetUrl = `/teacher/mes-cours.html?edit=${encodeURIComponent(safeCourseId)}`;
     if (window.location.pathname.endsWith('/teacher/mes-cours.html')) {
+      window.history.replaceState({ sbiTeacherCourseTab: 'list' }, '', baseUrl);
       window.history.pushState({ sbiTeacherCourseTab: 'editor', courseId: safeCourseId }, '', targetUrl);
+      window.SBI_APP_SHELL_CURRENT_URL = window.location.href;
     }
   } catch {}
+
+  ensureTeacherCourseTabApi();
 
   if (typeof window.switchCourseTab === 'function') {
     window.switchCourseTab('tab-editor');
   }
 
-  if (typeof window.editCourse === 'function') {
-    window.editCourse(safeCourseId);
-  } else {
-    window.location.href = `/teacher/mes-cours.html?edit=${encodeURIComponent(safeCourseId)}`;
-  }
+  editCourseWhenReady(safeCourseId);
 }
 
 function handleTeacherLibraryPopState() {

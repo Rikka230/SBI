@@ -3,7 +3,7 @@
  * MES COURS - Bibliothèque étudiant SBI
  * =======================================================================
  *
- * 8.0P.167.144 : stabilisation Programme/Liste, cartes promotion synthétiques et anti page vide.
+ * 8.0P.167.145 : stabilisation parcours promotion, anti page vide et retour viewer.
  * Le viewer de cours reste en navigation classique.
  * =======================================================================
  */
@@ -253,7 +253,23 @@ function getPlanItemType(item = {}) {
 }
 
 function isRealCoursePlanItem(item = {}) {
-    return getPlanItemType(item) === 'real_course' && String(item.courseId || '').trim();
+    const courseId = String(item.courseId || '').trim();
+    if (!courseId) return false;
+
+    const type = getPlanItemType(item).toLowerCase();
+    const nonCourseTypes = [
+        'placeholder_course',
+        'buffer_period',
+        'revision_period',
+        'catchup_period',
+        'assignment',
+        'exam',
+        'evaluation',
+        'live_session',
+        'workshop'
+    ];
+
+    return !nonCourseTypes.includes(type);
 }
 
 function getPriorityLabel(priority = 'normal') {
@@ -313,6 +329,18 @@ function attachPromotionPlan(course = {}, plan = {}) {
     };
 }
 
+function buildPlanOnlyCourse(item = {}) {
+    return {
+        id: String(item.courseId || '').trim(),
+        titre: item.courseTitle || item.title || 'Cours prévu',
+        title: item.courseTitle || item.title || 'Cours prévu',
+        bloc: item.blockTitle || item.bloc || item.moduleTitle || 'Programme',
+        blockTitle: item.blockTitle || item.bloc || item.moduleTitle || 'Programme',
+        chapitres: [],
+        __planOnly: true
+    };
+}
+
 function ensurePromotionFormationCard(promotion = {}) {
     const promotionId = String(promotion.id || '').trim();
     if (!promotionId) return;
@@ -369,8 +397,16 @@ async function loadPromotionPlanCourses() {
 
             realItems.forEach((item) => {
                 const course = coursesById.get(item.courseId);
-                if (!course || (!isCourseVisible(course, { allowProgress: true }) && course.actif !== true)) return;
-                loadedCourses.push(attachPromotionPlan(course, item));
+
+                if (course && (isCourseVisible(course, { allowProgress: true }) || course.actif === true)) {
+                    loadedCourses.push(attachPromotionPlan(course, item));
+                    return;
+                }
+
+                // Filet de sécurité : on garde une ligne de programme même si le
+                // document du cours n'est pas encore lisible/publié. La carte sera
+                // non cliquable, mais la page n'est plus vide.
+                loadedCourses.push(attachPromotionPlan(buildPlanOnlyCourse(item), item));
             });
         } catch (error) {
             console.warn('[SBI Student Courses] Planning de promotion ignoré :', promotionId, error);
@@ -431,7 +467,7 @@ async function loadAssignedCourses() {
     allCourses = uniqById([...coursesFromAccess, ...coursesFromNotifications, ...coursesFromPromotionPlan])
         .filter(Boolean)
         .filter((course) => course && course.id)
-        .filter((course) => isAdminPreview() || isCourseVisible(course, { allowProgress: true }));
+        .filter((course) => course.__planOnly === true || isAdminPreview() || isCourseVisible(course, { allowProgress: true }));
 }
 
 async function loadNotificationLinkedCourses() {
@@ -587,16 +623,16 @@ function renderStudentLibrarySummary() {
 function getFormationCardsToRender() {
     const directCourses = getDirectAssignedCoursesWithoutVisibleFormation();
     const promotionCards = assignedFormations.filter((formation) => formation.__promotionLinked === true);
+    const usablePromotionCards = promotionCards.filter((formation) => getCoursesForFormation(formation).length > 0);
 
-    const sourceFormationIds = new Set(promotionCards.map((formation) => String(formation.__courseProgramFormationId || '').trim()).filter(Boolean));
-    const sourceFormationTitles = new Set(promotionCards.map((formation) => String(formation.titre || formation.title || '').trim()).filter(Boolean));
+    const sourceFormationIds = new Set(usablePromotionCards.map((formation) => String(formation.__courseProgramFormationId || '').trim()).filter(Boolean));
 
-    const baseCards = promotionCards.length
-        ? promotionCards
+    const baseCards = usablePromotionCards.length
+        ? usablePromotionCards
         : assignedFormations.filter((formation) => {
+            if (formation.__promotionLinked === true) return getCoursesForFormation(formation).length > 0;
             const id = String(formation.id || '').trim();
-            const title = String(formation.titre || formation.title || '').trim();
-            return !(sourceFormationIds.has(id) || sourceFormationTitles.has(title));
+            return !sourceFormationIds.has(id);
         });
 
     const cards = [...baseCards];
@@ -893,9 +929,9 @@ function bindCourseCardNavigation(container) {
 }
 
 function ensureStudentCourseSwitchStyles() {
-    if (document.getElementById('student-course-switch-style-8-0p-167-144')) return;
+    if (document.getElementById('student-course-switch-style-8-0p-167-145')) return;
     const style = document.createElement('style');
-    style.id = 'student-course-switch-style-8-0p-167-144';
+    style.id = 'student-course-switch-style-8-0p-167-145';
     style.textContent = `
         .student-course-switch {
             display: flex;
@@ -925,6 +961,14 @@ function ensureStudentCourseSwitchStyles() {
         .student-course-switch__btn:disabled {
             cursor: not-allowed;
             opacity: 0.45;
+        }
+        .student-course-card.is-disabled {
+            cursor: default;
+            opacity: 0.72;
+        }
+        .student-course-card.is-disabled:hover {
+            transform: none;
+            border-color: var(--border-color);
         }
         .student-course-view[hidden] { display: none !important; }
     `;
@@ -997,8 +1041,9 @@ function buildCourseItemHTML(course) {
     const quizHtml = buildQuizScoreHTML(course, progressData);
     const title = course.titre || course.title || 'Cours';
     const bloc = course.bloc || course.blockTitle || course.blockName || 'Bloc non renseigné';
+    const isPlanOnly = course.__planOnly === true;
     const returnTo = buildCourseReturnUrl(course);
-    const href = `/student/cours-viewer.html?id=${encodeURIComponent(course.id)}&returnTo=${encodeURIComponent(returnTo)}`;
+    const href = isPlanOnly ? '' : `/student/cours-viewer.html?id=${encodeURIComponent(course.id)}&returnTo=${encodeURIComponent(returnTo)}`;
     const plan = getPrimaryCoursePlan(course);
     const planLabel = plan ? getCoursePlanDatesLabel(plan) : '';
     const priorityLabel = plan ? getPriorityLabel(plan.priorityLevel) : '';
@@ -1012,7 +1057,7 @@ function buildCourseItemHTML(course) {
         : '';
 
     return `
-        <article class="course-item student-course-card" data-href="${escapeAttr(href)}" data-sbi-no-pjax="true" data-search="${escapeAttr(`${title} ${bloc} ${planLabel} ${priorityLabel}`)}">
+        <article class="course-item student-course-card${isPlanOnly ? ' is-disabled' : ''}" ${href ? `data-href="${escapeAttr(href)}"` : ''} data-sbi-no-pjax="true" data-search="${escapeAttr(`${title} ${bloc} ${planLabel} ${priorityLabel}`)}">
             <div class="student-course-card__main">
                 <div class="student-course-card__icon" aria-hidden="true">
                     <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
@@ -1028,8 +1073,8 @@ function buildCourseItemHTML(course) {
                 </div>
             </div>
             <div class="student-course-card__side">
-                ${quizHtml}
-                ${statusBadge}
+                ${isPlanOnly ? '<span class="student-course-badge student-course-badge--todo">En préparation</span>' : quizHtml}
+                ${isPlanOnly ? '' : statusBadge}
                 <svg width="24" height="24" fill="var(--text-muted)" viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
             </div>
         </article>

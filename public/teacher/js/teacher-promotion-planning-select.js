@@ -11,7 +11,7 @@ import {
 
 const SELECT_ID = 'teacher-courses-promotion-filter';
 const STORAGE_KEY = 'sbi:teacher-courses:selected-promotion';
-const STYLE_ID = 'teacher-promotion-planning-select-style-8-0p-167-144';
+const STYLE_ID = 'teacher-promotion-planning-select-style-8-0p-167-145';
 const ALL_PROMOTIONS_VALUE = '__all_promotions__';
 const MAX_QUERY_VALUES = 10;
 
@@ -363,15 +363,9 @@ function forceTeacherEditorNavigation(courseId = '') {
 }
 
 function handleTeacherEditorBridgeClick(event) {
-  const button = event.target?.closest?.('[data-teacher-edit-course]');
-  if (!button) return;
-  const courseId = button.getAttribute('data-teacher-edit-course');
-  if (!courseId) return;
-
-  event.preventDefault();
-  event.stopPropagation();
-  event.stopImmediatePropagation();
-  forceTeacherEditorNavigation(courseId);
+  // 8.0P.167.145 : ne plus intercepter le bouton Éditer ici.
+  // La bibliothèque professeur gère désormais elle-même l'historique
+  // et attend que l'éditeur soit prêt.
 }
 
 function handleTeacherEditorPopState() {
@@ -425,7 +419,6 @@ export function mountTeacherPromotionPlanningSelect({ source = 'standard' } = {}
     applySelectedPromotionContext();
   };
 
-  document.addEventListener('click', handleTeacherEditorBridgeClick, true);
   window.addEventListener('popstate', handleTeacherEditorPopState);
   window.addEventListener('sbi:teacher-library-mounted', remountAfterLibrary);
   window.addEventListener('sbi:teacher-library-refresh', remountAfterLibrary);
@@ -439,7 +432,6 @@ export function mountTeacherPromotionPlanningSelect({ source = 'standard' } = {}
     disposedRef.disposed = true;
     unsubscribe?.();
     window.clearInterval(retryTimer);
-    document.removeEventListener('click', handleTeacherEditorBridgeClick, true);
     window.removeEventListener('popstate', handleTeacherEditorPopState);
     window.removeEventListener('sbi:teacher-library-mounted', remountAfterLibrary);
     window.removeEventListener('sbi:teacher-library-refresh', remountAfterLibrary);
