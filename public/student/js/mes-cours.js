@@ -3,7 +3,7 @@
  * MES COURS - Bibliothèque étudiant SBI
  * =======================================================================
  *
- * 8.0P.167.154 : les cours du coursePlan restent affichés même si le document cours existe mais n’est pas publié legacy.
+ * 8.0P.167.156 : ordre Programme aligné QA dates + option masquer les cours terminés.
  * Le viewer de cours reste en navigation classique.
  * =======================================================================
  */
@@ -38,6 +38,7 @@ let activeCleanup = null;
 let currentOpenFormationId = '';
 let currentOpenFormationTitle = '';
 let currentCourseViewMode = 'program';
+let currentHideCompletedCourses = false;
 let loadedStudentPromotions = [];
 
 function resetState() {
@@ -49,6 +50,7 @@ function resetState() {
     currentOpenFormationId = '';
     currentOpenFormationTitle = '';
     currentCourseViewMode = 'program';
+    currentHideCompletedCourses = false;
     loadedStudentPromotions = [];
 }
 
@@ -398,7 +400,7 @@ async function loadPromotionPlanCourses() {
             const realItems = planItems
                 .map((item, index) => normalizePromotionPlanItem(item, promotion, index))
                 .filter(isRealCoursePlanItem)
-                .sort((a, b) => Number(a.order || 0) - Number(b.order || 0));
+                .sort(compareCoursePlansLikeQa);
 
             const courses = await fetchCoursesByIds(realItems.map((item) => item.courseId));
             const coursesById = new Map(courses.map((course) => [course.id, course]));
@@ -576,6 +578,32 @@ function getCoursePlanSortOrder(plan = {}) {
     return Number.POSITIVE_INFINITY;
 }
 
+function getPlanStartSortValue(plan = {}) {
+    const ms = toMillis(plan.recommendedStartAt || plan.plannedStartAt || plan.startAt || plan.startDate);
+    return ms || Number.POSITIVE_INFINITY;
+}
+
+function getPlanEndSortValue(plan = {}) {
+    const ms = toMillis(plan.recommendedEndAt || plan.plannedEndAt || plan.endAt || plan.endDate || plan.deadlineAt || plan.dueAt);
+    return ms || Number.POSITIVE_INFINITY;
+}
+
+function compareCoursePlansLikeQa(planA = {}, planB = {}) {
+    const startA = getPlanStartSortValue(planA);
+    const startB = getPlanStartSortValue(planB);
+    if (startA !== startB) return startA - startB;
+
+    const orderA = getCoursePlanSortOrder(planA);
+    const orderB = getCoursePlanSortOrder(planB);
+    if (orderA !== orderB) return orderA - orderB;
+
+    const endA = getPlanEndSortValue(planA);
+    const endB = getPlanEndSortValue(planB);
+    if (endA !== endB) return endA - endB;
+
+    return String(planA.courseId || '').localeCompare(String(planB.courseId || ''), 'fr', { sensitivity: 'base' });
+}
+
 function planMatchesCurrentContext(plan = {}) {
     const activePromotionId = String(currentOpenFormationId || '').trim();
     return Boolean(activePromotionId && String(plan.promotionId || '').trim() === activePromotionId);
@@ -593,14 +621,9 @@ function getPrimaryCoursePlan(course = {}) {
         const contextB = planMatchesCurrentContext(b) ? 0 : 1;
         if (contextA !== contextB) return contextA - contextB;
 
-        const orderA = getCoursePlanSortOrder(a);
-        const orderB = getCoursePlanSortOrder(b);
-        if (orderA !== orderB) return orderA - orderB;
-
-        return String(a.courseId || '').localeCompare(String(b.courseId || ''), 'fr', { sensitivity: 'base' });
+        return compareCoursePlansLikeQa(a, b);
     })[0] || null;
 }
-
 function buildInlinePlanHint(course = {}) {
     const plan = getPrimaryCoursePlan(course);
     if (!plan) return '';
@@ -839,17 +862,36 @@ function openRequestedFormationFromUrl() {
     if (target) window.openFormation(target);
 }
 
+
+function isCourseCompleted(course = {}) {
+    return userProgress.courses?.[course.id]?.status === 'done';
+}
+
+function filterCompletedCoursesForDisplay(courses = []) {
+    const safeCourses = Array.isArray(courses) ? courses.filter((course) => course && course.id) : [];
+    if (!currentHideCompletedCourses) return safeCourses;
+    return safeCourses.filter((course) => !isCourseCompleted(course));
+}
+
 function renderCourseSections(container, coursesInFormation = []) {
     ensureStudentCourseSwitchStyles();
 
     coursesInFormation = Array.isArray(coursesInFormation) ? coursesInFormation.filter((course) => course && course.id) : [];
     const { plannedCourses, complementaryCourses } = splitCoursesForFormationView(coursesInFormation);
-    currentCourseViewMode = resolveCourseViewMode(currentCourseViewMode, plannedCourses, complementaryCourses);
+    const visiblePlannedCourses = filterCompletedCoursesForDisplay(plannedCourses);
+    const visibleComplementaryCourses = filterCompletedCoursesForDisplay(complementaryCourses);
+    currentCourseViewMode = resolveCourseViewMode(currentCourseViewMode, visiblePlannedCourses, visibleComplementaryCourses);
+    const hiddenCompletedCount = currentHideCompletedCourses
+        ? coursesInFormation.filter((course) => course && course.id && isCourseCompleted(course)).length
+        : 0;
 
     container.innerHTML = `
         <div class="student-course-switch" role="tablist" aria-label="Choisir le type de liste">
             <button type="button" class="student-course-switch__btn" data-course-view="program">Programme</button>
             <button type="button" class="student-course-switch__btn" data-course-view="library">Liste bibliothèque</button>
+            <button type="button" class="student-course-switch__btn student-course-switch__btn--toggle${currentHideCompletedCourses ? ' is-active' : ''}" data-hide-completed aria-pressed="${currentHideCompletedCourses ? 'true' : 'false'}">
+                ${currentHideCompletedCourses ? `Terminés masqués${hiddenCompletedCount ? ` (${hiddenCompletedCount})` : ''}` : 'Masquer terminés'}
+            </button>
         </div>
         <div class="student-course-view" data-course-view-panel="program"></div>
         <div class="student-course-view" data-course-view-panel="library"></div>
@@ -859,22 +901,23 @@ function renderCourseSections(container, coursesInFormation = []) {
     const libraryPanel = container.querySelector('[data-course-view-panel="library"]');
 
     if (programPanel) {
-        programPanel.innerHTML = plannedCourses.length
+        programPanel.innerHTML = visiblePlannedCourses.length
             ? `<section class="student-course-section student-course-section--planned">
                 <div class="student-course-section__head">
                     <div>
                         <strong>Parcours défini par la promotion</strong>
                         <span>Cours ordonnés selon le planning pédagogique.</span>
                     </div>
-                    <em>${plannedCourses.length} cours</em>
+                    <em>${visiblePlannedCourses.length}${currentHideCompletedCourses && visiblePlannedCourses.length !== plannedCourses.length ? ` / ${plannedCourses.length}` : ''} cours</em>
                 </div>
-                <div class="student-course-bloc__list">${plannedCourses.map(buildCourseItemHTML).join('')}</div>
+                <div class="student-course-bloc__list">${visiblePlannedCourses.map(buildCourseItemHTML).join('')}</div>
             </section>`
-            : '<div class="student-library-empty"><strong>Aucun cours dans le programme.</strong><span>Le planning de promotion ne contient pas encore de cours publié.</span></div>';
+            : `<div class="student-library-empty"><strong>${currentHideCompletedCourses && plannedCourses.length ? 'Tous les cours du programme sont terminés.' : 'Aucun cours dans le programme.'}</strong><span>${currentHideCompletedCourses && plannedCourses.length ? 'Désactivez “Terminés masqués” pour les revoir.' : 'Le planning de promotion ne contient pas encore de cours publié.'}</span></div>`;
     }
 
     if (libraryPanel) {
-        const libraryCourses = complementaryCourses.length ? complementaryCourses : plannedCourses;
+        const rawLibraryCourses = complementaryCourses.length ? complementaryCourses : plannedCourses;
+        const libraryCourses = complementaryCourses.length ? visibleComplementaryCourses : visiblePlannedCourses;
         if (libraryCourses.length) {
             const coursesByBloc = groupCoursesByBloc(libraryCourses);
             const libraryLabel = complementaryCourses.length
@@ -887,21 +930,20 @@ function renderCourseSections(container, coursesInFormation = []) {
                             <strong>Liste bibliothèque</strong>
                             <span>${escapeHTML(libraryLabel)}</span>
                         </div>
-                        <em>${libraryCourses.length} cours</em>
+                        <em>${libraryCourses.length}${currentHideCompletedCourses && libraryCourses.length !== rawLibraryCourses.length ? ` / ${rawLibraryCourses.length}` : ''} cours</em>
                     </div>
                 </section>
                 ${Object.entries(coursesByBloc).map(([blocName, courses]) => `<section class="student-course-bloc"><div class="bloc-title">${escapeHTML(blocName)}</div><div class="student-course-bloc__list">${courses.map(buildCourseItemHTML).join('')}</div></section>`).join('')}
             `;
         } else {
-            libraryPanel.innerHTML = '<div class="student-library-empty"><strong>Aucun cours disponible.</strong><span>La formation n’a pas encore de contenu publié.</span></div>';
+            libraryPanel.innerHTML = `<div class="student-library-empty"><strong>${currentHideCompletedCourses && rawLibraryCourses.length ? 'Tous les cours de cette liste sont terminés.' : 'Aucun cours disponible.'}</strong><span>${currentHideCompletedCourses && rawLibraryCourses.length ? 'Désactivez “Terminés masqués” pour les revoir.' : 'La formation n’a pas encore de contenu publié.'}</span></div>`;
         }
     }
 
-    bindCourseViewSwitch(container, plannedCourses, complementaryCourses);
+    bindCourseViewSwitch(container, plannedCourses, complementaryCourses, coursesInFormation);
     applyCourseViewMode(container, currentCourseViewMode, plannedCourses, complementaryCourses);
     bindCourseCardNavigation(container);
 }
-
 function splitCoursesForFormationView(coursesInFormation = []) {
     const safeCourses = Array.isArray(coursesInFormation) ? coursesInFormation.filter((course) => course && course.id) : [];
     const plannedCourses = safeCourses.filter((course) => getPrimaryCoursePlan(course)).sort(sortCourses);
@@ -928,8 +970,10 @@ function resolveCourseViewMode(requestedMode, plannedCourses = [], complementary
 }
 
 function getCoursesForCurrentMode(plannedCourses = [], complementaryCourses = []) {
-    if (currentCourseViewMode !== 'library') return plannedCourses;
-    return complementaryCourses.length ? complementaryCourses : plannedCourses;
+    const courses = currentCourseViewMode !== 'library'
+        ? plannedCourses
+        : complementaryCourses.length ? complementaryCourses : plannedCourses;
+    return filterCompletedCoursesForDisplay(courses);
 }
 
 function getActivePromotionIdForCurrentFormation(courses = []) {
@@ -970,15 +1014,22 @@ function applyCourseViewMode(container, mode, plannedCourses = [], complementary
     filterVisibleCourseCards();
 }
 
-function bindCourseViewSwitch(container, plannedCourses = [], complementaryCourses = []) {
+function bindCourseViewSwitch(container, plannedCourses = [], complementaryCourses = [], coursesInFormation = []) {
     container.querySelectorAll('[data-course-view]').forEach((button) => {
         button.addEventListener('click', () => {
             if (button.disabled) return;
             applyCourseViewMode(container, button.dataset.courseView, plannedCourses, complementaryCourses);
         });
     });
-}
 
+    const hideCompletedButton = container.querySelector('[data-hide-completed]');
+    if (hideCompletedButton) {
+        hideCompletedButton.addEventListener('click', () => {
+            currentHideCompletedCourses = !currentHideCompletedCourses;
+            renderCourseSections(container, coursesInFormation);
+        });
+    }
+}
 function bindCourseCardNavigation(container) {
     container.querySelectorAll('.course-item').forEach((item) => {
         item.addEventListener('click', () => {
@@ -989,9 +1040,9 @@ function bindCourseCardNavigation(container) {
 }
 
 function ensureStudentCourseSwitchStyles() {
-    if (document.getElementById('student-course-switch-style-8-0p-167-155')) return;
+    if (document.getElementById('student-course-switch-style-8-0p-167-156')) return;
     const style = document.createElement('style');
-    style.id = 'student-course-switch-style-8-0p-167-155';
+    style.id = 'student-course-switch-style-8-0p-167-156';
     style.textContent = `
         .student-course-switch {
             display: flex;
@@ -1021,6 +1072,23 @@ function ensureStudentCourseSwitchStyles() {
         .student-course-switch__btn:disabled {
             cursor: not-allowed;
             opacity: 0.45;
+        }
+        .student-course-switch__btn--toggle {
+            margin-left: auto;
+            border-color: rgba(42,87,255,0.18);
+        }
+        .student-course-switch__btn--toggle.is-active {
+            background: rgba(42,87,255,0.14);
+            color: var(--accent-blue, #2A57FF);
+            border-color: rgba(42,87,255,0.32);
+        }
+        .student-course-badge--late {
+            background: rgba(239,68,68,0.1);
+            color: #dc2626;
+        }
+        .student-course-badge--future {
+            background: rgba(42,87,255,0.1);
+            color: var(--accent-blue, #2A57FF);
         }
         .student-course-card.is-plan-only {
             opacity: 0.92;
@@ -1205,16 +1273,16 @@ function sortCourses(a, b) {
     const planB = getPrimaryCoursePlan(courseB);
 
     if (planA || planB) {
-        const orderA = getCoursePlanSortOrder(planA || {});
-        const orderB = getCoursePlanSortOrder(planB || {});
-        if (orderA !== orderB) return orderA - orderB;
+        if (planA && !planB) return -1;
+        if (!planA && planB) return 1;
+        const planCompare = compareCoursePlansLikeQa(planA || {}, planB || {});
+        if (planCompare !== 0) return planCompare;
     }
 
     const blocCompare = String(courseA.bloc || courseA.blockTitle || '').localeCompare(String(courseB.bloc || courseB.blockTitle || ''), 'fr', { sensitivity: 'base' });
     if (blocCompare !== 0) return blocCompare;
     return String(courseA.titre || courseA.title || '').localeCompare(String(courseB.titre || courseB.title || ''), 'fr', { sensitivity: 'base' });
 }
-
 function escapeHTML(value) {
     return String(value || '')
         .replace(/&/g, '&amp;')

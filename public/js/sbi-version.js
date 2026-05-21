@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.155',
+  version: '8.0P.167.156',
   branch: 'main',
-  channel: 'P2I.43 STUDENT PROGRAM ORDER STATUS',
-  stage: 'STUDENT COURSE PROGRAM ORDER AND STATUS CLEANUP',
+  channel: 'P2I.44 STUDENT PROGRAM QA ORDER HIDE DONE',
+  stage: 'STUDENT PROGRAM ORDER AND HIDE COMPLETED',
   updatedAt: '2026-05-21',
-  label: 'SBI 8.0P.167.155 - Student program order and status cleanup'
+  label: 'SBI 8.0P.167.156 - Student program order and hide completed'
 };
 
 export function getSbiVersionLabel() {
