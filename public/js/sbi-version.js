@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.160',
+  version: '8.0P.167.161',
   branch: 'main',
-  channel: 'P2J.3A COURSE EDITOR V2 EMBEDDED SHELL FIX',
-  stage: 'COURSE EDITOR V2 EMBEDDED IN EXISTING SHELLS',
+  channel: 'P2J.3A COURSE EDITOR V2 BLANK PAGE SAFETY FIX',
+  stage: 'COURSE EDITOR V2 EMBEDDED SHELL BLANK SAFETY',
   updatedAt: '2026-05-21',
-  label: 'SBI 8.0P.167.160 - Course editor V2 embedded shell fix'
+  label: 'SBI 8.0P.167.161 - Course editor V2 blank page safety fix'
 };
 
 export function getSbiVersionLabel() {

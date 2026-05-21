@@ -14,7 +14,7 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
 
 const MAX_QUERY_VALUES = 10;
-const VERSION = '8.0P.167.160';
+const VERSION = '8.0P.167.161';
 
 const BLOCK_TYPES = [
   { type: 'course_info', label: 'Course Info', subtitle: 'Informations générales', icon: 'i', static: true },
@@ -54,6 +54,22 @@ const state = {
     learningBlocks: []
   }
 };
+
+function releasePreloadSafety() {
+  document.body?.classList?.remove('preload');
+  document.documentElement?.classList?.add('sbi-admin-loader-released');
+}
+
+function renderFatalEditorError(error) {
+  const root = document.getElementById('sbi-course-editor-v2');
+  if (!root) return;
+  root.innerHTML = `
+    <div class="sbi-editor-v2-fallback">
+      <strong>Éditeur V2 indisponible.</strong>
+      <span>${escapeHtml(error?.message || 'Erreur d’initialisation.')}</span>
+    </div>
+  `;
+}
 
 function $(selector, root = document) {
   return root.querySelector(selector);
@@ -1142,6 +1158,7 @@ function renderAll() {
 }
 
 function boot() {
+  releasePreloadSafety();
   mountShell();
   bindGlobalActions();
 
@@ -1156,6 +1173,7 @@ function boot() {
     } catch (error) {
       console.error('[SBI Course Editor V2] Initialisation impossible :', error);
       setStatus('Erreur d’initialisation', 'error');
+      renderFatalEditorError(error);
     }
   });
 }

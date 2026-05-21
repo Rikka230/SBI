@@ -537,3 +537,20 @@ body.sbi-editor-v2 {
   .sbi-editor-title-stack { flex-direction: column; align-items: flex-start; min-width: 0; }
   .sbi-editor-title-stack input { width: 100%; }
 }
+
+/* 8.0P.167.161 - Safety fallback: the editor pages must never stay visually blank. */
+.sbi-editor-v2-fallback {
+  margin: 1.25rem;
+  padding: 1.25rem;
+  border: 1px solid var(--editor-border);
+  border-radius: 18px;
+  background: var(--editor-surface);
+  color: var(--editor-text);
+  box-shadow: var(--editor-shadow);
+  display: grid;
+  gap: 0.35rem;
+}
+.sbi-editor-v2-fallback span {
+  color: var(--editor-muted);
+  font-size: 0.9rem;
+}
