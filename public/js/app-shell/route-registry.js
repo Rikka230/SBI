@@ -180,6 +180,11 @@ function updateUrlContext(url) {
   window.SBI_APP_SHELL_CURRENT_URL = url.href;
 }
 
+function cleanupCourseEditorV2Artifacts() {
+  document.querySelectorAll('.sbi-block-bank.sbi-block-bank--viewport, #app-container > .sbi-block-bank[data-editor-bank="fixed"], .sbi-editor-dialog-backdrop')
+    .forEach((node) => node.remove());
+}
+
 function lockAdminProfileTarget(url) {
   const uid = url?.searchParams?.get('id') || '';
   if (!uid) return '';
@@ -244,6 +249,7 @@ function bindProfileTabs() {
 }
 
 async function mountAdminIndex({ url, source = 'app-shell' }) {
+  cleanupCourseEditorV2Artifacts();
   const tab = getAdminTabFromUrl(url);
   const canRestoreIndex = hasCachedMain(ADMIN_INDEX_CACHE_KEY);
 
@@ -299,6 +305,7 @@ async function mountSiteIndex({ url }) {
 }
 
 async function mountAdminCourses({ url }) {
+  cleanupCourseEditorV2Artifacts();
   maybeCacheAdminIndexMain('leave-for-admin-courses');
 
   const doc = await fetchAdminDocument(url);
@@ -587,6 +594,7 @@ async function mountStudentProfile({ url }) {
 }
 
 async function mountTeacherDashboard({ url }) {
+  cleanupCourseEditorV2Artifacts();
   const doc = await fetchAdminDocument(url);
 
   await ensureDocumentStyles(doc, url.href);
@@ -611,6 +619,7 @@ async function mountTeacherDashboard({ url }) {
 }
 
 async function mountTeacherCourses({ url }) {
+  cleanupCourseEditorV2Artifacts();
   const doc = await fetchAdminDocument(url);
 
   await ensureDocumentStyles(doc, url.href);
@@ -715,7 +724,7 @@ async function mountCourseEditorV2Page({ url, role = 'teacher' }) {
   window.__SBI_APP_SHELL_MOUNTING_COURSE_EDITOR_V2 = true;
 
   try {
-    const module = await import('/js/course-editor-v2/course-editor-v2.js?v=8.0P.167.174');
+    const module = await import('/js/course-editor-v2/course-editor-v2.js?v=8.0P.167.175');
     const cleanup = module.mountCourseEditorV2?.({
       source: isAdmin ? 'pjax-admin-course-editor-v2' : 'pjax-teacher-course-editor-v2',
       force: true
@@ -740,6 +749,7 @@ async function mountAdminCourseEditorV2({ url }) {
 }
 
 async function mountTeacherProfile({ url }) {
+  cleanupCourseEditorV2Artifacts();
   const doc = await fetchAdminDocument(url);
 
   await ensureDocumentStyles(doc, url.href);

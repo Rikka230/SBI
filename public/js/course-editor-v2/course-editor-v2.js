@@ -26,7 +26,7 @@ import {
 } from '/admin/js/course-media-storage.js';
 
 const MAX_QUERY_VALUES = 10;
-const VERSION = '8.0P.167.174';
+const VERSION = '8.0P.167.175';
 
 const BLOCK_TYPES = [
   { type: 'course_info', label: 'Course Info', subtitle: 'Informations générales', icon: 'i', static: true },
@@ -270,6 +270,30 @@ function updateFixedBlockBankOffset() {
 
 function scheduleFixedBlockBankOffset() {
   window.requestAnimationFrame(updateFixedBlockBankOffset);
+}
+
+function cleanupEditorFloatingUi(root = activeRoot) {
+  document.querySelectorAll('.sbi-editor-dialog-backdrop').forEach((node) => node.remove());
+
+  document.querySelectorAll('.sbi-block-bank.sbi-block-bank--viewport, #app-container > .sbi-block-bank[data-editor-bank="fixed"]').forEach((bank) => {
+    bank.remove();
+  });
+
+  if (root) {
+    root.querySelectorAll('.sbi-block-bank').forEach((bank) => bank.remove());
+  }
+}
+
+function bindViewportBankResize() {
+  if (activeResizeBound) return;
+  window.addEventListener('resize', scheduleFixedBlockBankOffset, { passive: true });
+  activeResizeBound = true;
+}
+
+function unbindViewportBankResize() {
+  if (!activeResizeBound) return;
+  window.removeEventListener('resize', scheduleFixedBlockBankOffset);
+  activeResizeBound = false;
 }
 
 function $(selector, root = document) {
@@ -636,6 +660,8 @@ function mountShell() {
   if (!root) return;
 
   state.role = root.dataset.editorRole || document.body.dataset.editorRole || (location.pathname.includes('/admin/') ? 'admin' : 'teacher');
+
+  cleanupEditorFloatingUi(root);
 
   root.innerHTML = `
     <div class="sbi-editor-shell">
@@ -1991,6 +2017,7 @@ let booted = false;
 let activeRoot = null;
 let activeAuthUnsubscribe = null;
 let activeBeforeUnloadHandler = null;
+let activeResizeBound = false;
 
 function resetEditorRuntimeState() {
   state.uid = '';
@@ -2023,12 +2050,15 @@ export function mountCourseEditorV2({ force = false } = {}) {
   if (!root) return null;
   if (booted && activeRoot === root && !force) return null;
 
+  cleanupEditorFloatingUi(root);
+
   activeAuthUnsubscribe?.();
   activeAuthUnsubscribe = null;
   if (activeBeforeUnloadHandler) {
     window.removeEventListener('beforeunload', activeBeforeUnloadHandler);
     activeBeforeUnloadHandler = null;
   }
+  unbindViewportBankResize();
 
   resetEditorRuntimeState();
   booted = true;
@@ -2042,6 +2072,8 @@ export function mountCourseEditorV2({ force = false } = {}) {
       window.removeEventListener('beforeunload', activeBeforeUnloadHandler);
       activeBeforeUnloadHandler = null;
     }
+    unbindViewportBankResize();
+    cleanupEditorFloatingUi(root);
     if (activeRoot === root) {
       booted = false;
       activeRoot = null;
@@ -2051,12 +2083,11 @@ export function mountCourseEditorV2({ force = false } = {}) {
 
 function boot() {
   releasePreloadSafety();
-  window.addEventListener('resize', scheduleFixedBlockBankOffset, { passive: true });
+  bindViewportBankResize();
   try {
     mountShell();
     bindGlobalActions();
     scheduleFixedBlockBankOffset();
-    window.addEventListener('resize', scheduleFixedBlockBankOffset);
 
     activeAuthUnsubscribe = onAuthStateChanged(auth, async (user) => {
       releasePreloadSafety();

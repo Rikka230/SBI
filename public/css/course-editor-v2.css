@@ -842,7 +842,7 @@ body.sbi-editor-v2 {
   font-size: 0.9rem;
 }
 
-/* 8.0P.167.174 - Shared block picker, left preview, fixed block bank, SBI Quill presets. */
+/* 8.0P.167.175 - Shared block picker, left preview, fixed block bank, SBI Quill presets. */
 #sbi-course-editor-v2.sbi-editor-v2--teacher,
 #sbi-course-editor-v2[data-editor-role="teacher"],
 .sbi-editor-v2--teacher #sbi-course-editor-v2 {
@@ -982,7 +982,7 @@ body.sbi-editor-v2 {
 }
 
 
-/* 8.0P.167.174 - UX fixes: settings picker, fixed viewport bank, mini viewer preview. */
+/* 8.0P.167.175 - UX fixes: settings picker, fixed viewport bank, mini viewer preview. */
 .sbi-shared-block-picker--select-only {
   grid-template-columns: 1fr;
 }
@@ -1085,7 +1085,7 @@ body.sbi-editor-v2 {
   }
 }
 
-/* 8.0P.167.174 - Dock banque de blocs on the real viewport/app shell, not at page flow level. */
+/* 8.0P.167.175 - Dock banque de blocs on the real viewport/app shell, not at page flow level. */
 #sbi-course-editor-v2 .sbi-editor-shell {
   padding-bottom: 136px !important;
 }
@@ -1132,7 +1132,7 @@ body.sbi-editor-v2 {
   }
 }
 
-/* 8.0P.167.174 - SBI in-page dialog, no browser-native confirm/alert windows. */
+/* 8.0P.167.175 - SBI in-page dialog, no browser-native confirm/alert windows. */
 .sbi-editor-dialog-backdrop {
   position: fixed;
   inset: 0;

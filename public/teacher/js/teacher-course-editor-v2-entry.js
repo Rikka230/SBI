@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.167.174 - Teacher course editor V2 entry bridge
+ * SBI 8.0P.167.175 - Teacher course editor V2 entry bridge
  *
  * La V2 devient l’entrée officielle côté professeur :
  * - + Nouveau cours ouvre /teacher/course-editor.html
