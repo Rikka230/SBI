@@ -444,7 +444,7 @@ body.sbi-editor-v2 {
   color: var(--editor-muted);
 }
 
-/* 8.0P.167.165 - Quill legacy editor restored inside V2 lesson blocks. */
+/* 8.0P.167.166 - Quill legacy editor restored inside V2 lesson blocks + tooltips. */
 .sbi-field--quill {
   gap: 0.55rem;
 }
@@ -497,6 +497,73 @@ body.sbi-editor-v2 {
 
 .sbi-editor-v2-quill-tooltip-anchor {
   position: relative;
+}
+
+.sbi-quill-editor .ql-toolbar .sbi-editor-v2-quill-tooltip-anchor[data-sbi-tooltip]::after,
+.sbi-quill-editor .ql-toolbar .sbi-editor-v2-quill-tooltip-anchor[data-sbi-tooltip]::before {
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+  left: 50%;
+  transform: translate(-50%, 6px);
+  transition: opacity 0.14s ease, transform 0.14s ease;
+  z-index: 80;
+}
+
+.sbi-quill-editor .ql-toolbar .sbi-editor-v2-quill-tooltip-anchor[data-sbi-tooltip]::after {
+  content: attr(data-sbi-tooltip);
+  top: calc(100% + 8px);
+  width: max-content;
+  max-width: 190px;
+  padding: 0.42rem 0.58rem;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 9px;
+  background: rgba(15, 23, 42, 0.96);
+  color: #ffffff;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.24);
+  font-size: 0.72rem;
+  font-weight: 850;
+  line-height: 1.25;
+  text-align: center;
+  white-space: normal;
+}
+
+.sbi-quill-editor .ql-toolbar .sbi-editor-v2-quill-tooltip-anchor[data-sbi-tooltip]::before {
+  content: "";
+  top: calc(100% + 3px);
+  width: 9px;
+  height: 9px;
+  background: rgba(15, 23, 42, 0.96);
+  transform: translate(-50%, 6px) rotate(45deg);
+}
+
+.sbi-quill-editor .ql-toolbar .sbi-editor-v2-quill-tooltip-anchor[data-sbi-tooltip]:hover::after,
+.sbi-quill-editor .ql-toolbar .sbi-editor-v2-quill-tooltip-anchor[data-sbi-tooltip]:hover::before,
+.sbi-quill-editor .ql-toolbar .sbi-editor-v2-quill-tooltip-anchor[data-sbi-tooltip]:focus::after,
+.sbi-quill-editor .ql-toolbar .sbi-editor-v2-quill-tooltip-anchor[data-sbi-tooltip]:focus::before,
+.sbi-quill-editor .ql-toolbar .sbi-editor-v2-quill-tooltip-anchor[data-sbi-tooltip]:focus-within::after,
+.sbi-quill-editor .ql-toolbar .sbi-editor-v2-quill-tooltip-anchor[data-sbi-tooltip]:focus-within::before {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.sbi-quill-editor .ql-toolbar .sbi-editor-v2-quill-tooltip-anchor[data-sbi-tooltip]:hover::before,
+.sbi-quill-editor .ql-toolbar .sbi-editor-v2-quill-tooltip-anchor[data-sbi-tooltip]:focus::before,
+.sbi-quill-editor .ql-toolbar .sbi-editor-v2-quill-tooltip-anchor[data-sbi-tooltip]:focus-within::before {
+  transform: translate(-50%, 0) rotate(45deg);
+}
+
+.sbi-quill-editor .ql-toolbar .ql-picker.sbi-editor-v2-quill-tooltip-anchor[data-sbi-tooltip]::after {
+  top: calc(100% + 12px);
+}
+
+.sbi-editor-v2--teacher .sbi-quill-editor .ql-toolbar .sbi-editor-v2-quill-tooltip-anchor[data-sbi-tooltip]::after {
+  background: rgba(15, 23, 42, 0.96);
+}
+
+.sbi-editor-v2--admin .sbi-quill-editor .ql-toolbar .sbi-editor-v2-quill-tooltip-anchor[data-sbi-tooltip]::after,
+.sbi-editor-v2--admin .sbi-quill-editor .ql-toolbar .sbi-editor-v2-quill-tooltip-anchor[data-sbi-tooltip]::before {
+  background: rgba(7, 17, 30, 0.98);
 }
 
 @media (max-width: 1280px) {

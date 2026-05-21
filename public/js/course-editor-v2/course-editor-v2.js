@@ -14,7 +14,7 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
 
 const MAX_QUERY_VALUES = 10;
-const VERSION = '8.0P.167.165';
+const VERSION = '8.0P.167.166';
 
 const BLOCK_TYPES = [
   { type: 'course_info', label: 'Course Info', subtitle: 'Informations générales', icon: 'i', static: true },
@@ -52,6 +52,8 @@ function decorateQuillTooltip(element, label) {
   if (!element || !label) return;
   element.dataset.sbiTooltip = label;
   element.classList.add('sbi-editor-v2-quill-tooltip-anchor');
+  element.setAttribute('title', label);
+  element.setAttribute('aria-label', label);
   if (element.tagName === 'BUTTON') element.setAttribute('type', 'button');
 }
 
