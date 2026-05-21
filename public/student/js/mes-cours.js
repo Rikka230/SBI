@@ -270,18 +270,18 @@ function isRealCoursePlanItem(item = {}) {
     return Boolean(getPlanCourseId(item));
 }
 
-function getPriorityLabel(priority = 'normal') {
+function getPriorityLabel(priority = '') {
     const safePriority = String(priority || '').trim().toLowerCase();
     if (safePriority === 'urgent') return 'Priorité urgente';
     if (safePriority === 'high' || safePriority === 'haute') return 'Priorité haute';
-    return 'Priorité normale';
+    return '';
 }
 
-function getPriorityTone(priority = 'normal') {
+function getPriorityTone(priority = '') {
     const safePriority = String(priority || '').trim().toLowerCase();
     if (safePriority === 'urgent') return 'urgent';
     if (safePriority === 'high' || safePriority === 'haute') return 'high';
-    return 'normal';
+    return '';
 }
 
 function getCoursePlanDatesLabel(plan = {}) {
@@ -309,7 +309,9 @@ function normalizePromotionPlanItem(item = {}, promotion = {}, index = 0) {
         ...item,
         courseId: getPlanCourseId(item),
         originalType: getPlanItemType(item),
-        order: Number.isFinite(Number(item.order)) ? Number(item.order) : index,
+        originalOrder: item.order,
+        order: index,
+        coursePlanOrder: index,
         promotionId: promotion.id || '',
         promotionName: promotion.name || promotion.promotionName || 'Promotion',
         formationId: promotion.formationId || item.displayContextFormationId || '',
@@ -554,6 +556,31 @@ function renderAssignedFormations() {
     });
 }
 
+function getCoursePlanSortOrder(plan = {}) {
+    const candidates = [
+        plan.coursePlanOrder,
+        plan.coursePlanIndex,
+        plan.programOrder,
+        plan.curriculumOrder,
+        plan.displayOrder,
+        plan.order,
+        plan.position,
+        plan.index
+    ];
+
+    for (const value of candidates) {
+        const number = Number(value);
+        if (Number.isFinite(number)) return number;
+    }
+
+    return Number.POSITIVE_INFINITY;
+}
+
+function planMatchesCurrentContext(plan = {}) {
+    const activePromotionId = String(currentOpenFormationId || '').trim();
+    return Boolean(activePromotionId && String(plan.promotionId || '').trim() === activePromotionId);
+}
+
 function getPrimaryCoursePlan(course = {}) {
     const plans = Array.isArray(course.__promotionPlans)
         ? course.__promotionPlans
@@ -562,12 +589,15 @@ function getPrimaryCoursePlan(course = {}) {
             : [];
 
     return [...plans].sort((a, b) => {
-        const aDate = toMillis(a.recommendedStartAt || a.plannedStartAt || a.startAt || a.deadlineAt || a.dueAt);
-        const bDate = toMillis(b.recommendedStartAt || b.plannedStartAt || b.startAt || b.deadlineAt || b.dueAt);
-        if (aDate && bDate && aDate !== bDate) return aDate - bDate;
-        if (aDate && !bDate) return -1;
-        if (!aDate && bDate) return 1;
-        return Number(a.order || 0) - Number(b.order || 0);
+        const contextA = planMatchesCurrentContext(a) ? 0 : 1;
+        const contextB = planMatchesCurrentContext(b) ? 0 : 1;
+        if (contextA !== contextB) return contextA - contextB;
+
+        const orderA = getCoursePlanSortOrder(a);
+        const orderB = getCoursePlanSortOrder(b);
+        if (orderA !== orderB) return orderA - orderB;
+
+        return String(a.courseId || '').localeCompare(String(b.courseId || ''), 'fr', { sensitivity: 'base' });
     })[0] || null;
 }
 
@@ -959,9 +989,9 @@ function bindCourseCardNavigation(container) {
 }
 
 function ensureStudentCourseSwitchStyles() {
-    if (document.getElementById('student-course-switch-style-8-0p-167-148')) return;
+    if (document.getElementById('student-course-switch-style-8-0p-167-155')) return;
     const style = document.createElement('style');
-    style.id = 'student-course-switch-style-8-0p-167-148';
+    style.id = 'student-course-switch-style-8-0p-167-155';
     style.textContent = `
         .student-course-switch {
             display: flex;
@@ -1062,24 +1092,26 @@ function buildCourseItemHTML(course) {
     const totalChapters = Array.isArray(course.chapitres) ? course.chapitres.length : 0;
     const doneChapters = Array.isArray(progressData.completedChapters) ? progressData.completedChapters.length : 0;
     const progressPercent = totalChapters === 0 ? 0 : Math.round((doneChapters / totalChapters) * 100);
-    const statusBadge = buildStatusBadge(progressData, doneChapters, totalChapters);
+    const plan = getPrimaryCoursePlan(course);
+    const statusBadge = buildStatusBadge(progressData, doneChapters, totalChapters, plan);
     const quizHtml = buildQuizScoreHTML(course, progressData);
     const title = course.titre || course.title || 'Cours';
     const bloc = course.bloc || course.blockTitle || course.blockName || 'Bloc non renseigné';
     const isPlanOnly = course.__planOnly === true;
-    const plan = getPrimaryCoursePlan(course);
     const returnTo = buildCourseReturnUrl(course);
     const promotionId = String(plan?.promotionId || '').trim();
     const promotionQuery = promotionId ? `&promotionId=${encodeURIComponent(promotionId)}` : '';
     const href = `/student/cours-viewer.html?id=${encodeURIComponent(course.id)}${promotionQuery}&returnTo=${encodeURIComponent(returnTo)}`;
     const planLabel = plan ? getCoursePlanDatesLabel(plan) : '';
     const priorityLabel = plan ? getPriorityLabel(plan.priorityLevel) : '';
-    const priorityTone = plan ? getPriorityTone(plan.priorityLevel) : 'normal';
-    const planSource = '';
+    const priorityTone = plan ? getPriorityTone(plan.priorityLevel) : '';
+    const priorityHtml = priorityLabel
+        ? `<span class="student-course-priority student-course-priority--${escapeAttr(priorityTone)}">${escapeHTML(priorityLabel)}</span>`
+        : '';
     const planMetaHtml = plan
         ? `<div class="student-course-card__plan">
             <span>${escapeHTML(planLabel)}</span>
-            <span class="student-course-priority student-course-priority--${escapeAttr(priorityTone)}">${escapeHTML(priorityLabel)}</span>
+            ${priorityHtml}
           </div>`
         : '';
 
@@ -1108,12 +1140,35 @@ function buildCourseItemHTML(course) {
     `;
 }
 
-function buildStatusBadge(progressData, doneChapters, totalChapters) {
+function getScheduleStatus(plan = {}) {
+    if (!plan) return '';
+
+    const now = Date.now();
+    const start = toMillis(plan.recommendedStartAt || plan.plannedStartAt || plan.startAt);
+    const end = toMillis(plan.deadlineAt || plan.dueAt || plan.recommendedEndAt || plan.plannedEndAt || plan.endAt);
+
+    if (start && now < start) return 'future';
+    if (end && now > end) return 'late';
+    if (start && now >= start) return 'active';
+    return '';
+}
+
+function buildStatusBadge(progressData, doneChapters, totalChapters, plan = null) {
     if (progressData.status === 'done') {
         return `<span class="student-course-badge student-course-badge--done">Terminé</span>`;
     }
 
-    if (progressData.status === 'in_progress') {
+    const scheduleStatus = getScheduleStatus(plan);
+
+    if (scheduleStatus === 'late') {
+        return `<span class="student-course-badge student-course-badge--late">En retard</span>`;
+    }
+
+    if (scheduleStatus === 'future') {
+        return `<span class="student-course-badge student-course-badge--future">À venir</span>`;
+    }
+
+    if (progressData.status === 'in_progress' || scheduleStatus === 'active') {
         return `<span class="student-course-badge student-course-badge--progress">En cours (${doneChapters}/${totalChapters})</span>`;
     }
 
@@ -1150,15 +1205,9 @@ function sortCourses(a, b) {
     const planB = getPrimaryCoursePlan(courseB);
 
     if (planA || planB) {
-        const orderA = Number.isFinite(Number(planA?.order)) ? Number(planA.order) : Number.POSITIVE_INFINITY;
-        const orderB = Number.isFinite(Number(planB?.order)) ? Number(planB.order) : Number.POSITIVE_INFINITY;
+        const orderA = getCoursePlanSortOrder(planA || {});
+        const orderB = getCoursePlanSortOrder(planB || {});
         if (orderA !== orderB) return orderA - orderB;
-
-        const dateA = toMillis(planA?.recommendedStartAt || planA?.plannedStartAt || planA?.startAt);
-        const dateB = toMillis(planB?.recommendedStartAt || planB?.plannedStartAt || planB?.startAt);
-        if (dateA && dateB && dateA !== dateB) return dateA - dateB;
-        if (dateA && !dateB) return -1;
-        if (!dateA && dateB) return 1;
     }
 
     const blocCompare = String(courseA.bloc || courseA.blockTitle || '').localeCompare(String(courseB.bloc || courseB.blockTitle || ''), 'fr', { sensitivity: 'base' });
