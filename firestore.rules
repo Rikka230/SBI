@@ -295,6 +295,22 @@ service cloud.firestore {
         && request.auth.uid in courseData.targetStudents;
     }
 
+
+    function courseIsPublishedForStudents(courseData) {
+      return (
+          courseData.keys().hasAny(['actif'])
+          && courseData.actif == true
+        )
+        || (
+          courseData.keys().hasAny(['statutValidation'])
+          && courseData.statutValidation == 'approved'
+          && (
+            !courseData.keys().hasAny(['actif'])
+            || courseData.actif != false
+          )
+        );
+    }
+
     function courseTargetsCurrentUserPromotion(courseData) {
       return courseData.keys().hasAny(['targetPromotionIds'])
         && courseData.targetPromotionIds is list
@@ -496,7 +512,8 @@ service cloud.firestore {
           )
         )
         || currentUserPromotionAllowsCourse(courseId)
-        || (isStudent() && courseTargetsCurrentUserPromotion(courseData));
+        || (isStudent() && courseTargetsCurrentUserPromotion(courseData))
+        || (isStudent() && courseIsPublishedForStudents(courseData));
     }
 
     function validTeacherCourseWrite() {

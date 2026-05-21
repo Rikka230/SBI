@@ -844,22 +844,26 @@ function renderCourseSections(container, coursesInFormation = []) {
     }
 
     if (libraryPanel) {
-        if (complementaryCourses.length) {
-            const coursesByBloc = groupCoursesByBloc(complementaryCourses);
+        const libraryCourses = complementaryCourses.length ? complementaryCourses : plannedCourses;
+        if (libraryCourses.length) {
+            const coursesByBloc = groupCoursesByBloc(libraryCourses);
+            const libraryLabel = complementaryCourses.length
+                ? 'Contenus complémentaires de la formation, hors planning daté.'
+                : 'Vue liste des cours accessibles dans ce programme.';
             libraryPanel.innerHTML = `
                 <section class="student-course-section student-course-section--library">
                     <div class="student-course-section__head">
                         <div>
                             <strong>Liste bibliothèque</strong>
-                            <span>Contenus complémentaires de la formation, hors planning daté.</span>
+                            <span>${escapeHTML(libraryLabel)}</span>
                         </div>
-                        <em>${complementaryCourses.length} cours</em>
+                        <em>${libraryCourses.length} cours</em>
                     </div>
                 </section>
                 ${Object.entries(coursesByBloc).map(([blocName, courses]) => `<section class="student-course-bloc"><div class="bloc-title">${escapeHTML(blocName)}</div><div class="student-course-bloc__list">${courses.map(buildCourseItemHTML).join('')}</div></section>`).join('')}
             `;
         } else {
-            libraryPanel.innerHTML = '<div class="student-library-empty"><strong>Aucun cours complémentaire.</strong><span>La formation affiche uniquement son programme pour le moment.</span></div>';
+            libraryPanel.innerHTML = '<div class="student-library-empty"><strong>Aucun cours disponible.</strong><span>La formation n’a pas encore de contenu publié.</span></div>';
         }
     }
 
@@ -894,7 +898,8 @@ function resolveCourseViewMode(requestedMode, plannedCourses = [], complementary
 }
 
 function getCoursesForCurrentMode(plannedCourses = [], complementaryCourses = []) {
-    return currentCourseViewMode === 'library' ? complementaryCourses : plannedCourses;
+    if (currentCourseViewMode !== 'library') return plannedCourses;
+    return complementaryCourses.length ? complementaryCourses : plannedCourses;
 }
 
 function getActivePromotionIdForCurrentFormation(courses = []) {
@@ -1063,7 +1068,9 @@ function buildCourseItemHTML(course) {
     const bloc = course.bloc || course.blockTitle || course.blockName || 'Bloc non renseigné';
     const isPlanOnly = course.__planOnly === true;
     const returnTo = buildCourseReturnUrl(course);
-    const href = `/student/cours-viewer.html?id=${encodeURIComponent(course.id)}&returnTo=${encodeURIComponent(returnTo)}`;
+    const promotionId = String(plan?.promotionId || '').trim();
+    const promotionQuery = promotionId ? `&promotionId=${encodeURIComponent(promotionId)}` : '';
+    const href = `/student/cours-viewer.html?id=${encodeURIComponent(course.id)}${promotionQuery}&returnTo=${encodeURIComponent(returnTo)}`;
     const plan = getPrimaryCoursePlan(course);
     const planLabel = plan ? getCoursePlanDatesLabel(plan) : '';
     const priorityLabel = plan ? getPriorityLabel(plan.priorityLevel) : '';
