@@ -148,6 +148,11 @@
         .teacher-course-card__title { margin: 0; color: var(--text-main, #fff); font-size: 1.12rem; line-height: 1.25; }
         .teacher-course-card__signature { display: flex; flex-wrap: wrap; gap: 0.35rem 0.8rem; color: var(--text-muted, #9ca3af); font-size: 0.82rem; }
         .teacher-course-card__signature strong { color: var(--text-main, #fff); font-weight: 900; }
+        .teacher-course-card__planning { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; color: var(--text-muted, #9ca3af); font-size: 0.8rem; font-weight: 800; }
+        .teacher-course-card__planning span { display: inline-flex; align-items: center; width: fit-content; border-radius: 999px; padding: 0.22rem 0.55rem; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); }
+        .teacher-course-card__planning--muted { opacity: 0.76; }
+        .teacher-course-priority--high { color: #fbbf24; border-color: rgba(251,191,36,0.24) !important; background: rgba(251,191,36,0.12) !important; }
+        .teacher-course-priority--urgent { color: #f87171; border-color: rgba(248,113,113,0.28) !important; background: rgba(248,113,113,0.12) !important; }
         .teacher-course-card__tags { display: flex; flex-wrap: wrap; gap: 0.4rem; }
         .teacher-course-tag,
         .teacher-course-count,
@@ -222,9 +227,9 @@
 
                 <div id="tab-list" class="student-view active">
                     <section class="teacher-library-hero" aria-label="Bibliothèque professeur">
-                        <span class="teacher-library-kicker">Catalogue privé SBI</span>
-                        <h2>Une vue claire des cours accessibles, créés ou partagés.</h2>
-                        <p>La bibliothèque sépare mieux les brouillons, les cours publiés, les contenus à valider et les cours partagés par formation. C’est la base propre avant de raccorder plus finement Formation, Cursus et Promotion.</p>
+                        <span class="teacher-library-kicker">Bibliothèque professeur</span>
+                        <h2>Vos cours, vos partages et vos prochaines échéances.</h2>
+                        <p>Retrouvez les cours accessibles, leur statut, leur formation liée et leur planning quand une promotion les a datés. Les priorités visibles ici aident à préparer les interventions au bon moment.</p>
                         <div id="teacher-courses-insights" class="teacher-library-stats" aria-live="polite">
                             <div class="teacher-library-stat"><strong>…</strong><span>Chargement</span></div>
                         </div>
@@ -509,7 +514,7 @@
     <script type="module" src="/admin/js/admin-ui.js?v=8.0P.167.88"></script>
     <script type="module" src="/admin/js/admin-notifications.js?v=8.0P.167.86"></script>
     <script type="module" src="/admin/js/admin-courses.js?v=8.0P.167.88"></script>
-    <script type="module" src="/teacher/js/teacher-courses-library.js?v=8.0P.167.136"></script>
+    <script type="module" src="/teacher/js/teacher-courses-library.js?v=8.0P.167.137"></script>
     <script type="module" src="/admin/js/tracker.js?v=8.0P.167.44"></script>
 </body>
 </html>

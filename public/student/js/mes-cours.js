@@ -3,7 +3,7 @@
  * MES COURS - Bibliothèque étudiant SBI
  * =======================================================================
  *
- * 8.0P.167.136 : refonte bibliothèque Formation -> Blocs -> Cours.
+ * 8.0P.167.137 : bibliothèque reliée au planning de promotion.
  * Le viewer de cours reste en navigation classique.
  * =======================================================================
  */
@@ -204,6 +204,188 @@ function isAdminPreview() {
     return userData.role === 'admin' || userData.isGod === true;
 }
 
+
+function normalizeList(value) {
+    if (!Array.isArray(value)) return [];
+    return Array.from(new Set(value.map((item) => String(item || '').trim()).filter(Boolean)));
+}
+
+function toMillis(value) {
+    if (!value) return 0;
+    if (typeof value.toMillis === 'function') return value.toMillis();
+    if (typeof value === 'number') return value;
+    if (typeof value === 'string') {
+        const parsed = Date.parse(value);
+        return Number.isNaN(parsed) ? 0 : parsed;
+    }
+    if (typeof value.seconds === 'number') return value.seconds * 1000;
+    return 0;
+}
+
+function formatDate(value) {
+    const ms = toMillis(value);
+    if (!ms) return '';
+
+    try {
+        return new Intl.DateTimeFormat('fr-FR', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric'
+        }).format(new Date(ms));
+    } catch {
+        return '';
+    }
+}
+
+function getPlanItemType(item = {}) {
+    if (item.type) return String(item.type).trim();
+    if (item.itemType) return String(item.itemType).trim();
+    return item.courseId ? 'real_course' : '';
+}
+
+function isRealCoursePlanItem(item = {}) {
+    return getPlanItemType(item) === 'real_course' && String(item.courseId || '').trim();
+}
+
+function getPriorityLabel(priority = 'normal') {
+    const safePriority = String(priority || '').trim().toLowerCase();
+    if (safePriority === 'urgent') return 'Priorité urgente';
+    if (safePriority === 'high' || safePriority === 'haute') return 'Priorité haute';
+    return 'Priorité normale';
+}
+
+function getPriorityTone(priority = 'normal') {
+    const safePriority = String(priority || '').trim().toLowerCase();
+    if (safePriority === 'urgent') return 'urgent';
+    if (safePriority === 'high' || safePriority === 'haute') return 'high';
+    return 'normal';
+}
+
+function getCoursePlanDatesLabel(plan = {}) {
+    const start = formatDate(plan.recommendedStartAt || plan.plannedStartAt || plan.startAt);
+    const end = formatDate(plan.recommendedEndAt || plan.plannedEndAt || plan.endAt);
+    const deadline = formatDate(plan.deadlineAt || plan.dueAt);
+
+    if (start && end && start !== end) return `${start} → ${end}`;
+    if (start) return `Début ${start}`;
+    if (deadline) return `Échéance ${deadline}`;
+    return 'Dates à confirmer';
+}
+
+function getPromotionIdsForStudent() {
+    return normalizeList([
+        userData.promotionId,
+        userData.currentPromotionId,
+        userData.cohortId,
+        ...(Array.isArray(userData.promotionIds) ? userData.promotionIds : [])
+    ]);
+}
+
+function normalizePromotionPlanItem(item = {}, promotion = {}, index = 0) {
+    return {
+        ...item,
+        order: Number.isFinite(Number(item.order)) ? Number(item.order) : index,
+        promotionId: promotion.id || '',
+        promotionName: promotion.name || promotion.promotionName || 'Promotion',
+        formationId: promotion.formationId || item.displayContextFormationId || '',
+        formationName: promotion.formationName || item.displayContextFormationName || '',
+        startDate: promotion.startDate || '',
+        endDate: promotion.endDate || ''
+    };
+}
+
+function attachPromotionPlan(course = {}, plan = {}) {
+    const existing = Array.isArray(course.__promotionPlans) ? course.__promotionPlans : [];
+    return {
+        ...course,
+        __promotionLinked: true,
+        __promotionPlan: plan,
+        __promotionPlans: [...existing, plan]
+    };
+}
+
+function ensurePromotionFormationCard(promotion = {}) {
+    const formationId = String(promotion.formationId || '').trim();
+    const formationName = String(promotion.formationName || promotion.name || 'Promotion').trim();
+    if (!formationId && !formationName) return;
+
+    const alreadyExists = assignedFormations.some((formation) => {
+        return (formationId && String(formation.id || '') === formationId)
+            || (formationName && String(formation.titre || formation.title || '') === formationName);
+    });
+
+    if (alreadyExists) return;
+
+    assignedFormations.push({
+        id: formationId || `promotion-${promotion.id || formationName}`,
+        titre: formationName,
+        __promotionLinked: true,
+        promotionId: promotion.id || ''
+    });
+}
+
+async function loadPromotionPlanCourses() {
+    if (!currentUid || isAdminPreview()) return [];
+
+    const promotionIds = getPromotionIdsForStudent();
+    if (!promotionIds.length) return [];
+
+    const loadedCourses = [];
+
+    await Promise.all(promotionIds.map(async (promotionId) => {
+        try {
+            const promotionSnap = await getDoc(doc(db, 'promotions', promotionId));
+            if (!promotionSnap.exists()) return;
+
+            const promotion = { id: promotionSnap.id, ...promotionSnap.data() };
+            if ((promotion.status || 'active') === 'archived') return;
+
+            ensurePromotionFormationCard(promotion);
+
+            const planItems = Array.isArray(promotion.coursePlan) ? promotion.coursePlan : [];
+            const realItems = planItems
+                .map((item, index) => normalizePromotionPlanItem(item, promotion, index))
+                .filter(isRealCoursePlanItem);
+
+            const courses = await fetchCoursesByIds(realItems.map((item) => item.courseId));
+            const coursesById = new Map(courses.map((course) => [course.id, course]));
+
+            realItems.forEach((item) => {
+                const course = coursesById.get(item.courseId);
+                if (!course || (!isCourseVisible(course, { allowProgress: true }) && course.actif !== true)) return;
+                loadedCourses.push(attachPromotionPlan(course, item));
+            });
+        } catch (error) {
+            console.warn('[SBI Student Courses] Planning de promotion ignoré :', promotionId, error);
+        }
+    }));
+
+    return loadedCourses;
+}
+
+function courseBelongsToPromotionFormation(course = {}, formation = {}) {
+    const plans = Array.isArray(course.__promotionPlans)
+        ? course.__promotionPlans
+        : course.__promotionPlan
+            ? [course.__promotionPlan]
+            : [];
+
+    if (!plans.length) return false;
+
+    const formationId = String(formation?.id || '').trim();
+    const formationTitle = String(formation?.titre || formation?.title || '').trim();
+
+    return plans.some((plan) => {
+        const planFormationId = String(plan.formationId || plan.displayContextFormationId || '').trim();
+        const planFormationName = String(plan.formationName || plan.displayContextFormationName || '').trim();
+        return Boolean(
+            (formationId && planFormationId && planFormationId === formationId)
+            || (formationTitle && planFormationName && planFormationName === formationTitle)
+            || (formation?.__promotionLinked && plan.promotionId && plan.promotionId === formation.promotionId)
+        );
+    });
+}
+
 async function loadAssignedFormations() {
     const list = document.getElementById('formations-list');
     if (list) list.innerHTML = '<div class="student-library-loading">Chargement des formations…</div>';
@@ -226,9 +408,10 @@ async function loadAssignedCourses() {
         activeOnly: !isAdminPreview()
     });
 
+    const coursesFromPromotionPlan = await loadPromotionPlanCourses();
     const coursesFromNotifications = await loadNotificationLinkedCourses();
 
-    allCourses = uniqById([...coursesFromAccess, ...coursesFromNotifications])
+    allCourses = uniqById([...coursesFromAccess, ...coursesFromNotifications, ...coursesFromPromotionPlan])
         .filter((course) => isAdminPreview() || isCourseVisible(course, { allowProgress: true }));
 }
 
@@ -307,6 +490,29 @@ function renderAssignedFormations() {
     });
 }
 
+function getPrimaryCoursePlan(course = {}) {
+    const plans = Array.isArray(course.__promotionPlans)
+        ? course.__promotionPlans
+        : course.__promotionPlan
+            ? [course.__promotionPlan]
+            : [];
+
+    return [...plans].sort((a, b) => {
+        const aDate = toMillis(a.recommendedStartAt || a.plannedStartAt || a.startAt || a.deadlineAt || a.dueAt);
+        const bDate = toMillis(b.recommendedStartAt || b.plannedStartAt || b.startAt || b.deadlineAt || b.dueAt);
+        if (aDate && bDate && aDate !== bDate) return aDate - bDate;
+        if (aDate && !bDate) return -1;
+        if (!aDate && bDate) return 1;
+        return Number(a.order || 0) - Number(b.order || 0);
+    })[0] || null;
+}
+
+function buildInlinePlanHint(course = {}) {
+    const plan = getPrimaryCoursePlan(course);
+    if (!plan) return '';
+    return ` · ${escapeHTML(getCoursePlanDatesLabel(plan))}`;
+}
+
 function buildFormationCardHTML(formation) {
     const courses = getCoursesForFormation(formation);
     const totalCourses = courses.length;
@@ -336,7 +542,7 @@ function buildFormationCardHTML(formation) {
                 <div class="progress-bar-fill" style="width: ${progressPercent}%;"></div>
             </div>
             <div class="formation-folder__next">
-                ${nextCourse ? `Prochain cours : <strong>${escapeHTML(nextCourse.titre || nextCourse.title || 'Cours')}</strong>` : 'Aucun cours restant détecté.'}
+                ${nextCourse ? `Prochain cours : <strong>${escapeHTML(nextCourse.titre || nextCourse.title || 'Cours')}</strong>${buildInlinePlanHint(nextCourse)}` : 'Aucun cours restant détecté.'}
             </div>
         </article>
     `;
@@ -402,6 +608,8 @@ function getDirectAssignedCoursesWithoutVisibleFormation() {
             || course.__progressLinked === true
             || (Array.isArray(course.targetStudents) && course.targetStudents.includes(currentUid));
 
+        if (course.__promotionLinked === true) return false;
+
         if (!isDirectlyLinked) return false;
 
         const belongsToVisibleFormation = assignedFormations.some((formation) => {
@@ -414,7 +622,10 @@ function getDirectAssignedCoursesWithoutVisibleFormation() {
 
 function getCoursesForFormation(formation) {
     if (formation?.__directCourses === true) return getDirectAssignedCoursesWithoutVisibleFormation();
-    return allCourses.filter((course) => sharedCourseBelongsToFormation(course, formation, assignedFormations));
+    return allCourses.filter((course) => {
+        return sharedCourseBelongsToFormation(course, formation, assignedFormations)
+            || courseBelongsToPromotionFormation(course, formation);
+    });
 }
 
 function getCompletedCoursesForFormation(formation) {
@@ -527,9 +738,19 @@ function buildCourseItemHTML(course) {
     const title = course.titre || course.title || 'Cours';
     const bloc = course.bloc || course.blockTitle || course.blockName || 'Bloc non renseigné';
     const href = `/student/cours-viewer.html?id=${encodeURIComponent(course.id)}`;
+    const plan = getPrimaryCoursePlan(course);
+    const planLabel = plan ? getCoursePlanDatesLabel(plan) : '';
+    const priorityLabel = plan ? getPriorityLabel(plan.priorityLevel) : '';
+    const priorityTone = plan ? getPriorityTone(plan.priorityLevel) : 'normal';
+    const planMetaHtml = plan
+        ? `<div class="student-course-card__plan">
+            <span>${escapeHTML(planLabel)}</span>
+            <span class="student-course-priority student-course-priority--${escapeAttr(priorityTone)}">${escapeHTML(priorityLabel)}</span>
+          </div>`
+        : `<div class="student-course-card__plan student-course-card__plan--muted">Dates et priorité non renseignées</div>`;
 
     return `
-        <article class="course-item student-course-card" data-href="${escapeAttr(href)}" data-sbi-no-pjax="true" data-search="${escapeAttr(`${title} ${bloc}`)}">
+        <article class="course-item student-course-card" data-href="${escapeAttr(href)}" data-sbi-no-pjax="true" data-search="${escapeAttr(`${title} ${bloc} ${planLabel} ${priorityLabel}`)}">
             <div class="student-course-card__main">
                 <div class="student-course-card__icon" aria-hidden="true">
                     <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
@@ -540,6 +761,7 @@ function buildCourseItemHTML(course) {
                         <span>${totalChapters} étape${totalChapters > 1 ? 's' : ''}</span>
                         <span>${escapeHTML(bloc)}</span>
                     </div>
+                    ${planMetaHtml}
                     <div class="student-course-card__progress" aria-hidden="true"><span style="width:${progressPercent}%;"></span></div>
                 </div>
             </div>
@@ -587,6 +809,21 @@ function buildQuizScoreHTML(course, progressData) {
 }
 
 function sortCourses(a, b) {
+    const planA = getPrimaryCoursePlan(a);
+    const planB = getPrimaryCoursePlan(b);
+
+    if (planA || planB) {
+        const orderA = Number.isFinite(Number(planA?.order)) ? Number(planA.order) : Number.POSITIVE_INFINITY;
+        const orderB = Number.isFinite(Number(planB?.order)) ? Number(planB.order) : Number.POSITIVE_INFINITY;
+        if (orderA !== orderB) return orderA - orderB;
+
+        const dateA = toMillis(planA?.recommendedStartAt || planA?.plannedStartAt || planA?.startAt);
+        const dateB = toMillis(planB?.recommendedStartAt || planB?.plannedStartAt || planB?.startAt);
+        if (dateA && dateB && dateA !== dateB) return dateA - dateB;
+        if (dateA && !dateB) return -1;
+        if (!dateA && dateB) return 1;
+    }
+
     const blocCompare = String(a.bloc || a.blockTitle || '').localeCompare(String(b.bloc || b.blockTitle || ''), 'fr', { sensitivity: 'base' });
     if (blocCompare !== 0) return blocCompare;
     return String(a.titre || a.title || '').localeCompare(String(b.titre || b.title || ''), 'fr', { sensitivity: 'base' });

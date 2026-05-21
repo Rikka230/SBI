@@ -83,6 +83,61 @@ function formatDate(value) {
   }
 }
 
+function getPriorityLabel(priority = 'normal') {
+  const safePriority = normalizeString(priority).toLowerCase();
+  if (safePriority === 'urgent') return 'Priorité urgente';
+  if (safePriority === 'high' || safePriority === 'haute') return 'Priorité haute';
+  return 'Priorité normale';
+}
+
+function getPriorityTone(priority = 'normal') {
+  const safePriority = normalizeString(priority).toLowerCase();
+  if (safePriority === 'urgent') return 'urgent';
+  if (safePriority === 'high' || safePriority === 'haute') return 'high';
+  return 'normal';
+}
+
+function getPlanItemType(item = {}) {
+  if (item.type) return normalizeString(item.type);
+  if (item.itemType) return normalizeString(item.itemType);
+  return item.courseId ? 'real_course' : '';
+}
+
+function isRealCoursePlanItem(item = {}) {
+  return getPlanItemType(item) === 'real_course' && normalizeString(item.courseId);
+}
+
+function getCoursePlanStartMs(plan = {}) {
+  return getTimestampMs(plan.recommendedStartAt || plan.plannedStartAt || plan.startAt || plan.deadlineAt || plan.dueAt);
+}
+
+function sortCoursePlans(plans = []) {
+  return [...plans].sort((a, b) => {
+    const aDate = getCoursePlanStartMs(a);
+    const bDate = getCoursePlanStartMs(b);
+    if (aDate && bDate && aDate !== bDate) return aDate - bDate;
+    if (aDate && !bDate) return -1;
+    if (!aDate && bDate) return 1;
+    return Number(a.order || 0) - Number(b.order || 0);
+  });
+}
+
+function formatPlanDates(plan = {}) {
+  const start = formatDate(plan.recommendedStartAt || plan.plannedStartAt || plan.startAt);
+  const end = formatDate(plan.recommendedEndAt || plan.plannedEndAt || plan.endAt);
+  const deadline = formatDate(plan.deadlineAt || plan.dueAt);
+
+  if (start && end && start !== end) return `${start} → ${end}`;
+  if (start) return `Début ${start}`;
+  if (deadline) return `Échéance ${deadline}`;
+  return '';
+}
+
+function getPrimaryPlan(course = {}) {
+  const plans = Array.isArray(course.__promotionPlans) ? course.__promotionPlans : [];
+  return sortCoursePlans(plans)[0] || null;
+}
+
 function getCourseUpdatedMs(course = {}) {
   return getTimestampMs(course.updatedAt) || getTimestampMs(course.dateCreation) || getTimestampMs(course.createdAt);
 }
@@ -317,6 +372,52 @@ async function loadCoursesByIds(courseIds = []) {
   return courses;
 }
 
+
+async function loadPromotionPlansForCourses(courses = []) {
+  const courseIds = new Set(normalizeList(courses.map((course) => course.id)));
+  if (!courseIds.size) return new Map();
+
+  const snap = await safeGetDocs(collection(db, 'promotions'), 'planning des promotions');
+  const planMap = new Map();
+
+  snapToArray(snap).forEach((promotion) => {
+    if ((promotion.status || 'active') === 'archived') return;
+    const plan = Array.isArray(promotion.coursePlan) ? promotion.coursePlan : [];
+
+    plan.forEach((item, index) => {
+      if (!isRealCoursePlanItem(item) || !courseIds.has(normalizeString(item.courseId))) return;
+
+      const payload = {
+        ...item,
+        order: Number.isFinite(Number(item.order)) ? Number(item.order) : index,
+        promotionId: promotion.id,
+        promotionName: promotion.name || promotion.promotionName || 'Promotion',
+        formationId: promotion.formationId || item.displayContextFormationId || '',
+        formationName: promotion.formationName || item.displayContextFormationName || '',
+        startDate: promotion.startDate || '',
+        endDate: promotion.endDate || ''
+      };
+
+      const rows = planMap.get(item.courseId) || [];
+      rows.push(payload);
+      planMap.set(item.courseId, rows);
+    });
+  });
+
+  planMap.forEach((plans, courseId) => {
+    planMap.set(courseId, sortCoursePlans(plans));
+  });
+
+  return planMap;
+}
+
+function attachPromotionPlansToCourses(courses = [], planMap = new Map()) {
+  return courses.map((course) => ({
+    ...course,
+    __promotionPlans: planMap.get(course.id) || []
+  }));
+}
+
 async function loadTeacherCourses(uid, profile = {}, formations = []) {
   const formationKeys = getFormationKeys(profile, formations);
   const courses = [];
@@ -458,7 +559,7 @@ function buildLibraryStats(courses = [], uid = '') {
     total: courses.length,
     published: 0,
     pending: 0,
-    drafts: 0,
+    planned: 0,
     own: 0,
     shared: 0
   };
@@ -467,7 +568,7 @@ function buildLibraryStats(courses = [], uid = '') {
     const status = getCourseStatus(course).value;
     if (status === 'published') stats.published += 1;
     if (status === 'pending') stats.pending += 1;
-    if (status === 'draft') stats.drafts += 1;
+    if (Array.isArray(course.__promotionPlans) && course.__promotionPlans.length > 0) stats.planned += 1;
 
     if (getCourseAuthorId(course) === normalizeString(uid)) stats.own += 1;
     else stats.shared += 1;
@@ -484,7 +585,7 @@ function renderStats(stats) {
     <div class="teacher-library-stat"><strong>${stats.total}</strong><span>Cours accessibles</span></div>
     <div class="teacher-library-stat"><strong>${stats.published}</strong><span>Publiés</span></div>
     <div class="teacher-library-stat"><strong>${stats.pending}</strong><span>À valider</span></div>
-    <div class="teacher-library-stat"><strong>${stats.own}</strong><span>Créés par moi</span></div>
+    <div class="teacher-library-stat"><strong>${stats.planned}</strong><span>Planifiés</span></div>
   `;
 }
 
@@ -498,6 +599,11 @@ function renderCourseCard(course, { uid, formationMap, authorMap }) {
   const blocName = normalizeString(course.bloc || course.blockTitle || course.blockName);
   const authorLabel = resolveCourseAuthorLabel(course, authorMap);
   const updatedLabel = formatDate(course.updatedAt || course.dateCreation || course.createdAt);
+  const primaryPlan = getPrimaryPlan(course);
+  const planDates = primaryPlan ? formatPlanDates(primaryPlan) : '';
+  const priorityLabel = primaryPlan ? getPriorityLabel(primaryPlan.priorityLevel) : '';
+  const priorityTone = primaryPlan ? getPriorityTone(primaryPlan.priorityLevel) : 'normal';
+  const planPromotionLabel = primaryPlan?.promotionName || '';
 
   const formationTags = formationNames.length
     ? formationNames.map((name) => `<span class="teacher-course-tag teacher-course-tag--formation">${escapeHtml(name)}</span>`).join('')
@@ -510,6 +616,13 @@ function renderCourseCard(course, { uid, formationMap, authorMap }) {
   const draftClass = status.tone === 'muted' ? ' teacher-course-card--draft' : '';
   const scopeLabel = isOwnCourse ? 'Cours perso' : 'Cours partagé';
   const updatedHtml = updatedLabel ? `<span>Mis à jour le ${escapeHtml(updatedLabel)}</span>` : '<span>Mise à jour non renseignée</span>';
+  const planningHtml = primaryPlan
+    ? `<div class="teacher-course-card__planning">
+        <span>${escapeHtml(planDates || 'Dates à confirmer')}</span>
+        <span class="teacher-course-priority teacher-course-priority--${escapeHtml(priorityTone)}">${escapeHtml(priorityLabel)}</span>
+        ${planPromotionLabel ? `<span>${escapeHtml(planPromotionLabel)}</span>` : ''}
+      </div>`
+    : `<div class="teacher-course-card__planning teacher-course-card__planning--muted">Aucune date de promotion renseignée</div>`;
 
   const editButton = isOwnCourse
     ? `<button class="teacher-course-btn teacher-course-btn--secondary" type="button" data-teacher-edit-course="${escapeHtml(course.id)}">Éditer</button>`
@@ -528,10 +641,11 @@ function renderCourseCard(course, { uid, formationMap, authorMap }) {
           <span>Créé par <strong>${escapeHtml(authorLabel)}</strong></span>
           ${updatedHtml}
         </div>
+        ${planningHtml}
         <div class="teacher-course-card__tags">${formationTags}${blocTag}</div>
       </div>
       <div class="teacher-course-card__actions">
-        <a class="teacher-course-btn teacher-course-btn--primary" href="${COURSE_VIEWER_URL}?id=${encodeURIComponent(course.id)}&preview=true" data-sbi-no-pjax="true" data-sbi-no-transition="true">Ouvrir</a>
+        <a class="teacher-course-btn teacher-course-btn--primary" href="${COURSE_VIEWER_URL}?id=${encodeURIComponent(course.id)}&preview=true&returnTo=${encodeURIComponent('/teacher/mes-cours.html')}" data-sbi-no-pjax="true" data-sbi-no-transition="true">Ouvrir</a>
         ${editButton}
       </div>
     </article>
@@ -602,7 +716,9 @@ async function loadAndRender(state) {
   root.innerHTML = '<div class="teacher-course-loading">Chargement de la bibliothèque…</div>';
 
   const formations = await loadTeacherFormations(uid, profile);
-  const courses = await loadTeacherCourses(uid, profile, formations);
+  const rawCourses = await loadTeacherCourses(uid, profile, formations);
+  const planMap = await loadPromotionPlansForCourses(rawCourses);
+  const courses = attachPromotionPlansToCourses(rawCourses, planMap);
   const authorMap = await loadCourseAuthors(courses);
 
   state.formations = formations;
