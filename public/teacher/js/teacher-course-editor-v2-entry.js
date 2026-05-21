@@ -1,9 +1,15 @@
 /**
- * SBI 8.0P.167.176 - Teacher course editor V2 entry bridge
- * Entrée légère et nettoyable. Aucun setInterval global.
+ * SBI 8.0P.167.177 - Teacher course editor V2 entry bridge
+ *
+ * Bridge léger et nettoyable :
+ * - + Nouveau cours ouvre /teacher/course-editor.html
+ * - Modifier ouvre /teacher/course-editor.html?id=...
+ * - l'ancien éditeur n'est plus proposé côté prof
+ * - aucun interval persistant, donc pas de freeze après PJAX
  */
 
 const V2_EDITOR_PATH = '/teacher/course-editor.html';
+let activeCleanup = null;
 
 function normalizeString(value) {
   return value == null ? '' : String(value).trim();
@@ -14,17 +20,20 @@ function buildV2Url(courseId = '') {
   return safeCourseId ? `${V2_EDITOR_PATH}?id=${encodeURIComponent(safeCourseId)}` : V2_EDITOR_PATH;
 }
 
-async function goToV2(courseId = '', source = 'teacher-library-v2-entry') {
+async function navigateToV2(courseId = '') {
   const target = buildV2Url(courseId);
   if (typeof window.SBI_APP_SHELL_NAVIGATE === 'function') {
     try {
-      const handled = await window.SBI_APP_SHELL_NAVIGATE(target, { historyMode: 'push', source });
+      const handled = await window.SBI_APP_SHELL_NAVIGATE(target, {
+        historyMode: 'push',
+        source: courseId ? 'teacher-library-edit-v2' : 'teacher-library-new-v2'
+      });
       if (handled) return true;
     } catch (error) {
-      console.warn('[SBI Teacher Library] Navigation V2 PJAX indisponible, fallback classique :', error);
+      console.warn('[SBI Teacher Library] PJAX V2 indisponible, fallback classique :', error);
     }
   }
-  window.location.href = target;
+  window.location.assign(target);
   return false;
 }
 
@@ -39,26 +48,14 @@ function hideLegacyEditorAccess(root = document) {
   const tabEditor = root.getElementById?.('tab-editor') || document.getElementById('tab-editor');
   if (tabEditor) {
     tabEditor.classList.remove('active');
-    tabEditor.setAttribute('aria-hidden', 'true');
+    tabEditor.style.display = 'none';
+    tabEditor.innerHTML = '';
   }
 
   const tabList = root.getElementById?.('tab-list') || document.getElementById('tab-list');
   if (tabList && !tabList.classList.contains('active')) tabList.classList.add('active');
 
-  const firstTab = root.querySelector?.('.student-sub-nav-item') || document.querySelector('.student-sub-nav-item');
-  if (firstTab && !firstTab.classList.contains('active')) firstTab.classList.add('active');
-
   root.querySelectorAll?.('[data-teacher-legacy-edit-course], .teacher-course-btn--legacy').forEach((node) => node.remove());
-}
-
-function decorateTeacherCourseCards(root = document) {
-  root.querySelectorAll?.('[data-teacher-edit-course]').forEach((button) => {
-    const courseId = normalizeString(button.getAttribute('data-teacher-edit-course'));
-    if (!courseId) return;
-    button.dataset.sbiV2Decorated = 'true';
-    button.textContent = 'Modifier';
-    button.title = 'Ouvrir ce cours dans l’éditeur V2';
-  });
 }
 
 function decorateNewCourseButton(root = document) {
@@ -70,82 +67,99 @@ function decorateNewCourseButton(root = document) {
   button.removeAttribute('onclick');
 }
 
-function installLegacySwitchOverride(cleanups) {
-  const originalSwitch = window.switchCourseTab;
-  window.switchCourseTab = function patchedSwitchCourseTab(tabId, ...args) {
+function decorateCourseButtons(root = document) {
+  root.querySelectorAll?.('[data-teacher-edit-course]').forEach((button) => {
+    button.textContent = 'Modifier';
+    button.title = 'Ouvrir ce cours dans l’éditeur V2';
+    button.dataset.sbiV2Decorated = 'true';
+  });
+}
+
+function handleClick(event) {
+  const editButton = event.target.closest?.('[data-teacher-edit-course]');
+  if (editButton) {
+    const courseId = normalizeString(editButton.getAttribute('data-teacher-edit-course'));
+    if (!courseId) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation?.();
+    void navigateToV2(courseId);
+    return;
+  }
+
+  const newCourseButton = event.target.closest?.('#btn-trigger-new-course');
+  if (newCourseButton) {
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation?.();
+    void navigateToV2();
+    return;
+  }
+
+  const legacyTab = event.target.closest?.('#nav-tab-editor');
+  if (legacyTab) {
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation?.();
+    void navigateToV2();
+  }
+}
+
+function patchLegacySwitch() {
+  const previous = typeof window.switchCourseTab === 'function' ? window.switchCourseTab : null;
+  window.__SBI_TEACHER_V2_PREVIOUS_SWITCH = previous;
+  window.switchCourseTab = function switchCourseTabV2(tabId, ...args) {
     if (tabId === 'tab-editor') {
-      void goToV2('', 'teacher-legacy-tab-v2');
+      void navigateToV2();
       return;
     }
-    if (typeof originalSwitch === 'function') return originalSwitch.call(this, tabId, ...args);
-  };
-  cleanups.push(() => { window.switchCourseTab = originalSwitch; });
-}
-
-function mountTeacherCourseEditorV2Entry({ source = 'standard' } = {}) {
-  const controller = new AbortController();
-  const cleanups = [];
-  const root = document.getElementById('main-content') || document;
-
-  const refresh = () => {
-    hideLegacyEditorAccess(document);
-    decorateNewCourseButton(document);
-    decorateTeacherCourseCards(document);
-  };
-
-  const clickHandler = (event) => {
-    const editButton = event.target.closest?.('[data-teacher-edit-course]');
-    if (editButton) {
-      const courseId = normalizeString(editButton.getAttribute('data-teacher-edit-course'));
-      if (!courseId) return;
-      event.preventDefault();
-      event.stopPropagation();
-      event.stopImmediatePropagation?.();
-      void goToV2(courseId, 'teacher-library-edit-v2');
-      return;
-    }
-
-    const newButton = event.target.closest?.('#btn-trigger-new-course, [data-teacher-new-course-v2]');
-    if (newButton) {
-      event.preventDefault();
-      event.stopPropagation();
-      event.stopImmediatePropagation?.();
-      void goToV2('', 'teacher-library-new-v2');
-      return;
-    }
-
-    const legacyTab = event.target.closest?.('#nav-tab-editor');
-    if (legacyTab) {
-      event.preventDefault();
-      event.stopPropagation();
-      event.stopImmediatePropagation?.();
-      void goToV2('', 'teacher-legacy-tab-v2');
-    }
-  };
-
-  document.addEventListener('click', clickHandler, { capture: true, signal: controller.signal });
-
-  const observerRoot = document.getElementById('teacher-courses-list-container') || root;
-  const observer = new MutationObserver(refresh);
-  observer.observe(observerRoot, { childList: true, subtree: true });
-  cleanups.push(() => observer.disconnect());
-
-  const libraryMountedHandler = refresh;
-  window.addEventListener('sbi:teacher-library-mounted', libraryMountedHandler, { signal: controller.signal });
-
-  installLegacySwitchOverride(cleanups);
-  refresh();
-
-  return () => {
-    controller.abort();
-    cleanups.splice(0).forEach((fn) => {
-      try { fn(); } catch {}
-    });
+    return previous?.call(this, tabId, ...args);
   };
 }
 
-export { mountTeacherCourseEditorV2Entry };
+export function mountTeacherCourseEditorV2Entry({ source = 'standard' } = {}) {
+  activeCleanup?.();
 
-if (!window.__SBI_APP_SHELL_MOUNTING_TEACHER_COURSES_LIBRARY && document.getElementById('teacher-courses-list-container')) {
+  const root = document;
+  hideLegacyEditorAccess(root);
+  decorateNewCourseButton(root);
+  decorateCourseButtons(root);
+  patchLegacySwitch();
+
+  const observerRoot = document.getElementById('teacher-courses-list-container') || document.getElementById('main-content') || document.body;
+  const observer = observerRoot ? new MutationObserver(() => {
+    hideLegacyEditorAccess(root);
+    decorateNewCourseButton(root);
+    decorateCourseButtons(root);
+  }) : null;
+
+  observer?.observe(observerRoot, { childList: true, subtree: true });
+  document.addEventListener('click', handleClick, true);
+
+  const refreshHandler = () => {
+    hideLegacyEditorAccess(root);
+    decorateNewCourseButton(root);
+    decorateCourseButtons(root);
+  };
+  window.addEventListener('sbi:teacher-library-mounted', refreshHandler);
+
+  const cleanup = () => {
+    document.removeEventListener('click', handleClick, true);
+    window.removeEventListener('sbi:teacher-library-mounted', refreshHandler);
+    observer?.disconnect();
+    if (window.__SBI_TEACHER_V2_PREVIOUS_SWITCH) {
+      window.switchCourseTab = window.__SBI_TEACHER_V2_PREVIOUS_SWITCH;
+      delete window.__SBI_TEACHER_V2_PREVIOUS_SWITCH;
+    }
+    if (activeCleanup === cleanup) activeCleanup = null;
+  };
+
+  activeCleanup = cleanup;
+  return cleanup;
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => mountTeacherCourseEditorV2Entry({ source: 'auto' }), { once: true });
+} else {
   mountTeacherCourseEditorV2Entry({ source: 'auto' });
 }

@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.176',
+  version: '8.0P.167.177',
   branch: 'main',
-  channel: 'P2J.3D COURSE EDITOR V2 CLEANUP PATCH',
-  stage: 'EDITOR V2 DOCKED BANK CLEANUP AND NAVIGATION FIX',
+  channel: 'P2J.3D COURSE EDITOR V2 NAVIGATION SAFETY',
+  stage: 'EDITOR V2 BACK TO LIBRARY FREEZE FIX',
   updatedAt: '2026-05-21',
-  label: 'SBI 8.0P.167.176 - Course editor V2 cleanup docked bank and navigation fix'
+  label: 'SBI 8.0P.167.177 - Course editor V2 back navigation freeze fix'
 };
 
 export function getSbiVersionLabel() {

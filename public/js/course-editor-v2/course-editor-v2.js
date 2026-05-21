@@ -26,7 +26,7 @@ import {
 } from '/admin/js/course-media-storage.js';
 
 const MAX_QUERY_VALUES = 10;
-const VERSION = '8.0P.167.176';
+const VERSION = '8.0P.167.177';
 
 const BLOCK_TYPES = [
   { type: 'course_info', label: 'Course Info', subtitle: 'Informations générales', icon: 'i', static: true },
@@ -804,6 +804,30 @@ function addLocalSharedBlockOption(rawValue = '') {
 
 async function navigateShellAware(href, { historyMode = 'push', source = 'course-editor-v2' } = {}) {
   const target = new URL(href, window.location.href);
+
+  // 8.0P.167.177 : sortie de l’éditeur vers bibliothèque = navigation dure volontaire.
+  // Les routes PJAX entrantes sont OK, mais la sortie laissait parfois des états Quill/Auth/banque
+  // dans le shell et figait la bibliothèque. On nettoie puis on recharge la route proprement.
+  const isBackToLibrary = source.includes('back') && (
+    target.pathname.endsWith('/teacher/mes-cours.html') ||
+    target.pathname.endsWith('/admin/formations-cours.html')
+  );
+
+  if (isBackToLibrary) {
+    try { activeAuthUnsubscribe?.(); } catch {}
+    activeAuthUnsubscribe = null;
+    try { unbindViewportBankResize(); } catch {}
+    try { cleanupEditorFloatingUi(document.getElementById('sbi-course-editor-v2')); } catch {}
+    if (activeBeforeUnloadHandler) {
+      try { window.removeEventListener('beforeunload', activeBeforeUnloadHandler); } catch {}
+      activeBeforeUnloadHandler = null;
+    }
+    state.dirty = false;
+    target.searchParams.set('v', VERSION);
+    window.location.assign(target.href);
+    return true;
+  }
+
   if (typeof window.SBI_APP_SHELL_NAVIGATE === 'function') {
     try {
       const handled = await window.SBI_APP_SHELL_NAVIGATE(target.href, { historyMode, source });
