@@ -3,7 +3,6 @@ import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.1/fi
 import {
   collection,
   doc,
-  documentId,
   getDoc,
   getDocs,
   query,
@@ -13,11 +12,13 @@ import {
 const SELECT_ID = 'teacher-courses-promotion-filter';
 const STORAGE_KEY = 'sbi:teacher-courses:selected-promotion';
 const STYLE_ID = 'teacher-promotion-planning-select-style';
+const ALL_PROMOTIONS_VALUE = '__all_promotions__';
 const MAX_QUERY_VALUES = 10;
 
 let promotions = [];
-let selectedPromotionId = '';
+let selectedPromotionId = ALL_PROMOTIONS_VALUE;
 let observer = null;
+let applying = false;
 
 function clean(value = '') {
   return String(value ?? '').trim();
@@ -30,9 +31,7 @@ function normalizeList(value) {
 
 function chunkArray(items = [], size = MAX_QUERY_VALUES) {
   const chunks = [];
-  for (let index = 0; index < items.length; index += size) {
-    chunks.push(items.slice(index, index + size));
-  }
+  for (let index = 0; index < items.length; index += size) chunks.push(items.slice(index, index + size));
   return chunks;
 }
 
@@ -112,6 +111,14 @@ function getPromotionDateLabel(promotion = {}) {
   return '';
 }
 
+function getPlanCourseTitle(item = {}) {
+  return clean(item.courseTitle || item.title || 'Cours du cursus');
+}
+
+function getPlanCourseBloc(item = {}) {
+  return clean(item.blockTitle || item.bloc || item.moduleTitle || 'Cours du cursus');
+}
+
 async function safeGetDocs(queryRef, label = 'requête') {
   try {
     return await getDocs(queryRef);
@@ -156,18 +163,38 @@ async function loadPromotionsForFormationIds(formationIds = []) {
     snap?.forEach((item) => rows.push({ id: item.id, ...item.data() }));
   }
 
-  return rows
-    .filter((promotion) => (promotion.status || 'active') !== 'archived')
-    .sort((a, b) => {
-      const aDate = toMillis(a.startDate);
-      const bDate = toMillis(b.startDate);
-      if (aDate || bDate) return bDate - aDate;
-      return getPromotionLabel(a).localeCompare(getPromotionLabel(b), 'fr', { sensitivity: 'base' });
-    });
+  const map = new Map();
+  rows.forEach((promotion) => {
+    if (!promotion?.id) return;
+    if ((promotion.status || 'active') === 'archived') return;
+    map.set(promotion.id, promotion);
+  });
+
+  return Array.from(map.values()).sort((a, b) => {
+    const aDate = toMillis(a.startDate);
+    const bDate = toMillis(b.startDate);
+    if (aDate || bDate) return bDate - aDate;
+    return getPromotionLabel(a).localeCompare(getPromotionLabel(b), 'fr', { sensitivity: 'base' });
+  });
 }
 
 function getSelectedPromotion() {
+  if (selectedPromotionId === ALL_PROMOTIONS_VALUE) return null;
   return promotions.find((promotion) => promotion.id === selectedPromotionId) || null;
+}
+
+function getPlanItems(promotion = {}) {
+  const plan = Array.isArray(promotion.coursePlan) ? promotion.coursePlan : [];
+  return plan
+    .map((item, index) => ({ ...item, order: Number.isFinite(Number(item.order)) ? Number(item.order) : index }))
+    .filter(isCoursePlanItem)
+    .sort((a, b) => Number(a.order || 0) - Number(b.order || 0));
+}
+
+function getPlanMap(promotion = {}) {
+  const map = new Map();
+  getPlanItems(promotion).forEach((item) => map.set(clean(item.courseId), item));
+  return map;
 }
 
 function injectStyle() {
@@ -176,7 +203,7 @@ function injectStyle() {
   style.id = STYLE_ID;
   style.textContent = `
     #${SELECT_ID} {
-      min-width: 230px;
+      min-width: 260px;
       border-color: rgba(245,158,11,0.34);
       background: rgba(245,158,11,0.10);
       color: var(--text-main, #fff);
@@ -185,6 +212,13 @@ function injectStyle() {
       outline: 1px solid rgba(245,158,11,0.16);
       outline-offset: 2px;
       border-radius: 999px;
+    }
+    .teacher-course-card--promotion-placeholder {
+      border-style: dashed;
+      opacity: 0.88;
+    }
+    .teacher-course-card--promotion-placeholder::before {
+      background: linear-gradient(180deg, rgba(245,158,11,0.7), rgba(239,68,68,0.45));
     }
   `;
   document.head.appendChild(style);
@@ -201,16 +235,16 @@ function ensureSelect() {
   select = document.createElement('select');
   select.id = SELECT_ID;
   select.className = 'teacher-courses-select';
-  select.setAttribute('aria-label', 'Choisir la promotion pour les dates');
+  select.setAttribute('aria-label', 'Choisir une promotion pour filtrer le cursus');
 
   const sort = document.getElementById('teacher-courses-sort');
   if (sort?.parentElement === toolbar) toolbar.insertBefore(select, sort.nextSibling);
   else toolbar.insertBefore(select, toolbar.firstChild);
 
   select.addEventListener('change', () => {
-    selectedPromotionId = select.value;
+    selectedPromotionId = select.value || ALL_PROMOTIONS_VALUE;
     try { localStorage.setItem(STORAGE_KEY, selectedPromotionId); } catch {}
-    applySelectedPromotionDates();
+    applySelectedPromotionContext();
   });
 
   return select;
@@ -221,43 +255,29 @@ function renderSelect() {
   if (!select) return;
 
   const stored = (() => {
-    try { return localStorage.getItem(STORAGE_KEY) || ''; } catch { return ''; }
+    try { return localStorage.getItem(STORAGE_KEY) || ALL_PROMOTIONS_VALUE; } catch { return ALL_PROMOTIONS_VALUE; }
   })();
 
-  if (!selectedPromotionId) {
-    selectedPromotionId = promotions.some((promotion) => promotion.id === stored)
-      ? stored
-      : promotions[0]?.id || '';
-  }
+  selectedPromotionId = stored === ALL_PROMOTIONS_VALUE || promotions.some((promotion) => promotion.id === stored)
+    ? stored
+    : ALL_PROMOTIONS_VALUE;
 
-  if (!promotions.length) {
-    select.innerHTML = '<option value="">Dates : aucune promotion</option>';
-    select.value = '';
-    select.disabled = true;
-    return;
-  }
-
-  select.disabled = false;
-  select.innerHTML = promotions.map((promotion) => {
+  const promotionOptions = promotions.map((promotion) => {
     const label = getPromotionLabel(promotion);
     const dates = getPromotionDateLabel(promotion);
-    return `<option value="${escapeHtml(promotion.id)}">Dates : ${escapeHtml(label)}${dates ? ` · ${escapeHtml(dates)}` : ''}</option>`;
+    return `<option value="${escapeHtml(promotion.id)}">Cursus : ${escapeHtml(label)}${dates ? ` · ${escapeHtml(dates)}` : ''}</option>`;
   }).join('');
 
-  if (promotions.some((promotion) => promotion.id === selectedPromotionId)) select.value = selectedPromotionId;
-  else {
-    selectedPromotionId = promotions[0].id;
-    select.value = selectedPromotionId;
-  }
+  select.disabled = false;
+  select.innerHTML = `
+    <option value="${ALL_PROMOTIONS_VALUE}">Toutes les promotions · sans dates</option>
+    ${promotionOptions}
+  `;
+  select.value = selectedPromotionId;
 }
 
-function findPlanForCourse(promotion = {}, courseId = '') {
-  const safeCourseId = clean(courseId);
-  if (!safeCourseId) return null;
-  const plan = Array.isArray(promotion.coursePlan) ? promotion.coursePlan : [];
-  return plan
-    .map((item, index) => ({ ...item, order: Number.isFinite(Number(item.order)) ? Number(item.order) : index }))
-    .find((item) => isCoursePlanItem(item) && clean(item.courseId) === safeCourseId) || null;
+function removeBridgePlanning(card) {
+  card.querySelectorAll('.teacher-course-card__planning').forEach((node) => node.remove());
 }
 
 function renderPlanningHtml(item = {}, promotion = {}) {
@@ -271,32 +291,105 @@ function renderPlanningHtml(item = {}, promotion = {}) {
   `;
 }
 
-function applySelectedPromotionDates() {
-  const promotion = getSelectedPromotion();
-  const cards = document.querySelectorAll('.teacher-course-card[data-course-id]');
+function buildMissingCourseCard(item = {}, promotion = {}) {
+  const courseId = clean(item.courseId);
+  const priorityTone = getPriorityTone(item.priorityLevel);
+  return `
+    <article class="teacher-course-card teacher-course-card--promotion-placeholder" data-sbi-promotion-placeholder="true" data-course-id="${escapeHtml(courseId)}" style="order:${Number(item.order || 0)}">
+      <div class="teacher-course-card__body">
+        <div class="teacher-course-card__meta">
+          <span class="teacher-course-status teacher-course-status--warning">Dans le cursus</span>
+          <span class="teacher-course-count teacher-course-count--scope">Cours à vérifier</span>
+        </div>
+        <h3 class="teacher-course-card__title">${escapeHtml(getPlanCourseTitle(item))}</h3>
+        <div class="teacher-course-card__signature">
+          <span>${escapeHtml(getPlanCourseBloc(item))}</span>
+          <span>Document du cours non chargé dans cette bibliothèque.</span>
+        </div>
+        <div class="teacher-course-card__planning" data-sbi-promotion-bridge="true">
+          <span>${escapeHtml(formatPlanDates(item))}</span>
+          <span class="teacher-course-priority teacher-course-priority--${escapeHtml(priorityTone)}">${escapeHtml(getPriorityLabel(item.priorityLevel))}</span>
+          <span>${escapeHtml(getPromotionLabel(promotion))}</span>
+        </div>
+      </div>
+      <div class="teacher-course-card__actions">
+        <button class="teacher-course-btn teacher-course-btn--secondary" type="button" disabled>Non ouvert</button>
+      </div>
+    </article>
+  `;
+}
 
-  cards.forEach((card) => {
-    const courseId = clean(card.dataset.courseId);
-    const body = card.querySelector('.teacher-course-card__body');
-    if (!body) return;
-
-    card.querySelectorAll('.teacher-course-card__planning').forEach((node) => node.remove());
-
-    const plan = promotion ? findPlanForCourse(promotion, courseId) : null;
-    if (!plan) return;
-
-    const signature = body.querySelector('.teacher-course-card__signature');
-    const html = renderPlanningHtml(plan, promotion);
-    if (signature) signature.insertAdjacentHTML('afterend', html);
-    else body.insertAdjacentHTML('beforeend', html);
-  });
-
-  const count = promotion
-    ? cards.length && Array.from(cards).filter((card) => findPlanForCourse(promotion, card.dataset.courseId)).length
-    : 0;
+function updateCountText(totalVisible, promotion = null) {
   const helper = document.getElementById('teacher-courses-count');
-  if (helper && promotion) {
-    helper.textContent = `${helper.textContent.replace(/ · dates .*/, '')} · dates ${getPromotionLabel(promotion)} (${count})`;
+  if (!helper) return;
+  if (!promotion) {
+    helper.textContent = `${totalVisible} cours affiché${totalVisible > 1 ? 's' : ''} · dates désactivées`;
+    return;
+  }
+  helper.textContent = `${totalVisible} cours du cursus · ${getPromotionLabel(promotion)}`;
+}
+
+function applySelectedPromotionContext() {
+  if (applying) return;
+  applying = true;
+
+  try {
+    const root = document.getElementById('teacher-courses-list-container');
+    if (!root) return;
+
+    root.querySelectorAll('[data-sbi-promotion-placeholder="true"]').forEach((node) => node.remove());
+
+    const promotion = getSelectedPromotion();
+    const cards = Array.from(root.querySelectorAll('.teacher-course-card[data-course-id]'))
+      .filter((card) => card.getAttribute('data-sbi-promotion-placeholder') !== 'true');
+
+    if (!promotion) {
+      cards.forEach((card) => {
+        removeBridgePlanning(card);
+        card.style.display = '';
+        card.style.order = '';
+      });
+      updateCountText(cards.length, null);
+      return;
+    }
+
+    const planItems = getPlanItems(promotion);
+    const planMap = getPlanMap(promotion);
+    const represented = new Set();
+    let visibleCount = 0;
+
+    cards.forEach((card) => {
+      const courseId = clean(card.dataset.courseId);
+      const plan = planMap.get(courseId) || null;
+      removeBridgePlanning(card);
+
+      if (!plan) {
+        card.style.display = 'none';
+        card.style.order = '';
+        return;
+      }
+
+      represented.add(courseId);
+      visibleCount += 1;
+      card.style.display = '';
+      card.style.order = String(Number(plan.order || 0));
+
+      const body = card.querySelector('.teacher-course-card__body');
+      const signature = body?.querySelector('.teacher-course-card__signature');
+      const html = renderPlanningHtml(plan, promotion);
+      if (signature) signature.insertAdjacentHTML('afterend', html);
+      else body?.insertAdjacentHTML('beforeend', html);
+    });
+
+    const missingHtml = planItems
+      .filter((item) => !represented.has(clean(item.courseId)))
+      .map((item) => buildMissingCourseCard(item, promotion))
+      .join('');
+
+    if (missingHtml) root.insertAdjacentHTML('beforeend', missingHtml);
+    updateCountText(visibleCount + planItems.filter((item) => !represented.has(clean(item.courseId))).length, promotion);
+  } finally {
+    applying = false;
   }
 }
 
@@ -305,11 +398,11 @@ async function boot(user) {
   const formationIds = await loadTeacherFormationIds(user.uid, profile || {});
   promotions = await loadPromotionsForFormationIds(formationIds);
   renderSelect();
-  applySelectedPromotionDates();
+  applySelectedPromotionContext();
 
   const root = document.getElementById('teacher-courses-list-container');
   if (root && !observer) {
-    observer = new MutationObserver(() => applySelectedPromotionDates());
+    observer = new MutationObserver(() => window.requestAnimationFrame(applySelectedPromotionContext));
     observer.observe(root, { childList: true, subtree: false });
   }
 }

@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.139',
+  version: '8.0P.167.140',
   branch: 'main',
-  channel: 'P2I.27 PROMOTION CONTEXT SELECTOR',
-  stage: 'TEACHER PROMOTION DATE SELECTOR + STUDENT PROMOTION COURSE VIEW BRIDGE',
+  channel: 'P2I.28 PROMOTION CONTEXT STRICT FIX',
+  stage: 'TEACHER PROMOTION FILTER STRICT + STUDENT PROMOTION COURSE OPEN FIX',
   updatedAt: '2026-05-21',
-  label: 'SBI 8.0P.167.139 - Promotion context selector for course libraries'
+  label: 'SBI 8.0P.167.140 - Strict promotion context for course libraries'
 };
 
 export function getSbiVersionLabel() {

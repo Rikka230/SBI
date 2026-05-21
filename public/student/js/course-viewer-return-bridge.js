@@ -25,5 +25,6 @@ function installReturnBridge() {
 }
 
 window.addEventListener('sbi:course-viewer-mounted', installReturnBridge);
-window.setTimeout(installReturnBridge, 250);
-window.setTimeout(installReturnBridge, 900);
+window.setTimeout(installReturnBridge, 120);
+window.setTimeout(installReturnBridge, 500);
+window.setTimeout(installReturnBridge, 1200);
