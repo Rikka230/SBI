@@ -536,12 +536,12 @@ async function mountStudentPage({ url }) {
   window.__SBI_APP_SHELL_MOUNTING_STUDENT_COURSES = true;
 
   try {
-    const module = await import('/student/js/mes-cours.js?v=8.0P.167.144');
+    const module = await import('/student/js/mes-cours.js?v=8.0P.167.156');
     const cleanup = module.mountStudentCourses?.({ source: 'pjax-student-courses' });
 
     if (typeof cleanup === 'function') registerCleanup(cleanup, 'student-courses');
 
-    const promotionModule = await import('/student/js/student-promotion-course-view.js?v=8.0P.167.144');
+    const promotionModule = await import('/student/js/student-promotion-course-view.js?v=8.0P.167.156');
     const cleanupPromotionView = promotionModule.mountStudentPromotionCourseView?.({ source: 'pjax-student-courses' });
 
     if (typeof cleanupPromotionView === 'function') registerCleanup(cleanupPromotionView, 'student-promotion-course-view');
@@ -628,14 +628,14 @@ async function mountTeacherCourses({ url }) {
    */
   window.__SBI_APP_SHELL_MOUNTING_TEACHER_COURSES_LIBRARY = true;
   try {
-    const libraryModule = await import('/teacher/js/teacher-courses-library.js?v=8.0P.167.138');
+    const libraryModule = await import('/teacher/js/teacher-courses-library.js?v=8.0P.167.146');
     const cleanupTeacherLibrary = libraryModule.mountTeacherCoursesLibrary?.({ source: 'pjax-teacher-courses' });
 
     if (typeof cleanupTeacherLibrary === 'function') {
       registerCleanup(cleanupTeacherLibrary, 'teacher-courses-library');
     }
 
-    const promotionModule = await import('/teacher/js/teacher-promotion-planning-select.js?v=8.0P.167.144');
+    const promotionModule = await import('/teacher/js/teacher-promotion-planning-select.js?v=8.0P.167.146');
     const cleanupPromotionSelect = promotionModule.mountTeacherPromotionPlanningSelect?.({ source: 'pjax-teacher-courses' });
 
     if (typeof cleanupPromotionSelect === 'function') {
@@ -695,7 +695,14 @@ async function mountCourseEditorV2Page({ url, role = 'teacher' }) {
   await ensureDocumentStyles(doc, url.href);
   await loadQuillIfNeeded(loadScriptOnce);
 
+  // 8.0P.167.171 : en PJAX, le body du document courant ne garde pas
+  // automatiquement les classes de la page éditeur. Sans ces classes, les
+  // variables CSS de l'éditeur V2 disparaissent et la page devient quasi
+  // brute/minuscule. On force donc les classes complètes du thème embarqué.
   applyBodyRouteClassesFromDocument(doc, [
+    'sbi-editor-v2',
+    isAdmin ? 'sbi-editor-v2--admin' : 'sbi-editor-v2--teacher',
+    'sbi-editor-v2--embedded',
     'sbi-course-editor-page',
     isAdmin ? 'sbi-admin-surface' : 'sbi-teacher-surface',
     !isAdmin ? 'no-right-panel' : ''
@@ -708,7 +715,7 @@ async function mountCourseEditorV2Page({ url, role = 'teacher' }) {
   window.__SBI_APP_SHELL_MOUNTING_COURSE_EDITOR_V2 = true;
 
   try {
-    const module = await import('/js/course-editor-v2/course-editor-v2.js?v=8.0P.167.170');
+    const module = await import('/js/course-editor-v2/course-editor-v2.js?v=8.0P.167.171');
     const cleanup = module.mountCourseEditorV2?.({
       source: isAdmin ? 'pjax-admin-course-editor-v2' : 'pjax-teacher-course-editor-v2',
       force: true

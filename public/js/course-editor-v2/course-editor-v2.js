@@ -26,7 +26,7 @@ import {
 } from '/admin/js/course-media-storage.js';
 
 const MAX_QUERY_VALUES = 10;
-const VERSION = '8.0P.167.170';
+const VERSION = '8.0P.167.171';
 
 const BLOCK_TYPES = [
   { type: 'course_info', label: 'Course Info', subtitle: 'Informations générales', icon: 'i', static: true },

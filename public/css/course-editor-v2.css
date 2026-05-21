@@ -12,6 +12,54 @@ body.sbi-editor-v2 {
   color: var(--editor-text);
 }
 
+/* 8.0P.167.171 - PJAX safety: variables also live on the editor root.
+   If the app shell injects only <main> before body classes settle, the V2
+   interface still keeps its full card layout instead of collapsing visually. */
+#sbi-course-editor-v2[data-editor-role="teacher"] {
+  --accent: #ff7a1a;
+  --accent-2: #ff9f43;
+  --accent-soft: rgba(255,122,26,0.10);
+  --accent-border: rgba(255,122,26,0.22);
+  --editor-bg: #f5f7fb;
+  --editor-surface: #ffffff;
+  --editor-surface-2: #f9fafc;
+  --editor-surface-3: #eef2f7;
+  --editor-text: #0f172a;
+  --editor-muted: #667085;
+  --editor-border: #d9e1ec;
+  --editor-shadow: 0 22px 70px rgba(15, 23, 42, 0.09);
+  --editor-header: rgba(255, 255, 255, 0.88);
+  --editor-danger: #ef4444;
+  --editor-success: #16a34a;
+  --editor-warning: #f59e0b;
+}
+#sbi-course-editor-v2[data-editor-role="admin"] {
+  --accent: #1597ff;
+  --accent-2: #4cc9ff;
+  --accent-soft: rgba(21,151,255,0.12);
+  --accent-border: rgba(21,151,255,0.28);
+  --editor-bg: #07111e;
+  --editor-surface: #0c1826;
+  --editor-surface-2: #101e2f;
+  --editor-surface-3: #13253a;
+  --editor-text: #eef6ff;
+  --editor-muted: #8da0b8;
+  --editor-border: rgba(143, 163, 190, 0.18);
+  --editor-shadow: 0 22px 80px rgba(0, 0, 0, 0.42);
+  --editor-header: rgba(6, 16, 29, 0.88);
+  --editor-danger: #ff6262;
+  --editor-success: #34d399;
+  --editor-warning: #fbbf24;
+}
+#sbi-course-editor-v2 {
+  font-family: var(--sbi-editor-font);
+  color: var(--editor-text);
+}
+#sbi-course-editor-v2 .sbi-editor-shell {
+  min-height: auto;
+  gap: 1rem;
+}
+
 .sbi-editor-v2--teacher {
   --accent: #ff7a1a;
   --accent-2: #ff9f43;
