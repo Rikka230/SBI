@@ -22,7 +22,6 @@ function normalizeString(value) {
 
 function normalizeList(value) {
   if (!Array.isArray(value)) return [];
-
   return Array.from(new Set(value.map(normalizeString).filter(Boolean)));
 }
 
@@ -46,19 +45,16 @@ function escapeHtml(value) {
 function snapToArray(snapshot) {
   const rows = [];
   if (!snapshot) return rows;
-
   snapshot.forEach((item) => rows.push({ id: item.id, ...item.data() }));
   return rows;
 }
 
 function uniqById(items = []) {
   const map = new Map();
-
   items.forEach((item) => {
     if (!item?.id) return;
     map.set(item.id, item);
   });
-
   return Array.from(map.values());
 }
 
@@ -72,16 +68,44 @@ function getTimestampMs(value) {
   return 0;
 }
 
-function sortCourses(courses = []) {
-  return [...courses].sort((a, b) => {
-    const bDate = getTimestampMs(b.updatedAt) || getTimestampMs(b.dateCreation) || getTimestampMs(b.createdAt);
-    const aDate = getTimestampMs(a.updatedAt) || getTimestampMs(a.dateCreation) || getTimestampMs(a.createdAt);
+function formatDate(value) {
+  const timestamp = getTimestampMs(value);
+  if (!timestamp) return '';
 
+  try {
+    return new Intl.DateTimeFormat('fr-FR', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    }).format(new Date(timestamp));
+  } catch {
+    return '';
+  }
+}
+
+function getCourseUpdatedMs(course = {}) {
+  return getTimestampMs(course.updatedAt) || getTimestampMs(course.dateCreation) || getTimestampMs(course.createdAt);
+}
+
+function sortCourses(courses = [], mode = getSortValue()) {
+  const safeMode = normalizeString(mode) || 'recent';
+
+  return [...courses].sort((a, b) => {
+    if (safeMode === 'title') {
+      return getCourseTitle(a).localeCompare(getCourseTitle(b), 'fr', { sensitivity: 'base' });
+    }
+
+    if (safeMode === 'status') {
+      const statusCompare = getCourseStatus(a).label.localeCompare(getCourseStatus(b).label, 'fr', { sensitivity: 'base' });
+      if (statusCompare !== 0) return statusCompare;
+      return getCourseTitle(a).localeCompare(getCourseTitle(b), 'fr', { sensitivity: 'base' });
+    }
+
+    const bDate = getCourseUpdatedMs(b);
+    const aDate = getCourseUpdatedMs(a);
     if (bDate !== aDate) return bDate - aDate;
 
-    return normalizeString(a.titre || a.title).localeCompare(normalizeString(b.titre || b.title), 'fr', {
-      sensitivity: 'base'
-    });
+    return getCourseTitle(a).localeCompare(getCourseTitle(b), 'fr', { sensitivity: 'base' });
   });
 }
 
@@ -99,7 +123,6 @@ async function loadProfile(uid) {
   if (!snap.exists()) return null;
   return { id: snap.id, ...snap.data() };
 }
-
 
 function getCourseAuthorId(course = {}) {
   return normalizeString(course.auteurId || course.authorId || course.createdBy || course.creatorId);
@@ -163,13 +186,11 @@ async function loadFormationsByIds(ids = []) {
   if (!safeIds.length) return [];
 
   const formations = [];
-
   for (const chunk of chunkArray(safeIds)) {
     const snap = await safeGetDocs(
       query(collection(db, 'formations'), where(documentId(), 'in', chunk)),
       'formations par IDs'
     );
-
     formations.push(...snapToArray(snap));
   }
 
@@ -181,13 +202,11 @@ async function loadFormationsByTitles(titles = []) {
   if (!safeTitles.length) return [];
 
   const formations = [];
-
   for (const chunk of chunkArray(safeTitles)) {
     const snap = await safeGetDocs(
       query(collection(db, 'formations'), where('titre', 'in', chunk)),
       'formations par titres'
     );
-
     formations.push(...snapToArray(snap));
   }
 
@@ -199,7 +218,6 @@ async function loadFormationsByTeacher(uid) {
     query(collection(db, 'formations'), where('profs', 'array-contains', uid)),
     'formations par professeur'
   );
-
   return snapToArray(snap);
 }
 
@@ -223,7 +241,6 @@ function getFormationKeys(profile = {}, formations = []) {
   formations.forEach((formation) => {
     const id = normalizeString(formation?.id);
     const title = normalizeString(formation?.titre || formation?.title);
-
     if (id) ids.add(id);
     if (title) titles.add(title);
   });
@@ -240,15 +257,11 @@ async function loadCoursesByArrayField(fieldName, values = [], label = fieldName
 
   const courses = [];
 
-  // Important : pour une seule valeur, utiliser array-contains.
-  // Firestore/rules le prouvent mieux que array-contains-any avec un seul UID,
-  // notamment pour targetTeacherIds côté professeur.
   if (safeValues.length === 1) {
     const snap = await safeGetDocs(
       query(collection(db, 'courses'), where(fieldName, 'array-contains', safeValues[0])),
       `cours par ${label}`
     );
-
     courses.push(...snapToArray(snap));
     return courses;
   }
@@ -258,7 +271,6 @@ async function loadCoursesByArrayField(fieldName, values = [], label = fieldName
       query(collection(db, 'courses'), where(fieldName, 'array-contains-any', chunk)),
       `cours par ${label}`
     );
-
     courses.push(...snapToArray(snap));
   }
 
@@ -273,7 +285,6 @@ async function loadCoursesByExactField(fieldName, value, label = fieldName) {
     query(collection(db, 'courses'), where(fieldName, '==', safeValue)),
     `cours par ${label}`
   );
-
   return snapToArray(snap);
 }
 
@@ -285,7 +296,6 @@ async function loadTeacherCourseAccessIndex(uid) {
     collection(db, 'teacherCourseAccess', safeUid, 'courses'),
     'index accès cours professeur'
   );
-
   return snapToArray(snap);
 }
 
@@ -337,18 +347,18 @@ function getCourseStatus(course = {}) {
   const status = normalizeString(course.statutValidation || course.lmsStatus).toLowerCase();
 
   if (status === 'pending' || status === 'pending_review') {
-    return { label: 'En attente', tone: 'warning' };
+    return { label: 'En attente', tone: 'warning', value: 'pending' };
   }
 
   if (status === 'rejected' || status === 'revision_requested') {
-    return { label: 'À corriger', tone: 'danger' };
+    return { label: 'À corriger', tone: 'danger', value: 'rejected' };
   }
 
   if (course.actif === true || status === 'approved' || status === 'published') {
-    return { label: 'Publié', tone: 'success' };
+    return { label: 'Publié', tone: 'success', value: 'published' };
   }
 
-  return { label: 'Brouillon', tone: 'muted' };
+  return { label: 'Brouillon', tone: 'muted', value: 'draft' };
 }
 
 function resolveCourseFormations(course = {}, formationMap = new Map()) {
@@ -377,15 +387,12 @@ function resolveCourseFormations(course = {}, formationMap = new Map()) {
 
 function buildFormationMap(formations = []) {
   const map = new Map();
-
   formations.forEach((formation) => {
     const id = normalizeString(formation?.id);
     const title = normalizeString(formation?.titre || formation?.title);
-
     if (id) map.set(`id:${id}`, formation);
     if (title) map.set(`title:${title}`, formation);
   });
-
   return map;
 }
 
@@ -393,21 +400,116 @@ function renderStatusBadge(status) {
   return `<span class="teacher-course-status teacher-course-status--${escapeHtml(status.tone)}">${escapeHtml(status.label)}</span>`;
 }
 
+function getSearchValue() {
+  return normalizeString(document.getElementById('teacher-courses-search')?.value).toLowerCase();
+}
+
+function getStatusFilterValue() {
+  return normalizeString(document.getElementById('teacher-courses-status-filter')?.value) || 'all';
+}
+
+function getScopeFilterValue() {
+  return normalizeString(document.getElementById('teacher-courses-scope-filter')?.value) || 'all';
+}
+
+function getSortValue() {
+  return normalizeString(document.getElementById('teacher-courses-sort')?.value) || 'recent';
+}
+
+function getCourseSearchHaystack(course = {}, { formationMap = new Map(), authorMap = new Map() } = {}) {
+  const status = getCourseStatus(course);
+  return [
+    course.titre,
+    course.title,
+    course.bloc,
+    course.blockTitle,
+    course.blockName,
+    status.label,
+    getInlineCourseAuthorLabel(course),
+    getCourseAuthorId(course),
+    resolveCourseAuthorLabel(course, authorMap),
+    ...resolveCourseFormations(course, formationMap),
+    ...normalizeList(course.formations),
+    ...normalizeList(course.formationIds),
+    ...normalizeList(course.targetFormationTitles)
+  ].map(normalizeString).join(' ').toLowerCase();
+}
+
+function filterCourses(courses = [], { uid, formationMap = new Map(), authorMap = new Map() } = {}) {
+  const search = getSearchValue();
+  const statusFilter = getStatusFilterValue();
+  const scopeFilter = getScopeFilterValue();
+
+  return courses.filter((course) => {
+    const status = getCourseStatus(course);
+    const isOwnCourse = getCourseAuthorId(course) === normalizeString(uid);
+
+    if (statusFilter !== 'all' && status.value !== statusFilter) return false;
+    if (scopeFilter === 'mine' && !isOwnCourse) return false;
+    if (scopeFilter === 'shared' && isOwnCourse) return false;
+
+    if (!search) return true;
+    return getCourseSearchHaystack(course, { formationMap, authorMap }).includes(search);
+  });
+}
+
+function buildLibraryStats(courses = [], uid = '') {
+  const stats = {
+    total: courses.length,
+    published: 0,
+    pending: 0,
+    drafts: 0,
+    own: 0,
+    shared: 0
+  };
+
+  courses.forEach((course) => {
+    const status = getCourseStatus(course).value;
+    if (status === 'published') stats.published += 1;
+    if (status === 'pending') stats.pending += 1;
+    if (status === 'draft') stats.drafts += 1;
+
+    if (getCourseAuthorId(course) === normalizeString(uid)) stats.own += 1;
+    else stats.shared += 1;
+  });
+
+  return stats;
+}
+
+function renderStats(stats) {
+  const root = document.getElementById('teacher-courses-insights');
+  if (!root) return;
+
+  root.innerHTML = `
+    <div class="teacher-library-stat"><strong>${stats.total}</strong><span>Cours accessibles</span></div>
+    <div class="teacher-library-stat"><strong>${stats.published}</strong><span>Publiés</span></div>
+    <div class="teacher-library-stat"><strong>${stats.pending}</strong><span>À valider</span></div>
+    <div class="teacher-library-stat"><strong>${stats.own}</strong><span>Créés par moi</span></div>
+  `;
+}
+
 function renderCourseCard(course, { uid, formationMap, authorMap }) {
   const status = getCourseStatus(course);
   const title = getCourseTitle(course);
   const chapterCount = Array.isArray(course.chapitres) ? course.chapitres.length : Number(course.lessonCount || 0) || 0;
-  const isOwnCourse = normalizeString(course.auteurId) === normalizeString(uid);
+  const authorId = getCourseAuthorId(course);
+  const isOwnCourse = authorId === normalizeString(uid);
   const formationNames = resolveCourseFormations(course, formationMap).slice(0, 3);
   const blocName = normalizeString(course.bloc || course.blockTitle || course.blockName);
   const authorLabel = resolveCourseAuthorLabel(course, authorMap);
+  const updatedLabel = formatDate(course.updatedAt || course.dateCreation || course.createdAt);
+
   const formationTags = formationNames.length
     ? formationNames.map((name) => `<span class="teacher-course-tag teacher-course-tag--formation">${escapeHtml(name)}</span>`).join('')
     : '<span class="teacher-course-tag teacher-course-tag--muted">Formation liée</span>';
+
   const blocTag = blocName
     ? `<span class="teacher-course-tag teacher-course-tag--bloc">Bloc : ${escapeHtml(blocName)}</span>`
     : '';
+
   const draftClass = status.tone === 'muted' ? ' teacher-course-card--draft' : '';
+  const scopeLabel = isOwnCourse ? 'Cours perso' : 'Cours partagé';
+  const updatedHtml = updatedLabel ? `<span>Mis à jour le ${escapeHtml(updatedLabel)}</span>` : '<span>Mise à jour non renseignée</span>';
 
   const editButton = isOwnCourse
     ? `<button class="teacher-course-btn teacher-course-btn--secondary" type="button" data-teacher-edit-course="${escapeHtml(course.id)}">Éditer</button>`
@@ -419,24 +521,28 @@ function renderCourseCard(course, { uid, formationMap, authorMap }) {
         <div class="teacher-course-card__meta">
           ${renderStatusBadge(status)}
           <span class="teacher-course-count">${chapterCount} étape${chapterCount > 1 ? 's' : ''}</span>
+          <span class="teacher-course-count teacher-course-count--scope">${escapeHtml(scopeLabel)}</span>
         </div>
         <h3 class="teacher-course-card__title">${escapeHtml(title)}</h3>
-        <div class="teacher-course-card__signature">Créé par <strong>${escapeHtml(authorLabel)}</strong></div>
+        <div class="teacher-course-card__signature">
+          <span>Créé par <strong>${escapeHtml(authorLabel)}</strong></span>
+          ${updatedHtml}
+        </div>
         <div class="teacher-course-card__tags">${formationTags}${blocTag}</div>
       </div>
       <div class="teacher-course-card__actions">
-        <a class="teacher-course-btn teacher-course-btn--primary" href="${COURSE_VIEWER_URL}?id=${encodeURIComponent(course.id)}&preview=true" data-sbi-no-pjax="true" data-sbi-no-transition="true">Visualiser</a>
+        <a class="teacher-course-btn teacher-course-btn--primary" href="${COURSE_VIEWER_URL}?id=${encodeURIComponent(course.id)}&preview=true" data-sbi-no-pjax="true" data-sbi-no-transition="true">Ouvrir</a>
         ${editButton}
       </div>
     </article>
   `;
 }
 
-function renderEmpty(root) {
+function renderEmpty(root, hasFilters = false) {
   root.innerHTML = `
     <div class="teacher-course-empty">
-      <strong>Aucun cours trouvé pour vos formations.</strong>
-      <span>Si un cours vient d’être ajouté, utilise “Actualiser”. Si le problème persiste, vérifie que le prof est bien rattaché à la formation.</span>
+      <strong>${hasFilters ? 'Aucun cours ne correspond aux filtres.' : 'Aucun cours trouvé pour vos formations.'}</strong>
+      <span>${hasFilters ? 'Essaie de retirer un filtre ou de vider la recherche.' : 'Si un cours vient d’être ajouté, utilise “Actualiser”. Si le problème persiste, vérifie que le prof est bien rattaché à la formation.'}</span>
     </div>
   `;
 }
@@ -450,47 +556,27 @@ function renderError(root, message) {
   `;
 }
 
-function getSearchValue() {
-  return normalizeString(document.getElementById('teacher-courses-search')?.value).toLowerCase();
-}
-
-function filterCourses(courses = []) {
-  const search = getSearchValue();
-  if (!search) return courses;
-
-  return courses.filter((course) => {
-    const haystack = [
-      course.titre,
-      course.title,
-      course.bloc,
-      getInlineCourseAuthorLabel(course),
-      getCourseAuthorId(course),
-      ...(Array.isArray(course.formations) ? course.formations : []),
-      ...(Array.isArray(course.formationIds) ? course.formationIds : []),
-      ...(Array.isArray(course.targetFormationTitles) ? course.targetFormationTitles : [])
-    ].map(normalizeString).join(' ').toLowerCase();
-
-    return haystack.includes(search);
-  });
-}
-
 function renderLibrary({ root, courses, uid, formations, authorMap = new Map() }) {
-  const visibleCourses = filterCourses(courses);
-  const countEl = document.getElementById('teacher-courses-count');
   const formationMap = buildFormationMap(formations);
+  const visibleCourses = sortCourses(filterCourses(courses, { uid, formationMap, authorMap }));
+  const countEl = document.getElementById('teacher-courses-count');
+  const hasFilters = Boolean(getSearchValue() || getStatusFilterValue() !== 'all' || getScopeFilterValue() !== 'all');
 
   if (countEl) {
-    countEl.textContent = `${visibleCourses.length} cours`;
+    countEl.textContent = `${visibleCourses.length} cours affiché${visibleCourses.length > 1 ? 's' : ''}`;
   }
 
+  renderStats(buildLibraryStats(courses, uid));
+
   if (!visibleCourses.length) {
-    renderEmpty(root);
+    renderEmpty(root, hasFilters);
     return;
   }
 
   root.innerHTML = visibleCourses
     .map((course) => renderCourseCard(course, { uid, formationMap, authorMap }))
     .join('');
+
   root.querySelectorAll('[data-teacher-edit-course]').forEach((button) => {
     button.addEventListener('click', () => {
       const courseId = button.getAttribute('data-teacher-edit-course');
@@ -517,7 +603,6 @@ async function loadAndRender(state) {
 
   const formations = await loadTeacherFormations(uid, profile);
   const courses = await loadTeacherCourses(uid, profile, formations);
-
   const authorMap = await loadCourseAuthors(courses);
 
   state.formations = formations;
@@ -525,6 +610,21 @@ async function loadAndRender(state) {
   state.authorMap = authorMap;
 
   renderLibrary({ root, courses, uid, formations, authorMap });
+}
+
+function bindToolbarControls(state, rerender) {
+  const controls = [
+    document.getElementById('teacher-courses-search'),
+    document.getElementById('teacher-courses-status-filter'),
+    document.getElementById('teacher-courses-scope-filter'),
+    document.getElementById('teacher-courses-sort')
+  ].filter(Boolean);
+
+  controls.forEach((control) => {
+    const eventName = control.tagName === 'INPUT' ? 'input' : 'change';
+    control.addEventListener(eventName, rerender);
+    state.cleanupHandlers.push(() => control.removeEventListener(eventName, rerender));
+  });
 }
 
 export function mountTeacherCoursesLibrary({ source = 'standard' } = {}) {
@@ -540,8 +640,22 @@ export function mountTeacherCoursesLibrary({ source = 'standard' } = {}) {
     profile: null,
     courses: [],
     formations: [],
-    authorMap: new Map()
+    authorMap: new Map(),
+    cleanupHandlers: []
   };
+
+  const rerender = () => renderLibrary({
+    root,
+    courses: state.courses,
+    uid: state.uid,
+    formations: state.formations,
+    authorMap: state.authorMap
+  });
+
+  const refreshHandler = () => loadAndRender(state).catch((error) => {
+    console.error('[SBI Teacher Library] Actualisation impossible :', error);
+    renderError(root, error?.message);
+  });
 
   const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
     if (disposed) return;
@@ -563,32 +677,20 @@ export function mountTeacherCoursesLibrary({ source = 'standard' } = {}) {
     }));
   });
 
-  const refreshHandler = () => loadAndRender(state).catch((error) => {
-    console.error('[SBI Teacher Library] Actualisation impossible :', error);
-    renderError(root, error?.message);
-  });
-
-  const searchHandler = () => renderLibrary({
-    root,
-    courses: state.courses,
-    uid: state.uid,
-    formations: state.formations,
-    authorMap: state.authorMap
-  });
+  bindToolbarControls(state, rerender);
 
   const refreshButton = document.getElementById('teacher-courses-refresh');
-  const searchInput = document.getElementById('teacher-courses-search');
-
   refreshButton?.addEventListener('click', refreshHandler);
-  searchInput?.addEventListener('input', searchHandler);
   window.addEventListener('sbi:teacher-library-refresh', refreshHandler);
 
   const cleanup = () => {
     disposed = true;
     unsubscribeAuth?.();
     refreshButton?.removeEventListener('click', refreshHandler);
-    searchInput?.removeEventListener('input', searchHandler);
     window.removeEventListener('sbi:teacher-library-refresh', refreshHandler);
+    state.cleanupHandlers.splice(0).forEach((handler) => {
+      try { handler(); } catch {}
+    });
 
     if (activeMountCleanup === cleanup) {
       activeMountCleanup = null;

@@ -4,24 +4,196 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mes Cours - SBI Student</title>
-    
+
     <link rel="stylesheet" href="/admin/css/admin-layout.css">
     <link rel="stylesheet" href="/admin/css/admin.css">
     <link rel="stylesheet" href="/student/css/student.css">
     <script src="/admin/js/components.js"></script>
 
     <style>
-        .formation-folder { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; cursor: pointer; transition: 0.2s; }
-        .formation-folder:hover { border-color: var(--accent-blue); box-shadow: 0 4px 15px rgba(42, 87, 255, 0.1); transform: translateY(-3px); }
-        .progress-bar-bg { width: 100%; height: 6px; background: #e5e7eb; border-radius: 10px; overflow: hidden; margin-top: 1rem; }
-        .progress-bar-fill { height: 100%; background: var(--accent-blue); width: 0%; transition: width 0.5s ease; }
-        
-        .bloc-title { font-size: 1.1rem; color: var(--text-main); font-weight: bold; margin: 2rem 0 1rem 0; padding-bottom: 0.5rem; border-bottom: 2px solid var(--border-color); }
-        
-        .course-item { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem 1.5rem; display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem; cursor: pointer; transition: 0.2s; }
-        .course-item:hover { border-color: var(--accent-blue); background: rgba(42, 87, 255, 0.02); }
-        .course-item.locked { opacity: 0.6; cursor: not-allowed; filter: grayscale(100%); }
-        .course-item.locked:hover { border-color: var(--border-color); background: var(--bg-card); }
+        .student-library-hero {
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 1.5rem;
+            padding: clamp(1.25rem, 3vw, 2rem);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 24px;
+            background:
+                radial-gradient(circle at top right, rgba(42,87,255,0.22), transparent 34%),
+                linear-gradient(135deg, rgba(9,17,32,0.92), rgba(13,31,66,0.78));
+            box-shadow: 0 24px 80px rgba(0,0,0,0.2);
+        }
+        .student-library-hero::after {
+            content: "COURS";
+            position: absolute;
+            right: -0.25rem;
+            bottom: -0.8rem;
+            font-size: clamp(3rem, 10vw, 8rem);
+            font-weight: 950;
+            letter-spacing: -0.08em;
+            color: rgba(255,255,255,0.04);
+            pointer-events: none;
+        }
+        .student-library-kicker { color: var(--accent-blue, #2A57FF); font-size: 0.78rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.18em; }
+        .student-library-hero h1 { position: relative; z-index: 1; margin: 0.35rem 0 0.55rem; color: #fff; font-size: clamp(2rem, 4vw, 2.8rem); line-height: 1; letter-spacing: -0.04em; }
+        .student-library-hero p { position: relative; z-index: 1; max-width: 760px; margin: 0; color: rgba(255,255,255,0.72); line-height: 1.7; }
+        .student-library-summary { position: relative; z-index: 1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.75rem; margin-top: 1.25rem; }
+        .student-library-stat,
+        .student-course-stat {
+            padding: 1rem;
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 18px;
+            background: rgba(255,255,255,0.06);
+            backdrop-filter: blur(10px);
+        }
+        .student-library-stat strong,
+        .student-course-stat strong { display: block; color: #fff; font-size: 1.45rem; line-height: 1; }
+        .student-library-stat span,
+        .student-course-stat span { display: block; margin-top: 0.35rem; color: rgba(255,255,255,0.64); font-size: 0.78rem; font-weight: 800; }
+        .student-library-toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            margin-bottom: 1.25rem;
+            padding: 1rem;
+            border: 1px solid var(--border-color, rgba(255,255,255,0.12));
+            border-radius: 18px;
+            background: rgba(255,255,255,0.045);
+        }
+        .student-library-toolbar__title { color: var(--text-main); font-weight: 900; }
+        .student-library-toolbar__right { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; }
+        .student-library-search {
+            min-width: min(340px, 82vw);
+            min-height: 44px;
+            box-sizing: border-box;
+            padding: 0.75rem 1rem;
+            border: 1px solid var(--border-color, rgba(255,255,255,0.16));
+            border-radius: 12px;
+            background: rgba(255,255,255,0.07);
+            color: var(--text-main);
+            outline: none;
+        }
+        .student-library-refresh {
+            min-height: 44px;
+            padding: 0.75rem 1rem;
+            border: 1px solid rgba(42,87,255,0.35);
+            border-radius: 12px;
+            background: rgba(42,87,255,0.1);
+            color: var(--accent-blue, #2A57FF);
+            font-weight: 900;
+            cursor: pointer;
+        }
+        .student-formations-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 1.2rem; }
+        .formation-folder {
+            position: relative;
+            overflow: hidden;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 1.25rem;
+            cursor: pointer;
+            transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+            box-shadow: 0 16px 44px rgba(0,0,0,0.1);
+        }
+        .formation-folder:hover { border-color: var(--accent-blue); box-shadow: 0 18px 50px rgba(42, 87, 255, 0.14); transform: translateY(-3px); }
+        .formation-folder::after {
+            content: "";
+            position: absolute;
+            inset: auto -24px -24px auto;
+            width: 100px;
+            height: 100px;
+            border-radius: 999px;
+            background: rgba(42,87,255,0.08);
+            pointer-events: none;
+        }
+        .formation-folder__topline,
+        .formation-folder__meta { display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; color: var(--text-muted); font-size: 0.78rem; font-weight: 900; }
+        .formation-folder__type { color: var(--accent-blue); text-transform: uppercase; letter-spacing: 0.12em; }
+        .formation-folder__count { background: rgba(42,87,255,0.09); color: var(--accent-blue); padding: 0.22rem 0.55rem; border-radius: 999px; }
+        .formation-folder__title-row { display: flex; gap: 1rem; align-items: center; margin: 1rem 0; }
+        .formation-folder__icon { width: 50px; height: 50px; flex: 0 0 auto; background: rgba(42, 87, 255, 0.1); border-radius: 14px; display: flex; align-items: center; justify-content: center; color: var(--accent-blue); }
+        .formation-folder h3 { margin: 0; font-size: 1.12rem; line-height: 1.25; color: var(--text-main); }
+        .formation-folder__next { margin-top: 1rem; color: var(--text-muted); font-size: 0.84rem; line-height: 1.55; }
+        .formation-folder__next strong { color: var(--text-main); }
+        .progress-bar-bg { width: 100%; height: 7px; background: rgba(42,87,255,0.09); border-radius: 999px; overflow: hidden; margin-top: 0.65rem; }
+        .progress-bar-fill { height: 100%; background: linear-gradient(90deg, var(--accent-blue), #6ea8ff); width: 0%; transition: width 0.5s ease; }
+        .student-library-loading,
+        .student-library-empty {
+            grid-column: 1 / -1;
+            padding: 2rem;
+            border: 1px dashed var(--border-color);
+            border-radius: 18px;
+            color: var(--text-muted);
+            text-align: center;
+            background: rgba(255,255,255,0.03);
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+        .student-library-empty strong { color: var(--text-main); }
+        .student-library-empty--error { color: #fca5a5; border-color: rgba(239,68,68,0.45); }
+        .student-course-panel {
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 1.25rem;
+            padding: clamp(1.1rem, 2.5vw, 1.6rem);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 22px;
+            background: linear-gradient(135deg, rgba(9,17,32,0.92), rgba(16,33,70,0.72));
+            box-shadow: 0 18px 56px rgba(0,0,0,0.18);
+        }
+        .student-course-panel__top { display: flex; justify-content: space-between; gap: 1rem; align-items: flex-start; flex-wrap: wrap; }
+        #current-formation-title { margin: 0; color: #fff; font-size: clamp(1.7rem, 4vw, 2.35rem); font-weight: 900; letter-spacing: -0.04em; }
+        .student-course-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.65rem; margin-top: 1rem; }
+        .student-course-search-wrap { position: relative; margin: 0; max-width: 340px; width: 100%; }
+        .student-course-search-wrap svg { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); width: 18px; fill: var(--text-muted); }
+        #search-course-input { width: 100%; box-sizing: border-box; padding: 0.78rem 1rem 0.78rem 2.8rem; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.14); border-radius: 14px; outline: none; font-size: 0.95rem; color: #fff; }
+        #search-course-input::placeholder { color: rgba(255,255,255,0.55); }
+        #btn-back-formations { width: auto; align-self: flex-start; background: rgba(255,255,255,0.08); color: #fff; border: 1px solid rgba(255,255,255,0.16); margin-bottom: 1rem; }
+        .student-course-bloc { margin-bottom: 1.35rem; }
+        .bloc-title { font-size: 0.92rem; color: var(--accent-blue); font-weight: 950; margin: 1.5rem 0 0.8rem; padding-bottom: 0.55rem; border-bottom: 1px solid var(--border-color); text-transform: uppercase; letter-spacing: 0.12em; }
+        .student-course-bloc__list { display: flex; flex-direction: column; gap: 0.8rem; }
+        .course-item.student-course-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 18px;
+            padding: 1rem 1.15rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            cursor: pointer;
+            transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+        }
+        .course-item.student-course-card:hover { border-color: var(--accent-blue); background: rgba(42, 87, 255, 0.035); transform: translateY(-2px); }
+        .student-course-card__main { display: flex; align-items: center; gap: 1rem; min-width: 0; flex: 1; }
+        .student-course-card__icon { width: 44px; height: 44px; flex: 0 0 auto; background: rgba(42, 87, 255, 0.1); border-radius: 14px; display: flex; align-items: center; justify-content: center; color: var(--accent-blue); }
+        .student-course-card__content { min-width: 0; flex: 1; }
+        .student-course-card__title { font-weight: 900; color: var(--text-main); margin-bottom: 0.3rem; }
+        .student-course-card__meta { display: flex; flex-wrap: wrap; gap: 0.5rem; font-size: 0.78rem; color: var(--text-muted); font-weight: 800; }
+        .student-course-card__progress { width: 100%; height: 5px; margin-top: 0.65rem; border-radius: 999px; overflow: hidden; background: rgba(42,87,255,0.08); }
+        .student-course-card__progress span { display: block; height: 100%; background: var(--accent-blue); }
+        .student-course-card__side { display: flex; align-items: center; gap: 0.55rem; flex-shrink: 0; }
+        .student-course-badge,
+        .student-course-score { display: inline-flex; align-items: center; padding: 0.32rem 0.6rem; border-radius: 999px; font-size: 0.75rem; font-weight: 900; white-space: nowrap; }
+        .student-course-score { background: rgba(42,87,255,0.08); color: var(--accent-blue); }
+        .student-course-badge--done { background: rgba(42, 87, 255, 0.1); color: var(--accent-blue); }
+        .student-course-badge--progress { background: rgba(251,188,4,0.12); color: var(--accent-yellow); }
+        .student-course-badge--todo { background: rgba(255,255,255,0.08); color: var(--text-muted); }
+        @media (max-width: 920px) {
+            .student-library-summary,
+            .student-course-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .student-library-toolbar__right { width: 100%; }
+            .student-library-search { flex: 1 1 220px; }
+        }
+        @media (max-width: 680px) {
+            .student-library-summary,
+            .student-course-summary { grid-template-columns: 1fr; }
+            .course-item.student-course-card { flex-direction: column; align-items: stretch; }
+            .student-course-card__side { justify-content: space-between; }
+        }
     </style>
 </head>
 <body class="preload">
@@ -38,41 +210,54 @@
 
     <main id="main-content">
         <div class="content-wrapper">
-            
             <div id="view-formations" style="display: flex; flex-direction: column;">
-                <h1 style="margin-top: 0; font-size: 2.2rem; font-weight: 800; margin-bottom: 2rem;">Mes <span style="color: var(--accent-blue);">Formations</span></h1>
-                
-                <div id="formations-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem;">
-                    <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24" class="spinning" style="margin-right:10px;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
-                    Analyse de vos formations...
+                <section class="student-library-hero" aria-label="Bibliothèque étudiant">
+                    <span class="student-library-kicker">Bibliothèque de formation</span>
+                    <h1>Mes <span style="color: var(--accent-blue);">Formations</span></h1>
+                    <p>Retrouvez vos formations, vos cours assignés et votre progression. La bibliothèque reste volontairement centrée sur les contenus utiles à l’élève, sans exposer la logique admin.</p>
+                    <div id="student-library-summary" class="student-library-summary" aria-live="polite">
+                        <div class="student-library-stat"><strong>…</strong><span>Chargement</span></div>
+                    </div>
+                </section>
+
+                <div class="student-library-toolbar">
+                    <div class="student-library-toolbar__title">Bibliothèque élève</div>
+                    <div class="student-library-toolbar__right">
+                        <input id="student-library-search" class="student-library-search" type="search" placeholder="Rechercher une formation ou un cours…">
+                        <button id="student-library-refresh" class="student-library-refresh" type="button">Actualiser</button>
+                    </div>
+                </div>
+
+                <div id="formations-list" class="student-formations-grid">
+                    <div class="student-library-loading">Analyse de vos formations…</div>
                 </div>
             </div>
 
             <div id="view-courses" style="display: none; flex-direction: column;">
-                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem;">
-                    
-                    <h1 id="current-formation-title" style="margin: 0; color: var(--accent-blue); font-size: 2.2rem; font-weight: 800;">...</h1>
-                    
-                    <div style="position: relative; margin: 0; max-width: 300px; width: 100%;">
-                        <svg viewBox="0 0 24 24" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); width: 18px; fill: var(--text-muted);"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
-                        <input type="text" id="search-course-input" placeholder="Chercher un cours..." style="width: 100%; box-sizing: border-box; padding: 0.7rem 1.5rem 0.7rem 2.8rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 20px; outline: none; font-size: 0.95rem; color: var(--text-main);">
-                    </div>
-                </div>
-
-                <button id="btn-back-formations" class="action-btn" style="width: auto; align-self: flex-start; background: white; color: var(--text-main); border: 1px solid var(--border-color); margin-bottom: 1.5rem;">
+                <button id="btn-back-formations" class="action-btn">
                     <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24" style="margin-right: 8px;"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg> Retour aux formations
                 </button>
 
+                <section class="student-course-panel" aria-label="Cours de la formation">
+                    <div class="student-course-panel__top">
+                        <h1 id="current-formation-title">...</h1>
+                        <div class="student-course-search-wrap">
+                            <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+                            <input type="text" id="search-course-input" placeholder="Chercher un cours...">
+                        </div>
+                    </div>
+                    <div id="student-course-summary" class="student-course-summary" aria-live="polite"></div>
+                </section>
+
                 <div id="courses-list"></div>
             </div>
-
         </div>
     </main>
 </div>
 
 <script type="module" src="/admin/js/admin-ui.js?v=8.0P.167.87"></script>
 <script type="module" src="/admin/js/tracker.js?v=8.0P.167.97-GPT2.1"></script>
-<script type="module" src="/student/js/mes-cours.js"></script>
+<script type="module" src="/student/js/mes-cours.js?v=8.0P.167.136"></script>
 <script type="module" src="/admin/js/admin-notifications.js?v=8.0P.167.96.1-GPT2.1"></script>
 </body>
 </html>

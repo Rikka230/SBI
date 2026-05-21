@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.135',
+  version: '8.0P.167.136',
   branch: 'main',
-  channel: 'P2I.23 REMOVE ACCOUNT LINK DIAGNOSTICS',
-  stage: 'REMOVE TEMPORARY FINALIZATION LINK DIAGNOSTIC MARKERS',
-  updatedAt: '2026-05-20',
-  label: 'SBI 8.0P.167.135 - Remove temporary account link diagnostics'
+  channel: 'P2I.24 LIBRARY UX REBUILD',
+  stage: 'TEACHER AND STUDENT COURSE LIBRARIES REWORK',
+  updatedAt: '2026-05-21',
+  label: 'SBI 8.0P.167.136 - Teacher and student course libraries rework'
 };
 
 export function getSbiVersionLabel() {

@@ -1,9 +1,9 @@
 /**
  * =======================================================================
- * MES COURS - Logique de navigation Formations -> Blocs -> Cours
+ * MES COURS - Bibliothèque étudiant SBI
  * =======================================================================
  *
- * 8.0F : devient montable via mountStudentCourses() pour le shell PJAX.
+ * 8.0P.167.136 : refonte bibliothèque Formation -> Blocs -> Cours.
  * Le viewer de cours reste en navigation classique.
  * =======================================================================
  */
@@ -67,16 +67,9 @@ export function mountStudentCourses() {
         currentUid = user.uid;
 
         try {
-            await waitForSbiTopbar();
-            await loadStudentProfile();
-            await loadStudentProgress();
-            updateTopBar();
-            updateLevel();
-
-            await loadAssignedFormations();
-            await loadAssignedCourses();
-            renderAssignedFormations();
+            await hydrateStudentCourses();
             bindStudentCoursesEvents(addCleanup);
+            renderAssignedFormations();
         } catch (error) {
             console.error("Erreur d'initialisation :", error);
             showFormationsError();
@@ -98,9 +91,36 @@ export function mountStudentCourses() {
     return cleanup;
 }
 
+async function hydrateStudentCourses() {
+    await waitForSbiTopbar();
+    await loadStudentProfile();
+    await loadStudentProgress();
+    updateTopBar();
+    updateLevel();
+    await loadAssignedFormations();
+    await loadAssignedCourses();
+}
+
+async function refreshStudentLibrary() {
+    const list = document.getElementById('formations-list');
+    if (list) list.innerHTML = '<div class="student-library-loading">Actualisation de la bibliothèque…</div>';
+
+    await hydrateStudentCourses();
+    renderAssignedFormations();
+
+    const visibleCourses = document.getElementById('view-courses');
+    if (visibleCourses?.style.display === 'flex') {
+        const title = document.getElementById('current-formation-title')?.dataset?.formationId;
+        const formation = getFormationCardsToRender().find((item) => item.id === title);
+        if (formation) window.openFormation(formation);
+    }
+}
+
 function bindStudentCoursesEvents(addCleanup) {
     const backButton = document.getElementById('btn-back-formations');
     const searchInput = document.getElementById('search-course-input');
+    const librarySearchInput = document.getElementById('student-library-search');
+    const refreshButton = document.getElementById('student-library-refresh');
 
     if (backButton && backButton.dataset.sbiBound !== 'true') {
         backButton.dataset.sbiBound = 'true';
@@ -108,7 +128,6 @@ function bindStudentCoursesEvents(addCleanup) {
         const handler = () => {
             const viewCourses = document.getElementById('view-courses');
             const viewFormations = document.getElementById('view-formations');
-
             if (viewCourses) viewCourses.style.display = 'none';
             if (viewFormations) viewFormations.style.display = 'flex';
         };
@@ -120,17 +139,28 @@ function bindStudentCoursesEvents(addCleanup) {
     if (searchInput && searchInput.dataset.sbiBound !== 'true') {
         searchInput.dataset.sbiBound = 'true';
 
-        const handler = (event) => {
-            const term = event.target.value.toLowerCase();
-
-            document.querySelectorAll('.course-item').forEach(item => {
-                const title = item.querySelector('.course-title')?.textContent?.toLowerCase() || '';
-                item.style.display = title.includes(term) ? 'flex' : 'none';
-            });
-        };
-
+        const handler = () => filterVisibleCourseCards();
         searchInput.addEventListener('input', handler);
         addCleanup(() => searchInput.removeEventListener('input', handler));
+    }
+
+    if (librarySearchInput && librarySearchInput.dataset.sbiBound !== 'true') {
+        librarySearchInput.dataset.sbiBound = 'true';
+
+        const handler = () => renderAssignedFormations();
+        librarySearchInput.addEventListener('input', handler);
+        addCleanup(() => librarySearchInput.removeEventListener('input', handler));
+    }
+
+    if (refreshButton && refreshButton.dataset.sbiBound !== 'true') {
+        refreshButton.dataset.sbiBound = 'true';
+
+        const handler = () => refreshStudentLibrary().catch((error) => {
+            console.error('[SBI Student Courses] Actualisation impossible :', error);
+            showFormationsError();
+        });
+        refreshButton.addEventListener('click', handler);
+        addCleanup(() => refreshButton.removeEventListener('click', handler));
     }
 }
 
@@ -141,7 +171,6 @@ async function loadStudentProfile() {
 
 async function loadStudentProgress() {
     userProgress = await getUserLearningProgress(currentUid);
-
     if (!userProgress.courses) userProgress.courses = {};
     if (!userProgress.formations) userProgress.formations = {};
 }
@@ -177,7 +206,7 @@ function isAdminPreview() {
 
 async function loadAssignedFormations() {
     const list = document.getElementById('formations-list');
-    if (list) list.innerHTML = '<p style="color:var(--text-muted);">Chargement des formations...</p>';
+    if (list) list.innerHTML = '<div class="student-library-loading">Chargement des formations…</div>';
 
     assignedFormations = await loadAssignedFormationsForUser({
         uid: currentUid,
@@ -216,16 +245,6 @@ async function loadNotificationLinkedCourses() {
                 const notif = docSnap.data() || {};
                 if (notif.status === 'resolved' || notif.resolvedAt) return;
 
-                /**
-                 * 8.0M.4 :
-                 * On ne filtre plus dismissedBy ici.
-                 *
-                 * Raison :
-                 * si l'élève a cliqué une notification pendant que le viewer était cassé,
-                 * la notification peut être marquée comme lue alors que le cours n'a jamais été
-                 * ajouté proprement à sa progression. Elle reste malgré tout une preuve utile
-                 * que le cours lui a été assigné.
-                 */
                 const courseId = String(notif.courseId || '').trim();
                 if (courseId) courseIds.add(courseId);
             });
@@ -261,42 +280,23 @@ function renderAssignedFormations() {
     const list = document.getElementById('formations-list');
     if (!list) return;
 
-    const formationCards = getFormationCardsToRender();
+    const formationCards = getFilteredFormationCardsToRender();
+    renderStudentLibrarySummary();
 
     if (formationCards.length === 0) {
-        list.innerHTML = '<p style="color:var(--text-muted);">Aucune formation ne vous est assignée.</p>';
+        const hasSearch = getLibrarySearchTerm().length > 0;
+        list.innerHTML = `
+            <div class="student-library-empty">
+                <strong>${hasSearch ? 'Aucun résultat dans votre bibliothèque.' : 'Aucune formation ne vous est assignée.'}</strong>
+                <span>${hasSearch ? 'Essayez avec un autre mot-clé ou videz la recherche.' : 'Les formations apparaîtront ici dès leur attribution par l’équipe SBI.'}</span>
+            </div>
+        `;
         return;
     }
 
-    list.innerHTML = formationCards.map((formation) => {
-        const totalCourses = getCoursesForFormation(formation).length;
-        const completedCourses = getCompletedCoursesForFormation(formation);
-        const progressPercent = totalCourses === 0 ? 0 : Math.round((completedCourses / totalCourses) * 100);
+    list.innerHTML = formationCards.map((formation) => buildFormationCardHTML(formation)).join('');
 
-        return `
-            <div class="formation-folder" data-formation-id="${escapeAttr(formation.id)}" data-formation-title="${escapeAttr(formation.titre || 'Formation')}">
-                <div style="display:flex; align-items:center; gap:1rem; margin-bottom:1rem;">
-                    <div style="width:48px; height:48px; background:rgba(42, 87, 255, 0.1); border-radius:12px; display:flex; align-items:center; justify-content:center; color:var(--accent-blue);">
-                        <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
-                        </svg>
-                    </div>
-                    <h3 style="margin:0; font-size:1.1rem; color:var(--text-main);">${escapeHTML(formation.titre || 'Formation')}</h3>
-                </div>
-
-                <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:var(--text-muted); font-weight:bold;">
-                    <span>Progression</span>
-                    <span>${progressPercent}%</span>
-                </div>
-
-                <div class="progress-bar-bg">
-                    <div class="progress-bar-fill" style="width: ${progressPercent}%;"></div>
-                </div>
-            </div>
-        `;
-    }).join('');
-
-    document.querySelectorAll('.formation-folder').forEach((folder) => {
+    list.querySelectorAll('.formation-folder').forEach((folder) => {
         folder.addEventListener('click', () => {
             const formation = getFormationCardsToRender().find((item) => item.id === folder.dataset.formationId);
             window.openFormation(formation || {
@@ -305,6 +305,58 @@ function renderAssignedFormations() {
             });
         });
     });
+}
+
+function buildFormationCardHTML(formation) {
+    const courses = getCoursesForFormation(formation);
+    const totalCourses = courses.length;
+    const completedCourses = getCompletedCoursesForFormation(formation);
+    const progressPercent = totalCourses === 0 ? 0 : Math.round((completedCourses / totalCourses) * 100);
+    const nextCourse = getNextCourseForFormation(formation);
+    const title = formation.titre || 'Formation';
+    const typeLabel = formation.__directCourses ? 'Cours directs' : 'Formation';
+
+    return `
+        <article class="formation-folder" data-formation-id="${escapeAttr(formation.id)}" data-formation-title="${escapeAttr(title)}">
+            <div class="formation-folder__topline">
+                <span class="formation-folder__type">${escapeHTML(typeLabel)}</span>
+                <span class="formation-folder__count">${totalCourses} cours</span>
+            </div>
+            <div class="formation-folder__title-row">
+                <div class="formation-folder__icon" aria-hidden="true">
+                    <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
+                </div>
+                <h3>${escapeHTML(title)}</h3>
+            </div>
+            <div class="formation-folder__meta">
+                <span>${completedCourses}/${totalCourses} terminés</span>
+                <span>${progressPercent}%</span>
+            </div>
+            <div class="progress-bar-bg" aria-hidden="true">
+                <div class="progress-bar-fill" style="width: ${progressPercent}%;"></div>
+            </div>
+            <div class="formation-folder__next">
+                ${nextCourse ? `Prochain cours : <strong>${escapeHTML(nextCourse.titre || nextCourse.title || 'Cours')}</strong>` : 'Aucun cours restant détecté.'}
+            </div>
+        </article>
+    `;
+}
+
+function renderStudentLibrarySummary() {
+    const root = document.getElementById('student-library-summary');
+    if (!root) return;
+
+    const totalFormations = getFormationCardsToRender().length;
+    const totalCourses = allCourses.length;
+    const completedCourses = allCourses.filter((course) => userProgress.courses[course.id]?.status === 'done').length;
+    const progressPercent = totalCourses === 0 ? 0 : Math.round((completedCourses / totalCourses) * 100);
+
+    root.innerHTML = `
+        <div class="student-library-stat"><strong>${totalFormations}</strong><span>Parcours</span></div>
+        <div class="student-library-stat"><strong>${totalCourses}</strong><span>Cours accessibles</span></div>
+        <div class="student-library-stat"><strong>${completedCourses}</strong><span>Cours terminés</span></div>
+        <div class="student-library-stat"><strong>${progressPercent}%</strong><span>Progression globale</span></div>
+    `;
 }
 
 function getFormationCardsToRender() {
@@ -320,6 +372,27 @@ function getFormationCardsToRender() {
     }
 
     return cards;
+}
+
+function getFilteredFormationCardsToRender() {
+    const search = getLibrarySearchTerm();
+    const cards = getFormationCardsToRender();
+    if (!search) return cards;
+
+    return cards.filter((formation) => {
+        const courses = getCoursesForFormation(formation);
+        const haystack = [
+            formation.titre,
+            formation.title,
+            ...courses.flatMap((course) => [course.titre, course.title, course.bloc, course.blockTitle, course.blockName])
+        ].map((value) => String(value || '').toLowerCase()).join(' ');
+
+        return haystack.includes(search);
+    });
+}
+
+function getLibrarySearchTerm() {
+    return String(document.getElementById('student-library-search')?.value || '').trim().toLowerCase();
 }
 
 function getDirectAssignedCoursesWithoutVisibleFormation() {
@@ -340,17 +413,16 @@ function getDirectAssignedCoursesWithoutVisibleFormation() {
 }
 
 function getCoursesForFormation(formation) {
-    if (formation?.__directCourses === true) {
-        return getDirectAssignedCoursesWithoutVisibleFormation();
-    }
-
+    if (formation?.__directCourses === true) return getDirectAssignedCoursesWithoutVisibleFormation();
     return allCourses.filter((course) => sharedCourseBelongsToFormation(course, formation, assignedFormations));
 }
 
 function getCompletedCoursesForFormation(formation) {
-    return getCoursesForFormation(formation).filter((course) => {
-        return userProgress.courses[course.id]?.status === 'done';
-    }).length;
+    return getCoursesForFormation(formation).filter((course) => userProgress.courses[course.id]?.status === 'done').length;
+}
+
+function getNextCourseForFormation(formation) {
+    return getCoursesForFormation(formation).find((course) => userProgress.courses[course.id]?.status !== 'done') || null;
 }
 
 window.openFormation = function(formationOrId, formationTitre = '') {
@@ -369,35 +441,71 @@ window.openFormation = function(formationOrId, formationTitre = '') {
 
     if (viewFormations) viewFormations.style.display = 'none';
     if (viewCourses) viewCourses.style.display = 'flex';
-    if (title) title.textContent = formation.titre || 'Formation';
+    if (title) {
+        title.textContent = formation.titre || 'Formation';
+        title.dataset.formationId = formation.id || '';
+    }
     if (searchInput) searchInput.value = '';
     if (!container) return;
 
+    const coursesInFormation = getCoursesForFormation(formation);
+    renderCourseViewSummary(formation, coursesInFormation);
+
     container.innerHTML = '';
 
-    const coursesInFormation = getCoursesForFormation(formation);
-
     if (coursesInFormation.length === 0) {
-        container.innerHTML = '<p style="color:var(--text-muted);">Aucun cours actif dans cette formation.</p>';
+        container.innerHTML = '<div class="student-library-empty"><strong>Aucun cours actif dans cette formation.</strong><span>Les contenus apparaîtront ici dès publication.</span></div>';
         return;
     }
 
     const coursesByBloc = groupCoursesByBloc(coursesInFormation);
 
     Object.entries(coursesByBloc).forEach(([blocName, courses]) => {
-        container.insertAdjacentHTML('beforeend', `<div class="bloc-title">${escapeHTML(blocName)}</div>`);
+        container.insertAdjacentHTML('beforeend', `<section class="student-course-bloc"><div class="bloc-title">${escapeHTML(blocName)}</div><div class="student-course-bloc__list">${courses.map(buildCourseItemHTML).join('')}</div></section>`);
+    });
 
-        courses.forEach((course) => {
-            container.insertAdjacentHTML('beforeend', buildCourseItemHTML(course));
+    container.querySelectorAll('.course-item').forEach((item) => {
+        item.addEventListener('click', () => {
+            const href = item.dataset.href;
+            if (href) window.location.href = href;
         });
     });
 };
+
+function renderCourseViewSummary(formation, courses = []) {
+    const root = document.getElementById('student-course-summary');
+    if (!root) return;
+
+    const totalCourses = courses.length;
+    const completedCourses = courses.filter((course) => userProgress.courses[course.id]?.status === 'done').length;
+    const inProgressCourses = courses.filter((course) => userProgress.courses[course.id]?.status === 'in_progress').length;
+    const progressPercent = totalCourses === 0 ? 0 : Math.round((completedCourses / totalCourses) * 100);
+
+    root.innerHTML = `
+        <div class="student-course-stat"><strong>${totalCourses}</strong><span>Cours</span></div>
+        <div class="student-course-stat"><strong>${completedCourses}</strong><span>Terminés</span></div>
+        <div class="student-course-stat"><strong>${inProgressCourses}</strong><span>En cours</span></div>
+        <div class="student-course-stat"><strong>${progressPercent}%</strong><span>Progression</span></div>
+    `;
+}
+
+function filterVisibleCourseCards() {
+    const term = String(document.getElementById('search-course-input')?.value || '').trim().toLowerCase();
+
+    document.querySelectorAll('.course-item').forEach(item => {
+        const haystack = [
+            item.querySelector('.course-title')?.textContent,
+            item.dataset.search
+        ].map((value) => String(value || '').toLowerCase()).join(' ');
+        item.style.display = haystack.includes(term) ? 'flex' : 'none';
+    });
+}
 
 function groupCoursesByBloc(courses) {
     const coursesByBloc = {};
 
     courses.forEach((course) => {
-        const blocName = course.bloc || "Autres Cours";
+        const blocName = course.bloc || course.blockTitle || course.blockName || "Autres Cours";
         if (!coursesByBloc[blocName]) coursesByBloc[blocName] = [];
         coursesByBloc[blocName].push(course);
     });
@@ -410,60 +518,55 @@ function groupCoursesByBloc(courses) {
 }
 
 function buildCourseItemHTML(course) {
-    const progressData = userProgress.courses[course.id] || {
-        status: 'todo',
-        completedChapters: []
-    };
-
+    const progressData = userProgress.courses[course.id] || { status: 'todo', completedChapters: [] };
     const totalChapters = Array.isArray(course.chapitres) ? course.chapitres.length : 0;
     const doneChapters = Array.isArray(progressData.completedChapters) ? progressData.completedChapters.length : 0;
+    const progressPercent = totalChapters === 0 ? 0 : Math.round((doneChapters / totalChapters) * 100);
     const statusBadge = buildStatusBadge(progressData, doneChapters, totalChapters);
     const quizHtml = buildQuizScoreHTML(course, progressData);
+    const title = course.titre || course.title || 'Cours';
+    const bloc = course.bloc || course.blockTitle || course.blockName || 'Bloc non renseigné';
+    const href = `/student/cours-viewer.html?id=${encodeURIComponent(course.id)}`;
 
     return `
-        <div class="course-item" onclick="window.location.href='/student/cours-viewer.html?id=${course.id}'" data-sbi-no-pjax="true">
-            <div style="display:flex; align-items:center; gap:1rem;">
-                <div style="width:40px; height:40px; background:rgba(42, 87, 255, 0.1); border-radius:8px; display:flex; align-items:center; justify-content:center; color:var(--accent-blue);">
+        <article class="course-item student-course-card" data-href="${escapeAttr(href)}" data-sbi-no-pjax="true" data-search="${escapeAttr(`${title} ${bloc}`)}">
+            <div class="student-course-card__main">
+                <div class="student-course-card__icon" aria-hidden="true">
                     <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
                 </div>
-
-                <div>
-                    <div class="course-title" style="font-weight:bold; color:var(--text-main); margin-bottom:4px;">
-                        ${escapeHTML(course.titre || 'Cours')}
+                <div class="student-course-card__content">
+                    <div class="course-title student-course-card__title">${escapeHTML(title)}</div>
+                    <div class="student-course-card__meta">
+                        <span>${totalChapters} étape${totalChapters > 1 ? 's' : ''}</span>
+                        <span>${escapeHTML(bloc)}</span>
                     </div>
-                    <div style="font-size:0.8rem; color:var(--text-muted);">
-                        ${totalChapters} étapes interactives
-                    </div>
+                    <div class="student-course-card__progress" aria-hidden="true"><span style="width:${progressPercent}%;"></span></div>
                 </div>
             </div>
-
-            <div style="display:flex; align-items:center;">
+            <div class="student-course-card__side">
                 ${quizHtml}
                 ${statusBadge}
-                <svg width="24" height="24" fill="var(--text-muted)" viewBox="0 0 24 24" style="margin-left:10px;">
-                    <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
-                </svg>
+                <svg width="24" height="24" fill="var(--text-muted)" viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
             </div>
-        </div>
+        </article>
     `;
 }
 
 function buildStatusBadge(progressData, doneChapters, totalChapters) {
     if (progressData.status === 'done') {
-        return `<span style="background:rgba(42, 87, 255, 0.1); color:var(--accent-blue); padding:4px 8px; border-radius:4px; font-size:0.75rem; font-weight:bold;">Terminé</span>`;
+        return `<span class="student-course-badge student-course-badge--done">Terminé</span>`;
     }
 
     if (progressData.status === 'in_progress') {
-        return `<span style="background:rgba(251,188,4,0.1); color:var(--accent-yellow); padding:4px 8px; border-radius:4px; font-size:0.75rem; font-weight:bold;">En cours (${doneChapters}/${totalChapters})</span>`;
+        return `<span class="student-course-badge student-course-badge--progress">En cours (${doneChapters}/${totalChapters})</span>`;
     }
 
-    return '';
+    return `<span class="student-course-badge student-course-badge--todo">À commencer</span>`;
 }
 
 function buildQuizScoreHTML(course, progressData) {
     const chapters = Array.isArray(course.chapitres) ? course.chapitres : [];
     const hasQuiz = chapters.some((chapter) => chapter.type === 'quiz');
-
     if (!hasQuiz || !progressData.quizScores) return '';
 
     let totalPossible = 0;
@@ -471,12 +574,8 @@ function buildQuizScoreHTML(course, progressData) {
 
     chapters.forEach((chapter) => {
         if (chapter.type !== 'quiz') return;
-
         const questions = Array.isArray(chapter.questions) ? chapter.questions : [];
-        questions.forEach((question) => {
-            totalPossible += question.points || 1;
-        });
-
+        questions.forEach((question) => { totalPossible += question.points || 1; });
         earnedScore += progressData.quizScores[chapter.id] || 0;
     });
 
@@ -484,13 +583,13 @@ function buildQuizScoreHTML(course, progressData) {
         ? `<svg width="14" height="14" fill="var(--accent-blue)" viewBox="0 0 24 24" style="vertical-align:text-bottom; margin-left:4px;"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>`
         : '';
 
-    return `<span style="font-size: 0.85rem; color: var(--text-muted); background: #f3f4f6; padding: 4px 8px; border-radius: 6px; margin-right: 10px; font-weight: bold;">Score: ${earnedScore}/${totalPossible} ${starSvg}</span>`;
+    return `<span class="student-course-score">Score ${earnedScore}/${totalPossible} ${starSvg}</span>`;
 }
 
 function sortCourses(a, b) {
-    const blocCompare = String(a.bloc || '').localeCompare(String(b.bloc || ''), 'fr', { sensitivity: 'base' });
+    const blocCompare = String(a.bloc || a.blockTitle || '').localeCompare(String(b.bloc || b.blockTitle || ''), 'fr', { sensitivity: 'base' });
     if (blocCompare !== 0) return blocCompare;
-    return String(a.titre || '').localeCompare(String(b.titre || ''), 'fr', { sensitivity: 'base' });
+    return String(a.titre || a.title || '').localeCompare(String(b.titre || b.title || ''), 'fr', { sensitivity: 'base' });
 }
 
 function escapeHTML(value) {
@@ -508,45 +607,25 @@ function escapeAttr(value) {
 
 function showFormationsError() {
     const list = document.getElementById('formations-list');
-    if (list) list.innerHTML = '<p style="color:red;">Erreur lors du chargement des formations.</p>';
+    if (list) {
+        list.innerHTML = '<div class="student-library-empty student-library-empty--error"><strong>Erreur lors du chargement des formations.</strong><span>Réessayez dans quelques instants.</span></div>';
+    }
 }
-
 
 window.SBI_STUDENT_COURSES_DEBUG = function() {
     const payload = {
         uid: currentUid,
-        assignedFormations: assignedFormations.map((formation) => ({
-            id: formation.id,
-            titre: formation.titre
-        })),
-        allCourses: allCourses.map((course) => ({
+        assignedFormations: assignedFormations.map((formation) => ({ id: formation.id, titre: formation.titre })),
+        courses: allCourses.map((course) => ({
             id: course.id,
-            titre: course.titre,
-            actif: course.actif,
-            statutValidation: course.statutValidation,
-            formations: course.formations || [],
-            targetFormationIds: course.targetFormationIds || [],
-            targetFormationTitles: course.targetFormationTitles || [],
-            targetStudents: course.targetStudents || [],
-            notificationLinked: course.__notificationLinked === true,
-            targetedToUser: course.__targetedToUser === true,
-            progressLinked: course.__progressLinked === true
+            titre: course.titre || course.title,
+            bloc: course.bloc || course.blockTitle,
+            progress: userProgress.courses?.[course.id] || null
         })),
-        directCourses: getDirectAssignedCoursesWithoutVisibleFormation().map((course) => ({
-            id: course.id,
-            titre: course.titre
-        })),
-        renderedFolders: getFormationCardsToRender().map((formation) => ({
-            id: formation.id,
-            titre: formation.titre,
-            direct: formation.__directCourses === true
-        }))
+        progress: userProgress
     };
 
-    console.table(payload.assignedFormations);
-    console.table(payload.allCourses);
-    console.table(payload.directCourses);
-    console.table(payload.renderedFolders);
+    console.table(payload.courses);
     return payload;
 };
 

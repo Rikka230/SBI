@@ -288,7 +288,6 @@ async function mountSiteIndex({ url }) {
   return { viewKey: 'admin:site-index-settings' };
 }
 
-
 async function mountAdminCourses({ url }) {
   maybeCacheAdminIndexMain('leave-for-admin-courses');
 
@@ -527,7 +526,7 @@ async function mountStudentPage({ url }) {
   window.__SBI_APP_SHELL_MOUNTING_STUDENT_COURSES = true;
 
   try {
-    const module = await import('/student/js/mes-cours.js');
+    const module = await import('/student/js/mes-cours.js?v=8.0P.167.136');
     const cleanup = module.mountStudentCourses?.({ source: 'pjax-student-courses' });
 
     if (typeof cleanup === 'function') registerCleanup(cleanup, 'student-courses');
@@ -609,14 +608,12 @@ async function mountTeacherCourses({ url }) {
   updateUrlContext(url);
 
   /**
-   * 8.0P.167.88 : la bibliothèque professeur est le coeur de cette route.
+   * 8.0P.167.136 : la bibliothèque professeur reste le coeur de cette route.
    * Elle doit rester PJAX stable même si l'éditeur lourd/Quill n'est pas prêt.
-   * Avant, une erreur non critique de l'éditeur provoquait un fallback reload,
-   * ce qui démontait visuellement la topbar, le panel gauche et l'assistant.
    */
   window.__SBI_APP_SHELL_MOUNTING_TEACHER_COURSES_LIBRARY = true;
   try {
-    const libraryModule = await import('/teacher/js/teacher-courses-library.js?v=8.0P.167.88');
+    const libraryModule = await import('/teacher/js/teacher-courses-library.js?v=8.0P.167.136');
     const cleanupTeacherLibrary = libraryModule.mountTeacherCoursesLibrary?.({ source: 'pjax-teacher-courses' });
 
     if (typeof cleanupTeacherLibrary === 'function') {
@@ -704,109 +701,19 @@ async function mountTeacherProfile({ url }) {
 export function createRouteRegistry() {
   const routes = [];
 
-  routes.push({
-    id: 'teacher-dashboard',
-    canHandle(url) {
-      return isTeacherDashboard(url) && isTeacherShellContext();
-    },
-    mount: mountTeacherDashboard
-  });
-
-  routes.push({
-    id: 'teacher-courses',
-    canHandle(url) {
-      return isTeacherCourses(url) && isTeacherShellContext();
-    },
-    mount: mountTeacherCourses
-  });
-
-  routes.push({
-    id: 'teacher-profile',
-    canHandle(url) {
-      return isTeacherProfile(url) && isTeacherShellContext();
-    },
-    mount: mountTeacherProfile
-  });
-
-  routes.push({
-    id: 'student-profile',
-    canHandle(url) {
-      return isStudentProfile(url) && isStudentShellContext();
-    },
-    mount: mountStudentProfile
-  });
-
-  routes.push({
-    id: 'student-dashboard',
-    canHandle(url) {
-      return isStudentDashboard(url) && isStudentShellContext();
-    },
-    mount: mountStudentPage
-  });
-
-  routes.push({
-    id: 'student-courses',
-    canHandle(url) {
-      return isStudentCourses(url) && isStudentShellContext();
-    },
-    mount: mountStudentPage
-  });
-
-  routes.push({
-    id: 'admin-courses',
-    canHandle(url) {
-      return isAdminCourses(url) && isAdminShellContext();
-    },
-    mount: mountAdminCourses
-  });
-
-  routes.push({
-    id: 'admin-profile',
-    canHandle(url) {
-      return isAdminProfile(url) && isAdminShellContext();
-    },
-    mount: mountAdminProfile
-  });
-
-  routes.push({
-    id: 'admin-accounts',
-    canHandle(url) {
-      return isAdminAccounts(url) && isAdminShellContext();
-    },
-    mount: mountAdminAccounts
-  });
-
-  routes.push({
-    id: 'admin-promotions',
-    canHandle(url) {
-      return isAdminPromotions(url) && isAdminShellContext();
-    },
-    mount: mountAdminPromotions
-  });
-
-  routes.push({
-    id: 'admin-cursus',
-    canHandle(url) {
-      return isAdminCursus(url) && isAdminShellContext();
-    },
-    mount: mountAdminCursus
-  });
-
-  routes.push({
-    id: 'admin-audit-log',
-    canHandle(url) {
-      return isAdminAuditLog(url) && isAdminShellContext();
-    },
-    mount: mountAdminAuditLog
-  });
-
-  routes.push({
-    id: 'admin-site-index',
-    canHandle(url) {
-      return isAdminSiteIndex(url) && isAdminShellContext();
-    },
-    mount: mountSiteIndex
-  });
+  routes.push({ id: 'teacher-dashboard', canHandle(url) { return isTeacherDashboard(url) && isTeacherShellContext(); }, mount: mountTeacherDashboard });
+  routes.push({ id: 'teacher-courses', canHandle(url) { return isTeacherCourses(url) && isTeacherShellContext(); }, mount: mountTeacherCourses });
+  routes.push({ id: 'teacher-profile', canHandle(url) { return isTeacherProfile(url) && isTeacherShellContext(); }, mount: mountTeacherProfile });
+  routes.push({ id: 'student-profile', canHandle(url) { return isStudentProfile(url) && isStudentShellContext(); }, mount: mountStudentProfile });
+  routes.push({ id: 'student-dashboard', canHandle(url) { return isStudentDashboard(url) && isStudentShellContext(); }, mount: mountStudentPage });
+  routes.push({ id: 'student-courses', canHandle(url) { return isStudentCourses(url) && isStudentShellContext(); }, mount: mountStudentPage });
+  routes.push({ id: 'admin-courses', canHandle(url) { return isAdminCourses(url) && isAdminShellContext(); }, mount: mountAdminCourses });
+  routes.push({ id: 'admin-profile', canHandle(url) { return isAdminProfile(url) && isAdminShellContext(); }, mount: mountAdminProfile });
+  routes.push({ id: 'admin-accounts', canHandle(url) { return isAdminAccounts(url) && isAdminShellContext(); }, mount: mountAdminAccounts });
+  routes.push({ id: 'admin-promotions', canHandle(url) { return isAdminPromotions(url) && isAdminShellContext(); }, mount: mountAdminPromotions });
+  routes.push({ id: 'admin-cursus', canHandle(url) { return isAdminCursus(url) && isAdminShellContext(); }, mount: mountAdminCursus });
+  routes.push({ id: 'admin-audit-log', canHandle(url) { return isAdminAuditLog(url) && isAdminShellContext(); }, mount: mountAdminAuditLog });
+  routes.push({ id: 'admin-site-index', canHandle(url) { return isAdminSiteIndex(url) && isAdminShellContext(); }, mount: mountSiteIndex });
 
   routes.push({
     id: 'admin-index',
@@ -843,14 +750,8 @@ export function createRouteRegistry() {
   });
 
   return {
-    find(url) {
-      return routes.find((route) => route.canHandle(url)) || null;
-    },
-    canHandle(url) {
-      return Boolean(this.find(url));
-    },
-    list() {
-      return routes.map((route) => route.id);
-    }
+    find(url) { return routes.find((route) => route.canHandle(url)) || null; },
+    canHandle(url) { return Boolean(this.find(url)); },
+    list() { return routes.map((route) => route.id); }
   };
 }
