@@ -14,7 +14,7 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
 
 const MAX_QUERY_VALUES = 10;
-const VERSION = '8.0P.167.162';
+const VERSION = '8.0P.167.165';
 
 const BLOCK_TYPES = [
   { type: 'course_info', label: 'Course Info', subtitle: 'Informations générales', icon: 'i', static: true },
@@ -30,6 +30,69 @@ const BLOCK_TYPES = [
 
 const BLOCK_TYPE_MAP = new Map(BLOCK_TYPES.map((item) => [item.type, item]));
 
+const QUILL_TOOLBAR_OPTIONS = [
+  [{ size: ['small', false, 'large', 'huge'] }],
+  ['bold', 'italic', 'underline', 'strike'],
+  [{ color: [] }, { background: [] }],
+  [{ list: 'ordered' }, { list: 'bullet' }],
+  [{ align: [] }],
+  ['link', 'image', 'video'],
+  ['clean']
+];
+
+let lastQuillSelection = null;
+
+function rememberQuillSelection(range) {
+  if (range && range.length > 0) {
+    lastQuillSelection = { index: range.index, length: range.length };
+  }
+}
+
+function decorateQuillTooltip(element, label) {
+  if (!element || !label) return;
+  element.dataset.sbiTooltip = label;
+  element.classList.add('sbi-editor-v2-quill-tooltip-anchor');
+  if (element.tagName === 'BUTTON') element.setAttribute('type', 'button');
+}
+
+function applyQuillTooltips(toolbarRoot) {
+  if (!toolbarRoot) return;
+  const labels = [
+    ['.ql-size', 'Taille du texte'],
+    ['.ql-bold', 'Gras'],
+    ['.ql-italic', 'Italique'],
+    ['.ql-underline', 'Souligner'],
+    ['.ql-strike', 'Barrer'],
+    ['.ql-color', 'Couleur du caractère'],
+    ['.ql-background', 'Surlignage du caractère'],
+    ['.ql-list[value="ordered"]', 'Liste numérotée'],
+    ['.ql-list[value="bullet"]', 'Liste à puces'],
+    ['.ql-align', 'Alignement'],
+    ['.ql-link', 'Ajouter un lien'],
+    ['.ql-image', 'Insérer une image'],
+    ['.ql-video', 'Insérer une vidéo'],
+    ['.ql-clean', 'Nettoyer la mise en forme']
+  ];
+
+  labels.forEach(([selector, label]) => {
+    toolbarRoot.querySelectorAll(selector).forEach((element) => {
+      decorateQuillTooltip(element, label);
+
+      if (element.tagName === 'SELECT') {
+        const picker = element.nextElementSibling?.classList?.contains('ql-picker') ? element.nextElementSibling : null;
+        if (picker) {
+          decorateQuillTooltip(picker, label);
+          decorateQuillTooltip(picker.querySelector('.ql-picker-label'), label);
+        }
+      }
+
+      if (element.classList?.contains('ql-picker')) {
+        decorateQuillTooltip(element.querySelector('.ql-picker-label'), label);
+      }
+    });
+  });
+}
+
 const state = {
   role: 'teacher',
   uid: '',
@@ -42,6 +105,8 @@ const state = {
   blockOptions: [],
   dirty: false,
   dragBlockId: '',
+  quill: null,
+  quillBlockId: '',
   course: {
     title: '',
     bloc: '',
@@ -664,9 +729,86 @@ function duplicateActiveBlock() {
   renderAll();
 }
 
+
+function syncQuillToActiveBlock() {
+  if (!state.quill || !state.quillBlockId) return;
+  const block = state.course.learningBlocks.find((item) => item.id === state.quillBlockId);
+  if (!block) return;
+  const html = state.quill.root?.innerHTML || '';
+  block.content = html === '<p><br></p>' ? '' : html;
+  const hidden = $('#block-content');
+  if (hidden) hidden.value = block.content;
+}
+
+function resetQuillInstance() {
+  syncQuillToActiveBlock();
+  state.quill = null;
+  state.quillBlockId = '';
+  lastQuillSelection = null;
+}
+
+function initLegacyQuillForActiveBlock(block) {
+  const container = $('#block-content-quill');
+  const hidden = $('#block-content');
+  if (!container || !hidden || !block || block.type !== 'lesson') return;
+
+  if (!window.Quill) {
+    container.innerHTML = '<div class="sbi-editor-v2-quill-missing">Éditeur riche indisponible. Le contenu reste sauvegardé en texte.</div>';
+    return;
+  }
+
+  state.quill = new window.Quill(container, {
+    theme: 'snow',
+    modules: {
+      toolbar: {
+        container: QUILL_TOOLBAR_OPTIONS,
+        handlers: {
+          size(value) {
+            const quill = this.quill;
+            const currentRange = quill.getSelection();
+            const range = currentRange && currentRange.length > 0 ? currentRange : lastQuillSelection;
+
+            if (range && range.length > 0) {
+              quill.focus();
+              quill.setSelection(range.index, range.length, 'silent');
+              quill.formatText(range.index, range.length, 'size', value || false, 'user');
+              quill.setSelection(range.index, range.length, 'silent');
+              rememberQuillSelection(range);
+            }
+          }
+        }
+      }
+    }
+  });
+
+  state.quillBlockId = block.id;
+  state.quill.root.innerHTML = block.content || '';
+  hidden.value = block.content || '';
+
+  state.quill.on('selection-change', (range) => rememberQuillSelection(range));
+  state.quill.on('text-change', () => {
+    syncQuillToActiveBlock();
+    markDirty();
+    renderPreview();
+  });
+
+  const toolbar = state.quill.getModule('toolbar')?.container;
+  if (toolbar) {
+    ['mousedown', 'pointerdown', 'touchstart'].forEach((eventName) => {
+      toolbar.addEventListener(eventName, () => {
+        rememberQuillSelection(state.quill?.getSelection?.());
+      }, true);
+    });
+    applyQuillTooltips(toolbar);
+  }
+}
+
 function renderMainEditor() {
   const main = $('#course-v2-main');
   if (!main) return;
+
+  resetQuillInstance();
+  let activeBlockForQuill = null;
 
   if (state.activeBlockId === 'course_info') {
     main.innerHTML = renderCourseInfoEditor();
@@ -674,10 +816,12 @@ function renderMainEditor() {
     main.innerHTML = renderObjectivesEditor();
   } else {
     const block = getActiveBlock();
+    activeBlockForQuill = block;
     main.innerHTML = block ? renderBlockEditor(block) : `<div class="sbi-empty-state">Ajoute un bloc pour commencer le cours.</div>`;
   }
 
   bindEditorInputs();
+  initLegacyQuillForActiveBlock(activeBlockForQuill);
 }
 
 function renderCourseInfoEditor() {
@@ -747,7 +891,7 @@ function renderGenericBlockEditor(block) {
     <div class="sbi-editor-form">
       <div class="sbi-field"><label>Titre du bloc</label><input id="block-title" class="sbi-input" value="${escapeHtml(block.title)}"></div>
       <div class="sbi-field"><label>Consignes</label><input id="block-instructions" class="sbi-input" value="${escapeHtml(block.instructions || '')}" placeholder="Instruction courte pour l’élève"></div>
-      <div class="sbi-field"><label>Contenu</label><div class="sbi-rich-toolbar"><span>Paragraphe</span><button class="sbi-editor-btn sbi-editor-btn--tiny" type="button">B</button><button class="sbi-editor-btn sbi-editor-btn--tiny" type="button">I</button><button class="sbi-editor-btn sbi-editor-btn--tiny" type="button">Lien</button></div><textarea id="block-content" class="sbi-textarea" placeholder="Contenu pédagogique…">${escapeHtml(block.content || '')}</textarea></div>
+      <div class="sbi-field sbi-field--quill"><label>Contenu</label><small>Éditeur identique au legacy : taille, gras, italique, couleurs, listes, alignement, liens, images et vidéos.</small><textarea id="block-content" class="sbi-quill-hidden" aria-hidden="true">${escapeHtml(block.content || '')}</textarea><div id="block-content-quill" class="sbi-quill-editor"></div></div>
       <div class="sbi-two-cols"><div class="sbi-field"><label>Durée estimée (min)</label><input id="block-duration" class="sbi-input" type="number" min="0" step="1" value="${Number(block.durationMinutes || 0)}"></div><div class="sbi-field"><label>Inclure dans le cours</label><select id="block-visible" class="sbi-select"><option value="true" ${block.visibleInProgram !== false ? 'selected' : ''}>Oui</option><option value="false" ${block.visibleInProgram === false ? 'selected' : ''}>Non</option></select></div></div>
     </div>
   `;
@@ -1009,6 +1153,8 @@ function bindSettingsInputs() {
 }
 
 function saveActiveEditorValues() {
+  syncQuillToActiveBlock();
+
   const topTitle = $('#course-v2-title');
   if (topTitle) state.course.title = topTitle.value;
 

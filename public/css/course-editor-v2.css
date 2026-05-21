@@ -444,6 +444,61 @@ body.sbi-editor-v2 {
   color: var(--editor-muted);
 }
 
+/* 8.0P.167.165 - Quill legacy editor restored inside V2 lesson blocks. */
+.sbi-field--quill {
+  gap: 0.55rem;
+}
+
+.sbi-quill-hidden {
+  display: none !important;
+}
+
+.sbi-quill-editor {
+  min-height: 320px;
+  border: 1px solid var(--editor-border);
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fff;
+  color: #111827;
+}
+
+.sbi-quill-editor .ql-toolbar.ql-snow {
+  border: 0;
+  border-bottom: 1px solid var(--editor-border);
+  background: var(--editor-surface-3);
+  font-family: inherit;
+}
+
+.sbi-quill-editor .ql-container.ql-snow {
+  min-height: 270px;
+  border: 0;
+  font-family: inherit;
+  font-size: 1rem;
+}
+
+.sbi-quill-editor .ql-editor {
+  min-height: 270px;
+  line-height: 1.7;
+  color: #111827;
+}
+
+.sbi-editor-v2--admin .sbi-quill-editor {
+  background: #ffffff;
+  color: #111827;
+}
+
+.sbi-editor-v2-quill-missing {
+  padding: 1rem;
+  border: 1px dashed var(--editor-border);
+  border-radius: 12px;
+  background: var(--editor-surface-2);
+  color: var(--editor-muted);
+}
+
+.sbi-editor-v2-quill-tooltip-anchor {
+  position: relative;
+}
+
 @media (max-width: 1280px) {
   .sbi-editor-grid { grid-template-columns: 260px minmax(0, 1fr); }
   .sbi-editor-right { grid-column: 1 / -1; position: static; max-height: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
