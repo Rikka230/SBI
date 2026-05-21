@@ -3,7 +3,7 @@
  * MES COURS - Bibliothèque étudiant SBI
  * =======================================================================
  *
- * 8.0P.167.141 : bibliothèque élève sans mention des formations sources, compatible contexte promotion.
+ * 8.0P.167.142 : switch Programme / Liste fiable, retour viewer avec contexte formation.
  * Le viewer de cours reste en navigation classique.
  * =======================================================================
  */
@@ -37,6 +37,7 @@ let userProgress = { courses: {}, formations: {} };
 let activeCleanup = null;
 let currentOpenFormationId = '';
 let currentOpenFormationTitle = '';
+let currentCourseViewMode = 'program';
 
 function resetState() {
     currentUid = null;
@@ -665,7 +666,11 @@ window.openFormation = function(formationOrId, formationTitre = '') {
     if (!container) return;
 
     const coursesInFormation = getCoursesForFormation(formation);
-    renderCourseViewSummary(formation, coursesInFormation);
+    const { plannedCourses, complementaryCourses } = splitCoursesForFormationView(coursesInFormation);
+    const requestedMode = getRequestedCourseViewMode();
+    currentCourseViewMode = resolveCourseViewMode(requestedMode, plannedCourses, complementaryCourses);
+    syncStudentCourseViewUrl(formation, currentCourseViewMode);
+    renderCourseViewSummary(formation, getCoursesForCurrentMode(plannedCourses, complementaryCourses));
 
     container.innerHTML = '';
 
@@ -675,13 +680,6 @@ window.openFormation = function(formationOrId, formationTitre = '') {
     }
 
     renderCourseSections(container, coursesInFormation);
-
-    container.querySelectorAll('.course-item').forEach((item) => {
-        item.addEventListener('click', () => {
-            const href = item.dataset.href;
-            if (href) window.location.href = href;
-        });
-    });
 };
 
 
@@ -701,13 +699,26 @@ function openRequestedFormationFromUrl() {
 }
 
 function renderCourseSections(container, coursesInFormation = []) {
-    const plannedCourses = sortCourses(coursesInFormation.filter((course) => getPrimaryCoursePlan(course)));
-    const plannedIds = new Set(plannedCourses.map((course) => course.id));
-    const complementaryCourses = coursesInFormation.filter((course) => !plannedIds.has(course.id));
+    ensureStudentCourseSwitchStyles();
 
-    if (plannedCourses.length) {
-        container.insertAdjacentHTML('beforeend', `
-            <section class="student-course-section student-course-section--planned">
+    const { plannedCourses, complementaryCourses } = splitCoursesForFormationView(coursesInFormation);
+    currentCourseViewMode = resolveCourseViewMode(currentCourseViewMode, plannedCourses, complementaryCourses);
+
+    container.innerHTML = `
+        <div class="student-course-switch" role="tablist" aria-label="Choisir le type de liste">
+            <button type="button" class="student-course-switch__btn" data-course-view="program" ${plannedCourses.length ? '' : 'disabled'}>Programme</button>
+            <button type="button" class="student-course-switch__btn" data-course-view="library" ${complementaryCourses.length ? '' : 'disabled'}>Liste bibliothèque</button>
+        </div>
+        <div class="student-course-view" data-course-view-panel="program"></div>
+        <div class="student-course-view" data-course-view-panel="library"></div>
+    `;
+
+    const programPanel = container.querySelector('[data-course-view-panel="program"]');
+    const libraryPanel = container.querySelector('[data-course-view-panel="library"]');
+
+    if (programPanel) {
+        programPanel.innerHTML = plannedCourses.length
+            ? `<section class="student-course-section student-course-section--planned">
                 <div class="student-course-section__head">
                     <div>
                         <strong>Parcours défini par la promotion</strong>
@@ -716,28 +727,155 @@ function renderCourseSections(container, coursesInFormation = []) {
                     <em>${plannedCourses.length} cours</em>
                 </div>
                 <div class="student-course-bloc__list">${plannedCourses.map(buildCourseItemHTML).join('')}</div>
-            </section>
-        `);
+            </section>`
+            : '<div class="student-library-empty"><strong>Aucun cours dans le programme.</strong><span>Le planning de promotion ne contient pas encore de cours publié.</span></div>';
     }
 
-    if (complementaryCourses.length) {
-        const coursesByBloc = groupCoursesByBloc(complementaryCourses);
-        container.insertAdjacentHTML('beforeend', `
-            <section class="student-course-section student-course-section--library">
-                <div class="student-course-section__head">
-                    <div>
-                        <strong>Cours complémentaires de la formation</strong>
-                        <span>Contenus accessibles hors planning daté.</span>
+    if (libraryPanel) {
+        if (complementaryCourses.length) {
+            const coursesByBloc = groupCoursesByBloc(complementaryCourses);
+            libraryPanel.innerHTML = `
+                <section class="student-course-section student-course-section--library">
+                    <div class="student-course-section__head">
+                        <div>
+                            <strong>Liste bibliothèque</strong>
+                            <span>Contenus complémentaires de la formation, hors planning daté.</span>
+                        </div>
+                        <em>${complementaryCourses.length} cours</em>
                     </div>
-                    <em>${complementaryCourses.length} cours</em>
-                </div>
-            </section>
-        `);
-
-        Object.entries(coursesByBloc).forEach(([blocName, courses]) => {
-            container.insertAdjacentHTML('beforeend', `<section class="student-course-bloc"><div class="bloc-title">${escapeHTML(blocName)}</div><div class="student-course-bloc__list">${courses.map(buildCourseItemHTML).join('')}</div></section>`);
-        });
+                </section>
+                ${Object.entries(coursesByBloc).map(([blocName, courses]) => `<section class="student-course-bloc"><div class="bloc-title">${escapeHTML(blocName)}</div><div class="student-course-bloc__list">${courses.map(buildCourseItemHTML).join('')}</div></section>`).join('')}
+            `;
+        } else {
+            libraryPanel.innerHTML = '<div class="student-library-empty"><strong>Aucun cours complémentaire.</strong><span>La formation affiche uniquement son programme pour le moment.</span></div>';
+        }
     }
+
+    bindCourseViewSwitch(container, plannedCourses, complementaryCourses);
+    applyCourseViewMode(container, currentCourseViewMode, plannedCourses, complementaryCourses);
+    bindCourseCardNavigation(container);
+}
+
+function splitCoursesForFormationView(coursesInFormation = []) {
+    const plannedCourses = sortCourses(coursesInFormation.filter((course) => getPrimaryCoursePlan(course)));
+    const plannedIds = new Set(plannedCourses.map((course) => course.id));
+    const complementaryCourses = coursesInFormation.filter((course) => !plannedIds.has(course.id));
+    return { plannedCourses, complementaryCourses };
+}
+
+function getRequestedCourseViewMode() {
+    try {
+        const mode = new URL(window.location.href).searchParams.get('view');
+        return mode === 'library' ? 'library' : mode === 'program' ? 'program' : '';
+    } catch {
+        return '';
+    }
+}
+
+function resolveCourseViewMode(requestedMode, plannedCourses = [], complementaryCourses = []) {
+    if (requestedMode === 'library' && complementaryCourses.length) return 'library';
+    if (requestedMode === 'program' && plannedCourses.length) return 'program';
+    if (plannedCourses.length) return 'program';
+    if (complementaryCourses.length) return 'library';
+    return requestedMode === 'library' ? 'library' : 'program';
+}
+
+function getCoursesForCurrentMode(plannedCourses = [], complementaryCourses = []) {
+    return currentCourseViewMode === 'library' ? complementaryCourses : plannedCourses;
+}
+
+function getActivePromotionIdForCurrentFormation(courses = []) {
+    const plan = courses.map(getPrimaryCoursePlan).find(Boolean);
+    return String(plan?.promotionId || '').trim();
+}
+
+function syncStudentCourseViewUrl(formation = {}, mode = currentCourseViewMode) {
+    try {
+        if (!window.location.pathname.endsWith('/student/mes-cours.html')) return;
+        const params = new URLSearchParams();
+        const formId = String(formation.id || currentOpenFormationId || '').trim();
+        if (formId) params.set('formId', formId);
+        params.set('view', mode === 'library' ? 'library' : 'program');
+        const promotionId = String(formation.promotionId || '').trim();
+        if (promotionId) params.set('promotionId', promotionId);
+        const nextUrl = `/student/mes-cours.html?${params.toString()}`;
+        window.history.replaceState({ sbiStudentCourseView: mode, formId }, '', nextUrl);
+        window.SBI_APP_SHELL_CURRENT_URL = window.location.href;
+    } catch {}
+}
+
+function applyCourseViewMode(container, mode, plannedCourses = [], complementaryCourses = []) {
+    currentCourseViewMode = resolveCourseViewMode(mode, plannedCourses, complementaryCourses);
+    const activeCourses = getCoursesForCurrentMode(plannedCourses, complementaryCourses);
+    const formation = getFormationCardsToRender().find((item) => item.id === currentOpenFormationId) || { id: currentOpenFormationId, titre: currentOpenFormationTitle };
+
+    container.querySelectorAll('[data-course-view-panel]').forEach((panel) => {
+        panel.hidden = panel.dataset.courseViewPanel !== currentCourseViewMode;
+    });
+    container.querySelectorAll('[data-course-view]').forEach((button) => {
+        button.classList.toggle('is-active', button.dataset.courseView === currentCourseViewMode);
+    });
+
+    renderCourseViewSummary(formation, activeCourses);
+    syncStudentCourseViewUrl(formation, currentCourseViewMode);
+    filterVisibleCourseCards();
+}
+
+function bindCourseViewSwitch(container, plannedCourses = [], complementaryCourses = []) {
+    container.querySelectorAll('[data-course-view]').forEach((button) => {
+        button.addEventListener('click', () => {
+            if (button.disabled) return;
+            applyCourseViewMode(container, button.dataset.courseView, plannedCourses, complementaryCourses);
+        });
+    });
+}
+
+function bindCourseCardNavigation(container) {
+    container.querySelectorAll('.course-item').forEach((item) => {
+        item.addEventListener('click', () => {
+            const href = item.dataset.href;
+            if (href) window.location.href = href;
+        });
+    });
+}
+
+function ensureStudentCourseSwitchStyles() {
+    if (document.getElementById('student-course-switch-style-8-0p-167-142')) return;
+    const style = document.createElement('style');
+    style.id = 'student-course-switch-style-8-0p-167-142';
+    style.textContent = `
+        .student-course-switch {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.55rem;
+            margin: 0 0 1rem;
+            padding: 0.45rem;
+            border: 1px solid var(--border-color, rgba(255,255,255,0.12));
+            border-radius: 16px;
+            background: rgba(255,255,255,0.045);
+        }
+        .student-course-switch__btn {
+            min-height: 40px;
+            border: 1px solid transparent;
+            border-radius: 12px;
+            padding: 0.65rem 1rem;
+            background: transparent;
+            color: var(--text-muted);
+            font-weight: 900;
+            cursor: pointer;
+        }
+        .student-course-switch__btn.is-active {
+            background: rgba(42,87,255,0.14);
+            color: var(--accent-blue, #2A57FF);
+            border-color: rgba(42,87,255,0.28);
+        }
+        .student-course-switch__btn:disabled {
+            cursor: not-allowed;
+            opacity: 0.45;
+        }
+        .student-course-view[hidden] { display: none !important; }
+    `;
+    document.head.appendChild(style);
 }
 
 function renderCourseViewSummary(formation, courses = []) {
@@ -785,6 +923,16 @@ function groupCoursesByBloc(courses) {
     return coursesByBloc;
 }
 
+function buildCourseReturnUrl(course = {}) {
+    const params = new URLSearchParams();
+    if (currentOpenFormationId) params.set('formId', currentOpenFormationId);
+    params.set('view', currentCourseViewMode === 'library' ? 'library' : 'program');
+    const plan = getPrimaryCoursePlan(course);
+    const promotionId = String(plan?.promotionId || '').trim();
+    if (promotionId) params.set('promotionId', promotionId);
+    return `/student/mes-cours.html${params.toString() ? `?${params.toString()}` : ''}`;
+}
+
 function buildCourseItemHTML(course) {
     const progressData = userProgress.courses[course.id] || { status: 'todo', completedChapters: [] };
     const totalChapters = Array.isArray(course.chapitres) ? course.chapitres.length : 0;
@@ -794,7 +942,7 @@ function buildCourseItemHTML(course) {
     const quizHtml = buildQuizScoreHTML(course, progressData);
     const title = course.titre || course.title || 'Cours';
     const bloc = course.bloc || course.blockTitle || course.blockName || 'Bloc non renseigné';
-    const returnTo = `/student/mes-cours.html?formId=${encodeURIComponent(currentOpenFormationId || '')}`;
+    const returnTo = buildCourseReturnUrl(course);
     const href = `/student/cours-viewer.html?id=${encodeURIComponent(course.id)}&returnTo=${encodeURIComponent(returnTo)}`;
     const plan = getPrimaryCoursePlan(course);
     const planLabel = plan ? getCoursePlanDatesLabel(plan) : '';

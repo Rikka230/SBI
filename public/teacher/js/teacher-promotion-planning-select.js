@@ -1,6 +1,6 @@
 /**
- * SBI 8.0P.167.141
- * Sélecteur de contexte promotion professeur.
+ * SBI 8.0P.167.142
+ * Sélecteur de contexte promotion professeur, sans dates en mode global, retour éditeur verrouillé.
  */
 import { auth, db } from '/js/firebase-init.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js';
@@ -237,6 +237,7 @@ function applySelectedPromotionContext() {
     const root = document.getElementById('teacher-courses-list-container');
     if (!root) return;
     const promotion = getSelectedPromotion();
+    root.dataset.sbiPromotionMode = promotion ? 'single' : 'all';
     const cards = Array.from(root.querySelectorAll('.teacher-course-card[data-course-id]'));
 
     if (!promotion) {
@@ -274,6 +275,58 @@ function applySelectedPromotionContext() {
     applying = false;
   }
 }
+function forceTeacherEditorNavigation(courseId = '') {
+  const safeCourseId = clean(courseId);
+  if (!safeCourseId) return;
+
+  const baseUrl = '/teacher/mes-cours.html';
+  const editUrl = `${baseUrl}?edit=${encodeURIComponent(safeCourseId)}`;
+
+  try {
+    const current = new URL(window.location.href, window.location.origin);
+    if (!current.pathname.endsWith('/teacher/mes-cours.html')) {
+      window.history.pushState({ sbiTeacherCourseTab: 'list' }, '', baseUrl);
+    } else {
+      window.history.replaceState({ sbiTeacherCourseTab: 'list' }, '', baseUrl);
+    }
+    window.history.pushState({ sbiTeacherCourseTab: 'editor', courseId: safeCourseId }, '', editUrl);
+    window.SBI_APP_SHELL_CURRENT_URL = window.location.href;
+  } catch {}
+
+  if (typeof window.switchCourseTab === 'function') {
+    window.switchCourseTab('tab-editor');
+  }
+
+  if (typeof window.editCourse === 'function') {
+    window.editCourse(safeCourseId);
+  } else {
+    window.location.href = editUrl;
+  }
+}
+
+function handleTeacherEditorBridgeClick(event) {
+  const button = event.target?.closest?.('[data-teacher-edit-course]');
+  if (!button) return;
+  const courseId = button.getAttribute('data-teacher-edit-course');
+  if (!courseId) return;
+
+  event.preventDefault();
+  event.stopPropagation();
+  event.stopImmediatePropagation();
+  forceTeacherEditorNavigation(courseId);
+}
+
+function handleTeacherEditorPopState() {
+  try {
+    const url = new URL(window.location.href, window.location.origin);
+    if (!url.pathname.endsWith('/teacher/mes-cours.html')) return;
+    window.SBI_APP_SHELL_CURRENT_URL = window.location.href;
+    if (!url.searchParams.get('edit') && typeof window.switchCourseTab === 'function') {
+      window.switchCourseTab('tab-list');
+    }
+  } catch {}
+}
+
 async function bootForUser(user) {
   const profile = await loadProfile(user.uid);
   const formationIds = await loadTeacherFormationIds(user.uid, profile || {});
@@ -293,6 +346,8 @@ async function bootForUser(user) {
 export function mountTeacherPromotionPlanningSelect({ source = 'standard' } = {}) {
   if (!window.location.pathname.endsWith('/teacher/mes-cours.html')) return () => {};
   let disposed = false;
+  document.addEventListener('click', handleTeacherEditorBridgeClick, true);
+  window.addEventListener('popstate', handleTeacherEditorPopState);
   const unsubscribe = onAuthStateChanged(auth, (user) => {
     if (!user || disposed) return;
     bootForUser(user).catch((error) => console.warn('[SBI Teacher Promotion Select] Initialisation impossible :', error));
@@ -306,6 +361,8 @@ export function mountTeacherPromotionPlanningSelect({ source = 'standard' } = {}
 
   return () => {
     disposed = true;
+    document.removeEventListener('click', handleTeacherEditorBridgeClick, true);
+    window.removeEventListener('popstate', handleTeacherEditorPopState);
     unsubscribe?.();
     window.clearInterval(ensureTimer);
     observer?.disconnect();

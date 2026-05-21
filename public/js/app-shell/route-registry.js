@@ -526,12 +526,12 @@ async function mountStudentPage({ url }) {
   window.__SBI_APP_SHELL_MOUNTING_STUDENT_COURSES = true;
 
   try {
-    const module = await import('/student/js/mes-cours.js?v=8.0P.167.141');
+    const module = await import('/student/js/mes-cours.js?v=8.0P.167.142');
     const cleanup = module.mountStudentCourses?.({ source: 'pjax-student-courses' });
 
     if (typeof cleanup === 'function') registerCleanup(cleanup, 'student-courses');
 
-    const promotionModule = await import('/student/js/student-promotion-course-view.js?v=8.0P.167.141');
+    const promotionModule = await import('/student/js/student-promotion-course-view.js?v=8.0P.167.142');
     const cleanupPromotionView = promotionModule.mountStudentPromotionCourseView?.({ source: 'pjax-student-courses' });
 
     if (typeof cleanupPromotionView === 'function') registerCleanup(cleanupPromotionView, 'student-promotion-course-view');
@@ -625,7 +625,7 @@ async function mountTeacherCourses({ url }) {
       registerCleanup(cleanupTeacherLibrary, 'teacher-courses-library');
     }
 
-    const promotionModule = await import('/teacher/js/teacher-promotion-planning-select.js?v=8.0P.167.141');
+    const promotionModule = await import('/teacher/js/teacher-promotion-planning-select.js?v=8.0P.167.142');
     const cleanupPromotionSelect = promotionModule.mountTeacherPromotionPlanningSelect?.({ source: 'pjax-teacher-courses' });
 
     if (typeof cleanupPromotionSelect === 'function') {

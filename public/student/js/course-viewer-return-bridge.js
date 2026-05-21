@@ -1,3 +1,4 @@
+/** SBI 8.0P.167.142 - retour viewer via returnTo sécurisé. */
 /** SBI 8.0P.167.141 - Retour viewer prioritaire via returnTo. */
 function getSafeReturnUrl() {
   const params = new URL(window.location.href).searchParams;
