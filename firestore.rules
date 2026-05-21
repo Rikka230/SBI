@@ -378,6 +378,26 @@ service cloud.firestore {
         && promotionDataAllowsCourse(get(promotionPath(promotionId)).data, courseId);
     }
 
+    function currentUserPromotionIdAtAllowsCourse(courseId, index) {
+      return currentUser().keys().hasAny(['promotionIds'])
+        && currentUser().promotionIds is list
+        && currentUser().promotionIds.size() > index
+        && promotionAllowsCourse(currentUser().promotionIds[index], courseId);
+    }
+
+    function currentUserPromotionIdsAllowCourse(courseId) {
+      return currentUserPromotionIdAtAllowsCourse(courseId, 0)
+        || currentUserPromotionIdAtAllowsCourse(courseId, 1)
+        || currentUserPromotionIdAtAllowsCourse(courseId, 2)
+        || currentUserPromotionIdAtAllowsCourse(courseId, 3)
+        || currentUserPromotionIdAtAllowsCourse(courseId, 4)
+        || currentUserPromotionIdAtAllowsCourse(courseId, 5)
+        || currentUserPromotionIdAtAllowsCourse(courseId, 6)
+        || currentUserPromotionIdAtAllowsCourse(courseId, 7)
+        || currentUserPromotionIdAtAllowsCourse(courseId, 8)
+        || currentUserPromotionIdAtAllowsCourse(courseId, 9);
+    }
+
     function currentUserPromotionAllowsCourse(courseId) {
       return isStudent()
         && courseId is string
@@ -386,6 +406,7 @@ service cloud.firestore {
           (currentUserHasPromotionId() && promotionAllowsCourse(currentUser().promotionId, courseId))
           || (currentUserHasCurrentPromotionId() && promotionAllowsCourse(currentUser().currentPromotionId, courseId))
           || (currentUserHasCohortId() && promotionAllowsCourse(currentUser().cohortId, courseId))
+          || currentUserPromotionIdsAllowCourse(courseId)
         );
     }
 

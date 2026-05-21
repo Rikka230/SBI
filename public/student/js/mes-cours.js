@@ -3,7 +3,7 @@
  * MES COURS - Bibliothèque étudiant SBI
  * =======================================================================
  *
- * 8.0P.167.138 : bibliothèque séparée entre planning de promotion et cours complémentaires.
+ * 8.0P.167.141 : bibliothèque élève sans mention des formations sources, compatible contexte promotion.
  * Le viewer de cours reste en navigation classique.
  * =======================================================================
  */
@@ -800,12 +800,11 @@ function buildCourseItemHTML(course) {
     const planLabel = plan ? getCoursePlanDatesLabel(plan) : '';
     const priorityLabel = plan ? getPriorityLabel(plan.priorityLevel) : '';
     const priorityTone = plan ? getPriorityTone(plan.priorityLevel) : 'normal';
-    const planSource = plan?.sourceFormationName && plan.sourceFormationName !== currentOpenFormationTitle ? ` · source : ${plan.sourceFormationName}` : '';
+    const planSource = '';
     const planMetaHtml = plan
         ? `<div class="student-course-card__plan">
             <span>${escapeHTML(planLabel)}</span>
             <span class="student-course-priority student-course-priority--${escapeAttr(priorityTone)}">${escapeHTML(priorityLabel)}</span>
-            ${planSource ? `<span>${escapeHTML(planSource.replace(/^ · /, ''))}</span>` : ''}
           </div>`
         : '';
 
