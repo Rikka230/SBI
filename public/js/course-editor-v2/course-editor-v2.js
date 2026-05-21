@@ -26,7 +26,7 @@ import {
 } from '/admin/js/course-media-storage.js';
 
 const MAX_QUERY_VALUES = 10;
-const VERSION = '8.0P.167.172';
+const VERSION = '8.0P.167.173';
 
 const BLOCK_TYPES = [
   { type: 'course_info', label: 'Course Info', subtitle: 'Informations générales', icon: 'i', static: true },
@@ -160,7 +160,7 @@ function applySbiQuillPreset(quill, preset) {
     quill.formatText(range.index, range.length || 0, { bold: true, color: '#0f172a' }, 'user');
   } else if (preset === 'section_title') {
     quill.formatLine(range.index, length, 'header', 2, 'user');
-    quill.formatText(range.index, range.length || 0, { bold: true, color: '#ff7a1a' }, 'user');
+    quill.formatText(range.index, range.length || 0, { bold: true, color: '#2A57FF' }, 'user');
   } else if (preset === 'highlight') {
     quill.formatLine(range.index, length, 'header', false, 'user');
     quill.formatText(range.index, range.length || 0, { bold: true, background: '#fff3e8', color: '#0f172a' }, 'user');
@@ -239,6 +239,26 @@ function renderFatalEditorError(error) {
       <span>${escapeHtml(error?.message || 'Erreur d’initialisation.')}</span>
     </div>
   `;
+}
+
+
+function updateFixedBlockBankOffset() {
+  const bank = document.querySelector('#sbi-course-editor-v2 .sbi-block-bank');
+  const main = document.getElementById('main-content');
+  if (!bank || !main) return;
+
+  const rect = main.getBoundingClientRect();
+  const left = Math.max(8, Math.round(rect.left + 16));
+  bank.style.position = 'fixed';
+  bank.style.left = `${left}px`;
+  bank.style.right = '16px';
+  bank.style.bottom = '0px';
+  bank.style.width = 'auto';
+  bank.style.margin = '0';
+}
+
+function scheduleFixedBlockBankOffset() {
+  window.requestAnimationFrame(updateFixedBlockBankOffset);
 }
 
 function $(selector, root = document) {
@@ -649,12 +669,13 @@ function mountShell() {
         </aside>
       </div>
 
-      <footer class="sbi-block-bank">
+      <footer class="sbi-block-bank" data-editor-bank="fixed">
         <div><div class="sbi-block-bank-title">Banque de blocs</div><div class="sbi-block-bank-subtitle">Ajout rapide au cours, un bloc à la fois.</div></div>
         <div id="course-v2-bank" class="sbi-bank-chips"></div>
       </footer>
     </div>
   `;
+  scheduleFixedBlockBankOffset();
 }
 
 function setStatus(message, tone = '') {
@@ -689,7 +710,7 @@ function syncBlockTitleUi(value, sourceId = '') {
   });
 }
 
-function renderSharedBlockPicker(prefix, value = state.course.bloc) {
+function renderSharedBlockPicker(prefix, value = state.course.bloc, { allowCreate = true } = {}) {
   const safeValue = normalizeBlockTitle(value);
   const options = state.blockOptions.map((bloc) => {
     const selected = normalizeBlockTitle(bloc) === safeValue ? 'selected' : '';
@@ -697,6 +718,17 @@ function renderSharedBlockPicker(prefix, value = state.course.bloc) {
   }).join('');
 
   const emptyText = state.blockOptions.length ? 'Choisir un bloc existant' : 'Aucun bloc enregistré pour cette sélection';
+
+  if (!allowCreate) {
+    return `
+      <div class="sbi-shared-block-picker sbi-shared-block-picker--select-only">
+        <select id="${prefix}-bloc-select" class="sbi-select" aria-label="Choisir un bloc partagé">
+          <option value="">${escapeHtml(emptyText)}</option>
+          ${options}
+        </select>
+      </div>
+    `;
+  }
 
   return `
     <div class="sbi-shared-block-picker">
@@ -1335,7 +1367,7 @@ function renderSettings() {
     </div>
     <div class="sbi-right-card sbi-editor-form" style="padding:1rem;">
       <div class="sbi-field"><label>Formation</label><div class="sbi-input" style="height:auto;">${escapeHtml(selectedFormationLabel)}</div></div>
-      <div class="sbi-field"><label>Bloc partagé</label>${renderSharedBlockPicker('settings', state.course.bloc)}<small>Ajout local au cours. La sauvegarde le rend récupérable par formation.</small></div>
+      <div class="sbi-field"><label>Bloc partagé</label>${renderSharedBlockPicker('settings', state.course.bloc, { allowCreate: false })}<small>Sélection rapide d’un bloc existant. Pour créer un nouveau bloc, passe par Course Info.</small></div>
       <div class="sbi-field"><label>Compétence ciblée</label><input id="settings-competency" class="sbi-input" value="${escapeHtml(active?.competency || state.course.competency || '')}" placeholder="Ex : C2. Assurer la sécurité"></div>
       <div class="sbi-field"><label>Preuve Qualiopi</label><select id="settings-qualiopi" class="sbi-select"><option value="">Non renseignée</option>${renderSelectOption('2.2 Moyens pédagogiques', active?.qualiopiEvidence || state.course.qualiopiEvidence)}${renderSelectOption('2.4 Modalités d’évaluation', active?.qualiopiEvidence || state.course.qualiopiEvidence)}${renderSelectOption('3.1 Adaptation pédagogique', active?.qualiopiEvidence || state.course.qualiopiEvidence)}</select></div>
       <div class="sbi-two-cols"><div class="sbi-field"><label>Durée estimée (min)</label><input id="settings-duration" class="sbi-input" type="number" min="0" value="${Number(active?.durationMinutes || state.course.estimatedDurationMinutes || 0)}"></div><div class="sbi-field"><label>Score max calculé</label><input id="settings-score" class="sbi-input" type="number" min="0" value="${getActiveScore(active)}" readonly aria-readonly="true"></div></div>
@@ -1362,25 +1394,26 @@ function renderPreview() {
       <h2 class="sbi-panel-title">Aperçu élève</h2>
       <p class="sbi-panel-subtitle">Simulation rapide du rendu.</p>
     </div>
-    <div class="sbi-right-card"><div class="sbi-preview-card">${preview}</div></div>
+    <div class="sbi-right-card"><div class="sbi-preview-card"><div class="sbi-student-mini-page">${preview}</div></div></div>
   `;
 }
 
 function renderCoursePreview() {
-  return `<h4>${escapeHtml(state.course.title || 'Cours sans titre')}</h4><p>${escapeHtml(state.course.objectives || 'Les objectifs pédagogiques apparaîtront ici.')}</p><p>${state.course.learningBlocks.length} bloc(s) pédagogique(s).</p>`;
+  return `<h4>${escapeHtml(state.course.title || 'Cours sans titre')}</h4><div class="sbi-preview-rich"><p>${escapeHtml(state.course.objectives || 'Les objectifs pédagogiques apparaîtront ici.')}</p><p>${state.course.learningBlocks.length} bloc(s) pédagogique(s).</p></div>`;
 }
 
 function renderBlockPreview(block) {
   if (block.type === 'fill_blank') {
     const html = escapeHtml(block.prompt || '').replace(/\[\[([^\]]+)\]\]/g, (_, token) => `<span class="sbi-preview-token">${escapeHtml(token)}</span>`);
-    return `<h4>${escapeHtml(block.title || 'Texte à trous')}</h4><p>${escapeHtml(block.instructions || '')}</p><p>${html}</p><small>${normalizeFillBlankRows(block).length} blancs · ${getActiveScore(block)} points</small>`;
+    return `<h4>${escapeHtml(block.title || 'Texte à trous')}</h4><div class="sbi-preview-rich"><p>${escapeHtml(block.instructions || '')}</p><p>${html}</p><small>${normalizeFillBlankRows(block).length} blancs · ${getActiveScore(block)} points</small></div>`;
   }
   if (block.type === 'quiz') {
     const question = block.questions?.[0];
-    return `<h4>${escapeHtml(block.title || 'QCM')}</h4><p>${escapeHtml(question?.question || 'Question à compléter.')}</p>${(question?.options || []).map((option) => `<div class="sbi-input" style="margin:.4rem 0;height:auto;">${escapeHtml(option)}</div>`).join('')}`;
+    return `<h4>${escapeHtml(block.title || 'QCM')}</h4><div class="sbi-preview-rich"><p>${escapeHtml(question?.question || 'Question à compléter.')}</p>${(question?.options || []).map((option) => `<div class="sbi-preview-answer">${escapeHtml(option)}</div>`).join('')}</div>`;
   }
   const mediaPreview = block.type === 'lesson' ? renderLessonMediaPreview(block) : '';
-  return `<h4>${escapeHtml(block.title || getBlockMeta(block.type).label)}</h4>${mediaPreview}<p>${escapeHtml(block.instructions || '')}</p><p>${block.content || 'Contenu à compléter.'}</p>`;
+  const content = block.content || '<p>Contenu à compléter.</p>';
+  return `<h4>${escapeHtml(block.title || getBlockMeta(block.type).label)}</h4>${mediaPreview}<div class="sbi-preview-rich"><p class="sbi-preview-instructions">${escapeHtml(block.instructions || '')}</p>${content}</div>`;
 }
 
 function renderLessonMediaPreview(block) {
@@ -1863,6 +1896,7 @@ function renderAll() {
   renderSettings();
   renderPreview();
   bindSettingsInputs();
+  scheduleFixedBlockBankOffset();
 }
 
 let booted = false;
@@ -1929,6 +1963,7 @@ export function mountCourseEditorV2({ force = false } = {}) {
 
 function boot() {
   releasePreloadSafety();
+  window.addEventListener('resize', scheduleFixedBlockBankOffset, { passive: true });
   try {
     mountShell();
     bindGlobalActions();
