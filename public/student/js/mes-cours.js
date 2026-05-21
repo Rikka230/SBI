@@ -416,6 +416,8 @@ async function loadAssignedCourses() {
     const coursesFromNotifications = await loadNotificationLinkedCourses();
 
     allCourses = uniqById([...coursesFromAccess, ...coursesFromNotifications, ...coursesFromPromotionPlan])
+        .filter(Boolean)
+        .filter((course) => course && course.id)
         .filter((course) => isAdminPreview() || isCourseVisible(course, { allowProgress: true }));
 }
 
@@ -607,6 +609,7 @@ function getLibrarySearchTerm() {
 
 function getDirectAssignedCoursesWithoutVisibleFormation() {
     return allCourses.filter((course) => {
+        if (!course || !course.id) return false;
         const isDirectlyLinked = course.__targetedToUser === true
             || course.__notificationLinked === true
             || course.__progressLinked === true
@@ -627,6 +630,7 @@ function getDirectAssignedCoursesWithoutVisibleFormation() {
 function getCoursesForFormation(formation) {
     if (formation?.__directCourses === true) return getDirectAssignedCoursesWithoutVisibleFormation();
     return allCourses.filter((course) => {
+        if (!course || !course.id) return false;
         return sharedCourseBelongsToFormation(course, formation, assignedFormations)
             || courseBelongsToPromotionFormation(course, formation);
     });
@@ -701,6 +705,7 @@ function openRequestedFormationFromUrl() {
 function renderCourseSections(container, coursesInFormation = []) {
     ensureStudentCourseSwitchStyles();
 
+    coursesInFormation = Array.isArray(coursesInFormation) ? coursesInFormation.filter((course) => course && course.id) : [];
     const { plannedCourses, complementaryCourses } = splitCoursesForFormationView(coursesInFormation);
     currentCourseViewMode = resolveCourseViewMode(currentCourseViewMode, plannedCourses, complementaryCourses);
 
@@ -757,9 +762,10 @@ function renderCourseSections(container, coursesInFormation = []) {
 }
 
 function splitCoursesForFormationView(coursesInFormation = []) {
-    const plannedCourses = sortCourses(coursesInFormation.filter((course) => getPrimaryCoursePlan(course)));
+    const safeCourses = Array.isArray(coursesInFormation) ? coursesInFormation.filter((course) => course && course.id) : [];
+    const plannedCourses = sortCourses(safeCourses.filter((course) => getPrimaryCoursePlan(course)));
     const plannedIds = new Set(plannedCourses.map((course) => course.id));
-    const complementaryCourses = coursesInFormation.filter((course) => !plannedIds.has(course.id));
+    const complementaryCourses = safeCourses.filter((course) => !plannedIds.has(course.id));
     return { plannedCourses, complementaryCourses };
 }
 
@@ -840,9 +846,9 @@ function bindCourseCardNavigation(container) {
 }
 
 function ensureStudentCourseSwitchStyles() {
-    if (document.getElementById('student-course-switch-style-8-0p-167-142')) return;
+    if (document.getElementById('student-course-switch-style-8-0p-167-143')) return;
     const style = document.createElement('style');
-    style.id = 'student-course-switch-style-8-0p-167-142';
+    style.id = 'student-course-switch-style-8-0p-167-143';
     style.textContent = `
         .student-course-switch {
             display: flex;
@@ -883,6 +889,7 @@ function renderCourseViewSummary(formation, courses = []) {
     if (!root) return;
 
     const totalCourses = courses.length;
+    courses = Array.isArray(courses) ? courses.filter((course) => course && course.id) : [];
     const completedCourses = courses.filter((course) => userProgress.courses[course.id]?.status === 'done').length;
     const inProgressCourses = courses.filter((course) => userProgress.courses[course.id]?.status === 'in_progress').length;
     const progressPercent = totalCourses === 0 ? 0 : Math.round((completedCourses / totalCourses) * 100);
@@ -910,7 +917,7 @@ function filterVisibleCourseCards() {
 function groupCoursesByBloc(courses) {
     const coursesByBloc = {};
 
-    courses.forEach((course) => {
+    courses.filter((course) => course && course.id).forEach((course) => {
         const blocName = course.bloc || course.blockTitle || course.blockName || "Cours sans bloc";
         if (!coursesByBloc[blocName]) coursesByBloc[blocName] = [];
         coursesByBloc[blocName].push(course);
@@ -934,6 +941,7 @@ function buildCourseReturnUrl(course = {}) {
 }
 
 function buildCourseItemHTML(course) {
+    if (!course || !course.id) return '';
     const progressData = userProgress.courses[course.id] || { status: 'todo', completedChapters: [] };
     const totalChapters = Array.isArray(course.chapitres) ? course.chapitres.length : 0;
     const doneChapters = Array.isArray(progressData.completedChapters) ? progressData.completedChapters.length : 0;
@@ -1016,8 +1024,11 @@ function buildQuizScoreHTML(course, progressData) {
 }
 
 function sortCourses(a, b) {
-    const planA = getPrimaryCoursePlan(a);
-    const planB = getPrimaryCoursePlan(b);
+    const courseA = a && typeof a === 'object' ? a : {};
+    const courseB = b && typeof b === 'object' ? b : {};
+
+    const planA = getPrimaryCoursePlan(courseA);
+    const planB = getPrimaryCoursePlan(courseB);
 
     if (planA || planB) {
         const orderA = Number.isFinite(Number(planA?.order)) ? Number(planA.order) : Number.POSITIVE_INFINITY;
@@ -1031,9 +1042,9 @@ function sortCourses(a, b) {
         if (!dateA && dateB) return 1;
     }
 
-    const blocCompare = String(a.bloc || a.blockTitle || '').localeCompare(String(b.bloc || b.blockTitle || ''), 'fr', { sensitivity: 'base' });
+    const blocCompare = String(courseA.bloc || courseA.blockTitle || '').localeCompare(String(courseB.bloc || courseB.blockTitle || ''), 'fr', { sensitivity: 'base' });
     if (blocCompare !== 0) return blocCompare;
-    return String(a.titre || a.title || '').localeCompare(String(b.titre || b.title || ''), 'fr', { sensitivity: 'base' });
+    return String(courseA.titre || courseA.title || '').localeCompare(String(courseB.titre || courseB.title || ''), 'fr', { sensitivity: 'base' });
 }
 
 function escapeHTML(value) {

@@ -526,7 +526,7 @@ async function mountStudentPage({ url }) {
   window.__SBI_APP_SHELL_MOUNTING_STUDENT_COURSES = true;
 
   try {
-    const module = await import('/student/js/mes-cours.js?v=8.0P.167.142');
+    const module = await import('/student/js/mes-cours.js?v=8.0P.167.143');
     const cleanup = module.mountStudentCourses?.({ source: 'pjax-student-courses' });
 
     if (typeof cleanup === 'function') registerCleanup(cleanup, 'student-courses');
@@ -625,7 +625,7 @@ async function mountTeacherCourses({ url }) {
       registerCleanup(cleanupTeacherLibrary, 'teacher-courses-library');
     }
 
-    const promotionModule = await import('/teacher/js/teacher-promotion-planning-select.js?v=8.0P.167.142');
+    const promotionModule = await import('/teacher/js/teacher-promotion-planning-select.js?v=8.0P.167.143');
     const cleanupPromotionSelect = promotionModule.mountTeacherPromotionPlanningSelect?.({ source: 'pjax-teacher-courses' });
 
     if (typeof cleanupPromotionSelect === 'function') {

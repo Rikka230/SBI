@@ -344,7 +344,6 @@ async function bootForUser(user) {
   }
 }
 export function mountTeacherPromotionPlanningSelect({ source = 'standard' } = {}) {
-  if (!window.location.pathname.endsWith('/teacher/mes-cours.html')) return () => {};
   let disposed = false;
   document.addEventListener('click', handleTeacherEditorBridgeClick, true);
   window.addEventListener('popstate', handleTeacherEditorPopState);
@@ -355,9 +354,22 @@ export function mountTeacherPromotionPlanningSelect({ source = 'standard' } = {}
 
   const ensureTimer = window.setInterval(() => {
     if (disposed) return;
+    const currentUrl = new URL(window.SBI_APP_SHELL_CURRENT_URL || window.location.href, window.location.origin);
+    const isTeacherCourses = currentUrl.pathname.endsWith('/teacher/mes-cours.html') || Boolean(document.getElementById('teacher-courses-list-container'));
+    if (!isTeacherCourses) return;
     if (!document.getElementById(SELECT_ID)) renderSelect();
     applySelectedPromotionContext();
-  }, 1200);
+  }, 650);
+
+  const domObserver = new MutationObserver(() => {
+    if (disposed) return;
+    const currentUrl = new URL(window.SBI_APP_SHELL_CURRENT_URL || window.location.href, window.location.origin);
+    const isTeacherCourses = currentUrl.pathname.endsWith('/teacher/mes-cours.html') || Boolean(document.getElementById('teacher-courses-list-container'));
+    if (!isTeacherCourses) return;
+    renderSelect();
+    applySelectedPromotionContext();
+  });
+  domObserver.observe(document.body, { childList: true, subtree: true });
 
   return () => {
     disposed = true;
@@ -365,6 +377,7 @@ export function mountTeacherPromotionPlanningSelect({ source = 'standard' } = {}
     window.removeEventListener('popstate', handleTeacherEditorPopState);
     unsubscribe?.();
     window.clearInterval(ensureTimer);
+    domObserver.disconnect();
     observer?.disconnect();
     observer = null;
   };
