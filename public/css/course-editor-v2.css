@@ -841,3 +841,142 @@ body.sbi-editor-v2 {
   color: var(--editor-muted);
   font-size: 0.9rem;
 }
+
+/* 8.0P.167.172 - Shared block picker, left preview, fixed block bank, SBI Quill presets. */
+#sbi-course-editor-v2.sbi-editor-v2--teacher,
+#sbi-course-editor-v2[data-editor-role="teacher"],
+.sbi-editor-v2--teacher #sbi-course-editor-v2 {
+  --accent: #ff7a1a;
+  --accent-2: #ff9f43;
+  --accent-soft: rgba(255,122,26,0.10);
+  --accent-border: rgba(255,122,26,0.22);
+  --editor-bg: #f5f7fb;
+  --editor-surface: #ffffff;
+  --editor-surface-2: #f9fafc;
+  --editor-surface-3: #eef2f7;
+  --editor-text: #0f172a;
+  --editor-muted: #667085;
+  --editor-border: #d9e1ec;
+  --editor-shadow: 0 22px 70px rgba(15, 23, 42, 0.09);
+  --editor-header: rgba(255, 255, 255, 0.88);
+  --editor-danger: #ef4444;
+  --editor-success: #16a34a;
+  --editor-warning: #f59e0b;
+}
+
+#sbi-course-editor-v2.sbi-editor-v2--admin,
+#sbi-course-editor-v2[data-editor-role="admin"],
+.sbi-editor-v2--admin #sbi-course-editor-v2 {
+  --accent: #1597ff;
+  --accent-2: #4cc9ff;
+  --accent-soft: rgba(21,151,255,0.12);
+  --accent-border: rgba(21,151,255,0.28);
+  --editor-bg: #07111e;
+  --editor-surface: #0c1826;
+  --editor-surface-2: #101e2f;
+  --editor-surface-3: #13253a;
+  --editor-text: #eef6ff;
+  --editor-muted: #8da0b8;
+  --editor-border: rgba(143, 163, 190, 0.18);
+  --editor-shadow: 0 22px 80px rgba(0, 0, 0, 0.42);
+  --editor-header: rgba(6, 16, 29, 0.88);
+  --editor-danger: #ff6262;
+  --editor-success: #34d399;
+  --editor-warning: #fbbf24;
+}
+
+.sbi-shared-block-picker {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(160px, 0.8fr) auto;
+  gap: 0.55rem;
+  align-items: center;
+}
+
+.sbi-shared-block-picker .sbi-select {
+  min-width: 0;
+}
+
+.sbi-left-preview-slot #course-v2-preview-card .sbi-right-card {
+  padding: 0;
+  border-bottom: 0;
+}
+
+.sbi-left-preview-slot .sbi-preview-card {
+  margin-top: 0.85rem;
+  box-shadow: none;
+}
+
+.sbi-left-preview-slot .sbi-preview-media {
+  max-height: 120px;
+}
+
+.sbi-editor-v2--embedded .sbi-editor-shell {
+  padding-bottom: 96px;
+}
+
+.sbi-editor-v2--embedded .sbi-block-bank {
+  position: fixed;
+  left: clamp(76px, 12vw, 190px);
+  right: 1rem;
+  bottom: 0;
+  width: auto;
+  max-width: none;
+  margin: 0;
+  z-index: 80;
+  box-shadow: 0 -18px 50px rgba(15, 23, 42, 0.12);
+}
+
+.app-container.left-collapsed .sbi-block-bank {
+  left: 76px;
+}
+
+.sbi-quill-preset-group {
+  display: inline-flex !important;
+  align-items: center;
+  margin-right: 8px !important;
+}
+
+.sbi-quill-preset-select {
+  min-height: 28px;
+  max-width: 128px;
+  padding: 0 0.4rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #111827;
+  font-size: 0.78rem;
+  font-weight: 850;
+  outline: none;
+  cursor: pointer;
+}
+
+.sbi-quill-preset-select:focus {
+  border-color: var(--accent, #ff7a1a);
+  box-shadow: 0 0 0 3px var(--accent-soft, rgba(255,122,26,0.10));
+}
+
+.sbi-quill-editor .ql-editor h1 {
+  font-size: 1.9rem;
+  line-height: 1.15;
+  font-weight: 950;
+  letter-spacing: -0.04em;
+  color: #0f172a;
+}
+
+.sbi-quill-editor .ql-editor h2 {
+  font-size: 1.35rem;
+  line-height: 1.2;
+  font-weight: 900;
+  color: #ff7a1a;
+}
+
+@media (max-width: 900px) {
+  .sbi-shared-block-picker {
+    grid-template-columns: 1fr;
+  }
+
+  .sbi-editor-v2--embedded .sbi-block-bank {
+    left: 0.5rem;
+    right: 0.5rem;
+  }
+}

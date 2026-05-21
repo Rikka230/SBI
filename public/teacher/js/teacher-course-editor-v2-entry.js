@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.167.171 - Teacher course editor V2 entry bridge
+ * SBI 8.0P.167.172 - Teacher course editor V2 entry bridge
  *
  * Transition contrôlée : la bibliothèque prof garde son rendu validé,
  * mais Nouveau cours / Modifier ouvrent la page dédiée V2.

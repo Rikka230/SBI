@@ -26,7 +26,7 @@ import {
 } from '/admin/js/course-media-storage.js';
 
 const MAX_QUERY_VALUES = 10;
-const VERSION = '8.0P.167.171';
+const VERSION = '8.0P.167.172';
 
 const BLOCK_TYPES = [
   { type: 'course_info', label: 'Course Info', subtitle: 'Informations générales', icon: 'i', static: true },
@@ -105,6 +105,81 @@ function applyQuillTooltips(toolbarRoot) {
       }
     });
   });
+}
+
+
+const SBI_QUILL_PRESETS = [
+  { value: '', label: 'Style SBI' },
+  { value: 'title_1', label: 'Titre SBI 1' },
+  { value: 'section_title', label: 'Titre de partie' },
+  { value: 'highlight', label: 'Texte important' },
+  { value: 'body', label: 'Texte normal' }
+];
+
+function installSbiPresetPicker(quill) {
+  const toolbarRoot = quill?.getModule?.('toolbar')?.container;
+  if (!toolbarRoot || toolbarRoot.dataset.sbiPresetInstalled === 'true') return;
+  toolbarRoot.dataset.sbiPresetInstalled = 'true';
+
+  const group = document.createElement('span');
+  group.className = 'ql-formats sbi-quill-preset-group';
+
+  const select = document.createElement('select');
+  select.className = 'sbi-quill-preset-select';
+  select.setAttribute('title', 'Styles SBI');
+  select.setAttribute('aria-label', 'Styles SBI');
+
+  SBI_QUILL_PRESETS.forEach((preset) => {
+    const option = document.createElement('option');
+    option.value = preset.value;
+    option.textContent = preset.label;
+    select.appendChild(option);
+  });
+
+  select.addEventListener('change', () => {
+    if (!select.value) return;
+    applySbiQuillPreset(quill, select.value);
+    select.value = '';
+  });
+
+  group.appendChild(select);
+  toolbarRoot.insertBefore(group, toolbarRoot.firstChild);
+}
+
+function applySbiQuillPreset(quill, preset) {
+  if (!quill || !preset) return;
+  const current = quill.getSelection();
+  const range = current || lastQuillSelection || { index: Math.max(0, quill.getLength() - 1), length: 0 };
+  const length = Math.max(range.length || 0, 1);
+
+  quill.focus();
+  quill.setSelection(range.index, range.length || 0, 'silent');
+
+  if (preset === 'title_1') {
+    quill.formatLine(range.index, length, 'header', 1, 'user');
+    quill.formatText(range.index, range.length || 0, { bold: true, color: '#0f172a' }, 'user');
+  } else if (preset === 'section_title') {
+    quill.formatLine(range.index, length, 'header', 2, 'user');
+    quill.formatText(range.index, range.length || 0, { bold: true, color: '#ff7a1a' }, 'user');
+  } else if (preset === 'highlight') {
+    quill.formatLine(range.index, length, 'header', false, 'user');
+    quill.formatText(range.index, range.length || 0, { bold: true, background: '#fff3e8', color: '#0f172a' }, 'user');
+  } else if (preset === 'body') {
+    quill.formatLine(range.index, length, 'header', false, 'user');
+    quill.formatText(range.index, range.length || 0, {
+      bold: false,
+      italic: false,
+      underline: false,
+      strike: false,
+      color: false,
+      background: false,
+      size: false
+    }, 'user');
+  }
+
+  syncQuillToActiveBlock();
+  markDirty();
+  renderPreview();
 }
 
 const state = {
@@ -560,10 +635,8 @@ function mountShell() {
             </div>
             <ul id="course-v2-structure" class="sbi-course-structure"></ul>
           </section>
-          <section class="sbi-editor-section">
-            <h2 class="sbi-panel-title">Ajouter un bloc</h2>
-            <p class="sbi-panel-subtitle">Chaque clic ajoute un seul bloc au cours.</p>
-            <div id="course-v2-add-grid" class="sbi-add-grid"></div>
+          <section class="sbi-editor-section sbi-left-preview-slot">
+            <div id="course-v2-preview-card"></div>
           </section>
         </aside>
 
@@ -573,7 +646,6 @@ function mountShell() {
 
         <aside class="sbi-editor-panel sbi-editor-right">
           <div id="course-v2-settings"></div>
-          <div id="course-v2-preview-card"></div>
         </aside>
       </div>
 
@@ -604,11 +676,38 @@ function normalizeBlockTitle(value = '') {
 
 function syncBlockTitleUi(value, sourceId = '') {
   const safeValue = normalizeBlockTitle(value);
-  ['editor-course-bloc', 'settings-bloc'].forEach((id) => {
+  ['editor-course-bloc', 'settings-bloc', 'editor-course-bloc-select', 'settings-bloc-select'].forEach((id) => {
     if (id === sourceId) return;
     const field = document.getElementById(id);
-    if (field && field.value !== safeValue) field.value = safeValue;
+    if (!field) return;
+    if (field.tagName === 'SELECT') {
+      const hasOption = Array.from(field.options || []).some((option) => option.value === safeValue);
+      field.value = hasOption ? safeValue : '';
+      return;
+    }
+    if (field.value !== safeValue) field.value = safeValue;
   });
+}
+
+function renderSharedBlockPicker(prefix, value = state.course.bloc) {
+  const safeValue = normalizeBlockTitle(value);
+  const options = state.blockOptions.map((bloc) => {
+    const selected = normalizeBlockTitle(bloc) === safeValue ? 'selected' : '';
+    return `<option value="${escapeHtml(bloc)}" ${selected}>${escapeHtml(bloc)}</option>`;
+  }).join('');
+
+  const emptyText = state.blockOptions.length ? 'Choisir un bloc existant' : 'Aucun bloc enregistré pour cette sélection';
+
+  return `
+    <div class="sbi-shared-block-picker">
+      <input id="${prefix}-bloc" class="sbi-input" value="${escapeHtml(safeValue)}" placeholder="Ex : Module 3 · Animation">
+      <select id="${prefix}-bloc-select" class="sbi-select" aria-label="Choisir un bloc partagé">
+        <option value="">${escapeHtml(emptyText)}</option>
+        ${options}
+      </select>
+      <button id="${prefix}-bloc-add" class="sbi-editor-btn sbi-editor-btn--tiny" type="button">+ Ajouter</button>
+    </div>
+  `;
 }
 
 function addLocalSharedBlockOption(rawValue = '') {
@@ -749,7 +848,7 @@ function reorderLearningBlock(sourceId, targetId, { insertAfter = false } = {}) 
 }
 
 function renderAddControls() {
-  const targets = [$('#course-v2-add-grid'), $('#course-v2-bank')].filter(Boolean);
+  const targets = [$('#course-v2-bank')].filter(Boolean);
   const addable = BLOCK_TYPES.filter((type) => !type.static);
   targets.forEach((target) => {
     target.innerHTML = addable.map((item) => `
@@ -872,6 +971,7 @@ function initLegacyQuillForActiveBlock(block) {
       }, true);
     });
     applyQuillTooltips(toolbar);
+    installSbiPresetPicker(state.quill);
   }
 }
 
@@ -1065,7 +1165,7 @@ function renderCourseInfoEditor() {
       </section>
 
       <div class="sbi-two-cols">
-        <div class="sbi-field"><label>Bloc partagé</label><div class="sbi-inline-action"><input id="editor-course-bloc" class="sbi-input" list="editor-block-options" value="${escapeHtml(state.course.bloc)}" placeholder="Ex : Module 3 · Animation"><button id="editor-course-bloc-add" class="sbi-editor-btn sbi-editor-btn--tiny" type="button">+ Ajouter</button></div><datalist id="editor-block-options">${state.blockOptions.map((bloc) => `<option value="${escapeHtml(bloc)}"></option>`).join('')}</datalist><small>Saisis un nouveau bloc puis clique Ajouter. Après sauvegarde, il sera proposé pour les cours de la même formation.</small></div>
+        <div class="sbi-field"><label>Bloc partagé</label>${renderSharedBlockPicker('editor-course', state.course.bloc)}<small>Sélectionne un bloc existant ou saisis un nouveau nom puis clique Ajouter. Après sauvegarde, il sera proposé pour les cours de la même formation.</small></div>
         <div class="sbi-field"><label>Durée estimée globale (min)</label><small>Indicatif pédagogique, ce n’est pas un timer automatique.</small><input id="editor-course-duration" class="sbi-input" type="number" min="0" step="5" value="${Number(state.course.estimatedDurationMinutes || 0)}"></div>
       </div>
       <div class="sbi-empty-state">Cette page prépare le contenu du cours. Le rattachement au cursus, l’ordre du programme et les dates restent gérés dans Cursus / Promotions.</div>
@@ -1235,7 +1335,7 @@ function renderSettings() {
     </div>
     <div class="sbi-right-card sbi-editor-form" style="padding:1rem;">
       <div class="sbi-field"><label>Formation</label><div class="sbi-input" style="height:auto;">${escapeHtml(selectedFormationLabel)}</div></div>
-      <div class="sbi-field"><label>Bloc partagé</label><div class="sbi-inline-action"><input id="settings-bloc" class="sbi-input" list="settings-block-options" value="${escapeHtml(state.course.bloc)}" placeholder="Nom du bloc"><button id="settings-bloc-add" class="sbi-editor-btn sbi-editor-btn--tiny" type="button">+ Ajouter</button></div><datalist id="settings-block-options">${state.blockOptions.map((bloc) => `<option value="${escapeHtml(bloc)}"></option>`).join('')}</datalist><small>Ajout local au cours. La sauvegarde le rend récupérable par formation.</small></div>
+      <div class="sbi-field"><label>Bloc partagé</label>${renderSharedBlockPicker('settings', state.course.bloc)}<small>Ajout local au cours. La sauvegarde le rend récupérable par formation.</small></div>
       <div class="sbi-field"><label>Compétence ciblée</label><input id="settings-competency" class="sbi-input" value="${escapeHtml(active?.competency || state.course.competency || '')}" placeholder="Ex : C2. Assurer la sécurité"></div>
       <div class="sbi-field"><label>Preuve Qualiopi</label><select id="settings-qualiopi" class="sbi-select"><option value="">Non renseignée</option>${renderSelectOption('2.2 Moyens pédagogiques', active?.qualiopiEvidence || state.course.qualiopiEvidence)}${renderSelectOption('2.4 Modalités d’évaluation', active?.qualiopiEvidence || state.course.qualiopiEvidence)}${renderSelectOption('3.1 Adaptation pédagogique', active?.qualiopiEvidence || state.course.qualiopiEvidence)}</select></div>
       <div class="sbi-two-cols"><div class="sbi-field"><label>Durée estimée (min)</label><input id="settings-duration" class="sbi-input" type="number" min="0" value="${Number(active?.durationMinutes || state.course.estimatedDurationMinutes || 0)}"></div><div class="sbi-field"><label>Score max calculé</label><input id="settings-score" class="sbi-input" type="number" min="0" value="${getActiveScore(active)}" readonly aria-readonly="true"></div></div>
@@ -1341,6 +1441,14 @@ function bindEditorInputs() {
   $('#editor-course-bloc')?.addEventListener('input', (event) => {
     state.course.bloc = event.target.value;
     syncBlockTitleUi(event.target.value, 'editor-course-bloc');
+    markDirty();
+    renderSettings();
+    bindSettingsInputs();
+  });
+  $('#editor-course-bloc-select')?.addEventListener('change', (event) => {
+    if (!event.target.value) return;
+    state.course.bloc = event.target.value;
+    syncBlockTitleUi(event.target.value, 'editor-course-bloc-select');
     markDirty();
     renderSettings();
     bindSettingsInputs();
@@ -1453,6 +1561,15 @@ function bindSettingsInputs() {
     state.course.bloc = event.target.value;
     syncBlockTitleUi(event.target.value, 'settings-bloc');
     markDirty();
+  });
+  $('#settings-bloc-select')?.addEventListener('change', (event) => {
+    if (!event.target.value) return;
+    state.course.bloc = event.target.value;
+    syncBlockTitleUi(event.target.value, 'settings-bloc-select');
+    markDirty();
+    renderMainEditor();
+    renderSettings();
+    bindSettingsInputs();
   });
   $('#settings-bloc-add')?.addEventListener('click', () => addLocalSharedBlockOption($('#settings-bloc')?.value));
 
