@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.143',
+  version: '8.0P.167.144',
   branch: 'main',
-  channel: 'P2I.31 STUDENT CRASH + TEACHER SELECT FIX',
-  stage: 'STUDENT COURSE LIST SORT GUARD + TEACHER PROMOTION SELECT PJAX STABILITY',
+  channel: 'P2I.32 STUDENT EMPTY PAGE + TEACHER FREEZE FIX',
+  stage: 'STUDENT COURSE LIST STABILIZATION + SAFE TEACHER PROMOTION SELECTOR',
   updatedAt: '2026-05-21',
-  label: 'SBI 8.0P.167.143 - Student empty page and teacher selector stability fix'
+  label: 'SBI 8.0P.167.144 - Student course list stabilized and teacher selector freeze fixed'
 };
 
 export function getSbiVersionLabel() {

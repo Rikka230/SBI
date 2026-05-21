@@ -3,7 +3,7 @@
  * MES COURS - Bibliothèque étudiant SBI
  * =======================================================================
  *
- * 8.0P.167.142 : switch Programme / Liste fiable, retour viewer avec contexte formation.
+ * 8.0P.167.144 : stabilisation Programme/Liste, cartes promotion synthétiques et anti page vide.
  * Le viewer de cours reste en navigation classique.
  * =======================================================================
  */
@@ -38,6 +38,7 @@ let activeCleanup = null;
 let currentOpenFormationId = '';
 let currentOpenFormationTitle = '';
 let currentCourseViewMode = 'program';
+let loadedStudentPromotions = [];
 
 function resetState() {
     currentUid = null;
@@ -45,6 +46,10 @@ function resetState() {
     allCourses = [];
     assignedFormations = [];
     userProgress = { courses: {}, formations: {} };
+    currentOpenFormationId = '';
+    currentOpenFormationTitle = '';
+    currentCourseViewMode = 'program';
+    loadedStudentPromotions = [];
 }
 
 export function mountStudentCourses() {
@@ -115,7 +120,7 @@ async function refreshStudentLibrary() {
     const visibleCourses = document.getElementById('view-courses');
     if (visibleCourses?.style.display === 'flex') {
         const title = document.getElementById('current-formation-title')?.dataset?.formationId;
-        const formation = getFormationCardsToRender().find((item) => item.id === title);
+        const formation = getFormationCardsToRender().find((item) => item.id === title || item.promotionId === title || item.__courseProgramFormationId === title);
         if (formation) window.openFormation(formation);
     }
 }
@@ -309,26 +314,33 @@ function attachPromotionPlan(course = {}, plan = {}) {
 }
 
 function ensurePromotionFormationCard(promotion = {}) {
+    const promotionId = String(promotion.id || '').trim();
+    if (!promotionId) return;
+
     const formationId = String(promotion.formationId || '').trim();
-    const formationName = String(promotion.formationName || promotion.name || 'Promotion').trim();
-    if (!formationId && !formationName) return;
+    const formationName = String(promotion.formationName || promotion.name || promotion.promotionName || 'Parcours de promotion').trim();
 
     const alreadyExists = assignedFormations.some((formation) => {
-        return (formationId && String(formation.id || '') === formationId)
-            || (formationName && String(formation.titre || formation.title || '') === formationName);
+        return formation.__promotionLinked === true && String(formation.promotionId || '') === promotionId;
     });
 
     if (alreadyExists) return;
 
     assignedFormations.push({
-        id: formationId || `promotion-${promotion.id || formationName}`,
+        id: promotionId,
         titre: formationName,
+        title: formationName,
         __promotionLinked: true,
-        promotionId: promotion.id || ''
+        __courseProgramFormationId: formationId,
+        promotionId,
+        promotionName: promotion.name || promotion.promotionName || formationName,
+        startDate: promotion.startDate || '',
+        endDate: promotion.endDate || ''
     });
 }
 
 async function loadPromotionPlanCourses() {
+    loadedStudentPromotions = [];
     if (!currentUid || isAdminPreview()) return [];
 
     const promotionIds = getPromotionIdsForStudent();
@@ -344,6 +356,7 @@ async function loadPromotionPlanCourses() {
             const promotion = { id: promotionSnap.id, ...promotionSnap.data() };
             if ((promotion.status || 'active') === 'archived') return;
 
+            loadedStudentPromotions.push(promotion);
             ensurePromotionFormationCard(promotion);
 
             const planItems = Array.isArray(promotion.coursePlan) ? promotion.coursePlan : [];
@@ -526,7 +539,7 @@ function buildFormationCardHTML(formation) {
     const progressPercent = totalCourses === 0 ? 0 : Math.round((completedCourses / totalCourses) * 100);
     const nextCourse = getNextCourseForFormation(formation);
     const title = formation.titre || 'Formation';
-    const typeLabel = formation.__directCourses ? 'Cours directs' : 'Formation';
+    const typeLabel = formation.__directCourses ? 'Cours directs' : (formation.__promotionLinked ? 'Cursus' : 'Formation');
 
     return `
         <article class="formation-folder" data-formation-id="${escapeAttr(formation.id)}" data-formation-title="${escapeAttr(title)}">
@@ -573,7 +586,20 @@ function renderStudentLibrarySummary() {
 
 function getFormationCardsToRender() {
     const directCourses = getDirectAssignedCoursesWithoutVisibleFormation();
-    const cards = [...assignedFormations];
+    const promotionCards = assignedFormations.filter((formation) => formation.__promotionLinked === true);
+
+    const sourceFormationIds = new Set(promotionCards.map((formation) => String(formation.__courseProgramFormationId || '').trim()).filter(Boolean));
+    const sourceFormationTitles = new Set(promotionCards.map((formation) => String(formation.titre || formation.title || '').trim()).filter(Boolean));
+
+    const baseCards = promotionCards.length
+        ? promotionCards
+        : assignedFormations.filter((formation) => {
+            const id = String(formation.id || '').trim();
+            const title = String(formation.titre || formation.title || '').trim();
+            return !(sourceFormationIds.has(id) || sourceFormationTitles.has(title));
+        });
+
+    const cards = [...baseCards];
 
     if (directCourses.length > 0) {
         cards.push({
@@ -629,6 +655,26 @@ function getDirectAssignedCoursesWithoutVisibleFormation() {
 
 function getCoursesForFormation(formation) {
     if (formation?.__directCourses === true) return getDirectAssignedCoursesWithoutVisibleFormation();
+
+    if (formation?.__promotionLinked === true) {
+        const promotionId = String(formation.promotionId || formation.id || '').trim();
+        let courses = allCourses.filter((course) => {
+            if (!course || !course.id) return false;
+            const plans = Array.isArray(course.__promotionPlans)
+                ? course.__promotionPlans
+                : course.__promotionPlan
+                    ? [course.__promotionPlan]
+                    : [];
+            return plans.some((plan) => String(plan.promotionId || '').trim() === promotionId);
+        });
+
+        if (!courses.length && loadedStudentPromotions.length === 1) {
+            courses = allCourses.filter((course) => course && course.id && getPrimaryCoursePlan(course));
+        }
+
+        return courses;
+    }
+
     return allCourses.filter((course) => {
         if (!course || !course.id) return false;
         return sharedCourseBelongsToFormation(course, formation, assignedFormations)
@@ -696,6 +742,7 @@ function openRequestedFormationFromUrl() {
     const target = cards.find((formation) => {
         return String(formation.id || '') === formId
             || String(formation.promotionId || '') === formId
+            || String(formation.__courseProgramFormationId || '') === formId
             || String(formation.titre || formation.title || '') === formId;
     });
 
@@ -846,9 +893,9 @@ function bindCourseCardNavigation(container) {
 }
 
 function ensureStudentCourseSwitchStyles() {
-    if (document.getElementById('student-course-switch-style-8-0p-167-143')) return;
+    if (document.getElementById('student-course-switch-style-8-0p-167-144')) return;
     const style = document.createElement('style');
-    style.id = 'student-course-switch-style-8-0p-167-143';
+    style.id = 'student-course-switch-style-8-0p-167-144';
     style.textContent = `
         .student-course-switch {
             display: flex;
@@ -888,8 +935,8 @@ function renderCourseViewSummary(formation, courses = []) {
     const root = document.getElementById('student-course-summary');
     if (!root) return;
 
-    const totalCourses = courses.length;
     courses = Array.isArray(courses) ? courses.filter((course) => course && course.id) : [];
+    const totalCourses = courses.length;
     const completedCourses = courses.filter((course) => userProgress.courses[course.id]?.status === 'done').length;
     const inProgressCourses = courses.filter((course) => userProgress.courses[course.id]?.status === 'in_progress').length;
     const progressPercent = totalCourses === 0 ? 0 : Math.round((completedCourses / totalCourses) * 100);
