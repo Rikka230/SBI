@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="/admin/css/admin.css?v=8.0P.167.51">
   <link rel="stylesheet" href="/admin/css/admin-notifications.css">
   <link rel="stylesheet" href="/admin/css/admin-surface-unified.css?v=8.0P.167.52">
-  <link rel="stylesheet" href="/css/course-editor-v2.css?v=8.0P.167.186">
+  <link rel="stylesheet" href="/css/course-editor-v2.css?v=8.0P.167.187">
   <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
   <script src="/admin/js/components.js?v=8.0P.167.64"></script>
   <style>
@@ -21,7 +21,7 @@
     }
   </style>
 </head>
-<body class="preload sbi-editor-v2 sbi-editor-v2--admin sbi-editor-v2--embedded sbi-admin-surface no-right-panel" data-editor-role="admin">
+<body class="preload sbi-editor-v2 sbi-editor-v2--admin sbi-editor-v2--embedded sbi-admin-surface" data-editor-role="admin">
   <div class="app-container" id="app-container">
     <admin-left-panel></admin-left-panel>
     <header class="top-bar">
@@ -42,21 +42,24 @@
         </div>
       </div>
     </main>
+    <admin-right-panel></admin-right-panel>
   </div>
   <script>
     window.addEventListener('DOMContentLoaded', () => {
       document.body?.classList?.remove('preload');
       document.documentElement?.classList?.add('sbi-admin-loader-released');
       const app = document.getElementById('app-container');
-      if (app && window.innerWidth > 1024 && localStorage.getItem('leftPanelCollapsed') === 'true') {
-        app.classList.add('left-collapsed');
+      if (app && window.innerWidth > 1024) {
+        if (localStorage.getItem('leftPanelCollapsed') === 'true') app.classList.add('left-collapsed');
+        if (localStorage.getItem('rightPanelCollapsed') === 'true') app.classList.add('right-collapsed');
       }
     });
   </script>
   <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
-  <script type="module" src="/admin/js/admin-ui.js?v=8.0P.167.186"></script>
-  <script type="module" src="/admin/js/admin-notifications.js?v=8.0P.167.184"></script>
+  <script type="module" src="/admin/js/admin-ui.js?v=8.0P.167.187"></script>
+  <script type="module" src="/admin/js/admin-notifications.js?v=8.0P.167.187"></script>
   <script type="module" src="/admin/js/tracker.js?v=8.0P.167.44"></script>
-  <script type="module" src="/js/course-editor-v2/course-editor-v2.js?v=8.0P.167.186"></script>
+  <script type="module" src="/js/course-editor-v2/course-editor-v2.js?v=8.0P.167.187"></script>
+  <script type="module" src="/js/course-editor-v2/course-editor-v2-richtext-guard.js?v=8.0P.167.187"></script>
 </body>
 </html>

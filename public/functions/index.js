@@ -3465,8 +3465,24 @@ function isCoursePlanPlaceholderReplacement(item = {}, courseId = "") {
     if (!item || item.courseId !== courseId) return false;
     const source = cleanString(item.source || item.replacementSource || "", 120).toLowerCase();
     return Boolean(item.replacedPlaceholderId)
+        || item.fromPlaceholderReplacement === true
         || source.includes("placeholder-replace")
         || source.includes("placeholder-replaced");
+}
+
+function isCoursePlanPublishedCourseTarget(item = {}, courseId = "") {
+    if (!item || !courseId || item.courseId !== courseId) return false;
+
+    const type = cleanString(item.type || item.itemType || "", 80).toLowerCase();
+    const layer = cleanString(item.layer || "", 80).toLowerCase();
+
+    // Le remplacement Cours futur -> vrai cours peut perdre ses marqueurs
+    // lors de la resynchronisation Cursus -> Promotion. Le coursePlan de la
+    // promotion reste alors la source métier : si le cours publié y est présent
+    // comme vrai cours, les élèves de cette promotion doivent être notifiés.
+    return isCoursePlanPlaceholderReplacement(item, courseId)
+        || ["course", "real_course"].includes(type)
+        || layer === "courses";
 }
 
 function getCourseWorkflowFormationLabels(courseData = {}) {
@@ -3636,27 +3652,48 @@ async function addDirectCourseNotification(db, notificationId, payload) {
     }, { merge: true });
 }
 
-async function listPromotionStudents(db, promotionId = "") {
+async function listPromotionStudents(db, promotionId = "", promotionData = {}) {
     if (!promotionId) return [];
     const students = new Map();
+    const directStudentIds = Array.from(new Set([
+        ...(Array.isArray(promotionData.studentIds) ? promotionData.studentIds : []),
+        ...(Array.isArray(promotionData.students) ? promotionData.students : []),
+        ...(Array.isArray(promotionData.studentUids) ? promotionData.studentUids : []),
+        ...(Array.isArray(promotionData.eleves) ? promotionData.eleves : []),
+        ...(Array.isArray(promotionData.elevesIds) ? promotionData.elevesIds : [])
+    ].map((id) => cleanString(id, 180)).filter(Boolean)));
+
     const queries = [
         db.collection("users").where("promotionId", "==", promotionId),
         db.collection("users").where("currentPromotionId", "==", promotionId),
         db.collection("users").where("promotionIds", "array-contains", promotionId)
     ];
 
+    const absorbUserDoc = (docSnap) => {
+        if (!docSnap?.exists) return;
+        const data = docSnap.data() || {};
+        if (data.statut === "suspendu") return;
+        const role = cleanString(data.role || "", 40).toLowerCase();
+        if (role && !["student", "eleve", "élève", "etudiant", "étudiant"].includes(role)) return;
+        students.set(docSnap.id, { id: docSnap.id, ...data });
+    };
+
     for (const queryRef of queries) {
         try {
             const snap = await queryRef.get();
-            snap.forEach((docSnap) => {
-                const data = docSnap.data() || {};
-                if (data.statut === "suspendu") return;
-                const role = cleanString(data.role || "", 40).toLowerCase();
-                if (role && !["student", "eleve", "élève", "etudiant", "étudiant"].includes(role)) return;
-                students.set(docSnap.id, { id: docSnap.id, ...data });
-            });
+            snap.forEach(absorbUserDoc);
         } catch (error) {
             console.error("Lecture élèves promotion impossible :", promotionId, error.message || error);
+        }
+    }
+
+    for (const studentId of directStudentIds) {
+        if (students.has(studentId)) continue;
+        try {
+            const studentSnap = await db.collection("users").doc(studentId).get();
+            absorbUserDoc(studentSnap);
+        } catch (error) {
+            console.error("Lecture élève promotion impossible :", promotionId, studentId, error.message || error);
         }
     }
 
@@ -3672,8 +3709,17 @@ async function findReplacementPromotionsForCourse(db, courseId = "") {
         const data = docSnap.data() || {};
         if (cleanString(data.status || "active", 40).toLowerCase() === "archived") return;
         const coursePlan = Array.isArray(data.coursePlan) ? data.coursePlan : [];
-        const planItem = coursePlan.find((item) => isCoursePlanPlaceholderReplacement(item, courseId));
-        if (planItem) promotions.push({ id: docSnap.id, ...data, __matchedPlanItem: planItem });
+        const planItem = coursePlan.find((item) => isCoursePlanPublishedCourseTarget(item, courseId));
+        if (!planItem) return;
+
+        promotions.push({
+            id: docSnap.id,
+            ...data,
+            __matchedPlanItem: planItem,
+            __matchedPlanReason: isCoursePlanPlaceholderReplacement(planItem, courseId)
+                ? "placeholder_replacement"
+                : "courseplan_contains_course"
+        });
     });
 
     return promotions;
@@ -3687,7 +3733,7 @@ async function notifyStudentsForReplacementCourse(db, { courseId, courseData, ap
     let emailFailures = 0;
 
     for (const promotion of promotions) {
-        const students = await listPromotionStudents(db, promotion.id);
+        const students = await listPromotionStudents(db, promotion.id, promotion);
         for (const student of students) {
             if (!student.id || notifiedStudents.has(student.id)) continue;
             notifiedStudents.add(student.id);
@@ -3701,7 +3747,8 @@ async function notifyStudentsForReplacementCourse(db, { courseId, courseData, ap
                 promotionId: promotion.id,
                 promotionName: promotion.name || promotion.promotionName || "",
                 fromCoursePlan: true,
-                fromPlaceholderReplacement: true
+                fromPlaceholderReplacement: isCoursePlanPlaceholderReplacement(promotion.__matchedPlanItem || {}, courseId),
+                coursePlanMatchReason: promotion.__matchedPlanReason || "courseplan_contains_course"
             });
             notificationCount += 1;
 
@@ -3717,6 +3764,7 @@ async function notifyStudentsForReplacementCourse(db, { courseId, courseData, ap
 
     return {
         promotions: promotions.map((promotion) => promotion.id),
+        promotionMatches: promotions.map((promotion) => ({ id: promotion.id, reason: promotion.__matchedPlanReason || "" })),
         notificationCount,
         emailCount,
         emailFailures
