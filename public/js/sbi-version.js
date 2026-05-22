@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.179',
+  version: '8.0P.167.180',
   branch: 'main',
   channel: 'P2J.3D COURSE EDITOR V2 LIBRARY RESTORE',
   stage: 'RESTORE FIREBASE LIBRARY LOAD AND KEEP V2 ENTRY',
   updatedAt: '2026-05-21',
-  label: 'SBI 8.0P.167.178 - Restore teacher library Firebase load after V2 navigation patch'
+  label: 'SBI 8.0P.167.180 - Teacher library load and V2 new course route fix'
 };
 
 export function getSbiVersionLabel() {

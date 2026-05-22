@@ -214,14 +214,14 @@
             <div class="content-wrapper">
                 <div class="teacher-library-header">
                     <h1 class="teacher-library-title">Mes <span style="color: var(--accent-orange);">Cours</span></h1>
-                    <button id="btn-trigger-new-course" class="action-btn" data-teacher-new-course-v2="true" style="background: var(--accent-orange); color: white; border: none; font-weight: bold; padding: 0.8rem 1.5rem; border-radius: 10px;">
+                    <a id="btn-trigger-new-course" class="action-btn" href="/teacher/course-editor.html" data-teacher-new-course-v2="true" data-sbi-no-pjax="true" style="background: var(--accent-orange); color: white; border: none; font-weight: bold; padding: 0.8rem 1.5rem; border-radius: 10px; text-decoration: none; text-align: center; display: inline-flex; align-items: center; justify-content: center;">
                         + Nouveau Cours
-                    </button>
+                    </a>
                 </div>
 
                 <div class="student-sub-nav">
                     <div class="student-sub-nav-item active" onclick="safeSwitchTab('tab-list')">Ma Bibliothèque</div>
-                    <div class="student-sub-nav-item" onclick="safeSwitchTab('tab-editor')" id="nav-tab-editor" style="display:none;">Éditeur de Cours</div>
+                    <a class="student-sub-nav-item" href="/teacher/course-editor.html" data-teacher-new-course-v2="true" data-sbi-no-pjax="true" id="nav-tab-editor" style="text-decoration:none;">Éditeur de Cours</a>
                 </div>
 
                 <div id="tab-list" class="student-view active">
@@ -282,12 +282,7 @@
     <script>
         function safeSwitchTab(tabId) {
             if (tabId === 'tab-editor') {
-                const target = '/teacher/course-editor.html';
-                if (typeof window.SBI_APP_SHELL_NAVIGATE === 'function') {
-                    window.SBI_APP_SHELL_NAVIGATE(target, { historyMode: 'push', source: 'teacher-legacy-tab-v2-inline' });
-                    return;
-                }
-                window.location.href = target;
+                window.location.href = '/teacher/course-editor.html';
                 return;
             }
 
@@ -295,16 +290,14 @@
             document.querySelectorAll('.student-view').forEach(el => el.classList.remove('active'));
             document.querySelector('.student-sub-nav-item:nth-child(1)')?.classList.add('active');
             document.getElementById('tab-list')?.classList.add('active');
-            const navEditor = document.getElementById('nav-tab-editor');
-            if (navEditor) navEditor.style.display = 'none';
         }
         window.switchCourseTab = safeSwitchTab;
     </script>
 
     <script type="module" src="/admin/js/admin-ui.js?v=8.0P.167.88"></script>
     <script type="module" src="/admin/js/admin-notifications.js?v=8.0P.167.86"></script>
-    <script type="module" src="/teacher/js/teacher-courses-library.js?v=8.0P.167.179"></script>
+    <script type="module" src="/teacher/js/teacher-courses-library.js?v=8.0P.167.180"></script>
     <script type="module" src="/admin/js/tracker.js?v=8.0P.167.44"></script>
-    <script type="module" src="/teacher/js/teacher-promotion-planning-select.js?v=8.0P.167.179"></script>
+    <script type="module" src="/teacher/js/teacher-promotion-planning-select.js?v=8.0P.167.180"></script>
 </body>
 </html>

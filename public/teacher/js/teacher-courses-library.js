@@ -723,8 +723,17 @@ function buildCourseEditorV2Url(courseId = '') {
   return safeCourseId ? `${COURSE_EDITOR_V2_URL}?id=${encodeURIComponent(safeCourseId)}` : COURSE_EDITOR_V2_URL;
 }
 
-async function navigateTeacherCourseEditorV2(courseId = '', { source = 'teacher-library-v2' } = {}) {
+async function navigateTeacherCourseEditorV2(courseId = '', { source = 'teacher-library-v2', forceReload = false } = {}) {
   const target = buildCourseEditorV2Url(courseId);
+
+  // Création d’un cours : navigation dure volontairement. Cela évite les états
+  // PJAX résiduels et garantit que le bouton “+ Nouveau cours” ouvre toujours
+  // une instance propre de l’éditeur V2.
+  if (forceReload || !normalizeString(courseId)) {
+    window.location.assign(target);
+    return false;
+  }
+
   if (typeof window.SBI_APP_SHELL_NAVIGATE === 'function') {
     try {
       const handled = await window.SBI_APP_SHELL_NAVIGATE(target, { historyMode: 'push', source });
@@ -733,7 +742,7 @@ async function navigateTeacherCourseEditorV2(courseId = '', { source = 'teacher-
       console.warn('[SBI Teacher Library] Navigation V2 PJAX indisponible, fallback classique :', error);
     }
   }
-  window.location.href = target;
+  window.location.assign(target);
   return false;
 }
 
@@ -767,15 +776,18 @@ function renderError(root, message) {
 }
 
 function bindNewCourseButton() {
-  const button = document.getElementById('btn-trigger-new-course');
-  if (!button || button.dataset.sbiV2Bound === 'true') return;
-  button.dataset.sbiV2Bound = 'true';
-  button.textContent = '+ Nouveau cours';
-  button.title = 'Créer un cours dans l’éditeur V2';
-  button.addEventListener('click', (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    void navigateTeacherCourseEditorV2('', { source: 'teacher-library-new-v2' });
+  const buttons = Array.from(document.querySelectorAll('#btn-trigger-new-course, [data-teacher-new-course-v2], #nav-tab-editor'));
+  buttons.forEach((button) => {
+    if (!button || button.dataset.sbiV2Bound === 'true') return;
+    button.dataset.sbiV2Bound = 'true';
+    if (button.id === 'btn-trigger-new-course') button.textContent = '+ Nouveau cours';
+    button.title = 'Créer un cours dans l’éditeur V2';
+    if (button.tagName === 'A') button.setAttribute('href', COURSE_EDITOR_V2_URL);
+    button.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      void navigateTeacherCourseEditorV2('', { source: 'teacher-library-new-v2', forceReload: true });
+    }, { capture: true });
   });
 }
 
@@ -976,6 +988,22 @@ function autoMountTeacherCoursesLibrary() {
   if (!document.getElementById('teacher-courses-list-container')) return;
   mountTeacherCoursesLibrary({ source: 'auto' });
 }
+
+function installNewCourseDelegatedGuard() {
+  if (window.__SBI_TEACHER_NEW_COURSE_V2_GUARD === true) return;
+  window.__SBI_TEACHER_NEW_COURSE_V2_GUARD = true;
+  document.addEventListener('click', (event) => {
+    const trigger = event.target?.closest?.('[data-teacher-new-course-v2], #btn-trigger-new-course, #nav-tab-editor');
+    if (!trigger) return;
+    const currentPath = window.location.pathname.replace(/\/+$/, '');
+    if (currentPath !== '/teacher/mes-cours.html') return;
+    event.preventDefault();
+    event.stopPropagation();
+    window.location.assign(COURSE_EDITOR_V2_URL);
+  }, true);
+}
+
+installNewCourseDelegatedGuard();
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', autoMountTeacherCoursesLibrary, { once: true });
