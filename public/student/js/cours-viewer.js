@@ -29,6 +29,7 @@ const WAIT_TIME_SECONDS = 30;
 // Banque de SVGs
 const SVG_DONE = `<svg width="16" height="16" fill="var(--accent-green)" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>`;
 const SVG_QUIZ = `<svg width="16" height="16" fill="var(--accent-yellow)" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>`;
+const SVG_FILL_BLANK = `<svg width="16" height="16" fill="var(--accent-blue)" viewBox="0 0 24 24"><path d="M4 5h16v2H4V5zm0 6h8v2H4v-2zm10 0h6v2h-6v-2zM4 17h4v2H4v-2zm6 0h10v2H10v-2z"/></svg>`;
 const SVG_READ = `<svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M18 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 4h5v8l-2.5-1.5L6 12V4z"/></svg>`;
 const SVG_LOCK = `<svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>`;
 const SVG_TIME = `<svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24" style="margin-right: 8px;"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>`;
@@ -186,6 +187,230 @@ function leaveViewer(formId = '') {
     window.location.href = fallbackUrl;
 }
 
+function escapeHtml(value = '') {
+    return String(value).replace(/[&<>"']/g, (char) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    }[char]));
+}
+
+function normalizeAnswerText(value = '') {
+    return String(value)
+        .trim()
+        .toLowerCase()
+        .replace(/[\u2019\u2018`]/g, "'")
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/\s+/g, ' ');
+}
+
+function splitAcceptedAnswers(blank = {}) {
+    const answers = Array.isArray(blank.answers)
+        ? blank.answers
+        : String(blank.answers || blank.token || '').split(';');
+
+    return answers
+        .map((answer) => String(answer || '').trim())
+        .filter(Boolean);
+}
+
+function extractFillBlankTokens(prompt = '') {
+    return [...String(prompt).matchAll(/\[\[([^\]]+)\]\]/g)]
+        .map((match) => String(match[1] || '').trim())
+        .filter(Boolean);
+}
+
+function normalizeFillBlankRows(chapter = {}) {
+    const existingBlanks = Array.isArray(chapter.blanks) ? chapter.blanks : [];
+    const promptTokens = extractFillBlankTokens(chapter.prompt || '');
+
+    if (promptTokens.length) {
+        return promptTokens.map((token, index) => {
+            const blank = existingBlanks.find((item) => normalizeAnswerText(item?.token) === normalizeAnswerText(token))
+                || existingBlanks[index]
+                || {};
+
+            return {
+                id: blank.id || `blank-${index}`,
+                token,
+                answers: blank.answers || blank.token || token,
+                points: Number(blank.points || 1)
+            };
+        });
+    }
+
+    if (existingBlanks.length) {
+        return existingBlanks.map((blank, index) => ({
+            id: blank.id || `blank-${index}`,
+            token: blank.token || '',
+            answers: blank.answers || blank.token || '',
+            points: Number(blank.points || 1)
+        }));
+    }
+
+    return [];
+}
+
+function getFillBlankTotalPoints(chapter = {}) {
+    return normalizeFillBlankRows(chapter).reduce((total, blank) => total + Number(blank.points || 0), 0);
+}
+
+function isFillBlankChapter(chapter = {}) {
+    return chapter.type === 'fill_blank'
+        || chapter.activityType === 'fill_blank'
+        || (Array.isArray(chapter.blanks) && typeof chapter.prompt === 'string');
+}
+
+function getChapterIcon(chapter = {}) {
+    if (chapter.type === 'quiz') return SVG_QUIZ;
+    if (isFillBlankChapter(chapter)) return SVG_FILL_BLANK;
+    return SVG_READ;
+}
+
+function normalizeLegacyFillBlankContent(chapter = {}) {
+    if (typeof document === 'undefined' || !chapter.contenu || !String(chapter.contenu).includes('<mark')) {
+        return null;
+    }
+
+    const template = document.createElement('template');
+    template.innerHTML = String(chapter.contenu);
+    const marks = Array.from(template.content.querySelectorAll('mark'));
+    if (!marks.length) return null;
+
+    const blanks = marks.map((mark, index) => {
+        const token = mark.textContent.trim();
+        mark.replaceWith(document.createTextNode(`[[${token}]]`));
+        return {
+            id: `legacy-blank-${index}`,
+            token,
+            answers: token,
+            points: 1
+        };
+    });
+
+    const promptNode = template.content.querySelector('div:last-child') || template.content;
+
+    return {
+        ...chapter,
+        type: 'fill_blank',
+        activityType: 'fill_blank',
+        instructions: chapter.instructions || template.content.querySelector('p')?.textContent?.trim() || '',
+        prompt: chapter.prompt || promptNode.textContent.trim(),
+        blanks
+    };
+}
+
+function convertBlockToViewerChapter(block = {}, index = 0) {
+    if (block.type === 'quiz') {
+        return {
+            id: block.id || `quiz-${index}`,
+            type: 'quiz',
+            titre: block.title || block.titre || `QCM ${index + 1}`,
+            durationMinutes: Number(block.durationMinutes || 5),
+            questions: Array.isArray(block.questions) ? block.questions.map((question) => ({
+                ...question,
+                options: Array.isArray(question.options) ? question.options : [],
+                correctIndices: Array.isArray(question.correctIndices) ? question.correctIndices : []
+            })) : []
+        };
+    }
+
+    if (block.type === 'fill_blank') {
+        return {
+            id: block.id || `fill-blank-${index}`,
+            type: 'fill_blank',
+            activityType: 'fill_blank',
+            titre: block.title || block.titre || `Texte à trous ${index + 1}`,
+            instructions: block.instructions || '',
+            prompt: block.prompt || '',
+            blanks: normalizeFillBlankRows(block),
+            scoringMode: block.scoringMode || 'per_blank',
+            maxAttempts: Number(block.maxAttempts || 2),
+            showAnswersAtEnd: block.showAnswersAtEnd !== false,
+            feedbackCorrect: block.feedbackCorrect || '',
+            feedbackIncorrect: block.feedbackIncorrect || '',
+            durationMinutes: Number(block.durationMinutes || 8)
+        };
+    }
+
+    return {
+        id: block.id || `lesson-${index}`,
+        type: 'text',
+        titre: block.title || block.titre || `Leçon ${index + 1}`,
+        contenu: block.content || block.contenu || block.instructions || '',
+        mediaType: block.mediaType || 'image',
+        mediaImage: block.mediaImage || block.imageUrl || '',
+        mediaVideo: block.mediaVideo || block.videoUrl || '',
+        durationMinutes: Number(block.durationMinutes || 15)
+    };
+}
+
+function getViewerChapters(course = {}) {
+    if (Array.isArray(course.learningBlocks) && course.learningBlocks.length) {
+        return course.learningBlocks
+            .filter((block) => block.visibleInProgram !== false)
+            .map(convertBlockToViewerChapter);
+    }
+
+    return (Array.isArray(course.chapitres) ? course.chapitres : [])
+        .filter((chapter) => chapter.visibleInProgram !== false)
+        .map((chapter) => normalizeLegacyFillBlankContent(chapter) || chapter);
+}
+
+function renderFillBlankPrompt(prompt = '', blanks = []) {
+    const source = String(prompt || '');
+    if (!source.trim()) {
+        return '<span class="fib-viewer-empty">Aucun texte à compléter.</span>';
+    }
+
+    let html = '';
+    let cursor = 0;
+    let blankIndex = 0;
+    const regex = /\[\[([^\]]+)\]\]/g;
+    let match = regex.exec(source);
+
+    while (match) {
+        html += escapeHtml(source.slice(cursor, match.index));
+        const blank = blanks[blankIndex] || { id: `blank-${blankIndex}`, points: 1 };
+        html += `
+            <span class="fib-viewer-blank" data-fib-wrapper="${blankIndex}">
+                <input
+                    id="fib_input_${blankIndex}"
+                    class="fib-viewer-input"
+                    data-fib-index="${blankIndex}"
+                    type="text"
+                    autocomplete="off"
+                    spellcheck="false"
+                    aria-label="Réponse ${blankIndex + 1}">
+            </span>`;
+        cursor = match.index + match[0].length;
+        blankIndex += 1;
+        match = regex.exec(source);
+    }
+
+    html += escapeHtml(source.slice(cursor));
+    return html;
+}
+
+function renderFillBlankChapter(chapter = {}) {
+    const blanks = normalizeFillBlankRows(chapter);
+    const instructions = chapter.instructions
+        ? `<p class="fib-viewer-instructions">${escapeHtml(chapter.instructions)}</p>`
+        : '';
+
+    return `
+        <div class="text-container fib-viewer-card">
+            <div class="fib-viewer-label">${SVG_FILL_BLANK}<span>Texte à trous</span></div>
+            ${instructions}
+            <div id="fib-form" class="fib-viewer-prompt">${renderFillBlankPrompt(chapter.prompt, blanks)}</div>
+            <div class="fib-viewer-meta">${blanks.length} blanc(s) · ${getFillBlankTotalPoints(chapter)} point(s)</div>
+            <div id="fib-result-box" class="quiz-result-box fib-result-box"></div>
+        </div>`;
+}
+
 async function initViewer() {
     const urlParams = getEffectiveViewerUrl().searchParams;
     const courseId = urlParams.get('id');
@@ -205,6 +430,13 @@ async function initViewer() {
     }
 
     courseData = { id: cSnap.id, ...cSnap.data() };
+    courseData.chapitres = getViewerChapters(courseData);
+
+    if (!courseData.chapitres.length) {
+        showViewerError('Ce cours ne contient aucun bloc visible.');
+        return;
+    }
+
     document.getElementById('viewer-course-title').textContent = courseData.titre;
 
     const formId = (courseData.formations && courseData.formations.length > 0) ? courseData.formations[0] : '';
@@ -243,13 +475,13 @@ function renderSidebar() {
         const prevDone = index === 0 || userProgress.courses[courseData.id].completedChapters.includes(courseData.chapitres[index-1].id);
         const isUnlocked = isAdminOrTeacher || isPreviewMode || isDone || prevDone;
 
-        const icon = isDone ? SVG_DONE : (isUnlocked ? (chap.type === 'quiz' ? SVG_QUIZ : SVG_READ) : SVG_LOCK);
+        const icon = isDone ? SVG_DONE : (isUnlocked ? getChapterIcon(chap) : SVG_LOCK);
 
         const tab = document.createElement('div');
         tab.className = `chapter-tab ${isDone ? 'done' : ''} ${!isUnlocked ? 'locked' : ''}`;
         tab.id = `tab-chap-${index}`;
         tab.innerHTML = `
-            <span class="tab-title">${index + 1}. ${chap.titre}</span>
+            <span class="tab-title">${index + 1}. ${escapeHtml(chap.titre || `Chapitre ${index + 1}`)}</span>
             <span style="font-size:1.2rem; display:flex;">${icon}</span>
         `;
 
@@ -276,18 +508,20 @@ function loadChapter(index, forceReload = false) {
 
     const main = document.getElementById('viewer-main-content');
 
-    let contentHtml = `<h1 style="margin-top:0; font-size: 2.8rem; margin-bottom: 2rem; color: var(--text-main); font-weight: 800;">${chap.titre}</h1>`;
+    let contentHtml = `<h1 style="margin-top:0; font-size: 2.8rem; margin-bottom: 2rem; color: var(--text-main); font-weight: 800;">${escapeHtml(chap.titre || `Chapitre ${index + 1}`)}</h1>`;
 
-    if (chap.type === 'text') {
+    if (isFillBlankChapter(chap)) {
+        contentHtml += renderFillBlankChapter(chap);
+    } else if (chap.type === 'text') {
         if (chap.mediaType === 'video' && chap.mediaVideo) {
             contentHtml += `
                 <div class="media-container">
-                    <video src="${chap.mediaVideo}" controls controlsList="nodownload" oncontextmenu="return false;"></video>
+                    <video src="${escapeHtml(chap.mediaVideo)}" controls controlsList="nodownload" oncontextmenu="return false;"></video>
                 </div>`;
         } else if (chap.mediaType === 'image' && chap.mediaImage) {
             contentHtml += `
                 <div class="media-container">
-                    <img src="${chap.mediaImage}" oncontextmenu="return false;">
+                    <img src="${escapeHtml(chap.mediaImage)}" oncontextmenu="return false;">
                 </div>`;
         }
         contentHtml += `<div class="text-container ql-editor">${chap.contenu}</div>`;
@@ -302,14 +536,14 @@ function loadChapter(index, forceReload = false) {
             chap.questions.forEach((q, qIndex) => {
                 contentHtml += `
                 <div class="quiz-question" style="margin-bottom: 2.5rem;">
-                    <h3 style="font-size:1.1rem; color:var(--text-main); margin-top:0;">${qIndex+1}. ${q.question}</h3>
+                    <h3 style="font-size:1.1rem; color:var(--text-main); margin-top:0;">${qIndex+1}. ${escapeHtml(q.question || '')}</h3>
                     <div style="display:flex; flex-direction:column; gap:0.8rem; margin-top:1rem;">`;
 
                 q.options.forEach((opt, oIndex) => {
                     contentHtml += `
                         <label id="label_q_${qIndex}_o_${oIndex}" class="quiz-option">
                             <input type="checkbox" name="q_${qIndex}" value="${oIndex}" style="width:20px; height:20px; accent-color: var(--accent-green); flex-shrink:0;">
-                            <span style="font-size:1rem; color:var(--text-main);">${opt}</span>
+                            <span style="font-size:1rem; color:var(--text-main);">${escapeHtml(opt || '')}</span>
                         </label>`;
                 });
 
@@ -341,10 +575,19 @@ function startSecurityTimer(isAlreadyDone) {
     const isLast = currentChapterIndex === courseData.chapitres.length - 1;
     const nextText = isLast ? "Terminer le cours" : "Valider l'étape et continuer";
 
-    if (courseData.chapitres[currentChapterIndex].type === 'quiz') {
+    const chapter = courseData.chapitres[currentChapterIndex];
+
+    if (chapter.type === 'quiz') {
         btn.disabled = false;
         btn.innerHTML = `${SVG_DONE} Soumettre mes réponses`;
         btn.onclick = () => submitQuizAnswers(isLast);
+        return;
+    }
+
+    if (isFillBlankChapter(chapter)) {
+        btn.disabled = false;
+        btn.innerHTML = `${SVG_DONE} Valider mes reponses`;
+        btn.onclick = () => submitFillBlankAnswers(isLast);
         return;
     }
 
@@ -369,6 +612,71 @@ function startSecurityTimer(isAlreadyDone) {
             btn.innerHTML = `${SVG_TIME} Veuillez patienter (${timeLeft}s)...`;
         }
     }, 1000);
+}
+
+function submitFillBlankAnswers(isLast) {
+    const chap = courseData.chapitres[currentChapterIndex];
+    const blanks = normalizeFillBlankRows(chap);
+    let score = 0;
+    const totalPoints = getFillBlankTotalPoints(chap);
+    let allCorrect = true;
+
+    blanks.forEach((blank, index) => {
+        const input = document.getElementById(`fib_input_${index}`);
+        const wrapper = document.querySelector(`[data-fib-wrapper="${index}"]`);
+        const userAnswer = input?.value || '';
+        const normalizedUserAnswer = normalizeAnswerText(userAnswer);
+        const acceptedAnswers = splitAcceptedAnswers(blank);
+        const isCorrect = acceptedAnswers.some((answer) => normalizeAnswerText(answer) === normalizedUserAnswer);
+
+        if (isCorrect) {
+            score += Number(blank.points || 0);
+        } else {
+            allCorrect = false;
+        }
+
+        if (input) {
+            input.disabled = true;
+            input.classList.add(isCorrect ? 'is-correct' : 'is-wrong');
+        }
+
+        if (wrapper) {
+            wrapper.classList.add(isCorrect ? 'is-correct' : 'is-wrong');
+            if (chap.showAnswersAtEnd !== false && acceptedAnswers[0]) {
+                wrapper.insertAdjacentHTML('beforeend', `<span class="fib-viewer-answer">${escapeHtml(acceptedAnswers[0])}</span>`);
+            }
+        }
+    });
+
+    if (chap.scoringMode === 'global' && !allCorrect) {
+        score = 0;
+    }
+
+    const resultBox = document.getElementById('fib-result-box');
+    const actionBar = document.getElementById('viewer-action-bar');
+    const nextText = isLast ? "Terminer le cours" : "Valider et passer a la suite";
+    const feedback = allCorrect
+        ? (chap.feedbackCorrect || 'Toutes les reponses attendues sont correctes.')
+        : (chap.feedbackIncorrect || 'Certaines reponses sont a revoir. Consultez la correction puis reessayez si besoin.');
+
+    if (resultBox) {
+        resultBox.style.display = 'block';
+        resultBox.style.borderColor = allCorrect ? 'var(--accent-green)' : 'var(--accent-yellow)';
+        resultBox.innerHTML = `
+            <div style="display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:1rem;">
+                <svg width="32" height="32" fill="${allCorrect ? 'var(--accent-green)' : 'var(--accent-yellow)'}" viewBox="0 0 24 24"><path d="${allCorrect ? 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z' : 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z'}"/></svg>
+                <h3 style="margin:0; color: var(--text-main); font-size: 1.5rem;">Score : ${score} / ${totalPoints} points</h3>
+            </div>
+            <p style="color: var(--text-muted); margin-bottom: 0;">${escapeHtml(feedback)}</p>
+        `;
+    }
+
+    actionBar.innerHTML = `
+        <button id="btn-retry-fib" class="btn-validate" style="background: transparent; color: var(--text-main); border: 2px solid var(--border-color); margin-right: 1rem; box-shadow: none;">Refaire l'activite</button>
+        <button id="btn-next-chapter" class="btn-validate">${nextText} ${SVG_NEXT}</button>
+    `;
+    document.getElementById('btn-retry-fib').onclick = () => loadChapter(currentChapterIndex, true);
+    document.getElementById('btn-next-chapter').onclick = () => validateAndNext(isLast, score);
 }
 
 function submitQuizAnswers(isLast) {

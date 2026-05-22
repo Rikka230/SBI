@@ -162,3 +162,125 @@ body.learning-mode {
     background: #f8fafc; border: 2px dashed transparent;
     text-align: center; display: none; animation: fadeIn 0.4s;
 }
+
+/* Activite texte a trous */
+.fib-viewer-card {
+    padding: 2.5rem;
+}
+
+.fib-viewer-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--accent-blue);
+    font-weight: 800;
+    font-size: 0.95rem;
+    letter-spacing: 0;
+    margin-bottom: 1rem;
+}
+
+.fib-viewer-instructions {
+    margin: 0 0 1.5rem 0;
+    color: var(--text-muted);
+    line-height: 1.6;
+}
+
+.fib-viewer-prompt {
+    color: #374151;
+    font-size: 1.15rem;
+    line-height: 2.35;
+}
+
+.fib-viewer-blank {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0 0.2rem 0.45rem;
+    vertical-align: baseline;
+    white-space: nowrap;
+}
+
+.fib-viewer-input {
+    width: clamp(130px, 18vw, 230px);
+    min-width: 0;
+    height: 2.25rem;
+    border: 0;
+    border-bottom: 2px solid var(--accent-blue);
+    border-radius: 0;
+    background: var(--accent-blue-light);
+    color: var(--text-main);
+    font: inherit;
+    font-weight: 700;
+    padding: 0 0.5rem;
+    outline: none;
+    transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+}
+
+.fib-viewer-input:focus {
+    background: #ffffff;
+    box-shadow: 0 6px 16px rgba(42, 87, 255, 0.12);
+}
+
+.fib-viewer-input.is-correct {
+    border-color: var(--accent-green);
+    background: rgba(16, 185, 129, 0.08);
+}
+
+.fib-viewer-input.is-wrong {
+    border-color: var(--accent-red);
+    background: rgba(239, 68, 68, 0.08);
+}
+
+.fib-viewer-input:disabled {
+    color: var(--text-main);
+    opacity: 1;
+}
+
+.fib-viewer-answer {
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.75rem;
+    padding: 0 0.55rem;
+    border-radius: 999px;
+    background: #eef2ff;
+    color: var(--accent-blue);
+    font-size: 0.82rem;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.fib-viewer-meta {
+    margin-top: 1.4rem;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    font-weight: 700;
+}
+
+.fib-viewer-empty {
+    color: var(--text-muted);
+}
+
+.sbi-fib-blank-static {
+    display: inline-block;
+    width: 9rem;
+    max-width: 34vw;
+    height: 1.35em;
+    border-bottom: 2px solid var(--accent-blue);
+    background: var(--accent-blue-light);
+    vertical-align: text-bottom;
+}
+
+@media (max-width: 760px) {
+    .viewer-main {
+        padding: 1.25rem;
+    }
+
+    .text-container,
+    .fib-viewer-card {
+        padding: 1.5rem;
+    }
+
+    .fib-viewer-input {
+        width: min(58vw, 220px);
+    }
+}

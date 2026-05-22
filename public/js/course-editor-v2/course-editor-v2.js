@@ -26,7 +26,7 @@ import {
 } from '/admin/js/course-media-storage.js?v=8.0P.167.182';
 
 const MAX_QUERY_VALUES = 10;
-const VERSION = '8.0P.167.182';
+const VERSION = '8.0P.167.183';
 
 const BLOCK_TYPES = [
   { type: 'course_info', label: 'Course Info', subtitle: 'Informations générales', icon: 'i', static: true },
@@ -640,11 +640,26 @@ function convertBlocksToLegacyChapters(blocks = []) {
     }
 
     if (block.type === 'fill_blank') {
-      const prompt = renderFillBlankPreviewText(block, { asHtml: true });
+      const prompt = renderFillBlankStudentPromptHtml(block);
+      const blanks = normalizeFillBlankRows(block).map((blank) => ({
+        id: blank.id || makeId('blank'),
+        token: blank.token || '',
+        answers: blank.answers || blank.token || '',
+        points: Number(blank.points || 1)
+      }));
       return {
         id: block.id || makeId('chap'),
         type: 'text',
+        activityType: 'fill_blank',
         titre: block.title || `Texte à trous ${index + 1}`,
+        instructions: block.instructions || '',
+        prompt: block.prompt || '',
+        blanks,
+        scoringMode: block.scoringMode || 'per_blank',
+        maxAttempts: Number(block.maxAttempts || 2),
+        showAnswersAtEnd: block.showAnswersAtEnd !== false,
+        feedbackCorrect: block.feedbackCorrect || '',
+        feedbackIncorrect: block.feedbackIncorrect || '',
         contenu: `<h3>${escapeHtml(block.title || 'Texte à trous')}</h3><p>${escapeHtml(block.instructions || '')}</p><div>${prompt}</div>`,
         mediaType: 'image',
         durationMinutes: toPositiveMinutes(block.durationMinutes),
@@ -1497,6 +1512,12 @@ function renderFillBlankPreviewText(block, { asHtml = false } = {}) {
     return asHtml ? `<mark>${safeToken}</mark>` : `<mark>[[${safeToken}]]</mark>`;
   });
   return html || '<span style="color:var(--editor-muted);">Aucun texte à compléter.</span>';
+}
+
+function renderFillBlankStudentPromptHtml(block) {
+  const prompt = escapeHtml(block.prompt || '');
+  const html = prompt.replace(/\[\[([^\]]+)\]\]/g, '<span class="sbi-fib-blank-static" aria-hidden="true"></span>');
+  return html || '<span style="color:var(--editor-muted);">Aucun texte a completer.</span>';
 }
 
 function renderSettings() {

@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.182',
+  version: '8.0P.167.183',
   branch: 'main',
-  channel: 'COURSE EDITOR V2 DURATION MEDIA FIX',
-  stage: 'AUTO TOTAL DURATION AND STORAGE MEDIA PERMISSIONS',
+  channel: 'COURSE VIEWER FILL BLANK FIX',
+  stage: 'FILL BLANK ANSWERS HIDDEN UNTIL VALIDATION',
   updatedAt: '2026-05-22',
-  label: 'SBI 8.0P.167.182 - Course duration auto total and media upload permissions'
+  label: 'SBI 8.0P.167.183 - Course viewer fill blank answers hidden'
 };
 
 export function getSbiVersionLabel() {
