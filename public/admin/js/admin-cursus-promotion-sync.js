@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.167.186
+ * SBI 8.0P.167.189
  * Cursus → Promotions automatic coursePlan sync.
  *
  * Périmètre :
@@ -10,7 +10,7 @@
  * - aucune modification DnD / verrou / semaines / élèves.
  */
 
-import { auth, db } from '/js/firebase-init.js';
+import { app, auth, db } from '/js/firebase-init.js';
 import {
   collection,
   doc,
@@ -21,14 +21,17 @@ import {
   updateDoc,
   where
 } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
+import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js';
 
 let installed = false;
 let syncTimer = 0;
 let syncRunning = false;
 
-const VERSION = '8.0P.167.114';
+const VERSION = '8.0P.167.189';
 const STRUCTURAL_TYPES = ['real_course', 'course', 'placeholder_course', 'buffer_period', 'revision_period', 'catchup_period'];
 const PARALLEL_TYPES = ['assignment', 'exam', 'evaluation', 'live_session', 'workshop'];
+const functionsInstance = getFunctions(app, 'europe-west1');
+const notifyCoursePlanStudentsCallable = httpsCallable(functionsInstance, 'notifyCoursePlanStudents');
 
 function getRoot() {
   return document.getElementById('view-cursus');
@@ -429,6 +432,76 @@ function buildPromotionUpdate(template = {}, promotion = {}) {
   };
 }
 
+
+function getCourseIdFromPlanItem(item = {}) {
+  return clean(item.courseId || item.courseID || item.courseDocId || item.realCourseId || item.linkedCourseId || '', 180);
+}
+
+function getCourseIdSetFromPlan(plan = []) {
+  const ids = new Set();
+  if (!Array.isArray(plan)) return ids;
+  plan.forEach((item) => {
+    const id = getCourseIdFromPlanItem(item);
+    if (id) ids.add(id);
+  });
+  return ids;
+}
+
+function shouldNotifyCoursePlanItem(item = {}, previousCourseIds = new Set()) {
+  const courseId = getCourseIdFromPlanItem(item);
+  if (!courseId) return false;
+  const source = clean(`${item.source || ''} ${item.replacementSource || ''}`, 240).toLowerCase();
+  return !previousCourseIds.has(courseId)
+    || Boolean(item.replacedPlaceholderId || item.placeholderId || item.fromPlaceholderReplacement)
+    || source.includes('placeholder-replace')
+    || source.includes('placeholder-replaced');
+}
+
+function collectCourseIdsToNotify(previousPlan = [], nextPlan = []) {
+  const previousCourseIds = getCourseIdSetFromPlan(previousPlan);
+  const ids = new Set();
+  if (!Array.isArray(nextPlan)) return [];
+  nextPlan.forEach((item) => {
+    if (shouldNotifyCoursePlanItem(item, previousCourseIds)) {
+      const courseId = getCourseIdFromPlanItem(item);
+      if (courseId) ids.add(courseId);
+    }
+  });
+  return Array.from(ids);
+}
+
+function formatNotificationSummary(result = {}) {
+  const totals = result.totals || {};
+  const notifications = Number(totals.notificationCount || 0);
+  const emails = Number(totals.emailCount || 0);
+  const skipped = Number(totals.skippedExistingNotifications || 0);
+  const ignored = Number(totals.ignoredCourseCount || 0);
+
+  if (notifications > 0) return ` Notifications élèves : ${notifications}, email(s) : ${emails}.`;
+  if (skipped > 0) return ` Notifications élèves déjà existantes : ${skipped}.`;
+  if (ignored > 0) return ` Aucun nouvel envoi élève (${ignored} cours ignoré/non publié).`;
+  return '';
+}
+
+async function notifyStudentsForSyncedCourses(courseIds = [], templateId = '', promotionIds = []) {
+  const safeIds = Array.from(new Set((courseIds || []).map((id) => clean(id, 180)).filter(Boolean)));
+  if (!safeIds.length) return '';
+
+  try {
+    setStatus(`Notifications élèves pour ${safeIds.length} cours publié${safeIds.length > 1 ? 's' : ''}...`, 'muted');
+    const result = await notifyCoursePlanStudentsCallable({
+      courseIds: safeIds,
+      templateId,
+      promotionIds: Array.from(new Set((promotionIds || []).map((id) => clean(id, 180)).filter(Boolean))),
+      source: 'curriculum_save'
+    });
+    return formatNotificationSummary(result?.data || {});
+  } catch (error) {
+    console.warn('[SBI Cursus Sync] Notifications élèves impossibles :', error);
+    return ' Promotions synchronisées, mais notifications élèves impossibles.';
+  }
+}
+
 async function loadTemplate(templateId = '') {
   if (!templateId) return null;
   const snap = await getDoc(doc(db, 'curriculumTemplates', templateId));
@@ -472,13 +545,19 @@ async function syncPromotionsForCurrentTemplate(attempt = 0) {
     setStatus(`Synchro des promotions liées (${promotions.length})...`, 'muted');
 
     let updated = 0;
+    const courseIdsToNotify = new Set();
+    const promotionIdsToNotify = new Set();
     for (const promotion of promotions) {
       const payload = buildPromotionUpdate(template, promotion);
+      const notifyIds = collectCourseIdsToNotify(promotion.coursePlan || [], payload.coursePlan || []);
+      if (notifyIds.length) promotionIdsToNotify.add(promotion.id);
+      notifyIds.forEach((courseId) => courseIdsToNotify.add(courseId));
       await updateDoc(doc(db, 'promotions', promotion.id), payload);
       updated += 1;
     }
 
-    setStatus(`${updated} promotion${updated > 1 ? 's' : ''} synchronisée${updated > 1 ? 's' : ''} avec le cursus.`, 'success');
+    const notificationSummary = await notifyStudentsForSyncedCourses(Array.from(courseIdsToNotify), templateId, Array.from(promotionIdsToNotify));
+    setStatus(`${updated} promotion${updated > 1 ? 's' : ''} synchronisée${updated > 1 ? 's' : ''} avec le cursus.${notificationSummary}`, 'success');
   } catch (error) {
     console.warn('[SBI Cursus Sync] Synchronisation promotions impossible :', error);
     setStatus('Cursus sauvegardé, mais synchro promotions impossible.', 'error');

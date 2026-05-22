@@ -3949,12 +3949,16 @@ function findLinkedItemsInList(items = [], courseId = "", courseData = {}) {
     return items.filter((item) => isCoursePlanItemLinkedToPublishedCourse(item, courseId, courseData));
 }
 
-async function findPromotionTargetsForCourse(db, { courseId, courseData }) {
+async function findPromotionTargetsForCourse(db, { courseId, courseData, promotionIds = [] }) {
+    const allowedPromotionIds = new Set((Array.isArray(promotionIds) ? promotionIds : [])
+        .map((value) => cleanString(value, 180))
+        .filter(Boolean));
     const snap = await db.collection("promotions").get();
     const templateCache = new Map();
     const targets = [];
 
     for (const docSnap of snap.docs) {
+        if (allowedPromotionIds.size && !allowedPromotionIds.has(docSnap.id)) continue;
         const data = docSnap.data() || {};
         const status = cleanString(data.status || "active", 40).toLowerCase();
         if (["archived", "archive", "archivée", "archived_promotion"].includes(status)) continue;
@@ -4002,22 +4006,45 @@ async function collectDirectTargetStudents(db, courseData = {}) {
     return Array.from(students.values());
 }
 
-async function notifyStudentsForReplacementCourse(db, { courseId, courseData, apiKey }) {
-    const targets = await findPromotionTargetsForCourse(db, { courseId, courseData });
-    const directStudents = await collectDirectTargetStudents(db, courseData);
+async function notifyStudentsForReplacementCourse(db, { courseId, courseData, apiKey, options = {} }) {
+    const targets = await findPromotionTargetsForCourse(db, {
+        courseId,
+        courseData,
+        promotionIds: options?.promotionIds || []
+    });
+    const includeDirectStudents = options?.includeDirectStudents !== false;
+    const directStudents = includeDirectStudents ? await collectDirectTargetStudents(db, courseData) : [];
+    const skipExistingNotifications = options?.skipExistingNotifications === true;
+    const notificationSource = cleanString(options?.source || options?.trigger || "course_publish", 120) || "course_publish";
     const notifiedStudents = new Set();
     let notificationCount = 0;
     let emailCount = 0;
     let emailFailures = 0;
+    let skippedExistingNotifications = 0;
     const targetReports = [];
     const notifiedStudentIds = [];
 
     async function notifyOneStudent(student, promotion = {}, reason = "direct_course_target") {
         if (!student.id || notifiedStudents.has(student.id)) return;
+        const notificationId = `new_course_${courseId}_${student.id}`;
+
+        if (skipExistingNotifications) {
+            try {
+                const existingNotification = await db.collection("notifications").doc(notificationId).get();
+                if (existingNotification.exists) {
+                    skippedExistingNotifications += 1;
+                    notifiedStudents.add(student.id);
+                    return;
+                }
+            } catch (error) {
+                console.error("Vérification notification élève existante impossible :", notificationId, error.message || error);
+            }
+        }
+
         notifiedStudents.add(student.id);
         notifiedStudentIds.push(student.id);
 
-        await addDirectCourseNotification(db, `new_course_${courseId}_${student.id}`, {
+        await addDirectCourseNotification(db, notificationId, {
             type: "new_course_published",
             courseId,
             courseTitle: getCourseWorkflowTitle(courseData),
@@ -4028,6 +4055,7 @@ async function notifyStudentsForReplacementCourse(db, { courseId, courseData, ap
             fromCoursePlan: Boolean(promotion.id),
             fromPlaceholderReplacement: reason.includes("placeholder"),
             coursePlanMatchReason: reason,
+            notificationSource,
             actionUrl: getCourseWorkflowUrl("/student/cours-viewer.html", courseId)
         });
         notificationCount += 1;
@@ -4068,8 +4096,12 @@ async function notifyStudentsForReplacementCourse(db, { courseId, courseData, ap
         notificationCount,
         emailCount,
         emailFailures,
+        skippedExistingNotifications,
+        notificationSource,
         noStudentReason: notificationCount === 0
-            ? (targets.length ? "promotion_matched_but_no_students" : "no_promotion_or_target_students_found")
+            ? (skippedExistingNotifications > 0
+                ? "students_already_notified"
+                : (targets.length ? "promotion_matched_but_no_students" : "no_promotion_or_target_students_found"))
             : ""
     };
 
@@ -4082,6 +4114,8 @@ async function notifyStudentsForReplacementCourse(db, { courseId, courseData, ap
         notificationCount: report.notificationCount,
         emailCount: report.emailCount,
         emailFailures: report.emailFailures,
+        skippedExistingNotifications: report.skippedExistingNotifications,
+        notificationSource: report.notificationSource,
         noStudentReason: report.noStudentReason
     });
 
@@ -4163,6 +4197,172 @@ exports.submitCourseForValidation = onCall({
         success: true,
         message: warning || "Cours soumis à validation.",
         warning
+    };
+});
+
+
+function isCoursePublishedForStudentNotification(courseData = {}) {
+    return courseData.actif === true
+        || cleanString(courseData.statutValidation || "", 80).toLowerCase() === "approved"
+        || cleanString(courseData.lmsStatus || "", 80).toLowerCase() === "published";
+}
+
+function buildCurriculumNotificationMessage({ notified = 0, emails = 0, skipped = 0, ignored = 0 } = {}) {
+    if (notified > 0) {
+        return `Notifications élèves envoyées depuis le Cursus : ${notified}, email(s) : ${emails}.`;
+    }
+    if (skipped > 0) {
+        return `Aucune nouvelle notification : ${skipped} notification(s) élève existaient déjà.`;
+    }
+    if (ignored > 0) {
+        return `Aucune notification envoyée : ${ignored} cours ignoré(s) car non publiés ou introuvables.`;
+    }
+    return "Aucun nouveau cours publié à notifier.";
+}
+
+exports.notifyCoursePlanStudents = onCall({
+    region: "europe-west1",
+    secrets: [BREVO_API_KEY],
+    timeoutSeconds: 120,
+    memory: "512MiB"
+}, async (request) => {
+    const db = admin.firestore();
+    const caller = await requireAdminCaller(request, db);
+    const rawCourseIds = Array.isArray(request.data?.courseIds) ? request.data.courseIds : [];
+    const courseIds = Array.from(new Set(rawCourseIds
+        .map((value) => cleanString(value, 180))
+        .filter(Boolean)))
+        .slice(0, 30);
+    const templateId = cleanString(request.data?.templateId || "", 180);
+    const source = cleanString(request.data?.source || "curriculum_save", 120) || "curriculum_save";
+    const promotionIds = Array.from(new Set((Array.isArray(request.data?.promotionIds) ? request.data.promotionIds : [])
+        .map((value) => cleanString(value, 180))
+        .filter(Boolean)))
+        .slice(0, 40);
+
+    if (!courseIds.length) {
+        return {
+            success: true,
+            message: "Aucun nouveau cours publié à notifier.",
+            reports: [],
+            totals: {
+                notificationCount: 0,
+                emailCount: 0,
+                emailFailures: 0,
+                skippedExistingNotifications: 0,
+                ignoredCourseCount: 0
+            }
+        };
+    }
+
+    const apiKey = BREVO_API_KEY.value();
+    if (!apiKey) throw new HttpsError("failed-precondition", "Configuration Brevo manquante côté serveur.");
+
+    const reports = [];
+    let totalNotifications = 0;
+    let totalEmails = 0;
+    let totalEmailFailures = 0;
+    let totalSkippedExisting = 0;
+    let ignoredCourseCount = 0;
+
+    for (const courseId of courseIds) {
+        const courseSnap = await db.collection("courses").doc(courseId).get();
+        if (!courseSnap.exists) {
+            ignoredCourseCount += 1;
+            reports.push({
+                courseId,
+                status: "not_found",
+                message: "Cours introuvable."
+            });
+            continue;
+        }
+
+        const courseData = courseSnap.data() || {};
+        if (!isCoursePublishedForStudentNotification(courseData)) {
+            ignoredCourseCount += 1;
+            reports.push({
+                courseId,
+                courseTitle: getCourseWorkflowTitle(courseData),
+                status: "not_published",
+                message: "Cours non publié, aucune notification élève envoyée."
+            });
+            continue;
+        }
+
+        const studentReport = await notifyStudentsForReplacementCourse(db, {
+            courseId,
+            courseData,
+            apiKey,
+            options: {
+                skipExistingNotifications: true,
+                includeDirectStudents: false,
+                source,
+                templateId,
+                promotionIds,
+                actorUid: caller.uid,
+                actorEmail: caller.email
+            }
+        });
+
+        totalNotifications += Number(studentReport.notificationCount || 0);
+        totalEmails += Number(studentReport.emailCount || 0);
+        totalEmailFailures += Number(studentReport.emailFailures || 0);
+        totalSkippedExisting += Number(studentReport.skippedExistingNotifications || 0);
+
+        const courseTitle = getCourseWorkflowTitle(courseData);
+        reports.push({
+            courseId,
+            courseTitle,
+            status: studentReport.notificationCount > 0
+                ? "notified"
+                : (studentReport.skippedExistingNotifications > 0 ? "already_notified" : "no_target"),
+            notificationCount: studentReport.notificationCount,
+            emailCount: studentReport.emailCount,
+            emailFailures: studentReport.emailFailures,
+            skippedExistingNotifications: studentReport.skippedExistingNotifications,
+            noStudentReason: studentReport.noStudentReason,
+            promotions: studentReport.promotions,
+            targetReports: studentReport.targetReports
+        });
+
+        await safeWriteAccountAuditLog(db, {
+            type: "course.curriculum_student_notifications",
+            actorUid: caller.uid,
+            actorEmail: caller.email,
+            courseId,
+            courseTitle,
+            curriculumTemplateId: templateId,
+            studentNotificationCount: studentReport.notificationCount,
+            studentEmailCount: studentReport.emailCount,
+            studentEmailFailures: studentReport.emailFailures,
+            skippedExistingNotifications: studentReport.skippedExistingNotifications,
+            studentNotificationTargets: studentReport.notifiedStudentIds || [],
+            scannedStudentCount: studentReport.scannedStudentCount || 0,
+            studentPromotionMatches: studentReport.targetReports || [],
+            replacementPromotionIds: studentReport.promotions,
+            warning: studentReport.noStudentReason || "",
+            source: "curriculum-save-workflow"
+        });
+    }
+
+    const message = buildCurriculumNotificationMessage({
+        notified: totalNotifications,
+        emails: totalEmails,
+        skipped: totalSkippedExisting,
+        ignored: ignoredCourseCount
+    });
+
+    return {
+        success: true,
+        message,
+        reports,
+        totals: {
+            notificationCount: totalNotifications,
+            emailCount: totalEmails,
+            emailFailures: totalEmailFailures,
+            skippedExistingNotifications: totalSkippedExisting,
+            ignoredCourseCount
+        }
     };
 });
 
