@@ -7,3 +7,11 @@ firebase-debug.log
 !.env.example
 .DS_Store
 Thumbs.db
+
+# Local patch artifacts / one-shot delivery files
+*.diff
+README_PATCH*.txt
+README_APPLY_PATCH.txt
+README_8.0P.*.txt
+PATCH_MANIFEST_*.md
+apply_8.0P.*.py
