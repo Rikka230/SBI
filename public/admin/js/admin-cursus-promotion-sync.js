@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.167.114
+ * SBI 8.0P.167.186
  * Cursus → Promotions automatic coursePlan sync.
  *
  * Périmètre :
@@ -242,6 +242,8 @@ function buildPlanFromTemplate(template = {}) {
       relatedCourseId: clean(item.relatedCourseId || '', 160),
       relatedCourseTitle: clean(item.relatedCourseTitle || '', 180),
       priorityLevel: ['normal', 'high', 'urgent'].includes(item.priorityLevel) ? item.priorityLevel : 'normal',
+      replacedPlaceholderId: clean(item.replacedPlaceholderId || '', 180),
+      replacementSource: clean(item.replacementSource || '', 120),
       isRequired: item.isRequired !== false,
       isLocked: false,
       isBlockingPrerequisite: item.isBlockingPrerequisite === true || item.isBlocking === true,
@@ -254,7 +256,9 @@ function buildPlanFromTemplate(template = {}) {
       isSharedCourse: item.isSharedCourse === true,
       grantedByCurriculum: item.grantedByCurriculum === false ? false : true,
       order: Number.isFinite(Number(item.order)) ? Number(item.order) : index,
-      source: 'curriculum-template-auto-sync-v1'
+      source: (item.replacedPlaceholderId || String(item.replacementSource || '').includes('placeholder-replace'))
+        ? 'placeholder-replace-v2'
+        : 'curriculum-template-auto-sync-v1'
     };
   }).sort((a, b) => toNumber(a.order, 0) - toNumber(b.order, 0))
     .map((item, index) => ({ ...item, order: index }));

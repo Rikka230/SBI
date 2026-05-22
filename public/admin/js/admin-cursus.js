@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.167.107.6-GPT2.1
+ * SBI 8.0P.167.186
  * Page Cursus dédiée : timeline horizontale multi-pistes.
  *
  * Correctif noyau verrouillage :
@@ -155,6 +155,12 @@ function getCourseStatusLabel(course = {}) {
   if (course.actif === true || course.lmsStatus === 'published' || course.statutValidation === 'approved') return 'Publié';
   if (course.lmsStatus === 'pending_review' || course.statutValidation === 'pending') return 'En attente';
   return 'Brouillon';
+}
+
+function isCoursePublishedForCursus(course = {}) {
+  const status = String(course.statutValidation || '').toLowerCase();
+  const lmsStatus = String(course.lmsStatus || '').toLowerCase();
+  return course.actif === true || status === 'approved' || lmsStatus === 'published';
 }
 
 function getCourseFormationRefs(course = {}) {
@@ -335,6 +341,7 @@ function getFilteredCourses() {
   const source = dom.sourceFilter?.value || 'linked';
   return courses
     .filter((course) => {
+      if (!isCoursePublishedForCursus(course)) return false;
       const matchesLinked = courseMatchesSelectedFormation(course);
       const courseFormation = findCourseFormation(course);
       const isShared = Boolean(course.sharedCourse || course.isSharedCourse || normalizeArray(course.linkedFormationIds).length);
@@ -550,6 +557,42 @@ function renderAll({ recalc = false } = {}) {
     dom.activeStatus.style.borderColor = status === 'active' ? 'rgba(64,223,128,.32)' : status === 'archived' ? 'rgba(255,255,255,.18)' : 'rgba(42,87,255,.28)';
   }
   window.requestAnimationFrame(() => window.SBI_CURSUS_WEEKS?.refresh?.());
+}
+
+
+function applyPlaceholderReplacementToTimeline(replacement = {}) {
+  const placeholderId = clean(replacement.placeholderId || '', 180);
+  const courseId = clean(replacement.courseId || '', 180);
+  if (!placeholderId || !courseId) return false;
+
+  const item = timelineItems.find((entry) => entry.id === placeholderId || entry.itemId === placeholderId || entry.replacedPlaceholderId === placeholderId);
+  if (!item) return false;
+
+  item.type = 'course';
+  item.itemType = 'course';
+  item.layer = 'courses';
+  item.title = clean(replacement.title || replacement.courseTitle || item.title || 'Cours sans titre', 180);
+  item.courseId = courseId;
+  item.courseTitle = clean(replacement.courseTitle || replacement.title || item.title, 180);
+  item.courseStatus = clean(replacement.courseStatus || 'Publié', 80);
+  item.itemId = '';
+  item.sourceFormationId = clean(replacement.sourceFormationId || item.sourceFormationId || '', 180);
+  item.sourceFormationName = clean(replacement.sourceFormationName || item.sourceFormationName || '', 180);
+  item.displayContextFormationId = clean(replacement.displayContextFormationId || item.displayContextFormationId || getSelectedFormation().id || '', 180);
+  item.displayContextFormationName = clean(replacement.displayContextFormationName || item.displayContextFormationName || getSelectedFormation().name || '', 180);
+  item.blockTitle = clean(replacement.blockTitle || item.blockTitle || '', 120);
+  item.estimatedDurationDays = Math.max(1, Number(replacement.estimatedDurationDays || item.estimatedDurationDays || item.durationDays || 7) || 7);
+  item.durationDays = item.estimatedDurationDays;
+  item.priorityLevel = replacement.priorityLevel || item.priorityLevel || 'normal';
+  item.isSharedCourse = Boolean(replacement.isSharedCourse);
+  item.grantedByCurriculum = true;
+  item.replacementSource = 'placeholder-replace-v2';
+  item.replacedPlaceholderId = placeholderId;
+  item.source = 'placeholder-replace-v2';
+  selectedItemId = item.id;
+  setStatus(`Cours futur remplacé par « ${item.title} ». Sauvegarde le cursus pour synchroniser les promotions.`, 'success');
+  renderAll({ recalc: true });
+  return true;
 }
 
 function addCourseToTimeline(courseId) {
@@ -798,7 +841,10 @@ async function loadFormations() {
 async function loadCourses() {
   const snap = await getDocs(collection(db, 'courses'));
   courses = [];
-  snap.forEach((docSnap) => courses.push({ id: docSnap.id, ...(docSnap.data() || {}) }));
+  snap.forEach((docSnap) => {
+    const course = { id: docSnap.id, ...(docSnap.data() || {}) };
+    if (isCoursePublishedForCursus(course)) courses.push(course);
+  });
   renderToolList();
 }
 
@@ -919,6 +965,13 @@ function bindEvents() {
     const action = button.dataset.action;
     if (action === 'delete-item') deleteSelectedItem();
   });
+
+  if (window.__SBI_CURSUS_REPLACEMENT_EVENT_BOUND__ !== true) {
+    window.__SBI_CURSUS_REPLACEMENT_EVENT_BOUND__ = true;
+    window.addEventListener('sbi:cursus:placeholder-replaced', (event) => {
+      applyPlaceholderReplacementToTimeline(event.detail || {});
+    });
+  }
 }
 
 async function initialiseData() {

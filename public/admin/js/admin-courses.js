@@ -45,7 +45,7 @@ import {
     loadCoursesForCourseAccess,
     loadCoursesForMediaSafety
 } from '/admin/js/course-data-access.js?v=8.0P.167.85';
-import { renderCourseActionButtons } from '/admin/js/course-action-buttons.js?v=8.0P.167.184';
+import { renderCourseActionButtons } from '/admin/js/course-action-buttons.js?v=8.0P.167.186';
 import { notifyCourseDeletedIfNeeded } from '/admin/js/course-delete-notifications.js';
 import { SVG_PREVIEW, SVG_QUIZ_LIST } from '/admin/js/courses/course-icons.js';
 import {
@@ -390,7 +390,10 @@ export function mountAdminCourses({ source = 'standard' } = {}) {
     }, cleanups);
 
     const newCourseBtn = document.getElementById('btn-trigger-new-course');
-    bindCourseEvent(newCourseBtn, 'click', window.prepareNewCourse, cleanups);
+    bindCourseEvent(newCourseBtn, 'click', (event) => {
+        event?.preventDefault?.();
+        window.location.assign('/admin/course-editor.html');
+    }, cleanups);
 
     const addQuestionBtn = document.getElementById('btn-add-question');
     bindCourseEvent(addQuestionBtn, 'click', addQuizQuestion, cleanups);
@@ -795,52 +798,7 @@ async function loadFormationsCategories() {
 }
 
 window.prepareNewCourse = function() {
-    editingCourseAuthorId = null;
-    editingCourseOriginalStatus = null;
-    editingCourseOriginalActive = false;
-    window.editingCourseOriginalActive = false;
-
-    clearAllPendingMedia();
-
-    const editCourseIdEl = document.getElementById('edit-course-id');
-    if (editCourseIdEl) editCourseIdEl.value = '';
-
-    const courseTitleEl = document.getElementById('course-title');
-    if (courseTitleEl) courseTitleEl.value = '';
-
-    const selectBloc = document.getElementById('course-bloc-select');
-    if (selectBloc) selectBloc.value = '';
-
-    currentChapters = [];
-    activeChapterId = null;
-
-    document.querySelectorAll('.formation-pill').forEach(p => p.classList.remove('selected'));
-
-    const noChapterZone = document.getElementById('no-chapter-zone');
-    if (noChapterZone) noChapterZone.style.display = 'flex';
-
-    const chapterEditorZone = document.getElementById('chapter-editor-zone');
-    if (chapterEditorZone) chapterEditorZone.style.display = 'none';
-
-    const quizEditorZone = document.getElementById('quiz-editor-zone');
-    if (quizEditorZone) quizEditorZone.style.display = 'none';
-
-    const warningBanner = document.getElementById('lock-warning-banner');
-    if (warningBanner) warningBanner.style.display = 'none';
-
-    document.querySelectorAll('.editor-input, .editor-action-btn').forEach(el => {
-        el.disabled = false;
-        el.style.opacity = '1';
-        el.style.pointerEvents = 'auto';
-    });
-
-    if (window.quill) window.quill.enable(true);
-
-    renderChaptersList();
-
-    if (typeof window.switchCourseTab === 'function') {
-        window.switchCourseTab('tab-editor');
-    }
+    window.location.assign('/admin/course-editor.html');
 };
 
 function createNewChapter(type) {
@@ -990,58 +948,8 @@ function renderChaptersList() {
 }
 
 window.editCourse = async (id) => {
-    try {
-        const docSnap = await getDoc(doc(db, "courses", id));
-
-        if (docSnap.exists()) {
-            const data = docSnap.data();
-
-            clearAllPendingMedia();
-
-            const editCourseIdEl = document.getElementById('edit-course-id');
-            if (editCourseIdEl) editCourseIdEl.value = id;
-
-            const courseTitleEl = document.getElementById('course-title');
-            if (courseTitleEl) courseTitleEl.value = data.titre || '';
-
-            const activeCb = document.getElementById('course-active');
-            if (activeCb) activeCb.checked = data.actif;
-
-            const selectBloc = document.getElementById('course-bloc-select');
-            if (selectBloc) selectBloc.value = data.bloc || '';
-
-            editingCourseAuthorId = data.auteurId || currentUid;
-            editingCourseOriginalStatus = data.statutValidation || 'approved';
-            editingCourseOriginalActive = data.actif === true;
-            window.editingCourseOriginalActive = editingCourseOriginalActive;
-
-            document.querySelectorAll('.formation-pill').forEach(pill => {
-                const val = pill.getAttribute('data-val');
-
-                if (data.formations && (data.formations.includes(val) || data.formations.includes(pill.textContent))) {
-                    pill.classList.add('selected');
-                } else {
-                    pill.classList.remove('selected');
-                }
-            });
-
-            currentChapters = data.chapitres || [];
-
-            if (typeof window.switchCourseTab === 'function') {
-                window.switchCourseTab('tab-editor');
-            }
-
-            handleEditorLockState();
-            handleRejectButtonVisibility();
-
-            if (currentChapters.length > 0) selectChapter(currentChapters[0].id);
-            else renderChaptersList();
-        }
-
-    } catch (error) {
-        console.error(error);
-        alert("Impossible de charger le cours.");
-    }
+    const safeId = id ? `?id=${encodeURIComponent(id)}` : '';
+    window.location.assign(`/admin/course-editor.html${safeId}`);
 };
 
 function handleEditorLockState() {

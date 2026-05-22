@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.167.120
+ * SBI 8.0P.167.186
  * Cursus placeholder replacement bridge.
  *
  * Fix : après consolidation Firestore, la page recharge automatiquement
@@ -85,6 +85,12 @@ function getCourseStatusLabel(course = {}) {
   if (course.actif === true || course.lmsStatus === 'published' || course.statutValidation === 'approved') return 'Publié';
   if (course.lmsStatus === 'pending_review' || course.statutValidation === 'pending') return 'En attente';
   return 'Cours';
+}
+
+function isCoursePublishedForReplacement(course = {}) {
+  const status = String(course.statutValidation || '').toLowerCase();
+  const lmsStatus = String(course.lmsStatus || '').toLowerCase();
+  return course.actif === true || status === 'approved' || lmsStatus === 'published';
 }
 
 function getCourseDuration(course = {}) {
@@ -305,7 +311,11 @@ function reloadPageOnFreshTemplate(templateId = '') {
 async function fetchCourse(courseId) {
   const snap = await getDoc(doc(db, 'courses', courseId));
   if (!snap.exists()) throw new Error('Cours introuvable.');
-  return { id: snap.id, ...(snap.data() || {}) };
+  const course = { id: snap.id, ...(snap.data() || {}) };
+  if (!isCoursePublishedForReplacement(course)) {
+    throw new Error('Seuls les cours validés peuvent remplacer un Cours futur.');
+  }
+  return course;
 }
 
 function updateInspectorTextField(field, value) {
@@ -372,6 +382,7 @@ async function replaceSelectedPlaceholder(courseId, card = null) {
     const replacement = buildReplacementPayload({ course, card, placeholderId });
 
     pendingReplacements.set(placeholderId, replacement);
+    window.dispatchEvent(new CustomEvent('sbi:cursus:placeholder-replaced', { detail: replacement }));
 
     updateInspectorTextField('title', replacement.title);
     updateInspectorTextField('estimatedDurationDays', replacement.estimatedDurationDays);
@@ -468,8 +479,7 @@ async function consolidateReplacementsAfterSave() {
 
     pendingReplacements.clear();
     scheduleRefresh(80);
-    setStatus('Cours futur remplacé et sauvegardé comme cours réel. Rechargement du cursus...', 'success');
-    reloadPageOnFreshTemplate(templateId);
+    setStatus('Cours futur remplacé et sauvegardé comme cours réel. Les promotions liées seront synchronisées sans rechargement complet.', 'success');
   } catch (error) {
     console.warn('[SBI Cursus] Consolidation remplacement impossible :', error);
     setStatus('Le cursus est sauvegardé, mais le remplacement doit être vérifié.', 'error');

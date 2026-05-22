@@ -27,7 +27,7 @@ import {
 } from '/admin/js/course-media-storage.js?v=8.0P.167.182';
 
 const MAX_QUERY_VALUES = 10;
-const VERSION = '8.0P.167.184';
+const VERSION = '8.0P.167.186';
 const functionsInstance = getFunctions(app, 'europe-west1');
 const submitCourseForValidationCallable = httpsCallable(functionsInstance, 'submitCourseForValidation');
 const reviewCourseValidationCallable = httpsCallable(functionsInstance, 'reviewCourseValidation');
@@ -1201,10 +1201,14 @@ function resetQuillInstance() {
   lastQuillSelection = null;
 }
 
+function isRichTextBlock(block = {}) {
+  return Boolean(block && !['fill_blank', 'quiz'].includes(block.type));
+}
+
 function initLegacyQuillForActiveBlock(block) {
   const container = $('#block-content-quill');
   const hidden = $('#block-content');
-  if (!container || !hidden || !block || block.type !== 'lesson') return;
+  if (!container || !hidden || !isRichTextBlock(block)) return;
 
   if (!window.Quill) {
     container.innerHTML = '<div class="sbi-editor-v2-quill-missing">Éditeur riche indisponible. Le contenu reste sauvegardé en texte.</div>';

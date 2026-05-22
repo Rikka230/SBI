@@ -331,7 +331,7 @@ async function mountAdminCourses({ url }) {
   window.__SBI_APP_SHELL_MOUNTING_COURSE_EDITOR = true;
 
   try {
-    const module = await import('/admin/js/admin-courses.js?v=8.0P.167.184');
+    const module = await import('/admin/js/admin-courses.js?v=8.0P.167.186');
     const cleanupCourses = module.mountAdminCourses?.({ source: 'pjax-admin-courses' });
 
     if (typeof cleanupCourses === 'function') {
@@ -473,8 +473,11 @@ async function mountAdminCursus({ url }) {
   window.__SBI_APP_SHELL_MOUNTING_CURSUS = true;
 
   try {
-    const module = await import('/admin/js/admin-cursus.js?v=8.0P.167.98.1');
+    const module = await import('/admin/js/admin-cursus.js?v=8.0P.167.186');
     const cleanupCursus = module.mountAdminCursus?.({ source: 'pjax-admin-cursus' });
+
+    await import('/admin/js/admin-cursus-placeholder-replace.js?v=8.0P.167.186');
+    await import('/admin/js/admin-cursus-promotion-sync.js?v=8.0P.167.186');
 
     if (typeof cleanupCursus === 'function') {
       registerCleanup(cleanupCursus, 'admin-cursus');
@@ -690,7 +693,7 @@ async function mountCourseEditorV2Page({ url, role = 'teacher' }) {
   window.__SBI_APP_SHELL_MOUNTING_COURSE_EDITOR_V2 = true;
 
   try {
-    const module = await import('/js/course-editor-v2/course-editor-v2.js?v=8.0P.167.180');
+    const module = await import('/js/course-editor-v2/course-editor-v2.js?v=8.0P.167.186');
     const cleanup = module.mountCourseEditorV2?.({
       source: isAdmin ? 'pjax-admin-course-editor-v2' : 'pjax-teacher-course-editor-v2',
       force: true

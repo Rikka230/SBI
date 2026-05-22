@@ -102,14 +102,14 @@
             
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <h2>Gestionnaire de Cours</h2>
-                <button id="btn-trigger-new-course" class="action-btn" style="width: auto; background: var(--accent-blue); color: white; border: none; font-weight: bold;">
+                <a id="btn-trigger-new-course" class="action-btn" href="/admin/course-editor.html" style="width: auto; background: var(--accent-blue); color: white; border: none; font-weight: bold; text-decoration: none; display: inline-flex; align-items: center; justify-content: center;">
                     + Nouveau Cours
-                </button>
+                </a>
             </div>
 
             <div class="sub-nav">
                 <div class="sub-nav-item active" onclick="switchCourseTab('tab-list')" id="nav-tab-list">Bibliothèque</div>
-                <div class="sub-nav-item" onclick="switchCourseTab('tab-editor')" id="nav-tab-editor">Éditeur de Cours</div>
+                <a class="sub-nav-item" href="/admin/course-editor.html" id="nav-tab-editor" style="text-decoration:none;">Éditeur de Cours</a>
                 <div class="sub-nav-item" onclick="switchCourseTab('tab-formations')" id="nav-tab-formations">Catégories & Accès</div>
                 <div class="sub-nav-item" onclick="switchCourseTab('tab-public-formations')" id="nav-tab-public-formations">Catalogue public</div>
                 <div class="sub-nav-item" onclick="switchCourseTab('tab-public-resources')" id="nav-tab-public-resources">Brochures</div>
@@ -769,8 +769,8 @@
     });
 </script>
 
-<script type="module" src="js/admin-ui.js?v=8.0P.167.88"></script>
-<script type="module" src="js/admin-courses.js?v=8.0P.167.184"></script>
+<script type="module" src="js/admin-ui.js?v=8.0P.167.186"></script>
+<script type="module" src="js/admin-courses.js?v=8.0P.167.186"></script>
 <script type="module" src="js/tracker.js?v=8.0P.167.44"></script>
 <script type="module" src="js/admin-notifications.js?v=8.0P.167.184"></script>
 </body>

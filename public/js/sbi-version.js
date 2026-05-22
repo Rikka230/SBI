@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.185',
+  version: '8.0P.167.186',
   branch: 'main',
-  channel: 'COURSE WORKFLOW HOTFIX',
-  stage: 'COURSEPLAN STUDENT NOTIFICATIONS QUILL CURSUS FILTERS',
+  channel: 'COURSE WORKFLOW HOTFIX 2',
+  stage: 'CORE CURSUS FILTERS PJAX V2 QUILL NOTIFICATIONS',
   updatedAt: '2026-05-22',
-  label: 'SBI 8.0P.167.185 - Course workflow hotfix'
+  label: 'SBI 8.0P.167.186 - Core course workflow hotfix'
 };
 
 export function getSbiVersionLabel() {
