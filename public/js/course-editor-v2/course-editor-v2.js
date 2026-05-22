@@ -1,5 +1,6 @@
-import { db, auth } from '/js/firebase-init.js';
+import { app, db, auth } from '/js/firebase-init.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js';
+import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js';
 import {
   addDoc,
   collection,
@@ -26,7 +27,10 @@ import {
 } from '/admin/js/course-media-storage.js?v=8.0P.167.182';
 
 const MAX_QUERY_VALUES = 10;
-const VERSION = '8.0P.167.183';
+const VERSION = '8.0P.167.184';
+const functionsInstance = getFunctions(app, 'europe-west1');
+const submitCourseForValidationCallable = httpsCallable(functionsInstance, 'submitCourseForValidation');
+const reviewCourseValidationCallable = httpsCallable(functionsInstance, 'reviewCourseValidation');
 
 const BLOCK_TYPES = [
   { type: 'course_info', label: 'Course Info', subtitle: 'Informations générales', icon: 'i', static: true },
@@ -193,6 +197,7 @@ const state = {
   selectedFormationIds: [],
   blockOptions: [],
   dirty: false,
+  readOnly: false,
   dragBlockId: '',
   quill: null,
   quillBlockId: '',
@@ -377,6 +382,71 @@ function getStatusTone(status = state.status) {
   if (status === 'pending') return 'pending';
   if (status === 'approved' || status === 'published') return 'published';
   return 'draft';
+}
+
+function isTeacherPendingLocked() {
+  return state.role === 'teacher'
+    && state.courseId
+    && state.status === 'pending';
+}
+
+function isAdminPendingReview() {
+  return state.role === 'admin'
+    && state.courseId
+    && state.status === 'pending';
+}
+
+function syncWorkflowControls() {
+  const isPendingAdmin = isAdminPendingReview();
+  const submitButton = $('#course-v2-submit');
+  const rejectButton = $('#course-v2-reject');
+
+  if (submitButton) {
+    submitButton.textContent = state.role === 'admin' ? 'Mettre en ligne' : 'Soumettre';
+    submitButton.hidden = false;
+  }
+
+  if (rejectButton) {
+    rejectButton.hidden = !isPendingAdmin;
+  }
+}
+
+function applyEditorLockState() {
+  const locked = isTeacherPendingLocked();
+  state.readOnly = locked;
+  syncWorkflowControls();
+
+  const root = $('#sbi-course-editor-v2');
+  const shell = root?.querySelector('.sbi-editor-shell');
+  const banner = $('#course-v2-lock-banner');
+  const allowedWhenLocked = new Set(['course-v2-back-library', 'course-v2-preview']);
+
+  if (shell) shell.classList.toggle('sbi-editor-shell--locked', locked);
+  if (banner) banner.hidden = !locked;
+
+  [root, document.querySelector('.sbi-block-bank')].filter(Boolean).forEach((controlRoot) => {
+    $all('input, textarea, select, button', controlRoot).forEach((control) => {
+      if (allowedWhenLocked.has(control.id) || control.classList.contains('sbi-structure-item')) {
+        control.disabled = false;
+        control.removeAttribute('aria-disabled');
+        return;
+      }
+      control.disabled = locked;
+      if (locked) control.setAttribute('aria-disabled', 'true');
+      else control.removeAttribute('aria-disabled');
+    });
+  });
+
+  const topTitle = $('#course-v2-title');
+  if (topTitle) topTitle.readOnly = locked;
+
+  if (state.quill?.enable) {
+    state.quill.enable(!locked);
+  }
+
+  if (locked) {
+    setStatus('Cours en attente de validation. Modification verrouillée.', 'pending');
+  }
 }
 
 function snapToArray(snapshot) {
@@ -714,9 +784,14 @@ function mountShell() {
           <span id="course-v2-save-state" class="sbi-status-line">Initialisation…</span>
           <button id="course-v2-preview" class="sbi-editor-btn" type="button">Prévisualiser</button>
           <button id="course-v2-save" class="sbi-editor-btn" type="button">Enregistrer</button>
-          <button id="course-v2-submit" class="sbi-editor-btn sbi-editor-btn--primary" type="button">${state.role === 'admin' ? 'Valider' : 'Soumettre'}</button>
+          <button id="course-v2-reject" class="sbi-editor-btn sbi-editor-btn--danger" type="button" hidden>Refuser</button>
+          <button id="course-v2-submit" class="sbi-editor-btn sbi-editor-btn--primary" type="button">${state.role === 'admin' ? 'Mettre en ligne' : 'Soumettre'}</button>
         </div>
       </section>
+
+      <div id="course-v2-lock-banner" class="sbi-editor-lock-banner" hidden>
+        Ce cours est soumis à validation. Il reste consultable, mais non modifiable tant que l’administration ne l’a pas validé ou refusé.
+      </div>
 
       <div class="sbi-editor-grid">
         <aside class="sbi-editor-panel sbi-editor-left">
@@ -759,6 +834,7 @@ function setStatus(message, tone = '') {
 }
 
 function markDirty() {
+  if (state.readOnly) return;
   state.dirty = true;
   setStatus('Modifications non enregistrées');
 }
@@ -944,7 +1020,7 @@ function renderStructure() {
   list.innerHTML = items.map((item, index) => {
     const meta = getBlockMeta(item.type);
     const active = item.id === state.activeBlockId;
-    const canDrag = !item.static;
+    const canDrag = !item.static && !state.readOnly;
     return `
       <li>
         <button class="sbi-structure-item" data-block-id="${escapeHtml(item.id)}" data-draggable-block-id="${canDrag ? escapeHtml(item.id) : ''}" data-active="${active ? 'true' : 'false'}" draggable="${canDrag ? 'true' : 'false'}" type="button">
@@ -967,6 +1043,7 @@ function renderStructure() {
 }
 
 function bindStructureDragAndDrop(list) {
+  if (state.readOnly) return;
   const draggableItems = $all('[data-draggable-block-id]', list)
     .filter((button) => normalizeString(button.dataset.draggableBlockId));
 
@@ -1012,6 +1089,7 @@ function bindStructureDragAndDrop(list) {
 }
 
 function reorderLearningBlock(sourceId, targetId, { insertAfter = false } = {}) {
+  if (state.readOnly) return;
   if (!sourceId || !targetId || sourceId === targetId) return;
 
   const blocks = state.course.learningBlocks;
@@ -1055,6 +1133,10 @@ function renderAddControls() {
 }
 
 function addBlock(type) {
+  if (state.readOnly) {
+    void openSbiAlert('Cours verrouillé', 'Ce cours est soumis à validation et ne peut pas être modifié pour le moment.');
+    return;
+  }
   saveActiveEditorValues();
   const block = createDefaultBlock(type);
   state.course.learningBlocks.push(block);
@@ -1064,6 +1146,10 @@ function addBlock(type) {
 }
 
 async function deleteActiveBlock() {
+  if (state.readOnly) {
+    await openSbiAlert('Cours verrouillé', 'Ce cours est soumis à validation et ne peut pas être modifié pour le moment.');
+    return;
+  }
   const active = getActiveBlock();
   if (!active) return;
   const confirmed = await openSbiDialog({
@@ -1082,6 +1168,10 @@ async function deleteActiveBlock() {
 }
 
 function duplicateActiveBlock() {
+  if (state.readOnly) {
+    void openSbiAlert('Cours verrouillé', 'Ce cours est soumis à validation et ne peut pas être modifié pour le moment.');
+    return;
+  }
   const active = getActiveBlock();
   if (!active) return;
   const clone = JSON.parse(JSON.stringify(active));
@@ -1210,6 +1300,7 @@ function setupV2DropZone(dropZoneId, inputId, type, block) {
   const dropZone = document.getElementById(dropZoneId);
   const input = document.getElementById(inputId);
   if (!dropZone || !input || !block) return;
+  if (state.readOnly) return;
 
   const openPicker = () => input.click();
   dropZone.addEventListener('click', openPicker);
@@ -1243,6 +1334,7 @@ function setupV2DropZone(dropZoneId, inputId, type, block) {
 }
 
 function handleV2MediaFile(type, file, block, input = null) {
+  if (state.readOnly) return;
   if (!file || !block?.id) return;
 
   try {
@@ -1857,6 +1949,7 @@ function bindGlobalActions() {
 
   $('#course-v2-save')?.addEventListener('click', () => saveCourse('draft'));
   $('#course-v2-submit')?.addEventListener('click', () => saveCourse(state.role === 'admin' ? 'publish' : 'submit'));
+  $('#course-v2-reject')?.addEventListener('click', () => rejectCourseFromValidation());
   $('#course-v2-preview')?.addEventListener('click', async () => {
     if (!state.courseId) await saveCourse('draft', { silent: true });
     if (state.courseId) window.open(`${getViewerUrl()}?id=${encodeURIComponent(state.courseId)}&preview=true&returnTo=${encodeURIComponent(location.pathname + location.search)}`, '_blank');
@@ -1889,7 +1982,11 @@ function buildCoursePayload(action = 'draft') {
     statutValidation = 'approved';
     actif = true;
   } else {
-    statutValidation = state.status === 'approved' && state.role === 'admin' ? 'approved' : 'draft';
+    if (state.role === 'admin' && state.status === 'pending') {
+      statutValidation = 'pending';
+    } else {
+      statutValidation = state.status === 'approved' && state.role === 'admin' ? 'approved' : 'draft';
+    }
     actif = statutValidation === 'approved';
   }
 
@@ -1942,6 +2039,13 @@ function buildCoursePayload(action = 'draft') {
 }
 
 async function saveCourse(action = 'draft', { silent = false } = {}) {
+  if (state.readOnly || isTeacherPendingLocked()) {
+    state.readOnly = true;
+    applyEditorLockState();
+    await openSbiAlert('Cours verrouillé', 'Ce cours est soumis à validation. Il redeviendra modifiable uniquement après validation ou refus.');
+    return;
+  }
+
   saveActiveEditorValues();
   if (!state.course.title.trim()) {
     await openSbiAlert('Titre manquant', 'Ajoute un titre de cours avant de sauvegarder.');
@@ -1951,18 +2055,42 @@ async function saveCourse(action = 'draft', { silent = false } = {}) {
     state.course.learningBlocks.push(createDefaultBlock('lesson'));
   }
 
+  if (action === 'submit') {
+    const confirmed = await openSbiDialog({
+      title: 'Soumettre ce cours ?',
+      message: 'Une fois soumis, le cours ne sera plus modifiable tant que l’administration ne l’aura pas validé ou refusé.',
+      confirmText: 'Soumettre',
+      cancelText: 'Continuer à modifier',
+      tone: 'default'
+    });
+    if (!confirmed) return;
+  }
+
+  if (action === 'publish') {
+    const confirmed = await openSbiDialog({
+      title: 'Mettre ce cours en ligne ?',
+      message: 'Le cours sera validé, publié, journalisé et les notifications prévues seront envoyées.',
+      confirmText: 'Mettre en ligne',
+      cancelText: 'Annuler',
+      tone: 'default'
+    });
+    if (!confirmed) return;
+  }
+
   setStatus('Sauvegarde…');
 
   try {
     let targetRef = null;
     let targetCourseId = state.courseId;
+    const persistenceAction = ['submit', 'publish'].includes(action) ? 'draft' : action;
+    let workflowResult = null;
 
     if (!targetCourseId) {
       targetRef = doc(collection(db, 'courses'));
       targetCourseId = targetRef.id;
     }
 
-    let payload = buildCoursePayload(action);
+    let payload = buildCoursePayload(persistenceAction);
     validateCourseDocumentSize(payload);
 
     const isNewCourse = !state.courseId;
@@ -1981,7 +2109,7 @@ async function saveCourse(action = 'draft', { silent = false } = {}) {
       const mediaChapitres = convertBlocksToLegacyChapters(state.course.learningBlocks);
       await uploadPendingMediaForChapters(targetCourseId, mediaChapitres, { uploadedBy: state.uid });
       syncUploadedMediaBackToBlocks(mediaChapitres);
-      payload = buildCoursePayload(action);
+      payload = buildCoursePayload(persistenceAction);
       validateCourseDocumentSize(payload);
     }
 
@@ -1989,15 +2117,74 @@ async function saveCourse(action = 'draft', { silent = false } = {}) {
       await updateDoc(doc(db, 'courses', state.courseId), payload);
     }
 
+    if (action === 'submit') {
+      setStatus('Soumission à validation…');
+      const result = await submitCourseForValidationCallable({ courseId: targetCourseId });
+      workflowResult = result?.data || null;
+      payload = {
+        ...payload,
+        statutValidation: 'pending',
+        actif: false,
+        lmsStatus: 'pending_review'
+      };
+    }
+
+    if (action === 'publish') {
+      setStatus('Mise en ligne…');
+      const result = await reviewCourseValidationCallable({ courseId: targetCourseId, decision: 'publish' });
+      workflowResult = result?.data || null;
+      payload = {
+        ...payload,
+        statutValidation: 'approved',
+        actif: true,
+        lmsStatus: 'published'
+      };
+    }
+
     state.status = payload.statutValidation;
+    state.course.actif = payload.actif;
+    state.course.lmsStatus = payload.lmsStatus;
     state.dirty = false;
     updateHeaderFields();
-    setStatus(action === 'submit' ? 'Cours soumis à validation.' : (action === 'publish' ? 'Cours validé.' : 'Brouillon enregistré.'), 'success');
+    applyEditorLockState();
+    setStatus(workflowResult?.message || (action === 'submit' ? 'Cours soumis à validation.' : (action === 'publish' ? 'Cours mis en ligne.' : 'Brouillon enregistré.')), 'success');
     if (!silent) await loadBlockOptionsFromCourses();
   } catch (error) {
     console.error('[SBI Course Editor V2] Sauvegarde impossible :', error);
     setStatus('Erreur de sauvegarde', 'error');
     await openSbiAlert('Sauvegarde impossible', error.message || 'Erreur inconnue', { tone: 'danger' });
+  }
+}
+
+async function rejectCourseFromValidation() {
+  if (!isAdminPendingReview()) {
+    await openSbiAlert('Refus indisponible', 'Seul un cours en attente de validation peut être refusé.');
+    return;
+  }
+
+  const confirmed = await openSbiDialog({
+    title: 'Refuser ce cours ?',
+    message: 'Le cours redeviendra modifiable par le professeur. Une notification et un email transactionnel lui seront envoyés.',
+    confirmText: 'Refuser le cours',
+    cancelText: 'Annuler',
+    tone: 'danger'
+  });
+  if (!confirmed) return;
+
+  setStatus('Refus du cours…');
+
+  try {
+    const result = await reviewCourseValidationCallable({ courseId: state.courseId, decision: 'reject' });
+    state.status = 'rejected';
+    state.course.actif = false;
+    state.course.lmsStatus = 'draft';
+    state.dirty = false;
+    renderAll();
+    setStatus(result?.data?.message || 'Cours refusé. Le professeur peut le corriger.', 'success');
+  } catch (error) {
+    console.error('[SBI Course Editor V2] Refus impossible :', error);
+    setStatus('Erreur de refus', 'error');
+    await openSbiAlert('Refus impossible', error.message || 'Erreur inconnue', { tone: 'danger' });
   }
 }
 
@@ -2048,6 +2235,7 @@ async function loadCourseFromUrl() {
   if (!state.course.learningBlocks.length) state.course.learningBlocks = [createDefaultBlock('lesson')];
   updateComputedCourseDuration();
   state.activeBlockId = state.course.learningBlocks[0]?.id || 'course_info';
+  state.readOnly = isTeacherPendingLocked();
 }
 
 async function initForUser(user) {
@@ -2082,7 +2270,7 @@ async function initForUser(user) {
 
   updateHeaderFields();
   renderAll();
-  setStatus('Prêt');
+  setStatus(state.readOnly ? 'Cours en attente de validation. Modification verrouillée.' : 'Prêt', state.readOnly ? 'pending' : '');
 }
 
 function renderAll() {
@@ -2094,6 +2282,7 @@ function renderAll() {
   renderPreview();
   bindSettingsInputs();
   scheduleFixedBlockBankOffset();
+  applyEditorLockState();
 }
 
 let booted = false;
@@ -2112,6 +2301,7 @@ function resetEditorRuntimeState() {
   state.selectedFormationIds = [];
   state.blockOptions = [];
   state.dirty = false;
+  state.readOnly = false;
   state.dragBlockId = '';
   resetQuillInstance();
   state.course = {

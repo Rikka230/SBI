@@ -520,7 +520,7 @@ service cloud.firestore {
       return isTeacher()
         && request.resource.data.auteurId == request.auth.uid
         && request.resource.data.actif == false
-        && request.resource.data.statutValidation in ['draft', 'pending'];
+        && request.resource.data.statutValidation == 'draft';
     }
 
     function validTeacherCourseUpdate() {
@@ -528,7 +528,11 @@ service cloud.firestore {
         && resource.data.auteurId == request.auth.uid
         && request.resource.data.auteurId == resource.data.auteurId
         && request.resource.data.actif == false
-        && request.resource.data.statutValidation in ['draft', 'pending'];
+        && (
+          !resource.data.keys().hasAny(['statutValidation'])
+          || resource.data.statutValidation in ['draft', 'rejected']
+        )
+        && request.resource.data.statutValidation == 'draft';
     }
 
     function currentUserHasFormationId(formationId) {

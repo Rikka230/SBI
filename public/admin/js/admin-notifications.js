@@ -23,7 +23,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import { waitForSbiTopbar } from '/admin/js/components/ready.js';
-import { setupGlobalSearch, clearGlobalSearchCache } from '/admin/js/global-search.js';
+import { setupGlobalSearch, clearGlobalSearchCache } from '/admin/js/global-search.js?v=8.0P.167.184';
 
 let currentUid = null;
 let currentUserProfile = null;
@@ -183,6 +183,14 @@ function cleanupNotificationListeners() {
 
 function isAdminLike() {
     return currentUserProfile?.isGod === true || currentUserProfile?.role === 'admin';
+}
+
+function getAdminCourseEditorUrl(courseId) {
+    return `/admin/course-editor.html?id=${encodeURIComponent(courseId || '')}`;
+}
+
+function getTeacherCourseEditorUrl(courseId) {
+    return `/teacher/course-editor.html?id=${encodeURIComponent(courseId || '')}`;
 }
 
 function isNotificationDismissedForCurrentUser(notif) {
@@ -515,16 +523,12 @@ function renderNotificationsList(notifs) {
                 return;
             } else if (notifType === 'course_rejected') {
                 if (userRole === 'teacher') {
-                    window.location.assign(`/teacher/mes-cours.html?edit=${courseId}`);
+                    window.location.assign(getTeacherCourseEditorUrl(courseId));
                 } else {
-                    window.location.assign(`/admin/formations-cours.html?edit=${courseId}`);
+                    window.location.assign(getAdminCourseEditorUrl(courseId));
                 }
             } else {
-                if (window.location.pathname.includes('formations-cours.html') && typeof window.editCourse === 'function') {
-                    window.editCourse(courseId);
-                } else {
-                    window.location.assign(`/admin/formations-cours.html?edit=${courseId}`);
-                }
+                window.location.assign(getAdminCourseEditorUrl(courseId));
             }
         });
     });
@@ -649,13 +653,7 @@ function showAdminValidationActionModal({ notifId, courseId, courseTitle, auteur
 
     document.getElementById('btn-validation-examine').addEventListener('click', () => {
         closeValidationActionModal();
-
-        if (window.location.pathname.includes('formations-cours.html') && typeof window.editCourse === 'function') {
-            window.editCourse(courseId);
-            return;
-        }
-
-        window.location.assign(`/admin/formations-cours.html?edit=${courseId}`);
+        window.location.assign(getAdminCourseEditorUrl(courseId));
     });
 
     document.getElementById('btn-validation-later').addEventListener('click', () => {
@@ -791,7 +789,7 @@ function showTeacherCourseActionModal(courseId, courseTitle) {
     document.getElementById('btn-modal-edit').onclick = () => {
         modal.style.display = 'none';
         closeNotificationsPanel();
-        window.location.assign(`/teacher/mes-cours.html?edit=${courseId}`);
+        window.location.assign(getTeacherCourseEditorUrl(courseId));
     };
 
     document.getElementById('btn-modal-close').onclick = () => {

@@ -834,6 +834,29 @@ async function safeWriteAccountAuditLog(db, payload) {
     }
 }
 
+async function requireActiveCourseCaller(request, db) {
+    if (!request.auth || !request.auth.uid) {
+        throw new HttpsError("unauthenticated", "Vous devez être connecté pour effectuer cette action.");
+    }
+
+    const callerUid = request.auth.uid;
+    const callerDoc = await db.collection("users").doc(callerUid).get();
+    const callerData = callerDoc.exists ? (callerDoc.data() || {}) : null;
+
+    if (!callerData || callerData.statut === "suspendu") {
+        throw new HttpsError("permission-denied", "Action refusée : compte introuvable ou suspendu.");
+    }
+
+    return {
+        uid: callerUid,
+        email: getActorEmail(request, callerData),
+        data: callerData,
+        name: getAccountDisplayName(callerData),
+        isAdmin: callerData.isGod === true || callerData.role === "admin",
+        isTeacher: callerData.role === "teacher"
+    };
+}
+
 
 function normalizeFormationIndexValues(value) {
     if (!Array.isArray(value)) return [];
@@ -3424,6 +3447,499 @@ exports.adminUpdateUserAccount = onCall({
         success: true,
         warning,
         message: warning || "Compte modifié."
+    };
+});
+
+
+
+function getCourseWorkflowTitle(courseData = {}) {
+    return cleanString(courseData.titre || courseData.title || "Cours sans titre", 180);
+}
+
+function getCourseWorkflowUrl(path, courseId = "") {
+    const query = courseId ? `?id=${encodeURIComponent(courseId)}` : "";
+    return `${SBI_SITE_URL}${path}${query}`;
+}
+
+function isCoursePlanPlaceholderReplacement(item = {}, courseId = "") {
+    if (!item || item.courseId !== courseId) return false;
+    const source = cleanString(item.source || item.replacementSource || "", 120).toLowerCase();
+    return Boolean(item.replacedPlaceholderId)
+        || source.includes("placeholder-replace")
+        || source.includes("placeholder-replaced");
+}
+
+function getCourseWorkflowFormationLabels(courseData = {}) {
+    return [
+        ...(Array.isArray(courseData.targetFormationTitles) ? courseData.targetFormationTitles : []),
+        ...(Array.isArray(courseData.formations) ? courseData.formations : []),
+        ...(Array.isArray(courseData.formationIds) ? courseData.formationIds : [])
+    ].map((item) => cleanString(item, 120)).filter(Boolean).slice(0, 8);
+}
+
+function buildCourseWorkflowEmailHtml({ preheader, messageHtml, prenom = "équipe SBI" }) {
+    return renderSbiEmailTemplate({
+        prenom,
+        nomExpediteur: "Sport Business Institute",
+        posteExpediteur: "Plateforme pédagogique",
+        preheader,
+        messageHtml
+    });
+}
+
+async function sendCourseInternalEmail({ eventLabel, courseId, courseData, actor = {}, apiKey }) {
+    const title = getCourseWorkflowTitle(courseData);
+    const adminUrl = getCourseWorkflowUrl("/admin/course-editor.html", courseId);
+    const formationLabels = getCourseWorkflowFormationLabels(courseData).join(", ") || "Non renseigné";
+    const authorName = cleanString(courseData.authorName || courseData.auteurName || "", 180) || "Professeur";
+
+    return sendBrevoEmail({
+        sender: { name: SBI_SENDER_NAME, email: SBI_SENDER_EMAIL },
+        to: [{ email: SBI_CONTACT_EMAIL, name: "Sport Business Institute" }],
+        replyTo: {
+            email: isValidEmail(actor.email) ? actor.email : SBI_CONTACT_EMAIL,
+            name: actor.name || "Plateforme SBI"
+        },
+        subject: `SBI Cours - ${eventLabel} - ${title}`,
+        htmlContent: buildCourseWorkflowEmailHtml({
+            preheader: `Cours SBI - ${eventLabel}`,
+            messageHtml: `
+                <p style="margin:0 0 16px 0;">Une action est à suivre sur un cours SBI.</p>
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border:1px solid #dce4f2;border-radius:12px;overflow:hidden;background:#f7f9fd;">
+                    <tr><td style="padding:10px 12px;border-bottom:1px solid #dce4f2;color:#0051ff;font-weight:bold;width:38%;">Action</td><td style="padding:10px 12px;border-bottom:1px solid #dce4f2;color:#253047;">${escapeHtml(eventLabel)}</td></tr>
+                    <tr><td style="padding:10px 12px;border-bottom:1px solid #dce4f2;color:#0051ff;font-weight:bold;">Cours</td><td style="padding:10px 12px;border-bottom:1px solid #dce4f2;color:#253047;">${escapeHtml(title)}</td></tr>
+                    <tr><td style="padding:10px 12px;border-bottom:1px solid #dce4f2;color:#0051ff;font-weight:bold;">Auteur</td><td style="padding:10px 12px;border-bottom:1px solid #dce4f2;color:#253047;">${escapeHtml(authorName)}</td></tr>
+                    <tr><td style="padding:10px 12px;color:#0051ff;font-weight:bold;">Formation(s)</td><td style="padding:10px 12px;color:#253047;">${escapeHtml(formationLabels)}</td></tr>
+                </table>
+                ${buildActionButtonHtml(adminUrl, "Ouvrir le cours dans l'admin")}
+            `
+        }),
+        textContent: [
+            `SBI Cours - ${eventLabel}`,
+            "",
+            `Cours : ${title}`,
+            `Auteur : ${authorName}`,
+            `Formations : ${formationLabels}`,
+            `Lien admin : ${adminUrl}`
+        ].join("\n")
+    }, apiKey);
+}
+
+async function sendCourseTeacherStatusEmail({ teacher, courseId, courseData, status, apiKey }) {
+    const teacherEmail = cleanEmail(teacher.email || "");
+    if (!isValidEmail(teacherEmail)) throw new Error("Email professeur invalide ou manquant.");
+
+    const title = getCourseWorkflowTitle(courseData);
+    const isPublished = status === "published";
+    const teacherUrl = getCourseWorkflowUrl(isPublished ? "/teacher/mes-cours.html" : "/teacher/course-editor.html", isPublished ? "" : courseId);
+
+    return sendBrevoEmail({
+        sender: { name: SBI_SENDER_NAME, email: SBI_SENDER_EMAIL },
+        to: [{ email: teacherEmail, name: getAccountDisplayName(teacher) }],
+        replyTo: { email: SBI_CONTACT_EMAIL, name: "Sport Business Institute" },
+        subject: isPublished ? `SBI - Votre cours est en ligne : ${title}` : `SBI - Votre cours est à corriger : ${title}`,
+        htmlContent: buildCourseWorkflowEmailHtml({
+            prenom: teacher.prenom || "",
+            preheader: isPublished ? "Votre cours SBI a été validé et mis en ligne." : "Votre cours SBI nécessite des modifications.",
+            messageHtml: isPublished
+                ? `
+                    <p style="margin:0 0 16px 0;">Votre cours <strong>${escapeHtml(title)}</strong> a été validé par l'administration SBI et mis en ligne.</p>
+                    <p style="margin:0 0 16px 0;">Les publics concernés pourront y accéder selon leur programme et leurs droits de formation.</p>
+                    ${buildActionButtonHtml(teacherUrl, "Voir mes cours")}
+                `
+                : `
+                    <p style="margin:0 0 16px 0;">Votre cours <strong>${escapeHtml(title)}</strong> a été refusé pour le moment.</p>
+                    <p style="margin:0 0 16px 0;">Il est de nouveau modifiable dans votre espace professeur pour correction, puis nouvelle soumission.</p>
+                    ${buildActionButtonHtml(teacherUrl, "Corriger le cours")}
+                `
+        }),
+        textContent: isPublished
+            ? `Votre cours "${title}" a été validé et mis en ligne.\n${teacherUrl}`
+            : `Votre cours "${title}" nécessite des modifications.\n${teacherUrl}`
+    }, apiKey);
+}
+
+async function sendStudentNewCourseEmail({ student, courseId, courseData, promotion, apiKey }) {
+    const studentEmail = cleanEmail(student.email || "");
+    if (!isValidEmail(studentEmail)) throw new Error("Email élève invalide ou manquant.");
+
+    const title = getCourseWorkflowTitle(courseData);
+    const courseUrl = getCourseWorkflowUrl("/student/cours-viewer.html", courseId);
+    const promotionName = cleanString(promotion.name || promotion.promotionName || "votre promotion", 140);
+
+    return sendBrevoEmail({
+        sender: { name: SBI_SENDER_NAME, email: SBI_SENDER_EMAIL },
+        to: [{ email: studentEmail, name: getAccountDisplayName(student) }],
+        replyTo: { email: SBI_CONTACT_EMAIL, name: "Sport Business Institute" },
+        subject: `SBI - Nouveau cours disponible : ${title}`,
+        htmlContent: buildCourseWorkflowEmailHtml({
+            prenom: student.prenom || "",
+            preheader: "Un nouveau cours est disponible dans votre programme SBI.",
+            messageHtml: `
+                <p style="margin:0 0 16px 0;">Un nouveau cours vient d'être ajouté à votre programme de formation.</p>
+                <p style="margin:0 0 16px 0;"><strong>Cours :</strong> ${escapeHtml(title)}</p>
+                <p style="margin:0 0 16px 0;"><strong>Promotion :</strong> ${escapeHtml(promotionName)}</p>
+                ${buildActionButtonHtml(courseUrl, "Ouvrir le cours")}
+            `
+        }),
+        textContent: `Nouveau cours disponible : ${title}\nPromotion : ${promotionName}\nLien : ${courseUrl}`
+    }, apiKey);
+}
+
+async function resolveCourseValidationNotificationsServer(db, courseId, actorUid = "") {
+    const snap = await db.collection("notifications")
+        .where("type", "==", "course_validation")
+        .where("courseId", "==", courseId)
+        .get();
+
+    if (snap.empty) return 0;
+    const batch = db.batch();
+    const now = admin.firestore.FieldValue.serverTimestamp();
+    snap.forEach((docSnap) => {
+        batch.set(docSnap.ref, {
+            status: "resolved",
+            resolvedAt: now,
+            resolvedBy: actorUid || ""
+        }, { merge: true });
+    });
+    await batch.commit();
+    return snap.size;
+}
+
+async function createCourseValidationNotification(db, { courseId, courseData, caller }) {
+    const title = getCourseWorkflowTitle(courseData);
+    const notificationRef = db.collection("notifications").doc(`course_validation_${courseId}`);
+    await notificationRef.set({
+        type: "course_validation",
+        courseId,
+        courseTitle: title,
+        auteurId: courseData.auteurId || caller.uid,
+        auteurName: courseData.authorName || caller.name || "Professeur",
+        status: "open",
+        dateCreation: admin.firestore.FieldValue.serverTimestamp(),
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        dismissedBy: [],
+        resolvedAt: admin.firestore.FieldValue.delete(),
+        resolvedBy: admin.firestore.FieldValue.delete()
+    }, { merge: true });
+}
+
+async function addDirectCourseNotification(db, notificationId, payload) {
+    await db.collection("notifications").doc(notificationId).set({
+        ...payload,
+        status: payload.status || "open",
+        dateCreation: admin.firestore.FieldValue.serverTimestamp(),
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        dismissedBy: []
+    }, { merge: true });
+}
+
+async function listPromotionStudents(db, promotionId = "") {
+    if (!promotionId) return [];
+    const students = new Map();
+    const queries = [
+        db.collection("users").where("promotionId", "==", promotionId),
+        db.collection("users").where("currentPromotionId", "==", promotionId),
+        db.collection("users").where("promotionIds", "array-contains", promotionId)
+    ];
+
+    for (const queryRef of queries) {
+        try {
+            const snap = await queryRef.get();
+            snap.forEach((docSnap) => {
+                const data = docSnap.data() || {};
+                if (data.statut === "suspendu") return;
+                const role = cleanString(data.role || "", 40).toLowerCase();
+                if (role && !["student", "eleve", "élève", "etudiant", "étudiant"].includes(role)) return;
+                students.set(docSnap.id, { id: docSnap.id, ...data });
+            });
+        } catch (error) {
+            console.error("Lecture élèves promotion impossible :", promotionId, error.message || error);
+        }
+    }
+
+    return Array.from(students.values());
+}
+
+async function findReplacementPromotionsForCourse(db, courseId = "") {
+    if (!courseId) return [];
+    const snap = await db.collection("promotions").get();
+    const promotions = [];
+
+    snap.forEach((docSnap) => {
+        const data = docSnap.data() || {};
+        if (cleanString(data.status || "active", 40).toLowerCase() === "archived") return;
+        const coursePlan = Array.isArray(data.coursePlan) ? data.coursePlan : [];
+        const planItem = coursePlan.find((item) => isCoursePlanPlaceholderReplacement(item, courseId));
+        if (planItem) promotions.push({ id: docSnap.id, ...data, __matchedPlanItem: planItem });
+    });
+
+    return promotions;
+}
+
+async function notifyStudentsForReplacementCourse(db, { courseId, courseData, apiKey }) {
+    const promotions = await findReplacementPromotionsForCourse(db, courseId);
+    const notifiedStudents = new Set();
+    let notificationCount = 0;
+    let emailCount = 0;
+    let emailFailures = 0;
+
+    for (const promotion of promotions) {
+        const students = await listPromotionStudents(db, promotion.id);
+        for (const student of students) {
+            if (!student.id || notifiedStudents.has(student.id)) continue;
+            notifiedStudents.add(student.id);
+
+            await addDirectCourseNotification(db, `new_course_${courseId}_${student.id}`, {
+                type: "new_course_published",
+                courseId,
+                courseTitle: getCourseWorkflowTitle(courseData),
+                destinataireId: student.id,
+                targetStudents: [student.id],
+                promotionId: promotion.id,
+                promotionName: promotion.name || promotion.promotionName || "",
+                fromCoursePlan: true,
+                fromPlaceholderReplacement: true
+            });
+            notificationCount += 1;
+
+            try {
+                await sendStudentNewCourseEmail({ student, courseId, courseData, promotion, apiKey });
+                emailCount += 1;
+            } catch (error) {
+                emailFailures += 1;
+                console.error("Email nouveau cours élève impossible :", student.id, error.message, error.payload || "");
+            }
+        }
+    }
+
+    return {
+        promotions: promotions.map((promotion) => promotion.id),
+        notificationCount,
+        emailCount,
+        emailFailures
+    };
+}
+
+exports.submitCourseForValidation = onCall({
+    region: "europe-west1",
+    secrets: [BREVO_API_KEY],
+    timeoutSeconds: 45,
+    memory: "256MiB"
+}, async (request) => {
+    const db = admin.firestore();
+    const caller = await requireActiveCourseCaller(request, db);
+    const courseId = cleanString(request.data?.courseId, 180);
+
+    if (!courseId) throw new HttpsError("invalid-argument", "Identifiant cours manquant.");
+
+    const courseRef = db.collection("courses").doc(courseId);
+    const courseSnap = await courseRef.get();
+    if (!courseSnap.exists) throw new HttpsError("not-found", "Cours introuvable.");
+
+    const courseData = courseSnap.data() || {};
+    const authorId = cleanString(courseData.auteurId || "", 180);
+    if (!caller.isAdmin && authorId !== caller.uid) {
+        throw new HttpsError("permission-denied", "Vous ne pouvez soumettre que vos propres cours.");
+    }
+
+    if (courseData.actif === true || courseData.statutValidation === "approved") {
+        throw new HttpsError("failed-precondition", "Ce cours est déjà validé.");
+    }
+
+    await courseRef.set({
+        statutValidation: "pending",
+        actif: false,
+        lmsStatus: "pending_review",
+        submittedAt: admin.firestore.FieldValue.serverTimestamp(),
+        submittedBy: caller.uid,
+        submittedByEmail: caller.email,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+
+    const nextSnap = await courseRef.get();
+    const nextCourseData = nextSnap.data() || courseData;
+    await createCourseValidationNotification(db, { courseId, courseData: nextCourseData, caller });
+
+    let warning = "";
+    let contactEmailSent = false;
+    try {
+        const apiKey = BREVO_API_KEY.value();
+        if (!apiKey) throw new Error("BREVO_API_KEY manquant.");
+        await sendCourseInternalEmail({
+            eventLabel: "Cours soumis à validation",
+            courseId,
+            courseData: nextCourseData,
+            actor: caller,
+            apiKey
+        });
+        contactEmailSent = true;
+    } catch (error) {
+        warning = "Cours soumis, notification admin créée, mais email contact Brevo non envoyé.";
+        console.error("Email contact validation cours impossible :", error.message, error.payload || "");
+    }
+
+    await safeWriteAccountAuditLog(db, {
+        type: "course.validation_submitted",
+        actorUid: caller.uid,
+        actorEmail: caller.email,
+        targetUid: authorId || caller.uid,
+        targetEmail: cleanEmail(nextCourseData.authorEmail || caller.email || ""),
+        courseId,
+        courseTitle: getCourseWorkflowTitle(nextCourseData),
+        emailSent: contactEmailSent,
+        warning,
+        source: "course-workflow"
+    });
+
+    return {
+        success: true,
+        message: warning || "Cours soumis à validation.",
+        warning
+    };
+});
+
+exports.reviewCourseValidation = onCall({
+    region: "europe-west1",
+    secrets: [BREVO_API_KEY],
+    timeoutSeconds: 120,
+    memory: "512MiB"
+}, async (request) => {
+    const db = admin.firestore();
+    const caller = await requireAdminCaller(request, db);
+    const courseId = cleanString(request.data?.courseId, 180);
+    const decision = cleanString(request.data?.decision, 40).toLowerCase();
+
+    if (!courseId) throw new HttpsError("invalid-argument", "Identifiant cours manquant.");
+    if (!["publish", "reject"].includes(decision)) {
+        throw new HttpsError("invalid-argument", "Décision de validation invalide.");
+    }
+
+    const courseRef = db.collection("courses").doc(courseId);
+    const courseSnap = await courseRef.get();
+    if (!courseSnap.exists) throw new HttpsError("not-found", "Cours introuvable.");
+
+    const courseData = courseSnap.data() || {};
+    const authorId = cleanString(courseData.auteurId || "", 180);
+    const authorSnap = authorId ? await db.collection("users").doc(authorId).get() : null;
+    const authorData = authorSnap?.exists ? (authorSnap.data() || {}) : {};
+    const apiKey = BREVO_API_KEY.value();
+    if (!apiKey) throw new HttpsError("failed-precondition", "Configuration Brevo manquante côté serveur.");
+
+    const isPublishing = decision === "publish";
+    const updatePayload = isPublishing
+        ? {
+            statutValidation: "approved",
+            actif: true,
+            lmsStatus: "published",
+            approvedAt: admin.firestore.FieldValue.serverTimestamp(),
+            approvedBy: caller.uid,
+            approvedByEmail: caller.email,
+            publishedAt: admin.firestore.FieldValue.serverTimestamp(),
+            publishedBy: caller.uid,
+            publishedByEmail: caller.email,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        }
+        : {
+            statutValidation: "rejected",
+            actif: false,
+            lmsStatus: "draft",
+            rejectedAt: admin.firestore.FieldValue.serverTimestamp(),
+            rejectedBy: caller.uid,
+            rejectedByEmail: caller.email,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        };
+
+    await courseRef.set(updatePayload, { merge: true });
+    const nextSnap = await courseRef.get();
+    const nextCourseData = nextSnap.data() || { ...courseData, ...updatePayload };
+
+    const resolvedNotifications = await resolveCourseValidationNotificationsServer(db, courseId, caller.uid);
+    let teacherEmailSent = false;
+    let contactEmailSent = false;
+    let teacherNotificationSent = false;
+    let studentReport = { promotions: [], notificationCount: 0, emailCount: 0, emailFailures: 0 };
+    const warnings = [];
+
+    if (authorId) {
+        await addDirectCourseNotification(db, `${isPublishing ? "course_approved" : "course_rejected"}_${courseId}_${authorId}`, {
+            type: isPublishing ? "course_approved" : "course_rejected",
+            courseId,
+            courseTitle: getCourseWorkflowTitle(nextCourseData),
+            destinataireId: authorId
+        });
+        teacherNotificationSent = true;
+    }
+
+    try {
+        if (authorId && isValidEmail(cleanEmail(authorData.email || ""))) {
+            await sendCourseTeacherStatusEmail({
+                teacher: authorData,
+                courseId,
+                courseData: nextCourseData,
+                status: isPublishing ? "published" : "rejected",
+                apiKey
+            });
+            teacherEmailSent = true;
+        }
+    } catch (error) {
+        warnings.push("Email professeur non envoyé.");
+        console.error("Email professeur validation cours impossible :", error.message, error.payload || "");
+    }
+
+    if (isPublishing) {
+        try {
+            await sendCourseInternalEmail({
+                eventLabel: "Cours mis en ligne",
+                courseId,
+                courseData: nextCourseData,
+                actor: caller,
+                apiKey
+            });
+            contactEmailSent = true;
+        } catch (error) {
+            warnings.push("Email contact mise en ligne non envoyé.");
+            console.error("Email contact mise en ligne cours impossible :", error.message, error.payload || "");
+        }
+
+        studentReport = await notifyStudentsForReplacementCourse(db, {
+            courseId,
+            courseData: nextCourseData,
+            apiKey
+        });
+        if (studentReport.emailFailures > 0) {
+            warnings.push(`${studentReport.emailFailures} email(s) élève non envoyé(s).`);
+        }
+    }
+
+    await safeWriteAccountAuditLog(db, {
+        type: isPublishing ? "course.published" : "course.rejected",
+        actorUid: caller.uid,
+        actorEmail: caller.email,
+        targetUid: authorId,
+        targetEmail: cleanEmail(authorData.email || ""),
+        courseId,
+        courseTitle: getCourseWorkflowTitle(nextCourseData),
+        emailSent: teacherEmailSent,
+        contactEmailSent,
+        teacherNotificationSent,
+        resolvedNotifications,
+        studentNotificationCount: studentReport.notificationCount,
+        studentEmailCount: studentReport.emailCount,
+        studentEmailFailures: studentReport.emailFailures,
+        replacementPromotionIds: studentReport.promotions,
+        warning: warnings.join(" "),
+        source: "course-workflow"
+    });
+
+    return {
+        success: true,
+        status: isPublishing ? "approved" : "rejected",
+        message: warnings.length ? warnings.join(" ") : (isPublishing ? "Cours mis en ligne." : "Cours refusé."),
+        warnings,
+        studentReport
     };
 });
 

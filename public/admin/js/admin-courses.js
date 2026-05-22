@@ -45,7 +45,7 @@ import {
     loadCoursesForCourseAccess,
     loadCoursesForMediaSafety
 } from '/admin/js/course-data-access.js?v=8.0P.167.85';
-import { renderCourseActionButtons } from '/admin/js/course-action-buttons.js';
+import { renderCourseActionButtons } from '/admin/js/course-action-buttons.js?v=8.0P.167.184';
 import { notifyCourseDeletedIfNeeded } from '/admin/js/course-delete-notifications.js';
 import { SVG_PREVIEW, SVG_QUIZ_LIST } from '/admin/js/courses/course-icons.js';
 import {
@@ -326,11 +326,8 @@ export function mountAdminCourses({ source = 'standard' } = {}) {
             const editId = urlParams.get('edit');
 
             if (editId) {
-                window.editCourse(editId);
-
-                if (typeof window.switchCourseTab === 'function') {
-                    window.history.replaceState({}, document.title, window.location.pathname + "?tab=tab-editor");
-                }
+                window.location.assign(`/admin/course-editor.html?id=${encodeURIComponent(editId)}`);
+                return;
             }
 
             setupPreviewButton();

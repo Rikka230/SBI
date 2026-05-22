@@ -171,9 +171,9 @@ function getProfileLinkForSearchResult(userData, role) {
 }
 
 function getCourseLinkForSearchResult(courseData, role) {
-    if (role === 'admin') return `/admin/formations-cours.html?edit=${courseData.id}`;
+    if (role === 'admin') return `/admin/course-editor.html?id=${courseData.id}`;
     if (role === 'teacher') {
-        if (courseData.auteurId === activeSearchContext.currentUid) return `/teacher/mes-cours.html?edit=${courseData.id}`;
+        if (courseData.auteurId === activeSearchContext.currentUid) return `/teacher/course-editor.html?id=${courseData.id}`;
         return `/teacher/cours-viewer.html?id=${courseData.id}&preview=true`;
     }
     return `/student/cours-viewer.html?id=${courseData.id}`;

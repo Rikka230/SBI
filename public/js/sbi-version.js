@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.183',
+  version: '8.0P.167.184',
   branch: 'main',
-  channel: 'COURSE VIEWER FILL BLANK FIX',
-  stage: 'FILL BLANK ANSWERS HIDDEN UNTIL VALIDATION',
+  channel: 'COURSE VALIDATION WORKFLOW',
+  stage: 'TEACHER LOCK ADMIN PUBLISH NOTIFICATIONS',
   updatedAt: '2026-05-22',
-  label: 'SBI 8.0P.167.183 - Course viewer fill blank answers hidden'
+  label: 'SBI 8.0P.167.184 - Course validation workflow'
 };
 
 export function getSbiVersionLabel() {

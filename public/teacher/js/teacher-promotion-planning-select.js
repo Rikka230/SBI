@@ -357,22 +357,7 @@ function forceTeacherEditorNavigation(courseId = '') {
   const safeCourseId = clean(courseId);
   if (!safeCourseId) return;
 
-  const baseUrl = '/teacher/mes-cours.html';
-  const editUrl = `${baseUrl}?edit=${encodeURIComponent(safeCourseId)}`;
-
-  try {
-    window.history.replaceState({ sbiTeacherCourseTab: 'list' }, '', baseUrl);
-    window.history.pushState({ sbiTeacherCourseTab: 'editor', courseId: safeCourseId }, '', editUrl);
-    window.SBI_APP_SHELL_CURRENT_URL = window.location.href;
-  } catch {}
-
-  if (typeof window.switchCourseTab === 'function') window.switchCourseTab('tab-editor');
-
-  if (typeof window.editCourse === 'function') {
-    window.editCourse(safeCourseId);
-  } else {
-    window.location.href = editUrl;
-  }
+  window.location.assign(`/teacher/course-editor.html?id=${encodeURIComponent(safeCourseId)}`);
 }
 
 function handleTeacherEditorBridgeClick(event) {

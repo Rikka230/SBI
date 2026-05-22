@@ -72,7 +72,10 @@ const TYPE_META = {
   'student_documents.request_canceled': { label: 'Demande documents annulée', color: '#ff4a4a', tone: 'red' },
   'student_documents.document_uploaded_admin': { label: 'Document ajouté par admin', color: '#2A57FF', tone: 'blue' },
   'student_documents.document_archived': { label: 'Document archivé', color: '#fbbc04', tone: 'yellow' },
-  'student_documents.document_deleted': { label: 'Document supprimé', color: '#ff4a4a', tone: 'red' }
+  'student_documents.document_deleted': { label: 'Document supprimé', color: '#ff4a4a', tone: 'red' },
+  'course.validation_submitted': { label: 'Cours soumis', color: '#fbbc04', tone: 'yellow' },
+  'course.published': { label: 'Cours mis en ligne', color: '#2ed573', tone: 'green' },
+  'course.rejected': { label: 'Cours refusé', color: '#ff4a4a', tone: 'red' }
 };
 
 function scheduleIdle(callback) {
@@ -214,6 +217,9 @@ function getLogSearchHaystack(log = {}) {
     log.message,
     log.event,
     log.source,
+    log.courseId,
+    log.courseTitle,
+    log.warning,
     documents.requestId,
     documents.documentId,
     documents.title,
@@ -338,6 +344,18 @@ function getLogDetails(log = {}) {
   if (log.type === 'student_documents.document_deleted') details.push(`Document supprimé : ${documentChanges.title || documentChanges.fileName || 'Document non nommé'}`);
   if (documentChanges.requestId) details.push(`Demande : ${documentChanges.requestId}`);
   if (documentChanges.documentId) details.push(`Document : ${documentChanges.documentId}`);
+
+  if (String(log.type || '').startsWith('course.')) {
+    details.push(`Cours : ${log.courseTitle || log.courseId || 'Non renseigné'}`);
+    if (log.courseId) details.push(`ID : ${log.courseId}`);
+    if (log.contactEmailSent === true) details.push('Email contact envoyé.');
+    if (log.teacherNotificationSent === true) details.push('Notification professeur envoyée.');
+    if (log.studentNotificationCount !== undefined) details.push(`${log.studentNotificationCount} notification(s) élève.`);
+    if (log.studentEmailCount !== undefined) details.push(`${log.studentEmailCount} email(s) élève.`);
+    if (Array.isArray(log.replacementPromotionIds) && log.replacementPromotionIds.length) {
+      details.push(`Promotions : ${formatSmallList(log.replacementPromotionIds, 'Aucune promotion')}`);
+    }
+  }
 
   if (log.event) details.push(`Événement : ${log.event}`);
   if (log.emailSent === true) details.push('Email envoyé.');
