@@ -302,10 +302,11 @@ function restoreTemplateAfterReload(attempt = 0) {
 }
 
 function reloadPageOnFreshTemplate(templateId = '') {
-  rememberTemplateReload(templateId);
-  window.setTimeout(() => {
-    window.location.reload();
-  }, 650);
+  // 8.0P.167.187 : ne plus déclencher de rechargement complet après remplacement.
+  // La consolidation Firestore et la synchro promotions restent asynchrones.
+  if (templateId) rememberTemplateReload(templateId);
+  scheduleRefresh(80);
+  setStatus('Cours futur remplacé. Restez sur le cursus : aucun rechargement complet nécessaire.', 'success');
 }
 
 async function fetchCourse(courseId) {

@@ -3461,28 +3461,155 @@ function getCourseWorkflowUrl(path, courseId = "") {
     return `${SBI_SITE_URL}${path}${query}`;
 }
 
+function collectCleanStringIds(value, output = new Set()) {
+    if (value === null || value === undefined) return output;
+
+    if (typeof value === "string" || typeof value === "number") {
+        const cleaned = cleanString(value, 180);
+        if (cleaned) output.add(cleaned);
+        return output;
+    }
+
+    if (Array.isArray(value)) {
+        value.forEach((item) => collectCleanStringIds(item, output));
+        return output;
+    }
+
+    if (typeof value === "object") {
+        [
+            "uid",
+            "id",
+            "studentId",
+            "studentUid",
+            "studentUID",
+            "userId",
+            "accountId",
+            "eleveId",
+            "eleveUid",
+            "learnerId"
+        ].forEach((key) => {
+            if (Object.prototype.hasOwnProperty.call(value, key)) {
+                collectCleanStringIds(value[key], output);
+            }
+        });
+    }
+
+    return output;
+}
+
+function collectCleanEmails(value, output = new Set()) {
+    if (value === null || value === undefined) return output;
+
+    if (typeof value === "string") {
+        const email = cleanEmail(value);
+        if (isValidEmail(email)) output.add(email);
+        return output;
+    }
+
+    if (Array.isArray(value)) {
+        value.forEach((item) => collectCleanEmails(item, output));
+        return output;
+    }
+
+    if (typeof value === "object") {
+        ["email", "mail", "studentEmail", "userEmail"].forEach((key) => {
+            if (Object.prototype.hasOwnProperty.call(value, key)) collectCleanEmails(value[key], output);
+        });
+    }
+
+    return output;
+}
+
+function getCoursePlanItemsFromPromotion(promotionData = {}) {
+    const items = [];
+    [
+        promotionData.coursePlan,
+        promotionData.coursePlans,
+        promotionData.plan,
+        promotionData.planning,
+        promotionData.curriculumItems,
+        promotionData.items,
+        promotionData.modules
+    ].forEach((value) => {
+        if (Array.isArray(value)) items.push(...value);
+    });
+    return items.filter((item) => item && typeof item === "object");
+}
+
+function getCourseIdCandidatesFromPlanItem(item = {}) {
+    const ids = new Set();
+    [
+        item.courseId,
+        item.courseID,
+        item.courseDocId,
+        item.courseRef,
+        item.linkedCourseId,
+        item.realCourseId,
+        item.replacementCourseId,
+        item.targetCourseId,
+        item.publishedCourseId,
+        item.id
+    ].forEach((value) => collectCleanStringIds(value, ids));
+    return Array.from(ids);
+}
+
+function getCoursePlanCourseId(item = {}) {
+    const ids = getCourseIdCandidatesFromPlanItem(item);
+    if (ids.length) return ids[0];
+    return cleanString(
+        item.course?.id
+        || item.course?.courseId
+        || item.course?.docId
+        || "",
+        180
+    );
+}
+
+function normalizeCourseWorkflowMatchText(value = "") {
+    return cleanString(value || "", 240)
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase();
+}
+
 function isCoursePlanPlaceholderReplacement(item = {}, courseId = "") {
-    if (!item || item.courseId !== courseId) return false;
-    const source = cleanString(item.source || item.replacementSource || "", 120).toLowerCase();
-    return Boolean(item.replacedPlaceholderId)
-        || item.fromPlaceholderReplacement === true
+    if (!item) return false;
+
+    const itemCourseId = getCoursePlanCourseId(item);
+    if (courseId && itemCourseId && itemCourseId !== courseId) return false;
+
+    const source = [
+        item.source,
+        item.replacementSource,
+        item.replacementUpdatedBy,
+        item.coursePlanSource,
+        item.syncSource
+    ].map((value) => cleanString(value || "", 140)).join(" ").toLowerCase();
+
+    return Boolean(item.replacedPlaceholderId || item.fromPlaceholderReplacement || item.placeholderId)
         || source.includes("placeholder-replace")
         || source.includes("placeholder-replaced");
 }
 
-function isCoursePlanPublishedCourseTarget(item = {}, courseId = "") {
-    if (!item || !courseId || item.courseId !== courseId) return false;
+function isCoursePlanItemLinkedToPublishedCourse(item = {}, courseId = "", courseData = {}) {
+    if (!item || !courseId) return false;
+
+    const itemCourseId = getCoursePlanCourseId(item);
+    if (itemCourseId) return itemCourseId === courseId;
+
+    // Dernier filet de sécurité : certains anciens plans n'ont pas conservé
+    // l'ID du cours après remplacement, mais gardent le titre exact. On ne
+    // l'utilise que pour des items pédagogiques explicites afin d'éviter les
+    // faux positifs.
+    const itemTitle = normalizeCourseWorkflowMatchText(item.courseTitle || item.title || item.label || "");
+    const courseTitle = normalizeCourseWorkflowMatchText(courseData.titre || courseData.title || "");
+    if (!itemTitle || !courseTitle || itemTitle !== courseTitle) return false;
 
     const type = cleanString(item.type || item.itemType || "", 80).toLowerCase();
     const layer = cleanString(item.layer || "", 80).toLowerCase();
-
-    // Le remplacement Cours futur -> vrai cours peut perdre ses marqueurs
-    // lors de la resynchronisation Cursus -> Promotion. Le coursePlan de la
-    // promotion reste alors la source métier : si le cours publié y est présent
-    // comme vrai cours, les élèves de cette promotion doivent être notifiés.
-    return isCoursePlanPlaceholderReplacement(item, courseId)
-        || ["course", "real_course"].includes(type)
-        || layer === "courses";
+    return ["course", "real_course", "published_course", "placeholder_course"].includes(type)
+        || layer === "courses"
+        || isCoursePlanPlaceholderReplacement(item, courseId);
 }
 
 function getCourseWorkflowFormationLabels(courseData = {}) {
@@ -3576,7 +3703,7 @@ async function sendCourseTeacherStatusEmail({ teacher, courseId, courseData, sta
 }
 
 async function sendStudentNewCourseEmail({ student, courseId, courseData, promotion, apiKey }) {
-    const studentEmail = cleanEmail(student.email || "");
+    const studentEmail = cleanEmail(student.email || student.mail || student.emailAddress || "");
     if (!isValidEmail(studentEmail)) throw new Error("Email élève invalide ou manquant.");
 
     const title = getCourseWorkflowTitle(courseData);
@@ -3648,127 +3775,317 @@ async function addDirectCourseNotification(db, notificationId, payload) {
         dateCreation: admin.firestore.FieldValue.serverTimestamp(),
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        dismissedBy: []
+        dismissedBy: [],
+        resolvedAt: admin.firestore.FieldValue.delete(),
+        resolvedBy: admin.firestore.FieldValue.delete()
     }, { merge: true });
 }
 
-async function listPromotionStudents(db, promotionId = "", promotionData = {}) {
-    if (!promotionId) return [];
-    const students = new Map();
-    const directStudentIds = Array.from(new Set([
-        ...(Array.isArray(promotionData.studentIds) ? promotionData.studentIds : []),
-        ...(Array.isArray(promotionData.students) ? promotionData.students : []),
-        ...(Array.isArray(promotionData.studentUids) ? promotionData.studentUids : []),
-        ...(Array.isArray(promotionData.eleves) ? promotionData.eleves : []),
-        ...(Array.isArray(promotionData.elevesIds) ? promotionData.elevesIds : [])
-    ].map((id) => cleanString(id, 180)).filter(Boolean)));
+function isStudentNotificationProfile(data = {}) {
+    const role = cleanString(data.role || "", 80).toLowerCase();
+    if (!role) return true;
+    return ![
+        "admin",
+        "god",
+        "superadmin",
+        "teacher",
+        "prof",
+        "professeur",
+        "enseignant"
+    ].includes(role);
+}
 
+function isStudentAccountForCourseNotification(data = {}) {
+    if (!data) return false;
+    const statut = cleanString(data.statut || data.status || "", 80).toLowerCase();
+    if (["suspendu", "suspended", "archived", "archive"].includes(statut)) return false;
+
+    const role = cleanString(data.role || "", 80).toLowerCase();
+    if (!role) return true;
+    return ![
+        "admin",
+        "god",
+        "superadmin",
+        "teacher",
+        "prof",
+        "professeur",
+        "enseignant"
+    ].includes(role);
+}
+
+function addStudentIdFromValue(ids, value) {
+    if (!value) return;
+    if (typeof value === "string") {
+        const id = cleanString(value, 180);
+        if (id) ids.add(id);
+        return;
+    }
+    if (Array.isArray(value)) {
+        value.forEach((entry) => addStudentIdFromValue(ids, entry));
+        return;
+    }
+    if (typeof value === "object") {
+        const id = cleanString(value.id || value.uid || value.studentId || value.studentUid || value.studentUID || value.userId || value.accountId || value.eleveId || value.eleveUid || value.learnerId || "", 180);
+        if (id) ids.add(id);
+    }
+}
+
+function collectPromotionStudentIds(promotionData = {}) {
+    const ids = new Set();
+    [
+        promotionData.studentIds,
+        promotionData.students,
+        promotionData.studentUids,
+        promotionData.studentUIDs,
+        promotionData.studentUidList,
+        promotionData.eleveIds,
+        promotionData.eleves,
+        promotionData.elevesIds,
+        promotionData.apprenants,
+        promotionData.apprenantIds,
+        promotionData.learners,
+        promotionData.learnerIds,
+        promotionData.roster,
+        promotionData.targetStudents
+    ].forEach((value) => addStudentIdFromValue(ids, value));
+    return Array.from(ids);
+}
+
+function collectPromotionStudentEmails(promotionData = {}) {
+    const emails = new Set();
+    [
+        promotionData.studentEmails,
+        promotionData.students,
+        promotionData.eleves,
+        promotionData.apprenants,
+        promotionData.learners,
+        promotionData.roster
+    ].forEach((value) => collectCleanEmails(value, emails));
+    return Array.from(emails);
+}
+
+async function addStudentById(db, students, studentId = "") {
+    const safeId = cleanString(studentId, 180);
+    if (!safeId || students.has(safeId)) return;
+
+    try {
+        const snap = await db.collection("users").doc(safeId).get();
+        if (!snap.exists) return;
+        const data = snap.data() || {};
+        if (!isStudentAccountForCourseNotification(data)) return;
+        students.set(snap.id, { id: snap.id, ...data });
+    } catch (error) {
+        console.error("Lecture élève promotion par ID impossible :", safeId, error.message || error);
+    }
+}
+
+async function listPromotionStudents(db, promotion = "") {
+    const promotionId = cleanString(typeof promotion === "string" ? promotion : promotion?.id || "", 180);
+    const promotionData = promotion && typeof promotion === "object" ? promotion : {};
+    if (!promotionId) return [];
+
+    const students = new Map();
     const queries = [
         db.collection("users").where("promotionId", "==", promotionId),
         db.collection("users").where("currentPromotionId", "==", promotionId),
-        db.collection("users").where("promotionIds", "array-contains", promotionId)
+        db.collection("users").where("assignedPromotionId", "==", promotionId),
+        db.collection("users").where("cohortId", "==", promotionId),
+        db.collection("users").where("promotionIds", "array-contains", promotionId),
+        db.collection("users").where("assignedPromotionIds", "array-contains", promotionId)
     ];
-
-    const absorbUserDoc = (docSnap) => {
-        if (!docSnap?.exists) return;
-        const data = docSnap.data() || {};
-        if (data.statut === "suspendu") return;
-        const role = cleanString(data.role || "", 40).toLowerCase();
-        if (role && !["student", "eleve", "élève", "etudiant", "étudiant"].includes(role)) return;
-        students.set(docSnap.id, { id: docSnap.id, ...data });
-    };
 
     for (const queryRef of queries) {
         try {
             const snap = await queryRef.get();
-            snap.forEach(absorbUserDoc);
+            snap.forEach((docSnap) => {
+                const data = docSnap.data() || {};
+                if (!isStudentAccountForCourseNotification(data)) return;
+                students.set(docSnap.id, { id: docSnap.id, ...data });
+            });
         } catch (error) {
             console.error("Lecture élèves promotion impossible :", promotionId, error.message || error);
         }
     }
 
-    for (const studentId of directStudentIds) {
-        if (students.has(studentId)) continue;
+    for (const studentId of collectPromotionStudentIds(promotionData)) {
+        await addStudentById(db, students, studentId);
+    }
+
+    for (const email of collectPromotionStudentEmails(promotionData)) {
         try {
-            const studentSnap = await db.collection("users").doc(studentId).get();
-            absorbUserDoc(studentSnap);
+            const snap = await db.collection("users").where("email", "==", email).limit(3).get();
+            snap.forEach((docSnap) => {
+                const data = docSnap.data() || {};
+                if (!isStudentAccountForCourseNotification(data)) return;
+                students.set(docSnap.id, { id: docSnap.id, ...data });
+            });
         } catch (error) {
-            console.error("Lecture élève promotion impossible :", promotionId, studentId, error.message || error);
+            console.error("Lecture élève promotion par email impossible :", promotionId, email, error.message || error);
         }
     }
 
     return Array.from(students.values());
 }
 
-async function findReplacementPromotionsForCourse(db, courseId = "") {
-    if (!courseId) return [];
+async function loadCurriculumTemplateForPromotion(db, promotion = {}, cache = new Map()) {
+    const templateId = cleanString(promotion.curriculumTemplateId || promotion.templateId || "", 180);
+    if (!templateId) return null;
+    if (cache.has(templateId)) return cache.get(templateId);
+
+    try {
+        const snap = await db.collection("curriculumTemplates").doc(templateId).get();
+        const template = snap.exists ? { id: snap.id, ...(snap.data() || {}) } : null;
+        cache.set(templateId, template);
+        return template;
+    } catch (error) {
+        console.error("Lecture curriculumTemplate impossible :", templateId, error.message || error);
+        cache.set(templateId, null);
+        return null;
+    }
+}
+
+function findLinkedItemsInList(items = [], courseId = "", courseData = {}) {
+    if (!Array.isArray(items)) return [];
+    return items.filter((item) => isCoursePlanItemLinkedToPublishedCourse(item, courseId, courseData));
+}
+
+async function findPromotionTargetsForCourse(db, { courseId, courseData }) {
     const snap = await db.collection("promotions").get();
-    const promotions = [];
+    const templateCache = new Map();
+    const targets = [];
 
-    snap.forEach((docSnap) => {
+    for (const docSnap of snap.docs) {
         const data = docSnap.data() || {};
-        if (cleanString(data.status || "active", 40).toLowerCase() === "archived") return;
-        const coursePlan = Array.isArray(data.coursePlan) ? data.coursePlan : [];
-        const planItem = coursePlan.find((item) => isCoursePlanPublishedCourseTarget(item, courseId));
-        if (!planItem) return;
+        const status = cleanString(data.status || "active", 40).toLowerCase();
+        if (["archived", "archive", "archivée", "archived_promotion"].includes(status)) continue;
 
-        promotions.push({
-            id: docSnap.id,
-            ...data,
-            __matchedPlanItem: planItem,
-            __matchedPlanReason: isCoursePlanPlaceholderReplacement(planItem, courseId)
-                ? "placeholder_replacement"
-                : "courseplan_contains_course"
-        });
-    });
+        const promotion = { id: docSnap.id, ...data };
+        const coursePlanMatches = findLinkedItemsInList(getCoursePlanItemsFromPromotion(data), courseId, courseData);
+        if (coursePlanMatches.length) {
+            targets.push({
+                promotion,
+                reason: coursePlanMatches.some((item) => isCoursePlanPlaceholderReplacement(item, courseId))
+                    ? "course_plan_placeholder_replacement"
+                    : "course_plan_contains_course",
+                matchedItems: coursePlanMatches
+            });
+            continue;
+        }
 
-    return promotions;
+        // Filet de sécurité : si la synchro Cursus -> Promotion n'a pas eu le
+        // temps de recopier coursePlan, le template lié reste la source durable.
+        const template = await loadCurriculumTemplateForPromotion(db, promotion, templateCache);
+        const templateMatches = findLinkedItemsInList(template?.items || [], courseId, courseData);
+        if (templateMatches.length) {
+            targets.push({
+                promotion,
+                reason: "linked_curriculum_template_contains_course",
+                matchedItems: templateMatches
+            });
+        }
+    }
+
+    return targets;
+}
+
+async function collectDirectTargetStudents(db, courseData = {}) {
+    const students = new Map();
+    const ids = new Set();
+    addStudentIdFromValue(ids, courseData.targetStudents);
+    addStudentIdFromValue(ids, courseData.targetStudentIds);
+    addStudentIdFromValue(ids, courseData.studentIds);
+    addStudentIdFromValue(ids, courseData.students);
+    addStudentIdFromValue(ids, courseData.eleves);
+    addStudentIdFromValue(ids, courseData.elevesIds);
+
+    for (const id of ids) await addStudentById(db, students, id);
+    return Array.from(students.values());
 }
 
 async function notifyStudentsForReplacementCourse(db, { courseId, courseData, apiKey }) {
-    const promotions = await findReplacementPromotionsForCourse(db, courseId);
+    const targets = await findPromotionTargetsForCourse(db, { courseId, courseData });
+    const directStudents = await collectDirectTargetStudents(db, courseData);
     const notifiedStudents = new Set();
     let notificationCount = 0;
     let emailCount = 0;
     let emailFailures = 0;
+    const targetReports = [];
+    const notifiedStudentIds = [];
 
-    for (const promotion of promotions) {
-        const students = await listPromotionStudents(db, promotion.id, promotion);
-        for (const student of students) {
-            if (!student.id || notifiedStudents.has(student.id)) continue;
-            notifiedStudents.add(student.id);
+    async function notifyOneStudent(student, promotion = {}, reason = "direct_course_target") {
+        if (!student.id || notifiedStudents.has(student.id)) return;
+        notifiedStudents.add(student.id);
+        notifiedStudentIds.push(student.id);
 
-            await addDirectCourseNotification(db, `new_course_${courseId}_${student.id}`, {
-                type: "new_course_published",
-                courseId,
-                courseTitle: getCourseWorkflowTitle(courseData),
-                destinataireId: student.id,
-                targetStudents: [student.id],
-                promotionId: promotion.id,
-                promotionName: promotion.name || promotion.promotionName || "",
-                fromCoursePlan: true,
-                fromPlaceholderReplacement: isCoursePlanPlaceholderReplacement(promotion.__matchedPlanItem || {}, courseId),
-                coursePlanMatchReason: promotion.__matchedPlanReason || "courseplan_contains_course"
-            });
-            notificationCount += 1;
+        await addDirectCourseNotification(db, `new_course_${courseId}_${student.id}`, {
+            type: "new_course_published",
+            courseId,
+            courseTitle: getCourseWorkflowTitle(courseData),
+            destinataireId: student.id,
+            targetStudents: [student.id],
+            promotionId: promotion.id || "",
+            promotionName: promotion.name || promotion.promotionName || "",
+            fromCoursePlan: Boolean(promotion.id),
+            fromPlaceholderReplacement: reason.includes("placeholder"),
+            coursePlanMatchReason: reason,
+            actionUrl: getCourseWorkflowUrl("/student/cours-viewer.html", courseId)
+        });
+        notificationCount += 1;
 
-            try {
-                await sendStudentNewCourseEmail({ student, courseId, courseData, promotion, apiKey });
-                emailCount += 1;
-            } catch (error) {
-                emailFailures += 1;
-                console.error("Email nouveau cours élève impossible :", student.id, error.message, error.payload || "");
-            }
+        try {
+            await sendStudentNewCourseEmail({ student, courseId, courseData, promotion, apiKey });
+            emailCount += 1;
+        } catch (error) {
+            emailFailures += 1;
+            console.error("Email nouveau cours élève impossible :", student.id, error.message, error.payload || "");
         }
     }
 
-    return {
-        promotions: promotions.map((promotion) => promotion.id),
-        promotionMatches: promotions.map((promotion) => ({ id: promotion.id, reason: promotion.__matchedPlanReason || "" })),
+    for (const target of targets) {
+        const students = await listPromotionStudents(db, target.promotion);
+        targetReports.push({
+            promotionId: target.promotion.id,
+            reason: target.reason,
+            students: students.length,
+            matchedItems: target.matchedItems.length
+        });
+
+        for (const student of students) {
+            await notifyOneStudent(student, target.promotion, target.reason);
+        }
+    }
+
+    for (const student of directStudents) {
+        await notifyOneStudent(student, {}, "direct_course_target");
+    }
+
+    const report = {
+        promotions: targets.map((target) => target.promotion.id),
+        targetReports,
+        directStudentCount: directStudents.length,
+        notifiedStudentIds,
+        scannedStudentCount: targetReports.reduce((total, item) => total + Number(item.students || 0), 0) + directStudents.length,
         notificationCount,
         emailCount,
-        emailFailures
+        emailFailures,
+        noStudentReason: notificationCount === 0
+            ? (targets.length ? "promotion_matched_but_no_students" : "no_promotion_or_target_students_found")
+            : ""
     };
+
+    console.info("[SBI Course Workflow] Student notification report", {
+        courseId,
+        promotions: report.promotions,
+        targetReports: report.targetReports,
+        directStudentCount: report.directStudentCount,
+        scannedStudentCount: report.scannedStudentCount,
+        notificationCount: report.notificationCount,
+        emailCount: report.emailCount,
+        emailFailures: report.emailFailures,
+        noStudentReason: report.noStudentReason
+    });
+
+    return report;
 }
 
 exports.submitCourseForValidation = onCall({
@@ -3908,7 +4225,7 @@ exports.reviewCourseValidation = onCall({
     let teacherEmailSent = false;
     let contactEmailSent = false;
     let teacherNotificationSent = false;
-    let studentReport = { promotions: [], notificationCount: 0, emailCount: 0, emailFailures: 0 };
+    let studentReport = { promotions: [], targetReports: [], directStudentCount: 0, scannedStudentCount: 0, notifiedStudentIds: [], notificationCount: 0, emailCount: 0, emailFailures: 0, noStudentReason: "" };
     const warnings = [];
 
     if (authorId) {
@@ -3957,6 +4274,13 @@ exports.reviewCourseValidation = onCall({
             courseData: nextCourseData,
             apiKey
         });
+        if (!studentReport.notificationCount) {
+            warnings.push(studentReport.noStudentReason === "promotion_matched_but_no_students"
+                ? "Promotion(s) trouvée(s), mais aucun élève rattaché détecté."
+                : "Aucune promotion / cible élève trouvée pour ce cours publié.");
+        } else {
+            warnings.push(`Notifications élèves : ${studentReport.notificationCount}, email(s) envoyé(s) : ${studentReport.emailCount}.`);
+        }
         if (studentReport.emailFailures > 0) {
             warnings.push(`${studentReport.emailFailures} email(s) élève non envoyé(s).`);
         }
@@ -3977,6 +4301,10 @@ exports.reviewCourseValidation = onCall({
         studentNotificationCount: studentReport.notificationCount,
         studentEmailCount: studentReport.emailCount,
         studentEmailFailures: studentReport.emailFailures,
+        studentNotificationTargets: studentReport.notifiedStudentIds || [],
+        scannedStudentCount: studentReport.scannedStudentCount || 0,
+        studentPromotionMatches: studentReport.targetReports || [],
+        directStudentTargetCount: studentReport.directStudentCount || 0,
         replacementPromotionIds: studentReport.promotions,
         warning: warnings.join(" "),
         source: "course-workflow"

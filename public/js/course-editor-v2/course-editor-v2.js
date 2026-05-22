@@ -27,7 +27,7 @@ import {
 } from '/admin/js/course-media-storage.js?v=8.0P.167.182';
 
 const MAX_QUERY_VALUES = 10;
-const VERSION = '8.0P.167.186';
+const VERSION = '8.0P.167.188';
 const functionsInstance = getFunctions(app, 'europe-west1');
 const submitCourseForValidationCallable = httpsCallable(functionsInstance, 'submitCourseForValidation');
 const reviewCourseValidationCallable = httpsCallable(functionsInstance, 'reviewCourseValidation');
@@ -287,6 +287,54 @@ function cleanupEditorFloatingUi(root = activeRoot) {
   if (root) {
     root.querySelectorAll('.sbi-block-bank').forEach((bank) => bank.remove());
   }
+}
+
+function isCourseEditorV2Route() {
+  const path = window.location.pathname.replace(/\/+$/, '').toLowerCase();
+  return path === '/admin/course-editor.html' || path === '/teacher/course-editor.html';
+}
+
+function cleanupEditorUiIfRouteChanged() {
+  const root = document.getElementById('sbi-course-editor-v2');
+  if (root && isCourseEditorV2Route()) return;
+  cleanupEditorFloatingUi(root || activeRoot);
+}
+
+function handleEditorRouteCleanupClick(event) {
+  const anchor = event.target?.closest?.('a[href]');
+  if (!anchor) return;
+  const href = anchor.getAttribute('href') || '';
+  if (!href || href.startsWith('#') || href.startsWith('javascript:')) return;
+
+  try {
+    const target = new URL(href, window.location.href);
+    const targetPath = target.pathname.replace(/\/+$/, '').toLowerCase();
+    if (target.origin === window.location.origin
+      && targetPath !== '/admin/course-editor.html'
+      && targetPath !== '/teacher/course-editor.html') {
+      cleanupEditorFloatingUi(activeRoot);
+    }
+  } catch (_) {}
+}
+
+function bindEditorRouteCleanupGuards() {
+  if (activeRouteCleanupBound) return;
+  window.addEventListener('sbi:app-shell:navigated', cleanupEditorUiIfRouteChanged);
+  window.addEventListener('sbi:app-shell:main-replaced', cleanupEditorUiIfRouteChanged);
+  window.addEventListener('sbi:app-shell:main-restored', cleanupEditorUiIfRouteChanged);
+  window.addEventListener('pagehide', cleanupEditorUiIfRouteChanged);
+  document.addEventListener('click', handleEditorRouteCleanupClick, true);
+  activeRouteCleanupBound = true;
+}
+
+function unbindEditorRouteCleanupGuards() {
+  if (!activeRouteCleanupBound) return;
+  window.removeEventListener('sbi:app-shell:navigated', cleanupEditorUiIfRouteChanged);
+  window.removeEventListener('sbi:app-shell:main-replaced', cleanupEditorUiIfRouteChanged);
+  window.removeEventListener('sbi:app-shell:main-restored', cleanupEditorUiIfRouteChanged);
+  window.removeEventListener('pagehide', cleanupEditorUiIfRouteChanged);
+  document.removeEventListener('click', handleEditorRouteCleanupClick, true);
+  activeRouteCleanupBound = false;
 }
 
 function bindViewportBankResize() {
@@ -2294,6 +2342,7 @@ let activeRoot = null;
 let activeAuthUnsubscribe = null;
 let activeBeforeUnloadHandler = null;
 let activeResizeBound = false;
+let activeRouteCleanupBound = false;
 
 function resetEditorRuntimeState() {
   state.uid = '';
@@ -2340,6 +2389,7 @@ export function mountCourseEditorV2({ force = false } = {}) {
   resetEditorRuntimeState();
   booted = true;
   activeRoot = root;
+  bindEditorRouteCleanupGuards();
   boot();
 
   return () => {
@@ -2350,6 +2400,7 @@ export function mountCourseEditorV2({ force = false } = {}) {
       activeBeforeUnloadHandler = null;
     }
     unbindViewportBankResize();
+    unbindEditorRouteCleanupGuards();
     cleanupEditorFloatingUi(root);
     if (activeRoot === root) {
       booted = false;

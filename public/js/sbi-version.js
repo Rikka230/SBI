@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.187',
+  version: '8.0P.167.188',
   branch: 'main',
-  channel: 'COURSE WORKFLOW HOTFIX',
-  stage: 'STUDENT COURSEPLAN NOTIFICATIONS ADMIN RIGHT PANEL',
+  channel: 'COURSE STUDENT NOTIFICATIONS RESET',
+  stage: 'SERVER NOTIFICATION ROUTING AND EDITOR CLEANUP',
   updatedAt: '2026-05-22',
-  label: 'SBI 8.0P.167.187 - Student notifications and admin editor panel'
+  label: 'SBI 8.0P.167.188 - Student notifications reset and editor cleanup'
 };
 
 export function getSbiVersionLabel() {
