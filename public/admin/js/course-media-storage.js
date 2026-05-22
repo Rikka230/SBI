@@ -366,8 +366,19 @@ export const syncChapterMediaFromDom = (chapter) => {
     }
 };
 
-const uploadImageToStorage = async (courseRefId, chapterId, file) => {
+const resolveUploadedBy = (uploadedBy = '') => {
+    const uid = String(uploadedBy || auth.currentUser?.uid || '').trim();
+
+    if (!uid) {
+        throw new Error("Utilisateur non authentifié pour l'envoi du média. Recharge la page puis reconnecte-toi si nécessaire.");
+    }
+
+    return uid;
+};
+
+const uploadImageToStorage = async (courseRefId, chapterId, file, uploadedBy = '') => {
     const compressedBlob = await compressImageFileToWebpBlob(file);
+    const uploadUid = resolveUploadedBy(uploadedBy);
 
     const cleanName = sanitizeStorageName(file.name.replace(/\.[^.]+$/, ''));
     const fileName = `${Date.now()}_${cleanName || 'image'}.webp`;
@@ -378,15 +389,16 @@ const uploadImageToStorage = async (courseRefId, chapterId, file) => {
         contentType: 'image/webp',
         customMetadata: {
             originalName: file.name || '',
-            uploadedBy: auth.currentUser?.uid || ''
+            uploadedBy: uploadUid
         }
     });
 
     return getDownloadURL(fileRef);
 };
 
-const uploadVideoToStorage = async (courseRefId, chapterId, file) => {
+const uploadVideoToStorage = async (courseRefId, chapterId, file, uploadedBy = '') => {
     validateVideoFileForStorage(file);
+    const uploadUid = resolveUploadedBy(uploadedBy);
 
     const ext = getFileExtension(file, 'mp4');
     const cleanName = sanitizeStorageName(file.name.replace(/\.[^.]+$/, ''));
@@ -398,14 +410,14 @@ const uploadVideoToStorage = async (courseRefId, chapterId, file) => {
         contentType: file.type || 'video/mp4',
         customMetadata: {
             originalName: file.name || '',
-            uploadedBy: auth.currentUser?.uid || ''
+            uploadedBy: uploadUid
         }
     });
 
     return getDownloadURL(fileRef);
 };
 
-export const uploadPendingMediaForChapters = async (courseRefId, chapters) => {
+export const uploadPendingMediaForChapters = async (courseRefId, chapters, { uploadedBy = '' } = {}) => {
     const entries = Array.from(pendingChapterMedia.entries());
 
     if (entries.length === 0) return;
@@ -415,11 +427,11 @@ export const uploadPendingMediaForChapters = async (courseRefId, chapters) => {
         if (!chapter) continue;
 
         if (pending.imageFile) {
-            chapter.mediaImage = await uploadImageToStorage(courseRefId, chapterId, pending.imageFile);
+            chapter.mediaImage = await uploadImageToStorage(courseRefId, chapterId, pending.imageFile, uploadedBy);
         }
 
         if (pending.videoFile) {
-            chapter.mediaVideo = await uploadVideoToStorage(courseRefId, chapterId, pending.videoFile);
+            chapter.mediaVideo = await uploadVideoToStorage(courseRefId, chapterId, pending.videoFile, uploadedBy);
         }
 
         clearPendingMediaForChapter(chapterId);

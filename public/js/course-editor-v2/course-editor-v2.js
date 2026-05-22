@@ -23,10 +23,10 @@ import {
   syncChapterMediaFromDom,
   uploadPendingMediaForChapters,
   validateCourseDocumentSize
-} from '/admin/js/course-media-storage.js';
+} from '/admin/js/course-media-storage.js?v=8.0P.167.182';
 
 const MAX_QUERY_VALUES = 10;
-const VERSION = '8.0P.167.180';
+const VERSION = '8.0P.167.182';
 
 const BLOCK_TYPES = [
   { type: 'course_info', label: 'Course Info', subtitle: 'Informations générales', icon: 'i', static: true },
@@ -333,6 +333,23 @@ function makeId(prefix = 'block') {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function toPositiveMinutes(value) {
+  const minutes = Number(value || 0);
+  if (!Number.isFinite(minutes)) return 0;
+  return Math.max(0, minutes);
+}
+
+function calculateEstimatedDurationMinutes(blocks = state.course.learningBlocks) {
+  if (!Array.isArray(blocks)) return 0;
+  return blocks.reduce((total, block) => total + toPositiveMinutes(block?.durationMinutes), 0);
+}
+
+function updateComputedCourseDuration() {
+  const total = calculateEstimatedDurationMinutes();
+  state.course.estimatedDurationMinutes = total;
+  return total;
+}
+
 function isAdminLike(profile = state.profile) {
   return profile?.isGod === true || profile?.role === 'admin' || state.role === 'admin';
 }
@@ -613,6 +630,7 @@ function convertBlocksToLegacyChapters(blocks = []) {
         id: block.id || makeId('chap'),
         type: 'quiz',
         titre: block.title || `QCM ${index + 1}`,
+        durationMinutes: toPositiveMinutes(block.durationMinutes),
         questions: Array.isArray(block.questions) ? block.questions.map((question) => ({
           ...question,
           options: Array.isArray(question.options) ? question.options : [],
@@ -629,6 +647,7 @@ function convertBlocksToLegacyChapters(blocks = []) {
         titre: block.title || `Texte à trous ${index + 1}`,
         contenu: `<h3>${escapeHtml(block.title || 'Texte à trous')}</h3><p>${escapeHtml(block.instructions || '')}</p><div>${prompt}</div>`,
         mediaType: 'image',
+        durationMinutes: toPositiveMinutes(block.durationMinutes),
         questions: []
       };
     }
@@ -641,6 +660,7 @@ function convertBlocksToLegacyChapters(blocks = []) {
       mediaType: block.mediaType || 'image',
       mediaImage: block.mediaImage || '',
       mediaVideo: block.mediaVideo || '',
+      durationMinutes: toPositiveMinutes(block.durationMinutes),
       questions: []
     };
   });
@@ -1270,6 +1290,7 @@ function renderMainEditor() {
 }
 
 function renderCourseInfoEditor() {
+  const computedDuration = updateComputedCourseDuration();
   return `
     <div class="sbi-block-editor-header">
       <div><h2 class="sbi-panel-title">Informations du cours</h2><p class="sbi-panel-subtitle">Base commune admin/prof. Sauvegarde compatible ancien viewer.</p></div>
@@ -1292,7 +1313,7 @@ function renderCourseInfoEditor() {
               <li>Titre clair du cours</li>
               <li>Formation(s) concernée(s)</li>
               <li>Bloc partagé / module pédagogique</li>
-              <li>Durée globale estimée en minutes</li>
+              <li>Durée globale estimée calculée automatiquement</li>
             </ul>
           </article>
           <article class="sbi-guide-card">
@@ -1324,7 +1345,7 @@ function renderCourseInfoEditor() {
 
       <div class="sbi-two-cols">
         <div class="sbi-field"><label>Bloc partagé</label>${renderSharedBlockPicker('editor-course', state.course.bloc)}<small>Sélectionne un bloc existant ou saisis un nouveau nom puis clique Ajouter. Après sauvegarde, il sera proposé pour les cours de la même formation.</small></div>
-        <div class="sbi-field"><label>Durée estimée globale (min)</label><small>Indicatif pédagogique, ce n’est pas un timer automatique.</small><input id="editor-course-duration" class="sbi-input" type="number" min="0" step="5" value="${Number(state.course.estimatedDurationMinutes || 0)}"></div>
+        <div class="sbi-field"><label>Durée estimée globale (min)</label><small>Calcul automatique : somme des durées des blocs du cours.</small><input id="editor-course-duration" class="sbi-input" type="number" min="0" step="1" value="${computedDuration}" readonly aria-readonly="true"></div>
       </div>
       <div class="sbi-empty-state">Cette page prépare le contenu du cours. Le rattachement au cursus, l’ordre du programme et les dates restent gérés dans Cursus / Promotions.</div>
     </div>
@@ -1485,6 +1506,12 @@ function renderSettings() {
   const selectedFormationLabel = state.selectedFormationIds.length
     ? state.selectedFormationIds.map(getFormationTitle).join(', ')
     : 'Aucune formation sélectionnée';
+  const settingsDuration = active ? toPositiveMinutes(active.durationMinutes) : updateComputedCourseDuration();
+  const settingsDurationLabel = active ? 'Durée estimée (min)' : 'Durée globale (min)';
+  const settingsDurationHelp = active
+    ? ''
+    : '<small>Calcul automatique : somme des durées des blocs du cours.</small>';
+  const settingsDurationReadonly = active ? '' : 'readonly aria-readonly="true"';
 
   settings.innerHTML = `
     <div class="sbi-right-card">
@@ -1496,7 +1523,7 @@ function renderSettings() {
       <div class="sbi-field"><label>Bloc partagé</label>${renderSharedBlockPicker('settings', state.course.bloc, { allowCreate: false })}<small>Sélection rapide d’un bloc existant. Pour créer un nouveau bloc, passe par Course Info.</small></div>
       <div class="sbi-field"><label>Compétence ciblée</label><input id="settings-competency" class="sbi-input" value="${escapeHtml(active?.competency || state.course.competency || '')}" placeholder="Ex : C2. Assurer la sécurité"></div>
       <div class="sbi-field"><label>Preuve Qualiopi</label><select id="settings-qualiopi" class="sbi-select"><option value="">Non renseignée</option>${renderSelectOption('2.2 Moyens pédagogiques', active?.qualiopiEvidence || state.course.qualiopiEvidence)}${renderSelectOption('2.4 Modalités d’évaluation', active?.qualiopiEvidence || state.course.qualiopiEvidence)}${renderSelectOption('3.1 Adaptation pédagogique', active?.qualiopiEvidence || state.course.qualiopiEvidence)}</select></div>
-      <div class="sbi-two-cols"><div class="sbi-field"><label>Durée estimée (min)</label><input id="settings-duration" class="sbi-input" type="number" min="0" value="${Number(active?.durationMinutes || state.course.estimatedDurationMinutes || 0)}"></div><div class="sbi-field"><label>Score max calculé</label><input id="settings-score" class="sbi-input" type="number" min="0" value="${getActiveScore(active)}" readonly aria-readonly="true"></div></div>
+      <div class="sbi-two-cols"><div class="sbi-field"><label>${settingsDurationLabel}</label>${settingsDurationHelp}<input id="settings-duration" class="sbi-input" type="number" min="0" step="1" value="${settingsDuration}" ${settingsDurationReadonly}></div><div class="sbi-field"><label>Score max calculé</label><input id="settings-score" class="sbi-input" type="number" min="0" value="${getActiveScore(active)}" readonly aria-readonly="true"></div></div>
       <div class="sbi-field"><label>Inclure dans le cours</label><select id="settings-visible" class="sbi-select"><option value="true" ${(active?.visibleInProgram ?? state.course.visibleInProgram) !== false ? 'selected' : ''}>Oui</option><option value="false" ${(active?.visibleInProgram ?? state.course.visibleInProgram) === false ? 'selected' : ''}>Non</option></select></div>
       <div class="sbi-two-cols"><div class="sbi-field"><label>Règle</label><select id="settings-rule" class="sbi-select"><option value="score_minimum">Score minimum</option><option value="viewed">Consulté</option></select></div><div class="sbi-field"><label>Seuil %</label><input id="settings-validation-score" class="sbi-input" type="number" min="0" max="100" value="${Number(state.course.validationScore || 70)}"></div></div>
     </div>
@@ -1553,15 +1580,22 @@ function renderLessonMediaPreview(block) {
 }
 
 
-function syncDurationUi(value, sourceId = '') {
-  const safeValue = Number(value || 0);
-  ['editor-course-duration', 'block-duration', 'settings-duration'].forEach((id) => {
+function syncDurationUi(sourceId = '') {
+  const active = getActiveBlock();
+  const activeDuration = active ? toPositiveMinutes(active.durationMinutes) : 0;
+  const courseDuration = updateComputedCourseDuration();
+
+  const setFieldValue = (id, value) => {
     if (id === sourceId) return;
     const field = document.getElementById(id);
     if (!field) return;
-    const nextValue = String(Number.isFinite(safeValue) ? safeValue : 0);
+    const nextValue = String(toPositiveMinutes(value));
     if (String(field.value) !== nextValue) field.value = nextValue;
-  });
+  };
+
+  setFieldValue('editor-course-duration', courseDuration);
+  setFieldValue('block-duration', activeDuration);
+  setFieldValue('settings-duration', active ? activeDuration : courseDuration);
 }
 
 function syncScoreUi() {
@@ -1613,11 +1647,6 @@ function bindEditorInputs() {
     bindSettingsInputs();
   });
   $('#editor-course-bloc-add')?.addEventListener('click', () => addLocalSharedBlockOption($('#editor-course-bloc')?.value));
-  $('#editor-course-duration')?.addEventListener('input', (event) => {
-    state.course.estimatedDurationMinutes = Number(event.target.value || 0);
-    syncDurationUi(state.course.estimatedDurationMinutes, 'editor-course-duration');
-    markDirty();
-  });
   $('#editor-course-objectives')?.addEventListener('input', (event) => { state.course.objectives = event.target.value; markDirty(); renderPreview(); });
   $('#editor-course-competency')?.addEventListener('input', (event) => { state.course.competency = event.target.value; markDirty(); });
   $('#editor-course-qualiopi')?.addEventListener('change', (event) => { state.course.qualiopiEvidence = event.target.value; markDirty(); });
@@ -1632,8 +1661,8 @@ function bindEditorInputs() {
   $('#block-instructions')?.addEventListener('input', (event) => { active.instructions = event.target.value; markDirty(); renderPreview(); });
   $('#block-content')?.addEventListener('input', (event) => { active.content = event.target.value; markDirty(); renderPreview(); });
   $('#block-duration')?.addEventListener('input', (event) => {
-    active.durationMinutes = Number(event.target.value || 0);
-    syncDurationUi(active.durationMinutes, 'block-duration');
+    active.durationMinutes = toPositiveMinutes(event.target.value);
+    syncDurationUi('block-duration');
     markDirty();
   });
   $('#block-visible')?.addEventListener('change', (event) => { active.visibleInProgram = event.target.value === 'true'; markDirty(); });
@@ -1744,10 +1773,13 @@ function bindSettingsInputs() {
     markDirty();
   });
   $('#settings-duration')?.addEventListener('input', (event) => {
-    const value = Number(event.target.value || 0);
-    if (active) active.durationMinutes = value;
-    else state.course.estimatedDurationMinutes = value;
-    syncDurationUi(value, 'settings-duration');
+    if (!active) {
+      syncDurationUi('settings-duration');
+      return;
+    }
+    const value = toPositiveMinutes(event.target.value);
+    active.durationMinutes = value;
+    syncDurationUi('settings-duration');
     markDirty();
   });
   $('#settings-visible')?.addEventListener('change', (event) => {
@@ -1773,6 +1805,7 @@ function saveActiveEditorValues() {
 
   const blocField = $('#editor-course-bloc') || $('#settings-bloc');
   if (blocField) state.course.bloc = blocField.value;
+  updateComputedCourseDuration();
 
   const active = getActiveBlock();
   if (!active) return;
@@ -1818,6 +1851,7 @@ function bindGlobalActions() {
 }
 
 function buildCoursePayload(action = 'draft') {
+  updateComputedCourseDuration();
   const selectedFormations = getSelectedFormations();
   const targetFormationIds = normalizeList(state.selectedFormationIds);
   const targetFormationTitles = normalizeList(selectedFormations.map((formation) => formation.titre || formation.title));
@@ -1871,7 +1905,7 @@ function buildCoursePayload(action = 'draft') {
     visibleInProgram: state.course.visibleInProgram !== false,
     validationRule: state.course.validationRule || 'score_minimum',
     validationScore: Number(state.course.validationScore || 70),
-    estimatedDurationMinutes: Number(state.course.estimatedDurationMinutes || 0),
+    estimatedDurationMinutes: updateComputedCourseDuration(),
     schemaVersion: 'lms-course-v2',
     editorVersion: VERSION,
     learningBlocks,
@@ -1907,19 +1941,11 @@ async function saveCourse(action = 'draft', { silent = false } = {}) {
       targetCourseId = targetRef.id;
     }
 
-    if (hasPendingMedia()) {
-      setStatus('Upload des médias…');
-      const mediaChapitres = convertBlocksToLegacyChapters(state.course.learningBlocks);
-      await uploadPendingMediaForChapters(targetCourseId, mediaChapitres);
-      syncUploadedMediaBackToBlocks(mediaChapitres);
-    }
-
-    const payload = buildCoursePayload(action);
+    let payload = buildCoursePayload(action);
     validateCourseDocumentSize(payload);
 
-    if (state.courseId) {
-      await updateDoc(doc(db, 'courses', state.courseId), payload);
-    } else {
+    const isNewCourse = !state.courseId;
+    if (isNewCourse) {
       await setDoc(targetRef, {
         ...payload,
         dateCreation: serverTimestamp(),
@@ -1927,6 +1953,19 @@ async function saveCourse(action = 'draft', { silent = false } = {}) {
       });
       state.courseId = targetCourseId;
       history.replaceState({}, '', `${location.pathname}?id=${encodeURIComponent(state.courseId)}`);
+    }
+
+    if (hasPendingMedia()) {
+      setStatus('Upload des médias…');
+      const mediaChapitres = convertBlocksToLegacyChapters(state.course.learningBlocks);
+      await uploadPendingMediaForChapters(targetCourseId, mediaChapitres, { uploadedBy: state.uid });
+      syncUploadedMediaBackToBlocks(mediaChapitres);
+      payload = buildCoursePayload(action);
+      validateCourseDocumentSize(payload);
+    }
+
+    if (state.courseId) {
+      await updateDoc(doc(db, 'courses', state.courseId), payload);
     }
 
     state.status = payload.statutValidation;
@@ -1986,6 +2025,7 @@ async function loadCourseFromUrl() {
   };
 
   if (!state.course.learningBlocks.length) state.course.learningBlocks = [createDefaultBlock('lesson')];
+  updateComputedCourseDuration();
   state.activeBlockId = state.course.learningBlocks[0]?.id || 'course_info';
 }
 
@@ -2017,6 +2057,7 @@ async function initForUser(user) {
     state.course.learningBlocks = [createDefaultBlock('lesson')];
     state.activeBlockId = state.course.learningBlocks[0].id;
   }
+  updateComputedCourseDuration();
 
   updateHeaderFields();
   renderAll();

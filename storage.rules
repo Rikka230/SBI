@@ -232,7 +232,6 @@ service firebase.storage {
       return isActiveUser()
         && request.resource.size < 200 * 1024 * 1024
         && request.resource.metadata.keys().hasAny(['uploadedBy'])
-        && request.resource.metadata.keys().hasAny(['uploadedBy'])
         && request.resource.metadata.uploadedBy == request.auth.uid
         && (
           request.resource.contentType.matches('image/.*') ||
@@ -294,22 +293,18 @@ service firebase.storage {
 
        Lecture : limitée aux admins, auteurs et utilisateurs autorisés
        par les formations / ciblages du cours.
-       Upload : utilisateur actif avec métadonnée uploadedBy cohérente,
-       image/vidéo, max 200 Mo.
+       Upload : admin ou auteur du cours, métadonnée uploadedBy cohérente,
+       image/vidéo, max 200 Mo. Le document cours est créé avant upload.
        Suppression : admin ou auteur du cours.
        ============================================================ */
     match /courses/{courseId}/chapters/{chapterId}/{fileName} {
       allow read: if canReadCourseMedia(courseId);
 
-      allow create: if validCourseMediaUpload();
+      allow create: if canManageCourseMedia(courseId)
+        && validCourseMediaUpload();
 
       allow update: if canManageCourseMedia(courseId)
-        && request.resource.size < 200 * 1024 * 1024
-        && request.resource.metadata.uploadedBy == request.auth.uid
-        && (
-          request.resource.contentType.matches('image/.*') ||
-          request.resource.contentType.matches('video/.*')
-        );
+        && validCourseMediaUpload();
 
       allow delete: if canManageCourseMedia(courseId);
     }

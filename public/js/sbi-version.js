@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.181',
+  version: '8.0P.167.182',
   branch: 'main',
-  channel: 'DEPOT MEMORY CLEANUP',
-  stage: 'REMOVE OBSOLETE PATCH AND PREVIEW ARTIFACTS',
+  channel: 'COURSE EDITOR V2 DURATION MEDIA FIX',
+  stage: 'AUTO TOTAL DURATION AND STORAGE MEDIA PERMISSIONS',
   updatedAt: '2026-05-22',
-  label: 'SBI 8.0P.167.181 - Depot and memory cleanup'
+  label: 'SBI 8.0P.167.182 - Course duration auto total and media upload permissions'
 };
 
 export function getSbiVersionLabel() {
