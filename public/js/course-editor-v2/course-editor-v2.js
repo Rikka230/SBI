@@ -30,7 +30,7 @@ import {
 } from '/admin/js/course-media-storage.js?v=8.0P.167.195';
 
 const MAX_QUERY_VALUES = 10;
-const VERSION = '8.0P.167.195';
+const VERSION = '8.0P.167.196';
 const functionsInstance = getFunctions(app, 'europe-west1');
 const submitCourseForValidationCallable = httpsCallable(functionsInstance, 'submitCourseForValidation');
 const reviewCourseValidationCallable = httpsCallable(functionsInstance, 'reviewCourseValidation');
@@ -1905,22 +1905,6 @@ function renderPedagogicFooter(block) {
   `;
 }
 
-function renderResourceBlockEditor(block) {
-  return `
-    <div class="sbi-editor-form sbi-editor-form--pedagogic">
-      <div class="sbi-field"><label>Titre de la ressource</label><input id="block-title" class="sbi-input" value="${escapeHtml(block.title || '')}"></div>
-      <div class="sbi-field"><label>Consigne de consultation</label><textarea id="block-instructions" class="sbi-textarea" data-block-field="instructions">${escapeHtml(block.instructions || '')}</textarea></div>
-      <div class="sbi-two-cols">
-        <div class="sbi-field"><label>Type de ressource</label><select class="sbi-select" data-block-field="resourceType">${renderSelectOption('link', block.resourceType || 'link')} ${renderSelectOption('pdf', block.resourceType)} ${renderSelectOption('video', block.resourceType)} ${renderSelectOption('image', block.resourceType)} ${renderSelectOption('file', block.resourceType)}</select></div>
-        <div class="sbi-field"><label>Lien ou chemin du support</label><input class="sbi-input" data-block-field="resourceUrl" value="${escapeHtml(block.resourceUrl || '')}" placeholder="https://... ou chemin du fichier"></div>
-      </div>
-      <div class="sbi-field"><label>Description courte</label><textarea class="sbi-textarea" data-block-field="resourceDescription">${escapeHtml(block.resourceDescription || block.content || '')}</textarea></div>
-      <div class="sbi-field"><label>À observer / retenir</label><textarea class="sbi-textarea" data-block-field="consultationInstruction">${escapeHtml(block.consultationInstruction || '')}</textarea></div>
-      ${renderPedagogicFooter(block)}
-    </div>
-  `;
-}
-
 function renderResourceFileStatus(block) {
   const pending = getPendingResourceFileMeta(block.id);
   const name = pending?.name || block.resourceFileName || '';
@@ -1990,22 +1974,6 @@ function renderAssignmentBlockEditor(block) {
       </div>
       <div class="sbi-field"><label>Critères d’évaluation</label><textarea class="sbi-textarea" data-block-field="evaluationCriteria">${escapeHtml(block.evaluationCriteria || '')}</textarea></div>
       <label class="sbi-check-row sbi-check-row--box"><input type="checkbox" data-block-field="manualValidation" data-block-boolean="true" ${block.manualValidation !== false ? 'checked' : ''}> Validation manuelle professeur</label>
-      ${renderPedagogicFooter(block)}
-    </div>
-  `;
-}
-
-function renderCheckpointBlockEditor(block) {
-  return `
-    <div class="sbi-editor-form sbi-editor-form--pedagogic">
-      <div class="sbi-field"><label>Titre du checkpoint</label><input id="block-title" class="sbi-input" value="${escapeHtml(block.title || '')}"></div>
-      <div class="sbi-field"><label>Consigne courte</label><textarea id="block-instructions" class="sbi-textarea" data-block-field="instructions">${escapeHtml(block.instructions || '')}</textarea></div>
-      <div class="sbi-field"><label>Objectif du point de contrôle</label><textarea class="sbi-textarea" data-block-field="checkpointGoal">${escapeHtml(block.checkpointGoal || block.content || '')}</textarea></div>
-      <div class="sbi-two-cols">
-        <div class="sbi-field"><label>Mode de validation</label><select class="sbi-select" data-block-field="checkpointMode">${renderSelectOption('understood', block.checkpointMode || 'understood')} ${renderSelectOption('viewed', block.checkpointMode)} ${renderSelectOption('manual_validation', block.checkpointMode)}</select></div>
-        <label class="sbi-check-row sbi-check-row--box"><input type="checkbox" data-block-field="isBlockingPrerequisite" data-block-boolean="true" ${block.isBlockingPrerequisite === true ? 'checked' : ''}> Bloquant avant la suite</label>
-      </div>
-      <div class="sbi-field"><label>Résultat attendu</label><textarea class="sbi-textarea" data-block-field="expectedResult">${escapeHtml(block.expectedResult || '')}</textarea></div>
       ${renderPedagogicFooter(block)}
     </div>
   `;
@@ -2120,19 +2088,6 @@ function renderFillBlankEditor(block) {
       <div class="sbi-field"><label>Réponses et paramètres des blancs</label><table class="sbi-table"><thead><tr><th>#</th><th>Texte / élément</th><th>Réponses acceptées</th><th>Points</th><th></th></tr></thead><tbody id="fib-blank-rows">${renderFillBlankRowsHtml(block)}</tbody></table><div><button id="fib-add-blank" class="sbi-editor-btn sbi-editor-btn--tiny" type="button">+ Ajouter un blanc</button></div></div>
       <div class="sbi-three-cols"><div class="sbi-field"><label>Score</label><select id="fib-scoring-mode" class="sbi-select"><option value="per_blank" ${block.scoringMode !== 'global' ? 'selected' : ''}>Par blanc</option><option value="global" ${block.scoringMode === 'global' ? 'selected' : ''}>Global</option></select></div><div class="sbi-field"><label>Tentatives</label><input id="fib-max-attempts" class="sbi-input" type="number" min="1" value="${Number(block.maxAttempts || 2)}"></div><div class="sbi-field"><label>Afficher réponses</label><select id="fib-show-answers" class="sbi-select"><option value="true" ${block.showAnswersAtEnd !== false ? 'selected' : ''}>Oui</option><option value="false" ${block.showAnswersAtEnd === false ? 'selected' : ''}>Non</option></select></div></div>
       <div class="sbi-two-cols"><div class="sbi-field"><label>Feedback bonne réponse</label><textarea id="fib-feedback-correct" class="sbi-textarea">${escapeHtml(block.feedbackCorrect || '')}</textarea></div><div class="sbi-field"><label>Feedback incorrect</label><textarea id="fib-feedback-incorrect" class="sbi-textarea">${escapeHtml(block.feedbackIncorrect || '')}</textarea></div></div>
-    </div>
-  `;
-}
-
-function renderQuizEditor(block) {
-  const question = (Array.isArray(block.questions) && block.questions[0]) || createDefaultBlock('quiz').questions[0];
-  const options = Array.isArray(question.options) && question.options.length ? question.options : ['', '', ''];
-  return `
-    <div class="sbi-editor-form">
-      <div class="sbi-field"><label>Titre</label><input id="block-title" class="sbi-input" value="${escapeHtml(block.title || '')}"></div>
-      <div class="sbi-field"><label>Question principale</label><input id="quiz-question" class="sbi-input" value="${escapeHtml(question.question || '')}"></div>
-      <div class="sbi-field"><label>Réponses</label>${options.map((option, index) => `<label class="sbi-check-row"><input type="checkbox" class="quiz-correct" value="${index}" ${question.correctIndices?.includes(index) ? 'checked' : ''}><input class="sbi-input quiz-option" value="${escapeHtml(option)}" placeholder="Réponse ${index + 1}"></label>`).join('')}</div>
-      <div class="sbi-two-cols"><div class="sbi-field"><label>Points</label><input id="quiz-points" class="sbi-input" type="number" min="0" value="${Number(question.points || 1)}"></div><div class="sbi-field"><label>Durée estimée (min)</label><input id="block-duration" class="sbi-input" type="number" min="0" value="${Number(block.durationMinutes || 5)}"></div></div>
     </div>
   `;
 }
@@ -2338,23 +2293,6 @@ function renderPreview() {
 
 function renderCoursePreview() {
   return `<h4>${escapeHtml(state.course.title || 'Cours sans titre')}</h4><div class="sbi-preview-rich"><p>${escapeHtml(state.course.objectives || 'Les objectifs pédagogiques apparaîtront ici.')}</p><p>${state.course.learningBlocks.length} bloc(s) pédagogique(s).</p></div>`;
-}
-
-function renderBlockPreview(block) {
-  if (block.type === 'fill_blank') {
-    const html = escapeHtml(block.prompt || '').replace(/\[\[([^\]]+)\]\]/g, (_, token) => `<span class="sbi-preview-token">${escapeHtml(token)}</span>`);
-    return `<h4>${escapeHtml(block.title || 'Texte à trous')}</h4><div class="sbi-preview-rich"><p>${escapeHtml(block.instructions || '')}</p><p>${html}</p><small>${normalizeFillBlankRows(block).length} blancs · ${getActiveScore(block)} points</small></div>`;
-  }
-  if (block.type === 'quiz') {
-    const question = block.questions?.[0];
-    return `<h4>${escapeHtml(block.title || 'QCM')}</h4><div class="sbi-preview-rich"><p>${escapeHtml(question?.question || 'Question à compléter.')}</p>${(question?.options || []).map((option) => `<div class="sbi-preview-answer">${escapeHtml(option)}</div>`).join('')}</div>`;
-  }
-  if (PEDAGOGIC_BLOCK_TYPES.has(block.type)) {
-    return `<h4>${escapeHtml(block.title || getBlockMeta(block.type).label)}</h4>${buildPedagogicBlockContent(block, { preview: true })}`;
-  }
-  const mediaPreview = block.type === 'lesson' ? renderLessonMediaPreview(block) : '';
-  const content = block.content || '<p>Contenu à compléter.</p>';
-  return `<h4>${escapeHtml(block.title || getBlockMeta(block.type).label)}</h4>${mediaPreview}<div class="sbi-preview-rich"><p class="sbi-preview-instructions">${escapeHtml(block.instructions || '')}</p>${content}</div>`;
 }
 
 function renderBlockPreview(block) {
@@ -2626,27 +2564,6 @@ function bindFillBlankRowInputs(active) {
       renderPreview();
     });
   });
-}
-
-function bindQuizInputs(active) {
-  if (!active || active.type !== 'quiz') return;
-  if (!Array.isArray(active.questions) || !active.questions.length) active.questions = createDefaultBlock('quiz').questions;
-  const question = active.questions[0];
-  $('#quiz-question')?.addEventListener('input', (event) => { question.question = event.target.value; markDirty(); renderPreview(); });
-  $('#quiz-points')?.addEventListener('input', (event) => {
-    question.points = Number(event.target.value || 0);
-    markDirty();
-    syncScoreUi();
-  });
-  $all('.quiz-option').forEach((input, index) => input.addEventListener('input', (event) => {
-    question.options[index] = event.target.value;
-    markDirty();
-    renderPreview();
-  }));
-  $all('.quiz-correct').forEach((input) => input.addEventListener('change', () => {
-    question.correctIndices = $all('.quiz-correct').filter((item) => item.checked).map((item) => Number(item.value));
-    markDirty();
-  }));
 }
 
 function findQuizQuestionById(active, questionId) {

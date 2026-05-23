@@ -482,56 +482,6 @@ function renderViewerText(label, value) {
     return `<section class="sbi-viewer-section"><h3>${escapeHtml(label)}</h3><p>${escapeHtml(cleanValue).replace(/\n/g, '<br>')}</p></section>`;
 }
 
-function renderPedagogicChapter(chapter = {}) {
-    const type = chapter.type || chapter.activityType;
-    const label = getPedagogicChapterLabel(type);
-    const instructions = chapter.instructions
-        ? `<p class="sbi-viewer-instructions">${escapeHtml(chapter.instructions)}</p>`
-        : '';
-    let body = '';
-
-    if (type === 'resource') {
-        const link = chapter.resourceUrl
-            ? `<a class="sbi-viewer-resource-link" href="${escapeHtml(chapter.resourceUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(chapter.resourceUrl)}</a>`
-            : '';
-        body = `
-            ${renderViewerLine('Type de ressource', chapter.resourceType || 'link')}
-            ${link}
-            ${renderViewerText('Description', chapter.resourceDescription || chapter.contenu)}
-            ${renderViewerText('À observer / retenir', chapter.consultationInstruction)}
-        `;
-    } else if (type === 'assignment') {
-        body = `
-            ${renderViewerText('Travail demandé', chapter.assignmentPrompt || chapter.contenu)}
-            ${renderViewerLine('Livrable attendu', chapter.deliverableType || 'text')}
-            ${renderViewerLine('Délai', chapter.duePolicy || 'promotion_date')}
-            ${renderViewerLine('Validation', chapter.manualValidation !== false ? 'professeur' : 'automatique')}
-            ${renderViewerText('Critères d’évaluation', chapter.evaluationCriteria)}
-        `;
-    } else if (type === 'checkpoint') {
-        body = `
-            ${renderViewerText('Objectif', chapter.checkpointGoal || chapter.contenu)}
-            ${renderViewerLine('Mode de validation', chapter.checkpointMode || 'understood')}
-            ${renderViewerLine('Bloquant', chapter.isBlockingPrerequisite === true ? 'oui' : 'non')}
-            ${renderViewerText('Résultat attendu', chapter.expectedResult)}
-        `;
-    } else if (type === 'case_study') {
-        body = `
-            ${renderViewerText('Contexte', chapter.caseContext)}
-            ${renderViewerText('Scénario', chapter.scenario || chapter.contenu)}
-            ${renderViewerText('Éléments à analyser', chapter.analysisMaterials)}
-            ${renderViewerText('Questions guidées', chapter.guidedQuestions)}
-            ${renderViewerText('Réponse attendue / grille', chapter.expectedAnswer)}
-        `;
-    }
-
-    return `
-        <div class="text-container sbi-viewer-activity-card" data-activity-type="${escapeHtml(type)}">
-            <div class="sbi-viewer-activity-label">${SVG_READ}<span>${escapeHtml(label)}</span></div>
-            ${instructions}
-            <div class="sbi-viewer-activity-body">${body || '<p class="sbi-viewer-instructions">Activité à compléter.</p>'}</div>
-        </div>`;
-}
 
 function renderPedagogicChapter(chapter = {}) {
     const type = chapter.type || chapter.activityType;
