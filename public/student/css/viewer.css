@@ -163,6 +163,80 @@ body.learning-mode {
     text-align: center; display: none; animation: fadeIn 0.4s;
 }
 
+/* Activites pedagogiques structurees */
+.sbi-viewer-activity-card {
+    display: grid;
+    gap: 1.25rem;
+}
+
+.sbi-viewer-activity-label {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    gap: 0.55rem;
+    color: var(--accent-blue);
+    font-weight: 900;
+    font-size: 0.95rem;
+}
+
+.sbi-viewer-instructions {
+    margin: 0;
+    color: var(--text-muted);
+    line-height: 1.65;
+    font-weight: 600;
+}
+
+.sbi-viewer-activity-body {
+    display: grid;
+    gap: 1rem;
+}
+
+.sbi-viewer-section {
+    display: grid;
+    gap: 0.45rem;
+    padding: 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: #f8fafc;
+}
+
+.sbi-viewer-section h3,
+.sbi-viewer-line strong {
+    margin: 0;
+    color: var(--text-main);
+    font-size: 0.82rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-weight: 900;
+}
+
+.sbi-viewer-section p,
+.sbi-viewer-line span {
+    margin: 0;
+    color: #374151;
+    line-height: 1.65;
+}
+
+.sbi-viewer-line {
+    display: grid;
+    gap: 0.25rem;
+    padding: 0.85rem 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: #ffffff;
+}
+
+.sbi-viewer-resource-link {
+    display: inline-flex;
+    width: fit-content;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    color: var(--accent-blue);
+    font-weight: 900;
+    text-decoration: none;
+    border-bottom: 2px solid var(--accent-blue-light);
+}
+
 /* Activite texte a trous */
 .fib-viewer-card {
     padding: 2.5rem;

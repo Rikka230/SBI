@@ -229,6 +229,10 @@ body.sbi-editor-v2 {
   cursor: not-allowed;
   transform: none;
 }
+#sbi-course-editor-v2 [hidden],
+#sbi-course-editor-v2 .sbi-editor-btn[hidden] {
+  display: none !important;
+}
 
 .sbi-editor-lock-banner {
   width: min(1880px, calc(100vw - 2rem));
@@ -424,6 +428,9 @@ body.sbi-editor-v2 {
   resize: vertical;
   padding-bottom: 1.35rem;
 }
+.sbi-textarea--large {
+  min-height: 180px;
+}
 .sbi-input:focus,
 .sbi-select:focus,
 .sbi-textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
@@ -511,6 +518,57 @@ body.sbi-editor-v2 {
 .sbi-three-cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.8rem; }
 .sbi-check-row { display: flex; gap: 0.7rem; align-items: center; flex-wrap: wrap; }
 .sbi-check-row label { display: inline-flex; align-items: center; gap: 0.4rem; color: var(--editor-muted); font-size: 0.82rem; }
+.sbi-check-row--box {
+  min-height: 42px;
+  padding: 0.72rem 0.85rem;
+  border: 1px solid var(--editor-border);
+  border-radius: 12px;
+  background: var(--editor-surface-2);
+  color: var(--editor-text);
+  font-weight: 800;
+}
+.sbi-editor-form--pedagogic {
+  align-content: start;
+}
+.sbi-pedagogic-preview {
+  display: grid;
+  gap: 0.75rem;
+}
+.sbi-pedagogic-line {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--editor-border);
+  border-radius: 12px;
+  background: var(--editor-surface-2);
+}
+.sbi-pedagogic-line strong,
+.sbi-pedagogic-section h5 {
+  margin: 0;
+  color: var(--editor-text);
+  font-size: 0.75rem;
+  font-weight: 950;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.sbi-pedagogic-line span,
+.sbi-pedagogic-section p {
+  margin: 0;
+  color: var(--editor-muted);
+  line-height: 1.55;
+}
+.sbi-pedagogic-section {
+  display: grid;
+  gap: 0.35rem;
+}
+.sbi-pedagogic-link {
+  display: inline-flex;
+  width: fit-content;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  color: var(--accent);
+  font-weight: 900;
+}
 
 .sbi-right-card {
   padding: 1rem;

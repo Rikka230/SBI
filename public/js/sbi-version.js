@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.193',
+  version: '8.0P.167.194',
   branch: 'main',
-  channel: 'COURSE EDITOR V2 PRIORITY UI',
-  stage: 'P1 FILL BLANK RESIZE QUALIOPI LEGEND',
+  channel: 'COURSE EDITOR V2 BLOCK REWORKS',
+  stage: 'PEDAGOGIC BLOCKS RESOURCE ASSIGNMENT CHECKPOINT CASE STUDY',
   updatedAt: '2026-05-23',
-  label: 'SBI 8.0P.167.193 - Course Editor V2 priority UI fixes'
+  label: 'SBI 8.0P.167.194 - Course Editor V2 pedagogic block reworks'
 };
 
 export function getSbiVersionLabel() {

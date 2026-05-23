@@ -27,7 +27,7 @@ import {
 } from '/admin/js/course-media-storage.js?v=8.0P.167.182';
 
 const MAX_QUERY_VALUES = 10;
-const VERSION = '8.0P.167.193';
+const VERSION = '8.0P.167.194';
 const functionsInstance = getFunctions(app, 'europe-west1');
 const submitCourseForValidationCallable = httpsCallable(functionsInstance, 'submitCourseForValidation');
 const reviewCourseValidationCallable = httpsCallable(functionsInstance, 'reviewCourseValidation');
@@ -46,6 +46,7 @@ const BLOCK_TYPES = [
 ];
 
 const BLOCK_TYPE_MAP = new Map(BLOCK_TYPES.map((item) => [item.type, item]));
+const PEDAGOGIC_BLOCK_TYPES = new Set(['resource', 'assignment', 'checkpoint', 'case_study']);
 
 const QUALIOPI_EVIDENCE_OPTIONS = [
   {
@@ -747,6 +748,77 @@ function createDefaultBlock(type = 'lesson') {
     };
   }
 
+  if (type === 'resource') {
+    return {
+      id: makeId('resource'),
+      type,
+      title: `Ressource ${count}`,
+      instructions: 'Consultez cette ressource avant de passer à la suite.',
+      resourceType: 'link',
+      resourceUrl: '',
+      resourceDescription: '',
+      consultationInstruction: '',
+      durationMinutes: 10,
+      visibleInProgram: true,
+      qualiopiEvidence: '2.2 Moyens pédagogiques',
+      competency: ''
+    };
+  }
+
+  if (type === 'assignment') {
+    return {
+      id: makeId('assignment'),
+      type,
+      title: `Devoir ${count}`,
+      instructions: 'Réalisez le travail demandé puis conservez votre livrable.',
+      assignmentPrompt: '',
+      deliverableType: 'text',
+      duePolicy: 'promotion_date',
+      evaluationCriteria: '',
+      manualValidation: true,
+      durationMinutes: 30,
+      visibleInProgram: true,
+      qualiopiEvidence: '2.4 Modalités d’évaluation',
+      competency: ''
+    };
+  }
+
+  if (type === 'checkpoint') {
+    return {
+      id: makeId('checkpoint'),
+      type,
+      title: `Checkpoint ${count}`,
+      instructions: 'Validez ce point de contrôle avant de poursuivre.',
+      checkpointGoal: '',
+      checkpointMode: 'understood',
+      expectedResult: '',
+      isBlockingPrerequisite: false,
+      durationMinutes: 5,
+      visibleInProgram: true,
+      qualiopiEvidence: '2.4 Modalités d’évaluation',
+      competency: ''
+    };
+  }
+
+  if (type === 'case_study') {
+    return {
+      id: makeId('case'),
+      type,
+      title: `Étude de cas ${count}`,
+      instructions: 'Analysez la situation puis répondez aux questions guidées.',
+      caseContext: '',
+      scenario: '',
+      analysisMaterials: '',
+      guidedQuestions: '',
+      expectedAnswer: '',
+      correctionMode: 'teacher',
+      durationMinutes: 25,
+      visibleInProgram: true,
+      qualiopiEvidence: '3.1 Adaptation pédagogique',
+      competency: ''
+    };
+  }
+
   return {
     id: makeId(type),
     type,
@@ -840,6 +912,39 @@ function convertBlocksToLegacyChapters(blocks = []) {
         mediaType: 'image',
         durationMinutes: toPositiveMinutes(block.durationMinutes),
         questions: []
+      };
+    }
+
+    if (PEDAGOGIC_BLOCK_TYPES.has(block.type)) {
+      return {
+        id: block.id || makeId('chap'),
+        type: block.type,
+        activityType: block.type,
+        titre: block.title || getBlockMeta(block.type).label,
+        instructions: block.instructions || '',
+        contenu: buildPedagogicBlockContent(block),
+        mediaType: 'image',
+        durationMinutes: toPositiveMinutes(block.durationMinutes),
+        questions: [],
+        resourceType: block.resourceType || '',
+        resourceUrl: block.resourceUrl || '',
+        resourceDescription: block.resourceDescription || '',
+        consultationInstruction: block.consultationInstruction || '',
+        assignmentPrompt: block.assignmentPrompt || '',
+        deliverableType: block.deliverableType || '',
+        duePolicy: block.duePolicy || '',
+        evaluationCriteria: block.evaluationCriteria || '',
+        manualValidation: block.manualValidation !== false,
+        checkpointGoal: block.checkpointGoal || '',
+        checkpointMode: block.checkpointMode || '',
+        expectedResult: block.expectedResult || '',
+        isBlockingPrerequisite: block.isBlockingPrerequisite === true,
+        caseContext: block.caseContext || '',
+        scenario: block.scenario || '',
+        analysisMaterials: block.analysisMaterials || '',
+        guidedQuestions: block.guidedQuestions || '',
+        expectedAnswer: block.expectedAnswer || '',
+        correctionMode: block.correctionMode || ''
       };
     }
 
@@ -1308,7 +1413,7 @@ function resetQuillInstance() {
 }
 
 function isRichTextBlock(block = {}) {
-  return Boolean(block && !['fill_blank', 'quiz'].includes(block.type));
+  return block?.type === 'lesson';
 }
 
 function initLegacyQuillForActiveBlock(block) {
@@ -1636,7 +1741,8 @@ function renderBlockEditor(block) {
     </div>
     ${block.type === 'fill_blank' ? renderFillBlankEditor(block) : ''}
     ${block.type === 'quiz' ? renderQuizEditor(block) : ''}
-    ${!['fill_blank','quiz'].includes(block.type) ? renderGenericBlockEditor(block) : ''}
+    ${PEDAGOGIC_BLOCK_TYPES.has(block.type) ? renderPedagogicBlockEditor(block) : ''}
+    ${!['fill_blank','quiz'].includes(block.type) && !PEDAGOGIC_BLOCK_TYPES.has(block.type) ? renderGenericBlockEditor(block) : ''}
   `;
 }
 
@@ -1649,6 +1755,90 @@ function renderGenericBlockEditor(block) {
       ${isLesson ? renderLessonMediaEditor(block) : ''}
       <div class="sbi-field sbi-field--quill"><label>Contenu</label><small>Éditeur identique au legacy : taille, gras, italique, couleurs, listes, alignement, liens, images et vidéos.</small><textarea id="block-content" class="sbi-quill-hidden" aria-hidden="true">${escapeHtml(block.content || '')}</textarea><div id="block-content-quill" class="sbi-quill-editor"></div></div>
       <div class="sbi-two-cols"><div class="sbi-field"><label>Durée estimée (min)</label><input id="block-duration" class="sbi-input" type="number" min="0" step="1" value="${Number(block.durationMinutes || 0)}"></div><div class="sbi-field"><label>Inclure dans le cours</label><select id="block-visible" class="sbi-select"><option value="true" ${block.visibleInProgram !== false ? 'selected' : ''}>Oui</option><option value="false" ${block.visibleInProgram === false ? 'selected' : ''}>Non</option></select></div></div>
+    </div>
+  `;
+}
+
+function renderPedagogicBlockEditor(block) {
+  if (block.type === 'resource') return renderResourceBlockEditor(block);
+  if (block.type === 'assignment') return renderAssignmentBlockEditor(block);
+  if (block.type === 'checkpoint') return renderCheckpointBlockEditor(block);
+  if (block.type === 'case_study') return renderCaseStudyBlockEditor(block);
+  return renderGenericBlockEditor(block);
+}
+
+function renderPedagogicFooter(block) {
+  return `
+    <div class="sbi-two-cols">
+      <div class="sbi-field"><label>Durée estimée (min)</label><input id="block-duration" class="sbi-input" type="number" min="0" step="1" value="${Number(block.durationMinutes || 0)}"></div>
+      <div class="sbi-field"><label>Inclure dans le cours</label><select id="block-visible" class="sbi-select"><option value="true" ${block.visibleInProgram !== false ? 'selected' : ''}>Oui</option><option value="false" ${block.visibleInProgram === false ? 'selected' : ''}>Non</option></select></div>
+    </div>
+  `;
+}
+
+function renderResourceBlockEditor(block) {
+  return `
+    <div class="sbi-editor-form sbi-editor-form--pedagogic">
+      <div class="sbi-field"><label>Titre de la ressource</label><input id="block-title" class="sbi-input" value="${escapeHtml(block.title || '')}"></div>
+      <div class="sbi-field"><label>Consigne de consultation</label><textarea id="block-instructions" class="sbi-textarea" data-block-field="instructions">${escapeHtml(block.instructions || '')}</textarea></div>
+      <div class="sbi-two-cols">
+        <div class="sbi-field"><label>Type de ressource</label><select class="sbi-select" data-block-field="resourceType">${renderSelectOption('link', block.resourceType || 'link')} ${renderSelectOption('pdf', block.resourceType)} ${renderSelectOption('video', block.resourceType)} ${renderSelectOption('image', block.resourceType)} ${renderSelectOption('file', block.resourceType)}</select></div>
+        <div class="sbi-field"><label>Lien ou chemin du support</label><input class="sbi-input" data-block-field="resourceUrl" value="${escapeHtml(block.resourceUrl || '')}" placeholder="https://... ou chemin du fichier"></div>
+      </div>
+      <div class="sbi-field"><label>Description courte</label><textarea class="sbi-textarea" data-block-field="resourceDescription">${escapeHtml(block.resourceDescription || block.content || '')}</textarea></div>
+      <div class="sbi-field"><label>À observer / retenir</label><textarea class="sbi-textarea" data-block-field="consultationInstruction">${escapeHtml(block.consultationInstruction || '')}</textarea></div>
+      ${renderPedagogicFooter(block)}
+    </div>
+  `;
+}
+
+function renderAssignmentBlockEditor(block) {
+  return `
+    <div class="sbi-editor-form sbi-editor-form--pedagogic">
+      <div class="sbi-field"><label>Titre du devoir</label><input id="block-title" class="sbi-input" value="${escapeHtml(block.title || '')}"></div>
+      <div class="sbi-field"><label>Consigne de travail</label><textarea id="block-instructions" class="sbi-textarea" data-block-field="instructions">${escapeHtml(block.instructions || '')}</textarea></div>
+      <div class="sbi-field"><label>Travail demandé</label><textarea class="sbi-textarea sbi-textarea--large" data-block-field="assignmentPrompt">${escapeHtml(block.assignmentPrompt || block.content || '')}</textarea></div>
+      <div class="sbi-two-cols">
+        <div class="sbi-field"><label>Livrable attendu</label><select class="sbi-select" data-block-field="deliverableType">${renderSelectOption('text', block.deliverableType || 'text')} ${renderSelectOption('file', block.deliverableType)} ${renderSelectOption('link', block.deliverableType)} ${renderSelectOption('mixed', block.deliverableType)}</select></div>
+        <div class="sbi-field"><label>Délai</label><select class="sbi-select" data-block-field="duePolicy">${renderSelectOption('promotion_date', block.duePolicy || 'promotion_date')} ${renderSelectOption('free', block.duePolicy)} ${renderSelectOption('manual_deadline', block.duePolicy)}</select></div>
+      </div>
+      <div class="sbi-field"><label>Critères d’évaluation</label><textarea class="sbi-textarea" data-block-field="evaluationCriteria">${escapeHtml(block.evaluationCriteria || '')}</textarea></div>
+      <label class="sbi-check-row sbi-check-row--box"><input type="checkbox" data-block-field="manualValidation" data-block-boolean="true" ${block.manualValidation !== false ? 'checked' : ''}> Validation manuelle professeur</label>
+      ${renderPedagogicFooter(block)}
+    </div>
+  `;
+}
+
+function renderCheckpointBlockEditor(block) {
+  return `
+    <div class="sbi-editor-form sbi-editor-form--pedagogic">
+      <div class="sbi-field"><label>Titre du checkpoint</label><input id="block-title" class="sbi-input" value="${escapeHtml(block.title || '')}"></div>
+      <div class="sbi-field"><label>Consigne courte</label><textarea id="block-instructions" class="sbi-textarea" data-block-field="instructions">${escapeHtml(block.instructions || '')}</textarea></div>
+      <div class="sbi-field"><label>Objectif du point de contrôle</label><textarea class="sbi-textarea" data-block-field="checkpointGoal">${escapeHtml(block.checkpointGoal || block.content || '')}</textarea></div>
+      <div class="sbi-two-cols">
+        <div class="sbi-field"><label>Mode de validation</label><select class="sbi-select" data-block-field="checkpointMode">${renderSelectOption('understood', block.checkpointMode || 'understood')} ${renderSelectOption('viewed', block.checkpointMode)} ${renderSelectOption('manual_validation', block.checkpointMode)}</select></div>
+        <label class="sbi-check-row sbi-check-row--box"><input type="checkbox" data-block-field="isBlockingPrerequisite" data-block-boolean="true" ${block.isBlockingPrerequisite === true ? 'checked' : ''}> Bloquant avant la suite</label>
+      </div>
+      <div class="sbi-field"><label>Résultat attendu</label><textarea class="sbi-textarea" data-block-field="expectedResult">${escapeHtml(block.expectedResult || '')}</textarea></div>
+      ${renderPedagogicFooter(block)}
+    </div>
+  `;
+}
+
+function renderCaseStudyBlockEditor(block) {
+  return `
+    <div class="sbi-editor-form sbi-editor-form--pedagogic">
+      <div class="sbi-field"><label>Titre de l’étude de cas</label><input id="block-title" class="sbi-input" value="${escapeHtml(block.title || '')}"></div>
+      <div class="sbi-field"><label>Consigne</label><textarea id="block-instructions" class="sbi-textarea" data-block-field="instructions">${escapeHtml(block.instructions || '')}</textarea></div>
+      <div class="sbi-field"><label>Contexte / situation initiale</label><textarea class="sbi-textarea" data-block-field="caseContext">${escapeHtml(block.caseContext || '')}</textarea></div>
+      <div class="sbi-field"><label>Scénario</label><textarea class="sbi-textarea sbi-textarea--large" data-block-field="scenario">${escapeHtml(block.scenario || block.content || '')}</textarea></div>
+      <div class="sbi-field"><label>Documents ou éléments à analyser</label><textarea class="sbi-textarea" data-block-field="analysisMaterials">${escapeHtml(block.analysisMaterials || '')}</textarea></div>
+      <div class="sbi-field"><label>Questions guidées</label><textarea class="sbi-textarea" data-block-field="guidedQuestions" placeholder="Une question par ligne">${escapeHtml(block.guidedQuestions || '')}</textarea></div>
+      <div class="sbi-two-cols">
+        <div class="sbi-field"><label>Mode de correction</label><select class="sbi-select" data-block-field="correctionMode">${renderSelectOption('teacher', block.correctionMode || 'teacher')} ${renderSelectOption('self', block.correctionMode)} ${renderSelectOption('partial_auto', block.correctionMode)}</select></div>
+        <div class="sbi-field"><label>Réponse attendue / grille</label><textarea class="sbi-textarea" data-block-field="expectedAnswer">${escapeHtml(block.expectedAnswer || '')}</textarea></div>
+      </div>
+      ${renderPedagogicFooter(block)}
     </div>
   `;
 }
@@ -1816,9 +2006,74 @@ function renderBlockPreview(block) {
     const question = block.questions?.[0];
     return `<h4>${escapeHtml(block.title || 'QCM')}</h4><div class="sbi-preview-rich"><p>${escapeHtml(question?.question || 'Question à compléter.')}</p>${(question?.options || []).map((option) => `<div class="sbi-preview-answer">${escapeHtml(option)}</div>`).join('')}</div>`;
   }
+  if (PEDAGOGIC_BLOCK_TYPES.has(block.type)) {
+    return `<h4>${escapeHtml(block.title || getBlockMeta(block.type).label)}</h4>${buildPedagogicBlockContent(block, { preview: true })}`;
+  }
   const mediaPreview = block.type === 'lesson' ? renderLessonMediaPreview(block) : '';
   const content = block.content || '<p>Contenu à compléter.</p>';
   return `<h4>${escapeHtml(block.title || getBlockMeta(block.type).label)}</h4>${mediaPreview}<div class="sbi-preview-rich"><p class="sbi-preview-instructions">${escapeHtml(block.instructions || '')}</p>${content}</div>`;
+}
+
+function renderPedagogicLine(label, value) {
+  const cleanValue = normalizeString(value);
+  if (!cleanValue) return '';
+  return `<div class="sbi-pedagogic-line"><strong>${escapeHtml(label)}</strong><span>${escapeHtml(cleanValue)}</span></div>`;
+}
+
+function renderPedagogicText(label, value) {
+  const cleanValue = normalizeString(value);
+  if (!cleanValue) return '';
+  return `<section class="sbi-pedagogic-section"><h5>${escapeHtml(label)}</h5><p>${escapeHtml(cleanValue).replace(/\n/g, '<br>')}</p></section>`;
+}
+
+function buildPedagogicBlockContent(block = {}, { preview = false } = {}) {
+  const typeLabel = getBlockMeta(block.type).label;
+  const instructions = block.instructions
+    ? `<p class="sbi-preview-instructions">${escapeHtml(block.instructions)}</p>`
+    : '';
+  let body = '';
+
+  if (block.type === 'resource') {
+    const resourceLink = block.resourceUrl
+      ? `<a class="sbi-pedagogic-link" href="${escapeHtml(block.resourceUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(block.resourceUrl)}</a>`
+      : '';
+    body = `
+      ${renderPedagogicLine('Type', block.resourceType || 'link')}
+      ${resourceLink}
+      ${renderPedagogicText('Description', block.resourceDescription || block.content)}
+      ${renderPedagogicText('À observer / retenir', block.consultationInstruction)}
+    `;
+  } else if (block.type === 'assignment') {
+    body = `
+      ${renderPedagogicText('Travail demandé', block.assignmentPrompt || block.content)}
+      ${renderPedagogicLine('Livrable attendu', block.deliverableType || 'text')}
+      ${renderPedagogicLine('Délai', block.duePolicy || 'promotion_date')}
+      ${renderPedagogicLine('Validation', block.manualValidation !== false ? 'professeur' : 'automatique')}
+      ${renderPedagogicText('Critères d’évaluation', block.evaluationCriteria)}
+    `;
+  } else if (block.type === 'checkpoint') {
+    body = `
+      ${renderPedagogicText('Objectif', block.checkpointGoal || block.content)}
+      ${renderPedagogicLine('Mode de validation', block.checkpointMode || 'understood')}
+      ${renderPedagogicLine('Bloquant', block.isBlockingPrerequisite === true ? 'oui' : 'non')}
+      ${renderPedagogicText('Résultat attendu', block.expectedResult)}
+    `;
+  } else if (block.type === 'case_study') {
+    body = `
+      ${renderPedagogicText('Contexte', block.caseContext)}
+      ${renderPedagogicText('Scénario', block.scenario || block.content)}
+      ${renderPedagogicText('Éléments à analyser', block.analysisMaterials)}
+      ${renderPedagogicText('Questions guidées', block.guidedQuestions)}
+      ${renderPedagogicText('Réponse attendue / grille', block.expectedAnswer)}
+      ${renderPedagogicLine('Correction', block.correctionMode || 'teacher')}
+    `;
+  }
+
+  const meta = preview
+    ? `<small>${escapeHtml(typeLabel)} · ${toPositiveMinutes(block.durationMinutes)} min</small>`
+    : '';
+
+  return `<div class="sbi-preview-rich sbi-pedagogic-preview">${instructions}${body || '<p>Bloc à compléter.</p>'}${meta}</div>`;
 }
 
 function renderLessonMediaPreview(block) {
@@ -1926,6 +2181,7 @@ function bindEditorInputs() {
 
   bindFillBlankInputs(active);
   bindQuizInputs(active);
+  bindPedagogicBlockInputs(active);
 }
 
 function bindFillBlankInputs(active) {
@@ -2027,6 +2283,25 @@ function bindQuizInputs(active) {
   }));
 }
 
+function bindPedagogicBlockInputs(active) {
+  if (!active || !PEDAGOGIC_BLOCK_TYPES.has(active.type)) return;
+
+  $all('[data-block-field]').forEach((field) => {
+    const key = field.dataset.blockField;
+    if (!key) return;
+    const eventName = field.tagName === 'SELECT' || field.type === 'checkbox' ? 'change' : 'input';
+    field.addEventListener(eventName, (event) => {
+      if (field.dataset.blockBoolean === 'true') {
+        active[key] = Boolean(event.target.checked);
+      } else {
+        active[key] = event.target.value;
+      }
+      markDirty();
+      renderPreview();
+    });
+  });
+}
+
 function bindSettingsInputs() {
   $('#settings-bloc')?.addEventListener('input', (event) => {
     state.course.bloc = event.target.value;
@@ -2099,6 +2374,14 @@ function saveActiveEditorValues() {
   if (instructions) active.instructions = instructions.value;
   const content = $('#block-content');
   if (content) active.content = content.value;
+
+  $all('[data-block-field]').forEach((field) => {
+    const key = field.dataset.blockField;
+    if (!key) return;
+    active[key] = field.dataset.blockBoolean === 'true'
+      ? Boolean(field.checked)
+      : field.value;
+  });
 }
 
 function bindGlobalActions() {
