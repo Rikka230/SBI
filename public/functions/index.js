@@ -3620,6 +3620,94 @@ function getCourseWorkflowFormationLabels(courseData = {}) {
     ].map((item) => cleanString(item, 120)).filter(Boolean).slice(0, 8);
 }
 
+function normalizeCourseBlockKey(value = "", maxLength = 90) {
+    const normalized = cleanString(value, 180)
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        .slice(0, maxLength);
+    return normalized || "bloc";
+}
+
+function collectCourseFormationIds(courseData = {}) {
+    const ids = new Set();
+    [
+        courseData.targetFormationIds,
+        courseData.formationIds,
+        courseData.formations
+    ].forEach((value) => collectCleanStringIds(value, ids));
+    return Array.from(ids).slice(0, 30);
+}
+
+function getCourseBlockDocId(formationId = "", titleKey = "") {
+    const formationKey = normalizeCourseBlockKey(formationId || "global", 80);
+    const blockKey = normalizeCourseBlockKey(titleKey || "bloc", 90);
+    return `${formationKey}_${blockKey}`.slice(0, 180);
+}
+
+async function syncCourseBlockReferences(db, { courseId, courseData = {}, caller = {} }) {
+    const blockTitle = cleanString(courseData.bloc || courseData.blockTitle || courseData.blockName || "", 180);
+    if (!blockTitle) {
+        return { success: true, skipped: true, reason: "empty-block-title", synced: 0 };
+    }
+
+    const titleKey = normalizeCourseBlockKey(blockTitle);
+    const formationIds = collectCourseFormationIds(courseData);
+    const formationTitles = Array.isArray(courseData.targetFormationTitles)
+        ? courseData.targetFormationTitles.map((value) => cleanString(value, 180))
+        : [];
+    const authorId = cleanString(courseData.auteurId || caller.uid || "", 180);
+    const courseTitle = getCourseWorkflowTitle(courseData);
+    const targets = formationIds.length
+        ? formationIds.map((formationId, index) => ({
+            formationId,
+            formationIds: [formationId],
+            formationTitle: formationTitles[index] || ""
+        }))
+        : [{
+            formationId: "",
+            formationIds: [],
+            formationTitle: ""
+        }];
+
+    const batch = db.batch();
+    const now = admin.firestore.FieldValue.serverTimestamp();
+
+    targets.forEach((target) => {
+        const docId = getCourseBlockDocId(target.formationId || "global", titleKey);
+        const ref = db.collection("courseBlocks").doc(docId);
+        batch.set(ref, {
+            title: blockTitle,
+            blockTitle,
+            titleKey,
+            formationId: target.formationId,
+            formationIds: target.formationIds,
+            formationTitle: target.formationTitle,
+            courseIds: admin.firestore.FieldValue.arrayUnion(courseId),
+            authorIds: authorId ? admin.firestore.FieldValue.arrayUnion(authorId) : admin.firestore.FieldValue.arrayUnion(caller.uid || "unknown"),
+            lastCourseId: courseId,
+            lastCourseTitle: courseTitle,
+            updatedAt: now,
+            createdAt: now,
+            source: "course-editor-v2",
+            schemaVersion: "course-block-reference-v1"
+        }, { merge: true });
+    });
+
+    await batch.commit();
+
+    return {
+        success: true,
+        skipped: false,
+        title: blockTitle,
+        titleKey,
+        synced: targets.length,
+        formationIds
+    };
+}
+
 function buildCourseWorkflowEmailHtml({ preheader, messageHtml, prenom = "équipe SBI" }) {
     return renderSbiEmailTemplate({
         prenom,
@@ -4198,6 +4286,31 @@ exports.submitCourseForValidation = onCall({
         message: warning || "Cours soumis à validation.",
         warning
     };
+});
+
+exports.syncCourseBlockReference = onCall({
+    region: "europe-west1",
+    timeoutSeconds: 30,
+    memory: "256MiB"
+}, async (request) => {
+    const db = admin.firestore();
+    const caller = await requireActiveCourseCaller(request, db);
+    const courseId = cleanString(request.data?.courseId, 180);
+
+    if (!courseId) throw new HttpsError("invalid-argument", "Identifiant cours manquant.");
+
+    const courseSnap = await db.collection("courses").doc(courseId).get();
+    if (!courseSnap.exists) throw new HttpsError("not-found", "Cours introuvable.");
+
+    const courseData = courseSnap.data() || {};
+    const authorId = cleanString(courseData.auteurId || "", 180);
+    if (!caller.isAdmin && authorId !== caller.uid) {
+        throw new HttpsError("permission-denied", "Vous ne pouvez indexer que vos propres cours.");
+    }
+
+    const report = await syncCourseBlockReferences(db, { courseId, courseData, caller });
+
+    return report;
 });
 
 

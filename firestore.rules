@@ -753,6 +753,11 @@ service cloud.firestore {
         );
     }
 
+    match /courseBlocks/{blockId} {
+      allow get, list: if isActiveUser();
+      allow create, update, delete: if isAdmin();
+    }
+
     /* ============================================================
        FORMATIONS
        ============================================================ */

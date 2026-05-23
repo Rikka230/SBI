@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.191',
+  version: '8.0P.167.192',
   branch: 'main',
-  channel: 'SEO STATIC META AND CANONICALS',
-  stage: 'PUBLIC PAGES META DESCRIPTION CANONICAL OG TWITTER JSONLD',
+  channel: 'COURSE BLOCKS REFERENCE INDEX',
+  stage: 'P2J4 SHARED COURSEBLOCKS BOOTSTRAP',
   updatedAt: '2026-05-23',
-  label: 'SBI 8.0P.167.191 - SEO static meta and canonicals'
+  label: 'SBI 8.0P.167.192 - CourseBlocks shared reference bootstrap'
 };
 
 export function getSbiVersionLabel() {

@@ -27,10 +27,11 @@ import {
 } from '/admin/js/course-media-storage.js?v=8.0P.167.182';
 
 const MAX_QUERY_VALUES = 10;
-const VERSION = '8.0P.167.188';
+const VERSION = '8.0P.167.192';
 const functionsInstance = getFunctions(app, 'europe-west1');
 const submitCourseForValidationCallable = httpsCallable(functionsInstance, 'submitCourseForValidation');
 const reviewCourseValidationCallable = httpsCallable(functionsInstance, 'reviewCourseValidation');
+const syncCourseBlockReferenceCallable = httpsCallable(functionsInstance, 'syncCourseBlockReference');
 
 const BLOCK_TYPES = [
   { type: 'course_info', label: 'Course Info', subtitle: 'Informations générales', icon: 'i', static: true },
@@ -608,11 +609,34 @@ async function loadBlockOptionsFromCourses() {
   const blocks = new Set();
   const selectedIds = normalizeList(state.selectedFormationIds);
 
+  async function absorbCourseBlockSnapshot(snapshot) {
+    snapToArray(snapshot).forEach((blockRef) => {
+      const title = normalizeString(blockRef.title || blockRef.blockTitle || blockRef.name);
+      if (title) blocks.add(title);
+    });
+  }
+
   async function absorbCourseSnapshot(snapshot) {
     snapToArray(snapshot).forEach((course) => {
       const bloc = normalizeString(course.bloc || course.blockTitle || course.blockName);
       if (bloc) blocks.add(bloc);
     });
+  }
+
+  for (const chunk of chunkArray(selectedIds)) {
+    const byCourseBlocks = await safeGetDocs(
+      query(collection(db, 'courseBlocks'), where('formationIds', 'array-contains-any', chunk)),
+      'référentiel courseBlocks par formation'
+    );
+    await absorbCourseBlockSnapshot(byCourseBlocks);
+  }
+
+  if (state.uid) {
+    const ownCourseBlocks = await safeGetDocs(
+      query(collection(db, 'courseBlocks'), where('authorIds', 'array-contains', state.uid)),
+      'référentiel courseBlocks par auteur'
+    );
+    await absorbCourseBlockSnapshot(ownCourseBlocks);
   }
 
   if (state.uid) {
@@ -639,6 +663,21 @@ async function loadBlockOptionsFromCourses() {
 
   if (state.course.bloc) blocks.add(state.course.bloc);
   state.blockOptions = Array.from(blocks).sort((a, b) => a.localeCompare(b, 'fr', { sensitivity: 'base' }));
+}
+
+async function syncCourseBlockReferenceForCourse(courseId) {
+  if (!courseId || !normalizeBlockTitle(state.course.bloc)) return null;
+
+  try {
+    const result = await syncCourseBlockReferenceCallable({ courseId });
+    return result?.data || null;
+  } catch (error) {
+    console.warn('[SBI Course Editor V2] Référentiel courseBlocks non synchronisé :', error);
+    return {
+      success: false,
+      warning: error.message || 'Référentiel courseBlocks non synchronisé.'
+    };
+  }
 }
 
 function createDefaultBlock(type = 'lesson') {
@@ -2169,6 +2208,8 @@ async function saveCourse(action = 'draft', { silent = false } = {}) {
       await updateDoc(doc(db, 'courses', state.courseId), payload);
     }
 
+    const blockReferenceReport = await syncCourseBlockReferenceForCourse(targetCourseId);
+
     if (action === 'submit') {
       setStatus('Soumission à validation…');
       const result = await submitCourseForValidationCallable({ courseId: targetCourseId });
@@ -2199,7 +2240,9 @@ async function saveCourse(action = 'draft', { silent = false } = {}) {
     state.dirty = false;
     updateHeaderFields();
     applyEditorLockState();
-    setStatus(workflowResult?.message || (action === 'submit' ? 'Cours soumis à validation.' : (action === 'publish' ? 'Cours mis en ligne.' : 'Brouillon enregistré.')), 'success');
+    const baseMessage = workflowResult?.message || (action === 'submit' ? 'Cours soumis à validation.' : (action === 'publish' ? 'Cours mis en ligne.' : 'Brouillon enregistré.'));
+    const blockWarning = blockReferenceReport?.warning ? ' Référentiel blocs non synchronisé.' : '';
+    setStatus(`${baseMessage}${blockWarning}`, 'success');
     if (!silent) await loadBlockOptionsFromCourses();
   } catch (error) {
     console.error('[SBI Course Editor V2] Sauvegarde impossible :', error);
