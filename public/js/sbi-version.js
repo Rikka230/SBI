@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.190',
+  version: '8.0P.167.191',
   branch: 'main',
-  channel: 'SEO REDIRECTS AND 404 CLEANUP',
-  stage: 'WIX LEGACY URL REDIRECTS + CLEAN 404 PAGE',
-  updatedAt: '2026-05-22',
-  label: 'SBI 8.0P.167.190 - SEO redirects and 404 cleanup'
+  channel: 'SEO STATIC META AND CANONICALS',
+  stage: 'PUBLIC PAGES META DESCRIPTION CANONICAL OG TWITTER JSONLD',
+  updatedAt: '2026-05-23',
+  label: 'SBI 8.0P.167.191 - SEO static meta and canonicals'
 };
 
 export function getSbiVersionLabel() {

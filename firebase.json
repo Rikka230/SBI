@@ -63,6 +63,16 @@
         "source": "/copie-de-formation-**",
         "destination": "/formations.html",
         "type": 301
+      },
+      {
+        "source": "/parcours",
+        "destination": "/formations.html",
+        "type": 301
+      },
+      {
+        "source": "/parcours.html",
+        "destination": "/formations.html",
+        "type": 301
       }
     ],
     "headers": [
