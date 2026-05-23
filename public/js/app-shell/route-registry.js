@@ -701,7 +701,7 @@ async function mountCourseEditorV2Page({ url, role = 'teacher' }) {
   window.__SBI_APP_SHELL_MOUNTING_COURSE_EDITOR_V2 = true;
 
   try {
-    const module = await import('/js/course-editor-v2/course-editor-v2.js?v=8.0P.167.192');
+    const module = await import('/js/course-editor-v2/course-editor-v2.js?v=8.0P.167.193');
     const cleanup = module.mountCourseEditorV2?.({
       source: isAdmin ? 'pjax-admin-course-editor-v2' : 'pjax-teacher-course-editor-v2',
       force: true

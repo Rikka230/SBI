@@ -27,7 +27,7 @@ import {
 } from '/admin/js/course-media-storage.js?v=8.0P.167.182';
 
 const MAX_QUERY_VALUES = 10;
-const VERSION = '8.0P.167.192';
+const VERSION = '8.0P.167.193';
 const functionsInstance = getFunctions(app, 'europe-west1');
 const submitCourseForValidationCallable = httpsCallable(functionsInstance, 'submitCourseForValidation');
 const reviewCourseValidationCallable = httpsCallable(functionsInstance, 'reviewCourseValidation');
@@ -46,6 +46,24 @@ const BLOCK_TYPES = [
 ];
 
 const BLOCK_TYPE_MAP = new Map(BLOCK_TYPES.map((item) => [item.type, item]));
+
+const QUALIOPI_EVIDENCE_OPTIONS = [
+  {
+    value: '2.2 Moyens pédagogiques',
+    title: '2.2 Moyens pédagogiques',
+    help: 'Support, méthode, ressource ou situation utilisée pour apprendre.'
+  },
+  {
+    value: '2.4 Modalités d’évaluation',
+    title: '2.4 Modalités d’évaluation',
+    help: 'Quiz, devoir, checkpoint ou activité qui mesure une acquisition.'
+  },
+  {
+    value: '3.1 Adaptation pédagogique',
+    title: '3.1 Adaptation pédagogique',
+    help: 'Contenu adapté au niveau, au besoin ou au rythme de l’apprenant.'
+  }
+];
 
 const QUILL_TOOLBAR_OPTIONS = [
   [{ size: ['small', false, 'large', 'huge'] }],
@@ -456,7 +474,8 @@ function syncWorkflowControls() {
   }
 
   if (rejectButton) {
-    rejectButton.hidden = !isPendingAdmin;
+    rejectButton.hidden = state.role !== 'admin' || !isPendingAdmin;
+    rejectButton.disabled = state.role !== 'admin' || !isPendingAdmin;
   }
 }
 
@@ -1567,7 +1586,7 @@ function renderObjectivesEditor() {
       <div class="sbi-field"><label>Objectifs du cours</label><textarea id="editor-course-objectives" class="sbi-textarea" placeholder="À la fin du cours, l’apprenant sera capable de…">${escapeHtml(state.course.objectives)}</textarea></div>
       <div class="sbi-two-cols">
         <div class="sbi-field"><label>Compétence principale</label><input id="editor-course-competency" class="sbi-input" value="${escapeHtml(state.course.competency)}" placeholder="Ex : Encadrer un groupe"></div>
-        <div class="sbi-field"><label>Preuve Qualiopi</label><select id="editor-course-qualiopi" class="sbi-select"><option value="">Non renseignée</option>${renderSelectOption('2.2 Moyens pédagogiques', state.course.qualiopiEvidence)}${renderSelectOption('2.4 Modalités d’évaluation', state.course.qualiopiEvidence)}${renderSelectOption('3.1 Adaptation pédagogique', state.course.qualiopiEvidence)}</select></div>
+        <div class="sbi-field"><label>Preuve Qualiopi</label><select id="editor-course-qualiopi" class="sbi-select"><option value="">Non renseignée</option>${renderQualiopiEvidenceOptions(state.course.qualiopiEvidence)}</select>${renderQualiopiEvidenceLegend(state.course.qualiopiEvidence)}</div>
       </div>
     </div>
   `;
@@ -1576,6 +1595,33 @@ function renderObjectivesEditor() {
 function renderSelectOption(value, selectedValue) {
   const selected = value === selectedValue ? 'selected' : '';
   return `<option value="${escapeHtml(value)}" ${selected}>${escapeHtml(value)}</option>`;
+}
+
+function renderQualiopiEvidenceOptions(selectedValue) {
+  return QUALIOPI_EVIDENCE_OPTIONS
+    .map((option) => renderSelectOption(option.value, selectedValue))
+    .join('');
+}
+
+function renderQualiopiEvidenceLegend(selectedValue = '') {
+  return `
+    <div class="sbi-qualiopi-legend">
+      ${QUALIOPI_EVIDENCE_OPTIONS.map((option) => `
+        <div class="sbi-qualiopi-legend__row ${option.value === selectedValue ? 'is-selected' : ''}" data-qualiopi-value="${escapeHtml(option.value)}">
+          <strong>${escapeHtml(option.title)}</strong>
+          <span>${escapeHtml(option.help)}</span>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function syncQualiopiLegendSelection(select) {
+  const field = select?.closest?.('.sbi-field');
+  if (!field) return;
+  field.querySelectorAll('[data-qualiopi-value]').forEach((row) => {
+    row.classList.toggle('is-selected', row.dataset.qualiopiValue === select.value);
+  });
 }
 
 function renderBlockEditor(block) {
@@ -1640,8 +1686,8 @@ function renderLessonMediaEditor(block) {
   `;
 }
 
-function renderFillBlankEditor(block) {
-  const blankRows = normalizeFillBlankRows(block).map((blank, index) => `
+function renderFillBlankRowsHtml(block) {
+  return normalizeFillBlankRows(block).map((blank, index) => `
     <tr data-blank-row="${escapeHtml(blank.id)}">
       <td>${index + 1}</td>
       <td><input class="sbi-input fib-token" value="${escapeHtml(blank.token)}"></td>
@@ -1650,13 +1696,15 @@ function renderFillBlankEditor(block) {
       <td><button class="sbi-editor-btn sbi-editor-btn--tiny sbi-editor-btn--danger" type="button" data-delete-blank="${escapeHtml(blank.id)}">×</button></td>
     </tr>
   `).join('');
+}
 
+function renderFillBlankEditor(block) {
   return `
     <div class="sbi-editor-form">
       <div class="sbi-field"><label>Titre</label><input id="block-title" class="sbi-input" value="${escapeHtml(block.title || '')}"></div>
       <div class="sbi-field"><label>Instructions</label><div class="sbi-rich-toolbar"><span>Paragraphe</span><button class="sbi-editor-btn sbi-editor-btn--tiny" type="button">B</button><button class="sbi-editor-btn sbi-editor-btn--tiny" type="button">I</button><button class="sbi-editor-btn sbi-editor-btn--tiny" type="button">Liste</button></div><textarea id="block-instructions" class="sbi-textarea">${escapeHtml(block.instructions || '')}</textarea></div>
-      <div class="sbi-field"><label>Texte à compléter</label><small>Utilise [[mot attendu]] pour créer un trou.</small><textarea id="fib-prompt" class="sbi-textarea">${escapeHtml(block.prompt || '')}</textarea><div id="fib-rendered-preview" class="sbi-token-box">${renderFillBlankPreviewText(block)}</div></div>
-      <div class="sbi-field"><label>Réponses et paramètres des blancs</label><table class="sbi-table"><thead><tr><th>#</th><th>Texte / élément</th><th>Réponses acceptées</th><th>Points</th><th></th></tr></thead><tbody id="fib-blank-rows">${blankRows}</tbody></table><div><button id="fib-add-blank" class="sbi-editor-btn sbi-editor-btn--tiny" type="button">+ Ajouter un blanc</button></div></div>
+      <div class="sbi-field"><label>Texte à compléter</label><small>Utilise [[mot attendu]] pour créer un trou.</small><div class="sbi-resize-field"><textarea id="fib-prompt" class="sbi-textarea sbi-textarea--fillblank">${escapeHtml(block.prompt || '')}</textarea></div><div id="fib-rendered-preview" class="sbi-token-box">${renderFillBlankPreviewText(block)}</div></div>
+      <div class="sbi-field"><label>Réponses et paramètres des blancs</label><table class="sbi-table"><thead><tr><th>#</th><th>Texte / élément</th><th>Réponses acceptées</th><th>Points</th><th></th></tr></thead><tbody id="fib-blank-rows">${renderFillBlankRowsHtml(block)}</tbody></table><div><button id="fib-add-blank" class="sbi-editor-btn sbi-editor-btn--tiny" type="button">+ Ajouter un blanc</button></div></div>
       <div class="sbi-three-cols"><div class="sbi-field"><label>Score</label><select id="fib-scoring-mode" class="sbi-select"><option value="per_blank" ${block.scoringMode !== 'global' ? 'selected' : ''}>Par blanc</option><option value="global" ${block.scoringMode === 'global' ? 'selected' : ''}>Global</option></select></div><div class="sbi-field"><label>Tentatives</label><input id="fib-max-attempts" class="sbi-input" type="number" min="1" value="${Number(block.maxAttempts || 2)}"></div><div class="sbi-field"><label>Afficher réponses</label><select id="fib-show-answers" class="sbi-select"><option value="true" ${block.showAnswersAtEnd !== false ? 'selected' : ''}>Oui</option><option value="false" ${block.showAnswersAtEnd === false ? 'selected' : ''}>Non</option></select></div></div>
       <div class="sbi-two-cols"><div class="sbi-field"><label>Feedback bonne réponse</label><textarea id="fib-feedback-correct" class="sbi-textarea">${escapeHtml(block.feedbackCorrect || '')}</textarea></div><div class="sbi-field"><label>Feedback incorrect</label><textarea id="fib-feedback-incorrect" class="sbi-textarea">${escapeHtml(block.feedbackIncorrect || '')}</textarea></div></div>
     </div>
@@ -1726,7 +1774,7 @@ function renderSettings() {
       <div class="sbi-field"><label>Formation</label><div class="sbi-input" style="height:auto;">${escapeHtml(selectedFormationLabel)}</div></div>
       <div class="sbi-field"><label>Bloc partagé</label>${renderSharedBlockPicker('settings', state.course.bloc, { allowCreate: false })}<small>Sélection rapide d’un bloc existant. Pour créer un nouveau bloc, passe par Course Info.</small></div>
       <div class="sbi-field"><label>Compétence ciblée</label><input id="settings-competency" class="sbi-input" value="${escapeHtml(active?.competency || state.course.competency || '')}" placeholder="Ex : C2. Assurer la sécurité"></div>
-      <div class="sbi-field"><label>Preuve Qualiopi</label><select id="settings-qualiopi" class="sbi-select"><option value="">Non renseignée</option>${renderSelectOption('2.2 Moyens pédagogiques', active?.qualiopiEvidence || state.course.qualiopiEvidence)}${renderSelectOption('2.4 Modalités d’évaluation', active?.qualiopiEvidence || state.course.qualiopiEvidence)}${renderSelectOption('3.1 Adaptation pédagogique', active?.qualiopiEvidence || state.course.qualiopiEvidence)}</select></div>
+      <div class="sbi-field"><label>Preuve Qualiopi</label><select id="settings-qualiopi" class="sbi-select"><option value="">Non renseignée</option>${renderQualiopiEvidenceOptions(active?.qualiopiEvidence || state.course.qualiopiEvidence)}</select>${renderQualiopiEvidenceLegend(active?.qualiopiEvidence || state.course.qualiopiEvidence)}</div>
       <div class="sbi-two-cols"><div class="sbi-field"><label>${settingsDurationLabel}</label>${settingsDurationHelp}<input id="settings-duration" class="sbi-input" type="number" min="0" step="1" value="${settingsDuration}" ${settingsDurationReadonly}></div><div class="sbi-field"><label>Score max calculé</label><input id="settings-score" class="sbi-input" type="number" min="0" value="${getActiveScore(active)}" readonly aria-readonly="true"></div></div>
       <div class="sbi-field"><label>Inclure dans le cours</label><select id="settings-visible" class="sbi-select"><option value="true" ${(active?.visibleInProgram ?? state.course.visibleInProgram) !== false ? 'selected' : ''}>Oui</option><option value="false" ${(active?.visibleInProgram ?? state.course.visibleInProgram) === false ? 'selected' : ''}>Non</option></select></div>
       <div class="sbi-two-cols"><div class="sbi-field"><label>Règle</label><select id="settings-rule" class="sbi-select"><option value="score_minimum">Score minimum</option><option value="viewed">Consulté</option></select></div><div class="sbi-field"><label>Seuil %</label><input id="settings-validation-score" class="sbi-input" type="number" min="0" max="100" value="${Number(state.course.validationScore || 70)}"></div></div>
@@ -1853,7 +1901,11 @@ function bindEditorInputs() {
   $('#editor-course-bloc-add')?.addEventListener('click', () => addLocalSharedBlockOption($('#editor-course-bloc')?.value));
   $('#editor-course-objectives')?.addEventListener('input', (event) => { state.course.objectives = event.target.value; markDirty(); renderPreview(); });
   $('#editor-course-competency')?.addEventListener('input', (event) => { state.course.competency = event.target.value; markDirty(); });
-  $('#editor-course-qualiopi')?.addEventListener('change', (event) => { state.course.qualiopiEvidence = event.target.value; markDirty(); });
+  $('#editor-course-qualiopi')?.addEventListener('change', (event) => {
+    state.course.qualiopiEvidence = event.target.value;
+    syncQualiopiLegendSelection(event.target);
+    markDirty();
+  });
 
   $('#editor-delete-block')?.addEventListener('click', () => { void deleteActiveBlock(); });
   $('#editor-duplicate-block')?.addEventListener('click', duplicateActiveBlock);
@@ -1879,12 +1931,22 @@ function bindEditorInputs() {
 function bindFillBlankInputs(active) {
   if (!active || active.type !== 'fill_blank') return;
   $('#fib-prompt')?.addEventListener('input', (event) => {
+    const beforeTokens = normalizeFillBlankRows(active).map((blank) => blank.token).join('\u001f');
     active.prompt = event.target.value;
     const tokens = extractTokens(active.prompt);
     const existing = new Map(normalizeFillBlankRows(active).map((blank) => [blank.token, blank]));
     active.blanks = tokens.map((token) => existing.get(token) || { id: makeId('blank'), token, answers: token, points: 1 });
+    const afterTokens = active.blanks.map((blank) => blank.token).join('\u001f');
     markDirty();
-    renderMainEditor();
+    refreshFillBlankPreview(active);
+    if (beforeTokens !== afterTokens) {
+      refreshFillBlankRows(active);
+      syncScoreUi();
+    }
+    renderPreview();
+  });
+  $('#fib-prompt')?.addEventListener('blur', () => {
+    refreshFillBlankRows(active);
     rerenderSettingsPanel();
     renderPreview();
   });
@@ -1904,12 +1966,29 @@ function bindFillBlankInputs(active) {
     renderPreview();
   });
 
+  bindFillBlankRowInputs(active);
+}
+
+function refreshFillBlankPreview(active) {
+  const preview = $('#fib-rendered-preview');
+  if (preview) preview.innerHTML = renderFillBlankPreviewText(active);
+}
+
+function refreshFillBlankRows(active) {
+  const body = $('#fib-blank-rows');
+  if (!body) return;
+  body.innerHTML = renderFillBlankRowsHtml(active);
+  bindFillBlankRowInputs(active);
+}
+
+function bindFillBlankRowInputs(active) {
   $all('[data-delete-blank]').forEach((button) => button.addEventListener('click', () => {
     const id = button.dataset.deleteBlank;
     active.blanks = normalizeFillBlankRows(active).filter((blank) => blank.id !== id);
     markDirty();
-    renderMainEditor();
-    rerenderSettingsPanel();
+    refreshFillBlankRows(active);
+    refreshFillBlankPreview(active);
+    syncScoreUi();
     renderPreview();
   }));
 
@@ -1974,6 +2053,7 @@ function bindSettingsInputs() {
   $('#settings-qualiopi')?.addEventListener('change', (event) => {
     if (active) active.qualiopiEvidence = event.target.value;
     else state.course.qualiopiEvidence = event.target.value;
+    syncQualiopiLegendSelection(event.target);
     markDirty();
   });
   $('#settings-duration')?.addEventListener('input', (event) => {
@@ -2252,6 +2332,12 @@ async function saveCourse(action = 'draft', { silent = false } = {}) {
 }
 
 async function rejectCourseFromValidation() {
+  if (state.role !== 'admin') {
+    syncWorkflowControls();
+    await openSbiAlert('Action réservée', 'Seule l’administration peut refuser un cours soumis à validation.');
+    return;
+  }
+
   if (!isAdminPendingReview()) {
     await openSbiAlert('Refus indisponible', 'Seul un cours en attente de validation peut être refusé.');
     return;

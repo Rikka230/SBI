@@ -404,6 +404,26 @@ body.sbi-editor-v2 {
   outline: none;
 }
 .sbi-textarea { min-height: 120px; resize: vertical; line-height: 1.65; }
+.sbi-resize-field {
+  position: relative;
+}
+.sbi-resize-field::after {
+  content: "";
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  width: 16px;
+  height: 16px;
+  border-right: 2px solid var(--accent);
+  border-bottom: 2px solid var(--accent);
+  opacity: 0.58;
+  pointer-events: none;
+}
+.sbi-textarea--fillblank {
+  min-height: 240px;
+  resize: vertical;
+  padding-bottom: 1.35rem;
+}
 .sbi-input:focus,
 .sbi-select:focus,
 .sbi-textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
@@ -438,6 +458,35 @@ body.sbi-editor-v2 {
   border-radius: 8px;
   padding: 0.12rem 0.35rem;
   font-weight: 900;
+}
+
+.sbi-qualiopi-legend {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.65rem;
+  border: 1px solid var(--editor-border);
+  border-radius: 12px;
+  background: var(--editor-surface-2);
+}
+.sbi-qualiopi-legend__row {
+  display: grid;
+  gap: 0.16rem;
+  padding: 0.45rem 0.5rem;
+  border-radius: 10px;
+  border: 1px solid transparent;
+}
+.sbi-qualiopi-legend__row strong {
+  color: var(--editor-text);
+  font-size: 0.76rem;
+}
+.sbi-qualiopi-legend__row span {
+  color: var(--editor-muted);
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+.sbi-qualiopi-legend__row.is-selected {
+  border-color: var(--accent-border);
+  background: var(--accent-soft);
 }
 
 .sbi-table {
