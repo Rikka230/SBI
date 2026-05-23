@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.189',
+  version: '8.0P.167.190',
   branch: 'main',
-  channel: 'CURSUS DIRECT STUDENT NOTIFICATIONS',
-  stage: 'COURSEPLAN SAVE TRIGGERS STUDENT NOTIFICATIONS',
+  channel: 'SEO REDIRECTS AND 404 CLEANUP',
+  stage: 'WIX LEGACY URL REDIRECTS + CLEAN 404 PAGE',
   updatedAt: '2026-05-22',
-  label: 'SBI 8.0P.167.189 - Cursus direct student notifications'
+  label: 'SBI 8.0P.167.190 - SEO redirects and 404 cleanup'
 };
 
 export function getSbiVersionLabel() {
