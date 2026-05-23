@@ -35,6 +35,7 @@ const SVG_LOCK = `<svg width="16" height="16" fill="currentColor" viewBox="0 0 2
 const SVG_TIME = `<svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24" style="margin-right: 8px;"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>`;
 const SVG_NEXT = `<svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg>`;
 const PEDAGOGIC_CHAPTER_TYPES = new Set(['resource', 'assignment', 'checkpoint', 'case_study']);
+const OBJECTIVES_CHAPTER_ID = 'course-objectives';
 
 function getEffectiveViewerUrl() {
     return new URL(window.SBI_APP_SHELL_CURRENT_URL || window.location.href, window.location.origin);
@@ -275,6 +276,14 @@ function isPedagogicChapter(chapter = {}) {
     return PEDAGOGIC_CHAPTER_TYPES.has(chapter.type || chapter.activityType);
 }
 
+function isCheckpointChapter(chapter = {}) {
+    return (chapter.type || chapter.activityType) === 'checkpoint';
+}
+
+function isObjectivesChapter(chapter = {}) {
+    return chapter.type === 'objectives';
+}
+
 function normalizeLegacyFillBlankContent(chapter = {}) {
     if (typeof document === 'undefined' || !chapter.contenu || !String(chapter.contenu).includes('<mark')) {
         return null;
@@ -364,16 +373,35 @@ function convertBlockToViewerChapter(block = {}, index = 0) {
     };
 }
 
+function buildObjectivesChapter(course = {}) {
+    return {
+        id: OBJECTIVES_CHAPTER_ID,
+        type: 'objectives',
+        activityType: 'objectives',
+        titre: 'Objectifs du cours',
+        courseTitle: course.titre || course.title || '',
+        objectives: course.objectives || '',
+        competency: course.competency || '',
+        qualiopiEvidence: course.qualiopiEvidence || '',
+        estimatedDurationMinutes: Number(course.estimatedDurationMinutes || 0),
+        durationMinutes: 1
+    };
+}
+
 function getViewerChapters(course = {}) {
+    const objectivesChapter = buildObjectivesChapter(course);
+
     if (Array.isArray(course.learningBlocks) && course.learningBlocks.length) {
-        return course.learningBlocks
+        const chapters = course.learningBlocks
             .filter((block) => block.visibleInProgram !== false)
             .map(convertBlockToViewerChapter);
+        return [objectivesChapter, ...chapters];
     }
 
-    return (Array.isArray(course.chapitres) ? course.chapitres : [])
+    const chapters = (Array.isArray(course.chapitres) ? course.chapitres : [])
         .filter((chapter) => chapter.visibleInProgram !== false)
         .map((chapter) => normalizeLegacyFillBlankContent(chapter) || chapter);
+    return [objectivesChapter, ...chapters];
 }
 
 function getPedagogicChapterLabel(type = '') {
@@ -382,6 +410,64 @@ function getPedagogicChapterLabel(type = '') {
     if (type === 'checkpoint') return 'Checkpoint';
     if (type === 'case_study') return 'Étude de cas';
     return 'Activité';
+}
+
+function formatViewerBytes(bytes) {
+    const value = Number(bytes || 0);
+    if (!Number.isFinite(value) || value <= 0) return '';
+    if (value < 1024) return `${value} o`;
+    const kb = value / 1024;
+    if (kb < 1024) return `${kb.toFixed(0)} Ko`;
+    return `${(kb / 1024).toFixed(2)} Mo`;
+}
+
+function renderObjectivesChapter(chapter = {}) {
+    return `
+        <div class="text-container sbi-viewer-objectives-card">
+            <div class="sbi-viewer-activity-label">${SVG_READ}<span>Objectifs</span></div>
+            <div class="sbi-objectives-grid">
+                ${renderViewerText('Cours', chapter.courseTitle)}
+                ${renderViewerText('Objectifs pedagogiques', chapter.objectives || 'Les objectifs seront precises par le professeur.')}
+                ${renderViewerLine('Competence principale', chapter.competency)}
+                ${renderViewerLine('Duree estimee', chapter.estimatedDurationMinutes ? `${chapter.estimatedDurationMinutes} min` : '')}
+                ${renderViewerLine('Preuve Qualiopi', chapter.qualiopiEvidence)}
+            </div>
+        </div>`;
+}
+
+function getFallbackCheckpointItems() {
+    return courseData.chapitres
+        .slice(0, Math.max(0, currentChapterIndex))
+        .filter((chapter) => !isObjectivesChapter(chapter) && !isCheckpointChapter(chapter))
+        .map((chapter, index) => ({
+            id: chapter.id || `step-${index}`,
+            title: chapter.titre || `Etape ${index + 1}`,
+            type: chapter.type || chapter.activityType || 'lesson'
+        }));
+}
+
+function getCheckpointItems(chapter = {}) {
+    if (Array.isArray(chapter.checkpointItems) && chapter.checkpointItems.length) {
+        return chapter.checkpointItems;
+    }
+    return getFallbackCheckpointItems();
+}
+
+function renderCheckpointChecklist(chapter = {}) {
+    const items = getCheckpointItems(chapter);
+    if (!items.length) {
+        return '<p class="sbi-viewer-instructions">Aucune etape precedente a confirmer.</p>';
+    }
+
+    return `
+        <div class="sbi-viewer-checkpoint-list">
+            ${items.map((item, index) => `
+                <label>
+                    <input type="checkbox" class="sbi-checkpoint-acquis" data-checkpoint-item="${escapeHtml(item.id || `step-${index}`)}">
+                    <span>${index + 1}. ${escapeHtml(item.title || `Etape ${index + 1}`)}</span>
+                </label>
+            `).join('')}
+        </div>`;
 }
 
 function renderViewerLine(label, value) {
@@ -444,6 +530,66 @@ function renderPedagogicChapter(chapter = {}) {
             <div class="sbi-viewer-activity-label">${SVG_READ}<span>${escapeHtml(label)}</span></div>
             ${instructions}
             <div class="sbi-viewer-activity-body">${body || '<p class="sbi-viewer-instructions">Activité à compléter.</p>'}</div>
+        </div>`;
+}
+
+function renderPedagogicChapter(chapter = {}) {
+    const type = chapter.type || chapter.activityType;
+    const label = getPedagogicChapterLabel(type);
+    const instructions = chapter.instructions
+        ? `<p class="sbi-viewer-instructions">${escapeHtml(chapter.instructions)}</p>`
+        : '';
+    let body = '';
+
+    if (type === 'resource') {
+        const link = chapter.resourceUrl
+            ? `<a class="sbi-viewer-resource-link" href="${escapeHtml(chapter.resourceUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(chapter.resourceFileName || chapter.resourceUrl)}</a>`
+            : '';
+        const fileMeta = [
+            chapter.resourceFileName || '',
+            formatViewerBytes(chapter.resourceSize),
+            chapter.resourceCompressed ? 'image compressee' : ''
+        ].filter(Boolean).join(' - ');
+        const imagePreview = chapter.resourceUrl && (chapter.resourceType === 'image' || String(chapter.resourceMimeType || '').startsWith('image/'))
+            ? `<img class="sbi-viewer-resource-image" src="${escapeHtml(chapter.resourceUrl)}" alt="${escapeHtml(chapter.resourceFileName || 'Ressource')}">`
+            : '';
+        body = `
+            ${renderViewerLine('Type de ressource', chapter.resourceType || 'link')}
+            ${renderViewerLine('Fichier', fileMeta)}
+            ${imagePreview}
+            ${link}
+            ${renderViewerText('Description', chapter.resourceDescription || chapter.contenu)}
+            ${renderViewerText('A observer / retenir', chapter.consultationInstruction)}
+        `;
+    } else if (type === 'assignment') {
+        body = `
+            ${renderViewerText('Travail demande', chapter.assignmentPrompt || chapter.contenu)}
+            ${renderViewerLine('Livrable attendu', chapter.deliverableType || 'text')}
+            ${renderViewerLine('Delai', chapter.duePolicy || 'promotion_date')}
+            ${renderViewerLine('Validation', chapter.manualValidation !== false ? 'professeur' : 'automatique')}
+            ${renderViewerText('Criteres evaluation', chapter.evaluationCriteria)}
+        `;
+    } else if (type === 'checkpoint') {
+        body = `
+            ${renderViewerText('Objectif', chapter.checkpointGoal || chapter.contenu)}
+            ${renderCheckpointChecklist(chapter)}
+            ${renderViewerText('Resultat attendu', chapter.expectedResult)}
+        `;
+    } else if (type === 'case_study') {
+        body = `
+            ${renderViewerText('Contexte', chapter.caseContext)}
+            ${renderViewerText('Scenario', chapter.scenario || chapter.contenu)}
+            ${renderViewerText('Elements a analyser', chapter.analysisMaterials)}
+            ${renderViewerText('Questions guidees', chapter.guidedQuestions)}
+            ${renderViewerText('Reponse attendue / grille', chapter.expectedAnswer)}
+        `;
+    }
+
+    return `
+        <div class="text-container sbi-viewer-activity-card" data-activity-type="${escapeHtml(type)}">
+            <div class="sbi-viewer-activity-label">${SVG_READ}<span>${escapeHtml(label)}</span></div>
+            ${instructions}
+            <div class="sbi-viewer-activity-body">${body || '<p class="sbi-viewer-instructions">Activite a completer.</p>'}</div>
         </div>`;
 }
 
@@ -597,7 +743,9 @@ function loadChapter(index, forceReload = false) {
 
     let contentHtml = `<h1 style="margin-top:0; font-size: 2.8rem; margin-bottom: 2rem; color: var(--text-main); font-weight: 800;">${escapeHtml(chap.titre || `Chapitre ${index + 1}`)}</h1>`;
 
-    if (isFillBlankChapter(chap)) {
+    if (isObjectivesChapter(chap)) {
+        contentHtml += renderObjectivesChapter(chap);
+    } else if (isFillBlankChapter(chap)) {
         contentHtml += renderFillBlankChapter(chap);
     } else if (isPedagogicChapter(chap)) {
         contentHtml += renderPedagogicChapter(chap);
@@ -680,6 +828,11 @@ function startSecurityTimer(isAlreadyDone) {
         return;
     }
 
+    if (isCheckpointChapter(chapter)) {
+        setupCheckpointValidation(isLast, isAlreadyDone);
+        return;
+    }
+
     if (isAdminOrTeacher || isPreviewMode || isAlreadyDone) {
         btn.disabled = false;
         btn.innerHTML = `${nextText} ${SVG_NEXT}`;
@@ -701,6 +854,24 @@ function startSecurityTimer(isAlreadyDone) {
             btn.innerHTML = `${SVG_TIME} Veuillez patienter (${timeLeft}s)...`;
         }
     }, 1000);
+}
+
+function setupCheckpointValidation(isLast, isAlreadyDone) {
+    const btn = document.getElementById('btn-next-chapter');
+    const inputs = Array.from(document.querySelectorAll('.sbi-checkpoint-acquis'));
+    const nextText = isLast ? "Terminer le cours" : "Valider les acquis et continuer";
+
+    const refresh = () => {
+        const allChecked = inputs.length === 0 || inputs.every((input) => input.checked);
+        btn.disabled = !allChecked && !isAlreadyDone;
+        btn.innerHTML = allChecked || isAlreadyDone
+            ? `${nextText} ${SVG_NEXT}`
+            : `${SVG_DONE} Cochez tous les acquis`;
+    };
+
+    inputs.forEach((input) => input.addEventListener('change', refresh));
+    btn.onclick = () => validateAndNext(isLast, 0);
+    refresh();
 }
 
 function submitFillBlankAnswers(isLast) {
@@ -776,7 +947,7 @@ function submitQuizAnswers(isLast) {
 
     chap.questions.forEach((q, qIndex) => {
         const selected = Array.from(document.querySelectorAll(`input[name="q_${qIndex}"]:checked`)).map(cb => parseInt(cb.value));
-        const correct = q.correctIndices || [];
+        const correct = (q.correctIndices || []).map((value) => Number(value));
         const pts = q.points || 1;
         totalPoints += pts;
 

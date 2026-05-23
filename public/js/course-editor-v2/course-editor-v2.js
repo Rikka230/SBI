@@ -17,17 +17,20 @@ import {
 
 import {
   clearPendingMediaForChapter,
+  formatBytes,
+  getPendingResourceFileMeta,
   hasPendingMedia,
   restoreCurrentMediaPreview,
   setPendingImageFile,
+  setPendingResourceFile,
   setPendingVideoFile,
   syncChapterMediaFromDom,
   uploadPendingMediaForChapters,
   validateCourseDocumentSize
-} from '/admin/js/course-media-storage.js?v=8.0P.167.182';
+} from '/admin/js/course-media-storage.js?v=8.0P.167.195';
 
 const MAX_QUERY_VALUES = 10;
-const VERSION = '8.0P.167.194';
+const VERSION = '8.0P.167.195';
 const functionsInstance = getFunctions(app, 'europe-west1');
 const submitCourseForValidationCallable = httpsCallable(functionsInstance, 'submitCourseForValidation');
 const reviewCourseValidationCallable = httpsCallable(functionsInstance, 'reviewCourseValidation');
@@ -756,6 +759,11 @@ function createDefaultBlock(type = 'lesson') {
       instructions: 'Consultez cette ressource avant de passer à la suite.',
       resourceType: 'link',
       resourceUrl: '',
+      resourceFileName: '',
+      resourceMimeType: '',
+      resourceSize: 0,
+      resourceOriginalSize: 0,
+      resourceCompressed: false,
       resourceDescription: '',
       consultationInstruction: '',
       durationMinutes: 10,
@@ -790,9 +798,11 @@ function createDefaultBlock(type = 'lesson') {
       title: `Checkpoint ${count}`,
       instructions: 'Validez ce point de contrôle avant de poursuivre.',
       checkpointGoal: '',
-      checkpointMode: 'understood',
+      checkpointMode: 'acquis_checklist',
       expectedResult: '',
-      isBlockingPrerequisite: false,
+      checkpointItems: [],
+      requiresAllChecked: true,
+      isBlockingPrerequisite: true,
       durationMinutes: 5,
       visibleInProgram: true,
       qualiopiEvidence: '2.4 Modalités d’évaluation',
@@ -871,8 +881,41 @@ function convertLegacyChaptersToBlocks(chapters = []) {
   });
 }
 
+function getBlockStepTitle(block, index = 0) {
+  const meta = getBlockMeta(block?.type);
+  return normalizeString(block?.title || block?.titre) || `${meta.label} ${index + 1}`;
+}
+
+function getCheckpointItemsForBlock(block, blocks = state.course.learningBlocks) {
+  if (!block || !Array.isArray(blocks)) return [];
+  const checkpointIndex = blocks.findIndex((item) => item.id === block.id);
+  const sourceBlocks = checkpointIndex >= 0 ? blocks.slice(0, checkpointIndex) : blocks;
+
+  return sourceBlocks
+    .filter((item) => item && item.visibleInProgram !== false && item.type !== 'checkpoint')
+    .map((item, index) => ({
+      id: item.id || `step-${index}`,
+      title: getBlockStepTitle(item, index),
+      type: item.type || 'lesson',
+      label: getBlockMeta(item.type).label
+    }));
+}
+
+function hydrateCheckpointBlock(block, blocks = state.course.learningBlocks) {
+  if (!block || block.type !== 'checkpoint') return block;
+  return {
+    ...block,
+    checkpointMode: 'acquis_checklist',
+    checkpointItems: getCheckpointItemsForBlock(block, blocks),
+    requiresAllChecked: true,
+    isBlockingPrerequisite: true
+  };
+}
+
 function convertBlocksToLegacyChapters(blocks = []) {
   return blocks.map((block, index) => {
+    block = hydrateCheckpointBlock(block, blocks);
+
     if (block.type === 'quiz') {
       return {
         id: block.id || makeId('chap'),
@@ -928,6 +971,11 @@ function convertBlocksToLegacyChapters(blocks = []) {
         questions: [],
         resourceType: block.resourceType || '',
         resourceUrl: block.resourceUrl || '',
+        resourceFileName: block.resourceFileName || '',
+        resourceMimeType: block.resourceMimeType || '',
+        resourceSize: Number(block.resourceSize || 0),
+        resourceOriginalSize: Number(block.resourceOriginalSize || 0),
+        resourceCompressed: block.resourceCompressed === true,
         resourceDescription: block.resourceDescription || '',
         consultationInstruction: block.consultationInstruction || '',
         assignmentPrompt: block.assignmentPrompt || '',
@@ -938,6 +986,8 @@ function convertBlocksToLegacyChapters(blocks = []) {
         checkpointGoal: block.checkpointGoal || '',
         checkpointMode: block.checkpointMode || '',
         expectedResult: block.expectedResult || '',
+        checkpointItems: Array.isArray(block.checkpointItems) ? block.checkpointItems : [],
+        requiresAllChecked: block.requiresAllChecked !== false,
         isBlockingPrerequisite: block.isBlockingPrerequisite === true,
         caseContext: block.caseContext || '',
         scenario: block.scenario || '',
@@ -1572,6 +1622,78 @@ function handleV2MediaFile(type, file, block, input = null) {
   }
 }
 
+function inferResourceTypeFromFile(file) {
+  const mime = file?.type || '';
+  const name = String(file?.name || '').toLowerCase();
+  if (mime.startsWith('image/')) return 'image';
+  if (mime.startsWith('video/')) return 'video';
+  if (mime === 'application/pdf' || name.endsWith('.pdf')) return 'pdf';
+  return 'file';
+}
+
+function refreshResourceFileStatus(block) {
+  const status = $('#resource-file-status');
+  if (status && block) status.innerHTML = renderResourceFileStatus(block);
+}
+
+function handleResourceFile(file, block, input = null) {
+  if (state.readOnly) return;
+  if (!file || !block?.id) return;
+
+  try {
+    setPendingResourceFile(block.id, file);
+    block.resourceFileName = file.name || '';
+    block.resourceMimeType = file.type || 'application/octet-stream';
+    block.resourceSize = file.size || 0;
+    block.resourceOriginalSize = file.size || 0;
+    block.resourceCompressed = file.type?.startsWith('image/') === true;
+    block.resourceType = inferResourceTypeFromFile(file);
+
+    if (input) input.value = '';
+    const typeSelect = $('[data-block-field="resourceType"]');
+    if (typeSelect) typeSelect.value = block.resourceType;
+    refreshResourceFileStatus(block);
+    markDirty();
+    renderPreview();
+  } catch (error) {
+    if (input) input.value = '';
+    void openSbiAlert('Fichier ressource impossible a ajouter', error.message || 'Verifie le format du fichier.', { tone: 'danger' });
+  }
+}
+
+function setupResourceFileControls(block) {
+  if (!block || block.type !== 'resource') return;
+  const dropZone = $('#resource-file-dropzone');
+  const input = $('#resource-file-upload');
+  if (!dropZone || !input || state.readOnly) return;
+
+  const openPicker = () => input.click();
+  dropZone.addEventListener('click', openPicker);
+  dropZone.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    openPicker();
+  });
+  dropZone.addEventListener('dragover', (event) => {
+    event.preventDefault();
+    dropZone.classList.add('is-dragover');
+  });
+  dropZone.addEventListener('dragleave', (event) => {
+    event.preventDefault();
+    dropZone.classList.remove('is-dragover');
+  });
+  dropZone.addEventListener('drop', (event) => {
+    event.preventDefault();
+    dropZone.classList.remove('is-dragover');
+    const file = event.dataTransfer?.files?.[0];
+    if (file) handleResourceFile(file, block, input);
+  });
+  input.addEventListener('change', (event) => {
+    const file = event.target.files?.[0];
+    if (file) handleResourceFile(file, block, input);
+  });
+}
+
 function syncActiveLessonMediaFromDom() {
   const block = getActiveLessonBlock();
   if (!block) return;
@@ -1587,6 +1709,13 @@ function syncUploadedMediaBackToBlocks(chapitres = []) {
     block.mediaType = chapter.mediaType || block.mediaType || 'image';
     block.mediaImage = chapter.mediaImage || block.mediaImage || '';
     block.mediaVideo = chapter.mediaVideo || block.mediaVideo || '';
+    block.resourceUrl = chapter.resourceUrl || block.resourceUrl || '';
+    block.resourceType = chapter.resourceType || block.resourceType || '';
+    block.resourceFileName = chapter.resourceFileName || block.resourceFileName || '';
+    block.resourceMimeType = chapter.resourceMimeType || block.resourceMimeType || '';
+    block.resourceSize = Number(chapter.resourceSize || block.resourceSize || 0);
+    block.resourceOriginalSize = Number(chapter.resourceOriginalSize || block.resourceOriginalSize || 0);
+    block.resourceCompressed = chapter.resourceCompressed === true || block.resourceCompressed === true;
   });
 }
 
@@ -1792,6 +1921,63 @@ function renderResourceBlockEditor(block) {
   `;
 }
 
+function renderResourceFileStatus(block) {
+  const pending = getPendingResourceFileMeta(block.id);
+  const name = pending?.name || block.resourceFileName || '';
+  const type = pending?.type || block.resourceMimeType || '';
+  const size = Number(pending?.size || block.resourceSize || 0);
+  const compressed = pending ? pending.compressed : block.resourceCompressed === true;
+  const url = pending?.previewUrl || block.resourceUrl || '';
+
+  if (!name && !url) {
+    return '<div class="sbi-resource-file-status sbi-resource-file-status--empty">Aucun fichier selectionne.</div>';
+  }
+
+  const link = url
+    ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">Ouvrir</a>`
+    : '';
+
+  return `
+    <div class="sbi-resource-file-status">
+      <strong>${escapeHtml(name || 'Fichier ressource')}</strong>
+      <span>${escapeHtml(type || 'type inconnu')}${size ? ` - ${formatBytes(size)}` : ''}${compressed ? ' - image compressee WebP' : ''}</span>
+      ${link}
+    </div>
+  `;
+}
+
+function renderResourceUploadEditor(block) {
+  return `
+    <div class="sbi-field sbi-field--media">
+      <label>Fichier ressource</label>
+      <div id="resource-file-dropzone" class="sbi-media-dropzone sbi-resource-dropzone" role="button" tabindex="0">
+        <strong>Ajouter un fichier</strong>
+        <span>Glisse un fichier ici ou clique pour parcourir</span>
+        <small>Images compressees en WebP a la sauvegarde. PDF, documents et autres fichiers sont envoyes dans Storage.</small>
+        <input type="file" id="resource-file-upload" accept="image/*,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.csv,.txt,.zip,video/*,audio/*" hidden>
+      </div>
+      <div id="resource-file-status">${renderResourceFileStatus(block)}</div>
+    </div>
+  `;
+}
+
+function renderResourceBlockEditor(block) {
+  return `
+    <div class="sbi-editor-form sbi-editor-form--pedagogic">
+      <div class="sbi-field"><label>Titre de la ressource</label><input id="block-title" class="sbi-input" value="${escapeHtml(block.title || '')}"></div>
+      <div class="sbi-field"><label>Consigne de consultation</label><textarea id="block-instructions" class="sbi-textarea" data-block-field="instructions">${escapeHtml(block.instructions || '')}</textarea></div>
+      <div class="sbi-two-cols">
+        <div class="sbi-field"><label>Type de ressource</label><select class="sbi-select" data-block-field="resourceType">${renderSelectOption('link', block.resourceType || 'link')} ${renderSelectOption('pdf', block.resourceType)} ${renderSelectOption('video', block.resourceType)} ${renderSelectOption('image', block.resourceType)} ${renderSelectOption('file', block.resourceType)}</select></div>
+        <div class="sbi-field"><label>Lien ou URL du support</label><input class="sbi-input" data-block-field="resourceUrl" value="${escapeHtml(block.resourceUrl || '')}" placeholder="https://... ou URL Storage apres upload"></div>
+      </div>
+      ${renderResourceUploadEditor(block)}
+      <div class="sbi-field"><label>Description courte</label><textarea class="sbi-textarea" data-block-field="resourceDescription">${escapeHtml(block.resourceDescription || block.content || '')}</textarea></div>
+      <div class="sbi-field"><label>A observer / retenir</label><textarea class="sbi-textarea" data-block-field="consultationInstruction">${escapeHtml(block.consultationInstruction || '')}</textarea></div>
+      ${renderPedagogicFooter(block)}
+    </div>
+  `;
+}
+
 function renderAssignmentBlockEditor(block) {
   return `
     <div class="sbi-editor-form sbi-editor-form--pedagogic">
@@ -1820,6 +2006,43 @@ function renderCheckpointBlockEditor(block) {
         <label class="sbi-check-row sbi-check-row--box"><input type="checkbox" data-block-field="isBlockingPrerequisite" data-block-boolean="true" ${block.isBlockingPrerequisite === true ? 'checked' : ''}> Bloquant avant la suite</label>
       </div>
       <div class="sbi-field"><label>Résultat attendu</label><textarea class="sbi-textarea" data-block-field="expectedResult">${escapeHtml(block.expectedResult || '')}</textarea></div>
+      ${renderPedagogicFooter(block)}
+    </div>
+  `;
+}
+
+function renderCheckpointItemsPreview(block) {
+  const items = getCheckpointItemsForBlock(block);
+  if (!items.length) {
+    return '<div class="sbi-checkpoint-items-empty">Ajoute des blocs avant ce checkpoint pour generer le checkup final.</div>';
+  }
+
+  return `
+    <div class="sbi-checkpoint-items-preview">
+      ${items.map((item, index) => `
+        <label>
+          <input type="checkbox" disabled>
+          <span>${index + 1}. ${escapeHtml(item.title)}</span>
+          <small>${escapeHtml(item.label || getBlockMeta(item.type).label)}</small>
+        </label>
+      `).join('')}
+    </div>
+  `;
+}
+
+function renderCheckpointBlockEditor(block) {
+  return `
+    <div class="sbi-editor-form sbi-editor-form--pedagogic">
+      <div class="sbi-field"><label>Titre du checkpoint</label><input id="block-title" class="sbi-input" value="${escapeHtml(block.title || '')}"></div>
+      <div class="sbi-field"><label>Consigne courte</label><textarea id="block-instructions" class="sbi-textarea" data-block-field="instructions">${escapeHtml(block.instructions || '')}</textarea></div>
+      <div class="sbi-field"><label>Objectif du checkup final</label><textarea class="sbi-textarea" data-block-field="checkpointGoal">${escapeHtml(block.checkpointGoal || block.content || '')}</textarea></div>
+      <div class="sbi-field">
+        <label>Etapes precedentes a cocher</label>
+        <small>Cette liste est calculee automatiquement avec tous les blocs visibles places avant ce checkpoint.</small>
+        ${renderCheckpointItemsPreview(block)}
+      </div>
+      <label class="sbi-check-row sbi-check-row--box"><input type="checkbox" data-block-field="requiresAllChecked" data-block-boolean="true" checked disabled> Toutes les cases doivent etre cochees pour valider les acquis</label>
+      <div class="sbi-field"><label>Resultat attendu</label><textarea class="sbi-textarea" data-block-field="expectedResult">${escapeHtml(block.expectedResult || '')}</textarea></div>
       ${renderPedagogicFooter(block)}
     </div>
   `;
@@ -1910,6 +2133,126 @@ function renderQuizEditor(block) {
       <div class="sbi-field"><label>Question principale</label><input id="quiz-question" class="sbi-input" value="${escapeHtml(question.question || '')}"></div>
       <div class="sbi-field"><label>Réponses</label>${options.map((option, index) => `<label class="sbi-check-row"><input type="checkbox" class="quiz-correct" value="${index}" ${question.correctIndices?.includes(index) ? 'checked' : ''}><input class="sbi-input quiz-option" value="${escapeHtml(option)}" placeholder="Réponse ${index + 1}"></label>`).join('')}</div>
       <div class="sbi-two-cols"><div class="sbi-field"><label>Points</label><input id="quiz-points" class="sbi-input" type="number" min="0" value="${Number(question.points || 1)}"></div><div class="sbi-field"><label>Durée estimée (min)</label><input id="block-duration" class="sbi-input" type="number" min="0" value="${Number(block.durationMinutes || 5)}"></div></div>
+    </div>
+  `;
+}
+
+function createDefaultQuizQuestion() {
+  return {
+    id: makeId('question'),
+    question: '',
+    options: ['', ''],
+    correctIndices: [0],
+    points: 1
+  };
+}
+
+function normalizeQuizQuestions(block) {
+  if (!block) return [];
+  if (!Array.isArray(block.questions) || !block.questions.length) {
+    block.questions = [createDefaultQuizQuestion()];
+  }
+
+  block.questions = block.questions.map((question) => {
+    const options = Array.isArray(question.options) && question.options.length
+      ? question.options
+      : ['', ''];
+    while (options.length < 2) options.push('');
+
+    const correctIndices = Array.isArray(question.correctIndices)
+      ? question.correctIndices.map((index) => Number(index)).filter((index) => Number.isInteger(index) && index >= 0 && index < options.length)
+      : [];
+
+    return {
+      id: question.id || makeId('question'),
+      question: question.question || question.texte || '',
+      options,
+      correctIndices: correctIndices.length ? correctIndices : [0],
+      points: Number(question.points || 1)
+    };
+  });
+
+  return block.questions;
+}
+
+function moveArrayItem(items, fromIndex, toIndex) {
+  if (!Array.isArray(items)) return;
+  if (fromIndex < 0 || fromIndex >= items.length || toIndex < 0 || toIndex >= items.length) return;
+  const [item] = items.splice(fromIndex, 1);
+  items.splice(toIndex, 0, item);
+}
+
+function updateCorrectIndicesAfterOptionDelete(question, deletedIndex) {
+  question.correctIndices = (question.correctIndices || [])
+    .filter((index) => index !== deletedIndex)
+    .map((index) => index > deletedIndex ? index - 1 : index);
+  if (!question.correctIndices.length) question.correctIndices = [0];
+}
+
+function updateCorrectIndicesAfterOptionMove(question, fromIndex, toIndex) {
+  question.correctIndices = (question.correctIndices || []).map((index) => {
+    if (index === fromIndex) return toIndex;
+    if (fromIndex < toIndex && index > fromIndex && index <= toIndex) return index - 1;
+    if (fromIndex > toIndex && index >= toIndex && index < fromIndex) return index + 1;
+    return index;
+  });
+}
+
+function renderQuizQuestionCard(question, qIndex, questionsCount) {
+  const options = Array.isArray(question.options) ? question.options : [];
+  return `
+    <section class="sbi-quiz-question-card" data-quiz-question="${escapeHtml(question.id)}">
+      <div class="sbi-quiz-question-head">
+        <strong>Question ${qIndex + 1}</strong>
+        <div class="sbi-check-row">
+          <button class="sbi-editor-btn sbi-editor-btn--tiny" type="button" data-move-quiz-question="${escapeHtml(question.id)}" data-direction="-1" ${qIndex === 0 ? 'disabled' : ''}>Monter</button>
+          <button class="sbi-editor-btn sbi-editor-btn--tiny" type="button" data-move-quiz-question="${escapeHtml(question.id)}" data-direction="1" ${qIndex === questionsCount - 1 ? 'disabled' : ''}>Descendre</button>
+          <button class="sbi-editor-btn sbi-editor-btn--tiny sbi-editor-btn--danger" type="button" data-delete-quiz-question="${escapeHtml(question.id)}" ${questionsCount <= 1 ? 'disabled' : ''}>Supprimer</button>
+        </div>
+      </div>
+      <div class="sbi-field">
+        <label>Enonce</label>
+        <textarea class="sbi-textarea quiz-question-input" data-question-id="${escapeHtml(question.id)}" placeholder="Question a poser">${escapeHtml(question.question || '')}</textarea>
+      </div>
+      <div class="sbi-field">
+        <label>Reponses possibles</label>
+        <div class="sbi-quiz-option-list">
+          ${options.map((option, index) => `
+            <div class="sbi-quiz-option-row" data-question-id="${escapeHtml(question.id)}" data-option-index="${index}">
+              <input type="checkbox" class="quiz-correct" value="${index}" ${question.correctIndices?.includes(index) ? 'checked' : ''} aria-label="Bonne reponse">
+              <input class="sbi-input quiz-option" value="${escapeHtml(option)}" placeholder="Reponse ${index + 1}">
+              <button class="sbi-editor-btn sbi-editor-btn--tiny" type="button" data-move-quiz-option="${index}" data-direction="-1" ${index === 0 ? 'disabled' : ''}>Monter</button>
+              <button class="sbi-editor-btn sbi-editor-btn--tiny" type="button" data-move-quiz-option="${index}" data-direction="1" ${index === options.length - 1 ? 'disabled' : ''}>Descendre</button>
+              <button class="sbi-editor-btn sbi-editor-btn--tiny sbi-editor-btn--danger" type="button" data-delete-quiz-option="${index}" ${options.length <= 2 ? 'disabled' : ''}>Supprimer</button>
+            </div>
+          `).join('')}
+        </div>
+        <button class="sbi-editor-btn sbi-editor-btn--tiny" type="button" data-add-quiz-option="${escapeHtml(question.id)}">+ Ajouter une reponse</button>
+      </div>
+      <div class="sbi-field sbi-field--compact">
+        <label>Points</label>
+        <input class="sbi-input quiz-points" data-question-id="${escapeHtml(question.id)}" type="number" min="0" step="1" value="${Number(question.points || 1)}">
+      </div>
+    </section>
+  `;
+}
+
+function renderQuizEditor(block) {
+  const questions = normalizeQuizQuestions(block);
+  return `
+    <div class="sbi-editor-form">
+      <div class="sbi-field"><label>Titre</label><input id="block-title" class="sbi-input" value="${escapeHtml(block.title || '')}"></div>
+      <div class="sbi-field"><label>Instructions</label><textarea id="block-instructions" class="sbi-textarea">${escapeHtml(block.instructions || '')}</textarea></div>
+      <div class="sbi-quiz-builder">
+        ${questions.map((question, index) => renderQuizQuestionCard(question, index, questions.length)).join('')}
+      </div>
+      <div class="sbi-check-row">
+        <button id="quiz-add-question" class="sbi-editor-btn sbi-editor-btn--tiny" type="button">+ Ajouter une question</button>
+      </div>
+      <div class="sbi-two-cols">
+        <div class="sbi-field"><label>Score max</label><input class="sbi-input" type="number" min="0" value="${getActiveScore(block)}" readonly aria-readonly="true"></div>
+        <div class="sbi-field"><label>Duree estimee (min)</label><input id="block-duration" class="sbi-input" type="number" min="0" value="${Number(block.durationMinutes || 5)}"></div>
+      </div>
     </div>
   `;
 }
@@ -2014,6 +2357,23 @@ function renderBlockPreview(block) {
   return `<h4>${escapeHtml(block.title || getBlockMeta(block.type).label)}</h4>${mediaPreview}<div class="sbi-preview-rich"><p class="sbi-preview-instructions">${escapeHtml(block.instructions || '')}</p>${content}</div>`;
 }
 
+function renderBlockPreview(block) {
+  if (block.type === 'fill_blank') {
+    const html = escapeHtml(block.prompt || '').replace(/\[\[([^\]]+)\]\]/g, (_, token) => `<span class="sbi-preview-token">${escapeHtml(token)}</span>`);
+    return `<h4>${escapeHtml(block.title || 'Texte a trous')}</h4><div class="sbi-preview-rich"><p>${escapeHtml(block.instructions || '')}</p><p>${html}</p><small>${normalizeFillBlankRows(block).length} blancs - ${getActiveScore(block)} points</small></div>`;
+  }
+  if (block.type === 'quiz') {
+    const questions = normalizeQuizQuestions(block);
+    return `<h4>${escapeHtml(block.title || 'QCM')}</h4><div class="sbi-preview-rich">${questions.map((question, index) => `<section class="sbi-preview-question"><p><strong>${index + 1}.</strong> ${escapeHtml(question?.question || 'Question a completer.')}</p>${(question?.options || []).map((option) => `<div class="sbi-preview-answer">${escapeHtml(option || 'Reponse a completer')}</div>`).join('')}</section>`).join('')}<small>${questions.length} question(s) - ${getActiveScore(block)} points</small></div>`;
+  }
+  if (PEDAGOGIC_BLOCK_TYPES.has(block.type)) {
+    return `<h4>${escapeHtml(block.title || getBlockMeta(block.type).label)}</h4>${buildPedagogicBlockContent(block, { preview: true })}`;
+  }
+  const mediaPreview = block.type === 'lesson' ? renderLessonMediaPreview(block) : '';
+  const content = block.content || '<p>Contenu a completer.</p>';
+  return `<h4>${escapeHtml(block.title || getBlockMeta(block.type).label)}</h4>${mediaPreview}<div class="sbi-preview-rich"><p class="sbi-preview-instructions">${escapeHtml(block.instructions || '')}</p>${content}</div>`;
+}
+
 function renderPedagogicLine(label, value) {
   const cleanValue = normalizeString(value);
   if (!cleanValue) return '';
@@ -2037,8 +2397,12 @@ function buildPedagogicBlockContent(block = {}, { preview = false } = {}) {
     const resourceLink = block.resourceUrl
       ? `<a class="sbi-pedagogic-link" href="${escapeHtml(block.resourceUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(block.resourceUrl)}</a>`
       : '';
+    const resourceFile = block.resourceFileName
+      ? renderPedagogicLine('Fichier', `${block.resourceFileName}${block.resourceSize ? ` - ${formatBytes(Number(block.resourceSize || 0))}` : ''}${block.resourceCompressed ? ' - image compressee' : ''}`)
+      : '';
     body = `
       ${renderPedagogicLine('Type', block.resourceType || 'link')}
+      ${resourceFile}
       ${resourceLink}
       ${renderPedagogicText('Description', block.resourceDescription || block.content)}
       ${renderPedagogicText('À observer / retenir', block.consultationInstruction)}
@@ -2052,10 +2416,12 @@ function buildPedagogicBlockContent(block = {}, { preview = false } = {}) {
       ${renderPedagogicText('Critères d’évaluation', block.evaluationCriteria)}
     `;
   } else if (block.type === 'checkpoint') {
+    const checkpointItems = getCheckpointItemsForBlock(block)
+      .map((item, index) => `<label class="sbi-pedagogic-check"><input type="checkbox" disabled><span>${index + 1}. ${escapeHtml(item.title)}</span></label>`)
+      .join('');
     body = `
       ${renderPedagogicText('Objectif', block.checkpointGoal || block.content)}
-      ${renderPedagogicLine('Mode de validation', block.checkpointMode || 'understood')}
-      ${renderPedagogicLine('Bloquant', block.isBlockingPrerequisite === true ? 'oui' : 'non')}
+      <div class="sbi-pedagogic-checklist">${checkpointItems || '<p>Aucune etape precedente.</p>'}</div>
       ${renderPedagogicText('Résultat attendu', block.expectedResult)}
     `;
   } else if (block.type === 'case_study') {
@@ -2283,6 +2649,126 @@ function bindQuizInputs(active) {
   }));
 }
 
+function findQuizQuestionById(active, questionId) {
+  return normalizeQuizQuestions(active).find((question) => question.id === questionId) || null;
+}
+
+function rerenderQuizEditor(active) {
+  markDirty();
+  renderMainEditor();
+  rerenderSettingsPanel();
+  renderPreview();
+}
+
+function bindQuizInputs(active) {
+  if (!active || active.type !== 'quiz') return;
+  normalizeQuizQuestions(active);
+
+  $('#quiz-add-question')?.addEventListener('click', () => {
+    active.questions.push(createDefaultQuizQuestion());
+    rerenderQuizEditor(active);
+  });
+
+  $all('[data-delete-quiz-question]').forEach((button) => {
+    button.addEventListener('click', () => {
+      if (active.questions.length <= 1) return;
+      active.questions = active.questions.filter((question) => question.id !== button.dataset.deleteQuizQuestion);
+      rerenderQuizEditor(active);
+    });
+  });
+
+  $all('[data-move-quiz-question]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const fromIndex = active.questions.findIndex((question) => question.id === button.dataset.moveQuizQuestion);
+      const toIndex = fromIndex + Number(button.dataset.direction || 0);
+      moveArrayItem(active.questions, fromIndex, toIndex);
+      rerenderQuizEditor(active);
+    });
+  });
+
+  $all('.quiz-question-input').forEach((input) => {
+    input.addEventListener('input', (event) => {
+      const question = findQuizQuestionById(active, input.dataset.questionId);
+      if (!question) return;
+      question.question = event.target.value;
+      markDirty();
+      renderPreview();
+    });
+  });
+
+  $all('.quiz-points').forEach((input) => {
+    input.addEventListener('input', (event) => {
+      const question = findQuizQuestionById(active, input.dataset.questionId);
+      if (!question) return;
+      question.points = Number(event.target.value || 0);
+      markDirty();
+      syncScoreUi();
+      renderPreview();
+    });
+  });
+
+  $all('.quiz-option').forEach((input) => {
+    input.addEventListener('input', (event) => {
+      const row = input.closest('[data-question-id][data-option-index]');
+      const question = findQuizQuestionById(active, row?.dataset.questionId);
+      const optionIndex = Number(row?.dataset.optionIndex);
+      if (!question || !Number.isInteger(optionIndex)) return;
+      question.options[optionIndex] = event.target.value;
+      markDirty();
+      renderPreview();
+    });
+  });
+
+  $all('.quiz-correct').forEach((input) => {
+    input.addEventListener('change', () => {
+      const card = input.closest('[data-quiz-question]');
+      const question = findQuizQuestionById(active, card?.dataset.quizQuestion);
+      if (!question) return;
+      question.correctIndices = $all('.quiz-correct', card)
+        .filter((item) => item.checked)
+        .map((item) => Number(item.value));
+      if (!question.correctIndices.length) question.correctIndices = [0];
+      markDirty();
+      renderPreview();
+    });
+  });
+
+  $all('[data-add-quiz-option]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const question = findQuizQuestionById(active, button.dataset.addQuizOption);
+      if (!question) return;
+      question.options.push('');
+      rerenderQuizEditor(active);
+    });
+  });
+
+  $all('[data-delete-quiz-option]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const row = button.closest('[data-question-id][data-option-index]');
+      const question = findQuizQuestionById(active, row?.dataset.questionId);
+      const optionIndex = Number(row?.dataset.optionIndex);
+      if (!question || question.options.length <= 2 || !Number.isInteger(optionIndex)) return;
+      question.options.splice(optionIndex, 1);
+      updateCorrectIndicesAfterOptionDelete(question, optionIndex);
+      rerenderQuizEditor(active);
+    });
+  });
+
+  $all('[data-move-quiz-option]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const row = button.closest('[data-question-id][data-option-index]');
+      const question = findQuizQuestionById(active, row?.dataset.questionId);
+      const fromIndex = Number(row?.dataset.optionIndex);
+      const toIndex = fromIndex + Number(button.dataset.direction || 0);
+      if (!question || !Number.isInteger(fromIndex)) return;
+      if (toIndex < 0 || toIndex >= question.options.length) return;
+      updateCorrectIndicesAfterOptionMove(question, fromIndex, toIndex);
+      moveArrayItem(question.options, fromIndex, toIndex);
+      rerenderQuizEditor(active);
+    });
+  });
+}
+
 function bindPedagogicBlockInputs(active) {
   if (!active || !PEDAGOGIC_BLOCK_TYPES.has(active.type)) return;
 
@@ -2300,6 +2786,8 @@ function bindPedagogicBlockInputs(active) {
       renderPreview();
     });
   });
+
+  setupResourceFileControls(active);
 }
 
 function bindSettingsInputs() {
@@ -2444,12 +2932,15 @@ function buildCoursePayload(action = 'draft') {
     actif = statutValidation === 'approved';
   }
 
-  const learningBlocks = state.course.learningBlocks.map((block, index) => ({
-    ...block,
-    order: index,
-    activityType: block.type,
-    schemaVersion: 'learning-block-v1'
-  }));
+  const learningBlocks = state.course.learningBlocks.map((block, index, blocks) => {
+    const hydratedBlock = hydrateCheckpointBlock(block, blocks);
+    return {
+      ...hydratedBlock,
+      order: index,
+      activityType: hydratedBlock.type,
+      schemaVersion: 'learning-block-v1'
+    };
+  });
 
   const chapitres = convertBlocksToLegacyChapters(learningBlocks);
   const quizCount = learningBlocks.filter((block) => block.type === 'quiz').length;

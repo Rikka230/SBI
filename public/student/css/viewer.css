@@ -237,6 +237,46 @@ body.learning-mode {
     border-bottom: 2px solid var(--accent-blue-light);
 }
 
+.sbi-viewer-resource-image {
+    width: min(100%, 720px);
+    max-height: 56vh;
+    object-fit: contain;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: #ffffff;
+}
+
+.sbi-viewer-objectives-card,
+.sbi-objectives-grid {
+    display: grid;
+    gap: 1rem;
+}
+
+.sbi-viewer-checkpoint-list {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.sbi-viewer-checkpoint-list label {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: #ffffff;
+    color: var(--text-main);
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.sbi-viewer-checkpoint-list input {
+    width: 22px;
+    height: 22px;
+    accent-color: var(--accent-blue);
+    flex: 0 0 auto;
+}
+
 /* Activite texte a trous */
 .fib-viewer-card {
     padding: 2.5rem;

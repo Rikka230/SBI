@@ -29,6 +29,7 @@ const pendingChapterMedia = new Map();
 export const MAX_IMAGE_FILE_BYTES = 20 * 1024 * 1024;
 export const MAX_VIDEO_FILE_BYTES = 200 * 1024 * 1024;
 export const MAX_COURSE_DOCUMENT_BYTES = 850 * 1024;
+export const MAX_RESOURCE_FILE_BYTES = 50 * 1024 * 1024;
 
 const IMAGE_UPLOAD_ATTEMPTS = [
     { width: 1600, quality: 0.84 },
@@ -192,6 +193,29 @@ export const validateVideoFileForStorage = (file) => {
     }
 };
 
+export const validateResourceFileForStorage = (file) => {
+    if (!file) {
+        throw new Error("Aucun fichier ressource selectionne.");
+    }
+
+    if (file.type?.startsWith('image/')) {
+        if (file.size > MAX_IMAGE_FILE_BYTES) {
+            throw new Error(
+                `Image trop lourde : ${formatBytes(file.size)}. ` +
+                `Limite actuelle : ${formatBytes(MAX_IMAGE_FILE_BYTES)}.`
+            );
+        }
+        return;
+    }
+
+    if (file.size > MAX_RESOURCE_FILE_BYTES) {
+        throw new Error(
+            `Fichier trop lourd : ${formatBytes(file.size)}. ` +
+            `Limite actuelle : ${formatBytes(MAX_RESOURCE_FILE_BYTES)}.`
+        );
+    }
+};
+
 const getPendingMedia = (chapterId) => {
     if (!pendingChapterMedia.has(chapterId)) {
         pendingChapterMedia.set(chapterId, {});
@@ -224,15 +248,18 @@ export const clearAllPendingMedia = () => {
     pendingChapterMedia.forEach((pending) => {
         revokePreviewUrl(pending.imagePreviewUrl);
         revokePreviewUrl(pending.videoPreviewUrl);
+        revokePreviewUrl(pending.resourcePreviewUrl);
     });
 
     pendingChapterMedia.clear();
 
     const imageInput = document.getElementById('chapter-image-upload');
     const videoInput = document.getElementById('chapter-video-upload');
+    const resourceInput = document.getElementById('resource-file-upload');
 
     if (imageInput) imageInput.value = '';
     if (videoInput) videoInput.value = '';
+    if (resourceInput) resourceInput.value = '';
 };
 
 export const clearPendingMediaForChapter = (chapterId) => {
@@ -241,6 +268,7 @@ export const clearPendingMediaForChapter = (chapterId) => {
     if (pending) {
         revokePreviewUrl(pending.imagePreviewUrl);
         revokePreviewUrl(pending.videoPreviewUrl);
+        revokePreviewUrl(pending.resourcePreviewUrl);
     }
 
     pendingChapterMedia.delete(chapterId);
@@ -285,6 +313,37 @@ export const setPendingVideoFile = (chapterId, file) => {
     }
 
     pendingChapterMedia.set(chapterId, pending);
+};
+
+export const setPendingResourceFile = (chapterId, file) => {
+    if (!chapterId || !file) return;
+
+    validateResourceFileForStorage(file);
+
+    const pending = getPendingMedia(chapterId);
+
+    if (!isSameFile(pending.resourceFile, file)) {
+        revokePreviewUrl(pending.resourcePreviewUrl);
+        pending.resourceFile = file;
+        pending.resourcePreviewUrl = URL.createObjectURL(file);
+    }
+
+    pendingChapterMedia.set(chapterId, pending);
+};
+
+export const getPendingResourceFileMeta = (chapterId) => {
+    const pending = pendingChapterMedia.get(chapterId);
+    const file = pending?.resourceFile;
+
+    if (!file) return null;
+
+    return {
+        name: file.name || 'ressource',
+        type: file.type || 'application/octet-stream',
+        size: file.size || 0,
+        previewUrl: pending.resourcePreviewUrl || '',
+        compressed: file.type?.startsWith('image/') === true
+    };
 };
 
 export const captureActiveMediaInputs = (chapterId) => {
@@ -417,6 +476,49 @@ const uploadVideoToStorage = async (courseRefId, chapterId, file, uploadedBy = '
     return getDownloadURL(fileRef);
 };
 
+const uploadResourceToStorage = async (courseRefId, chapterId, file, uploadedBy = '') => {
+    validateResourceFileForStorage(file);
+    const uploadUid = resolveUploadedBy(uploadedBy);
+    const isImage = file.type?.startsWith('image/') === true;
+    const cleanName = sanitizeStorageName((file.name || 'resource').replace(/\.[^.]+$/, ''));
+    const originalSize = file.size || 0;
+    let uploadBody = file;
+    let contentType = file.type || 'application/octet-stream';
+    let ext = getFileExtension(file, 'bin');
+    let compressed = false;
+
+    if (isImage) {
+        uploadBody = await compressImageFileToWebpBlob(file);
+        contentType = 'image/webp';
+        ext = 'webp';
+        compressed = true;
+    }
+
+    const fileName = `${Date.now()}_${cleanName || 'resource'}.${ext}`;
+    const storagePath = `courses/${courseRefId}/chapters/${chapterId}/${fileName}`;
+    const fileRef = ref(storage, storagePath);
+
+    await uploadBytes(fileRef, uploadBody, {
+        contentType,
+        customMetadata: {
+            originalName: file.name || '',
+            uploadedBy: uploadUid,
+            resourceCompressed: compressed ? 'true' : 'false'
+        }
+    });
+
+    const url = await getDownloadURL(fileRef);
+
+    return {
+        url,
+        fileName: file.name || fileName,
+        mimeType: contentType,
+        size: uploadBody.size || originalSize,
+        originalSize,
+        compressed
+    };
+};
+
 export const uploadPendingMediaForChapters = async (courseRefId, chapters, { uploadedBy = '' } = {}) => {
     const entries = Array.from(pendingChapterMedia.entries());
 
@@ -432,6 +534,19 @@ export const uploadPendingMediaForChapters = async (courseRefId, chapters, { upl
 
         if (pending.videoFile) {
             chapter.mediaVideo = await uploadVideoToStorage(courseRefId, chapterId, pending.videoFile, uploadedBy);
+        }
+
+        if (pending.resourceFile) {
+            const resource = await uploadResourceToStorage(courseRefId, chapterId, pending.resourceFile, uploadedBy);
+            chapter.resourceUrl = resource.url;
+            chapter.resourceFileName = resource.fileName;
+            chapter.resourceMimeType = resource.mimeType;
+            chapter.resourceSize = resource.size;
+            chapter.resourceOriginalSize = resource.originalSize;
+            chapter.resourceCompressed = resource.compressed;
+            if (!chapter.resourceType || chapter.resourceType === 'link') {
+                chapter.resourceType = resource.mimeType.startsWith('image/') ? 'image' : 'file';
+            }
         }
 
         clearPendingMediaForChapter(chapterId);
@@ -462,14 +577,21 @@ const collectCourseStorageUrls = (courseData) => {
     const chapters = Array.isArray(courseData?.chapitres)
         ? courseData.chapitres
         : [];
+    const learningBlocks = Array.isArray(courseData?.learningBlocks)
+        ? courseData.learningBlocks
+        : [];
 
-    chapters.forEach((chapter) => {
+    [...chapters, ...learningBlocks].forEach((chapter) => {
         if (isFirebaseStorageUrl(chapter.mediaImage)) {
             urls.add(chapter.mediaImage);
         }
 
         if (isFirebaseStorageUrl(chapter.mediaVideo)) {
             urls.add(chapter.mediaVideo);
+        }
+
+        if (isFirebaseStorageUrl(chapter.resourceUrl)) {
+            urls.add(chapter.resourceUrl);
         }
     });
 
