@@ -553,7 +553,7 @@ async function mountStudentPage({ url }) {
   window.__SBI_APP_SHELL_MOUNTING_STUDENT_COURSES = true;
 
   try {
-    const module = await import('/student/js/mes-cours.js?v=8.0P.167.156');
+    const module = await import('/student/js/mes-cours.js?v=8.0P.167.197');
     const cleanup = module.mountStudentCourses?.({ source: 'pjax-student-courses' });
 
     if (typeof cleanup === 'function') registerCleanup(cleanup, 'student-courses');
@@ -701,7 +701,7 @@ async function mountCourseEditorV2Page({ url, role = 'teacher' }) {
   window.__SBI_APP_SHELL_MOUNTING_COURSE_EDITOR_V2 = true;
 
   try {
-    const module = await import('/js/course-editor-v2/course-editor-v2.js?v=8.0P.167.196');
+    const module = await import('/js/course-editor-v2/course-editor-v2.js?v=8.0P.167.197');
     const cleanup = module.mountCourseEditorV2?.({
       source: isAdmin ? 'pjax-admin-course-editor-v2' : 'pjax-teacher-course-editor-v2',
       force: true

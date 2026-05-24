@@ -1243,18 +1243,43 @@ function buildStatusBadge(progressData, doneChapters, totalChapters, plan = null
     return `<span class="student-course-badge student-course-badge--todo">À commencer</span>`;
 }
 
+function getCourseChapterMaxScore(chapter = {}) {
+    const explicitScore = Number(chapter.maxScore ?? chapter.score);
+    if (Number.isFinite(explicitScore) && explicitScore > 0) return explicitScore;
+
+    const type = chapter.type || chapter.activityType;
+    if (type === 'checkpoint') {
+        const checkpointScore = Number(chapter.checkpointScore ?? chapter.xpReward ?? 10);
+        return Number.isFinite(checkpointScore) && checkpointScore > 0 ? checkpointScore : 10;
+    }
+
+    if (type === 'quiz') {
+        return (Array.isArray(chapter.questions) ? chapter.questions : []).reduce((sum, question) => {
+            const points = Number(question?.points);
+            return sum + (Number.isFinite(points) && points > 0 ? points : 1);
+        }, 0);
+    }
+
+    if (type === 'fill_blank' || chapter.activityType === 'fill_blank') {
+        return (Array.isArray(chapter.blanks) ? chapter.blanks : []).reduce((sum, blank) => {
+            const points = Number(blank?.points);
+            return sum + (Number.isFinite(points) && points > 0 ? points : 1);
+        }, 0);
+    }
+
+    return 0;
+}
+
 function buildQuizScoreHTML(course, progressData) {
     const chapters = Array.isArray(course.chapitres) ? course.chapitres : [];
-    const hasQuiz = chapters.some((chapter) => chapter.type === 'quiz');
-    if (!hasQuiz || !progressData.quizScores) return '';
+    const scoredChapters = chapters.filter((chapter) => getCourseChapterMaxScore(chapter) > 0);
+    if (!scoredChapters.length || !progressData.quizScores) return '';
 
     let totalPossible = 0;
     let earnedScore = 0;
 
-    chapters.forEach((chapter) => {
-        if (chapter.type !== 'quiz') return;
-        const questions = Array.isArray(chapter.questions) ? chapter.questions : [];
-        questions.forEach((question) => { totalPossible += question.points || 1; });
+    scoredChapters.forEach((chapter) => {
+        totalPossible += getCourseChapterMaxScore(chapter);
         earnedScore += progressData.quizScores[chapter.id] || 0;
     });
 

@@ -226,6 +226,16 @@ body.learning-mode {
     background: #ffffff;
 }
 
+.sbi-viewer-correction-note {
+    padding: 0.9rem 1rem;
+    border: 1px solid rgba(42, 87, 255, 0.22);
+    border-radius: 12px;
+    background: rgba(42, 87, 255, 0.07);
+    color: #374151;
+    font-weight: 700;
+    line-height: 1.55;
+}
+
 .sbi-viewer-resource-link {
     display: inline-flex;
     width: fit-content;

@@ -24,7 +24,7 @@ let userProgress = { courses: {} };
 let timerInterval = null;
 let activeViewerCleanup = null;
 
-const WAIT_TIME_SECONDS = 30;
+const SECONDS_PER_MINUTE = 60;
 
 // Banque de SVGs
 const SVG_DONE = `<svg width="16" height="16" fill="var(--accent-green)" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>`;
@@ -260,6 +260,38 @@ function getFillBlankTotalPoints(chapter = {}) {
     return normalizeFillBlankRows(chapter).reduce((total, blank) => total + Number(blank.points || 0), 0);
 }
 
+function getChapterMaxScore(chapter = {}) {
+    const type = chapter.type || chapter.activityType;
+    if (type === 'quiz') {
+        return (Array.isArray(chapter.questions) ? chapter.questions : []).reduce((total, question) => {
+            const points = Number(question?.points);
+            return total + (Number.isFinite(points) && points > 0 ? points : 1);
+        }, 0);
+    }
+    if (isFillBlankChapter(chapter)) return getFillBlankTotalPoints(chapter);
+    if (type === 'checkpoint') {
+        const score = Number(chapter.checkpointScore ?? chapter.xpReward ?? chapter.maxScore ?? chapter.score ?? 10);
+        return Number.isFinite(score) && score > 0 ? score : 10;
+    }
+    const score = Number(chapter.maxScore ?? chapter.score ?? 0);
+    return Number.isFinite(score) && score > 0 ? score : 0;
+}
+
+function getChapterWaitSeconds(chapter = {}) {
+    const minutes = Number(chapter.durationMinutes || 0);
+    if (!Number.isFinite(minutes) || minutes <= 0) return 0;
+    return Math.ceil(minutes * SECONDS_PER_MINUTE);
+}
+
+function formatWaitSeconds(seconds = 0) {
+    const safeSeconds = Math.max(0, Math.ceil(Number(seconds) || 0));
+    const minutes = Math.floor(safeSeconds / 60);
+    const rest = safeSeconds % 60;
+    if (minutes <= 0) return `${rest}s`;
+    if (rest <= 0) return `${minutes} min`;
+    return `${minutes} min ${rest}s`;
+}
+
 function isFillBlankChapter(chapter = {}) {
     return chapter.type === 'fill_blank'
         || chapter.activityType === 'fill_blank'
@@ -357,7 +389,13 @@ function convertBlockToViewerChapter(block = {}, index = 0) {
             type: block.type,
             activityType: block.type,
             titre: block.title || block.titre || getPedagogicChapterLabel(block.type),
-            durationMinutes: Number(block.durationMinutes || 10)
+            durationMinutes: Number(block.durationMinutes || 10),
+            correctionMode: block.type === 'assignment' || block.type === 'case_study' ? 'self' : block.correctionMode,
+            manualValidation: block.type === 'assignment' ? false : block.manualValidation,
+            teacherSubmissionPlanned: block.type === 'assignment' || block.type === 'case_study' ? true : block.teacherSubmissionPlanned,
+            maxScore: Number(block.maxScore || block.score || (block.type === 'checkpoint' ? 10 : 0)),
+            checkpointScore: Number(block.checkpointScore || block.xpReward || (block.type === 'checkpoint' ? 10 : 0)),
+            xpReward: Number(block.xpReward || block.checkpointScore || (block.type === 'checkpoint' ? 10 : 0))
         };
     }
 
@@ -384,7 +422,7 @@ function buildObjectivesChapter(course = {}) {
         competency: course.competency || '',
         qualiopiEvidence: course.qualiopiEvidence || '',
         estimatedDurationMinutes: Number(course.estimatedDurationMinutes || 0),
-        durationMinutes: 1
+        durationMinutes: 0
     };
 }
 
@@ -516,11 +554,14 @@ function renderPedagogicChapter(chapter = {}) {
             ${renderViewerText('Travail demande', chapter.assignmentPrompt || chapter.contenu)}
             ${renderViewerLine('Livrable attendu', chapter.deliverableType || 'text')}
             ${renderViewerLine('Delai', chapter.duePolicy || 'promotion_date')}
-            ${renderViewerLine('Validation', chapter.manualValidation !== false ? 'professeur' : 'automatique')}
+            ${renderViewerLine('Correction', 'autonome')}
             ${renderViewerText('Criteres evaluation', chapter.evaluationCriteria)}
+            ${renderViewerText('Correction affichee', chapter.assignmentCorrection)}
+            <div class="sbi-viewer-correction-note">L'envoi au professeur est prevu pour une etape future. Pour le moment, ce devoir se valide en correction autonome.</div>
         `;
     } else if (type === 'checkpoint') {
         body = `
+            ${renderViewerLine('Bonus validation', `+${getChapterMaxScore(chapter)} XP`)}
             ${renderViewerText('Objectif', chapter.checkpointGoal || chapter.contenu)}
             ${renderCheckpointChecklist(chapter)}
             ${renderViewerText('Resultat attendu', chapter.expectedResult)}
@@ -532,6 +573,8 @@ function renderPedagogicChapter(chapter = {}) {
             ${renderViewerText('Elements a analyser', chapter.analysisMaterials)}
             ${renderViewerText('Questions guidees', chapter.guidedQuestions)}
             ${renderViewerText('Reponse attendue / grille', chapter.expectedAnswer)}
+            ${renderViewerLine('Correction', 'autonome')}
+            <div class="sbi-viewer-correction-note">L'envoi au professeur est prevu pour une etape future. Pour le moment, cette etude de cas se valide en correction autonome.</div>
         `;
     }
 
@@ -754,14 +797,66 @@ function loadChapter(index, forceReload = false) {
     startSecurityTimer(isDone);
 }
 
+function goToNextChapter(isLast) {
+    if (isLast) {
+        document.getElementById('btn-back-dynamic')?.click();
+    } else {
+        loadChapter(currentChapterIndex + 1);
+    }
+}
+
+async function markCurrentChapterCompleted(scoreEarned = 0) {
+    const chapter = courseData.chapitres[currentChapterIndex];
+    const chapId = chapter?.id;
+    if (!chapId) return null;
+
+    if (isPreviewMode) {
+        if (!userProgress.courses[courseData.id].completedChapters.includes(chapId)) {
+            userProgress.courses[courseData.id].completedChapters.push(chapId);
+        }
+        renderSidebar();
+        return userProgress;
+    }
+
+    const updatedProgress = await validateChapterProgress(currentUid, courseData.id, chapId, courseData.chapitres.length, scoreEarned);
+    if (updatedProgress) {
+        userProgress = updatedProgress;
+        renderSidebar();
+    }
+    return updatedProgress;
+}
+
+function enableCompletedStepButton(btn, isLast, label = '') {
+    const nextText = label || (isLast ? "Terminer le cours" : "Passer a la suite");
+    btn.disabled = false;
+    btn.innerHTML = `${nextText} ${SVG_NEXT}`;
+    btn.onclick = () => goToNextChapter(isLast);
+}
+
+async function completeTimerValidatedChapter(btn, isLast, chapterId) {
+    btn.disabled = true;
+    btn.innerHTML = `${SVG_DONE} Validation de la page...`;
+
+    const currentId = courseData.chapitres[currentChapterIndex]?.id;
+    if (currentId !== chapterId) return;
+
+    const progress = await markCurrentChapterCompleted(0);
+    if (!progress && !isPreviewMode) {
+        btn.disabled = false;
+        btn.innerHTML = "Erreur de validation, recommencer";
+        btn.onclick = () => completeTimerValidatedChapter(btn, isLast, chapterId);
+        return;
+    }
+
+    enableCompletedStepButton(btn, isLast);
+}
+
 function startSecurityTimer(isAlreadyDone) {
     const actionBar = document.getElementById('viewer-action-bar');
     actionBar.innerHTML = `<button id="btn-next-chapter" class="btn-validate" disabled>Préparation...</button>`;
     const btn = document.getElementById('btn-next-chapter');
 
     const isLast = currentChapterIndex === courseData.chapitres.length - 1;
-    const nextText = isLast ? "Terminer le cours" : "Valider l'étape et continuer";
-
     const chapter = courseData.chapitres[currentChapterIndex];
 
     if (chapter.type === 'quiz') {
@@ -783,25 +878,27 @@ function startSecurityTimer(isAlreadyDone) {
         return;
     }
 
-    if (isAdminOrTeacher || isPreviewMode || isAlreadyDone) {
-        btn.disabled = false;
-        btn.innerHTML = `${nextText} ${SVG_NEXT}`;
-        btn.onclick = () => validateAndNext(isLast, 0);
+    if (isAdminOrTeacher || isAlreadyDone) {
+        enableCompletedStepButton(btn, isLast, isLast ? "Terminer le cours" : "Continuer");
         return;
     }
 
-    let timeLeft = WAIT_TIME_SECONDS;
-    btn.innerHTML = `${SVG_TIME} Veuillez patienter (${timeLeft}s)...`;
+    const waitSeconds = getChapterWaitSeconds(chapter);
+    if (waitSeconds <= 0) {
+        void completeTimerValidatedChapter(btn, isLast, chapter.id);
+        return;
+    }
+
+    let timeLeft = waitSeconds;
+    btn.innerHTML = `${SVG_TIME} Temps minimum : ${formatWaitSeconds(timeLeft)}`;
 
     timerInterval = setInterval(() => {
         timeLeft--;
         if (timeLeft <= 0) {
             clearViewerTimer();
-            btn.disabled = false;
-            btn.innerHTML = `${nextText} ${SVG_NEXT}`;
-            btn.onclick = () => validateAndNext(isLast, 0);
+            void completeTimerValidatedChapter(btn, isLast, chapter.id);
         } else {
-            btn.innerHTML = `${SVG_TIME} Veuillez patienter (${timeLeft}s)...`;
+            btn.innerHTML = `${SVG_TIME} Temps minimum : ${formatWaitSeconds(timeLeft)}`;
         }
     }, 1000);
 }
@@ -810,17 +907,19 @@ function setupCheckpointValidation(isLast, isAlreadyDone) {
     const btn = document.getElementById('btn-next-chapter');
     const inputs = Array.from(document.querySelectorAll('.sbi-checkpoint-acquis'));
     const nextText = isLast ? "Terminer le cours" : "Valider les acquis et continuer";
+    const chapter = courseData.chapitres[currentChapterIndex];
+    const checkpointScore = isAlreadyDone ? 0 : getChapterMaxScore(chapter);
 
     const refresh = () => {
         const allChecked = inputs.length === 0 || inputs.every((input) => input.checked);
         btn.disabled = !allChecked && !isAlreadyDone;
         btn.innerHTML = allChecked || isAlreadyDone
-            ? `${nextText} ${SVG_NEXT}`
+            ? `${nextText}${checkpointScore > 0 ? ` (+${checkpointScore} XP)` : ''} ${SVG_NEXT}`
             : `${SVG_DONE} Cochez tous les acquis`;
     };
 
     inputs.forEach((input) => input.addEventListener('change', refresh));
-    btn.onclick = () => validateAndNext(isLast, 0);
+    btn.onclick = () => validateAndNext(isLast, checkpointScore);
     refresh();
 }
 
@@ -957,7 +1056,6 @@ function submitQuizAnswers(isLast) {
 }
 
 async function validateAndNext(isLast, scoreEarned = 0) {
-    const chapId = courseData.chapitres[currentChapterIndex].id;
     const btn = document.getElementById('btn-next-chapter');
     if(btn) {
         btn.disabled = true;
@@ -965,31 +1063,16 @@ async function validateAndNext(isLast, scoreEarned = 0) {
     }
 
     if (isPreviewMode) {
-        if (!userProgress.courses[courseData.id].completedChapters.includes(chapId)) {
-            userProgress.courses[courseData.id].completedChapters.push(chapId);
-        }
-        renderSidebar();
-        if (isLast) {
-            alert("Aperçu du cours terminé ! Vous retournez à la liste des cours.");
-            const formId = (courseData.formations && courseData.formations.length > 0) ? courseData.formations[0] : '';
-            leaveViewer(formId);
-        } else {
-            loadChapter(currentChapterIndex + 1);
-        }
+        await markCurrentChapterCompleted(scoreEarned);
+        if (isLast) alert("Aperçu du cours terminé ! Vous retournez à la liste des cours.");
+        goToNextChapter(isLast);
         return;
     }
 
-    const updatedProgress = await validateChapterProgress(currentUid, courseData.id, chapId, courseData.chapitres.length, scoreEarned);
+    const updatedProgress = await markCurrentChapterCompleted(scoreEarned);
 
     if (updatedProgress) {
-        userProgress = updatedProgress;
-        renderSidebar();
-
-        if (isLast) {
-            document.getElementById('btn-back-dynamic').click();
-        } else {
-            loadChapter(currentChapterIndex + 1);
-        }
+        goToNextChapter(isLast);
     } else {
         alert("Erreur réseau. Veuillez réessayer.");
         if(btn) {

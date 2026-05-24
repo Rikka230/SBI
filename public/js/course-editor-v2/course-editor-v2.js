@@ -30,7 +30,7 @@ import {
 } from '/admin/js/course-media-storage.js?v=8.0P.167.195';
 
 const MAX_QUERY_VALUES = 10;
-const VERSION = '8.0P.167.196';
+const VERSION = '8.0P.167.197';
 const functionsInstance = getFunctions(app, 'europe-west1');
 const submitCourseForValidationCallable = httpsCallable(functionsInstance, 'submitCourseForValidation');
 const reviewCourseValidationCallable = httpsCallable(functionsInstance, 'reviewCourseValidation');
@@ -426,6 +426,50 @@ function updateComputedCourseDuration() {
   return total;
 }
 
+function getBlockScore(block = {}) {
+  if (!block) return 0;
+  if (block.type === 'fill_blank') {
+    return normalizeFillBlankRows(block).reduce((total, blank) => total + Number(blank.points || 0), 0);
+  }
+  if (block.type === 'quiz') {
+    return normalizeQuizQuestions(block).reduce((total, question) => total + Number(question.points || 0), 0);
+  }
+  if (block.type === 'checkpoint') {
+    const score = Number(block.checkpointScore ?? block.xpReward ?? block.score ?? 10);
+    return Number.isFinite(score) && score > 0 ? score : 10;
+  }
+  const score = Number(block.score || 0);
+  return Number.isFinite(score) && score > 0 ? score : 0;
+}
+
+function calculateCourseMaxScore(blocks = state.course.learningBlocks) {
+  if (!Array.isArray(blocks)) return 0;
+  return blocks.reduce((total, block) => {
+    if (!block || block.visibleInProgram === false) return total;
+    return total + getBlockScore(block);
+  }, 0);
+}
+
+function forceAutonomousCorrectionBlock(block = {}) {
+  if (!block || typeof block !== 'object') return block;
+  if (block.type === 'assignment') {
+    return {
+      ...block,
+      manualValidation: false,
+      correctionMode: 'self',
+      teacherSubmissionPlanned: true
+    };
+  }
+  if (block.type === 'case_study') {
+    return {
+      ...block,
+      correctionMode: 'self',
+      teacherSubmissionPlanned: true
+    };
+  }
+  return block;
+}
+
 function isAdminLike(profile = state.profile) {
   return profile?.isGod === true || profile?.role === 'admin' || state.role === 'admin';
 }
@@ -780,10 +824,13 @@ function createDefaultBlock(type = 'lesson') {
       title: `Devoir ${count}`,
       instructions: 'Réalisez le travail demandé puis conservez votre livrable.',
       assignmentPrompt: '',
+      assignmentCorrection: '',
       deliverableType: 'text',
       duePolicy: 'promotion_date',
       evaluationCriteria: '',
-      manualValidation: true,
+      correctionMode: 'self',
+      manualValidation: false,
+      teacherSubmissionPlanned: true,
       durationMinutes: 30,
       visibleInProgram: true,
       qualiopiEvidence: '2.4 Modalités d’évaluation',
@@ -803,6 +850,8 @@ function createDefaultBlock(type = 'lesson') {
       checkpointItems: [],
       requiresAllChecked: true,
       isBlockingPrerequisite: true,
+      checkpointScore: 10,
+      xpReward: 10,
       durationMinutes: 5,
       visibleInProgram: true,
       qualiopiEvidence: '2.4 Modalités d’évaluation',
@@ -821,7 +870,8 @@ function createDefaultBlock(type = 'lesson') {
       analysisMaterials: '',
       guidedQuestions: '',
       expectedAnswer: '',
-      correctionMode: 'teacher',
+      correctionMode: 'self',
+      teacherSubmissionPlanned: true,
       durationMinutes: 25,
       visibleInProgram: true,
       qualiopiEvidence: '3.1 Adaptation pédagogique',
@@ -903,12 +953,15 @@ function getCheckpointItemsForBlock(block, blocks = state.course.learningBlocks)
 
 function hydrateCheckpointBlock(block, blocks = state.course.learningBlocks) {
   if (!block || block.type !== 'checkpoint') return block;
+  const checkpointScore = getBlockScore(block);
   return {
     ...block,
     checkpointMode: 'acquis_checklist',
     checkpointItems: getCheckpointItemsForBlock(block, blocks),
     requiresAllChecked: true,
-    isBlockingPrerequisite: true
+    isBlockingPrerequisite: true,
+    checkpointScore,
+    xpReward: checkpointScore
   };
 }
 
@@ -922,6 +975,8 @@ function convertBlocksToLegacyChapters(blocks = []) {
         type: 'quiz',
         titre: block.title || `QCM ${index + 1}`,
         durationMinutes: toPositiveMinutes(block.durationMinutes),
+        maxScore: getBlockScore(block),
+        score: getBlockScore(block),
         questions: Array.isArray(block.questions) ? block.questions.map((question) => ({
           ...question,
           options: Array.isArray(question.options) ? question.options : [],
@@ -954,11 +1009,15 @@ function convertBlocksToLegacyChapters(blocks = []) {
         contenu: `<h3>${escapeHtml(block.title || 'Texte à trous')}</h3><p>${escapeHtml(block.instructions || '')}</p><div>${prompt}</div>`,
         mediaType: 'image',
         durationMinutes: toPositiveMinutes(block.durationMinutes),
+        maxScore: getBlockScore(block),
+        score: getBlockScore(block),
         questions: []
       };
     }
 
     if (PEDAGOGIC_BLOCK_TYPES.has(block.type)) {
+      block = forceAutonomousCorrectionBlock(block);
+      const blockScore = getBlockScore(block);
       return {
         id: block.id || makeId('chap'),
         type: block.type,
@@ -968,6 +1027,8 @@ function convertBlocksToLegacyChapters(blocks = []) {
         contenu: buildPedagogicBlockContent(block),
         mediaType: 'image',
         durationMinutes: toPositiveMinutes(block.durationMinutes),
+        maxScore: blockScore,
+        score: blockScore,
         questions: [],
         resourceType: block.resourceType || '',
         resourceUrl: block.resourceUrl || '',
@@ -979,22 +1040,26 @@ function convertBlocksToLegacyChapters(blocks = []) {
         resourceDescription: block.resourceDescription || '',
         consultationInstruction: block.consultationInstruction || '',
         assignmentPrompt: block.assignmentPrompt || '',
+        assignmentCorrection: block.assignmentCorrection || '',
         deliverableType: block.deliverableType || '',
         duePolicy: block.duePolicy || '',
         evaluationCriteria: block.evaluationCriteria || '',
-        manualValidation: block.manualValidation !== false,
+        correctionMode: block.correctionMode || 'self',
+        manualValidation: block.manualValidation === true,
+        teacherSubmissionPlanned: block.teacherSubmissionPlanned !== false,
         checkpointGoal: block.checkpointGoal || '',
         checkpointMode: block.checkpointMode || '',
         expectedResult: block.expectedResult || '',
         checkpointItems: Array.isArray(block.checkpointItems) ? block.checkpointItems : [],
         requiresAllChecked: block.requiresAllChecked !== false,
         isBlockingPrerequisite: block.isBlockingPrerequisite === true,
+        checkpointScore: Number(block.checkpointScore || blockScore || 0),
+        xpReward: Number(block.xpReward || blockScore || 0),
         caseContext: block.caseContext || '',
         scenario: block.scenario || '',
         analysisMaterials: block.analysisMaterials || '',
         guidedQuestions: block.guidedQuestions || '',
-        expectedAnswer: block.expectedAnswer || '',
-        correctionMode: block.correctionMode || ''
+        expectedAnswer: block.expectedAnswer || ''
       };
     }
 
@@ -1796,7 +1861,7 @@ function renderCourseInfoEditor() {
 
       <div class="sbi-two-cols">
         <div class="sbi-field"><label>Bloc partagé</label>${renderSharedBlockPicker('editor-course', state.course.bloc)}<small>Sélectionne un bloc existant ou saisis un nouveau nom puis clique Ajouter. Après sauvegarde, il sera proposé pour les cours de la même formation.</small></div>
-        <div class="sbi-field"><label>Durée estimée globale (min)</label><small>Calcul automatique : somme des durées des blocs du cours.</small><input id="editor-course-duration" class="sbi-input" type="number" min="0" step="1" value="${computedDuration}" readonly aria-readonly="true"></div>
+        <div class="sbi-field"><label>Durée estimée globale (min)</label><small>Calcul automatique : somme des timers minimum des blocs.</small><input id="editor-course-duration" class="sbi-input" type="number" min="0" step="1" value="${computedDuration}" readonly aria-readonly="true"></div>
       </div>
       <div class="sbi-empty-state">Cette page prépare le contenu du cours. Le rattachement au cursus, l’ordre du programme et les dates restent gérés dans Cursus / Promotions.</div>
     </div>
@@ -1883,7 +1948,7 @@ function renderGenericBlockEditor(block) {
       <div class="sbi-field"><label>Consignes</label><input id="block-instructions" class="sbi-input" value="${escapeHtml(block.instructions || '')}" placeholder="Instruction courte pour l’élève"></div>
       ${isLesson ? renderLessonMediaEditor(block) : ''}
       <div class="sbi-field sbi-field--quill"><label>Contenu</label><small>Éditeur identique au legacy : taille, gras, italique, couleurs, listes, alignement, liens, images et vidéos.</small><textarea id="block-content" class="sbi-quill-hidden" aria-hidden="true">${escapeHtml(block.content || '')}</textarea><div id="block-content-quill" class="sbi-quill-editor"></div></div>
-      <div class="sbi-two-cols"><div class="sbi-field"><label>Durée estimée (min)</label><input id="block-duration" class="sbi-input" type="number" min="0" step="1" value="${Number(block.durationMinutes || 0)}"></div><div class="sbi-field"><label>Inclure dans le cours</label><select id="block-visible" class="sbi-select"><option value="true" ${block.visibleInProgram !== false ? 'selected' : ''}>Oui</option><option value="false" ${block.visibleInProgram === false ? 'selected' : ''}>Non</option></select></div></div>
+      <div class="sbi-two-cols"><div class="sbi-field"><label>Timer minimum (min)</label><small>Temps minimum avant validation de cette page côté élève.</small><input id="block-duration" class="sbi-input" type="number" min="0" step="1" value="${Number(block.durationMinutes || 0)}"></div><div class="sbi-field"><label>Inclure dans le cours</label><select id="block-visible" class="sbi-select"><option value="true" ${block.visibleInProgram !== false ? 'selected' : ''}>Oui</option><option value="false" ${block.visibleInProgram === false ? 'selected' : ''}>Non</option></select></div></div>
     </div>
   `;
 }
@@ -1899,7 +1964,7 @@ function renderPedagogicBlockEditor(block) {
 function renderPedagogicFooter(block) {
   return `
     <div class="sbi-two-cols">
-      <div class="sbi-field"><label>Durée estimée (min)</label><input id="block-duration" class="sbi-input" type="number" min="0" step="1" value="${Number(block.durationMinutes || 0)}"></div>
+      <div class="sbi-field"><label>Timer minimum (min)</label><small>Temps minimum avant validation de cette page côté élève.</small><input id="block-duration" class="sbi-input" type="number" min="0" step="1" value="${Number(block.durationMinutes || 0)}"></div>
       <div class="sbi-field"><label>Inclure dans le cours</label><select id="block-visible" class="sbi-select"><option value="true" ${block.visibleInProgram !== false ? 'selected' : ''}>Oui</option><option value="false" ${block.visibleInProgram === false ? 'selected' : ''}>Non</option></select></div>
     </div>
   `;
@@ -1973,7 +2038,11 @@ function renderAssignmentBlockEditor(block) {
         <div class="sbi-field"><label>Délai</label><select class="sbi-select" data-block-field="duePolicy">${renderSelectOption('promotion_date', block.duePolicy || 'promotion_date')} ${renderSelectOption('free', block.duePolicy)} ${renderSelectOption('manual_deadline', block.duePolicy)}</select></div>
       </div>
       <div class="sbi-field"><label>Critères d’évaluation</label><textarea class="sbi-textarea" data-block-field="evaluationCriteria">${escapeHtml(block.evaluationCriteria || '')}</textarea></div>
-      <label class="sbi-check-row sbi-check-row--box"><input type="checkbox" data-block-field="manualValidation" data-block-boolean="true" ${block.manualValidation !== false ? 'checked' : ''}> Validation manuelle professeur</label>
+      <div class="sbi-field"><label>Correction autonome affichée</label><textarea class="sbi-textarea" data-block-field="assignmentCorrection" placeholder="Correction, exemple de réponse ou grille d'auto-correction">${escapeHtml(block.assignmentCorrection || '')}</textarea></div>
+      <div class="sbi-autonomous-correction-note">
+        <strong>Correction autonome active</strong>
+        <span>L'élève consulte la correction dans le viewer. L'envoi au professeur est prévu pour une étape future, mais n'est pas activé pour le moment.</span>
+      </div>
       ${renderPedagogicFooter(block)}
     </div>
   `;
@@ -2009,6 +2078,10 @@ function renderCheckpointBlockEditor(block) {
         <small>Cette liste est calculee automatiquement avec tous les blocs visibles places avant ce checkpoint.</small>
         ${renderCheckpointItemsPreview(block)}
       </div>
+      <div class="sbi-autonomous-correction-note sbi-autonomous-correction-note--xp">
+        <strong>Validation checkpoint : +${getBlockScore(block)} XP</strong>
+        <span>Ce bonus est ajoute au score total du cours et a l'XP eleve lors de la validation du checkpoint.</span>
+      </div>
       <label class="sbi-check-row sbi-check-row--box"><input type="checkbox" data-block-field="requiresAllChecked" data-block-boolean="true" checked disabled> Toutes les cases doivent etre cochees pour valider les acquis</label>
       <div class="sbi-field"><label>Resultat attendu</label><textarea class="sbi-textarea" data-block-field="expectedResult">${escapeHtml(block.expectedResult || '')}</textarea></div>
       ${renderPedagogicFooter(block)}
@@ -2025,9 +2098,10 @@ function renderCaseStudyBlockEditor(block) {
       <div class="sbi-field"><label>Scénario</label><textarea class="sbi-textarea sbi-textarea--large" data-block-field="scenario">${escapeHtml(block.scenario || block.content || '')}</textarea></div>
       <div class="sbi-field"><label>Documents ou éléments à analyser</label><textarea class="sbi-textarea" data-block-field="analysisMaterials">${escapeHtml(block.analysisMaterials || '')}</textarea></div>
       <div class="sbi-field"><label>Questions guidées</label><textarea class="sbi-textarea" data-block-field="guidedQuestions" placeholder="Une question par ligne">${escapeHtml(block.guidedQuestions || '')}</textarea></div>
-      <div class="sbi-two-cols">
-        <div class="sbi-field"><label>Mode de correction</label><select class="sbi-select" data-block-field="correctionMode">${renderSelectOption('teacher', block.correctionMode || 'teacher')} ${renderSelectOption('self', block.correctionMode)} ${renderSelectOption('partial_auto', block.correctionMode)}</select></div>
-        <div class="sbi-field"><label>Réponse attendue / grille</label><textarea class="sbi-textarea" data-block-field="expectedAnswer">${escapeHtml(block.expectedAnswer || '')}</textarea></div>
+      <div class="sbi-field"><label>Réponse attendue / grille de correction</label><textarea class="sbi-textarea" data-block-field="expectedAnswer">${escapeHtml(block.expectedAnswer || '')}</textarea></div>
+      <div class="sbi-autonomous-correction-note">
+        <strong>Correction autonome active</strong>
+        <span>L'élève consulte la correction dans le viewer. L'envoi au professeur est prévu pour une étape future, mais n'est pas activé pour le moment.</span>
       </div>
       ${renderPedagogicFooter(block)}
     </div>
@@ -2206,7 +2280,7 @@ function renderQuizEditor(block) {
       </div>
       <div class="sbi-two-cols">
         <div class="sbi-field"><label>Score max</label><input class="sbi-input" type="number" min="0" value="${getActiveScore(block)}" readonly aria-readonly="true"></div>
-        <div class="sbi-field"><label>Duree estimee (min)</label><input id="block-duration" class="sbi-input" type="number" min="0" value="${Number(block.durationMinutes || 5)}"></div>
+        <div class="sbi-field"><label>Timer minimum (min)</label><small>Temps minimum avant validation de cette page cote eleve.</small><input id="block-duration" class="sbi-input" type="number" min="0" value="${Number(block.durationMinutes || 5)}"></div>
       </div>
     </div>
   `;
@@ -2247,10 +2321,10 @@ function renderSettings() {
     ? state.selectedFormationIds.map(getFormationTitle).join(', ')
     : 'Aucune formation sélectionnée';
   const settingsDuration = active ? toPositiveMinutes(active.durationMinutes) : updateComputedCourseDuration();
-  const settingsDurationLabel = active ? 'Durée estimée (min)' : 'Durée globale (min)';
+  const settingsDurationLabel = active ? 'Timer minimum (min)' : 'Durée globale (min)';
   const settingsDurationHelp = active
-    ? ''
-    : '<small>Calcul automatique : somme des durées des blocs du cours.</small>';
+    ? '<small>Durée minimale avant validation de la page côté élève.</small>'
+    : '<small>Calcul automatique : somme des timers minimum des blocs du cours.</small>';
   const settingsDurationReadonly = active ? '' : 'readonly aria-readonly="true"';
 
   settings.innerHTML = `
@@ -2263,7 +2337,7 @@ function renderSettings() {
       <div class="sbi-field"><label>Bloc partagé</label>${renderSharedBlockPicker('settings', state.course.bloc, { allowCreate: false })}<small>Sélection rapide d’un bloc existant. Pour créer un nouveau bloc, passe par Course Info.</small></div>
       <div class="sbi-field"><label>Compétence ciblée</label><input id="settings-competency" class="sbi-input" value="${escapeHtml(active?.competency || state.course.competency || '')}" placeholder="Ex : C2. Assurer la sécurité"></div>
       <div class="sbi-field"><label>Preuve Qualiopi</label><select id="settings-qualiopi" class="sbi-select"><option value="">Non renseignée</option>${renderQualiopiEvidenceOptions(active?.qualiopiEvidence || state.course.qualiopiEvidence)}</select>${renderQualiopiEvidenceLegend(active?.qualiopiEvidence || state.course.qualiopiEvidence)}</div>
-      <div class="sbi-two-cols"><div class="sbi-field"><label>${settingsDurationLabel}</label>${settingsDurationHelp}<input id="settings-duration" class="sbi-input" type="number" min="0" step="1" value="${settingsDuration}" ${settingsDurationReadonly}></div><div class="sbi-field"><label>Score max calculé</label><input id="settings-score" class="sbi-input" type="number" min="0" value="${getActiveScore(active)}" readonly aria-readonly="true"></div></div>
+      <div class="sbi-two-cols"><div class="sbi-field"><label>${settingsDurationLabel}</label>${settingsDurationHelp}<input id="settings-duration" class="sbi-input" type="number" min="0" step="1" value="${settingsDuration}" ${settingsDurationReadonly}></div><div class="sbi-field"><label>Score total cours</label><small>Calcul automatique : QCM, textes a trous et checkpoints inclus.</small><input id="settings-score" class="sbi-input" type="number" min="0" value="${calculateCourseMaxScore()}" readonly aria-readonly="true"></div></div>
       <div class="sbi-field"><label>Inclure dans le cours</label><select id="settings-visible" class="sbi-select"><option value="true" ${(active?.visibleInProgram ?? state.course.visibleInProgram) !== false ? 'selected' : ''}>Oui</option><option value="false" ${(active?.visibleInProgram ?? state.course.visibleInProgram) === false ? 'selected' : ''}>Non</option></select></div>
       <div class="sbi-two-cols"><div class="sbi-field"><label>Règle</label><select id="settings-rule" class="sbi-select"><option value="score_minimum">Score minimum</option><option value="viewed">Consulté</option></select></div><div class="sbi-field"><label>Seuil %</label><input id="settings-validation-score" class="sbi-input" type="number" min="0" max="100" value="${Number(state.course.validationScore || 70)}"></div></div>
     </div>
@@ -2271,10 +2345,7 @@ function renderSettings() {
 }
 
 function getActiveScore(active) {
-  if (!active) return 0;
-  if (active.type === 'fill_blank') return normalizeFillBlankRows(active).reduce((total, blank) => total + Number(blank.points || 0), 0);
-  if (active.type === 'quiz') return (active.questions || []).reduce((total, question) => total + Number(question.points || 0), 0);
-  return Number(active.score || 0);
+  return getBlockScore(active);
 }
 
 function renderPreview() {
@@ -2350,14 +2421,16 @@ function buildPedagogicBlockContent(block = {}, { preview = false } = {}) {
       ${renderPedagogicText('Travail demandé', block.assignmentPrompt || block.content)}
       ${renderPedagogicLine('Livrable attendu', block.deliverableType || 'text')}
       ${renderPedagogicLine('Délai', block.duePolicy || 'promotion_date')}
-      ${renderPedagogicLine('Validation', block.manualValidation !== false ? 'professeur' : 'automatique')}
+      ${renderPedagogicLine('Correction', 'autonome')}
       ${renderPedagogicText('Critères d’évaluation', block.evaluationCriteria)}
+      ${renderPedagogicText('Correction affichée', block.assignmentCorrection)}
     `;
   } else if (block.type === 'checkpoint') {
     const checkpointItems = getCheckpointItemsForBlock(block)
       .map((item, index) => `<label class="sbi-pedagogic-check"><input type="checkbox" disabled><span>${index + 1}. ${escapeHtml(item.title)}</span></label>`)
       .join('');
     body = `
+      ${renderPedagogicLine('XP de validation', `+${getBlockScore(block)} XP`)}
       ${renderPedagogicText('Objectif', block.checkpointGoal || block.content)}
       <div class="sbi-pedagogic-checklist">${checkpointItems || '<p>Aucune etape precedente.</p>'}</div>
       ${renderPedagogicText('Résultat attendu', block.expectedResult)}
@@ -2369,7 +2442,7 @@ function buildPedagogicBlockContent(block = {}, { preview = false } = {}) {
       ${renderPedagogicText('Éléments à analyser', block.analysisMaterials)}
       ${renderPedagogicText('Questions guidées', block.guidedQuestions)}
       ${renderPedagogicText('Réponse attendue / grille', block.expectedAnswer)}
-      ${renderPedagogicLine('Correction', block.correctionMode || 'teacher')}
+      ${renderPedagogicLine('Correction', 'autonome')}
     `;
   }
 
@@ -2410,7 +2483,7 @@ function syncDurationUi(sourceId = '') {
 }
 
 function syncScoreUi() {
-  const score = getActiveScore(getActiveBlock());
+  const score = calculateCourseMaxScore();
   const field = document.getElementById('settings-score');
   if (field && String(field.value) !== String(score)) field.value = String(score);
 }
@@ -2480,7 +2553,11 @@ function bindEditorInputs() {
     syncDurationUi('block-duration');
     markDirty();
   });
-  $('#block-visible')?.addEventListener('change', (event) => { active.visibleInProgram = event.target.value === 'true'; markDirty(); });
+  $('#block-visible')?.addEventListener('change', (event) => {
+    active.visibleInProgram = event.target.value === 'true';
+    markDirty();
+    syncScoreUi();
+  });
   setupLessonMediaControls(active);
 
   bindFillBlankInputs(active);
@@ -2750,6 +2827,7 @@ function bindSettingsInputs() {
     if (active) active.visibleInProgram = event.target.value === 'true';
     else state.course.visibleInProgram = event.target.value === 'true';
     markDirty();
+    syncScoreUi();
   });
   $('#settings-validation-score')?.addEventListener('input', (event) => { state.course.validationScore = Number(event.target.value || 70); markDirty(); });
 }
@@ -2787,6 +2865,8 @@ function saveActiveEditorValues() {
       ? Boolean(field.checked)
       : field.value;
   });
+
+  Object.assign(active, forceAutonomousCorrectionBlock(active));
 }
 
 function bindGlobalActions() {
@@ -2850,14 +2930,19 @@ function buildCoursePayload(action = 'draft') {
   }
 
   const learningBlocks = state.course.learningBlocks.map((block, index, blocks) => {
-    const hydratedBlock = hydrateCheckpointBlock(block, blocks);
+    const normalizedBlock = forceAutonomousCorrectionBlock(block);
+    const hydratedBlock = hydrateCheckpointBlock(normalizedBlock, blocks);
+    const blockScore = getBlockScore(hydratedBlock);
     return {
       ...hydratedBlock,
       order: index,
       activityType: hydratedBlock.type,
-      schemaVersion: 'learning-block-v1'
+      schemaVersion: 'learning-block-v1',
+      maxScore: blockScore,
+      score: blockScore
     };
   });
+  const totalCourseScore = calculateCourseMaxScore(learningBlocks);
 
   const chapitres = convertBlocksToLegacyChapters(learningBlocks);
   const quizCount = learningBlocks.filter((block) => block.type === 'quiz').length;
@@ -2886,6 +2971,9 @@ function buildCoursePayload(action = 'draft') {
     validationRule: state.course.validationRule || 'score_minimum',
     validationScore: Number(state.course.validationScore || 70),
     estimatedDurationMinutes: updateComputedCourseDuration(),
+    maxScore: totalCourseScore,
+    totalScore: totalCourseScore,
+    totalXp: totalCourseScore,
     schemaVersion: 'lms-course-v2',
     editorVersion: VERSION,
     learningBlocks,
@@ -3105,6 +3193,7 @@ async function loadCourseFromUrl() {
   };
 
   if (!state.course.learningBlocks.length) state.course.learningBlocks = [createDefaultBlock('lesson')];
+  state.course.learningBlocks = state.course.learningBlocks.map((block) => forceAutonomousCorrectionBlock(block));
   updateComputedCourseDuration();
   state.activeBlockId = state.course.learningBlocks[0]?.id || 'course_info';
   state.readOnly = isTeacherPendingLocked();

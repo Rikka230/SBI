@@ -588,6 +588,24 @@ body.sbi-editor-v2 {
 .sbi-resource-file-status--empty {
   border-style: dashed;
 }
+.sbi-autonomous-correction-note {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(42, 87, 255, 0.28);
+  border-radius: 12px;
+  background: rgba(42, 87, 255, 0.08);
+  color: var(--editor-muted);
+  line-height: 1.45;
+}
+.sbi-autonomous-correction-note strong {
+  color: var(--editor-text);
+  font-weight: 950;
+}
+.sbi-autonomous-correction-note--xp {
+  border-color: rgba(16, 185, 129, 0.28);
+  background: rgba(16, 185, 129, 0.08);
+}
 .sbi-checkpoint-items-preview label,
 .sbi-pedagogic-check {
   display: grid;
