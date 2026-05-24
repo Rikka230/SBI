@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.197',
+  version: '8.0P.167.198',
   branch: 'main',
   channel: 'COURSE EDITOR V2 ACTIVITIES',
   stage: 'AUTONOMOUS CORRECTION CHECKPOINT XP TIMER',
   updatedAt: '2026-05-24',
-  label: 'SBI 8.0P.167.197 - autonomous correction checkpoint XP timer'
+  label: 'SBI 8.0P.167.198 - viewer self assessment correction button'
 };
 
 export function getSbiVersionLabel() {

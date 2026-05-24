@@ -226,14 +226,58 @@ body.learning-mode {
     background: #ffffff;
 }
 
-.sbi-viewer-correction-note {
-    padding: 0.9rem 1rem;
+.sbi-viewer-self-assessment {
+    display: grid;
+    gap: 0.85rem;
+    padding: 1rem;
     border: 1px solid rgba(42, 87, 255, 0.22);
     border-radius: 12px;
-    background: rgba(42, 87, 255, 0.07);
+    background: rgba(42, 87, 255, 0.06);
+}
+
+.sbi-viewer-self-assessment p {
+    margin: 0;
     color: #374151;
     font-weight: 700;
     line-height: 1.55;
+}
+
+.sbi-viewer-self-assessment-btn {
+    width: fit-content;
+    min-height: 42px;
+    padding: 0.75rem 1rem;
+    border: 0;
+    border-radius: 10px;
+    background: var(--accent-blue);
+    color: #ffffff;
+    font-weight: 900;
+    cursor: pointer;
+}
+
+.sbi-viewer-self-assessment-btn:hover {
+    filter: brightness(0.95);
+}
+
+.sbi-viewer-self-assessment-correction {
+    display: grid;
+    gap: 0.45rem;
+    padding: 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: #ffffff;
+}
+
+.sbi-viewer-self-assessment-correction[hidden] {
+    display: none;
+}
+
+.sbi-viewer-self-assessment-correction h3 {
+    margin: 0;
+    color: var(--text-main);
+    font-size: 0.82rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-weight: 900;
 }
 
 .sbi-viewer-resource-link {

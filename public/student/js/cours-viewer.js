@@ -515,9 +515,51 @@ function renderViewerLine(label, value) {
 }
 
 function renderViewerText(label, value) {
-    const cleanValue = String(value || '').trim();
+    const cleanValue = cleanViewerText(value);
     if (!cleanValue) return '';
     return `<section class="sbi-viewer-section"><h3>${escapeHtml(label)}</h3><p>${escapeHtml(cleanValue).replace(/\n/g, '<br>')}</p></section>`;
+}
+
+function cleanViewerText(value = '') {
+    const rawValue = String(value || '').trim();
+    if (!rawValue) return '';
+
+    if (/<[a-z][\s\S]*>/i.test(rawValue) && typeof document !== 'undefined') {
+        const template = document.createElement('template');
+        template.innerHTML = rawValue;
+        const plainText = template.content.textContent?.replace(/\s+/g, ' ').trim();
+        return plainText || rawValue;
+    }
+
+    return rawValue;
+}
+
+function renderSelfAssessmentBlock({ correction = '', type = 'assignment' } = {}) {
+    const correctionText = cleanViewerText(correction) || 'Aucune correction n’a encore été renseignée pour ce bloc.';
+    const targetId = `self-assess-${type}-${currentChapterIndex}`;
+
+    return `
+        <div class="sbi-viewer-self-assessment">
+            <p>Travaille sur une feuille ou dans ton propre document, puis compare ton travail avec la correction quand tu es prêt.</p>
+            <button class="sbi-viewer-self-assessment-btn" type="button" data-self-assess-target="${escapeHtml(targetId)}">M’auto-évaluer</button>
+            <section id="${escapeHtml(targetId)}" class="sbi-viewer-self-assessment-correction" hidden>
+                <h3>Correction / auto-evaluation</h3>
+                <p>${escapeHtml(correctionText).replace(/\n/g, '<br>')}</p>
+            </section>
+        </div>
+    `;
+}
+
+function bindAutonomousEvaluationControls(root = document) {
+    root.querySelectorAll('[data-self-assess-target]').forEach((button) => {
+        button.addEventListener('click', () => {
+            const target = document.getElementById(button.dataset.selfAssessTarget || '');
+            if (!target) return;
+            target.hidden = false;
+            button.hidden = true;
+            target.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        });
+    });
 }
 
 
@@ -552,12 +594,8 @@ function renderPedagogicChapter(chapter = {}) {
     } else if (type === 'assignment') {
         body = `
             ${renderViewerText('Travail demande', chapter.assignmentPrompt || chapter.contenu)}
-            ${renderViewerLine('Livrable attendu', chapter.deliverableType || 'text')}
-            ${renderViewerLine('Delai', chapter.duePolicy || 'promotion_date')}
-            ${renderViewerLine('Correction', 'autonome')}
             ${renderViewerText('Criteres evaluation', chapter.evaluationCriteria)}
-            ${renderViewerText('Correction affichee', chapter.assignmentCorrection)}
-            <div class="sbi-viewer-correction-note">L'envoi au professeur est prevu pour une etape future. Pour le moment, ce devoir se valide en correction autonome.</div>
+            ${renderSelfAssessmentBlock({ correction: chapter.assignmentCorrection || chapter.evaluationCriteria, type })}
         `;
     } else if (type === 'checkpoint') {
         body = `
@@ -572,9 +610,7 @@ function renderPedagogicChapter(chapter = {}) {
             ${renderViewerText('Scenario', chapter.scenario || chapter.contenu)}
             ${renderViewerText('Elements a analyser', chapter.analysisMaterials)}
             ${renderViewerText('Questions guidees', chapter.guidedQuestions)}
-            ${renderViewerText('Reponse attendue / grille', chapter.expectedAnswer)}
-            ${renderViewerLine('Correction', 'autonome')}
-            <div class="sbi-viewer-correction-note">L'envoi au professeur est prevu pour une etape future. Pour le moment, cette etude de cas se valide en correction autonome.</div>
+            ${renderSelfAssessmentBlock({ correction: chapter.expectedAnswer, type })}
         `;
     }
 
@@ -794,6 +830,7 @@ function loadChapter(index, forceReload = false) {
     main.innerHTML = contentHtml;
     main.scrollTop = 0;
 
+    bindAutonomousEvaluationControls(main);
     startSecurityTimer(isDone);
 }
 
