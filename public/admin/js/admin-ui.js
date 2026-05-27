@@ -20,7 +20,7 @@ import { initAdminCursusToolFilters } from '/admin/js/admin-cursus-tool-filters.
 import { initAdminCursusQaFinal } from '/admin/js/admin-cursus-qa-final.js?v=8.0P.167.110';
 import { initAdminCursusQualiopiAudit } from '/admin/js/admin-cursus-qualiopi-audit.js?v=8.0P.167.111';
 import { initAdminCursusQualiopiEvidenceBridge } from '/admin/js/admin-cursus-qualiopi-evidence-bridge.js?v=8.0P.167.112';
-import { initAdminCursusPromotionSync } from '/admin/js/admin-cursus-promotion-sync.js?v=8.0P.167.188';
+import { initAdminCursusPromotionSync } from '/admin/js/admin-cursus-promotion-sync.js?v=8.0P.167.201';
 import { initAdminPromotionsCursusSelectorFix } from '/admin/js/admin-promotions-cursus-selector-fix.js?v=8.0P.167.105.1-GPT2.1';
 
 /**

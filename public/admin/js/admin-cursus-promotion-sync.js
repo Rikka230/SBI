@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.167.189
+ * SBI 8.0P.167.201
  * Cursus → Promotions automatic coursePlan sync.
  *
  * Périmètre :
@@ -8,6 +8,7 @@
  * - met à jour les promotions actives liées par curriculumTemplateId ;
  * - recalcule les dates au prorata selon startDate / endDate de chaque promotion ;
  * - aucune modification DnD / verrou / semaines / élèves.
+ * - prépare un index livePlanning pour la future sélection des dates par les profs.
  */
 
 import { app, auth, db } from '/js/firebase-init.js';
@@ -27,7 +28,7 @@ let installed = false;
 let syncTimer = 0;
 let syncRunning = false;
 
-const VERSION = '8.0P.167.189';
+const VERSION = '8.0P.167.201';
 const STRUCTURAL_TYPES = ['real_course', 'course', 'placeholder_course', 'buffer_period', 'revision_period', 'catchup_period'];
 const PARALLEL_TYPES = ['assignment', 'exam', 'evaluation', 'live_session', 'workshop'];
 const functionsInstance = getFunctions(app, 'europe-west1');
@@ -119,6 +120,10 @@ function isParallelType(type = '') {
   return PARALLEL_TYPES.includes(type);
 }
 
+function isLiveType(type = '') {
+  return type === 'live_session' || type === 'workshop';
+}
+
 function isPedagogicalType(type = '') {
   return isStructuralType(type) || isParallelType(type);
 }
@@ -146,6 +151,49 @@ function getTypeLabel(type = '') {
     workshop: 'Atelier'
   };
   return map[type] || type || 'Élément';
+}
+
+function normalizeLiveTrackingDraft(source = {}, item = {}, template = {}) {
+  const existing = source.liveTracking && typeof source.liveTracking === 'object' ? source.liveTracking : {};
+  const existingWindow = existing.schedulingWindow && typeof existing.schedulingWindow === 'object'
+    ? existing.schedulingWindow
+    : existing.teacherSchedulingWindow && typeof existing.teacherSchedulingWindow === 'object'
+      ? existing.teacherSchedulingWindow
+      : {};
+  const type = getItemType(item);
+  const modelStart = Math.max(0, toNumber(item.relativeStartOffsetDays ?? item.modelStartOffsetDays ?? item.startOffsetDays, 0));
+  const modelDuration = getDurationDays(item);
+
+  return {
+    ...existing,
+    version: existing.version || 'live-tracking-v1',
+    type,
+    itemId: clean(item.itemId || source.itemId || source.id || '', 180),
+    title: clean(item.title || item.courseTitle || source.title || getTypeLabel(type), 180),
+    templateId: clean(template.id || '', 180),
+    templateTitle: clean(template.title || '', 180),
+    status: clean(existing.status || source.liveStatus || 'to_schedule', 60) || 'to_schedule',
+    teacherSelectionMode: clean(existing.teacherSelectionMode || 'teacher_selects_date_in_window', 80),
+    teacherSelectionStatus: clean(existing.teacherSelectionStatus || 'pending', 60) || 'pending',
+    studentScheduleStatus: clean(existing.studentScheduleStatus || 'pending_teacher_date', 60) || 'pending_teacher_date',
+    notificationStatus: clean(existing.notificationStatus || 'not_ready', 60) || 'not_ready',
+    selectedSlot: existing.selectedSlot || null,
+    selectedLiveAt: clean(existing.selectedLiveAt || '', 60),
+    selectedLiveEndAt: clean(existing.selectedLiveEndAt || '', 60),
+    selectedByUid: clean(existing.selectedByUid || '', 140),
+    selectedByEmail: clean(existing.selectedByEmail || '', 180),
+    selectedAt: clean(existing.selectedAt || '', 60),
+    schedulingWindow: {
+      ...existingWindow,
+      modelStartOffsetDays: modelStart,
+      modelEndOffsetDays: modelStart + modelDuration,
+      modelDurationDays: modelDuration,
+      recommendedStartAt: clean(existingWindow.recommendedStartAt || existingWindow.startAt || '', 60),
+      recommendedEndAt: clean(existingWindow.recommendedEndAt || existingWindow.endAt || '', 60),
+      teacherCanSelectFrom: clean(existingWindow.teacherCanSelectFrom || existingWindow.recommendedStartAt || '', 60),
+      teacherCanSelectUntil: clean(existingWindow.teacherCanSelectUntil || existingWindow.recommendedEndAt || '', 60)
+    }
+  };
 }
 
 function makeStableItemId(templateId = '', type = 'item', index = 0) {
@@ -222,7 +270,7 @@ function buildPlanFromTemplate(template = {}) {
 
     const title = clean(item.courseTitle || item.title || item.label || (isCourse ? 'Cours sans titre' : getTypeLabel(type)), 180);
 
-    return {
+    const planItem = {
       type: type === 'course' ? 'real_course' : type,
       layer: item.layer || getLayerForType(type),
       itemId: isCourse ? '' : key,
@@ -263,6 +311,11 @@ function buildPlanFromTemplate(template = {}) {
         ? 'placeholder-replace-v2'
         : 'curriculum-template-auto-sync-v1'
     };
+    if (isLiveType(type)) {
+      planItem.liveTracking = normalizeLiveTrackingDraft(item, planItem, template);
+      planItem.liveSchedulingStatus = planItem.liveTracking.status;
+    }
+    return planItem;
   }).sort((a, b) => toNumber(a.order, 0) - toNumber(b.order, 0))
     .map((item, index) => ({ ...item, order: index }));
 }
@@ -308,6 +361,93 @@ function buildPreview(plan = [], template = {}, promotion = {}) {
     templateTitle: template.title || '',
     source: 'curriculum-auto-sync-v1'
   };
+}
+
+function enrichLiveTrackingDates(item = {}, promotion = {}, template = {}) {
+  if (!isLiveType(getItemType(item))) return item;
+
+  const existing = item.liveTracking && typeof item.liveTracking === 'object' ? item.liveTracking : {};
+  const existingWindow = existing.schedulingWindow && typeof existing.schedulingWindow === 'object'
+    ? existing.schedulingWindow
+    : {};
+  const selectedLiveAt = clean(existing.selectedLiveAt || existing.selectedSlot?.startAt || '', 60);
+  const selectedLiveEndAt = clean(existing.selectedLiveEndAt || existing.selectedSlot?.endAt || '', 60);
+  const recommendedStartAt = clean(item.recommendedStartAt || item.plannedStartAt || '', 60);
+  const recommendedEndAt = clean(item.recommendedEndAt || item.plannedEndAt || item.deadlineAt || item.dueAt || '', 60);
+  const liveStatus = selectedLiveAt ? 'scheduled' : clean(existing.status || 'to_schedule', 60) || 'to_schedule';
+
+  return {
+    ...item,
+    liveSchedulingStatus: liveStatus,
+    teacherSchedulingWindowStartAt: recommendedStartAt,
+    teacherSchedulingWindowEndAt: recommendedEndAt,
+    selectedLiveAt,
+    selectedLiveEndAt,
+    liveTracking: {
+      ...existing,
+      version: existing.version || 'live-tracking-v1',
+      type: getItemType(item),
+      itemId: clean(item.itemId || existing.itemId || '', 180),
+      title: clean(item.title || item.courseTitle || existing.title || getTypeLabel(getItemType(item)), 180),
+      templateId: clean(template.id || existing.templateId || '', 180),
+      templateTitle: clean(template.title || existing.templateTitle || '', 180),
+      promotionId: clean(promotion.id || existing.promotionId || '', 180),
+      promotionName: clean(promotion.name || promotion.promotionName || existing.promotionName || '', 180),
+      status: liveStatus,
+      teacherSelectionMode: clean(existing.teacherSelectionMode || 'teacher_selects_date_in_window', 80),
+      teacherSelectionStatus: selectedLiveAt ? 'selected' : (clean(existing.teacherSelectionStatus || 'pending', 60) || 'pending'),
+      studentScheduleStatus: selectedLiveAt ? 'scheduled' : (clean(existing.studentScheduleStatus || 'pending_teacher_date', 60) || 'pending_teacher_date'),
+      notificationStatus: selectedLiveAt ? (clean(existing.notificationStatus || 'pending_student_update', 80) || 'pending_student_update') : (clean(existing.notificationStatus || 'not_ready', 60) || 'not_ready'),
+      selectedSlot: existing.selectedSlot || null,
+      selectedLiveAt,
+      selectedLiveEndAt,
+      selectedByUid: clean(existing.selectedByUid || '', 140),
+      selectedByEmail: clean(existing.selectedByEmail || '', 180),
+      selectedAt: clean(existing.selectedAt || '', 60),
+      schedulingWindow: {
+        ...existingWindow,
+        modelStartOffsetDays: Math.max(0, toNumber(item.modelStartOffsetDays ?? item.relativeStartOffsetDays ?? item.startOffsetDays, 0)),
+        modelEndOffsetDays: Math.max(0, toNumber(item.modelStartOffsetDays ?? item.relativeStartOffsetDays ?? item.startOffsetDays, 0)) + getDurationDays(item),
+        modelDurationDays: getDurationDays(item),
+        targetStartOffsetDays: Math.max(0, toNumber(item.targetStartOffsetDays, 0)),
+        targetDurationDays: Math.max(1, toNumber(item.targetDurationDays || item.durationDays, getDurationDays(item))),
+        recommendedStartAt,
+        recommendedEndAt,
+        teacherCanSelectFrom: recommendedStartAt,
+        teacherCanSelectUntil: recommendedEndAt
+      }
+    }
+  };
+}
+
+function buildLivePlanningIndex(coursePlan = [], template = {}, promotion = {}) {
+  if (!Array.isArray(coursePlan)) return [];
+
+  return coursePlan
+    .filter((item) => isLiveType(getItemType(item)))
+    .map((item, index) => {
+      const tracking = item.liveTracking || {};
+      return {
+        id: clean(item.itemId || `live-${index}`, 180),
+        type: getItemType(item),
+        title: clean(item.title || tracking.title || getTypeLabel(getItemType(item)), 180),
+        templateId: clean(template.id || '', 180),
+        promotionId: clean(promotion.id || '', 180),
+        order: Number.isFinite(Number(item.order)) ? Number(item.order) : index,
+        status: clean(item.liveSchedulingStatus || tracking.status || 'to_schedule', 60) || 'to_schedule',
+        teacherSelectionMode: clean(tracking.teacherSelectionMode || 'teacher_selects_date_in_window', 80),
+        teacherSelectionStatus: clean(tracking.teacherSelectionStatus || 'pending', 60) || 'pending',
+        teacherSchedulingWindowStartAt: clean(item.teacherSchedulingWindowStartAt || tracking.schedulingWindow?.recommendedStartAt || '', 60),
+        teacherSchedulingWindowEndAt: clean(item.teacherSchedulingWindowEndAt || tracking.schedulingWindow?.recommendedEndAt || '', 60),
+        selectedLiveAt: clean(item.selectedLiveAt || tracking.selectedLiveAt || '', 60),
+        selectedLiveEndAt: clean(item.selectedLiveEndAt || tracking.selectedLiveEndAt || '', 60),
+        selectedByUid: clean(tracking.selectedByUid || '', 140),
+        selectedByEmail: clean(tracking.selectedByEmail || '', 180),
+        studentScheduleStatus: clean(tracking.studentScheduleStatus || 'pending_teacher_date', 60) || 'pending_teacher_date',
+        notificationStatus: clean(tracking.notificationStatus || 'not_ready', 80) || 'not_ready',
+        source: 'promotion-live-planning-v1'
+      };
+    });
 }
 
 function mapExistingPlan(plan = []) {
@@ -357,7 +497,7 @@ function recalculatePlanDates(plan = [], template = {}, promotion = {}) {
         structuralMap.set(key, locked);
         if (locked.courseId) structuralMap.set(locked.courseId, locked);
       }
-      return locked;
+      return enrichLiveTrackingDates(locked, promotion, template);
     }
 
     const scaledStartOffset = Math.max(0, Math.round(rawStart * scale));
@@ -384,7 +524,7 @@ function recalculatePlanDates(plan = [], template = {}, promotion = {}) {
       structuralMap.set(key, next);
       if (next.courseId) structuralMap.set(next.courseId, next);
     }
-    return next;
+    return enrichLiveTrackingDates(next, promotion, template);
   });
 
   return dated.map((item) => {
@@ -392,12 +532,12 @@ function recalculatePlanDates(plan = [], template = {}, promotion = {}) {
     if (item.isLocked === true && item.recommendedStartAt && item.recommendedEndAt) return item;
     const related = item.relatedCourseId ? structuralMap.get(item.relatedCourseId) : null;
     if (!related) return item;
-    return {
+    return enrichLiveTrackingDates({
       ...item,
       relatedCourseTitle: related.courseTitle || related.title || item.relatedCourseTitle || '',
       deadlineAt: related.recommendedEndAt || item.recommendedEndAt || item.deadlineAt || '',
       dueAt: related.recommendedEndAt || item.recommendedEndAt || item.dueAt || ''
-    };
+    }, promotion, template);
   });
 }
 
@@ -405,6 +545,7 @@ function buildPromotionUpdate(template = {}, promotion = {}) {
   const basePlan = buildPlanFromTemplate(template);
   const coursePlan = recalculatePlanDates(basePlan, template, promotion);
   const preview = buildPreview(coursePlan, template, promotion);
+  const livePlanning = buildLivePlanningIndex(coursePlan, template, promotion);
   const user = auth.currentUser;
   const title = clean(template.title || promotion.curriculumTitle || promotion.name || 'Cursus', 140);
 
@@ -415,6 +556,9 @@ function buildPromotionUpdate(template = {}, promotion = {}) {
     coursePlan,
     coursePlanVersion: 'promotion-course-plan-prorata-v1',
     coursePlanCount: coursePlan.length,
+    livePlanning,
+    livePlanningVersion: 'promotion-live-planning-v1',
+    livePlanningCount: livePlanning.length,
     coursePlanPreview: {
       ...preview,
       source: 'curriculum-auto-sync-v1'

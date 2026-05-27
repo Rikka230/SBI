@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.167.200
+ * SBI 8.0P.167.201
  * Page Cursus dédiée : timeline horizontale multi-pistes.
  *
  * Correctif noyau verrouillage :
@@ -8,6 +8,8 @@
  * - déplacer un bloc ne le reverrouille jamais automatiquement.
  * - les petits cours peuvent etre stackes sur une meme semaine.
  * - un nouveau cours futur apres selection d'un stack cherche la prochaine place libre.
+ * - la saisie texte de l'inspecteur ne reconstruit plus tout le panneau.
+ * - les lives portent une ebauche liveTracking pour la future planification prof.
  */
 
 import { auth, db } from '/js/firebase-init.js';
@@ -231,6 +233,10 @@ function getTrackForItem(item = {}) {
   return 'margins';
 }
 
+function isLiveTimelineType(type = '') {
+  return type === 'live_session' || type === 'workshop';
+}
+
 function getDefaultDuration(type = '') {
   if (type === 'exam' || type === 'evaluation') return 2;
   if (type === 'live_session' || type === 'workshop') return 1;
@@ -239,10 +245,55 @@ function getDefaultDuration(type = '') {
   return 7;
 }
 
+function buildLiveTrackingDraft(raw = {}, item = {}) {
+  const existing = raw.liveTracking && typeof raw.liveTracking === 'object' ? raw.liveTracking : {};
+  const existingWindow = existing.schedulingWindow && typeof existing.schedulingWindow === 'object'
+    ? existing.schedulingWindow
+    : existing.teacherSchedulingWindow && typeof existing.teacherSchedulingWindow === 'object'
+      ? existing.teacherSchedulingWindow
+      : {};
+  const type = item.type || raw.type || 'live_session';
+  const duration = Math.max(1, Number(item.estimatedDurationDays || raw.estimatedDurationDays || raw.durationDays || getDefaultDuration(type)) || getDefaultDuration(type));
+  const startOffset = Math.max(0, Number(item.startOffsetDays || raw.startOffsetDays || 0) || 0);
+
+  return {
+    ...existing,
+    version: existing.version || 'live-tracking-v1',
+    type,
+    title: clean(item.title || raw.title || getTypeLabel(type), 180),
+    status: clean(existing.status || raw.liveStatus || 'to_schedule', 60) || 'to_schedule',
+    teacherSelectionMode: clean(existing.teacherSelectionMode || 'teacher_selects_date_in_window', 80),
+    teacherSelectionStatus: clean(existing.teacherSelectionStatus || 'pending', 60) || 'pending',
+    studentScheduleStatus: clean(existing.studentScheduleStatus || 'pending_teacher_date', 60) || 'pending_teacher_date',
+    notificationStatus: clean(existing.notificationStatus || 'not_ready', 60) || 'not_ready',
+    selectedSlot: existing.selectedSlot || null,
+    selectedLiveAt: clean(existing.selectedLiveAt || '', 60),
+    selectedLiveEndAt: clean(existing.selectedLiveEndAt || '', 60),
+    selectedByUid: clean(existing.selectedByUid || '', 140),
+    selectedByEmail: clean(existing.selectedByEmail || '', 180),
+    selectedAt: clean(existing.selectedAt || '', 60),
+    schedulingWindow: {
+      ...existingWindow,
+      modelStartOffsetDays: startOffset,
+      modelEndOffsetDays: startOffset + duration,
+      modelDurationDays: duration,
+      recommendedStartAt: clean(existingWindow.recommendedStartAt || existingWindow.startAt || '', 60),
+      recommendedEndAt: clean(existingWindow.recommendedEndAt || existingWindow.endAt || '', 60),
+      teacherCanSelectFrom: clean(existingWindow.teacherCanSelectFrom || existingWindow.recommendedStartAt || '', 60),
+      teacherCanSelectUntil: clean(existingWindow.teacherCanSelectUntil || existingWindow.recommendedEndAt || '', 60)
+    }
+  };
+}
+
+function syncLiveTrackingDraft(item = {}) {
+  if (!isLiveTimelineType(item.type)) return;
+  item.liveTracking = buildLiveTrackingDraft(item, item);
+}
+
 function normalizeItem(raw = {}, index = 0) {
   const type = raw.type || (raw.courseId ? 'course' : 'placeholder_course');
   const duration = Math.max(1, Number(raw.estimatedDurationDays || raw.durationDays || getDefaultDuration(type)) || getDefaultDuration(type));
-  return {
+  const item = {
     id: raw.id || raw.itemId || uid(type),
     type,
     layer: raw.layer || getTrackForItem({ type }),
@@ -269,6 +320,8 @@ function normalizeItem(raw = {}, index = 0) {
     order: Number.isFinite(Number(raw.order)) ? Number(raw.order) : index,
     notes: clean(raw.notes || raw.description || '', 600)
   };
+  if (isLiveTimelineType(type)) item.liveTracking = buildLiveTrackingDraft(raw, item);
+  return item;
 }
 
 function getStructuralItems() {
@@ -640,6 +693,27 @@ function renderInspector() {
   `;
 }
 
+function escapeCssValue(value = '') {
+  if (window.CSS?.escape) return window.CSS.escape(String(value));
+  return String(value).replace(/["\\]/g, '\\$&');
+}
+
+function isSoftInspectorTextField(target) {
+  if (!target || typeof target.matches !== 'function') return false;
+  return target.matches('input[type="text"][data-field="title"], textarea[data-field="notes"]');
+}
+
+function renderSelectedItemPreview(item = {}) {
+  const selector = `[data-id="${escapeCssValue(item.id || '')}"]`;
+  dom.tracks?.querySelectorAll(selector).forEach((block) => {
+    const title = block.querySelector('.sbi-cursus-block-title strong');
+    if (title) title.textContent = item.title || getTypeLabel(item.type);
+  });
+
+  const cardTitle = dom.inspector?.querySelector('.sbi-cursus-selected-card strong');
+  if (cardTitle) cardTitle.textContent = item.title || getTypeLabel(item.type);
+}
+
 function ensureStackManager() {
   if (dom.stackManager?.isConnected) return dom.stackManager;
   if (!dom.app) return null;
@@ -895,12 +969,14 @@ function addItemByType(type) {
   renderAll({ recalc: true, preserveScroll: true });
 }
 
-function updateSelectedField(field, value, isCheckbox = false) {
+function updateSelectedField(field, value, isCheckbox = false, options = {}) {
   const item = timelineItems.find((entry) => entry.id === selectedItemId);
   if (!item) return;
+  const render = options.render !== false;
+  const softText = options.softText === true;
   const finalValue = isCheckbox ? Boolean(value) : value;
 
-  if (field === 'title') item.title = clean(finalValue, 180) || getTypeLabel(item.type);
+  if (field === 'title') item.title = (softText ? String(finalValue ?? '').slice(0, 180) : clean(finalValue, 180)) || getTypeLabel(item.type);
   if (field === 'estimatedDurationDays') item.estimatedDurationDays = Math.max(1, Number(finalValue || 1));
   if (field === 'startWeek' && !item.isLocked) {
     item.startOffsetDays = Math.max(0, (Number(finalValue || 1) - 1) * 7);
@@ -919,9 +995,12 @@ function updateSelectedField(field, value, isCheckbox = false) {
   }
   if (field === 'isLocked') item.isLocked = Boolean(finalValue);
   if (field === 'isQualiopiEvidence') item.isQualiopiEvidence = Boolean(finalValue);
-  if (field === 'notes') item.notes = clean(finalValue, 600);
+  if (field === 'notes') item.notes = softText ? String(finalValue ?? '').slice(0, 600) : clean(finalValue, 600);
 
-  renderAll({ recalc: true, preserveScroll: true });
+  syncLiveTrackingDraft(item);
+
+  if (render) renderAll({ recalc: true, preserveScroll: true });
+  else renderSelectedItemPreview(item);
 }
 
 function deleteSelectedItem() {
@@ -1218,7 +1297,13 @@ function bindEvents() {
   dom.inspector?.addEventListener('input', (event) => {
     const target = event.target.closest?.('[data-field]');
     if (!target) return;
-    updateSelectedField(target.dataset.field, target.type === 'checkbox' ? target.checked : target.value, target.type === 'checkbox');
+    const softText = isSoftInspectorTextField(target);
+    updateSelectedField(
+      target.dataset.field,
+      target.type === 'checkbox' ? target.checked : target.value,
+      target.type === 'checkbox',
+      { render: !softText, softText }
+    );
   });
 
   dom.inspector?.addEventListener('change', (event) => {
@@ -1226,6 +1311,10 @@ function bindEvents() {
     if (!target) return;
     updateSelectedField(target.dataset.field, target.type === 'checkbox' ? target.checked : target.value, target.type === 'checkbox');
   });
+
+  dom.inspector?.addEventListener('keydown', (event) => {
+    if (isSoftInspectorTextField(event.target)) event.stopPropagation();
+  }, true);
 
   dom.inspector?.addEventListener('click', (event) => {
     const button = event.target.closest?.('button[data-action]');

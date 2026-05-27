@@ -3,7 +3,7 @@
  * MES COURS - Bibliothèque étudiant SBI
  * =======================================================================
  *
- * 8.0P.167.156 : ordre Programme aligné QA dates + option masquer les cours terminés.
+ * 8.0P.167.201 : ordre Programme + blocs cours futurs affichés comme "Prochainement".
  * Le viewer de cours reste en navigation classique.
  * =======================================================================
  */
@@ -269,7 +269,33 @@ function isRealCoursePlanItem(item = {}) {
     // Le coursePlan est l'autorité du programme. On conserve tous les items
     // qui pointent vers un cours, même si leur type legacy n'est pas
     // exactement "real_course". Les périodes sans courseId restent exclues.
+    if (isFutureCoursePlanItem(item)) return false;
     return Boolean(getPlanCourseId(item));
+}
+
+function isFutureCoursePlanItem(item = {}) {
+    const type = String(item.originalType || getPlanItemType(item) || '').trim();
+    return type === 'placeholder_course';
+}
+
+function getPlanItemStableId(item = {}) {
+    return String(
+        item.itemId
+        || item.placeholderId
+        || item.id
+        || item.originalOrder
+        || item.order
+        || 'future'
+    ).trim();
+}
+
+function buildSyntheticCourseId(prefix = 'plan', ...parts) {
+    return [prefix, ...parts]
+        .map((part) => String(part || '').trim())
+        .filter(Boolean)
+        .join('_')
+        .replace(/[^a-zA-Z0-9_-]+/g, '-')
+        .slice(0, 180) || `${prefix}_future`;
 }
 
 function getPriorityLabel(priority = '') {
@@ -350,6 +376,26 @@ function buildPlanOnlyCourse(item = {}) {
     };
 }
 
+function buildFuturePlanBlock(item = {}) {
+    const plannedTitle = item.courseTitle || item.title || item.label || 'Cours à venir';
+    const bloc = item.blockTitle || item.bloc || item.moduleTitle || item.moduleName || 'Programme';
+    return {
+        id: buildSyntheticCourseId('future-course', item.promotionId, getPlanItemStableId(item)),
+        titre: 'Bloc prochainement',
+        title: 'Bloc prochainement',
+        bloc,
+        blockTitle: bloc,
+        chapitres: [],
+        actif: false,
+        statutValidation: 'coming_soon',
+        __planOnly: true,
+        __futureCourseBlock: true,
+        __notOpenable: true,
+        __futureCourseTitle: plannedTitle,
+        __planOnlyReason: 'placeholder_course'
+    };
+}
+
 function ensurePromotionFormationCard(promotion = {}) {
     const promotionId = String(promotion.id || '').trim();
     if (!promotionId) return;
@@ -397,10 +443,11 @@ async function loadPromotionPlanCourses() {
             ensurePromotionFormationCard(promotion);
 
             const planItems = Array.isArray(promotion.coursePlan) ? promotion.coursePlan : [];
-            const realItems = planItems
+            const normalizedItems = planItems
                 .map((item, index) => normalizePromotionPlanItem(item, promotion, index))
-                .filter(isRealCoursePlanItem)
                 .sort(compareCoursePlansLikeQa);
+            const realItems = normalizedItems.filter(isRealCoursePlanItem);
+            const futureItems = normalizedItems.filter(isFutureCoursePlanItem);
 
             const courses = await fetchCoursesByIds(realItems.map((item) => item.courseId));
             const coursesById = new Map(courses.map((course) => [course.id, course]));
@@ -420,6 +467,10 @@ async function loadPromotionPlanCourses() {
                 // document du cours n'est pas lisible. Après déploiement des règles,
                 // les cours transversaux du cursus doivent normalement s'ouvrir.
                 loadedCourses.push(attachPromotionPlan(buildPlanOnlyCourse(item), item));
+            });
+
+            futureItems.forEach((item) => {
+                loadedCourses.push(attachPromotionPlan(buildFuturePlanBlock(item), item));
             });
         } catch (error) {
             console.warn('[SBI Student Courses] Planning de promotion ignoré :', promotionId, error);
@@ -1090,8 +1141,21 @@ function ensureStudentCourseSwitchStyles() {
             background: rgba(42,87,255,0.1);
             color: var(--accent-blue, #2A57FF);
         }
+        .student-course-badge--soon {
+            background: rgba(245,158,11,0.12);
+            color: #b45309;
+        }
         .student-course-card.is-plan-only {
             opacity: 0.92;
+        }
+        .student-course-card.is-future-placeholder {
+            cursor: default;
+            border-color: rgba(245,158,11,0.24);
+            background: rgba(245,158,11,0.055);
+        }
+        .student-course-card.is-future-placeholder .student-course-card__icon {
+            background: rgba(245,158,11,0.12);
+            color: #b45309;
         }
         .student-course-view[hidden] { display: none !important; }
     `;
@@ -1157,19 +1221,23 @@ function buildCourseReturnUrl(course = {}) {
 function buildCourseItemHTML(course) {
     if (!course || !course.id) return '';
     const progressData = userProgress.courses[course.id] || { status: 'todo', completedChapters: [] };
-    const totalChapters = Array.isArray(course.chapitres) ? course.chapitres.length : 0;
+    const plan = getPrimaryCoursePlan(course);
+    const isFutureBlock = course.__futureCourseBlock === true || plan?.originalType === 'placeholder_course';
+    const totalChapters = isFutureBlock ? 0 : (Array.isArray(course.chapitres) ? course.chapitres.length : 0);
     const doneChapters = Array.isArray(progressData.completedChapters) ? progressData.completedChapters.length : 0;
     const progressPercent = totalChapters === 0 ? 0 : Math.round((doneChapters / totalChapters) * 100);
-    const plan = getPrimaryCoursePlan(course);
-    const statusBadge = buildStatusBadge(progressData, doneChapters, totalChapters, plan);
+    const statusBadge = isFutureBlock
+        ? '<span class="student-course-badge student-course-badge--soon">Prochainement</span>'
+        : buildStatusBadge(progressData, doneChapters, totalChapters, plan);
     const quizHtml = buildQuizScoreHTML(course, progressData);
-    const title = course.titre || course.title || 'Cours';
+    const title = isFutureBlock ? 'Bloc prochainement' : (course.titre || course.title || 'Cours');
+    const futureTitle = course.__futureCourseTitle || plan?.courseTitle || plan?.title || 'Cours à venir';
     const bloc = course.bloc || course.blockTitle || course.blockName || 'Bloc non renseigné';
     const isPlanOnly = course.__planOnly === true;
     const returnTo = buildCourseReturnUrl(course);
     const promotionId = String(plan?.promotionId || '').trim();
     const promotionQuery = promotionId ? `&promotionId=${encodeURIComponent(promotionId)}` : '';
-    const href = `/student/cours-viewer.html?id=${encodeURIComponent(course.id)}${promotionQuery}&returnTo=${encodeURIComponent(returnTo)}`;
+    const href = isFutureBlock ? '' : `/student/cours-viewer.html?id=${encodeURIComponent(course.id)}${promotionQuery}&returnTo=${encodeURIComponent(returnTo)}`;
     const planLabel = plan ? getCoursePlanDatesLabel(plan) : '';
     const priorityLabel = plan ? getPriorityLabel(plan.priorityLevel) : '';
     const priorityTone = plan ? getPriorityTone(plan.priorityLevel) : '';
@@ -1178,13 +1246,13 @@ function buildCourseItemHTML(course) {
         : '';
     const planMetaHtml = plan
         ? `<div class="student-course-card__plan">
-            <span>${escapeHTML(planLabel)}</span>
+            <span>${escapeHTML(isFutureBlock ? `Dates estimées : ${planLabel}` : planLabel)}</span>
             ${priorityHtml}
           </div>`
         : '';
 
     return `
-        <article class="course-item student-course-card${isPlanOnly ? ' is-plan-only' : ''}" data-href="${escapeAttr(href)}" data-sbi-no-pjax="true" data-search="${escapeAttr(`${title} ${bloc} ${planLabel} ${priorityLabel}`)}">
+        <article class="course-item student-course-card${isPlanOnly ? ' is-plan-only' : ''}${isFutureBlock ? ' is-future-placeholder' : ''}" ${href ? `data-href="${escapeAttr(href)}" data-sbi-no-pjax="true"` : 'aria-disabled="true"'} data-search="${escapeAttr(`${title} ${futureTitle} ${bloc} ${planLabel} ${priorityLabel}`)}">
             <div class="student-course-card__main">
                 <div class="student-course-card__icon" aria-hidden="true">
                     <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
@@ -1192,7 +1260,7 @@ function buildCourseItemHTML(course) {
                 <div class="student-course-card__content">
                     <div class="course-title student-course-card__title">${escapeHTML(title)}</div>
                     <div class="student-course-card__meta">
-                        <span>${totalChapters} étape${totalChapters > 1 ? 's' : ''}</span>
+                        <span>${escapeHTML(isFutureBlock ? futureTitle : `${totalChapters} étape${totalChapters > 1 ? 's' : ''}`)}</span>
                         <span>${escapeHTML(bloc)}</span>
                     </div>
                     ${planMetaHtml}
@@ -1200,9 +1268,9 @@ function buildCourseItemHTML(course) {
                 </div>
             </div>
             <div class="student-course-card__side">
-                ${isPlanOnly ? '<span class="student-course-badge student-course-badge--todo">Ouvrir</span>' : quizHtml}
-                ${isPlanOnly ? '' : statusBadge}
-                <svg width="24" height="24" fill="var(--text-muted)" viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+                ${isFutureBlock ? '' : isPlanOnly ? '<span class="student-course-badge student-course-badge--todo">Ouvrir</span>' : quizHtml}
+                ${isFutureBlock || !isPlanOnly ? statusBadge : ''}
+                ${isFutureBlock ? '' : '<svg width="24" height="24" fill="var(--text-muted)" viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>'}
             </div>
         </article>
     `;
