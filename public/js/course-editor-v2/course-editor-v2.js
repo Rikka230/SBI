@@ -30,7 +30,7 @@ import {
 } from '/admin/js/course-media-storage.js?v=8.0P.167.195';
 
 const MAX_QUERY_VALUES = 10;
-const VERSION = '8.0P.167.197';
+const VERSION = '8.0P.167.203';
 const functionsInstance = getFunctions(app, 'europe-west1');
 const submitCourseForValidationCallable = httpsCallable(functionsInstance, 'submitCourseForValidation');
 const reviewCourseValidationCallable = httpsCallable(functionsInstance, 'reviewCourseValidation');
@@ -50,6 +50,12 @@ const BLOCK_TYPES = [
 
 const BLOCK_TYPE_MAP = new Map(BLOCK_TYPES.map((item) => [item.type, item]));
 const PEDAGOGIC_BLOCK_TYPES = new Set(['resource', 'assignment', 'checkpoint', 'case_study']);
+const PEDAGOGIC_PRIMARY_FIELDS = {
+  resource: 'resourceDescription',
+  assignment: 'assignmentPrompt',
+  checkpoint: 'checkpointGoal',
+  case_study: 'scenario'
+};
 
 const QUALIOPI_EVIDENCE_OPTIONS = [
   {
@@ -965,6 +971,68 @@ function hydrateCheckpointBlock(block, blocks = state.course.learningBlocks) {
   };
 }
 
+function blockHasOwnField(block = {}, key = '') {
+  return Object.prototype.hasOwnProperty.call(block, key);
+}
+
+function getPedagogicFieldValue(block = {}, key = '') {
+  if (!key) return '';
+  if (blockHasOwnField(block, key)) return block[key] || '';
+  return block.content || '';
+}
+
+function normalizePedagogicBlockForSave(block = {}) {
+  if (!PEDAGOGIC_BLOCK_TYPES.has(block.type)) return block;
+
+  const next = { ...block };
+  const primaryKey = PEDAGOGIC_PRIMARY_FIELDS[next.type];
+  if (primaryKey && !blockHasOwnField(next, primaryKey)) next[primaryKey] = next.content || '';
+
+  if (next.type === 'resource') {
+    next.resourceDescription = next.resourceDescription || '';
+    next.consultationInstruction = next.consultationInstruction || '';
+    next.resourceUrl = next.resourceUrl || '';
+    next.resourceFileName = next.resourceFileName || '';
+    next.resourceMimeType = next.resourceMimeType || '';
+    next.resourceSize = Number(next.resourceSize || 0);
+    next.resourceOriginalSize = Number(next.resourceOriginalSize || 0);
+    next.resourceCompressed = next.resourceCompressed === true;
+    next.content = next.resourceDescription || '';
+  } else if (next.type === 'assignment') {
+    next.assignmentPrompt = next.assignmentPrompt || '';
+    next.assignmentCorrection = next.assignmentCorrection || '';
+    next.evaluationCriteria = next.evaluationCriteria || '';
+    next.content = next.assignmentPrompt || '';
+  } else if (next.type === 'checkpoint') {
+    next.checkpointGoal = next.checkpointGoal || '';
+    next.expectedResult = next.expectedResult || '';
+    next.content = next.checkpointGoal || '';
+  } else if (next.type === 'case_study') {
+    next.scenario = next.scenario || '';
+    next.caseContext = next.caseContext || '';
+    next.analysisMaterials = next.analysisMaterials || '';
+    next.guidedQuestions = next.guidedQuestions || '';
+    next.expectedAnswer = next.expectedAnswer || '';
+    next.content = next.scenario || '';
+  }
+
+  return next;
+}
+
+function normalizeLearningBlockForSave(block = {}, index = 0, blocks = []) {
+  const normalizedBlock = normalizePedagogicBlockForSave(forceAutonomousCorrectionBlock(block));
+  const hydratedBlock = hydrateCheckpointBlock(normalizedBlock, blocks);
+  const blockScore = getBlockScore(hydratedBlock);
+  return {
+    ...hydratedBlock,
+    order: index,
+    activityType: hydratedBlock.type,
+    schemaVersion: 'learning-block-v1',
+    maxScore: blockScore,
+    score: blockScore
+  };
+}
+
 function convertBlocksToLegacyChapters(blocks = []) {
   return blocks.map((block, index) => {
     block = hydrateCheckpointBlock(block, blocks);
@@ -1707,6 +1775,7 @@ function handleResourceFile(file, block, input = null) {
 
   try {
     setPendingResourceFile(block.id, file);
+    block.resourceUrl = '';
     block.resourceFileName = file.name || '';
     block.resourceMimeType = file.type || 'application/octet-stream';
     block.resourceSize = file.size || 0;
@@ -1726,10 +1795,32 @@ function handleResourceFile(file, block, input = null) {
   }
 }
 
+function clearResourceFile(block) {
+  if (state.readOnly || !block?.id) return;
+  clearPendingMediaForChapter(block.id);
+  block.resourceUrl = '';
+  block.resourceFileName = '';
+  block.resourceMimeType = '';
+  block.resourceSize = 0;
+  block.resourceOriginalSize = 0;
+  block.resourceCompressed = false;
+  block.resourceType = 'link';
+
+  const typeSelect = $('[data-block-field="resourceType"]');
+  if (typeSelect) typeSelect.value = 'link';
+  const urlField = $('[data-block-field="resourceUrl"]');
+  if (urlField) urlField.value = '';
+  refreshResourceFileStatus(block);
+  markDirty();
+  renderPreview();
+}
+
 function setupResourceFileControls(block) {
   if (!block || block.type !== 'resource') return;
   const dropZone = $('#resource-file-dropzone');
   const input = $('#resource-file-upload');
+  const clearButton = $('#resource-file-clear');
+  if (clearButton && !state.readOnly) clearButton.addEventListener('click', () => clearResourceFile(block));
   if (!dropZone || !input || state.readOnly) return;
 
   const openPicker = () => input.click();
@@ -1771,16 +1862,16 @@ function syncUploadedMediaBackToBlocks(chapitres = []) {
   chapitres.forEach((chapter) => {
     const block = state.course.learningBlocks.find((item) => item.id === chapter.id);
     if (!block) return;
-    block.mediaType = chapter.mediaType || block.mediaType || 'image';
-    block.mediaImage = chapter.mediaImage || block.mediaImage || '';
-    block.mediaVideo = chapter.mediaVideo || block.mediaVideo || '';
-    block.resourceUrl = chapter.resourceUrl || block.resourceUrl || '';
-    block.resourceType = chapter.resourceType || block.resourceType || '';
-    block.resourceFileName = chapter.resourceFileName || block.resourceFileName || '';
-    block.resourceMimeType = chapter.resourceMimeType || block.resourceMimeType || '';
-    block.resourceSize = Number(chapter.resourceSize || block.resourceSize || 0);
-    block.resourceOriginalSize = Number(chapter.resourceOriginalSize || block.resourceOriginalSize || 0);
-    block.resourceCompressed = chapter.resourceCompressed === true || block.resourceCompressed === true;
+    block.mediaType = blockHasOwnField(chapter, 'mediaType') ? (chapter.mediaType || 'image') : (block.mediaType || 'image');
+    block.mediaImage = blockHasOwnField(chapter, 'mediaImage') ? (chapter.mediaImage || '') : (block.mediaImage || '');
+    block.mediaVideo = blockHasOwnField(chapter, 'mediaVideo') ? (chapter.mediaVideo || '') : (block.mediaVideo || '');
+    block.resourceUrl = blockHasOwnField(chapter, 'resourceUrl') ? (chapter.resourceUrl || '') : (block.resourceUrl || '');
+    block.resourceType = blockHasOwnField(chapter, 'resourceType') ? (chapter.resourceType || '') : (block.resourceType || '');
+    block.resourceFileName = blockHasOwnField(chapter, 'resourceFileName') ? (chapter.resourceFileName || '') : (block.resourceFileName || '');
+    block.resourceMimeType = blockHasOwnField(chapter, 'resourceMimeType') ? (chapter.resourceMimeType || '') : (block.resourceMimeType || '');
+    block.resourceSize = Number(blockHasOwnField(chapter, 'resourceSize') ? chapter.resourceSize || 0 : block.resourceSize || 0);
+    block.resourceOriginalSize = Number(blockHasOwnField(chapter, 'resourceOriginalSize') ? chapter.resourceOriginalSize || 0 : block.resourceOriginalSize || 0);
+    block.resourceCompressed = blockHasOwnField(chapter, 'resourceCompressed') ? chapter.resourceCompressed === true : block.resourceCompressed === true;
   });
 }
 
@@ -1990,7 +2081,10 @@ function renderResourceFileStatus(block) {
     <div class="sbi-resource-file-status">
       <strong>${escapeHtml(name || 'Fichier ressource')}</strong>
       <span>${escapeHtml(type || 'type inconnu')}${size ? ` - ${formatBytes(size)}` : ''}${compressed ? ' - image compressee WebP' : ''}</span>
-      ${link}
+      <div class="sbi-resource-file-actions">
+        ${link}
+        <button id="resource-file-clear" type="button" class="sbi-editor-btn sbi-editor-btn--ghost">Supprimer le fichier</button>
+      </div>
     </div>
   `;
 }
@@ -2020,7 +2114,7 @@ function renderResourceBlockEditor(block) {
         <div class="sbi-field"><label>Lien ou URL du support</label><input class="sbi-input" data-block-field="resourceUrl" value="${escapeHtml(block.resourceUrl || '')}" placeholder="https://... ou URL Storage apres upload"></div>
       </div>
       ${renderResourceUploadEditor(block)}
-      <div class="sbi-field"><label>Description courte</label><textarea class="sbi-textarea" data-block-field="resourceDescription">${escapeHtml(block.resourceDescription || block.content || '')}</textarea></div>
+      <div class="sbi-field"><label>Description courte</label><textarea class="sbi-textarea" data-block-field="resourceDescription">${escapeHtml(getPedagogicFieldValue(block, 'resourceDescription'))}</textarea></div>
       <div class="sbi-field"><label>A observer / retenir</label><textarea class="sbi-textarea" data-block-field="consultationInstruction">${escapeHtml(block.consultationInstruction || '')}</textarea></div>
       ${renderPedagogicFooter(block)}
     </div>
@@ -2032,7 +2126,7 @@ function renderAssignmentBlockEditor(block) {
     <div class="sbi-editor-form sbi-editor-form--pedagogic">
       <div class="sbi-field"><label>Titre du devoir</label><input id="block-title" class="sbi-input" value="${escapeHtml(block.title || '')}"></div>
       <div class="sbi-field"><label>Consigne de travail</label><textarea id="block-instructions" class="sbi-textarea" data-block-field="instructions">${escapeHtml(block.instructions || '')}</textarea></div>
-      <div class="sbi-field"><label>Travail demandé</label><textarea class="sbi-textarea sbi-textarea--large" data-block-field="assignmentPrompt">${escapeHtml(block.assignmentPrompt || block.content || '')}</textarea></div>
+      <div class="sbi-field"><label>Travail demandé</label><textarea class="sbi-textarea sbi-textarea--large" data-block-field="assignmentPrompt">${escapeHtml(getPedagogicFieldValue(block, 'assignmentPrompt'))}</textarea></div>
       <div class="sbi-two-cols">
         <div class="sbi-field"><label>Livrable attendu</label><select class="sbi-select" data-block-field="deliverableType">${renderSelectOption('text', block.deliverableType || 'text')} ${renderSelectOption('file', block.deliverableType)} ${renderSelectOption('link', block.deliverableType)} ${renderSelectOption('mixed', block.deliverableType)}</select></div>
         <div class="sbi-field"><label>Délai</label><select class="sbi-select" data-block-field="duePolicy">${renderSelectOption('promotion_date', block.duePolicy || 'promotion_date')} ${renderSelectOption('free', block.duePolicy)} ${renderSelectOption('manual_deadline', block.duePolicy)}</select></div>
@@ -2041,7 +2135,7 @@ function renderAssignmentBlockEditor(block) {
       <div class="sbi-field"><label>Correction autonome affichée</label><textarea class="sbi-textarea" data-block-field="assignmentCorrection" placeholder="Correction, exemple de réponse ou grille d'auto-correction">${escapeHtml(block.assignmentCorrection || '')}</textarea></div>
       <div class="sbi-autonomous-correction-note">
         <strong>Correction autonome active</strong>
-        <span>L'élève consulte la correction dans le viewer. L'envoi au professeur est prévu pour une étape future, mais n'est pas activé pour le moment.</span>
+        <span>L'élève travaille sur son support puis consulte la correction dans le viewer avec le bouton d'auto-évaluation.</span>
       </div>
       ${renderPedagogicFooter(block)}
     </div>
@@ -2072,7 +2166,7 @@ function renderCheckpointBlockEditor(block) {
     <div class="sbi-editor-form sbi-editor-form--pedagogic">
       <div class="sbi-field"><label>Titre du checkpoint</label><input id="block-title" class="sbi-input" value="${escapeHtml(block.title || '')}"></div>
       <div class="sbi-field"><label>Consigne courte</label><textarea id="block-instructions" class="sbi-textarea" data-block-field="instructions">${escapeHtml(block.instructions || '')}</textarea></div>
-      <div class="sbi-field"><label>Objectif du checkup final</label><textarea class="sbi-textarea" data-block-field="checkpointGoal">${escapeHtml(block.checkpointGoal || block.content || '')}</textarea></div>
+      <div class="sbi-field"><label>Objectif du checkup final</label><textarea class="sbi-textarea" data-block-field="checkpointGoal">${escapeHtml(getPedagogicFieldValue(block, 'checkpointGoal'))}</textarea></div>
       <div class="sbi-field">
         <label>Etapes precedentes a cocher</label>
         <small>Cette liste est calculee automatiquement avec tous les blocs visibles places avant ce checkpoint.</small>
@@ -2095,13 +2189,13 @@ function renderCaseStudyBlockEditor(block) {
       <div class="sbi-field"><label>Titre de l’étude de cas</label><input id="block-title" class="sbi-input" value="${escapeHtml(block.title || '')}"></div>
       <div class="sbi-field"><label>Consigne</label><textarea id="block-instructions" class="sbi-textarea" data-block-field="instructions">${escapeHtml(block.instructions || '')}</textarea></div>
       <div class="sbi-field"><label>Contexte / situation initiale</label><textarea class="sbi-textarea" data-block-field="caseContext">${escapeHtml(block.caseContext || '')}</textarea></div>
-      <div class="sbi-field"><label>Scénario</label><textarea class="sbi-textarea sbi-textarea--large" data-block-field="scenario">${escapeHtml(block.scenario || block.content || '')}</textarea></div>
+      <div class="sbi-field"><label>Scénario</label><textarea class="sbi-textarea sbi-textarea--large" data-block-field="scenario">${escapeHtml(getPedagogicFieldValue(block, 'scenario'))}</textarea></div>
       <div class="sbi-field"><label>Documents ou éléments à analyser</label><textarea class="sbi-textarea" data-block-field="analysisMaterials">${escapeHtml(block.analysisMaterials || '')}</textarea></div>
       <div class="sbi-field"><label>Questions guidées</label><textarea class="sbi-textarea" data-block-field="guidedQuestions" placeholder="Une question par ligne">${escapeHtml(block.guidedQuestions || '')}</textarea></div>
       <div class="sbi-field"><label>Réponse attendue / grille de correction</label><textarea class="sbi-textarea" data-block-field="expectedAnswer">${escapeHtml(block.expectedAnswer || '')}</textarea></div>
       <div class="sbi-autonomous-correction-note">
         <strong>Correction autonome active</strong>
-        <span>L'élève consulte la correction dans le viewer. L'envoi au professeur est prévu pour une étape future, mais n'est pas activé pour le moment.</span>
+        <span>L'élève travaille sur son support puis consulte la correction dans le viewer avec le bouton d'auto-évaluation.</span>
       </div>
       ${renderPedagogicFooter(block)}
     </div>
@@ -2413,12 +2507,12 @@ function buildPedagogicBlockContent(block = {}, { preview = false } = {}) {
       ${renderPedagogicLine('Type', block.resourceType || 'link')}
       ${resourceFile}
       ${resourceLink}
-      ${renderPedagogicText('Description', block.resourceDescription || block.content)}
+      ${renderPedagogicText('Description', getPedagogicFieldValue(block, 'resourceDescription'))}
       ${renderPedagogicText('À observer / retenir', block.consultationInstruction)}
     `;
   } else if (block.type === 'assignment') {
     body = `
-      ${renderPedagogicText('Travail demandé', block.assignmentPrompt || block.content)}
+      ${renderPedagogicText('Travail demandé', getPedagogicFieldValue(block, 'assignmentPrompt'))}
       ${renderPedagogicLine('Livrable attendu', block.deliverableType || 'text')}
       ${renderPedagogicLine('Délai', block.duePolicy || 'promotion_date')}
       ${renderPedagogicLine('Correction', 'autonome')}
@@ -2431,14 +2525,14 @@ function buildPedagogicBlockContent(block = {}, { preview = false } = {}) {
       .join('');
     body = `
       ${renderPedagogicLine('XP de validation', `+${getBlockScore(block)} XP`)}
-      ${renderPedagogicText('Objectif', block.checkpointGoal || block.content)}
+      ${renderPedagogicText('Objectif', getPedagogicFieldValue(block, 'checkpointGoal'))}
       <div class="sbi-pedagogic-checklist">${checkpointItems || '<p>Aucune etape precedente.</p>'}</div>
       ${renderPedagogicText('Résultat attendu', block.expectedResult)}
     `;
   } else if (block.type === 'case_study') {
     body = `
       ${renderPedagogicText('Contexte', block.caseContext)}
-      ${renderPedagogicText('Scénario', block.scenario || block.content)}
+      ${renderPedagogicText('Scénario', getPedagogicFieldValue(block, 'scenario'))}
       ${renderPedagogicText('Éléments à analyser', block.analysisMaterials)}
       ${renderPedagogicText('Questions guidées', block.guidedQuestions)}
       ${renderPedagogicText('Réponse attendue / grille', block.expectedAnswer)}
@@ -2866,7 +2960,7 @@ function saveActiveEditorValues() {
       : field.value;
   });
 
-  Object.assign(active, forceAutonomousCorrectionBlock(active));
+  Object.assign(active, normalizePedagogicBlockForSave(forceAutonomousCorrectionBlock(active)));
 }
 
 function bindGlobalActions() {
@@ -2929,19 +3023,9 @@ function buildCoursePayload(action = 'draft') {
     actif = statutValidation === 'approved';
   }
 
-  const learningBlocks = state.course.learningBlocks.map((block, index, blocks) => {
-    const normalizedBlock = forceAutonomousCorrectionBlock(block);
-    const hydratedBlock = hydrateCheckpointBlock(normalizedBlock, blocks);
-    const blockScore = getBlockScore(hydratedBlock);
-    return {
-      ...hydratedBlock,
-      order: index,
-      activityType: hydratedBlock.type,
-      schemaVersion: 'learning-block-v1',
-      maxScore: blockScore,
-      score: blockScore
-    };
-  });
+  const normalizedSourceBlocks = state.course.learningBlocks.map((block) => normalizePedagogicBlockForSave(block));
+  const learningBlocks = normalizedSourceBlocks.map((block, index, blocks) => normalizeLearningBlockForSave(block, index, blocks));
+  state.course.learningBlocks = learningBlocks.map((block) => ({ ...block }));
   const totalCourseScore = calculateCourseMaxScore(learningBlocks);
 
   const chapitres = convertBlocksToLegacyChapters(learningBlocks);
@@ -3193,7 +3277,7 @@ async function loadCourseFromUrl() {
   };
 
   if (!state.course.learningBlocks.length) state.course.learningBlocks = [createDefaultBlock('lesson')];
-  state.course.learningBlocks = state.course.learningBlocks.map((block) => forceAutonomousCorrectionBlock(block));
+  state.course.learningBlocks = state.course.learningBlocks.map((block) => normalizePedagogicBlockForSave(forceAutonomousCorrectionBlock(block)));
   updateComputedCourseDuration();
   state.activeBlockId = state.course.learningBlocks[0]?.id || 'course_info';
   state.readOnly = isTeacherPendingLocked();

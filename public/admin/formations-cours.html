@@ -69,6 +69,20 @@
             content: '✔'; position: absolute; top: 50%; left: 50%;
             transform: translate(-50%, -50%); color: white; font-size: 11px;
         }
+        .sbi-formation-next-blocks {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1rem;
+            margin: 0 0 1.5rem;
+        }
+        .sbi-formation-next-block {
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1rem;
+            background: rgba(255,255,255,0.04);
+        }
+        .sbi-formation-next-block strong { display: block; color: var(--text-main); margin-bottom: 0.25rem; }
+        .sbi-formation-next-block span { display: block; color: var(--text-muted); font-size: 0.84rem; line-height: 1.45; }
     </style>
     <link rel="stylesheet" href="css/admin-surface-unified.css?v=8.0P.167.52">
 </head>
@@ -235,6 +249,16 @@
                     <button id="btn-create-formation" class="action-btn" style="width: auto; background: var(--accent-blue); color: white; border: none; font-weight: bold; margin:0;">
                         + Nouvelle Catégorie
                     </button>
+                </div>
+                <div class="sbi-formation-next-blocks" aria-label="Blocs pedagogiques a preparer">
+                    <div class="sbi-formation-next-block">
+                        <strong>Bloc devoir</strong>
+                        <span>Support de suivi pour les futurs livrables rattachables aux promotions.</span>
+                    </div>
+                    <div class="sbi-formation-next-block">
+                        <strong>Bloc examen</strong>
+                        <span>Support de suivi pour les futures validations et epreuves de fin de parcours.</span>
+                    </div>
                 </div>
                 <div id="formations-list-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem;">
                     <p style="color: var(--text-muted);">Chargement de vos formations...</p>

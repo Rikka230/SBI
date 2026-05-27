@@ -36,6 +36,12 @@ service firebase.storage {
         );
     }
 
+    function isTeacher() {
+      return isActiveUser()
+        && currentUser().keys().hasAny(['role'])
+        && currentUser().role in ['teacher', 'prof', 'professeur', 'enseignant'];
+    }
+
     function studentDocumentDocPath(documentId) {
       return /databases/(default)/documents/studentDocuments/$(documentId);
     }
@@ -89,6 +95,10 @@ service firebase.storage {
 
     function courseDocPath(courseId) {
       return /databases/(default)/documents/courses/$(courseId);
+    }
+
+    function liveSessionDocPath(liveId) {
+      return /databases/(default)/documents/liveSessions/$(liveId);
     }
 
     function courseDocExists(courseId) {
@@ -228,6 +238,30 @@ service firebase.storage {
         );
     }
 
+    function canReadLiveFile(liveId) {
+      return isAdmin()
+        || (
+          isActiveUser()
+          && firestore.exists(liveSessionDocPath(liveId))
+          && firestore.get(liveSessionDocPath(liveId)).data.keys().hasAny(['promotionId'])
+          && currentUser().keys().hasAny(['promotionId'])
+          && currentUser().promotionId == firestore.get(liveSessionDocPath(liveId)).data.promotionId
+        )
+        || (
+          isTeacher()
+          && firestore.exists(liveSessionDocPath(liveId))
+          && firestore.get(liveSessionDocPath(liveId)).data.keys().hasAny(['teacherUid'])
+          && firestore.get(liveSessionDocPath(liveId)).data.teacherUid == request.auth.uid
+        );
+    }
+
+    function validLiveFileUpload() {
+      return isTeacher()
+        && request.resource.size < 60 * 1024 * 1024
+        && request.resource.metadata.keys().hasAny(['uploadedBy'])
+        && request.resource.metadata.uploadedBy == request.auth.uid;
+    }
+
     function validCourseMediaUpload() {
       return isActiveUser()
         && request.resource.size < 200 * 1024 * 1024
@@ -319,6 +353,12 @@ service firebase.storage {
         && validCourseMediaUpload();
 
       allow delete: if canManageCourseMedia(courseId);
+    }
+
+    match /liveSessions/{liveId}/chatFiles/{fileName} {
+      allow read: if canReadLiveFile(liveId);
+      allow create, update: if validLiveFileUpload() && canReadLiveFile(liveId);
+      allow delete: if isAdmin();
     }
 
     /* ============================================================

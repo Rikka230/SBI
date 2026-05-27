@@ -136,14 +136,16 @@ function getPjaxProbeDefinitions() {
     { group: 'admin', path: '/admin/admin-profile.html', label: 'Admin profil' },
     { group: 'student', path: '/student/dashboard.html', label: 'Student dashboard' },
     { group: 'student', path: '/student/mes-cours.html', label: 'Student mes cours' },
+    { group: 'student', path: '/student/lives.html', label: 'Student lives' },
     { group: 'student', path: '/student/mon-profil.html', label: 'Student profil' },
     { group: 'teacher', path: '/teacher/dashboard.html', label: 'Teacher dashboard' },
     { group: 'teacher', path: '/teacher/mes-cours.html', label: 'Teacher formations & cours' },
+    { group: 'teacher', path: '/teacher/lives.html', label: 'Teacher lives' },
     { group: 'teacher', path: '/teacher/mon-profil.html', label: 'Teacher profil' },
     { group: 'protected', path: '/student/cours-viewer.html?id=test', label: 'Viewer étudiant réel' },
     { group: 'protected', path: '/teacher/cours-viewer.html?id=test&preview=true', label: 'Viewer prof preview' },
     { group: 'protected', path: '/admin/cours-viewer.html?id=test&preview=true', label: 'Viewer admin preview' },
-    { group: 'protected', path: '/admin/formations-live.html', label: 'Live / médias' },
+    { group: 'admin', path: '/admin/admin-lives.html', label: 'Admin lives' },
     { group: 'protected', path: '/login.html', label: 'Authentification' },
     { group: 'public', path: '/index.html', label: 'Index public' }
   ];

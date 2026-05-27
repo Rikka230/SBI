@@ -585,6 +585,17 @@ body.sbi-editor-v2 {
   color: var(--accent);
   font-weight: 900;
 }
+.sbi-resource-file-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+.sbi-resource-file-actions .sbi-editor-btn {
+  min-height: 34px;
+  padding: 0.45rem 0.7rem;
+  font-size: 0.78rem;
+}
 .sbi-resource-file-status--empty {
   border-style: dashed;
 }

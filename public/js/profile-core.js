@@ -25,6 +25,7 @@ import { hydrateLoggedInTopbar } from '/js/profile/profile-topbar.js';
 import { renderProfileShell } from '/js/profile/profile-render.js?v=8.0P.167.98-GPT2.3';
 import { renderUserFormations } from '/js/profile/profile-formations.js?v=8.0P.167.87';
 import { renderStudentDocumentsPanel } from '/js/profile/profile-student-documents.js?v=8.0P.167.96.1-GPT2.1';
+import { renderGodTimerBypassPanel } from '/js/profile/profile-god-timer-bypass.js?v=8.0P.167.203';
 import { renderLearningTracking, renderTeacherStudentsList } from '/js/profile/profile-tracking.js?v=8.0P.167.97-GPT2.2';
 import { setupSaveButtons, setupSecurityAndEditMode } from '/js/profile/profile-edit.js';
 import { initProfileAvatarCropper } from '/js/profile/profile-avatar-cropper.js';
@@ -243,6 +244,15 @@ async function loadProfileData(uid) {
         uid,
         data: context.currentProfileData,
         context
+      });
+    }
+
+    if (profileRole === 'student') {
+      renderGodTimerBypassPanel({
+        uid,
+        data: context.currentProfileData,
+        context,
+        reloadProfile: loadProfileData
       });
     }
 

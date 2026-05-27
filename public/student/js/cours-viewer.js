@@ -17,6 +17,7 @@ let currentUid = null;
 let isAdminOrTeacher = false;
 let currentUserRole = 'student';
 let currentUserIsGod = false;
+let currentUserCourseTimerBypass = false;
 let isPreviewMode = false;
 let courseData = null;
 let currentChapterIndex = -1;
@@ -47,6 +48,7 @@ function resetViewerState() {
     isAdminOrTeacher = false;
     currentUserRole = 'student';
     currentUserIsGod = false;
+    currentUserCourseTimerBypass = false;
     isPreviewMode = false;
     courseData = null;
     currentChapterIndex = -1;
@@ -93,6 +95,7 @@ export function mountCourseViewer({ source = 'standard' } = {}) {
                 const uData = snap.data();
                 currentUserRole = uData.role || 'student';
                 currentUserIsGod = uData.isGod === true;
+                currentUserCourseTimerBypass = uData.courseTimerBypass === true || uData.trainingTimerBypass === true;
                 isAdminOrTeacher = (currentUserRole === 'admin' || currentUserRole === 'teacher' || currentUserIsGod);
             }
 
@@ -915,7 +918,7 @@ function startSecurityTimer(isAlreadyDone) {
         return;
     }
 
-    if (isAdminOrTeacher || isAlreadyDone) {
+    if (isAdminOrTeacher || currentUserCourseTimerBypass || isAlreadyDone) {
         enableCompletedStepButton(btn, isLast, isLast ? "Terminer le cours" : "Continuer");
         return;
     }

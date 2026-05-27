@@ -3450,6 +3450,449 @@ exports.adminUpdateUserAccount = onCall({
     };
 });
 
+exports.adminSetStudentTimerBypass = onCall({
+    region: "europe-west1",
+    timeoutSeconds: 30,
+    memory: "256MiB"
+}, async (request) => {
+    const db = admin.firestore();
+    const caller = await requireAdminCaller(request, db);
+    if (caller.data.isGod !== true) {
+        throw new HttpsError("permission-denied", "Action reservee au compte Supreme SBI.");
+    }
+
+    const data = request.data || {};
+    const targetUid = cleanString(data.uid, 160);
+    const enabled = data.enabled === true;
+    if (!targetUid) throw new HttpsError("invalid-argument", "UID eleve manquant.");
+
+    const targetRef = db.collection("users").doc(targetUid);
+    const targetDoc = await targetRef.get();
+    if (!targetDoc.exists) throw new HttpsError("not-found", "Compte eleve introuvable.");
+
+    const targetData = targetDoc.data() || {};
+    const targetRole = normalizeAccountRole(targetData.role);
+    if (targetRole !== "student") {
+        throw new HttpsError("failed-precondition", "Le passe-droit timer est reserve aux comptes eleves.");
+    }
+
+    const previous = targetData.courseTimerBypass === true || targetData.trainingTimerBypass === true;
+    await targetRef.set({
+        courseTimerBypass: enabled,
+        trainingTimerBypass: enabled,
+        courseTimerBypassUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        courseTimerBypassUpdatedBy: caller.uid,
+        courseTimerBypassUpdatedByEmail: caller.email,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedBy: caller.uid
+    }, { merge: true });
+
+    await safeWriteAccountAuditLog(db, {
+        type: "student.timer_bypass.updated",
+        actorUid: caller.uid,
+        actorEmail: caller.email,
+        targetUid,
+        targetEmail: cleanEmail(targetData.email),
+        targetRole: targetData.role || "student",
+        changes: {
+            courseTimerBypass: {
+                before: previous,
+                after: enabled
+            }
+        }
+    });
+
+    return {
+        success: true,
+        enabled,
+        message: enabled ? "Passe-droit timer active." : "Passe-droit timer desactive."
+    };
+});
+
+function normalizeLiveRole(value = "") {
+    const role = cleanString(value, 60).toLowerCase();
+    if (["prof", "professeur", "enseignant"].includes(role)) return "teacher";
+    if (["eleve", "etudiant", "student"].includes(role)) return "student";
+    return role;
+}
+
+function makeLiveSessionId(promotionId = "", liveKey = "") {
+    const raw = `${cleanString(promotionId, 120)}_${cleanString(liveKey, 120) || crypto.randomUUID()}`;
+    return raw.replace(/[^a-zA-Z0-9_-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 180);
+}
+
+function normalizeLiveIso(value, label = "date") {
+    const raw = cleanString(value, 80);
+    if (!raw) throw new HttpsError("invalid-argument", `${label} manquante.`);
+    const date = new Date(raw);
+    if (!Number.isFinite(date.getTime())) {
+        throw new HttpsError("invalid-argument", `${label} invalide.`);
+    }
+    return date.toISOString();
+}
+
+function liveDateInWindow(startIso = "", windowStart = "", windowEnd = "") {
+    const startMs = Date.parse(startIso);
+    const fromMs = windowStart ? Date.parse(windowStart) : NaN;
+    const toMs = windowEnd ? Date.parse(windowEnd) : NaN;
+    if (!Number.isFinite(startMs)) return false;
+    if (Number.isFinite(fromMs) && startMs < fromMs) return false;
+    if (Number.isFinite(toMs) && startMs > toMs) return false;
+    return true;
+}
+
+function getPromotionDisplayName(promotion = {}) {
+    return cleanString(promotion.name || promotion.promotionName || promotion.title || promotion.titre || "Promotion SBI", 180);
+}
+
+function findPromotionLiveItem(promotion = {}, { liveId = "", sourceItemId = "", title = "" } = {}) {
+    const livePlanning = Array.isArray(promotion.livePlanning) ? promotion.livePlanning : [];
+    const cleanLiveId = cleanString(liveId, 180);
+    const cleanSourceItemId = cleanString(sourceItemId, 180);
+    const cleanTitle = cleanString(title, 180).toLowerCase();
+
+    return livePlanning.find((item) => {
+        const ids = [
+            item.id,
+            item.itemId,
+            item.sourceItemId,
+            item.liveId,
+            item.templateItemId
+        ].map((value) => cleanString(value, 180)).filter(Boolean);
+        if (cleanLiveId && ids.includes(cleanLiveId)) return true;
+        if (cleanSourceItemId && ids.includes(cleanSourceItemId)) return true;
+        if (cleanTitle && cleanString(item.title || item.courseTitle || "", 180).toLowerCase() === cleanTitle) return true;
+        return false;
+    }) || null;
+}
+
+async function teacherCanManagePromotionLive(db, caller, promotion = {}) {
+    if (caller.isAdmin || caller.data.isGod === true || caller.data.role === "admin") return true;
+    if (normalizeLiveRole(caller.data.role) !== "teacher") return false;
+
+    const formationId = cleanString(promotion.formationId || promotion.sourceFormationId || "", 180);
+    const formationName = cleanString(promotion.formationName || promotion.formationTitle || promotion.title || "", 180);
+    const callerFormationIds = Array.isArray(caller.data.formationIds) ? caller.data.formationIds.map((item) => cleanString(item, 180)) : [];
+    const callerFormationTitles = Array.isArray(caller.data.formationsAcces) ? caller.data.formationsAcces.map((item) => cleanString(item, 180)) : [];
+    const promotionTeachers = [
+        ...(Array.isArray(promotion.teacherIds) ? promotion.teacherIds : []),
+        ...(Array.isArray(promotion.profs) ? promotion.profs : [])
+    ].map((item) => cleanString(item, 180));
+
+    if (promotionTeachers.includes(caller.uid)) return true;
+    if (formationId && callerFormationIds.includes(formationId)) return true;
+    if (formationName && callerFormationTitles.includes(formationName)) return true;
+
+    if (formationId) {
+        const formationDoc = await db.collection("formations").doc(formationId).get();
+        const formation = formationDoc.exists ? (formationDoc.data() || {}) : {};
+        const formationProfs = Array.isArray(formation.profs) ? formation.profs.map((item) => cleanString(item, 180)) : [];
+        if (formationProfs.includes(caller.uid)) return true;
+    }
+
+    return false;
+}
+
+function buildLiveStudentEmail({ student = {}, liveSession = {}, kind = "scheduled" } = {}) {
+    const startLabel = liveSession.selectedStartAt
+        ? new Intl.DateTimeFormat("fr-FR", { dateStyle: "full", timeStyle: "short", timeZone: "Europe/Paris" }).format(new Date(liveSession.selectedStartAt))
+        : "date a confirmer";
+    const liveUrl = `${SBI_SITE_URL}/student/lives.html?liveId=${encodeURIComponent(liveSession.id || "")}`;
+    const isStarted = kind === "started";
+    const message = isStarted
+        ? `
+            <p style="margin:0 0 16px 0;">Le live <strong>${escapeHtml(liveSession.title || "SBI")}</strong> vient de demarrer.</p>
+            <p style="margin:0 0 16px 0;">Connecte-toi depuis ton espace eleve pour rejoindre la session.</p>
+            ${buildActionButtonHtml(liveUrl, "Ouvrir mes lives")}
+        `
+        : `
+            <p style="margin:0 0 16px 0;">Un live a ete programme pour ta promotion : <strong>${escapeHtml(liveSession.title || "Live SBI")}</strong>.</p>
+            <p style="margin:0 0 16px 0;"><strong>Date et horaire :</strong> ${escapeHtml(startLabel)}</p>
+            ${buildActionButtonHtml(liveUrl, "Voir le live")}
+        `;
+
+    return {
+        sender: { name: SBI_SENDER_NAME, email: SBI_SENDER_EMAIL },
+        to: [{
+            email: cleanEmail(student.email),
+            name: getAccountDisplayName(student)
+        }],
+        replyTo: { email: SBI_CONTACT_EMAIL, name: "Sport Business Institute" },
+        subject: isStarted
+            ? `SBI - Live demarre : ${liveSession.title || "session en direct"}`
+            : `SBI - Live programme : ${liveSession.title || "session en direct"}`,
+        htmlContent: renderSbiEmailTemplate({
+            prenom: student.prenom || "",
+            nomExpediteur: "L'equipe SBI",
+            posteExpediteur: "Pedagogie",
+            preheader: isStarted ? "Ton live SBI demarre maintenant." : "Un live SBI a ete programme.",
+            messageHtml: message
+        }),
+        textContent: isStarted
+            ? `Le live ${liveSession.title || "SBI"} vient de demarrer. ${liveUrl}`
+            : `Live programme : ${liveSession.title || "SBI"} - ${startLabel}. ${liveUrl}`,
+        tags: ["sbi_live"]
+    };
+}
+
+async function notifyPromotionStudentsForLive({ db, promotion, liveSession, kind = "scheduled", apiKey = "" }) {
+    const students = await listPromotionStudents(db, { id: liveSession.promotionId, ...promotion });
+    let notified = 0;
+    let emailsSent = 0;
+    let emailsFailed = 0;
+
+    for (const student of students) {
+        const notificationId = `${kind === "started" ? "live_started" : "live_scheduled"}_${liveSession.id}_${student.id}`.slice(0, 240);
+        const notificationRef = db.collection("notifications").doc(notificationId);
+        const notificationSnap = await notificationRef.get();
+        const previous = notificationSnap.exists ? (notificationSnap.data() || {}) : {};
+        const shouldEmail = kind === "started"
+            ? previous.emailSent !== true
+            : previous.emailSent !== true || previous.selectedStartAt !== liveSession.selectedStartAt;
+        let emailSent = previous.emailSent === true && !shouldEmail;
+        let emailError = "";
+
+        if (shouldEmail && apiKey && isValidEmail(cleanEmail(student.email))) {
+            try {
+                await sendBrevoEmail(buildLiveStudentEmail({ student, liveSession, kind }), apiKey);
+                emailSent = true;
+                emailsSent += 1;
+            } catch (error) {
+                emailError = error.message || "Email live impossible.";
+                emailsFailed += 1;
+                console.error("Email live eleve impossible :", liveSession.id, student.id, emailError);
+            }
+        }
+
+        await notificationRef.set({
+            type: kind === "started" ? "live_started" : "live_scheduled",
+            destinataireId: student.id,
+            liveId: liveSession.id,
+            liveTitle: liveSession.title || "Live SBI",
+            promotionId: liveSession.promotionId,
+            promotionName: liveSession.promotionName || getPromotionDisplayName(promotion),
+            selectedStartAt: liveSession.selectedStartAt || "",
+            selectedEndAt: liveSession.selectedEndAt || "",
+            actionUrl: `/student/lives.html?liveId=${encodeURIComponent(liveSession.id || "")}`,
+            message: kind === "started"
+                ? `Le live "${liveSession.title || "SBI"}" vient de demarrer.`
+                : `Live programme : ${liveSession.title || "SBI"}.`,
+            emailSent,
+            emailError,
+            status: "open",
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            createdAt: previous.createdAt || admin.firestore.FieldValue.serverTimestamp(),
+            dateCreation: previous.dateCreation || admin.firestore.FieldValue.serverTimestamp(),
+            dismissedBy: Array.isArray(previous.dismissedBy) ? previous.dismissedBy : []
+        }, { merge: true });
+        notified += 1;
+    }
+
+    return { students: students.length, notified, emailsSent, emailsFailed };
+}
+
+exports.scheduleLiveSession = onCall({
+    region: "europe-west1",
+    secrets: [BREVO_API_KEY],
+    timeoutSeconds: 120,
+    memory: "512MiB"
+}, async (request) => {
+    const db = admin.firestore();
+    const caller = await requireActiveCourseCaller(request, db);
+    const data = request.data || {};
+    const promotionId = cleanString(data.promotionId, 180);
+    if (!promotionId) throw new HttpsError("invalid-argument", "Promotion manquante.");
+
+    const promotionRef = db.collection("promotions").doc(promotionId);
+    const promotionDoc = await promotionRef.get();
+    if (!promotionDoc.exists) throw new HttpsError("not-found", "Promotion introuvable.");
+    const promotion = { id: promotionDoc.id, ...(promotionDoc.data() || {}) };
+
+    const canManage = await teacherCanManagePromotionLive(db, caller, promotion);
+    if (!canManage) throw new HttpsError("permission-denied", "Vous ne pouvez pas planifier les lives de cette promotion.");
+
+    const sourceItemId = cleanString(data.sourceItemId || data.liveId || "", 180);
+    const requestedTitle = cleanString(data.title || "", 180);
+    const liveItem = findPromotionLiveItem(promotion, {
+        liveId: data.liveId,
+        sourceItemId,
+        title: requestedTitle
+    });
+    const liveKey = cleanString(data.liveId || liveItem?.id || liveItem?.itemId || sourceItemId || requestedTitle || "live", 180);
+    const liveId = makeLiveSessionId(promotionId, liveKey);
+    const selectedStartAt = normalizeLiveIso(data.selectedStartAt || data.startAt || data.selectedLiveAt, "Date de debut");
+    const endInput = cleanString(data.selectedEndAt || data.endAt || data.selectedLiveEndAt || "", 80);
+    const selectedEndAt = endInput
+        ? normalizeLiveIso(endInput, "Date de fin")
+        : new Date(Date.parse(selectedStartAt) + 60 * 60 * 1000).toISOString();
+
+    if (Date.parse(selectedEndAt) <= Date.parse(selectedStartAt)) {
+        throw new HttpsError("invalid-argument", "La fin du live doit etre apres le debut.");
+    }
+
+    const windowStart = cleanString(liveItem?.teacherSchedulingWindowStartAt || liveItem?.schedulingWindow?.teacherCanSelectFrom || liveItem?.schedulingWindow?.recommendedStartAt || "", 80);
+    const windowEnd = cleanString(liveItem?.teacherSchedulingWindowEndAt || liveItem?.schedulingWindow?.teacherCanSelectUntil || liveItem?.schedulingWindow?.recommendedEndAt || "", 80);
+    if (!caller.isAdmin && (windowStart || windowEnd) && !liveDateInWindow(selectedStartAt, windowStart, windowEnd)) {
+        throw new HttpsError("failed-precondition", "Le creneau choisi sort de la plage prevue pour ce live.");
+    }
+
+    const promotionName = getPromotionDisplayName(promotion);
+    const title = requestedTitle || liveItem?.title || liveItem?.courseTitle || "Live SBI";
+    const sessionPayload = {
+        id: liveId,
+        title,
+        promotionId,
+        promotionName,
+        formationId: cleanString(promotion.formationId || liveItem?.formationId || "", 180),
+        formationName: cleanString(promotion.formationName || promotion.formationTitle || "", 180),
+        sourceItemId: sourceItemId || cleanString(liveItem?.id || liveItem?.itemId || "", 180),
+        sourceType: cleanString(liveItem?.type || data.type || "live_session", 80),
+        selectedStartAt,
+        selectedEndAt,
+        status: "scheduled",
+        provider: cleanString(data.provider || "pending_provider", 80),
+        roomName: cleanString(data.roomName || "", 180),
+        meetingUrl: cleanString(data.meetingUrl || "", 500),
+        teacherUid: cleanString(data.teacherUid || caller.uid, 180),
+        selectedByUid: caller.uid,
+        selectedByEmail: caller.email,
+        scheduledAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        liveTech: {
+            provider: cleanString(data.provider || "pending_provider", 80),
+            captureProtection: "moving_student_watermark",
+            chatEnabled: true,
+            fileSharingEnabled: true,
+            replayStatus: "not_available"
+        }
+    };
+
+    const liveRef = db.collection("liveSessions").doc(liveId);
+    const previousLive = await liveRef.get();
+    await liveRef.set({
+        ...sessionPayload,
+        createdAt: previousLive.exists ? previousLive.data()?.createdAt || admin.firestore.FieldValue.serverTimestamp() : admin.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+
+    const livePlanning = Array.isArray(promotion.livePlanning) ? [...promotion.livePlanning] : [];
+    const itemIndex = livePlanning.findIndex((item) => item === liveItem);
+    const nextLiveItem = {
+        ...(liveItem || {}),
+        id: liveItem?.id || sourceItemId || liveId,
+        title,
+        liveSessionId: liveId,
+        status: "scheduled",
+        liveSchedulingStatus: "scheduled",
+        teacherSelectionStatus: "selected",
+        studentScheduleStatus: "scheduled",
+        notificationStatus: "pending_student_update",
+        selectedLiveAt: selectedStartAt,
+        selectedLiveEndAt: selectedEndAt,
+        selectedByUid: caller.uid,
+        selectedByEmail: caller.email,
+        selectedAt: new Date().toISOString()
+    };
+    if (itemIndex >= 0) livePlanning[itemIndex] = nextLiveItem;
+    else livePlanning.push(nextLiveItem);
+
+    await promotionRef.set({
+        livePlanning,
+        livePlanningUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        livePlanningUpdatedBy: caller.uid
+    }, { merge: true });
+
+    const report = await notifyPromotionStudentsForLive({
+        db,
+        promotion,
+        liveSession: sessionPayload,
+        kind: "scheduled",
+        apiKey: BREVO_API_KEY.value()
+    });
+
+    await safeWriteAccountAuditLog(db, {
+        type: "live.scheduled",
+        actorUid: caller.uid,
+        actorEmail: caller.email,
+        targetUid: "",
+        targetEmail: "",
+        targetRole: "promotion",
+        source: caller.isAdmin ? "admin-live" : "teacher-live",
+        liveId,
+        promotionId,
+        changes: {
+            selectedStartAt,
+            selectedEndAt,
+            title,
+            report
+        }
+    });
+
+    return {
+        success: true,
+        liveId,
+        message: "Live programme et notifications lancees.",
+        report
+    };
+});
+
+exports.notifyLiveStarted = onCall({
+    region: "europe-west1",
+    secrets: [BREVO_API_KEY],
+    timeoutSeconds: 120,
+    memory: "512MiB"
+}, async (request) => {
+    const db = admin.firestore();
+    const caller = await requireActiveCourseCaller(request, db);
+    const liveId = cleanString(request.data?.liveId, 180);
+    if (!liveId) throw new HttpsError("invalid-argument", "Live manquant.");
+
+    const liveRef = db.collection("liveSessions").doc(liveId);
+    const liveDoc = await liveRef.get();
+    if (!liveDoc.exists) throw new HttpsError("not-found", "Live introuvable.");
+    const liveSession = { id: liveDoc.id, ...(liveDoc.data() || {}) };
+
+    const promotionDoc = await db.collection("promotions").doc(cleanString(liveSession.promotionId, 180)).get();
+    if (!promotionDoc.exists) throw new HttpsError("not-found", "Promotion introuvable.");
+    const promotion = { id: promotionDoc.id, ...(promotionDoc.data() || {}) };
+
+    const canManage = await teacherCanManagePromotionLive(db, caller, promotion);
+    if (!canManage) throw new HttpsError("permission-denied", "Vous ne pouvez pas demarrer ce live.");
+
+    await liveRef.set({
+        status: "live",
+        startedAt: admin.firestore.FieldValue.serverTimestamp(),
+        startedByUid: caller.uid,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+
+    const report = await notifyPromotionStudentsForLive({
+        db,
+        promotion,
+        liveSession,
+        kind: "started",
+        apiKey: BREVO_API_KEY.value()
+    });
+
+    await safeWriteAccountAuditLog(db, {
+        type: "live.started",
+        actorUid: caller.uid,
+        actorEmail: caller.email,
+        targetUid: "",
+        targetEmail: "",
+        targetRole: "promotion",
+        source: caller.isAdmin ? "admin-live" : "teacher-live",
+        liveId,
+        promotionId: liveSession.promotionId || "",
+        changes: { report }
+    });
+
+    return {
+        success: true,
+        message: "Notification de demarrage envoyee.",
+        report
+    };
+});
+
 
 
 function getCourseWorkflowTitle(courseData = {}) {

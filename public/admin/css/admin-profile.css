@@ -698,6 +698,30 @@
     transform: none;
 }
 
+.sbi-god-timer-bypass {
+    margin-top: 1rem;
+    border-color: rgba(248, 113, 113, 0.28);
+}
+
+.sbi-god-timer-bypass__row {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    margin: 0.75rem 0 0;
+    padding: 0.9rem 1rem;
+    border: 1px solid rgba(248, 113, 113, 0.22);
+    border-radius: 8px;
+    background: rgba(248, 113, 113, 0.08);
+    color: var(--text-main);
+    font-weight: 800;
+}
+
+.sbi-god-timer-bypass__row input {
+    width: 18px;
+    height: 18px;
+    accent-color: #ef4444;
+}
+
 @media (max-width: 980px) {
     .sbi-student-followup__snapshot,
     .sbi-student-followup__grid {

@@ -53,7 +53,6 @@ const PROTECTED_PATHS = new Map([
   ['/student/cours-viewer.html', 'viewer étudiant / progression / quiz / vidéo'],
   ['/teacher/cours-viewer.html', 'viewer prof / preview protégé'],
   ['/admin/cours-viewer.html', 'viewer admin / preview protégé'],
-  ['/admin/formations-live.html', 'live / médias / logique non migrée']
 ]);
 
 let initialized = false;
@@ -1023,7 +1022,7 @@ function printRoutes() {
     { path: '/login.html', mode: 'public-shell', page: 'login', reason: 'connexion migrée dans le shell public' },
     { path: '/admin/index.html', mode: 'reload', page: '-', reason: 'shell admin séparé' },
     { path: '/student/cours-viewer.html?id=test', mode: 'reload', page: '-', reason: 'viewer protégé' },
-    { path: '/admin/formations-live.html', mode: 'reload', page: '-', reason: 'live admin protégé, aucune page live publique' }
+    { path: '/admin/admin-lives.html', mode: 'reload', page: '-', reason: 'shell admin séparé' }
   ];
 
   console.table(routes);

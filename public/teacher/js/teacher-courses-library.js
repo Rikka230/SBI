@@ -2,6 +2,7 @@ import { db, auth } from '/js/firebase-init.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js';
 import {
   collection,
+  deleteDoc,
   doc,
   documentId,
   getDoc,
@@ -527,6 +528,13 @@ function getCourseStatus(course = {}) {
   return { label: 'Brouillon', tone: 'muted', value: 'draft' };
 }
 
+function canDeleteTeacherDraft(course = {}, uid = '') {
+  const status = getCourseStatus(course).value;
+  return status === 'draft'
+    && course.actif !== true
+    && getCourseAuthorId(course) === normalizeString(uid);
+}
+
 function resolveCourseFormations(course = {}, formationMap = new Map()) {
   const formationRefs = normalizeList([
     ...normalizeList(course.formationIds),
@@ -607,6 +615,7 @@ function filterCourses(courses = [], { uid, formationMap = new Map(), authorMap 
   const scopeFilter = getScopeFilterValue();
 
   return courses.filter((course) => {
+    if (course?.__deletedDraft === true) return false;
     const status = getCourseStatus(course);
     const isOwnCourse = getCourseAuthorId(course) === normalizeString(uid);
 
@@ -692,6 +701,9 @@ function renderCourseCard(course, { uid, formationMap, authorMap }) {
   const editButton = isOwnCourse
     ? `<button class="teacher-course-btn teacher-course-btn--secondary" type="button" data-teacher-edit-course="${escapeHtml(course.id)}">Modifier</button>`
     : '';
+  const deleteButton = canDeleteTeacherDraft(course, uid)
+    ? `<button class="teacher-course-btn teacher-course-btn--danger" type="button" data-teacher-delete-course="${escapeHtml(course.id)}">Supprimer</button>`
+    : '';
 
   return `
     <article class="teacher-course-card${draftClass}" data-course-id="${escapeHtml(course.id)}">
@@ -712,6 +724,7 @@ function renderCourseCard(course, { uid, formationMap, authorMap }) {
       <div class="teacher-course-card__actions">
         <a class="teacher-course-btn teacher-course-btn--primary" href="${COURSE_VIEWER_URL}?id=${encodeURIComponent(course.id)}&preview=true&returnTo=${encodeURIComponent('/teacher/mes-cours.html')}" data-sbi-no-pjax="true" data-sbi-no-transition="true">Ouvrir</a>
         ${editButton}
+        ${deleteButton}
       </div>
     </article>
   `;
@@ -750,6 +763,27 @@ function openTeacherCourseEditor(courseId = '') {
   const safeCourseId = normalizeString(courseId);
   if (!safeCourseId) return;
   void navigateTeacherCourseEditorV2(safeCourseId, { source: 'teacher-library-edit-v2' });
+}
+
+async function deleteTeacherDraftCourse(courseId = '', state) {
+  const safeCourseId = normalizeString(courseId);
+  if (!safeCourseId || !state?.uid) return;
+  const course = state.courses.find((item) => item.id === safeCourseId);
+  if (!canDeleteTeacherDraft(course, state.uid)) return;
+
+  const confirmed = window.confirm(`Supprimer le brouillon "${getCourseTitle(course)}" ? Cette action ne supprime que vos brouillons non soumis.`);
+  if (!confirmed) return;
+
+  await deleteDoc(doc(db, 'courses', safeCourseId));
+  course.__deletedDraft = true;
+  state.courses = state.courses.filter((item) => item.id !== safeCourseId);
+  renderLibrary({
+    root: state.root,
+    courses: state.courses,
+    uid: state.uid,
+    formations: state.formations,
+    authorMap: state.authorMap
+  });
 }
 
 function handleTeacherLibraryPopState() {
@@ -792,8 +826,9 @@ function bindNewCourseButton() {
 }
 
 function renderLibrary({ root, courses, uid, formations, authorMap = new Map() }) {
+  const sourceCourses = courses.filter((course) => course?.__deletedDraft !== true);
   const formationMap = buildFormationMap(formations);
-  const visibleCourses = sortCourses(filterCourses(courses, { uid, formationMap, authorMap }));
+  const visibleCourses = sortCourses(filterCourses(sourceCourses, { uid, formationMap, authorMap }));
   const countEl = document.getElementById('teacher-courses-count');
   const hasFilters = Boolean(getSearchValue() || getStatusFilterValue() !== 'all' || getScopeFilterValue() !== 'all');
 
@@ -801,7 +836,7 @@ function renderLibrary({ root, courses, uid, formations, authorMap = new Map() }
     countEl.textContent = `${visibleCourses.length} cours affiché${visibleCourses.length > 1 ? 's' : ''}`;
   }
 
-  renderStats(buildLibraryStats(courses, uid));
+  renderStats(buildLibraryStats(sourceCourses, uid));
 
   if (!visibleCourses.length) {
     renderEmpty(root, hasFilters);
@@ -820,6 +855,23 @@ function renderLibrary({ root, courses, uid, formations, authorMap = new Map() }
       if (!courseId) return;
 
       openTeacherCourseEditor(courseId);
+    });
+  });
+
+  root.querySelectorAll('[data-teacher-delete-course]').forEach((button) => {
+    button.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      deleteTeacherDraftCourse(button.getAttribute('data-teacher-delete-course'), {
+        root,
+        courses,
+        uid,
+        formations,
+        authorMap
+      }).catch((error) => {
+        console.error('[SBI Teacher Library] Suppression brouillon impossible :', error);
+        window.alert(error?.message || 'Suppression du brouillon impossible.');
+      });
     });
   });
 }

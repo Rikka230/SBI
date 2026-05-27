@@ -593,6 +593,32 @@ service cloud.firestore {
         );
     }
 
+    function canReadLiveSession(liveData) {
+      return isAdmin()
+        || (
+          isActiveUser()
+          && liveData.keys().hasAny(['promotionId'])
+          && currentUserPromotionIdMatches(liveData.promotionId)
+        )
+        || (
+          isTeacher()
+          && liveData.keys().hasAny(['formationId'])
+          && currentUserHasFormationIds()
+          && liveData.formationId in currentUser().formationIds
+        )
+        || (
+          isTeacher()
+          && liveData.keys().hasAny(['formationName'])
+          && currentUserHasFormationsAcces()
+          && liveData.formationName in currentUser().formationsAcces
+        )
+        || (
+          isTeacher()
+          && liveData.keys().hasAny(['teacherUid'])
+          && liveData.teacherUid == request.auth.uid
+        );
+    }
+
     function isDirectNotification() {
       return resource.data.keys().hasAny(['destinataireId'])
         && resource.data.destinataireId == request.auth.uid;
@@ -775,6 +801,39 @@ service cloud.firestore {
     match /promotions/{promotionId} {
       allow get, list: if canReadPromotion(promotionId, resource.data);
       allow create, update, delete: if isAdmin();
+    }
+
+    /* ============================================================
+       LIVE SESSIONS
+       ============================================================ */
+
+    match /liveSessions/{liveId} {
+      allow get, list: if canReadLiveSession(resource.data);
+      allow create, update, delete: if isAdmin();
+
+      match /messages/{messageId} {
+        allow get, list: if canReadLiveSession(get(/databases/$(database)/documents/liveSessions/$(liveId)).data);
+        allow create: if isActiveUser()
+          && canReadLiveSession(get(/databases/$(database)/documents/liveSessions/$(liveId)).data)
+          && request.resource.data.senderUid == request.auth.uid;
+        allow update, delete: if isAdmin();
+      }
+
+      match /files/{fileId} {
+        allow get, list: if canReadLiveSession(get(/databases/$(database)/documents/liveSessions/$(liveId)).data);
+        allow create: if isTeacher()
+          && canReadLiveSession(get(/databases/$(database)/documents/liveSessions/$(liveId)).data)
+          && request.resource.data.uploadedBy == request.auth.uid;
+        allow update, delete: if isAdmin();
+      }
+
+      match /attendance/{attendanceId} {
+        allow get, list: if canReadLiveSession(get(/databases/$(database)/documents/liveSessions/$(liveId)).data);
+        allow create, update: if isActiveUser()
+          && attendanceId == request.auth.uid
+          && canReadLiveSession(get(/databases/$(database)/documents/liveSessions/$(liveId)).data);
+        allow delete: if isAdmin();
+      }
     }
 
     /* ============================================================

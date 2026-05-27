@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SBI Prof - Lives</title>
+  <link rel="stylesheet" href="/admin/css/admin-layout.css">
+  <link rel="stylesheet" href="/admin/css/admin.css">
+  <link rel="stylesheet" href="/teacher/css/teacher.css">
+  <link rel="stylesheet" href="/css/live-platform.css?v=8.0P.167.203">
+  <script src="/admin/js/components.js?v=8.0P.167.64"></script>
+</head>
+<body class="preload sbi-teacher-surface sbi-live-page" data-live-role="teacher">
+  <div class="app-container" id="app-container">
+    <teacher-left-panel></teacher-left-panel>
+    <teacher-top-bar></teacher-top-bar>
+
+    <main id="main-content">
+      <div class="content-wrapper" data-sbi-live-scheduler>
+        <section class="sbi-live-hero">
+          <div>
+            <span class="sbi-live-kicker">Professeur</span>
+            <h1>Lives a planifier</h1>
+          </div>
+          <span id="sbi-live-status" class="sbi-live-status"></span>
+        </section>
+
+        <div class="sbi-live-grid">
+          <aside class="sbi-live-panel">
+            <div class="sbi-live-panel__head">
+              <strong>Mes promotions</strong>
+              <span>Promotions rattachees a vos formations.</span>
+            </div>
+            <div id="sbi-live-promotions" class="sbi-live-list"></div>
+          </aside>
+
+          <section class="sbi-live-workspace">
+            <div class="sbi-live-panel">
+              <div class="sbi-live-panel__head">
+                <strong>Planning live</strong>
+                <span>Choisissez un creneau dans la plage prevue.</span>
+              </div>
+              <div id="sbi-live-calendar" class="sbi-live-calendar"></div>
+              <div id="sbi-live-items" class="sbi-live-list"></div>
+            </div>
+            <aside id="sbi-live-detail" class="sbi-live-panel"></aside>
+          </section>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script type="module" src="/admin/js/admin-ui.js?v=8.0P.167.87"></script>
+  <script type="module" src="/admin/js/admin-notifications.js?v=8.0P.167.188"></script>
+  <script type="module" src="/js/live/live-scheduler-page.js?v=8.0P.167.203"></script>
+</body>
+</html>

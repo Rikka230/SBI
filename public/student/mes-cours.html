@@ -85,6 +85,22 @@
             font-weight: 900;
             cursor: pointer;
         }
+        .student-library-live-link {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.25rem;
+            padding: 1rem 1.15rem;
+            border: 1px solid rgba(245,158,11,0.28);
+            border-radius: 16px;
+            background: linear-gradient(135deg, rgba(245,158,11,0.12), rgba(42,87,255,0.08));
+            text-decoration: none;
+            color: var(--text-main);
+        }
+        .student-library-live-link strong { display: block; margin-bottom: 0.2rem; }
+        .student-library-live-link span span { color: var(--text-muted); font-size: 0.84rem; }
+        .student-library-live-link em { flex: 0 0 auto; font-style: normal; color: var(--accent-orange, #f59e0b); font-weight: 950; }
         .student-formations-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 1.2rem; }
         .formation-folder {
             position: relative;
@@ -251,6 +267,14 @@
                         <button id="student-library-refresh" class="student-library-refresh" type="button">Actualiser</button>
                     </div>
                 </div>
+
+                <a class="student-library-live-link" href="/student/lives.html" data-sbi-href="/student/lives.html">
+                    <span>
+                        <strong>Lives de la promotion</strong>
+                        <span>Sessions a venir, calendrier et replays.</span>
+                    </span>
+                    <em>Ouvrir</em>
+                </a>
 
                 <div id="formations-list" class="student-formations-grid">
                     <div class="student-library-loading">Analyse de vos formations…</div>
