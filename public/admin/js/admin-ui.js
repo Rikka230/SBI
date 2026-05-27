@@ -12,7 +12,7 @@ import { initSbiVersionBadge } from '/js/sbi-version-badge.js';
 import { installViewerDiagnostics } from '/js/app-shell/course-viewer-bridge.js';
 import { initCourseAccessDiagnostics } from '/admin/js/course-access-diagnostics.js';
 import { initAdminCursusSafePolish } from '/admin/js/admin-cursus-safe-polish.js?v=8.0P.167.107.6-GPT2.1';
-import { initAdminCursusDndBridge } from '/admin/js/admin-cursus-dnd.js?v=8.0P.167.107.6-GPT2.1';
+import { initAdminCursusDndBridge } from '/admin/js/admin-cursus-dnd.js?v=8.0P.167.199';
 import { initAdminCursusPlaceholderReplaceBridge } from '/admin/js/admin-cursus-placeholder-replace.js?v=8.0P.167.188';
 import { initAdminCursusWeeksControlsBridge } from '/admin/js/admin-cursus-weeks-controls.js?v=8.0P.167.107.1-GPT2.1';
 import { initAdminCursusMetricsPersistence } from '/admin/js/admin-cursus-metrics-persistence.js?v=8.0P.167.108-GPT2.1';

@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.198',
+  version: '8.0P.167.199',
   branch: 'main',
-  channel: 'COURSE EDITOR V2 ACTIVITIES',
-  stage: 'AUTONOMOUS CORRECTION CHECKPOINT XP TIMER',
-  updatedAt: '2026-05-24',
-  label: 'SBI 8.0P.167.198 - viewer self assessment correction button'
+  channel: 'CURSUS TIMELINE',
+  stage: 'WEEK COURSE STACKING',
+  updatedAt: '2026-05-27',
+  label: 'SBI 8.0P.167.199 - cursus week course stacking'
 };
 
 export function getSbiVersionLabel() {

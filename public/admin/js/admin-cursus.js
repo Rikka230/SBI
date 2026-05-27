@@ -1,11 +1,12 @@
 /**
- * SBI 8.0P.167.186
+ * SBI 8.0P.167.199
  * Page Cursus dédiée : timeline horizontale multi-pistes.
  *
  * Correctif noyau verrouillage :
  * - verrouillé = impossible à déplacer ;
  * - déverrouillé = déplaçable sans retour automatique en S1 ;
  * - déplacer un bloc ne le reverrouille jamais automatiquement.
+ * - les petits cours peuvent etre stackes sur une meme semaine.
  */
 
 import { auth, db } from '/js/firebase-init.js';
@@ -34,6 +35,7 @@ let activeTemplateId = '';
 let activeToolFilter = 'all';
 let pendingDeleteTemplateId = '';
 let zoomLevel = 1;
+let activeStackWeek = -1;
 
 const STRUCTURAL_TYPES = new Set(['course', 'placeholder_course', 'buffer_period', 'revision_period', 'catchup_period']);
 const COURSE_TRACK_TYPES = new Set(['course', 'placeholder_course']);
@@ -137,6 +139,7 @@ function cacheDom() {
   dom.statDuration = $('cursus-stat-duration');
   dom.coherenceTitle = $('cursus-coherence-title');
   dom.coherenceDetail = $('cursus-coherence-detail');
+  dom.stackManager = $('cursus-stack-manager');
 }
 
 function getFormationLabel(formation = {}) {
@@ -303,6 +306,38 @@ function getItemPeriodLabel(item = {}) {
   return startWeek === endWeek ? `S${startWeek}` : `S${startWeek}–S${endWeek}`;
 }
 
+function getCourseItemsForWeek(weekZero = 0) {
+  const targetWeek = Math.max(0, Number(weekZero) || 0);
+  return timelineItems
+    .filter((item) => COURSE_TRACK_TYPES.has(item.type) && getItemWeekStart(item) === targetWeek)
+    .sort((a, b) => (Number(a.order || 0) - Number(b.order || 0)) || a.title.localeCompare(b.title, 'fr'));
+}
+
+function getCourseStackForItem(item = {}) {
+  if (!COURSE_TRACK_TYPES.has(item.type)) return [];
+  return getCourseItemsForWeek(getItemWeekStart(item));
+}
+
+function captureTimelineScroll() {
+  if (!dom.timelineScroll) return null;
+  return {
+    node: dom.timelineScroll,
+    left: dom.timelineScroll.scrollLeft,
+    top: dom.timelineScroll.scrollTop
+  };
+}
+
+function restoreTimelineScroll(snapshot) {
+  if (!snapshot?.node) return;
+  const restore = () => {
+    if (!snapshot.node.isConnected) return;
+    snapshot.node.scrollLeft = snapshot.left;
+    snapshot.node.scrollTop = snapshot.top;
+  };
+  restore();
+  window.requestAnimationFrame(restore);
+}
+
 function getAppendStartOffset(type = '') {
   if (STRUCTURAL_TYPES.has(type)) return getTimelineDurationDays();
   return Math.max(0, getTimelineDurationDays() - getDefaultDuration(type));
@@ -415,16 +450,28 @@ function renderBlock(item) {
   const span = getItemWeekSpan(item);
   const selected = selectedItemId === item.id;
   const locked = Boolean(item.isLocked);
+  const stackItems = getCourseStackForItem(item);
+  const stackCount = stackItems.length;
+  const stackIndex = Math.max(0, stackItems.findIndex((entry) => entry.id === item.id));
+  const isCourseStack = stackCount > 1;
+  const isStackTop = isCourseStack && stackIndex === stackCount - 1;
+  const stackAction = isCourseStack ? 'open-week-stack' : 'select-item';
   const badges = [
     item.isRequired ? 'O' : '',
     item.isBlocking || item.isBlockingPrerequisite ? 'B' : '',
     locked ? 'L' : '',
-    item.isSharedCourse ? '↗' : ''
+    item.isSharedCourse ? '↗' : '',
+    isStackTop ? `+${stackCount - 1}` : ''
   ].filter(Boolean).map((badge) => `<span>${escapeHtml(badge)}</span>`).join('');
-  const subtitle = `${getItemPeriodLabel(item)} · ${Number(item.estimatedDurationDays || 1)} j${item.blockTitle ? ` · ${item.blockTitle}` : ''}${item.isSharedCourse ? ' · Accès cursus' : ''}`;
+  const subtitle = isCourseStack
+    ? `${getItemPeriodLabel(item)} · ${stackCount} cours stackés${item.blockTitle ? ` · ${item.blockTitle}` : ''}`
+    : `${getItemPeriodLabel(item)} · ${Number(item.estimatedDurationDays || 1)} j${item.blockTitle ? ` · ${item.blockTitle}` : ''}${item.isSharedCourse ? ' · Accès cursus' : ''}`;
+  const stackStyle = isCourseStack
+    ? `--stack-offset:${Math.min(stackIndex, 5) * 7}px;--stack-z:${10 + stackIndex};`
+    : '--stack-offset:0px;--stack-z:1;';
 
   return `
-    <button type="button" class="sbi-cursus-block type-${escapeHtml(item.type)} ${selected ? 'is-selected' : ''} ${locked ? 'sbi-is-locked' : ''}" data-action="select-item" data-id="${escapeHtml(item.id)}" data-sbi-locked="${locked ? 'true' : 'false'}" draggable="${locked ? 'false' : 'true'}" style="--start-week:${start};--span-week:${span};">
+    <button type="button" class="sbi-cursus-block type-${escapeHtml(item.type)} ${selected ? 'is-selected' : ''} ${locked ? 'sbi-is-locked' : ''} ${isCourseStack ? 'is-stack-member' : ''} ${isStackTop ? 'is-stack-top' : ''}" data-action="${stackAction}" data-id="${escapeHtml(item.id)}" data-stack-week="${start + 1}" data-stack-count="${stackCount}" data-sbi-locked="${locked ? 'true' : 'false'}" draggable="${locked ? 'false' : 'true'}" style="--start-week:${start};--span-week:${span};${stackStyle}">
       <span class="sbi-cursus-block-handle">⋮⋮</span>
       <span class="sbi-cursus-block-title"><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(subtitle)}</small></span>
       <span class="sbi-cursus-block-badges">${badges}</span>
@@ -540,7 +587,107 @@ function renderInspector() {
   `;
 }
 
-function renderAll({ recalc = false } = {}) {
+function ensureStackManager() {
+  if (dom.stackManager?.isConnected) return dom.stackManager;
+  if (!dom.app) return null;
+
+  const modal = document.createElement('div');
+  modal.id = 'cursus-stack-manager';
+  modal.className = 'sbi-cursus-stack-modal';
+  modal.hidden = true;
+  dom.app.appendChild(modal);
+  dom.stackManager = modal;
+  return modal;
+}
+
+function renderStackManager() {
+  const modal = ensureStackManager();
+  if (!modal) return;
+
+  const weekZero = Math.max(0, Number(activeStackWeek) || 0);
+  const items = activeStackWeek >= 0 ? getCourseItemsForWeek(weekZero) : [];
+  if (activeStackWeek < 0 || !items.length) {
+    modal.hidden = true;
+    modal.innerHTML = '';
+    return;
+  }
+
+  const weekLabel = `S${weekZero + 1}`;
+  modal.hidden = false;
+  modal.innerHTML = `
+    <div class="sbi-cursus-stack-backdrop" data-stack-action="close"></div>
+    <section class="sbi-cursus-stack-panel" role="dialog" aria-modal="true" aria-label="Cours stackés ${escapeHtml(weekLabel)}">
+      <header class="sbi-cursus-stack-head">
+        <div>
+          <p class="sbi-cursus-kicker">Semaine ${escapeHtml(String(weekZero + 1))}</p>
+          <h3>${items.length} cours stackés</h3>
+        </div>
+        <button type="button" data-stack-action="close" aria-label="Fermer">×</button>
+      </header>
+      <div class="sbi-cursus-stack-mini-ruler">${escapeHtml(weekLabel)}</div>
+      <div class="sbi-cursus-stack-week-lane">
+        ${items.map((item, index) => `
+          <article class="sbi-cursus-stack-course ${selectedItemId === item.id ? 'is-selected' : ''}" style="--stack-card-x:${index * 3}px;--stack-card-y:${index * 2}px;">
+            <div>
+              <strong>${escapeHtml(item.title)}</strong>
+              <span>${escapeHtml(Number(item.estimatedDurationDays || 1))} j${item.blockTitle ? ` · ${escapeHtml(item.blockTitle)}` : ''}${item.sourceFormationName ? ` · ${escapeHtml(item.sourceFormationName)}` : ''}</span>
+            </div>
+            <div class="sbi-cursus-stack-actions">
+              <button type="button" data-stack-action="select" data-id="${escapeHtml(item.id)}">Modifier</button>
+              <button type="button" data-stack-action="delete" data-id="${escapeHtml(item.id)}" class="is-danger">Supprimer</button>
+            </div>
+          </article>
+        `).join('')}
+      </div>
+    </section>
+  `;
+}
+
+function moveItemToWeek(itemId, week, { render = true, select = true } = {}) {
+  const item = timelineItems.find((entry) => entry.id === itemId);
+  if (!item) return { ok: false, reason: 'Element introuvable.' };
+  if (item.isLocked) return { ok: false, reason: 'Element verrouille.' };
+
+  item.startOffsetDays = Math.max(0, (Number(week || 1) - 1) * 7);
+  if (select) selectedItemId = item.id;
+  if (render) renderAll({ recalc: true, preserveScroll: true });
+  return { ok: true, item };
+}
+
+function applyItemWeekMoves(moves = [], { selectItemId = '', render = true } = {}) {
+  const normalized = moves
+    .map((move) => ({ id: move.id || move.itemId || '', week: Math.max(1, Number(move.week || move.toWeek || 1) || 1) }))
+    .filter((move) => move.id);
+
+  for (const move of normalized) {
+    const item = timelineItems.find((entry) => entry.id === move.id);
+    if (!item) return { ok: false, reason: 'Element introuvable.' };
+    if (item.isLocked) return { ok: false, reason: 'Element verrouille.' };
+  }
+
+  normalized.forEach((move) => {
+    const item = timelineItems.find((entry) => entry.id === move.id);
+    item.startOffsetDays = Math.max(0, (move.week - 1) * 7);
+  });
+
+  if (selectItemId) selectedItemId = selectItemId;
+  else if (normalized[0]?.id) selectedItemId = normalized[0].id;
+
+  if (render) renderAll({ recalc: true, preserveScroll: true });
+  return { ok: true, moved: normalized.length };
+}
+
+function exposeCursusApi() {
+  window.SBI_ADMIN_CURSUS_API = {
+    moveItemToWeek: (itemId, week, options = {}) => moveItemToWeek(itemId, week, options),
+    applyWeekMoves: (moves = [], options = {}) => applyItemWeekMoves(moves, options),
+    getItems: () => timelineItems.map((item) => ({ ...item })),
+    openWeekStack: (week, itemId = '') => openWeekStackManager(week, itemId)
+  };
+}
+
+function renderAll({ recalc = false, preserveScroll = false } = {}) {
+  const scrollSnapshot = preserveScroll ? captureTimelineScroll() : null;
   if (recalc) normalizeStructuralOrders();
   const weeks = getWeeksCount();
   renderRuler(weeks);
@@ -548,6 +695,8 @@ function renderAll({ recalc = false } = {}) {
   renderToolList();
   renderInspector();
   renderStats();
+  renderStackManager();
+  exposeCursusApi();
   renderTemplateSelect();
   if (dom.app) dom.app.classList.toggle('show-grid', Boolean(dom.gridToggle?.checked));
   if (dom.activeStatus) {
@@ -557,6 +706,39 @@ function renderAll({ recalc = false } = {}) {
     dom.activeStatus.style.borderColor = status === 'active' ? 'rgba(64,223,128,.32)' : status === 'archived' ? 'rgba(255,255,255,.18)' : 'rgba(42,87,255,.28)';
   }
   window.requestAnimationFrame(() => window.SBI_CURSUS_WEEKS?.refresh?.());
+  restoreTimelineScroll(scrollSnapshot);
+}
+
+function openWeekStackManager(week, itemId = '') {
+  const weekNumber = Math.max(1, Number(week) || 1);
+  activeStackWeek = weekNumber - 1;
+  if (itemId && timelineItems.some((item) => item.id === itemId)) selectedItemId = itemId;
+  renderAll({ preserveScroll: true });
+}
+
+function closeWeekStackManager({ render = true } = {}) {
+  activeStackWeek = -1;
+  if (render) renderAll({ preserveScroll: true });
+  else renderStackManager();
+}
+
+function selectStackItem(itemId = '') {
+  if (!timelineItems.some((item) => item.id === itemId)) return;
+  selectedItemId = itemId;
+  activeStackWeek = -1;
+  renderAll({ preserveScroll: true });
+}
+
+function deleteStackItem(itemId = '') {
+  const item = timelineItems.find((entry) => entry.id === itemId);
+  if (!item) return;
+  if (!window.confirm(`Supprimer « ${item.title} » du cursus ?`)) return;
+
+  const weekZero = getItemWeekStart(item);
+  timelineItems = timelineItems.filter((entry) => entry.id !== itemId);
+  if (selectedItemId === itemId) selectedItemId = '';
+  activeStackWeek = getCourseItemsForWeek(weekZero).length ? weekZero : -1;
+  renderAll({ recalc: true, preserveScroll: true });
 }
 
 
@@ -626,7 +808,7 @@ function addCourseToTimeline(courseId) {
   timelineItems.push(item);
   selectedItemId = item.id;
   setStatus(`Cours « ${item.title} » ajouté.`, 'success');
-  renderAll({ recalc: true });
+  renderAll({ recalc: true, preserveScroll: true });
 }
 
 function addItemByType(type) {
@@ -657,7 +839,7 @@ function addItemByType(type) {
   });
   timelineItems.push(item);
   selectedItemId = item.id;
-  renderAll({ recalc: true });
+  renderAll({ recalc: true, preserveScroll: true });
 }
 
 function updateSelectedField(field, value, isCheckbox = false) {
@@ -686,7 +868,7 @@ function updateSelectedField(field, value, isCheckbox = false) {
   if (field === 'isQualiopiEvidence') item.isQualiopiEvidence = Boolean(finalValue);
   if (field === 'notes') item.notes = clean(finalValue, 600);
 
-  renderAll({ recalc: true });
+  renderAll({ recalc: true, preserveScroll: true });
 }
 
 function deleteSelectedItem() {
@@ -695,13 +877,14 @@ function deleteSelectedItem() {
   if (!window.confirm(`Supprimer « ${item.title} » du cursus ?`)) return;
   timelineItems = timelineItems.filter((entry) => entry.id !== selectedItemId);
   selectedItemId = '';
-  renderAll({ recalc: true });
+  renderAll({ recalc: true, preserveScroll: true });
 }
 
 function resetEditor() {
   activeTemplateId = '';
   selectedItemId = '';
   pendingDeleteTemplateId = '';
+  activeStackWeek = -1;
   timelineItems = [];
   if (dom.template) dom.template.value = '';
   if (dom.title) dom.title.value = '';
@@ -718,6 +901,7 @@ function loadTemplate(templateId) {
   activeTemplateId = template.id;
   selectedItemId = '';
   pendingDeleteTemplateId = '';
+  activeStackWeek = -1;
   if (template.formationId && formations.some((formation) => formation.id === template.formationId)) {
     dom.formation.value = template.formationId;
   }
@@ -821,6 +1005,7 @@ async function deleteTemplate() {
     activeTemplateId = '';
     timelineItems = [];
     selectedItemId = '';
+    activeStackWeek = -1;
     pendingDeleteTemplateId = '';
     await loadTemplates();
     renderAll({ recalc: true });
@@ -884,6 +1069,7 @@ function bindEvents() {
   dom.formation?.addEventListener('change', () => {
     activeTemplateId = '';
     selectedItemId = '';
+    activeStackWeek = -1;
     renderAll({ recalc: true });
   });
 
@@ -909,6 +1095,7 @@ function bindEvents() {
   dom.sourceFilter?.addEventListener('change', renderToolList);
   dom.clearSelection?.addEventListener('click', () => {
     selectedItemId = '';
+    activeStackWeek = -1;
     renderAll();
   });
 
@@ -941,10 +1128,38 @@ function bindEvents() {
   });
 
   dom.tracks?.addEventListener('click', (event) => {
+    const stackBlock = event.target.closest?.('[data-action="open-week-stack"][data-stack-week]');
+    if (stackBlock) {
+      event.preventDefault();
+      stackBlock.blur?.();
+      openWeekStackManager(stackBlock.dataset.stackWeek, stackBlock.dataset.id || '');
+      return;
+    }
+
     const block = event.target.closest?.('[data-action="select-item"][data-id]');
     if (!block) return;
+    block.blur?.();
     selectedItemId = block.dataset.id || '';
-    renderAll();
+    activeStackWeek = -1;
+    renderAll({ preserveScroll: true });
+  });
+
+  dom.app?.addEventListener('click', (event) => {
+    const button = event.target.closest?.('[data-stack-action]');
+    if (!button || !dom.app.contains(button)) return;
+
+    const action = button.dataset.stackAction || '';
+    if (action === 'close') {
+      closeWeekStackManager();
+      return;
+    }
+    if (action === 'select') {
+      selectStackItem(button.dataset.id || '');
+      return;
+    }
+    if (action === 'delete') {
+      deleteStackItem(button.dataset.id || '');
+    }
   });
 
   dom.inspector?.addEventListener('input', (event) => {

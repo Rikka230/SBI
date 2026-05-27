@@ -1,4 +1,4 @@
-/* SBI 8.0P.167.98 - Cursus timeline redesign from validated mockup */
+/* SBI 8.0P.167.199 - Cursus timeline stack management */
 
 .sbi-cursus-wrapper {
   max-width: none;
@@ -489,6 +489,7 @@
   position: absolute;
   top: 24px;
   left: calc(var(--start-week, 0) * var(--cursus-week-width) + 10px);
+  z-index: var(--stack-z, 1);
   width: max(78px, calc(var(--span-week, 1) * var(--cursus-week-width) - 20px));
   min-height: 58px;
   display: grid;
@@ -504,12 +505,22 @@
   transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease;
 }
 
+.sbi-cursus-block.is-stack-member {
+  top: calc(18px + var(--stack-offset, 0px));
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.28), -6px 6px 0 rgba(255, 255, 255, 0.05);
+}
+
+.sbi-cursus-block.is-stack-top {
+  border-color: rgba(45, 212, 191, 0.72);
+}
+
 .sbi-cursus-block:hover {
   transform: translateY(-1px);
   border-color: rgba(255, 255, 255, 0.32);
 }
 
 .sbi-cursus-block.is-selected {
+  z-index: 40;
   outline: 2px solid rgba(74, 126, 255, 0.98);
   box-shadow: 0 0 0 5px rgba(42, 87, 255, 0.18), 0 20px 42px rgba(0, 0, 0, 0.34);
 }
@@ -666,6 +677,145 @@
   font-size: 0.72rem;
 }
 
+.sbi-cursus-stack-modal[hidden] {
+  display: none;
+}
+
+.sbi-cursus-stack-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 10010;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+.sbi-cursus-stack-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(1, 6, 16, 0.64);
+  backdrop-filter: blur(8px);
+}
+
+.sbi-cursus-stack-panel {
+  position: relative;
+  z-index: 1;
+  width: min(720px, calc(100vw - 2rem));
+  max-height: min(760px, calc(100dvh - 2rem));
+  overflow: auto;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 18px;
+  background: rgba(7, 16, 34, 0.98);
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.48);
+  padding: 1rem;
+}
+
+.sbi-cursus-stack-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.sbi-cursus-stack-head h3 {
+  margin: 0;
+  color: #fff;
+}
+
+.sbi-cursus-stack-head button {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.055);
+  color: #edf4ff;
+  cursor: pointer;
+}
+
+.sbi-cursus-stack-mini-ruler {
+  margin-top: 1rem;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid rgba(45, 212, 191, 0.26);
+  border-radius: 10px 10px 0 0;
+  background: rgba(45, 212, 191, 0.10);
+  color: #d9fffb;
+  font-weight: 950;
+}
+
+.sbi-cursus-stack-week-lane {
+  display: grid;
+  gap: 0.65rem;
+  min-height: 170px;
+  padding: 0.8rem;
+  border: 1px solid rgba(45, 212, 191, 0.22);
+  border-top: 0;
+  border-radius: 0 0 12px 12px;
+  background:
+    repeating-linear-gradient(to right, rgba(255, 255, 255, 0.06) 0 1px, transparent 1px 120px),
+    rgba(2, 7, 17, 0.38);
+}
+
+.sbi-cursus-stack-course {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.75rem;
+  border: 1px solid rgba(86, 138, 255, 0.42);
+  border-radius: 11px;
+  background: linear-gradient(135deg, rgba(24, 63, 164, 0.98), rgba(36, 92, 255, 0.70));
+  box-shadow: var(--stack-card-x, 0) var(--stack-card-y, 0) 0 rgba(255, 255, 255, 0.05);
+}
+
+.sbi-cursus-stack-course.is-selected {
+  outline: 2px solid rgba(45, 212, 191, 0.82);
+}
+
+.sbi-cursus-stack-course strong,
+.sbi-cursus-stack-course span {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sbi-cursus-stack-course strong {
+  color: #fff;
+}
+
+.sbi-cursus-stack-course span {
+  margin-top: 0.2rem;
+  color: rgba(235, 243, 255, 0.82);
+  font-size: 0.72rem;
+}
+
+.sbi-cursus-stack-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  justify-content: flex-end;
+}
+
+.sbi-cursus-stack-actions button {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #edf4ff;
+  padding: 0.46rem 0.62rem;
+  font-size: 0.72rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.sbi-cursus-stack-actions button.is-danger {
+  border-color: rgba(255, 74, 104, 0.34);
+  color: #ffb7c4;
+  background: rgba(255, 74, 104, 0.10);
+}
+
 .sbi-cursus-footer {
   gap: 1rem;
 }
@@ -791,5 +941,13 @@
 
   .sbi-cursus-toolbox {
     max-height: 440px;
+  }
+
+  .sbi-cursus-stack-course {
+    grid-template-columns: 1fr;
+  }
+
+  .sbi-cursus-stack-actions {
+    justify-content: flex-start;
   }
 }

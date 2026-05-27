@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.167.107.6-GPT2.1
+ * SBI 8.0P.167.199
  * Cursus timeline drag & drop bridge.
  *
  * Verrouillage corrigé :
@@ -11,6 +11,7 @@
 let installed = false;
 let draggedItemId = '';
 let dragStartedAt = 0;
+let pendingChoiceModal = null;
 
 const MARGIN_TYPES = new Set(['buffer_period', 'revision_period', 'catchup_period']);
 const COURSE_TYPES = new Set(['course', 'placeholder_course']);
@@ -118,9 +119,67 @@ function ensureStyles() {
       background-color: rgba(255, 167, 74, .12);
       box-shadow: inset 0 0 0 1px rgba(255, 167, 74, .42);
     }
+    .sbi-cursus-track-body.is-drop-stack-choice {
+      background-color: rgba(45, 212, 191, .13);
+      box-shadow: inset 0 0 0 1px rgba(45, 212, 191, .48);
+    }
     .sbi-cursus-track-body.is-drop-forbidden {
       background-color: rgba(255, 74, 104, .10);
       box-shadow: inset 0 0 0 1px rgba(255, 74, 104, .34);
+    }
+    .sbi-cursus-drop-choice {
+      position: fixed;
+      inset: 0;
+      z-index: 10020;
+      display: grid;
+      place-items: center;
+      padding: 1rem;
+      background: rgba(1, 6, 16, .62);
+      backdrop-filter: blur(8px);
+    }
+    .sbi-cursus-drop-choice-panel {
+      width: min(460px, calc(100vw - 2rem));
+      border: 1px solid rgba(255, 255, 255, .14);
+      border-radius: 16px;
+      background: rgba(7, 16, 34, .98);
+      box-shadow: 0 28px 90px rgba(0, 0, 0, .45);
+      color: #edf4ff;
+      padding: 1rem;
+    }
+    .sbi-cursus-drop-choice-panel h3 {
+      margin: 0;
+      color: #fff;
+      font-size: 1rem;
+    }
+    .sbi-cursus-drop-choice-panel p {
+      margin: .45rem 0 0;
+      color: #9fb0cf;
+      font-size: .82rem;
+      line-height: 1.4;
+    }
+    .sbi-cursus-drop-choice-actions {
+      display: grid;
+      gap: .55rem;
+      margin-top: 1rem;
+    }
+    .sbi-cursus-drop-choice-actions button {
+      border: 1px solid rgba(255, 255, 255, .13);
+      border-radius: 11px;
+      background: rgba(255, 255, 255, .055);
+      color: #dbe6ff;
+      padding: .72rem .8rem;
+      font-weight: 900;
+      cursor: pointer;
+    }
+    .sbi-cursus-drop-choice-actions button[data-choice="stack"] {
+      border-color: rgba(45, 212, 191, .46);
+      background: rgba(45, 212, 191, .13);
+      color: #d9fffb;
+    }
+    .sbi-cursus-drop-choice-actions button[data-choice="shift"] {
+      border-color: rgba(255, 167, 74, .46);
+      background: rgba(255, 167, 74, .13);
+      color: #ffe8c7;
     }
   `;
   document.head.appendChild(style);
@@ -191,6 +250,30 @@ function getOccupiedRanges(trackBody, excludedItemId = '') {
     .map(rangeFromBlock)
     .filter((range) => range.id && range.span > 0)
     .sort((a, b) => (a.start - b.start) || a.title.localeCompare(b.title, 'fr'));
+}
+
+function isCoursesTrackBody(trackBody) {
+  return trackBody?.closest?.('.sbi-cursus-track')?.dataset?.track === 'courses';
+}
+
+function groupOccupiedRanges(ranges = []) {
+  const groups = [];
+  ranges.forEach((range) => {
+    const previous = groups[groups.length - 1];
+    if (previous && previous.start === range.start && previous.span === range.span && COURSE_TYPES.has(previous.type) && COURSE_TYPES.has(range.type)) {
+      previous.ids.push(range.id);
+      previous.titles.push(range.title);
+      previous.locked = previous.locked || range.locked;
+      return;
+    }
+
+    groups.push({
+      ...range,
+      ids: [range.id],
+      titles: [range.title]
+    });
+  });
+  return groups;
 }
 
 function getGlobalStructuralRanges(excludedItemId = '') {
@@ -274,7 +357,7 @@ function buildInsertionPlan(itemId, targetWeek, dropTrackBody) {
     return { itemId, allowed: false, reason: 'Déplacement impossible : une marge occupe cette semaine. Déplace d’abord la marge.', targetWeek: targetWeekSafe, insertedWeek: targetWeekSafe, insertedSpan, shifts: [], hasCollision: true };
   }
 
-  const ranges = getOccupiedRanges(originalTrackBody, itemId);
+  const ranges = groupOccupiedRanges(getOccupiedRanges(originalTrackBody, itemId));
   let cursor = insertedStart + insertedSpan;
   const shifts = [];
   let hasCollision = ranges.some((range) => rangesOverlap(insertedStart, insertedSpan, range.start, range.span));
@@ -283,7 +366,9 @@ function buildInsertionPlan(itemId, targetWeek, dropTrackBody) {
     const rangeEnd = range.start + range.span;
     if (rangeEnd <= insertedStart) return;
     if (range.start < cursor) {
-      shifts.push({ id: range.id, fromWeek: range.start + 1, toWeek: cursor + 1, span: range.span, title: range.title, locked: range.locked });
+      range.ids.forEach((id, index) => {
+        shifts.push({ id, fromWeek: range.start + 1, toWeek: cursor + 1, span: range.span, title: range.titles[index] || range.title, locked: range.locked });
+      });
       cursor += range.span;
       hasCollision = true;
       return;
@@ -338,25 +423,39 @@ async function setItemStartWeek(itemId, week) {
   return moved;
 }
 
+async function applyWeekMoves(moves = [], selectItemId = '') {
+  const api = window.SBI_ADMIN_CURSUS_API;
+  if (api?.applyWeekMoves) {
+    const result = api.applyWeekMoves(moves, { selectItemId, render: true });
+    await waitFrame();
+    if (result?.ok === false) {
+      setStatus(result.reason || 'Deplacement impossible.', 'error');
+      return false;
+    }
+    return true;
+  }
+
+  for (const move of moves) {
+    const moved = await setItemStartWeek(move.id || move.itemId, move.week || move.toWeek);
+    if (!moved) return false;
+  }
+  return true;
+}
+
 async function applyInsertionPlan(plan) {
   if (!plan?.allowed) {
     setStatus(plan?.reason || 'Déplacement impossible.', 'error');
     return;
   }
 
-  const moved = await setItemStartWeek(plan.itemId, plan.insertedWeek);
+  const moves = [
+    { id: plan.itemId, week: plan.insertedWeek },
+    ...plan.shifts.map((shift) => ({ id: shift.id, week: shift.toWeek }))
+  ];
+  const moved = await applyWeekMoves(moves, plan.itemId);
   if (!moved) {
     setStatus('Déplacement impossible : élément verrouillé ou inspecteur indisponible.', 'error');
     return;
-  }
-
-  for (const shift of plan.shifts) {
-    const shifted = await setItemStartWeek(shift.id, shift.toWeek);
-    if (!shifted) {
-      setStatus('Déplacement partiel : un bloc à repositionner est verrouillé ou introuvable. Vérifie puis sauvegarde.', 'error');
-      markBlocksDraggable();
-      return;
-    }
   }
 
   await waitFrame();
@@ -377,9 +476,26 @@ async function applyInsertionPlan(plan) {
   setStatus(`Bloc déplacé en S${plan.insertedWeek}. Pense à sauvegarder le cursus.`, 'success');
 }
 
+async function applyStackPlan(plan) {
+  if (!plan?.allowed) {
+    setStatus(plan?.reason || 'Stack impossible.', 'error');
+    return;
+  }
+
+  const moved = await applyWeekMoves([{ id: plan.itemId, week: plan.insertedWeek }], plan.itemId);
+  if (!moved) {
+    setStatus('Stack impossible : élément verrouillé ou inspecteur indisponible.', 'error');
+    return;
+  }
+
+  await waitFrame();
+  markBlocksDraggable();
+  setStatus(`Cours stacké en S${plan.insertedWeek}. Pense à sauvegarder le cursus.`, 'success');
+}
+
 function clearDropTargets() {
-  $all('.sbi-cursus-track-body.is-drop-target, .sbi-cursus-track-body.is-drop-insert, .sbi-cursus-track-body.is-drop-forbidden').forEach((node) => {
-    node.classList.remove('is-drop-target', 'is-drop-insert', 'is-drop-forbidden');
+  $all('.sbi-cursus-track-body.is-drop-target, .sbi-cursus-track-body.is-drop-insert, .sbi-cursus-track-body.is-drop-stack-choice, .sbi-cursus-track-body.is-drop-forbidden').forEach((node) => {
+    node.classList.remove('is-drop-target', 'is-drop-insert', 'is-drop-stack-choice', 'is-drop-forbidden');
   });
 }
 
@@ -434,10 +550,53 @@ function handleDragOver(event) {
     return;
   }
 
+  if (shouldOfferStackChoice(plan, draggedItemId, trackBody)) {
+    trackBody.classList.add('is-drop-stack-choice');
+    return;
+  }
+
   trackBody.classList.add(plan.hasCollision ? 'is-drop-insert' : 'is-drop-target');
 }
 
-function handleDrop(event) {
+function shouldOfferStackChoice(plan, itemId, trackBody) {
+  const block = getBlockByItemId(itemId);
+  return Boolean(plan?.allowed && plan.hasCollision && !plan.isMarginSlide && isCoursesTrackBody(trackBody) && isCourseBlock(block));
+}
+
+function closeDropChoice(choice = 'cancel') {
+  const current = pendingChoiceModal;
+  pendingChoiceModal = null;
+  current?.node?.remove();
+  current?.resolve?.(choice);
+}
+
+function showDropChoice(plan) {
+  closeDropChoice('cancel');
+  return new Promise((resolve) => {
+    const node = document.createElement('div');
+    node.className = 'sbi-cursus-drop-choice';
+    node.innerHTML = `
+      <section class="sbi-cursus-drop-choice-panel" role="dialog" aria-modal="true" aria-label="Choix de placement">
+        <h3>Placement en S${Math.max(1, Number(plan.insertedWeek) || 1)}</h3>
+        <p>Cette semaine contient deja un cours. Choisis le mode de placement avant d'appliquer le deplacement.</p>
+        <div class="sbi-cursus-drop-choice-actions">
+          <button type="button" data-choice="stack">Stacker dans cette semaine</button>
+          <button type="button" data-choice="shift">Decaler les blocs suivants</button>
+          <button type="button" data-choice="cancel">Annuler</button>
+        </div>
+      </section>
+    `;
+    node.addEventListener('click', (event) => {
+      const button = event.target.closest?.('button[data-choice]');
+      if (button) closeDropChoice(button.dataset.choice || 'cancel');
+      else if (event.target === node) closeDropChoice('cancel');
+    });
+    pendingChoiceModal = { node, resolve };
+    document.body.appendChild(node);
+  });
+}
+
+async function handleDrop(event) {
   if (!draggedItemId || !getCursusRoot()) return;
   const trackBody = event.target?.closest?.('.sbi-cursus-track-body');
   if (!trackBody) return;
@@ -450,7 +609,21 @@ function handleDrop(event) {
   clearDropTargets();
 
   if (!droppedId || elapsed < 80) return;
-  applyInsertionPlan(plan);
+  if (shouldOfferStackChoice(plan, droppedId, trackBody)) {
+    const choice = await showDropChoice(plan);
+    if (choice === 'stack') {
+      await applyStackPlan(plan);
+      return;
+    }
+    if (choice === 'shift') {
+      await applyInsertionPlan(plan);
+      return;
+    }
+    setStatus('Deplacement annule.');
+    return;
+  }
+
+  await applyInsertionPlan(plan);
 }
 
 function installListeners() {
