@@ -1,6 +1,6 @@
 import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
 import { getUserLearningProgress, resetCourseProgress, updateQuizScore } from '/js/course-engine.js';
-import { loadAssignedFormationsForUser, loadCoursesForUser, loadSearchUsersForRole, roleOf } from '/js/learning-access.js';
+import { loadAssignedFormationsForUser, loadCoursesForUser, loadSearchUsersForRole, roleOf } from '/js/learning-access.js?v=8.0P.167.204';
 import { getVisibleFormationsForProfile } from './profile-formations.js';
 import {
   computeQuizMaxScore,

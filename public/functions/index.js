@@ -3509,6 +3509,170 @@ exports.adminSetStudentTimerBypass = onCall({
     };
 });
 
+function normalizePublicUserRole(data = {}) {
+    if (data?.isGod === true) return "admin";
+    const role = normalizePublicKey(data.role || data.userRole || data.type || "");
+    if (["admin", "administrator"].includes(role)) return "admin";
+    if (["teacher", "prof", "professeur", "enseignant", "professor"].includes(role)) return "teacher";
+    if (["student", "eleve", "eleve", "etudiant", "etudiant", "apprenant"].includes(role)) return "student";
+    return "student";
+}
+
+function normalizePublicList(value) {
+    if (!Array.isArray(value)) return [];
+    return Array.from(new Set(value.map((item) => cleanString(item, 180)).filter(Boolean)));
+}
+
+function normalizePublicKey(value = "") {
+    return cleanString(value, 180)
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase();
+}
+
+function publicKeys(values = []) {
+    return normalizePublicList(values).map(normalizePublicKey).filter(Boolean);
+}
+
+function publicListsOverlap(left = [], right = []) {
+    const rightSet = new Set(publicKeys(right));
+    return publicKeys(left).some((item) => rightSet.has(item));
+}
+
+function collectFormationProfileKeys(data = {}) {
+    return normalizePublicList([
+        ...(Array.isArray(data.formationIds) ? data.formationIds : []),
+        ...(Array.isArray(data.formationsAcces) ? data.formationsAcces : []),
+        data.formationId,
+        data.formationName,
+        data.formationTitle,
+        data.formationTitre,
+        data.promotionFormationName,
+        data.promotionFormationTitle
+    ]);
+}
+
+function collectPromotionProfileKeys(data = {}) {
+    return normalizePublicList([
+        ...(Array.isArray(data.promotionIds) ? data.promotionIds : []),
+        ...(Array.isArray(data.assignedPromotionIds) ? data.assignedPromotionIds : []),
+        data.promotionId,
+        data.currentPromotionId,
+        data.assignedPromotionId,
+        data.cohortId,
+        data.promotionName,
+        data.promotionTitle
+    ]);
+}
+
+function usersShareLearningScope(callerData = {}, targetData = {}) {
+    return publicListsOverlap(collectFormationProfileKeys(callerData), collectFormationProfileKeys(targetData))
+        || publicListsOverlap(collectPromotionProfileKeys(callerData), collectPromotionProfileKeys(targetData));
+}
+
+function canSeePublicUserProfile(caller = {}, targetUid = "", targetData = {}) {
+    if (!targetData || targetData.statut === "suspendu") return false;
+    if (caller.isAdmin || caller.data?.isGod === true || caller.data?.role === "admin") return true;
+    if (caller.uid && caller.uid === targetUid) return true;
+    if (normalizePublicUserRole(targetData) === "admin" || targetData.isGod === true) return false;
+    return usersShareLearningScope(caller.data || {}, targetData);
+}
+
+function sanitizeVisibleUserProfile(uid = "", data = {}, { includeEmail = false } = {}) {
+    const role = normalizePublicUserRole(data);
+    const profile = {
+        id: uid,
+        uid,
+        prenom: cleanString(data.prenom, 80),
+        nom: cleanString(data.nom, 80),
+        role,
+        userRole: role,
+        photoURL: cleanString(data.photoURL, 1000),
+        bio: cleanString(data.bio, 800),
+        formationIds: normalizePublicList(data.formationIds),
+        formationsAcces: normalizePublicList(data.formationsAcces),
+        formationName: cleanString(data.formationName || data.promotionFormationName || "", 180),
+        promotionId: cleanString(data.promotionId || data.currentPromotionId || data.assignedPromotionId || data.cohortId || "", 180),
+        promotionIds: normalizePublicList(data.promotionIds || data.assignedPromotionIds),
+        promotionName: cleanString(data.promotionName || data.promotionTitle || "", 180),
+        publicProfile: true,
+        sanitized: true
+    };
+
+    if (includeEmail) {
+        profile.email = cleanEmail(data.email);
+        profile.statut = cleanString(data.statut, 80);
+    }
+
+    return profile;
+}
+
+exports.searchVisibleUsers = onCall({
+    region: "europe-west1",
+    timeoutSeconds: 30,
+    memory: "256MiB"
+}, async (request) => {
+    const db = admin.firestore();
+    const caller = await requireActiveCourseCaller(request, db);
+    const callerRole = normalizePublicUserRole(caller.data || {});
+    const requestedRoles = normalizePublicList(request.data?.roles || [])
+        .map((role) => normalizePublicUserRole({ role }));
+    const defaultRoles = callerRole === "teacher"
+        ? ["student"]
+        : callerRole === "student"
+            ? ["student", "teacher"]
+            : ["student", "teacher"];
+    const allowedRoles = new Set(requestedRoles.length ? requestedRoles : defaultRoles);
+    const term = normalizePublicKey(request.data?.term || "");
+    const maxResults = Math.min(Math.max(Number(request.data?.limit) || 80, 1), 120);
+
+    const snap = await db.collection("users").limit(800).get();
+    const users = [];
+
+    snap.forEach((docSnap) => {
+        if (users.length >= maxResults) return;
+        const data = docSnap.data() || {};
+        if (docSnap.id === caller.uid) return;
+        if (!canSeePublicUserProfile(caller, docSnap.id, data)) return;
+        const role = normalizePublicUserRole(data);
+        if (!allowedRoles.has(role)) return;
+        if (term) {
+            const nameKey = normalizePublicKey(`${data.prenom || ""} ${data.nom || ""}`);
+            const emailKey = caller.isAdmin ? normalizePublicKey(data.email || "") : "";
+            if (!nameKey.includes(term) && !emailKey.includes(term)) return;
+        }
+        users.push(sanitizeVisibleUserProfile(docSnap.id, data, { includeEmail: caller.isAdmin || callerRole === "teacher" }));
+    });
+
+    users.sort((a, b) => `${a.prenom || ""} ${a.nom || ""}`.localeCompare(`${b.prenom || ""} ${b.nom || ""}`, "fr", { sensitivity: "base" }));
+
+    return { users, count: users.length };
+});
+
+exports.getVisibleUserProfile = onCall({
+    region: "europe-west1",
+    timeoutSeconds: 30,
+    memory: "256MiB"
+}, async (request) => {
+    const db = admin.firestore();
+    const caller = await requireActiveCourseCaller(request, db);
+    const uid = cleanString(request.data?.uid, 180);
+    if (!uid) throw new HttpsError("invalid-argument", "Profil manquant.");
+
+    const snap = await db.collection("users").doc(uid).get();
+    if (!snap.exists) throw new HttpsError("not-found", "Profil introuvable.");
+    const data = snap.data() || {};
+    if (!canSeePublicUserProfile(caller, uid, data)) {
+        throw new HttpsError("permission-denied", "Profil non accessible.");
+    }
+
+    const includeEmail = caller.isAdmin || caller.uid === uid;
+    return {
+        user: sanitizeVisibleUserProfile(snap.id, data, { includeEmail }),
+        publicOnly: !(caller.isAdmin || caller.uid === uid)
+    };
+});
+
 function normalizeLiveRole(value = "") {
     const role = cleanString(value, 60).toLowerCase();
     if (["prof", "professeur", "enseignant"].includes(role)) return "teacher";

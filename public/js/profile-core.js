@@ -16,20 +16,24 @@
  * =======================================================================
  */
 
-import { db, auth } from '/js/firebase-init.js';
+import { db, auth, app } from '/js/firebase-init.js';
 import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js';
+import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js';
 import { waitForSbiTopbar } from '/admin/js/components/ready.js';
 import { waitForSbiComponents } from '/js/profile/profile-utils.js?v=8.0P.167.74';
 import { hydrateLoggedInTopbar } from '/js/profile/profile-topbar.js';
-import { renderProfileShell } from '/js/profile/profile-render.js?v=8.0P.167.98-GPT2.3';
-import { renderUserFormations } from '/js/profile/profile-formations.js?v=8.0P.167.87';
+import { renderProfileShell } from '/js/profile/profile-render.js?v=8.0P.167.204';
+import { renderUserFormations } from '/js/profile/profile-formations.js?v=8.0P.167.204';
 import { renderStudentDocumentsPanel } from '/js/profile/profile-student-documents.js?v=8.0P.167.96.1-GPT2.1';
 import { renderGodTimerBypassPanel } from '/js/profile/profile-god-timer-bypass.js?v=8.0P.167.203';
-import { renderLearningTracking, renderTeacherStudentsList } from '/js/profile/profile-tracking.js?v=8.0P.167.97-GPT2.2';
+import { renderLearningTracking, renderTeacherStudentsList } from '/js/profile/profile-tracking.js?v=8.0P.167.204';
 import { setupSaveButtons, setupSecurityAndEditMode } from '/js/profile/profile-edit.js';
 import { initProfileAvatarCropper } from '/js/profile/profile-avatar-cropper.js';
 import { startProfilePresenceListener, stopProfilePresenceListener } from '/js/profile/profile-presence.js';
+
+const functionsInstance = getFunctions(app, 'europe-west1');
+const getVisibleUserProfileCallable = httpsCallable(functionsInstance, 'getVisibleUserProfile');
 
 const context = {
   currentProfileId: null,
@@ -44,10 +48,22 @@ const context = {
 
 function getProfileRole(data = {}) {
   if (data?.isGod === true || data?.role === 'admin') return 'admin';
-  const raw = String(data.role || data.userRole || data.type || '').trim().toLowerCase();
-  if (['teacher', 'prof', 'professeur'].includes(raw)) return 'teacher';
-  if (['student', 'eleve', 'élève', 'etudiant', 'étudiant'].includes(raw)) return 'student';
+  const raw = String(data.role || data.userRole || data.type || '')
+    .trim()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+  if (['teacher', 'prof', 'professeur', 'enseignant', 'professor'].includes(raw)) return 'teacher';
+  if (['student', 'eleve', 'etudiant', 'apprenant'].includes(raw)) return 'student';
   return 'student';
+}
+
+function isExpectedProfileAccessError(error) {
+  const code = String(error?.code || '').toLowerCase();
+  const message = String(error?.message || '').toLowerCase();
+  return code.includes('permission-denied')
+    || message.includes('missing or insufficient permissions')
+    || message.includes('permission');
 }
 
 let activeCleanup = null;
@@ -79,6 +95,23 @@ function resolveTargetProfileId(loggedInUserId) {
   return urlParams.get('id') || loggedInUserId;
 }
 
+async function loadVisibleProfileFallback(uid) {
+  const result = await getVisibleUserProfileCallable({ uid });
+  const data = result?.data?.user || null;
+  return data ? { data, publicOnly: result?.data?.publicOnly === true } : null;
+}
+
+async function loadTargetProfileData(uid) {
+  try {
+    const snap = await getDoc(doc(db, 'users', uid));
+    if (!snap.exists()) return null;
+    return { data: snap.data(), publicOnly: false };
+  } catch (error) {
+    if (!isExpectedProfileAccessError(error)) throw error;
+    return loadVisibleProfileFallback(uid);
+  }
+}
+
 async function loadLoggedInUserData(uid) {
   const snap = await getDoc(doc(db, 'users', uid));
   if (!snap.exists()) return {};
@@ -103,6 +136,63 @@ function prepareProfileActionButtons() {
     initProfileAvatarCropper({ context, reloadProfile: loadProfileData });
     avatarCropperPrepared = true;
   }
+}
+
+function getTrackingTabNode() {
+  return Array.from(document.querySelectorAll('.p-tab, .student-sub-nav-item')).find((node) => {
+    const action = String(node.getAttribute('onclick') || '');
+    return action.includes('ptab-tracking') || action.includes('tab-tracking');
+  }) || null;
+}
+
+function activatePublicProfileTabIfNeeded(tabNode) {
+  if (!tabNode?.classList?.contains('active')) return;
+  const fallback = Array.from(document.querySelectorAll('.p-tab, .student-sub-nav-item')).find((node) => {
+    const action = String(node.getAttribute('onclick') || '');
+    return action.includes('ptab-public') || action.includes('tab-overview');
+  });
+  fallback?.click?.();
+}
+
+function setPanelVisible(node, visible, displayValue = '') {
+  if (!node) return;
+  node.style.display = visible ? displayValue : 'none';
+  node.setAttribute('aria-hidden', visible ? 'false' : 'true');
+}
+
+function viewerCanSeeStudentTracking(profileRole) {
+  if (context.isOwner || context.isAdmin) return true;
+  return profileRole === 'student' && getProfileRole(context.loggedInUserData || {}) === 'teacher';
+}
+
+function viewerCanSeeTeacherStudents(profileRole) {
+  return profileRole === 'teacher' && (context.isOwner || context.isAdmin);
+}
+
+function configurePrivateProfilePanels(profileRole) {
+  const canSeeTracking = profileRole === 'student'
+    ? viewerCanSeeStudentTracking(profileRole)
+    : viewerCanSeeTeacherStudents(profileRole);
+
+  const trackingTab = getTrackingTabNode();
+  const trackingPanel = document.getElementById('ptab-tracking') || document.getElementById('tab-tracking');
+  setPanelVisible(trackingTab, canSeeTracking);
+  setPanelVisible(trackingPanel, canSeeTracking);
+  if (!canSeeTracking) {
+    activatePublicProfileTabIfNeeded(trackingTab);
+    const trackingList = document.getElementById('prof-tracking-list');
+    if (trackingList) trackingList.innerHTML = '';
+  }
+
+  setPanelVisible(
+    document.getElementById('prof-student-documents-panel'),
+    profileRole === 'student' && context.isAdmin
+  );
+
+  setPanelVisible(
+    document.getElementById('student-visible-documents'),
+    profileRole === 'student' && context.isOwner
+  );
 }
 
 
@@ -196,14 +286,14 @@ function installStudentTrackingAccordions() {
 
 async function loadProfileData(uid) {
   try {
-    const snap = await getDoc(doc(db, 'users', uid));
-    if (!snap.exists()) {
+    const loadedProfile = await loadTargetProfileData(uid);
+    if (!loadedProfile?.data) {
       console.warn('[SBI Profile] Utilisateur introuvable :', uid);
       return;
     }
 
     context.currentProfileId = uid;
-    context.currentProfileData = snap.data();
+    context.currentProfileData = loadedProfile.data;
     context.isOwner = context.currentProfileId === context.loggedInUserId;
 
     await renderProfileShell({
@@ -220,16 +310,17 @@ async function loadProfileData(uid) {
     await renderUserFormations({ uid, context });
 
     const profileRole = getProfileRole(context.currentProfileData || {});
+    configurePrivateProfilePanels(profileRole);
     const trackingList = document.getElementById('prof-tracking-list');
 
-    if (trackingList && profileRole === 'student') {
+    if (trackingList && profileRole === 'student' && viewerCanSeeStudentTracking(profileRole)) {
       await renderLearningTracking({
         db,
         uid,
         context,
         reloadProfile: loadProfileData
       });
-    } else if (trackingList && profileRole === 'teacher') {
+    } else if (trackingList && profileRole === 'teacher' && viewerCanSeeTeacherStudents(profileRole)) {
       await renderTeacherStudentsList({
         uid,
         context
@@ -238,7 +329,7 @@ async function loadProfileData(uid) {
       trackingList.innerHTML = '';
     }
 
-    if (profileRole === 'student' && document.getElementById('prof-student-documents-panel')) {
+    if (profileRole === 'student' && context.isAdmin && document.getElementById('prof-student-documents-panel')) {
       await renderStudentDocumentsPanel({
         db,
         uid,
@@ -256,7 +347,7 @@ async function loadProfileData(uid) {
       });
     }
 
-    if (profileRole === 'student') installStudentTrackingAccordions();
+    if (profileRole === 'student' && viewerCanSeeStudentTracking(profileRole)) installStudentTrackingAccordions();
   } catch (error) {
     console.error('[SBI Profile] Erreur chargement profil :', error);
   } finally {

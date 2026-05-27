@@ -23,9 +23,38 @@ let lastDocuments = [];
 let authUnsubscribe = null;
 let bootScheduled = false;
 let loadRequestId = 0;
+let loadedForUid = '';
 
 function isStudentPath() {
   return window.location.pathname.startsWith('/student/');
+}
+
+function getEffectiveProfileUrl() {
+  return new URL(window.SBI_APP_SHELL_CURRENT_URL || window.location.href, window.location.origin);
+}
+
+function isOwnProfileView(uid = '') {
+  const targetId = getEffectiveProfileUrl().searchParams.get('id') || '';
+  return !targetId || targetId === uid;
+}
+
+function setRootVisible(visible) {
+  const root = getRoot();
+  if (!root) return;
+  root.hidden = !visible;
+  root.style.display = visible ? '' : 'none';
+  root.setAttribute('aria-hidden', visible ? 'false' : 'true');
+}
+
+function canShowDocumentsForUser(uid = '') {
+  const visible = Boolean(uid && isOwnProfileView(uid));
+  setRootVisible(visible);
+  if (!visible) {
+    loadRequestId += 1;
+    lastDocuments = [];
+    loadedForUid = '';
+  }
+  return visible;
 }
 
 function escapeHTML(value = '') {
@@ -479,6 +508,7 @@ async function loadVisibleDocuments(uid) {
 
 async function loadAndRender(uid) {
   const requestId = ++loadRequestId;
+  loadedForUid = uid;
   setStatus('Chargement des documents SBI...', 'muted');
   setCount(0, 'Chargement...');
 
@@ -506,8 +536,18 @@ function mount() {
 
   const root = getRoot();
   if (!root) return;
+  const currentUid = auth.currentUser?.uid || '';
+
+  if (currentUid && !canShowDocumentsForUser(currentUid)) return;
+  if (!currentUid && getEffectiveProfileUrl().searchParams.get('id')) {
+    setRootVisible(false);
+    return;
+  }
 
   if (root.dataset.studentDocumentsMounted === '1') {
+    if (currentUid && canShowDocumentsForUser(currentUid) && loadedForUid !== currentUid) {
+      loadAndRender(currentUid);
+    }
     activateTrackingTabIfNeeded();
     return;
   }
@@ -519,7 +559,9 @@ function mount() {
   activateTrackingTabIfNeeded();
 
   if (auth.currentUser) {
-    loadAndRender(auth.currentUser.uid);
+    if (canShowDocumentsForUser(auth.currentUser.uid)) {
+      loadAndRender(auth.currentUser.uid);
+    }
   }
 
   if (!authUnsubscribe) {
@@ -527,12 +569,14 @@ function mount() {
       if (!getRoot()) return;
 
       if (!user) {
+        setRootVisible(true);
         setStatus('Connecte-toi pour consulter tes documents SBI.', 'error');
         setCount(0);
         renderEmpty();
         return;
       }
 
+      if (!canShowDocumentsForUser(user.uid)) return;
       await loadAndRender(user.uid);
     });
   }

@@ -11,7 +11,7 @@
  * =======================================================================
  */
 
-import { db } from '/js/firebase-init.js';
+import { db, app } from '/js/firebase-init.js';
 import {
   collection,
   doc,
@@ -21,7 +21,11 @@ import {
   query,
   where
 } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
+import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js';
 import { getUserLearningProgress } from '/js/course-engine.js';
+
+const functionsInstance = getFunctions(app, 'europe-west1');
+const searchVisibleUsersCallable = httpsCallable(functionsInstance, 'searchVisibleUsers');
 
 export function normalizeList(items) {
   if (!Array.isArray(items)) return [];
@@ -102,8 +106,12 @@ export async function safeGetDocs(queryRef, label = 'requête Firestore') {
 
 export function roleOf(userData = {}, fallback = '') {
   if (userData?.isGod === true || userData?.role === 'admin') return 'admin';
-  if (userData?.role === 'teacher' || userData?.role === 'prof') return 'teacher';
-  if (userData?.role === 'student' || userData?.role === 'eleve') return 'student';
+  const rawRole = String(userData?.role || fallback || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+  if (['teacher', 'prof', 'professeur', 'enseignant', 'professor'].includes(rawRole)) return 'teacher';
+  if (['student', 'eleve', 'etudiant', 'apprenant'].includes(rawRole)) return 'student';
   return fallback || 'student';
 }
 
@@ -418,9 +426,29 @@ export async function loadSearchUsersForRole({ uid, userData = {}, role = '', fo
     return snap ? snapToArray(snap) : [];
   }
 
+  const callableRoles = safeRole === 'teacher'
+    ? ['student']
+    : ['student', 'teacher'];
+
+  try {
+    const result = await searchVisibleUsersCallable({
+      roles: callableRoles,
+      limit: 120
+    });
+    const users = Array.isArray(result?.data?.users) ? result.data.users : [];
+    if (users.length) {
+      return users
+        .filter((user) => user.id !== uid)
+        .filter((user) => !isAdminLike(user))
+        .filter((user) => callableRoles.includes(roleOf(user, user.role)));
+    }
+  } catch (error) {
+    reportOptionalAccess('recherche profils visibles', error, 'fallback Firestore');
+  }
+
   const targetRoles = safeRole === 'teacher'
     ? new Set(['student', 'eleve', 'élève'])
-    : new Set(['teacher', 'prof', 'professor']);
+    : new Set(['student', 'eleve', 'élève', 'etudiant', 'étudiant', 'teacher', 'prof', 'professeur', 'professor', 'enseignant']);
 
   const idsFromMembership = [];
   formations.forEach((formation) => {
@@ -441,7 +469,7 @@ export async function loadSearchUsersForRole({ uid, userData = {}, role = '', fo
   return uniqById([...byIds, ...byIndex])
     .filter((user) => user.id !== uid)
     .filter((user) => !isAdminLike(user))
-    .filter((user) => targetRoles.has(String(user.role || '').toLowerCase()));
+    .filter((user) => targetRoles.has(String(user.role || '').toLowerCase()) || targetRoles.has(roleOf(user, user.role)));
 }
 
 export function sortByTitle(a, b) {

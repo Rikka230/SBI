@@ -35,6 +35,7 @@ const SVG_READ = `<svg width="16" height="16" fill="currentColor" viewBox="0 0 2
 const SVG_LOCK = `<svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>`;
 const SVG_TIME = `<svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24" style="margin-right: 8px;"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>`;
 const SVG_NEXT = `<svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg>`;
+const SVG_DOWNLOAD = `<svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20h14v-2H5v2zM19 9h-4V3H9v6H5l7 7 7-7z"/></svg>`;
 const PEDAGOGIC_CHAPTER_TYPES = new Set(['resource', 'assignment', 'checkpoint', 'case_study']);
 const OBJECTIVES_CHAPTER_ID = 'course-objectives';
 
@@ -523,6 +524,35 @@ function renderViewerText(label, value) {
     return `<section class="sbi-viewer-section"><h3>${escapeHtml(label)}</h3><p>${escapeHtml(cleanValue).replace(/\n/g, '<br>')}</p></section>`;
 }
 
+function sanitizeDownloadFileName(value = '') {
+    return String(value || '')
+        .replace(/[\\/:*?"<>|]+/g, '-')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 180);
+}
+
+function renderResourceDownloadLink(chapter = {}) {
+    const resourceUrl = String(chapter.resourceUrl || '').trim();
+    if (!resourceUrl) return '';
+
+    const fileName = sanitizeDownloadFileName(chapter.resourceFileName || '');
+    const label = fileName || 'la ressource';
+    const downloadAttr = fileName ? ` download="${escapeHtml(fileName)}"` : ' download';
+
+    return `
+        <a class="sbi-viewer-resource-link sbi-viewer-resource-download"
+           href="${escapeHtml(resourceUrl)}"
+           target="_blank"
+           rel="noopener noreferrer"
+           ${downloadAttr}
+           aria-label="Telecharger ${escapeHtml(label)}">
+            ${SVG_DOWNLOAD}
+            <span>Telecharger ${escapeHtml(label)}</span>
+        </a>
+    `;
+}
+
 function cleanViewerText(value = '') {
     const rawValue = String(value || '').trim();
     if (!rawValue) return '';
@@ -575,9 +605,7 @@ function renderPedagogicChapter(chapter = {}) {
     let body = '';
 
     if (type === 'resource') {
-        const link = chapter.resourceUrl
-            ? `<a class="sbi-viewer-resource-link" href="${escapeHtml(chapter.resourceUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(chapter.resourceFileName || chapter.resourceUrl)}</a>`
-            : '';
+        const link = renderResourceDownloadLink(chapter);
         const fileMeta = [
             chapter.resourceFileName || '',
             formatViewerBytes(chapter.resourceSize),
@@ -918,7 +946,12 @@ function startSecurityTimer(isAlreadyDone) {
         return;
     }
 
-    if (isAdminOrTeacher || currentUserCourseTimerBypass || isAlreadyDone) {
+    if (!isAdminOrTeacher && currentUserCourseTimerBypass && !isAlreadyDone) {
+        void completeTimerValidatedChapter(btn, isLast, chapter.id);
+        return;
+    }
+
+    if (isAdminOrTeacher || isAlreadyDone) {
         enableCompletedStepButton(btn, isLast, isLast ? "Terminer le cours" : "Continuer");
         return;
     }

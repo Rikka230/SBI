@@ -101,6 +101,7 @@ body.learning-mode {
 .media-container img, .media-container video { 
     max-width: 100%; 
     max-height: 70vh; 
+    min-height: clamp(360px, calc(100vh - 260px), 560px);
     height: auto;
     object-fit: contain; 
     display: block; 
@@ -282,13 +283,31 @@ body.learning-mode {
 
 .sbi-viewer-resource-link {
     display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
     width: fit-content;
     max-width: 100%;
     overflow-wrap: anywhere;
     color: var(--accent-blue);
     font-weight: 900;
     text-decoration: none;
-    border-bottom: 2px solid var(--accent-blue-light);
+    border: 1px solid rgba(42, 87, 255, 0.22);
+    border-radius: 999px;
+    padding: 0.72rem 1rem;
+    background: rgba(42, 87, 255, 0.08);
+}
+
+.sbi-viewer-resource-link:hover {
+    background: rgba(42, 87, 255, 0.14);
+}
+
+.sbi-viewer-resource-link svg {
+    flex: 0 0 auto;
+}
+
+.sbi-viewer-resource-link span {
+    min-width: 0;
+    overflow-wrap: anywhere;
 }
 
 .sbi-viewer-resource-image {

@@ -50,13 +50,47 @@ function setStatus(message = '', tone = 'muted') {
   node.dataset.tone = tone;
 }
 
+async function safeGetDocsForLive(queryRef, label = 'requete live') {
+  try {
+    return await getDocs(queryRef);
+  } catch (error) {
+    console.warn(`[SBI Lives] ${label} ignoree :`, error);
+    return null;
+  }
+}
+
+async function safeGetDocForLive(docRef, label = 'document live') {
+  try {
+    return await getDoc(docRef);
+  } catch (error) {
+    console.warn(`[SBI Lives] ${label} inaccessible :`, error);
+    return null;
+  }
+}
+
+function pushUniqueRow(rows, seen, item) {
+  if (!item?.id || seen.has(item.id)) return;
+  seen.add(item.id);
+  rows.push(item);
+}
+
+async function loadFormationsByTitles(titles = []) {
+  const rows = [];
+  const seen = new Set();
+  for (const part of chunk(normalizeList(titles))) {
+    const snap = await safeGetDocsForLive(query(collection(db, 'formations'), where('titre', 'in', part)), 'formations prof par titres');
+    snap?.forEach((item) => pushUniqueRow(rows, seen, { id: item.id, ...item.data() }));
+  }
+  return rows;
+}
+
 async function loadTeacherFormations(uid = '', profile = {}) {
   const formations = [];
   const seen = new Set();
 
   try {
-    const snap = await getDocs(query(collection(db, 'formations'), where('profs', 'array-contains', uid)));
-    snap.forEach((item) => {
+    const snap = await safeGetDocsForLive(query(collection(db, 'formations'), where('profs', 'array-contains', uid)), 'formations prof via profs');
+    snap?.forEach((item) => {
       seen.add(item.id);
       formations.push({ id: item.id, ...item.data() });
     });
@@ -68,19 +102,35 @@ async function loadTeacherFormations(uid = '', profile = {}) {
     if (seen.has(id)) continue;
     seen.add(id);
     try {
-      const snap = await getDoc(doc(db, 'formations', id));
+      const snap = await safeGetDocForLive(doc(db, 'formations', id), `formation ${id}`);
       if (snap.exists()) formations.push({ id: snap.id, ...snap.data() });
     } catch (_) {}
+  }
+
+  for (const formation of await loadFormationsByTitles(profile.formationsAcces || [])) {
+    if (seen.has(formation.id)) continue;
+    seen.add(formation.id);
+    formations.push(formation);
   }
 
   return formations;
 }
 
+async function loadPromotionsByIds(ids = []) {
+  const rows = [];
+  const seen = new Set();
+  for (const id of normalizeList(ids)) {
+    const snap = await safeGetDocForLive(doc(db, 'promotions', id), `promotion ${id}`);
+    if (snap?.exists()) pushUniqueRow(rows, seen, { id: snap.id, ...snap.data() });
+  }
+  return rows;
+}
+
 async function loadPromotionsForRole(uid = '', profile = {}) {
   if (state.role === 'admin') {
-    const snap = await getDocs(collection(db, 'promotions'));
+    const snap = await safeGetDocsForLive(collection(db, 'promotions'), 'promotions admin');
     const rows = [];
-    snap.forEach((item) => rows.push({ id: item.id, ...item.data() }));
+    snap?.forEach((item) => rows.push({ id: item.id, ...item.data() }));
     return rows;
   }
 
@@ -96,22 +146,25 @@ async function loadPromotionsForRole(uid = '', profile = {}) {
   const rows = [];
   const seen = new Set();
 
+  for (const promotion of await loadPromotionsByIds([
+    profile.promotionId,
+    profile.currentPromotionId,
+    profile.assignedPromotionId,
+    profile.cohortId,
+    ...(Array.isArray(profile.promotionIds) ? profile.promotionIds : []),
+    ...(Array.isArray(profile.assignedPromotionIds) ? profile.assignedPromotionIds : [])
+  ])) {
+    pushUniqueRow(rows, seen, promotion);
+  }
+
   for (const part of chunk(formationIds)) {
-    const snap = await getDocs(query(collection(db, 'promotions'), where('formationId', 'in', part)));
-    snap.forEach((item) => {
-      if (seen.has(item.id)) return;
-      seen.add(item.id);
-      rows.push({ id: item.id, ...item.data() });
-    });
+    const snap = await safeGetDocsForLive(query(collection(db, 'promotions'), where('formationId', 'in', part)), 'promotions par formationId');
+    snap?.forEach((item) => pushUniqueRow(rows, seen, { id: item.id, ...item.data() }));
   }
 
   for (const part of chunk(formationTitles)) {
-    const snap = await getDocs(query(collection(db, 'promotions'), where('formationName', 'in', part)));
-    snap.forEach((item) => {
-      if (seen.has(item.id)) return;
-      seen.add(item.id);
-      rows.push({ id: item.id, ...item.data() });
-    });
+    const snap = await safeGetDocsForLive(query(collection(db, 'promotions'), where('formationName', 'in', part)), 'promotions par formationName');
+    snap?.forEach((item) => pushUniqueRow(rows, seen, { id: item.id, ...item.data() }));
   }
 
   return rows;

@@ -220,7 +220,7 @@ service cloud.firestore {
       return isAdmin()
         || isSelf(userId)
         || (
-          isActiveUser()
+          isTeacher()
           && !isAdminProfile(userData)
           && sharedFormationWithCurrentUser(userData)
         );
@@ -590,6 +590,11 @@ service cloud.firestore {
           && promotionData.keys().hasAny(['formationId'])
           && currentUserHasFormationIds()
           && promotionData.formationId in currentUser().formationIds
+        )
+        || (
+          isTeacher()
+          && promotionData.keys().hasAny(['formationName'])
+          && currentUserHasFormationAccess(promotionData.formationName)
         );
     }
 

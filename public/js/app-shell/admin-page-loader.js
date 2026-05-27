@@ -38,6 +38,7 @@ const ROUTE_BODY_CLASSES = new Set([
   'sbi-editor-v2--embedded',
   'sbi-dashboard-page',
   'sbi-dashboard-redesign',
+  'sbi-live-page',
   'no-right-panel'
 ]);
 

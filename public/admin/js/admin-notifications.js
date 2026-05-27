@@ -23,7 +23,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import { waitForSbiTopbar } from '/admin/js/components/ready.js';
-import { setupGlobalSearch, clearGlobalSearchCache } from '/admin/js/global-search.js?v=8.0P.167.184';
+import { setupGlobalSearch, clearGlobalSearchCache } from '/admin/js/global-search.js?v=8.0P.167.204';
 
 let currentUid = null;
 let currentUserProfile = null;
