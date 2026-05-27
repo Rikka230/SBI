@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.201',
+  version: '8.0P.167.202',
   branch: 'main',
-  channel: 'CURSUS LIVE',
-  stage: 'LIVE RENAME FUTURE BLOCKS',
+  channel: 'STUDENT COURSES',
+  stage: 'PRIORITY LOAD CACHE',
   updatedAt: '2026-05-27',
-  label: 'SBI 8.0P.167.201 - live rename and future blocks'
+  label: 'SBI 8.0P.167.202 - student course priority loading'
 };
 
 export function getSbiVersionLabel() {

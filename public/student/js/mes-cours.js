@@ -3,7 +3,7 @@
  * MES COURS - Bibliothèque étudiant SBI
  * =======================================================================
  *
- * 8.0P.167.201 : ordre Programme + blocs cours futurs affichés comme "Prochainement".
+ * 8.0P.167.202 : chargement prioritaire des cours disponibles + cache, bouton masquer prochainement.
  * Le viewer de cours reste en navigation classique.
  * =======================================================================
  */
@@ -39,7 +39,15 @@ let currentOpenFormationId = '';
 let currentOpenFormationTitle = '';
 let currentCourseViewMode = 'program';
 let currentHideCompletedCourses = false;
+let currentHideFutureBlocks = false;
 let loadedStudentPromotions = [];
+let studentCourseLoadGeneration = 0;
+let progressiveLoadTimer = 0;
+
+const STUDENT_COURSE_CACHE_VERSION = '8.0P.167.202';
+const STUDENT_COURSE_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+const STUDENT_COURSE_CACHE_LIMIT = 160;
+const STUDENT_COURSE_BATCH_SIZE = 6;
 
 function resetState() {
     currentUid = null;
@@ -51,7 +59,11 @@ function resetState() {
     currentOpenFormationTitle = '';
     currentCourseViewMode = 'program';
     currentHideCompletedCourses = false;
+    currentHideFutureBlocks = false;
     loadedStudentPromotions = [];
+    studentCourseLoadGeneration += 1;
+    window.clearTimeout(progressiveLoadTimer);
+    progressiveLoadTimer = 0;
 }
 
 export function mountStudentCourses() {
@@ -81,6 +93,7 @@ export function mountStudentCourses() {
             bindStudentCoursesEvents(addCleanup);
             renderAssignedFormations();
             openRequestedFormationFromUrl();
+            scheduleProgressiveStudentCourseLoad();
         } catch (error) {
             console.error("Erreur d'initialisation :", error);
             showFormationsError();
@@ -233,6 +246,10 @@ function toMillis(value) {
     return 0;
 }
 
+function wait(ms = 0) {
+    return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
 function formatDate(value) {
     const ms = toMillis(value);
     if (!ms) return '';
@@ -296,6 +313,175 @@ function buildSyntheticCourseId(prefix = 'plan', ...parts) {
         .join('_')
         .replace(/[^a-zA-Z0-9_-]+/g, '-')
         .slice(0, 180) || `${prefix}_future`;
+}
+
+function getStudentCourseCacheKey() {
+    return `sbi:student-courses:${currentUid || 'anonymous'}`;
+}
+
+function sanitizeChapterForCache(chapter = {}) {
+    return {
+        id: chapter.id || chapter.chapterId || '',
+        titre: chapter.titre || chapter.title || '',
+        title: chapter.title || chapter.titre || '',
+        type: chapter.type || '',
+        activityType: chapter.activityType || '',
+        maxScore: chapter.maxScore ?? chapter.score ?? '',
+        score: chapter.score ?? '',
+        checkpointScore: chapter.checkpointScore ?? '',
+        xpReward: chapter.xpReward ?? '',
+        questions: Array.isArray(chapter.questions)
+            ? chapter.questions.map((question) => ({ points: question?.points ?? 1 }))
+            : [],
+        blanks: Array.isArray(chapter.blanks)
+            ? chapter.blanks.map((blank) => ({ points: blank?.points ?? 1 }))
+            : []
+    };
+}
+
+function sanitizeCourseForCache(course = {}) {
+    if (!course?.id) return null;
+    return {
+        id: course.id,
+        titre: course.titre || '',
+        title: course.title || '',
+        bloc: course.bloc || '',
+        blockTitle: course.blockTitle || '',
+        blockName: course.blockName || '',
+        formationId: course.formationId || '',
+        formation: course.formation || '',
+        formationTitre: course.formationTitre || '',
+        formationTitle: course.formationTitle || '',
+        formationName: course.formationName || '',
+        formationNom: course.formationNom || '',
+        formationRef: course.formationRef || '',
+        formations: normalizeList(course.formations || []),
+        formationIds: normalizeList(course.formationIds || []),
+        formationsIds: normalizeList(course.formationsIds || []),
+        targetFormationIds: normalizeList(course.targetFormationIds || []),
+        targetFormationTitles: normalizeList(course.targetFormationTitles || []),
+        targetStudents: normalizeList(course.targetStudents || []),
+        actif: course.actif === true ? true : course.actif === false ? false : undefined,
+        statutValidation: course.statutValidation || '',
+        estimatedDurationDays: course.estimatedDurationDays || course.durationDays || '',
+        durationDays: course.durationDays || course.estimatedDurationDays || '',
+        priorityLevel: course.priorityLevel || '',
+        chapitres: Array.isArray(course.chapitres) ? course.chapitres.map(sanitizeChapterForCache) : []
+    };
+}
+
+function readStudentCourseCache() {
+    try {
+        const raw = window.localStorage?.getItem(getStudentCourseCacheKey());
+        if (!raw) return { version: STUDENT_COURSE_CACHE_VERSION, savedAt: Date.now(), courses: {}, courseIds: [] };
+        const parsed = JSON.parse(raw);
+        if (parsed?.version !== STUDENT_COURSE_CACHE_VERSION || parsed?.uid !== currentUid) {
+            return { version: STUDENT_COURSE_CACHE_VERSION, savedAt: Date.now(), uid: currentUid, courses: {}, courseIds: [] };
+        }
+        const now = Date.now();
+        const entries = parsed.courses && typeof parsed.courses === 'object' ? parsed.courses : {};
+        Object.keys(entries).forEach((courseId) => {
+            const savedAt = Number(entries[courseId]?.savedAt || 0);
+            if (!savedAt || now - savedAt > STUDENT_COURSE_CACHE_TTL_MS) delete entries[courseId];
+        });
+        return {
+            version: STUDENT_COURSE_CACHE_VERSION,
+            uid: currentUid,
+            savedAt: Number(parsed.savedAt || Date.now()),
+            courses: entries,
+            courseIds: normalizeList(parsed.courseIds || []).filter((courseId) => entries[courseId])
+        };
+    } catch {
+        return { version: STUDENT_COURSE_CACHE_VERSION, savedAt: Date.now(), uid: currentUid, courses: {}, courseIds: [] };
+    }
+}
+
+function writeStudentCourseCache(cache = {}) {
+    try {
+        const courseIds = normalizeList(cache.courseIds || Object.keys(cache.courses || {})).slice(-STUDENT_COURSE_CACHE_LIMIT);
+        const courses = {};
+        courseIds.forEach((courseId) => {
+            if (cache.courses?.[courseId]) courses[courseId] = cache.courses[courseId];
+        });
+        window.localStorage?.setItem(getStudentCourseCacheKey(), JSON.stringify({
+            version: STUDENT_COURSE_CACHE_VERSION,
+            uid: currentUid,
+            savedAt: Date.now(),
+            courseIds,
+            courses
+        }));
+    } catch (error) {
+        console.info('[SBI Student Courses] Cache local cours ignoré :', error?.message || error);
+    }
+}
+
+function cacheStudentCourses(courses = []) {
+    const cleanCourses = (Array.isArray(courses) ? courses : [])
+        .map(sanitizeCourseForCache)
+        .filter(Boolean);
+    if (!cleanCourses.length || !currentUid) return;
+
+    const cache = readStudentCourseCache();
+    cleanCourses.forEach((course) => {
+        cache.courses[course.id] = { savedAt: Date.now(), course };
+    });
+    cache.courseIds = normalizeList([...(cache.courseIds || []), ...cleanCourses.map((course) => course.id)]);
+    writeStudentCourseCache(cache);
+}
+
+function getCachedCoursesByIds(courseIds = []) {
+    const ids = normalizeList(courseIds);
+    if (!ids.length || !currentUid) return [];
+    const cache = readStudentCourseCache();
+    return ids
+        .map((courseId) => cache.courses?.[courseId]?.course ? { ...cache.courses[courseId].course, __fromStudentCourseCache: true } : null)
+        .filter(Boolean);
+}
+
+function getCachedStudentLibraryCourses() {
+    if (!currentUid) return [];
+    const cache = readStudentCourseCache();
+    return normalizeList(cache.courseIds || [])
+        .map((courseId) => cache.courses?.[courseId]?.course ? { ...cache.courses[courseId].course, __fromStudentCourseCache: true } : null)
+        .filter(Boolean);
+}
+
+async function fetchCoursesByIdsCached(courseIds = [], options = {}) {
+    const ids = normalizeList(courseIds);
+    if (!ids.length) return [];
+    const cachedCourses = options.useCache === false ? [] : getCachedCoursesByIds(ids);
+    const cachedIds = new Set(cachedCourses.map((course) => course.id));
+    const missingIds = ids.filter((courseId) => !cachedIds.has(courseId));
+    const freshCourses = missingIds.length
+        ? await fetchCoursesByIds(missingIds, { progressLinked: options.progressLinked === true })
+        : [];
+    cacheStudentCourses(freshCourses);
+    return uniqById([...cachedCourses, ...freshCourses]);
+}
+
+async function fetchCoursesByIdsProgressively(courseIds = [], options = {}) {
+    const ids = normalizeList(courseIds);
+    if (!ids.length) return [];
+
+    const cachedCourses = options.useCache === false ? [] : getCachedCoursesByIds(ids);
+    if (cachedCourses.length) options.onBatch?.(cachedCourses, { source: 'cache' });
+
+    const cachedIds = new Set(cachedCourses.map((course) => course.id));
+    const missingIds = ids.filter((courseId) => !cachedIds.has(courseId));
+    const freshCourses = [];
+
+    for (let index = 0; index < missingIds.length; index += STUDENT_COURSE_BATCH_SIZE) {
+        const batchIds = missingIds.slice(index, index + STUDENT_COURSE_BATCH_SIZE);
+        const batchCourses = await fetchCoursesByIds(batchIds, { progressLinked: options.progressLinked === true });
+        if (batchCourses.length) {
+            freshCourses.push(...batchCourses);
+            cacheStudentCourses(batchCourses);
+            options.onBatch?.(batchCourses, { source: 'network' });
+        }
+        if (index + STUDENT_COURSE_BATCH_SIZE < missingIds.length) await wait(80);
+    }
+
+    return uniqById([...cachedCourses, ...freshCourses]);
 }
 
 function getPriorityLabel(priority = '') {
@@ -396,6 +582,61 @@ function buildFuturePlanBlock(item = {}) {
     };
 }
 
+function isPlanItemAvailableNow(item = {}) {
+    return getScheduleStatus(item) !== 'future';
+}
+
+function rememberStudentPromotion(promotion = {}) {
+    const promotionId = String(promotion.id || '').trim();
+    if (!promotionId) return;
+    if (loadedStudentPromotions.some((item) => String(item.id || '') === promotionId)) return;
+    loadedStudentPromotions.push(promotion);
+}
+
+function attachPlanToCourse(course = {}, plan = {}) {
+    return attachPromotionPlan(course, plan);
+}
+
+function attachPlanCourses(courses = [], planItems = [], { includePlanOnlyFallback = false } = {}) {
+    const courseById = new Map((courses || []).map((course) => [course.id, course]));
+    return planItems
+        .map((item) => {
+            const course = courseById.get(item.courseId);
+            if (course) return attachPlanToCourse(course, item);
+            return includePlanOnlyFallback ? attachPromotionPlan(buildPlanOnlyCourse(item), item) : null;
+        })
+        .filter(Boolean);
+}
+
+async function fetchPlanCoursesForItems(planItems = [], options = {}) {
+    const safeItems = Array.isArray(planItems) ? planItems.filter((item) => item?.courseId) : [];
+    const courseIds = safeItems.map((item) => item.courseId);
+    if (!courseIds.length) return [];
+
+    if (options.progressive) {
+        const collected = [];
+        await fetchCoursesByIdsProgressively(courseIds, {
+            onBatch: (batchCourses, meta) => {
+                const batchAttached = attachPlanCourses(batchCourses, safeItems, { includePlanOnlyFallback: false });
+                if (batchAttached.length) {
+                    collected.push(...batchAttached);
+                    options.onBatch?.(batchAttached, meta);
+                }
+            }
+        });
+        const fetchedIds = new Set(collected.map((course) => course.id));
+        const missingPlanOnly = options.includePlanOnlyFallback
+            ? safeItems
+                .filter((item) => !fetchedIds.has(item.courseId))
+                .map((item) => attachPromotionPlan(buildPlanOnlyCourse(item), item))
+            : [];
+        return uniqById([...collected, ...missingPlanOnly]);
+    }
+
+    const courses = await fetchCoursesByIdsCached(courseIds);
+    return attachPlanCourses(courses, safeItems, { includePlanOnlyFallback: options.includePlanOnlyFallback === true });
+}
+
 function ensurePromotionFormationCard(promotion = {}) {
     const promotionId = String(promotion.id || '').trim();
     if (!promotionId) return;
@@ -422,13 +663,13 @@ function ensurePromotionFormationCard(promotion = {}) {
     });
 }
 
-async function loadPromotionPlanCourses() {
-    loadedStudentPromotions = [];
+async function loadPromotionPlanCourses(options = {}) {
     if (!currentUid || isAdminPreview()) return [];
 
     const promotionIds = getPromotionIdsForStudent();
     if (!promotionIds.length) return [];
 
+    const phase = options.phase || 'available';
     const loadedCourses = [];
 
     await Promise.all(promotionIds.map(async (promotionId) => {
@@ -439,7 +680,7 @@ async function loadPromotionPlanCourses() {
             const promotion = { id: promotionSnap.id, ...promotionSnap.data() };
             if ((promotion.status || 'active') === 'archived') return;
 
-            loadedStudentPromotions.push(promotion);
+            rememberStudentPromotion(promotion);
             ensurePromotionFormationCard(promotion);
 
             const planItems = Array.isArray(promotion.coursePlan) ? promotion.coursePlan : [];
@@ -448,30 +689,25 @@ async function loadPromotionPlanCourses() {
                 .sort(compareCoursePlansLikeQa);
             const realItems = normalizedItems.filter(isRealCoursePlanItem);
             const futureItems = normalizedItems.filter(isFutureCoursePlanItem);
+            const selectedItems = phase === 'deferred'
+                ? realItems.filter((item) => !isPlanItemAvailableNow(item))
+                : phase === 'all'
+                    ? realItems
+                    : realItems.filter(isPlanItemAvailableNow);
 
-            const courses = await fetchCoursesByIds(realItems.map((item) => item.courseId));
-            const coursesById = new Map(courses.map((course) => [course.id, course]));
-
-            realItems.forEach((item) => {
-                const course = coursesById.get(item.courseId);
-
-                if (course) {
-                    // Le planning de promotion est l'autorité pédagogique : si un cours
-                    // est placé dans le cursus d'une promotion assignée, il doit rester
-                    // ouvrable par l'élève même s'il vient d'une autre formation source.
-                    loadedCourses.push(attachPromotionPlan(course, item));
-                    return;
-                }
-
-                // Filet de sécurité : on garde une ligne de programme uniquement si le
-                // document du cours n'est pas lisible. Après déploiement des règles,
-                // les cours transversaux du cursus doivent normalement s'ouvrir.
-                loadedCourses.push(attachPromotionPlan(buildPlanOnlyCourse(item), item));
+            const attachedCourses = await fetchPlanCoursesForItems(selectedItems, {
+                progressive: options.progressive === true,
+                includePlanOnlyFallback: phase !== 'available',
+                onBatch: options.onBatch
             });
 
-            futureItems.forEach((item) => {
-                loadedCourses.push(attachPromotionPlan(buildFuturePlanBlock(item), item));
-            });
+            loadedCourses.push(...attachedCourses);
+
+            if (phase !== 'deferred') {
+                futureItems.forEach((item) => {
+                    loadedCourses.push(attachPromotionPlan(buildFuturePlanBlock(item), item));
+                });
+            }
         } catch (error) {
             console.warn('[SBI Student Courses] Planning de promotion ignoré :', promotionId, error);
         }
@@ -514,24 +750,136 @@ async function loadAssignedFormations() {
     });
 }
 
-async function loadAssignedCourses() {
-    const coursesFromAccess = await loadCoursesForUser({
-        uid: currentUid,
-        userData,
-        role: isAdminPreview() ? 'admin' : 'student',
-        formations: assignedFormations,
-        progress: userProgress,
-        includeProgress: true,
-        activeOnly: !isAdminPreview()
-    });
+function isVisibleStudentCourse(course = {}) {
+    if (!course?.id) return false;
+    if (course.__futureCourseBlock === true) return true;
+    return course.__planOnly === true
+        || course.__promotionLinked === true
+        || isAdminPreview()
+        || isCourseVisible(course, { allowProgress: true });
+}
 
-    const coursesFromPromotionPlan = await loadPromotionPlanCourses();
-    const coursesFromNotifications = await loadNotificationLinkedCourses();
+function mergeCourseRecords(current = null, next = {}) {
+    if (!current) return next;
 
-    allCourses = uniqById([...coursesFromAccess, ...coursesFromNotifications, ...coursesFromPromotionPlan])
+    const merged = { ...current, ...next };
+    const plans = [
+        ...(Array.isArray(current.__promotionPlans) ? current.__promotionPlans : current.__promotionPlan ? [current.__promotionPlan] : []),
+        ...(Array.isArray(next.__promotionPlans) ? next.__promotionPlans : next.__promotionPlan ? [next.__promotionPlan] : [])
+    ];
+
+    if (plans.length) {
+        const planMap = new Map();
+        plans.forEach((plan) => {
+            const key = [
+                plan?.promotionId || '',
+                plan?.courseId || '',
+                plan?.itemId || '',
+                plan?.coursePlanOrder ?? plan?.order ?? ''
+            ].join('|');
+            if (key.trim()) planMap.set(key, plan);
+        });
+        merged.__promotionPlans = Array.from(planMap.values());
+        merged.__promotionPlan = merged.__promotionPlans[0] || merged.__promotionPlan || null;
+        merged.__promotionLinked = true;
+    }
+
+    if (current.__planOnly !== true || next.__planOnly !== true) merged.__planOnly = false;
+    return merged;
+}
+
+function normalizeStudentCourseList(courses = []) {
+    const map = new Map();
+    (Array.isArray(courses) ? courses : [])
         .filter(Boolean)
-        .filter((course) => course && course.id)
-        .filter((course) => course.__planOnly === true || course.__promotionLinked === true || isAdminPreview() || isCourseVisible(course, { allowProgress: true }));
+        .filter(isVisibleStudentCourse)
+        .forEach((course) => {
+            map.set(course.id, mergeCourseRecords(map.get(course.id) || null, course));
+        });
+    return Array.from(map.values());
+}
+
+function mergeStudentCoursesAndRefresh(courses = []) {
+    const nextCourses = normalizeStudentCourseList(courses);
+    if (!nextCourses.length) return;
+
+    allCourses = normalizeStudentCourseList([...allCourses, ...nextCourses]);
+    refreshVisibleStudentCourseViews();
+}
+
+function refreshVisibleStudentCourseViews() {
+    renderAssignedFormations();
+
+    const viewCourses = document.getElementById('view-courses');
+    const container = document.getElementById('courses-list');
+    if (!viewCourses || viewCourses.style.display !== 'flex' || !container || !currentOpenFormationId) return;
+
+    const formation = getFormationCardsToRender().find((item) => {
+        return String(item.id || '') === String(currentOpenFormationId)
+            || String(item.promotionId || '') === String(currentOpenFormationId)
+            || String(item.__courseProgramFormationId || '') === String(currentOpenFormationId);
+    }) || {
+        id: currentOpenFormationId,
+        titre: currentOpenFormationTitle
+    };
+
+    const coursesInFormation = getCoursesForFormation(formation);
+    if (!coursesInFormation.length) {
+        container.innerHTML = '<div class="student-library-empty"><strong>Aucun cours actif dans cette formation.</strong><span>Les contenus apparaîtront ici dès publication.</span></div>';
+        renderCourseViewSummary(formation, []);
+        return;
+    }
+
+    renderCourseSections(container, coursesInFormation);
+}
+
+async function loadDeferredStudentCourses(generation) {
+    try {
+        const deferredPlanCourses = await loadPromotionPlanCourses({
+            phase: 'deferred',
+            progressive: true,
+            onBatch: (batchCourses) => {
+                if (generation === studentCourseLoadGeneration) mergeStudentCoursesAndRefresh(batchCourses);
+            }
+        });
+        if (generation !== studentCourseLoadGeneration) return;
+        mergeStudentCoursesAndRefresh(deferredPlanCourses);
+
+        const coursesFromAccess = await loadCoursesForUser({
+            uid: currentUid,
+            userData,
+            role: isAdminPreview() ? 'admin' : 'student',
+            formations: assignedFormations,
+            progress: userProgress,
+            includeProgress: true,
+            activeOnly: !isAdminPreview()
+        });
+        if (generation !== studentCourseLoadGeneration) return;
+        cacheStudentCourses(coursesFromAccess);
+        mergeStudentCoursesAndRefresh(coursesFromAccess);
+
+        const coursesFromNotifications = await loadNotificationLinkedCourses();
+        if (generation !== studentCourseLoadGeneration) return;
+        cacheStudentCourses(coursesFromNotifications);
+        mergeStudentCoursesAndRefresh(coursesFromNotifications);
+    } catch (error) {
+        console.warn('[SBI Student Courses] Chargement progressif ignoré :', error);
+    }
+}
+
+function scheduleProgressiveStudentCourseLoad() {
+    window.clearTimeout(progressiveLoadTimer);
+    const generation = studentCourseLoadGeneration;
+    progressiveLoadTimer = window.setTimeout(() => {
+        loadDeferredStudentCourses(generation);
+    }, 120);
+}
+
+async function loadAssignedCourses() {
+    loadedStudentPromotions = [];
+    const cachedCourses = getCachedStudentLibraryCourses();
+    const priorityPlanCourses = await loadPromotionPlanCourses({ phase: 'available' });
+    allCourses = normalizeStudentCourseList([...priorityPlanCourses, ...cachedCourses]);
 }
 
 async function loadNotificationLinkedCourses() {
@@ -574,7 +922,7 @@ async function loadNotificationLinkedCourses() {
         )
     ]);
 
-    const courses = await fetchCoursesByIds(Array.from(courseIds));
+    const courses = await fetchCoursesByIdsCached(Array.from(courseIds));
     return courses.map((course) => ({ ...course, __notificationLinked: true }));
 }
 
@@ -924,22 +1272,39 @@ function filterCompletedCoursesForDisplay(courses = []) {
     return safeCourses.filter((course) => !isCourseCompleted(course));
 }
 
+function isFutureCourseBlock(course = {}) {
+    return course.__futureCourseBlock === true || getPrimaryCoursePlan(course)?.originalType === 'placeholder_course';
+}
+
+function filterFutureBlocksForDisplay(courses = []) {
+    const safeCourses = Array.isArray(courses) ? courses.filter((course) => course && course.id) : [];
+    if (!currentHideFutureBlocks) return safeCourses;
+    return safeCourses.filter((course) => !isFutureCourseBlock(course));
+}
+
 function renderCourseSections(container, coursesInFormation = []) {
     ensureStudentCourseSwitchStyles();
 
     coursesInFormation = Array.isArray(coursesInFormation) ? coursesInFormation.filter((course) => course && course.id) : [];
-    const { plannedCourses, complementaryCourses } = splitCoursesForFormationView(coursesInFormation);
+    const displayCourses = filterFutureBlocksForDisplay(coursesInFormation);
+    const { plannedCourses, complementaryCourses } = splitCoursesForFormationView(displayCourses);
     const visiblePlannedCourses = filterCompletedCoursesForDisplay(plannedCourses);
     const visibleComplementaryCourses = filterCompletedCoursesForDisplay(complementaryCourses);
     currentCourseViewMode = resolveCourseViewMode(currentCourseViewMode, visiblePlannedCourses, visibleComplementaryCourses);
     const hiddenCompletedCount = currentHideCompletedCourses
-        ? coursesInFormation.filter((course) => course && course.id && isCourseCompleted(course)).length
+        ? displayCourses.filter((course) => course && course.id && isCourseCompleted(course)).length
+        : 0;
+    const hiddenFutureCount = currentHideFutureBlocks
+        ? coursesInFormation.filter(isFutureCourseBlock).length
         : 0;
 
     container.innerHTML = `
         <div class="student-course-switch" role="tablist" aria-label="Choisir le type de liste">
             <button type="button" class="student-course-switch__btn" data-course-view="program">Programme</button>
             <button type="button" class="student-course-switch__btn" data-course-view="library">Liste bibliothèque</button>
+            <button type="button" class="student-course-switch__btn student-course-switch__btn--toggle${currentHideFutureBlocks ? ' is-active' : ''}" data-hide-future aria-pressed="${currentHideFutureBlocks ? 'true' : 'false'}">
+                ${currentHideFutureBlocks ? `Prochainement masqués${hiddenFutureCount ? ` (${hiddenFutureCount})` : ''}` : 'Masquer prochainement'}
+            </button>
             <button type="button" class="student-course-switch__btn student-course-switch__btn--toggle${currentHideCompletedCourses ? ' is-active' : ''}" data-hide-completed aria-pressed="${currentHideCompletedCourses ? 'true' : 'false'}">
                 ${currentHideCompletedCourses ? `Terminés masqués${hiddenCompletedCount ? ` (${hiddenCompletedCount})` : ''}` : 'Masquer terminés'}
             </button>
@@ -1080,6 +1445,14 @@ function bindCourseViewSwitch(container, plannedCourses = [], complementaryCours
             renderCourseSections(container, coursesInFormation);
         });
     }
+
+    const hideFutureButton = container.querySelector('[data-hide-future]');
+    if (hideFutureButton) {
+        hideFutureButton.addEventListener('click', () => {
+            currentHideFutureBlocks = !currentHideFutureBlocks;
+            renderCourseSections(container, coursesInFormation);
+        });
+    }
 }
 function bindCourseCardNavigation(container) {
     container.querySelectorAll('.course-item').forEach((item) => {
@@ -1091,9 +1464,9 @@ function bindCourseCardNavigation(container) {
 }
 
 function ensureStudentCourseSwitchStyles() {
-    if (document.getElementById('student-course-switch-style-8-0p-167-156')) return;
+    if (document.getElementById('student-course-switch-style-8-0p-167-202')) return;
     const style = document.createElement('style');
-    style.id = 'student-course-switch-style-8-0p-167-156';
+    style.id = 'student-course-switch-style-8-0p-167-202';
     style.textContent = `
         .student-course-switch {
             display: flex;
@@ -1125,8 +1498,13 @@ function ensureStudentCourseSwitchStyles() {
             opacity: 0.45;
         }
         .student-course-switch__btn--toggle {
-            margin-left: auto;
             border-color: rgba(42,87,255,0.18);
+        }
+        .student-course-switch [data-hide-future] {
+            margin-left: auto;
+        }
+        .student-course-switch [data-hide-completed] {
+            margin-left: 0;
         }
         .student-course-switch__btn--toggle.is-active {
             background: rgba(42,87,255,0.14);
