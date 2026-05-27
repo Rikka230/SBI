@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.199',
+  version: '8.0P.167.200',
   branch: 'main',
   channel: 'CURSUS TIMELINE',
-  stage: 'WEEK COURSE STACKING',
+  stage: 'STACK APPEND FREE SLOT',
   updatedAt: '2026-05-27',
-  label: 'SBI 8.0P.167.199 - cursus week course stacking'
+  label: 'SBI 8.0P.167.200 - cursus stack append uses free slot'
 };
 
 export function getSbiVersionLabel() {

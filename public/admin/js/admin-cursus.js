@@ -1,5 +1,5 @@
 /**
- * SBI 8.0P.167.199
+ * SBI 8.0P.167.200
  * Page Cursus dédiée : timeline horizontale multi-pistes.
  *
  * Correctif noyau verrouillage :
@@ -7,6 +7,7 @@
  * - déverrouillé = déplaçable sans retour automatique en S1 ;
  * - déplacer un bloc ne le reverrouille jamais automatiquement.
  * - les petits cours peuvent etre stackes sur une meme semaine.
+ * - un nouveau cours futur apres selection d'un stack cherche la prochaine place libre.
  */
 
 import { auth, db } from '/js/firebase-init.js';
@@ -318,6 +319,51 @@ function getCourseStackForItem(item = {}) {
   return getCourseItemsForWeek(getItemWeekStart(item));
 }
 
+function getStructuralWeekRanges() {
+  return timelineItems
+    .filter((item) => STRUCTURAL_TYPES.has(item.type))
+    .map((item) => {
+      const start = getItemWeekStart(item);
+      return {
+        id: item.id,
+        start,
+        end: start + getItemWeekSpan(item),
+        type: item.type
+      };
+    })
+    .sort((a, b) => (a.start - b.start) || (a.end - b.end));
+}
+
+function getLatestStructuralEndWeek() {
+  return Math.max(0, ...getStructuralWeekRanges().map((range) => range.end), 0);
+}
+
+function findNextFreeStructuralWeek(startWeek = 0, spanWeeks = 1) {
+  let cursor = Math.max(0, Math.floor(Number(startWeek) || 0));
+  const span = Math.max(1, Math.ceil(Number(spanWeeks) || 1));
+
+  getStructuralWeekRanges().forEach((range) => {
+    if (range.end <= cursor) return;
+    if (range.start >= cursor + span) return;
+    cursor = Math.max(cursor, range.end);
+  });
+
+  return cursor;
+}
+
+function getSelectedStackAppendOffset(type = '') {
+  if (!COURSE_TRACK_TYPES.has(type)) return null;
+  const selected = timelineItems.find((entry) => entry.id === selectedItemId);
+  if (!selected || !COURSE_TRACK_TYPES.has(selected.type)) return null;
+
+  const stack = getCourseStackForItem(selected);
+  if (stack.length < 2) return null;
+
+  const stackEndWeek = Math.max(...stack.map((item) => getItemWeekStart(item) + getItemWeekSpan(item)), 0);
+  const spanWeeks = Math.max(1, Math.ceil(getDefaultDuration(type) / 7));
+  return findNextFreeStructuralWeek(stackEndWeek, spanWeeks) * 7;
+}
+
 function captureTimelineScroll() {
   if (!dom.timelineScroll) return null;
   return {
@@ -339,6 +385,13 @@ function restoreTimelineScroll(snapshot) {
 }
 
 function getAppendStartOffset(type = '') {
+  if (COURSE_TRACK_TYPES.has(type)) {
+    const stackOffset = getSelectedStackAppendOffset(type);
+    if (Number.isFinite(stackOffset)) return stackOffset;
+
+    const spanWeeks = Math.max(1, Math.ceil(getDefaultDuration(type) / 7));
+    return findNextFreeStructuralWeek(getLatestStructuralEndWeek(), spanWeeks) * 7;
+  }
   if (STRUCTURAL_TYPES.has(type)) return getTimelineDurationDays();
   return Math.max(0, getTimelineDurationDays() - getDefaultDuration(type));
 }
