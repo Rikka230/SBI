@@ -101,7 +101,6 @@ body.learning-mode {
 .media-container img, .media-container video { 
     max-width: 100%; 
     max-height: 70vh; 
-    min-height: clamp(360px, calc(100vh - 260px), 560px);
     height: auto;
     object-fit: contain; 
     display: block; 
@@ -115,7 +114,10 @@ body.learning-mode {
     background: white; padding: 3rem; border-radius: 16px; 
     box-shadow: 0 4px 20px rgba(0,0,0,0.03); border: 1px solid var(--border-color);
     flex-shrink: 0;
-    height: auto; 
+    min-height: clamp(360px, calc(100vh - 260px), 560px);
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
     /* Force la césure pour les longs mots */
     overflow-wrap: break-word;
     word-wrap: break-word;
@@ -124,7 +126,7 @@ body.learning-mode {
 
 /* FIX QUILL : Interdit le scroll interne dans l'éditeur */
 .ql-editor { 
-    font-size: 1.15rem; line-height: 1.8; color: #374151; height: auto; min-height: unset; overflow: visible; padding: 0; 
+    font-size: 1.15rem; line-height: 1.8; color: #374151; height: auto !important; min-height: unset; max-height: none !important; overflow: visible !important; overflow-y: visible !important; padding: 0;
     /* Force la césure dans l'éditeur */
     overflow-wrap: break-word;
     word-wrap: break-word;
@@ -132,6 +134,14 @@ body.learning-mode {
 }
 .ql-editor h1, .ql-editor h2, .ql-editor h3 { color: var(--text-main); margin-top: 1.5em; }
 .ql-editor img { max-width: 100%; height: auto; border-radius: 8px; margin: 1rem 0; }
+
+body.learning-mode .viewer-main .text-container.ql-editor,
+body.learning-mode .viewer-main .ql-editor {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    overflow-y: visible !important;
+}
 
 .action-bar {
     max-width: 900px; margin: 2rem auto; width: 100%; flex-shrink: 0;
@@ -301,6 +311,11 @@ body.learning-mode {
     background: rgba(42, 87, 255, 0.14);
 }
 
+.sbi-viewer-resource-link.is-loading {
+    opacity: 0.72;
+    pointer-events: none;
+}
+
 .sbi-viewer-resource-link svg {
     flex: 0 0 auto;
 }
@@ -317,6 +332,24 @@ body.learning-mode {
     border: 1px solid var(--border-color);
     border-radius: 12px;
     background: #ffffff;
+}
+
+.sbi-viewer-resource-missing {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    width: fit-content;
+    max-width: 100%;
+    color: #92400e;
+    font-weight: 800;
+    border: 1px solid rgba(245, 158, 11, 0.28);
+    border-radius: 999px;
+    padding: 0.72rem 1rem;
+    background: rgba(245, 158, 11, 0.10);
+}
+
+.sbi-viewer-resource-missing svg {
+    flex: 0 0 auto;
 }
 
 .sbi-viewer-objectives-card,
@@ -464,6 +497,7 @@ body.learning-mode {
 
     .text-container,
     .fib-viewer-card {
+        min-height: 260px !important;
         padding: 1.5rem;
     }
 

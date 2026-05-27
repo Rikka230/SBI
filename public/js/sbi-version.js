@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.204',
+  version: '8.0P.167.205',
   branch: 'main',
-  channel: 'PRIVACY + VIEWER',
-  stage: 'PROFILE ACCESS HOTFIX',
+  channel: 'LIVE + VIEWER',
+  stage: 'TEACHER LIVE + RESOURCE DOWNLOAD HOTFIX',
   updatedAt: '2026-05-27',
-  label: 'SBI 8.0P.167.204 - viewer downloads, live loading and profile privacy'
+  label: 'SBI 8.0P.167.205 - teacher live access, viewer downloads and public XP'
 };
 
 export function getSbiVersionLabel() {

@@ -34,7 +34,7 @@ import {
   updateAdminChromeFromDocument,
   setLeftNavActive,
   loadScriptOnce
-} from './admin-page-loader.js?v=8.0P.167.204';
+} from './admin-page-loader.js?v=8.0P.167.205';
 import { initAdminTabs } from '/admin/js/admin-ui/panels.js';
 import {
   loadQuillIfNeeded,
@@ -393,7 +393,7 @@ async function mountAdminProfile({ url }) {
   window.__SBI_APP_SHELL_MOUNTING_PROFILE = true;
 
   try {
-    const module = await import('/js/profile-core.js?v=8.0P.167.204');
+    const module = await import('/js/profile-core.js?v=8.0P.167.205');
     const cleanupProfile = module.mountProfileCore?.({
       source: 'pjax-admin-profile',
       targetUid,
@@ -528,7 +528,7 @@ async function mountLiveSchedulerRoute({ url, role = 'admin' }) {
   setLeftNavActive(role === 'admin' ? 'nav-lives' : '/teacher/lives.html');
   updateUrlContext(url);
 
-  const module = await import('/js/live/live-scheduler-page.js?v=8.0P.167.204');
+  const module = await import('/js/live/live-scheduler-page.js?v=8.0P.167.205');
   const cleanup = module.mountLiveSchedulerPage?.(role);
   if (typeof cleanup === 'function') registerCleanup(cleanup, role === 'admin' ? 'admin-lives' : 'teacher-lives');
 
@@ -588,7 +588,7 @@ async function mountStudentPage({ url }) {
     window.__SBI_APP_SHELL_MOUNTING_STUDENT_HUB = true;
 
     try {
-      const module = await import('/student/js/student-hub.js?v=8.0P.167.204');
+      const module = await import('/student/js/student-hub.js?v=8.0P.167.205');
       const cleanup = module.mountStudentHub?.({ source: 'pjax-student-dashboard' });
 
       if (typeof cleanup === 'function') registerCleanup(cleanup, 'student-hub');
@@ -602,7 +602,7 @@ async function mountStudentPage({ url }) {
   window.__SBI_APP_SHELL_MOUNTING_STUDENT_COURSES = true;
 
   try {
-    const module = await import('/student/js/mes-cours.js?v=8.0P.167.204');
+    const module = await import('/student/js/mes-cours.js?v=8.0P.167.205');
     const cleanup = module.mountStudentCourses?.({ source: 'pjax-student-courses' });
 
     if (typeof cleanup === 'function') registerCleanup(cleanup, 'student-courses');
@@ -654,7 +654,7 @@ async function mountStudentProfile({ url }) {
   window.__SBI_APP_SHELL_MOUNTING_PROFILE = true;
 
   try {
-    const module = await import('/js/profile-core.js?v=8.0P.167.204');
+    const module = await import('/js/profile-core.js?v=8.0P.167.205');
     const cleanupProfile = module.mountProfileCore?.({
       source: 'pjax-student-profile',
       targetUrl: url.href
@@ -768,7 +768,7 @@ async function mountCourseEditorV2Page({ url, role = 'teacher' }) {
   window.__SBI_APP_SHELL_MOUNTING_COURSE_EDITOR_V2 = true;
 
   try {
-    const module = await import('/js/course-editor-v2/course-editor-v2.js?v=8.0P.167.203');
+    const module = await import('/js/course-editor-v2/course-editor-v2.js?v=8.0P.167.205');
     const cleanup = module.mountCourseEditorV2?.({
       source: isAdmin ? 'pjax-admin-course-editor-v2' : 'pjax-teacher-course-editor-v2',
       force: true
@@ -810,7 +810,7 @@ async function mountTeacherProfile({ url }) {
   window.__SBI_APP_SHELL_MOUNTING_PROFILE = true;
 
   try {
-    const module = await import('/js/profile-core.js?v=8.0P.167.204');
+    const module = await import('/js/profile-core.js?v=8.0P.167.205');
     const cleanupProfile = module.mountProfileCore?.({
       source: 'pjax-teacher-profile',
       targetUrl: url.href

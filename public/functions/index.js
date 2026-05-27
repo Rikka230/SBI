@@ -41,6 +41,7 @@ const SBI_CONTACT_EMAIL = "contact@sbigroup.fr";
 const SBI_CONTACT_PHONE = "06 68 60 30 01";
 const SBI_SENDER_NAME = "Contact";
 const SBI_SENDER_EMAIL = "contact@sbigroup.fr";
+const SBI_STORAGE_BUCKET = "sbi-web-4f6b4.firebasestorage.app";
 
 const PROFILE_LABELS = {
     etudiant: "Étudiant",
@@ -3595,6 +3596,8 @@ function sanitizeVisibleUserProfile(uid = "", data = {}, { includeEmail = false 
         promotionId: cleanString(data.promotionId || data.currentPromotionId || data.assignedPromotionId || data.cohortId || "", 180),
         promotionIds: normalizePublicList(data.promotionIds || data.assignedPromotionIds),
         promotionName: cleanString(data.promotionName || data.promotionTitle || "", 180),
+        xp: Math.max(0, Number(data.xp) || 0),
+        level: Math.floor((Math.max(0, Number(data.xp) || 0)) / 100) + 1,
         publicProfile: true,
         sanitized: true
     };
@@ -3673,6 +3676,163 @@ exports.getVisibleUserProfile = onCall({
     };
 });
 
+function collectCourseFormationKeys(courseData = {}) {
+    return normalizePublicList([
+        ...(Array.isArray(courseData.formations) ? courseData.formations : []),
+        ...(Array.isArray(courseData.formationIds) ? courseData.formationIds : []),
+        ...(Array.isArray(courseData.targetFormationIds) ? courseData.targetFormationIds : []),
+        ...(Array.isArray(courseData.targetFormationTitles) ? courseData.targetFormationTitles : []),
+        courseData.formationId,
+        courseData.formationName,
+        courseData.formationTitle
+    ]);
+}
+
+function canResolveCourseResource(caller = {}, courseData = {}) {
+    if (caller.isAdmin || caller.data?.isGod === true || caller.data?.role === "admin") return true;
+    if (cleanString(courseData.auteurId || "", 180) === caller.uid) return true;
+
+    const directStudents = normalizePublicList(courseData.targetStudents || []);
+    if (directStudents.includes(caller.uid)) return true;
+
+    const courseFormationKeys = collectCourseFormationKeys(courseData);
+    if (courseFormationKeys.length && publicListsOverlap(collectFormationProfileKeys(caller.data || {}), courseFormationKeys)) return true;
+
+    return false;
+}
+
+function collectCourseResourceChapters(courseData = {}) {
+    return [
+        ...(Array.isArray(courseData.learningBlocks) ? courseData.learningBlocks : []),
+        ...(Array.isArray(courseData.chapitres) ? courseData.chapitres : [])
+    ].filter((item) => item && typeof item === "object");
+}
+
+function findCourseResourceChapter(courseData = {}, { chapterId = "", fileName = "" } = {}) {
+    const targetId = cleanString(chapterId, 180);
+    const targetFile = normalizePublicKey(fileName || "");
+    const chapters = collectCourseResourceChapters(courseData);
+
+    if (targetId) {
+        const byId = chapters.find((chapter) => cleanString(chapter.id || chapter.itemId || "", 180) === targetId);
+        if (byId) return byId;
+    }
+
+    if (targetFile) {
+        return chapters.find((chapter) => normalizePublicKey(chapter.resourceFileName || "") === targetFile) || null;
+    }
+
+    return null;
+}
+
+function normalizeResourceStoragePath(value = "") {
+    const raw = cleanString(value, 1000);
+    if (!raw) return "";
+    if (raw.startsWith("gs://")) return raw.replace(/^gs:\/\/[^/]+\//, "");
+    return raw;
+}
+
+function getResourceFileKey(value = "") {
+    return normalizePublicKey(value).replace(/[^a-z0-9.]+/g, "");
+}
+
+async function findStoredCourseResourceFile({ courseId = "", chapterId = "", fileName = "", storagePath = "" } = {}) {
+    const bucket = admin.storage().bucket(SBI_STORAGE_BUCKET);
+    const directPath = normalizeResourceStoragePath(storagePath);
+    if (directPath) return bucket.file(directPath);
+
+    const safeCourseId = cleanString(courseId, 180);
+    const safeChapterId = cleanString(chapterId, 180);
+    if (!safeCourseId || !safeChapterId) return null;
+
+    const targetKey = getResourceFileKey(fileName);
+    const [files] = await bucket.getFiles({ prefix: `courses/${safeCourseId}/chapters/${safeChapterId}/` });
+    if (!files.length) return null;
+
+    if (!targetKey) return files[0];
+
+    for (const file of files) {
+        const baseName = file.name.split("/").pop() || "";
+        const baseKey = getResourceFileKey(baseName);
+        if (baseKey.endsWith(targetKey)) return file;
+
+        try {
+            const [metadata] = await file.getMetadata();
+            if (getResourceFileKey(metadata?.metadata?.originalName || "") === targetKey) return file;
+        } catch (error) {
+            console.warn("Metadata ressource cours inaccessible :", file.name, error.message);
+        }
+    }
+
+    return null;
+}
+
+async function getFirebaseStorageDownloadUrl(file) {
+    if (!file) return "";
+    const [metadata] = await file.getMetadata();
+    const customMetadata = metadata?.metadata || {};
+    const tokens = cleanString(customMetadata.firebaseStorageDownloadTokens || "", 1000)
+        .split(",")
+        .map((token) => cleanString(token, 180))
+        .filter(Boolean);
+    let token = tokens[0] || "";
+
+    if (!token) {
+        token = crypto.randomUUID();
+        await file.setMetadata({
+            metadata: {
+                ...customMetadata,
+                firebaseStorageDownloadTokens: token
+            }
+        });
+    }
+
+    return `https://firebasestorage.googleapis.com/v0/b/${SBI_STORAGE_BUCKET}/o/${encodeURIComponent(file.name)}?alt=media&token=${encodeURIComponent(token)}`;
+}
+
+exports.resolveCourseResourceDownload = onCall({
+    region: "europe-west1",
+    timeoutSeconds: 45,
+    memory: "256MiB"
+}, async (request) => {
+    const db = admin.firestore();
+    const caller = await requireActiveCourseCaller(request, db);
+    const courseId = cleanString(request.data?.courseId, 180);
+    const chapterId = cleanString(request.data?.chapterId, 180);
+    const fileName = cleanString(request.data?.fileName, 240);
+
+    if (!courseId) throw new HttpsError("invalid-argument", "Cours manquant.");
+
+    const courseSnap = await db.collection("courses").doc(courseId).get();
+    if (!courseSnap.exists) throw new HttpsError("not-found", "Cours introuvable.");
+    const courseData = courseSnap.data() || {};
+
+    if (!canResolveCourseResource(caller, courseData)) {
+        throw new HttpsError("permission-denied", "Ressource non accessible.");
+    }
+
+    const resourceChapter = findCourseResourceChapter(courseData, { chapterId, fileName });
+    if (!resourceChapter) throw new HttpsError("not-found", "Ressource introuvable dans le cours.");
+
+    const storagePath = normalizeResourceStoragePath(resourceChapter.resourceStoragePath || request.data?.storagePath || "");
+    const file = await findStoredCourseResourceFile({
+        courseId,
+        chapterId: cleanString(resourceChapter.id || chapterId, 180),
+        fileName: resourceChapter.resourceFileName || fileName,
+        storagePath
+    });
+    if (!file) throw new HttpsError("not-found", "Fichier introuvable dans Storage.");
+
+    const [exists] = await file.exists();
+    if (!exists) throw new HttpsError("not-found", "Fichier introuvable dans Storage.");
+
+    return {
+        url: await getFirebaseStorageDownloadUrl(file),
+        storagePath: file.name,
+        fileName: resourceChapter.resourceFileName || fileName || file.name.split("/").pop() || "ressource"
+    };
+});
+
 function normalizeLiveRole(value = "") {
     const role = cleanString(value, 60).toLowerCase();
     if (["prof", "professeur", "enseignant"].includes(role)) return "teacher";
@@ -3707,6 +3867,34 @@ function liveDateInWindow(startIso = "", windowStart = "", windowEnd = "") {
 
 function getPromotionDisplayName(promotion = {}) {
     return cleanString(promotion.name || promotion.promotionName || promotion.title || promotion.titre || "Promotion SBI", 180);
+}
+
+function sanitizeLivePromotionForScheduler(promotion = {}) {
+    const safe = { ...promotion };
+    delete safe.students;
+    delete safe.studentEmails;
+    delete safe.eleves;
+    delete safe.apprenants;
+    delete safe.roster;
+    delete safe.privateNotes;
+    return safe;
+}
+
+async function loadLiveSessionsForScheduler(db, promotionIds = []) {
+    const ids = Array.from(new Set((Array.isArray(promotionIds) ? promotionIds : [])
+        .map((value) => cleanString(value, 180))
+        .filter(Boolean)));
+    const sessions = [];
+
+    for (let index = 0; index < ids.length; index += 10) {
+        const part = ids.slice(index, index + 10);
+        const snap = await db.collection("liveSessions").where("promotionId", "in", part).get();
+        snap.forEach((docSnap) => {
+            sessions.push({ id: docSnap.id, ...(docSnap.data() || {}) });
+        });
+    }
+
+    return sessions;
 }
 
 function findPromotionLiveItem(promotion = {}, { liveId = "", sourceItemId = "", title = "" } = {}) {
@@ -3854,6 +4042,38 @@ async function notifyPromotionStudentsForLive({ db, promotion, liveSession, kind
 
     return { students: students.length, notified, emailsSent, emailsFailed };
 }
+
+exports.getLiveSchedulerData = onCall({
+    region: "europe-west1",
+    timeoutSeconds: 60,
+    memory: "512MiB"
+}, async (request) => {
+    const db = admin.firestore();
+    const caller = await requireActiveCourseCaller(request, db);
+    const callerRole = normalizeLiveRole(caller.data.role || "");
+
+    if (!caller.isAdmin && callerRole !== "teacher") {
+        throw new HttpsError("permission-denied", "Acces live reserve a l'administration et aux professeurs.");
+    }
+
+    const snap = await db.collection("promotions").get();
+    const promotions = [];
+
+    for (const docSnap of snap.docs) {
+        const promotion = { id: docSnap.id, ...(docSnap.data() || {}) };
+        const canManage = await teacherCanManagePromotionLive(db, caller, promotion);
+        if (canManage) promotions.push(sanitizeLivePromotionForScheduler(promotion));
+    }
+
+    promotions.sort((a, b) => getPromotionDisplayName(a).localeCompare(getPromotionDisplayName(b), "fr", { sensitivity: "base" }));
+    const sessions = await loadLiveSessionsForScheduler(db, promotions.map((promotion) => promotion.id));
+
+    return {
+        promotions,
+        sessions,
+        count: promotions.length
+    };
+});
 
 exports.scheduleLiveSession = onCall({
     region: "europe-west1",

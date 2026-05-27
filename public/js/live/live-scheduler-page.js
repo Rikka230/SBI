@@ -23,6 +23,7 @@ import {
 } from '/js/live/live-shared.js?v=8.0P.167.203';
 
 const functionsInstance = getFunctions(app, 'europe-west1');
+const getLiveSchedulerData = httpsCallable(functionsInstance, 'getLiveSchedulerData');
 const scheduleLiveSession = httpsCallable(functionsInstance, 'scheduleLiveSession');
 const notifyLiveStarted = httpsCallable(functionsInstance, 'notifyLiveStarted');
 
@@ -168,6 +169,20 @@ async function loadPromotionsForRole(uid = '', profile = {}) {
   }
 
   return rows;
+}
+
+async function loadSchedulerDataFromServer() {
+  try {
+    const result = await getLiveSchedulerData({ role: state.role });
+    const data = result?.data || {};
+    return {
+      promotions: Array.isArray(data.promotions) ? data.promotions : [],
+      sessions: Array.isArray(data.sessions) ? data.sessions : []
+    };
+  } catch (error) {
+    console.warn('[SBI Lives] Donnees live serveur indisponibles, fallback client :', error);
+    return null;
+  }
 }
 
 function getSelectedPromotion() {
@@ -362,12 +377,28 @@ function renderAll() {
 
 async function refreshData() {
   setStatus('Chargement des lives...', 'muted');
-  state.promotions = await loadPromotionsForRole(state.uid, state.profile);
-  state.promotions.sort((a, b) => getPromotionName(a).localeCompare(getPromotionName(b), 'fr'));
-  const promotionIds = state.promotions.map((promotion) => promotion.id);
-  state.sessions = promotionIds.length ? await loadLiveSessionsForPromotions(promotionIds) : [];
-  renderAll();
-  setStatus('', 'muted');
+  try {
+    const serverData = await loadSchedulerDataFromServer();
+    if (serverData) {
+      state.promotions = serverData.promotions;
+      state.sessions = serverData.sessions;
+    } else {
+      state.promotions = await loadPromotionsForRole(state.uid, state.profile);
+      state.promotions.sort((a, b) => getPromotionName(a).localeCompare(getPromotionName(b), 'fr'));
+      const promotionIds = state.promotions.map((promotion) => promotion.id);
+      state.sessions = promotionIds.length ? await loadLiveSessionsForPromotions(promotionIds) : [];
+    }
+
+    state.promotions.sort((a, b) => getPromotionName(a).localeCompare(getPromotionName(b), 'fr'));
+    renderAll();
+    setStatus('', 'muted');
+  } catch (error) {
+    console.error('[SBI Lives] Chargement impossible :', error);
+    state.promotions = [];
+    state.sessions = [];
+    renderAll();
+    setStatus(error?.message || 'Chargement des lives impossible.', 'error');
+  }
 }
 
 export function mountLiveSchedulerPage(role = 'admin') {

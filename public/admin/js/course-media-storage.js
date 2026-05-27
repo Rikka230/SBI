@@ -511,6 +511,7 @@ const uploadResourceToStorage = async (courseRefId, chapterId, file, uploadedBy 
 
     return {
         url,
+        storagePath,
         fileName: file.name || fileName,
         mimeType: contentType,
         size: uploadBody.size || originalSize,
@@ -539,6 +540,7 @@ export const uploadPendingMediaForChapters = async (courseRefId, chapters, { upl
         if (pending.resourceFile) {
             const resource = await uploadResourceToStorage(courseRefId, chapterId, pending.resourceFile, uploadedBy);
             chapter.resourceUrl = resource.url;
+            chapter.resourceStoragePath = resource.storagePath;
             chapter.resourceFileName = resource.fileName;
             chapter.resourceMimeType = resource.mimeType;
             chapter.resourceSize = resource.size;

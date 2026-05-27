@@ -16,7 +16,7 @@ import {
     courseBelongsToFormation as sharedCourseBelongsToFormation,
     loadAssignedFormationsForUser,
     loadCoursesForUser
-} from '/js/learning-access.js?v=8.0P.167.204';
+} from '/js/learning-access.js?v=8.0P.167.205';
 
 const state = {
     uid: null,

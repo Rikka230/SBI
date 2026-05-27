@@ -11,7 +11,7 @@ import {
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js';
 import { app } from '/js/firebase-init.js';
 import { escapeHTML, getDisplayName, SVG_EDIT } from './profile-utils.js';
-import { roleOf } from '/js/learning-access.js?v=8.0P.167.204';
+import { roleOf } from '/js/learning-access.js?v=8.0P.167.205';
 import { maybeMigrateVisibleLegacyAvatar } from './profile-avatar-cropper.js';
 import { updateProfilePresenceStatus } from './profile-presence.js';
 

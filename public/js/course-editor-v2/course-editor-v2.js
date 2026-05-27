@@ -27,10 +27,10 @@ import {
   syncChapterMediaFromDom,
   uploadPendingMediaForChapters,
   validateCourseDocumentSize
-} from '/admin/js/course-media-storage.js?v=8.0P.167.195';
+} from '/admin/js/course-media-storage.js?v=8.0P.167.205';
 
 const MAX_QUERY_VALUES = 10;
-const VERSION = '8.0P.167.203';
+const VERSION = '8.0P.167.205';
 const functionsInstance = getFunctions(app, 'europe-west1');
 const submitCourseForValidationCallable = httpsCallable(functionsInstance, 'submitCourseForValidation');
 const reviewCourseValidationCallable = httpsCallable(functionsInstance, 'reviewCourseValidation');
@@ -809,6 +809,7 @@ function createDefaultBlock(type = 'lesson') {
       instructions: 'Consultez cette ressource avant de passer à la suite.',
       resourceType: 'link',
       resourceUrl: '',
+      resourceStoragePath: '',
       resourceFileName: '',
       resourceMimeType: '',
       resourceSize: 0,
@@ -904,6 +905,50 @@ function createDefaultBlock(type = 'lesson') {
 function convertLegacyChaptersToBlocks(chapters = []) {
   if (!Array.isArray(chapters)) return [];
   return chapters.map((chapter, index) => {
+    const legacyType = chapter?.activityType || chapter?.type || '';
+    if (PEDAGOGIC_BLOCK_TYPES.has(legacyType)) {
+      return normalizePedagogicBlockForSave({
+        id: chapter.id || makeId(legacyType),
+        type: legacyType,
+        title: chapter.titre || getBlockMeta(legacyType).label,
+        instructions: chapter.instructions || '',
+        content: chapter.contenu || '',
+        durationMinutes: Number(chapter.durationMinutes || 10),
+        visibleInProgram: chapter.visibleInProgram !== false,
+        resourceType: chapter.resourceType || '',
+        resourceUrl: chapter.resourceUrl || '',
+        resourceStoragePath: chapter.resourceStoragePath || '',
+        resourceFileName: chapter.resourceFileName || '',
+        resourceMimeType: chapter.resourceMimeType || '',
+        resourceSize: Number(chapter.resourceSize || 0),
+        resourceOriginalSize: Number(chapter.resourceOriginalSize || 0),
+        resourceCompressed: chapter.resourceCompressed === true,
+        resourceDescription: chapter.resourceDescription || chapter.contenu || '',
+        consultationInstruction: chapter.consultationInstruction || '',
+        assignmentPrompt: chapter.assignmentPrompt || chapter.contenu || '',
+        assignmentCorrection: chapter.assignmentCorrection || '',
+        deliverableType: chapter.deliverableType || '',
+        duePolicy: chapter.duePolicy || '',
+        evaluationCriteria: chapter.evaluationCriteria || '',
+        correctionMode: chapter.correctionMode || 'self',
+        manualValidation: chapter.manualValidation === true,
+        teacherSubmissionPlanned: chapter.teacherSubmissionPlanned !== false,
+        checkpointGoal: chapter.checkpointGoal || chapter.contenu || '',
+        checkpointMode: chapter.checkpointMode || '',
+        expectedResult: chapter.expectedResult || '',
+        checkpointItems: Array.isArray(chapter.checkpointItems) ? chapter.checkpointItems : [],
+        requiresAllChecked: chapter.requiresAllChecked !== false,
+        isBlockingPrerequisite: chapter.isBlockingPrerequisite === true,
+        checkpointScore: Number(chapter.checkpointScore || chapter.xpReward || chapter.maxScore || 0),
+        xpReward: Number(chapter.xpReward || chapter.checkpointScore || chapter.maxScore || 0),
+        caseContext: chapter.caseContext || '',
+        scenario: chapter.scenario || chapter.contenu || '',
+        analysisMaterials: chapter.analysisMaterials || '',
+        guidedQuestions: chapter.guidedQuestions || '',
+        expectedAnswer: chapter.expectedAnswer || ''
+      });
+    }
+
     const type = chapter?.type === 'quiz' || Array.isArray(chapter?.questions) ? 'quiz' : 'lesson';
     if (type === 'quiz') {
       return {
@@ -992,6 +1037,7 @@ function normalizePedagogicBlockForSave(block = {}) {
     next.resourceDescription = next.resourceDescription || '';
     next.consultationInstruction = next.consultationInstruction || '';
     next.resourceUrl = next.resourceUrl || '';
+    next.resourceStoragePath = next.resourceStoragePath || '';
     next.resourceFileName = next.resourceFileName || '';
     next.resourceMimeType = next.resourceMimeType || '';
     next.resourceSize = Number(next.resourceSize || 0);
@@ -1100,6 +1146,7 @@ function convertBlocksToLegacyChapters(blocks = []) {
         questions: [],
         resourceType: block.resourceType || '',
         resourceUrl: block.resourceUrl || '',
+        resourceStoragePath: block.resourceStoragePath || '',
         resourceFileName: block.resourceFileName || '',
         resourceMimeType: block.resourceMimeType || '',
         resourceSize: Number(block.resourceSize || 0),
@@ -1776,6 +1823,7 @@ function handleResourceFile(file, block, input = null) {
   try {
     setPendingResourceFile(block.id, file);
     block.resourceUrl = '';
+    block.resourceStoragePath = '';
     block.resourceFileName = file.name || '';
     block.resourceMimeType = file.type || 'application/octet-stream';
     block.resourceSize = file.size || 0;
@@ -1799,6 +1847,7 @@ function clearResourceFile(block) {
   if (state.readOnly || !block?.id) return;
   clearPendingMediaForChapter(block.id);
   block.resourceUrl = '';
+  block.resourceStoragePath = '';
   block.resourceFileName = '';
   block.resourceMimeType = '';
   block.resourceSize = 0;
@@ -1866,6 +1915,7 @@ function syncUploadedMediaBackToBlocks(chapitres = []) {
     block.mediaImage = blockHasOwnField(chapter, 'mediaImage') ? (chapter.mediaImage || '') : (block.mediaImage || '');
     block.mediaVideo = blockHasOwnField(chapter, 'mediaVideo') ? (chapter.mediaVideo || '') : (block.mediaVideo || '');
     block.resourceUrl = blockHasOwnField(chapter, 'resourceUrl') ? (chapter.resourceUrl || '') : (block.resourceUrl || '');
+    block.resourceStoragePath = blockHasOwnField(chapter, 'resourceStoragePath') ? (chapter.resourceStoragePath || '') : (block.resourceStoragePath || '');
     block.resourceType = blockHasOwnField(chapter, 'resourceType') ? (chapter.resourceType || '') : (block.resourceType || '');
     block.resourceFileName = blockHasOwnField(chapter, 'resourceFileName') ? (chapter.resourceFileName || '') : (block.resourceFileName || '');
     block.resourceMimeType = blockHasOwnField(chapter, 'resourceMimeType') ? (chapter.resourceMimeType || '') : (block.resourceMimeType || '');

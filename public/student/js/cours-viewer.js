@@ -8,9 +8,11 @@
  * =======================================================================
  */
 
-import { db, auth } from '/js/firebase-init.js';
+import { app, db, auth, storage } from '/js/firebase-init.js';
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+import { getDownloadURL, ref as storageRef } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
+import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js";
 import { getUserLearningProgress, validateChapterProgress, startCourseProgress } from '/js/course-engine.js';
 
 let currentUid = null;
@@ -38,6 +40,8 @@ const SVG_NEXT = `<svg width="20" height="20" fill="currentColor" viewBox="0 0 2
 const SVG_DOWNLOAD = `<svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20h14v-2H5v2zM19 9h-4V3H9v6H5l7 7 7-7z"/></svg>`;
 const PEDAGOGIC_CHAPTER_TYPES = new Set(['resource', 'assignment', 'checkpoint', 'case_study']);
 const OBJECTIVES_CHAPTER_ID = 'course-objectives';
+const functionsInstance = getFunctions(app, 'europe-west1');
+const resolveCourseResourceDownload = httpsCallable(functionsInstance, 'resolveCourseResourceDownload');
 
 function getEffectiveViewerUrl() {
     return new URL(window.SBI_APP_SHELL_CURRENT_URL || window.location.href, window.location.origin);
@@ -532,25 +536,140 @@ function sanitizeDownloadFileName(value = '') {
         .slice(0, 180);
 }
 
-function renderResourceDownloadLink(chapter = {}) {
-    const resourceUrl = String(chapter.resourceUrl || '').trim();
-    if (!resourceUrl) return '';
+function firstCleanString(values = []) {
+    return values.map((value) => String(value || '').trim()).find(Boolean) || '';
+}
 
+function normalizeViewerStoragePath(value = '') {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+    if (raw.startsWith('gs://')) {
+        return raw.replace(/^gs:\/\/[^/]+\//, '');
+    }
+    return raw;
+}
+
+function getResourceDownloadUrl(chapter = {}) {
+    return firstCleanString([
+        chapter.resourceUrl,
+        chapter.resourceDownloadUrl,
+        chapter.downloadUrl,
+        chapter.downloadURL,
+        chapter.fileUrl,
+        chapter.fileURL,
+        chapter.url,
+        chapter.storageUrl,
+        chapter.resourceFile?.url,
+        chapter.file?.url
+    ]);
+}
+
+function getResourceDirectUrl(chapter = {}) {
+    const url = getResourceDownloadUrl(chapter);
+    return url.startsWith('gs://') ? '' : url;
+}
+
+function getResourceStoragePath(chapter = {}) {
+    const explicitPath = firstCleanString([
+        chapter.resourceStoragePath,
+        chapter.storagePath,
+        chapter.fileStoragePath,
+        chapter.resourceFile?.storagePath,
+        chapter.file?.storagePath
+    ]);
+    if (explicitPath) return normalizeViewerStoragePath(explicitPath);
+
+    const url = getResourceDownloadUrl(chapter);
+    return url.startsWith('gs://') ? normalizeViewerStoragePath(url) : '';
+}
+
+function renderResourceDownloadLink(chapter = {}) {
+    const resourceUrl = getResourceDirectUrl(chapter);
+    const storagePath = getResourceStoragePath(chapter);
     const fileName = sanitizeDownloadFileName(chapter.resourceFileName || '');
     const label = fileName || 'la ressource';
+    if (!resourceUrl && !storagePath && !fileName) return '';
+
     const downloadAttr = fileName ? ` download="${escapeHtml(fileName)}"` : ' download';
 
     return `
         <a class="sbi-viewer-resource-link sbi-viewer-resource-download"
-           href="${escapeHtml(resourceUrl)}"
+           href="${escapeHtml(resourceUrl || '#')}"
            target="_blank"
            rel="noopener noreferrer"
+           data-viewer-resource-download="true"
+           data-resource-url="${escapeHtml(resourceUrl)}"
+           data-resource-storage-path="${escapeHtml(storagePath)}"
+           data-resource-filename="${escapeHtml(fileName)}"
+           data-resource-chapter-id="${escapeHtml(chapter.id || '')}"
            ${downloadAttr}
            aria-label="Telecharger ${escapeHtml(label)}">
             ${SVG_DOWNLOAD}
             <span>Telecharger ${escapeHtml(label)}</span>
         </a>
     `;
+}
+
+function triggerViewerDownload(url = '', fileName = '') {
+    const safeUrl = String(url || '').trim();
+    if (!safeUrl) return;
+
+    const anchor = document.createElement('a');
+    anchor.href = safeUrl;
+    anchor.target = '_blank';
+    anchor.rel = 'noopener noreferrer';
+    if (fileName) anchor.download = fileName;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+}
+
+async function resolveViewerResourceViaServer({ chapterId = '', fileName = '', storagePath = '' } = {}) {
+    const result = await resolveCourseResourceDownload({
+        courseId: courseData?.id || '',
+        chapterId,
+        fileName,
+        storagePath
+    });
+    return String(result?.data?.url || '').trim();
+}
+
+function bindResourceDownloadControls(root = document) {
+    root.querySelectorAll('[data-viewer-resource-download]').forEach((link) => {
+        link.addEventListener('click', async (event) => {
+            event.preventDefault();
+            const control = event.currentTarget;
+            const fileName = sanitizeDownloadFileName(control.dataset.resourceFilename || '');
+            let url = String(control.dataset.resourceUrl || '').trim();
+            const storagePath = normalizeViewerStoragePath(control.dataset.resourceStoragePath || '');
+            const chapterId = String(control.dataset.resourceChapterId || '').trim();
+
+            control.classList.add('is-loading');
+            try {
+                if (!url && storagePath) {
+                    try {
+                        url = await getDownloadURL(storageRef(storage, storagePath));
+                    } catch (storageError) {
+                        console.warn('[SBI Viewer] Resolution Storage directe impossible, fallback serveur :', storageError);
+                    }
+                }
+                if (!url) {
+                    url = await resolveViewerResourceViaServer({ chapterId, fileName, storagePath });
+                }
+                if (url) {
+                    control.dataset.resourceUrl = url;
+                    control.href = url;
+                }
+                if (!url) throw new Error('Lien de telechargement introuvable.');
+                triggerViewerDownload(url, fileName);
+            } catch (error) {
+                console.error('[SBI Viewer] Telechargement ressource impossible :', error);
+                alert(error?.message || 'Telechargement impossible. Recharge la page puis reessaie.');
+            } finally {
+                control.classList.remove('is-loading');
+            }
+        });
+    });
 }
 
 function cleanViewerText(value = '') {
@@ -606,13 +725,14 @@ function renderPedagogicChapter(chapter = {}) {
 
     if (type === 'resource') {
         const link = renderResourceDownloadLink(chapter);
+        const resourceUrl = getResourceDirectUrl(chapter);
         const fileMeta = [
             chapter.resourceFileName || '',
             formatViewerBytes(chapter.resourceSize),
             chapter.resourceCompressed ? 'image compressee' : ''
         ].filter(Boolean).join(' - ');
-        const imagePreview = chapter.resourceUrl && (chapter.resourceType === 'image' || String(chapter.resourceMimeType || '').startsWith('image/'))
-            ? `<img class="sbi-viewer-resource-image" src="${escapeHtml(chapter.resourceUrl)}" alt="${escapeHtml(chapter.resourceFileName || 'Ressource')}">`
+        const imagePreview = resourceUrl && (chapter.resourceType === 'image' || String(chapter.resourceMimeType || '').startsWith('image/'))
+            ? `<img class="sbi-viewer-resource-image" src="${escapeHtml(resourceUrl)}" alt="${escapeHtml(chapter.resourceFileName || 'Ressource')}">`
             : '';
         body = `
             ${renderViewerLine('Type de ressource', chapter.resourceType || 'link')}
@@ -862,6 +982,7 @@ function loadChapter(index, forceReload = false) {
     main.scrollTop = 0;
 
     bindAutonomousEvaluationControls(main);
+    bindResourceDownloadControls(main);
     startSecurityTimer(isDone);
 }
 

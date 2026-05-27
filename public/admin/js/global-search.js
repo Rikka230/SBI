@@ -18,7 +18,7 @@ import {
     loadCoursesForUser,
     loadSearchUsersForRole,
     roleOf
-} from '/js/learning-access.js?v=8.0P.167.204';
+} from '/js/learning-access.js?v=8.0P.167.205';
 
 let activeSearchContext = {
     currentUid: null,
