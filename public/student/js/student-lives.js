@@ -17,7 +17,7 @@ import {
   loadProfile,
   loadPromotionsByIds,
   renderEmpty
-} from '/js/live/live-shared.js?v=8.0P.167.216';
+} from '/js/live/live-shared.js?v=8.0P.167.220';
 
 const functionsInstance = getFunctions(app, 'europe-west1');
 const getStudentLiveAttendance = httpsCallable(functionsInstance, 'getStudentLiveAttendance');
@@ -151,7 +151,7 @@ function renderReplayButton(row = {}) {
   const liveId = getLiveIdForRow(row);
   if (!canRequestReplay(row)) return '';
   const encoded = encodeURIComponent(liveId);
-  return `<a class="sbi-live-btn sbi-live-btn--ghost" data-live-replay-link="true" data-live-id="${encoded}" href="/student/live-replay.html?liveId=${encoded}#liveId=${encoded}">Regarder</a>`;
+  return `<a class="sbi-live-btn sbi-live-btn--ghost" data-live-replay-link="true" data-live-id="${encoded}" href="/student/live-replay/${encoded}?liveId=${encoded}#liveId=${encoded}">Regarder</a>`;
 }
 
 function renderList(rows) {
@@ -167,7 +167,7 @@ function renderList(rows) {
       <span>${row.startAt ? escapeHtml(formatDateRange(row.startAt, row.endAt)) : escapeHtml(getLiveWindowLabel(row.live))}</span>
       ${getAttendanceBadges(row)}
       <div class="sbi-live-card-actions">
-        ${canJoinLive(row) ? `<a class="sbi-live-btn" data-live-room-link="true" data-live-id="${encodeURIComponent(getLiveIdForRow(row))}" href="/live-room.html?liveId=${encodeURIComponent(getLiveIdForRow(row))}#liveId=${encodeURIComponent(getLiveIdForRow(row))}">Rejoindre la salle</a>` : (state.tab === 'upcoming' ? `<span class="sbi-live-btn sbi-live-btn--ghost is-disabled" aria-disabled="true">${escapeHtml(getJoinClosedLabel(row))}</span>` : '')}
+        ${canJoinLive(row) ? `<a class="sbi-live-btn" data-live-room-link="true" data-live-id="${encodeURIComponent(getLiveIdForRow(row))}" href="/live-room/${encodeURIComponent(getLiveIdForRow(row))}?liveId=${encodeURIComponent(getLiveIdForRow(row))}#liveId=${encodeURIComponent(getLiveIdForRow(row))}">Rejoindre la salle</a>` : (state.tab === 'upcoming' ? `<span class="sbi-live-btn sbi-live-btn--ghost is-disabled" aria-disabled="true">${escapeHtml(getJoinClosedLabel(row))}</span>` : '')}
         ${renderReplayButton(row)}
       </div>
     </article>

@@ -7,67 +7,99 @@
   <link rel="stylesheet" href="/admin/css/admin-layout.css">
   <link rel="stylesheet" href="/admin/css/admin.css">
   <link rel="stylesheet" href="/student/css/student.css">
-  <link rel="stylesheet" href="/css/live-platform.css?v=8.0P.167.219">
-  <script src="/admin/js/components.js?v=8.0P.167.219"></script>
+  <link rel="stylesheet" href="/css/live-platform.css?v=8.0P.167.220">
   <style>
-    html, body, body.sbi-live-replay-page, .sbi-live-replay-page #app-container, .sbi-live-replay-page #main-content {
+    html, body, body.sbi-live-replay-page, .sbi-live-standalone-shell, .sbi-live-standalone-content {
       opacity: 1 !important;
       visibility: visible !important;
     }
-    .sbi-live-replay-page #main-content { display: block !important; }
-    .sbi-live-replay-page #app-container { display: block !important; min-height: 100vh !important; }
-    .sbi-live-replay-page main#main-content .content-wrapper { display: block !important; }
+    body.sbi-live-replay-page {
+      display: block !important;
+      min-height: 100vh !important;
+      background: #f4f7f6 !important;
+    }
+    .sbi-live-standalone-shell {
+      min-height: 100vh !important;
+      display: block !important;
+      padding: clamp(1rem, 3vw, 2.2rem) !important;
+      box-sizing: border-box;
+    }
+    .sbi-live-standalone-content {
+      display: block !important;
+      width: min(100%, 1280px) !important;
+      margin: 0 auto !important;
+    }
     .sbi-live-replay-placeholder[hidden] { display: none !important; }
   </style>
   <script>
     (function () {
+      function captureLiveId() {
+        try {
+          var url = new URL(window.location.href);
+          var id = url.searchParams.get('liveId') || url.searchParams.get('id');
+          if (!id && url.hash) {
+            var params = new URLSearchParams(String(url.hash || '').replace(/^#/, ''));
+            id = params.get('liveId') || params.get('id');
+          }
+          if (!id) {
+            var match = url.pathname.match(/\/student\/live-replay\/([^/?#]+)/);
+            if (match) id = decodeURIComponent(match[1]);
+          }
+          if (id) {
+            sessionStorage.setItem('sbi:lastReplayLiveId', id);
+            localStorage.setItem('sbi:lastReplayLiveId', id);
+            document.body && (document.body.dataset.liveId = id);
+          }
+        } catch (_) {}
+      }
       function revealReplayPage() {
+        captureLiveId();
         document.documentElement.classList.remove('preload');
-        if (document.body) document.body.classList.remove('preload');
-        var app = document.getElementById('app-container');
-        var main = document.getElementById('main-content');
-        if (app) { app.hidden = false; app.style.visibility = 'visible'; app.style.opacity = '1'; }
-        if (main) { main.hidden = false; main.style.display = 'block'; main.style.visibility = 'visible'; main.style.opacity = '1'; }
+        if (document.body) {
+          document.body.classList.remove('preload');
+          document.body.style.opacity = '1';
+          document.body.style.visibility = 'visible';
+        }
+        var shell = document.querySelector('.sbi-live-standalone-shell');
+        var content = document.querySelector('.sbi-live-standalone-content');
+        if (shell) { shell.hidden = false; shell.style.display = 'block'; shell.style.visibility = 'visible'; shell.style.opacity = '1'; }
+        if (content) { content.hidden = false; content.style.display = 'block'; content.style.visibility = 'visible'; content.style.opacity = '1'; }
       }
       revealReplayPage();
       document.addEventListener('DOMContentLoaded', revealReplayPage, { once: true });
       window.addEventListener('pageshow', revealReplayPage);
-      setTimeout(revealReplayPage, 250);
-      setTimeout(revealReplayPage, 900);
+      setTimeout(revealReplayPage, 80);
+      setTimeout(revealReplayPage, 300);
+      setTimeout(revealReplayPage, 1000);
     }());
   </script>
 </head>
 <body class="sbi-live-page sbi-live-replay-page" data-sbi-standalone="live-replay">
-  <div class="app-container" id="app-container">
-    <student-left-panel></student-left-panel>
-    <student-top-bar></student-top-bar>
+  <main class="sbi-live-standalone-shell">
+    <div class="sbi-live-standalone-content">
+      <section class="sbi-live-hero">
+        <div>
+          <span class="sbi-live-kicker">Replay</span>
+          <h1 id="sbi-replay-title">Replay live</h1>
+        </div>
+        <a class="sbi-live-btn sbi-live-btn--ghost" href="/student/lives.html">Retour aux lives</a>
+      </section>
 
-    <main id="main-content">
-      <div class="content-wrapper">
-        <section class="sbi-live-hero">
-          <div>
-            <span class="sbi-live-kicker">Replay</span>
-            <h1 id="sbi-replay-title">Replay live</h1>
-          </div>
-          <a class="sbi-live-btn sbi-live-btn--ghost" href="/student/lives.html">Retour aux lives</a>
-        </section>
+      <section class="sbi-live-replay-shell">
+        <div class="sbi-live-replay-player-wrap" id="sbi-live-replay-player-wrap">
+          <video id="sbi-live-replay-video" class="sbi-live-replay-video" controls playsinline preload="metadata" hidden></video>
+          <div id="sbi-live-replay-watermark" class="sbi-live-replay-watermark" aria-hidden="true">SBI</div>
+          <div id="sbi-live-replay-placeholder" class="sbi-live-replay-placeholder">Préparation du replay...</div>
+        </div>
+        <div class="sbi-live-replay-side">
+          <strong>Lecture en ligne</strong>
+          <p id="sbi-live-replay-status">Recherche du replay Daily...</p>
+          <button id="sbi-live-replay-fullscreen" class="sbi-live-btn sbi-live-btn--ghost" type="button" hidden>Plein écran</button>
+        </div>
+      </section>
+    </div>
+  </main>
 
-        <section class="sbi-live-replay-shell">
-          <div class="sbi-live-replay-player-wrap">
-            <video id="sbi-live-replay-video" class="sbi-live-replay-video" controls playsinline preload="metadata" hidden></video>
-            <div id="sbi-live-replay-watermark" class="sbi-live-replay-watermark" aria-hidden="true">SBI</div>
-            <div id="sbi-live-replay-placeholder" class="sbi-live-replay-placeholder">Préparation du replay...</div>
-          </div>
-          <div class="sbi-live-replay-side">
-            <strong>Lecture en ligne</strong>
-            <p id="sbi-live-replay-status">Recherche du replay Daily...</p>
-            <button id="sbi-live-replay-fullscreen" class="sbi-live-btn sbi-live-btn--ghost" type="button" hidden>Plein écran</button>
-          </div>
-        </section>
-      </div>
-    </main>
-  </div>
-
-  <script type="module" src="/student/js/live-replay.js?v=8.0P.167.219"></script>
+  <script type="module" src="/student/js/live-replay.js?v=8.0P.167.220"></script>
 </body>
 </html>

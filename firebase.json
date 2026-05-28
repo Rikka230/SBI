@@ -151,16 +151,24 @@
         "destination": "/live-room.html"
       },
       {
-        "source": "/live-room/**",
-        "destination": "/live-room.html"
-      },
-      {
         "source": "/student/live-replay",
         "destination": "/student/live-replay.html"
       },
       {
+        "source": "/live-room/**",
+        "destination": "/live-room.html"
+      },
+      {
         "source": "/student/live-replay/**",
         "destination": "/student/live-replay.html"
+      },
+      {
+        "source": "/student/live-replay.html/**",
+        "destination": "/student/live-replay.html"
+      },
+      {
+        "source": "/live-room.html/**",
+        "destination": "/live-room.html"
       },
       {
         "source": "/api/liveReplay",

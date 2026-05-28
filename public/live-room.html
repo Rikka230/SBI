@@ -4,13 +4,33 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SBI - Salle de conférence</title>
-  <link rel="stylesheet" href="/css/live-platform.css?v=8.0P.167.219">
+  <link rel="stylesheet" href="/css/live-platform.css?v=8.0P.167.220">
   <style>
     html, body.sbi-live-room-page, .sbi-live-room-shell, .sbi-live-room-stage { opacity: 1 !important; visibility: visible !important; }
   </style>
   <script>
     (function () {
+      function captureLiveId() {
+        try {
+          var url = new URL(window.location.href);
+          var id = url.searchParams.get('liveId') || url.searchParams.get('id');
+          if (!id && url.hash) {
+            var params = new URLSearchParams(String(url.hash || '').replace(/^#/, ''));
+            id = params.get('liveId') || params.get('id');
+          }
+          if (!id) {
+            var match = url.pathname.match(/\/live-room\/([^/?#]+)/);
+            if (match) id = decodeURIComponent(match[1]);
+          }
+          if (id) {
+            sessionStorage.setItem('sbi:lastLiveRoomId', id);
+            localStorage.setItem('sbi:lastLiveRoomId', id);
+            document.body && (document.body.dataset.liveId = id);
+          }
+        } catch (_) {}
+      }
       function revealLiveRoom() {
+        captureLiveId();
         document.documentElement.classList.remove('preload');
         if (document.body) document.body.classList.remove('preload');
         var shell = document.querySelector('.sbi-live-room-shell');
@@ -26,7 +46,7 @@
     }());
   </script>
 </head>
-<body class="sbi-live-room-page">
+<body class="sbi-live-room-page" data-sbi-standalone="live-room">
   <main class="sbi-live-room-shell">
     <header class="sbi-live-room-header">
       <div>
@@ -66,6 +86,6 @@
     </section>
   </main>
 
-  <script type="module" src="/js/live/live-room-page.js?v=8.0P.167.219"></script>
+  <script type="module" src="/js/live/live-room-page.js?v=8.0P.167.220"></script>
 </body>
 </html>

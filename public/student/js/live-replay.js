@@ -17,25 +17,27 @@ function $(id) {
 function forceRevealPage() {
   document.documentElement?.classList?.remove('preload');
   document.body?.classList?.remove('preload');
-  const app = $('app-container');
-  const main = $('main-content');
-  if (app) {
-    app.hidden = false;
-    app.style.visibility = 'visible';
-    app.style.opacity = '1';
-    app.style.display = 'block';
-  }
-  if (main) {
-    main.hidden = false;
-    main.style.display = 'block';
-    main.style.visibility = 'visible';
-    main.style.opacity = '1';
-  }
+  const nodes = [
+    $('app-container'),
+    $('main-content'),
+    document.querySelector('.sbi-live-standalone-shell'),
+    document.querySelector('.sbi-live-standalone-content')
+  ].filter(Boolean);
+  nodes.forEach((node) => {
+    node.hidden = false;
+    node.style.display = node.tagName === 'MAIN' ? 'block' : (node.style.display || 'block');
+    node.style.visibility = 'visible';
+    node.style.opacity = '1';
+  });
 }
 
 function rememberLiveId(value = '') {
   const clean = String(value || '').trim();
-  if (clean) sessionStorage.setItem('sbi:lastReplayLiveId', clean);
+  if (clean) {
+    sessionStorage.setItem('sbi:lastReplayLiveId', clean);
+    localStorage.setItem('sbi:lastReplayLiveId', clean);
+    if (document.body) document.body.dataset.liveId = clean;
+  }
   return clean;
 }
 
@@ -51,6 +53,8 @@ function getLiveId() {
   } catch (_) {}
 
   for (const url of candidates) {
+    const pathMatch = String(url.pathname || '').match(/\/student\/live-replay\/([^/?#]+)/);
+    if (pathMatch?.[1]) return rememberLiveId(decodeURIComponent(pathMatch[1]));
     const value = url.searchParams.get('liveId') || url.searchParams.get('id');
     if (value) return rememberLiveId(value);
     const hashParams = new URLSearchParams(String(url.hash || '').replace(/^#/, ''));
@@ -58,7 +62,7 @@ function getLiveId() {
     if (hashValue) return rememberLiveId(hashValue);
   }
 
-  return sessionStorage.getItem('sbi:lastReplayLiveId') || '';
+  return sessionStorage.getItem('sbi:lastReplayLiveId') || localStorage.getItem('sbi:lastReplayLiveId') || '';
 }
 
 function setStatus(message = '') {
@@ -312,3 +316,12 @@ if (document.readyState === 'loading') {
 } else {
   bootReplayPage();
 }
+
+window.addEventListener('error', (event) => {
+  forceRevealPage();
+  console.error('[SBI Live Replay] Page error:', event?.error || event?.message);
+});
+window.addEventListener('unhandledrejection', (event) => {
+  forceRevealPage();
+  console.error('[SBI Live Replay] Promise rejection:', event?.reason);
+});

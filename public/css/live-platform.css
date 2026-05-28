@@ -1055,3 +1055,36 @@ a.sbi-live-btn {
     max-width: 72%;
   }
 }
+
+/* SBI 8.0P.167.220 - direct refresh standalone hardening */
+.sbi-live-replay-page .sbi-live-standalone-shell {
+  min-height: 100vh;
+  display: block;
+  padding: clamp(1rem, 3vw, 2.2rem);
+  box-sizing: border-box;
+  background: #f4f7f6;
+}
+
+.sbi-live-replay-page .sbi-live-standalone-content {
+  width: min(100%, 1280px);
+  margin-inline: auto;
+  display: block;
+}
+
+.sbi-live-replay-page[data-sbi-standalone="live-replay"],
+body.sbi-live-replay-page[data-sbi-standalone="live-replay"] {
+  opacity: 1 !important;
+  visibility: visible !important;
+  min-height: 100vh;
+}
+
+.sbi-live-replay-page .sbi-live-standalone-shell[hidden],
+.sbi-live-replay-page .sbi-live-standalone-content[hidden] {
+  display: block !important;
+}
+
+@media (max-width: 760px) {
+  .sbi-live-replay-page .sbi-live-standalone-shell {
+    padding: 0.85rem;
+  }
+}

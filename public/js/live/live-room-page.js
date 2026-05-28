@@ -3,7 +3,7 @@ import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.1/fi
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js';
 import { collection, addDoc, onSnapshot, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js';
-import { escapeHtml } from '/js/live/live-shared.js?v=8.0P.167.219';
+import { escapeHtml } from '/js/live/live-shared.js?v=8.0P.167.220';
 
 const functionsInstance = getFunctions(app, 'europe-west1');
 const storage = getStorage(app);
@@ -77,20 +77,31 @@ function getLiveIdFromUrl() {
   } catch (_) {}
 
   for (const url of candidates) {
+    const pathMatch = String(url.pathname || '').match(/\/live-room\/([^/?#]+)/);
+    if (pathMatch?.[1]) {
+      const decoded = decodeURIComponent(pathMatch[1]);
+      sessionStorage.setItem('sbi:lastLiveRoomId', decoded);
+      localStorage.setItem('sbi:lastLiveRoomId', decoded);
+      return decoded;
+    }
     const value = url.searchParams.get('liveId') || url.searchParams.get('id');
     if (value) {
       sessionStorage.setItem('sbi:lastLiveRoomId', value);
+      localStorage.setItem('sbi:lastLiveRoomId', value);
       return value;
     }
     const hashParams = new URLSearchParams(String(url.hash || '').replace(/^#/, ''));
     const hashValue = hashParams.get('liveId') || hashParams.get('id');
     if (hashValue) {
       sessionStorage.setItem('sbi:lastLiveRoomId', hashValue);
+      localStorage.setItem('sbi:lastLiveRoomId', hashValue);
       return hashValue;
     }
   }
 
-  return sessionStorage.getItem('sbi:lastLiveRoomId') || '';
+  const dataLiveId = document.body?.dataset?.liveId || '';
+  if (dataLiveId) return dataLiveId;
+  return sessionStorage.getItem('sbi:lastLiveRoomId') || localStorage.getItem('sbi:lastLiveRoomId') || '';
 }
 
 function extractErrorCode(error) {
@@ -528,3 +539,12 @@ if (document.readyState === 'loading') {
 } else {
   bootLiveRoomPage();
 }
+
+window.addEventListener('error', (event) => {
+  forceRevealLiveRoomPage();
+  console.error('[SBI Live Room] Page error:', event?.error || event?.message);
+});
+window.addEventListener('unhandledrejection', (event) => {
+  forceRevealLiveRoomPage();
+  console.error('[SBI Live Room] Promise rejection:', event?.reason);
+});
