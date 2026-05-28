@@ -8,6 +8,7 @@ const resolveLiveReplay = httpsCallable(functionsInstance, 'resolveLiveReplay');
 let mounted = false;
 let unsubscribeAuth = null;
 let bootTimer = null;
+let watermarkTimer = null;
 
 function $(id) {
   return document.getElementById(id);
@@ -22,6 +23,7 @@ function forceRevealPage() {
     app.hidden = false;
     app.style.visibility = 'visible';
     app.style.opacity = '1';
+    app.style.display = 'block';
   }
   if (main) {
     main.hidden = false;
@@ -82,11 +84,8 @@ function setReplayWatermark(user) {
   node.textContent = `${name} · ${date}`;
 }
 
-function showFallback(url = '') {
-  const link = $('sbi-live-replay-download');
-  if (!link || !url) return;
-  link.href = url;
-  link.hidden = false;
+function showFallback() {
+  // Intentionally no public download link for replay protection.
 }
 
 function getPlayerWrap() {
@@ -96,7 +95,7 @@ function getPlayerWrap() {
 function hidePlaceholder() {
   const placeholder = $('sbi-live-replay-placeholder');
   const wrap = getPlayerWrap();
-  if (wrap) wrap.classList.add('is-ready');
+  if (wrap) { wrap.classList.add('is-ready'); wrap.classList.add('has-stream'); }
   if (placeholder) {
     placeholder.hidden = true;
     placeholder.setAttribute('aria-hidden', 'true');
@@ -109,7 +108,7 @@ function hidePlaceholder() {
 function showPlaceholder(message = '') {
   const placeholder = $('sbi-live-replay-placeholder');
   const wrap = getPlayerWrap();
-  if (wrap) wrap.classList.remove('is-ready');
+  if (wrap) { wrap.classList.remove('is-ready'); wrap.classList.remove('has-stream'); }
   if (placeholder) {
     placeholder.hidden = false;
     placeholder.removeAttribute('aria-hidden');
@@ -131,6 +130,76 @@ function renderBlockingMessage(message = '') {
   setStatus(message || 'Replay encore en préparation. Réessayez dans quelques minutes.');
 }
 
+
+function configureReplayVideo(video) {
+  if (!video) return;
+  try { video.controlsList?.add('nodownload'); } catch (_) {}
+  try { video.controlsList?.add('nofullscreen'); } catch (_) {}
+  try { video.controlsList?.add('noremoteplayback'); } catch (_) {}
+  video.setAttribute('controlsList', 'nodownload nofullscreen noremoteplayback');
+  video.setAttribute('playsinline', '');
+  video.setAttribute('webkit-playsinline', '');
+  video.setAttribute('disablePictureInPicture', '');
+  video.disablePictureInPicture = true;
+  video.disableRemotePlayback = true;
+  video.addEventListener('contextmenu', (event) => event.preventDefault());
+}
+
+function setWatermarkFullscreenMode(active = false) {
+  const wrap = getPlayerWrap();
+  if (!wrap) return;
+  wrap.classList.toggle('is-fullscreen', Boolean(active));
+}
+
+async function requestSecureFullscreen() {
+  const wrap = getPlayerWrap();
+  if (!wrap) return;
+  try {
+    if (document.fullscreenElement) {
+      await document.exitFullscreen();
+      return;
+    }
+    await wrap.requestFullscreen({ navigationUI: 'hide' });
+  } catch (error) {
+    console.warn('[SBI Live Replay] Fullscreen unavailable:', error);
+  }
+}
+
+function bindFullscreenButton() {
+  const button = $('sbi-live-replay-fullscreen');
+  if (!button) return;
+  button.hidden = false;
+  button.addEventListener('click', requestSecureFullscreen);
+}
+
+function startReplayWatermarkMotion() {
+  const node = $('sbi-live-replay-watermark');
+  if (!node) return;
+  if (watermarkTimer) clearInterval(watermarkTimer);
+  const positions = [
+    { left: '4%', top: '7%', rotate: '-6deg' },
+    { left: '58%', top: '13%', rotate: '5deg' },
+    { left: '14%', top: '72%', rotate: '4deg' },
+    { left: '52%', top: '64%', rotate: '-4deg' },
+    { left: '28%', top: '38%', rotate: '-2deg' }
+  ];
+  let index = 0;
+  const apply = () => {
+    const pos = positions[index % positions.length];
+    node.style.left = pos.left;
+    node.style.top = pos.top;
+    node.style.transform = `rotate(${pos.rotate})`;
+    index += 1;
+  };
+  apply();
+  watermarkTimer = setInterval(apply, 6500);
+}
+
+document.addEventListener('fullscreenchange', () => {
+  const wrap = getPlayerWrap();
+  setWatermarkFullscreenMode(document.fullscreenElement === wrap);
+});
+
 function bindVideoEvents(video, fallbackUrl = '') {
   const ready = () => {
     hidePlaceholder();
@@ -145,8 +214,8 @@ function bindVideoEvents(video, fallbackUrl = '') {
   });
   video.addEventListener('error', () => {
     hidePlaceholder();
-    setStatus('Lecture en ligne impossible. Utilisez le bouton Ouvrir / télécharger.');
-    showFallback(fallbackUrl || video.currentSrc || video.src || '');
+    setStatus('Lecture en ligne impossible dans ce navigateur. Réessayez plus tard ou contactez l’équipe pédagogique.');
+    showFallback();
   }, { once: true });
 }
 
@@ -167,16 +236,20 @@ async function loadReplay() {
   if (!streamUrl) throw new Error('Lien replay indisponible.');
 
   setTitle(data.title || 'Replay live');
-  showFallback(fallbackUrl || streamUrl);
+  showFallback();
 
   const video = $('sbi-live-replay-video');
   if (!video) {
-    window.open(streamUrl, '_blank', 'noopener,noreferrer');
+    setStatus('Lecteur vidéo indisponible. Rechargez la page.');
     return;
   }
 
+  configureReplayVideo(video);
+  bindFullscreenButton();
+  startReplayWatermarkMotion();
   video.hidden = false;
   video.style.display = 'block';
+  hidePlaceholder();
   bindVideoEvents(video, fallbackUrl || streamUrl);
   video.src = streamUrl;
   try { video.load(); } catch (_) {}
@@ -210,6 +283,8 @@ export function mountStudentLiveReplayPage() {
     mounted = false;
     if (bootTimer) clearTimeout(bootTimer);
     bootTimer = null;
+    if (watermarkTimer) clearInterval(watermarkTimer);
+    watermarkTimer = null;
     unsubscribeAuth?.();
     unsubscribeAuth = null;
   };

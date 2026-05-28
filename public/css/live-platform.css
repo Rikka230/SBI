@@ -870,7 +870,7 @@ a.sbi-live-btn {
 }
 
 
-/* SBI 8.0P.167.218 - replay layout, watermark, refresh hardening */
+/* SBI 8.0P.167.219 - replay layout, watermark, refresh hardening */
 .sbi-live-replay-page #main-content,
 .sbi-live-replay-page .content-wrapper {
   min-height: auto;
@@ -962,7 +962,7 @@ a.sbi-live-btn {
 }
 
 
-/* SBI 8.0P.167.218 - replay loader cleanup + refresh hardening */
+/* SBI 8.0P.167.219 - replay loader cleanup + refresh hardening */
 .sbi-live-replay-page #app-container,
 .sbi-live-replay-page #main-content,
 .sbi-live-room-page,
@@ -990,4 +990,68 @@ a.sbi-live-btn {
 .sbi-live-replay-video:not([hidden]) ~ .sbi-live-replay-watermark,
 .sbi-live-replay-player-wrap.is-ready .sbi-live-replay-watermark {
   display: block;
+}
+
+
+/* SBI 8.0P.167.219 - replay watermark fullscreen and no-download UI */
+.sbi-live-replay-player-wrap {
+  contain: layout paint;
+}
+
+.sbi-live-replay-player-wrap.is-ready .sbi-live-replay-placeholder,
+.sbi-live-replay-player-wrap.has-stream .sbi-live-replay-placeholder {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+.sbi-live-replay-video::-webkit-media-controls-enclosure {
+  overflow: hidden;
+}
+
+.sbi-live-replay-watermark {
+  z-index: 8;
+  transition: left 1.2s ease, top 1.2s ease, transform 1.2s ease, opacity 0.35s ease;
+  user-select: none;
+  mix-blend-mode: screen;
+}
+
+.sbi-live-replay-player-wrap.is-fullscreen {
+  width: 100vw !important;
+  height: 100vh !important;
+  max-height: none !important;
+  aspect-ratio: auto !important;
+  border-radius: 0 !important;
+  background: #050914;
+}
+
+.sbi-live-replay-player-wrap.is-fullscreen .sbi-live-replay-video {
+  width: 100% !important;
+  height: 100% !important;
+  max-height: none !important;
+  object-fit: contain;
+}
+
+.sbi-live-replay-player-wrap.is-fullscreen .sbi-live-replay-watermark {
+  display: block !important;
+  opacity: 0.55;
+  font-size: clamp(0.78rem, 1.4vw, 1.05rem);
+  z-index: 2147483000;
+}
+
+#sbi-live-replay-fullscreen {
+  margin-top: 0.25rem;
+}
+
+.sbi-live-replay-side a[href*="daily"],
+.sbi-live-replay-side a[download],
+#sbi-live-replay-download {
+  display: none !important;
+}
+
+@media (max-width: 920px) {
+  .sbi-live-replay-watermark {
+    font-size: 0.68rem;
+    max-width: 72%;
+  }
 }
