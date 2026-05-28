@@ -3,7 +3,7 @@ import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.1/fi
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js';
 import { collection, addDoc, onSnapshot, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js';
-import { escapeHtml } from '/js/live/live-shared.js?v=8.0P.167.217';
+import { escapeHtml } from '/js/live/live-shared.js?v=8.0P.167.218';
 
 const functionsInstance = getFunctions(app, 'europe-west1');
 const storage = getStorage(app);
@@ -24,6 +24,23 @@ const state = {
 
 function $(id) {
   return document.getElementById(id);
+}
+
+function forceRevealLiveRoomPage() {
+  document.documentElement?.classList?.remove('preload');
+  document.body?.classList?.remove('preload');
+  const shell = document.querySelector('.sbi-live-room-shell');
+  const frame = document.getElementById('sbi-live-room-frame');
+  if (shell) {
+    shell.hidden = false;
+    shell.style.visibility = 'visible';
+    shell.style.opacity = '1';
+  }
+  if (frame) {
+    frame.hidden = false;
+    frame.style.visibility = 'visible';
+    frame.style.opacity = '1';
+  }
 }
 
 function setStatus(message = '', tone = 'muted') {
@@ -464,7 +481,7 @@ let mounted = false;
 let unsubscribeAuth = null;
 
 export function mountLiveRoomPage() {
-  document.body?.classList?.remove('preload');
+  forceRevealLiveRoomPage();
   if (mounted) return null;
   mounted = true;
   unsubscribeAuth = onAuthStateChanged(auth, (user) => {
@@ -489,13 +506,13 @@ export function mountLiveRoomPage() {
 }
 
 function bootLiveRoomPage() {
-  document.body?.classList?.remove('preload');
-  document.documentElement?.classList?.remove('preload');
+  forceRevealLiveRoomPage();
   if (!document.getElementById('sbi-live-room-frame')) return;
   mountLiveRoomPage();
 }
 
 window.addEventListener('pageshow', () => {
+  forceRevealLiveRoomPage();
   const frame = document.getElementById('sbi-live-room-frame');
   if (!frame || state.joined || mounted) return;
   bootLiveRoomPage();

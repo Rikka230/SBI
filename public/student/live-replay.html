@@ -7,8 +7,33 @@
   <link rel="stylesheet" href="/admin/css/admin-layout.css">
   <link rel="stylesheet" href="/admin/css/admin.css">
   <link rel="stylesheet" href="/student/css/student.css">
-  <link rel="stylesheet" href="/css/live-platform.css?v=8.0P.167.217">
-  <script src="/admin/js/components.js?v=8.0P.167.217"></script>
+  <link rel="stylesheet" href="/css/live-platform.css?v=8.0P.167.218">
+  <script src="/admin/js/components.js?v=8.0P.167.218"></script>
+  <style>
+    html, body, body.sbi-live-replay-page, .sbi-live-replay-page #app-container, .sbi-live-replay-page #main-content {
+      opacity: 1 !important;
+      visibility: visible !important;
+    }
+    .sbi-live-replay-page #main-content { display: block !important; }
+    .sbi-live-replay-placeholder[hidden] { display: none !important; }
+  </style>
+  <script>
+    (function () {
+      function revealReplayPage() {
+        document.documentElement.classList.remove('preload');
+        if (document.body) document.body.classList.remove('preload');
+        var app = document.getElementById('app-container');
+        var main = document.getElementById('main-content');
+        if (app) { app.hidden = false; app.style.visibility = 'visible'; app.style.opacity = '1'; }
+        if (main) { main.hidden = false; main.style.display = 'block'; main.style.visibility = 'visible'; main.style.opacity = '1'; }
+      }
+      revealReplayPage();
+      document.addEventListener('DOMContentLoaded', revealReplayPage, { once: true });
+      window.addEventListener('pageshow', revealReplayPage);
+      setTimeout(revealReplayPage, 250);
+      setTimeout(revealReplayPage, 900);
+    }());
+  </script>
 </head>
 <body class="preload sbi-live-page sbi-live-replay-page">
   <div class="app-container" id="app-container">
@@ -41,8 +66,8 @@
     </main>
   </div>
 
-  <script type="module" src="/admin/js/admin-ui.js?v=8.0P.167.217"></script>
-  <script type="module" src="/admin/js/admin-notifications.js?v=8.0P.167.217"></script>
-  <script type="module" src="/student/js/live-replay.js?v=8.0P.167.217"></script>
+  <script type="module" src="/admin/js/admin-ui.js?v=8.0P.167.218"></script>
+  <script type="module" src="/admin/js/admin-notifications.js?v=8.0P.167.218"></script>
+  <script type="module" src="/student/js/live-replay.js?v=8.0P.167.218"></script>
 </body>
 </html>

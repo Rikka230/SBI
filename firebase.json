@@ -151,7 +151,15 @@
         "destination": "/live-room.html"
       },
       {
+        "source": "/live-room/**",
+        "destination": "/live-room.html"
+      },
+      {
         "source": "/student/live-replay",
+        "destination": "/student/live-replay.html"
+      },
+      {
+        "source": "/student/live-replay/**",
         "destination": "/student/live-replay.html"
       },
       {

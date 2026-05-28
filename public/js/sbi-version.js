@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.217',
+  version: '8.0P.167.218',
   branch: 'main',
   channel: 'LIVE REPLAY',
-  stage: 'REPLAY PLAYER WATERMARK + REFRESH',
+  stage: 'REPLAY LOADER + REFRESH HARDENING',
   updatedAt: '2026-05-28',
-  label: 'SBI 8.0P.167.217 - replay player layout watermark and refresh fix'
+  label: 'SBI 8.0P.167.218 - replay loader cleanup and refresh hardening'
 };
 
 export function getSbiVersionLabel() {

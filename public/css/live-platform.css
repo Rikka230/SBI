@@ -870,7 +870,7 @@ a.sbi-live-btn {
 }
 
 
-/* SBI 8.0P.167.217 - replay layout, watermark, refresh hardening */
+/* SBI 8.0P.167.218 - replay layout, watermark, refresh hardening */
 .sbi-live-replay-page #main-content,
 .sbi-live-replay-page .content-wrapper {
   min-height: auto;
@@ -959,4 +959,35 @@ a.sbi-live-btn {
   .sbi-live-replay-player-wrap {
     border-radius: 12px;
   }
+}
+
+
+/* SBI 8.0P.167.218 - replay loader cleanup + refresh hardening */
+.sbi-live-replay-page #app-container,
+.sbi-live-replay-page #main-content,
+.sbi-live-room-page,
+.sbi-live-room-page .sbi-live-room-shell {
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+.sbi-live-replay-page #main-content {
+  display: block !important;
+}
+
+.sbi-live-replay-placeholder[hidden],
+.sbi-live-replay-video:not([hidden]) ~ .sbi-live-replay-placeholder,
+.sbi-live-replay-player-wrap.is-ready .sbi-live-replay-placeholder {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+.sbi-live-replay-player-wrap.is-ready .sbi-live-replay-video {
+  display: block !important;
+}
+
+.sbi-live-replay-video:not([hidden]) ~ .sbi-live-replay-watermark,
+.sbi-live-replay-player-wrap.is-ready .sbi-live-replay-watermark {
+  display: block;
 }

@@ -4,7 +4,27 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SBI - Salle de conférence</title>
-  <link rel="stylesheet" href="/css/live-platform.css?v=8.0P.167.217">
+  <link rel="stylesheet" href="/css/live-platform.css?v=8.0P.167.218">
+  <style>
+    html, body.sbi-live-room-page, .sbi-live-room-shell, .sbi-live-room-stage { opacity: 1 !important; visibility: visible !important; }
+  </style>
+  <script>
+    (function () {
+      function revealLiveRoom() {
+        document.documentElement.classList.remove('preload');
+        if (document.body) document.body.classList.remove('preload');
+        var shell = document.querySelector('.sbi-live-room-shell');
+        var frame = document.getElementById('sbi-live-room-frame');
+        if (shell) { shell.hidden = false; shell.style.visibility = 'visible'; shell.style.opacity = '1'; }
+        if (frame) { frame.hidden = false; frame.style.visibility = 'visible'; frame.style.opacity = '1'; }
+      }
+      revealLiveRoom();
+      document.addEventListener('DOMContentLoaded', revealLiveRoom, { once: true });
+      window.addEventListener('pageshow', revealLiveRoom);
+      setTimeout(revealLiveRoom, 250);
+      setTimeout(revealLiveRoom, 900);
+    }());
+  </script>
 </head>
 <body class="sbi-live-room-page">
   <main class="sbi-live-room-shell">
@@ -46,6 +66,6 @@
     </section>
   </main>
 
-  <script type="module" src="/js/live/live-room-page.js?v=8.0P.167.217"></script>
+  <script type="module" src="/js/live/live-room-page.js?v=8.0P.167.218"></script>
 </body>
 </html>
