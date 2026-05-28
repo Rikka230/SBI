@@ -320,7 +320,9 @@ a.sbi-live-btn {
 
 .sbi-live-room-page {
   min-height: 100vh;
+  min-height: 100dvh;
   margin: 0;
+  overflow: hidden;
   background:
     radial-gradient(circle at 18% 0%, rgba(42, 87, 255, 0.26), transparent 34%),
     radial-gradient(circle at 88% 12%, rgba(214, 54, 255, 0.16), transparent 30%),
@@ -333,16 +335,21 @@ a.sbi-live-btn {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  padding: clamp(1rem, 2vw, 1.8rem);
+  min-height: 100dvh;
+  height: 100vh;
+  height: 100dvh;
+  padding: clamp(0.6rem, 1.2vw, 1.2rem);
+  gap: 0.6rem;
   box-sizing: border-box;
 }
 
 .sbi-live-room-header {
   display: flex;
   justify-content: space-between;
-  gap: 1rem;
+  gap: 0.8rem;
   align-items: flex-end;
-  padding: 0 0 1rem;
+  padding: 0 0 0.4rem;
+  flex: 0 0 auto;
 }
 
 .sbi-live-room-header h1 {
@@ -380,10 +387,10 @@ a.sbi-live-btn {
 
 .sbi-live-room-stage {
   position: relative;
-  flex: 1;
-  min-height: 620px;
+  flex: 1 1 auto;
+  min-height: 0;
   border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 24px;
+  border-radius: 20px;
   background: rgba(3, 8, 20, 0.72);
   box-shadow: 0 24px 90px rgba(0, 0, 0, 0.35);
   overflow: hidden;
@@ -392,14 +399,15 @@ a.sbi-live-btn {
 .sbi-live-room-frame {
   width: 100%;
   height: 100%;
-  min-height: 620px;
+  min-height: 0;
 }
 
 .sbi-live-room-loading,
 .sbi-live-room-error {
   display: grid;
   place-items: center;
-  min-height: 620px;
+  min-height: 100%;
+  height: 100%;
   padding: 2rem;
   color: rgba(248, 251, 255, 0.75);
   text-align: center;
@@ -408,6 +416,43 @@ a.sbi-live-btn {
 
 .sbi-live-room-error {
   color: #fecaca;
+}
+
+.sbi-live-room-error-wrap {
+  display: grid;
+  gap: 0.8rem;
+  align-content: center;
+  justify-items: center;
+  max-width: min(680px, 92vw);
+}
+
+.sbi-live-room-error-title {
+  font-size: clamp(1rem, 1.8vw, 1.2rem);
+  line-height: 1.4;
+  color: #ffe4e6;
+}
+
+.sbi-live-room-error-detail {
+  color: rgba(248, 251, 255, 0.7);
+  line-height: 1.5;
+  font-weight: 700;
+}
+
+.sbi-live-room-error-actions {
+  display: flex;
+  justify-content: center;
+}
+
+.sbi-live-room-retry {
+  min-height: 44px;
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 999px;
+  padding: 0.7rem 1.05rem;
+  background: rgba(255,255,255,0.08);
+  color: #fff;
+  font: inherit;
+  font-weight: 900;
+  cursor: pointer;
 }
 
 .sbi-live-watermark {
@@ -448,10 +493,20 @@ a.sbi-live-btn {
     align-items: flex-start;
   }
 
-  .sbi-live-room-stage,
-  .sbi-live-room-frame,
-  .sbi-live-room-loading,
-  .sbi-live-room-error {
-    min-height: 70vh;
+  .sbi-live-room-shell {
+    padding: 0.55rem;
+    gap: 0.45rem;
+  }
+
+  .sbi-live-room-header h1 {
+    font-size: clamp(1.55rem, 6vw, 2.1rem);
+  }
+
+  .sbi-live-room-stage {
+    border-radius: 14px;
+  }
+
+  .sbi-live-room-watermark {
+    font-size: 0.68rem;
   }
 }

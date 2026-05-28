@@ -1,7 +1,7 @@
 import { auth, app } from '/js/firebase-init.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js';
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js';
-import { escapeHtml } from '/js/live/live-shared.js?v=8.0P.167.207';
+import { escapeHtml } from '/js/live/live-shared.js?v=8.0P.167.208';
 
 const functionsInstance = getFunctions(app, 'europe-west1');
 const joinLiveConference = httpsCallable(functionsInstance, 'joinLiveConference');
@@ -44,6 +44,47 @@ function getLiveIdFromUrl() {
   return params.get('liveId') || params.get('id') || '';
 }
 
+function extractErrorCode(error) {
+  return String(
+    error?.errorMsg ||
+    error?.msg ||
+    error?.error ||
+    error?.message ||
+    error?.details?.error ||
+    ''
+  ).toLowerCase();
+}
+
+function describeLiveError(error) {
+  const code = extractErrorCode(error);
+  if (code.includes('account-missing-payment-method')) {
+    return {
+      message: 'Le compte Daily n'a pas encore de moyen de paiement utilisable sur l'espace lie a cette cle API. Verifiez Billing dans Daily, puis rechargez la page.',
+      detail: 'Daily renvoie encore « account-missing-payment-method ».',
+      tone: 'error'
+    };
+  }
+  if (code.includes('room-expired') || code.includes('meeting-closed')) {
+    return {
+      message: 'Cette salle n'est plus disponible. Reouvrez le live depuis l'interface professeur ou admin.',
+      detail: '',
+      tone: 'error'
+    };
+  }
+  if (code.includes('daily js indisponible') || code.includes('blocked_by_client') || code.includes('blocked_by_adblocker')) {
+    return {
+      message: 'Le SDK Daily est bloque par le navigateur ou un bloqueur de contenu. Autorisez daily.co puis rechargez la page.',
+      detail: '',
+      tone: 'error'
+    };
+  }
+  return {
+    message: error?.message || 'Connexion impossible.',
+    detail: '',
+    tone: 'error'
+  };
+}
+
 async function waitForDailyIframe() {
   if (window.DailyIframe) return window.DailyIframe;
   await new Promise((resolve, reject) => {
@@ -76,6 +117,29 @@ function destroyExistingFrame() {
   state.joined = false;
 }
 
+function renderRoomError(error) {
+  const root = $('sbi-live-room-frame');
+  const info = describeLiveError(error);
+  setStatus(info.message, info.tone);
+  if (!root) return;
+  root.innerHTML = `
+    <div class="sbi-live-room-error-wrap">
+      <div class="sbi-live-room-error-title">${escapeHtml(info.message)}</div>
+      ${info.detail ? `<div class="sbi-live-room-error-detail">${escapeHtml(info.detail)}</div>` : ''}
+      <div class="sbi-live-room-error-actions">
+        <button type="button" class="sbi-live-room-retry" id="sbi-live-room-retry">Réessayer</button>
+      </div>
+    </div>
+  `;
+  const retry = $('sbi-live-room-retry');
+  retry?.addEventListener('click', () => {
+    prepareAndJoin().catch((innerError) => {
+      console.error('[SBI Live Room] Retry failed:', innerError);
+      renderRoomError(innerError);
+    });
+  });
+}
+
 async function mountDailyRoom(room = {}) {
   const frameRoot = $('sbi-live-room-frame');
   if (!frameRoot) throw new Error('Conteneur salle introuvable.');
@@ -88,8 +152,9 @@ async function mountDailyRoom(room = {}) {
     iframeStyle: {
       width: '100%',
       height: '100%',
+      minHeight: '100%',
       border: '0',
-      borderRadius: '18px',
+      borderRadius: '0',
       background: '#050914'
     }
   });
@@ -105,21 +170,26 @@ async function mountDailyRoom(room = {}) {
   });
   callFrame.on('error', (event) => {
     console.error('[SBI Live Room] Daily error:', event);
-    setStatus('Erreur salle vidéo. Rechargez ou réessayez.', 'error');
+    renderRoomError(event);
   });
 
   state.callFrame = callFrame;
-  await callFrame.join({
-    url: room.roomUrl,
-    token: room.token,
-    userName: room.displayName || 'Participant SBI'
-  });
+  try {
+    await callFrame.join({
+      url: room.roomUrl,
+      token: room.token,
+      userName: room.displayName || 'Participant SBI'
+    });
+  } catch (error) {
+    renderRoomError(error);
+    throw error;
+  }
 }
 
 async function prepareAndJoin() {
   state.liveId = getLiveIdFromUrl();
   if (!state.liveId) {
-    setStatus('Live manquant dans l’URL.', 'error');
+    renderRoomError(new Error('Live manquant dans l’URL.'));
     return;
   }
 
@@ -149,11 +219,7 @@ export function mountLiveRoomPage() {
     state.user = user;
     prepareAndJoin().catch((error) => {
       console.error('[SBI Live Room] Connexion impossible :', error);
-      setStatus(error?.message || 'Connexion impossible.', 'error');
-      const root = $('sbi-live-room-frame');
-      if (root) {
-        root.innerHTML = `<div class="sbi-live-room-error">${escapeHtml(error?.message || 'Connexion impossible.')}</div>`;
-      }
+      renderRoomError(error);
     });
   });
 

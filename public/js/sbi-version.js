@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.207',
+  version: '8.0P.167.208',
   branch: 'main',
   channel: 'LIVE ROOM MVP',
-  stage: 'LIVE TEST ROOM MVP',
+  stage: 'LIVE ROOM UX MVP',
   updatedAt: '2026-05-28',
-  label: 'SBI 8.0P.167.207 - live test room per promotion with Daily MVP'
+  label: 'SBI 8.0P.167.208 - live test room per promotion with Daily MVP'
 };
 
 export function getSbiVersionLabel() {
