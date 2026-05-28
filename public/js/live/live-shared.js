@@ -156,11 +156,15 @@ export function getPromotionLives(promotion = {}, options = {}) {
     ? promotion.livePlanning.filter((item) => item && typeof item === 'object')
     : [];
 
-  if (options.includeTestLive === true && !rows.some(isTestLiveItem)) {
-    rows.unshift(buildPromotionTestLive(promotion));
-  }
+  if (options.includeTestLive !== true) return rows;
 
-  return rows;
+  const testLives = rows.filter(isTestLiveItem);
+  const regularLives = rows.filter((item) => !isTestLiveItem(item));
+  const testLive = testLives[0]
+    ? { ...buildPromotionTestLive(promotion), ...testLives[0], isTestLive: true, testLive: true }
+    : buildPromotionTestLive(promotion);
+
+  return [testLive, ...regularLives];
 }
 
 export function getLiveSessionForItem(promotion = {}, item = {}, sessionMap = new Map()) {

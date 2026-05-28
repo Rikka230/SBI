@@ -20,7 +20,7 @@ import {
   normalizeList,
   renderEmpty,
   toDateTimeLocal
-} from '/js/live/live-shared.js?v=8.0P.167.207';
+} from '/js/live/live-shared.js?v=8.0P.167.209';
 
 const functionsInstance = getFunctions(app, 'europe-west1');
 const getLiveSchedulerData = httpsCallable(functionsInstance, 'getLiveSchedulerData');

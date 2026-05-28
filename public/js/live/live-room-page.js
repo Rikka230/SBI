@@ -1,7 +1,7 @@
 import { auth, app } from '/js/firebase-init.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js';
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js';
-import { escapeHtml } from '/js/live/live-shared.js?v=8.0P.167.208';
+import { escapeHtml } from '/js/live/live-shared.js?v=8.0P.167.209';
 
 const functionsInstance = getFunctions(app, 'europe-west1');
 const joinLiveConference = httpsCallable(functionsInstance, 'joinLiveConference');
