@@ -4598,6 +4598,70 @@ async function createLiveReplayAccessToken(db, { liveId = "", promotionId = "", 
     return { token, expiresAt };
 }
 
+
+exports.getStudentLiveAttendance = onCall({
+    region: "europe-west1",
+    timeoutSeconds: 60,
+    memory: "512MiB"
+}, async (request) => {
+    const db = admin.firestore();
+    const caller = await requireActiveCourseCaller(request, db);
+    const rawIds = Array.isArray(request.data?.liveIds) ? request.data.liveIds : [];
+    const liveIds = [...new Set(rawIds.map((value) => cleanString(value, 180)).filter(Boolean))].slice(0, 80);
+    const attendanceByLiveId = {};
+
+    for (const liveId of liveIds) {
+        try {
+            const liveRef = db.collection("liveSessions").doc(liveId);
+            const liveDoc = await liveRef.get();
+            if (!liveDoc.exists) {
+                attendanceByLiveId[liveId] = {};
+                continue;
+            }
+            const liveSession = { id: liveDoc.id, ...(liveDoc.data() || {}) };
+            const promotionId = cleanString(liveSession.promotionId || "", 180);
+            if (!promotionId) {
+                attendanceByLiveId[liveId] = {};
+                continue;
+            }
+            const promotionDoc = await db.collection("promotions").doc(promotionId).get();
+            if (!promotionDoc.exists) {
+                attendanceByLiveId[liveId] = {};
+                continue;
+            }
+            const promotion = { id: promotionDoc.id, ...(promotionDoc.data() || {}) };
+            const canAccess = await studentCanJoinLivePromotion(db, caller, promotion);
+            if (!canAccess) {
+                attendanceByLiveId[liveId] = {};
+                continue;
+            }
+            const attendanceDoc = await liveRef.collection("attendance").doc(caller.uid).get();
+            if (!attendanceDoc.exists) {
+                attendanceByLiveId[liveId] = {};
+            } else {
+                const attendance = attendanceDoc.data() || {};
+                const ts = (value) => value?.toDate?.()?.toISOString?.() || cleanString(value || "", 120);
+                attendanceByLiveId[liveId] = {
+                    uid: cleanString(attendance.uid || caller.uid, 180),
+                    role: cleanString(attendance.role || "", 80),
+                    joinedVia: cleanString(attendance.joinedVia || "", 80),
+                    lastTokenIssuedAt: ts(attendance.lastTokenIssuedAt),
+                    joinedAt: ts(attendance.joinedAt),
+                    replayAccessedAt: ts(attendance.replayAccessedAt),
+                    replayWatchedAt: ts(attendance.replayWatchedAt),
+                    watchedReplay: attendance.watchedReplay === true,
+                    replayRecordingId: cleanString(attendance.replayRecordingId || "", 180)
+                };
+            }
+        } catch (error) {
+            console.warn("[SBI Live Attendance] Lecture impossible", liveId, error?.message || error);
+            attendanceByLiveId[liveId] = {};
+        }
+    }
+
+    return { success: true, attendanceByLiveId };
+});
+
 exports.resolveLiveReplay = onCall({
     region: "europe-west1",
     secrets: [DAILY_API_KEY],

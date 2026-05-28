@@ -3,7 +3,7 @@ import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.1/fi
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js';
 import { collection, addDoc, onSnapshot, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js';
-import { escapeHtml } from '/js/live/live-shared.js?v=8.0P.167.215';
+import { escapeHtml } from '/js/live/live-shared.js?v=8.0P.167.216';
 
 const functionsInstance = getFunctions(app, 'europe-west1');
 const storage = getStorage(app);
@@ -53,8 +53,27 @@ function setMeta(room = {}) {
 }
 
 function getLiveIdFromUrl() {
-  const params = new URLSearchParams(window.location.search);
-  return params.get('liveId') || params.get('id') || '';
+  const candidates = [];
+  try { candidates.push(new URL(window.location.href)); } catch (_) {}
+  try {
+    if (window.SBI_APP_SHELL_CURRENT_URL) candidates.push(new URL(window.SBI_APP_SHELL_CURRENT_URL, window.location.origin));
+  } catch (_) {}
+
+  for (const url of candidates) {
+    const value = url.searchParams.get('liveId') || url.searchParams.get('id');
+    if (value) {
+      sessionStorage.setItem('sbi:lastLiveRoomId', value);
+      return value;
+    }
+    const hashParams = new URLSearchParams(String(url.hash || '').replace(/^#/, ''));
+    const hashValue = hashParams.get('liveId') || hashParams.get('id');
+    if (hashValue) {
+      sessionStorage.setItem('sbi:lastLiveRoomId', hashValue);
+      return hashValue;
+    }
+  }
+
+  return sessionStorage.getItem('sbi:lastLiveRoomId') || '';
 }
 
 function extractErrorCode(error) {

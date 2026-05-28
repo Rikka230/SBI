@@ -1,6 +1,6 @@
 import { auth, app, db } from '/js/firebase-init.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js';
-import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
+import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js';
 import {
   buildSessionMap,
   clean,
@@ -17,7 +17,10 @@ import {
   loadProfile,
   loadPromotionsByIds,
   renderEmpty
-} from '/js/live/live-shared.js?v=8.0P.167.215';
+} from '/js/live/live-shared.js?v=8.0P.167.216';
+
+const functionsInstance = getFunctions(app, 'europe-west1');
+const getStudentLiveAttendance = httpsCallable(functionsInstance, 'getStudentLiveAttendance');
 
 const state = {
   profile: null,
@@ -39,7 +42,7 @@ function setStatus(message = '') {
 }
 
 function getLiveIdForRow(row = {}) {
-  return row.session?.id || row.live?.liveSessionId || row.id || '';
+  return row.session?.id || row.live?.liveSessionId || row.live?.sessionId || row.live?.id || row.id || '';
 }
 
 function getRows() {
@@ -107,10 +110,18 @@ function canRequestReplay(row = {}) {
 function isLiveJoinOpen(row = {}) {
   const liveId = getLiveIdForRow(row);
   if (!liveId) return false;
-  const status = clean(row.status || '').toLowerCase();
-  if (['cancelled', 'ended', 'replay_available', 'done', 'closed'].includes(status)) return false;
-  if (['live', 'started', 'in_progress', 'ongoing', 'open'].includes(status)) return true;
-  return false;
+  const status = clean(row.status || row.session?.status || row.live?.status || '').toLowerCase();
+  if (['cancelled', 'ended', 'replay_available', 'done', 'closed', 'to_schedule', 'scheduled', 'validated', 'planned', 'pending'].includes(status)) return false;
+  const hasHostOpenedRoom = Boolean(
+    row.session?.startedAt ||
+    row.session?.openedAt ||
+    row.session?.liveStartedAt ||
+    row.session?.providerRoomUrl ||
+    row.session?.providerRoomName ||
+    row.session?.liveTech?.roomUrl ||
+    row.session?.liveTech?.roomName
+  );
+  return hasHostOpenedRoom && ['live', 'started', 'in_progress', 'ongoing', 'open'].includes(status);
 }
 
 function getJoinClosedLabel(row = {}) {
@@ -139,7 +150,8 @@ function getAttendanceBadges(row = {}) {
 function renderReplayButton(row = {}) {
   const liveId = getLiveIdForRow(row);
   if (!canRequestReplay(row)) return '';
-  return `<a class="sbi-live-btn sbi-live-btn--ghost" href="/student/live-replay.html?liveId=${encodeURIComponent(liveId)}">Regarder</a>`;
+  const encoded = encodeURIComponent(liveId);
+  return `<a class="sbi-live-btn sbi-live-btn--ghost" data-live-replay-link="true" data-live-id="${encoded}" href="/student/live-replay.html?liveId=${encoded}#liveId=${encoded}">Regarder</a>`;
 }
 
 function renderList(rows) {
@@ -155,7 +167,7 @@ function renderList(rows) {
       <span>${row.startAt ? escapeHtml(formatDateRange(row.startAt, row.endAt)) : escapeHtml(getLiveWindowLabel(row.live))}</span>
       ${getAttendanceBadges(row)}
       <div class="sbi-live-card-actions">
-        ${canJoinLive(row) ? `<a class="sbi-live-btn" href="/live-room.html?liveId=${encodeURIComponent(getLiveIdForRow(row))}">Rejoindre la salle</a>` : (state.tab === 'upcoming' ? `<span class="sbi-live-btn sbi-live-btn--ghost is-disabled" aria-disabled="true">${escapeHtml(getJoinClosedLabel(row))}</span>` : '')}
+        ${canJoinLive(row) ? `<a class="sbi-live-btn" data-live-room-link="true" data-live-id="${encodeURIComponent(getLiveIdForRow(row))}" href="/live-room.html?liveId=${encodeURIComponent(getLiveIdForRow(row))}#liveId=${encodeURIComponent(getLiveIdForRow(row))}">Rejoindre la salle</a>` : (state.tab === 'upcoming' ? `<span class="sbi-live-btn sbi-live-btn--ghost is-disabled" aria-disabled="true">${escapeHtml(getJoinClosedLabel(row))}</span>` : '')}
         ${renderReplayButton(row)}
       </div>
     </article>
@@ -176,17 +188,18 @@ function renderCalendar(rows) {
 
 async function loadAttendanceForRows(uid = '') {
   if (!uid) return;
-  const liveIds = [...new Set(getRows().map((row) => getLiveIdForRow(row)).filter(Boolean))];
-  const entries = await Promise.all(liveIds.map(async (liveId) => {
-    try {
-      const snap = await getDoc(doc(db, 'liveSessions', liveId, 'attendance', uid));
-      return [liveId, snap.exists() ? snap.data() : {}];
-    } catch (error) {
-      console.warn('[SBI Student Lives] Attendance indisponible :', liveId, error);
-      return [liveId, {}];
-    }
-  }));
-  state.attendanceByLiveId = Object.fromEntries(entries);
+  const liveIds = [...new Set(getRows().map((row) => getLiveIdForRow(row)).filter(Boolean))].slice(0, 80);
+  if (!liveIds.length) {
+    state.attendanceByLiveId = {};
+    return;
+  }
+  try {
+    const result = await getStudentLiveAttendance({ liveIds });
+    state.attendanceByLiveId = result?.data?.attendanceByLiveId || {};
+  } catch (error) {
+    console.warn('[SBI Student Lives] Attendance indisponible via callable :', error);
+    state.attendanceByLiveId = {};
+  }
 }
 
 function render() {
@@ -194,6 +207,19 @@ function render() {
   if (!root) return;
   const rows = getRows();
   root.innerHTML = state.view === 'calendar' ? renderCalendar(rows) : renderList(rows);
+
+  document.querySelectorAll('[data-live-replay-link]').forEach((link) => {
+    link.addEventListener('click', () => {
+      const liveId = decodeURIComponent(link.dataset.liveId || '');
+      if (liveId) sessionStorage.setItem('sbi:lastReplayLiveId', liveId);
+    });
+  });
+  document.querySelectorAll('[data-live-room-link]').forEach((link) => {
+    link.addEventListener('click', () => {
+      const liveId = decodeURIComponent(link.dataset.liveId || '');
+      if (liveId) sessionStorage.setItem('sbi:lastLiveRoomId', liveId);
+    });
+  });
 
   document.querySelectorAll('[data-student-live-tab]').forEach((button) => {
     button.classList.toggle('is-active', button.dataset.studentLiveTab === state.tab);

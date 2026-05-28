@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.215',
+  version: '8.0P.167.216',
   branch: 'main',
-  channel: 'LIVE ROOM',
-  stage: 'JOIN GATE + INLINE REPLAY + REFRESH FIX',
+  channel: 'LIVE',
+  stage: 'REPLAY URL + ATTENDANCE GATE FIX',
   updatedAt: '2026-05-28',
-  label: 'SBI 8.0P.167.215 - live join gating, inline replay player and refresh fixes'
+  label: 'SBI 8.0P.167.216 - replay URL fallback, attendance callable and join gate fix'
 };
 
 export function getSbiVersionLabel() {
