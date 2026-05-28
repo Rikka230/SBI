@@ -16,7 +16,7 @@ import {
   loadProfile,
   loadPromotionsByIds,
   renderEmpty
-} from '/js/live/live-shared.js?v=8.0P.167.206';
+} from '/js/live/live-shared.js?v=8.0P.167.207';
 
 const state = {
   profile: null,

@@ -20,7 +20,7 @@ import {
   normalizeList,
   renderEmpty,
   toDateTimeLocal
-} from '/js/live/live-shared.js?v=8.0P.167.206';
+} from '/js/live/live-shared.js?v=8.0P.167.207';
 
 const functionsInstance = getFunctions(app, 'europe-west1');
 const getLiveSchedulerData = httpsCallable(functionsInstance, 'getLiveSchedulerData');
@@ -190,8 +190,25 @@ function getSelectedPromotion() {
 }
 
 function getSelectedLive(promotion = getSelectedPromotion()) {
-  const lives = getPromotionLives(promotion || {});
+  const lives = getPromotionLives(promotion || {}, { includeTestLive: true });
   return lives.find((live) => clean(live.id || live.itemId || live.title) === state.selectedLiveId) || lives[0] || null;
+}
+
+function isTestLive(live = {}) {
+  const ids = [live.id, live.itemId, live.sourceItemId, live.type]
+    .map((value) => clean(value).toLowerCase())
+    .filter(Boolean);
+  return live.isTestLive === true || live.testLive === true || ids.includes('sbi-live-test') || ids.includes('live_test');
+}
+
+function addMinutesIso(baseDate, minutes) {
+  return new Date(baseDate.getTime() + minutes * 60000).toISOString();
+}
+
+function getDefaultTestStartIso() {
+  const now = new Date();
+  now.setSeconds(0, 0);
+  return addMinutesIso(now, 5);
 }
 
 function renderPromotionList() {
@@ -203,7 +220,7 @@ function renderPromotionList() {
   }
 
   root.innerHTML = state.promotions.map((promotion) => {
-    const lives = getPromotionLives(promotion);
+    const lives = getPromotionLives(promotion, { includeTestLive: true });
     const scheduled = lives.filter((live) => live.selectedLiveAt || live.liveSessionId).length;
     const active = promotion.id === state.selectedPromotionId ? ' is-active' : '';
     return `
@@ -226,7 +243,7 @@ function renderPromotionList() {
 function renderLiveList(promotion, sessionMap) {
   const root = $('sbi-live-items');
   if (!root) return;
-  const lives = getPromotionLives(promotion || {});
+  const lives = getPromotionLives(promotion || {}, { includeTestLive: true });
   if (!lives.length) {
     root.innerHTML = renderEmpty('Aucun bloc live dans le cursus de cette promotion.');
     return;
@@ -256,7 +273,7 @@ function renderLiveList(promotion, sessionMap) {
 function renderCalendar(promotion, sessionMap) {
   const root = $('sbi-live-calendar');
   if (!root) return;
-  const lives = getPromotionLives(promotion || {});
+  const lives = getPromotionLives(promotion || {}, { includeTestLive: true });
   if (!lives.length) {
     root.innerHTML = renderEmpty('Aucun live a placer.');
     return;
@@ -283,14 +300,17 @@ function renderDetail(promotion, live, sessionMap) {
   }
 
   const session = getLiveSessionForItem(promotion, live, sessionMap);
-  const start = session?.selectedStartAt || live.selectedLiveAt || '';
-  const end = session?.selectedEndAt || live.selectedLiveEndAt || '';
+  const testLive = isTestLive(live);
+  const defaultTestStart = testLive ? getDefaultTestStartIso() : '';
+  const start = session?.selectedStartAt || live.selectedLiveAt || defaultTestStart || '';
+  const end = session?.selectedEndAt || live.selectedLiveEndAt || (defaultTestStart ? addMinutesIso(new Date(defaultTestStart), 60) : '');
   const canStart = Boolean(session?.id || live.liveSessionId);
 
   root.innerHTML = `
     <div class="sbi-live-panel__head">
       <strong>${escapeHtml(getLiveTitle(live))}</strong>
       <span>${escapeHtml(getPromotionName(promotion))}</span>
+      ${testLive ? '<em class="sbi-live-test-badge">Test hors cursus</em>' : ''}
     </div>
     <form class="sbi-live-form" id="sbi-live-form">
       <label>Titre affiche
@@ -306,7 +326,9 @@ function renderDetail(promotion, live, sessionMap) {
         <input id="sbi-live-meeting-url" value="${escapeHtml(session?.meetingUrl || '')}" placeholder="https://...">
       </label>
       <div class="sbi-live-room-note">
-        Provider live: ${escapeHtml(session?.provider || 'a connecter')}. Watermark nominatif, chat et fichiers sont prevus dans la structure de session.
+        ${testLive
+          ? 'Live test non lie au cursus : validez une date pour le rendre visible aux eleves de cette promotion, puis ouvrez la salle.'
+          : `Provider live: ${escapeHtml(session?.provider || 'a connecter')}. Watermark nominatif, chat et fichiers sont prevus dans la structure de session.`}
       </div>
       <div class="sbi-live-actions">
         <button class="sbi-live-btn" type="submit">Valider la date</button>
@@ -341,7 +363,9 @@ async function submitSchedule(promotion, live, session) {
     const result = await scheduleLiveSession({
       promotionId: promotion.id,
       liveId: session?.id || live.liveSessionId || live.id || live.itemId || '',
-      sourceItemId: live.id || live.itemId || '',
+      sourceItemId: live.sourceItemId || live.id || live.itemId || '',
+      type: isTestLive(live) ? 'live_test' : (live.type || 'live_session'),
+      provider: 'daily',
       title: $('sbi-live-title')?.value || getLiveTitle(live),
       selectedStartAt: fromDateTimeLocal($('sbi-live-start')?.value || ''),
       selectedEndAt: fromDateTimeLocal($('sbi-live-end')?.value || ''),

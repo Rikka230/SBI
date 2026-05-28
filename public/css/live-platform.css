@@ -58,6 +58,20 @@
   font-size: 0.8rem;
 }
 
+.sbi-live-test-badge {
+  display: inline-flex;
+  margin-top: 0.5rem;
+  border-radius: 999px;
+  padding: 0.25rem 0.55rem;
+  background: rgba(245, 158, 11, 0.14);
+  color: #b45309;
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 950;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
 .sbi-live-list {
   display: flex;
   flex-direction: column;

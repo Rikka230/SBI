@@ -3842,7 +3842,12 @@ function normalizeLiveRole(value = "") {
 }
 
 function makeLiveSessionId(promotionId = "", liveKey = "") {
-    const raw = `${cleanString(promotionId, 120)}_${cleanString(liveKey, 120) || crypto.randomUUID()}`;
+    const cleanPromotionId = cleanString(promotionId, 120);
+    const cleanLiveKey = cleanString(liveKey, 120);
+    if (cleanPromotionId && cleanLiveKey.startsWith(`${cleanPromotionId}_`)) {
+        return cleanLiveKey.replace(/[^a-zA-Z0-9_-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 180);
+    }
+    const raw = `${cleanPromotionId}_${cleanLiveKey || crypto.randomUUID()}`;
     return raw.replace(/[^a-zA-Z0-9_-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 180);
 }
 
@@ -3917,6 +3922,23 @@ function findPromotionLiveItem(promotion = {}, { liveId = "", sourceItemId = "",
         if (cleanTitle && cleanString(item.title || item.courseTitle || "", 180).toLowerCase() === cleanTitle) return true;
         return false;
     }) || null;
+}
+
+function isLiveTestRequest({ liveId = "", sourceItemId = "", type = "", liveItem = null } = {}) {
+    const values = [
+        liveId,
+        sourceItemId,
+        type,
+        liveItem?.id,
+        liveItem?.itemId,
+        liveItem?.sourceItemId,
+        liveItem?.type
+    ].map((value) => cleanString(value, 180).toLowerCase()).filter(Boolean);
+
+    return liveItem?.isTestLive === true
+        || liveItem?.testLive === true
+        || values.includes("sbi-live-test")
+        || values.includes("live_test");
 }
 
 async function teacherCanManagePromotionLive(db, caller, promotion = {}) {
@@ -4406,7 +4428,13 @@ exports.scheduleLiveSession = onCall({
         sourceItemId,
         title: requestedTitle
     });
-    const liveKey = cleanString(data.liveId || liveItem?.id || liveItem?.itemId || sourceItemId || requestedTitle || "live", 180);
+    const isTestLive = isLiveTestRequest({
+        liveId: data.liveId,
+        sourceItemId,
+        type: data.type,
+        liveItem
+    });
+    const liveKey = cleanString(liveItem?.id || liveItem?.itemId || sourceItemId || data.liveId || requestedTitle || (isTestLive ? "sbi-live-test" : "live"), 180);
     const liveId = makeLiveSessionId(promotionId, liveKey);
     const selectedStartAt = normalizeLiveIso(data.selectedStartAt || data.startAt || data.selectedLiveAt, "Date de debut");
     const endInput = cleanString(data.selectedEndAt || data.endAt || data.selectedLiveEndAt || "", 80);
@@ -4433,12 +4461,13 @@ exports.scheduleLiveSession = onCall({
         promotionName,
         formationId: cleanString(promotion.formationId || liveItem?.formationId || "", 180),
         formationName: cleanString(promotion.formationName || promotion.formationTitle || "", 180),
-        sourceItemId: sourceItemId || cleanString(liveItem?.id || liveItem?.itemId || "", 180),
-        sourceType: cleanString(liveItem?.type || data.type || "live_session", 80),
+        sourceItemId: sourceItemId || cleanString(liveItem?.id || liveItem?.itemId || (isTestLive ? "sbi-live-test" : ""), 180),
+        sourceType: isTestLive ? "live_test" : cleanString(liveItem?.type || data.type || "live_session", 80),
+        isTestLive,
         selectedStartAt,
         selectedEndAt,
         status: "scheduled",
-        provider: cleanString(data.provider || "pending_provider", 80),
+        provider: cleanString(data.provider || (isTestLive ? "daily" : "pending_provider"), 80),
         roomName: cleanString(data.roomName || "", 180),
         meetingUrl: cleanString(data.meetingUrl || "", 500),
         teacherUid: cleanString(data.teacherUid || caller.uid, 180),
@@ -4447,7 +4476,7 @@ exports.scheduleLiveSession = onCall({
         scheduledAt: admin.firestore.FieldValue.serverTimestamp(),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         liveTech: {
-            provider: cleanString(data.provider || "pending_provider", 80),
+            provider: cleanString(data.provider || (isTestLive ? "daily" : "pending_provider"), 80),
             captureProtection: "moving_student_watermark",
             chatEnabled: true,
             fileSharingEnabled: true,
@@ -4466,7 +4495,12 @@ exports.scheduleLiveSession = onCall({
     const itemIndex = livePlanning.findIndex((item) => item === liveItem);
     const nextLiveItem = {
         ...(liveItem || {}),
-        id: liveItem?.id || sourceItemId || liveId,
+        id: liveItem?.id || sourceItemId || (isTestLive ? "sbi-live-test" : liveId),
+        itemId: liveItem?.itemId || sourceItemId || (isTestLive ? "sbi-live-test" : ""),
+        sourceItemId: sourceItemId || cleanString(liveItem?.sourceItemId || liveItem?.id || liveItem?.itemId || (isTestLive ? "sbi-live-test" : ""), 180),
+        type: isTestLive ? "live_test" : cleanString(liveItem?.type || data.type || "live_session", 80),
+        isTestLive,
+        testLive: isTestLive,
         title,
         liveSessionId: liveId,
         status: "scheduled",
@@ -4511,6 +4545,7 @@ exports.scheduleLiveSession = onCall({
             selectedStartAt,
             selectedEndAt,
             title,
+            isTestLive,
             report
         }
     });

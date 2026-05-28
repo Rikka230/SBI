@@ -2,6 +2,34 @@ import { collection, doc, getDoc, getDocs, query, where } from 'https://www.gsta
 import { db } from '/js/firebase-init.js';
 
 export const MAX_IN_VALUES = 10;
+export const SBI_TEST_LIVE_ID = 'sbi-live-test';
+
+export function isTestLiveItem(live = {}) {
+  const ids = [live.id, live.itemId, live.sourceItemId, live.liveId, live.type]
+    .map((value) => clean(value).toLowerCase())
+    .filter(Boolean);
+  return live.isTestLive === true
+    || live.testLive === true
+    || ids.includes(SBI_TEST_LIVE_ID)
+    || ids.includes('live_test');
+}
+
+export function buildPromotionTestLive(promotion = {}) {
+  return {
+    id: SBI_TEST_LIVE_ID,
+    itemId: SBI_TEST_LIVE_ID,
+    sourceItemId: SBI_TEST_LIVE_ID,
+    type: 'live_test',
+    title: 'Live test',
+    courseTitle: 'Live test',
+    status: 'test_available',
+    liveSchedulingStatus: 'test_available',
+    isTestLive: true,
+    testLive: true,
+    promotionId: promotion.id || '',
+    description: 'Salle de test hors cursus pour verifier la conference avec les eleves.'
+  };
+}
 
 export function clean(value = '') {
   return String(value ?? '').replace(/\s+/g, ' ').trim();
@@ -65,10 +93,12 @@ export function getPromotionName(promotion = {}) {
 }
 
 export function getLiveTitle(live = {}) {
+  if (isTestLiveItem(live)) return clean(live.title || live.courseTitle || 'Live test');
   return clean(live.title || live.courseTitle || live.name || live.label || 'Live SBI');
 }
 
 export function getLiveWindowLabel(live = {}) {
+  if (isTestLiveItem(live)) return 'Libre pour test - hors cursus';
   const start = live.teacherSchedulingWindowStartAt || live.schedulingWindow?.teacherCanSelectFrom || live.schedulingWindow?.recommendedStartAt || '';
   const end = live.teacherSchedulingWindowEndAt || live.schedulingWindow?.teacherCanSelectUntil || live.schedulingWindow?.recommendedEndAt || '';
   if (!start && !end) return 'Plage non renseignee';
@@ -121,10 +151,16 @@ export function buildSessionMap(sessions = []) {
   return map;
 }
 
-export function getPromotionLives(promotion = {}) {
-  return Array.isArray(promotion.livePlanning)
+export function getPromotionLives(promotion = {}, options = {}) {
+  const rows = Array.isArray(promotion.livePlanning)
     ? promotion.livePlanning.filter((item) => item && typeof item === 'object')
     : [];
+
+  if (options.includeTestLive === true && !rows.some(isTestLiveItem)) {
+    rows.unshift(buildPromotionTestLive(promotion));
+  }
+
+  return rows;
 }
 
 export function getLiveSessionForItem(promotion = {}, item = {}, sessionMap = new Map()) {
