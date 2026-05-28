@@ -12,7 +12,7 @@
  * location.reload()
  */
 
-import { createRouteRegistry } from './route-registry.js?v=8.0P.167.206';
+import { createRouteRegistry } from './route-registry.js?v=8.0P.167.215';
 import { createRouter } from './router.js';
 import { injectAppShellStyles, markAppShellReady } from './transitions.js';
 import { initRoutePreload } from './preload.js';
@@ -137,6 +137,7 @@ function getPjaxProbeDefinitions() {
     { group: 'student', path: '/student/dashboard.html', label: 'Student dashboard' },
     { group: 'student', path: '/student/mes-cours.html', label: 'Student mes cours' },
     { group: 'student', path: '/student/lives.html', label: 'Student lives' },
+    { group: 'student', path: '/student/live-replay.html?liveId=test', label: 'Student live replay' },
     { group: 'student', path: '/student/mon-profil.html', label: 'Student profil' },
     { group: 'teacher', path: '/teacher/dashboard.html', label: 'Teacher dashboard' },
     { group: 'teacher', path: '/teacher/mes-cours.html', label: 'Teacher formations & cours' },

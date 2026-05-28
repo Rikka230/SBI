@@ -10,6 +10,7 @@ const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { defineSecret } = require("firebase-functions/params");
 const admin = require("firebase-admin");
 const crypto = require("crypto");
+const { Readable } = require("stream");
 
 admin.initializeApp();
 
@@ -4071,6 +4072,7 @@ const DAILY_API_BASE_URL = "https://api.daily.co/v1";
 const DAILY_ROOM_OPEN_BEFORE_MS = 30 * 60 * 1000;
 const DAILY_ROOM_KEEP_AFTER_MS = 8 * 60 * 60 * 1000;
 const DAILY_TOKEN_TTL_SECONDS = 4 * 60 * 60;
+const LIVE_REPLAY_ACCESS_TTL_MS = 60 * 60 * 1000;
 
 function buildDailyRoomName(liveId = "") {
     const base = cleanString(liveId || crypto.randomUUID(), 150)
@@ -4574,6 +4576,28 @@ function extractDailyRecordingDuration(recording = {}) {
     return 0;
 }
 
+function createLiveReplayToken() {
+    return crypto.randomBytes(32).toString("hex");
+}
+
+async function createLiveReplayAccessToken(db, { liveId = "", promotionId = "", caller, recordingId = "", downloadLink = "" } = {}) {
+    const token = createLiveReplayToken();
+    const expiresAt = admin.firestore.Timestamp.fromMillis(Date.now() + LIVE_REPLAY_ACCESS_TTL_MS);
+    await db.collection("liveReplayAccessTokens").doc(token).set({
+        token,
+        liveId,
+        promotionId,
+        uid: caller.uid,
+        email: cleanEmail(caller.email),
+        recordingId,
+        downloadLink,
+        expiresAt,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+    return { token, expiresAt };
+}
+
 exports.resolveLiveReplay = onCall({
     region: "europe-west1",
     secrets: [DAILY_API_KEY],
@@ -4673,6 +4697,15 @@ exports.resolveLiveReplay = onCall({
         updatedAt: admin.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
 
+    const replayAccess = await createLiveReplayAccessToken(db, {
+        liveId,
+        promotionId,
+        caller,
+        recordingId,
+        downloadLink
+    });
+    const streamUrl = `/api/liveReplay?token=${encodeURIComponent(replayAccess.token)}`;
+
     await safeWriteAccountAuditLog(db, {
         type: "live.replay_access",
         actorUid: caller.uid,
@@ -4683,19 +4716,111 @@ exports.resolveLiveReplay = onCall({
         source: "student-lives",
         liveId,
         promotionId,
-        changes: { provider: "daily", recordingId, expires }
+        changes: { provider: "daily", recordingId, expires, stream: true }
     });
 
     return {
         success: true,
         liveId,
         recordingId,
-        replayUrl: downloadLink,
-        playbackUrl: downloadLink,
-        downloadLink,
+        streamUrl,
+        replayUrl: streamUrl,
+        playbackUrl: streamUrl,
+        downloadLink: streamUrl,
+        dailyDownloadLink: downloadLink,
         expires,
         durationSeconds
     };
+});
+
+exports.streamLiveReplay = onRequest({
+    region: "europe-west1",
+    timeoutSeconds: 540,
+    memory: "1GiB"
+}, async (req, res) => {
+    try {
+        if (req.method === "OPTIONS") {
+            res.set("Access-Control-Allow-Origin", "*");
+            res.set("Access-Control-Allow-Methods", "GET,HEAD,OPTIONS");
+            res.set("Access-Control-Allow-Headers", "Range,Content-Type");
+            res.status(204).send("");
+            return;
+        }
+
+        if (!["GET", "HEAD"].includes(req.method)) {
+            res.status(405).send("Method not allowed");
+            return;
+        }
+
+        const token = cleanString(req.query.token || "", 180);
+        if (!token) {
+            res.status(400).send("Replay token manquant.");
+            return;
+        }
+
+        const db = admin.firestore();
+        const tokenRef = db.collection("liveReplayAccessTokens").doc(token);
+        const tokenDoc = await tokenRef.get();
+        if (!tokenDoc.exists) {
+            res.status(404).send("Replay introuvable.");
+            return;
+        }
+
+        const tokenData = tokenDoc.data() || {};
+        const expiresAtMs = tokenData.expiresAt?.toMillis?.() || 0;
+        if (!expiresAtMs || expiresAtMs < Date.now()) {
+            res.status(410).send("Lien replay expire. Retournez sur Mes lives puis cliquez Regarder.");
+            return;
+        }
+
+        const downloadLink = cleanString(tokenData.downloadLink || "", 8000);
+        if (!downloadLink) {
+            res.status(404).send("Lien replay indisponible.");
+            return;
+        }
+
+        await tokenRef.set({
+            lastUsedAt: admin.firestore.FieldValue.serverTimestamp(),
+            useCount: admin.firestore.FieldValue.increment(1)
+        }, { merge: true });
+
+        const headers = {};
+        if (req.headers.range) headers.Range = req.headers.range;
+        const upstream = await fetch(downloadLink, { headers });
+        if (!upstream.ok && upstream.status !== 206) {
+            const text = await upstream.text().catch(() => "");
+            res.status(upstream.status || 502).send(text || "Replay Daily indisponible.");
+            return;
+        }
+
+        res.status(upstream.status === 206 ? 206 : 200);
+        res.set("Access-Control-Allow-Origin", "*");
+        res.set("Accept-Ranges", upstream.headers.get("accept-ranges") || "bytes");
+        res.set("Cache-Control", "private, no-store, max-age=0");
+        res.set("Content-Type", upstream.headers.get("content-type") || "video/mp4");
+        res.set("Content-Disposition", `inline; filename="sbi-live-replay-${cleanString(tokenData.liveId || "live", 80)}.mp4"`);
+        ["content-length", "content-range"].forEach((name) => {
+            const value = upstream.headers.get(name);
+            if (value) res.set(name, value);
+        });
+
+        if (req.method === "HEAD") {
+            res.end();
+            return;
+        }
+
+        if (upstream.body && Readable.fromWeb) {
+            Readable.fromWeb(upstream.body).pipe(res);
+            return;
+        }
+
+        const buffer = Buffer.from(await upstream.arrayBuffer());
+        res.end(buffer);
+    } catch (error) {
+        console.error("[SBI Live Replay] Streaming impossible :", error);
+        if (!res.headersSent) res.status(500).send("Streaming replay impossible.");
+        else res.end();
+    }
 });
 
 exports.getLiveSchedulerData = onCall({

@@ -113,6 +113,11 @@ function isStudentLives(url) {
   return normalizePath(url.pathname).toLowerCase() === '/student/lives.html';
 }
 
+function isStudentLiveReplay(url) {
+  const path = normalizePath(url.pathname).toLowerCase();
+  return path === '/student/live-replay.html' || path === '/student/live-replay';
+}
+
 function isStudentProfile(url) {
   return normalizePath(url.pathname).toLowerCase() === '/student/mon-profil.html';
 }
@@ -165,6 +170,8 @@ function isStudentShellContext() {
   return path === '/student/dashboard.html'
     || path === '/student/mes-cours.html'
     || path === '/student/lives.html'
+    || path === '/student/live-replay.html'
+    || path === '/student/live-replay'
     || path === '/student/mon-profil.html';
 }
 
@@ -528,7 +535,7 @@ async function mountLiveSchedulerRoute({ url, role = 'admin' }) {
   setLeftNavActive(role === 'admin' ? 'nav-lives' : '/teacher/lives.html');
   updateUrlContext(url);
 
-  const module = await import('/js/live/live-scheduler-page.js?v=8.0P.167.206');
+  const module = await import('/js/live/live-scheduler-page.js?v=8.0P.167.215');
   const cleanup = module.mountLiveSchedulerPage?.(role);
   if (typeof cleanup === 'function') registerCleanup(cleanup, role === 'admin' ? 'admin-lives' : 'teacher-lives');
 
@@ -629,11 +636,39 @@ async function mountStudentLives({ url }) {
   setLeftNavActive('/student/lives.html');
   updateUrlContext(url);
 
-  const module = await import('/student/js/student-lives.js?v=8.0P.167.206');
-  const cleanup = module.mountStudentLivesPage?.();
-  if (typeof cleanup === 'function') registerCleanup(cleanup, 'student-lives');
+  window.__SBI_APP_SHELL_MOUNTING_STUDENT_LIVES = true;
+  try {
+    const module = await import('/student/js/student-lives.js?v=8.0P.167.215');
+    const cleanup = module.mountStudentLivesPage?.();
+    if (typeof cleanup === 'function') registerCleanup(cleanup, 'student-lives');
+  } finally {
+    window.__SBI_APP_SHELL_MOUNTING_STUDENT_LIVES = false;
+  }
 
   return { viewKey: 'student:lives' };
+}
+
+async function mountStudentLiveReplay({ url }) {
+  cleanupCourseEditorV2Artifacts();
+  const doc = await fetchAdminDocument(url);
+
+  await ensureDocumentStyles(doc, url.href);
+  applyBodyRouteClassesFromDocument(doc, ['sbi-live-page', 'sbi-live-replay-page', 'no-right-panel']);
+  replaceMainFromDocument(doc);
+  updateAdminChromeFromDocument(doc, 'Replay live - SBI Student');
+  setLeftNavActive('/student/lives.html');
+  updateUrlContext(url);
+
+  window.__SBI_APP_SHELL_MOUNTING_LIVE_REPLAY = true;
+  try {
+    const module = await import('/student/js/live-replay.js?v=8.0P.167.215');
+    const cleanup = module.mountStudentLiveReplayPage?.();
+    if (typeof cleanup === 'function') registerCleanup(cleanup, 'student-live-replay');
+  } finally {
+    window.__SBI_APP_SHELL_MOUNTING_LIVE_REPLAY = false;
+  }
+
+  return { viewKey: 'student:live-replay' };
 }
 
 async function mountStudentProfile({ url }) {
@@ -839,6 +874,7 @@ export function createRouteRegistry() {
   routes.push({ id: 'student-dashboard', canHandle(url) { return isStudentDashboard(url) && isStudentShellContext(); }, mount: mountStudentPage });
   routes.push({ id: 'student-courses', canHandle(url) { return isStudentCourses(url) && isStudentShellContext(); }, mount: mountStudentPage });
   routes.push({ id: 'student-lives', canHandle(url) { return isStudentLives(url) && isStudentShellContext(); }, mount: mountStudentLives });
+  routes.push({ id: 'student-live-replay', canHandle(url) { return isStudentLiveReplay(url) && isStudentShellContext(); }, mount: mountStudentLiveReplay });
   routes.push({ id: 'admin-course-editor-v2', canHandle(url) { return isAdminCourseEditorV2(url) && isAdminShellContext(); }, mount: mountAdminCourseEditorV2 });
   routes.push({ id: 'admin-courses', canHandle(url) { return isAdminCourses(url) && isAdminShellContext(); }, mount: mountAdminCourses });
   routes.push({ id: 'admin-profile', canHandle(url) { return isAdminProfile(url) && isAdminShellContext(); }, mount: mountAdminProfile });

@@ -5,6 +5,9 @@ import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/
 const functionsInstance = getFunctions(app, 'europe-west1');
 const resolveLiveReplay = httpsCallable(functionsInstance, 'resolveLiveReplay');
 
+let mounted = false;
+let unsubscribeAuth = null;
+
 function $(id) {
   return document.getElementById(id);
 }
@@ -31,46 +34,55 @@ function showFallback(url = '') {
   link.hidden = false;
 }
 
+function renderBlockingMessage(message = '') {
+  const placeholder = $('sbi-live-replay-placeholder');
+  const video = $('sbi-live-replay-video');
+  if (video) video.hidden = true;
+  if (placeholder) {
+    placeholder.hidden = false;
+    placeholder.textContent = message || 'Replay encore en préparation.';
+  }
+  setStatus(message || 'Replay encore en préparation. Réessayez dans quelques minutes.');
+}
+
 async function loadReplay() {
   const liveId = getLiveId();
   if (!liveId) {
-    setStatus('Replay introuvable : live manquant dans l’URL.');
+    renderBlockingMessage('Replay introuvable : live manquant dans l’URL.');
     return;
   }
 
-  setStatus('Recherche du replay Daily...');
-  const result = await resolveLiveReplay({ liveId, mode: 'playback' });
+  setStatus('Préparation du lecteur replay...');
+  const result = await resolveLiveReplay({ liveId, mode: 'stream' });
   const data = result?.data || {};
-  const url = data.playbackUrl || data.replayUrl || data.downloadLink || '';
-  if (!url) throw new Error('Lien replay indisponible.');
+  const streamUrl = data.streamUrl || data.playbackUrl || data.replayUrl || '';
+  const fallbackUrl = data.downloadLink || data.replayUrl || streamUrl || '';
+  if (!streamUrl) throw new Error('Lien replay indisponible.');
 
   setTitle(data.title || 'Replay live');
-  showFallback(url);
+  showFallback(fallbackUrl || streamUrl);
 
   const video = $('sbi-live-replay-video');
   const placeholder = $('sbi-live-replay-placeholder');
   if (!video) {
-    window.open(url, '_blank', 'noopener,noreferrer');
+    window.open(streamUrl, '_blank', 'noopener,noreferrer');
     return;
   }
 
-  video.src = url;
+  video.src = streamUrl;
   video.hidden = false;
   if (placeholder) placeholder.hidden = true;
   video.load();
   setStatus('Replay prêt. Lancez la lecture depuis le lecteur.');
 
   video.addEventListener('error', () => {
-    setStatus('Lecture en ligne impossible avec ce lien Daily. Utilisez le bouton Ouvrir / télécharger.');
-    showFallback(url);
+    setStatus('Lecture en ligne impossible. Utilisez le bouton Ouvrir / télécharger.');
+    showFallback(fallbackUrl || streamUrl);
   }, { once: true });
 }
 
-let mounted = false;
-let unsubscribeAuth = null;
-
-function mountReplayPage() {
-  if (mounted) return;
+export function mountStudentLiveReplayPage() {
+  if (mounted) return null;
   mounted = true;
   unsubscribeAuth = onAuthStateChanged(auth, (user) => {
     if (!user) {
@@ -79,9 +91,21 @@ function mountReplayPage() {
     }
     loadReplay().catch((error) => {
       console.error('[SBI Live Replay] Chargement impossible :', error);
-      setStatus(error?.message || 'Replay encore en préparation. Réessayez dans quelques minutes.');
+      renderBlockingMessage(error?.message || 'Replay encore en préparation. Réessayez dans quelques minutes.');
     });
   });
+
+  return () => {
+    mounted = false;
+    unsubscribeAuth?.();
+    unsubscribeAuth = null;
+  };
+}
+
+function bootReplayPage() {
+  if (document.getElementById('sbi-live-replay-video') && !window.__SBI_APP_SHELL_MOUNTING_LIVE_REPLAY) {
+    mountStudentLiveReplayPage();
+  }
 }
 
 window.addEventListener('beforeunload', () => {
@@ -89,7 +113,7 @@ window.addEventListener('beforeunload', () => {
 });
 
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', mountReplayPage, { once: true });
+  document.addEventListener('DOMContentLoaded', bootReplayPage, { once: true });
 } else {
-  mountReplayPage();
+  bootReplayPage();
 }

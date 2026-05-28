@@ -17,7 +17,7 @@ import {
   loadProfile,
   loadPromotionsByIds,
   renderEmpty
-} from '/js/live/live-shared.js?v=8.0P.167.214';
+} from '/js/live/live-shared.js?v=8.0P.167.215';
 
 const state = {
   profile: null,
@@ -60,7 +60,8 @@ function getRows() {
         endAt: session?.selectedEndAt || live.selectedLiveEndAt || '',
         replayUrl: session?.replayUrl || session?.replayAccessUrl || session?.liveTech?.replayUrl || live.replayUrl || '',
         replayStatus: session?.replayStatus || session?.liveTech?.replayStatus || live.replayStatus || '',
-        status: session?.status || live.status || live.liveSchedulingStatus || 'to_schedule'
+        status: session?.status || live.status || live.liveSchedulingStatus || 'to_schedule',
+        providerReady: Boolean(session?.providerRoomName || session?.providerRoomUrl || session?.meetingUrl || session?.liveTech?.providerReady || live.providerReady || live.providerRoomName || live.providerRoomUrl)
       });
     });
   });
@@ -77,7 +78,8 @@ function getRows() {
       endAt: session.selectedEndAt || '',
       replayUrl: session.replayUrl || session.replayAccessUrl || session.liveTech?.replayUrl || '',
       replayStatus: session.replayStatus || session.liveTech?.replayStatus || '',
-      status: session.status || 'scheduled'
+      status: session.status || 'scheduled',
+      providerReady: Boolean(session.providerRoomName || session.providerRoomUrl || session.meetingUrl || session.liveTech?.providerReady)
     });
   });
 
@@ -102,20 +104,36 @@ function canRequestReplay(row = {}) {
   return Boolean(liveId) && isReplay(row);
 }
 
-function canJoinLive(row = {}) {
+function isLiveJoinOpen(row = {}) {
   const liveId = getLiveIdForRow(row);
+  if (!liveId) return false;
   const status = clean(row.status || '').toLowerCase();
-  return Boolean(liveId) && !['cancelled', 'ended', 'replay_available'].includes(status);
+  if (['cancelled', 'ended', 'replay_available', 'done', 'closed'].includes(status)) return false;
+  if (['live', 'started', 'in_progress', 'ongoing', 'open'].includes(status)) return true;
+  return false;
+}
+
+function getJoinClosedLabel(row = {}) {
+  const status = clean(row.status || '').toLowerCase();
+  if (['ended', 'replay_available', 'done', 'closed'].includes(status)) return 'Live terminé';
+  if (status === 'cancelled') return 'Live annulé';
+  return 'Pas encore ouvert';
+}
+
+function canJoinLive(row = {}) {
+  return isLiveJoinOpen(row);
 }
 
 function getAttendanceBadges(row = {}) {
   const liveId = getLiveIdForRow(row);
   const attendance = state.attendanceByLiveId[liveId] || {};
-  const badges = [];
-  if (attendance.lastTokenIssuedAt || attendance.joinedVia === 'joinLiveConference') badges.push('✓ Participation live enregistrée');
-  if (attendance.watchedReplay || attendance.replayWatchedAt) badges.push('✓ Replay regardé');
-  if (!badges.length) return '';
-  return `<div class="sbi-live-attendance-badges">${badges.map((badge) => `<span>${escapeHtml(badge)}</span>`).join('')}</div>`;
+  const joinedLive = Boolean(attendance.lastTokenIssuedAt || attendance.joinedAt || attendance.joinedVia === 'joinLiveConference');
+  const watchedReplay = Boolean(attendance.watchedReplay || attendance.replayWatchedAt);
+  const badges = [
+    joinedLive ? '✓ Live suivi' : '○ Live non rejoint',
+    watchedReplay ? '✓ Replay regardé' : '○ Replay non regardé'
+  ];
+  return `<div class="sbi-live-attendance-badges">${badges.map((badge) => `<span class="${badge.startsWith('✓') ? 'is-ok' : 'is-muted'}">${escapeHtml(badge)}</span>`).join('')}</div>`;
 }
 
 function renderReplayButton(row = {}) {
@@ -137,7 +155,7 @@ function renderList(rows) {
       <span>${row.startAt ? escapeHtml(formatDateRange(row.startAt, row.endAt)) : escapeHtml(getLiveWindowLabel(row.live))}</span>
       ${getAttendanceBadges(row)}
       <div class="sbi-live-card-actions">
-        ${canJoinLive(row) ? `<a class="sbi-live-btn" href="/live-room.html?liveId=${encodeURIComponent(getLiveIdForRow(row))}">Rejoindre la salle</a>` : ''}
+        ${canJoinLive(row) ? `<a class="sbi-live-btn" href="/live-room.html?liveId=${encodeURIComponent(getLiveIdForRow(row))}">Rejoindre la salle</a>` : (state.tab === 'upcoming' ? `<span class="sbi-live-btn sbi-live-btn--ghost is-disabled" aria-disabled="true">${escapeHtml(getJoinClosedLabel(row))}</span>` : '')}
         ${renderReplayButton(row)}
       </div>
     </article>
@@ -238,6 +256,14 @@ export function mountStudentLivesPage() {
   };
 }
 
-if (document.getElementById('student-live-content') && !window.SBI_APP_SHELL_CURRENT_URL) {
-  mountStudentLivesPage();
+function bootStudentLivesPage() {
+  if (document.getElementById('student-live-content') && !window.__SBI_APP_SHELL_MOUNTING_STUDENT_LIVES) {
+    mountStudentLivesPage();
+  }
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', bootStudentLivesPage, { once: true });
+} else {
+  bootStudentLivesPage();
 }

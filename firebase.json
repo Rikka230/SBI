@@ -145,6 +145,21 @@
           "functionId": "subscribeNewsletter",
           "region": "europe-west1"
         }
+      },
+      {
+        "source": "/live-room",
+        "destination": "/live-room.html"
+      },
+      {
+        "source": "/student/live-replay",
+        "destination": "/student/live-replay.html"
+      },
+      {
+        "source": "/api/liveReplay",
+        "function": {
+          "functionId": "streamLiveReplay",
+          "region": "europe-west1"
+        }
       }
     ]
   },
