@@ -17,15 +17,17 @@ import {
   loadProfile,
   loadPromotionsByIds,
   renderEmpty
-} from '/js/live/live-shared.js?v=8.0P.167.230';
+} from '/js/live/live-shared.js?v=8.0P.167.235';
 
 const functionsInstance = getFunctions(app, 'europe-west1');
 const getStudentLiveAttendance = httpsCallable(functionsInstance, 'getStudentLiveAttendance');
+const getLiveSchedulerData = httpsCallable(functionsInstance, 'getLiveSchedulerData');
 
 const state = {
   profile: null,
   promotions: [],
   sessions: [],
+  templatesById: new Map(),
   attendanceByLiveId: {},
   view: 'list',
   tab: 'upcoming',
@@ -91,26 +93,130 @@ function getLiveIdForRow(row = {}) {
   return row.session?.id || row.live?.liveSessionId || row.live?.sessionId || row.live?.id || row.id || '';
 }
 
+
+function isGenericLiveTitle(value = '') {
+  const title = clean(value).toLowerCase();
+  return !title || title === 'live sbi' || title === 'live sans titre' || title === 'nouveau live' || title === 'nouvel atelier';
+}
+
+function pickLiveTitle(...values) {
+  const cleaned = values.map((value) => clean(value, 240)).filter(Boolean);
+  return cleaned.find((value) => !isGenericLiveTitle(value)) || cleaned[0] || 'Live SBI';
+}
+
+function getPromotionTemplateId(promotion = {}) {
+  return clean(
+    promotion.curriculumTemplateId
+    || promotion.templateId
+    || promotion.cursusTemplateId
+    || promotion.curriculumId
+    || promotion.curriculumTemplate?.id
+    || promotion.cursus?.id
+    || '',
+    180
+  );
+}
+
+function getPromotionTemplate(promotion = {}) {
+  const id = getPromotionTemplateId(promotion);
+  return id ? state.templatesById.get(id) || null : null;
+}
+
+function getItemType(item = {}) {
+  return clean(item.type || item.kind || item.sourceType || '', 80).toLowerCase();
+}
+
+function isLiveSourceItem(item = {}) {
+  const type = getItemType(item);
+  return type === 'live_session' || type === 'workshop' || Boolean(item.liveTracking && typeof item.liveTracking === 'object');
+}
+
+function isTestLive(item = {}) {
+  const values = [item.id, item.itemId, item.sourceItemId, item.liveId, item.type]
+    .map((value) => clean(value).toLowerCase())
+    .filter(Boolean);
+  return item.isTestLive === true || item.testLive === true || values.includes('sbi-live-test') || values.includes('live_test');
+}
+
+function getItemIds(item = {}) {
+  return [item.id, item.itemId, item.sourceItemId, item.liveId, item.templateItemId, item.liveTracking?.itemId, item.liveTracking?.sourceItemId, item.liveTracking?.templateItemId]
+    .map((value) => clean(value, 180))
+    .filter(Boolean);
+}
+
+function getSourceLiveItems(promotion = {}) {
+  const template = getPromotionTemplate(promotion);
+  const templateItems = Array.isArray(template?.items) ? template.items.filter((item) => isLiveSourceItem(item) && !isTestLive(item)) : [];
+  const coursePlanItems = Array.isArray(promotion.coursePlan) ? promotion.coursePlan.filter((item) => isLiveSourceItem(item) && !isTestLive(item)) : [];
+  const livePlanningItems = getPromotionLives(promotion).filter((item) => !isTestLive(item));
+  if (templateItems.length) return templateItems;
+  if (coursePlanItems.length) return coursePlanItems;
+  return livePlanningItems;
+}
+
+function findMatchingPlanningItem(promotion = {}, sourceItem = {}) {
+  const planning = getPromotionLives(promotion).filter((item) => !isTestLive(item));
+  const ids = new Set(getItemIds(sourceItem));
+  const title = pickLiveTitle(sourceItem.title, sourceItem.courseTitle, sourceItem.liveTracking?.title).toLowerCase();
+  return planning.find((item) => getItemIds(item).some((id) => ids.has(id)))
+    || planning.find((item) => title && pickLiveTitle(item.title, item.courseTitle, item.liveTracking?.title).toLowerCase() === title)
+    || null;
+}
+
+function findMatchingSession(promotion = {}, sourceItem = {}, planningItem = null, sessionMap = new Map()) {
+  const direct = planningItem ? getLiveSessionForItem(promotion, planningItem, sessionMap) : null;
+  if (direct) return direct;
+  const liveSessionId = clean(planningItem?.liveSessionId || sourceItem.liveSessionId || '', 180);
+  const ids = new Set([...getItemIds(sourceItem), ...getItemIds(planningItem || {})]);
+  return state.sessions.find((session) => {
+    if (session.promotionId !== promotion.id) return false;
+    if (liveSessionId && session.id === liveSessionId) return true;
+    const sessionIds = [session.id, session.liveId, session.sourceItemId].map((value) => clean(value, 180)).filter(Boolean);
+    return sessionIds.some((id) => ids.has(id));
+  }) || null;
+}
+
+function getChronologyMs(row = {}) {
+  const candidates = [row.startAt, row.live?.teacherSchedulingWindowStartAt, row.live?.schedulingWindow?.teacherCanSelectFrom, row.live?.schedulingWindow?.recommendedStartAt, row.live?.liveTracking?.schedulingWindow?.teacherCanSelectFrom, row.live?.liveTracking?.schedulingWindow?.recommendedStartAt];
+  for (const value of candidates) {
+    const ms = Date.parse(value || '');
+    if (Number.isFinite(ms)) return ms;
+  }
+  return Number.MAX_SAFE_INTEGER;
+}
+
 function getRows() {
   const sessionMap = buildSessionMap(state.sessions);
   const rows = [];
 
   state.promotions.forEach((promotion) => {
-    getPromotionLives(promotion).forEach((live) => {
-      const session = getLiveSessionForItem(promotion, live, sessionMap);
-      const liveId = session?.id || live.liveSessionId || `${promotion.id}-${clean(live.id || live.itemId || getLiveTitle(live))}`;
+    getSourceLiveItems(promotion).forEach((sourceLive, index) => {
+      const planning = findMatchingPlanningItem(promotion, sourceLive);
+      const session = findMatchingSession(promotion, sourceLive, planning, sessionMap);
+      const liveId = session?.id || planning?.liveSessionId || sourceLive.liveSessionId || `${promotion.id}-${clean(getItemIds(sourceLive)[0] || getItemIds(planning || {})[0] || `live-${index}`)}`;
+      const title = pickLiveTitle(
+        sourceLive.title,
+        sourceLive.courseTitle,
+        sourceLive.liveTracking?.title,
+        planning?.title,
+        planning?.courseTitle,
+        planning?.liveTracking?.title,
+        session?.title,
+        getLiveTitle(sourceLive, promotion)
+      );
       rows.push({
         id: liveId,
-        title: session?.title || getLiveTitle(live),
+        title,
         promotion,
-        live,
+        live: sourceLive,
+        planning,
         session,
-        startAt: session?.selectedStartAt || live.selectedLiveAt || '',
-        endAt: session?.selectedEndAt || live.selectedLiveEndAt || '',
-        replayUrl: session?.replayUrl || session?.replayAccessUrl || session?.liveTech?.replayUrl || live.replayUrl || '',
-        replayStatus: session?.replayStatus || session?.liveTech?.replayStatus || live.replayStatus || '',
-        status: session?.status || live.status || live.liveSchedulingStatus || 'to_schedule',
-        providerReady: Boolean(session?.providerRoomName || session?.providerRoomUrl || session?.meetingUrl || session?.liveTech?.providerReady || live.providerReady || live.providerRoomName || live.providerRoomUrl)
+        startAt: session?.selectedStartAt || planning?.selectedLiveAt || sourceLive.selectedLiveAt || '',
+        endAt: session?.selectedEndAt || planning?.selectedLiveEndAt || sourceLive.selectedLiveEndAt || '',
+        replayUrl: session?.replayUrl || session?.replayAccessUrl || session?.liveTech?.replayUrl || planning?.replayUrl || sourceLive.replayUrl || '',
+        replayStatus: session?.replayStatus || session?.liveTech?.replayStatus || planning?.replayStatus || sourceLive.replayStatus || '',
+        status: session?.status || planning?.status || planning?.liveSchedulingStatus || sourceLive.status || sourceLive.liveSchedulingStatus || 'to_schedule',
+        providerReady: Boolean(session?.providerRoomName || session?.providerRoomUrl || session?.meetingUrl || session?.liveTech?.providerReady || planning?.providerReady || planning?.providerRoomName || planning?.providerRoomUrl || sourceLive.providerReady || sourceLive.providerRoomName || sourceLive.providerRoomUrl)
       });
     });
   });
@@ -119,9 +225,10 @@ function getRows() {
     if (rows.some((row) => row.session?.id === session.id || row.id === session.id)) return;
     rows.push({
       id: session.id,
-      title: session.title || 'Live SBI',
+      title: pickLiveTitle(session.title, 'Live SBI'),
       promotion: state.promotions.find((promotion) => promotion.id === session.promotionId) || {},
       live: {},
+      planning: null,
       session,
       startAt: session.selectedStartAt || '',
       endAt: session.selectedEndAt || '',
@@ -132,11 +239,7 @@ function getRows() {
     });
   });
 
-  return rows.sort((a, b) => {
-    const aMs = a.startAt ? Date.parse(a.startAt) : Number.MAX_SAFE_INTEGER;
-    const bMs = b.startAt ? Date.parse(b.startAt) : Number.MAX_SAFE_INTEGER;
-    return aMs - bMs;
-  });
+  return rows.sort((a, b) => getChronologyMs(a) - getChronologyMs(b) || a.title.localeCompare(b.title, 'fr', { sensitivity: 'base' }));
 }
 
 function isReplay(row) {
@@ -210,7 +313,7 @@ function renderList(rows) {
     <article class="sbi-live-card">
       <strong>${escapeHtml(row.title)}</strong>
       <span>${escapeHtml(getPromotionName(row.promotion))}</span>
-      <span>${row.startAt ? escapeHtml(formatDateRange(row.startAt, row.endAt)) : escapeHtml(getLiveWindowLabel(row.live))}</span>
+      <span>${row.startAt ? escapeHtml(formatDateRange(row.startAt, row.endAt)) : escapeHtml(getLiveWindowLabel(row.live, row.promotion))}</span>
       ${getAttendanceBadges(row)}
       <div class="sbi-live-card-actions">
         ${canJoinLive(row) ? `<a class="sbi-live-btn" data-live-room-link="true" data-live-id="${encodeURIComponent(getLiveIdForRow(row))}" href="/live-room/${encodeURIComponent(getLiveIdForRow(row))}?liveId=${encodeURIComponent(getLiveIdForRow(row))}#liveId=${encodeURIComponent(getLiveIdForRow(row))}">Rejoindre la salle</a>` : (state.tab === 'upcoming' ? `<span class="sbi-live-btn sbi-live-btn--ghost is-disabled" aria-disabled="true">${escapeHtml(getJoinClosedLabel(row))}</span>` : '')}
@@ -285,13 +388,34 @@ function render() {
   });
 }
 
+async function loadStudentLiveDataFromServer() {
+  const result = await getLiveSchedulerData({ role: 'student', source: 'student-lives' });
+  const data = result?.data || {};
+  return {
+    promotions: Array.isArray(data.promotions) ? data.promotions : [],
+    sessions: Array.isArray(data.sessions) ? data.sessions : [],
+    templates: Array.isArray(data.templates) ? data.templates : []
+  };
+}
+
 async function loadForUser(uid) {
   setStatus('Chargement...');
   state.uid = uid;
   state.profile = await loadProfile(uid);
-  const promotionIds = getStudentPromotionIds(state.profile || {});
-  state.promotions = promotionIds.length ? await loadPromotionsByIds(promotionIds) : [];
-  state.sessions = promotionIds.length ? await loadLiveSessionsForPromotions(promotionIds) : [];
+
+  try {
+    const serverData = await loadStudentLiveDataFromServer();
+    state.promotions = serverData.promotions;
+    state.sessions = serverData.sessions;
+    state.templatesById = new Map(serverData.templates.map((template) => [clean(template.id, 180), template]).filter(([id]) => Boolean(id)));
+  } catch (error) {
+    console.warn('[SBI Student Lives] Donnees serveur indisponibles, fallback client :', error);
+    const promotionIds = getStudentPromotionIds(state.profile || {});
+    state.promotions = promotionIds.length ? await loadPromotionsByIds(promotionIds) : [];
+    state.sessions = promotionIds.length ? await loadLiveSessionsForPromotions(promotionIds) : [];
+    state.templatesById = new Map();
+  }
+
   await loadAttendanceForRows(uid);
   setStatus('');
   render();

@@ -5010,18 +5010,36 @@ exports.getLiveSchedulerData = onCall({
     const db = admin.firestore();
     const caller = await requireActiveCourseCaller(request, db);
     const callerRole = normalizeLiveRole(caller.data.role || "");
+    const requestedRole = normalizeLiveRole(request.data?.role || "");
+    const wantsStudentScope = requestedRole === "student" || callerRole === "student";
 
-    if (!caller.isAdmin && callerRole !== "teacher") {
-        throw new HttpsError("permission-denied", "Acces live reserve a l'administration et aux professeurs.");
+    if (!caller.isAdmin && callerRole !== "teacher" && callerRole !== "student") {
+        throw new HttpsError("permission-denied", "Acces live reserve aux comptes autorises.");
     }
 
-    const snap = await db.collection("promotions").get();
     const promotions = [];
+    const seenPromotionIds = new Set();
 
-    for (const docSnap of snap.docs) {
-        const promotion = { id: docSnap.id, ...(docSnap.data() || {}) };
-        const canManage = await teacherCanManagePromotionLive(db, caller, promotion);
-        if (canManage) promotions.push(sanitizeLivePromotionForScheduler(promotion));
+    if (wantsStudentScope && !caller.isAdmin && callerRole !== "teacher") {
+        const promotionIds = collectCallerPromotionKeys(caller.data || {});
+        for (const promotionId of promotionIds) {
+            if (!promotionId || seenPromotionIds.has(promotionId)) continue;
+            const promotionDoc = await db.collection("promotions").doc(promotionId).get();
+            if (!promotionDoc.exists) continue;
+            const promotion = { id: promotionDoc.id, ...(promotionDoc.data() || {}) };
+            if (!await studentCanJoinLivePromotion(db, caller, promotion)) continue;
+            seenPromotionIds.add(promotion.id);
+            promotions.push(sanitizeLivePromotionForScheduler(promotion));
+        }
+    } else {
+        const snap = await db.collection("promotions").get();
+        for (const docSnap of snap.docs) {
+            const promotion = { id: docSnap.id, ...(docSnap.data() || {}) };
+            const canManage = await teacherCanManagePromotionLive(db, caller, promotion);
+            if (!canManage || seenPromotionIds.has(promotion.id)) continue;
+            seenPromotionIds.add(promotion.id);
+            promotions.push(sanitizeLivePromotionForScheduler(promotion));
+        }
     }
 
     promotions.sort((a, b) => getPromotionDisplayName(a).localeCompare(getPromotionDisplayName(b), "fr", { sensitivity: "base" }));
@@ -5032,7 +5050,8 @@ exports.getLiveSchedulerData = onCall({
         promotions,
         sessions,
         templates,
-        count: promotions.length
+        count: promotions.length,
+        scope: wantsStudentScope ? "student" : "manager"
     };
 });
 
