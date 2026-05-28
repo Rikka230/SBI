@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SBI - Salle de conférence</title>
-  <link rel="stylesheet" href="/css/live-platform.css?v=8.0P.167.210">
+  <link rel="stylesheet" href="/css/live-platform.css?v=8.0P.167.211">
 </head>
 <body class="sbi-live-room-page">
   <main class="sbi-live-room-shell">
@@ -15,8 +15,15 @@
         <p id="sbi-live-room-subtitle">Connexion sécurisée</p>
       </div>
       <div class="sbi-live-room-header__right">
-        <span id="sbi-live-room-badge" class="sbi-live-room-badge">Live</span>
-        <span id="sbi-live-room-status" class="sbi-live-status">Initialisation...</span>
+        <div class="sbi-live-room-header__topline">
+          <span id="sbi-live-room-badge" class="sbi-live-room-badge">Live</span>
+          <span id="sbi-live-room-status" class="sbi-live-status">Initialisation...</span>
+        </div>
+        <div id="sbi-live-room-actions" class="sbi-live-room-actions" hidden>
+          <button type="button" id="sbi-live-record-start" class="sbi-live-room-action">Enregistrer</button>
+          <button type="button" id="sbi-live-record-stop" class="sbi-live-room-action" hidden>Stop replay</button>
+          <button type="button" id="sbi-live-end-session" class="sbi-live-room-action sbi-live-room-action--danger">Terminer le live</button>
+        </div>
       </div>
     </header>
 
@@ -24,10 +31,21 @@
       <div id="sbi-live-room-frame" class="sbi-live-room-frame">
         <div class="sbi-live-room-loading">Préparation de la salle...</div>
       </div>
+      <aside class="sbi-live-room-docs" id="sbi-live-room-docs" aria-label="Documents partagés">
+        <div class="sbi-live-room-docs__head">
+          <strong>Documents</strong>
+          <span id="sbi-live-files-status">Aucun fichier partagé</span>
+        </div>
+        <div id="sbi-live-file-upload-zone" class="sbi-live-room-upload" hidden>
+          <input id="sbi-live-file-input" type="file" multiple>
+          <button type="button" id="sbi-live-file-upload" class="sbi-live-room-action">Partager</button>
+        </div>
+        <div id="sbi-live-files-list" class="sbi-live-room-files"></div>
+      </aside>
       <div id="sbi-live-watermark" class="sbi-live-watermark">SBI</div>
     </section>
   </main>
 
-  <script type="module" src="/js/live/live-room-page.js?v=8.0P.167.210"></script>
+  <script type="module" src="/js/live/live-room-page.js?v=8.0P.167.211"></script>
 </body>
 </html>

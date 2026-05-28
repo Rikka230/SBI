@@ -826,7 +826,7 @@ service cloud.firestore {
 
       match /files/{fileId} {
         allow get, list: if canReadLiveSession(get(/databases/$(database)/documents/liveSessions/$(liveId)).data);
-        allow create: if isTeacher()
+        allow create: if (isTeacher() || isAdmin())
           && canReadLiveSession(get(/databases/$(database)/documents/liveSessions/$(liveId)).data)
           && request.resource.data.uploadedBy == request.auth.uid;
         allow update, delete: if isAdmin();

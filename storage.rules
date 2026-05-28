@@ -244,8 +244,13 @@ service firebase.storage {
           isActiveUser()
           && firestore.exists(liveSessionDocPath(liveId))
           && firestore.get(liveSessionDocPath(liveId)).data.keys().hasAny(['promotionId'])
-          && currentUser().keys().hasAny(['promotionId'])
-          && currentUser().promotionId == firestore.get(liveSessionDocPath(liveId)).data.promotionId
+          && (
+            (currentUser().keys().hasAny(['promotionId']) && currentUser().promotionId == firestore.get(liveSessionDocPath(liveId)).data.promotionId)
+            || (currentUser().keys().hasAny(['currentPromotionId']) && currentUser().currentPromotionId == firestore.get(liveSessionDocPath(liveId)).data.promotionId)
+            || (currentUser().keys().hasAny(['assignedPromotionId']) && currentUser().assignedPromotionId == firestore.get(liveSessionDocPath(liveId)).data.promotionId)
+            || (currentUser().keys().hasAny(['promotionIds']) && currentUser().promotionIds is list && firestore.get(liveSessionDocPath(liveId)).data.promotionId in currentUser().promotionIds)
+            || (currentUser().keys().hasAny(['assignedPromotionIds']) && currentUser().assignedPromotionIds is list && firestore.get(liveSessionDocPath(liveId)).data.promotionId in currentUser().assignedPromotionIds)
+          )
         )
         || (
           isTeacher()
@@ -256,7 +261,7 @@ service firebase.storage {
     }
 
     function validLiveFileUpload() {
-      return isTeacher()
+      return (isTeacher() || isAdmin())
         && request.resource.size < 60 * 1024 * 1024
         && request.resource.metadata.keys().hasAny(['uploadedBy'])
         && request.resource.metadata.uploadedBy == request.auth.uid;

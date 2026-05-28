@@ -4157,25 +4157,36 @@ async function ensureDailyRoomForLive({ apiKey = "", liveRef, liveSession = {}, 
         throw new HttpsError("failed-precondition", "Salle pas encore ouverte par l’intervenant.");
     }
 
+    const roomProperties = {
+        nbf: timing.nbf,
+        exp: timing.exp,
+        enable_prejoin_ui: true,
+        enable_people_ui: true,
+        enable_chat: true,
+        enable_advanced_chat: true,
+        enable_screenshare: true,
+        enable_network_ui: true,
+        enable_recording: "cloud",
+        start_audio_off: true,
+        start_video_off: true,
+        eject_at_room_exp: true
+    };
+
     if (!room) {
         room = await callDailyApi(apiKey, "/rooms", {
             method: "POST",
             body: {
                 name: roomName,
                 privacy: "private",
-                properties: {
-                    nbf: timing.nbf,
-                    exp: timing.exp,
-                    enable_prejoin_ui: true,
-                    enable_people_ui: true,
-                    enable_chat: true,
-                    enable_advanced_chat: true,
-                    enable_screenshare: true,
-                    enable_network_ui: true,
-                    start_audio_off: true,
-                    start_video_off: true,
-                    eject_at_room_exp: true
-                }
+                properties: roomProperties
+            }
+        });
+    } else {
+        room = await callDailyApi(apiKey, `/rooms/${encodeURIComponent(roomName)}`, {
+            method: "POST",
+            body: {
+                privacy: "private",
+                properties: roomProperties
             }
         });
     }
@@ -4367,6 +4378,179 @@ exports.joinLiveConference = onCall({
         canModerate: host,
         message: "Salle de conference prete."
     };
+});
+
+
+async function updatePromotionLivePlanningForEnded({ promotionRef, promotion = {}, liveSession = {}, caller }) {
+    const livePlanning = Array.isArray(promotion.livePlanning) ? [...promotion.livePlanning] : [];
+    if (!livePlanning.length) return;
+    const liveId = cleanString(liveSession.id || "", 180);
+    const sourceItemId = cleanString(liveSession.sourceItemId || "", 180);
+    const updated = livePlanning.map((item) => {
+        if (!item || typeof item !== "object") return item;
+        const ids = [
+            item.liveSessionId,
+            item.id,
+            item.itemId,
+            item.sourceItemId,
+            item.liveId
+        ].map((value) => cleanString(value, 180)).filter(Boolean);
+        const match = ids.includes(liveId) || (sourceItemId && ids.includes(sourceItemId));
+        if (!match) return item;
+        return {
+            ...item,
+            status: "ended",
+            liveSchedulingStatus: "ended",
+            studentScheduleStatus: "ended",
+            endedAt: new Date().toISOString(),
+            endedByUid: caller.uid,
+            replayStatus: item.replayStatus || "not_available"
+        };
+    });
+    await promotionRef.set({
+        livePlanning: updated,
+        livePlanningUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        livePlanningUpdatedBy: caller.uid
+    }, { merge: true });
+}
+
+exports.endLiveConference = onCall({
+    region: "europe-west1",
+    secrets: [DAILY_API_KEY],
+    timeoutSeconds: 60,
+    memory: "512MiB"
+}, async (request) => {
+    const db = admin.firestore();
+    const caller = await requireActiveCourseCaller(request, db);
+    const liveId = cleanString(request.data?.liveId, 180);
+    if (!liveId) throw new HttpsError("invalid-argument", "Live manquant.");
+
+    const liveRef = db.collection("liveSessions").doc(liveId);
+    const liveDoc = await liveRef.get();
+    if (!liveDoc.exists) throw new HttpsError("not-found", "Live introuvable.");
+    const liveSession = { id: liveDoc.id, ...(liveDoc.data() || {}) };
+
+    const promotionId = cleanString(liveSession.promotionId || "", 180);
+    if (!promotionId) throw new HttpsError("failed-precondition", "Promotion live manquante.");
+
+    const promotionRef = db.collection("promotions").doc(promotionId);
+    const promotionDoc = await promotionRef.get();
+    if (!promotionDoc.exists) throw new HttpsError("not-found", "Promotion introuvable.");
+    const promotion = { id: promotionDoc.id, ...(promotionDoc.data() || {}) };
+
+    const canManage = await teacherCanManagePromotionLive(db, caller, promotion);
+    if (!canManage) throw new HttpsError("permission-denied", "Vous ne pouvez pas terminer ce live.");
+
+    const apiKey = DAILY_API_KEY.value();
+    const roomName = getDailyRoomNameFromSession(liveSession);
+    let providerClosed = false;
+    try {
+        await callDailyApi(apiKey, `/rooms/${encodeURIComponent(roomName)}`, { method: "DELETE", allowNotFound: true });
+        providerClosed = true;
+    } catch (error) {
+        console.warn("Daily room close ignored:", liveId, error.message || error);
+    }
+
+    await liveRef.set({
+        status: "ended",
+        endedAt: admin.firestore.FieldValue.serverTimestamp(),
+        endedByUid: caller.uid,
+        endedByEmail: caller.email,
+        providerClosed,
+        liveTech: {
+            ...(liveSession.liveTech || {}),
+            providerReady: false,
+            roomClosedAt: new Date().toISOString(),
+            replayStatus: liveSession.liveTech?.replayStatus || "not_available"
+        },
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+
+    await updatePromotionLivePlanningForEnded({ promotionRef, promotion, liveSession, caller });
+
+    await safeWriteAccountAuditLog(db, {
+        type: "live.ended",
+        actorUid: caller.uid,
+        actorEmail: caller.email,
+        targetUid: "",
+        targetEmail: "",
+        targetRole: "promotion",
+        source: "live-room",
+        liveId,
+        promotionId,
+        changes: { provider: "daily", roomName, providerClosed }
+    });
+
+    return {
+        success: true,
+        liveId,
+        message: "Session live terminee.",
+        providerClosed
+    };
+});
+
+exports.setLiveRecordingState = onCall({
+    region: "europe-west1",
+    timeoutSeconds: 30,
+    memory: "256MiB"
+}, async (request) => {
+    const db = admin.firestore();
+    const caller = await requireActiveCourseCaller(request, db);
+    const data = request.data || {};
+    const liveId = cleanString(data.liveId, 180);
+    const recordingStatus = cleanString(data.recordingStatus, 80);
+    if (!liveId) throw new HttpsError("invalid-argument", "Live manquant.");
+    if (!["recording", "processing", "ready", "error", "not_available"].includes(recordingStatus)) {
+        throw new HttpsError("invalid-argument", "Statut replay invalide.");
+    }
+
+    const liveRef = db.collection("liveSessions").doc(liveId);
+    const liveDoc = await liveRef.get();
+    if (!liveDoc.exists) throw new HttpsError("not-found", "Live introuvable.");
+    const liveSession = { id: liveDoc.id, ...(liveDoc.data() || {}) };
+
+    const promotionId = cleanString(liveSession.promotionId || "", 180);
+    const promotionDoc = await db.collection("promotions").doc(promotionId).get();
+    if (!promotionDoc.exists) throw new HttpsError("not-found", "Promotion introuvable.");
+    const promotion = { id: promotionDoc.id, ...(promotionDoc.data() || {}) };
+
+    const canManage = await teacherCanManagePromotionLive(db, caller, promotion);
+    if (!canManage) throw new HttpsError("permission-denied", "Vous ne pouvez pas modifier le replay de ce live.");
+
+    const replayStatus = recordingStatus === "recording"
+        ? "recording"
+        : recordingStatus === "processing"
+            ? "processing"
+            : recordingStatus === "ready"
+                ? "available"
+                : recordingStatus;
+
+    await liveRef.set({
+        liveTech: {
+            ...(liveSession.liveTech || {}),
+            recordingStatus,
+            replayStatus,
+            recordingInstanceId: cleanString(data.recordingInstanceId || liveSession.liveTech?.recordingInstanceId || "", 120),
+            recordingError: cleanString(data.recordingError || "", 500),
+            recordingUpdatedAt: new Date().toISOString()
+        },
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+
+    await safeWriteAccountAuditLog(db, {
+        type: "live.recording_state",
+        actorUid: caller.uid,
+        actorEmail: caller.email,
+        targetUid: "",
+        targetEmail: "",
+        targetRole: "promotion",
+        source: "live-room",
+        liveId,
+        promotionId,
+        changes: { recordingStatus, replayStatus }
+    });
+
+    return { success: true, recordingStatus, replayStatus };
 });
 
 exports.getLiveSchedulerData = onCall({
