@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.211',
+  version: '8.0P.167.212',
   branch: 'main',
-  channel: 'LIVE ROOM',
-  stage: 'END SESSION FILES RECORDING MVP',
+  channel: 'LIVE REPLAY',
+  stage: 'REPLAY ACCESS LINKS',
   updatedAt: '2026-05-28',
-  label: 'SBI 8.0P.167.211 - end live session, shared files and recording controls'
+  label: 'SBI 8.0P.167.212 - resolve Daily replay links for students'
 };
 
 export function getSbiVersionLabel() {

@@ -4553,6 +4553,135 @@ exports.setLiveRecordingState = onCall({
     return { success: true, recordingStatus, replayStatus };
 });
 
+
+function pickDailyRecordingForLive(recordings = []) {
+    const readyStatuses = new Set(["finished", "ready", "completed", "uploaded"]);
+    const normalized = Array.isArray(recordings) ? recordings : [];
+    const ready = normalized.find((item) => readyStatuses.has(cleanString(item.status || item.state || "", 80).toLowerCase())) || normalized[0] || null;
+    return ready;
+}
+
+function extractDailyRecordingId(recording = {}) {
+    return cleanString(recording.id || recording.recording_id || recording.uuid || "", 180);
+}
+
+function extractDailyRecordingDuration(recording = {}) {
+    const candidates = [recording.duration, recording.duration_sec, recording.duration_seconds, recording.max_participant_duration];
+    for (const value of candidates) {
+        const n = Number(value);
+        if (Number.isFinite(n) && n > 0) return n;
+    }
+    return 0;
+}
+
+exports.resolveLiveReplay = onCall({
+    region: "europe-west1",
+    secrets: [DAILY_API_KEY],
+    timeoutSeconds: 60,
+    memory: "512MiB"
+}, async (request) => {
+    const db = admin.firestore();
+    const caller = await requireActiveCourseCaller(request, db);
+    const data = request.data || {};
+    const liveId = cleanString(data.liveId, 180);
+    if (!liveId) throw new HttpsError("invalid-argument", "Live manquant.");
+
+    const liveRef = db.collection("liveSessions").doc(liveId);
+    const liveDoc = await liveRef.get();
+    if (!liveDoc.exists) throw new HttpsError("not-found", "Live introuvable.");
+    const liveSession = { id: liveDoc.id, ...(liveDoc.data() || {}) };
+
+    const promotionId = cleanString(liveSession.promotionId || "", 180);
+    if (!promotionId) throw new HttpsError("failed-precondition", "Promotion live manquante.");
+    const promotionDoc = await db.collection("promotions").doc(promotionId).get();
+    if (!promotionDoc.exists) throw new HttpsError("not-found", "Promotion introuvable.");
+    const promotion = { id: promotionDoc.id, ...(promotionDoc.data() || {}) };
+
+    const canAccess = await studentCanJoinLivePromotion(db, caller, promotion);
+    if (!canAccess) throw new HttpsError("permission-denied", "Vous ne pouvez pas consulter ce replay.");
+
+    const apiKey = DAILY_API_KEY.value();
+    const roomName = cleanString(liveSession.providerRoomName || liveSession.roomName || liveSession.liveTech?.roomName || getDailyRoomNameFromSession(liveSession), 180);
+    if (!roomName) throw new HttpsError("failed-precondition", "Room Daily introuvable pour ce live.");
+
+    const existingRecordingId = cleanString(liveSession.replayRecordingId || liveSession.liveTech?.recordingId || liveSession.liveTech?.recordingInstanceId || "", 180);
+    let recordingId = existingRecordingId;
+    let recording = null;
+
+    if (recordingId) {
+        recording = await callDailyApi(apiKey, `/recordings/${encodeURIComponent(recordingId)}`, { allowNotFound: true });
+        if (!recording) recordingId = "";
+    }
+
+    if (!recordingId) {
+        const result = await callDailyApi(apiKey, `/recordings?room_name=${encodeURIComponent(roomName)}&limit=10`);
+        const recordings = Array.isArray(result?.data) ? result.data : [];
+        recording = pickDailyRecordingForLive(recordings);
+        recordingId = extractDailyRecordingId(recording || {});
+    }
+
+    if (!recordingId) {
+        await liveRef.set({
+            replayStatus: "processing",
+            liveTech: {
+                ...(liveSession.liveTech || {}),
+                replayStatus: "processing",
+                replayResolveLastError: "recording_not_ready",
+                replayResolvedAt: new Date().toISOString()
+            },
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+        throw new HttpsError("failed-precondition", "Replay Daily pas encore disponible. Reessayez dans quelques minutes.");
+    }
+
+    const access = await callDailyApi(apiKey, `/recordings/${encodeURIComponent(recordingId)}/access-link?valid_for_secs=3600`);
+    const downloadLink = cleanString(access?.download_link || access?.downloadLink || access?.url || "", 4000);
+    if (!downloadLink) throw new HttpsError("failed-precondition", "Lien replay Daily indisponible.");
+
+    const durationSeconds = extractDailyRecordingDuration(recording || {});
+    const expires = cleanString(access?.expires || access?.expires_at || "", 120);
+
+    await liveRef.set({
+        status: liveSession.status === "ended" ? "replay_available" : (liveSession.status || "replay_available"),
+        replayStatus: "available",
+        replayProvider: "daily",
+        replayRecordingId: recordingId,
+        replayLastAccessResolvedAt: admin.firestore.FieldValue.serverTimestamp(),
+        replayAccessExpiresAt: expires,
+        liveTech: {
+            ...(liveSession.liveTech || {}),
+            replayStatus: "available",
+            recordingStatus: "ready",
+            recordingId,
+            recordingDurationSeconds: durationSeconds,
+            recordingUpdatedAt: new Date().toISOString()
+        },
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+
+    await safeWriteAccountAuditLog(db, {
+        type: "live.replay_access",
+        actorUid: caller.uid,
+        actorEmail: caller.email,
+        targetUid: "",
+        targetEmail: "",
+        targetRole: "promotion",
+        source: "student-lives",
+        liveId,
+        promotionId,
+        changes: { provider: "daily", recordingId, expires }
+    });
+
+    return {
+        success: true,
+        liveId,
+        recordingId,
+        replayUrl: downloadLink,
+        expires,
+        durationSeconds
+    };
+});
+
 exports.getLiveSchedulerData = onCall({
     region: "europe-west1",
     timeoutSeconds: 60,
