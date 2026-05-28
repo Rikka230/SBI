@@ -4555,7 +4555,7 @@ exports.setLiveRecordingState = onCall({
 
 
 function pickDailyRecordingForLive(recordings = []) {
-    const readyStatuses = new Set(["finished", "ready", "completed", "uploaded"]);
+    const readyStatuses = new Set(["finished", "ready", "completed", "uploaded", "available", "done"]);
     const normalized = Array.isArray(recordings) ? recordings : [];
     const ready = normalized.find((item) => readyStatuses.has(cleanString(item.status || item.state || "", 80).toLowerCase())) || normalized[0] || null;
     return ready;
@@ -4677,6 +4677,7 @@ exports.resolveLiveReplay = onCall({
         liveId,
         recordingId,
         replayUrl: downloadLink,
+        downloadLink,
         expires,
         durationSeconds
     };

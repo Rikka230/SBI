@@ -17,7 +17,7 @@ import {
   loadProfile,
   loadPromotionsByIds,
   renderEmpty
-} from '/js/live/live-shared.js?v=8.0P.167.212';
+} from '/js/live/live-shared.js?v=8.0P.167.213';
 
 const functionsInstance = getFunctions(app, 'europe-west1');
 const resolveLiveReplay = httpsCallable(functionsInstance, 'resolveLiveReplay');
@@ -95,16 +95,14 @@ function isReplay(row) {
 
 function getReplayLabel(row = {}) {
   const replayStatus = clean(row.replayStatus).toLowerCase();
-  if (['processing', 'recording'].includes(replayStatus)) return 'Replay en préparation';
-  return 'Voir le replay';
+  if (['processing', 'recording'].includes(replayStatus)) return 'Vérifier le replay';
+  if (['error', 'not_available'].includes(replayStatus)) return 'Réessayer le replay';
+  return 'Voir / télécharger le replay';
 }
 
 function canRequestReplay(row = {}) {
   const liveId = row.session?.id || row.live?.liveSessionId || '';
-  if (!liveId) return false;
-  const replayStatus = clean(row.replayStatus).toLowerCase();
-  if (['processing', 'recording', 'error', 'not_available'].includes(replayStatus)) return false;
-  return isReplay(row);
+  return Boolean(liveId) && isReplay(row);
 }
 
 function canJoinLive(row = {}) {
@@ -126,9 +124,8 @@ function renderList(rows) {
       <span>${row.startAt ? escapeHtml(formatDateRange(row.startAt, row.endAt)) : escapeHtml(getLiveWindowLabel(row.live))}</span>
       <div class="sbi-live-card-actions">
         ${canJoinLive(row) ? `<a class="sbi-live-btn" href="/live-room.html?liveId=${encodeURIComponent(row.session?.id || row.live?.liveSessionId || '')}">Rejoindre la salle</a>` : ''}
-        ${row.replayUrl ? `<a class="sbi-live-btn sbi-live-btn--ghost" href="${escapeHtml(row.replayUrl)}" target="_blank" rel="noopener noreferrer">Voir le replay</a>` : ''}
+        ${row.replayUrl ? `<a class="sbi-live-btn sbi-live-btn--ghost" href="${escapeHtml(row.replayUrl)}" target="_blank" rel="noopener noreferrer">Voir / télécharger le replay</a>` : ''}
         ${!row.replayUrl && canRequestReplay(row) ? `<button class="sbi-live-btn sbi-live-btn--ghost" type="button" data-resolve-replay="${escapeHtml(row.session?.id || row.live?.liveSessionId || '')}">${escapeHtml(getReplayLabel(row))}</button>` : ''}
-        ${!row.replayUrl && !canRequestReplay(row) && isReplay(row) ? `<span class="sbi-live-status">${escapeHtml(getReplayLabel(row))}</span>` : ''}
       </div>
     </article>
   `).join('')}</div>`;
@@ -150,16 +147,16 @@ function renderCalendar(rows) {
 async function openReplay(liveId = '', button = null) {
   if (!liveId) return;
   if (button) button.disabled = true;
-  setStatus('Préparation du replay...');
+  setStatus('Recherche du replay Daily...');
   try {
     const result = await resolveLiveReplay({ liveId });
-    const url = result?.data?.replayUrl || '';
+    const url = result?.data?.replayUrl || result?.data?.downloadLink || ''; 
     if (!url) throw new Error('Lien replay indisponible.');
     window.open(url, '_blank', 'noopener,noreferrer');
-    setStatus('');
+    setStatus('Lien replay ouvert. Le fichier peut se télécharger selon la configuration Daily.');
   } catch (error) {
     console.error('[SBI Student Lives] Replay indisponible :', error);
-    setStatus(error?.message || 'Replay indisponible pour le moment.');
+    setStatus(error?.message || 'Replay encore en préparation. Réessayez dans quelques minutes.');
   } finally {
     if (button) button.disabled = false;
   }
