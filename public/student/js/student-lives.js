@@ -17,7 +17,7 @@ import {
   loadProfile,
   loadPromotionsByIds,
   renderEmpty
-} from '/js/live/live-shared.js?v=8.0P.167.220';
+} from '/js/live/live-shared.js?v=8.0P.167.221';
 
 const functionsInstance = getFunctions(app, 'europe-west1');
 const getStudentLiveAttendance = httpsCallable(functionsInstance, 'getStudentLiveAttendance');
@@ -36,9 +36,53 @@ function $(id) {
   return document.getElementById(id);
 }
 
+function forceRevealStudentLivesPage() {
+  try { document.documentElement?.classList?.remove('preload'); } catch (_) {}
+  try {
+    document.body?.classList?.remove('preload');
+    if (document.body) {
+      document.body.style.opacity = '1';
+      document.body.style.visibility = 'visible';
+    }
+  } catch (_) {}
+  ['app-container', 'main-content', 'student-live-content'].forEach((id) => {
+    const node = $(id);
+    if (!node) return;
+    node.hidden = false;
+    node.style.opacity = '1';
+    node.style.visibility = 'visible';
+  });
+  const wrapper = document.querySelector('.content-wrapper');
+  if (wrapper) {
+    wrapper.hidden = false;
+    wrapper.style.opacity = '1';
+    wrapper.style.visibility = 'visible';
+  }
+}
+
+function readInitialTab() {
+  try {
+    const url = new URL(window.SBI_APP_SHELL_CURRENT_URL || window.location.href, window.location.origin);
+    const tab = url.searchParams.get('tab') || new URLSearchParams(String(url.hash || '').replace(/^#/, '')).get('tab');
+    if (['upcoming', 'replay'].includes(tab)) return tab;
+  } catch (_) {}
+  try {
+    const stored = sessionStorage.getItem('sbi:lastStudentLivesTab');
+    if (['upcoming', 'replay'].includes(stored)) return stored;
+  } catch (_) {}
+  return 'upcoming';
+}
+
 function setStatus(message = '') {
+  forceRevealStudentLivesPage();
   const node = $('student-live-status');
   if (node) node.textContent = message;
+}
+
+function renderLoadError(message = '') {
+  forceRevealStudentLivesPage();
+  const root = $('student-live-content');
+  if (root) root.innerHTML = renderEmpty(message || 'Chargement impossible. Rechargez la page.');
 }
 
 function getLiveIdForRow(row = {}) {
@@ -203,6 +247,7 @@ async function loadAttendanceForRows(uid = '') {
 }
 
 function render() {
+  forceRevealStudentLivesPage();
   const root = $('student-live-content');
   if (!root) return;
   const rows = getRows();
@@ -211,13 +256,21 @@ function render() {
   document.querySelectorAll('[data-live-replay-link]').forEach((link) => {
     link.addEventListener('click', () => {
       const liveId = decodeURIComponent(link.dataset.liveId || '');
-      if (liveId) sessionStorage.setItem('sbi:lastReplayLiveId', liveId);
+      if (liveId) {
+        sessionStorage.setItem('sbi:lastReplayLiveId', liveId);
+        localStorage.setItem('sbi:lastReplayLiveId', liveId);
+        sessionStorage.setItem('sbi:lastStudentLivesTab', 'replay');
+      }
     });
   });
   document.querySelectorAll('[data-live-room-link]').forEach((link) => {
     link.addEventListener('click', () => {
       const liveId = decodeURIComponent(link.dataset.liveId || '');
-      if (liveId) sessionStorage.setItem('sbi:lastLiveRoomId', liveId);
+      if (liveId) {
+        sessionStorage.setItem('sbi:lastLiveRoomId', liveId);
+        localStorage.setItem('sbi:lastLiveRoomId', liveId);
+        sessionStorage.setItem('sbi:lastStudentLivesTab', 'upcoming');
+      }
     });
   });
 
@@ -245,6 +298,7 @@ function bindControls() {
   document.querySelectorAll('[data-student-live-tab]').forEach((button) => {
     button.addEventListener('click', () => {
       state.tab = button.dataset.studentLiveTab || 'upcoming';
+      try { sessionStorage.setItem('sbi:lastStudentLivesTab', state.tab); } catch (_) {}
       render();
     });
   });
@@ -258,13 +312,33 @@ function bindControls() {
 
 let mounted = false;
 let unsubscribeAuth = null;
+let mountedRoot = null;
+let bootTimer = null;
 
 export function mountStudentLivesPage() {
-  if (mounted) return null;
+  forceRevealStudentLivesPage();
+  const root = $('student-live-content');
+  if (!root) return null;
+
+  if (mounted && mountedRoot === root) {
+    forceRevealStudentLivesPage();
+    render();
+    return null;
+  }
+
+  if (mounted && mountedRoot !== root) {
+    unsubscribeAuth?.();
+    unsubscribeAuth = null;
+    mounted = false;
+  }
+
   mounted = true;
+  mountedRoot = root;
+  state.tab = readInitialTab();
   bindControls();
 
   unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+    forceRevealStudentLivesPage();
     if (!user) {
       window.location.replace('/login.html');
       return;
@@ -272,21 +346,42 @@ export function mountStudentLivesPage() {
     loadForUser(user.uid).catch((error) => {
       console.error('[SBI Student Lives] Chargement impossible :', error);
       setStatus(error?.message || 'Chargement impossible.');
+      renderLoadError(error?.message || 'Chargement impossible. Rechargez la page.');
     });
   });
 
   return () => {
     mounted = false;
+    mountedRoot = null;
+    if (bootTimer) clearTimeout(bootTimer);
+    bootTimer = null;
     unsubscribeAuth?.();
     unsubscribeAuth = null;
   };
 }
 
 function bootStudentLivesPage() {
+  forceRevealStudentLivesPage();
   if (document.getElementById('student-live-content') && !window.__SBI_APP_SHELL_MOUNTING_STUDENT_LIVES) {
     mountStudentLivesPage();
   }
+  if (bootTimer) clearTimeout(bootTimer);
+  bootTimer = setTimeout(forceRevealStudentLivesPage, 700);
 }
+
+window.addEventListener('pageshow', () => {
+  forceRevealStudentLivesPage();
+  if (!mounted || mountedRoot !== $('student-live-content')) bootStudentLivesPage();
+});
+window.addEventListener('focus', forceRevealStudentLivesPage);
+window.addEventListener('error', (event) => {
+  forceRevealStudentLivesPage();
+  console.error('[SBI Student Lives] Page error:', event?.error || event?.message);
+});
+window.addEventListener('unhandledrejection', (event) => {
+  forceRevealStudentLivesPage();
+  console.error('[SBI Student Lives] Promise rejection:', event?.reason);
+});
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', bootStudentLivesPage, { once: true });

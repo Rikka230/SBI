@@ -29,6 +29,7 @@ function forceRevealPage() {
     node.style.visibility = 'visible';
     node.style.opacity = '1';
   });
+  try { bindBackToLives(); } catch (_) {}
 }
 
 function rememberLiveId(value = '') {
@@ -68,6 +69,17 @@ function getLiveId() {
 function setStatus(message = '') {
   const node = $('sbi-live-replay-status');
   if (node) node.textContent = message;
+}
+
+function bindBackToLives() {
+  const link = $('sbi-live-replay-back');
+  if (!link || link.dataset.boundBackToLives === 'true') return;
+  link.dataset.boundBackToLives = 'true';
+  link.addEventListener('click', (event) => {
+    event.preventDefault();
+    try { sessionStorage.setItem('sbi:lastStudentLivesTab', 'replay'); } catch (_) {}
+    window.location.assign('/student/lives.html?tab=replay&fromReplay=1');
+  });
 }
 
 function setTitle(title = '') {

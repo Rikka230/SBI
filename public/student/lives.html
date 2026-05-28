@@ -7,10 +7,50 @@
   <link rel="stylesheet" href="/admin/css/admin-layout.css">
   <link rel="stylesheet" href="/admin/css/admin.css">
   <link rel="stylesheet" href="/student/css/student.css">
-  <link rel="stylesheet" href="/css/live-platform.css?v=8.0P.167.216">
-  <script src="/admin/js/components.js?v=8.0P.167.216"></script>
+  <link rel="stylesheet" href="/css/live-platform.css?v=8.0P.167.221">
+  <script src="/admin/js/components.js?v=8.0P.167.221"></script>
+  <style>
+    html, body, body.sbi-live-page, #app-container, #main-content, .content-wrapper {
+      opacity: 1 !important;
+      visibility: visible !important;
+    }
+    body.sbi-live-page {
+      min-height: 100vh !important;
+      background: #f4f7f6 !important;
+    }
+    #app-container, #main-content {
+      display: block;
+    }
+  </style>
+  <script>
+    (function () {
+      function revealStudentLives() {
+        document.documentElement.classList.remove('preload');
+        if (document.body) {
+          document.body.classList.remove('preload');
+          document.body.style.opacity = '1';
+          document.body.style.visibility = 'visible';
+        }
+        var app = document.getElementById('app-container');
+        var main = document.getElementById('main-content');
+        var content = document.querySelector('.content-wrapper');
+        [app, main, content].forEach(function (node) {
+          if (!node) return;
+          node.hidden = false;
+          node.style.opacity = '1';
+          node.style.visibility = 'visible';
+        });
+      }
+      revealStudentLives();
+      document.addEventListener('DOMContentLoaded', revealStudentLives, { once: true });
+      window.addEventListener('pageshow', revealStudentLives);
+      setTimeout(revealStudentLives, 80);
+      setTimeout(revealStudentLives, 300);
+      setTimeout(revealStudentLives, 1000);
+    }());
+  </script>
 </head>
-<body class="preload sbi-live-page">
+<body class="preload sbi-live-page" data-sbi-standalone="student-lives">
   <div class="app-container" id="app-container">
     <student-left-panel></student-left-panel>
     <student-top-bar></student-top-bar>
@@ -36,13 +76,13 @@
           </div>
         </div>
 
-        <section id="student-live-content"></section>
+        <section id="student-live-content"><div class="sbi-live-empty">Chargement des lives...</div></section>
       </div>
     </main>
   </div>
 
-  <script type="module" src="/admin/js/admin-ui.js?v=8.0P.167.216"></script>
-  <script type="module" src="/admin/js/admin-notifications.js?v=8.0P.167.216"></script>
-  <script type="module" src="/student/js/student-lives.js?v=8.0P.167.216"></script>
+  <script type="module" src="/admin/js/admin-ui.js?v=8.0P.167.221"></script>
+  <script type="module" src="/admin/js/admin-notifications.js?v=8.0P.167.221"></script>
+  <script type="module" src="/student/js/student-lives.js?v=8.0P.167.221"></script>
 </body>
 </html>
