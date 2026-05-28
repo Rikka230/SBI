@@ -7,8 +7,8 @@
   <link rel="stylesheet" href="/admin/css/admin-layout.css">
   <link rel="stylesheet" href="/admin/css/admin.css">
   <link rel="stylesheet" href="/student/css/student.css">
-  <link rel="stylesheet" href="/css/live-platform.css?v=8.0P.167.222">
-  <script src="/admin/js/components.js?v=8.0P.167.222"></script>
+  <link rel="stylesheet" href="/css/live-platform.css?v=8.0P.167.223">
+  <script src="/admin/js/components.js?v=8.0P.167.223"></script>
   <style>
     html, body, body.sbi-live-page, #app-container, #main-content, .content-wrapper {
       opacity: 1 !important;
@@ -91,6 +91,34 @@
       }
     }, 5000);
   </script>
-  <script type="module" src="/student/js/student-lives.js?v=8.0P.167.222"></script>
+
+  <script>
+    (function () {
+      if (window.__SBI_STUDENT_LIVES_INLINE_NAV === true) return;
+      window.__SBI_STUDENT_LIVES_INLINE_NAV = true;
+      function go(href) { if (href) window.location.assign(new URL(href, window.location.origin).href); }
+      document.addEventListener('click', function (event) {
+        var panelToggle = event.target.closest && event.target.closest('#btn-toggle-panel');
+        if (panelToggle) {
+          var app = document.getElementById('app-container');
+          if (app) app.classList.toggle('left-collapsed');
+          return;
+        }
+        var mobileToggle = event.target.closest && event.target.closest('#btn-toggle-mobile');
+        if (mobileToggle) {
+          var appMobile = document.getElementById('app-container');
+          if (appMobile) appMobile.classList.toggle('left-open');
+          return;
+        }
+        var trigger = event.target.closest && event.target.closest('[data-sbi-href]');
+        if (!trigger) return;
+        var href = trigger.dataset.sbiHref || trigger.getAttribute('href') || '';
+        if (!href) return;
+        event.preventDefault();
+        go(href);
+      }, true);
+    }());
+  </script>
+  <script type="module" src="/student/js/student-lives.js?v=8.0P.167.223"></script>
 </body>
 </html>

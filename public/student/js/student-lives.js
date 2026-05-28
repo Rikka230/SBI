@@ -17,7 +17,7 @@ import {
   loadProfile,
   loadPromotionsByIds,
   renderEmpty
-} from '/js/live/live-shared.js?v=8.0P.167.222';
+} from '/js/live/live-shared.js?v=8.0P.167.223';
 
 const functionsInstance = getFunctions(app, 'europe-west1');
 const getStudentLiveAttendance = httpsCallable(functionsInstance, 'getStudentLiveAttendance');
@@ -58,6 +58,82 @@ function forceRevealStudentLivesPage() {
     wrapper.style.opacity = '1';
     wrapper.style.visibility = 'visible';
   }
+}
+
+
+function navigateStudentStandalone(href = '') {
+  if (!href) return;
+  const url = new URL(href, window.location.origin);
+  try {
+    if (typeof window.SBI_APP_SHELL_NAVIGATE === 'function' && window.SBI_APP_SHELL?.canHandle?.(url)) {
+      window.SBI_APP_SHELL_NAVIGATE(url.href, { source: 'student-lives-standalone' });
+      return;
+    }
+  } catch (_) {}
+  window.location.assign(url.href);
+}
+
+function installStudentStandaloneChrome() {
+  if (window.__SBI_STUDENT_LIVES_STANDALONE_CHROME === true) return;
+  window.__SBI_STUDENT_LIVES_STANDALONE_CHROME = true;
+
+  document.addEventListener('click', (event) => {
+    const panelToggle = event.target.closest('#btn-toggle-panel');
+    if (panelToggle) {
+      const appContainer = $('app-container');
+      if (appContainer) {
+        appContainer.classList.toggle('left-collapsed');
+        try { localStorage.setItem('leftPanelCollapsed', String(appContainer.classList.contains('left-collapsed'))); } catch (_) {}
+      }
+      return;
+    }
+
+    const mobileToggle = event.target.closest('#btn-toggle-mobile');
+    if (mobileToggle) {
+      $('app-container')?.classList?.toggle('left-open');
+      return;
+    }
+
+    const trigger = event.target.closest('[data-sbi-href]');
+    if (!trigger) return;
+    const href = trigger.dataset.sbiHref || trigger.getAttribute('href') || '';
+    if (!href) return;
+    event.preventDefault();
+    navigateStudentStandalone(href);
+  }, true);
+
+  document.addEventListener('keydown', (event) => {
+    if (!['Enter', ' '].includes(event.key)) return;
+    const trigger = event.target.closest('[data-sbi-href]');
+    if (!trigger) return;
+    const href = trigger.dataset.sbiHref || trigger.getAttribute('href') || '';
+    if (!href) return;
+    event.preventDefault();
+    navigateStudentStandalone(href);
+  }, true);
+
+  document.addEventListener('click', (event) => {
+    const appContainer = $('app-container');
+    if (!appContainer || window.innerWidth > 768 || !appContainer.classList.contains('left-open')) return;
+    if (!event.target.closest('#left-panel') && !event.target.closest('#btn-toggle-mobile')) {
+      appContainer.classList.remove('left-open');
+    }
+  });
+
+  window.addEventListener('resize', () => {
+    if (window.innerWidth > 1024) return;
+    $('app-container')?.classList?.remove('left-open');
+  });
+
+  const applyStoredState = () => {
+    const appContainer = $('app-container');
+    if (!appContainer || window.innerWidth <= 1024) return;
+    try {
+      appContainer.classList.toggle('left-collapsed', localStorage.getItem('leftPanelCollapsed') === 'true');
+    } catch (_) {}
+  };
+  applyStoredState();
+  window.addEventListener('sbi:components-ready', applyStoredState);
 }
 
 function readInitialTab() {
@@ -318,6 +394,7 @@ let mountedRoot = null;
 let bootTimer = null;
 
 export function mountStudentLivesPage() {
+  installStudentStandaloneChrome();
   forceRevealStudentLivesPage();
   const root = $('student-live-content');
   if (!root) return null;
@@ -363,11 +440,13 @@ export function mountStudentLivesPage() {
 }
 
 function bootStudentLivesPage() {
+  installStudentStandaloneChrome();
   forceRevealStudentLivesPage();
   const root = document.getElementById('student-live-content');
   if (root && (!mounted || mountedRoot !== root)) {
     mountStudentLivesPage();
   } else if (root && mounted && mountedRoot === root) {
+    installStudentStandaloneChrome();
     render();
   }
   if (bootTimer) clearTimeout(bootTimer);
@@ -379,6 +458,7 @@ function bootStudentLivesPage() {
 }
 
 window.addEventListener('pageshow', () => {
+  installStudentStandaloneChrome();
   forceRevealStudentLivesPage();
   if (!mounted || mountedRoot !== $('student-live-content')) bootStudentLivesPage();
 });

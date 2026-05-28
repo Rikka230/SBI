@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.222',
+  version: '8.0P.167.223',
   branch: 'main',
   channel: 'STUDENT LIVES',
-  stage: 'DIRECT REFRESH ROOT FIX',
+  stage: 'STANDALONE NAV AFTER REFRESH',
   updatedAt: '2026-05-28',
-  label: 'SBI 8.0P.167.222 - fix student lives direct refresh root'
+  label: 'SBI 8.0P.167.223 - fix student lives standalone navigation after refresh'
 };
 
 export function getSbiVersionLabel() {
