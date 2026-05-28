@@ -17,7 +17,7 @@ import {
   loadProfile,
   loadPromotionsByIds,
   renderEmpty
-} from '/js/live/live-shared.js?v=8.0P.167.223';
+} from '/js/live/live-shared.js?v=8.0P.167.224';
 
 const functionsInstance = getFunctions(app, 'europe-west1');
 const getStudentLiveAttendance = httpsCallable(functionsInstance, 'getStudentLiveAttendance');
@@ -73,12 +73,29 @@ function navigateStudentStandalone(href = '') {
   window.location.assign(url.href);
 }
 
+
+function closestFromEvent(event, selector) {
+  if (event?.target?.closest) {
+    const direct = event.target.closest(selector);
+    if (direct) return direct;
+  }
+  const path = typeof event?.composedPath === 'function' ? event.composedPath() : [];
+  for (const item of path) {
+    if (item && item.nodeType === 1 && typeof item.matches === 'function' && item.matches(selector)) return item;
+    if (item && item.nodeType === 1 && typeof item.closest === 'function') {
+      const found = item.closest(selector);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
 function installStudentStandaloneChrome() {
   if (window.__SBI_STUDENT_LIVES_STANDALONE_CHROME === true) return;
   window.__SBI_STUDENT_LIVES_STANDALONE_CHROME = true;
 
   document.addEventListener('click', (event) => {
-    const panelToggle = event.target.closest('#btn-toggle-panel');
+    const panelToggle = closestFromEvent(event, '#btn-toggle-panel');
     if (panelToggle) {
       const appContainer = $('app-container');
       if (appContainer) {
@@ -88,13 +105,13 @@ function installStudentStandaloneChrome() {
       return;
     }
 
-    const mobileToggle = event.target.closest('#btn-toggle-mobile');
+    const mobileToggle = closestFromEvent(event, '#btn-toggle-mobile');
     if (mobileToggle) {
       $('app-container')?.classList?.toggle('left-open');
       return;
     }
 
-    const trigger = event.target.closest('[data-sbi-href]');
+    const trigger = closestFromEvent(event, '[data-sbi-href]');
     if (!trigger) return;
     const href = trigger.dataset.sbiHref || trigger.getAttribute('href') || '';
     if (!href) return;
@@ -104,7 +121,7 @@ function installStudentStandaloneChrome() {
 
   document.addEventListener('keydown', (event) => {
     if (!['Enter', ' '].includes(event.key)) return;
-    const trigger = event.target.closest('[data-sbi-href]');
+    const trigger = closestFromEvent(event, '[data-sbi-href]');
     if (!trigger) return;
     const href = trigger.dataset.sbiHref || trigger.getAttribute('href') || '';
     if (!href) return;
@@ -115,7 +132,7 @@ function installStudentStandaloneChrome() {
   document.addEventListener('click', (event) => {
     const appContainer = $('app-container');
     if (!appContainer || window.innerWidth > 768 || !appContainer.classList.contains('left-open')) return;
-    if (!event.target.closest('#left-panel') && !event.target.closest('#btn-toggle-mobile')) {
+    if (!event.target.closest('#left-panel') && !closestFromEvent(event, '#btn-toggle-mobile')) {
       appContainer.classList.remove('left-open');
     }
   });
