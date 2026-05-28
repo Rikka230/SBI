@@ -1,6 +1,5 @@
-import { auth, db, app } from '/js/firebase-init.js';
+import { auth, app } from '/js/firebase-init.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js';
-import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js';
 
 const functionsInstance = getFunctions(app, 'europe-west1');
@@ -54,22 +53,43 @@ function setStatus(message = '', tone = 'muted') {
   node.dataset.tone = tone;
 }
 
+function normalizeText(value = '') {
+  return clean(value, 240)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+}
+
+function isGenericLiveTitle(value = '') {
+  const title = normalizeText(value);
+  return !title || title === 'nouveau live' || title === 'nouvel atelier' || title === 'live sans titre' || title === 'live sbi';
+}
+
 function getPromotionName(promotion = {}) {
   return clean(promotion.name || promotion.promotionName || promotion.title || promotion.titre || promotion.id || 'Promotion SBI');
 }
 
-function getCursusName(promotion = {}) {
-  const template = getPromotionTemplate(promotion);
-  return clean(template?.title || promotion.curriculumTitle || promotion.formationName || promotion.formationTitle || 'Cursus SBI');
-}
-
 function getPromotionTemplateId(promotion = {}) {
-  return clean(promotion.curriculumTemplateId || promotion.templateId || promotion.cursusTemplateId || promotion.curriculumId || '', 180);
+  return clean(
+    promotion.curriculumTemplateId
+    || promotion.templateId
+    || promotion.cursusTemplateId
+    || promotion.curriculumId
+    || promotion.curriculumTemplate?.id
+    || promotion.cursus?.id
+    || '',
+    180
+  );
 }
 
 function getPromotionTemplate(promotion = {}) {
   const id = getPromotionTemplateId(promotion);
   return id ? state.templatesById.get(id) || null : null;
+}
+
+function getCursusName(promotion = {}) {
+  const template = getPromotionTemplate(promotion);
+  return clean(template?.title || promotion.curriculumTitle || promotion.formationName || promotion.formationTitle || 'Cursus SBI');
 }
 
 function getItemType(item = {}) {
@@ -78,7 +98,7 @@ function getItemType(item = {}) {
 
 function isLiveType(item = {}) {
   const type = getItemType(item);
-  return type === 'live_session' || type === 'workshop';
+  return type === 'live_session' || type === 'workshop' || Boolean(item.liveTracking && typeof item.liveTracking === 'object');
 }
 
 function isTestLive(item = {}) {
@@ -89,85 +109,135 @@ function isTestLive(item = {}) {
 }
 
 function getItemIds(item = {}) {
-  return [item.id, item.itemId, item.sourceItemId, item.liveId, item.templateItemId, item.liveTracking?.itemId]
-    .map((value) => clean(value, 180))
-    .filter(Boolean);
+  return [
+    item.id,
+    item.itemId,
+    item.sourceItemId,
+    item.liveId,
+    item.templateItemId,
+    item.liveTracking?.itemId,
+    item.liveTracking?.sourceItemId,
+    item.liveTracking?.templateItemId
+  ].map((value) => clean(value, 180)).filter(Boolean);
 }
 
-function getLiveTitle(item = {}, fallback = {}) {
-  return clean(
-    item.title
-    || item.courseTitle
-    || item.liveTracking?.title
-    || fallback.title
-    || fallback.courseTitle
-    || fallback.liveTracking?.title
-    || 'Live sans titre'
-  );
+function pickTitleWithSource(primary = {}, fallback = {}, tertiary = {}) {
+  const candidates = [
+    ['cursus', primary.title],
+    ['cursus', primary.courseTitle],
+    ['cursus', primary.liveTracking?.title],
+    ['promotion-coursePlan', fallback.title],
+    ['promotion-coursePlan', fallback.courseTitle],
+    ['promotion-coursePlan', fallback.liveTracking?.title],
+    ['promotion-livePlanning', tertiary.title],
+    ['promotion-livePlanning', tertiary.courseTitle],
+    ['promotion-livePlanning', tertiary.liveTracking?.title]
+  ];
+  const best = candidates.find(([, value]) => !isGenericLiveTitle(value));
+  if (best) return { title: clean(best[1]), source: best[0] };
+  const any = candidates.find(([, value]) => clean(value));
+  return { title: clean(any?.[1] || 'Live sans titre'), source: any?.[0] || 'fallback' };
 }
 
-function getWindow(item = {}, fallback = {}) {
-  const tracking = item.liveTracking || {};
-  const fallbackTracking = fallback.liveTracking || {};
-  const start = clean(
-    item.teacherSchedulingWindowStartAt
-    || item.schedulingWindow?.teacherCanSelectFrom
-    || item.schedulingWindow?.recommendedStartAt
-    || item.recommendedStartAt
-    || item.plannedStartAt
-    || tracking.schedulingWindow?.teacherCanSelectFrom
-    || tracking.schedulingWindow?.recommendedStartAt
-    || fallback.teacherSchedulingWindowStartAt
-    || fallback.schedulingWindow?.teacherCanSelectFrom
-    || fallback.schedulingWindow?.recommendedStartAt
-    || fallbackTracking.schedulingWindow?.teacherCanSelectFrom
-    || fallbackTracking.schedulingWindow?.recommendedStartAt
-    || '',
-    80
-  );
-  const end = clean(
-    item.teacherSchedulingWindowEndAt
-    || item.schedulingWindow?.teacherCanSelectUntil
-    || item.schedulingWindow?.recommendedEndAt
-    || item.recommendedEndAt
-    || item.plannedEndAt
-    || item.deadlineAt
-    || tracking.schedulingWindow?.teacherCanSelectUntil
-    || tracking.schedulingWindow?.recommendedEndAt
-    || fallback.teacherSchedulingWindowEndAt
-    || fallback.schedulingWindow?.teacherCanSelectUntil
-    || fallback.schedulingWindow?.recommendedEndAt
-    || fallbackTracking.schedulingWindow?.teacherCanSelectUntil
-    || fallbackTracking.schedulingWindow?.recommendedEndAt
-    || '',
-    80
-  );
-  return { start, end };
+function getWindow(item = {}, fallback = {}, tertiary = {}) {
+  const sources = [item, fallback, tertiary].filter(Boolean);
+  for (const source of sources) {
+    const tracking = source.liveTracking || {};
+    const schedulingWindow = source.schedulingWindow || {};
+    const start = clean(
+      source.teacherSchedulingWindowStartAt
+      || schedulingWindow.teacherCanSelectFrom
+      || schedulingWindow.recommendedStartAt
+      || source.recommendedStartAt
+      || source.plannedStartAt
+      || tracking.schedulingWindow?.teacherCanSelectFrom
+      || tracking.schedulingWindow?.recommendedStartAt
+      || '',
+      80
+    );
+    const end = clean(
+      source.teacherSchedulingWindowEndAt
+      || schedulingWindow.teacherCanSelectUntil
+      || schedulingWindow.recommendedEndAt
+      || source.recommendedEndAt
+      || source.plannedEndAt
+      || source.deadlineAt
+      || tracking.schedulingWindow?.teacherCanSelectUntil
+      || tracking.schedulingWindow?.recommendedEndAt
+      || '',
+      80
+    );
+    if (start || end) return { start, end };
+  }
+  return { start: '', end: '' };
+}
+
+function getTemplateLiveItems(promotion = {}) {
+  const template = getPromotionTemplate(promotion);
+  return Array.isArray(template?.items) ? template.items.filter((item) => item && typeof item === 'object' && isLiveType(item) && !isTestLive(item)) : [];
+}
+
+function getCoursePlanLiveItems(promotion = {}) {
+  return Array.isArray(promotion.coursePlan) ? promotion.coursePlan.filter((item) => item && typeof item === 'object' && isLiveType(item) && !isTestLive(item)) : [];
+}
+
+function getLivePlanningItems(promotion = {}) {
+  return Array.isArray(promotion.livePlanning) ? promotion.livePlanning.filter((item) => item && typeof item === 'object' && !isTestLive(item)) : [];
 }
 
 function getSourceLiveItems(promotion = {}) {
-  const template = getPromotionTemplate(promotion);
-  const templateItems = Array.isArray(template?.items) ? template.items.filter(isLiveType) : [];
-  const coursePlanItems = Array.isArray(promotion.coursePlan) ? promotion.coursePlan.filter(isLiveType) : [];
-  const livePlanningItems = Array.isArray(promotion.livePlanning) ? promotion.livePlanning.filter((item) => item && typeof item === 'object' && !isTestLive(item)) : [];
+  const templateItems = getTemplateLiveItems(promotion);
+  const coursePlanItems = getCoursePlanLiveItems(promotion);
+  const livePlanningItems = getLivePlanningItems(promotion);
 
   if (templateItems.length) return { source: 'cursus', items: templateItems };
   if (coursePlanItems.length) return { source: 'promotion-coursePlan', items: coursePlanItems };
   return { source: 'promotion-livePlanning', items: livePlanningItems };
 }
 
-function findMatchingPlanningItem(promotion = {}, sourceItem = {}) {
-  const planning = Array.isArray(promotion.livePlanning) ? promotion.livePlanning.filter((item) => item && typeof item === 'object' && !isTestLive(item)) : [];
+function findMatchingByIds(items = [], sourceItem = {}) {
   const ids = new Set(getItemIds(sourceItem));
-  const title = getLiveTitle(sourceItem).toLowerCase();
-  return planning.find((item) => getItemIds(item).some((id) => ids.has(id)))
-    || planning.find((item) => title && getLiveTitle(item).toLowerCase() === title)
-    || null;
+  if (!ids.size) return null;
+  return items.find((item) => getItemIds(item).some((id) => ids.has(id))) || null;
 }
 
-function findMatchingSession(promotion = {}, sourceItem = {}, planningItem = null) {
-  const ids = new Set([...getItemIds(sourceItem), ...getItemIds(planningItem || {})]);
-  const liveSessionId = clean(planningItem?.liveSessionId || sourceItem.liveSessionId || '', 180);
+function findMatchingByTitle(items = [], sourceItem = {}) {
+  const sourceTitle = normalizeText(sourceItem.title || sourceItem.courseTitle || sourceItem.liveTracking?.title || '');
+  if (!sourceTitle || isGenericLiveTitle(sourceTitle)) return null;
+  return items.find((item) => normalizeText(item.title || item.courseTitle || item.liveTracking?.title || '') === sourceTitle) || null;
+}
+
+function findMatchingByOrder(items = [], sourceItem = {}, liveIndex = 0) {
+  const sourceOrder = Number(sourceItem.order);
+  if (Number.isFinite(sourceOrder)) {
+    const byOrder = items.find((item) => Number(item.order) === sourceOrder);
+    if (byOrder) return byOrder;
+  }
+  return items[liveIndex] || null;
+}
+
+function findMatchingCoursePlanItem(promotion = {}, sourceItem = {}, liveIndex = 0) {
+  const items = getCoursePlanLiveItems(promotion);
+  return findMatchingByIds(items, sourceItem)
+    || findMatchingByTitle(items, sourceItem)
+    || findMatchingByOrder(items, sourceItem, liveIndex);
+}
+
+function findMatchingPlanningItem(promotion = {}, sourceItem = {}, coursePlanItem = null, liveIndex = 0) {
+  const planning = getLivePlanningItems(promotion);
+  return findMatchingByIds(planning, sourceItem)
+    || findMatchingByIds(planning, coursePlanItem || {})
+    || findMatchingByTitle(planning, sourceItem)
+    || findMatchingByOrder(planning, sourceItem, liveIndex);
+}
+
+function findMatchingSession(promotion = {}, sourceItem = {}, coursePlanItem = null, planningItem = null) {
+  const ids = new Set([
+    ...getItemIds(sourceItem),
+    ...getItemIds(coursePlanItem || {}),
+    ...getItemIds(planningItem || {})
+  ]);
+  const liveSessionId = clean(planningItem?.liveSessionId || coursePlanItem?.liveSessionId || sourceItem.liveSessionId || '', 180);
   return state.sessions.find((session) => {
     if (session.promotionId !== promotion.id) return false;
     if (liveSessionId && session.id === liveSessionId) return true;
@@ -179,24 +249,28 @@ function findMatchingSession(promotion = {}, sourceItem = {}, planningItem = nul
 function getLiveRows(promotion = {}) {
   const { source, items } = getSourceLiveItems(promotion);
   return items.map((item, index) => {
-    const planning = findMatchingPlanningItem(promotion, item);
-    const session = findMatchingSession(promotion, item, planning);
-    const startAt = clean(session?.selectedStartAt || planning?.selectedLiveAt || item.selectedLiveAt || '', 80);
-    const endAt = clean(session?.selectedEndAt || planning?.selectedLiveEndAt || item.selectedLiveEndAt || '', 80);
-    const window = getWindow(item, planning || {});
+    const coursePlan = source === 'cursus' ? findMatchingCoursePlanItem(promotion, item, index) : (source === 'promotion-coursePlan' ? item : null);
+    const planning = findMatchingPlanningItem(promotion, item, coursePlan, index);
+    const session = findMatchingSession(promotion, item, coursePlan, planning);
+    const startAt = clean(session?.selectedStartAt || planning?.selectedLiveAt || coursePlan?.selectedLiveAt || item.selectedLiveAt || '', 80);
+    const endAt = clean(session?.selectedEndAt || planning?.selectedLiveEndAt || coursePlan?.selectedLiveEndAt || item.selectedLiveEndAt || '', 80);
+    const window = getWindow(item, coursePlan || {}, planning || {});
+    const titleInfo = pickTitleWithSource(item, coursePlan || {}, planning || {});
     const status = session?.report || planning?.reportOutsideWindow || planning?.liveSchedulingStatus === 'report'
       ? 'report'
       : startAt
         ? 'scheduled'
         : 'to_plan';
-    const id = clean(getItemIds(item)[0] || getItemIds(planning || {})[0] || `${promotion.id}-live-${index}`, 180);
+    const id = clean(getItemIds(item)[0] || getItemIds(coursePlan || {})[0] || getItemIds(planning || {})[0] || `${promotion.id}-live-${index}`, 180);
     return {
       id,
       source,
+      titleSource: titleInfo.source,
       index,
       order: Number.isFinite(Number(item.order)) ? Number(item.order) : index,
-      title: getLiveTitle(item, planning || {}),
+      title: titleInfo.title,
       item,
+      coursePlan,
       planning,
       session,
       startAt,
@@ -236,7 +310,11 @@ function chip(status = 'to_plan') {
 function renderSummary() {
   const root = $('sbi-live-v2-summary');
   const promotion = getSelectedPromotion();
-  if (!root || !promotion) return;
+  if (!root) return;
+  if (!promotion) {
+    root.innerHTML = '';
+    return;
+  }
   const stats = getStats(promotion);
   root.innerHTML = `
     <article class="sbi-live-v2-stat"><span>Promotion sélectionnée</span><strong>${escapeHtml(getPromotionName(promotion))}</strong><em>${escapeHtml(getCursusName(promotion))}</em></article>
@@ -282,7 +360,11 @@ function renderPromotions() {
 function renderLives() {
   const root = $('sbi-live-v2-lives');
   const promotion = getSelectedPromotion();
-  if (!root || !promotion) return;
+  if (!root) return;
+  if (!promotion) {
+    root.innerHTML = '<div class="sbi-live-v2-empty">Aucune promotion sélectionnée.</div>';
+    return;
+  }
   const rows = getLiveRows(promotion);
   if (!rows.length) {
     root.innerHTML = '<div class="sbi-live-v2-empty">Aucun live trouvé dans le cursus ou la promotion.</div>';
@@ -334,7 +416,7 @@ function renderDetail() {
           <span>Promotion</span><strong>${escapeHtml(getPromotionName(promotion))}</strong>
           <span>Formation / Cursus</span><strong>${escapeHtml(getCursusName(promotion))}</strong>
           <span>Période prévue</span><strong>${escapeHtml(formatRange(row.windowStart, row.windowEnd))}</strong>
-          <span>Source du titre</span><strong>${escapeHtml(row.source)}</strong>
+          <span>Source du titre</span><strong>${escapeHtml(row.titleSource)}</strong>
         </div>
       </section>
 
@@ -348,7 +430,7 @@ function renderDetail() {
       </section>
 
       <div class="sbi-live-v2-form-note">
-        V2 est volontairement isolée : lecture propre du cursus d’abord, puis on branchera l’édition après validation de l’ergonomie.
+        V2 lit maintenant les titres via la callable serveur : cursus enregistré d’abord, puis dates synchronisées depuis la promotion.
       </div>
     </div>
   `;
@@ -365,17 +447,14 @@ function renderAll() {
   renderDetail();
 }
 
-async function loadTemplatesForPromotions() {
-  const ids = Array.from(new Set(state.promotions.map(getPromotionTemplateId).filter(Boolean)));
-  await Promise.all(ids.map(async (id) => {
-    if (state.templatesById.has(id)) return;
-    try {
-      const snap = await getDoc(doc(db, 'curriculumTemplates', id));
-      if (snap.exists()) state.templatesById.set(id, { id: snap.id, ...snap.data() });
-    } catch (error) {
-      console.warn('[SBI Lives V2] Cursus inaccessible, fallback promotion :', id, error);
-    }
-  }));
+function loadTemplatesFromServer(templates = []) {
+  state.templatesById = new Map();
+  if (!Array.isArray(templates)) return;
+  templates.forEach((template) => {
+    const id = clean(template?.id || '', 180);
+    if (!id) return;
+    state.templatesById.set(id, template);
+  });
 }
 
 async function refreshData() {
@@ -385,8 +464,8 @@ async function refreshData() {
     const data = result?.data || {};
     state.promotions = Array.isArray(data.promotions) ? data.promotions : [];
     state.sessions = Array.isArray(data.sessions) ? data.sessions : [];
+    loadTemplatesFromServer(data.templates);
     state.promotions.sort((a, b) => getPromotionName(a).localeCompare(getPromotionName(b), 'fr', { sensitivity: 'base' }));
-    await loadTemplatesForPromotions();
     renderAll();
     setStatus('Lives V2 chargé.', 'success');
   } catch (error) {

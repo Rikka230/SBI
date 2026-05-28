@@ -3887,6 +3887,98 @@ function sanitizeLivePromotionForScheduler(promotion = {}) {
     return safe;
 }
 
+
+function getLiveSchedulerTemplateId(promotion = {}) {
+    return cleanString(
+        promotion.curriculumTemplateId
+        || promotion.templateId
+        || promotion.cursusTemplateId
+        || promotion.curriculumId
+        || promotion.curriculumTemplate?.id
+        || promotion.cursus?.id
+        || "",
+        180
+    );
+}
+
+function isLiveSchedulerTemplateItem(item = {}) {
+    const type = cleanString(item.type || item.kind || item.sourceType || "", 80).toLowerCase();
+    return type === "live_session" || type === "workshop" || Boolean(item.liveTracking && typeof item.liveTracking === "object");
+}
+
+function sanitizeLiveSchedulerTemplateItem(item = {}, index = 0) {
+    const liveTracking = item.liveTracking && typeof item.liveTracking === "object" ? item.liveTracking : {};
+    const schedulingWindow = item.schedulingWindow && typeof item.schedulingWindow === "object" ? item.schedulingWindow : {};
+    return {
+        id: cleanString(item.id || "", 180),
+        itemId: cleanString(item.itemId || "", 180),
+        sourceItemId: cleanString(item.sourceItemId || "", 180),
+        liveId: cleanString(item.liveId || "", 180),
+        templateItemId: cleanString(item.templateItemId || item.id || item.itemId || "", 180),
+        type: cleanString(item.type || item.kind || item.sourceType || "live_session", 80),
+        title: cleanString(item.title || item.courseTitle || liveTracking.title || "Live sans titre", 240),
+        courseTitle: cleanString(item.courseTitle || item.title || liveTracking.title || "", 240),
+        order: Number.isFinite(Number(item.order)) ? Number(item.order) : index,
+        startOffsetDays: Number.isFinite(Number(item.startOffsetDays)) ? Number(item.startOffsetDays) : 0,
+        estimatedDurationDays: Number.isFinite(Number(item.estimatedDurationDays || item.durationDays)) ? Number(item.estimatedDurationDays || item.durationDays) : 1,
+        teacherSchedulingWindowStartAt: cleanString(item.teacherSchedulingWindowStartAt || "", 80),
+        teacherSchedulingWindowEndAt: cleanString(item.teacherSchedulingWindowEndAt || "", 80),
+        schedulingWindow: {
+            teacherCanSelectFrom: cleanString(schedulingWindow.teacherCanSelectFrom || liveTracking.schedulingWindow?.teacherCanSelectFrom || "", 80),
+            teacherCanSelectUntil: cleanString(schedulingWindow.teacherCanSelectUntil || liveTracking.schedulingWindow?.teacherCanSelectUntil || "", 80),
+            recommendedStartAt: cleanString(schedulingWindow.recommendedStartAt || liveTracking.schedulingWindow?.recommendedStartAt || "", 80),
+            recommendedEndAt: cleanString(schedulingWindow.recommendedEndAt || liveTracking.schedulingWindow?.recommendedEndAt || "", 80)
+        },
+        liveTracking: {
+            title: cleanString(liveTracking.title || item.title || item.courseTitle || "", 240),
+            itemId: cleanString(liveTracking.itemId || "", 180),
+            sourceItemId: cleanString(liveTracking.sourceItemId || "", 180),
+            templateItemId: cleanString(liveTracking.templateItemId || item.id || item.itemId || "", 180),
+            schedulingWindow: {
+                teacherCanSelectFrom: cleanString(liveTracking.schedulingWindow?.teacherCanSelectFrom || schedulingWindow.teacherCanSelectFrom || "", 80),
+                teacherCanSelectUntil: cleanString(liveTracking.schedulingWindow?.teacherCanSelectUntil || schedulingWindow.teacherCanSelectUntil || "", 80),
+                recommendedStartAt: cleanString(liveTracking.schedulingWindow?.recommendedStartAt || schedulingWindow.recommendedStartAt || "", 80),
+                recommendedEndAt: cleanString(liveTracking.schedulingWindow?.recommendedEndAt || schedulingWindow.recommendedEndAt || "", 80)
+            }
+        }
+    };
+}
+
+function sanitizeLiveSchedulerTemplate(template = {}) {
+    const rawItems = Array.isArray(template.items) ? template.items : [];
+    const items = rawItems
+        .filter((item) => item && typeof item === "object" && isLiveSchedulerTemplateItem(item))
+        .map((item, index) => sanitizeLiveSchedulerTemplateItem(item, index));
+    return {
+        id: cleanString(template.id || "", 180),
+        title: cleanString(template.title || template.name || template.formationName || "Cursus SBI", 240),
+        formationId: cleanString(template.formationId || "", 180),
+        formationName: cleanString(template.formationName || template.formationTitle || "", 240),
+        items
+    };
+}
+
+async function loadLiveSchedulerTemplates(db, promotions = []) {
+    const ids = Array.from(new Set(promotions
+        .map(getLiveSchedulerTemplateId)
+        .map((id) => cleanString(id, 180))
+        .filter(Boolean)));
+    const templates = [];
+
+    for (const id of ids) {
+        try {
+            const docSnap = await db.collection("curriculumTemplates").doc(id).get();
+            if (!docSnap.exists) continue;
+            const template = sanitizeLiveSchedulerTemplate({ id: docSnap.id, ...(docSnap.data() || {}) });
+            if (template.items.length) templates.push(template);
+        } catch (error) {
+            console.warn("[SBI Lives] Cursus template indisponible pour scheduler :", id, error?.message || error);
+        }
+    }
+
+    return templates;
+}
+
 async function loadLiveSessionsForScheduler(db, promotionIds = []) {
     const ids = Array.from(new Set((Array.isArray(promotionIds) ? promotionIds : [])
         .map((value) => cleanString(value, 180))
@@ -4934,10 +5026,12 @@ exports.getLiveSchedulerData = onCall({
 
     promotions.sort((a, b) => getPromotionDisplayName(a).localeCompare(getPromotionDisplayName(b), "fr", { sensitivity: "base" }));
     const sessions = await loadLiveSessionsForScheduler(db, promotions.map((promotion) => promotion.id));
+    const templates = await loadLiveSchedulerTemplates(db, promotions);
 
     return {
         promotions,
         sessions,
+        templates,
         count: promotions.length
     };
 });

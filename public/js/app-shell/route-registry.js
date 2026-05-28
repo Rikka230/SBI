@@ -582,7 +582,7 @@ async function mountLiveSchedulerV2Route({ url, role = 'teacher' }) {
   setLeftNavActive(role === 'admin' ? 'nav-lives-v2' : '/teacher/lives-v2.html');
   updateUrlContext(url);
 
-  const module = await import('/js/live/live-scheduler-v2-page.js?v=8.0P.167.232');
+  const module = await import('/js/live/live-scheduler-v2-page.js?v=8.0P.167.233');
   const cleanup = module.mountLiveSchedulerV2Page?.(role);
   if (typeof cleanup === 'function') registerCleanup(cleanup, role === 'admin' ? 'admin-lives-v2' : 'teacher-lives-v2');
 

@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.232',
+  version: '8.0P.167.233',
   branch: 'main',
-  channel: 'LIVE SCHEDULER V2',
-  stage: 'ISOLATED LIVE V2 PAGE',
+  channel: 'LIVE SCHEDULER V2 DATA',
+  stage: 'SERVER CURSUS TITLES FOR LIVES V2',
   updatedAt: '2026-05-28',
-  label: 'SBI 8.0P.167.232 - isolated live scheduler v2'
+  label: 'SBI 8.0P.167.233 - server cursus titles for lives v2'
 };
 
 export function getSbiVersionLabel() {
