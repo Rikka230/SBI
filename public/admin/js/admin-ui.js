@@ -3,8 +3,8 @@ import { initSpaceTheme } from '/admin/js/admin-ui/theme.js?v=8.0P.167.52';
 import { initPanelControls, initAdminTabs } from '/admin/js/admin-ui/panels.js';
 import { initSafeComponentPolish } from '/admin/js/admin-ui/component-polish.js';
 import { initSbiNavigationTransitions } from '/js/sbi-navigation-transitions.js';
-import { initSbiAppShell } from '/js/app-shell/app-shell.js?v=8.0P.167.233';
-import { initSbiVersionBadge } from '/js/sbi-version-badge.js?v=8.0P.167.233';
+import { initSbiAppShell } from '/js/app-shell/app-shell.js?v=8.0P.167.234';
+import { initSbiVersionBadge } from '/js/sbi-version-badge.js?v=8.0P.167.234';
 
 /**
  * SBI 8.0P.167.230 - Internal UI bootstrap

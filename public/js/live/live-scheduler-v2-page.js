@@ -246,6 +246,15 @@ function findMatchingSession(promotion = {}, sourceItem = {}, coursePlanItem = n
   }) || null;
 }
 
+function getRowSortTime(row = {}) {
+  const candidates = [row.windowStart, row.startAt, row.windowEnd, row.endAt];
+  for (const value of candidates) {
+    const time = Date.parse(value || '');
+    if (Number.isFinite(time)) return time;
+  }
+  return Number.POSITIVE_INFINITY;
+}
+
 function getLiveRows(promotion = {}) {
   const { source, items } = getSourceLiveItems(promotion);
   return items.map((item, index) => {
@@ -279,7 +288,11 @@ function getLiveRows(promotion = {}) {
       windowEnd: window.end,
       status
     };
-  }).sort((a, b) => (a.order - b.order) || a.title.localeCompare(b.title, 'fr', { sensitivity: 'base' }));
+  }).sort((a, b) => {
+    const dateDelta = getRowSortTime(a) - getRowSortTime(b);
+    if (dateDelta !== 0) return dateDelta;
+    return (a.order - b.order) || a.title.localeCompare(b.title, 'fr', { sensitivity: 'base' });
+  });
 }
 
 function getSelectedPromotion() {
@@ -375,7 +388,7 @@ function renderLives() {
     return `
       <button class="sbi-live-v2-live${active}" type="button" data-live-id="${escapeHtml(row.id)}">
         <div class="sbi-live-v2-live-top">
-          <strong>${escapeHtml(`${row.order + 1}. ${row.title}`)}</strong>
+          <strong>${escapeHtml(row.title)}</strong>
           ${chip(row.status)}
         </div>
         <span>Période prévue : ${escapeHtml(formatRange(row.windowStart, row.windowEnd))}</span>
