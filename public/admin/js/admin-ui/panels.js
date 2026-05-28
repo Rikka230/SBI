@@ -28,109 +28,60 @@ function updateAdminTabUrl(targetId, mode = 'push') {
     }
 }
 
-let sbiPanelControlsAutoRebindInstalled = false;
-
-function getInternalArea() {
-    try {
-        const path = new URL(window.SBI_APP_SHELL_CURRENT_URL || window.location.href, window.location.origin).pathname.toLowerCase();
-        if (path.startsWith('/student/')) return 'student';
-        if (path.startsWith('/teacher/')) return 'teacher';
-        if (path.startsWith('/admin/')) return 'admin';
-    } catch (_) {}
-    return 'internal';
-}
-
-function bindOnce(node, key, handler) {
-    if (!node || node.dataset[key] === 'true') return;
-    node.dataset[key] = 'true';
-    node.addEventListener('click', handler);
-}
-
-function applyStoredPanelState(appContainer) {
-    if (!appContainer || window.innerWidth <= 1024) return;
-    try {
-        appContainer.classList.toggle('left-collapsed', localStorage.getItem('leftPanelCollapsed') === 'true');
-        appContainer.classList.toggle('right-collapsed', localStorage.getItem('rightPanelCollapsed') === 'true');
-    } catch (_) {}
-}
-
-function ensureCollapsedHandleUsable(appContainer, desktopToggleBtn) {
-    if (!appContainer || !desktopToggleBtn) return;
-    desktopToggleBtn.hidden = false;
-    desktopToggleBtn.style.pointerEvents = 'auto';
-    desktopToggleBtn.style.visibility = 'visible';
-    desktopToggleBtn.setAttribute('aria-expanded', String(!appContainer.classList.contains('left-collapsed')));
-    desktopToggleBtn.title = appContainer.classList.contains('left-collapsed') ? 'Ouvrir le panneau' : 'Réduire le panneau';
-}
-
 export function initPanelControls() {
     const appContainer = document.getElementById('app-container');
     const desktopToggleBtn = document.getElementById('btn-toggle-panel');
     const mobileToggleBtn = document.getElementById('btn-toggle-mobile');
     const rightToggleBtn = document.getElementById('btn-toggle-right');
-    const area = getInternalArea();
 
-    setTimeout(() => { document.body?.classList?.remove('preload'); }, 100);
+    setTimeout(() => { document.body.classList.remove('preload'); }, 100);
 
-    applyStoredPanelState(appContainer);
-    ensureCollapsedHandleUsable(appContainer, desktopToggleBtn);
+    if (appContainer && window.innerWidth > 1024) {
+        if (localStorage.getItem('leftPanelCollapsed') === 'true') appContainer.classList.add('left-collapsed');
+        if (localStorage.getItem('rightPanelCollapsed') === 'true') appContainer.classList.add('right-collapsed');
+    }
 
-    bindOnce(desktopToggleBtn, 'sbiPanelToggleBound', () => {
+    desktopToggleBtn?.addEventListener('click', () => {
         if (!appContainer) return;
         appContainer.classList.toggle('left-collapsed');
-        try { localStorage.setItem('leftPanelCollapsed', String(appContainer.classList.contains('left-collapsed'))); } catch (_) {}
-        ensureCollapsedHandleUsable(appContainer, desktopToggleBtn);
-        window.dispatchEvent(new CustomEvent('sbi:left-panel:toggled', {
-            detail: { collapsed: appContainer.classList.contains('left-collapsed'), area }
-        }));
+        localStorage.setItem('leftPanelCollapsed', appContainer.classList.contains('left-collapsed'));
     });
 
-    bindOnce(mobileToggleBtn, 'sbiMobilePanelToggleBound', () => {
+    mobileToggleBtn?.addEventListener('click', () => {
         if (!appContainer) return;
         appContainer.classList.toggle('left-open');
     });
 
-    bindOnce(rightToggleBtn, 'sbiRightPanelToggleBound', () => {
+    rightToggleBtn?.addEventListener('click', () => {
         if (!appContainer) return;
         if (window.innerWidth > 1024) {
             appContainer.classList.toggle('right-collapsed');
-            try { localStorage.setItem('rightPanelCollapsed', String(appContainer.classList.contains('right-collapsed'))); } catch (_) {}
+            localStorage.setItem('rightPanelCollapsed', appContainer.classList.contains('right-collapsed'));
         } else {
             appContainer.classList.toggle('right-open');
         }
     });
 
-    if (!sbiPanelControlsAutoRebindInstalled) {
-        sbiPanelControlsAutoRebindInstalled = true;
-
-        document.addEventListener('click', (event) => {
-            const currentApp = document.getElementById('app-container');
-            if (currentApp && window.innerWidth <= 768 && currentApp.classList.contains('left-open')) {
-                if (!event.target.closest('#left-panel') && !event.target.closest('#btn-toggle-mobile')) {
-                    currentApp.classList.remove('left-open');
-                }
+    document.addEventListener('click', (event) => {
+        if (appContainer && window.innerWidth <= 768 && appContainer.classList.contains('left-open')) {
+            if (!event.target.closest('#left-panel') && !event.target.closest('#btn-toggle-mobile')) {
+                appContainer.classList.remove('left-open');
             }
+        }
 
-            if (currentApp && window.innerWidth <= 1024 && currentApp.classList.contains('right-open')) {
-                if (!event.target.closest('#right-panel') && !event.target.closest('#btn-toggle-right')) {
-                    currentApp.classList.remove('right-open');
-                }
+        if (appContainer && window.innerWidth <= 1024 && appContainer.classList.contains('right-open')) {
+            if (!event.target.closest('#right-panel') && !event.target.closest('#btn-toggle-right')) {
+                appContainer.classList.remove('right-open');
             }
-        });
+        }
+    });
 
-        window.addEventListener('resize', () => {
-            const currentApp = document.getElementById('app-container');
-            if (currentApp && window.innerWidth <= 1024) {
-                currentApp.classList.remove('left-open');
-                currentApp.classList.remove('right-open');
-            }
-            ensureCollapsedHandleUsable(currentApp, document.getElementById('btn-toggle-panel'));
-        });
-
-        ['sbi:app-shell:navigated', 'sbi:app-shell-rendered', 'sbi:component-mounted', 'pageshow'].forEach((eventName) => {
-            window.addEventListener(eventName, () => window.setTimeout(initPanelControls, 40));
-        });
-    }
+    window.addEventListener('resize', () => {
+        if (appContainer && window.innerWidth <= 1024) {
+            appContainer.classList.remove('left-open');
+            appContainer.classList.remove('right-open');
+        }
+    });
 }
 
 export function initAdminTabs() {
