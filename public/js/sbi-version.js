@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.228',
+  version: '8.0P.167.229',
   branch: 'main',
   channel: 'STUDENT LIVES',
-  stage: 'PANEL RETRACTION DEDUP SAFE',
+  stage: 'LIVES PANEL CACHE AND LOCK FIX',
   updatedAt: '2026-05-28',
-  label: 'SBI 8.0P.167.228 - panel retraction dedup safe'
+  label: 'SBI 8.0P.167.229 - fix lives panel cache and lock'
 };
 
 export function getSbiVersionLabel() {

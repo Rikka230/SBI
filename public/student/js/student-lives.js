@@ -17,7 +17,7 @@ import {
   loadProfile,
   loadPromotionsByIds,
   renderEmpty
-} from '/js/live/live-shared.js?v=8.0P.167.224';
+} from '/js/live/live-shared.js?v=8.0P.167.229';
 
 const functionsInstance = getFunctions(app, 'europe-west1');
 const getStudentLiveAttendance = httpsCallable(functionsInstance, 'getStudentLiveAttendance');
@@ -63,6 +63,7 @@ function forceRevealStudentLivesPage() {
 
 function navigateStudentStandalone(href = '') {
   if (!href) return;
+  releaseLivesPanelLockBeforeNavigation();
   const url = new URL(href, window.location.origin);
   try {
     if (typeof window.SBI_APP_SHELL_NAVIGATE === 'function' && window.SBI_APP_SHELL?.canHandle?.(url)) {
@@ -95,7 +96,7 @@ function installStudentStandaloneChrome() {
   window.__SBI_STUDENT_LIVES_STANDALONE_CHROME = true;
 
   document.addEventListener('click', (event) => {
-    // 8.0P.167.228: ce fallback ne doit jamais gérer les boutons du chrome.
+    // 8.0P.167.229: ce fallback ne doit jamais gérer les boutons du chrome.
     // admin-ui/panels.js est l'unique source de vérité pour la rétraction du panel.
     if (closestFromEvent(event, '#btn-toggle-panel')
       || closestFromEvent(event, '#btn-toggle-mobile')
@@ -134,15 +135,20 @@ function installStudentStandaloneChrome() {
     $('app-container')?.classList?.remove('left-open');
   });
 
-  const applyStoredState = () => {
-    const appContainer = $('app-container');
-    if (!appContainer || window.innerWidth <= 1024) return;
-    try {
-      appContainer.classList.toggle('left-collapsed', localStorage.getItem('leftPanelCollapsed') === 'true');
-    } catch (_) {}
-  };
-  applyStoredState();
-  window.addEventListener('sbi:components-ready', applyStoredState);
+  // 8.0P.167.229 : le fallback Lives ne lit plus leftPanelCollapsed.
+  // La rétraction du panel est strictement pilotée par admin-ui/panels.js.
+}
+
+
+function releaseLivesPanelLock() {
+  const appContainer = $('app-container');
+  try { localStorage.removeItem('leftPanelCollapsed'); } catch (_) {}
+  if (appContainer) appContainer.classList.remove('left-collapsed');
+}
+
+function releaseLivesPanelLockBeforeNavigation() {
+  // Évite que la page Lives transporte un état collapsed bloqué vers les autres pages.
+  releaseLivesPanelLock();
 }
 
 function readInitialTab() {
@@ -404,6 +410,7 @@ let bootTimer = null;
 
 export function mountStudentLivesPage() {
   installStudentStandaloneChrome();
+  releaseLivesPanelLock();
   forceRevealStudentLivesPage();
   const root = $('student-live-content');
   if (!root) return null;
@@ -450,6 +457,7 @@ export function mountStudentLivesPage() {
 
 function bootStudentLivesPage() {
   installStudentStandaloneChrome();
+  releaseLivesPanelLock();
   forceRevealStudentLivesPage();
   const root = document.getElementById('student-live-content');
   if (root && (!mounted || mountedRoot !== root)) {
@@ -468,6 +476,7 @@ function bootStudentLivesPage() {
 
 window.addEventListener('pageshow', () => {
   installStudentStandaloneChrome();
+  releaseLivesPanelLock();
   forceRevealStudentLivesPage();
   if (!mounted || mountedRoot !== $('student-live-content')) bootStudentLivesPage();
 });
