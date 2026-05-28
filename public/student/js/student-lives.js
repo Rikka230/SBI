@@ -17,7 +17,7 @@ import {
   loadProfile,
   loadPromotionsByIds,
   renderEmpty
-} from '/js/live/live-shared.js?v=8.0P.167.226';
+} from '/js/live/live-shared.js?v=8.0P.167.227';
 
 const functionsInstance = getFunctions(app, 'europe-west1');
 const getStudentLiveAttendance = httpsCallable(functionsInstance, 'getStudentLiveAttendance');
@@ -60,6 +60,42 @@ function forceRevealStudentLivesPage() {
   }
 }
 
+
+function navigateStudentStandalone(href = '') {
+  if (!href) return;
+  const url = new URL(href, window.location.origin);
+  try {
+    if (typeof window.SBI_APP_SHELL_NAVIGATE === 'function' && window.SBI_APP_SHELL?.canHandle?.(url)) {
+      window.SBI_APP_SHELL_NAVIGATE(url.href, { source: 'student-lives-standalone' });
+      return;
+    }
+  } catch (_) {}
+  window.location.assign(url.href);
+}
+
+
+function closestFromEvent(event, selector) {
+  if (event?.target?.closest) {
+    const direct = event.target.closest(selector);
+    if (direct) return direct;
+  }
+  const path = typeof event?.composedPath === 'function' ? event.composedPath() : [];
+  for (const item of path) {
+    if (item && item.nodeType === 1 && typeof item.matches === 'function' && item.matches(selector)) return item;
+    if (item && item.nodeType === 1 && typeof item.closest === 'function') {
+      const found = item.closest(selector);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+function installStudentStandaloneChrome() {
+  // 8.0P.167.227 : no-op volontaire.
+  // Le panel gauche est géré uniquement par admin-ui/app-shell.
+  // Les anciens listeners globaux de fallback doublaient le clic de rétraction
+  // après passage par la page Lives et cassaient l'état du panel.
+}
 
 
 function readInitialTab() {
@@ -320,6 +356,7 @@ let mountedRoot = null;
 let bootTimer = null;
 
 export function mountStudentLivesPage() {
+  installStudentStandaloneChrome();
   forceRevealStudentLivesPage();
   const root = $('student-live-content');
   if (!root) return null;
@@ -365,11 +402,13 @@ export function mountStudentLivesPage() {
 }
 
 function bootStudentLivesPage() {
+  installStudentStandaloneChrome();
   forceRevealStudentLivesPage();
   const root = document.getElementById('student-live-content');
   if (root && (!mounted || mountedRoot !== root)) {
     mountStudentLivesPage();
   } else if (root && mounted && mountedRoot === root) {
+    installStudentStandaloneChrome();
     render();
   }
   if (bootTimer) clearTimeout(bootTimer);
@@ -381,6 +420,7 @@ function bootStudentLivesPage() {
 }
 
 window.addEventListener('pageshow', () => {
+  installStudentStandaloneChrome();
   forceRevealStudentLivesPage();
   if (!mounted || mountedRoot !== $('student-live-content')) bootStudentLivesPage();
 });
