@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.224',
+  version: '8.0P.167.225',
   branch: 'main',
   channel: 'STUDENT LIVES',
-  stage: 'SAFE STUDENT SHELL AFTER REFRESH',
+  stage: 'LEFT PANEL RECOVERY AFTER LIVES',
   updatedAt: '2026-05-28',
-  label: 'SBI 8.0P.167.224 - safe student shell after refresh'
+  label: 'SBI 8.0P.167.225 - fix left panel recovery after lives'
 };
 
 export function getSbiVersionLabel() {
