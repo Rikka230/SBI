@@ -16,7 +16,7 @@ import {
   loadProfile,
   loadPromotionsByIds,
   renderEmpty
-} from '/js/live/live-shared.js?v=8.0P.167.203';
+} from '/js/live/live-shared.js?v=8.0P.167.206';
 
 const state = {
   profile: null,
@@ -84,6 +84,12 @@ function isReplay(row) {
   return Date.parse(row.startAt) < Date.now() && ['ended', 'replay_available'].includes(clean(row.status).toLowerCase());
 }
 
+function canJoinLive(row = {}) {
+  const liveId = row.session?.id || row.live?.liveSessionId || '';
+  const status = clean(row.status || '').toLowerCase();
+  return Boolean(liveId) && !['cancelled', 'ended', 'replay_available'].includes(status);
+}
+
 function renderList(rows) {
   const filtered = rows.filter((row) => state.tab === 'replay' ? isReplay(row) : !isReplay(row));
   if (!filtered.length) {
@@ -95,7 +101,10 @@ function renderList(rows) {
       <strong>${escapeHtml(row.title)}</strong>
       <span>${escapeHtml(getPromotionName(row.promotion))}</span>
       <span>${row.startAt ? escapeHtml(formatDateRange(row.startAt, row.endAt)) : escapeHtml(getLiveWindowLabel(row.live))}</span>
-      ${row.replayUrl ? `<a class="sbi-live-btn sbi-live-btn--ghost" href="${escapeHtml(row.replayUrl)}" target="_blank" rel="noopener noreferrer">Voir le replay</a>` : ''}
+      <div class="sbi-live-card-actions">
+        ${canJoinLive(row) ? `<a class="sbi-live-btn" href="/live-room.html?liveId=${encodeURIComponent(row.session?.id || row.live?.liveSessionId || '')}">Rejoindre la salle</a>` : ''}
+        ${row.replayUrl ? `<a class="sbi-live-btn sbi-live-btn--ghost" href="${escapeHtml(row.replayUrl)}" target="_blank" rel="noopener noreferrer">Voir le replay</a>` : ''}
+      </div>
     </article>
   `).join('')}</div>`;
 }

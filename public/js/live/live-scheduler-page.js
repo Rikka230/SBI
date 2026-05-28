@@ -20,7 +20,7 @@ import {
   normalizeList,
   renderEmpty,
   toDateTimeLocal
-} from '/js/live/live-shared.js?v=8.0P.167.203';
+} from '/js/live/live-shared.js?v=8.0P.167.206';
 
 const functionsInstance = getFunctions(app, 'europe-west1');
 const getLiveSchedulerData = httpsCallable(functionsInstance, 'getLiveSchedulerData');
@@ -310,6 +310,7 @@ function renderDetail(promotion, live, sessionMap) {
       </div>
       <div class="sbi-live-actions">
         <button class="sbi-live-btn" type="submit">Valider la date</button>
+        <button class="sbi-live-btn sbi-live-btn--ghost" type="button" id="sbi-live-open-room" ${canStart ? '' : 'disabled'}>Ouvrir la salle</button>
         <button class="sbi-live-btn sbi-live-btn--ghost" type="button" id="sbi-live-started" ${canStart ? '' : 'disabled'}>Notifier le demarrage</button>
       </div>
     </form>
@@ -318,6 +319,11 @@ function renderDetail(promotion, live, sessionMap) {
   $('sbi-live-form')?.addEventListener('submit', async (event) => {
     event.preventDefault();
     await submitSchedule(promotion, live, session);
+  });
+  $('sbi-live-open-room')?.addEventListener('click', () => {
+    const liveId = session?.id || live.liveSessionId || '';
+    if (!liveId) return;
+    window.open(`/live-room.html?liveId=${encodeURIComponent(liveId)}&start=1`, '_blank', 'noopener,noreferrer');
   });
   $('sbi-live-started')?.addEventListener('click', async () => {
     const liveId = session?.id || live.liveSessionId || '';

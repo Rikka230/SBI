@@ -528,7 +528,7 @@ async function mountLiveSchedulerRoute({ url, role = 'admin' }) {
   setLeftNavActive(role === 'admin' ? 'nav-lives' : '/teacher/lives.html');
   updateUrlContext(url);
 
-  const module = await import('/js/live/live-scheduler-page.js?v=8.0P.167.205');
+  const module = await import('/js/live/live-scheduler-page.js?v=8.0P.167.206');
   const cleanup = module.mountLiveSchedulerPage?.(role);
   if (typeof cleanup === 'function') registerCleanup(cleanup, role === 'admin' ? 'admin-lives' : 'teacher-lives');
 
@@ -629,7 +629,7 @@ async function mountStudentLives({ url }) {
   setLeftNavActive('/student/lives.html');
   updateUrlContext(url);
 
-  const module = await import('/student/js/student-lives.js?v=8.0P.167.203');
+  const module = await import('/student/js/student-lives.js?v=8.0P.167.206');
   const cleanup = module.mountStudentLivesPage?.();
   if (typeof cleanup === 'function') registerCleanup(cleanup, 'student-lives');
 

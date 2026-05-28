@@ -35,6 +35,7 @@ admin.initializeApp();
 
 const BREVO_API_KEY = defineSecret("BREVO_API_KEY");
 const BREVO_WEBHOOK_TOKEN = defineSecret("BREVO_WEBHOOK_TOKEN");
+const DAILY_API_KEY = defineSecret("DAILY_API_KEY");
 const BREVO_LIST_ID = 77;
 const BREVO_NEWSLETTER_LIST_ID = 77;
 const SBI_CONTACT_EMAIL = "contact@sbigroup.fr";
@@ -4042,6 +4043,309 @@ async function notifyPromotionStudentsForLive({ db, promotion, liveSession, kind
 
     return { students: students.length, notified, emailsSent, emailsFailed };
 }
+
+
+const DAILY_API_BASE_URL = "https://api.daily.co/v1";
+const DAILY_ROOM_OPEN_BEFORE_MS = 30 * 60 * 1000;
+const DAILY_ROOM_KEEP_AFTER_MS = 8 * 60 * 60 * 1000;
+const DAILY_TOKEN_TTL_SECONDS = 4 * 60 * 60;
+
+function buildDailyRoomName(liveId = "") {
+    const base = cleanString(liveId || crypto.randomUUID(), 150)
+        .replace(/[^a-zA-Z0-9_-]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        .slice(0, 112);
+    return `sbi-${base || crypto.randomUUID().replace(/-/g, "").slice(0, 16)}`.slice(0, 128);
+}
+
+function getDailyRoomNameFromSession(liveSession = {}) {
+    const explicit = cleanString(liveSession.providerRoomName || liveSession.roomName || "", 128);
+    if (explicit) return explicit;
+    const url = cleanString(liveSession.providerRoomUrl || liveSession.meetingUrl || "", 500);
+    try {
+        const parsed = new URL(url);
+        const name = parsed.pathname.split("/").filter(Boolean).pop() || "";
+        if (name) return cleanString(name, 128);
+    } catch (_) {}
+    return buildDailyRoomName(liveSession.id || "");
+}
+
+function buildDailyRoomTiming(liveSession = {}) {
+    const startMs = Date.parse(liveSession.selectedStartAt || "");
+    const endMs = Date.parse(liveSession.selectedEndAt || "");
+    const now = Date.now();
+    const nbfMs = Number.isFinite(startMs) ? Math.max(now - 5 * 60 * 1000, startMs - DAILY_ROOM_OPEN_BEFORE_MS) : now - 5 * 60 * 1000;
+    const expMs = Number.isFinite(endMs)
+        ? Math.max(endMs + DAILY_ROOM_KEEP_AFTER_MS, now + DAILY_TOKEN_TTL_SECONDS * 1000)
+        : now + DAILY_ROOM_KEEP_AFTER_MS;
+    return {
+        nbf: Math.floor(nbfMs / 1000),
+        exp: Math.floor(expMs / 1000)
+    };
+}
+
+function getDailyTokenExpirationSeconds(liveSession = {}) {
+    const nowSec = Math.floor(Date.now() / 1000);
+    const maxSec = nowSec + DAILY_TOKEN_TTL_SECONDS;
+    const selectedEndMs = Date.parse(liveSession.selectedEndAt || "");
+    if (!Number.isFinite(selectedEndMs)) return maxSec;
+
+    const sessionSec = Math.floor((selectedEndMs + 2 * 60 * 60 * 1000) / 1000);
+    return Math.min(Math.max(sessionSec, nowSec + 30 * 60), maxSec);
+}
+
+async function callDailyApi(apiKey = "", path = "", { method = "GET", body = null, allowNotFound = false } = {}) {
+    if (!apiKey) {
+        throw new HttpsError("failed-precondition", "DAILY_API_KEY manquant cote serveur.");
+    }
+
+    const response = await fetch(`${DAILY_API_BASE_URL}${path}`, {
+        method,
+        headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json"
+        },
+        body: body ? JSON.stringify(body) : undefined
+    });
+
+    const text = await response.text();
+    let payload = {};
+    try {
+        payload = text ? JSON.parse(text) : {};
+    } catch (_) {
+        payload = { raw: text };
+    }
+
+    if (allowNotFound && response.status === 404) return null;
+
+    if (!response.ok) {
+        const message = cleanString(payload?.info || payload?.error || payload?.message || `Daily API ${response.status}`, 500);
+        throw new HttpsError("failed-precondition", `Daily API : ${message}`);
+    }
+
+    return payload;
+}
+
+async function ensureDailyRoomForLive({ apiKey = "", liveRef, liveSession = {}, caller, allowCreate = false }) {
+    const roomName = getDailyRoomNameFromSession(liveSession);
+    const timing = buildDailyRoomTiming(liveSession);
+    let room = await callDailyApi(apiKey, `/rooms/${encodeURIComponent(roomName)}`, { allowNotFound: true });
+
+    if (!room && !allowCreate) {
+        throw new HttpsError("failed-precondition", "Salle pas encore ouverte par l’intervenant.");
+    }
+
+    if (!room) {
+        room = await callDailyApi(apiKey, "/rooms", {
+            method: "POST",
+            body: {
+                name: roomName,
+                privacy: "private",
+                properties: {
+                    nbf: timing.nbf,
+                    exp: timing.exp,
+                    enable_prejoin_ui: true,
+                    enable_people_ui: true,
+                    enable_chat: true,
+                    enable_advanced_chat: true,
+                    enable_screenshare: true,
+                    enable_network_ui: true,
+                    start_audio_off: true,
+                    start_video_off: true,
+                    eject_at_room_exp: true
+                }
+            }
+        });
+    }
+
+    await liveRef.set({
+        provider: "daily",
+        providerRoomName: room.name || roomName,
+        providerRoomUrl: room.url || liveSession.providerRoomUrl || liveSession.meetingUrl || "",
+        roomName: room.name || roomName,
+        meetingUrl: room.url || liveSession.meetingUrl || "",
+        liveTech: {
+            ...(liveSession.liveTech || {}),
+            provider: "daily",
+            providerReady: true,
+            roomName: room.name || roomName,
+            roomUrl: room.url || liveSession.providerRoomUrl || liveSession.meetingUrl || "",
+            chatEnabled: true,
+            fileSharingEnabled: true,
+            watermark: "page_overlay",
+            createdByUid: liveSession.liveTech?.createdByUid || caller.uid
+        },
+        providerUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+
+    return room;
+}
+
+async function createDailyMeetingToken({ apiKey = "", roomName = "", caller, callerRole = "student", isOwner = false, liveSession = {} }) {
+    const tokenExp = getDailyTokenExpirationSeconds(liveSession);
+    const displayName = getAccountDisplayName(caller.data || {}) || caller.email || "Participant SBI";
+
+    const token = await callDailyApi(apiKey, "/meeting-tokens", {
+        method: "POST",
+        body: {
+            properties: {
+                room_name: roomName,
+                user_name: displayName,
+                user_id: cleanString(caller.uid, 36),
+                is_owner: isOwner,
+                exp: tokenExp,
+                eject_at_token_exp: true,
+                enable_prejoin_ui: true,
+                enable_screenshare: isOwner,
+                start_audio_off: !isOwner,
+                start_video_off: !isOwner,
+                lang: "fr"
+            }
+        }
+    });
+
+    return {
+        token: token.token || "",
+        displayName,
+        tokenExp,
+        accessRole: callerRole
+    };
+}
+
+function collectCallerPromotionKeys(callerData = {}) {
+    return [
+        callerData.promotionId,
+        callerData.currentPromotionId,
+        callerData.assignedPromotionId,
+        callerData.cohortId,
+        ...(Array.isArray(callerData.promotionIds) ? callerData.promotionIds : []),
+        ...(Array.isArray(callerData.assignedPromotionIds) ? callerData.assignedPromotionIds : [])
+    ].map((value) => cleanString(value, 180)).filter(Boolean);
+}
+
+async function studentCanJoinLivePromotion(db, caller, promotion = {}) {
+    if (caller.isAdmin || caller.data?.isGod === true || caller.data?.role === "admin") return true;
+    if (normalizeLiveRole(caller.data?.role || "") === "teacher") return teacherCanManagePromotionLive(db, caller, promotion);
+    if (normalizeLiveRole(caller.data?.role || "") !== "student") return false;
+
+    const promotionId = cleanString(promotion.id || "", 180);
+    if (promotionId && collectCallerPromotionKeys(caller.data || {}).includes(promotionId)) return true;
+
+    const students = await listPromotionStudents(db, promotion);
+    return students.some((student) => student.id === caller.uid);
+}
+
+function isHostLiveRole(caller = {}) {
+    return caller.isAdmin || caller.data?.isGod === true || caller.data?.role === "admin" || normalizeLiveRole(caller.data?.role || "") === "teacher";
+}
+
+exports.joinLiveConference = onCall({
+    region: "europe-west1",
+    secrets: [DAILY_API_KEY],
+    timeoutSeconds: 60,
+    memory: "512MiB"
+}, async (request) => {
+    const db = admin.firestore();
+    const caller = await requireActiveCourseCaller(request, db);
+    const data = request.data || {};
+    const liveId = cleanString(data.liveId, 180);
+    const markStarted = data.markStarted === true;
+
+    if (!liveId) throw new HttpsError("invalid-argument", "Live manquant.");
+
+    const liveRef = db.collection("liveSessions").doc(liveId);
+    const liveDoc = await liveRef.get();
+    if (!liveDoc.exists) throw new HttpsError("not-found", "Live introuvable.");
+    const liveSession = { id: liveDoc.id, ...(liveDoc.data() || {}) };
+
+    const promotionId = cleanString(liveSession.promotionId || "", 180);
+    if (!promotionId) throw new HttpsError("failed-precondition", "Promotion live manquante.");
+
+    const promotionDoc = await db.collection("promotions").doc(promotionId).get();
+    if (!promotionDoc.exists) throw new HttpsError("not-found", "Promotion introuvable.");
+    const promotion = { id: promotionDoc.id, ...(promotionDoc.data() || {}) };
+
+    const canAccess = await studentCanJoinLivePromotion(db, caller, promotion);
+    if (!canAccess) throw new HttpsError("permission-denied", "Vous ne pouvez pas rejoindre ce live.");
+
+    const host = isHostLiveRole(caller) && await teacherCanManagePromotionLive(db, caller, promotion);
+    const apiKey = DAILY_API_KEY.value();
+    const room = await ensureDailyRoomForLive({ apiKey, liveRef, liveSession, caller, allowCreate: host });
+    const roomName = room.name || getDailyRoomNameFromSession(liveSession);
+    const roomUrl = room.url || liveSession.providerRoomUrl || liveSession.meetingUrl || "";
+    if (!roomUrl) throw new HttpsError("failed-precondition", "URL de salle Daily introuvable.");
+
+    const tokenData = await createDailyMeetingToken({
+        apiKey,
+        roomName,
+        caller,
+        callerRole: host ? "host" : "student",
+        isOwner: host,
+        liveSession
+    });
+
+    const updatePayload = {
+        lastJoinTokenIssuedAt: admin.firestore.FieldValue.serverTimestamp(),
+        lastJoinTokenIssuedBy: caller.uid,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    };
+
+    if (host && markStarted && !["live", "ended", "replay_available", "cancelled"].includes(cleanString(liveSession.status || "", 80))) {
+        updatePayload.status = "live";
+        updatePayload.startedAt = admin.firestore.FieldValue.serverTimestamp();
+        updatePayload.startedByUid = caller.uid;
+        updatePayload.startedByEmail = caller.email;
+    }
+
+    await liveRef.set(updatePayload, { merge: true });
+
+    await liveRef.collection("attendance").doc(caller.uid).set({
+        uid: caller.uid,
+        email: cleanEmail(caller.email),
+        displayName: tokenData.displayName,
+        role: tokenData.accessRole,
+        joinedVia: "joinLiveConference",
+        provider: "daily",
+        roomName,
+        lastTokenIssuedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+
+    await safeWriteAccountAuditLog(db, {
+        type: host ? "live.conference_host_join" : "live.conference_student_join",
+        actorUid: caller.uid,
+        actorEmail: caller.email,
+        targetUid: "",
+        targetEmail: "",
+        targetRole: host ? "host" : "student",
+        source: "live-room",
+        liveId,
+        promotionId,
+        changes: {
+            provider: "daily",
+            roomName,
+            markStarted: host && markStarted
+        }
+    });
+
+    return {
+        success: true,
+        provider: "daily",
+        liveId,
+        title: liveSession.title || "Live SBI",
+        promotionId,
+        promotionName: liveSession.promotionName || getPromotionDisplayName(promotion),
+        roomName,
+        roomUrl,
+        token: tokenData.token,
+        tokenExp: tokenData.tokenExp,
+        displayName: tokenData.displayName,
+        accessRole: tokenData.accessRole,
+        canModerate: host,
+        message: "Salle de conference prete."
+    };
+});
 
 exports.getLiveSchedulerData = onCall({
     region: "europe-west1",
