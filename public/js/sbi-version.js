@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.209',
+  version: '8.0P.167.210',
   branch: 'main',
   channel: 'LIVE ROOM',
-  stage: 'PINNED TEST LIVE PER PROMOTION',
+  stage: 'LIVE ROOM SYNTAX HOTFIX',
   updatedAt: '2026-05-28',
-  label: 'SBI 8.0P.167.209 - pinned Live test on every promotion'
+  label: 'SBI 8.0P.167.210 - fix live room syntax error'
 };
 
 export function getSbiVersionLabel() {

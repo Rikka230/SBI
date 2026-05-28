@@ -1,7 +1,7 @@
 import { auth, app } from '/js/firebase-init.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js';
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js';
-import { escapeHtml } from '/js/live/live-shared.js?v=8.0P.167.209';
+import { escapeHtml } from '/js/live/live-shared.js?v=8.0P.167.210';
 
 const functionsInstance = getFunctions(app, 'europe-west1');
 const joinLiveConference = httpsCallable(functionsInstance, 'joinLiveConference');
@@ -59,14 +59,14 @@ function describeLiveError(error) {
   const code = extractErrorCode(error);
   if (code.includes('account-missing-payment-method')) {
     return {
-      message: 'Le compte Daily n'a pas encore de moyen de paiement utilisable sur l'espace lie a cette cle API. Verifiez Billing dans Daily, puis rechargez la page.',
+      message: "Le compte Daily n'a pas encore de moyen de paiement utilisable sur l'espace lie a cette cle API. Verifiez Billing dans Daily, puis rechargez la page.",
       detail: 'Daily renvoie encore « account-missing-payment-method ».',
       tone: 'error'
     };
   }
   if (code.includes('room-expired') || code.includes('meeting-closed')) {
     return {
-      message: 'Cette salle n'est plus disponible. Reouvrez le live depuis l'interface professeur ou admin.',
+      message: "Cette salle n'est plus disponible. Reouvrez le live depuis l'interface professeur ou admin.",
       detail: '',
       tone: 'error'
     };
