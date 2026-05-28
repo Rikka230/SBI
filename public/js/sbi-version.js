@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.229',
+  version: '8.0P.167.230',
   branch: 'main',
   channel: 'STUDENT LIVES',
-  stage: 'LIVES PANEL CACHE AND LOCK FIX',
+  stage: 'LIVES F5 SHELL ISOLATION',
   updatedAt: '2026-05-28',
-  label: 'SBI 8.0P.167.229 - fix lives panel cache and lock'
+  label: 'SBI 8.0P.167.230 - isolate lives F5 from global shell'
 };
 
 export function getSbiVersionLabel() {

@@ -17,7 +17,7 @@ import {
   loadProfile,
   loadPromotionsByIds,
   renderEmpty
-} from '/js/live/live-shared.js?v=8.0P.167.229';
+} from '/js/live/live-shared.js?v=8.0P.167.230';
 
 const functionsInstance = getFunctions(app, 'europe-west1');
 const getStudentLiveAttendance = httpsCallable(functionsInstance, 'getStudentLiveAttendance');
@@ -38,117 +38,27 @@ function $(id) {
 
 function forceRevealStudentLivesPage() {
   try { document.documentElement?.classList?.remove('preload'); } catch (_) {}
+  try { document.body?.classList?.remove('preload'); } catch (_) {}
+  const root = $('student-live-content');
+  if (root) root.hidden = false;
+}
+
+function markStudentLivesAuthReady(isReady = true) {
   try {
-    document.body?.classList?.remove('preload');
-    if (document.body) {
-      document.body.style.opacity = '1';
-      document.body.style.visibility = 'visible';
-    }
+    document.body?.classList?.toggle('auth-ready', Boolean(isReady));
   } catch (_) {}
-  ['app-container', 'main-content', 'student-live-content'].forEach((id) => {
-    const node = $(id);
-    if (!node) return;
-    node.hidden = false;
-    node.style.opacity = '1';
-    node.style.visibility = 'visible';
-  });
-  const wrapper = document.querySelector('.content-wrapper');
-  if (wrapper) {
-    wrapper.hidden = false;
-    wrapper.style.opacity = '1';
-    wrapper.style.visibility = 'visible';
-  }
 }
 
-
-function navigateStudentStandalone(href = '') {
-  if (!href) return;
-  releaseLivesPanelLockBeforeNavigation();
-  const url = new URL(href, window.location.origin);
-  try {
-    if (typeof window.SBI_APP_SHELL_NAVIGATE === 'function' && window.SBI_APP_SHELL?.canHandle?.(url)) {
-      window.SBI_APP_SHELL_NAVIGATE(url.href, { source: 'student-lives-standalone' });
-      return;
-    }
-  } catch (_) {}
-  window.location.assign(url.href);
-}
-
-
-function closestFromEvent(event, selector) {
-  if (event?.target?.closest) {
-    const direct = event.target.closest(selector);
-    if (direct) return direct;
-  }
-  const path = typeof event?.composedPath === 'function' ? event.composedPath() : [];
-  for (const item of path) {
-    if (item && item.nodeType === 1 && typeof item.matches === 'function' && item.matches(selector)) return item;
-    if (item && item.nodeType === 1 && typeof item.closest === 'function') {
-      const found = item.closest(selector);
-      if (found) return found;
-    }
-  }
-  return null;
-}
-
-function installStudentStandaloneChrome() {
-  if (window.__SBI_STUDENT_LIVES_STANDALONE_CHROME === true) return;
-  window.__SBI_STUDENT_LIVES_STANDALONE_CHROME = true;
-
-  document.addEventListener('click', (event) => {
-    // 8.0P.167.229: ce fallback ne doit jamais gérer les boutons du chrome.
-    // admin-ui/panels.js est l'unique source de vérité pour la rétraction du panel.
-    if (closestFromEvent(event, '#btn-toggle-panel')
-      || closestFromEvent(event, '#btn-toggle-mobile')
-      || closestFromEvent(event, '#btn-toggle-right')) {
-      return;
-    }
-
-    const trigger = closestFromEvent(event, '[data-sbi-href]');
-    if (!trigger) return;
-    const href = trigger.dataset.sbiHref || trigger.getAttribute('href') || '';
-    if (!href) return;
-    event.preventDefault();
-    navigateStudentStandalone(href);
-  }, true);
-
-  document.addEventListener('keydown', (event) => {
-    if (!['Enter', ' '].includes(event.key)) return;
-    const trigger = closestFromEvent(event, '[data-sbi-href]');
-    if (!trigger) return;
-    const href = trigger.dataset.sbiHref || trigger.getAttribute('href') || '';
-    if (!href) return;
-    event.preventDefault();
-    navigateStudentStandalone(href);
-  }, true);
-
-  document.addEventListener('click', (event) => {
-    const appContainer = $('app-container');
-    if (!appContainer || window.innerWidth > 768 || !appContainer.classList.contains('left-open')) return;
-    if (!event.target.closest('#left-panel') && !closestFromEvent(event, '#btn-toggle-mobile')) {
-      appContainer.classList.remove('left-open');
+function removeLegacyLivesShellOverrides() {
+  document.querySelectorAll('style[data-sbi-pjax-source]').forEach((style) => {
+    const source = String(style.getAttribute('data-sbi-pjax-source') || '').toLowerCase();
+    const cssText = style.textContent || '';
+    if ((source.includes('/student/lives') || cssText.includes('body.sbi-live-page'))
+      && cssText.includes('#app-container')
+      && cssText.includes('display: block')) {
+      style.remove();
     }
   });
-
-  window.addEventListener('resize', () => {
-    if (window.innerWidth > 1024) return;
-    $('app-container')?.classList?.remove('left-open');
-  });
-
-  // 8.0P.167.229 : le fallback Lives ne lit plus leftPanelCollapsed.
-  // La rétraction du panel est strictement pilotée par admin-ui/panels.js.
-}
-
-
-function releaseLivesPanelLock() {
-  const appContainer = $('app-container');
-  try { localStorage.removeItem('leftPanelCollapsed'); } catch (_) {}
-  if (appContainer) appContainer.classList.remove('left-collapsed');
-}
-
-function releaseLivesPanelLockBeforeNavigation() {
-  // Évite que la page Lives transporte un état collapsed bloqué vers les autres pages.
-  releaseLivesPanelLock();
 }
 
 function readInitialTab() {
@@ -409,8 +319,7 @@ let mountedRoot = null;
 let bootTimer = null;
 
 export function mountStudentLivesPage() {
-  installStudentStandaloneChrome();
-  releaseLivesPanelLock();
+  removeLegacyLivesShellOverrides();
   forceRevealStudentLivesPage();
   const root = $('student-live-content');
   if (!root) return null;
@@ -435,9 +344,11 @@ export function mountStudentLivesPage() {
   unsubscribeAuth = onAuthStateChanged(auth, (user) => {
     forceRevealStudentLivesPage();
     if (!user) {
+      markStudentLivesAuthReady(false);
       window.location.replace('/login.html');
       return;
     }
+    markStudentLivesAuthReady(true);
     loadForUser(user.uid).catch((error) => {
       console.error('[SBI Student Lives] Chargement impossible :', error);
       setStatus(error?.message || 'Chargement impossible.');
@@ -456,14 +367,12 @@ export function mountStudentLivesPage() {
 }
 
 function bootStudentLivesPage() {
-  installStudentStandaloneChrome();
-  releaseLivesPanelLock();
+  removeLegacyLivesShellOverrides();
   forceRevealStudentLivesPage();
   const root = document.getElementById('student-live-content');
   if (root && (!mounted || mountedRoot !== root)) {
     mountStudentLivesPage();
   } else if (root && mounted && mountedRoot === root) {
-    installStudentStandaloneChrome();
     render();
   }
   if (bootTimer) clearTimeout(bootTimer);
@@ -475,8 +384,7 @@ function bootStudentLivesPage() {
 }
 
 window.addEventListener('pageshow', () => {
-  installStudentStandaloneChrome();
-  releaseLivesPanelLock();
+  removeLegacyLivesShellOverrides();
   forceRevealStudentLivesPage();
   if (!mounted || mountedRoot !== $('student-live-content')) bootStudentLivesPage();
 });

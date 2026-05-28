@@ -54,12 +54,28 @@ function makeInlineStyleKey(cssText, baseUrl) {
   return `style-${Math.abs(hash)}`;
 }
 
+
+function shouldSkipInlineDocumentStyle(style, baseUrl = window.location.href) {
+  const cssText = style?.textContent || '';
+  if (!cssText.trim()) return true;
+
+  let sourcePath = '';
+  try { sourcePath = new URL(baseUrl, window.location.href).pathname.toLowerCase(); }
+  catch (_) { sourcePath = String(window.location.pathname || '').toLowerCase(); }
+
+  const isStudentLives = sourcePath === '/student/lives.html' || sourcePath === '/student/lives';
+  const touchesShellLayout = cssText.includes('#app-container') || cssText.includes('#main-content');
+  const forcesBlockLayout = cssText.includes('display: block');
+
+  return isStudentLives && touchesShellLayout && forcesBlockLayout;
+}
+
 function ensureInlineDocumentStyles(doc, baseUrl = window.location.href) {
   const styles = Array.from(doc.querySelectorAll('head style, style[data-sbi-pjax-keep="true"]'));
 
   styles.forEach((style) => {
     const cssText = style.textContent || '';
-    if (!cssText.trim()) return;
+    if (shouldSkipInlineDocumentStyle(style, baseUrl)) return;
 
     const key = makeInlineStyleKey(cssText, baseUrl);
     if (loadedInlineStyleKeys.has(key)) return;

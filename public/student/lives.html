@@ -7,50 +7,13 @@
   <link rel="stylesheet" href="/admin/css/admin-layout.css">
   <link rel="stylesheet" href="/admin/css/admin.css">
   <link rel="stylesheet" href="/student/css/student.css">
-  <link rel="stylesheet" href="/css/live-platform.css?v=8.0P.167.229">
-  <script src="/admin/js/components.js?v=8.0P.167.229"></script>
-  <style>
-    html, body, body.sbi-live-page, #app-container, #main-content, .content-wrapper {
-      opacity: 1 !important;
-      visibility: visible !important;
-    }
+  <link rel="stylesheet" href="/css/live-platform.css?v=8.0P.167.230">
+  <script src="/admin/js/components.js?v=8.0P.167.230"></script>
+  <style data-sbi-pjax-keep="true">
     body.sbi-live-page {
-      min-height: 100vh !important;
-      background: #f4f7f6 !important;
-    }
-    #app-container, #main-content {
-      display: block;
+      background: #f4f7f6;
     }
   </style>
-  <script>
-    (function () {
-      function revealStudentLives() {
-        document.documentElement.classList.remove('preload');
-        if (document.body) {
-          document.body.classList.remove('preload');
-          document.body.style.opacity = '1';
-          document.body.style.visibility = 'visible';
-        }
-        var app = document.getElementById('app-container');
-        var main = document.getElementById('main-content');
-        var content = document.querySelector('.content-wrapper');
-        [app, main, content].forEach(function (node) {
-          if (!node) return;
-          node.hidden = false;
-          node.style.opacity = '1';
-          node.style.visibility = 'visible';
-        });
-        try { localStorage.removeItem('leftPanelCollapsed'); } catch (e) {}
-        if (app) app.classList.remove('left-collapsed');
-      }
-      revealStudentLives();
-      document.addEventListener('DOMContentLoaded', revealStudentLives, { once: true });
-      window.addEventListener('pageshow', revealStudentLives);
-      setTimeout(revealStudentLives, 80);
-      setTimeout(revealStudentLives, 300);
-      setTimeout(revealStudentLives, 1000);
-    }());
-  </script>
 </head>
 <body class="preload sbi-live-page" data-sbi-standalone="student-lives">
   <div class="app-container" id="app-container">
@@ -93,33 +56,7 @@
       }
     }, 5000);
   </script>
-
-  <script>
-    (function () {
-      if (window.__SBI_STUDENT_LIVES_INLINE_NAV === true) return;
-      window.__SBI_STUDENT_LIVES_INLINE_NAV = true;
-      function clearPanelLock() {
-        try { localStorage.removeItem('leftPanelCollapsed'); } catch (e) {}
-        var app = document.getElementById('app-container');
-        if (app) app.classList.remove('left-collapsed');
-      }
-      function go(href) { if (href) { clearPanelLock(); window.location.assign(new URL(href, window.location.origin).href); } }
-      document.addEventListener('click', function (event) {
-        // 8.0P.167.229: ne jamais piloter la rétraction ici.
-        // La barre/panel globale reste gérée uniquement par admin-ui/panels.js.
-        // Sinon le clic est traité deux fois et left-collapsed se bloque.
-        var chromeControl = event.target.closest && event.target.closest('#btn-toggle-panel, #btn-toggle-mobile, #btn-toggle-right');
-        if (chromeControl) return;
-        var trigger = event.target.closest && event.target.closest('[data-sbi-href]');
-        if (!trigger) return;
-        var href = trigger.dataset.sbiHref || trigger.getAttribute('href') || '';
-        if (!href) return;
-        event.preventDefault();
-        go(href);
-      }, true);
-    }());
-  </script>
-  <script type="module" src="/admin/js/admin-ui.js?v=8.0P.167.229"></script>
-  <script type="module" src="/student/js/student-lives.js?v=8.0P.167.229"></script>
+  <script type="module" src="/admin/js/admin-ui.js?v=8.0P.167.230"></script>
+  <script type="module" src="/student/js/student-lives.js?v=8.0P.167.230"></script>
 </body>
 </html>
