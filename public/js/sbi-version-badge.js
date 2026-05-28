@@ -4,7 +4,7 @@
  * Remplace l'ancien badge CSS figé par un badge piloté depuis sbi-version.js.
  */
 
-import { SBI_VERSION, getSbiVersionLabel } from '/js/sbi-version.js?v=8.0P.167.226';
+import { SBI_VERSION, getSbiVersionLabel } from '/js/sbi-version.js?v=8.0P.167.224';
 
 const BADGE_ID = 'sbi-version-badge';
 const STYLE_ID = 'sbi-version-badge-style';

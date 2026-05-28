@@ -7,8 +7,8 @@
   <link rel="stylesheet" href="/admin/css/admin-layout.css">
   <link rel="stylesheet" href="/admin/css/admin.css">
   <link rel="stylesheet" href="/student/css/student.css">
-  <link rel="stylesheet" href="/css/live-platform.css?v=8.0P.167.226">
-  <script src="/admin/js/components.js?v=8.0P.167.226"></script>
+  <link rel="stylesheet" href="/css/live-platform.css?v=8.0P.167.224">
+  <script src="/admin/js/components.js?v=8.0P.167.224"></script>
   <style>
     html, body, body.sbi-live-page, #app-container, #main-content, .content-wrapper {
       opacity: 1 !important;
@@ -98,18 +98,11 @@
       window.__SBI_STUDENT_LIVES_INLINE_NAV = true;
       function go(href) { if (href) window.location.assign(new URL(href, window.location.origin).href); }
       document.addEventListener('click', function (event) {
-        var panelToggle = event.target.closest && event.target.closest('#btn-toggle-panel');
-        if (panelToggle) {
-          var app = document.getElementById('app-container');
-          if (app) app.classList.toggle('left-collapsed');
-          return;
-        }
-        var mobileToggle = event.target.closest && event.target.closest('#btn-toggle-mobile');
-        if (mobileToggle) {
-          var appMobile = document.getElementById('app-container');
-          if (appMobile) appMobile.classList.toggle('left-open');
-          return;
-        }
+        // 8.0P.167.228: ne jamais piloter la rétraction ici.
+        // La barre/panel globale reste gérée uniquement par admin-ui/panels.js.
+        // Sinon le clic est traité deux fois et left-collapsed se bloque.
+        var chromeControl = event.target.closest && event.target.closest('#btn-toggle-panel, #btn-toggle-mobile, #btn-toggle-right');
+        if (chromeControl) return;
         var trigger = event.target.closest && event.target.closest('[data-sbi-href]');
         if (!trigger) return;
         var href = trigger.dataset.sbiHref || trigger.getAttribute('href') || '';
@@ -119,7 +112,7 @@
       }, true);
     }());
   </script>
-  <script type="module" src="/admin/js/admin-ui.js?v=8.0P.167.226"></script>
-  <script type="module" src="/student/js/student-lives.js?v=8.0P.167.226"></script>
+  <script type="module" src="/admin/js/admin-ui.js?v=8.0P.167.224"></script>
+  <script type="module" src="/student/js/student-lives.js?v=8.0P.167.224"></script>
 </body>
 </html>
