@@ -34,7 +34,7 @@ import {
   updateAdminChromeFromDocument,
   setLeftNavActive,
   loadScriptOnce
-} from './admin-page-loader.js?v=8.0P.167.235';
+} from './admin-page-loader.js?v=8.0P.167.236';
 import { initAdminTabs } from '/admin/js/admin-ui/panels.js';
 import {
   loadQuillIfNeeded,
@@ -582,7 +582,7 @@ async function mountLiveSchedulerV2Route({ url, role = 'teacher' }) {
   setLeftNavActive(role === 'admin' ? 'nav-lives-v2' : '/teacher/lives-v2.html');
   updateUrlContext(url);
 
-  const module = await import('/js/live/live-scheduler-v2-page.js?v=8.0P.167.235');
+  const module = await import('/js/live/live-scheduler-v2-page.js?v=8.0P.167.236');
   const cleanup = module.mountLiveSchedulerV2Page?.(role);
   if (typeof cleanup === 'function') registerCleanup(cleanup, role === 'admin' ? 'admin-lives-v2' : 'teacher-lives-v2');
 
@@ -685,7 +685,7 @@ async function mountStudentLives({ url }) {
 
   window.__SBI_APP_SHELL_MOUNTING_STUDENT_LIVES = true;
   try {
-    const module = await import('/student/js/student-lives.js?v=8.0P.167.235');
+    const module = await import('/student/js/student-lives.js?v=8.0P.167.236');
     const cleanup = module.mountStudentLivesPage?.();
     if (typeof cleanup === 'function') registerCleanup(cleanup, 'student-lives');
   } finally {
@@ -708,7 +708,7 @@ async function mountStudentLiveReplay({ url }) {
 
   window.__SBI_APP_SHELL_MOUNTING_LIVE_REPLAY = true;
   try {
-    const module = await import('/student/js/live-replay.js?v=8.0P.167.235');
+    const module = await import('/student/js/live-replay.js?v=8.0P.167.236');
     const cleanup = module.mountStudentLiveReplayPage?.();
     if (typeof cleanup === 'function') registerCleanup(cleanup, 'student-live-replay');
   } finally {

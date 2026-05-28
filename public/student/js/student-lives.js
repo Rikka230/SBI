@@ -17,7 +17,7 @@ import {
   loadProfile,
   loadPromotionsByIds,
   renderEmpty
-} from '/js/live/live-shared.js?v=8.0P.167.235';
+} from '/js/live/live-shared.js?v=8.0P.167.236';
 
 const functionsInstance = getFunctions(app, 'europe-west1');
 const getStudentLiveAttendance = httpsCallable(functionsInstance, 'getStudentLiveAttendance');
@@ -176,13 +176,77 @@ function findMatchingSession(promotion = {}, sourceItem = {}, planningItem = nul
   }) || null;
 }
 
+function getLiveWindow(source = {}, fallback = {}) {
+  const tracking = source.liveTracking || {};
+  const fallbackTracking = fallback.liveTracking || {};
+  const start = clean(
+    source.teacherSchedulingWindowStartAt
+    || source.schedulingWindow?.teacherCanSelectFrom
+    || source.schedulingWindow?.recommendedStartAt
+    || source.recommendedStartAt
+    || source.plannedStartAt
+    || tracking.schedulingWindow?.teacherCanSelectFrom
+    || tracking.schedulingWindow?.recommendedStartAt
+    || fallback.teacherSchedulingWindowStartAt
+    || fallback.schedulingWindow?.teacherCanSelectFrom
+    || fallback.schedulingWindow?.recommendedStartAt
+    || fallback.recommendedStartAt
+    || fallback.plannedStartAt
+    || fallbackTracking.schedulingWindow?.teacherCanSelectFrom
+    || fallbackTracking.schedulingWindow?.recommendedStartAt
+    || '',
+    80
+  );
+  const end = clean(
+    source.teacherSchedulingWindowEndAt
+    || source.schedulingWindow?.teacherCanSelectUntil
+    || source.schedulingWindow?.recommendedEndAt
+    || source.recommendedEndAt
+    || source.plannedEndAt
+    || source.deadlineAt
+    || tracking.schedulingWindow?.teacherCanSelectUntil
+    || tracking.schedulingWindow?.recommendedEndAt
+    || fallback.teacherSchedulingWindowEndAt
+    || fallback.schedulingWindow?.teacherCanSelectUntil
+    || fallback.schedulingWindow?.recommendedEndAt
+    || fallback.recommendedEndAt
+    || fallback.plannedEndAt
+    || fallback.deadlineAt
+    || fallbackTracking.schedulingWindow?.teacherCanSelectUntil
+    || fallbackTracking.schedulingWindow?.recommendedEndAt
+    || '',
+    80
+  );
+  return { start, end };
+}
+
 function getChronologyMs(row = {}) {
-  const candidates = [row.startAt, row.live?.teacherSchedulingWindowStartAt, row.live?.schedulingWindow?.teacherCanSelectFrom, row.live?.schedulingWindow?.recommendedStartAt, row.live?.liveTracking?.schedulingWindow?.teacherCanSelectFrom, row.live?.liveTracking?.schedulingWindow?.recommendedStartAt];
+  const candidates = [
+    row.windowStart,
+    row.startAt,
+    row.windowEnd,
+    row.live?.teacherSchedulingWindowStartAt,
+    row.planning?.teacherSchedulingWindowStartAt,
+    row.live?.schedulingWindow?.teacherCanSelectFrom,
+    row.planning?.schedulingWindow?.teacherCanSelectFrom,
+    row.live?.schedulingWindow?.recommendedStartAt,
+    row.planning?.schedulingWindow?.recommendedStartAt,
+    row.live?.liveTracking?.schedulingWindow?.teacherCanSelectFrom,
+    row.planning?.liveTracking?.schedulingWindow?.teacherCanSelectFrom,
+    row.live?.liveTracking?.schedulingWindow?.recommendedStartAt,
+    row.planning?.liveTracking?.schedulingWindow?.recommendedStartAt
+  ];
   for (const value of candidates) {
     const ms = Date.parse(value || '');
     if (Number.isFinite(ms)) return ms;
   }
   return Number.MAX_SAFE_INTEGER;
+}
+
+function getRowDateLabel(row = {}) {
+  if (row.startAt) return formatDateRange(row.startAt, row.endAt);
+  if (row.windowStart || row.windowEnd) return formatDateRange(row.windowStart, row.windowEnd);
+  return getLiveWindowLabel(row.live, row.promotion);
 }
 
 function getRows() {
@@ -204,6 +268,9 @@ function getRows() {
         session?.title,
         getLiveTitle(sourceLive, promotion)
       );
+      const startAt = session?.selectedStartAt || planning?.selectedLiveAt || sourceLive.selectedLiveAt || '';
+      const endAt = session?.selectedEndAt || planning?.selectedLiveEndAt || sourceLive.selectedLiveEndAt || '';
+      const window = getLiveWindow(sourceLive, planning || {});
       rows.push({
         id: liveId,
         title,
@@ -211,8 +278,11 @@ function getRows() {
         live: sourceLive,
         planning,
         session,
-        startAt: session?.selectedStartAt || planning?.selectedLiveAt || sourceLive.selectedLiveAt || '',
-        endAt: session?.selectedEndAt || planning?.selectedLiveEndAt || sourceLive.selectedLiveEndAt || '',
+        startAt,
+        endAt,
+        windowStart: window.start,
+        windowEnd: window.end,
+        order: Number.isFinite(Number(sourceLive.order)) ? Number(sourceLive.order) : index,
         replayUrl: session?.replayUrl || session?.replayAccessUrl || session?.liveTech?.replayUrl || planning?.replayUrl || sourceLive.replayUrl || '',
         replayStatus: session?.replayStatus || session?.liveTech?.replayStatus || planning?.replayStatus || sourceLive.replayStatus || '',
         status: session?.status || planning?.status || planning?.liveSchedulingStatus || sourceLive.status || sourceLive.liveSchedulingStatus || 'to_schedule',
@@ -239,7 +309,14 @@ function getRows() {
     });
   });
 
-  return rows.sort((a, b) => getChronologyMs(a) - getChronologyMs(b) || a.title.localeCompare(b.title, 'fr', { sensitivity: 'base' }));
+  return rows.sort((a, b) => {
+    const chronology = getChronologyMs(a) - getChronologyMs(b);
+    if (chronology !== 0) return chronology;
+    const order = (Number.isFinite(Number(a.order)) ? Number(a.order) : Number.MAX_SAFE_INTEGER)
+      - (Number.isFinite(Number(b.order)) ? Number(b.order) : Number.MAX_SAFE_INTEGER);
+    if (order !== 0) return order;
+    return a.title.localeCompare(b.title, 'fr', { sensitivity: 'base' });
+  });
 }
 
 function isReplay(row) {
@@ -313,7 +390,7 @@ function renderList(rows) {
     <article class="sbi-live-card">
       <strong>${escapeHtml(row.title)}</strong>
       <span>${escapeHtml(getPromotionName(row.promotion))}</span>
-      <span>${row.startAt ? escapeHtml(formatDateRange(row.startAt, row.endAt)) : escapeHtml(getLiveWindowLabel(row.live, row.promotion))}</span>
+      <span>${escapeHtml(getRowDateLabel(row))}</span>
       ${getAttendanceBadges(row)}
       <div class="sbi-live-card-actions">
         ${canJoinLive(row) ? `<a class="sbi-live-btn" data-live-room-link="true" data-live-id="${encodeURIComponent(getLiveIdForRow(row))}" href="/live-room/${encodeURIComponent(getLiveIdForRow(row))}?liveId=${encodeURIComponent(getLiveIdForRow(row))}#liveId=${encodeURIComponent(getLiveIdForRow(row))}">Rejoindre la salle</a>` : (state.tab === 'upcoming' ? `<span class="sbi-live-btn sbi-live-btn--ghost is-disabled" aria-disabled="true">${escapeHtml(getJoinClosedLabel(row))}</span>` : '')}
@@ -329,7 +406,7 @@ function renderCalendar(rows) {
 
   return `<div class="sbi-live-calendar">${filtered.map((row) => `
     <div class="sbi-live-day">
-      <strong>${escapeHtml(row.startAt ? formatDateTime(row.startAt) : 'A planifier')}</strong>
+      <strong>${escapeHtml(row.startAt ? formatDateTime(row.startAt) : row.windowStart ? formatDateTime(row.windowStart) : 'A planifier')}</strong>
       <span>${escapeHtml(row.title)}</span>
     </div>
   `).join('')}</div>`;
