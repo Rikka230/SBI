@@ -8,7 +8,7 @@ import { initEmojiScrubber } from '/admin/js/admin-ui/emoji-scrubber.js';
 import { initSafeComponentPolish } from '/admin/js/admin-ui/component-polish.js';
 import { initSbiNavigationTransitions } from '/js/sbi-navigation-transitions.js';
 import { initSbiAppShell } from '/js/app-shell/app-shell.js?v=8.0P.167.206';
-import { initSbiVersionBadge } from '/js/sbi-version-badge.js?v=8.0P.167.213';
+import { initSbiVersionBadge } from '/js/sbi-version-badge.js?v=8.0P.167.214';
 import { installViewerDiagnostics } from '/js/app-shell/course-viewer-bridge.js';
 import { initCourseAccessDiagnostics } from '/admin/js/course-access-diagnostics.js';
 import { initAdminCursusSafePolish } from '/admin/js/admin-cursus-safe-polish.js?v=8.0P.167.107.6-GPT2.1';

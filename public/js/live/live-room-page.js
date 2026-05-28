@@ -3,7 +3,7 @@ import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.1/fi
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js';
 import { collection, addDoc, onSnapshot, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js';
-import { escapeHtml } from '/js/live/live-shared.js?v=8.0P.167.213';
+import { escapeHtml } from '/js/live/live-shared.js?v=8.0P.167.214';
 
 const functionsInstance = getFunctions(app, 'europe-west1');
 const storage = getStorage(app);
@@ -441,9 +441,12 @@ async function prepareAndJoin() {
   await mountDailyRoom(room);
 }
 
+let mounted = false;
 let unsubscribeAuth = null;
 
 export function mountLiveRoomPage() {
+  if (mounted) return null;
+  mounted = true;
   unsubscribeAuth = onAuthStateChanged(auth, (user) => {
     if (!user) {
       window.location.replace('/login.html');
@@ -457,6 +460,7 @@ export function mountLiveRoomPage() {
   });
 
   return () => {
+    mounted = false;
     unsubscribeAuth?.();
     unsubscribeAuth = null;
     stopFilesListener();
@@ -464,11 +468,18 @@ export function mountLiveRoomPage() {
   };
 }
 
+function bootLiveRoomPage() {
+  if (!document.getElementById('sbi-live-room-frame')) return;
+  mountLiveRoomPage();
+}
+
 window.addEventListener('beforeunload', () => {
   stopFilesListener();
   destroyExistingFrame();
 });
 
-if (document.getElementById('sbi-live-room-frame') && !window.SBI_APP_SHELL_CURRENT_URL) {
-  mountLiveRoomPage();
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', bootLiveRoomPage, { once: true });
+} else {
+  bootLiveRoomPage();
 }

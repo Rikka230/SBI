@@ -4659,6 +4659,20 @@ exports.resolveLiveReplay = onCall({
         updatedAt: admin.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
 
+    await liveRef.collection("attendance").doc(caller.uid).set({
+        uid: caller.uid,
+        email: cleanEmail(caller.email),
+        displayName: getAccountDisplayName(caller.data || {}) || caller.email || "Participant SBI",
+        role: isHostLiveRole(caller) ? "host" : "student",
+        watchedReplay: true,
+        replayWatchedAt: admin.firestore.FieldValue.serverTimestamp(),
+        replayAccessedAt: admin.firestore.FieldValue.serverTimestamp(),
+        replayRecordingId: recordingId,
+        replayAccessExpiresAt: expires,
+        provider: "daily",
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+
     await safeWriteAccountAuditLog(db, {
         type: "live.replay_access",
         actorUid: caller.uid,
@@ -4677,6 +4691,7 @@ exports.resolveLiveReplay = onCall({
         liveId,
         recordingId,
         replayUrl: downloadLink,
+        playbackUrl: downloadLink,
         downloadLink,
         expires,
         durationSeconds

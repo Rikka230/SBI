@@ -1,6 +1,6 @@
-import { auth, app } from '/js/firebase-init.js';
+import { auth, app, db } from '/js/firebase-init.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js';
-import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js';
+import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
 import {
   buildSessionMap,
   clean,
@@ -17,17 +17,16 @@ import {
   loadProfile,
   loadPromotionsByIds,
   renderEmpty
-} from '/js/live/live-shared.js?v=8.0P.167.213';
-
-const functionsInstance = getFunctions(app, 'europe-west1');
-const resolveLiveReplay = httpsCallable(functionsInstance, 'resolveLiveReplay');
+} from '/js/live/live-shared.js?v=8.0P.167.214';
 
 const state = {
   profile: null,
   promotions: [],
   sessions: [],
+  attendanceByLiveId: {},
   view: 'list',
-  tab: 'upcoming'
+  tab: 'upcoming',
+  uid: ''
 };
 
 function $(id) {
@@ -39,6 +38,10 @@ function setStatus(message = '') {
   if (node) node.textContent = message;
 }
 
+function getLiveIdForRow(row = {}) {
+  return row.session?.id || row.live?.liveSessionId || row.id || '';
+}
+
 function getRows() {
   const sessionMap = buildSessionMap(state.sessions);
   const rows = [];
@@ -46,8 +49,9 @@ function getRows() {
   state.promotions.forEach((promotion) => {
     getPromotionLives(promotion).forEach((live) => {
       const session = getLiveSessionForItem(promotion, live, sessionMap);
+      const liveId = session?.id || live.liveSessionId || `${promotion.id}-${clean(live.id || live.itemId || getLiveTitle(live))}`;
       rows.push({
-        id: session?.id || live.liveSessionId || `${promotion.id}-${clean(live.id || live.itemId || getLiveTitle(live))}`,
+        id: liveId,
         title: session?.title || getLiveTitle(live),
         promotion,
         live,
@@ -62,7 +66,7 @@ function getRows() {
   });
 
   state.sessions.forEach((session) => {
-    if (rows.some((row) => row.session?.id === session.id)) return;
+    if (rows.some((row) => row.session?.id === session.id || row.id === session.id)) return;
     rows.push({
       id: session.id,
       title: session.title || 'Live SBI',
@@ -93,22 +97,31 @@ function isReplay(row) {
   return Date.parse(row.startAt) < Date.now() && ['ended', 'replay_available'].includes(status);
 }
 
-function getReplayLabel(row = {}) {
-  const replayStatus = clean(row.replayStatus).toLowerCase();
-  if (['processing', 'recording'].includes(replayStatus)) return 'Vérifier le replay';
-  if (['error', 'not_available'].includes(replayStatus)) return 'Réessayer le replay';
-  return 'Voir / télécharger le replay';
-}
-
 function canRequestReplay(row = {}) {
-  const liveId = row.session?.id || row.live?.liveSessionId || '';
+  const liveId = getLiveIdForRow(row);
   return Boolean(liveId) && isReplay(row);
 }
 
 function canJoinLive(row = {}) {
-  const liveId = row.session?.id || row.live?.liveSessionId || '';
+  const liveId = getLiveIdForRow(row);
   const status = clean(row.status || '').toLowerCase();
   return Boolean(liveId) && !['cancelled', 'ended', 'replay_available'].includes(status);
+}
+
+function getAttendanceBadges(row = {}) {
+  const liveId = getLiveIdForRow(row);
+  const attendance = state.attendanceByLiveId[liveId] || {};
+  const badges = [];
+  if (attendance.lastTokenIssuedAt || attendance.joinedVia === 'joinLiveConference') badges.push('✓ Participation live enregistrée');
+  if (attendance.watchedReplay || attendance.replayWatchedAt) badges.push('✓ Replay regardé');
+  if (!badges.length) return '';
+  return `<div class="sbi-live-attendance-badges">${badges.map((badge) => `<span>${escapeHtml(badge)}</span>`).join('')}</div>`;
+}
+
+function renderReplayButton(row = {}) {
+  const liveId = getLiveIdForRow(row);
+  if (!canRequestReplay(row)) return '';
+  return `<a class="sbi-live-btn sbi-live-btn--ghost" href="/student/live-replay.html?liveId=${encodeURIComponent(liveId)}">Regarder</a>`;
 }
 
 function renderList(rows) {
@@ -122,10 +135,10 @@ function renderList(rows) {
       <strong>${escapeHtml(row.title)}</strong>
       <span>${escapeHtml(getPromotionName(row.promotion))}</span>
       <span>${row.startAt ? escapeHtml(formatDateRange(row.startAt, row.endAt)) : escapeHtml(getLiveWindowLabel(row.live))}</span>
+      ${getAttendanceBadges(row)}
       <div class="sbi-live-card-actions">
-        ${canJoinLive(row) ? `<a class="sbi-live-btn" href="/live-room.html?liveId=${encodeURIComponent(row.session?.id || row.live?.liveSessionId || '')}">Rejoindre la salle</a>` : ''}
-        ${row.replayUrl ? `<a class="sbi-live-btn sbi-live-btn--ghost" href="${escapeHtml(row.replayUrl)}" target="_blank" rel="noopener noreferrer">Voir / télécharger le replay</a>` : ''}
-        ${!row.replayUrl && canRequestReplay(row) ? `<button class="sbi-live-btn sbi-live-btn--ghost" type="button" data-resolve-replay="${escapeHtml(row.session?.id || row.live?.liveSessionId || '')}">${escapeHtml(getReplayLabel(row))}</button>` : ''}
+        ${canJoinLive(row) ? `<a class="sbi-live-btn" href="/live-room.html?liveId=${encodeURIComponent(getLiveIdForRow(row))}">Rejoindre la salle</a>` : ''}
+        ${renderReplayButton(row)}
       </div>
     </article>
   `).join('')}</div>`;
@@ -143,31 +156,19 @@ function renderCalendar(rows) {
   `).join('')}</div>`;
 }
 
-
-async function openReplay(liveId = '', button = null) {
-  if (!liveId) return;
-  if (button) button.disabled = true;
-  setStatus('Recherche du replay Daily...');
-  try {
-    const result = await resolveLiveReplay({ liveId });
-    const url = result?.data?.replayUrl || result?.data?.downloadLink || ''; 
-    if (!url) throw new Error('Lien replay indisponible.');
-    window.open(url, '_blank', 'noopener,noreferrer');
-    setStatus('Lien replay ouvert. Le fichier peut se télécharger selon la configuration Daily.');
-  } catch (error) {
-    console.error('[SBI Student Lives] Replay indisponible :', error);
-    setStatus(error?.message || 'Replay encore en préparation. Réessayez dans quelques minutes.');
-  } finally {
-    if (button) button.disabled = false;
-  }
-}
-
-function bindReplayButtons() {
-  document.querySelectorAll('[data-resolve-replay]').forEach((button) => {
-    if (button.dataset.boundReplay === '1') return;
-    button.dataset.boundReplay = '1';
-    button.addEventListener('click', () => openReplay(button.dataset.resolveReplay || '', button));
-  });
+async function loadAttendanceForRows(uid = '') {
+  if (!uid) return;
+  const liveIds = [...new Set(getRows().map((row) => getLiveIdForRow(row)).filter(Boolean))];
+  const entries = await Promise.all(liveIds.map(async (liveId) => {
+    try {
+      const snap = await getDoc(doc(db, 'liveSessions', liveId, 'attendance', uid));
+      return [liveId, snap.exists() ? snap.data() : {}];
+    } catch (error) {
+      console.warn('[SBI Student Lives] Attendance indisponible :', liveId, error);
+      return [liveId, {}];
+    }
+  }));
+  state.attendanceByLiveId = Object.fromEntries(entries);
 }
 
 function render() {
@@ -182,15 +183,16 @@ function render() {
   document.querySelectorAll('[data-student-live-view]').forEach((button) => {
     button.classList.toggle('is-active', button.dataset.studentLiveView === state.view);
   });
-  bindReplayButtons();
 }
 
 async function loadForUser(uid) {
   setStatus('Chargement...');
+  state.uid = uid;
   state.profile = await loadProfile(uid);
   const promotionIds = getStudentPromotionIds(state.profile || {});
   state.promotions = promotionIds.length ? await loadPromotionsByIds(promotionIds) : [];
   state.sessions = promotionIds.length ? await loadLiveSessionsForPromotions(promotionIds) : [];
+  await loadAttendanceForRows(uid);
   setStatus('');
   render();
 }

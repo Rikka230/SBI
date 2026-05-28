@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.213',
+  version: '8.0P.167.214',
   branch: 'main',
-  channel: 'LIVE REPLAY',
-  stage: 'REPLAY RESOLVE + VERSION CACHE',
+  channel: 'LIVE ROOM',
+  stage: 'INLINE REPLAY + ATTENDANCE',
   updatedAt: '2026-05-28',
-  label: 'SBI 8.0P.167.213 - replay resolve button and version badge cache-bust'
+  label: 'SBI 8.0P.167.214 - inline replay, refresh-safe live room and attendance checks'
 };
 
 export function getSbiVersionLabel() {
