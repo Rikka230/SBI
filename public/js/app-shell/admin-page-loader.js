@@ -39,6 +39,7 @@ const ROUTE_BODY_CLASSES = new Set([
   'sbi-dashboard-page',
   'sbi-dashboard-redesign',
   'sbi-live-page',
+  'sbi-live-v2-page',
   'no-right-panel'
 ]);
 

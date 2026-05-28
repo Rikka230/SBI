@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SBI Console - Lives V2</title>
+  <link rel="stylesheet" href="/admin/css/admin-layout.css">
+  <link rel="stylesheet" href="/admin/css/admin.css?v=8.0P.167.232">
+  <link rel="stylesheet" href="/admin/css/admin-surface-unified.css?v=8.0P.167.232">
+  <link rel="stylesheet" href="/css/live-scheduler-v2.css?v=8.0P.167.232">
+  <script src="/admin/js/components.js?v=8.0P.167.232"></script>
+</head>
+<body class="preload sbi-admin-surface sbi-live-v2-page" data-live-v2-role="admin">
+  <div class="app-container" id="app-container">
+    <admin-left-panel></admin-left-panel>
+    <header class="top-bar">
+      <button class="mobile-toggle left-toggle" id="btn-toggle-mobile" type="button" aria-label="Menu"><svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg></button>
+      <span class="page-title">Lives V2</span>
+      <button class="mobile-toggle right-toggle" id="btn-toggle-right" type="button" aria-label="Profil"><svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></button>
+    </header>
+    <admin-right-panel></admin-right-panel>
+
+    <main id="main-content">
+      <div class="content-wrapper sbi-live-v2" data-sbi-live-v2>
+        <section class="sbi-live-v2-hero">
+          <div>
+            <span class="sbi-live-v2-kicker">Administration</span>
+            <h1>Gestion des lives V2</h1>
+            <p>Nouvelle page isolée pour reconstruire l’ergonomie des lives sans toucher au Live V1 validé.</p>
+          </div>
+          <span id="sbi-live-v2-status" class="sbi-live-v2-status">Initialisation…</span>
+        </section>
+
+        <section id="sbi-live-v2-summary" class="sbi-live-v2-summary" aria-label="Résumé lives"></section>
+
+        <section class="sbi-live-v2-layout">
+          <aside class="sbi-live-v2-card sbi-live-v2-promotions-card">
+            <div class="sbi-live-v2-card-head">
+              <strong>Promotions</strong>
+              <span>Promotions actives et cursus associés.</span>
+            </div>
+            <div id="sbi-live-v2-promotions" class="sbi-live-v2-list"></div>
+          </aside>
+
+          <section class="sbi-live-v2-card sbi-live-v2-cursus-card">
+            <div class="sbi-live-v2-card-head sbi-live-v2-card-head-row">
+              <div>
+                <strong>Lives du cursus</strong>
+                <span>Source prioritaire : cursus enregistré, puis promotion synchronisée.</span>
+              </div>
+              <button id="sbi-live-v2-refresh" class="sbi-live-v2-small-btn" type="button">Rafraîchir</button>
+            </div>
+            <div id="sbi-live-v2-lives" class="sbi-live-v2-live-list"></div>
+          </section>
+
+          <aside class="sbi-live-v2-card sbi-live-v2-detail-card">
+            <div id="sbi-live-v2-detail"></div>
+          </aside>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script type="module" src="/admin/js/admin-ui.js?v=8.0P.167.232"></script>
+  <script type="module" src="/admin/js/admin-notifications.js?v=8.0P.167.232"></script>
+  <script type="module" src="/js/live/live-scheduler-v2-page.js?v=8.0P.167.232"></script>
+</body>
+</html>

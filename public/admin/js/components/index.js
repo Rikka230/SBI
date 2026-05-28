@@ -1,7 +1,7 @@
 import { injectPanelStyles } from './panel-styles.js';
-import { registerAdminPanels } from './admin-panels.js?v=8.0P.167.98.1';
+import { registerAdminPanels } from './admin-panels.js?v=8.0P.167.232';
 import { registerStudentPanels } from './student-panels.js';
-import { registerTeacherPanels } from './teacher-panels.js';
+import { registerTeacherPanels } from './teacher-panels.js?v=8.0P.167.232';
 export { waitForExpectedComponents, waitForSbiComponents, waitForSbiTopbar } from './ready.js';
 
 injectPanelStyles();

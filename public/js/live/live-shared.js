@@ -92,93 +92,22 @@ export function getPromotionName(promotion = {}) {
   return clean(promotion.name || promotion.promotionName || promotion.title || promotion.titre || promotion.id || 'Promotion SBI');
 }
 
-function buildLiveIdCandidates(live = {}) {
-  return [live.id, live.itemId, live.sourceItemId, live.liveId, live.templateItemId]
-    .map((value) => clean(value))
-    .filter(Boolean);
-}
-
-export function findLinkedCoursePlanItem(promotion = {}, live = {}) {
-  if (!promotion || typeof promotion !== 'object') return null;
-  const coursePlan = Array.isArray(promotion.coursePlan) ? promotion.coursePlan.filter((item) => item && typeof item === 'object') : [];
-  if (!coursePlan.length) return null;
-  const candidateIds = new Set(buildLiveIdCandidates(live));
-  const liveTitle = clean(live.title || live.courseTitle || live.name || live.label || '').toLowerCase();
-
-  const direct = coursePlan.find((item) => {
-    const ids = [item.id, item.itemId, item.sourceItemId, item.liveId, item.templateItemId]
-      .map((value) => clean(value))
-      .filter(Boolean);
-    if (ids.some((id) => candidateIds.has(id))) return true;
-    const trackingIds = [
-      item.liveTracking?.itemId,
-      item.liveTracking?.sourceItemId,
-      item.liveTracking?.templateItemId
-    ].map((value) => clean(value)).filter(Boolean);
-    if (trackingIds.some((id) => candidateIds.has(id))) return true;
-    return false;
-  });
-  if (direct) return direct;
-
-  if (!liveTitle) return null;
-  return coursePlan.find((item) => {
-    const titles = [item.title, item.courseTitle, item.liveTracking?.title]
-      .map((value) => clean(value).toLowerCase())
-      .filter(Boolean);
-    return titles.includes(liveTitle);
-  }) || null;
-}
-
-export function getLiveTitle(live = {}, promotion = null) {
+export function getLiveTitle(live = {}) {
   if (isTestLiveItem(live)) return clean(live.title || live.courseTitle || 'Live test');
-  const linked = promotion ? findLinkedCoursePlanItem(promotion, live) : null;
-  return clean(
-    linked?.title
-    || linked?.courseTitle
-    || linked?.liveTracking?.title
-    || live.liveTracking?.title
-    || live.courseTitle
-    || live.title
-    || live.name
-    || live.label
-    || 'Live SBI'
-  );
+  return clean(live.title || live.courseTitle || live.name || live.label || 'Live SBI');
 }
 
-export function getLiveWindow(live = {}, promotion = null) {
-  const linked = promotion ? findLinkedCoursePlanItem(promotion, live) : null;
-  const start = clean(
-    live.teacherSchedulingWindowStartAt
-    || live.schedulingWindow?.teacherCanSelectFrom
-    || live.schedulingWindow?.recommendedStartAt
-    || linked?.teacherSchedulingWindowStartAt
-    || linked?.liveTracking?.schedulingWindow?.teacherCanSelectFrom
-    || linked?.liveTracking?.schedulingWindow?.recommendedStartAt
-    || ''
-  );
-  const end = clean(
-    live.teacherSchedulingWindowEndAt
-    || live.schedulingWindow?.teacherCanSelectUntil
-    || live.schedulingWindow?.recommendedEndAt
-    || linked?.teacherSchedulingWindowEndAt
-    || linked?.liveTracking?.schedulingWindow?.teacherCanSelectUntil
-    || linked?.liveTracking?.schedulingWindow?.recommendedEndAt
-    || ''
-  );
-  return { start, end, linkedItem: linked };
-}
-
-export function getLiveWindowLabel(live = {}, promotion = null) {
+export function getLiveWindowLabel(live = {}) {
   if (isTestLiveItem(live)) return 'Libre pour test - hors cursus';
-  const { start, end } = getLiveWindow(live, promotion);
+  const start = live.teacherSchedulingWindowStartAt || live.schedulingWindow?.teacherCanSelectFrom || live.schedulingWindow?.recommendedStartAt || '';
+  const end = live.teacherSchedulingWindowEndAt || live.schedulingWindow?.teacherCanSelectUntil || live.schedulingWindow?.recommendedEndAt || '';
   if (!start && !end) return 'Plage non renseignee';
   if (start && end) return `${formatDateTime(start)} -> ${formatDateTime(end)}`;
-  return start ? `A partir du ${formatDateTime(start)}` : `Jusqu\'au ${formatDateTime(end)}`;
+  return start ? `A partir du ${formatDateTime(start)}` : `Jusqu'au ${formatDateTime(end)}`;
 }
 
-export function makeLiveKey(promotionId = '', live = {}, promotion = null) {
-  const linked = promotion ? findLinkedCoursePlanItem(promotion, live) : null;
-  return `${clean(promotionId)}::${clean(live.id || live.itemId || live.sourceItemId || linked?.itemId || linked?.id || getLiveTitle(live, promotion))}`;
+export function makeLiveKey(promotionId = '', live = {}) {
+  return `${clean(promotionId)}::${clean(live.id || live.itemId || live.sourceItemId || getLiveTitle(live))}`;
 }
 
 export function sessionKey(session = {}) {
@@ -227,7 +156,7 @@ export function getPromotionLives(promotion = {}, options = {}) {
     ? promotion.livePlanning.filter((item) => item && typeof item === 'object')
     : [];
 
-  if (options.includeTestLive !== true) return rows.filter((item) => !isTestLiveItem(item));
+  if (options.includeTestLive !== true) return rows;
 
   const testLives = rows.filter(isTestLiveItem);
   const regularLives = rows.filter((item) => !isTestLiveItem(item));
@@ -239,7 +168,7 @@ export function getPromotionLives(promotion = {}, options = {}) {
 }
 
 export function getLiveSessionForItem(promotion = {}, item = {}, sessionMap = new Map()) {
-  return sessionMap.get(makeLiveKey(promotion.id, item, promotion))
+  return sessionMap.get(makeLiveKey(promotion.id, item))
     || sessionMap.get(item.liveSessionId || '')
     || null;
 }

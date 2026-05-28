@@ -12,17 +12,15 @@ import {
   fromDateTimeLocal,
   getLiveSessionForItem,
   getLiveTitle,
-  getLiveWindow,
   getLiveWindowLabel,
   getPromotionLives,
   getPromotionName,
-  isTestLiveItem,
   loadLiveSessionsForPromotions,
   loadProfile,
   normalizeList,
   renderEmpty,
   toDateTimeLocal
-} from '/js/live/live-shared.js?v=8.0P.167.231';
+} from '/js/live/live-shared.js?v=8.0P.167.209';
 
 const functionsInstance = getFunctions(app, 'europe-west1');
 const getLiveSchedulerData = httpsCallable(functionsInstance, 'getLiveSchedulerData');
@@ -51,36 +49,6 @@ function setStatus(message = '', tone = 'muted') {
   if (!node) return;
   node.textContent = message;
   node.dataset.tone = tone;
-}
-
-function setHeroCopy() {
-  const hero = document.querySelector('.sbi-live-hero');
-  if (!hero) return;
-  const heroCopy = hero.querySelector('div') || hero;
-  const kicker = hero.querySelector('.sbi-live-kicker');
-  const title = hero.querySelector('h1');
-  let subtitle = hero.querySelector('p');
-  if (!subtitle) {
-    subtitle = document.createElement('p');
-    heroCopy.appendChild(subtitle);
-  }
-  if (kicker) kicker.textContent = state.role === 'teacher' ? 'Professeur' : 'Administration';
-  if (title) title.textContent = 'Gestion des lives';
-  subtitle.textContent = 'Planifiez et gérez les sessions live de vos promotions et cursus.';
-}
-
-function ensureSummaryNode() {
-  const wrapper = document.querySelector('[data-sbi-live-scheduler]');
-  const hero = document.querySelector('.sbi-live-hero');
-  if (!wrapper || !hero) return null;
-  let summary = $('sbi-live-summary');
-  if (!summary) {
-    summary = document.createElement('section');
-    summary.id = 'sbi-live-summary';
-    summary.className = 'sbi-live-summary';
-    hero.insertAdjacentElement('afterend', summary);
-  }
-  return summary;
 }
 
 async function safeGetDocsForLive(queryRef, label = 'requete live') {
@@ -221,130 +189,47 @@ function getSelectedPromotion() {
   return state.promotions.find((promotion) => promotion.id === state.selectedPromotionId) || state.promotions[0] || null;
 }
 
-function getLiveId(live = {}, promotion = null) {
-  return clean(live.id || live.itemId || live.sourceItemId || getLiveTitle(live, promotion));
+function getSelectedLive(promotion = getSelectedPromotion()) {
+  const lives = getPromotionLives(promotion || {}, { includeTestLive: true });
+  return lives.find((live) => clean(live.id || live.itemId || live.title) === state.selectedLiveId) || lives[0] || null;
 }
 
-function getPromotionLiveRows(promotion, sessionMap = new Map()) {
-  const lives = getPromotionLives(promotion || {});
-  return lives.map((live, index) => {
-    const session = getLiveSessionForItem(promotion, live, sessionMap);
-    const { start: windowStart, end: windowEnd } = getLiveWindow(live, promotion);
-    const startAt = session?.selectedStartAt || live.selectedLiveAt || '';
-    const endAt = session?.selectedEndAt || live.selectedLiveEndAt || '';
-    const title = getLiveTitle(live, promotion);
-    const liveId = getLiveId(live, promotion);
-    const report = Boolean(session?.report || live.reportOutsideWindow || live.liveSchedulingStatus === 'report' || live.teacherSelectionStatus === 'reported');
-    const outsideWindow = Boolean(startAt && ((windowStart && Date.parse(startAt) < Date.parse(windowStart)) || (windowEnd && Date.parse(startAt) > Date.parse(windowEnd))));
-    const isScheduled = Boolean(startAt || live.liveSessionId || session?.id);
-    const scheduleState = report || outsideWindow ? 'report' : (isScheduled ? 'scheduled' : 'to_plan');
-    return {
-      id: liveId,
-      live,
-      session,
-      index,
-      title,
-      startAt,
-      endAt,
-      windowStart,
-      windowEnd,
-      windowLabel: getLiveWindowLabel(live, promotion),
-      scheduleState,
-      order: Number.isFinite(Number(live.order)) ? Number(live.order) : index
-    };
-  }).sort((a, b) => (a.order - b.order) || a.title.localeCompare(b.title, 'fr'));
+function isTestLive(live = {}) {
+  const ids = [live.id, live.itemId, live.sourceItemId, live.type]
+    .map((value) => clean(value).toLowerCase())
+    .filter(Boolean);
+  return live.isTestLive === true || live.testLive === true || ids.includes('sbi-live-test') || ids.includes('live_test');
 }
 
-function getSelectedLiveRow(promotion = getSelectedPromotion()) {
-  const sessionMap = buildSessionMap(state.sessions);
-  const rows = getPromotionLiveRows(promotion, sessionMap);
-  return rows.find((row) => row.id === state.selectedLiveId) || rows[0] || null;
+function addMinutesIso(baseDate, minutes) {
+  return new Date(baseDate.getTime() + minutes * 60000).toISOString();
 }
 
-function getPromotionStats(promotion, sessionMap = new Map()) {
-  const rows = getPromotionLiveRows(promotion, sessionMap);
-  const total = rows.length;
-  const scheduled = rows.filter((row) => row.scheduleState === 'scheduled').length;
-  const reports = rows.filter((row) => row.scheduleState === 'report').length;
-  const toPlan = rows.filter((row) => row.scheduleState === 'to_plan').length;
-  return { total, scheduled, reports, toPlan };
+function getDefaultTestStartIso() {
+  const now = new Date();
+  now.setSeconds(0, 0);
+  return addMinutesIso(now, 5);
 }
 
-function getSelectedFormationLabel(promotion = {}) {
-  return clean(promotion.curriculumTitle || promotion.formationName || promotion.formationTitle || 'Cursus SBI');
-}
-
-function getStatusBadgeHtml(stateKey = 'to_plan') {
-  const labels = {
-    scheduled: 'Programmé',
-    report: 'Report',
-    to_plan: 'À planifier'
-  };
-  return `<span class="sbi-live-chip is-${escapeHtml(stateKey)}">${escapeHtml(labels[stateKey] || 'À planifier')}</span>`;
-}
-
-function renderSummary(sessionMap) {
-  const root = ensureSummaryNode();
-  if (!root) return;
-  const promotion = getSelectedPromotion();
-  if (!promotion) {
-    root.innerHTML = '';
-    return;
-  }
-  const stats = getPromotionStats(promotion, sessionMap);
-  root.innerHTML = `
-    <article class="sbi-live-summary-card is-promo">
-      <span class="sbi-live-summary-card__label">Promotion sélectionnée</span>
-      <strong>${escapeHtml(getPromotionName(promotion))}</strong>
-      <span>${escapeHtml(getSelectedFormationLabel(promotion))}</span>
-    </article>
-    <article class="sbi-live-summary-card">
-      <span class="sbi-live-summary-card__label">Formation / Cursus</span>
-      <strong>${escapeHtml(getSelectedFormationLabel(promotion))}</strong>
-      <span>${stats.total} live(s) cursus</span>
-    </article>
-    <article class="sbi-live-summary-card is-metric">
-      <span class="sbi-live-summary-card__label">Lives à planifier</span>
-      <strong>${stats.toPlan}</strong>
-      <span>Sur ${stats.total} lives</span>
-    </article>
-    <article class="sbi-live-summary-card is-metric">
-      <span class="sbi-live-summary-card__label">Lives programmés</span>
-      <strong>${stats.scheduled}</strong>
-      <span>Sur ${stats.total} lives</span>
-    </article>
-    <article class="sbi-live-summary-card is-metric">
-      <span class="sbi-live-summary-card__label">Reports</span>
-      <strong>${stats.reports}</strong>
-      <span>Hors période prévue</span>
-    </article>
-  `;
-}
-
-function renderPromotionList(sessionMap) {
+function renderPromotionList() {
   const root = $('sbi-live-promotions');
   if (!root) return;
   if (!state.promotions.length) {
-    root.innerHTML = renderEmpty(state.role === 'admin' ? 'Aucune promotion trouvée.' : 'Aucune promotion rattachée à vos formations.');
+    root.innerHTML = renderEmpty(state.role === 'admin' ? 'Aucune promotion trouvee.' : 'Aucune promotion rattachee a vos formations.');
     return;
   }
 
-  root.innerHTML = `${state.promotions.map((promotion) => {
-    const stats = getPromotionStats(promotion, sessionMap);
+  root.innerHTML = state.promotions.map((promotion) => {
+    const lives = getPromotionLives(promotion, { includeTestLive: true });
+    const scheduled = lives.filter((live) => live.selectedLiveAt || live.liveSessionId).length;
     const active = promotion.id === state.selectedPromotionId ? ' is-active' : '';
     return `
       <button class="sbi-live-promotion${active}" type="button" data-promotion-id="${escapeHtml(promotion.id)}">
         <strong>${escapeHtml(getPromotionName(promotion))}</strong>
-        <span class="sbi-live-promotion__sub">${escapeHtml(getSelectedFormationLabel(promotion))}</span>
-        <div class="sbi-live-promotion__meta">
-          <span>${stats.total} lives cursus</span>
-          <span>${stats.toPlan} à planifier</span>
-          <span>${stats.scheduled} programmés</span>
-        </div>
+        <span>${lives.length} live(s) prevu(s) - ${scheduled} date(s) validee(s)</span>
       </button>
     `;
-  }).join('')}
-  <div class="sbi-live-list-footer">Liste des promotions accessibles</div>`;
+  }).join('');
 
   root.querySelectorAll('[data-promotion-id]').forEach((button) => {
     button.addEventListener('click', () => {
@@ -358,22 +243,21 @@ function renderPromotionList(sessionMap) {
 function renderLiveList(promotion, sessionMap) {
   const root = $('sbi-live-items');
   if (!root) return;
-  const rows = getPromotionLiveRows(promotion || {}, sessionMap);
-  if (!rows.length) {
+  const lives = getPromotionLives(promotion || {}, { includeTestLive: true });
+  if (!lives.length) {
     root.innerHTML = renderEmpty('Aucun bloc live dans le cursus de cette promotion.');
     return;
   }
 
-  root.innerHTML = rows.map((row, idx) => {
-    const selected = state.selectedLiveId === row.id || (!state.selectedLiveId && idx === 0);
+  root.innerHTML = lives.map((live) => {
+    const id = clean(live.id || live.itemId || getLiveTitle(live));
+    const session = getLiveSessionForItem(promotion, live, sessionMap);
+    const selected = state.selectedLiveId === id || (!state.selectedLiveId && live === lives[0]);
+    const date = session?.selectedStartAt || live.selectedLiveAt || '';
     return `
-      <button class="sbi-live-item${selected ? ' is-active' : ''}" type="button" data-live-id="${escapeHtml(row.id)}">
-        <div class="sbi-live-item__top">
-          <strong>${escapeHtml(`${row.order + 1}. ${row.title}`)}</strong>
-          ${getStatusBadgeHtml(row.scheduleState)}
-        </div>
-        <span>Période prévue : ${escapeHtml(row.windowLabel)}</span>
-        <span>${row.startAt ? `Date prévue : ${escapeHtml(formatDateRange(row.startAt, row.endAt))}` : 'Date prévue : non planifiée'}</span>
+      <button class="sbi-live-item${selected ? ' is-active' : ''}" type="button" data-live-id="${escapeHtml(id)}">
+        <strong>${escapeHtml(getLiveTitle(live))}</strong>
+        <span>${date ? formatDateRange(date, session?.selectedEndAt || live.selectedLiveEndAt) : getLiveWindowLabel(live)}</span>
       </button>
     `;
   }).join('');
@@ -389,162 +273,105 @@ function renderLiveList(promotion, sessionMap) {
 function renderCalendar(promotion, sessionMap) {
   const root = $('sbi-live-calendar');
   if (!root) return;
-  const rows = getPromotionLiveRows(promotion || {}, sessionMap);
-  if (!rows.length) {
-    root.innerHTML = renderEmpty('Aucun live à placer.');
+  const lives = getPromotionLives(promotion || {}, { includeTestLive: true });
+  if (!lives.length) {
+    root.innerHTML = renderEmpty('Aucun live a placer.');
     return;
   }
 
-  root.innerHTML = rows.map((row) => `
-    <div class="sbi-live-day is-${escapeHtml(row.scheduleState)}">
-      <strong>${escapeHtml(row.startAt ? formatDateTime(row.startAt) : 'À planifier')}</strong>
-      <span>${escapeHtml(row.title)}</span>
-      <small>${escapeHtml(row.windowLabel)}</small>
-    </div>
-  `).join('');
+  root.innerHTML = lives.map((live) => {
+    const session = getLiveSessionForItem(promotion, live, sessionMap);
+    const date = session?.selectedStartAt || live.selectedLiveAt || live.teacherSchedulingWindowStartAt || '';
+    return `
+      <div class="sbi-live-day">
+        <strong>${escapeHtml(date ? formatDateTime(date) : 'A planifier')}</strong>
+        <span>${escapeHtml(getLiveTitle(live))}</span>
+      </div>
+    `;
+  }).join('');
 }
 
-function getDetailScheduleMode(row = {}) {
-  if (!row) return 'to_plan';
-  return row.scheduleState === 'report' ? 'report' : 'scheduled';
-}
-
-function getDurationMinutes(startAt = '', endAt = '') {
-  const startMs = Date.parse(startAt || '');
-  const endMs = Date.parse(endAt || '');
-  if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= startMs) return 60;
-  return Math.max(15, Math.round((endMs - startMs) / 60000));
-}
-
-function addMinutesIso(baseIso = '', minutes = 60) {
-  const baseMs = Date.parse(baseIso || '');
-  if (!Number.isFinite(baseMs)) return '';
-  return new Date(baseMs + minutes * 60000).toISOString();
-}
-
-function renderDetail(promotion, row, sessionMap) {
+function renderDetail(promotion, live, sessionMap) {
   const root = $('sbi-live-detail');
   if (!root) return;
-  if (!promotion || !row) {
-    root.innerHTML = renderEmpty('Sélectionnez une promotion et un bloc live.');
+  if (!promotion || !live) {
+    root.innerHTML = renderEmpty('Selectionnez une promotion et un bloc live.');
     return;
   }
 
-  const session = row.session || getLiveSessionForItem(promotion, row.live, sessionMap);
-  const canOpen = Boolean(session?.id || row.live.liveSessionId);
-  const duration = getDurationMinutes(row.startAt || row.windowStart, row.endAt || row.windowEnd);
-  const selectedStartLocal = toDateTimeLocal(row.startAt || row.windowStart || '');
-  const selectedMode = getDetailScheduleMode(row);
+  const session = getLiveSessionForItem(promotion, live, sessionMap);
+  const testLive = isTestLive(live);
+  const defaultTestStart = testLive ? getDefaultTestStartIso() : '';
+  const start = session?.selectedStartAt || live.selectedLiveAt || defaultTestStart || '';
+  const end = session?.selectedEndAt || live.selectedLiveEndAt || (defaultTestStart ? addMinutesIso(new Date(defaultTestStart), 60) : '');
+  const canStart = Boolean(session?.id || live.liveSessionId);
 
   root.innerHTML = `
-    <div class="sbi-live-panel__head sbi-live-panel__head--detail">
-      <div>
-        <strong>${escapeHtml(row.title)}</strong>
-        <span>${escapeHtml(getPromotionName(promotion))}</span>
-      </div>
-      ${getStatusBadgeHtml(row.scheduleState)}
+    <div class="sbi-live-panel__head">
+      <strong>${escapeHtml(getLiveTitle(live))}</strong>
+      <span>${escapeHtml(getPromotionName(promotion))}</span>
+      ${testLive ? '<em class="sbi-live-test-badge">Test hors cursus</em>' : ''}
     </div>
     <form class="sbi-live-form" id="sbi-live-form">
-      <section class="sbi-live-info-block">
-        <h3>Informations cursus (non modifiables)</h3>
-        <div class="sbi-live-info-grid">
-          <span>Promotion</span><strong>${escapeHtml(getPromotionName(promotion))}</strong>
-          <span>Formation / Cursus</span><strong>${escapeHtml(getSelectedFormationLabel(promotion))}</strong>
-          <span>Période prévue dans le cursus</span><strong>${escapeHtml(row.windowStart || row.windowEnd ? `Du ${formatDateTime(row.windowStart)} au ${formatDateTime(row.windowEnd)}` : 'Non renseignée')}</strong>
-        </div>
-      </section>
-
-      <section class="sbi-live-info-block">
-        <h3>Planification</h3>
-        <div class="sbi-live-form-row">
-          <label>Date prévue du live
-            <input id="sbi-live-start" type="datetime-local" value="${escapeHtml(selectedStartLocal)}">
-          </label>
-          <label>Durée prévue
-            <select id="sbi-live-duration">
-              ${[30, 45, 60, 90, 120].map((minutes) => `<option value="${minutes}" ${duration === minutes ? 'selected' : ''}>${minutes} min</option>`).join('')}
-            </select>
-          </label>
-        </div>
-        <label>Statut de planification</label>
-        <div class="sbi-live-mode-toggle" id="sbi-live-mode-toggle">
-          <button type="button" class="sbi-live-mode-btn${selectedMode === 'scheduled' ? ' is-active' : ''}" data-mode="scheduled">Dans la période prévue</button>
-          <button type="button" class="sbi-live-mode-btn${selectedMode === 'report' ? ' is-active' : ''}" data-mode="report">Report hors période</button>
-        </div>
-        <div class="sbi-live-room-note" id="sbi-live-mode-note">${selectedMode === 'report' ? 'Le live sera enregistré comme report hors période prévue.' : 'La date prévue doit rester dans la période autorisée du cursus.'}</div>
-        <label>Lien de salle externe (optionnel)
-          <input id="sbi-live-meeting-url" value="${escapeHtml(session?.meetingUrl || '')}" placeholder="https://...">
-        </label>
-      </section>
-
-      <div class="sbi-live-actions">
-        <button class="sbi-live-btn sbi-live-btn--primary" type="submit">Enregistrer la planification</button>
-        <button class="sbi-live-btn sbi-live-btn--ghost" type="button" id="sbi-live-open-room" ${canOpen ? '' : 'disabled'}>Ouvrir la salle</button>
-        <button class="sbi-live-btn sbi-live-btn--ghost" type="button" id="sbi-live-started" ${canOpen ? '' : 'disabled'}>Notifier le démarrage</button>
+      <label>Titre affiche
+        <input id="sbi-live-title" value="${escapeHtml(session?.title || getLiveTitle(live))}">
+      </label>
+      <label>Debut valide
+        <input id="sbi-live-start" type="datetime-local" value="${escapeHtml(toDateTimeLocal(start))}">
+      </label>
+      <label>Fin validee
+        <input id="sbi-live-end" type="datetime-local" value="${escapeHtml(toDateTimeLocal(end))}">
+      </label>
+      <label>Lien salle externe provisoire
+        <input id="sbi-live-meeting-url" value="${escapeHtml(session?.meetingUrl || '')}" placeholder="https://...">
+      </label>
+      <div class="sbi-live-room-note">
+        ${testLive
+          ? 'Live test non lie au cursus : validez une date pour le rendre visible aux eleves de cette promotion, puis ouvrez la salle.'
+          : `Provider live: ${escapeHtml(session?.provider || 'a connecter')}. Watermark nominatif, chat et fichiers sont prevus dans la structure de session.`}
       </div>
-
-      <div class="sbi-live-test-box">
-        <strong>Ouvrir une salle test</strong>
-        <span>Salle test accessible uniquement à vous pour cette promotion.</span>
-        <button class="sbi-live-btn sbi-live-btn--ghost" type="button" id="sbi-live-open-test">Préparer la salle test</button>
+      <div class="sbi-live-actions">
+        <button class="sbi-live-btn" type="submit">Valider la date</button>
+        <button class="sbi-live-btn sbi-live-btn--ghost" type="button" id="sbi-live-open-room" ${canStart ? '' : 'disabled'}>Ouvrir la salle</button>
+        <button class="sbi-live-btn sbi-live-btn--ghost" type="button" id="sbi-live-started" ${canStart ? '' : 'disabled'}>Notifier le demarrage</button>
       </div>
     </form>
   `;
 
   $('sbi-live-form')?.addEventListener('submit', async (event) => {
     event.preventDefault();
-    await submitSchedule(promotion, row, session);
+    await submitSchedule(promotion, live, session);
   });
-
-  $('sbi-live-mode-toggle')?.querySelectorAll('[data-mode]').forEach((button) => {
-    button.addEventListener('click', () => {
-      $('sbi-live-mode-toggle')?.querySelectorAll('[data-mode]').forEach((node) => node.classList.toggle('is-active', node === button));
-      const note = $('sbi-live-mode-note');
-      if (note) note.textContent = button.dataset.mode === 'report'
-        ? 'Le live sera enregistré comme report hors période prévue.'
-        : 'La date prévue doit rester dans la période autorisée du cursus.';
-    });
-  });
-
   $('sbi-live-open-room')?.addEventListener('click', () => {
-    const liveId = session?.id || row.live.liveSessionId || '';
+    const liveId = session?.id || live.liveSessionId || '';
     if (!liveId) return;
     window.open(`/live-room.html?liveId=${encodeURIComponent(liveId)}&start=1`, '_blank', 'noopener,noreferrer');
   });
-
   $('sbi-live-started')?.addEventListener('click', async () => {
-    const liveId = session?.id || row.live.liveSessionId || '';
+    const liveId = session?.id || live.liveSessionId || '';
     if (!liveId) return;
     await submitStarted(liveId);
   });
-
-  $('sbi-live-open-test')?.addEventListener('click', async () => {
-    await openOrCreateTestRoom(promotion);
-  });
 }
 
-async function submitSchedule(promotion, row, session) {
+async function submitSchedule(promotion, live, session) {
   const button = $('sbi-live-form')?.querySelector('button[type="submit"]');
   if (button) button.disabled = true;
   setStatus('Programmation du live...', 'muted');
 
   try {
-    const startIso = fromDateTimeLocal($('sbi-live-start')?.value || '');
-    const durationMinutes = Number($('sbi-live-duration')?.value || 60) || 60;
-    const selectedMode = $('sbi-live-mode-toggle')?.querySelector('.is-active')?.dataset?.mode || 'scheduled';
-    const endIso = addMinutesIso(startIso, durationMinutes);
     const result = await scheduleLiveSession({
       promotionId: promotion.id,
-      liveId: session?.id || row.live.liveSessionId || row.live.id || row.live.itemId || '',
-      sourceItemId: row.live.sourceItemId || row.live.id || row.live.itemId || '',
-      type: row.live.type || 'live_session',
+      liveId: session?.id || live.liveSessionId || live.id || live.itemId || '',
+      sourceItemId: live.sourceItemId || live.id || live.itemId || '',
+      type: isTestLive(live) ? 'live_test' : (live.type || 'live_session'),
       provider: 'daily',
-      selectedStartAt: startIso,
-      selectedEndAt: endIso,
-      meetingUrl: $('sbi-live-meeting-url')?.value || '',
-      report: selectedMode === 'report'
+      title: $('sbi-live-title')?.value || getLiveTitle(live),
+      selectedStartAt: fromDateTimeLocal($('sbi-live-start')?.value || ''),
+      selectedEndAt: fromDateTimeLocal($('sbi-live-end')?.value || ''),
+      meetingUrl: $('sbi-live-meeting-url')?.value || ''
     });
-    setStatus(result?.data?.message || 'Live programmé.', 'success');
+    setStatus(result?.data?.message || 'Live programme.', 'success');
     await refreshData();
   } catch (error) {
     console.error('[SBI Lives] Programmation impossible :', error);
@@ -554,69 +381,28 @@ async function submitSchedule(promotion, row, session) {
   }
 }
 
-async function openOrCreateTestRoom(promotion) {
-  if (!promotion?.id) return;
-  setStatus('Préparation de la salle test...', 'muted');
-  try {
-    const sessionMap = buildSessionMap(state.sessions);
-    const testLive = getPromotionLives(promotion, { includeTestLive: true }).find((item) => isTestLiveItem(item));
-    const testSession = testLive ? getLiveSessionForItem(promotion, testLive, sessionMap) : null;
-    let liveId = testSession?.id || testLive?.liveSessionId || '';
-
-    if (!liveId) {
-      const now = new Date();
-      now.setMinutes(now.getMinutes() + 5, 0, 0);
-      const startIso = now.toISOString();
-      const endIso = addMinutesIso(startIso, 60);
-      const result = await scheduleLiveSession({
-        promotionId: promotion.id,
-        liveId: 'sbi-live-test',
-        sourceItemId: 'sbi-live-test',
-        type: 'live_test',
-        provider: 'daily',
-        title: 'Live test',
-        selectedStartAt: startIso,
-        selectedEndAt: endIso,
-        report: false
-      });
-      liveId = result?.data?.liveId || '';
-      await refreshData();
-    }
-
-    if (liveId) {
-      window.open(`/live-room.html?liveId=${encodeURIComponent(liveId)}&start=1`, '_blank', 'noopener,noreferrer');
-      setStatus('Salle test prête.', 'success');
-    }
-  } catch (error) {
-    console.error('[SBI Lives] Salle test impossible :', error);
-    setStatus(error?.message || 'Préparation de la salle test impossible.', 'error');
-  }
-}
-
 async function submitStarted(liveId) {
-  setStatus('Envoi de la notification de démarrage...', 'muted');
+  setStatus('Envoi de la notification de demarrage...', 'muted');
   try {
     const result = await notifyLiveStarted({ liveId });
-    setStatus(result?.data?.message || 'Notification envoyée.', 'success');
+    setStatus(result?.data?.message || 'Notification envoyee.', 'success');
   } catch (error) {
-    console.error('[SBI Lives] Notification démarrage impossible :', error);
+    console.error('[SBI Lives] Notification demarrage impossible :', error);
     setStatus(error?.message || 'Notification impossible.', 'error');
   }
 }
 
 function renderAll() {
-  setHeroCopy();
   const promotion = getSelectedPromotion();
   if (promotion && !state.selectedPromotionId) state.selectedPromotionId = promotion.id;
   const sessionMap = buildSessionMap(state.sessions);
-  const row = getSelectedLiveRow(promotion);
-  if (row && !state.selectedLiveId) state.selectedLiveId = row.id;
+  const live = getSelectedLive(promotion);
+  if (live && !state.selectedLiveId) state.selectedLiveId = clean(live.id || live.itemId || getLiveTitle(live));
 
-  renderSummary(sessionMap);
-  renderPromotionList(sessionMap);
+  renderPromotionList();
   renderLiveList(promotion, sessionMap);
   renderCalendar(promotion, sessionMap);
-  renderDetail(promotion, row, sessionMap);
+  renderDetail(promotion, live, sessionMap);
 }
 
 async function refreshData() {

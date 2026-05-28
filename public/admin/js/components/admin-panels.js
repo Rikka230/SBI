@@ -48,7 +48,11 @@ export class AdminLeftPanel extends HTMLElement {
           </li>
           <li class="nav-item" id="nav-lives" data-href="/admin/admin-lives.html" data-sbi-href="/admin/admin-lives.html" role="link" tabindex="0">
             ${LIVE_ICON}
-            <span class="nav-text">Lives</span>
+            <span class="nav-text">Lives V1</span>
+          </li>
+          <li class="nav-item" id="nav-lives-v2" data-href="/admin/admin-lives-v2.html" data-sbi-href="/admin/admin-lives-v2.html" role="link" tabindex="0">
+            ${LIVE_ICON}
+            <span class="nav-text">Lives V2</span>
           </li>
           <li class="nav-item" id="nav-cursus" data-href="/admin/admin-cursus.html" data-sbi-href="/admin/admin-cursus.html" data-sbi-route="admin-cursus" role="link" tabindex="0" title="Ouvrir la page Cursus">
             ${CURSUS_ICON}
@@ -70,6 +74,8 @@ export class AdminLeftPanel extends HTMLElement {
       this.querySelector('#nav-audit-log')?.classList.add('active');
     } else if (path.includes('admin-promotions.html')) {
       this.querySelector('#nav-promotions')?.classList.add('active');
+    } else if (path.includes('admin-lives-v2.html')) {
+      this.querySelector('#nav-lives-v2')?.classList.add('active');
     } else if (path.includes('admin-lives.html') || path.includes('formations-live.html')) {
       this.querySelector('#nav-lives')?.classList.add('active');
     } else if (path.includes('admin-cursus.html')) {
