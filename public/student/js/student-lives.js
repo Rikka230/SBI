@@ -17,7 +17,7 @@ import {
   loadProfile,
   loadPromotionsByIds,
   renderEmpty
-} from '/js/live/live-shared.js?v=8.0P.167.230';
+} from '/js/live/live-shared.js?v=8.0P.167.231';
 
 const functionsInstance = getFunctions(app, 'europe-west1');
 const getStudentLiveAttendance = httpsCallable(functionsInstance, 'getStudentLiveAttendance');
@@ -101,7 +101,7 @@ function getRows() {
       const liveId = session?.id || live.liveSessionId || `${promotion.id}-${clean(live.id || live.itemId || getLiveTitle(live))}`;
       rows.push({
         id: liveId,
-        title: session?.title || getLiveTitle(live),
+        title: session?.title || getLiveTitle(live, promotion),
         promotion,
         live,
         session,
@@ -210,7 +210,7 @@ function renderList(rows) {
     <article class="sbi-live-card">
       <strong>${escapeHtml(row.title)}</strong>
       <span>${escapeHtml(getPromotionName(row.promotion))}</span>
-      <span>${row.startAt ? escapeHtml(formatDateRange(row.startAt, row.endAt)) : escapeHtml(getLiveWindowLabel(row.live))}</span>
+      <span>${row.startAt ? escapeHtml(formatDateRange(row.startAt, row.endAt)) : escapeHtml(getLiveWindowLabel(row.live, row.promotion))}</span>
       ${getAttendanceBadges(row)}
       <div class="sbi-live-card-actions">
         ${canJoinLive(row) ? `<a class="sbi-live-btn" data-live-room-link="true" data-live-id="${encodeURIComponent(getLiveIdForRow(row))}" href="/live-room/${encodeURIComponent(getLiveIdForRow(row))}?liveId=${encodeURIComponent(getLiveIdForRow(row))}#liveId=${encodeURIComponent(getLiveIdForRow(row))}">Rejoindre la salle</a>` : (state.tab === 'upcoming' ? `<span class="sbi-live-btn sbi-live-btn--ghost is-disabled" aria-disabled="true">${escapeHtml(getJoinClosedLabel(row))}</span>` : '')}

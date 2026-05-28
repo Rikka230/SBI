@@ -3925,6 +3925,29 @@ function findPromotionLiveItem(promotion = {}, { liveId = "", sourceItemId = "",
     }) || null;
 }
 
+function findPromotionCoursePlanLiveItem(promotion = {}, { liveId = "", sourceItemId = "", title = "" } = {}) {
+    const coursePlan = getCoursePlanItemsFromPromotion(promotion);
+    const cleanLiveId = cleanString(liveId, 180);
+    const cleanSourceItemId = cleanString(sourceItemId, 180);
+    const cleanTitle = cleanString(title, 180).toLowerCase();
+
+    return coursePlan.find((item) => {
+        const ids = [
+            item.id,
+            item.itemId,
+            item.sourceItemId,
+            item.liveId,
+            item.templateItemId,
+            item.liveTracking?.itemId,
+            item.liveTracking?.sourceItemId
+        ].map((value) => cleanString(value, 180)).filter(Boolean);
+        if (cleanLiveId && ids.includes(cleanLiveId)) return true;
+        if (cleanSourceItemId && ids.includes(cleanSourceItemId)) return true;
+        if (cleanTitle && [item.title, item.courseTitle, item.liveTracking?.title].map((value) => cleanString(value, 180).toLowerCase()).filter(Boolean).includes(cleanTitle)) return true;
+        return false;
+    }) || null;
+}
+
 function isLiveTestRequest({ liveId = "", sourceItemId = "", type = "", liveItem = null } = {}) {
     const values = [
         liveId,
@@ -4946,6 +4969,11 @@ exports.scheduleLiveSession = onCall({
         sourceItemId,
         title: requestedTitle
     });
+    const coursePlanLiveItem = findPromotionCoursePlanLiveItem(promotion, {
+        liveId: data.liveId,
+        sourceItemId,
+        title: requestedTitle
+    });
     const isTestLive = isLiveTestRequest({
         liveId: data.liveId,
         sourceItemId,
@@ -4964,14 +4992,15 @@ exports.scheduleLiveSession = onCall({
         throw new HttpsError("invalid-argument", "La fin du live doit etre apres le debut.");
     }
 
-    const windowStart = cleanString(liveItem?.teacherSchedulingWindowStartAt || liveItem?.schedulingWindow?.teacherCanSelectFrom || liveItem?.schedulingWindow?.recommendedStartAt || "", 80);
-    const windowEnd = cleanString(liveItem?.teacherSchedulingWindowEndAt || liveItem?.schedulingWindow?.teacherCanSelectUntil || liveItem?.schedulingWindow?.recommendedEndAt || "", 80);
-    if (!caller.isAdmin && (windowStart || windowEnd) && !liveDateInWindow(selectedStartAt, windowStart, windowEnd)) {
-        throw new HttpsError("failed-precondition", "Le creneau choisi sort de la plage prevue pour ce live.");
+    const reportRequested = data.report === true || cleanString(data.planificationMode || data.mode || "", 40).toLowerCase() === "report";
+    const windowStart = cleanString(liveItem?.teacherSchedulingWindowStartAt || liveItem?.schedulingWindow?.teacherCanSelectFrom || liveItem?.schedulingWindow?.recommendedStartAt || coursePlanLiveItem?.teacherSchedulingWindowStartAt || coursePlanLiveItem?.liveTracking?.schedulingWindow?.teacherCanSelectFrom || coursePlanLiveItem?.liveTracking?.schedulingWindow?.recommendedStartAt || "", 80);
+    const windowEnd = cleanString(liveItem?.teacherSchedulingWindowEndAt || liveItem?.schedulingWindow?.teacherCanSelectUntil || liveItem?.schedulingWindow?.recommendedEndAt || coursePlanLiveItem?.teacherSchedulingWindowEndAt || coursePlanLiveItem?.liveTracking?.schedulingWindow?.teacherCanSelectUntil || coursePlanLiveItem?.liveTracking?.schedulingWindow?.recommendedEndAt || "", 80);
+    if (!caller.isAdmin && !reportRequested && (windowStart || windowEnd) && !liveDateInWindow(selectedStartAt, windowStart, windowEnd)) {
+        throw new HttpsError("failed-precondition", "Le creneau choisi sort de la plage prevue pour ce live. Utilisez le mode report si vous devez depasser la periode.");
     }
 
     const promotionName = getPromotionDisplayName(promotion);
-    const title = requestedTitle || liveItem?.title || liveItem?.courseTitle || "Live SBI";
+    const title = requestedTitle || coursePlanLiveItem?.title || coursePlanLiveItem?.courseTitle || coursePlanLiveItem?.liveTracking?.title || liveItem?.title || liveItem?.courseTitle || "Live SBI";
     const sessionPayload = {
         id: liveId,
         title,
@@ -4985,6 +5014,8 @@ exports.scheduleLiveSession = onCall({
         selectedStartAt,
         selectedEndAt,
         status: "scheduled",
+        report: reportRequested,
+        schedulingStatus: reportRequested ? "report" : "scheduled",
         provider: cleanString(data.provider || (isTestLive ? "daily" : "pending_provider"), 80),
         roomName: cleanString(data.roomName || "", 180),
         meetingUrl: cleanString(data.meetingUrl || "", 500),
@@ -5022,8 +5053,9 @@ exports.scheduleLiveSession = onCall({
         title,
         liveSessionId: liveId,
         status: "scheduled",
-        liveSchedulingStatus: "scheduled",
-        teacherSelectionStatus: "selected",
+        reportOutsideWindow: reportRequested,
+        liveSchedulingStatus: reportRequested ? "report" : "scheduled",
+        teacherSelectionStatus: reportRequested ? "reported" : "selected",
         studentScheduleStatus: "scheduled",
         notificationStatus: "pending_student_update",
         selectedLiveAt: selectedStartAt,
@@ -5064,6 +5096,7 @@ exports.scheduleLiveSession = onCall({
             selectedEndAt,
             title,
             isTestLive,
+            reportRequested,
             report
         }
     });
@@ -5071,8 +5104,9 @@ exports.scheduleLiveSession = onCall({
     return {
         success: true,
         liveId,
-        message: "Live programme et notifications lancees.",
-        report
+        message: reportRequested ? "Live programme en report et notifications lancees." : "Live programme et notifications lancees.",
+        report,
+        reportRequested
     };
 });
 

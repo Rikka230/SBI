@@ -1088,3 +1088,275 @@ body.sbi-live-replay-page[data-sbi-standalone="live-replay"] {
     padding: 0.85rem;
   }
 }
+
+/* SBI 8.0P.167.231 - live scheduler UX refresh */
+.sbi-live-hero {
+  align-items: flex-start;
+  flex-direction: column;
+}
+
+.sbi-live-hero p {
+  margin: 0.35rem 0 0;
+  color: var(--text-muted, #667085);
+  font-size: 0.92rem;
+}
+
+.sbi-live-summary {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.sbi-live-summary-card {
+  border: 1px solid var(--border-color, rgba(16, 24, 40, 0.12));
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 14px 42px rgba(15, 23, 42, 0.06);
+  padding: 1rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.sbi-live-summary-card strong {
+  font-size: 1.1rem;
+}
+
+.sbi-live-summary-card.is-metric strong {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.sbi-live-summary-card__label {
+  color: var(--text-muted, #667085);
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.sbi-live-grid {
+  grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
+}
+
+.sbi-live-workspace {
+  grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
+}
+
+.sbi-live-list {
+  gap: 0.8rem;
+}
+
+.sbi-live-promotion,
+.sbi-live-item {
+  border-radius: 14px;
+  padding: 1rem;
+  background: #fff;
+  border-color: rgba(16, 24, 40, 0.09);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.04);
+}
+
+.sbi-live-promotion.is-active,
+.sbi-live-item.is-active {
+  border-color: rgba(249, 115, 22, 0.45);
+  background: rgba(249, 115, 22, 0.05);
+}
+
+.sbi-live-promotion__sub {
+  font-weight: 700;
+}
+
+.sbi-live-promotion__meta {
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 0.65rem;
+}
+
+.sbi-live-promotion__meta span,
+.sbi-live-item__top + span,
+.sbi-live-item__top + span + span {
+  display: block;
+}
+
+.sbi-live-item__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.7rem;
+}
+
+.sbi-live-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 26px;
+  border-radius: 999px;
+  padding: 0.2rem 0.65rem;
+  font-size: 0.74rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.sbi-live-chip.is-scheduled {
+  background: rgba(59, 130, 246, 0.12);
+  color: #2563eb;
+}
+
+.sbi-live-chip.is-to_plan {
+  background: rgba(249, 115, 22, 0.12);
+  color: #ea580c;
+}
+
+.sbi-live-chip.is-report {
+  background: rgba(244, 63, 94, 0.12);
+  color: #e11d48;
+}
+
+.sbi-live-calendar {
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.sbi-live-day {
+  min-height: 128px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  border-radius: 14px;
+}
+
+.sbi-live-day span {
+  margin-top: 0;
+}
+
+.sbi-live-day small {
+  color: var(--text-muted, #667085);
+  font-size: 0.74rem;
+  line-height: 1.35;
+}
+
+.sbi-live-info-block {
+  border: 1px solid rgba(16, 24, 40, 0.08);
+  border-radius: 14px;
+  padding: 1rem;
+  background: rgba(248, 250, 252, 0.8);
+}
+
+.sbi-live-info-block h3 {
+  margin: 0 0 0.9rem;
+  font-size: 0.95rem;
+}
+
+.sbi-live-info-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 180px) minmax(0, 1fr);
+  gap: 0.65rem 1rem;
+  align-items: start;
+}
+
+.sbi-live-info-grid span {
+  color: var(--text-muted, #667085);
+  font-size: 0.8rem;
+  font-weight: 900;
+}
+
+.sbi-live-info-grid strong {
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.sbi-live-form-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 180px;
+  gap: 0.85rem;
+}
+
+.sbi-live-mode-toggle {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.sbi-live-mode-btn {
+  flex: 1 1 0;
+  min-height: 44px;
+  border: 1px solid rgba(16, 24, 40, 0.12);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--text-main, #172033);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.sbi-live-mode-btn.is-active {
+  border-color: rgba(249, 115, 22, 0.45);
+  background: rgba(249, 115, 22, 0.08);
+}
+
+.sbi-live-room-note {
+  border-radius: 10px;
+  background: rgba(59, 130, 246, 0.08);
+  color: #1d4ed8;
+  padding: 0.8rem 0.9rem;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.sbi-live-btn--primary {
+  background: linear-gradient(135deg, #f97316, #fb923c);
+  color: #fff;
+}
+
+.sbi-live-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.sbi-live-actions .sbi-live-btn:first-child {
+  grid-column: 1 / -1;
+}
+
+.sbi-live-test-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 1rem;
+  border: 1px dashed rgba(16, 24, 40, 0.16);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.sbi-live-test-box strong {
+  font-size: 0.95rem;
+}
+
+.sbi-live-test-box span {
+  color: var(--text-muted, #667085);
+  font-size: 0.82rem;
+}
+
+.sbi-live-list-footer {
+  color: var(--text-muted, #667085);
+  font-size: 0.78rem;
+  text-align: center;
+  padding-top: 0.25rem;
+}
+
+@media (max-width: 1360px) {
+  .sbi-live-summary {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1080px) {
+  .sbi-live-summary,
+  .sbi-live-grid,
+  .sbi-live-workspace,
+  .sbi-live-form-row,
+  .sbi-live-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .sbi-live-mode-toggle {
+    flex-direction: column;
+  }
+}
