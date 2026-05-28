@@ -47,6 +47,19 @@ function setTitle(title = '') {
   if (node && title) node.textContent = title;
 }
 
+function normalizeDisplayName(user) {
+  const raw = user?.displayName || user?.email || 'Élève SBI';
+  return String(raw).replace(/@.+$/, '').trim() || 'Élève SBI';
+}
+
+function setReplayWatermark(user) {
+  const node = $('sbi-live-replay-watermark');
+  if (!node) return;
+  const name = normalizeDisplayName(user);
+  const date = new Date().toLocaleDateString('fr-FR');
+  node.textContent = `${name} · ${date}`;
+}
+
 function showFallback(url = '') {
   const link = $('sbi-live-replay-download');
   if (!link || !url) return;
@@ -102,6 +115,9 @@ async function loadReplay() {
 }
 
 export function mountStudentLiveReplayPage() {
+  document.body?.classList?.remove('preload');
+  const main = document.getElementById('main-content');
+  if (main) main.hidden = false;
   if (mounted) return null;
   mounted = true;
   unsubscribeAuth = onAuthStateChanged(auth, (user) => {
@@ -109,6 +125,7 @@ export function mountStudentLiveReplayPage() {
       window.location.replace('/login.html');
       return;
     }
+    setReplayWatermark(user);
     loadReplay().catch((error) => {
       console.error('[SBI Live Replay] Chargement impossible :', error);
       renderBlockingMessage(error?.message || 'Replay encore en préparation. Réessayez dans quelques minutes.');
@@ -123,6 +140,9 @@ export function mountStudentLiveReplayPage() {
 }
 
 function bootReplayPage() {
+  document.body?.classList?.remove('preload');
+  const main = document.getElementById('main-content');
+  if (main) main.hidden = false;
   if (document.getElementById('sbi-live-replay-video') && !window.__SBI_APP_SHELL_MOUNTING_LIVE_REPLAY) {
     mountStudentLiveReplayPage();
   }
@@ -130,6 +150,13 @@ function bootReplayPage() {
 
 window.addEventListener('beforeunload', () => {
   unsubscribeAuth?.();
+});
+
+window.addEventListener('pageshow', () => {
+  document.body?.classList?.remove('preload');
+  const main = document.getElementById('main-content');
+  if (main) main.hidden = false;
+  if (!mounted && document.getElementById('sbi-live-replay-video')) bootReplayPage();
 });
 
 if (document.readyState === 'loading') {

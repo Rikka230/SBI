@@ -3,7 +3,7 @@ import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.1/fi
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js';
 import { collection, addDoc, onSnapshot, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js';
-import { escapeHtml } from '/js/live/live-shared.js?v=8.0P.167.216';
+import { escapeHtml } from '/js/live/live-shared.js?v=8.0P.167.217';
 
 const functionsInstance = getFunctions(app, 'europe-west1');
 const storage = getStorage(app);
@@ -464,6 +464,7 @@ let mounted = false;
 let unsubscribeAuth = null;
 
 export function mountLiveRoomPage() {
+  document.body?.classList?.remove('preload');
   if (mounted) return null;
   mounted = true;
   unsubscribeAuth = onAuthStateChanged(auth, (user) => {
@@ -489,6 +490,7 @@ export function mountLiveRoomPage() {
 
 function bootLiveRoomPage() {
   document.body?.classList?.remove('preload');
+  document.documentElement?.classList?.remove('preload');
   if (!document.getElementById('sbi-live-room-frame')) return;
   mountLiveRoomPage();
 }
