@@ -1,4 +1,4 @@
-import { auth, app, db } from '/js/firebase-init.js';
+import { auth, app } from '/js/firebase-init.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js';
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js';
 import {
@@ -17,7 +17,7 @@ import {
   loadProfile,
   loadPromotionsByIds,
   renderEmpty
-} from '/js/live/live-shared.js?v=8.0P.167.221';
+} from '/js/live/live-shared.js?v=8.0P.167.222';
 
 const functionsInstance = getFunctions(app, 'europe-west1');
 const getStudentLiveAttendance = httpsCallable(functionsInstance, 'getStudentLiveAttendance');
@@ -80,6 +80,7 @@ function setStatus(message = '') {
 }
 
 function renderLoadError(message = '') {
+  window.__SBI_STUDENT_LIVES_RENDERED = true;
   forceRevealStudentLivesPage();
   const root = $('student-live-content');
   if (root) root.innerHTML = renderEmpty(message || 'Chargement impossible. Rechargez la page.');
@@ -247,6 +248,7 @@ async function loadAttendanceForRows(uid = '') {
 }
 
 function render() {
+  window.__SBI_STUDENT_LIVES_RENDERED = true;
   forceRevealStudentLivesPage();
   const root = $('student-live-content');
   if (!root) return;
@@ -362,11 +364,18 @@ export function mountStudentLivesPage() {
 
 function bootStudentLivesPage() {
   forceRevealStudentLivesPage();
-  if (document.getElementById('student-live-content') && !window.__SBI_APP_SHELL_MOUNTING_STUDENT_LIVES) {
+  const root = document.getElementById('student-live-content');
+  if (root && (!mounted || mountedRoot !== root)) {
     mountStudentLivesPage();
+  } else if (root && mounted && mountedRoot === root) {
+    render();
   }
   if (bootTimer) clearTimeout(bootTimer);
-  bootTimer = setTimeout(forceRevealStudentLivesPage, 700);
+  bootTimer = setTimeout(() => {
+    forceRevealStudentLivesPage();
+    const currentRoot = document.getElementById('student-live-content');
+    if (currentRoot && (!mounted || mountedRoot !== currentRoot)) mountStudentLivesPage();
+  }, 700);
 }
 
 window.addEventListener('pageshow', () => {
@@ -382,6 +391,8 @@ window.addEventListener('unhandledrejection', (event) => {
   forceRevealStudentLivesPage();
   console.error('[SBI Student Lives] Promise rejection:', event?.reason);
 });
+
+window.SBI_STUDENT_LIVES_REBOOT = bootStudentLivesPage;
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', bootStudentLivesPage, { once: true });

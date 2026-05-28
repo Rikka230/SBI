@@ -7,8 +7,8 @@
   <link rel="stylesheet" href="/admin/css/admin-layout.css">
   <link rel="stylesheet" href="/admin/css/admin.css">
   <link rel="stylesheet" href="/student/css/student.css">
-  <link rel="stylesheet" href="/css/live-platform.css?v=8.0P.167.221">
-  <script src="/admin/js/components.js?v=8.0P.167.221"></script>
+  <link rel="stylesheet" href="/css/live-platform.css?v=8.0P.167.222">
+  <script src="/admin/js/components.js?v=8.0P.167.222"></script>
   <style>
     html, body, body.sbi-live-page, #app-container, #main-content, .content-wrapper {
       opacity: 1 !important;
@@ -81,8 +81,16 @@
     </main>
   </div>
 
-  <script type="module" src="/admin/js/admin-ui.js?v=8.0P.167.221"></script>
-  <script type="module" src="/admin/js/admin-notifications.js?v=8.0P.167.221"></script>
-  <script type="module" src="/student/js/student-lives.js?v=8.0P.167.221"></script>
+  <script>
+    window.setTimeout(function () {
+      var root = document.getElementById('student-live-content');
+      if (!root) return;
+      var text = (root.textContent || '').trim();
+      if (!window.__SBI_STUDENT_LIVES_RENDERED && (!text || text === 'Chargement des lives...')) {
+        root.innerHTML = '<div class="sbi-live-empty">Chargement encore en cours... Si rien ne s’affiche, rechargez avec Ctrl+F5.</div>';
+      }
+    }, 5000);
+  </script>
+  <script type="module" src="/student/js/student-lives.js?v=8.0P.167.222"></script>
 </body>
 </html>

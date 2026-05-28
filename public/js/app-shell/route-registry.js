@@ -115,7 +115,10 @@ function isStudentLives(url) {
 
 function isStudentLiveReplay(url) {
   const path = normalizePath(url.pathname).toLowerCase();
-  return path === '/student/live-replay.html' || path === '/student/live-replay';
+  return path === '/student/live-replay.html'
+    || path === '/student/live-replay'
+    || path.startsWith('/student/live-replay/')
+    || path.startsWith('/student/live-replay.html/');
 }
 
 function isStudentProfile(url) {
@@ -172,6 +175,8 @@ function isStudentShellContext() {
     || path === '/student/lives.html'
     || path === '/student/live-replay.html'
     || path === '/student/live-replay'
+    || path.startsWith('/student/live-replay/')
+    || path.startsWith('/student/live-replay.html/')
     || path === '/student/mon-profil.html';
 }
 
@@ -535,7 +540,7 @@ async function mountLiveSchedulerRoute({ url, role = 'admin' }) {
   setLeftNavActive(role === 'admin' ? 'nav-lives' : '/teacher/lives.html');
   updateUrlContext(url);
 
-  const module = await import('/js/live/live-scheduler-page.js?v=8.0P.167.218');
+  const module = await import('/js/live/live-scheduler-page.js?v=8.0P.167.222');
   const cleanup = module.mountLiveSchedulerPage?.(role);
   if (typeof cleanup === 'function') registerCleanup(cleanup, role === 'admin' ? 'admin-lives' : 'teacher-lives');
 
@@ -638,7 +643,7 @@ async function mountStudentLives({ url }) {
 
   window.__SBI_APP_SHELL_MOUNTING_STUDENT_LIVES = true;
   try {
-    const module = await import('/student/js/student-lives.js?v=8.0P.167.218');
+    const module = await import('/student/js/student-lives.js?v=8.0P.167.222');
     const cleanup = module.mountStudentLivesPage?.();
     if (typeof cleanup === 'function') registerCleanup(cleanup, 'student-lives');
   } finally {
@@ -661,7 +666,7 @@ async function mountStudentLiveReplay({ url }) {
 
   window.__SBI_APP_SHELL_MOUNTING_LIVE_REPLAY = true;
   try {
-    const module = await import('/student/js/live-replay.js?v=8.0P.167.218');
+    const module = await import('/student/js/live-replay.js?v=8.0P.167.222');
     const cleanup = module.mountStudentLiveReplayPage?.();
     if (typeof cleanup === 'function') registerCleanup(cleanup, 'student-live-replay');
   } finally {
