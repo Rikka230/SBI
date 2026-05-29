@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.246',
+  version: '8.0P.167.247',
   branch: 'main',
-  channel: 'LIVE V2 PJAX CHROME REPAIR',
-  stage: 'KEEP CHROME STABLE AND HIDE ZERO ASSISTANT BADGE',
+  channel: 'LIVE V2 STANDALONE PJAX EXIT REPAIR',
+  stage: 'ENABLE APPSHELL AFTER F5 AND GUARD SAME ROUTE',
   updatedAt: '2026-05-29',
-  label: 'SBI 8.0P.167.246 - fix live v2 test room render crash'
+  label: 'SBI 8.0P.167.247 - repair pjax after teacher lives f5'
 };
 
 export function getSbiVersionLabel() {

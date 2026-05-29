@@ -3,11 +3,11 @@ import { initSpaceTheme } from '/admin/js/admin-ui/theme.js?v=8.0P.167.52';
 import { initPanelControls, initAdminTabs } from '/admin/js/admin-ui/panels.js';
 import { initSafeComponentPolish } from '/admin/js/admin-ui/component-polish.js';
 import { initSbiNavigationTransitions } from '/js/sbi-navigation-transitions.js';
-import { initSbiAppShell } from '/js/app-shell/app-shell.js?v=8.0P.167.246';
-import { initSbiVersionBadge } from '/js/sbi-version-badge.js?v=8.0P.167.246';
+import { initSbiAppShell } from '/js/app-shell/app-shell.js?v=8.0P.167.247';
+import { initSbiVersionBadge } from '/js/sbi-version-badge.js?v=8.0P.167.247';
 
 /**
- * SBI 8.0P.167.246 - Internal UI bootstrap
+ * SBI 8.0P.167.247 - Internal UI bootstrap
  *
  * Avant ce patch, ce point d'entrée chargeait aussi des modules admin lourds sur
  * les pages élève quand on voulait seulement récupérer le shell, le badge et la
@@ -85,7 +85,7 @@ async function initInternalUi() {
 
     // Assistant commun aux espaces internes. Le module se limite lui-même
     // aux profils admin / professeur / élève, sans charger les modules lourds admin.
-    await callOptionalModule('/admin/js/admin-ui/assistant.js?v=8.0P.167.246', 'initAssistantPrototype');
+    await callOptionalModule('/admin/js/admin-ui/assistant.js?v=8.0P.167.247', 'initAssistantPrototype');
 
     if (area === 'admin') {
       await initAdminOnlyModules();

@@ -12,13 +12,13 @@
  * location.reload()
  */
 
-import { createRouteRegistry } from './route-registry.js?v=8.0P.167.246';
-import { createRouter } from './router.js?v=8.0P.167.246';
+import { createRouteRegistry } from './route-registry.js?v=8.0P.167.247';
+import { createRouter } from './router.js?v=8.0P.167.247';
 import { injectAppShellStyles, markAppShellReady } from './transitions.js';
 import { initRoutePreload } from './preload.js';
 import { registerCleanup, createAbortController } from './view-lifecycle.js';
 import { createListenerBag, disposeAllListenerBags } from './firebase-listeners.js';
-import { listHardReloadRoutes } from './route-guards.js?v=8.0P.167.246';
+import { listHardReloadRoutes } from './route-guards.js?v=8.0P.167.247';
 
 const DISABLED_FLAG = 'sbiPjaxDisabled';
 const LEGACY_ENABLED_FLAG = 'sbiPjaxEnabled';

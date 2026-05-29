@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SBI Prof - Lives</title>
   <link rel="stylesheet" href="/admin/css/admin-layout.css">
-  <link rel="stylesheet" href="/admin/css/admin.css?v=8.0P.167.246">
-  <link rel="stylesheet" href="/teacher/css/teacher.css?v=8.0P.167.246">
-  <link rel="stylesheet" href="/css/live-scheduler-v2.css?v=8.0P.167.246">
-  <script src="/admin/js/components.js?v=8.0P.167.246"></script>
+  <link rel="stylesheet" href="/admin/css/admin.css?v=8.0P.167.247">
+  <link rel="stylesheet" href="/teacher/css/teacher.css?v=8.0P.167.247">
+  <link rel="stylesheet" href="/css/live-scheduler-v2.css?v=8.0P.167.247">
+  <script src="/admin/js/components.js?v=8.0P.167.247"></script>
 
 
   <style id="sbi-live-v2-hard-reveal-style">
@@ -109,8 +109,9 @@
   <script type="module" id="sbi-live-v2-standalone-boot">
     import { waitForSbiComponents } from '/admin/js/components/ready.js';
     import { initPanelControls } from '/admin/js/admin-ui/panels.js';
-    import { initSbiVersionBadge } from '/js/sbi-version-badge.js?v=8.0P.167.246';
-    import { initAssistantPrototype } from '/admin/js/admin-ui/assistant.js?v=8.0P.167.246';
+    import { initSbiAppShell } from '/js/app-shell/app-shell.js?v=8.0P.167.247';
+    import { initSbiVersionBadge } from '/js/sbi-version-badge.js?v=8.0P.167.247';
+    import { initAssistantPrototype } from '/admin/js/admin-ui/assistant.js?v=8.0P.167.247';
 
     let standaloneNavBound = false;
 
@@ -140,6 +141,18 @@
       try { return new URL(rawHref, window.location.href); } catch (_) { return null; }
     }
 
+    function navigateFromStandalone(url, source = 'teacher-lives-standalone') {
+      if (!url || url.origin !== window.location.origin) return false;
+      if (url.pathname === window.location.pathname && url.search === window.location.search && !url.hash) return true;
+      const shell = window.SBI_APP_SHELL;
+      if (shell?.enabled && typeof shell.canHandle === 'function' && shell.canHandle(url) && typeof shell.navigate === 'function') {
+        shell.navigate(url, { historyMode: 'push', source });
+        return true;
+      }
+      window.location.assign(url.href);
+      return true;
+    }
+
     function bindStandaloneNavigation() {
       if (standaloneNavBound) return;
       standaloneNavBound = true;
@@ -159,8 +172,7 @@
         event.stopPropagation();
         revealLiveV2();
 
-        if (url.pathname === window.location.pathname && url.search === window.location.search && !url.hash) return;
-        window.location.assign(url.href);
+        navigateFromStandalone(url, 'teacher-lives-standalone-click');
       }, true);
 
       document.addEventListener('keydown', (event) => {
@@ -173,15 +185,15 @@
         if (!url || url.origin !== window.location.origin) return;
         event.preventDefault();
         revealLiveV2();
-        if (url.pathname === window.location.pathname && url.search === window.location.search && !url.hash) return;
-        window.location.assign(url.href);
+        navigateFromStandalone(url, 'teacher-lives-standalone-click');
       }, true);
     }
 
     async function bootStandaloneLiveV2() {
       revealLiveV2();
-      bindStandaloneNavigation();
       try { await waitForSbiComponents(900); } catch (_) {}
+      try { initSbiAppShell(); } catch (error) { console.warn('[SBI Lives V2] app-shell standalone indisponible', error); }
+      bindStandaloneNavigation();
       try { initPanelControls(); } catch (error) { console.warn('[SBI Lives V2] panels standalone indisponibles', error); }
       try { initSbiVersionBadge(); } catch (error) { console.warn('[SBI Lives V2] badge standalone indisponible', error); }
       try { initAssistantPrototype(); } catch (error) { console.warn('[SBI Lives V2] assistant standalone indisponible', error); }
@@ -197,7 +209,7 @@
     else bootStandaloneLiveV2();
   </script>
 
-  <script type="module" src="/admin/js/admin-notifications.js?v=8.0P.167.246"></script>
-  <script type="module" src="/js/live/live-scheduler-v2-page.js?v=8.0P.167.246"></script>
+  <script type="module" src="/admin/js/admin-notifications.js?v=8.0P.167.247"></script>
+  <script type="module" src="/js/live/live-scheduler-v2-page.js?v=8.0P.167.247"></script>
 </body>
 </html>

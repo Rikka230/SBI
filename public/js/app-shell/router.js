@@ -7,7 +7,7 @@
 
 import { runViewCleanups, setActiveViewKey } from './view-lifecycle.js';
 import { startShellTransition, endShellTransition } from './transitions.js';
-import { getRouteDecision } from './route-guards.js?v=8.0P.167.246';
+import { getRouteDecision } from './route-guards.js?v=8.0P.167.247';
 
 function normalizeHref(rawHref) {
   if (!rawHref || typeof rawHref !== 'string') return null;
@@ -23,6 +23,18 @@ function getRawHref(trigger) {
     || trigger?.getAttribute('data-href')
     || trigger?.getAttribute('href')
     || null;
+}
+
+function isEquivalentCurrentUrl(url) {
+  if (!url || url.origin !== window.location.origin) return false;
+  try {
+    const current = new URL(window.SBI_APP_SHELL_CURRENT_URL || window.location.href, window.location.origin);
+    return url.pathname === current.pathname
+      && url.search === current.search
+      && url.hash === current.hash;
+  } catch (_) {
+    return false;
+  }
 }
 
 function shouldIgnoreClick(event) {
@@ -62,6 +74,7 @@ export function createRouter({ registry, debug = false } = {}) {
   }
 
   async function navigate(url, { historyMode = 'push', source = 'programmatic' } = {}) {
+    if (isEquivalentCurrentUrl(url)) return false;
     const decision = routeStatus(url);
 
     if (decision.mode !== 'pjax') {
@@ -115,6 +128,7 @@ export function createRouter({ registry, debug = false } = {}) {
     if (trigger.matches('a[target]') && trigger.getAttribute('target') !== '_self') return;
 
     const url = normalizeHref(getRawHref(trigger));
+    if (isEquivalentCurrentUrl(url)) return;
     const decision = routeStatus(url);
 
     /**
@@ -140,6 +154,7 @@ export function createRouter({ registry, debug = false } = {}) {
     if (!trigger || trigger.closest('[data-sbi-no-pjax="true"]')) return;
 
     const url = normalizeHref(getRawHref(trigger));
+    if (isEquivalentCurrentUrl(url)) return;
     const decision = routeStatus(url);
 
     if (decision.mode !== 'pjax') {
