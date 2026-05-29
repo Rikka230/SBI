@@ -788,7 +788,11 @@ service cloud.firestore {
     }
 
     match /courseBlocks/{blockId} {
-      allow get, list: if isActiveUser();
+      // 8.0P.167.250 (audit 2B) : le get par ID reste ouvert aux comptes actifs, mais le
+      // list global (énumération de tout le référentiel) est réservé aux éditeurs
+      // (teacher/admin via le course-editor). Les élèves n'énumèrent pas courseBlocks.
+      allow get: if isActiveUser();
+      allow list: if isAdmin() || isTeacher();
       allow create, update, delete: if isAdmin();
     }
 
@@ -837,9 +841,10 @@ service cloud.firestore {
 
       match /attendance/{attendanceId} {
         allow get, list: if canReadLiveSession(get(/databases/$(database)/documents/liveSessions/$(liveId)).data);
-        allow create, update: if isActiveUser()
-          && attendanceId == request.auth.uid
-          && canReadLiveSession(get(/databases/$(database)/documents/liveSessions/$(liveId)).data);
+        // 8.0P.167.250 (audit 2B) : l'attendance n'est écrite que côté serveur (Cloud
+        // Functions via admin SDK, qui contourne ces règles). On interdit l'écriture
+        // cliente directe pour empêcher toute falsification de présence/durée.
+        allow create, update: if isAdmin();
         allow delete: if isAdmin();
       }
     }
