@@ -503,7 +503,8 @@ function bindClicks() {
       return;
     }
 
-    const saveButton = event.target?.closest?.('#cursus-save-btn');
+    // 8.0P.167.248 (audit B2) : couvrir aussi le bouton de sauvegarde du footer.
+    const saveButton = event.target?.closest?.('#cursus-save-btn, #cursus-save-footer-btn');
     if (saveButton && pendingReplacements.size) {
       window.setTimeout(consolidateReplacementsAfterSave, 1200);
     }

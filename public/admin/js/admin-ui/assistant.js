@@ -216,10 +216,12 @@ function initAssistantNotificationSync(assistant) {
     const observer = new MutationObserver(syncBadge);
     document.body.addEventListener('click', () => window.setTimeout(syncBadge, 0));
 
+    let startObservingAttempts = 0;
     const startObserving = () => {
         const bellBadge = document.getElementById('bell-badge');
         if (!bellBadge) {
-            window.setTimeout(startObserving, 150);
+            // 8.0P.167.248 (audit) : borne d'essais pour éviter une boucle infinie de timers.
+            if (startObservingAttempts++ < 40) window.setTimeout(startObserving, 150);
             return;
         }
 

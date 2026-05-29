@@ -343,12 +343,14 @@ async function dismissNotificationForCurrentUser(notifId) {
  * SECTION 3 : AFFICHAGE
  * ======================================================================= */
 
-function updateRedBadges(count) {
+function updateRedBadges(count, attempt) {
+    attempt = attempt || 0;
     const bellBadge = document.getElementById('bell-badge');
     const avatarBadge = document.getElementById('avatar-badge');
 
     if (!bellBadge && document.querySelector('teacher-top-bar, admin-top-bar, student-top-bar')) {
-        setTimeout(() => updateRedBadges(count), 100);
+        // 8.0P.167.248 (audit) : borne d'essais pour éviter une boucle infinie de timers.
+        if (attempt < 30) setTimeout(() => updateRedBadges(count, attempt + 1), 100);
         return;
     }
 
@@ -375,11 +377,13 @@ function updateRedBadges(count) {
     }
 }
 
-function renderNotificationsList(notifs) {
+function renderNotificationsList(notifs, attempt) {
+    attempt = attempt || 0;
     const container = document.getElementById('notifications-list');
 
     if (!container && document.querySelector('teacher-top-bar, admin-top-bar, student-top-bar')) {
-        setTimeout(() => renderNotificationsList(notifs), 100);
+        // 8.0P.167.248 (audit) : borne d'essais pour éviter une boucle infinie de timers.
+        if (attempt < 30) setTimeout(() => renderNotificationsList(notifs, attempt + 1), 100);
         return;
     }
 

@@ -3834,7 +3834,17 @@ exports.resolveCourseResourceDownload = onCall({
     const resourceChapter = findCourseResourceChapter(courseData, { chapterId, fileName });
     if (!resourceChapter) throw new HttpsError("not-found", "Ressource introuvable dans le cours.");
 
-    const storagePath = normalizeResourceStoragePath(resourceChapter.resourceStoragePath || request.data?.storagePath || "");
+    // 8.0P.167.248 (audit S4) : ne jamais faire confiance au storagePath fourni par le
+    // client. On privilégie le chemin issu de la fiche cours (resourceStoragePath, donnée
+    // serveur). Le fallback client n'est accepté que s'il reste confiné au dossier du cours
+    // (pas de path-traversal vers d'autres cours / documents élèves).
+    let storagePath = normalizeResourceStoragePath(resourceChapter.resourceStoragePath || "");
+    if (!storagePath) {
+        const clientPath = normalizeResourceStoragePath(request.data?.storagePath || "");
+        if (clientPath && clientPath.startsWith(`courses/${courseId}/`) && !clientPath.includes("..")) {
+            storagePath = clientPath;
+        }
+    }
     const file = await findStoredCourseResourceFile({
         courseId,
         chapterId: cleanString(resourceChapter.id || chapterId, 180),

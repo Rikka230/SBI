@@ -888,8 +888,10 @@ export function mountLiveSchedulerV2Page(role = 'teacher') {
   mountedRoot = root;
   state.role = role === 'admin' ? 'admin' : 'teacher';
 
+  // 8.0P.167.248 (audit) : la délégation bindLiveV2DelegatedEvents gère déjà
+  // #sbi-live-v2-refresh. On retire le listener direct qui provoquait un double appel
+  // getLiveSchedulerData à chaque clic Rafraîchir.
   bindLiveV2DelegatedEvents();
-  $('sbi-live-v2-refresh')?.addEventListener('click', () => refreshData({ preserveSelection: true }));
 
   unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
     forceRevealLiveSchedulerV2Page();

@@ -65,7 +65,13 @@
     window.setTimeout(run, 550);
 
     const target = document.getElementById('app-container') || document.body;
-    const observer = new MutationObserver(() => run());
+    // 8.0P.167.248 (audit) : debounce pour éviter de relancer le TreeWalker complet
+    // à chaque mutation DOM (jank sur les grandes listes).
+    let polishDebounce = 0;
+    const observer = new MutationObserver(() => {
+      window.clearTimeout(polishDebounce);
+      polishDebounce = window.setTimeout(run, 150);
+    });
     observer.observe(target, {childList:true, subtree:true});
   }
 

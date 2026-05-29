@@ -207,6 +207,18 @@ function escapeHtml(value = '') {
     }[char]));
 }
 
+// 8.0P.167.248 (audit S5) : le contenu HTML riche des chapitres (Quill) est stocké en
+// base et peut contenir du HTML arbitraire. On l'assainit via DOMPurify avant injection
+// dans innerHTML pour bloquer le XSS stocké. Fallback sûr (échappement) si DOMPurify
+// n'a pas chargé.
+function sanitizeRichHtml(value = '') {
+    const html = String(value == null ? '' : value);
+    if (typeof window !== 'undefined' && window.DOMPurify && typeof window.DOMPurify.sanitize === 'function') {
+        return window.DOMPurify.sanitize(html, { USE_PROFILES: { html: true } });
+    }
+    return escapeHtml(html);
+}
+
 function normalizeAnswerText(value = '') {
     return String(value)
         .trim()
@@ -898,8 +910,20 @@ function renderSidebar() {
             <span style="font-size:1.2rem; display:flex;">${icon}</span>
         `;
 
+        // 8.0P.167.248 (audit a11y) : navigation chapitres accessible au clavier.
+        tab.setAttribute('role', 'button');
         if (isUnlocked) {
+            tab.setAttribute('tabindex', '0');
             tab.onclick = () => loadChapter(index);
+            tab.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    loadChapter(index);
+                }
+            });
+        } else {
+            tab.setAttribute('tabindex', '-1');
+            tab.setAttribute('aria-disabled', 'true');
         }
 
         navList.appendChild(tab);
@@ -938,10 +962,10 @@ function loadChapter(index, forceReload = false) {
         } else if (chap.mediaType === 'image' && chap.mediaImage) {
             contentHtml += `
                 <div class="media-container">
-                    <img src="${escapeHtml(chap.mediaImage)}" oncontextmenu="return false;">
+                    <img src="${escapeHtml(chap.mediaImage)}" alt="${escapeHtml(chap.titre || '')}" oncontextmenu="return false;">
                 </div>`;
         }
-        contentHtml += `<div class="text-container ql-editor">${chap.contenu}</div>`;
+        contentHtml += `<div class="text-container ql-editor">${sanitizeRichHtml(chap.contenu)}</div>`;
     } else {
         contentHtml += `<div class="text-container">
             <div style="color:var(--accent-yellow); font-weight: bold; font-size: 1.2rem; border-bottom: 2px solid var(--border-color); padding-bottom: 1rem; display:flex; align-items:center; gap:10px;">

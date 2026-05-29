@@ -221,8 +221,11 @@ function bindVideoEvents(video, fallbackUrl = '') {
     hidePlaceholder();
     setStatus('Replay prêt. Lancez la lecture depuis le lecteur.');
   };
-  ['loadedmetadata', 'loadeddata', 'canplay', 'canplaythrough', 'playing', 'timeupdate'].forEach((eventName) => {
-    video.addEventListener(eventName, ready, { once: eventName !== 'timeupdate' });
+  // 8.0P.167.248 (audit) : 'timeupdate' retiré (il rappelait ready() ~4x/s pendant toute
+  // la lecture, écrasant le statut et refaisant du travail DOM inutile). Les autres
+  // événements suffisent à masquer le placeholder une seule fois.
+  ['loadedmetadata', 'loadeddata', 'canplay', 'canplaythrough', 'playing'].forEach((eventName) => {
+    video.addEventListener(eventName, ready, { once: true });
   });
   video.addEventListener('waiting', () => {
     hidePlaceholder();

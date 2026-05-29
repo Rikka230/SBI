@@ -3,7 +3,7 @@
   "short_name": "SBI",
   "description": "Plateforme e-learning et formations sport business de Sport Business Institute.",
   "lang": "fr-FR",
-  "start_url": "/index.html",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "background_color": "#050313",

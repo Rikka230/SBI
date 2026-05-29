@@ -10,6 +10,7 @@
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
   <link rel="manifest" href="/site.webmanifest">
   <meta name="theme-color" content="#050313">
+  <meta name="robots" content="noindex, follow">
     <title>SBI - Connexion</title>
 
     <link rel="stylesheet" href="css/style.css?v=8.0P.125">
@@ -559,13 +560,13 @@
             <form id="login-form">
                 <div class="login-field">
                     <label for="email" class="text-italic">Adresse Email</label>
-                    <input type="email" id="email" class="login-input text-italic" required autocomplete="email">
+                    <input type="email" id="email" name="email" class="login-input text-italic" required autocomplete="email">
                 </div>
 
                 <div class="login-field login-field-password">
                     <label for="password" class="text-italic">Mot de passe</label>
                     <div class="login-password-control">
-                        <input type="password" id="password" class="login-input text-italic" required autocomplete="current-password">
+                        <input type="password" id="password" name="password" class="login-input text-italic" required autocomplete="current-password">
                         <button type="button" class="login-password-toggle" id="login-password-toggle" aria-label="Afficher le mot de passe" aria-pressed="false"></button>
                     </div>
                 </div>
@@ -587,7 +588,7 @@
                 <p class="login-reset-panel-text text-italic">Indique l’adresse email liée au compte SBI. Un lien sécurisé sera envoyé si le compte existe.</p>
                 <form class="login-reset-form" id="login-reset-form">
                     <label for="reset-email" class="text-italic">Adresse email du compte</label>
-                    <input type="email" id="reset-email" class="login-input text-italic" required autocomplete="email">
+                    <input type="email" id="reset-email" name="email" class="login-input text-italic" required autocomplete="email">
                     <div class="login-reset-actions">
                         <button type="submit" class="btn-primary text-italic login-reset-submit" id="login-reset-submit">Recevoir le lien</button>
                         <button type="button" class="login-reset-cancel text-italic" id="login-reset-cancel">Annuler</button>

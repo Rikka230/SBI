@@ -39,7 +39,16 @@
     const count=raw==='9+'?10:(parseInt(raw,10)||0);
     const visible=bell.style.display!=='none'&&count>0;
     const old=parseInt(localStorage.getItem(key)||'0',10)||0;
-    badge.textContent=raw;
+    // 8.0P.167.248 (audit) : ne pas laisser le badge afficher "0". On masque quand 0.
+    if(visible){
+      badge.textContent=raw;
+      badge.hidden=false;
+      badge.removeAttribute('aria-hidden');
+    }else{
+      badge.textContent='';
+      badge.hidden=true;
+      badge.setAttribute('aria-hidden','true');
+    }
     a.classList.toggle('has-notifications',visible);
     if(visible&&count>old&&document.visibilityState==='visible'){
       localStorage.setItem(key,String(count));
@@ -141,13 +150,19 @@
         e.preventDefault();e.stopPropagation();moveNotifs();a.classList.toggle('is-notification-mode');openState(true);
       }
     },true);
-    const waitBell=function(){
+    // 8.0P.167.248 (audit) : borne d'essais pour éviter une boucle setTimeout infinie
+    // si bell-badge ne monte jamais.
+    const waitBell=function(attempt){
+      attempt=attempt||0;
       const bell=document.getElementById('bell-badge');
-      if(!bell){setTimeout(waitBell,150);return;}
+      if(!bell){
+        if(attempt<40){setTimeout(()=>waitBell(attempt+1),150);}
+        return;
+      }
       new MutationObserver(syncBadge).observe(bell,{attributes:true,childList:true,characterData:true,subtree:true,attributeFilter:['style']});
       syncBadge();
     };
-    waitBell();
+    waitBell(0);
   }
 
   function start(){

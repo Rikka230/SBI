@@ -42,7 +42,13 @@ function switchAdminTab(targetId, { pushState = true } = {}) {
         window.history.pushState({ sbiTab: targetId }, '', url.pathname + url.search);
     }
 
-    window.dispatchEvent(new CustomEvent('sbi:admin-tab-changed', { detail: { targetId } }));
+    // 8.0P.167.248 (audit B1) : les consommateurs (admin-core, admin-dashboard) lisent
+    // event.detail.tab (payload émis par panels.js). On s'aligne dessus pour que la
+    // réhydratation comptes et le rechargement des stats fonctionnent aussi quand la
+    // navigation passe par le shell interne. On conserve targetId pour rétrocompat.
+    window.dispatchEvent(new CustomEvent('sbi:admin-tab-changed', {
+        detail: { tab: targetId, targetId, source: 'internal-shell' }
+    }));
     return true;
 }
 

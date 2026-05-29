@@ -764,9 +764,12 @@ service cloud.firestore {
       // 8.0P.167.153 : passe-droit viewer direct strictement par ID.
       // Important : on ne passe plus par canReadCourse() pour get, car certains anciens
       // documents cours n'ont pas tous les champs attendus et peuvent faire échouer
-      // l'évaluation des règles avant d'arriver au signedIn().
+      // l'évaluation des règles avant d'arriver au garde minimal.
       // Le list reste filtré : pas d'exploration globale de la collection courses.
-      allow get: if signedIn();
+      // 8.0P.167.248 (audit S1) : isActiveUser() au lieu de signedIn() afin d'exiger
+      // un compte avec doc utilisateur et non suspendu. isActiveUser() ne lit pas les
+      // champs du document cours, donc aucune régression sur les anciens docs incomplets.
+      allow get: if isActiveUser();
       allow list: if canReadCourse(courseId, resource.data);
 
       allow create: if isAdmin()
@@ -937,6 +940,9 @@ service cloud.firestore {
           && resource.data.keys().hasAny(['studentUid'])
           && resource.data.studentUid == request.auth.uid
           && request.resource.data.studentUid == resource.data.studentUid
+          // 8.0P.167.248 (audit S2) : l'élève ne peut pas auto-valider son document.
+          // 'validated' reste réservé à isAdmin().
+          && request.resource.data.status != 'validated'
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
             'filePath', 'fileName', 'status', 'submittedAt', 'uploadedAt', 'updatedAt'
           ]));
@@ -960,6 +966,8 @@ service cloud.firestore {
           && resource.data.studentUid == request.auth.uid
           && !(resource.data.keys().hasAny(['status']) && resource.data.status in ['canceled', 'cancelled', 'archived'])
           && request.resource.data.studentUid == resource.data.studentUid
+          // 8.0P.167.248 (audit S2) : l'élève ne peut pas marquer sa demande comme validée.
+          && request.resource.data.status != 'validated'
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
             'items', 'status', 'submittedAt', 'updatedAt'
           ]));

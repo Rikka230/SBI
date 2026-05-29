@@ -247,11 +247,20 @@
 </div>
 
 <script>
+    // 8.0P.167.248 (audit B3) : ne plus dépendre de window.event (inexistant sur Firefox).
+    // Signature inchangée (tabId) pour rester compatible avec les onclick et la délégation
+    // de sbi-safe-fixes.js. On retrouve l'onglet déclencheur via l'event courant si dispo,
+    // sinon via son attribut onclick.
     function switchTab(tabId) {
         document.querySelectorAll('.student-sub-nav-item').forEach(el => el.classList.remove('active'));
         document.querySelectorAll('.student-view').forEach(el => el.classList.remove('active'));
-        event.currentTarget.classList.add('active');
-        document.getElementById(tabId).classList.add('active');
+        const view = document.getElementById(tabId);
+        if (view) view.classList.add('active');
+        const evt = (typeof event !== 'undefined') ? event : null;
+        const trigger = (evt && evt.currentTarget) ||
+            Array.from(document.querySelectorAll('.student-sub-nav-item'))
+                .find(el => (el.getAttribute('onclick') || '').includes("'" + tabId + "'"));
+        if (trigger && trigger.classList) trigger.classList.add('active');
     }
 </script>
 

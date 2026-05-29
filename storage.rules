@@ -264,7 +264,26 @@ service firebase.storage {
       return (isTeacher() || isAdmin())
         && request.resource.size < 60 * 1024 * 1024
         && request.resource.metadata.keys().hasAny(['uploadedBy'])
-        && request.resource.metadata.uploadedBy == request.auth.uid;
+        && request.resource.metadata.uploadedBy == request.auth.uid
+        // 8.0P.167.248 (audit S3) : liste blanche de types, exclut image/svg+xml et
+        // text/html (XSS stocké servi via getDownloadURL).
+        && request.resource.contentType != null
+        && (
+          (request.resource.contentType.matches('image/.*') && request.resource.contentType != 'image/svg+xml') ||
+          request.resource.contentType.matches('video/.*') ||
+          request.resource.contentType.matches('audio/.*') ||
+          request.resource.contentType == 'application/pdf' ||
+          request.resource.contentType == 'application/msword' ||
+          request.resource.contentType == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+          request.resource.contentType == 'application/vnd.ms-powerpoint' ||
+          request.resource.contentType == 'application/vnd.openxmlformats-officedocument.presentationml.presentation' ||
+          request.resource.contentType == 'application/vnd.ms-excel' ||
+          request.resource.contentType == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+          request.resource.contentType == 'text/plain' ||
+          request.resource.contentType == 'text/csv' ||
+          request.resource.contentType == 'application/zip' ||
+          request.resource.contentType == 'application/x-zip-compressed'
+        );
     }
 
     function validCourseMediaUpload() {

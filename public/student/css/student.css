@@ -6,7 +6,8 @@
     --bg-body: #f4f7f6;
     --bg-panel: #ffffff;
     --bg-card: #ffffff;
-    --border-color: #e2e8f0;
+    /* 8.0P.167.248 (audit) : déclaration --border-color en double retirée (la valeur
+       effective #e5e7eb est définie plus bas). */
     --bg-main: #f3f4f6;
     --bg-sidebar: #ffffff;
     --bg-header: #ffffff;

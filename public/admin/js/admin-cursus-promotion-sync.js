@@ -717,10 +717,14 @@ function scheduleSync(attempt = 0) {
 }
 
 function bindSaveButton() {
-  const button = document.getElementById('cursus-save-btn');
-  if (!button || button.dataset.sbiPromotionSyncBound === 'true') return;
-  button.dataset.sbiPromotionSyncBound = 'true';
-  button.addEventListener('click', () => scheduleSync(0), true);
+  // 8.0P.167.248 (audit B2) : inclure aussi le bouton de sauvegarde du footer, sinon
+  // une sauvegarde via le footer ne déclenchait pas la sync des promotions liées.
+  ['cursus-save-btn', 'cursus-save-footer-btn'].forEach((id) => {
+    const button = document.getElementById(id);
+    if (!button || button.dataset.sbiPromotionSyncBound === 'true') return;
+    button.dataset.sbiPromotionSyncBound = 'true';
+    button.addEventListener('click', () => scheduleSync(0), true);
+  });
 }
 
 export function initAdminCursusPromotionSync() {
