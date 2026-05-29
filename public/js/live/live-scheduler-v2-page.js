@@ -4,6 +4,8 @@ import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/
 
 const functionsInstance = getFunctions(app, 'europe-west1');
 const getLiveSchedulerData = httpsCallable(functionsInstance, 'getLiveSchedulerData');
+const scheduleLiveSession = httpsCallable(functionsInstance, 'scheduleLiveSession');
+const notifyLiveStarted = httpsCallable(functionsInstance, 'notifyLiveStarted');
 
 const state = {
   role: 'teacher',
@@ -33,6 +35,15 @@ function escapeHtml(value = '') {
     .replace(/'/g, '&#039;');
 }
 
+function normalizeText(value = '') {
+  return clean(value, 240).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+
+function isGenericLiveTitle(value = '') {
+  const title = normalizeText(value);
+  return !title || title === 'nouveau live' || title === 'nouvel atelier' || title === 'live sans titre' || title === 'live sbi';
+}
+
 function formatDateTime(value = '') {
   if (!value) return 'Non renseignée';
   const date = new Date(value);
@@ -46,23 +57,38 @@ function formatRange(start = '', end = '') {
   return start ? `À partir du ${formatDateTime(start)}` : `Jusqu’au ${formatDateTime(end)}`;
 }
 
+function toDateTimeLocal(value = '') {
+  if (!value) return '';
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return '';
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 16);
+}
+
+function fromDateTimeLocal(value = '') {
+  if (!value) return '';
+  const date = new Date(value);
+  return Number.isFinite(date.getTime()) ? date.toISOString() : '';
+}
+
+function addMinutesIso(baseIso = '', minutes = 60) {
+  const baseMs = Date.parse(baseIso || '');
+  if (!Number.isFinite(baseMs)) return '';
+  return new Date(baseMs + minutes * 60000).toISOString();
+}
+
+function durationMinutes(startAt = '', endAt = '') {
+  const startMs = Date.parse(startAt || '');
+  const endMs = Date.parse(endAt || '');
+  if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= startMs) return 60;
+  return Math.max(15, Math.round((endMs - startMs) / 60000));
+}
+
 function setStatus(message = '', tone = 'muted') {
   const node = $('sbi-live-v2-status');
   if (!node) return;
   node.textContent = message;
   node.dataset.tone = tone;
-}
-
-function normalizeText(value = '') {
-  return clean(value, 240)
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase();
-}
-
-function isGenericLiveTitle(value = '') {
-  const title = normalizeText(value);
-  return !title || title === 'nouveau live' || title === 'nouvel atelier' || title === 'live sans titre' || title === 'live sbi';
 }
 
 function getPromotionName(promotion = {}) {
@@ -189,7 +215,6 @@ function getSourceLiveItems(promotion = {}) {
   const templateItems = getTemplateLiveItems(promotion);
   const coursePlanItems = getCoursePlanLiveItems(promotion);
   const livePlanningItems = getLivePlanningItems(promotion);
-
   if (templateItems.length) return { source: 'cursus', items: templateItems };
   if (coursePlanItems.length) return { source: 'promotion-coursePlan', items: coursePlanItems };
   return { source: 'promotion-livePlanning', items: livePlanningItems };
@@ -405,6 +430,30 @@ function renderLives() {
   });
 }
 
+function getDefaultStartForRow(row = {}) {
+  return row.startAt || row.windowStart || '';
+}
+
+function getRowSessionId(row = {}) {
+  return row.session?.id || row.planning?.liveSessionId || row.coursePlan?.liveSessionId || row.item?.liveSessionId || '';
+}
+
+function getRowSourceId(row = {}) {
+  return clean(
+    row.item?.sourceItemId
+    || row.item?.id
+    || row.item?.itemId
+    || row.coursePlan?.sourceItemId
+    || row.coursePlan?.id
+    || row.coursePlan?.itemId
+    || row.planning?.sourceItemId
+    || row.planning?.id
+    || row.planning?.itemId
+    || row.id,
+    180
+  );
+}
+
 function renderDetail() {
   const root = $('sbi-live-v2-detail');
   const promotion = getSelectedPromotion();
@@ -413,6 +462,13 @@ function renderDetail() {
     if (root) root.innerHTML = '<div class="sbi-live-v2-empty">Sélectionnez une promotion et un live.</div>';
     return;
   }
+
+  const defaultStart = getDefaultStartForRow(row);
+  const defaultDuration = durationMinutes(row.startAt || row.windowStart, row.endAt || row.windowEnd);
+  const liveId = getRowSessionId(row);
+  const selectedMode = row.status === 'report' ? 'report' : 'scheduled';
+  const canOpen = Boolean(liveId);
+
   root.innerHTML = `
     <div class="sbi-live-v2-detail">
       <div class="sbi-live-v2-live-top">
@@ -433,20 +489,119 @@ function renderDetail() {
         </div>
       </section>
 
-      <section class="sbi-live-v2-info">
-        <h3>Planification V2</h3>
-        <div class="sbi-live-v2-info-grid">
-          <span>Date prévue</span><strong>${escapeHtml(row.startAt ? formatRange(row.startAt, row.endAt) : 'Non planifiée')}</strong>
-          <span>Session liée</span><strong>${escapeHtml(row.session?.id || row.planning?.liveSessionId || 'Aucune session liée')}</strong>
-          <span>État</span><strong>${escapeHtml(row.status === 'report' ? 'Report hors période' : row.status === 'scheduled' ? 'Programmé' : 'À planifier')}</strong>
-        </div>
-      </section>
+      <form class="sbi-live-v2-form" id="sbi-live-v2-form">
+        <section class="sbi-live-v2-info">
+          <h3>Planification</h3>
+          <label>Titre du live
+            <input type="text" value="${escapeHtml(row.title)}" readonly>
+          </label>
+          <div class="sbi-live-v2-form-row">
+            <label>Date prévue du live
+              <input id="sbi-live-v2-start" type="datetime-local" value="${escapeHtml(toDateTimeLocal(defaultStart))}">
+            </label>
+            <label>Durée prévue
+              <select id="sbi-live-v2-duration">
+                ${[30, 45, 60, 90, 120].map((minutes) => `<option value="${minutes}" ${defaultDuration === minutes ? 'selected' : ''}>${minutes} min</option>`).join('')}
+              </select>
+            </label>
+          </div>
+          <label>Statut de planification</label>
+          <div class="sbi-live-v2-mode-toggle" id="sbi-live-v2-mode-toggle">
+            <button type="button" class="sbi-live-v2-mode-btn${selectedMode === 'scheduled' ? ' is-active' : ''}" data-mode="scheduled">Dans la période prévue</button>
+            <button type="button" class="sbi-live-v2-mode-btn${selectedMode === 'report' ? ' is-active' : ''}" data-mode="report">Report hors période</button>
+          </div>
+          <label>Lien salle externe provisoire
+            <input id="sbi-live-v2-meeting-url" value="${escapeHtml(row.session?.meetingUrl || '')}" placeholder="https://...">
+          </label>
+          <div class="sbi-live-v2-form-note" id="sbi-live-v2-plan-note">
+            ${selectedMode === 'report' ? 'Le live sera enregistré comme report hors période.' : 'La date prévue doit rester dans la période du cursus, sauf report.'}
+          </div>
+        </section>
 
-      <div class="sbi-live-v2-form-note">
-        V2 lit maintenant les titres via la callable serveur : cursus enregistré d’abord, puis dates synchronisées depuis la promotion.
-      </div>
+        <div class="sbi-live-v2-actions">
+          <button class="sbi-live-v2-btn sbi-live-v2-btn-primary" type="submit">Enregistrer la planification</button>
+          <button class="sbi-live-v2-btn" type="button" id="sbi-live-v2-open-room" ${canOpen ? '' : 'disabled'}>Ouvrir la salle</button>
+          <button class="sbi-live-v2-btn" type="button" id="sbi-live-v2-started" ${canOpen ? '' : 'disabled'}>Notifier le démarrage</button>
+        </div>
+      </form>
     </div>
   `;
+
+  $('sbi-live-v2-mode-toggle')?.querySelectorAll('[data-mode]').forEach((button) => {
+    button.addEventListener('click', () => {
+      $('sbi-live-v2-mode-toggle')?.querySelectorAll('[data-mode]').forEach((item) => item.classList.toggle('is-active', item === button));
+      const note = $('sbi-live-v2-plan-note');
+      if (note) note.textContent = button.dataset.mode === 'report'
+        ? 'Le live sera enregistré comme report hors période.'
+        : 'La date prévue doit rester dans la période du cursus, sauf report.';
+    });
+  });
+
+  $('sbi-live-v2-form')?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    await submitSchedule(promotion, row);
+  });
+
+  $('sbi-live-v2-open-room')?.addEventListener('click', () => {
+    const id = getRowSessionId(row);
+    if (!id) return;
+    window.open(`/live-room.html?liveId=${encodeURIComponent(id)}&start=1`, '_blank', 'noopener,noreferrer');
+  });
+
+  $('sbi-live-v2-started')?.addEventListener('click', async () => {
+    const id = getRowSessionId(row);
+    if (!id) return;
+    await submitStarted(id);
+  });
+}
+
+async function submitSchedule(promotion, row) {
+  const button = $('sbi-live-v2-form')?.querySelector('button[type="submit"]');
+  if (button) button.disabled = true;
+  setStatus('Enregistrement de la planification…', 'muted');
+
+  try {
+    const startIso = fromDateTimeLocal($('sbi-live-v2-start')?.value || '');
+    if (!startIso) throw new Error('Date prévue manquante.');
+    const duration = Number($('sbi-live-v2-duration')?.value || 60) || 60;
+    const endIso = addMinutesIso(startIso, duration);
+    const mode = $('sbi-live-v2-mode-toggle')?.querySelector('.is-active')?.dataset?.mode || 'scheduled';
+    const sourceItemId = getRowSourceId(row);
+
+    const result = await scheduleLiveSession({
+      promotionId: promotion.id,
+      liveId: getRowSessionId(row) || row.id,
+      sourceItemId,
+      type: row.item?.type || row.coursePlan?.type || row.planning?.type || 'live_session',
+      provider: 'daily',
+      title: row.title,
+      selectedStartAt: startIso,
+      selectedEndAt: endIso,
+      meetingUrl: $('sbi-live-v2-meeting-url')?.value || '',
+      report: mode === 'report'
+    });
+
+    state.selectedPromotionId = promotion.id;
+    state.selectedLiveId = row.id;
+    setStatus(result?.data?.message || 'Live programmé.', 'success');
+    await refreshData({ preserveSelection: true });
+  } catch (error) {
+    console.error('[SBI Lives V2] Planification impossible :', error);
+    setStatus(error?.message || 'Planification impossible.', 'error');
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
+
+async function submitStarted(liveId) {
+  setStatus('Notification de démarrage…', 'muted');
+  try {
+    const result = await notifyLiveStarted({ liveId });
+    setStatus(result?.data?.message || 'Notification envoyée.', 'success');
+  } catch (error) {
+    console.error('[SBI Lives V2] Notification impossible :', error);
+    setStatus(error?.message || 'Notification impossible.', 'error');
+  }
 }
 
 function renderAll() {
@@ -470,8 +625,10 @@ function loadTemplatesFromServer(templates = []) {
   });
 }
 
-async function refreshData() {
-  setStatus('Chargement des lives V2…');
+async function refreshData(options = {}) {
+  const previousPromotionId = state.selectedPromotionId;
+  const previousLiveId = state.selectedLiveId;
+  setStatus('Chargement des lives…');
   try {
     const result = await getLiveSchedulerData({ role: state.role, version: 'v2' });
     const data = result?.data || {};
@@ -479,8 +636,12 @@ async function refreshData() {
     state.sessions = Array.isArray(data.sessions) ? data.sessions : [];
     loadTemplatesFromServer(data.templates);
     state.promotions.sort((a, b) => getPromotionName(a).localeCompare(getPromotionName(b), 'fr', { sensitivity: 'base' }));
+    if (options.preserveSelection) {
+      state.selectedPromotionId = state.promotions.some((promotion) => promotion.id === previousPromotionId) ? previousPromotionId : '';
+      state.selectedLiveId = previousLiveId || '';
+    }
     renderAll();
-    setStatus('Lives V2 chargé.', 'success');
+    setStatus('Lives chargé.', 'success');
   } catch (error) {
     console.error('[SBI Lives V2] Chargement impossible :', error);
     setStatus(error?.message || 'Chargement impossible.', 'error');
@@ -493,7 +654,7 @@ export function mountLiveSchedulerV2Page(role = 'teacher') {
   mounted = true;
   state.role = role === 'admin' ? 'admin' : 'teacher';
 
-  $('sbi-live-v2-refresh')?.addEventListener('click', refreshData);
+  $('sbi-live-v2-refresh')?.addEventListener('click', () => refreshData({ preserveSelection: true }));
 
   unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
     if (!user) {
@@ -501,7 +662,7 @@ export function mountLiveSchedulerV2Page(role = 'teacher') {
       return;
     }
     state.uid = user.uid;
-    await refreshData();
+    await refreshData({ preserveSelection: true });
   });
 
   return () => {
