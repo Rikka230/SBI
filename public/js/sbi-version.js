@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.244',
+  version: '8.0P.167.245',
   branch: 'main',
-  channel: 'LIVE V2 RENDER CRASH FIX',
+  channel: 'LIVE V2 INTERACTION REPAIR',
   stage: 'DEFINE TEST ROOM OPEN STATE',
   updatedAt: '2026-05-29',
-  label: 'SBI 8.0P.167.244 - fix live v2 test room render crash'
+  label: 'SBI 8.0P.167.245 - fix live v2 test room render crash'
 };
 
 export function getSbiVersionLabel() {

@@ -638,35 +638,91 @@ function renderDetail() {
     </div>
   `;
 
-  $('sbi-live-v2-mode-toggle')?.querySelectorAll('[data-mode]').forEach((button) => {
-    button.addEventListener('click', () => {
-      $('sbi-live-v2-mode-toggle')?.querySelectorAll('[data-mode]').forEach((item) => item.classList.toggle('is-active', item === button));
+  bindLiveV2DelegatedEvents();
+}
+
+
+function bindLiveV2DelegatedEvents() {
+  const root = document.querySelector('[data-sbi-live-v2]');
+  if (!root || root.dataset.sbiLiveV2Delegated === 'true') return;
+  root.dataset.sbiLiveV2Delegated = 'true';
+
+  root.addEventListener('click', async (event) => {
+    if (event.defaultPrevented) return;
+    const target = event.target;
+
+    const refreshButton = target?.closest?.('#sbi-live-v2-refresh');
+    if (refreshButton && root.contains(refreshButton)) {
+      event.preventDefault();
+      await refreshData({ preserveSelection: true });
+      return;
+    }
+
+    const modeButton = target?.closest?.('#sbi-live-v2-mode-toggle [data-mode]');
+    if (modeButton && root.contains(modeButton)) {
+      event.preventDefault();
+      const toggle = $('sbi-live-v2-mode-toggle');
+      toggle?.querySelectorAll('[data-mode]').forEach((item) => item.classList.toggle('is-active', item === modeButton));
       const note = $('sbi-live-v2-plan-note');
-      if (note) note.textContent = button.dataset.mode === 'report'
+      if (note) note.textContent = modeButton.dataset.mode === 'report'
         ? 'Le live sera enregistré comme report hors période.'
         : 'La date prévue doit rester dans la période du cursus, sauf report.';
-    });
+      return;
+    }
+
+    const promotionButton = target?.closest?.('[data-promotion-id]');
+    if (promotionButton && root.contains(promotionButton)) {
+      event.preventDefault();
+      state.selectedPromotionId = promotionButton.dataset.promotionId || '';
+      state.selectedLiveId = '';
+      renderAll();
+      return;
+    }
+
+    const liveButton = target?.closest?.('[data-live-id]');
+    if (liveButton && root.contains(liveButton)) {
+      event.preventDefault();
+      state.selectedLiveId = liveButton.dataset.liveId || '';
+      renderAll();
+      return;
+    }
+
+    const openRoomButton = target?.closest?.('#sbi-live-v2-open-room');
+    if (openRoomButton && root.contains(openRoomButton)) {
+      event.preventDefault();
+      const promotion = getSelectedPromotion();
+      const row = getSelectedLiveRow(promotion);
+      const id = getRowSessionId(row || {});
+      if (id) window.open(`/live-room.html?liveId=${encodeURIComponent(id)}&start=1`, '_blank', 'noopener,noreferrer');
+      return;
+    }
+
+    const startedButton = target?.closest?.('#sbi-live-v2-started');
+    if (startedButton && root.contains(startedButton)) {
+      event.preventDefault();
+      const promotion = getSelectedPromotion();
+      const row = getSelectedLiveRow(promotion);
+      const id = getRowSessionId(row || {});
+      if (id) await submitStarted(id);
+      return;
+    }
+
+    const testButton = target?.closest?.('#sbi-live-v2-test-room');
+    if (testButton && root.contains(testButton)) {
+      event.preventDefault();
+      const promotion = getSelectedPromotion();
+      if (promotion) await openOrCreateTestRoom(promotion);
+    }
   });
 
-  $('sbi-live-v2-form')?.addEventListener('submit', async (event) => {
+  root.addEventListener('submit', async (event) => {
+    if (event.defaultPrevented) return;
+    const form = event.target?.closest?.('#sbi-live-v2-form');
+    if (!form || !root.contains(form)) return;
     event.preventDefault();
-    await submitSchedule(promotion, row);
-  });
-
-  $('sbi-live-v2-open-room')?.addEventListener('click', () => {
-    const id = getRowSessionId(row);
-    if (!id) return;
-    window.open(`/live-room.html?liveId=${encodeURIComponent(id)}&start=1`, '_blank', 'noopener,noreferrer');
-  });
-
-  $('sbi-live-v2-started')?.addEventListener('click', async () => {
-    const id = getRowSessionId(row);
-    if (!id) return;
-    await submitStarted(id);
-  });
-
-  $('sbi-live-v2-test-room')?.addEventListener('click', async () => {
-    await openOrCreateTestRoom(promotion);
+    const promotion = getSelectedPromotion();
+    const row = getSelectedLiveRow(promotion);
+    if (promotion && row) await submitSchedule(promotion, row);
   });
 }
 
@@ -832,6 +888,7 @@ export function mountLiveSchedulerV2Page(role = 'teacher') {
   mountedRoot = root;
   state.role = role === 'admin' ? 'admin' : 'teacher';
 
+  bindLiveV2DelegatedEvents();
   $('sbi-live-v2-refresh')?.addEventListener('click', () => refreshData({ preserveSelection: true }));
 
   unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
