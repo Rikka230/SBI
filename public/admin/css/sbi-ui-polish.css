@@ -124,7 +124,7 @@ body.sbi-internal-ui .logo-zone span:first-of-type::after {
     color: var(--space-accent, var(--sbi-blue));
     font-size: 0.9rem;
     line-height: 1;
-    font-weight: 950;
+    font-weight: 900;
     letter-spacing: 0.08em;
     font-style: italic;
 }

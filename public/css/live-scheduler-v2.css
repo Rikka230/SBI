@@ -13,7 +13,7 @@
 body.sbi-admin-surface.sbi-live-v2-page { --live-v2-bg: #08111f; --live-v2-card: #121b2b; --live-v2-soft: #0d1625; --live-v2-border: rgba(148, 163, 184, 0.18); --live-v2-text: #f8fafc; --live-v2-muted: #a7b4c8; }
 .sbi-live-v2 { color: var(--live-v2-text); min-height: calc(100vh - 80px); }
 .sbi-live-v2-hero { display:flex; justify-content:space-between; align-items:flex-end; gap:1rem; margin-bottom:1.25rem; }
-.sbi-live-v2-kicker { color:var(--live-v2-blue); font-size:.78rem; font-weight:950; letter-spacing:.13em; text-transform:uppercase; }
+.sbi-live-v2-kicker { color:var(--live-v2-blue); font-size:.78rem; font-weight:900; letter-spacing:.13em; text-transform:uppercase; }
 .sbi-live-v2-hero h1 { margin:.25rem 0 0; font-size:clamp(2rem,3vw,3.05rem); line-height:1; letter-spacing:-.04em; }
 .sbi-live-v2-hero p { margin:.45rem 0 0; color:var(--live-v2-muted); max-width:720px; }
 .sbi-live-v2-status { min-height:24px; color:var(--live-v2-muted); font-weight:800; font-size:.85rem; }
@@ -22,7 +22,7 @@ body.sbi-admin-surface.sbi-live-v2-page { --live-v2-bg: #08111f; --live-v2-card:
 .sbi-live-v2-summary { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:1rem; margin-bottom:1rem; }
 .sbi-live-v2-stat,.sbi-live-v2-card { border:1px solid var(--live-v2-border); border-radius:16px; background:var(--live-v2-card); box-shadow:0 18px 48px rgba(15,23,42,.08); }
 .sbi-live-v2-stat { padding:1.05rem 1.1rem; min-height:112px; display:flex; flex-direction:column; justify-content:center; gap:.25rem; }
-.sbi-live-v2-stat span { color:var(--live-v2-muted); font-size:.78rem; font-weight:950; letter-spacing:.05em; text-transform:uppercase; }
+.sbi-live-v2-stat span { color:var(--live-v2-muted); font-size:.78rem; font-weight:900; letter-spacing:.05em; text-transform:uppercase; }
 .sbi-live-v2-stat strong { font-size:1.55rem; line-height:1; }
 .sbi-live-v2-stat em { color:var(--live-v2-muted); font-size:.85rem; font-style:normal; }
 .sbi-live-v2-layout { display:grid; grid-template-columns:minmax(280px,340px) minmax(420px,1fr) minmax(340px,440px); gap:1rem; align-items:start; }
@@ -37,7 +37,7 @@ body.sbi-admin-surface.sbi-live-v2-page { --live-v2-bg: #08111f; --live-v2-card:
 .sbi-live-v2-promotion span,.sbi-live-v2-live span { display:block; margin-top:.28rem; color:var(--live-v2-muted); font-size:.84rem; line-height:1.4; }
 .sbi-live-v2-promotion-grid { display:grid; gap:.35rem; margin-top:.7rem; }
 .sbi-live-v2-live-top { display:flex; justify-content:space-between; gap:.75rem; align-items:flex-start; }
-.sbi-live-v2-chip { display:inline-flex; align-items:center; min-height:26px; padding:.2rem .65rem; border-radius:999px; font-size:.74rem; font-weight:950; white-space:nowrap; }
+.sbi-live-v2-chip { display:inline-flex; align-items:center; min-height:26px; padding:.2rem .65rem; border-radius:999px; font-size:.74rem; font-weight:900; white-space:nowrap; }
 .sbi-live-v2-chip.is-to_plan { background:rgba(249,115,22,.14); color:var(--live-v2-orange); }
 .sbi-live-v2-chip.is-scheduled { background:rgba(37,99,235,.14); color:var(--live-v2-blue); }
 .sbi-live-v2-chip.is-report { background:rgba(225,29,72,.14); color:var(--live-v2-red); }

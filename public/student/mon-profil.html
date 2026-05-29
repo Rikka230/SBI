@@ -10,8 +10,8 @@
     <link rel="stylesheet" href="/admin/css/admin-notifications.css">
     <link rel="stylesheet" href="/student/css/student.css">
     
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" rel="stylesheet" media="print" onload="this.media='all'">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js" defer></script>
     
     <script src="/admin/js/components.js"></script>
     
@@ -228,7 +228,7 @@
                         <div class="hub-card">
                             <h3 class="section-title" style="margin-bottom: 1.5rem;">Profil Public</h3>
                             <div class="form-group">
-                                <label>À propos de moi (Bio)</label>
+                                <label for="prof-bio">À propos de moi (Bio)</label>
                                 <textarea id="prof-bio" class="prof-input" rows="5" maxlength="400" placeholder="Dites-en plus sur vous... (Max 400 caractères)" disabled></textarea>
                             </div>
                             <div class="edit-mode-only" style="margin-top: 1.5rem;">
@@ -242,7 +242,7 @@
                             <h3 class="section-title" style="margin-bottom: 1.5rem;">Données Confidentielles</h3>
                             
                             <div class="form-group">
-                                <label>Adresse E-mail</label>
+                                <label for="prof-email">Adresse E-mail</label>
                                 <div style="display: flex; gap: 1rem; align-items: center;">
                                     <input type="email" id="prof-email" class="prof-input" disabled style="flex-grow: 1;">
                                     <button class="action-btn edit-mode-only" onclick="window.location.href='/change-email.html'" style="display: none; width: auto; margin: 0; background: transparent; color: var(--accent-blue); border: 1px solid var(--accent-blue); padding: 0.8rem 1.5rem; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s;" onmouseover="this.style.background='rgba(42, 87, 255, 0.1)'" onmouseout="this.style.background='transparent'">Modifier</button>
@@ -250,11 +250,11 @@
                             </div>
                             
                             <div class="form-group">
-                                <label>Numéro de téléphone</label>
+                                <label for="prof-phone">Numéro de téléphone</label>
                                 <input type="tel" id="prof-phone" class="prof-input" placeholder="Votre numéro..." disabled>
                             </div>
                             <div class="form-group">
-                                <label>Adresse postale</label>
+                                <label for="prof-address">Adresse postale</label>
                                 <input type="text" id="prof-address" class="prof-input" placeholder="Votre adresse..." disabled>
                             </div>
                             <div class="form-group" style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">

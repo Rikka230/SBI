@@ -130,7 +130,7 @@ body.sbi-editor-v2 {
   display: flex;
   align-items: center;
   gap: 0.55rem;
-  font-weight: 950;
+  font-weight: 900;
   letter-spacing: -0.08em;
   color: var(--accent);
   font-size: 1.5rem;
@@ -289,7 +289,7 @@ body.sbi-editor-v2 {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--editor-text);
-  font-weight: 950;
+  font-weight: 900;
 }
 
 .sbi-panel-subtitle {
@@ -352,9 +352,9 @@ body.sbi-editor-v2 {
   border-radius: 11px;
   color: var(--accent);
   background: var(--editor-surface);
-  font-weight: 950;
+  font-weight: 900;
 }
-.sbi-block-name { display: block; font-weight: 950; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sbi-block-name { display: block; font-weight: 900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sbi-block-type { display: block; color: var(--editor-muted); font-size: 0.72rem; margin-top: 0.12rem; }
 
 .sbi-add-grid {
@@ -554,7 +554,7 @@ body.sbi-editor-v2 {
 }
 .sbi-quiz-question-head strong {
   color: var(--editor-text);
-  font-weight: 950;
+  font-weight: 900;
 }
 .sbi-quiz-option-row {
   justify-content: flex-start;
@@ -611,7 +611,7 @@ body.sbi-editor-v2 {
 }
 .sbi-autonomous-correction-note strong {
   color: var(--editor-text);
-  font-weight: 950;
+  font-weight: 900;
 }
 .sbi-autonomous-correction-note--xp {
   border-color: rgba(16, 185, 129, 0.28);
@@ -655,7 +655,7 @@ body.sbi-editor-v2 {
   margin: 0;
   color: var(--editor-text);
   font-size: 0.75rem;
-  font-weight: 950;
+  font-weight: 900;
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
@@ -708,7 +708,7 @@ body.sbi-editor-v2 {
   background: var(--editor-header);
   backdrop-filter: blur(18px);
 }
-.sbi-block-bank-title { font-weight: 950; font-size: 0.78rem; text-transform: uppercase; }
+.sbi-block-bank-title { font-weight: 900; font-size: 0.78rem; text-transform: uppercase; }
 .sbi-block-bank-subtitle { color: var(--editor-muted); font-size: 0.74rem; margin-top: 0.15rem; }
 .sbi-bank-chips { display: flex; gap: 0.55rem; overflow-x: auto; padding-bottom: 0.15rem; }
 .sbi-bank-chips button { white-space: nowrap; }
@@ -1021,7 +1021,7 @@ body.sbi-editor-v2 {
   background: transparent;
   color: var(--editor-text);
   font-size: 1.05rem;
-  font-weight: 950;
+  font-weight: 900;
   outline: none;
   padding: 0.6rem 0.7rem;
   border-radius: 12px;
@@ -1197,7 +1197,7 @@ body.sbi-editor-v2 {
 .sbi-quill-editor .ql-editor h1 {
   font-size: 1.9rem;
   line-height: 1.15;
-  font-weight: 950;
+  font-weight: 900;
   letter-spacing: -0.04em;
   color: #0f172a;
 }
@@ -1277,7 +1277,7 @@ body.sbi-editor-v2 {
   font-size: 1.15rem;
   line-height: 1.15;
   margin: 0.45rem 0 0.55rem;
-  font-weight: 950;
+  font-weight: 900;
   letter-spacing: -0.035em;
   color: #0f172a;
 }
@@ -1398,7 +1398,7 @@ body.sbi-editor-v2 {
 .sbi-editor-dialog__title {
   margin: 0;
   font-size: 1rem;
-  font-weight: 950;
+  font-weight: 900;
   letter-spacing: -0.02em;
 }
 .sbi-editor-dialog__body {

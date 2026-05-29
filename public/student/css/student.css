@@ -137,7 +137,7 @@ body.learning-mode {
     justify-content: center;
     color: #ffffff;
     background: var(--accent-blue);
-    font-weight: 950;
+    font-weight: 900;
     font-size: 1.1rem;
     box-shadow: 0 14px 32px rgba(42, 87, 255, 0.24);
     clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
@@ -151,7 +151,7 @@ body.learning-mode {
     margin: 0 0 0.4rem;
     color: var(--accent-blue);
     font-size: 0.72rem;
-    font-weight: 950;
+    font-weight: 900;
     letter-spacing: 0.12em;
     text-transform: uppercase;
 }

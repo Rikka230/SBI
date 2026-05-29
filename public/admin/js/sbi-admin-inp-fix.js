@@ -45,7 +45,7 @@ function showConfirm({ title, text, confirmLabel = 'Confirmer', cancelLabel = 'A
                         <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M12 2 1 21h22L12 2zm1 16h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
                     </div>
                     <div>
-                        <h3 style="margin:0;color:#fff;font-size:1.12rem;font-weight:950;letter-spacing:-.03em;">${safeTitle}</h3>
+                        <h3 style="margin:0;color:#fff;font-size:1.12rem;font-weight:900;letter-spacing:-.03em;">${safeTitle}</h3>
                         <p style="margin:.45rem 0 0;color:#9ca3af;font-size:.92rem;line-height:1.45;">${safeText}</p>
                     </div>
                 </div>

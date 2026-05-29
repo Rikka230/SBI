@@ -22,7 +22,7 @@
 .sbi-live-kicker {
   color: var(--accent-blue, #2a57ff);
   font-size: 0.76rem;
-  font-weight: 950;
+  font-weight: 900;
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
@@ -67,7 +67,7 @@
   color: #b45309;
   font-size: 0.72rem;
   font-style: normal;
-  font-weight: 950;
+  font-weight: 900;
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
@@ -192,7 +192,7 @@
   padding: 0.72rem 0.95rem;
   background: var(--accent-blue, #2a57ff);
   color: #fff;
-  font-weight: 950;
+  font-weight: 900;
   cursor: pointer;
 }
 
@@ -380,7 +380,7 @@ a.sbi-live-btn {
   background: rgba(255, 255, 255, 0.08);
   color: #fff;
   font-size: 0.78rem;
-  font-weight: 950;
+  font-weight: 900;
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
@@ -480,7 +480,7 @@ a.sbi-live-btn {
   color: #fff;
   font: inherit;
   font-size: 0.78rem;
-  font-weight: 950;
+  font-weight: 900;
   cursor: pointer;
 }
 
@@ -659,7 +659,7 @@ a.sbi-live-btn {
   background: rgba(15, 138, 69, 0.08);
   color: #0f8a45;
   font-size: 0.72rem;
-  font-weight: 950;
+  font-weight: 900;
 }
 
 .sbi-live-replay-shell {
@@ -803,7 +803,7 @@ a.sbi-live-btn {
   background: rgba(0, 0, 0, 0.2);
   color: rgba(255, 255, 255, 0.48);
   font-size: clamp(0.68rem, 1.2vw, 0.82rem);
-  font-weight: 950;
+  font-weight: 900;
   letter-spacing: 0.04em;
   transform: rotate(-6deg);
   text-shadow: 0 1px 8px rgba(0,0,0,0.45);
@@ -1007,7 +1007,7 @@ body.sbi-live-replay-page[data-sbi-standalone="live-replay"] {
   color: #fff;
   font: inherit;
   font-size: 0.9rem;
-  font-weight: 950;
+  font-weight: 900;
   cursor: pointer;
 }
 

@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.248',
+  version: '8.0P.167.249',
   branch: 'main',
-  channel: 'FULL SITE AUDIT FIX LOT 1',
-  stage: 'SECURITY S1-S5 + BUGS B1-B3 + SAFE A11Y/PERF/RELIABILITY',
+  channel: 'AUDIT FIX LOT 2A - PERF & A11Y',
+  stage: 'PRECONNECT FONTS + FONT-WEIGHT 900 + CROPPER DEFER + LABELS/LAZY',
   updatedAt: '2026-05-29',
-  label: 'SBI 8.0P.167.248 - audit fix lot 1 (security, bugs, a11y)'
+  label: 'SBI 8.0P.167.249 - audit fix lot 2A (perf & a11y sweeps)'
 };
 
 export function getSbiVersionLabel() {

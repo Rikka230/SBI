@@ -58,7 +58,7 @@
   height: 48px;
   border-radius: 14px;
   color: #fff;
-  font-weight: 950;
+  font-weight: 900;
   background: linear-gradient(135deg, rgba(42, 87, 255, 0.95), rgba(0, 150, 255, 0.42));
   box-shadow: 0 0 26px rgba(42, 87, 255, 0.28);
 }
@@ -67,7 +67,7 @@
   margin: 0 0 0.18rem;
   color: #5e8bff;
   font-size: 0.7rem;
-  font-weight: 950;
+  font-weight: 900;
   text-transform: uppercase;
   letter-spacing: 0.12em;
 }
@@ -96,7 +96,7 @@
 .sbi-cursus-context label {
   color: #8797b7;
   font-size: 0.68rem;
-  font-weight: 950;
+  font-weight: 900;
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
@@ -248,7 +248,7 @@
   color: #dce8ff;
   background: rgba(42, 87, 255, 0.22);
   font-size: 0.72rem;
-  font-weight: 950;
+  font-weight: 900;
 }
 
 .sbi-cursus-search-row {
@@ -307,7 +307,7 @@
   border-radius: 10px;
   background: rgba(42, 87, 255, 0.22);
   color: #fff;
-  font-weight: 950;
+  font-weight: 900;
 }
 
 .sbi-cursus-tool-card strong {
@@ -459,7 +459,7 @@
   width: 34px;
   height: 34px;
   border-radius: 9px;
-  font-weight: 950;
+  font-weight: 900;
   color: #fff;
 }
 
@@ -568,7 +568,7 @@
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.16);
   font-size: 0.62rem;
-  font-weight: 950;
+  font-weight: 900;
 }
 
 .sbi-cursus-block.type-course { background: linear-gradient(135deg, rgba(24, 63, 164, 0.98), rgba(36, 92, 255, 0.78)); border-color: rgba(86, 138, 255, 0.62); }
@@ -629,7 +629,7 @@
 .sbi-cursus-form-row label {
   color: #8fa1c2;
   font-size: 0.68rem;
-  font-weight: 950;
+  font-weight: 900;
   text-transform: uppercase;
   letter-spacing: 0.07em;
 }
@@ -741,7 +741,7 @@
   border-radius: 10px 10px 0 0;
   background: rgba(45, 212, 191, 0.10);
   color: #d9fffb;
-  font-weight: 950;
+  font-weight: 900;
 }
 
 .sbi-cursus-stack-week-lane {
