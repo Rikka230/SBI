@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SBI Prof - Lives</title>
   <link rel="stylesheet" href="/admin/css/admin-layout.css">
-  <link rel="stylesheet" href="/admin/css/admin.css?v=8.0P.167.242">
-  <link rel="stylesheet" href="/teacher/css/teacher.css?v=8.0P.167.242">
-  <link rel="stylesheet" href="/css/live-scheduler-v2.css?v=8.0P.167.242">
-  <script src="/admin/js/components.js?v=8.0P.167.242"></script>
+  <link rel="stylesheet" href="/admin/css/admin.css?v=8.0P.167.243">
+  <link rel="stylesheet" href="/teacher/css/teacher.css?v=8.0P.167.243">
+  <link rel="stylesheet" href="/css/live-scheduler-v2.css?v=8.0P.167.243">
+  <script src="/admin/js/components.js?v=8.0P.167.243"></script>
 
 
   <style id="sbi-live-v2-hard-reveal-style">
@@ -89,14 +89,18 @@
 
   <script type="module" id="sbi-live-v2-standalone-boot">
     import { waitForSbiComponents } from '/admin/js/components/ready.js';
-    import { initSbiNavigationTransitions } from '/js/sbi-navigation-transitions.js?v=8.0P.167.242';
     import { initPanelControls } from '/admin/js/admin-ui/panels.js';
-    import { initSbiVersionBadge } from '/js/sbi-version-badge.js?v=8.0P.167.242';
-    import { initAssistantPrototype } from '/admin/js/admin-ui/assistant.js?v=8.0P.167.242';
+    import { initSbiVersionBadge } from '/js/sbi-version-badge.js?v=8.0P.167.243';
+    import { initAssistantPrototype } from '/admin/js/admin-ui/assistant.js?v=8.0P.167.243';
+
+    let standaloneNavBound = false;
 
     function revealLiveV2() {
       document.documentElement?.classList?.remove('preload');
+      document.documentElement?.classList?.remove('sbi-page-transitions-ready');
       document.body?.classList?.remove('preload');
+      document.body?.classList?.remove('sbi-navigating-out');
+      document.body?.removeAttribute('aria-busy');
       document.body?.classList?.add('sbi-live-v2-standalone-ready');
       const app = document.getElementById('app-container');
       const main = document.getElementById('main-content');
@@ -104,6 +108,7 @@
       [app, main, root].forEach((node) => {
         if (!node) return;
         node.hidden = false;
+        node.style.pointerEvents = '';
         node.style.display = node === main || node === root ? 'block' : '';
         node.style.visibility = 'visible';
         node.style.opacity = '1';
@@ -111,10 +116,51 @@
       });
     }
 
+    function normalizeStandaloneUrl(rawHref) {
+      if (!rawHref || /^#|javascript:|mailto:|tel:/i.test(rawHref)) return null;
+      try { return new URL(rawHref, window.location.href); } catch (_) { return null; }
+    }
+
+    function bindStandaloneNavigation() {
+      if (standaloneNavBound) return;
+      standaloneNavBound = true;
+
+      document.addEventListener('click', (event) => {
+        if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+        const trigger = event.target?.closest?.('[data-sbi-href], [data-href], a[href]');
+        if (!trigger) return;
+        if (trigger.matches?.('a[target]') && trigger.getAttribute('target') !== '_self') return;
+
+        const rawHref = trigger.getAttribute('data-sbi-href') || trigger.getAttribute('data-href') || trigger.getAttribute('href');
+        const url = normalizeStandaloneUrl(rawHref);
+        if (!url || url.origin !== window.location.origin) return;
+
+        event.preventDefault();
+        event.stopPropagation();
+        revealLiveV2();
+
+        if (url.pathname === window.location.pathname && url.search === window.location.search && !url.hash) return;
+        window.location.assign(url.href);
+      }, true);
+
+      document.addEventListener('keydown', (event) => {
+        if (event.defaultPrevented || (event.key !== 'Enter' && event.key !== ' ')) return;
+        const trigger = event.target?.closest?.('[data-sbi-href], [data-href]');
+        if (!trigger) return;
+        const rawHref = trigger.getAttribute('data-sbi-href') || trigger.getAttribute('data-href');
+        const url = normalizeStandaloneUrl(rawHref);
+        if (!url || url.origin !== window.location.origin) return;
+        event.preventDefault();
+        revealLiveV2();
+        if (url.pathname === window.location.pathname && url.search === window.location.search && !url.hash) return;
+        window.location.assign(url.href);
+      }, true);
+    }
+
     async function bootStandaloneLiveV2() {
       revealLiveV2();
+      bindStandaloneNavigation();
       try { await waitForSbiComponents(900); } catch (_) {}
-      try { initSbiNavigationTransitions(); } catch (error) { console.warn('[SBI Lives V2] transitions standalone indisponibles', error); }
       try { initPanelControls(); } catch (error) { console.warn('[SBI Lives V2] panels standalone indisponibles', error); }
       try { initSbiVersionBadge(); } catch (error) { console.warn('[SBI Lives V2] badge standalone indisponible', error); }
       try { initAssistantPrototype(); } catch (error) { console.warn('[SBI Lives V2] assistant standalone indisponible', error); }
@@ -130,7 +176,7 @@
     else bootStandaloneLiveV2();
   </script>
 
-  <script type="module" src="/admin/js/admin-notifications.js?v=8.0P.167.242"></script>
-  <script type="module" src="/js/live/live-scheduler-v2-page.js?v=8.0P.167.242"></script>
+  <script type="module" src="/admin/js/admin-notifications.js?v=8.0P.167.243"></script>
+  <script type="module" src="/js/live/live-scheduler-v2-page.js?v=8.0P.167.243"></script>
 </body>
 </html>
