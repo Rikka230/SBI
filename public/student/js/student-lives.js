@@ -17,7 +17,7 @@ import {
   loadProfile,
   loadPromotionsByIds,
   renderEmpty
-} from '/js/live/live-shared.js?v=8.0P.167.236';
+} from '/js/live/live-shared.js?v=8.0P.167.238';
 
 const functionsInstance = getFunctions(app, 'europe-west1');
 const getStudentLiveAttendance = httpsCallable(functionsInstance, 'getStudentLiveAttendance');
@@ -132,7 +132,7 @@ function isLiveSourceItem(item = {}) {
 }
 
 function isTestLive(item = {}) {
-  const values = [item.id, item.itemId, item.sourceItemId, item.liveId, item.type]
+  const values = [item.id, item.itemId, item.sourceItemId, item.liveId, item.type, item.sourceType]
     .map((value) => clean(value).toLowerCase())
     .filter(Boolean);
   return item.isTestLive === true || item.testLive === true || values.includes('sbi-live-test') || values.includes('live_test');
@@ -285,13 +285,16 @@ function getRows() {
         order: Number.isFinite(Number(sourceLive.order)) ? Number(sourceLive.order) : index,
         replayUrl: session?.replayUrl || session?.replayAccessUrl || session?.liveTech?.replayUrl || planning?.replayUrl || sourceLive.replayUrl || '',
         replayStatus: session?.replayStatus || session?.liveTech?.replayStatus || planning?.replayStatus || sourceLive.replayStatus || '',
-        status: session?.status || planning?.status || planning?.liveSchedulingStatus || sourceLive.status || sourceLive.liveSchedulingStatus || 'to_schedule',
+        status: (session?.report === true || planning?.reportOutsideWindow === true || planning?.liveSchedulingStatus === 'report')
+          ? 'report'
+          : (session?.status || planning?.status || planning?.liveSchedulingStatus || sourceLive.status || sourceLive.liveSchedulingStatus || 'to_schedule'),
         providerReady: Boolean(session?.providerRoomName || session?.providerRoomUrl || session?.meetingUrl || session?.liveTech?.providerReady || planning?.providerReady || planning?.providerRoomName || planning?.providerRoomUrl || sourceLive.providerReady || sourceLive.providerRoomName || sourceLive.providerRoomUrl)
       });
     });
   });
 
   state.sessions.forEach((session) => {
+    if (isTestLive(session) || clean(session.sourceType).toLowerCase() === 'live_test') return;
     if (rows.some((row) => row.session?.id === session.id || row.id === session.id)) return;
     rows.push({
       id: session.id,
@@ -304,7 +307,7 @@ function getRows() {
       endAt: session.selectedEndAt || '',
       replayUrl: session.replayUrl || session.replayAccessUrl || session.liveTech?.replayUrl || '',
       replayStatus: session.replayStatus || session.liveTech?.replayStatus || '',
-      status: session.status || 'scheduled',
+      status: session.report === true || session.schedulingStatus === 'report' ? 'report' : (session.status || 'scheduled'),
       providerReady: Boolean(session.providerRoomName || session.providerRoomUrl || session.meetingUrl || session.liveTech?.providerReady)
     });
   });
@@ -317,6 +320,20 @@ function getRows() {
     if (order !== 0) return order;
     return a.title.localeCompare(b.title, 'fr', { sensitivity: 'base' });
   });
+}
+
+
+function isReportRow(row = {}) {
+  const status = clean(row.status || '').toLowerCase();
+  const planningStatus = clean(row.planning?.liveSchedulingStatus || row.planning?.teacherSelectionStatus || '').toLowerCase();
+  const sessionStatus = clean(row.session?.schedulingStatus || '').toLowerCase();
+  return row.session?.report === true
+    || row.planning?.reportOutsideWindow === true
+    || row.live?.reportOutsideWindow === true
+    || status === 'report'
+    || planningStatus === 'report'
+    || planningStatus === 'reported'
+    || sessionStatus === 'report';
 }
 
 function isReplay(row) {
@@ -351,6 +368,7 @@ function isLiveJoinOpen(row = {}) {
 }
 
 function getJoinClosedLabel(row = {}) {
+  if (isReportRow(row)) return 'Report hors période';
   const status = clean(row.status || '').toLowerCase();
   if (['ended', 'replay_available', 'done', 'closed'].includes(status)) return 'Live terminé';
   if (status === 'cancelled') return 'Live annulé';
@@ -391,6 +409,7 @@ function renderList(rows) {
       <strong>${escapeHtml(row.title)}</strong>
       <span>${escapeHtml(getPromotionName(row.promotion))}</span>
       <span>${escapeHtml(getRowDateLabel(row))}</span>
+      ${isReportRow(row) ? '<span class="sbi-live-report-badge">Report hors période</span>' : ''}
       ${getAttendanceBadges(row)}
       <div class="sbi-live-card-actions">
         ${canJoinLive(row) ? `<a class="sbi-live-btn" data-live-room-link="true" data-live-id="${encodeURIComponent(getLiveIdForRow(row))}" href="/live-room/${encodeURIComponent(getLiveIdForRow(row))}?liveId=${encodeURIComponent(getLiveIdForRow(row))}#liveId=${encodeURIComponent(getLiveIdForRow(row))}">Rejoindre la salle</a>` : (state.tab === 'upcoming' ? `<span class="sbi-live-btn sbi-live-btn--ghost is-disabled" aria-disabled="true">${escapeHtml(getJoinClosedLabel(row))}</span>` : '')}
@@ -407,7 +426,7 @@ function renderCalendar(rows) {
   return `<div class="sbi-live-calendar">${filtered.map((row) => `
     <div class="sbi-live-day">
       <strong>${escapeHtml(row.startAt ? formatDateTime(row.startAt) : row.windowStart ? formatDateTime(row.windowStart) : 'A planifier')}</strong>
-      <span>${escapeHtml(row.title)}</span>
+      <span>${escapeHtml(row.title)}${isReportRow(row) ? ' · Report hors période' : ''}</span>
     </div>
   `).join('')}</div>`;
 }

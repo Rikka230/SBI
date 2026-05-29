@@ -12,7 +12,7 @@
  * location.reload()
  */
 
-import { createRouteRegistry } from './route-registry.js?v=8.0P.167.236';
+import { createRouteRegistry } from './route-registry.js?v=8.0P.167.238';
 import { createRouter } from './router.js';
 import { injectAppShellStyles, markAppShellReady } from './transitions.js';
 import { initRoutePreload } from './preload.js';
@@ -146,7 +146,7 @@ function getPjaxProbeDefinitions() {
     { group: 'protected', path: '/student/cours-viewer.html?id=test', label: 'Viewer étudiant réel' },
     { group: 'protected', path: '/teacher/cours-viewer.html?id=test&preview=true', label: 'Viewer prof preview' },
     { group: 'protected', path: '/admin/cours-viewer.html?id=test&preview=true', label: 'Viewer admin preview' },
-    { group: 'admin', path: '/admin/admin-lives.html', label: 'Admin lives' },
+    
     { group: 'protected', path: '/login.html', label: 'Authentification' },
     { group: 'public', path: '/index.html', label: 'Index public' }
   ];

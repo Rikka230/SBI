@@ -128,7 +128,7 @@ function isLiveType(item = {}) {
 }
 
 function isTestLive(item = {}) {
-  const values = [item.id, item.itemId, item.sourceItemId, item.liveId, item.type]
+  const values = [item.id, item.itemId, item.sourceItemId, item.liveId, item.type, item.sourceType]
     .map((value) => clean(value).toLowerCase())
     .filter(Boolean);
   return item.isTestLive === true || item.testLive === true || values.includes('sbi-live-test') || values.includes('live_test');
@@ -454,6 +454,36 @@ function getRowSourceId(row = {}) {
   );
 }
 
+
+function getTestLiveSession(promotion = {}) {
+  return state.sessions.find((session) => {
+    if (session.promotionId !== promotion.id) return false;
+    return isTestLive(session)
+      || clean(session.sourceType).toLowerCase() === 'live_test'
+      || clean(session.sourceItemId).toLowerCase() === 'sbi-live-test';
+  }) || null;
+}
+
+function renderTestRoomBox(promotion = {}) {
+  if (state.role !== 'teacher') return '';
+  const session = getTestLiveSession(promotion);
+  const ready = Boolean(session?.id);
+  const label = ready
+    ? `Salle test prête : ${formatRange(session.selectedStartAt || '', session.selectedEndAt || '')}`
+    : 'Créez une salle de test Daily sans notifier les élèves.';
+  return `
+    <section class="sbi-live-v2-test-box">
+      <div>
+        <h3>Salle de test</h3>
+        <p>${escapeHtml(label)}</p>
+      </div>
+      <button class="sbi-live-v2-btn" type="button" id="sbi-live-v2-test-room">
+        ${ready ? 'Ouvrir la salle test' : 'Créer / ouvrir la salle test'}
+      </button>
+    </section>
+  `;
+}
+
 function renderDetail() {
   const root = $('sbi-live-v2-detail');
   const promotion = getSelectedPromotion();
@@ -488,6 +518,8 @@ function renderDetail() {
           <span>Source du titre</span><strong>${escapeHtml(row.titleSource)}</strong>
         </div>
       </section>
+
+      ${renderTestRoomBox(promotion)}
 
       <form class="sbi-live-v2-form" id="sbi-live-v2-form">
         <section class="sbi-live-v2-info">
@@ -553,6 +585,10 @@ function renderDetail() {
     if (!id) return;
     await submitStarted(id);
   });
+
+  $('sbi-live-v2-test-room')?.addEventListener('click', async () => {
+    await openOrCreateTestRoom(promotion);
+  });
 }
 
 async function submitSchedule(promotion, row) {
@@ -588,6 +624,47 @@ async function submitSchedule(promotion, row) {
   } catch (error) {
     console.error('[SBI Lives V2] Planification impossible :', error);
     setStatus(error?.message || 'Planification impossible.', 'error');
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
+
+
+async function openOrCreateTestRoom(promotion = {}) {
+  if (!promotion?.id) return;
+  const button = $('sbi-live-v2-test-room');
+  if (button) button.disabled = true;
+  setStatus('Préparation de la salle test…', 'muted');
+
+  try {
+    const existing = getTestLiveSession(promotion);
+    let liveId = existing?.id || '';
+
+    if (!liveId) {
+      const startIso = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+      const endIso = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+      const result = await scheduleLiveSession({
+        promotionId: promotion.id,
+        liveId: 'sbi-live-test',
+        sourceItemId: 'sbi-live-test',
+        type: 'live_test',
+        provider: 'daily',
+        title: `Salle test - ${getPromotionName(promotion)}`,
+        selectedStartAt: startIso,
+        selectedEndAt: endIso,
+        report: false,
+        skipNotifications: true
+      });
+      liveId = result?.data?.liveId || '';
+      await refreshData({ preserveSelection: true });
+    }
+
+    if (!liveId) throw new Error('Salle test introuvable après création.');
+    window.open(`/live-room.html?liveId=${encodeURIComponent(liveId)}&start=1`, '_blank', 'noopener,noreferrer');
+    setStatus('Salle test prête.', 'success');
+  } catch (error) {
+    console.error('[SBI Lives V2] Salle test impossible :', error);
+    setStatus(error?.message || 'Salle test impossible.', 'error');
   } finally {
     if (button) button.disabled = false;
   }
@@ -672,6 +749,6 @@ export function mountLiveSchedulerV2Page(role = 'teacher') {
   };
 }
 
-if (document.querySelector('[data-sbi-live-v2]') && !window.SBI_APP_SHELL_CURRENT_URL) {
-  mountLiveSchedulerV2Page(document.body.dataset.liveV2Role || 'teacher');
+if (document.querySelector('[data-sbi-live-v2]')) {
+  window.setTimeout(() => mountLiveSchedulerV2Page(document.body.dataset.liveV2Role || 'teacher'), 0);
 }

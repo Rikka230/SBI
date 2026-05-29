@@ -1022,7 +1022,7 @@ function printRoutes() {
     { path: '/login.html', mode: 'public-shell', page: 'login', reason: 'connexion migrée dans le shell public' },
     { path: '/admin/index.html', mode: 'reload', page: '-', reason: 'shell admin séparé' },
     { path: '/student/cours-viewer.html?id=test', mode: 'reload', page: '-', reason: 'viewer protégé' },
-    { path: '/admin/admin-lives.html', mode: 'reload', page: '-', reason: 'shell admin séparé' }
+    { path: '/admin/admin-lives-v2.html', mode: 'reload', page: '-', reason: 'shell admin séparé' }
   ];
 
   console.table(routes);

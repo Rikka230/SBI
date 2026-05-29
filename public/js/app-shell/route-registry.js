@@ -34,7 +34,7 @@ import {
   updateAdminChromeFromDocument,
   setLeftNavActive,
   loadScriptOnce
-} from './admin-page-loader.js?v=8.0P.167.236';
+} from './admin-page-loader.js?v=8.0P.167.238';
 import { initAdminTabs } from '/admin/js/admin-ui/panels.js';
 import {
   loadQuillIfNeeded,
@@ -89,12 +89,12 @@ function isAdminPromotions(url) {
 }
 
 function isAdminLives(url) {
-  const path = normalizePath(url.pathname).toLowerCase();
-  return path === '/admin/admin-lives.html' || path === '/admin/formations-live.html';
+  return normalizePath(url.pathname).toLowerCase() === '/admin/admin-lives-v1.html';
 }
 
 function isAdminLivesV2(url) {
-  return normalizePath(url.pathname).toLowerCase() === '/admin/admin-lives-v2.html';
+  const path = normalizePath(url.pathname).toLowerCase();
+  return path === '/admin/admin-lives.html' || path === '/admin/admin-lives-v2.html' || path === '/admin/formations-live.html';
 }
 
 function isAdminCursus(url) {
@@ -138,11 +138,12 @@ function isTeacherCourses(url) {
 }
 
 function isTeacherLives(url) {
-  return normalizePath(url.pathname).toLowerCase() === '/teacher/lives.html';
+  return normalizePath(url.pathname).toLowerCase() === '/teacher/lives-v1.html';
 }
 
 function isTeacherLivesV2(url) {
-  return normalizePath(url.pathname).toLowerCase() === '/teacher/lives-v2.html';
+  const path = normalizePath(url.pathname).toLowerCase();
+  return path === '/teacher/lives.html' || path === '/teacher/lives-v2.html';
 }
 
 function isTeacherCourseEditorV2(url) {
@@ -172,6 +173,7 @@ function isAdminShellContext() {
     || path === '/admin/admin-promotions.html'
     || path === '/admin/admin-lives.html'
     || path === '/admin/admin-lives-v2.html'
+    || path === '/admin/admin-lives-v1.html'
     || path === '/admin/formations-live.html'
     || path === '/admin/admin-cursus.html'
     || path === '/admin/admin-audit-log.html';
@@ -195,6 +197,7 @@ function isTeacherShellContext() {
     || path === '/teacher/mes-cours.html'
     || path === '/teacher/lives.html'
     || path === '/teacher/lives-v2.html'
+    || path === '/teacher/lives-v1.html'
     || path === '/teacher/course-editor.html'
     || path === '/teacher/mon-profil.html';
 }
@@ -578,11 +581,11 @@ async function mountLiveSchedulerV2Route({ url, role = 'teacher' }) {
     role !== 'admin' ? 'no-right-panel' : ''
   ].filter(Boolean));
   replaceMainFromDocument(doc);
-  updateAdminChromeFromDocument(doc, role === 'admin' ? 'Lives V2 - SBI Console' : 'Lives V2 - SBI Teacher');
-  setLeftNavActive(role === 'admin' ? 'nav-lives-v2' : '/teacher/lives-v2.html');
+  updateAdminChromeFromDocument(doc, role === 'admin' ? 'Lives V2 secours - SBI Console' : 'Lives - SBI Teacher');
+  setLeftNavActive(role === 'admin' ? 'nav-cursus' : '/teacher/lives.html');
   updateUrlContext(url);
 
-  const module = await import('/js/live/live-scheduler-v2-page.js?v=8.0P.167.236');
+  const module = await import('/js/live/live-scheduler-v2-page.js?v=8.0P.167.238');
   const cleanup = module.mountLiveSchedulerV2Page?.(role);
   if (typeof cleanup === 'function') registerCleanup(cleanup, role === 'admin' ? 'admin-lives-v2' : 'teacher-lives-v2');
 
@@ -685,7 +688,7 @@ async function mountStudentLives({ url }) {
 
   window.__SBI_APP_SHELL_MOUNTING_STUDENT_LIVES = true;
   try {
-    const module = await import('/student/js/student-lives.js?v=8.0P.167.236');
+    const module = await import('/student/js/student-lives.js?v=8.0P.167.238');
     const cleanup = module.mountStudentLivesPage?.();
     if (typeof cleanup === 'function') registerCleanup(cleanup, 'student-lives');
   } finally {
@@ -708,7 +711,7 @@ async function mountStudentLiveReplay({ url }) {
 
   window.__SBI_APP_SHELL_MOUNTING_LIVE_REPLAY = true;
   try {
-    const module = await import('/student/js/live-replay.js?v=8.0P.167.236');
+    const module = await import('/student/js/live-replay.js?v=8.0P.167.238');
     const cleanup = module.mountStudentLiveReplayPage?.();
     if (typeof cleanup === 'function') registerCleanup(cleanup, 'student-live-replay');
   } finally {
@@ -916,7 +919,7 @@ export function createRouteRegistry() {
   routes.push({ id: 'teacher-course-editor-v2', canHandle(url) { return isTeacherCourseEditorV2(url) && isTeacherShellContext(); }, mount: mountTeacherCourseEditorV2 });
   routes.push({ id: 'teacher-courses', canHandle(url) { return isTeacherCourses(url) && isTeacherShellContext(); }, mount: mountTeacherCourses });
   routes.push({ id: 'teacher-lives-v2', canHandle(url) { return isTeacherLivesV2(url) && isTeacherShellContext(); }, mount: mountTeacherLivesV2 });
-  routes.push({ id: 'teacher-lives', canHandle(url) { return isTeacherLives(url) && isTeacherShellContext(); }, mount: mountTeacherLives });
+  routes.push({ id: 'teacher-lives-v1', canHandle(url) { return isTeacherLives(url) && isTeacherShellContext(); }, mount: mountTeacherLives });
   routes.push({ id: 'teacher-profile', canHandle(url) { return isTeacherProfile(url) && isTeacherShellContext(); }, mount: mountTeacherProfile });
   routes.push({ id: 'student-profile', canHandle(url) { return isStudentProfile(url) && isStudentShellContext(); }, mount: mountStudentProfile });
   routes.push({ id: 'student-dashboard', canHandle(url) { return isStudentDashboard(url) && isStudentShellContext(); }, mount: mountStudentPage });

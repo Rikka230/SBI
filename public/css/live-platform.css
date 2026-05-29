@@ -1088,3 +1088,18 @@ body.sbi-live-replay-page[data-sbi-standalone="live-replay"] {
     padding: 0.85rem;
   }
 }
+
+/* SBI 8.0P.167.238 - badge report élève */
+.sbi-live-report-badge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  margin: 0.45rem 0 0;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  background: rgba(225, 29, 72, 0.12);
+  color: #be123c;
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0.01em;
+}

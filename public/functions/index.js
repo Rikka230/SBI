@@ -572,6 +572,24 @@ async function sendBrevoEmail(payload, apiKey) {
     return callBrevo("/smtp/email", payload, apiKey);
 }
 
+async function sendBrevoTransactionalEmail(payload, apiKey, transactionTags = []) {
+    const tags = Array.from(new Set([
+        "sbi_transactional",
+        ...(Array.isArray(payload?.tags) ? payload.tags : []),
+        ...(Array.isArray(transactionTags) ? transactionTags : [])
+    ].map((tag) => cleanString(tag, 80)).filter(Boolean)));
+
+    return sendBrevoEmail({
+        ...payload,
+        tags,
+        headers: {
+            ...(payload?.headers || {}),
+            "X-SBI-Email-Type": "transactional",
+            "X-SBI-Transactional": "true"
+        }
+    }, apiKey);
+}
+
 async function sendBrevoNotification(data, apiKey) {
     return sendBrevoEmail({
         sender: {
@@ -4087,20 +4105,45 @@ async function teacherCanManagePromotionLive(db, caller, promotion = {}) {
 function buildLiveStudentEmail({ student = {}, liveSession = {}, kind = "scheduled" } = {}) {
     const startLabel = liveSession.selectedStartAt
         ? new Intl.DateTimeFormat("fr-FR", { dateStyle: "full", timeStyle: "short", timeZone: "Europe/Paris" }).format(new Date(liveSession.selectedStartAt))
-        : "date a confirmer";
+        : "date à confirmer";
     const liveUrl = `${SBI_SITE_URL}/student/lives.html?liveId=${encodeURIComponent(liveSession.id || "")}`;
     const isStarted = kind === "started";
-    const message = isStarted
-        ? `
-            <p style="margin:0 0 16px 0;">Le live <strong>${escapeHtml(liveSession.title || "SBI")}</strong> vient de demarrer.</p>
-            <p style="margin:0 0 16px 0;">Connecte-toi depuis ton espace eleve pour rejoindre la session.</p>
+    const isReported = kind === "reported" || liveSession.report === true || cleanString(liveSession.schedulingStatus || "", 60).toLowerCase() === "report";
+
+    let message = "";
+    let subject = "";
+    let preheader = "";
+    let textContent = "";
+
+    if (isStarted) {
+        subject = `SBI - Live démarré : ${liveSession.title || "session en direct"}`;
+        preheader = "Ton live SBI démarre maintenant.";
+        message = `
+            <p style="margin:0 0 16px 0;">Le live <strong>${escapeHtml(liveSession.title || "SBI")}</strong> vient de démarrer.</p>
+            <p style="margin:0 0 16px 0;">Connecte-toi depuis ton espace élève pour rejoindre la session.</p>
             ${buildActionButtonHtml(liveUrl, "Ouvrir mes lives")}
-        `
-        : `
-            <p style="margin:0 0 16px 0;">Un live a ete programme pour ta promotion : <strong>${escapeHtml(liveSession.title || "Live SBI")}</strong>.</p>
+        `;
+        textContent = `Le live ${liveSession.title || "SBI"} vient de démarrer. ${liveUrl}`;
+    } else if (isReported) {
+        subject = `SBI - Report de live : ${liveSession.title || "session en direct"}`;
+        preheader = "Un live SBI est en report hors période prévue.";
+        message = `
+            <p style="margin:0 0 16px 0;">Le live <strong>${escapeHtml(liveSession.title || "Live SBI")}</strong> est en <strong>report hors période prévue</strong>.</p>
+            <p style="margin:0 0 16px 0;">Une date de report est proposée afin de maintenir la session dans les meilleures conditions.</p>
+            <p style="margin:0 0 16px 0;"><strong>Date de report proposée :</strong> ${escapeHtml(startLabel)}</p>
+            ${buildActionButtonHtml(liveUrl, "Voir le report")}
+        `;
+        textContent = `Report de live : ${liveSession.title || "SBI"}. Date de report proposée : ${startLabel}. ${liveUrl}`;
+    } else {
+        subject = `SBI - Live programmé : ${liveSession.title || "session en direct"}`;
+        preheader = "Un live SBI a été programmé.";
+        message = `
+            <p style="margin:0 0 16px 0;">Un live a été programmé pour ta promotion : <strong>${escapeHtml(liveSession.title || "Live SBI")}</strong>.</p>
             <p style="margin:0 0 16px 0;"><strong>Date et horaire :</strong> ${escapeHtml(startLabel)}</p>
             ${buildActionButtonHtml(liveUrl, "Voir le live")}
         `;
+        textContent = `Live programmé : ${liveSession.title || "SBI"} - ${startLabel}. ${liveUrl}`;
+    }
 
     return {
         sender: { name: SBI_SENDER_NAME, email: SBI_SENDER_EMAIL },
@@ -4109,20 +4152,19 @@ function buildLiveStudentEmail({ student = {}, liveSession = {}, kind = "schedul
             name: getAccountDisplayName(student)
         }],
         replyTo: { email: SBI_CONTACT_EMAIL, name: "Sport Business Institute" },
-        subject: isStarted
-            ? `SBI - Live demarre : ${liveSession.title || "session en direct"}`
-            : `SBI - Live programme : ${liveSession.title || "session en direct"}`,
+        subject,
         htmlContent: renderSbiEmailTemplate({
             prenom: student.prenom || "",
-            nomExpediteur: "L'equipe SBI",
-            posteExpediteur: "Pedagogie",
-            preheader: isStarted ? "Ton live SBI demarre maintenant." : "Un live SBI a ete programme.",
+            nomExpediteur: "L'équipe SBI",
+            posteExpediteur: "Pédagogie",
+            preheader,
             messageHtml: message
         }),
-        textContent: isStarted
-            ? `Le live ${liveSession.title || "SBI"} vient de demarrer. ${liveUrl}`
-            : `Live programme : ${liveSession.title || "SBI"} - ${startLabel}. ${liveUrl}`,
-        tags: ["sbi_live"]
+        textContent,
+        tags: [
+            "sbi_live",
+            isStarted ? "sbi_live_started" : isReported ? "sbi_live_report" : "sbi_live_scheduled"
+        ]
     };
 }
 
@@ -4133,7 +4175,8 @@ async function notifyPromotionStudentsForLive({ db, promotion, liveSession, kind
     let emailsFailed = 0;
 
     for (const student of students) {
-        const notificationId = `${kind === "started" ? "live_started" : "live_scheduled"}_${liveSession.id}_${student.id}`.slice(0, 240);
+        const notificationType = kind === "started" ? "live_started" : kind === "reported" ? "live_reported" : "live_scheduled";
+        const notificationId = `${notificationType}_${liveSession.id}_${student.id}`.slice(0, 240);
         const notificationRef = db.collection("notifications").doc(notificationId);
         const notificationSnap = await notificationRef.get();
         const previous = notificationSnap.exists ? (notificationSnap.data() || {}) : {};
@@ -4145,7 +4188,7 @@ async function notifyPromotionStudentsForLive({ db, promotion, liveSession, kind
 
         if (shouldEmail && apiKey && isValidEmail(cleanEmail(student.email))) {
             try {
-                await sendBrevoEmail(buildLiveStudentEmail({ student, liveSession, kind }), apiKey);
+                await sendBrevoTransactionalEmail(buildLiveStudentEmail({ student, liveSession, kind }), apiKey, [notificationType]);
                 emailSent = true;
                 emailsSent += 1;
             } catch (error) {
@@ -4156,7 +4199,7 @@ async function notifyPromotionStudentsForLive({ db, promotion, liveSession, kind
         }
 
         await notificationRef.set({
-            type: kind === "started" ? "live_started" : "live_scheduled",
+            type: notificationType,
             destinataireId: student.id,
             liveId: liveSession.id,
             liveTitle: liveSession.title || "Live SBI",
@@ -4166,8 +4209,10 @@ async function notifyPromotionStudentsForLive({ db, promotion, liveSession, kind
             selectedEndAt: liveSession.selectedEndAt || "",
             actionUrl: `/student/lives.html?liveId=${encodeURIComponent(liveSession.id || "")}`,
             message: kind === "started"
-                ? `Le live "${liveSession.title || "SBI"}" vient de demarrer.`
-                : `Live programme : ${liveSession.title || "SBI"}.`,
+                ? `Le live "${liveSession.title || "SBI"}" vient de démarrer.`
+                : kind === "reported"
+                    ? `Report de live : ${liveSession.title || "SBI"}.`
+                    : `Live programmé : ${liveSession.title || "SBI"}.`,
             emailSent,
             emailError,
             status: "open",
@@ -5155,6 +5200,7 @@ exports.scheduleLiveSession = onCall({
 
     const livePlanning = Array.isArray(promotion.livePlanning) ? [...promotion.livePlanning] : [];
     const itemIndex = livePlanning.findIndex((item) => item === liveItem);
+    const shouldNotifyStudents = !isTestLive && data.skipNotifications !== true && data.notifyStudents !== false;
     const nextLiveItem = {
         ...(liveItem || {}),
         id: liveItem?.id || sourceItemId || (isTestLive ? "sbi-live-test" : liveId),
@@ -5170,7 +5216,7 @@ exports.scheduleLiveSession = onCall({
         liveSchedulingStatus: reportRequested ? "report" : "scheduled",
         teacherSelectionStatus: reportRequested ? "reported" : "selected",
         studentScheduleStatus: "scheduled",
-        notificationStatus: "pending_student_update",
+        notificationStatus: shouldNotifyStudents ? "pending_student_update" : "not_notified",
         selectedLiveAt: selectedStartAt,
         selectedLiveEndAt: selectedEndAt,
         selectedByUid: caller.uid,
@@ -5186,13 +5232,15 @@ exports.scheduleLiveSession = onCall({
         livePlanningUpdatedBy: caller.uid
     }, { merge: true });
 
-    const report = await notifyPromotionStudentsForLive({
-        db,
-        promotion,
-        liveSession: sessionPayload,
-        kind: "scheduled",
-        apiKey: BREVO_API_KEY.value()
-    });
+    const report = shouldNotifyStudents
+        ? await notifyPromotionStudentsForLive({
+            db,
+            promotion,
+            liveSession: sessionPayload,
+            kind: reportRequested ? "reported" : "scheduled",
+            apiKey: BREVO_API_KEY.value()
+        })
+        : { students: 0, notified: 0, emailsSent: 0, emailsFailed: 0, skipped: true, reason: isTestLive ? "test_live" : "notifications_disabled" };
 
     await safeWriteAccountAuditLog(db, {
         type: "live.scheduled",
