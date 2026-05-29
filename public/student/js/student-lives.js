@@ -17,7 +17,7 @@ import {
   loadProfile,
   loadPromotionsByIds,
   renderEmpty
-} from '/js/live/live-shared.js?v=8.0P.167.239';
+} from '/js/live/live-shared.js?v=8.0P.167.240';
 
 const functionsInstance = getFunctions(app, 'europe-west1');
 const getStudentLiveAttendance = httpsCallable(functionsInstance, 'getStudentLiveAttendance');
@@ -163,6 +163,38 @@ function isVisibleLiveTestSession(session = {}) {
 
 function isLiveTestRow(row = {}) {
   return isLiveTestSession(row.session || {}) || isTestLive(row.live || {});
+}
+
+const LIVE_OPEN_STATUSES = new Set(['live', 'started', 'in_progress', 'ongoing', 'open']);
+const LIVE_TERMINAL_STATUSES = new Set(['ended', 'replay_available', 'done', 'closed', 'cancelled']);
+
+function isOpenStatus(value = '') {
+  return LIVE_OPEN_STATUSES.has(clean(value || '').toLowerCase());
+}
+
+function isTerminalStatus(value = '') {
+  return LIVE_TERMINAL_STATUSES.has(clean(value || '').toLowerCase());
+}
+
+function getEffectiveStudentLiveStatus({ session = null, planning = null, live = null } = {}) {
+  const sessionStatus = clean(session?.status || '', 80).toLowerCase();
+  const planningStatus = clean(planning?.status || planning?.liveSchedulingStatus || '', 80).toLowerCase();
+  const liveStatus = clean(live?.status || live?.liveSchedulingStatus || '', 80).toLowerCase();
+  const schedulingStatus = clean(session?.schedulingStatus || '', 80).toLowerCase();
+
+  if (isTerminalStatus(sessionStatus)) return sessionStatus;
+  if (isTerminalStatus(planningStatus)) return planningStatus;
+  if (isTerminalStatus(liveStatus)) return liveStatus;
+
+  if (isOpenStatus(sessionStatus)) return sessionStatus;
+  if (isOpenStatus(planningStatus)) return planningStatus;
+  if (isOpenStatus(liveStatus)) return liveStatus;
+
+  if (session?.report === true || planning?.reportOutsideWindow === true || live?.reportOutsideWindow === true || schedulingStatus === 'report' || planningStatus === 'report' || planningStatus === 'reported') {
+    return 'report';
+  }
+
+  return sessionStatus || planningStatus || liveStatus || 'to_schedule';
 }
 
 function getItemIds(item = {}) {
@@ -312,9 +344,7 @@ function getRows() {
         order: Number.isFinite(Number(sourceLive.order)) ? Number(sourceLive.order) : index,
         replayUrl: session?.replayUrl || session?.replayAccessUrl || session?.liveTech?.replayUrl || planning?.replayUrl || sourceLive.replayUrl || '',
         replayStatus: session?.replayStatus || session?.liveTech?.replayStatus || planning?.replayStatus || sourceLive.replayStatus || '',
-        status: (session?.report === true || planning?.reportOutsideWindow === true || planning?.liveSchedulingStatus === 'report')
-          ? 'report'
-          : (session?.status || planning?.status || planning?.liveSchedulingStatus || sourceLive.status || sourceLive.liveSchedulingStatus || 'to_schedule'),
+        status: getEffectiveStudentLiveStatus({ session, planning, live: sourceLive }),
         providerReady: Boolean(session?.providerRoomName || session?.providerRoomUrl || session?.meetingUrl || session?.liveTech?.providerReady || planning?.providerReady || planning?.providerRoomName || planning?.providerRoomUrl || sourceLive.providerReady || sourceLive.providerRoomName || sourceLive.providerRoomUrl)
       });
     });
@@ -326,7 +356,7 @@ function getRows() {
     if (rows.some((row) => row.session?.id === session.id || row.id === session.id)) return;
     rows.push({
       id: session.id,
-      title: pickLiveTitle(session.title, testSession ? 'Live test' : 'Live SBI'),
+      title: testSession ? 'Salle test ouverte' : pickLiveTitle(session.title, 'Live SBI'),
       promotion: state.promotions.find((promotion) => promotion.id === session.promotionId) || {},
       live: testSession ? { isTestLive: true, testLive: true, type: 'live_test' } : {},
       planning: null,
@@ -335,7 +365,7 @@ function getRows() {
       endAt: session.selectedEndAt || '',
       replayUrl: testSession ? '' : (session.replayUrl || session.replayAccessUrl || session.liveTech?.replayUrl || ''),
       replayStatus: testSession ? '' : (session.replayStatus || session.liveTech?.replayStatus || ''),
-      status: testSession ? (session.status || 'live') : (session.report === true || session.schedulingStatus === 'report' ? 'report' : (session.status || 'scheduled')),
+      status: getEffectiveStudentLiveStatus({ session }),
       providerReady: Boolean(session.providerRoomName || session.providerRoomUrl || session.meetingUrl || session.liveTech?.providerReady)
     });
   });
@@ -353,6 +383,7 @@ function getRows() {
 
 function isReportRow(row = {}) {
   const status = clean(row.status || '').toLowerCase();
+  if (isOpenStatus(status) || isTerminalStatus(status)) return false;
   const planningStatus = clean(row.planning?.liveSchedulingStatus || row.planning?.teacherSelectionStatus || '').toLowerCase();
   const sessionStatus = clean(row.session?.schedulingStatus || '').toLowerCase();
   return row.session?.report === true
@@ -437,8 +468,8 @@ function renderList(rows) {
       <strong>${escapeHtml(row.title)}</strong>
       <span>${escapeHtml(getPromotionName(row.promotion))}</span>
       <span>${escapeHtml(getRowDateLabel(row))}</span>
-      ${isReportRow(row) ? '<span class="sbi-live-report-badge">Report hors période</span>' : ''}
       ${isLiveTestRow(row) ? '<span class="sbi-live-test-badge">Salle test ouverte</span>' : ''}
+      ${isReportRow(row) ? '<span class="sbi-live-report-badge">Report hors période</span>' : ''}
       ${getAttendanceBadges(row)}
       <div class="sbi-live-card-actions">
         ${canJoinLive(row) ? `<a class="sbi-live-btn" data-live-room-link="true" data-live-id="${encodeURIComponent(getLiveIdForRow(row))}" href="/live-room/${encodeURIComponent(getLiveIdForRow(row))}?liveId=${encodeURIComponent(getLiveIdForRow(row))}#liveId=${encodeURIComponent(getLiveIdForRow(row))}">Rejoindre la salle</a>` : (state.tab === 'upcoming' ? `<span class="sbi-live-btn sbi-live-btn--ghost is-disabled" aria-disabled="true">${escapeHtml(getJoinClosedLabel(row))}</span>` : '')}
@@ -455,7 +486,7 @@ function renderCalendar(rows) {
   return `<div class="sbi-live-calendar">${filtered.map((row) => `
     <div class="sbi-live-day">
       <strong>${escapeHtml(row.startAt ? formatDateTime(row.startAt) : row.windowStart ? formatDateTime(row.windowStart) : 'A planifier')}</strong>
-      <span>${escapeHtml(row.title)}${isReportRow(row) ? ' · Report hors période' : ''}${isLiveTestRow(row) ? ' · Salle test' : ''}</span>
+      <span>${escapeHtml(row.title)}${isLiveTestRow(row) ? ' · Salle test ouverte' : isReportRow(row) ? ' · Report hors période' : ''}</span>
     </div>
   `).join('')}</div>`;
 }
@@ -523,6 +554,43 @@ async function loadStudentLiveDataFromServer() {
   };
 }
 
+
+let refreshTimer = null;
+let refreshInFlight = false;
+let refreshEventsBound = false;
+
+async function refreshStudentLivesSilently() {
+  if (!mounted || !state.uid || refreshInFlight || document.visibilityState === 'hidden') return;
+  refreshInFlight = true;
+  try {
+    const serverData = await loadStudentLiveDataFromServer();
+    state.promotions = serverData.promotions;
+    state.sessions = serverData.sessions;
+    state.templatesById = new Map(serverData.templates.map((template) => [clean(template.id, 180), template]).filter(([id]) => Boolean(id)));
+    await loadAttendanceForRows(state.uid);
+    render();
+  } catch (error) {
+    console.warn('[SBI Student Lives] Refresh silencieux impossible :', error);
+  } finally {
+    refreshInFlight = false;
+  }
+}
+
+function startStudentLivesAutoRefresh() {
+  if (!refreshTimer) refreshTimer = window.setInterval(refreshStudentLivesSilently, 15000);
+  if (refreshEventsBound) return;
+  refreshEventsBound = true;
+  window.addEventListener('focus', refreshStudentLivesSilently);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') refreshStudentLivesSilently();
+  });
+}
+
+function stopStudentLivesAutoRefresh() {
+  if (refreshTimer) clearInterval(refreshTimer);
+  refreshTimer = null;
+}
+
 async function loadForUser(uid) {
   setStatus('Chargement...');
   state.uid = uid;
@@ -544,6 +612,7 @@ async function loadForUser(uid) {
   await loadAttendanceForRows(uid);
   setStatus('');
   render();
+  startStudentLivesAutoRefresh();
 }
 
 function bindControls() {
@@ -608,6 +677,7 @@ export function mountStudentLivesPage() {
   return () => {
     mounted = false;
     mountedRoot = null;
+    stopStudentLivesAutoRefresh();
     if (bootTimer) clearTimeout(bootTimer);
     bootTimer = null;
     unsubscribeAuth?.();

@@ -1056,7 +1056,7 @@ a.sbi-live-btn {
   }
 }
 
-/* SBI 8.0P.167.239 - direct refresh standalone hardening */
+/* SBI 8.0P.167.240 - direct refresh standalone hardening */
 .sbi-live-replay-page .sbi-live-standalone-shell {
   min-height: 100vh;
   display: block;
@@ -1104,7 +1104,7 @@ body.sbi-live-replay-page[data-sbi-standalone="live-replay"] {
   letter-spacing: 0.01em;
 }
 
-/* SBI 8.0P.167.239 - salle live : documents en tiroir compact */
+/* SBI 8.0P.167.240 - salle live : documents en tiroir compact */
 .sbi-live-room-docs {
   left: 1rem;
   right: auto;

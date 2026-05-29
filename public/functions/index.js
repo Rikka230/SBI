@@ -4435,6 +4435,54 @@ function isHostLiveRole(caller = {}) {
     return caller.isAdmin || caller.data?.isGod === true || caller.data?.role === "admin" || normalizeLiveRole(caller.data?.role || "") === "teacher";
 }
 
+
+async function updatePromotionLivePlanningForStarted({ promotionRef, promotion = {}, liveSession = {}, caller, room = {} }) {
+    const livePlanning = Array.isArray(promotion.livePlanning) ? [...promotion.livePlanning] : [];
+    if (!livePlanning.length) return false;
+
+    const liveId = cleanString(liveSession.id || "", 180);
+    const sourceItemId = cleanString(liveSession.sourceItemId || "", 180);
+    let changed = false;
+    const openedAt = new Date().toISOString();
+
+    const updated = livePlanning.map((item) => {
+        if (!item || typeof item !== "object") return item;
+        const ids = [
+            item.liveSessionId,
+            item.id,
+            item.itemId,
+            item.sourceItemId,
+            item.liveId
+        ].map((value) => cleanString(value, 180)).filter(Boolean);
+        const match = ids.includes(liveId) || (sourceItemId && ids.includes(sourceItemId));
+        if (!match) return item;
+        changed = true;
+        return {
+            ...item,
+            liveSessionId: liveId || item.liveSessionId || "",
+            status: "live",
+            liveSchedulingStatus: "live",
+            studentScheduleStatus: "live",
+            providerReady: true,
+            providerRoomName: room.name || liveSession.providerRoomName || liveSession.roomName || item.providerRoomName || "",
+            providerRoomUrl: room.url || liveSession.providerRoomUrl || liveSession.meetingUrl || item.providerRoomUrl || "",
+            meetingUrl: room.url || liveSession.meetingUrl || item.meetingUrl || "",
+            openedAt,
+            startedAt: openedAt,
+            openedByUid: caller.uid,
+            startedByUid: caller.uid
+        };
+    });
+
+    if (!changed) return false;
+    await promotionRef.set({
+        livePlanning: updated,
+        livePlanningUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        livePlanningUpdatedBy: caller.uid
+    }, { merge: true });
+    return true;
+}
+
 exports.joinLiveConference = onCall({
     region: "europe-west1",
     secrets: [DAILY_API_KEY],
@@ -4457,7 +4505,8 @@ exports.joinLiveConference = onCall({
     const promotionId = cleanString(liveSession.promotionId || "", 180);
     if (!promotionId) throw new HttpsError("failed-precondition", "Promotion live manquante.");
 
-    const promotionDoc = await db.collection("promotions").doc(promotionId).get();
+    const promotionRef = db.collection("promotions").doc(promotionId);
+    const promotionDoc = await promotionRef.get();
     if (!promotionDoc.exists) throw new HttpsError("not-found", "Promotion introuvable.");
     const promotion = { id: promotionDoc.id, ...(promotionDoc.data() || {}) };
 
@@ -4486,14 +4535,27 @@ exports.joinLiveConference = onCall({
         updatedAt: admin.firestore.FieldValue.serverTimestamp()
     };
 
-    if (host && markStarted && !["live", "ended", "replay_available", "cancelled"].includes(cleanString(liveSession.status || "", 80))) {
+    const shouldMarkStarted = host && markStarted && !["live", "ended", "replay_available", "cancelled"].includes(cleanString(liveSession.status || "", 80));
+    if (shouldMarkStarted) {
         updatePayload.status = "live";
+        updatePayload.schedulingStatus = cleanString(liveSession.schedulingStatus || "", 80) === "report" || liveSession.report === true ? "report" : "live";
+        updatePayload.openedAt = admin.firestore.FieldValue.serverTimestamp();
         updatePayload.startedAt = admin.firestore.FieldValue.serverTimestamp();
         updatePayload.startedByUid = caller.uid;
         updatePayload.startedByEmail = caller.email;
     }
 
     await liveRef.set(updatePayload, { merge: true });
+
+    if (shouldMarkStarted) {
+        await updatePromotionLivePlanningForStarted({
+            promotionRef,
+            promotion,
+            liveSession: { ...liveSession, ...updatePayload, id: liveId },
+            caller,
+            room
+        });
+    }
 
     await liveRef.collection("attendance").doc(caller.uid).set({
         uid: caller.uid,

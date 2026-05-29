@@ -18,7 +18,9 @@ const state = {
 };
 
 let mounted = false;
+let mountedRoot = null;
 let unsubscribeAuth = null;
+let bootTimer = null;
 
 function $(id) { return document.getElementById(id); }
 
@@ -741,13 +743,28 @@ async function refreshData(options = {}) {
 
 export function mountLiveSchedulerV2Page(role = 'teacher') {
   forceRevealLiveSchedulerV2Page();
-  if (mounted) return null;
+  const root = document.querySelector('[data-sbi-live-v2]');
+  if (!root) return null;
+
+  if (mounted && mountedRoot === root) {
+    renderAll();
+    return null;
+  }
+
+  if (mounted && mountedRoot !== root) {
+    unsubscribeAuth?.();
+    unsubscribeAuth = null;
+    mounted = false;
+  }
+
   mounted = true;
+  mountedRoot = root;
   state.role = role === 'admin' ? 'admin' : 'teacher';
 
   $('sbi-live-v2-refresh')?.addEventListener('click', () => refreshData({ preserveSelection: true }));
 
   unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
+    forceRevealLiveSchedulerV2Page();
     if (!user) {
       window.location.replace('/login.html');
       return;
@@ -758,13 +775,38 @@ export function mountLiveSchedulerV2Page(role = 'teacher') {
 
   return () => {
     mounted = false;
+    mountedRoot = null;
+    if (bootTimer) clearTimeout(bootTimer);
+    bootTimer = null;
     unsubscribeAuth?.();
     unsubscribeAuth = null;
   };
 }
 
+function bootLiveSchedulerV2Page() {
+  forceRevealLiveSchedulerV2Page();
+  const root = document.querySelector('[data-sbi-live-v2]');
+  if (root && (!mounted || mountedRoot !== root)) {
+    mountLiveSchedulerV2Page(document.body.dataset.liveV2Role || 'teacher');
+  } else if (root && mounted && mountedRoot === root) {
+    renderAll();
+  }
+  if (bootTimer) clearTimeout(bootTimer);
+  bootTimer = setTimeout(() => {
+    forceRevealLiveSchedulerV2Page();
+    const currentRoot = document.querySelector('[data-sbi-live-v2]');
+    if (currentRoot && (!mounted || mountedRoot !== currentRoot)) {
+      mountLiveSchedulerV2Page(document.body.dataset.liveV2Role || 'teacher');
+    }
+  }, 650);
+}
+
 if (document.querySelector('[data-sbi-live-v2]')) {
-  window.setTimeout(() => mountLiveSchedulerV2Page(document.body.dataset.liveV2Role || 'teacher'), 0);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bootLiveSchedulerV2Page, { once: true });
+  } else {
+    bootLiveSchedulerV2Page();
+  }
 }
 
 
