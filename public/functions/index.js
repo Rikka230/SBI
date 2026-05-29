@@ -4108,6 +4108,7 @@ function buildLiveStudentEmail({ student = {}, liveSession = {}, kind = "schedul
         : "date à confirmer";
     const liveUrl = `${SBI_SITE_URL}/student/lives.html?liveId=${encodeURIComponent(liveSession.id || "")}`;
     const isStarted = kind === "started";
+    const isTestStarted = kind === "test_started";
     const isReported = kind === "reported" || liveSession.report === true || cleanString(liveSession.schedulingStatus || "", 60).toLowerCase() === "report";
 
     let message = "";
@@ -4124,6 +4125,15 @@ function buildLiveStudentEmail({ student = {}, liveSession = {}, kind = "schedul
             ${buildActionButtonHtml(liveUrl, "Ouvrir mes lives")}
         `;
         textContent = `Le live ${liveSession.title || "SBI"} vient de démarrer. ${liveUrl}`;
+    } else if (isTestStarted) {
+        subject = `SBI - Salle test ouverte : ${liveSession.promotionName || "promotion"}`;
+        preheader = "Une salle test SBI est ouverte maintenant.";
+        message = `
+            <p style="margin:0 0 16px 0;">Une <strong>salle test live</strong> est ouverte pour ta promotion.</p>
+            <p style="margin:0 0 16px 0;">Connecte-toi depuis ton espace élève pour vérifier ton accès à la salle.</p>
+            ${buildActionButtonHtml(liveUrl, "Rejoindre la salle test")}
+        `;
+        textContent = `Salle test SBI ouverte maintenant. ${liveUrl}`;
     } else if (isReported) {
         subject = `SBI - Report de live : ${liveSession.title || "session en direct"}`;
         preheader = "Un live SBI est en report hors période prévue.";
@@ -4163,7 +4173,7 @@ function buildLiveStudentEmail({ student = {}, liveSession = {}, kind = "schedul
         textContent,
         tags: [
             "sbi_live",
-            isStarted ? "sbi_live_started" : isReported ? "sbi_live_report" : "sbi_live_scheduled"
+            isStarted ? "sbi_live_started" : isTestStarted ? "sbi_live_test_started" : isReported ? "sbi_live_report" : "sbi_live_scheduled"
         ]
     };
 }
@@ -4175,7 +4185,7 @@ async function notifyPromotionStudentsForLive({ db, promotion, liveSession, kind
     let emailsFailed = 0;
 
     for (const student of students) {
-        const notificationType = kind === "started" ? "live_started" : kind === "reported" ? "live_reported" : "live_scheduled";
+        const notificationType = kind === "started" ? "live_started" : kind === "test_started" ? "live_test_started" : kind === "reported" ? "live_reported" : "live_scheduled";
         const notificationId = `${notificationType}_${liveSession.id}_${student.id}`.slice(0, 240);
         const notificationRef = db.collection("notifications").doc(notificationId);
         const notificationSnap = await notificationRef.get();
@@ -4210,9 +4220,11 @@ async function notifyPromotionStudentsForLive({ db, promotion, liveSession, kind
             actionUrl: `/student/lives.html?liveId=${encodeURIComponent(liveSession.id || "")}`,
             message: kind === "started"
                 ? `Le live "${liveSession.title || "SBI"}" vient de démarrer.`
-                : kind === "reported"
-                    ? `Report de live : ${liveSession.title || "SBI"}.`
-                    : `Live programmé : ${liveSession.title || "SBI"}.`,
+                : kind === "test_started"
+                    ? `Salle test ouverte : ${liveSession.promotionName || liveSession.title || "SBI"}.`
+                    : kind === "reported"
+                        ? `Report de live : ${liveSession.title || "SBI"}.`
+                        : `Live programmé : ${liveSession.title || "SBI"}.`,
             emailSent,
             emailError,
             status: "open",
@@ -5211,7 +5223,7 @@ exports.getLiveSchedulerData = onCall({
 
 exports.scheduleLiveSession = onCall({
     region: "europe-west1",
-    secrets: [BREVO_API_KEY],
+    secrets: [BREVO_API_KEY, DAILY_API_KEY],
     timeoutSeconds: 120,
     memory: "512MiB"
 }, async (request) => {
@@ -5247,9 +5259,11 @@ exports.scheduleLiveSession = onCall({
         type: data.type,
         liveItem
     });
+    const openNow = data.openNow === true || data.openTest === true || (isTestLive && data.notifyStudents === true);
     const liveKey = cleanString(liveItem?.id || liveItem?.itemId || sourceItemId || data.liveId || requestedTitle || (isTestLive ? "sbi-live-test" : "live"), 180);
     const liveId = makeLiveSessionId(promotionId, liveKey);
-    const selectedStartAt = normalizeLiveIso(data.selectedStartAt || data.startAt || data.selectedLiveAt, "Date de debut");
+    const startInput = cleanString(data.selectedStartAt || data.startAt || data.selectedLiveAt || "", 80);
+    const selectedStartAt = normalizeLiveIso(startInput || (isTestLive || openNow ? new Date().toISOString() : ""), "Date de debut");
     const endInput = cleanString(data.selectedEndAt || data.endAt || data.selectedLiveEndAt || "", 80);
     const selectedEndAt = endInput
         ? normalizeLiveIso(endInput, "Date de fin")
@@ -5280,19 +5294,23 @@ exports.scheduleLiveSession = onCall({
         isTestLive,
         selectedStartAt,
         selectedEndAt,
-        status: "scheduled",
+        status: openNow ? "live" : "scheduled",
         report: reportRequested,
-        schedulingStatus: reportRequested ? "report" : "scheduled",
-        provider: cleanString(data.provider || (isTestLive ? "daily" : "pending_provider"), 80),
+        schedulingStatus: openNow ? "live" : reportRequested ? "report" : "scheduled",
+        provider: cleanString(data.provider || (isTestLive || openNow ? "daily" : "pending_provider"), 80),
         roomName: cleanString(data.roomName || "", 180),
         meetingUrl: cleanString(data.meetingUrl || "", 500),
         teacherUid: cleanString(data.teacherUid || caller.uid, 180),
         selectedByUid: caller.uid,
         selectedByEmail: caller.email,
         scheduledAt: admin.firestore.FieldValue.serverTimestamp(),
+        openedAt: openNow ? admin.firestore.FieldValue.serverTimestamp() : null,
+        startedAt: openNow ? admin.firestore.FieldValue.serverTimestamp() : null,
+        openedByUid: openNow ? caller.uid : "",
+        startedByUid: openNow ? caller.uid : "",
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         liveTech: {
-            provider: cleanString(data.provider || (isTestLive ? "daily" : "pending_provider"), 80),
+            provider: cleanString(data.provider || (isTestLive || openNow ? "daily" : "pending_provider"), 80),
             captureProtection: "moving_student_watermark",
             chatEnabled: true,
             fileSharingEnabled: true,
@@ -5307,9 +5325,30 @@ exports.scheduleLiveSession = onCall({
         createdAt: previousLive.exists ? previousLive.data()?.createdAt || admin.firestore.FieldValue.serverTimestamp() : admin.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
 
+    let openedRoom = null;
+    if (openNow) {
+        openedRoom = await ensureDailyRoomForLive({
+            apiKey: DAILY_API_KEY.value(),
+            liveRef,
+            liveSession: { ...sessionPayload, id: liveId },
+            caller,
+            allowCreate: true
+        });
+        await liveRef.set({
+            status: "live",
+            schedulingStatus: "live",
+            providerReady: true,
+            providerRoomName: openedRoom?.name || "",
+            providerRoomUrl: openedRoom?.url || "",
+            roomName: openedRoom?.name || "",
+            meetingUrl: openedRoom?.url || sessionPayload.meetingUrl || "",
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+    }
+
     const livePlanning = Array.isArray(promotion.livePlanning) ? [...promotion.livePlanning] : [];
     const itemIndex = livePlanning.findIndex((item) => item === liveItem);
-    const shouldNotifyStudents = !isTestLive && data.skipNotifications !== true && data.notifyStudents !== false;
+    const shouldNotifyStudents = (!isTestLive || data.notifyStudents === true || openNow) && data.skipNotifications !== true && data.notifyStudents !== false;
     const nextLiveItem = {
         ...(liveItem || {}),
         id: liveItem?.id || sourceItemId || (isTestLive ? "sbi-live-test" : liveId),
@@ -5320,14 +5359,20 @@ exports.scheduleLiveSession = onCall({
         testLive: isTestLive,
         title,
         liveSessionId: liveId,
-        status: "scheduled",
+        status: openNow ? "live" : "scheduled",
         reportOutsideWindow: reportRequested,
-        liveSchedulingStatus: reportRequested ? "report" : "scheduled",
-        teacherSelectionStatus: reportRequested ? "reported" : "selected",
-        studentScheduleStatus: "scheduled",
+        liveSchedulingStatus: openNow ? "live" : reportRequested ? "report" : "scheduled",
+        teacherSelectionStatus: openNow ? "started" : reportRequested ? "reported" : "selected",
+        studentScheduleStatus: openNow ? "live" : "scheduled",
         notificationStatus: shouldNotifyStudents ? "pending_student_update" : "not_notified",
         selectedLiveAt: selectedStartAt,
         selectedLiveEndAt: selectedEndAt,
+        providerReady: openNow ? true : Boolean(liveItem?.providerReady),
+        providerRoomName: openedRoom?.name || liveItem?.providerRoomName || "",
+        providerRoomUrl: openedRoom?.url || liveItem?.providerRoomUrl || "",
+        meetingUrl: openedRoom?.url || liveItem?.meetingUrl || "",
+        openedAt: openNow ? new Date().toISOString() : liveItem?.openedAt || "",
+        startedAt: openNow ? new Date().toISOString() : liveItem?.startedAt || "",
         selectedByUid: caller.uid,
         selectedByEmail: caller.email,
         selectedAt: new Date().toISOString()
@@ -5346,7 +5391,7 @@ exports.scheduleLiveSession = onCall({
             db,
             promotion,
             liveSession: sessionPayload,
-            kind: reportRequested ? "reported" : "scheduled",
+            kind: isTestLive && openNow ? "test_started" : reportRequested ? "reported" : "scheduled",
             apiKey: BREVO_API_KEY.value()
         })
         : { students: 0, notified: 0, emailsSent: 0, emailsFailed: 0, skipped: true, reason: isTestLive ? "test_live" : "notifications_disabled" };
@@ -5374,9 +5419,11 @@ exports.scheduleLiveSession = onCall({
     return {
         success: true,
         liveId,
-        message: reportRequested ? "Live programme en report et notifications lancees." : "Live programme et notifications lancees.",
+        message: isTestLive && openNow ? "Salle test ouverte et notifications lancees." : reportRequested ? "Live programme en report et notifications lancees." : "Live programme et notifications lancees.",
         report,
-        reportRequested
+        reportRequested,
+        openNow,
+        roomUrl: openedRoom?.url || ""
     };
 });
 

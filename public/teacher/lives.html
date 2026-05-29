@@ -5,18 +5,32 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SBI Prof - Lives</title>
   <link rel="stylesheet" href="/admin/css/admin-layout.css">
-  <link rel="stylesheet" href="/admin/css/admin.css?v=8.0P.167.240">
-  <link rel="stylesheet" href="/teacher/css/teacher.css?v=8.0P.167.240">
-  <link rel="stylesheet" href="/css/live-scheduler-v2.css?v=8.0P.167.240">
-  <script src="/admin/js/components.js?v=8.0P.167.240"></script>
+  <link rel="stylesheet" href="/admin/css/admin.css?v=8.0P.167.241">
+  <link rel="stylesheet" href="/teacher/css/teacher.css?v=8.0P.167.241">
+  <link rel="stylesheet" href="/css/live-scheduler-v2.css?v=8.0P.167.241">
+  <script src="/admin/js/components.js?v=8.0P.167.241"></script>
+
+
+  <style id="sbi-live-v2-hard-reveal-style">
+    body.sbi-live-v2-page #main-content,
+    body.sbi-live-v2-page #main-content > .content-wrapper,
+    body.sbi-live-v2-page [data-sbi-live-v2] {
+      display: block !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+      transform: none !important;
+    }
+  </style>
 
   <script id="sbi-live-v2-direct-reveal">
     (function () {
       function revealLiveV2() {
         try { document.documentElement.classList.remove('preload'); } catch (_) {}
         try { document.body && document.body.classList.remove('preload'); } catch (_) {}
+        var main = document.getElementById('main-content');
+        if (main) { main.hidden = false; main.style.display = 'block'; main.style.visibility = 'visible'; main.style.opacity = '1'; main.style.transform = 'none'; }
         var root = document.querySelector('[data-sbi-live-v2]');
-        if (root) { root.hidden = false; root.style.visibility = 'visible'; root.style.opacity = '1'; }
+        if (root) { root.hidden = false; root.style.display = 'block'; root.style.visibility = 'visible'; root.style.opacity = '1'; root.style.transform = 'none'; }
       }
       revealLiveV2();
       document.addEventListener('DOMContentLoaded', revealLiveV2, { once: true });
@@ -26,7 +40,7 @@
     }());
   </script>
 </head>
-<body class="preload sbi-teacher-surface sbi-live-v2-page" data-live-v2-role="teacher">
+<body class="sbi-teacher-surface sbi-live-v2-page" data-live-v2-role="teacher">
   <div class="app-container" id="app-container">
     <teacher-left-panel></teacher-left-panel>
     <teacher-top-bar></teacher-top-bar>
@@ -72,8 +86,8 @@
     </main>
   </div>
 
-  <script type="module" src="/admin/js/admin-ui.js?v=8.0P.167.240"></script>
-  <script type="module" src="/admin/js/admin-notifications.js?v=8.0P.167.240"></script>
-  <script type="module" src="/js/live/live-scheduler-v2-page.js?v=8.0P.167.240"></script>
+  <script type="module" src="/admin/js/admin-ui.js?v=8.0P.167.241"></script>
+  <script type="module" src="/admin/js/admin-notifications.js?v=8.0P.167.241"></script>
+  <script type="module" src="/js/live/live-scheduler-v2-page.js?v=8.0P.167.241"></script>
 </body>
 </html>

@@ -27,11 +27,21 @@ function $(id) { return document.getElementById(id); }
 function forceRevealLiveSchedulerV2Page() {
   try { document.documentElement?.classList?.remove('preload'); } catch (_) {}
   try { document.body?.classList?.remove('preload'); } catch (_) {}
+  const main = document.getElementById('main-content');
+  if (main) {
+    main.hidden = false;
+    main.style.display = 'block';
+    main.style.visibility = 'visible';
+    main.style.opacity = '1';
+    main.style.transform = 'none';
+  }
   const root = document.querySelector('[data-sbi-live-v2]');
   if (root) {
     root.hidden = false;
+    root.style.display = 'block';
     root.style.visibility = 'visible';
     root.style.opacity = '1';
+    root.style.transform = 'none';
   }
 }
 
@@ -484,7 +494,7 @@ function renderTestRoomBox(promotion = {}) {
   const ready = Boolean(session?.id);
   const label = ready
     ? `Salle test prête : ${formatRange(session.selectedStartAt || '', session.selectedEndAt || '')}`
-    : 'Créez une salle de test Daily sans notifier les élèves.';
+    : 'Ouvre immédiatement une salle test visible par les élèves et envoie une notification.';
   return `
     <section class="sbi-live-v2-test-box">
       <div>
@@ -648,34 +658,26 @@ async function openOrCreateTestRoom(promotion = {}) {
   if (!promotion?.id) return;
   const button = $('sbi-live-v2-test-room');
   if (button) button.disabled = true;
-  setStatus('Préparation de la salle test…', 'muted');
+  setStatus('Ouverture immédiate de la salle test…', 'muted');
 
   try {
-    const existing = getTestLiveSession(promotion);
-    let liveId = existing?.id || '';
+    const result = await scheduleLiveSession({
+      promotionId: promotion.id,
+      liveId: 'sbi-live-test',
+      sourceItemId: 'sbi-live-test',
+      type: 'live_test',
+      provider: 'daily',
+      title: `Salle test - ${getPromotionName(promotion)}`,
+      openNow: true,
+      notifyStudents: true,
+      report: false
+    });
+    const liveId = result?.data?.liveId || getTestLiveSession(promotion)?.id || '';
+    await refreshData({ preserveSelection: true });
 
-    if (!liveId) {
-      const startIso = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-      const endIso = new Date(Date.now() + 60 * 60 * 1000).toISOString();
-      const result = await scheduleLiveSession({
-        promotionId: promotion.id,
-        liveId: 'sbi-live-test',
-        sourceItemId: 'sbi-live-test',
-        type: 'live_test',
-        provider: 'daily',
-        title: `Salle test - ${getPromotionName(promotion)}`,
-        selectedStartAt: startIso,
-        selectedEndAt: endIso,
-        report: false,
-        skipNotifications: true
-      });
-      liveId = result?.data?.liveId || '';
-      await refreshData({ preserveSelection: true });
-    }
-
-    if (!liveId) throw new Error('Salle test introuvable après création.');
+    if (!liveId) throw new Error('Salle test introuvable après ouverture.');
     window.open(`/live-room.html?liveId=${encodeURIComponent(liveId)}&start=1`, '_blank', 'noopener,noreferrer');
-    setStatus('Salle test prête.', 'success');
+    setStatus('Salle test ouverte et notification envoyée aux élèves.', 'success');
   } catch (error) {
     console.error('[SBI Lives V2] Salle test impossible :', error);
     setStatus(error?.message || 'Salle test impossible.', 'error');
