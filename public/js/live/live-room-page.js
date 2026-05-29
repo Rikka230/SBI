@@ -287,6 +287,20 @@ async function shareSelectedFiles() {
     setFilesStatus('Choisissez un fichier');
     return;
   }
+  // 8.0P.167.251 (audit 2D) : validation proactive côté hôte, alignée sur storage.rules
+  // (max 60 Mo ; SVG/HTML interdits car servis tels quels via getDownloadURL).
+  const MAX_UPLOAD = 60 * 1024 * 1024;
+  const blockedTypes = ['image/svg+xml', 'text/html'];
+  const tooBig = files.find((f) => f.size > MAX_UPLOAD);
+  if (tooBig) {
+    setFilesStatus(`Fichier trop volumineux (max 60 Mo) : ${tooBig.name}`);
+    return;
+  }
+  const blocked = files.find((f) => blockedTypes.includes((f.type || '').toLowerCase()));
+  if (blocked) {
+    setFilesStatus(`Type de fichier non autorisé : ${blocked.name}`);
+    return;
+  }
   button.disabled = true;
   try {
     for (const file of files) {

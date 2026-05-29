@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.250',
+  version: '8.0P.167.251',
   branch: 'main',
-  channel: 'AUDIT FIX LOT 2B - RULES SECURITY MEDIUM',
-  stage: 'ATTENDANCE SERVER-ONLY WRITE + COURSEBLOCKS LIST SCOPE',
+  channel: 'AUDIT FIX LOT 2D - SAFE LIVE ROOM ITEM',
+  stage: 'HOST UPLOAD CLIENT-SIDE VALIDATION (2C + shell 2D items deferred)',
   updatedAt: '2026-05-29',
-  label: 'SBI 8.0P.167.250 - audit fix lot 2B (firestore rules medium)'
+  label: 'SBI 8.0P.167.251 - audit fix lot 2D (host upload validation)'
 };
 
 export function getSbiVersionLabel() {
