@@ -80,6 +80,36 @@ function formatRange(start = '', end = '') {
   return start ? `À partir du ${formatDateTime(start)}` : `Jusqu’au ${formatDateTime(end)}`;
 }
 
+function addDaysIso(value = '', days = 0) {
+  const ms = Date.parse(value || '');
+  if (!Number.isFinite(ms)) return '';
+  return new Date(ms + days * 24 * 60 * 60 * 1000).toISOString();
+}
+
+function formatDateOnly(value = '') {
+  if (!value) return 'Non renseignée';
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return 'Non renseignée';
+  return new Intl.DateTimeFormat('fr-FR', { dateStyle: 'medium' }).format(date);
+}
+
+function formatPlannedWeek(row = {}) {
+  const start = row.windowStart || row.item?.teacherSchedulingWindowStartAt || row.item?.schedulingWindow?.teacherCanSelectFrom || row.item?.schedulingWindow?.recommendedStartAt || '';
+  if (!start) return formatRange(row.windowStart, row.windowEnd);
+  const end = row.windowEnd && Date.parse(row.windowEnd) > Date.parse(start)
+    ? row.windowEnd
+    : addDaysIso(start, 6);
+  return `Semaine du ${formatDateOnly(start)} au ${formatDateOnly(end)}`;
+}
+
+function getScheduleLineForRow(row = {}) {
+  if (row.startAt) {
+    const label = row.status === 'report' ? 'Date de report' : 'Date définie';
+    return `${label} : ${formatRange(row.startAt, row.endAt)}`;
+  }
+  return `Période prévue : ${formatPlannedWeek(row)}`;
+}
+
 function toDateTimeLocal(value = '') {
   if (!value) return '';
   const date = new Date(value);
@@ -440,8 +470,7 @@ function renderLives() {
           <strong>${escapeHtml(row.title)}</strong>
           ${chip(row.status)}
         </div>
-        <span>Période prévue : ${escapeHtml(formatRange(row.windowStart, row.windowEnd))}</span>
-        <span>Date prévue : ${escapeHtml(row.startAt ? formatRange(row.startAt, row.endAt) : 'non planifiée')}</span>
+        <span>${escapeHtml(getScheduleLineForRow(row))}</span>
       </button>
     `;
   }).join('');
@@ -502,7 +531,7 @@ function renderTestRoomBox(promotion = {}) {
         <p>${escapeHtml(label)}</p>
       </div>
       <button class="sbi-live-v2-btn" type="button" id="sbi-live-v2-test-room">
-        ${ready ? 'Ouvrir la salle test' : 'Créer / ouvrir la salle test'}
+        ${isOpen ? 'Rejoindre la salle test' : 'Ouvrir la salle test maintenant'}
       </button>
     </section>
   `;
@@ -538,7 +567,7 @@ function renderDetail() {
         <div class="sbi-live-v2-info-grid">
           <span>Promotion</span><strong>${escapeHtml(getPromotionName(promotion))}</strong>
           <span>Formation / Cursus</span><strong>${escapeHtml(getCursusName(promotion))}</strong>
-          <span>Période prévue</span><strong>${escapeHtml(formatRange(row.windowStart, row.windowEnd))}</strong>
+          <span>Période prévue</span><strong>${escapeHtml(formatPlannedWeek(row))}</strong>
           <span>Source du titre</span><strong>${escapeHtml(row.titleSource)}</strong>
         </div>
       </section>
@@ -657,6 +686,10 @@ async function submitSchedule(promotion, row) {
 async function openOrCreateTestRoom(promotion = {}) {
   if (!promotion?.id) return;
   const button = $('sbi-live-v2-test-room');
+  const popup = window.open('about:blank', '_blank');
+  if (popup) {
+    try { popup.document.write('<!doctype html><title>SBI</title><body style="font-family:Arial;padding:24px;background:#050914;color:white">Préparation de la salle test SBI…</body>'); } catch (_) {}
+  }
   if (button) button.disabled = true;
   setStatus('Ouverture immédiate de la salle test…', 'muted');
 
@@ -673,12 +706,22 @@ async function openOrCreateTestRoom(promotion = {}) {
       report: false
     });
     const liveId = result?.data?.liveId || getTestLiveSession(promotion)?.id || '';
-    await refreshData({ preserveSelection: true });
-
     if (!liveId) throw new Error('Salle test introuvable après ouverture.');
-    window.open(`/live-room.html?liveId=${encodeURIComponent(liveId)}&start=1`, '_blank', 'noopener,noreferrer');
+
+    const roomUrl = `/live-room.html?liveId=${encodeURIComponent(liveId)}&start=1`;
+    if (popup && !popup.closed) {
+      try { popup.opener = null; } catch (_) {}
+      popup.location.href = roomUrl;
+    } else {
+      window.open(roomUrl, '_blank', 'noopener,noreferrer');
+    }
+
+    await refreshData({ preserveSelection: true });
     setStatus('Salle test ouverte et notification envoyée aux élèves.', 'success');
   } catch (error) {
+    if (popup && !popup.closed) {
+      try { popup.close(); } catch (_) {}
+    }
     console.error('[SBI Lives V2] Salle test impossible :', error);
     setStatus(error?.message || 'Salle test impossible.', 'error');
   } finally {

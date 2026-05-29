@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.241',
+  version: '8.0P.167.242',
   branch: 'main',
-  channel: 'LIVE TEST OPEN FLOW',
-  stage: 'LIVE TEST OPEN NOW AND TEACHER LIVE F5 HARDENING',
+  channel: 'LIVE V2 ISOLATED F5 AND TEST FLOW',
+  stage: 'TEACHER LIVES STANDALONE TEST LIVE AND ROOM ROLES',
   updatedAt: '2026-05-29',
-  label: 'SBI 8.0P.167.241 - live test open now and teacher lives f5 hardening'
+  label: 'SBI 8.0P.167.242 - isolated teacher lives f5 and live test flow'
 };
 
 export function getSbiVersionLabel() {

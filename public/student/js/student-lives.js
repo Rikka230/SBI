@@ -17,7 +17,7 @@ import {
   loadProfile,
   loadPromotionsByIds,
   renderEmpty
-} from '/js/live/live-shared.js?v=8.0P.167.241';
+} from '/js/live/live-shared.js?v=8.0P.167.242';
 
 const functionsInstance = getFunctions(app, 'europe-west1');
 const getStudentLiveAttendance = httpsCallable(functionsInstance, 'getStudentLiveAttendance');
@@ -147,8 +147,10 @@ function isLiveTestSession(session = {}) {
 function isVisibleLiveTestSession(session = {}) {
   if (!isLiveTestSession(session)) return false;
   const status = clean(session.status || '').toLowerCase();
+  if (['ended', 'replay_available', 'done', 'closed', 'cancelled'].includes(status)) return false;
   const hasRoom = Boolean(
-    session.startedAt
+    session.providerReady === true
+    || session.startedAt
     || session.openedAt
     || session.liveStartedAt
     || session.providerRoomUrl

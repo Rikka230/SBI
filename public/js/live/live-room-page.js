@@ -3,7 +3,7 @@ import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.1/fi
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js';
 import { collection, addDoc, onSnapshot, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js';
-import { escapeHtml } from '/js/live/live-shared.js?v=8.0P.167.241';
+import { escapeHtml } from '/js/live/live-shared.js?v=8.0P.167.242';
 
 const functionsInstance = getFunctions(app, 'europe-west1');
 const storage = getStorage(app);
@@ -54,6 +54,10 @@ function setStatus(message = '', tone = 'muted') {
 function setFilesStatus(message = '') {
   const node = $('sbi-live-files-status');
   if (node) node.textContent = message;
+}
+
+function isHostRoom(room = state.room) {
+  return Boolean(room?.canModerate === true && room?.accessRole === 'host');
 }
 
 function setDocsOpen(isOpen = false) {
@@ -275,7 +279,7 @@ function stopFilesListener() {
 }
 
 async function shareSelectedFiles() {
-  if (!state.room?.canModerate) return;
+  if (!isHostRoom()) return;
   const input = $('sbi-live-file-input');
   const button = $('sbi-live-file-upload');
   const files = Array.from(input?.files || []);
@@ -327,7 +331,7 @@ function updateRecordingButtons() {
 }
 
 async function markRecordingState(recordingStatus = '', extra = {}) {
-  if (!state.liveId || !state.room?.canModerate) return;
+  if (!state.liveId || !isHostRoom()) return;
   try {
     await setLiveRecordingState({
       liveId: state.liveId,
@@ -341,7 +345,7 @@ async function markRecordingState(recordingStatus = '', extra = {}) {
 }
 
 async function startRecording() {
-  if (!state.callFrame || !state.room?.canModerate) return;
+  if (!state.callFrame || !isHostRoom()) return;
   const button = $('sbi-live-record-start');
   button.disabled = true;
   try {
@@ -365,7 +369,7 @@ async function startRecording() {
 }
 
 async function stopRecording() {
-  if (!state.callFrame || !state.room?.canModerate) return;
+  if (!state.callFrame || !isHostRoom()) return;
   const button = $('sbi-live-record-stop');
   button.disabled = true;
   try {
@@ -384,7 +388,7 @@ async function stopRecording() {
 }
 
 async function endSession() {
-  if (!state.room?.canModerate || !state.liveId) return;
+  if (!isHostRoom() || !state.liveId) return;
   const button = $('sbi-live-end-session');
   const confirmed = window.confirm('Terminer cette session live pour tous les participants ?');
   if (!confirmed) return;
@@ -414,8 +418,17 @@ async function endSession() {
 function setupHostControls(room = {}) {
   const actions = $('sbi-live-room-actions');
   const uploadZone = $('sbi-live-file-upload-zone');
-  if (actions) actions.hidden = !room.canModerate;
-  if (uploadZone) uploadZone.hidden = !room.canModerate;
+  const host = isHostRoom(room);
+  if (actions) actions.hidden = !host;
+  if (uploadZone) uploadZone.hidden = !host;
+  if (!host) {
+    $('sbi-live-record-start')?.remove();
+    $('sbi-live-record-stop')?.remove();
+    $('sbi-live-end-session')?.remove();
+    $('sbi-live-file-input')?.remove();
+    $('sbi-live-file-upload')?.remove();
+    return;
+  }
 
   $('sbi-live-record-start')?.addEventListener('click', startRecording);
   $('sbi-live-record-stop')?.addEventListener('click', stopRecording);
