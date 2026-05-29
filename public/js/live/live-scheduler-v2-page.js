@@ -22,6 +22,17 @@ let unsubscribeAuth = null;
 
 function $(id) { return document.getElementById(id); }
 
+function forceRevealLiveSchedulerV2Page() {
+  try { document.documentElement?.classList?.remove('preload'); } catch (_) {}
+  try { document.body?.classList?.remove('preload'); } catch (_) {}
+  const root = document.querySelector('[data-sbi-live-v2]');
+  if (root) {
+    root.hidden = false;
+    root.style.visibility = 'visible';
+    root.style.opacity = '1';
+  }
+}
+
 function clean(value = '', max = 240) {
   return String(value ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
 }
@@ -85,6 +96,7 @@ function durationMinutes(startAt = '', endAt = '') {
 }
 
 function setStatus(message = '', tone = 'muted') {
+  forceRevealLiveSchedulerV2Page();
   const node = $('sbi-live-v2-status');
   if (!node) return;
   node.textContent = message;
@@ -721,12 +733,14 @@ async function refreshData(options = {}) {
     setStatus('Lives chargé.', 'success');
   } catch (error) {
     console.error('[SBI Lives V2] Chargement impossible :', error);
+    forceRevealLiveSchedulerV2Page();
     setStatus(error?.message || 'Chargement impossible.', 'error');
     renderAll();
   }
 }
 
 export function mountLiveSchedulerV2Page(role = 'teacher') {
+  forceRevealLiveSchedulerV2Page();
   if (mounted) return null;
   mounted = true;
   state.role = role === 'admin' ? 'admin' : 'teacher';
@@ -752,3 +766,14 @@ export function mountLiveSchedulerV2Page(role = 'teacher') {
 if (document.querySelector('[data-sbi-live-v2]')) {
   window.setTimeout(() => mountLiveSchedulerV2Page(document.body.dataset.liveV2Role || 'teacher'), 0);
 }
+
+
+window.addEventListener('error', (event) => {
+  forceRevealLiveSchedulerV2Page();
+  console.error('[SBI Lives V2] Page error:', event?.error || event?.message);
+});
+
+window.addEventListener('unhandledrejection', (event) => {
+  forceRevealLiveSchedulerV2Page();
+  console.error('[SBI Lives V2] Promise rejection:', event?.reason);
+});

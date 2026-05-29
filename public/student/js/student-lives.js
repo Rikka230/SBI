@@ -17,7 +17,7 @@ import {
   loadProfile,
   loadPromotionsByIds,
   renderEmpty
-} from '/js/live/live-shared.js?v=8.0P.167.238';
+} from '/js/live/live-shared.js?v=8.0P.167.239';
 
 const functionsInstance = getFunctions(app, 'europe-west1');
 const getStudentLiveAttendance = httpsCallable(functionsInstance, 'getStudentLiveAttendance');
@@ -136,6 +136,33 @@ function isTestLive(item = {}) {
     .map((value) => clean(value).toLowerCase())
     .filter(Boolean);
   return item.isTestLive === true || item.testLive === true || values.includes('sbi-live-test') || values.includes('live_test');
+}
+
+function isLiveTestSession(session = {}) {
+  return isTestLive(session)
+    || clean(session.sourceType).toLowerCase() === 'live_test'
+    || clean(session.sourceItemId).toLowerCase() === 'sbi-live-test';
+}
+
+function isVisibleLiveTestSession(session = {}) {
+  if (!isLiveTestSession(session)) return false;
+  const status = clean(session.status || '').toLowerCase();
+  const hasRoom = Boolean(
+    session.startedAt
+    || session.openedAt
+    || session.liveStartedAt
+    || session.providerRoomUrl
+    || session.providerRoomName
+    || session.meetingUrl
+    || session.liveTech?.roomUrl
+    || session.liveTech?.roomName
+    || session.liveTech?.providerReady
+  );
+  return hasRoom && ['live', 'started', 'in_progress', 'ongoing', 'open'].includes(status);
+}
+
+function isLiveTestRow(row = {}) {
+  return isLiveTestSession(row.session || {}) || isTestLive(row.live || {});
 }
 
 function getItemIds(item = {}) {
@@ -294,20 +321,21 @@ function getRows() {
   });
 
   state.sessions.forEach((session) => {
-    if (isTestLive(session) || clean(session.sourceType).toLowerCase() === 'live_test') return;
+    const testSession = isLiveTestSession(session);
+    if (testSession && !isVisibleLiveTestSession(session)) return;
     if (rows.some((row) => row.session?.id === session.id || row.id === session.id)) return;
     rows.push({
       id: session.id,
-      title: pickLiveTitle(session.title, 'Live SBI'),
+      title: pickLiveTitle(session.title, testSession ? 'Live test' : 'Live SBI'),
       promotion: state.promotions.find((promotion) => promotion.id === session.promotionId) || {},
-      live: {},
+      live: testSession ? { isTestLive: true, testLive: true, type: 'live_test' } : {},
       planning: null,
       session,
       startAt: session.selectedStartAt || '',
       endAt: session.selectedEndAt || '',
-      replayUrl: session.replayUrl || session.replayAccessUrl || session.liveTech?.replayUrl || '',
-      replayStatus: session.replayStatus || session.liveTech?.replayStatus || '',
-      status: session.report === true || session.schedulingStatus === 'report' ? 'report' : (session.status || 'scheduled'),
+      replayUrl: testSession ? '' : (session.replayUrl || session.replayAccessUrl || session.liveTech?.replayUrl || ''),
+      replayStatus: testSession ? '' : (session.replayStatus || session.liveTech?.replayStatus || ''),
+      status: testSession ? (session.status || 'live') : (session.report === true || session.schedulingStatus === 'report' ? 'report' : (session.status || 'scheduled')),
       providerReady: Boolean(session.providerRoomName || session.providerRoomUrl || session.meetingUrl || session.liveTech?.providerReady)
     });
   });
@@ -410,6 +438,7 @@ function renderList(rows) {
       <span>${escapeHtml(getPromotionName(row.promotion))}</span>
       <span>${escapeHtml(getRowDateLabel(row))}</span>
       ${isReportRow(row) ? '<span class="sbi-live-report-badge">Report hors période</span>' : ''}
+      ${isLiveTestRow(row) ? '<span class="sbi-live-test-badge">Salle test ouverte</span>' : ''}
       ${getAttendanceBadges(row)}
       <div class="sbi-live-card-actions">
         ${canJoinLive(row) ? `<a class="sbi-live-btn" data-live-room-link="true" data-live-id="${encodeURIComponent(getLiveIdForRow(row))}" href="/live-room/${encodeURIComponent(getLiveIdForRow(row))}?liveId=${encodeURIComponent(getLiveIdForRow(row))}#liveId=${encodeURIComponent(getLiveIdForRow(row))}">Rejoindre la salle</a>` : (state.tab === 'upcoming' ? `<span class="sbi-live-btn sbi-live-btn--ghost is-disabled" aria-disabled="true">${escapeHtml(getJoinClosedLabel(row))}</span>` : '')}
@@ -426,7 +455,7 @@ function renderCalendar(rows) {
   return `<div class="sbi-live-calendar">${filtered.map((row) => `
     <div class="sbi-live-day">
       <strong>${escapeHtml(row.startAt ? formatDateTime(row.startAt) : row.windowStart ? formatDateTime(row.windowStart) : 'A planifier')}</strong>
-      <span>${escapeHtml(row.title)}${isReportRow(row) ? ' · Report hors période' : ''}</span>
+      <span>${escapeHtml(row.title)}${isReportRow(row) ? ' · Report hors période' : ''}${isLiveTestRow(row) ? ' · Salle test' : ''}</span>
     </div>
   `).join('')}</div>`;
 }

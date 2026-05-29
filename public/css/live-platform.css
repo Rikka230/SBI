@@ -1056,7 +1056,7 @@ a.sbi-live-btn {
   }
 }
 
-/* SBI 8.0P.167.220 - direct refresh standalone hardening */
+/* SBI 8.0P.167.239 - direct refresh standalone hardening */
 .sbi-live-replay-page .sbi-live-standalone-shell {
   min-height: 100vh;
   display: block;
@@ -1102,4 +1102,73 @@ body.sbi-live-replay-page[data-sbi-standalone="live-replay"] {
   font-size: 0.74rem;
   font-weight: 900;
   letter-spacing: 0.01em;
+}
+
+/* SBI 8.0P.167.239 - salle live : documents en tiroir compact */
+.sbi-live-room-docs {
+  left: 1rem;
+  right: auto;
+  top: 1rem;
+  width: min(260px, calc(100% - 2rem));
+  max-height: 46px;
+  overflow: hidden;
+  padding: 0.55rem 0.65rem;
+  gap: 0.55rem;
+  transition: width 180ms ease, max-height 180ms ease, background 180ms ease, box-shadow 180ms ease;
+}
+
+.sbi-live-room-docs.is-open {
+  width: min(340px, calc(100% - 2rem));
+  max-height: min(360px, calc(100% - 2rem));
+  background: rgba(5, 9, 20, 0.9);
+}
+
+.sbi-live-room-docs__head {
+  align-items: center;
+}
+
+.sbi-live-room-docs__toggle {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #fff;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 950;
+  cursor: pointer;
+}
+
+.sbi-live-room-docs__toggle::before {
+  content: '▾';
+  display: inline-block;
+  margin-right: 0.35rem;
+  transition: transform 180ms ease;
+}
+
+.sbi-live-room-docs.is-open .sbi-live-room-docs__toggle::before {
+  transform: rotate(180deg);
+}
+
+.sbi-live-room-docs:not(.is-open) .sbi-live-room-upload,
+.sbi-live-room-docs:not(.is-open) .sbi-live-room-files {
+  display: none;
+}
+
+.sbi-live-room-docs:not(.is-open) .sbi-live-room-docs__head span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 720px) {
+  .sbi-live-room-docs {
+    left: 0.65rem;
+    top: 0.65rem;
+    width: min(240px, calc(100% - 1.3rem));
+  }
+
+  .sbi-live-room-docs.is-open {
+    width: calc(100% - 1.3rem);
+    max-height: 45vh;
+  }
 }

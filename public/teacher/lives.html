@@ -5,10 +5,26 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SBI Prof - Lives</title>
   <link rel="stylesheet" href="/admin/css/admin-layout.css">
-  <link rel="stylesheet" href="/admin/css/admin.css?v=8.0P.167.238">
-  <link rel="stylesheet" href="/teacher/css/teacher.css?v=8.0P.167.238">
-  <link rel="stylesheet" href="/css/live-scheduler-v2.css?v=8.0P.167.238">
-  <script src="/admin/js/components.js?v=8.0P.167.238"></script>
+  <link rel="stylesheet" href="/admin/css/admin.css?v=8.0P.167.239">
+  <link rel="stylesheet" href="/teacher/css/teacher.css?v=8.0P.167.239">
+  <link rel="stylesheet" href="/css/live-scheduler-v2.css?v=8.0P.167.239">
+  <script src="/admin/js/components.js?v=8.0P.167.239"></script>
+
+  <script id="sbi-live-v2-direct-reveal">
+    (function () {
+      function revealLiveV2() {
+        try { document.documentElement.classList.remove('preload'); } catch (_) {}
+        try { document.body && document.body.classList.remove('preload'); } catch (_) {}
+        var root = document.querySelector('[data-sbi-live-v2]');
+        if (root) { root.hidden = false; root.style.visibility = 'visible'; root.style.opacity = '1'; }
+      }
+      revealLiveV2();
+      document.addEventListener('DOMContentLoaded', revealLiveV2, { once: true });
+      window.addEventListener('pageshow', revealLiveV2);
+      setTimeout(revealLiveV2, 300);
+      setTimeout(revealLiveV2, 1200);
+    }());
+  </script>
 </head>
 <body class="preload sbi-teacher-surface sbi-live-v2-page" data-live-v2-role="teacher">
   <div class="app-container" id="app-container">
@@ -56,8 +72,8 @@
     </main>
   </div>
 
-  <script type="module" src="/admin/js/admin-ui.js?v=8.0P.167.238"></script>
-  <script type="module" src="/admin/js/admin-notifications.js?v=8.0P.167.238"></script>
-  <script type="module" src="/js/live/live-scheduler-v2-page.js?v=8.0P.167.238"></script>
+  <script type="module" src="/admin/js/admin-ui.js?v=8.0P.167.239"></script>
+  <script type="module" src="/admin/js/admin-notifications.js?v=8.0P.167.239"></script>
+  <script type="module" src="/js/live/live-scheduler-v2-page.js?v=8.0P.167.239"></script>
 </body>
 </html>

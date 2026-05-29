@@ -147,6 +147,34 @@
         }
       },
       {
+        "source": "/teacher/lives",
+        "destination": "/teacher/lives.html"
+      },
+      {
+        "source": "/teacher/lives-v2",
+        "destination": "/teacher/lives-v2.html"
+      },
+      {
+        "source": "/teacher/lives-v1",
+        "destination": "/teacher/lives-v1.html"
+      },
+      {
+        "source": "/admin/admin-lives",
+        "destination": "/admin/admin-lives.html"
+      },
+      {
+        "source": "/admin/admin-lives-v2",
+        "destination": "/admin/admin-lives-v2.html"
+      },
+      {
+        "source": "/admin/admin-lives-v1",
+        "destination": "/admin/admin-lives-v1.html"
+      },
+      {
+        "source": "/admin/formations-live",
+        "destination": "/admin/formations-live.html"
+      },
+      {
         "source": "/live-room",
         "destination": "/live-room.html"
       },

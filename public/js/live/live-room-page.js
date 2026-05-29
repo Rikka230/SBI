@@ -3,7 +3,7 @@ import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.1/fi
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js';
 import { collection, addDoc, onSnapshot, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js';
-import { escapeHtml } from '/js/live/live-shared.js?v=8.0P.167.220';
+import { escapeHtml } from '/js/live/live-shared.js?v=8.0P.167.239';
 
 const functionsInstance = getFunctions(app, 'europe-west1');
 const storage = getStorage(app);
@@ -19,7 +19,8 @@ const state = {
   joined: false,
   filesUnsubscribe: null,
   recording: false,
-  recordingInstanceId: ''
+  recordingInstanceId: '',
+  docsOpen: false
 };
 
 function $(id) {
@@ -53,6 +54,22 @@ function setStatus(message = '', tone = 'muted') {
 function setFilesStatus(message = '') {
   const node = $('sbi-live-files-status');
   if (node) node.textContent = message;
+}
+
+function setDocsOpen(isOpen = false) {
+  state.docsOpen = Boolean(isOpen);
+  const docs = $('sbi-live-room-docs');
+  const toggle = $('sbi-live-docs-toggle');
+  docs?.classList.toggle('is-open', state.docsOpen);
+  if (toggle) toggle.setAttribute('aria-expanded', state.docsOpen ? 'true' : 'false');
+}
+
+function setupDocsToggle() {
+  const toggle = $('sbi-live-docs-toggle');
+  if (!toggle || toggle.dataset.bound === 'true') return;
+  toggle.dataset.bound = 'true';
+  toggle.addEventListener('click', () => setDocsOpen(!state.docsOpen));
+  setDocsOpen(false);
 }
 
 function setMeta(room = {}) {
@@ -377,6 +394,9 @@ async function endSession() {
       try { await stopRecording(); } catch (_) {}
     }
     await endLiveConference({ liveId: state.liveId });
+    stopFilesListener();
+    renderFiles([]);
+    setDocsOpen(false);
     try { await state.callFrame?.leave(); } catch (_) {}
     destroyExistingFrame();
     setStatus('Session terminee.', 'success');
@@ -484,6 +504,7 @@ async function prepareAndJoin() {
   if (!room.roomUrl || !room.token) throw new Error('Salle Daily incomplète.');
   state.room = room;
   setMeta(room);
+  setupDocsToggle();
   setupHostControls(room);
   await mountDailyRoom(room);
 }

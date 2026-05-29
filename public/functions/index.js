@@ -4543,6 +4543,50 @@ exports.joinLiveConference = onCall({
 });
 
 
+async function cleanupLiveSessionFiles({ db, liveId = "" } = {}) {
+    const cleanedLiveId = cleanString(liveId, 180);
+    if (!cleanedLiveId) return { files: 0, storageDeleted: 0, storageFailed: 0 };
+
+    const filesSnap = await db.collection("liveSessions").doc(cleanedLiveId).collection("files").get();
+    if (filesSnap.empty) return { files: 0, storageDeleted: 0, storageFailed: 0 };
+
+    const storagePaths = [];
+    const batches = [];
+    let batch = db.batch();
+    let opCount = 0;
+
+    filesSnap.forEach((docSnap) => {
+        const data = docSnap.data() || {};
+        const storagePath = cleanString(data.storagePath || "", 800);
+        if (storagePath) storagePaths.push(storagePath);
+        batch.delete(docSnap.ref);
+        opCount += 1;
+        if (opCount >= 450) {
+            batches.push(batch);
+            batch = db.batch();
+            opCount = 0;
+        }
+    });
+
+    if (opCount > 0) batches.push(batch);
+    for (const item of batches) await item.commit();
+
+    let storageDeleted = 0;
+    let storageFailed = 0;
+    const bucket = admin.storage().bucket(SBI_STORAGE_BUCKET);
+    for (const storagePath of storagePaths) {
+        try {
+            await bucket.file(storagePath).delete({ ignoreNotFound: true });
+            storageDeleted += 1;
+        } catch (error) {
+            storageFailed += 1;
+            console.warn("[SBI Live] Suppression fichier storage impossible :", cleanedLiveId, storagePath, error?.message || error);
+        }
+    }
+
+    return { files: filesSnap.size, storageDeleted, storageFailed };
+}
+
 async function updatePromotionLivePlanningForEnded({ promotionRef, promotion = {}, liveSession = {}, caller }) {
     const livePlanning = Array.isArray(promotion.livePlanning) ? [...promotion.livePlanning] : [];
     if (!livePlanning.length) return;
@@ -4628,6 +4672,8 @@ exports.endLiveConference = onCall({
         updatedAt: admin.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
 
+    const fileCleanup = await cleanupLiveSessionFiles({ db, liveId });
+
     await updatePromotionLivePlanningForEnded({ promotionRef, promotion, liveSession, caller });
 
     await safeWriteAccountAuditLog(db, {
@@ -4640,14 +4686,15 @@ exports.endLiveConference = onCall({
         source: "live-room",
         liveId,
         promotionId,
-        changes: { provider: "daily", roomName, providerClosed }
+        changes: { provider: "daily", roomName, providerClosed, fileCleanup }
     });
 
     return {
         success: true,
         liveId,
         message: "Session live terminee.",
-        providerClosed
+        providerClosed,
+        fileCleanup
     };
 });
 

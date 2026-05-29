@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.238',
+  version: '8.0P.167.239',
   branch: 'main',
-  channel: 'LIVE V2 STABILIZATION',
-  stage: 'CANONICAL TEACHER LIVE V2 REPORT MAILS AND TEST ROOM',
+  channel: 'LIVE V2 ROOM AND F5 FIXES',
+  stage: 'LIVE TEST STUDENT VISIBILITY AND ROOM DOCUMENT CLEANUP',
   updatedAt: '2026-05-29',
-  label: 'SBI 8.0P.167.238 - live v2 stabilization and transactional report mails'
+  label: 'SBI 8.0P.167.239 - live v2 room documents and test visibility fixes'
 };
 
 export function getSbiVersionLabel() {
