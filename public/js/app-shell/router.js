@@ -7,7 +7,7 @@
 
 import { runViewCleanups, setActiveViewKey } from './view-lifecycle.js';
 import { startShellTransition, endShellTransition } from './transitions.js';
-import { getRouteDecision } from './route-guards.js?v=8.0P.167.243';
+import { getRouteDecision } from './route-guards.js?v=8.0P.167.246';
 
 function normalizeHref(rawHref) {
   if (!rawHref || typeof rawHref !== 'string') return null;

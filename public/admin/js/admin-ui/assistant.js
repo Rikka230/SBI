@@ -35,7 +35,7 @@ function getAssistantConfig({ isTeacher, isStudent }) {
             text: 'Tes cours, validations et notifications importantes resteront accessibles ici sans charger l’interface.',
             primary: 'Voir mes cours',
             primaryUrl: '/teacher/mes-cours.html',
-            badge: '0'
+            badge: ''
         };
     }
 
@@ -46,7 +46,7 @@ function getAssistantConfig({ isTeacher, isStudent }) {
             text: 'Tes cours, ta progression et tes signaux utiles seront regroupés ici au fil des prochaines étapes.',
             primary: 'Mes cours',
             primaryUrl: '/student/mes-cours.html',
-            badge: '0'
+            badge: ''
         };
     }
 
@@ -56,7 +56,7 @@ function getAssistantConfig({ isTeacher, isStudent }) {
         text: 'Un point d’accès rapide pour les validations, notifications et futurs contrôles plateforme.',
         primary: 'À valider',
         primaryUrl: '/admin/index.html?tab=view-dashboard',
-        badge: '0'
+        badge: ''
     };
 }
 
@@ -64,7 +64,7 @@ function buildAssistantHTML(config) {
     return `
         <button class="sbi-assistant__trigger" type="button" aria-label="Ouvrir l’assistant SBI" aria-expanded="false">
             <span class="sbi-assistant__dot" aria-hidden="true"></span>
-            <span class="sbi-assistant__badge">${config.badge}</span>
+            <span class="sbi-assistant__badge" hidden>${config.badge || ''}</span>
         </button>
         <div class="sbi-assistant__panel" role="dialog" aria-label="Assistant SBI">
             <p class="sbi-assistant__eyebrow">${config.eyebrow}</p>
@@ -179,7 +179,15 @@ function initAssistantNotificationSync(assistant) {
         const numericValue = rawValue === '9+' ? 10 : Number.parseInt(rawValue, 10) || 0;
         const storedValue = Number.parseInt(localStorage.getItem(NOTIFICATION_SOUND_KEY) || '0', 10) || 0;
 
-        badge.textContent = rawValue;
+        if (visible && numericValue > 0) {
+            badge.textContent = rawValue;
+            badge.hidden = false;
+            badge.removeAttribute('aria-hidden');
+        } else {
+            badge.textContent = '';
+            badge.hidden = true;
+            badge.setAttribute('aria-hidden', 'true');
+        }
         assistant.classList.toggle('has-notifications', visible && numericValue > 0);
 
         if (!initialized) {

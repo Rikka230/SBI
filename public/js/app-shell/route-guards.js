@@ -9,9 +9,6 @@ const HARD_RELOAD_PATHS = new Map([
   ['/student/cours-viewer.html', 'viewer étudiant / progression / quiz / vidéo'],
   ['/teacher/cours-viewer.html', 'viewer prof / preview protégé après rollback 8.0M.8'],
   ['/admin/cours-viewer.html', 'viewer admin / preview protégé après rollback 8.0M.8'],
-  ['/teacher/lives', 'page Lives prof isolée hors PJAX'],
-  ['/teacher/lives.html', 'page Lives prof isolée hors PJAX'],
-  ['/teacher/lives-v2.html', 'page Lives prof isolée hors PJAX'],
   ['/change-email.html', 'flux sécurité email'],
   ['/login.html', 'authentification'],
   ['/index.html', 'index public']

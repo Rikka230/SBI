@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SBI Prof - Lives</title>
   <link rel="stylesheet" href="/admin/css/admin-layout.css">
-  <link rel="stylesheet" href="/admin/css/admin.css?v=8.0P.167.245">
-  <link rel="stylesheet" href="/teacher/css/teacher.css?v=8.0P.167.245">
-  <link rel="stylesheet" href="/css/live-scheduler-v2.css?v=8.0P.167.245">
-  <script src="/admin/js/components.js?v=8.0P.167.245"></script>
+  <link rel="stylesheet" href="/admin/css/admin.css?v=8.0P.167.246">
+  <link rel="stylesheet" href="/teacher/css/teacher.css?v=8.0P.167.246">
+  <link rel="stylesheet" href="/css/live-scheduler-v2.css?v=8.0P.167.246">
+  <script src="/admin/js/components.js?v=8.0P.167.246"></script>
 
 
   <style id="sbi-live-v2-hard-reveal-style">
@@ -22,6 +22,14 @@
       transform: none !important;
       pointer-events: auto !important;
       filter: none !important;
+    }
+
+    body.sbi-live-v2-page .sbi-assistant:not(.has-notifications) .sbi-assistant__badge,
+    body.sbi-live-v2-page .sbi-assistant__badge:empty,
+    body.sbi-live-v2-page .sbi-assistant__badge[hidden] {
+      display: none !important;
+      opacity: 0 !important;
+      visibility: hidden !important;
     }
 
     body.sbi-live-v2-page.sbi-navigating-out #main-content,
@@ -52,7 +60,7 @@
     }());
   </script>
 </head>
-<body class="sbi-teacher-surface sbi-live-v2-page" data-live-v2-role="teacher">
+<body class="sbi-internal-ui sbi-teacher-surface sbi-live-v2-page" data-live-v2-role="teacher">
   <div class="app-container" id="app-container">
     <teacher-left-panel></teacher-left-panel>
     <teacher-top-bar></teacher-top-bar>
@@ -101,8 +109,8 @@
   <script type="module" id="sbi-live-v2-standalone-boot">
     import { waitForSbiComponents } from '/admin/js/components/ready.js';
     import { initPanelControls } from '/admin/js/admin-ui/panels.js';
-    import { initSbiVersionBadge } from '/js/sbi-version-badge.js?v=8.0P.167.245';
-    import { initAssistantPrototype } from '/admin/js/admin-ui/assistant.js?v=8.0P.167.245';
+    import { initSbiVersionBadge } from '/js/sbi-version-badge.js?v=8.0P.167.246';
+    import { initAssistantPrototype } from '/admin/js/admin-ui/assistant.js?v=8.0P.167.246';
 
     let standaloneNavBound = false;
 
@@ -112,7 +120,7 @@
       document.body?.classList?.remove('preload');
       document.body?.classList?.remove('sbi-navigating-out');
       document.body?.removeAttribute('aria-busy');
-      document.body?.classList?.add('sbi-live-v2-standalone-ready');
+      document.body?.classList?.add('sbi-internal-ui', 'sbi-live-v2-standalone-ready');
       const app = document.getElementById('app-container');
       const main = document.getElementById('main-content');
       const root = document.querySelector('[data-sbi-live-v2]');
@@ -140,6 +148,7 @@
         if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
         const trigger = event.target?.closest?.('[data-sbi-href], [data-href], a[href]');
         if (!trigger) return;
+        if (!trigger.closest('#left-panel, .top-bar')) return;
         if (trigger.matches?.('a[target]') && trigger.getAttribute('target') !== '_self') return;
 
         const rawHref = trigger.getAttribute('data-sbi-href') || trigger.getAttribute('data-href') || trigger.getAttribute('href');
@@ -158,6 +167,7 @@
         if (event.defaultPrevented || (event.key !== 'Enter' && event.key !== ' ')) return;
         const trigger = event.target?.closest?.('[data-sbi-href], [data-href]');
         if (!trigger) return;
+        if (!trigger.closest('#left-panel, .top-bar')) return;
         const rawHref = trigger.getAttribute('data-sbi-href') || trigger.getAttribute('data-href');
         const url = normalizeStandaloneUrl(rawHref);
         if (!url || url.origin !== window.location.origin) return;
@@ -187,7 +197,7 @@
     else bootStandaloneLiveV2();
   </script>
 
-  <script type="module" src="/admin/js/admin-notifications.js?v=8.0P.167.245"></script>
-  <script type="module" src="/js/live/live-scheduler-v2-page.js?v=8.0P.167.245"></script>
+  <script type="module" src="/admin/js/admin-notifications.js?v=8.0P.167.246"></script>
+  <script type="module" src="/js/live/live-scheduler-v2-page.js?v=8.0P.167.246"></script>
 </body>
 </html>
