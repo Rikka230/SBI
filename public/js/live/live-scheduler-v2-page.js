@@ -508,22 +508,48 @@ function getRowSourceId(row = {}) {
 }
 
 
+function isLiveSessionOpen(session = {}) {
+  if (!session || typeof session !== 'object') return false;
+  const status = clean(
+    session.status
+    || session.liveSchedulingStatus
+    || session.schedulingStatus
+    || session.studentScheduleStatus
+    || '',
+    80
+  ).toLowerCase();
+  return ['live', 'started', 'in_progress', 'ongoing', 'open'].includes(status)
+    || Boolean(session.startedAt || session.openedAt || session.liveStartedAt);
+}
+
+function isLiveSessionClosed(session = {}) {
+  const status = clean(session?.status || session?.liveSchedulingStatus || session?.schedulingStatus || '', 80).toLowerCase();
+  return ['ended', 'replay_available', 'cancelled', 'closed', 'done'].includes(status);
+}
+
 function getTestLiveSession(promotion = {}) {
-  return state.sessions.find((session) => {
+  const matches = state.sessions.filter((session) => {
     if (session.promotionId !== promotion.id) return false;
     return isTestLive(session)
       || clean(session.sourceType).toLowerCase() === 'live_test'
       || clean(session.sourceItemId).toLowerCase() === 'sbi-live-test';
-  }) || null;
+  });
+  return matches.find(isLiveSessionOpen)
+    || matches.find((session) => !isLiveSessionClosed(session))
+    || matches[0]
+    || null;
 }
 
 function renderTestRoomBox(promotion = {}) {
   if (state.role !== 'teacher') return '';
   const session = getTestLiveSession(promotion);
   const ready = Boolean(session?.id);
-  const label = ready
-    ? `Salle test prête : ${formatRange(session.selectedStartAt || '', session.selectedEndAt || '')}`
-    : 'Ouvre immédiatement une salle test visible par les élèves et envoie une notification.';
+  const isOpen = isLiveSessionOpen(session);
+  const label = isOpen
+    ? 'Salle test ouverte : les élèves peuvent la rejoindre depuis leur liste de lives.'
+    : ready
+      ? 'Salle test existante : cliquez pour la rouvrir immédiatement aux élèves.'
+      : 'Ouvre immédiatement une salle test visible par les élèves et envoie une notification.';
   return `
     <section class="sbi-live-v2-test-box">
       <div>

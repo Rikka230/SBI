@@ -12,8 +12,8 @@
  * location.reload()
  */
 
-import { createRouteRegistry } from './route-registry.js?v=8.0P.167.243';
-import { createRouter } from './router.js?v=8.0P.167.243';
+import { createRouteRegistry } from './route-registry.js?v=8.0P.167.244';
+import { createRouter } from './router.js?v=8.0P.167.244';
 import { injectAppShellStyles, markAppShellReady } from './transitions.js';
 import { initRoutePreload } from './preload.js';
 import { registerCleanup, createAbortController } from './view-lifecycle.js';
