@@ -64,11 +64,20 @@ function shouldSkipInlineDocumentStyle(style, baseUrl = window.location.href) {
   try { sourcePath = new URL(baseUrl, window.location.href).pathname.toLowerCase(); }
   catch (_) { sourcePath = String(window.location.pathname || '').toLowerCase(); }
 
-  const isStudentLives = sourcePath === '/student/lives.html' || sourcePath === '/student/lives';
+  // Anti-.230 (généralisé) : on saute UNIQUEMENT les styles inline d'une page Live
+  // (student/teacher/admin) qui forcent le layout du shell global (#app-container /
+  // #main-content en display:block) SANS être scopés sous une classe body Live.
+  // Un style Live légitime reste scopé sous `body.sbi-live*` : il n'affecte que la
+  // page Live et DOIT être conservé (sinon le contenu PJAX resterait masqué). Seul
+  // un forçage non scopé pollue les autres pages du shell — c'est ce cas qu'on saute.
+  const isLivePage = sourcePath.includes('/lives')
+    || sourcePath.includes('/admin-lives')
+    || sourcePath.includes('live-replay');
   const touchesShellLayout = cssText.includes('#app-container') || cssText.includes('#main-content');
-  const forcesBlockLayout = cssText.includes('display: block');
+  const forcesBlockLayout = cssText.includes('display: block') || cssText.includes('display:block');
+  const isScopedToLiveBody = /body\.sbi-live/i.test(cssText);
 
-  return isStudentLives && touchesShellLayout && forcesBlockLayout;
+  return isLivePage && touchesShellLayout && forcesBlockLayout && !isScopedToLiveBody;
 }
 
 function ensureInlineDocumentStyles(doc, baseUrl = window.location.href) {
