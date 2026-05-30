@@ -578,8 +578,15 @@ function renderDetail() {
   const liveId = getRowSessionId(row);
   const selectedMode = row.status === 'report' ? 'report' : 'scheduled';
   const canOpen = Boolean(liveId);
-  const canCancelReplay = state.role === 'admin' && Boolean(liveId)
-    && ['ended', 'replay_available'].includes((row.status || '').toLowerCase());
+  const cancelSession = row.session || {};
+  const cancelReplaySt = clean(cancelSession.replayStatus || cancelSession.liveTech?.replayStatus || '', 40).toLowerCase();
+  const cancelPastStart = Boolean(row.startAt) && Date.parse(row.startAt) < Date.now();
+  const canCancelReplay = state.role === 'admin' && Boolean(liveId) && (
+    isLiveSessionClosed(cancelSession)
+    || Boolean(cancelSession.replayRecordingId)
+    || ['available', 'ready', 'replay_available'].includes(cancelReplaySt)
+    || cancelPastStart
+  );
 
   root.innerHTML = `
     <div class="sbi-live-v2-detail">
