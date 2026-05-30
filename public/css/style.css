@@ -2284,3 +2284,47 @@ html.sbi-formation-sheet-open {
 .sbi-home-formation-card.has-coming-cover.has-cover-image {
     background-position: center, center !important;
 }
+
+/* =========================================================
+   A11y - Lien d'évitement (skip-link) pages publiques
+   ========================================================= */
+.sbi-skip-link {
+    position: absolute;
+    left: -9999px;
+    top: auto;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+}
+
+.sbi-skip-link:focus {
+    left: 8px;
+    top: 8px;
+    width: auto;
+    height: auto;
+    z-index: 9999;
+    background: #fff;
+    color: #050313;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    outline: 2px solid #0051ff;
+    outline-offset: 2px;
+    text-decoration: none;
+}
+
+/* =========================================================
+   A11y - prefers-reduced-motion : neutralise les animations
+   décoratives infinies et transitions pour les utilisateurs
+   qui demandent une réduction des animations.
+   ========================================================= */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+        scroll-behavior: auto !important;
+    }
+}

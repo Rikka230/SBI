@@ -17,9 +17,6 @@ const FUNCTIONS_REGION = 'europe-west1';
 
 const status = document.getElementById('student-doc-request-status');
 const content = document.getElementById('student-doc-request-content');
-const functions = getFunctions(app, 'europe-west1');
-const studentGetDocumentRequestCallable = httpsCallable(functions, 'studentGetDocumentRequest');
-const studentNotifyDocumentRequestSubmittedCallable = httpsCallable(functions, 'studentNotifyDocumentRequestSubmitted');
 
 let activeRequest = null;
 let activeUserData = null;
@@ -145,6 +142,13 @@ function getStudentRequestCallable() {
     window.__SBI_STUDENT_GET_DOCUMENT_REQUEST__ = httpsCallable(getFunctionsInstance(), 'studentGetDocumentRequest');
   }
   return window.__SBI_STUDENT_GET_DOCUMENT_REQUEST__;
+}
+
+function getStudentNotifyCallable() {
+  if (!window.__SBI_STUDENT_NOTIFY_DOCUMENT_REQUEST__) {
+    window.__SBI_STUDENT_NOTIFY_DOCUMENT_REQUEST__ = httpsCallable(getFunctionsInstance(), 'studentNotifyDocumentRequestSubmitted');
+  }
+  return window.__SBI_STUDENT_NOTIFY_DOCUMENT_REQUEST__;
 }
 
 function getCallableMessage(error, fallback = 'Action impossible pour le moment.') {
@@ -378,7 +382,7 @@ async function submitDocuments(request, userData) {
 async function notifyAdminIfRequestComplete(requestId) {
   if (!requestId) return;
   try {
-    await studentNotifyDocumentRequestSubmittedCallable({ requestId });
+    await getStudentNotifyCallable()({ requestId });
   } catch (error) {
     console.warn('[SBI Student Documents] Notification admin non bloquante :', error);
   }

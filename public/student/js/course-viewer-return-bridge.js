@@ -29,7 +29,18 @@ function installReturnBridge() {
     window.location.href = returnUrl;
   };
 }
+const pendingBridgeTimeouts = [];
+function clearBridgeTimeouts() {
+  while (pendingBridgeTimeouts.length) {
+    window.clearTimeout(pendingBridgeTimeouts.pop());
+  }
+}
+function scheduleBridgeTimeouts() {
+  clearBridgeTimeouts();
+  [80, 300, 900].forEach((delay) => {
+    pendingBridgeTimeouts.push(window.setTimeout(installReturnBridge, delay));
+  });
+}
 window.addEventListener('sbi:course-viewer-mounted', installReturnBridge);
-window.setTimeout(installReturnBridge, 80);
-window.setTimeout(installReturnBridge, 300);
-window.setTimeout(installReturnBridge, 900);
+window.addEventListener('pagehide', clearBridgeTimeouts);
+scheduleBridgeTimeouts();
