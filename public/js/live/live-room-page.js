@@ -360,8 +360,9 @@ async function markRecordingState(recordingStatus = '', extra = {}) {
 
 async function startRecording() {
   if (!state.callFrame || !isHostRoom()) return;
+  if (state.recording) return;
   const button = $('sbi-live-record-start');
-  button.disabled = true;
+  if (button) button.disabled = true;
   try {
     state.recordingInstanceId = crypto.randomUUID?.() || `${Date.now()}`;
     await state.callFrame.startRecording({
@@ -378,14 +379,14 @@ async function startRecording() {
     setStatus(error?.message || 'Enregistrement impossible.', 'error');
     await markRecordingState('error', { recordingError: error?.message || 'recording_start_failed' });
   } finally {
-    button.disabled = false;
+    if (button) button.disabled = false;
   }
 }
 
 async function stopRecording() {
   if (!state.callFrame || !isHostRoom()) return;
   const button = $('sbi-live-record-stop');
-  button.disabled = true;
+  if (button) button.disabled = true;
   try {
     await state.callFrame.stopRecording({ instanceId: state.recordingInstanceId || undefined });
     state.recording = false;
@@ -397,7 +398,7 @@ async function stopRecording() {
     setStatus(error?.message || 'Arrêt enregistrement impossible.', 'error');
     await markRecordingState('error', { recordingError: error?.message || 'recording_stop_failed' });
   } finally {
-    button.disabled = false;
+    if (button) button.disabled = false;
   }
 }
 
@@ -444,11 +445,11 @@ function setupHostControls(room = {}) {
     return;
   }
 
-  $('sbi-live-record-start')?.addEventListener('click', startRecording);
-  $('sbi-live-record-stop')?.addEventListener('click', stopRecording);
+  // Enregistrement automatique du replay : plus de boutons manuels Enregistrer/Stop.
+  $('sbi-live-record-start')?.remove();
+  $('sbi-live-record-stop')?.remove();
   $('sbi-live-end-session')?.addEventListener('click', endSession);
   $('sbi-live-file-upload')?.addEventListener('click', shareSelectedFiles);
-  updateRecordingButtons();
 }
 
 async function mountDailyRoom(room = {}) {
@@ -474,6 +475,11 @@ async function mountDailyRoom(room = {}) {
   callFrame.on('joined-meeting', () => {
     state.joined = true;
     setStatus('Connecté à la salle.', 'success');
+    // Enregistrement automatique du replay des que l'intervenant rejoint.
+    // Reutilise le flux startRecording() (instanceId + markRecordingState).
+    if (isHostRoom() && !state.recording) {
+      startRecording().catch((error) => console.warn('[SBI Live Room] Auto-enregistrement impossible :', error));
+    }
   });
   callFrame.on('left-meeting', () => {
     state.joined = false;

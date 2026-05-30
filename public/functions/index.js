@@ -4417,15 +4417,11 @@ async function createDailyMeetingToken({ apiKey = "", roomName = "", caller, cal
         lang: "fr"
     };
 
-    // L'intervenant (owner) declenche l'enregistrement cloud automatiquement a
-    // son arrivee, pour que chaque live du cursus genere son replay sans action
-    // manuelle. Necessite enable_recording: "cloud" (deja pose sur la room, pose
-    // aussi sur le token owner par securite). Les eleves ne l'ont pas, donc pas
-    // d'enregistrement de salle sans intervenant.
-    if (isOwner) {
-        tokenProperties.enable_recording = "cloud";
-        tokenProperties.start_cloud_recording = true;
-    }
+    // L'enregistrement cloud est declenche cote client (live-room-page.js) des
+    // que l'intervenant rejoint la salle, afin de tracer l'instanceId et de
+    // reutiliser le flux markRecordingState existant. On ne pose donc PAS
+    // start_cloud_recording sur le token (evite un double enregistrement).
+    // enable_recording: "cloud" reste actif au niveau de la room.
 
     const token = await callDailyApi(apiKey, "/meeting-tokens", {
         method: "POST",
