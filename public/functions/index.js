@@ -4788,6 +4788,135 @@ exports.endLiveConference = onCall({
     };
 });
 
+exports.cancelLiveReplay = onCall({
+    region: "europe-west1",
+    secrets: [DAILY_API_KEY],
+    timeoutSeconds: 60,
+    memory: "512MiB"
+}, async (request) => {
+    const db = admin.firestore();
+    const caller = await requireActiveCourseCaller(request, db);
+    if (!caller.isAdmin) throw new HttpsError("permission-denied", "Action reservee a l'administrateur.");
+
+    const liveId = cleanString(request.data?.liveId, 180);
+    if (!liveId) throw new HttpsError("invalid-argument", "Live manquant.");
+
+    const liveRef = db.collection("liveSessions").doc(liveId);
+    const liveDoc = await liveRef.get();
+    if (!liveDoc.exists) throw new HttpsError("not-found", "Live introuvable.");
+    const liveSession = { id: liveDoc.id, ...(liveDoc.data() || {}) };
+
+    const promotionId = cleanString(liveSession.promotionId || "", 180);
+    const promotionRef = promotionId ? db.collection("promotions").doc(promotionId) : null;
+    const promotionDoc = promotionRef ? await promotionRef.get() : null;
+    const promotion = promotionDoc?.exists ? { id: promotionDoc.id, ...(promotionDoc.data() || {}) } : null;
+
+    // 1) Supprimer les enregistrements Daily lies a ce live (IRREVERSIBLE).
+    const apiKey = DAILY_API_KEY.value();
+    const roomName = cleanString(liveSession.providerRoomName || liveSession.roomName || liveSession.liveTech?.roomName || getDailyRoomNameFromSession(liveSession), 180);
+    const recordingIds = new Set();
+    const knownId = cleanString(liveSession.replayRecordingId || liveSession.liveTech?.recordingId || "", 180);
+    if (knownId) recordingIds.add(knownId);
+    if (roomName) {
+        try {
+            const list = await callDailyApi(apiKey, `/recordings?room_name=${encodeURIComponent(roomName)}&limit=100`);
+            (Array.isArray(list?.data) ? list.data : []).forEach((rec) => {
+                const id = extractDailyRecordingId(rec || {});
+                if (id) recordingIds.add(id);
+            });
+        } catch (error) {
+            console.warn("[SBI Cancel Live] list recordings ignored:", liveId, error.message || error);
+        }
+    }
+    const deletedRecordings = [];
+    for (const id of recordingIds) {
+        try {
+            await callDailyApi(apiKey, `/recordings/${encodeURIComponent(id)}`, { method: "DELETE", allowNotFound: true });
+            deletedRecordings.push(id);
+        } catch (error) {
+            console.warn("[SBI Cancel Live] delete recording ignored:", id, error.message || error);
+        }
+    }
+
+    // 2) Repasser le live en "a venir" (scheduled) + purge des champs replay.
+    await liveRef.set({
+        status: "scheduled",
+        schedulingStatus: "scheduled",
+        replayStatus: "not_available",
+        replayProvider: admin.firestore.FieldValue.delete(),
+        replayRecordingId: admin.firestore.FieldValue.delete(),
+        replayUrl: admin.firestore.FieldValue.delete(),
+        replayAccessExpiresAt: admin.firestore.FieldValue.delete(),
+        replayLastAccessResolvedAt: admin.firestore.FieldValue.delete(),
+        endedAt: admin.firestore.FieldValue.delete(),
+        endedByUid: admin.firestore.FieldValue.delete(),
+        endedByEmail: admin.firestore.FieldValue.delete(),
+        liveTech: {
+            ...(liveSession.liveTech || {}),
+            replayStatus: "not_available",
+            recordingStatus: "",
+            recordingId: "",
+            recordingInstanceId: "",
+            recordingDurationSeconds: 0
+        },
+        cancelledReplayAt: admin.firestore.FieldValue.serverTimestamp(),
+        cancelledReplayByUid: caller.uid,
+        cancelledReplayByEmail: caller.email,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+
+    // 3) Inverse de updatePromotionLivePlanningForEnded sur le planning promotion.
+    if (promotionRef && promotion) {
+        const livePlanning = Array.isArray(promotion.livePlanning) ? [...promotion.livePlanning] : [];
+        const sourceItemId = cleanString(liveSession.sourceItemId || "", 180);
+        const updated = livePlanning.map((item) => {
+            if (!item || typeof item !== "object") return item;
+            const ids = [item.liveSessionId, item.id, item.itemId, item.sourceItemId, item.liveId]
+                .map((value) => cleanString(value, 180)).filter(Boolean);
+            const match = ids.includes(liveId) || (sourceItemId && ids.includes(sourceItemId));
+            if (!match) return item;
+            const next = {
+                ...item,
+                status: "scheduled",
+                liveSchedulingStatus: "scheduled",
+                studentScheduleStatus: "scheduled",
+                teacherSelectionStatus: "selected",
+                replayStatus: "not_available"
+            };
+            delete next.endedAt;
+            delete next.endedByUid;
+            return next;
+        });
+        await promotionRef.set({
+            livePlanning: updated,
+            livePlanningUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            livePlanningUpdatedBy: caller.uid
+        }, { merge: true });
+    }
+
+    await safeWriteAccountAuditLog(db, {
+        type: "live.replay_cancelled",
+        actorUid: caller.uid,
+        actorEmail: caller.email,
+        targetUid: "",
+        targetEmail: "",
+        targetRole: "promotion",
+        source: "admin-live",
+        liveId,
+        promotionId,
+        changes: { roomName, deletedRecordings, deletedCount: deletedRecordings.length }
+    });
+
+    return {
+        success: true,
+        liveId,
+        deletedRecordings,
+        message: deletedRecordings.length
+            ? `Live repasse en « a venir ». ${deletedRecordings.length} enregistrement(s) Daily supprime(s).`
+            : "Live repasse en « a venir ». Aucun enregistrement Daily a supprimer."
+    };
+});
+
 exports.setLiveRecordingState = onCall({
     region: "europe-west1",
     timeoutSeconds: 30,

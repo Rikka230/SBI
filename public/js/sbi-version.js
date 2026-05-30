@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.255',
+  version: '8.0P.167.256',
   branch: 'main',
-  channel: 'LIVE - AUTO-RECORD CLIENT + MASQUAGE BOUTONS MANUELS',
-  stage: 'live-room: startRecording auto a joined-meeting, boutons record retires; token start_cloud_recording retire',
+  channel: 'LIVE - ANNULATION ADMIN (SUPPRESSION REPLAY + RETOUR A VENIR)',
+  stage: 'cancelLiveReplay admin-only (delete recordings Daily + reset scheduled) + bouton scheduler v2 admin',
   updatedAt: '2026-05-30',
-  label: 'SBI 8.0P.167.255 - live auto-record client + hide manual buttons'
+  label: 'SBI 8.0P.167.256 - admin cancel live + delete replay'
 };
 
 export function getSbiVersionLabel() {
