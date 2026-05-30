@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.252',
+  version: '8.0P.167.253',
   branch: 'main',
-  channel: 'FIX F5 LIVE PROF (THEME STANDALONE) + REPLAY VERSION SYNC',
-  stage: 'initSpaceTheme dans boot standalone lives.html/lives-v2.html + bump replay .229->.252',
+  channel: 'FIX REPLAY DAILY - FALLBACK RECORDING LOOKUP',
+  stage: 'resolveLiveReplay: fallback liste non-filtree (match room_name + fenetre temporelle) + logging diag',
   updatedAt: '2026-05-30',
-  label: 'SBI 8.0P.167.252 - fix F5 live prof theme + replay version sync'
+  label: 'SBI 8.0P.167.253 - fix replay daily fallback recording lookup'
 };
 
 export function getSbiVersionLabel() {

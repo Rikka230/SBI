@@ -4997,6 +4997,51 @@ exports.resolveLiveReplay = onCall({
         const recordings = Array.isArray(result?.data) ? result.data : [];
         recording = pickDailyRecordingForLive(recordings);
         recordingId = extractDailyRecordingId(recording || {});
+
+        // Fallback : certains enregistrements ne remontent pas via le filtre
+        // room_name de Daily (type de recording, indexation differee, casse...).
+        // On re-liste les enregistrements recents sans filtre et on matche
+        // localement par room_name (insensible a la casse) puis, en dernier
+        // recours, par fenetre temporelle du live. On logge l'ecart pour diag.
+        if (!recordingId) {
+            const fallback = await callDailyApi(apiKey, "/recordings?limit=100");
+            const all = Array.isArray(fallback?.data) ? fallback.data : [];
+            const target = roomName.trim().toLowerCase();
+            const byRoom = all.filter((item) => cleanString(item.room_name || "", 180).trim().toLowerCase() === target);
+            let candidate = pickDailyRecordingForLive(byRoom);
+
+            if (!candidate) {
+                const startMs = Date.parse(liveSession.selectedStartAt || "");
+                const endMs = Date.parse(liveSession.selectedEndAt || "");
+                if (Number.isFinite(startMs)) {
+                    const lo = Math.floor((startMs - 60 * 60 * 1000) / 1000);
+                    const hi = Math.floor(((Number.isFinite(endMs) ? endMs : startMs) + DAILY_ROOM_KEEP_AFTER_MS) / 1000);
+                    const byTime = all
+                        .filter((item) => {
+                            const ts = Number(item.start_ts);
+                            return Number.isFinite(ts) && ts >= lo && ts <= hi;
+                        })
+                        .sort((a, b) => Number(b.start_ts || 0) - Number(a.start_ts || 0));
+                    candidate = pickDailyRecordingForLive(byTime);
+                }
+            }
+
+            if (candidate) {
+                recording = candidate;
+                recordingId = extractDailyRecordingId(candidate);
+            }
+
+            console.log("[SBI Live Replay] recordings fallback", JSON.stringify({
+                liveId,
+                roomName,
+                filteredCount: recordings.length,
+                unfilteredCount: all.length,
+                unfilteredTotal: Number(fallback?.total_count) || all.length,
+                matchedByRoom: byRoom.length,
+                resolvedRecordingId: recordingId || null,
+                sampleRoomNames: all.slice(0, 20).map((item) => cleanString(item.room_name || "", 180) || null)
+            }));
+        }
     }
 
     if (!recordingId) {
