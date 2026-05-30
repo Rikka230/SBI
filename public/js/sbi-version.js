@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.259',
+  version: '8.0P.167.260',
   branch: 'main',
-  channel: 'LIVE - FIX F5 ECRAN VIDE PAGES ADMIN-LIVES (REVEAL)',
-  stage: 'admin-lives(.v2).html: ajout style+script de reveal (preload/visibilite) comme teacher/lives.html',
+  channel: 'SECURITE - functions/ exclu du hosting (anti-exposition source serveur)',
+  stage: 'firebase.json hosting.ignore += functions/** (public/functions/index.js ne doit plus etre servi en statique)',
   updatedAt: '2026-05-30',
-  label: 'SBI 8.0P.167.259 - fix admin-lives F5 blank (reveal)'
+  label: 'SBI 8.0P.167.260 - security: stop serving functions source via hosting'
 };
 
 export function getSbiVersionLabel() {

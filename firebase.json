@@ -6,7 +6,8 @@
       "**/.*",
       "**/node_modules/**",
       "**/*.log",
-      "**/*.bat"
+      "**/*.bat",
+      "functions/**"
     ],
     "redirects": [
       {
