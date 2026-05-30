@@ -4403,23 +4403,33 @@ async function createDailyMeetingToken({ apiKey = "", roomName = "", caller, cal
     const tokenExp = getDailyTokenExpirationSeconds(liveSession);
     const displayName = getAccountDisplayName(caller.data || {}) || caller.email || "Participant SBI";
 
+    const tokenProperties = {
+        room_name: roomName,
+        user_name: displayName,
+        user_id: cleanString(caller.uid, 36),
+        is_owner: isOwner,
+        exp: tokenExp,
+        eject_at_token_exp: true,
+        enable_prejoin_ui: true,
+        enable_screenshare: isOwner,
+        start_audio_off: !isOwner,
+        start_video_off: !isOwner,
+        lang: "fr"
+    };
+
+    // L'intervenant (owner) declenche l'enregistrement cloud automatiquement a
+    // son arrivee, pour que chaque live du cursus genere son replay sans action
+    // manuelle. Necessite enable_recording: "cloud" (deja pose sur la room, pose
+    // aussi sur le token owner par securite). Les eleves ne l'ont pas, donc pas
+    // d'enregistrement de salle sans intervenant.
+    if (isOwner) {
+        tokenProperties.enable_recording = "cloud";
+        tokenProperties.start_cloud_recording = true;
+    }
+
     const token = await callDailyApi(apiKey, "/meeting-tokens", {
         method: "POST",
-        body: {
-            properties: {
-                room_name: roomName,
-                user_name: displayName,
-                user_id: cleanString(caller.uid, 36),
-                is_owner: isOwner,
-                exp: tokenExp,
-                eject_at_token_exp: true,
-                enable_prejoin_ui: true,
-                enable_screenshare: isOwner,
-                start_audio_off: !isOwner,
-                start_video_off: !isOwner,
-                lang: "fr"
-            }
-        }
+        body: { properties: tokenProperties }
     });
 
     return {

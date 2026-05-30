@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.253',
+  version: '8.0P.167.254',
   branch: 'main',
-  channel: 'FIX REPLAY DAILY - FALLBACK RECORDING LOOKUP',
-  stage: 'resolveLiveReplay: fallback liste non-filtree (match room_name + fenetre temporelle) + logging diag',
+  channel: 'LIVE REPLAY - AUTO-START CLOUD RECORDING (DAILY)',
+  stage: 'joinLiveConference: token owner start_cloud_recording=true (chaque live cursus genere son replay)',
   updatedAt: '2026-05-30',
-  label: 'SBI 8.0P.167.253 - fix replay daily fallback recording lookup'
+  label: 'SBI 8.0P.167.254 - live auto-start cloud recording'
 };
 
 export function getSbiVersionLabel() {
