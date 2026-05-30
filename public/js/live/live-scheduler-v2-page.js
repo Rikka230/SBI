@@ -578,15 +578,10 @@ function renderDetail() {
   const liveId = getRowSessionId(row);
   const selectedMode = row.status === 'report' ? 'report' : 'scheduled';
   const canOpen = Boolean(liveId);
-  const cancelSession = row.session || {};
-  const cancelReplaySt = clean(cancelSession.replayStatus || cancelSession.liveTech?.replayStatus || '', 40).toLowerCase();
-  const cancelPastStart = Boolean(row.startAt) && Date.parse(row.startAt) < Date.now();
-  const canCancelReplay = state.role === 'admin' && Boolean(liveId) && (
-    isLiveSessionClosed(cancelSession)
-    || Boolean(cancelSession.replayRecordingId)
-    || ['available', 'ready', 'replay_available'].includes(cancelReplaySt)
-    || cancelPastStart
-  );
+  // Bouton d'annulation admin : TOUJOURS visible pour l'admin (independamment du
+  // statut/periode du live, qui peuvent etre incoherents). Desactive uniquement
+  // s'il n'y a aucune session live a annuler.
+  const canCancelReplay = state.role === 'admin';
 
   root.innerHTML = `
     <div class="sbi-live-v2-detail">
@@ -643,7 +638,7 @@ function renderDetail() {
           <button class="sbi-live-v2-btn sbi-live-v2-btn-primary" type="submit">Enregistrer la planification</button>
           <button class="sbi-live-v2-btn" type="button" id="sbi-live-v2-open-room" ${canOpen ? '' : 'disabled'}>Ouvrir la salle</button>
           <button class="sbi-live-v2-btn" type="button" id="sbi-live-v2-started" ${canOpen ? '' : 'disabled'}>Notifier le démarrage</button>
-          ${canCancelReplay ? `<button class="sbi-live-v2-btn" type="button" id="sbi-live-v2-cancel-replay" style="color:var(--live-v2-red);border-color:var(--live-v2-red);">Annuler le live / supprimer le replay</button>` : ''}
+          ${canCancelReplay ? `<button class="sbi-live-v2-btn" type="button" id="sbi-live-v2-cancel-replay" ${liveId ? '' : 'disabled'} title="${liveId ? 'Supprime le replay Daily et repasse le live en à venir' : 'Aucune session live à annuler pour ce bloc'}" style="color:var(--live-v2-red);border-color:var(--live-v2-red);">Annuler le live / supprimer le replay</button>` : ''}
         </div>
       </form>
     </div>

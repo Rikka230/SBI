@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.257',
+  version: '8.0P.167.258',
   branch: 'main',
-  channel: 'LIVE - FIX VISIBILITE BOUTON ANNULATION ADMIN',
-  stage: 'bouton annuler base sur statut session (isLiveSessionClosed/replay/past) au lieu de row.status planning',
+  channel: 'LIVE - BOUTON ANNULATION ADMIN TOUJOURS VISIBLE',
+  stage: 'bouton annuler/supprimer replay affiche pour tout admin (desactive si aucune session), independant du statut/periode',
   updatedAt: '2026-05-30',
-  label: 'SBI 8.0P.167.257 - fix admin cancel button visibility'
+  label: 'SBI 8.0P.167.258 - admin cancel button always visible'
 };
 
 export function getSbiVersionLabel() {
