@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.251',
+  version: '8.0P.167.252',
   branch: 'main',
-  channel: 'AUDIT FIX LOT 2D - SAFE LIVE ROOM ITEM',
-  stage: 'HOST UPLOAD CLIENT-SIDE VALIDATION (2C + shell 2D items deferred)',
-  updatedAt: '2026-05-29',
-  label: 'SBI 8.0P.167.251 - audit fix lot 2D (host upload validation)'
+  channel: 'FIX F5 LIVE PROF (THEME STANDALONE) + REPLAY VERSION SYNC',
+  stage: 'initSpaceTheme dans boot standalone lives.html/lives-v2.html + bump replay .229->.252',
+  updatedAt: '2026-05-30',
+  label: 'SBI 8.0P.167.252 - fix F5 live prof theme + replay version sync'
 };
 
 export function getSbiVersionLabel() {

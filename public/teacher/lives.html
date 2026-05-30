@@ -109,6 +109,7 @@
   <script type="module" id="sbi-live-v2-standalone-boot">
     import { waitForSbiComponents } from '/admin/js/components/ready.js';
     import { initPanelControls } from '/admin/js/admin-ui/panels.js';
+    import { initSpaceTheme } from '/admin/js/admin-ui/theme.js?v=8.0P.167.52';
     import { initSbiAppShell } from '/js/app-shell/app-shell.js?v=8.0P.167.247';
     import { initSbiVersionBadge } from '/js/sbi-version-badge.js?v=8.0P.167.247';
     import { initAssistantPrototype } from '/admin/js/admin-ui/assistant.js?v=8.0P.167.247';
@@ -192,6 +193,7 @@
     async function bootStandaloneLiveV2() {
       revealLiveV2();
       try { await waitForSbiComponents(900); } catch (_) {}
+      try { initSpaceTheme(); } catch (error) { console.warn('[SBI Lives V2] theme standalone indisponible', error); }
       try { initSbiAppShell(); } catch (error) { console.warn('[SBI Lives V2] app-shell standalone indisponible', error); }
       bindStandaloneNavigation();
       try { initPanelControls(); } catch (error) { console.warn('[SBI Lives V2] panels standalone indisponibles', error); }
