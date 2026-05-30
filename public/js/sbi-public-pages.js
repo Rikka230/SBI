@@ -1453,6 +1453,7 @@ function buildBrevoPayload(form) {
 
   return {
     email: text(data.get('email')),
+    website: text(data.get('website')),
     attributes: {
       PRENOM: text(data.get('firstname')),
       NOM: text(data.get('lastname')),

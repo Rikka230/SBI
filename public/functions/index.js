@@ -116,6 +116,8 @@ function parseContactRequest(body = {}) {
         profileLabel,
         interest: cleanString(attributes.BESOIN, 120),
         message: cleanMultiline(attributes.MESSAGE, 1200),
+        // Honeypot anti-spam : champ invisible cote client (doit rester vide).
+        honeypot: cleanString(body.website || body.company || body.url || body.hp || attributes.WEBSITE || attributes.HP, 200),
         source: cleanString(attributes.SOURCE || attributes.CONTACT_SOURCE, 120) || "SBI public contact",
         page: cleanString(attributes.PAGE, 180) || "/contact.html",
         consentRequest: consent.requestProcessingAccepted === true,
@@ -7155,6 +7157,17 @@ exports.sendSbiContact = onRequest({
     }
 
     const data = parseContactRequest(req.body || {});
+
+    // Honeypot anti-spam : si le champ piège est rempli, on renvoie un faux succes
+    // (sans rien envoyer ni enregistrer) pour ne pas signaler le rejet au bot.
+    if (data.honeypot) {
+        return res.status(200).json({
+            success: true,
+            mode: "sent",
+            message: "Votre message a bien été envoyé. L’équipe SBI revient vers vous rapidement."
+        });
+    }
+
     const validationMessage = validateContactRequest(data);
 
     if (validationMessage) {
@@ -7162,6 +7175,44 @@ exports.sendSbiContact = onRequest({
             success: false,
             message: validationMessage
         });
+    }
+
+    // Rate-limit souple par IP (fail-open) : limite les rafales de spam sans
+    // bloquer des utilisateurs legitimes derriere une IP partagee.
+    try {
+        const ip = cleanString(
+            (req.get("x-forwarded-for") || "").split(",")[0].trim() || req.ip || "",
+            64
+        );
+        if (ip) {
+            const db = admin.firestore();
+            const ref = db.collection("contactRateLimits").doc(ip.replace(/[^0-9a-zA-Z._:-]/g, "_").slice(0, 120) || "unknown");
+            const blocked = await db.runTransaction(async (tx) => {
+                const snap = await tx.get(ref);
+                const now = Date.now();
+                const windowMs = 10 * 60 * 1000;
+                const maxPerWindow = 8;
+                const prev = snap.exists ? (snap.data() || {}) : {};
+                const windowStart = Number(prev.windowStart) || 0;
+                let count = Number(prev.count) || 0;
+                let start = windowStart;
+                if (!windowStart || now - windowStart > windowMs) {
+                    start = now;
+                    count = 0;
+                }
+                count += 1;
+                tx.set(ref, { windowStart: start, count, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+                return count > maxPerWindow;
+            });
+            if (blocked) {
+                return res.status(429).json({
+                    success: false,
+                    message: "Trop de demandes envoyées. Merci de réessayer dans quelques minutes."
+                });
+            }
+        }
+    } catch (rateError) {
+        console.warn("Rate-limit contact ignoré (fail-open) :", rateError.message || rateError);
     }
 
     try {
