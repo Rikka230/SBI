@@ -99,6 +99,32 @@ function uid(prefix = 'item') {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
+// 8.0P.167 (T3) : classification Obligatoire / Optionnel unifiée.
+// Mêmes champs que isExplicitOptional() de admin-cursus-tool-filters.js, afin que
+// l'affichage (renderToolList) et le filtre/compteur (tool-filters) soient cohérents
+// quel que soit le filtre actif.
+function isCourseExplicitlyOptional(course = {}) {
+  const stringFields = [
+    course.requirement,
+    course.requirementLevel,
+    course.requiredLevel,
+    course.obligationLevel,
+    course.courseRequirement,
+    course.moduleRequirement,
+    course.typeRequirement,
+    course.statusRequirement,
+    course.importance
+  ].map((value) => normalizeSearch(value));
+
+  return course.isRequired === false
+    || course.required === false
+    || course.mandatory === false
+    || course.obligatoire === false
+    || course.isOptional === true
+    || course.optional === true
+    || stringFields.some((value) => value.includes('optional') || value.includes('optionnel'));
+}
+
 function setStatus(message = '', tone = 'muted') {
   if (!dom.saveStatus) return;
   dom.saveStatus.textContent = message;
@@ -486,7 +512,7 @@ function getFilteredCourses() {
       const matchesLinked = courseMatchesSelectedFormation(course);
       const courseFormation = findCourseFormation(course);
       const isShared = Boolean(course.sharedCourse || course.isSharedCourse || normalizeArray(course.linkedFormationIds).length);
-      const required = course.isRequired !== false && course.required !== false;
+      const required = !isCourseExplicitlyOptional(course);
       if (source === 'linked' && !matchesLinked) return false;
       if (source === 'shared' && !isShared) return false;
       if (source === 'other' && (matchesLinked || !courseFormation)) return false;

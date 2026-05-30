@@ -188,7 +188,11 @@ function getFallbackPlanFromTemplate(promotion = {}) {
   if (!items.length || !promotion.startDate) return items;
 
   const modelDuration = Math.max(1, Number(template.effectiveDurationDays || template.durationDays || 0) || items.reduce((sum, item) => sum + (isStructural(item) ? getDurationDays(item) : 0), 0) || 1);
-  const targetDuration = promotion.endDate ? Math.max(1, diffDaysInclusive(promotion.startDate, promotion.endDate)) : modelDuration;
+  // 8.0P.167 (T2) : diffDaysInclusive renvoie 0 si endDate < startDate (plage inversée/invalide).
+  // Dans ce cas, on retombe sur modelDuration (scale = 1) au lieu de Math.max(1, 0) = 1 jour,
+  // qui produisait un scale quasi nul et aplatissait tous les cours sur J0.
+  const rawTarget = promotion.endDate ? diffDaysInclusive(promotion.startDate, promotion.endDate) : 0;
+  const targetDuration = rawTarget > 0 ? rawTarget : modelDuration;
   const scale = targetDuration / modelDuration;
 
   return items.map((item) => {
