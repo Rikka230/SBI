@@ -27,6 +27,7 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
 
 let mounted = false;
+let mountedView = null;
 let currentAdmin = null;
 let promotions = [];
 let templates = [];
@@ -602,14 +603,26 @@ function bindEvents() {
 }
 
 export function mountAdminLateStudents() {
-  if (mounted && document.getElementById('view-late-students')) return window.SBI_ADMIN_LATE_STUDENTS_UNMOUNT || (() => {});
-  if (!document.getElementById('view-late-students')) return () => {};
+  const view = document.getElementById('view-late-students');
+  if (!view) return () => {};
+
+  // Déjà monté sur CE noeud DOM : cas du double appel (auto-montage à l'import
+  // du module + appel explicite par la route PJAX sur une vue fraîche). On ne
+  // re-binde pas pour éviter les listeners en double.
+  if (mounted && mountedView === view) {
+    return window.SBI_ADMIN_LATE_STUDENTS_UNMOUNT || (() => {});
+  }
+
+  // Nouveau noeud (retour via PJAX après un chargement standalone / F5, où aucun
+  // cleanup shell n'avait été enregistré) ou premier montage : on repart propre,
+  // en coupant un éventuel listener auth resté actif d'un montage précédent.
+  unsubscribeAuth?.();
 
   mounted = true;
+  mountedView = view;
   ensureStyles();
   bindEvents();
 
-  unsubscribeAuth?.();
   unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
     try {
       await loadCurrentAdmin(user);
@@ -622,6 +635,7 @@ export function mountAdminLateStudents() {
 
   const cleanup = () => {
     mounted = false;
+    mountedView = null;
     unsubscribeAuth?.();
     unsubscribeAuth = null;
   };
