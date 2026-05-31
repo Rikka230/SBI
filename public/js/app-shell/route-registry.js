@@ -101,6 +101,10 @@ function isAdminCursus(url) {
   return normalizePath(url.pathname).toLowerCase() === '/admin/admin-cursus.html';
 }
 
+function isAdminLateStudents(url) {
+  return normalizePath(url.pathname).toLowerCase() === '/admin/admin-late-students.html';
+}
+
 function isAdminAuditLog(url) {
   return normalizePath(url.pathname).toLowerCase() === '/admin/admin-audit-log.html';
 }
@@ -176,6 +180,7 @@ function isAdminShellContext() {
     || path === '/admin/admin-lives-v1.html'
     || path === '/admin/formations-live.html'
     || path === '/admin/admin-cursus.html'
+    || path === '/admin/admin-late-students.html'
     || path === '/admin/admin-audit-log.html';
 }
 
@@ -534,6 +539,35 @@ async function mountAdminCursus({ url }) {
   }
 
   return { viewKey: 'admin:cursus' };
+}
+
+async function mountAdminLateStudents({ url }) {
+  cleanupCourseEditorV2Artifacts();
+  maybeCacheAdminIndexMain('leave-for-admin-late-students');
+
+  const doc = await fetchAdminDocument(url);
+
+  await ensureDocumentStyles(doc, url.href);
+  applyBodyRouteClassesFromDocument(doc, ['sbi-admin-surface']);
+  replaceMainFromDocument(doc);
+  updateAdminChromeFromDocument(doc, 'Élèves en retard - SBI Console');
+  setLeftNavActive('nav-late-students');
+  updateUrlContext(url);
+
+  window.__SBI_APP_SHELL_MOUNTING_LATE_STUDENTS = true;
+
+  try {
+    const module = await import('/admin/js/admin-late-students.js?v=8.0P.167.262');
+    const cleanupLate = module.mountAdminLateStudents?.();
+
+    if (typeof cleanupLate === 'function') {
+      registerCleanup(cleanupLate, 'admin-late-students');
+    }
+  } finally {
+    window.__SBI_APP_SHELL_MOUNTING_LATE_STUDENTS = false;
+  }
+
+  return { viewKey: 'admin:late-students' };
 }
 
 async function mountLiveSchedulerRoute({ url, role = 'admin' }) {
@@ -934,6 +968,7 @@ export function createRouteRegistry() {
   routes.push({ id: 'admin-lives-v2', canHandle(url) { return isAdminLivesV2(url) && isAdminShellContext(); }, mount: mountAdminLivesV2 });
   routes.push({ id: 'admin-lives', canHandle(url) { return isAdminLives(url) && isAdminShellContext(); }, mount: mountAdminLives });
   routes.push({ id: 'admin-cursus', canHandle(url) { return isAdminCursus(url) && isAdminShellContext(); }, mount: mountAdminCursus });
+  routes.push({ id: 'admin-late-students', canHandle(url) { return isAdminLateStudents(url) && isAdminShellContext(); }, mount: mountAdminLateStudents });
   routes.push({ id: 'admin-audit-log', canHandle(url) { return isAdminAuditLog(url) && isAdminShellContext(); }, mount: mountAdminAuditLog });
   routes.push({ id: 'admin-site-index', canHandle(url) { return isAdminSiteIndex(url) && isAdminShellContext(); }, mount: mountSiteIndex });
 

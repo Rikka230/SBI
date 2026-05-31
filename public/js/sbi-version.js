@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.261',
+  version: '8.0P.167.262',
   branch: 'main',
-  channel: 'MEGA PATCH AUDIT - securite legere + a11y/SEO + cursus 2C + shell',
-  stage: 'honeypot+rate-limit contact, a11y/SEO (skip-link, reduced-motion, focus-visible), cursus T2/T3, anti-.230 generique + cleanup listeners standalone',
-  updatedAt: '2026-05-30',
-  label: 'SBI 8.0P.167.261 - mega patch audit (4 vagues)'
+  channel: 'Plan B - suivi eleves / Qualiopi',
+  stage: 'v1 ecran admin "eleves en retard sur leur cursus" : croise promotions.coursePlan x users.learningProgress, lecture seule (page + route PJAX + menu)',
+  updatedAt: '2026-05-31',
+  label: 'SBI 8.0P.167.262 - eleves en retard sur leur cursus (v1 lecture seule)'
 };
 
 export function getSbiVersionLabel() {
