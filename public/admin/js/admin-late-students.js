@@ -361,6 +361,17 @@ function isQualiopiEvidenceItem(item = {}) {
   );
 }
 
+// Couverture Qualiopi d'UN élève sur la liste des preuves-cours mesurables.
+function computeStudentQualiopi(student = {}, evidenceCourses = []) {
+  const missing = [];
+  let covered = 0;
+  evidenceCourses.forEach((item) => {
+    if (getCourseStatus(student, item.courseId) === 'done') covered += 1;
+    else missing.push({ courseId: item.courseId, title: getItemTitle(item) });
+  });
+  return { covered, total: evidenceCourses.length, missing };
+}
+
 /**
  * Couverture Qualiopi d'une promotion (v1, lecture seule).
  * Preuves attendues = items du coursePlan marqués Qualiopi. Parmi elles, seules
@@ -377,12 +388,7 @@ function computePromotionQualiopi(promotion = {}) {
 
   let totalCovered = 0;
   const studentRows = students.map((student) => {
-    const missing = [];
-    let covered = 0;
-    evidenceCourses.forEach((item) => {
-      if (getCourseStatus(student, item.courseId) === 'done') covered += 1;
-      else missing.push({ courseId: item.courseId, title: getItemTitle(item) });
-    });
+    const { covered, missing } = computeStudentQualiopi(student, evidenceCourses);
     totalCovered += covered;
     return { student, covered, total: measurable, missing };
   });
@@ -411,6 +417,105 @@ function getPromotionQualiopiCached(promotion = {}) {
   const result = computePromotionQualiopi(promotion);
   qualiopiByPromotion.set(promotion.id, result);
   return result;
+}
+
+// ── Export Qualiopi (CSV, lecture seule) ───────────────────────────────────
+function csvCell(value) {
+  return `"${String(value ?? '').replace(/"/g, '""')}"`;
+}
+
+function slugify(value = '') {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 60) || 'promotion';
+}
+
+/**
+ * Construit le CSV de synthèse Qualiopi d'une promotion : bloc de métadonnées
+ * (promotion + indicateurs globaux) puis une ligne par élève (retard, décrochage,
+ * couverture Qualiopi, preuves manquantes). Séparateur ';' pour Excel FR.
+ */
+function buildPromotionQualiopiCsv(promotion = {}, adminEmail = '') {
+  const plan = getPlanForPromotion(promotion);
+  const lateness = computePromotionLateness(promotion);
+  const qualiopi = computePromotionQualiopi(promotion);
+  const evidenceCourses = plan.filter((item) => isQualiopiEvidenceItem(item) && isRealCourse(item));
+  const students = getStudentsForPromotion(promotion.id);
+  const today = todayIso();
+
+  const meta = [
+    ['Export Qualiopi'],
+    ['Promotion', getPromotionLabel(promotion)],
+    ['Formation', promotion.formationName || ''],
+    ['Cursus', promotion.curriculumTitle || ''],
+    ['Periode', `${formatDate(promotion.startDate)} -> ${formatDate(promotion.endDate)}`],
+    ["Date d'export", formatDate(today)],
+    ['Genere par', adminEmail || ''],
+    ['Eleves rattaches', students.length],
+    ['Cours obligatoires dates', lateness.datedRequiredCount],
+    ['Eleves en retard', lateness.lateStudentCount],
+    ['Eleves en decrochage', lateness.dropoutStudentCount],
+    ['Preuves Qualiopi (cours mesurables)', qualiopi.evidenceCourses],
+    ['Preuves Qualiopi hors-cours (non mesurees)', qualiopi.evidenceNonCourse],
+    ['Couverture Qualiopi (%)', qualiopi.coverageRate === null ? 'N/A' : qualiopi.coverageRate],
+    []
+  ];
+
+  const header = ['Eleve', 'Email', 'En retard (nb)', 'Cours en retard', 'Non commences (nb)', 'Cours non commences', 'Preuves couvertes', 'Preuves attendues', 'Preuves manquantes', 'Couverture eleve (%)'];
+
+  const rows = students
+    .map((student) => {
+      const l = computeStudentLateness(student, plan, today);
+      const q = computeStudentQualiopi(student, evidenceCourses);
+      const cov = q.total > 0 ? Math.round((q.covered / q.total) * 100) : '';
+      return { student, l, q, cov, sortKey: (l.lateCount * 1000) + (l.dropoutCount * 10) + q.missing.length };
+    })
+    .sort((a, b) => {
+      if (b.sortKey !== a.sortKey) return b.sortKey - a.sortKey;
+      return getStudentName(a.student).localeCompare(getStudentName(b.student), 'fr', { sensitivity: 'base' });
+    })
+    .map(({ student, l, q, cov }) => [
+      getStudentName(student),
+      student.email || '',
+      l.lateCount,
+      l.lateCourses.map((course) => course.title).join(' | '),
+      l.dropoutCount,
+      l.dropoutCourses.map((course) => course.title).join(' | '),
+      q.covered,
+      q.total,
+      q.missing.map((item) => item.title).join(' | '),
+      cov
+    ]);
+
+  return [
+    ...meta.map((cells) => cells.map(csvCell).join(';')),
+    header.map(csvCell).join(';'),
+    ...rows.map((cells) => cells.map(csvCell).join(';'))
+  ].join('\r\n');
+}
+
+function triggerCsvDownload(filename, content) {
+  const bom = String.fromCharCode(0xFEFF); // BOM UTF-8 pour Excel FR
+  const blob = new Blob([bom + content], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function exportSelectedPromotionQualiopi() {
+  const promotion = promotions.find((item) => item.id === selectedPromotionId) || null;
+  if (!promotion) return;
+  const csv = buildPromotionQualiopiCsv(promotion, currentAdmin?.email || '');
+  triggerCsvDownload(`qualiopi-${slugify(getPromotionLabel(promotion))}-${todayIso()}.csv`, csv);
 }
 
 function ensureStyles() {
@@ -720,7 +825,10 @@ function renderDetail() {
         <h3>${escapeHtml(getPromotionLabel(promotion))}</h3>
         <p>${escapeHtml(promotion.formationName || 'Formation non renseignée')} · ${escapeHtml(promotion.curriculumTitle || 'Cursus non renseigné')}</p>
       </div>
-      <a class="sbi-late-btn" href="/admin/admin-cursus-dates-qa.html">Voir les dates du cursus</a>
+      <div class="sbi-late-actions">
+        <button type="button" class="sbi-late-btn is-primary" data-action="export-qualiopi">Exporter Qualiopi (CSV)</button>
+        <a class="sbi-late-btn" href="/admin/admin-cursus-dates-qa.html">Voir les dates du cursus</a>
+      </div>
     </div>
 
     <div class="sbi-late-summary">
@@ -822,6 +930,11 @@ function bindEvents() {
   });
   $('late-search')?.addEventListener('input', () => {
     renderPromotionList();
+  });
+  $('late-detail')?.addEventListener('click', (event) => {
+    if (event.target.closest?.('[data-action="export-qualiopi"]')) {
+      exportSelectedPromotionQualiopi();
+    }
   });
   $('late-promotions-list')?.addEventListener('click', (event) => {
     const button = event.target.closest?.('[data-promotion-id]');

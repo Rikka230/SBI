@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.266',
+  version: '8.0P.167.267',
   branch: 'main',
   channel: 'Plan B - suivi eleves / Qualiopi',
-  stage: 'ecran eleves en retard : section "En decrochage" (cours obligatoire dont recommendedStartAt est passe mais status todo, signal preventif sans recouvrement avec le retard), lecture seule',
+  stage: 'ecran eleves en retard : export CSV Qualiopi par promotion (metadonnees + 1 ligne/eleve : retard, decrochage, couverture preuves, preuves manquantes ; separateur ; + BOM pour Excel FR), lecture seule',
   updatedAt: '2026-05-31',
-  label: 'SBI 8.0P.167.266 - detection decrochage (pas demarre a temps) (lot 3)'
+  label: 'SBI 8.0P.167.267 - export Qualiopi CSV par promotion (lot 4)'
 };
 
 export function getSbiVersionLabel() {
