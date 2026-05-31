@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.264',
+  version: '8.0P.167.265',
   branch: 'main',
   channel: 'Plan B - suivi eleves / Qualiopi',
-  stage: 'fix remontage PJAX apres F5 (mountedView) generalise a admin-cursus + admin-promotions (meme defaut latent que eleves-en-retard .263)',
+  stage: 'ecran eleves en retard : section "Couverture Qualiopi par promotion" (% de preuves cours isQualiopiEvidence validees par les eleves + eleves avec preuves manquantes), lecture seule',
   updatedAt: '2026-05-31',
-  label: 'SBI 8.0P.167.264 - fix remontage PJAX (F5) sur cursus + promotions'
+  label: 'SBI 8.0P.167.265 - couverture Qualiopi par promotion (lot 2)'
 };
 
 export function getSbiVersionLabel() {

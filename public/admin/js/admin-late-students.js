@@ -33,6 +33,7 @@ let promotions = [];
 let templates = [];
 let studentsByPromotion = new Map();
 let latenessByPromotion = new Map();
+let qualiopiByPromotion = new Map();
 let selectedPromotionId = '';
 let loading = false;
 let unsubscribeAuth = null;
@@ -314,6 +315,70 @@ function getPromotionLatenessCached(promotion = {}) {
   return result;
 }
 
+// Détection canonique d'une preuve Qualiopi (alignée sur
+// admin-cursus-qualiopi-evidence-bridge.js : plusieurs formes de flag tolérées).
+function isQualiopiEvidenceItem(item = {}) {
+  return Boolean(
+    item.isQualiopiEvidence === true
+    || item.qualiopiEvidence === true
+    || item.isEvidenceForQualiopi === true
+    || item.evidenceScope === 'qualiopi'
+    || (Array.isArray(item.evidenceTags) && item.evidenceTags.includes('qualiopi'))
+  );
+}
+
+/**
+ * Couverture Qualiopi d'une promotion (v1, lecture seule).
+ * Preuves attendues = items du coursePlan marqués Qualiopi. Parmi elles, seules
+ * les preuves de type COURS (avec courseId) sont mesurables automatiquement via
+ * learningProgress (status 'done'). Les preuves hors-cours (devoir/examen/live)
+ * sont comptées mais non mesurables en v1 (lots ultérieurs : rendus, assiduité).
+ */
+function computePromotionQualiopi(promotion = {}) {
+  const plan = getPlanForPromotion(promotion);
+  const evidenceItems = plan.filter(isQualiopiEvidenceItem);
+  const evidenceCourses = evidenceItems.filter(isRealCourse);
+  const measurable = evidenceCourses.length;
+  const students = getStudentsForPromotion(promotion.id);
+
+  let totalCovered = 0;
+  const studentRows = students.map((student) => {
+    const missing = [];
+    let covered = 0;
+    evidenceCourses.forEach((item) => {
+      if (getCourseStatus(student, item.courseId) === 'done') covered += 1;
+      else missing.push({ courseId: item.courseId, title: getItemTitle(item) });
+    });
+    totalCovered += covered;
+    return { student, covered, total: measurable, missing };
+  });
+
+  const denom = students.length * measurable;
+  const coverageRate = denom > 0 ? Math.round((totalCovered / denom) * 100) : null;
+  const studentsWithGaps = studentRows
+    .filter((row) => row.missing.length > 0)
+    .sort((a, b) => {
+      if (b.missing.length !== a.missing.length) return b.missing.length - a.missing.length;
+      return getStudentName(a.student).localeCompare(getStudentName(b.student), 'fr', { sensitivity: 'base' });
+    });
+
+  return {
+    evidenceTotal: evidenceItems.length,
+    evidenceCourses: measurable,
+    evidenceNonCourse: evidenceItems.length - measurable,
+    studentCount: students.length,
+    coverageRate,
+    studentsWithGaps
+  };
+}
+
+function getPromotionQualiopiCached(promotion = {}) {
+  if (qualiopiByPromotion.has(promotion.id)) return qualiopiByPromotion.get(promotion.id);
+  const result = computePromotionQualiopi(promotion);
+  qualiopiByPromotion.set(promotion.id, result);
+  return result;
+}
+
 function ensureStyles() {
   if (document.getElementById('sbi-late-students-style')) return;
   const style = document.createElement('style');
@@ -366,6 +431,20 @@ function ensureStyles() {
     .sbi-late-courses li .late-course-title { color:#fff; font-weight:600; }
     .sbi-late-courses li .late-course-meta { color:#9fb0cf; }
     .sbi-late-courses li .late-course-days { color:#ffb4a2; font-weight:800; white-space:nowrap; }
+    .sbi-late-qualiopi { margin-top:1.4rem; padding-top:1.1rem; border-top:1px solid rgba(255,255,255,.10); }
+    .sbi-late-qualiopi h4 { margin:0 0 .15rem; color:#fff; font-size:1rem; display:flex; align-items:center; gap:.5rem; }
+    .sbi-late-qualiopi h4 .sbi-late-q-kicker { font-size:.66rem; font-weight:800; letter-spacing:.1em; text-transform:uppercase; color:#67e8f9; border:1px solid rgba(103,232,249,.3); border-radius:999px; padding:.1rem .45rem; }
+    .sbi-late-qualiopi > p { margin:.1rem 0 .4rem; color:#9fb0cf; font-size:.8rem; }
+    .sbi-late-metric.is-q strong { color:#9af5c8; }
+    .sbi-late-qbar { height:.5rem; border-radius:999px; background:rgba(255,255,255,.08); overflow:hidden; margin:.2rem 0 .9rem; }
+    .sbi-late-qbar > span { display:block; height:100%; background:linear-gradient(90deg,#34d399,#67e8f9); }
+    .sbi-late-gap { border:1px solid rgba(103,232,249,.18); border-radius:16px; background:rgba(103,232,249,.045); padding:.8rem; }
+    .sbi-late-gap-head { display:flex; justify-content:space-between; gap:.75rem; align-items:flex-start; flex-wrap:wrap; }
+    .sbi-late-gap-head strong { color:#fff; }
+    .sbi-late-gap-head small { color:#9fb0cf; font-size:.78rem; }
+    .sbi-late-badge.is-q { border-color:rgba(103,232,249,.35); background:rgba(103,232,249,.12); color:#bdf3ff; }
+    .sbi-late-q-missing { list-style:none; margin:.55rem 0 0; padding:0; display:grid; gap:.3rem; }
+    .sbi-late-q-missing li { border-top:1px solid rgba(255,255,255,.07); padding-top:.35rem; color:#dfe7ff; font-size:.82rem; }
     @media (max-width: 1100px) { .sbi-late-grid { grid-template-columns:1fr; } .sbi-late-list { max-height:none; } .sbi-late-summary { grid-template-columns:repeat(2,minmax(0,1fr)); } }
     @media (max-width: 720px) { .sbi-late-hero { flex-direction:column; } .sbi-late-hero-metric { text-align:left; } .sbi-late-summary { grid-template-columns:1fr; } }
   `;
@@ -469,6 +548,64 @@ function renderStudentRow(row = {}) {
   `;
 }
 
+function renderQualiopiGapRow(row = {}) {
+  const student = row.student || {};
+  const missing = row.missing || [];
+  return `
+    <article class="sbi-late-gap">
+      <div class="sbi-late-gap-head">
+        <div>
+          <strong>${escapeHtml(getStudentName(student))}</strong>
+          <small>${escapeHtml(student.email || 'Email non renseigné')}</small>
+        </div>
+        <div class="sbi-late-badges">
+          <span class="sbi-late-badge is-q">${row.covered}/${row.total} preuves</span>
+          <span class="sbi-late-badge is-soft">${missing.length} manquante${missing.length > 1 ? 's' : ''}</span>
+        </div>
+      </div>
+      <ul class="sbi-late-q-missing">
+        ${missing.map((item) => `<li>${escapeHtml(item.title)}</li>`).join('')}
+      </ul>
+    </article>
+  `;
+}
+
+function renderQualiopiSection(promotion = {}) {
+  const q = getPromotionQualiopiCached(promotion);
+  if (!q.evidenceTotal) {
+    return `
+      <div class="sbi-late-qualiopi">
+        <h4>Couverture Qualiopi <span class="sbi-late-q-kicker">Preuves</span></h4>
+        <div class="sbi-late-warning">Aucune preuve Qualiopi (<code>isQualiopiEvidence</code>) dans le cursus de cette promotion.</div>
+      </div>
+    `;
+  }
+  const rate = q.coverageRate;
+  const rateLabel = rate === null ? 'N/A' : `${rate} %`;
+  const barWidth = rate === null ? 0 : rate;
+  const warnings = [];
+  if (!q.evidenceCourses) warnings.push('Aucune preuve de type cours : couverture non mesurable automatiquement en v1.');
+  if (q.evidenceNonCourse) warnings.push(`${q.evidenceNonCourse} preuve(s) hors-cours (devoir / examen / live) non mesurée(s) automatiquement en v1.`);
+
+  return `
+    <div class="sbi-late-qualiopi">
+      <h4>Couverture Qualiopi <span class="sbi-late-q-kicker">Preuves</span></h4>
+      <p>Part des preuves de type cours réellement validées par les élèves rattachés.</p>
+      <div class="sbi-late-qbar"><span style="width:${barWidth}%"></span></div>
+      <div class="sbi-late-summary">
+        <div class="sbi-late-metric is-q"><strong>${rateLabel}</strong><span>couverture preuves cours</span></div>
+        <div class="sbi-late-metric"><strong>${q.evidenceCourses}</strong><span>preuves mesurables (cours)</span></div>
+        <div class="sbi-late-metric"><strong>${q.evidenceNonCourse}</strong><span>preuves hors-cours (v1 : non mesurées)</span></div>
+        <div class="sbi-late-metric"><strong>${q.studentsWithGaps.length}</strong><span>élèves avec preuves manquantes</span></div>
+      </div>
+      ${warnings.map((warning) => `<div class="sbi-late-warning">${escapeHtml(warning)}</div>`).join('')}
+      ${q.studentsWithGaps.length
+        ? `<div class="sbi-late-students-list">${q.studentsWithGaps.map(renderQualiopiGapRow).join('')}</div>`
+        : (q.evidenceCourses ? '<div class="sbi-late-empty">Toutes les preuves Qualiopi de type cours sont couvertes par les élèves. ✅</div>' : '')}
+    </div>
+  `;
+}
+
 function renderDetail() {
   const detail = $('late-detail');
   if (!detail) return;
@@ -511,6 +648,8 @@ function renderDetail() {
     ${result.lateStudentCount
       ? `<div class="sbi-late-students-list">${result.lateRows.map(renderStudentRow).join('')}</div>`
       : '<div class="sbi-late-empty is-large">Aucun élève en retard sur les cours obligatoires datés de cette promotion. 🎉</div>'}
+
+    ${renderQualiopiSection(promotion)}
   `;
 }
 
@@ -559,6 +698,7 @@ async function loadData() {
 
     await loadStudentsForPromotions();
     latenessByPromotion = new Map();
+    qualiopiByPromotion = new Map();
 
     if (!selectedPromotionId && promotions.length) {
       // Sélectionne par défaut la promotion avec le plus d'élèves en retard.
@@ -588,6 +728,7 @@ async function loadCurrentAdmin(user) {
 function bindEvents() {
   $('late-refresh-btn')?.addEventListener('click', () => {
     latenessByPromotion = new Map();
+    qualiopiByPromotion = new Map();
     loadData();
   });
   $('late-search')?.addEventListener('input', () => {
