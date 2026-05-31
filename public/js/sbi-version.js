@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.263',
+  version: '8.0P.167.264',
   branch: 'main',
   channel: 'Plan B - suivi eleves / Qualiopi',
-  stage: 'ecran "eleves en retard" v1 + fix: remontage PJAX apres F5 (mountedView au lieu du seul flag mounted, donnees rechargees au retour)',
+  stage: 'fix remontage PJAX apres F5 (mountedView) generalise a admin-cursus + admin-promotions (meme defaut latent que eleves-en-retard .263)',
   updatedAt: '2026-05-31',
-  label: 'SBI 8.0P.167.263 - eleves en retard : fix rechargement au retour PJAX (F5)'
+  label: 'SBI 8.0P.167.264 - fix remontage PJAX (F5) sur cursus + promotions'
 };
 
 export function getSbiVersionLabel() {

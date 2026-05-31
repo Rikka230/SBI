@@ -33,6 +33,7 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
 
 let mounted = false;
+let mountedView = null;
 let unsubscribeAuth = null;
 let unsubscribePromotions = null;
 let currentAdmin = null;
@@ -2152,16 +2153,27 @@ function showUnauthorized(message) {
 }
 
 export function mountAdminPromotions() {
-  if (mounted && document.getElementById('view-promotions')) return window.SBI_ADMIN_PROMOTIONS_UNMOUNT || (() => {});
-  if (!document.getElementById('view-promotions')) return () => {};
+  const view = document.getElementById('view-promotions');
+  if (!view) return () => {};
+
+  // Déjà monté sur CE noeud DOM (double appel : auto-montage à l'import + appel
+  // explicite par la route PJAX sur une vue fraîche) : ne pas re-binder.
+  if (mounted && mountedView === view) return window.SBI_ADMIN_PROMOTIONS_UNMOUNT || (() => {});
+
+  // Nouveau noeud (retour via PJAX après un chargement standalone / F5, sans cleanup
+  // shell enregistré) ou premier montage : on repart propre, en coupant les listeners
+  // (auth + snapshot promotions) restés actifs d'un montage précédent.
+  unsubscribeAuth?.();
+  unsubscribePromotions?.();
+  unsubscribePromotions = null;
 
   mounted = true;
+  mountedView = view;
   cacheDom();
   bindEvents();
   resetForm();
   renderRosterStudents();
 
-  unsubscribeAuth?.();
   unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
     try {
       await loadCurrentAdmin(user);
@@ -2177,6 +2189,7 @@ export function mountAdminPromotions() {
 
   const cleanup = () => {
     mounted = false;
+    mountedView = null;
     closeCurriculumTemplateModal();
     closePlanningOverlay();
     unsubscribeAuth?.();

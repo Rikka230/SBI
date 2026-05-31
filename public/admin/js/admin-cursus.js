@@ -27,6 +27,7 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
 
 let mounted = false;
+let mountedView = null;
 let unsubscribeAuth = null;
 let currentAdmin = null;
 let formations = [];
@@ -1363,15 +1364,24 @@ async function initialiseData() {
 }
 
 export function mountAdminCursus() {
-  if (mounted && document.getElementById('view-cursus')) return window.SBI_ADMIN_CURSUS_UNMOUNT || (() => {});
-  if (!document.getElementById('view-cursus')) return () => {};
+  const view = document.getElementById('view-cursus');
+  if (!view) return () => {};
+
+  // Déjà monté sur CE noeud DOM (double appel : auto-montage à l'import + appel
+  // explicite par la route PJAX sur une vue fraîche) : ne pas re-binder.
+  if (mounted && mountedView === view) return window.SBI_ADMIN_CURSUS_UNMOUNT || (() => {});
+
+  // Nouveau noeud (retour via PJAX après un chargement standalone / F5, sans cleanup
+  // shell enregistré) ou premier montage : on repart propre, en coupant un éventuel
+  // listener auth resté actif d'un montage précédent.
+  unsubscribeAuth?.();
 
   mounted = true;
+  mountedView = view;
   cacheDom();
   bindEvents();
   renderAll({ recalc: true });
 
-  unsubscribeAuth?.();
   unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
     try {
       await loadCurrentAdmin(user);
@@ -1385,6 +1395,7 @@ export function mountAdminCursus() {
 
   const cleanup = () => {
     mounted = false;
+    mountedView = null;
     unsubscribeAuth?.();
     unsubscribeAuth = null;
   };

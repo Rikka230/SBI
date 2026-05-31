@@ -496,7 +496,7 @@ async function mountAdminPromotions({ url }) {
   window.__SBI_APP_SHELL_MOUNTING_PROMOTIONS = true;
 
   try {
-    const module = await import('/admin/js/admin-promotions.js?v=8.0P.167.64');
+    const module = await import('/admin/js/admin-promotions.js?v=8.0P.167.263');
     const cleanupPromotions = module.mountAdminPromotions?.({ source: 'pjax-admin-promotions' });
 
     if (typeof cleanupPromotions === 'function') {
@@ -525,7 +525,7 @@ async function mountAdminCursus({ url }) {
   window.__SBI_APP_SHELL_MOUNTING_CURSUS = true;
 
   try {
-    const module = await import('/admin/js/admin-cursus.js?v=8.0P.167.188');
+    const module = await import('/admin/js/admin-cursus.js?v=8.0P.167.263');
     const cleanupCursus = module.mountAdminCursus?.({ source: 'pjax-admin-cursus' });
 
     await import('/admin/js/admin-cursus-placeholder-replace.js?v=8.0P.167.188');
