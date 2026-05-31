@@ -181,7 +181,7 @@
     if (!shouldBootAdminIndexModules()) return Promise.resolve(false);
 
     if (!adminIndexModulesPromise) {
-      const imports = [import('/admin/js/admin-core.js?v=8.0P.167.270')];
+      const imports = [import('/admin/js/admin-core.js?v=8.0P.167.271')];
       if (hasDashboardDom()) imports.push(import('/admin/js/admin-dashboard.js?v=8.0P.167.0'));
 
       adminIndexModulesPromise = Promise.allSettled(imports).then((results) => {

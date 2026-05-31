@@ -3138,22 +3138,22 @@ exports.adminUpdateUserAccount = onCall({
         }
     }
 
-    // SBI 8.0P.167.270 — Heures de connexion : champ réservé au compte Suprême (God).
-    if (Object.prototype.hasOwnProperty.call(data, "connectionHours")) {
+    // SBI 8.0P.167.271 — Temps de connexion total (secondes, auto-tracké par tracker.js) :
+    // correction manuelle réservée au compte Suprême (God).
+    if (Object.prototype.hasOwnProperty.call(data, "totalConnectionTime")) {
         if (!callerIsGod) {
-            throw new HttpsError("permission-denied", "Seul le compte Suprême peut modifier les heures de connexion.");
+            throw new HttpsError("permission-denied", "Seul le compte Suprême peut corriger le temps de connexion.");
         }
-        const hours = Number(data.connectionHours);
-        if (!Number.isFinite(hours) || hours < 0 || hours > 100000) {
-            throw new HttpsError("invalid-argument", "Heures de connexion invalides (0 à 100000).");
+        const seconds = Number(data.totalConnectionTime);
+        if (!Number.isFinite(seconds) || seconds < 0 || seconds > 360000000) {
+            throw new HttpsError("invalid-argument", "Temps de connexion invalide (0 à 100000 h).");
         }
-        const rounded = Math.round(hours * 10) / 10;
-        const previous = Number(targetData.connectionHours) || 0;
+        const rounded = Math.round(seconds);
+        const previous = Number(targetData.totalConnectionTime) || 0;
         if (rounded !== previous) {
-            updates.connectionHours = rounded;
-            updates.connectionHoursUpdatedAt = admin.firestore.FieldValue.serverTimestamp();
-            updates.connectionHoursUpdatedBy = caller.uid;
-            auditChanges.connectionHours = { before: previous, after: rounded };
+            updates.totalConnectionTime = rounded;
+            updates.totalConnectionTimeUpdatedBy = caller.uid;
+            auditChanges.totalConnectionTime = { before: previous, after: rounded };
         }
     }
 

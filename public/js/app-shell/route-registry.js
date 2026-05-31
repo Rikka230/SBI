@@ -465,7 +465,7 @@ async function mountAdminAccounts({ url }) {
   window.__SBI_APP_SHELL_MOUNTING_ACCOUNTS = true;
 
   try {
-    await import('/admin/js/admin-core.js?v=8.0P.167.270');
+    await import('/admin/js/admin-core.js?v=8.0P.167.271');
     window.SBI_ADMIN_CORE_REINIT?.();
     const module = await import('/admin/js/admin-accounts-dashboard.js?v=8.0P.167.64');
     module.mountAdminAccountsDashboard?.();
@@ -557,7 +557,7 @@ async function mountAdminLateStudents({ url }) {
   window.__SBI_APP_SHELL_MOUNTING_LATE_STUDENTS = true;
 
   try {
-    const module = await import('/admin/js/admin-late-students.js?v=8.0P.167.270');
+    const module = await import('/admin/js/admin-late-students.js?v=8.0P.167.271');
     const cleanupLate = module.mountAdminLateStudents?.();
 
     if (typeof cleanupLate === 'function') {

@@ -244,6 +244,13 @@ function getStudentName(student = {}) {
   return clean(`${student.prenom || ''} ${student.nom || ''}`) || student.displayName || student.email || 'Élève sans nom';
 }
 
+// Temps total de connexion (users.totalConnectionTime en secondes, auto-tracké) → heures.
+function formatConnectionHours(student = {}) {
+  const secs = Number(student.totalConnectionTime);
+  if (!Number.isFinite(secs) || secs <= 0) return null;
+  return Math.round((secs / 3600) * 10) / 10;
+}
+
 function getStudentsForPromotion(promotionId = '') {
   return studentsByPromotion.get(promotionId) || [];
 }
@@ -500,7 +507,7 @@ function buildPromotionQualiopiCsv(promotion = {}, adminEmail = '') {
       q.total,
       q.missing.map((item) => item.title).join(' | '),
       cov,
-      typeof student.connectionHours === 'number' ? student.connectionHours : ''
+      formatConnectionHours(student) === null ? '' : formatConnectionHours(student)
     ]);
 
   return [
@@ -576,7 +583,7 @@ function buildPromotionRegistryHtml(promotion = {}, adminEmail = '') {
         <td class="num">${row.lateness.dropoutCount}</td>
         <td class="num">${row.qualiopi.total ? `${row.qualiopi.covered}/${row.qualiopi.total}` : '—'}</td>
         <td class="num">${row.coverage === null ? '—' : row.coverage + '%'}</td>
-        <td class="num">${typeof row.student.connectionHours === 'number' ? row.student.connectionHours : '—'}</td>
+        <td class="num">${formatConnectionHours(row.student) === null ? '—' : formatConnectionHours(row.student)}</td>
       </tr>`).join('');
 
   return `<!DOCTYPE html>
@@ -987,7 +994,8 @@ function renderStudentFiche() {
         ${l.lateCount ? `<span class="sbi-late-badge">${l.lateCount} en retard</span>` : ''}
         ${l.dropoutCount ? `<span class="sbi-late-badge is-amber">${l.dropoutCount} décrochage</span>` : ''}
         <span class="sbi-late-badge is-q">${row.coverage === null ? 'Qualiopi N/A' : `Qualiopi ${row.coverage} %`}</span>
-        ${typeof student.connectionHours === 'number' ? `<span class="sbi-late-badge is-soft">${student.connectionHours} h connexion</span>` : ''}
+        ${formatConnectionHours(student) !== null ? `<span class="sbi-late-badge is-soft">${formatConnectionHours(student)} h connexion</span>` : ''}
+        <a class="sbi-late-btn sbi-late-mini" href="/admin/admin-profile.html?id=${encodeURIComponent(student.id)}" data-sbi-no-pjax="true" title="Ouvrir le profil de l'élève">Profil élève</a>
         ${l.lateCount ? `<button type="button" class="sbi-late-btn is-primary sbi-late-mini" data-action="send-reminder" data-student-id="${escapeHtml(student.id)}">Relancer par email</button>` : ''}
       </div>
     </div>

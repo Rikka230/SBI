@@ -936,7 +936,8 @@ const openEditModal = (userId) => {
     if (connHoursContainer && connHoursInput) {
         const showConnHours = isCurrentUserGod && (targetUser.role || 'student') === 'student';
         connHoursContainer.style.display = showConnHours ? 'block' : 'none';
-        connHoursInput.value = (typeof targetUser.connectionHours === 'number') ? targetUser.connectionHours : '';
+        const secs = Number(targetUser.totalConnectionTime) || 0;
+        connHoursInput.value = secs ? Math.round((secs / 3600) * 10) / 10 : '';
     }
 
     document.getElementById('edit-user-modal').style.display = 'flex';
@@ -997,8 +998,8 @@ const initModalLogic = () => {
         if (connHoursInput && connHoursContainer && connHoursContainer.style.display !== 'none' && connHoursInput.value !== '') {
             const hours = Number(connHoursInput.value);
             if (Number.isFinite(hours) && hours >= 0) {
-                const rounded = Math.round(hours * 10) / 10;
-                if (rounded !== (Number(targetUser.connectionHours) || 0)) payload.connectionHours = rounded;
+                const newSecs = Math.round(hours * 3600);
+                if (newSecs !== (Number(targetUser.totalConnectionTime) || 0)) payload.totalConnectionTime = newSecs;
             }
         }
 
