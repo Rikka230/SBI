@@ -114,6 +114,12 @@
                 <p id="god-mode-desc" style="margin: 0.5rem 0 0 0; font-size: 0.85rem; color: #aaa;"></p>
             </div>
 
+            <div id="connection-hours-container" style="background: rgba(42, 87, 255, 0.08); padding: 1rem; border: 1px solid rgba(42, 87, 255, 0.3); border-radius: 4px; display: none;">
+                <label for="edit-user-connection-hours" style="display: block; color: #9fb0ff; font-weight: bold; margin-bottom: 0.4rem;">Heures de connexion (God uniquement)</label>
+                <input type="number" id="edit-user-connection-hours" min="0" max="100000" step="0.5" placeholder="0" style="width: 100%; box-sizing: border-box; padding: 0.8rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px;">
+                <p style="margin: 0.4rem 0 0 0; font-size: 0.8rem; color: #8a93a6;">Total d'heures de connexion de l'élève. Modifiable uniquement par le compte Suprême.</p>
+            </div>
+
             <div style="display: flex; gap: 1rem; margin-top: 1rem;">
                 <button type="submit" style="flex: 1; padding: 1rem; background: var(--accent-green); color: #000; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">Enregistrer</button>
                 <button type="button" id="reset-pwd-btn" style="flex: 1; padding: 1rem; background: #444; color: white; border: none; border-radius: 4px; cursor: pointer;">Reset Mdp</button>
@@ -129,7 +135,7 @@
 
 <script type="module" src="js/admin-ui.js?v=8.0P.167.205"></script>
 <script type="module" src="js/sbi-admin-inp-fix.js?v=8.0P.127"></script>
-<script type="module" src="js/admin-core.js?v=8.0P.167.64"></script>
+<script type="module" src="js/admin-core.js?v=8.0P.167.270"></script>
 <script type="module" src="js/tracker.js?v=8.0P.167.44"></script>
 <script type="module" src="js/admin-notifications.js?v=8.0P.167.205"></script>
 <script type="module" src="js/admin-accounts-dashboard.js?v=8.0P.167.64"></script>

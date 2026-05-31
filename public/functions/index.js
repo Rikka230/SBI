@@ -3138,6 +3138,25 @@ exports.adminUpdateUserAccount = onCall({
         }
     }
 
+    // SBI 8.0P.167.270 — Heures de connexion : champ réservé au compte Suprême (God).
+    if (Object.prototype.hasOwnProperty.call(data, "connectionHours")) {
+        if (!callerIsGod) {
+            throw new HttpsError("permission-denied", "Seul le compte Suprême peut modifier les heures de connexion.");
+        }
+        const hours = Number(data.connectionHours);
+        if (!Number.isFinite(hours) || hours < 0 || hours > 100000) {
+            throw new HttpsError("invalid-argument", "Heures de connexion invalides (0 à 100000).");
+        }
+        const rounded = Math.round(hours * 10) / 10;
+        const previous = Number(targetData.connectionHours) || 0;
+        if (rounded !== previous) {
+            updates.connectionHours = rounded;
+            updates.connectionHoursUpdatedAt = admin.firestore.FieldValue.serverTimestamp();
+            updates.connectionHoursUpdatedBy = caller.uid;
+            auditChanges.connectionHours = { before: previous, after: rounded };
+        }
+    }
+
     if (Object.prototype.hasOwnProperty.call(data, "preparationState")) {
         const requestedPreparationState = normalizeAccountPreparationState(data.preparationState);
         const currentPreparationState = normalizeAccountPreparationState(

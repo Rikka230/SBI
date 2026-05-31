@@ -930,6 +930,15 @@ const openEditModal = (userId) => {
         if (deleteZone) deleteZone.style.display = 'none';
     }
 
+    // Heures de connexion : visible/éditable uniquement par le compte Suprême, pour les élèves.
+    const connHoursContainer = document.getElementById('connection-hours-container');
+    const connHoursInput = document.getElementById('edit-user-connection-hours');
+    if (connHoursContainer && connHoursInput) {
+        const showConnHours = isCurrentUserGod && (targetUser.role || 'student') === 'student';
+        connHoursContainer.style.display = showConnHours ? 'block' : 'none';
+        connHoursInput.value = (typeof targetUser.connectionHours === 'number') ? targetUser.connectionHours : '';
+    }
+
     document.getElementById('edit-user-modal').style.display = 'flex';
 };
 
@@ -981,6 +990,16 @@ const initModalLogic = () => {
 
         if (godCheckbox && godCheckbox.checked && godLabelWrapper && godLabelWrapper.style.display !== 'none') {
             payload.isGod = true;
+        }
+
+        const connHoursInput = document.getElementById('edit-user-connection-hours');
+        const connHoursContainer = document.getElementById('connection-hours-container');
+        if (connHoursInput && connHoursContainer && connHoursContainer.style.display !== 'none' && connHoursInput.value !== '') {
+            const hours = Number(connHoursInput.value);
+            if (Number.isFinite(hours) && hours >= 0) {
+                const rounded = Math.round(hours * 10) / 10;
+                if (rounded !== (Number(targetUser.connectionHours) || 0)) payload.connectionHours = rounded;
+            }
         }
 
         if (submitBtn) {

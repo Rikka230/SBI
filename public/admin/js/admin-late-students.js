@@ -476,7 +476,7 @@ function buildPromotionQualiopiCsv(promotion = {}, adminEmail = '') {
     []
   ];
 
-  const header = ['Eleve', 'Email', 'En retard (nb)', 'Cours en retard', 'Non commences (nb)', 'Cours non commences', 'Preuves couvertes', 'Preuves attendues', 'Preuves manquantes', 'Couverture eleve (%)'];
+  const header = ['Eleve', 'Email', 'En retard (nb)', 'Cours en retard', 'Non commences (nb)', 'Cours non commences', 'Preuves couvertes', 'Preuves attendues', 'Preuves manquantes', 'Couverture eleve (%)', 'Heures connexion'];
 
   const rows = students
     .map((student) => {
@@ -499,7 +499,8 @@ function buildPromotionQualiopiCsv(promotion = {}, adminEmail = '') {
       q.covered,
       q.total,
       q.missing.map((item) => item.title).join(' | '),
-      cov
+      cov,
+      typeof student.connectionHours === 'number' ? student.connectionHours : ''
     ]);
 
   return [
@@ -575,6 +576,7 @@ function buildPromotionRegistryHtml(promotion = {}, adminEmail = '') {
         <td class="num">${row.lateness.dropoutCount}</td>
         <td class="num">${row.qualiopi.total ? `${row.qualiopi.covered}/${row.qualiopi.total}` : '—'}</td>
         <td class="num">${row.coverage === null ? '—' : row.coverage + '%'}</td>
+        <td class="num">${typeof row.student.connectionHours === 'number' ? row.student.connectionHours : '—'}</td>
       </tr>`).join('');
 
   return `<!DOCTYPE html>
@@ -611,8 +613,8 @@ function buildPromotionRegistryHtml(promotion = {}, adminEmail = '') {
 
   <h2>Détail par élève</h2>
   <table class="reg-table">
-    <thead><tr><th class="num">#</th><th>Élève</th><th>Email</th><th>Retard</th><th>Décroch.</th><th>Preuves</th><th>Couv.</th></tr></thead>
-    <tbody>${studentRows || '<tr><td colspan="7">Aucun élève rattaché.</td></tr>'}</tbody>
+    <thead><tr><th class="num">#</th><th>Élève</th><th>Email</th><th>Retard</th><th>Décroch.</th><th>Preuves</th><th>Couv.</th><th class="num">Conn. (h)</th></tr></thead>
+    <tbody>${studentRows || '<tr><td colspan="8">Aucun élève rattaché.</td></tr>'}</tbody>
   </table>
 
   <div class="reg-foot">Document de suivi pédagogique — Sport Business Institute / CFMFS · Confidentiel · Édité le ${formatDate(today)}</div>
@@ -985,6 +987,7 @@ function renderStudentFiche() {
         ${l.lateCount ? `<span class="sbi-late-badge">${l.lateCount} en retard</span>` : ''}
         ${l.dropoutCount ? `<span class="sbi-late-badge is-amber">${l.dropoutCount} décrochage</span>` : ''}
         <span class="sbi-late-badge is-q">${row.coverage === null ? 'Qualiopi N/A' : `Qualiopi ${row.coverage} %`}</span>
+        ${typeof student.connectionHours === 'number' ? `<span class="sbi-late-badge is-soft">${student.connectionHours} h connexion</span>` : ''}
         ${l.lateCount ? `<button type="button" class="sbi-late-btn is-primary sbi-late-mini" data-action="send-reminder" data-student-id="${escapeHtml(student.id)}">Relancer par email</button>` : ''}
       </div>
     </div>

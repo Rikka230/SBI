@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.269',
+  version: '8.0P.167.270',
   branch: 'main',
   channel: 'Plan B - suivi eleves / Qualiopi',
-  stage: 'ecran eleves en retard - 3 lots: export PDF registre (client), assiduite Live (Cloud Function getPromotionLiveAttendanceBatch admin-only), relance email Brevo (Cloud Function sendLateStudentReminder admin-only, confirmation + rate-limit 24h + audit)',
+  stage: 'heures de connexion: champ users.connectionHours editable UNIQUEMENT par le compte Supreme (God) depuis la modale edition compte (adminUpdateUserAccount god-only + audit) ; affiche sur la fiche eleve, le CSV et le registre PDF',
   updatedAt: '2026-05-31',
-  label: 'SBI 8.0P.167.269 - registre PDF + assiduite Live + relances Brevo (Plan B lots 5-6-7)'
+  label: 'SBI 8.0P.167.270 - heures de connexion (god-only) + affichage ecran retard'
 };
 
 export function getSbiVersionLabel() {
