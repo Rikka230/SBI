@@ -244,11 +244,23 @@ function getStudentName(student = {}) {
   return clean(`${student.prenom || ''} ${student.nom || ''}`) || student.displayName || student.email || 'Élève sans nom';
 }
 
-// Temps total de connexion (users.totalConnectionTime en secondes, auto-tracké) → heures.
+// Temps total de connexion (users.totalConnectionTime en secondes, auto-tracké) → heures (numérique, pour CSV).
 function formatConnectionHours(student = {}) {
   const secs = Number(student.totalConnectionTime);
   if (!Number.isFinite(secs) || secs <= 0) return null;
   return Math.round((secs / 3600) * 10) / 10;
+}
+
+// Durée lisible : "45 min", "1 h 30", "2 h" — lève l'ambiguïté minutes/heures sous 1 h.
+function formatConnectionDuration(student = {}) {
+  const secs = Number(student.totalConnectionTime);
+  if (!Number.isFinite(secs) || secs <= 0) return null;
+  const totalMin = Math.round(secs / 60);
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  if (h <= 0) return `${m} min`;
+  if (m === 0) return `${h} h`;
+  return `${h} h ${String(m).padStart(2, '0')}`;
 }
 
 function getStudentsForPromotion(promotionId = '') {
@@ -583,7 +595,7 @@ function buildPromotionRegistryHtml(promotion = {}, adminEmail = '') {
         <td class="num">${row.lateness.dropoutCount}</td>
         <td class="num">${row.qualiopi.total ? `${row.qualiopi.covered}/${row.qualiopi.total}` : '—'}</td>
         <td class="num">${row.coverage === null ? '—' : row.coverage + '%'}</td>
-        <td class="num">${formatConnectionHours(row.student) === null ? '—' : formatConnectionHours(row.student)}</td>
+        <td class="num">${formatConnectionDuration(row.student) === null ? '—' : formatConnectionDuration(row.student)}</td>
       </tr>`).join('');
 
   return `<!DOCTYPE html>
@@ -620,7 +632,7 @@ function buildPromotionRegistryHtml(promotion = {}, adminEmail = '') {
 
   <h2>Détail par élève</h2>
   <table class="reg-table">
-    <thead><tr><th class="num">#</th><th>Élève</th><th>Email</th><th>Retard</th><th>Décroch.</th><th>Preuves</th><th>Couv.</th><th class="num">Conn. (h)</th></tr></thead>
+    <thead><tr><th class="num">#</th><th>Élève</th><th>Email</th><th>Retard</th><th>Décroch.</th><th>Preuves</th><th>Couv.</th><th class="num">Connexion</th></tr></thead>
     <tbody>${studentRows || '<tr><td colspan="8">Aucun élève rattaché.</td></tr>'}</tbody>
   </table>
 
@@ -994,7 +1006,7 @@ function renderStudentFiche() {
         ${l.lateCount ? `<span class="sbi-late-badge">${l.lateCount} en retard</span>` : ''}
         ${l.dropoutCount ? `<span class="sbi-late-badge is-amber">${l.dropoutCount} décrochage</span>` : ''}
         <span class="sbi-late-badge is-q">${row.coverage === null ? 'Qualiopi N/A' : `Qualiopi ${row.coverage} %`}</span>
-        ${formatConnectionHours(student) !== null ? `<span class="sbi-late-badge is-soft">${formatConnectionHours(student)} h connexion</span>` : ''}
+        ${formatConnectionDuration(student) !== null ? `<span class="sbi-late-badge is-soft" title="Temps total de connexion à la plateforme">${formatConnectionDuration(student)} de connexion</span>` : ''}
         <a class="sbi-late-btn sbi-late-mini" href="/admin/admin-profile.html?id=${encodeURIComponent(student.id)}" data-sbi-no-pjax="true" title="Ouvrir le profil de l'élève">Profil élève</a>
         ${l.lateCount ? `<button type="button" class="sbi-late-btn is-primary sbi-late-mini" data-action="send-reminder" data-student-id="${escapeHtml(student.id)}">Relancer par email</button>` : ''}
       </div>

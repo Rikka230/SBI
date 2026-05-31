@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.271',
+  version: '8.0P.167.272',
   branch: 'main',
   channel: 'Plan B - suivi eleves / Qualiopi',
-  stage: 'temps de connexion: utilise users.totalConnectionTime (auto-tracke par tracker.js, secondes) au lieu d un champ manuel ; correction god-only via adminUpdateUserAccount ; affiche en heures sur fiche/CSV/registre + lien direct profil eleve (admin-profile.html?id=) depuis retard',
+  stage: 'temps de connexion affiche en duree lisible (45 min / 1 h 30) sur fiche eleve + registre PDF (leve l ambiguite minutes/heures sous 1 h) ; CSV garde la valeur numerique en heures',
   updatedAt: '2026-06-01',
-  label: 'SBI 8.0P.167.271 - temps connexion auto (totalConnectionTime) + lien profil eleve depuis retard'
+  label: 'SBI 8.0P.167.272 - temps connexion en duree lisible (min/heures) sur fiche + PDF'
 };
 
 export function getSbiVersionLabel() {
