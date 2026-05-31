@@ -34,7 +34,12 @@ let templates = [];
 let studentsByPromotion = new Map();
 let latenessByPromotion = new Map();
 let qualiopiByPromotion = new Map();
+let rowsByPromotion = new Map();
 let selectedPromotionId = '';
+let selectedStudentId = '';
+let studentFilter = 'all';
+let studentSearch = '';
+let studentSort = 'difficulty';
 let loading = false;
 let unsubscribeAuth = null;
 
@@ -591,7 +596,37 @@ function ensureStyles() {
     .sbi-late-badge.is-q { border-color:rgba(103,232,249,.35); background:rgba(103,232,249,.12); color:#bdf3ff; }
     .sbi-late-q-missing { list-style:none; margin:.55rem 0 0; padding:0; display:grid; gap:.3rem; }
     .sbi-late-q-missing li { border-top:1px solid rgba(255,255,255,.07); padding-top:.35rem; color:#dfe7ff; font-size:.82rem; }
-    @media (max-width: 1100px) { .sbi-late-grid { grid-template-columns:1fr; } .sbi-late-list { max-height:none; } .sbi-late-summary { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+    .sbi-late-detail-head { display:flex; justify-content:space-between; gap:1rem; align-items:flex-start; flex-wrap:wrap; margin-bottom:.7rem; }
+    .sbi-late-promo-pick { display:grid; gap:.3rem; min-width:0; flex:1 1 320px; }
+    .sbi-late-promo-pick label { color:#9fb0cf; font-size:.7rem; text-transform:uppercase; letter-spacing:.08em; font-weight:800; }
+    .sbi-late-promo-pick select, .sbi-late-sort { background:rgba(10,15,30,.6); border:1px solid rgba(255,255,255,.14); color:#fff; border-radius:12px; padding:.55rem .7rem; font-size:.9rem; outline:none; max-width:100%; cursor:pointer; }
+    .sbi-late-promo-pick p { margin:0; color:#9fb0cf; font-size:.78rem; }
+    .sbi-late-md { display:grid; grid-template-columns: minmax(240px, 320px) minmax(0,1fr); gap:1rem; align-items:start; margin-top:.5rem; }
+    .sbi-late-md-list { display:grid; gap:.5rem; align-content:start; }
+    #late-student-search { width:100%; box-sizing:border-box; padding:.6rem .75rem; border-radius:12px; border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.055); color:#fff; outline:none; }
+    .sbi-late-filters { display:flex; flex-wrap:wrap; gap:.35rem; }
+    .sbi-late-fchip { display:inline-flex; align-items:center; gap:.3rem; border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.05); color:#dfe7ff; border-radius:999px; padding:.25rem .6rem; font-size:.76rem; font-weight:700; cursor:pointer; }
+    .sbi-late-fchip span { opacity:.7; font-weight:800; }
+    .sbi-late-fchip.is-active { border-color:rgba(42,87,255,.5); background:rgba(42,87,255,.2); color:#fff; }
+    .sbi-late-sort { width:100%; }
+    .sbi-late-srows { display:grid; gap:.3rem; max-height:calc(100vh - 420px); min-height:120px; overflow:auto; padding-right:.1rem; }
+    .sbi-late-srow { display:flex; justify-content:space-between; align-items:center; gap:.5rem; width:100%; text-align:left; border:1px solid rgba(255,255,255,.08); background:rgba(255,255,255,.035); color:#eaf0ff; border-radius:12px; padding:.5rem .6rem; cursor:pointer; transition:border-color .14s ease, background .14s ease; }
+    .sbi-late-srow:hover { border-color:rgba(255,255,255,.22); background:rgba(255,255,255,.06); }
+    .sbi-late-srow.is-active { border-color:rgba(42,87,255,.55); background:rgba(42,87,255,.16); }
+    .sbi-late-srow-name { font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .sbi-late-srow-badges { display:flex; gap:.25rem; flex-shrink:0; }
+    .sbi-late-chip { display:inline-flex; align-items:center; min-height:1.25rem; padding:0 .42rem; border-radius:999px; font-size:.7rem; font-weight:800; background:rgba(255,255,255,.08); color:#dfe7ff; }
+    .sbi-late-chip.is-late { background:rgba(255,99,71,.16); color:#ffb4a2; }
+    .sbi-late-chip.is-amber { background:rgba(255,193,94,.16); color:#ffd98a; }
+    .sbi-late-chip.is-q { background:rgba(103,232,249,.14); color:#bdf3ff; }
+    .sbi-late-md-fiche { border:1px solid rgba(255,255,255,.08); border-radius:16px; background:rgba(255,255,255,.025); padding:1rem; min-height:200px; }
+    .sbi-late-fiche-head { display:flex; justify-content:space-between; gap:.75rem; align-items:flex-start; flex-wrap:wrap; margin-bottom:.2rem; }
+    .sbi-late-fiche-head h3 { margin:0; color:#fff; font-size:1.1rem; }
+    .sbi-late-fiche-head p { margin:.1rem 0 0; color:#9fb0cf; font-size:.82rem; }
+    .sbi-late-fiche-section { margin-top:1rem; padding-top:.8rem; border-top:1px solid rgba(255,255,255,.08); }
+    .sbi-late-fiche-section h4 { margin:0 0 .4rem; color:#fff; font-size:.92rem; display:flex; align-items:center; gap:.5rem; }
+    .sbi-late-d-kicker.is-red { color:#ffb4a2; border-color:rgba(255,99,71,.3); }
+    @media (max-width: 1100px) { .sbi-late-md { grid-template-columns:1fr; } .sbi-late-srows { max-height:none; } .sbi-late-summary { grid-template-columns:repeat(2,minmax(0,1fr)); } .sbi-late-detail-head { flex-direction:column; } }
     @media (max-width: 720px) { .sbi-late-hero { flex-direction:column; } .sbi-late-hero-metric { text-align:left; } .sbi-late-summary { grid-template-columns:1fr; } }
   `;
   document.head.appendChild(style);
@@ -603,197 +638,190 @@ function showUnauthorized(message = 'Accès réservé aux administrateurs.') {
   root.innerHTML = `<div class="sbi-late-shell"><div class="sbi-late-empty is-large">${escapeHtml(message)}</div></div>`;
 }
 
+// ── Données par élève (maître-détail) ──────────────────────────────────────
+function getEvidenceCourses(plan = []) {
+  return plan.filter((item) => isQualiopiEvidenceItem(item) && isRealCourse(item));
+}
+
+function computePromotionRows(promotion = {}) {
+  const plan = getPlanForPromotion(promotion);
+  const evidenceCourses = getEvidenceCourses(plan);
+  const evidenceItems = plan.filter(isQualiopiEvidenceItem);
+  const students = getStudentsForPromotion(promotion.id);
+  const today = todayIso();
+
+  let totalCovered = 0;
+  const rows = students.map((student) => {
+    const lateness = computeStudentLateness(student, plan, today);
+    const qualiopi = computeStudentQualiopi(student, evidenceCourses);
+    totalCovered += qualiopi.covered;
+    const coverage = qualiopi.total > 0 ? Math.round((qualiopi.covered / qualiopi.total) * 100) : null;
+    const difficulty = (lateness.lateCount * 10000) + (lateness.maxDaysLate * 100) + (lateness.dropoutCount * 50) + qualiopi.missing.length;
+    return { student, lateness, qualiopi, coverage, difficulty };
+  });
+
+  const measurable = evidenceCourses.length;
+  const denom = students.length * measurable;
+  const global = {
+    studentCount: students.length,
+    lateStudentCount: rows.filter((r) => r.lateness.isLate).length,
+    dropoutStudentCount: rows.filter((r) => r.lateness.isDropout).length,
+    gapStudentCount: rows.filter((r) => r.qualiopi.missing.length > 0).length,
+    datedRequiredCount: plan.filter((item) => isRealCourse(item) && isRequiredItem(item) && isIsoDate(getDeadlineDate(item))).length,
+    datedStartCount: plan.filter((item) => isRealCourse(item) && isRequiredItem(item) && isIsoDate(getStartDate(item))).length,
+    evidenceTotal: evidenceItems.length,
+    evidenceCourses: measurable,
+    evidenceNonCourse: evidenceItems.length - measurable,
+    coverageRate: denom > 0 ? Math.round((totalCovered / denom) * 100) : null
+  };
+  return { plan, evidenceCourses, rows, global };
+}
+
+function getPromotionRowsCached(promotion = {}) {
+  if (rowsByPromotion.has(promotion.id)) return rowsByPromotion.get(promotion.id);
+  const result = computePromotionRows(promotion);
+  rowsByPromotion.set(promotion.id, result);
+  return result;
+}
+
+function filterStudentRows(rows = []) {
+  let out = rows;
+  if (studentFilter === 'late') out = out.filter((r) => r.lateness.isLate);
+  else if (studentFilter === 'dropout') out = out.filter((r) => r.lateness.isDropout);
+  else if (studentFilter === 'gap') out = out.filter((r) => r.qualiopi.missing.length > 0);
+  const search = normalizeSearch(studentSearch);
+  if (search) out = out.filter((r) => normalizeSearch(`${getStudentName(r.student)} ${r.student.email || ''}`).includes(search));
+  return out;
+}
+
+function sortStudentRows(rows = []) {
+  const byName = (a, b) => getStudentName(a.student).localeCompare(getStudentName(b.student), 'fr', { sensitivity: 'base' });
+  const arr = [...rows];
+  if (studentSort === 'name') arr.sort(byName);
+  else if (studentSort === 'late') arr.sort((a, b) => (b.lateness.lateCount - a.lateness.lateCount) || (b.lateness.maxDaysLate - a.lateness.maxDaysLate) || byName(a, b));
+  else if (studentSort === 'dropout') arr.sort((a, b) => (b.lateness.dropoutCount - a.lateness.dropoutCount) || (b.lateness.maxDaysSinceStart - a.lateness.maxDaysSinceStart) || byName(a, b));
+  else if (studentSort === 'coverage') arr.sort((a, b) => ((a.coverage === null ? 999 : a.coverage) - (b.coverage === null ? 999 : b.coverage)) || byName(a, b));
+  else arr.sort((a, b) => (b.difficulty - a.difficulty) || byName(a, b));
+  return arr;
+}
+
+// ── Rendu maître-détail ────────────────────────────────────────────────────
 function renderHeroMetric() {
   const node = $('late-hero-total');
   if (!node) return;
   let totalLate = 0;
   let promosWithLate = 0;
   promotions.forEach((promotion) => {
-    const result = getPromotionLatenessCached(promotion);
-    totalLate += result.lateStudentCount;
-    if (result.lateStudentCount > 0) promosWithLate += 1;
+    const count = getPromotionRowsCached(promotion).global.lateStudentCount;
+    totalLate += count;
+    if (count > 0) promosWithLate += 1;
   });
   node.innerHTML = `<strong>${totalLate}</strong><span>élève${totalLate > 1 ? 's' : ''} en retard · ${promosWithLate} promotion${promosWithLate > 1 ? 's' : ''}</span>`;
 }
 
-function renderPromotionList() {
-  const list = $('late-promotions-list');
-  const count = $('late-promotions-count');
-  if (!list || !count) return;
-
-  const search = normalizeSearch($('late-search')?.value || '');
-  const rows = [...promotions]
+function renderPromotionSelectOptions() {
+  return [...promotions]
     .sort((a, b) => {
-      const lateA = getPromotionLatenessCached(a).lateStudentCount;
-      const lateB = getPromotionLatenessCached(b).lateStudentCount;
+      const lateA = getPromotionRowsCached(a).global.lateStudentCount;
+      const lateB = getPromotionRowsCached(b).global.lateStudentCount;
       if (lateA !== lateB) return lateB - lateA;
-      const activeA = (a.status || 'active') === 'active' ? 0 : 1;
-      const activeB = (b.status || 'active') === 'active' ? 0 : 1;
-      if (activeA !== activeB) return activeA - activeB;
       return getPromotionLabel(a).localeCompare(getPromotionLabel(b), 'fr', { sensitivity: 'base' });
     })
-    .filter((promotion) => {
-      if (!search) return true;
-      const haystack = normalizeSearch(`${getPromotionLabel(promotion)} ${promotion.formationName || ''} ${promotion.curriculumTitle || ''}`);
-      return haystack.includes(search);
-    });
+    .map((promotion) => {
+      const g = getPromotionRowsCached(promotion).global;
+      const sel = promotion.id === selectedPromotionId ? 'selected' : '';
+      return `<option value="${escapeHtml(promotion.id)}" ${sel}>${escapeHtml(getPromotionLabel(promotion))} — ${g.lateStudentCount} en retard / ${g.studentCount} élèves</option>`;
+    }).join('');
+}
 
-  count.textContent = `${rows.length} promotion${rows.length > 1 ? 's' : ''}`;
+function renderStudentListItem(row = {}) {
+  const student = row.student || {};
+  const lateness = row.lateness || {};
+  const active = student.id === selectedStudentId;
+  const badges = [];
+  if (lateness.lateCount) badges.push(`<span class="sbi-late-chip is-late" title="cours en retard">⚠ ${lateness.lateCount}</span>`);
+  if (lateness.dropoutCount) badges.push(`<span class="sbi-late-chip is-amber" title="cours non commencés">${lateness.dropoutCount}</span>`);
+  badges.push(`<span class="sbi-late-chip is-q" title="couverture Qualiopi">${row.coverage === null ? '—' : row.coverage + '%'}</span>`);
+  return `
+    <button type="button" class="sbi-late-srow ${active ? 'is-active' : ''}" data-student-id="${escapeHtml(student.id)}">
+      <span class="sbi-late-srow-name">${escapeHtml(getStudentName(student))}</span>
+      <span class="sbi-late-srow-badges">${badges.join('')}</span>
+    </button>
+  `;
+}
 
-  if (!rows.length) {
-    list.innerHTML = '<div class="sbi-late-empty">Aucune promotion trouvée.</div>';
+function renderStudentList() {
+  const listEl = $('late-student-list');
+  if (!listEl) return;
+  const promotion = promotions.find((item) => item.id === selectedPromotionId);
+  if (!promotion) { listEl.innerHTML = ''; return; }
+  const visible = sortStudentRows(filterStudentRows(getPromotionRowsCached(promotion).rows));
+  if (!visible.some((r) => r.student.id === selectedStudentId)) {
+    selectedStudentId = visible[0]?.student.id || '';
+  }
+  listEl.innerHTML = visible.length
+    ? visible.map(renderStudentListItem).join('')
+    : '<div class="sbi-late-empty">Aucun élève pour ce filtre.</div>';
+}
+
+function renderCourseList(courses = [], kind = 'late') {
+  return `<ul class="sbi-late-courses">${courses.map((course) => kind === 'late'
+    ? `<li>
+        <span class="late-course-title">${escapeHtml(course.title)}</span>
+        <span class="late-course-meta">échéance ${formatDate(course.deadline)} · ${course.status === 'in_progress' ? 'en cours' : 'non commencé'}</span>
+        <span class="late-course-days">+${course.daysLate} j</span>
+      </li>`
+    : `<li>
+        <span class="late-course-title">${escapeHtml(course.title)}</span>
+        <span class="late-course-meta">début prévu ${formatDate(course.start)} · non commencé</span>
+        <span class="late-course-days is-amber">+${course.daysSinceStart} j</span>
+      </li>`).join('')}</ul>`;
+}
+
+function renderStudentFiche() {
+  const ficheEl = $('late-student-fiche');
+  if (!ficheEl) return;
+  const promotion = promotions.find((item) => item.id === selectedPromotionId);
+  if (!promotion) { ficheEl.innerHTML = ''; return; }
+  const row = getPromotionRowsCached(promotion).rows.find((r) => r.student.id === selectedStudentId);
+  if (!row) {
+    ficheEl.innerHTML = '<div class="sbi-late-empty is-large">Sélectionnez un élève dans la liste.</div>';
     return;
   }
+  const student = row.student;
+  const l = row.lateness;
+  const q = row.qualiopi;
 
-  list.innerHTML = rows.map((promotion) => {
-    const result = getPromotionLatenessCached(promotion);
-    const active = promotion.id === selectedPromotionId;
-    const lateCount = result.lateStudentCount;
-    const pill = lateCount > 0
-      ? `<span class="sbi-late-count-pill is-late">${lateCount} en retard</span>`
-      : '<span class="sbi-late-count-pill is-ok">À jour</span>';
-    return `
-      <button type="button" class="sbi-late-promo ${active ? 'is-active' : ''} ${lateCount > 0 ? 'has-late' : ''}" data-promotion-id="${escapeHtml(promotion.id)}">
-        <strong>${escapeHtml(getPromotionLabel(promotion))}</strong>
-        <small>
-          <span>${escapeHtml(promotion.formationName || 'Formation non renseignée')}</span>
-          <span>${pill} · ${result.studentCount} élève${result.studentCount > 1 ? 's' : ''}</span>
-          <span>${formatDate(promotion.startDate)} → ${formatDate(promotion.endDate)}</span>
-        </small>
-      </button>
-    `;
-  }).join('');
-}
-
-function renderStudentRow(row = {}) {
-  const student = row.student || {};
-  const lateness = row.lateness || {};
-  const courses = lateness.lateCourses || [];
-  return `
-    <article class="sbi-late-student">
-      <div class="sbi-late-student-head">
-        <div>
-          <strong>${escapeHtml(getStudentName(student))}</strong>
-          <small>${escapeHtml(student.email || 'Email non renseigné')}</small>
-        </div>
-        <div class="sbi-late-badges">
-          <span class="sbi-late-badge">${lateness.lateCount} cours en retard</span>
-          <span class="sbi-late-badge is-soft">Retard max : ${lateness.maxDaysLate} j</span>
-        </div>
+  ficheEl.innerHTML = `
+    <div class="sbi-late-fiche-head">
+      <div>
+        <h3>${escapeHtml(getStudentName(student))}</h3>
+        <p>${escapeHtml(student.email || 'Email non renseigné')}</p>
       </div>
-      <ul class="sbi-late-courses">
-        ${courses.map((course) => `
-          <li>
-            <span class="late-course-title">${escapeHtml(course.title)}</span>
-            <span class="late-course-meta">échéance ${formatDate(course.deadline)} · ${course.status === 'in_progress' ? 'en cours' : 'non commencé'}</span>
-            <span class="late-course-days">+${course.daysLate} j</span>
-          </li>
-        `).join('')}
-      </ul>
-    </article>
-  `;
-}
-
-function renderDropoutRow(row = {}) {
-  const student = row.student || {};
-  const lateness = row.lateness || {};
-  const courses = lateness.dropoutCourses || [];
-  return `
-    <article class="sbi-late-student is-dropout">
-      <div class="sbi-late-student-head">
-        <div>
-          <strong>${escapeHtml(getStudentName(student))}</strong>
-          <small>${escapeHtml(student.email || 'Email non renseigné')}</small>
-        </div>
-        <div class="sbi-late-badges">
-          <span class="sbi-late-badge is-amber">${lateness.dropoutCount} cours pas démarré${lateness.dropoutCount > 1 ? 's' : ''}</span>
-          <span class="sbi-late-badge is-soft">Depuis ${lateness.maxDaysSinceStart} j</span>
-        </div>
+      <div class="sbi-late-badges">
+        ${l.lateCount ? `<span class="sbi-late-badge">${l.lateCount} en retard</span>` : ''}
+        ${l.dropoutCount ? `<span class="sbi-late-badge is-amber">${l.dropoutCount} décrochage</span>` : ''}
+        <span class="sbi-late-badge is-q">${row.coverage === null ? 'Qualiopi N/A' : `Qualiopi ${row.coverage} %`}</span>
       </div>
-      <ul class="sbi-late-courses">
-        ${courses.map((course) => `
-          <li>
-            <span class="late-course-title">${escapeHtml(course.title)}</span>
-            <span class="late-course-meta">début prévu ${formatDate(course.start)} · non commencé</span>
-            <span class="late-course-days is-amber">+${course.daysSinceStart} j</span>
-          </li>
-        `).join('')}
-      </ul>
-    </article>
-  `;
-}
-
-function renderDropoutSection(result = {}) {
-  const warnings = [];
-  if (!result.datedStartCount) {
-    warnings.push('Aucun cours obligatoire avec date de début : décrochage non détectable.');
-  }
-  return `
-    <div class="sbi-late-dropout">
-      <h4>En décrochage <span class="sbi-late-d-kicker">${result.dropoutStudentCount} élève${result.dropoutStudentCount > 1 ? 's' : ''}</span></h4>
-      <p>Cours obligatoires dont la date de début recommandée est passée mais que l'élève n'a pas commencés (signal préventif, avant l'échéance — sans recouvrement avec le retard).</p>
-      ${warnings.map((warning) => `<div class="sbi-late-warning">${escapeHtml(warning)}</div>`).join('')}
-      ${result.dropoutStudentCount
-        ? `<div class="sbi-late-students-list">${result.dropoutRows.map(renderDropoutRow).join('')}</div>`
-        : '<div class="sbi-late-empty">Aucun élève en décrochage sur cette promotion.</div>'}
     </div>
-  `;
-}
 
-function renderQualiopiGapRow(row = {}) {
-  const student = row.student || {};
-  const missing = row.missing || [];
-  return `
-    <article class="sbi-late-gap">
-      <div class="sbi-late-gap-head">
-        <div>
-          <strong>${escapeHtml(getStudentName(student))}</strong>
-          <small>${escapeHtml(student.email || 'Email non renseigné')}</small>
-        </div>
-        <div class="sbi-late-badges">
-          <span class="sbi-late-badge is-q">${row.covered}/${row.total} preuves</span>
-          <span class="sbi-late-badge is-soft">${missing.length} manquante${missing.length > 1 ? 's' : ''}</span>
-        </div>
-      </div>
-      <ul class="sbi-late-q-missing">
-        ${missing.map((item) => `<li>${escapeHtml(item.title)}</li>`).join('')}
-      </ul>
-    </article>
-  `;
-}
+    <div class="sbi-late-fiche-section">
+      <h4>En retard <span class="sbi-late-d-kicker is-red">${l.lateCount}</span></h4>
+      ${l.lateCount ? renderCourseList(l.lateCourses, 'late') : '<div class="sbi-late-empty">Aucun cours en retard.</div>'}
+    </div>
 
-function renderQualiopiSection(promotion = {}) {
-  const q = getPromotionQualiopiCached(promotion);
-  if (!q.evidenceTotal) {
-    return `
-      <div class="sbi-late-qualiopi">
-        <h4>Couverture Qualiopi <span class="sbi-late-q-kicker">Preuves</span></h4>
-        <div class="sbi-late-warning">Aucune preuve Qualiopi (<code>isQualiopiEvidence</code>) dans le cursus de cette promotion.</div>
-      </div>
-    `;
-  }
-  const rate = q.coverageRate;
-  const rateLabel = rate === null ? 'N/A' : `${rate} %`;
-  const barWidth = rate === null ? 0 : rate;
-  const warnings = [];
-  if (!q.evidenceCourses) warnings.push('Aucune preuve de type cours : couverture non mesurable automatiquement en v1.');
-  if (q.evidenceNonCourse) warnings.push(`${q.evidenceNonCourse} preuve(s) hors-cours (devoir / examen / live) non mesurée(s) automatiquement en v1.`);
+    <div class="sbi-late-fiche-section">
+      <h4>En décrochage <span class="sbi-late-d-kicker">${l.dropoutCount}</span></h4>
+      ${l.dropoutCount ? renderCourseList(l.dropoutCourses, 'dropout') : '<div class="sbi-late-empty">Aucun cours non commencé (hors retard).</div>'}
+    </div>
 
-  return `
-    <div class="sbi-late-qualiopi">
-      <h4>Couverture Qualiopi <span class="sbi-late-q-kicker">Preuves</span></h4>
-      <p>Part des preuves de type cours réellement validées par les élèves rattachés.</p>
-      <div class="sbi-late-qbar"><span style="width:${barWidth}%"></span></div>
-      <div class="sbi-late-summary">
-        <div class="sbi-late-metric is-q"><strong>${rateLabel}</strong><span>couverture preuves cours</span></div>
-        <div class="sbi-late-metric"><strong>${q.evidenceCourses}</strong><span>preuves mesurables (cours)</span></div>
-        <div class="sbi-late-metric"><strong>${q.evidenceNonCourse}</strong><span>preuves hors-cours (v1 : non mesurées)</span></div>
-        <div class="sbi-late-metric"><strong>${q.studentsWithGaps.length}</strong><span>élèves avec preuves manquantes</span></div>
-      </div>
-      ${warnings.map((warning) => `<div class="sbi-late-warning">${escapeHtml(warning)}</div>`).join('')}
-      ${q.studentsWithGaps.length
-        ? `<div class="sbi-late-students-list">${q.studentsWithGaps.map(renderQualiopiGapRow).join('')}</div>`
-        : (q.evidenceCourses ? '<div class="sbi-late-empty">Toutes les preuves Qualiopi de type cours sont couvertes par les élèves. ✅</div>' : '')}
+    <div class="sbi-late-fiche-section">
+      <h4>Preuves Qualiopi <span class="sbi-late-q-kicker">${q.total ? `${q.covered}/${q.total}` : '—'}</span></h4>
+      ${q.total
+        ? (q.missing.length
+            ? `<ul class="sbi-late-q-missing">${q.missing.map((item) => `<li>${escapeHtml(item.title)} <span class="late-course-meta">— non validée</span></li>`).join('')}</ul>`
+            : '<div class="sbi-late-empty">Toutes les preuves cours validées. ✅</div>')
+        : '<div class="sbi-late-empty">Aucune preuve Qualiopi de type cours dans le cursus.</div>'}
     </div>
   `;
 }
@@ -801,29 +829,27 @@ function renderQualiopiSection(promotion = {}) {
 function renderDetail() {
   const detail = $('late-detail');
   if (!detail) return;
-  const promotion = promotions.find((item) => item.id === selectedPromotionId) || null;
-  if (!promotion) {
-    detail.innerHTML = '<div class="sbi-late-empty is-large">Sélectionnez une promotion pour voir les élèves en retard sur leur cursus.</div>';
+  if (!promotions.length) {
+    detail.innerHTML = '<div class="sbi-late-empty is-large">Aucune promotion à afficher.</div>';
     return;
   }
+  const promotion = promotions.find((item) => item.id === selectedPromotionId) || promotions[0];
+  selectedPromotionId = promotion.id;
+  const { global } = getPromotionRowsCached(promotion);
 
-  const result = getPromotionLatenessCached(promotion);
   const warnings = [];
-  if (!Array.isArray(promotion.coursePlan) || !promotion.coursePlan.length) {
-    warnings.push('coursePlan absent dans la promotion : dates estimées depuis le cursus modèle.');
-  }
-  if (!result.datedRequiredCount) {
-    warnings.push('Aucun cours obligatoire daté avec échéance : impossible de détecter un retard.');
-  }
-  if (!result.studentCount) {
-    warnings.push('Aucun élève rattaché à cette promotion (users.promotionId).');
-  }
+  if (!Array.isArray(promotion.coursePlan) || !promotion.coursePlan.length) warnings.push('coursePlan absent : dates estimées depuis le cursus modèle.');
+  if (!global.datedRequiredCount) warnings.push('Aucun cours obligatoire daté avec échéance : retard non détectable.');
+  if (!global.studentCount) warnings.push('Aucun élève rattaché à cette promotion (users.promotionId).');
+
+  const chip = (key, label, count) => `<button type="button" class="sbi-late-fchip ${studentFilter === key ? 'is-active' : ''}" data-filter="${key}">${label} <span>${count}</span></button>`;
 
   detail.innerHTML = `
-    <div class="sbi-late-panel-head">
-      <div>
-        <h3>${escapeHtml(getPromotionLabel(promotion))}</h3>
-        <p>${escapeHtml(promotion.formationName || 'Formation non renseignée')} · ${escapeHtml(promotion.curriculumTitle || 'Cursus non renseigné')}</p>
+    <div class="sbi-late-detail-head">
+      <div class="sbi-late-promo-pick">
+        <label for="late-promo-select">Promotion</label>
+        <select id="late-promo-select">${renderPromotionSelectOptions()}</select>
+        <p>${escapeHtml(promotion.formationName || 'Formation non renseignée')} · ${escapeHtml(promotion.curriculumTitle || 'Cursus non renseigné')} · ${formatDate(promotion.startDate)} → ${formatDate(promotion.endDate)}</p>
       </div>
       <div class="sbi-late-actions">
         <button type="button" class="sbi-late-btn is-primary" data-action="export-qualiopi">Exporter Qualiopi (CSV)</button>
@@ -832,27 +858,45 @@ function renderDetail() {
     </div>
 
     <div class="sbi-late-summary">
-      <div class="sbi-late-metric"><strong>${result.lateStudentCount}</strong><span>élèves en retard</span></div>
-      <div class="sbi-late-metric"><strong>${result.studentCount}</strong><span>élèves rattachés</span></div>
-      <div class="sbi-late-metric"><strong>${result.datedRequiredCount}</strong><span>cours obligatoires datés</span></div>
-      <div class="sbi-late-metric"><strong>${formatDate(todayIso())}</strong><span>date de référence</span></div>
+      <div class="sbi-late-metric"><strong>${global.lateStudentCount}</strong><span>en retard</span></div>
+      <div class="sbi-late-metric"><strong>${global.dropoutStudentCount}</strong><span>en décrochage</span></div>
+      <div class="sbi-late-metric is-q"><strong>${global.coverageRate === null ? 'N/A' : global.coverageRate + ' %'}</strong><span>couverture Qualiopi</span></div>
+      <div class="sbi-late-metric"><strong>${global.studentCount}</strong><span>élèves rattachés</span></div>
     </div>
 
     ${warnings.map((warning) => `<div class="sbi-late-warning">${escapeHtml(warning)}</div>`).join('')}
 
-    ${result.lateStudentCount
-      ? `<div class="sbi-late-students-list">${result.lateRows.map(renderStudentRow).join('')}</div>`
-      : '<div class="sbi-late-empty is-large">Aucun élève en retard sur les cours obligatoires datés de cette promotion. 🎉</div>'}
-
-    ${renderDropoutSection(result)}
-
-    ${renderQualiopiSection(promotion)}
+    <div class="sbi-late-md">
+      <aside class="sbi-late-md-list">
+        <input id="late-student-search" type="search" placeholder="Rechercher un élève..." value="${escapeHtml(studentSearch)}">
+        <div class="sbi-late-filters">
+          ${chip('all', 'Tous', global.studentCount)}
+          ${chip('late', 'Retard', global.lateStudentCount)}
+          ${chip('dropout', 'Décrochage', global.dropoutStudentCount)}
+          ${chip('gap', 'Preuves manq.', global.gapStudentCount)}
+        </div>
+        <select id="late-sort" class="sbi-late-sort">
+          <option value="difficulty">Trier : difficulté</option>
+          <option value="late">Trier : retard</option>
+          <option value="dropout">Trier : décrochage</option>
+          <option value="coverage">Trier : couverture ↑</option>
+          <option value="name">Trier : nom</option>
+        </select>
+        <div id="late-student-list" class="sbi-late-srows"></div>
+      </aside>
+      <section class="sbi-late-md-fiche">
+        <div id="late-student-fiche"></div>
+      </section>
+    </div>
   `;
+  const sortEl = $('late-sort');
+  if (sortEl) sortEl.value = studentSort;
+  renderStudentList();
+  renderStudentFiche();
 }
 
 function renderAll() {
   renderHeroMetric();
-  renderPromotionList();
   renderDetail();
 }
 
@@ -896,17 +940,18 @@ async function loadData() {
     await loadStudentsForPromotions();
     latenessByPromotion = new Map();
     qualiopiByPromotion = new Map();
+    rowsByPromotion = new Map();
 
     if (!selectedPromotionId && promotions.length) {
       // Sélectionne par défaut la promotion avec le plus d'élèves en retard.
-      const sorted = [...promotions].sort((a, b) => getPromotionLatenessCached(b).lateStudentCount - getPromotionLatenessCached(a).lateStudentCount);
+      const sorted = [...promotions].sort((a, b) => getPromotionRowsCached(b).global.lateStudentCount - getPromotionRowsCached(a).global.lateStudentCount);
       selectedPromotionId = sorted[0]?.id || promotions[0].id;
     }
     renderAll();
   } catch (error) {
     console.warn('[SBI Retards] Chargement impossible :', error);
-    const list = $('late-promotions-list');
-    if (list) list.innerHTML = '<div class="sbi-late-empty">Chargement impossible.</div>';
+    const detail = $('late-detail');
+    if (detail) detail.innerHTML = '<div class="sbi-late-empty is-large">Chargement impossible.</div>';
   } finally {
     loading = false;
     if (refreshBtn) refreshBtn.disabled = false;
@@ -926,22 +971,46 @@ function bindEvents() {
   $('late-refresh-btn')?.addEventListener('click', () => {
     latenessByPromotion = new Map();
     qualiopiByPromotion = new Map();
+    rowsByPromotion = new Map();
     loadData();
   });
-  $('late-search')?.addEventListener('input', () => {
-    renderPromotionList();
-  });
-  $('late-detail')?.addEventListener('click', (event) => {
+
+  // Délégation sur le conteneur détail (son innerHTML est ré-rendu en continu).
+  const detail = $('late-detail');
+  detail?.addEventListener('click', (event) => {
     if (event.target.closest?.('[data-action="export-qualiopi"]')) {
       exportSelectedPromotionQualiopi();
+      return;
+    }
+    const fchip = event.target.closest?.('[data-filter]');
+    if (fchip) {
+      studentFilter = fchip.dataset.filter || 'all';
+      detail.querySelectorAll('.sbi-late-fchip').forEach((el) => el.classList.toggle('is-active', el === fchip));
+      renderStudentList();
+      return;
+    }
+    const srow = event.target.closest?.('[data-student-id]');
+    if (srow) {
+      selectedStudentId = srow.dataset.studentId || '';
+      renderStudentList();
+      renderStudentFiche();
     }
   });
-  $('late-promotions-list')?.addEventListener('click', (event) => {
-    const button = event.target.closest?.('[data-promotion-id]');
-    if (!button) return;
-    selectedPromotionId = button.dataset.promotionId || '';
-    renderPromotionList();
-    renderDetail();
+  detail?.addEventListener('input', (event) => {
+    if (event.target.id === 'late-student-search') {
+      studentSearch = event.target.value || '';
+      renderStudentList();
+    }
+  });
+  detail?.addEventListener('change', (event) => {
+    if (event.target.id === 'late-promo-select') {
+      selectedPromotionId = event.target.value || '';
+      selectedStudentId = '';
+      renderDetail();
+    } else if (event.target.id === 'late-sort') {
+      studentSort = event.target.value || 'difficulty';
+      renderStudentList();
+    }
   });
 }
 

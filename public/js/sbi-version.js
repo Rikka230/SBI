@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.267',
+  version: '8.0P.167.268',
   branch: 'main',
   channel: 'Plan B - suivi eleves / Qualiopi',
-  stage: 'ecran eleves en retard : export CSV Qualiopi par promotion (metadonnees + 1 ligne/eleve : retard, decrochage, couverture preuves, preuves manquantes ; separateur ; + BOM pour Excel FR), lecture seule',
+  stage: 'refonte UI/UX ecran eleves en retard : maitre-detail (selecteur promotion + liste eleves filtrable/triable/recherche + fiche eleve consolidee retard/decrochage/Qualiopi), pour passage a l echelle',
   updatedAt: '2026-05-31',
-  label: 'SBI 8.0P.167.267 - export Qualiopi CSV par promotion (lot 4)'
+  label: 'SBI 8.0P.167.268 - refonte UI/UX eleves en retard (maitre-detail)'
 };
 
 export function getSbiVersionLabel() {
