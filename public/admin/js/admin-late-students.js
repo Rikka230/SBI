@@ -14,7 +14,7 @@
  * Hors périmètre v1 : relances, couverture Qualiopi, assiduité Live.
  */
 
-import { auth, db } from '/js/firebase-init.js';
+import { app, auth, db } from '/js/firebase-init.js';
 import { isSbiAdminLike } from '/js/sbi-permissions.js?v=8.0P.167.44';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js';
 import {
@@ -25,6 +25,11 @@ import {
   query,
   where
 } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
+import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js';
+
+const sbiFunctions = getFunctions(app, 'europe-west1');
+const callGetLiveAttendance = httpsCallable(sbiFunctions, 'getPromotionLiveAttendanceBatch');
+const callSendLateReminder = httpsCallable(sbiFunctions, 'sendLateStudentReminder');
 
 let mounted = false;
 let mountedView = null;
@@ -35,6 +40,7 @@ let studentsByPromotion = new Map();
 let latenessByPromotion = new Map();
 let qualiopiByPromotion = new Map();
 let rowsByPromotion = new Map();
+let liveByPromotion = new Map();
 let selectedPromotionId = '';
 let selectedStudentId = '';
 let studentFilter = 'all';
@@ -523,6 +529,182 @@ function exportSelectedPromotionQualiopi() {
   triggerCsvDownload(`qualiopi-${slugify(getPromotionLabel(promotion))}-${todayIso()}.csv`, csv);
 }
 
+// ── Export PDF / registre qualité (client-side, impression navigateur) ──────
+function registryStyles() {
+  return `
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'Inter','Segoe UI',Arial,sans-serif; font-size:11px; line-height:1.45; color:#0a1020; background:#fff; }
+    .reg { max-width:210mm; margin:0 auto; padding:16mm 14mm; }
+    .reg-head { display:flex; justify-content:space-between; align-items:center; gap:18px; padding-bottom:12px; margin-bottom:16px; border-bottom:2px solid #0051ff; }
+    .reg-head img { height:46px; width:auto; }
+    .reg-head .reg-title { text-align:center; flex:1; }
+    .reg-head h1 { font-size:17px; font-weight:900; color:#0051ff; letter-spacing:.02em; }
+    .reg-head p { font-size:12px; color:#5a6478; margin-top:3px; }
+    h2 { font-size:12px; font-weight:800; color:#0051ff; text-transform:uppercase; letter-spacing:.04em; margin:16px 0 8px; }
+    table { width:100%; border-collapse:collapse; }
+    .reg-meta td { padding:3px 0; vertical-align:top; }
+    .reg-meta td:first-child { font-weight:800; width:130px; color:#3a4459; }
+    .reg-table { border:1px solid #cdd6e6; }
+    .reg-table th { background:#eef3ff; font-weight:800; text-align:left; padding:6px 8px; border:1px solid #cdd6e6; }
+    .reg-table td { padding:5px 8px; border:1px solid #cdd6e6; }
+    .reg-table tbody tr:nth-child(even) { background:#f7faff; }
+    .reg-table .num { text-align:center; }
+    .reg-table .warn { color:#c0392b; font-weight:700; }
+    .reg-foot { margin-top:24px; padding-top:10px; border-top:1px solid #cdd6e6; text-align:center; color:#7a8499; font-size:9px; }
+    @media print { .reg { padding:10mm; } @page { size:A4; margin:8mm; } }
+  `;
+}
+
+function buildPromotionRegistryHtml(promotion = {}, adminEmail = '') {
+  const { global, rows } = computePromotionRows(promotion);
+  const origin = (typeof window !== 'undefined' && window.location && window.location.origin) ? window.location.origin : '';
+  const today = todayIso();
+
+  const studentRows = [...rows]
+    .sort((a, b) => {
+      if (b.lateness.lateCount !== a.lateness.lateCount) return b.lateness.lateCount - a.lateness.lateCount;
+      if (b.lateness.dropoutCount !== a.lateness.dropoutCount) return b.lateness.dropoutCount - a.lateness.dropoutCount;
+      return getStudentName(a.student).localeCompare(getStudentName(b.student), 'fr', { sensitivity: 'base' });
+    })
+    .map((row, index) => `
+      <tr>
+        <td class="num">${index + 1}</td>
+        <td>${escapeHtml(getStudentName(row.student))}</td>
+        <td>${escapeHtml(row.student.email || '—')}</td>
+        <td class="num ${row.lateness.lateCount ? 'warn' : ''}">${row.lateness.lateCount}</td>
+        <td class="num">${row.lateness.dropoutCount}</td>
+        <td class="num">${row.qualiopi.total ? `${row.qualiopi.covered}/${row.qualiopi.total}` : '—'}</td>
+        <td class="num">${row.coverage === null ? '—' : row.coverage + '%'}</td>
+      </tr>`).join('');
+
+  return `<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Registre suivi — ${escapeHtml(getPromotionLabel(promotion))}</title>
+<style>${registryStyles()}</style></head>
+<body><div class="reg">
+  <div class="reg-head">
+    <img src="${origin}/assets/Logo_SBI_Tome.png" alt="SBI">
+    <div class="reg-title"><h1>REGISTRE DE SUIVI PÉDAGOGIQUE</h1><p>${escapeHtml(promotion.formationName || 'Formation')}</p></div>
+    <img src="${origin}/assets/logo-qualiopi-cfa.png" alt="Qualiopi">
+  </div>
+
+  <table class="reg-meta">
+    <tr><td>Promotion</td><td>${escapeHtml(getPromotionLabel(promotion))}</td></tr>
+    <tr><td>Cursus</td><td>${escapeHtml(promotion.curriculumTitle || '—')}</td></tr>
+    <tr><td>Période</td><td>${formatDate(promotion.startDate)} → ${formatDate(promotion.endDate)}</td></tr>
+    <tr><td>Date d'édition</td><td>${formatDate(today)}</td></tr>
+    <tr><td>Édité par</td><td>${escapeHtml(adminEmail || '—')}</td></tr>
+  </table>
+
+  <h2>Synthèse</h2>
+  <table class="reg-table">
+    <thead><tr><th>Élèves</th><th>En retard</th><th>En décrochage</th><th>Preuves manquantes</th><th>Couverture Qualiopi</th><th>Cours oblig. datés</th></tr></thead>
+    <tbody><tr class="num">
+      <td class="num">${global.studentCount}</td>
+      <td class="num">${global.lateStudentCount}</td>
+      <td class="num">${global.dropoutStudentCount}</td>
+      <td class="num">${global.gapStudentCount}</td>
+      <td class="num">${global.coverageRate === null ? 'N/A' : global.coverageRate + '%'}</td>
+      <td class="num">${global.datedRequiredCount}</td>
+    </tr></tbody>
+  </table>
+
+  <h2>Détail par élève</h2>
+  <table class="reg-table">
+    <thead><tr><th class="num">#</th><th>Élève</th><th>Email</th><th>Retard</th><th>Décroch.</th><th>Preuves</th><th>Couv.</th></tr></thead>
+    <tbody>${studentRows || '<tr><td colspan="7">Aucun élève rattaché.</td></tr>'}</tbody>
+  </table>
+
+  <div class="reg-foot">Document de suivi pédagogique — Sport Business Institute / CFMFS · Confidentiel · Édité le ${formatDate(today)}</div>
+</div>
+<script>window.onload=function(){setTimeout(function(){window.print();},400);};</script>
+</body></html>`;
+}
+
+function exportSelectedPromotionRegistry() {
+  const promotion = promotions.find((item) => item.id === selectedPromotionId) || null;
+  if (!promotion) return;
+  const html = buildPromotionRegistryHtml(promotion, currentAdmin?.email || '');
+  const win = window.open('', `registre-${promotion.id}`, 'width=920,height=680,menubar=yes,toolbar=yes');
+  if (!win) {
+    alert('La fenêtre du registre a été bloquée par le navigateur. Autorise les pop-ups pour ce site, puis réessaie.');
+    return;
+  }
+  win.document.open();
+  win.document.write(html);
+  win.document.close();
+}
+
+// ── Assiduité Live (Cloud Function batch, chargement async non bloquant) ────
+async function ensureLiveAttendance(promotionId = '') {
+  if (!promotionId || liveByPromotion.has(promotionId)) return;
+  liveByPromotion.set(promotionId, { status: 'loading' });
+  try {
+    const res = await callGetLiveAttendance({ promotionId });
+    const data = res?.data || {};
+    liveByPromotion.set(promotionId, { status: 'ready', liveCount: data.liveCount || 0, byStudent: data.byStudent || {} });
+  } catch (error) {
+    console.warn('[SBI Retards] Assiduité live indisponible :', error?.message || error);
+    liveByPromotion.set(promotionId, { status: 'error' });
+  }
+  if (promotionId === selectedPromotionId) {
+    renderStudentFiche();
+  }
+}
+
+function renderLiveSection(studentId = '') {
+  const entry = liveByPromotion.get(selectedPromotionId);
+  if (!entry || entry.status === 'loading') {
+    return '<div class="sbi-late-fiche-section"><h4>Assiduité Live</h4><div class="sbi-late-empty">Chargement de l\'assiduité…</div></div>';
+  }
+  if (entry.status === 'error') {
+    return '<div class="sbi-late-fiche-section"><h4>Assiduité Live</h4><div class="sbi-late-empty">Assiduité live indisponible (function non déployée ou accès refusé).</div></div>';
+  }
+  const rec = entry.byStudent[studentId] || { liveCount: entry.liveCount || 0, attendedCount: 0 };
+  if (!rec.liveCount) {
+    return '<div class="sbi-late-fiche-section"><h4>Assiduité Live</h4><div class="sbi-late-empty">Aucun live cursus pour cette promotion.</div></div>';
+  }
+  const rate = Math.round((rec.attendedCount / rec.liveCount) * 100);
+  return `
+    <div class="sbi-late-fiche-section">
+      <h4>Assiduité Live <span class="sbi-late-q-kicker">${rec.attendedCount}/${rec.liveCount}</span></h4>
+      <div class="sbi-late-qbar"><span style="width:${rate}%"></span></div>
+      <div class="sbi-late-empty">${rate}% suivi (présence en direct ou replay) sur ${rec.liveCount} live${rec.liveCount > 1 ? 's' : ''} cursus.</div>
+    </div>`;
+}
+
+// ── Relance email d'un élève en retard (Cloud Function Brevo, confirmation) ──
+async function handleSendReminder(studentId = '') {
+  const promotion = promotions.find((item) => item.id === selectedPromotionId);
+  if (!promotion) return;
+  const row = getPromotionRowsCached(promotion).rows.find((item) => item.student.id === studentId);
+  if (!row) return;
+  const student = row.student;
+  const lateCourses = row.lateness.lateCourses || [];
+  const confirmed = window.confirm(
+    `Envoyer une relance par email à ${getStudentName(student)} (${student.email || 'sans email'}) ?\n\n`
+    + `${row.lateness.lateCount} cours en retard. L'élève recevra un email l'invitant à les rattraper.\n`
+    + `(1 relance max par 24h et par élève.)`
+  );
+  if (!confirmed) return;
+
+  const btn = document.querySelector('[data-action="send-reminder"]');
+  if (btn) { btn.disabled = true; btn.textContent = 'Envoi…'; }
+  try {
+    const res = await callSendLateReminder({
+      studentUid: studentId,
+      promotionId: promotion.id,
+      lateCount: row.lateness.lateCount,
+      lateCourses: lateCourses.map((course) => ({ title: course.title, deadline: course.deadline }))
+    });
+    window.alert(res?.data?.message || 'Relance envoyée.');
+  } catch (error) {
+    window.alert('Échec de la relance : ' + (error?.message || error));
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Relancer par email'; }
+  }
+}
+
 function ensureStyles() {
   if (document.getElementById('sbi-late-students-style')) return;
   const style = document.createElement('style');
@@ -626,6 +808,7 @@ function ensureStyles() {
     .sbi-late-fiche-section { margin-top:1rem; padding-top:.8rem; border-top:1px solid rgba(255,255,255,.08); }
     .sbi-late-fiche-section h4 { margin:0 0 .4rem; color:#fff; font-size:.92rem; display:flex; align-items:center; gap:.5rem; }
     .sbi-late-d-kicker.is-red { color:#ffb4a2; border-color:rgba(255,99,71,.3); }
+    .sbi-late-btn.sbi-late-mini { min-height:1.9rem; padding:0 .65rem; font-size:.76rem; }
     @media (max-width: 1100px) { .sbi-late-md { grid-template-columns:1fr; } .sbi-late-srows { max-height:none; } .sbi-late-summary { grid-template-columns:repeat(2,minmax(0,1fr)); } .sbi-late-detail-head { flex-direction:column; } }
     @media (max-width: 720px) { .sbi-late-hero { flex-direction:column; } .sbi-late-hero-metric { text-align:left; } .sbi-late-summary { grid-template-columns:1fr; } }
   `;
@@ -802,6 +985,7 @@ function renderStudentFiche() {
         ${l.lateCount ? `<span class="sbi-late-badge">${l.lateCount} en retard</span>` : ''}
         ${l.dropoutCount ? `<span class="sbi-late-badge is-amber">${l.dropoutCount} décrochage</span>` : ''}
         <span class="sbi-late-badge is-q">${row.coverage === null ? 'Qualiopi N/A' : `Qualiopi ${row.coverage} %`}</span>
+        ${l.lateCount ? `<button type="button" class="sbi-late-btn is-primary sbi-late-mini" data-action="send-reminder" data-student-id="${escapeHtml(student.id)}">Relancer par email</button>` : ''}
       </div>
     </div>
 
@@ -823,6 +1007,8 @@ function renderStudentFiche() {
             : '<div class="sbi-late-empty">Toutes les preuves cours validées. ✅</div>')
         : '<div class="sbi-late-empty">Aucune preuve Qualiopi de type cours dans le cursus.</div>'}
     </div>
+
+    ${renderLiveSection(student.id)}
   `;
 }
 
@@ -852,8 +1038,9 @@ function renderDetail() {
         <p>${escapeHtml(promotion.formationName || 'Formation non renseignée')} · ${escapeHtml(promotion.curriculumTitle || 'Cursus non renseigné')} · ${formatDate(promotion.startDate)} → ${formatDate(promotion.endDate)}</p>
       </div>
       <div class="sbi-late-actions">
-        <button type="button" class="sbi-late-btn is-primary" data-action="export-qualiopi">Exporter Qualiopi (CSV)</button>
-        <a class="sbi-late-btn" href="/admin/admin-cursus-dates-qa.html">Voir les dates du cursus</a>
+        <button type="button" class="sbi-late-btn is-primary" data-action="export-registry">Registre (PDF)</button>
+        <button type="button" class="sbi-late-btn" data-action="export-qualiopi">Export CSV</button>
+        <a class="sbi-late-btn" href="/admin/admin-cursus-dates-qa.html">Dates du cursus</a>
       </div>
     </div>
 
@@ -893,6 +1080,7 @@ function renderDetail() {
   if (sortEl) sortEl.value = studentSort;
   renderStudentList();
   renderStudentFiche();
+  ensureLiveAttendance(promotion.id);
 }
 
 function renderAll() {
@@ -941,6 +1129,7 @@ async function loadData() {
     latenessByPromotion = new Map();
     qualiopiByPromotion = new Map();
     rowsByPromotion = new Map();
+    liveByPromotion = new Map();
 
     if (!selectedPromotionId && promotions.length) {
       // Sélectionne par défaut la promotion avec le plus d'élèves en retard.
@@ -972,6 +1161,7 @@ function bindEvents() {
     latenessByPromotion = new Map();
     qualiopiByPromotion = new Map();
     rowsByPromotion = new Map();
+    liveByPromotion = new Map();
     loadData();
   });
 
@@ -980,6 +1170,15 @@ function bindEvents() {
   detail?.addEventListener('click', (event) => {
     if (event.target.closest?.('[data-action="export-qualiopi"]')) {
       exportSelectedPromotionQualiopi();
+      return;
+    }
+    if (event.target.closest?.('[data-action="export-registry"]')) {
+      exportSelectedPromotionRegistry();
+      return;
+    }
+    const remind = event.target.closest?.('[data-action="send-reminder"]');
+    if (remind) {
+      handleSendReminder(remind.dataset.studentId || '');
       return;
     }
     const fchip = event.target.closest?.('[data-filter]');

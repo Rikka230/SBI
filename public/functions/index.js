@@ -5090,6 +5090,151 @@ exports.getStudentLiveAttendance = onCall({
     return { success: true, attendanceByLiveId };
 });
 
+// SBI 8.0P.167.269 — Assiduité live agrégée par promotion (admin only, lecture seule).
+// Renvoie, pour chaque élève de la promotion, le nb de lives cursus (hors TEST) et
+// le nb suivis (présent OU replay vu). 1 requête attendance par live (pas N×M gets).
+exports.getPromotionLiveAttendanceBatch = onCall({
+    region: "europe-west1",
+    timeoutSeconds: 120,
+    memory: "512MiB"
+}, async (request) => {
+    const db = admin.firestore();
+    await requireAdminCaller(request, db);
+    const promotionId = cleanString(request.data?.promotionId, 180);
+    if (!promotionId) throw new HttpsError("invalid-argument", "Promotion manquante.");
+
+    const livesSnap = await db.collection("liveSessions").where("promotionId", "==", promotionId).get();
+    const lives = [];
+    livesSnap.forEach((docSnap) => {
+        const data = docSnap.data() || {};
+        if (data.isTestLive === true || data.testLive === true) return;
+        lives.push({ id: docSnap.id });
+    });
+
+    const presenceByLive = {};
+    for (const live of lives) {
+        presenceByLive[live.id] = {};
+        try {
+            const attSnap = await db.collection("liveSessions").doc(live.id).collection("attendance").get();
+            attSnap.forEach((attDoc) => {
+                const record = attDoc.data() || {};
+                presenceByLive[live.id][attDoc.id] = Boolean(record.joinedAt || record.lastTokenIssuedAt || record.watchedReplay === true);
+            });
+        } catch (error) {
+            console.warn("[SBI Live Attendance Batch] live ignoré", live.id, error?.message || error);
+        }
+    }
+
+    const roles = ["student", "eleve", "élève", "etudiant", "étudiant"];
+    const studentsSnap = await db.collection("users").where("promotionId", "==", promotionId).get();
+    const byStudent = {};
+    studentsSnap.forEach((studentDoc) => {
+        const data = studentDoc.data() || {};
+        if (!roles.includes(String(data.role || "").toLowerCase())) return;
+        let attended = 0;
+        for (const live of lives) {
+            if (presenceByLive[live.id] && presenceByLive[live.id][studentDoc.id]) attended += 1;
+        }
+        byStudent[studentDoc.id] = { liveCount: lives.length, attendedCount: attended };
+    });
+
+    return { success: true, liveCount: lives.length, byStudent };
+});
+
+// SBI 8.0P.167.269 — Relance email d'un élève en retard (admin only, Brevo).
+// OUTWARD-FACING : déclenché manuellement par l'admin, confirmation côté UI,
+// rate-limit serveur 1/24h/élève, journalisé. Pas d'envoi de masse.
+exports.sendLateStudentReminder = onCall({
+    region: "europe-west1",
+    secrets: [BREVO_API_KEY],
+    timeoutSeconds: 30,
+    memory: "256MiB"
+}, async (request) => {
+    const db = admin.firestore();
+    const caller = await requireAdminCaller(request, db);
+    const data = request.data || {};
+    const studentUid = cleanString(data.studentUid, 180);
+    const promotionId = cleanString(data.promotionId, 180);
+    if (!studentUid) throw new HttpsError("invalid-argument", "Élève manquant.");
+
+    const studentDoc = await db.collection("users").doc(studentUid).get();
+    if (!studentDoc.exists) throw new HttpsError("not-found", "Élève introuvable.");
+    const student = studentDoc.data() || {};
+    const roles = ["student", "eleve", "élève", "etudiant", "étudiant"];
+    if (!roles.includes(String(student.role || "").toLowerCase())) {
+        throw new HttpsError("failed-precondition", "Le compte ciblé n'est pas un élève.");
+    }
+    if (student.statut === "suspendu") {
+        throw new HttpsError("failed-precondition", "Compte élève suspendu.");
+    }
+    const email = cleanString(student.email || "", 180);
+    if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+        throw new HttpsError("failed-precondition", "Adresse email élève invalide.");
+    }
+
+    const lastSentMs = student.lateReminderLastSentAt?.toMillis?.() || 0;
+    if (lastSentMs && (Date.now() - lastSentMs) < 24 * 60 * 60 * 1000) {
+        throw new HttpsError("resource-exhausted", "Une relance a déjà été envoyée à cet élève il y a moins de 24h.");
+    }
+
+    const rawCourses = Array.isArray(data.lateCourses) ? data.lateCourses : [];
+    const courses = rawCourses
+        .map((item) => ({ title: cleanString(item?.title || "", 180), deadline: cleanString(item?.deadline || "", 40) }))
+        .filter((item) => item.title)
+        .slice(0, 30);
+    const lateCount = Number(data.lateCount) || courses.length;
+
+    const listHtml = courses.length
+        ? `<ul style="margin:12px 0; padding-left:20px;">${courses.map((c) => `<li>${escapeHtml(c.title)}${c.deadline ? ` — échéance ${escapeHtml(c.deadline)}` : ""}</li>`).join("")}</ul>`
+        : "";
+    const messageHtml = `
+        <p>Nous faisons le point sur ton avancement dans ta formation.</p>
+        <p>À ce jour, <strong>${lateCount > 0 ? `${lateCount} cours` : "certains cours"}</strong> de ton cursus sont en retard sur le planning prévu :</p>
+        ${listHtml}
+        <p>Merci de reprendre ces cours dès que possible pour rester dans les délais. En cas de difficulté, réponds simplement à cet email, nous t'accompagnerons.</p>
+    `;
+    const textContent = `Bonjour ${student.prenom || ""},\n\nÀ ce jour, ${lateCount > 0 ? lateCount + " cours" : "certains cours"} de ton cursus sont en retard :\n${courses.map((c) => `- ${c.title}${c.deadline ? " (échéance " + c.deadline + ")" : ""}`).join("\n")}\n\nMerci de reprendre ces cours au plus vite.\n\nSport Business Institute`;
+
+    try {
+        await sendBrevoTransactionalEmail({
+            sender: { name: SBI_SENDER_NAME, email: SBI_SENDER_EMAIL },
+            to: [{ email, name: `${student.prenom || ""} ${student.nom || ""}`.trim() || email }],
+            replyTo: { name: "Sport Business Institute", email: SBI_CONTACT_EMAIL },
+            subject: `SBI — point sur ton avancement${lateCount > 0 ? ` (${lateCount} cours à rattraper)` : ""}`,
+            htmlContent: renderSbiEmailTemplate({
+                prenom: student.prenom || "",
+                nomExpediteur: "Le suivi pédagogique SBI",
+                posteExpediteur: "Suivi pédagogique",
+                preheader: `${lateCount > 0 ? lateCount + " cours" : "Des cours"} à rattraper dans ton cursus.`,
+                messageHtml
+            }),
+            textContent
+        }, BREVO_API_KEY.value(), ["sbi_late_reminder"]);
+    } catch (error) {
+        console.error("[SBI Late Reminder] Brevo erreur :", error?.message || error);
+        throw new HttpsError("internal", "L'envoi de l'email a échoué (Brevo). Réessaie plus tard.");
+    }
+
+    await studentDoc.ref.update({
+        lateReminderLastSentAt: admin.firestore.FieldValue.serverTimestamp(),
+        lateReminderCount: admin.firestore.FieldValue.increment(1)
+    });
+
+    await safeWriteAccountAuditLog(db, {
+        type: "student.late_reminder_sent",
+        actorUid: caller.uid,
+        actorEmail: caller.email,
+        targetUid: studentUid,
+        targetEmail: email,
+        promotionId,
+        lateCoursesCount: lateCount,
+        reason: `Relance ${lateCount} cours en retard`,
+        source: "admin-late-students"
+    });
+
+    return { success: true, studentEmail: email, message: `Relance envoyée à ${email}` };
+});
+
 exports.resolveLiveReplay = onCall({
     region: "europe-west1",
     secrets: [DAILY_API_KEY],

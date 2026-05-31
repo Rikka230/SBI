@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.268',
+  version: '8.0P.167.269',
   branch: 'main',
   channel: 'Plan B - suivi eleves / Qualiopi',
-  stage: 'refonte UI/UX ecran eleves en retard : maitre-detail (selecteur promotion + liste eleves filtrable/triable/recherche + fiche eleve consolidee retard/decrochage/Qualiopi), pour passage a l echelle',
+  stage: 'ecran eleves en retard - 3 lots: export PDF registre (client), assiduite Live (Cloud Function getPromotionLiveAttendanceBatch admin-only), relance email Brevo (Cloud Function sendLateStudentReminder admin-only, confirmation + rate-limit 24h + audit)',
   updatedAt: '2026-05-31',
-  label: 'SBI 8.0P.167.268 - refonte UI/UX eleves en retard (maitre-detail)'
+  label: 'SBI 8.0P.167.269 - registre PDF + assiduite Live + relances Brevo (Plan B lots 5-6-7)'
 };
 
 export function getSbiVersionLabel() {
