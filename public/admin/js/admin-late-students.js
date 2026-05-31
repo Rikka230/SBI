@@ -245,44 +245,67 @@ function getCourseStatus(student = {}, courseId = '') {
 }
 
 /**
- * Calcule les cours en retard d'un élève pour un coursePlan donné.
- * Retard = cours réel obligatoire, échéance passée (< aujourd'hui),
- * statut élève != 'done'.
+ * Calcule, pour un élève et un coursePlan, deux signaux distincts sur les cours
+ * réels obligatoires (sans recouvrement entre eux) :
+ *  - RETARD     : échéance (deadline) dépassée ET statut != 'done'.
+ *  - DÉCROCHAGE : date de début recommandée dépassée ET statut == 'todo'
+ *                 (pas même commencé), tant que le cours n'est PAS déjà en retard
+ *                 → signal préventif, avant que l'échéance ne tombe.
  */
 function computeStudentLateness(student = {}, plan = [], today = todayIso()) {
   const lateCourses = [];
+  const dropoutCourses = [];
   plan.forEach((item) => {
     if (!isRealCourse(item)) return;
     if (!isRequiredItem(item)) return;
     const courseId = item.courseId;
     if (!courseId) return;
-    const deadline = getDeadlineDate(item);
-    if (!isIsoDate(deadline)) return;
-    if (deadline >= today) return; // échéance pas encore dépassée
     const status = getCourseStatus(student, courseId);
-    if (status === 'done') return; // cours terminé : pas en retard
-    const daysLate = Math.max(1, diffDaysInclusive(deadline, today) - 1);
-    lateCourses.push({
-      courseId,
-      title: getItemTitle(item),
-      deadline,
-      status,
-      daysLate
-    });
+    const deadline = getDeadlineDate(item);
+    const start = getStartDate(item);
+    const deadlinePassed = isIsoDate(deadline) && deadline < today;
+
+    if (deadlinePassed && status !== 'done') {
+      // RETARD (échéance dépassée, pas terminé)
+      lateCourses.push({
+        courseId,
+        title: getItemTitle(item),
+        deadline,
+        status,
+        daysLate: Math.max(1, diffDaysInclusive(deadline, today) - 1)
+      });
+    } else if (isIsoDate(start) && start < today && status === 'todo') {
+      // DÉCROCHAGE (début dépassé, pas commencé, pas déjà en retard)
+      dropoutCourses.push({
+        courseId,
+        title: getItemTitle(item),
+        start,
+        daysSinceStart: Math.max(1, diffDaysInclusive(start, today) - 1)
+      });
+    }
   });
+
   lateCourses.sort((a, b) => b.daysLate - a.daysLate);
+  dropoutCourses.sort((a, b) => b.daysSinceStart - a.daysSinceStart);
   const maxDaysLate = lateCourses.reduce((max, course) => Math.max(max, course.daysLate), 0);
+  const maxDaysSinceStart = dropoutCourses.reduce((max, course) => Math.max(max, course.daysSinceStart), 0);
+
   return {
     lateCourses,
     lateCount: lateCourses.length,
     maxDaysLate,
-    isLate: lateCourses.length > 0
+    isLate: lateCourses.length > 0,
+    dropoutCourses,
+    dropoutCount: dropoutCourses.length,
+    maxDaysSinceStart,
+    isDropout: dropoutCourses.length > 0
   };
 }
 
 function computePromotionLateness(promotion = {}) {
   const plan = getPlanForPromotion(promotion);
   const datedRequiredCount = plan.filter((item) => isRealCourse(item) && isRequiredItem(item) && isIsoDate(getDeadlineDate(item))).length;
+  const datedStartCount = plan.filter((item) => isRealCourse(item) && isRequiredItem(item) && isIsoDate(getStartDate(item))).length;
   const students = getStudentsForPromotion(promotion.id);
   const today = todayIso();
 
@@ -299,12 +322,23 @@ function computePromotionLateness(promotion = {}) {
       return getStudentName(a.student).localeCompare(getStudentName(b.student), 'fr', { sensitivity: 'base' });
     });
 
+  const dropoutRows = rows
+    .filter((row) => row.lateness.isDropout)
+    .sort((a, b) => {
+      if (b.lateness.maxDaysSinceStart !== a.lateness.maxDaysSinceStart) return b.lateness.maxDaysSinceStart - a.lateness.maxDaysSinceStart;
+      if (b.lateness.dropoutCount !== a.lateness.dropoutCount) return b.lateness.dropoutCount - a.lateness.dropoutCount;
+      return getStudentName(a.student).localeCompare(getStudentName(b.student), 'fr', { sensitivity: 'base' });
+    });
+
   return {
     plan,
     datedRequiredCount,
+    datedStartCount,
     studentCount: students.length,
     lateRows,
-    lateStudentCount: lateRows.length
+    lateStudentCount: lateRows.length,
+    dropoutRows,
+    dropoutStudentCount: dropoutRows.length
   };
 }
 
@@ -431,6 +465,13 @@ function ensureStyles() {
     .sbi-late-courses li .late-course-title { color:#fff; font-weight:600; }
     .sbi-late-courses li .late-course-meta { color:#9fb0cf; }
     .sbi-late-courses li .late-course-days { color:#ffb4a2; font-weight:800; white-space:nowrap; }
+    .sbi-late-courses li .late-course-days.is-amber { color:#ffd98a; }
+    .sbi-late-student.is-dropout { border-color:rgba(255,193,94,.22); background:rgba(255,193,94,.05); }
+    .sbi-late-badge.is-amber { border-color:rgba(255,193,94,.35); background:rgba(255,193,94,.14); color:#ffd98a; }
+    .sbi-late-dropout { margin-top:1.4rem; padding-top:1.1rem; border-top:1px solid rgba(255,255,255,.10); }
+    .sbi-late-dropout h4 { margin:0 0 .15rem; color:#fff; font-size:1rem; display:flex; align-items:center; gap:.5rem; }
+    .sbi-late-dropout h4 .sbi-late-d-kicker { font-size:.66rem; font-weight:800; letter-spacing:.1em; text-transform:uppercase; color:#ffd98a; border:1px solid rgba(255,193,94,.3); border-radius:999px; padding:.1rem .45rem; }
+    .sbi-late-dropout > p { margin:.1rem 0 .6rem; color:#9fb0cf; font-size:.8rem; }
     .sbi-late-qualiopi { margin-top:1.4rem; padding-top:1.1rem; border-top:1px solid rgba(255,255,255,.10); }
     .sbi-late-qualiopi h4 { margin:0 0 .15rem; color:#fff; font-size:1rem; display:flex; align-items:center; gap:.5rem; }
     .sbi-late-qualiopi h4 .sbi-late-q-kicker { font-size:.66rem; font-weight:800; letter-spacing:.1em; text-transform:uppercase; color:#67e8f9; border:1px solid rgba(103,232,249,.3); border-radius:999px; padding:.1rem .45rem; }
@@ -548,6 +589,52 @@ function renderStudentRow(row = {}) {
   `;
 }
 
+function renderDropoutRow(row = {}) {
+  const student = row.student || {};
+  const lateness = row.lateness || {};
+  const courses = lateness.dropoutCourses || [];
+  return `
+    <article class="sbi-late-student is-dropout">
+      <div class="sbi-late-student-head">
+        <div>
+          <strong>${escapeHtml(getStudentName(student))}</strong>
+          <small>${escapeHtml(student.email || 'Email non renseigné')}</small>
+        </div>
+        <div class="sbi-late-badges">
+          <span class="sbi-late-badge is-amber">${lateness.dropoutCount} cours pas démarré${lateness.dropoutCount > 1 ? 's' : ''}</span>
+          <span class="sbi-late-badge is-soft">Depuis ${lateness.maxDaysSinceStart} j</span>
+        </div>
+      </div>
+      <ul class="sbi-late-courses">
+        ${courses.map((course) => `
+          <li>
+            <span class="late-course-title">${escapeHtml(course.title)}</span>
+            <span class="late-course-meta">début prévu ${formatDate(course.start)} · non commencé</span>
+            <span class="late-course-days is-amber">+${course.daysSinceStart} j</span>
+          </li>
+        `).join('')}
+      </ul>
+    </article>
+  `;
+}
+
+function renderDropoutSection(result = {}) {
+  const warnings = [];
+  if (!result.datedStartCount) {
+    warnings.push('Aucun cours obligatoire avec date de début : décrochage non détectable.');
+  }
+  return `
+    <div class="sbi-late-dropout">
+      <h4>En décrochage <span class="sbi-late-d-kicker">${result.dropoutStudentCount} élève${result.dropoutStudentCount > 1 ? 's' : ''}</span></h4>
+      <p>Cours obligatoires dont la date de début recommandée est passée mais que l'élève n'a pas commencés (signal préventif, avant l'échéance — sans recouvrement avec le retard).</p>
+      ${warnings.map((warning) => `<div class="sbi-late-warning">${escapeHtml(warning)}</div>`).join('')}
+      ${result.dropoutStudentCount
+        ? `<div class="sbi-late-students-list">${result.dropoutRows.map(renderDropoutRow).join('')}</div>`
+        : '<div class="sbi-late-empty">Aucun élève en décrochage sur cette promotion.</div>'}
+    </div>
+  `;
+}
+
 function renderQualiopiGapRow(row = {}) {
   const student = row.student || {};
   const missing = row.missing || [];
@@ -648,6 +735,8 @@ function renderDetail() {
     ${result.lateStudentCount
       ? `<div class="sbi-late-students-list">${result.lateRows.map(renderStudentRow).join('')}</div>`
       : '<div class="sbi-late-empty is-large">Aucun élève en retard sur les cours obligatoires datés de cette promotion. 🎉</div>'}
+
+    ${renderDropoutSection(result)}
 
     ${renderQualiopiSection(promotion)}
   `;
