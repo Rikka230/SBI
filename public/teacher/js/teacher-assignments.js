@@ -214,6 +214,7 @@ function renderCorrectionDetail() {
     <p class="sbi-asg-status" data-asg-corr-status hidden></p>
     <div class="sbi-asg-actions">
       <button type="button" class="sbi-asg-btn primary" data-asg-correct="${escapeHtml(s.id)}">${corr ? 'Mettre à jour' : 'Enregistrer la correction'}</button>
+      <button type="button" class="sbi-asg-btn danger" data-asg-delsub="${escapeHtml(s.id)}">Supprimer ce dépôt</button>
     </div>
   `;
 }
@@ -271,6 +272,22 @@ function mountFormIfNeeded() {
   });
 }
 
+async function handleDeleteSubmission(submissionId, button) {
+  const sub = submissions.find((x) => x.id === submissionId);
+  const who = sub?.studentName || 'cet élève';
+  if (!window.confirm(`Supprimer le dépôt de ${who} ? Les fichiers seront effacés et l'élève pourra redéposer. Action définitive.`)) return;
+  button.disabled = true;
+  try {
+    await assignmentCallable('deleteAssignmentSubmission')({ submissionId });
+    selectedSubmissionId = '';
+    await loadData();
+  } catch (error) {
+    console.error('[SBI Assignments prof] suppression dépôt impossible :', error);
+    window.alert(getCallableMessage(error, 'Suppression du dépôt impossible.'));
+    button.disabled = false;
+  }
+}
+
 async function handleCorrect(submissionId, button) {
   const feedback = root()?.querySelector('#asg-feedback')?.value?.trim() || '';
   const noteInput = root()?.querySelector('#asg-note');
@@ -316,6 +333,8 @@ function bindEvents() {
   detail?.addEventListener('click', (e) => {
     const correctBtn = e.target.closest('[data-asg-correct]');
     if (correctBtn) { handleCorrect(correctBtn.dataset.asgCorrect, correctBtn); return; }
+    const delSubBtn = e.target.closest('[data-asg-delsub]');
+    if (delSubBtn) { handleDeleteSubmission(delSubBtn.dataset.asgDelsub, delSubBtn); return; }
     if (e.target.closest('[data-asg-edit]')) { mode = 'edit'; render(); return; }
     const openSub = e.target.closest('[data-open-sub]');
     if (openSub) { tab = 'correct'; selectedSubmissionId = openSub.dataset.openSub; mode = 'view'; render(); }

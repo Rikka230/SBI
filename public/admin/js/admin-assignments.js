@@ -283,6 +283,7 @@ function renderAdminCorrection(sub, a) {
     <p class="sbi-asg-status" data-asg-corr-status hidden></p>
     <div class="sbi-asg-actions">
       <button type="button" class="sbi-asg-btn primary" data-asg-correct="${escapeHtml(sub.id)}">${corr ? 'Mettre à jour la correction' : 'Enregistrer la correction'}</button>
+      <button type="button" class="sbi-asg-btn danger" data-asg-delsub="${escapeHtml(sub.id)}">Supprimer ce dépôt</button>
       <button type="button" class="sbi-asg-btn ghost" data-asg-close-sub>Fermer</button>
     </div>
   `;
@@ -352,6 +353,23 @@ async function handleDelete(assignmentId, button) {
   }
 }
 
+async function handleDeleteSubmission(submissionId, button) {
+  const subs = submissionsByAssignment.get(selectedId) || [];
+  const sub = subs.find((s) => s.id === submissionId);
+  const who = sub?.studentName || 'cet élève';
+  if (!window.confirm(`Supprimer le dépôt de ${who} ? Les fichiers seront effacés et l'élève pourra redéposer. Action définitive.`)) return;
+  button.disabled = true;
+  try {
+    await assignmentCallable('deleteAssignmentSubmission')({ submissionId });
+    selectedSubmissionId = '';
+    await loadData();
+  } catch (error) {
+    console.error('[SBI Assignments admin] suppression dépôt impossible :', error);
+    window.alert(getCallableMessage(error, 'Suppression du dépôt impossible.'));
+    button.disabled = false;
+  }
+}
+
 async function handleCorrect(submissionId, button) {
   const feedback = root()?.querySelector('#asg-admin-feedback')?.value?.trim() || '';
   const noteInput = root()?.querySelector('#asg-admin-note');
@@ -409,6 +427,8 @@ function bindEvents() {
     if (deleteBtn) { handleDelete(deleteBtn.dataset.asgDelete, deleteBtn); return; }
     const correctBtn = e.target.closest('[data-asg-correct]');
     if (correctBtn) { handleCorrect(correctBtn.dataset.asgCorrect, correctBtn); return; }
+    const delSubBtn = e.target.closest('[data-asg-delsub]');
+    if (delSubBtn) { handleDeleteSubmission(delSubBtn.dataset.asgDelsub, delSubBtn); return; }
     const openSub = e.target.closest('[data-open-sub]');
     if (openSub) { selectedSubmissionId = openSub.dataset.openSub; render(); return; }
     if (e.target.closest('[data-asg-close-sub]')) { selectedSubmissionId = ''; render(); return; }

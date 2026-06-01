@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.276',
+  version: '8.0P.167.277',
   branch: 'main',
   channel: 'Devoirs & Evaluations (depot eleve + correction prof)',
-  stage: 'admin : peut desormais SUPPRIMER un devoir/eval (Cloud Function deleteAssignment : supprime le devoir + ses depots + fichiers Storage best-effort) et CORRIGER un depot depuis le suivi (feedback + note), comme un prof. Suite au theme sombre admin .275.',
+  stage: 'suppression du depot d un seul eleve : Cloud Function deleteAssignmentSubmission (admin ou prof de la formation) supprime le doc + les fichiers Storage de CE depot, et permet a l eleve de redeposer. Bouton "Supprimer ce depot" cote admin + prof. Rappel : supprimer un devoir efface deja tous ses rendus (db + storage) via deleteAssignment.',
   updatedAt: '2026-06-01',
-  label: 'SBI 8.0P.167.276 - admin peut supprimer un devoir + corriger les depots'
+  label: 'SBI 8.0P.167.277 - suppression du depot d un eleve seul (admin/prof) + redepot possible'
 };
 
 export function getSbiVersionLabel() {

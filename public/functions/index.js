@@ -8896,3 +8896,55 @@ exports.deleteAssignment = onCall({
 
     return { success: true, deletedSubmissions: docs.length };
 });
+
+exports.deleteAssignmentSubmission = onCall({
+    region: "europe-west1",
+    timeoutSeconds: 30,
+    memory: "256MiB"
+}, async (request) => {
+    const db = admin.firestore();
+    const caller = await requireActiveCourseCaller(request, db);
+    if (!caller.isAdmin && !caller.isTeacher) {
+        throw new HttpsError("permission-denied", "Action réservée aux professeurs et administrateurs.");
+    }
+
+    const submissionId = cleanString(request.data && request.data.submissionId, 400);
+    if (!submissionId) throw new HttpsError("invalid-argument", "Dépôt manquant.");
+
+    const ref = db.collection("assignmentSubmissions").doc(submissionId);
+    const snap = await ref.get();
+    if (!snap.exists) throw new HttpsError("not-found", "Dépôt introuvable.");
+    const sub = snap.data() || {};
+    const formationId = cleanString(sub.formationId || "", 200);
+
+    if (!caller.isAdmin) {
+        const formationDoc = formationId ? await db.collection("formations").doc(formationId).get() : null;
+        const formation = formationDoc && formationDoc.exists ? formationDoc.data() : {};
+        if (!callerTeachesFormation(caller.data, formation, caller.uid, formationId)) {
+            throw new HttpsError("permission-denied", "Vous ne pouvez pas supprimer ce dépôt.");
+        }
+    }
+
+    await ref.delete();
+
+    const assignmentId = cleanString(sub.assignmentId || "", 200);
+    const studentUid = cleanString(sub.studentUid || "", 200);
+    if (assignmentId && studentUid) {
+        try {
+            await admin.storage().bucket().deleteFiles({ prefix: `assignment-submissions/${assignmentId}/${studentUid}/` });
+        } catch (error) {
+            console.warn("[SBI Submission Delete] nettoyage Storage non bloquant :", error && error.message ? error.message : error);
+        }
+    }
+
+    await safeWriteAccountAuditLog(db, {
+        type: "assignment.submission_deleted",
+        actorUid: caller.uid,
+        actorEmail: caller.email,
+        targetUid: studentUid,
+        changes: { submissionId, assignmentId },
+        source: "assignments"
+    });
+
+    return { success: true };
+});
