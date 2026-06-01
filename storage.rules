@@ -85,6 +85,44 @@ service firebase.storage {
         );
     }
 
+    function assignmentSubmissionDocPath(assignmentId, studentUid) {
+      return /databases/(default)/documents/assignmentSubmissions/$(assignmentId + '_' + studentUid);
+    }
+
+    function canReadAssignmentSubmissionFile(assignmentId, studentUid) {
+      return isAdmin()
+        || (isActiveUser() && request.auth.uid == studentUid)
+        || (
+          isTeacher()
+          && firestore.exists(assignmentSubmissionDocPath(assignmentId, studentUid))
+          && firestore.get(assignmentSubmissionDocPath(assignmentId, studentUid)).data.keys().hasAny(['formationId'])
+          && formationDocHasCurrentUser(firestore.get(assignmentSubmissionDocPath(assignmentId, studentUid)).data.formationId)
+        );
+    }
+
+    function validAssignmentSubmissionUpload(studentUid) {
+      return isActiveUser()
+        && request.auth.uid == studentUid
+        && request.resource.size < 40 * 1024 * 1024
+        && request.resource.metadata.keys().hasAny(['uploadedBy'])
+        && request.resource.metadata.uploadedBy == request.auth.uid
+        && request.resource.contentType != null
+        && (
+          (request.resource.contentType.matches('image/.*') && request.resource.contentType != 'image/svg+xml') ||
+          request.resource.contentType == 'application/pdf' ||
+          request.resource.contentType == 'application/msword' ||
+          request.resource.contentType == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+          request.resource.contentType == 'application/vnd.ms-powerpoint' ||
+          request.resource.contentType == 'application/vnd.openxmlformats-officedocument.presentationml.presentation' ||
+          request.resource.contentType == 'application/vnd.ms-excel' ||
+          request.resource.contentType == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+          request.resource.contentType == 'text/plain' ||
+          request.resource.contentType == 'text/csv' ||
+          request.resource.contentType == 'application/zip' ||
+          request.resource.contentType == 'application/x-zip-compressed'
+        );
+    }
+
     function canManageAvatar(userId) {
       return isActiveUser()
         && (
@@ -423,6 +461,21 @@ service firebase.storage {
         && validStudentDocumentUpload(studentId, documentId);
 
       allow delete: if canManageStudentDocument(studentId);
+    }
+
+    /* ============================================================
+       DÉPÔTS DEVOIRS & ÉVALUATIONS (8.0P.167.273)
+       ------------------------------------------------------------
+       Chemin : assignment-submissions/{assignmentId}/{studentUid}/{fileName}
+       Lecture : admin, élève propriétaire, prof de la formation du dépôt.
+       Upload  : élève propriétaire uniquement (40 Mo max, liste blanche de types).
+       Le dépôt est verrouillé après envoi (pas d'update élève).
+       ============================================================ */
+    match /assignment-submissions/{assignmentId}/{studentUid}/{fileName} {
+      allow read: if canReadAssignmentSubmissionFile(assignmentId, studentUid);
+      allow create: if validAssignmentSubmissionUpload(studentUid);
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
     }
 
     /* ============================================================

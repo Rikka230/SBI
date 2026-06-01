@@ -1,0 +1,138 @@
+/* SBI 8.0P.167.273 — Devoirs & Évaluations (admin / prof / élève) */
+
+.sbi-asg-page {
+  --asg-accent: var(--accent-blue, #2A57FF);
+  padding: 1.25rem;
+  max-width: 1280px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+.sbi-asg-page.is-teacher { --asg-accent: var(--accent-orange, #f97316); }
+
+.sbi-asg-head { margin-bottom: 1rem; }
+.sbi-asg-head h1 { font-size: 1.4rem; margin: 0 0 .25rem; color: var(--text-main, #111827); }
+.sbi-asg-head p { margin: 0; color: var(--text-muted, #6b7280); font-size: .92rem; }
+
+/* ---- Onglets / chips de filtre ---- */
+.sbi-asg-chips { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1rem 0; }
+.sbi-asg-chip {
+  display: inline-flex; align-items: center; gap: .4rem;
+  border: 1px solid var(--border-color, #e5e7eb);
+  background: #fff; color: var(--text-main, #111827);
+  border-radius: 999px; padding: .42rem .85rem; font-size: .85rem; font-weight: 600;
+  cursor: pointer; transition: all .15s ease;
+}
+.sbi-asg-chip:hover { border-color: var(--asg-accent); }
+.sbi-asg-chip.is-active { background: var(--asg-accent); color: #fff; border-color: var(--asg-accent); }
+.sbi-asg-chip .sbi-asg-count {
+  background: rgba(0,0,0,.08); border-radius: 999px; padding: 0 .45rem; font-size: .75rem; min-width: 1.2rem; text-align: center;
+}
+.sbi-asg-chip.is-active .sbi-asg-count { background: rgba(255,255,255,.25); }
+
+.sbi-asg-toolbar { display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; margin-bottom: .75rem; }
+.sbi-asg-search { flex: 1 1 220px; }
+.sbi-asg-search input,
+.sbi-asg-select {
+  width: 100%; box-sizing: border-box; padding: .55rem .8rem; font-size: .9rem;
+  border: 1px solid var(--border-color, #e5e7eb); border-radius: 10px; background: #f9fafb; color: var(--text-main, #111827);
+}
+
+/* ---- Shell maître-détail ---- */
+.sbi-asg-shell { display: grid; grid-template-columns: minmax(280px, 360px) 1fr; gap: 1rem; align-items: start; }
+@media (max-width: 880px) { .sbi-asg-shell { grid-template-columns: 1fr; } }
+
+.sbi-asg-list { display: flex; flex-direction: column; gap: .5rem; max-height: 72vh; overflow: auto; padding-right: .15rem; }
+.sbi-asg-item {
+  text-align: left; width: 100%; box-sizing: border-box; cursor: pointer;
+  border: 1px solid var(--border-color, #e5e7eb); border-radius: 12px; background: #fff;
+  padding: .7rem .8rem; transition: border-color .15s, box-shadow .15s;
+}
+.sbi-asg-item:hover { border-color: var(--asg-accent); }
+.sbi-asg-item.is-selected { border-color: var(--asg-accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--asg-accent) 22%, transparent); }
+.sbi-asg-item__title { font-weight: 700; color: var(--text-main, #111827); font-size: .95rem; display: flex; align-items: center; gap: .4rem; }
+.sbi-asg-item__meta { color: var(--text-muted, #6b7280); font-size: .8rem; margin-top: .25rem; display: flex; flex-wrap: wrap; gap: .35rem .6rem; }
+.sbi-asg-item__badges { margin-top: .45rem; display: flex; flex-wrap: wrap; gap: .35rem; }
+
+.sbi-asg-detail {
+  border: 1px solid var(--border-color, #e5e7eb); border-radius: 14px; background: #fff;
+  padding: 1.1rem 1.2rem; min-height: 300px;
+}
+.sbi-asg-detail__empty { color: var(--text-muted, #6b7280); text-align: center; padding: 3rem 1rem; }
+.sbi-asg-detail h2 { margin: 0 0 .4rem; font-size: 1.2rem; color: var(--text-main, #111827); }
+.sbi-asg-detail__sub { color: var(--text-muted, #6b7280); font-size: .88rem; margin: 0 0 .8rem; display: flex; flex-wrap: wrap; gap: .4rem .8rem; }
+.sbi-asg-consigne { white-space: pre-wrap; background: #f9fafb; border: 1px solid var(--border-color, #e5e7eb); border-radius: 10px; padding: .8rem; color: var(--text-main, #111827); font-size: .92rem; line-height: 1.5; }
+.sbi-asg-section-title { font-weight: 700; color: var(--text-main, #111827); margin: 1.1rem 0 .5rem; font-size: .98rem; }
+
+/* ---- Badges ---- */
+.sbi-asg-badge {
+  display: inline-flex; align-items: center; gap: .3rem; font-size: .73rem; font-weight: 700;
+  padding: .18rem .5rem; border-radius: 999px; border: 1px solid transparent; white-space: nowrap;
+}
+.sbi-asg-badge[data-tone="muted"]   { background: #f3f4f6; color: #6b7280; }
+.sbi-asg-badge[data-tone="info"]    { background: #eff6ff; color: #1d4ed8; }
+.sbi-asg-badge[data-tone="pending"] { background: #fef3c7; color: #92400e; }
+.sbi-asg-badge[data-tone="success"] { background: #dcfce7; color: #166534; }
+.sbi-asg-badge[data-tone="danger"]  { background: #fee2e2; color: #991b1b; }
+
+/* ---- Boutons ---- */
+.sbi-asg-btn {
+  border: 1px solid var(--border-color, #e5e7eb); background: #fff; color: var(--text-main, #111827);
+  border-radius: 10px; padding: .55rem .95rem; font-size: .88rem; font-weight: 600; cursor: pointer; transition: all .15s;
+}
+.sbi-asg-btn:hover { border-color: var(--asg-accent); }
+.sbi-asg-btn.primary { background: var(--asg-accent); border-color: var(--asg-accent); color: #fff; }
+.sbi-asg-btn.primary:hover { filter: brightness(1.05); }
+.sbi-asg-btn.ghost { background: transparent; }
+.sbi-asg-btn.danger { background: #fee2e2; border-color: #fecaca; color: #991b1b; }
+.sbi-asg-btn:disabled { opacity: .55; cursor: not-allowed; }
+.sbi-asg-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1rem; }
+
+/* ---- Formulaire ---- */
+.sbi-asg-form { display: flex; flex-direction: column; gap: .85rem; }
+.sbi-asg-form__row { display: flex; gap: .6rem; flex-wrap: wrap; }
+.sbi-asg-radio { flex: 1 1 160px; border: 1px solid var(--border-color, #e5e7eb); border-radius: 12px; padding: .6rem .8rem; cursor: pointer; display: flex; align-items: center; gap: .5rem; }
+.sbi-asg-radio.is-on { border-color: var(--asg-accent); background: color-mix(in srgb, var(--asg-accent) 8%, #fff); }
+.sbi-asg-radio input { accent-color: var(--asg-accent); }
+.sbi-asg-radio span { display: flex; flex-direction: column; font-weight: 700; color: var(--text-main, #111827); }
+.sbi-asg-radio small { font-weight: 500; color: var(--text-muted, #6b7280); }
+.sbi-asg-field { display: flex; flex-direction: column; gap: .35rem; }
+.sbi-asg-field > label { font-weight: 600; font-size: .85rem; color: var(--text-main, #111827); }
+.sbi-asg-req { color: #dc2626; }
+.sbi-asg-muted { color: var(--text-muted, #6b7280); font-weight: 400; }
+.sbi-asg-legend { font-weight: 600; font-size: .85rem; color: var(--text-main, #111827); }
+.sbi-asg-input, .sbi-asg-textarea {
+  width: 100%; box-sizing: border-box; padding: .6rem .8rem; font-size: .9rem;
+  border: 1px solid var(--border-color, #e5e7eb); border-radius: 10px; background: #f9fafb; color: var(--text-main, #111827); font-family: inherit;
+}
+.sbi-asg-textarea { resize: vertical; }
+.sbi-asg-form__grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: .85rem; }
+@media (max-width: 600px) { .sbi-asg-form__grid { grid-template-columns: 1fr; } }
+.sbi-asg-checks { display: flex; flex-wrap: wrap; gap: .5rem 1.2rem; }
+.sbi-asg-check { display: inline-flex; align-items: center; gap: .4rem; font-size: .88rem; color: var(--text-main, #111827); cursor: pointer; }
+.sbi-asg-check input { accent-color: var(--asg-accent); }
+.sbi-asg-form__actions { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: flex-end; margin-top: .4rem; }
+.sbi-asg-form__status { font-size: .86rem; margin: 0; }
+.sbi-asg-form__status[data-tone="error"] { color: #b91c1c; }
+.sbi-asg-form__status[data-tone="success"] { color: #166534; }
+.sbi-asg-form__status[data-tone="muted"] { color: var(--text-muted, #6b7280); }
+
+/* ---- Dépôt élève / fichiers ---- */
+.sbi-asg-drop { border: 1.5px dashed var(--border-color, #cbd5e1); border-radius: 12px; padding: 1rem; background: #f9fafb; }
+.sbi-asg-filelist { list-style: none; margin: .6rem 0 0; padding: 0; display: flex; flex-direction: column; gap: .4rem; }
+.sbi-asg-filelist li { display: flex; align-items: center; gap: .5rem; font-size: .86rem; background: #fff; border: 1px solid var(--border-color, #e5e7eb); border-radius: 8px; padding: .4rem .6rem; }
+.sbi-asg-filelist a { color: var(--asg-accent); text-decoration: none; font-weight: 600; }
+.sbi-asg-correction { border: 1px solid #bbf7d0; background: #f0fdf4; border-radius: 12px; padding: .9rem 1rem; }
+.sbi-asg-correction .sbi-asg-note { font-size: 1.4rem; font-weight: 800; color: #166534; }
+.sbi-asg-correction .sbi-asg-feedback { white-space: pre-wrap; margin-top: .4rem; color: var(--text-main, #111827); }
+
+/* ---- Suivi / table ---- */
+.sbi-asg-table { width: 100%; border-collapse: collapse; font-size: .86rem; }
+.sbi-asg-table th, .sbi-asg-table td { text-align: left; padding: .5rem .6rem; border-bottom: 1px solid var(--border-color, #eef2f7); }
+.sbi-asg-table th { color: var(--text-muted, #6b7280); font-weight: 600; }
+.sbi-asg-metrics { display: flex; flex-wrap: wrap; gap: .6rem; margin: .5rem 0 1rem; }
+.sbi-asg-metric { flex: 1 1 130px; border: 1px solid var(--border-color, #e5e7eb); border-radius: 12px; padding: .7rem .85rem; background: #fff; }
+.sbi-asg-metric strong { display: block; font-size: 1.4rem; color: var(--text-main, #111827); }
+.sbi-asg-metric span { font-size: .78rem; color: var(--text-muted, #6b7280); }
+
+.sbi-asg-status { font-size: .88rem; color: var(--text-muted, #6b7280); padding: .6rem 0; }
+.sbi-asg-status[data-tone="error"] { color: #b91c1c; }

@@ -20,6 +20,7 @@ export class StudentLeftPanel extends HTMLElement {
         <ul class="nav-menu">
           <li class="nav-item ${path.includes('dashboard.html') ? 'active' : ''}" data-sbi-href="/student/dashboard.html" role="link" tabindex="0">${ICONS.dashboard}<span class="nav-text">Mon Hub</span></li>
           <li class="nav-item ${path.includes('mes-cours.html') ? 'active' : ''}" data-sbi-href="/student/mes-cours.html" role="link" tabindex="0">${ICONS.formations}<span class="nav-text">Mes Cours</span></li>
+          <li class="nav-item ${path.includes('/student/assignments.html') ? 'active' : ''}" data-sbi-href="/student/assignments.html" role="link" tabindex="0">${ICONS.formations}<span class="nav-text">Mes Devoirs</span></li>
           <li class="nav-item ${path.includes('/student/lives.html') ? 'active' : ''}" data-sbi-href="/student/lives.html" role="link" tabindex="0">${ICONS.live}<span class="nav-text">Lives</span></li>
           <li class="nav-item ${path.includes('mon-profil.html') ? 'active' : ''}" data-sbi-href="/student/mon-profil.html" role="link" tabindex="0">${ICONS.profile}<span class="nav-text">Mon Profil & XP</span></li>
         </ul>

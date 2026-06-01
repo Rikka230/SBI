@@ -8516,3 +8516,341 @@ exports.adminCreateStudentDocumentRequest = onCall({
         message: warning || 'Demande de documents envoyée.'
     };
 });
+
+/* ============================================================
+   DEVOIRS & ÉVALUATIONS — 8.0P.167.273
+   ------------------------------------------------------------
+   - createOrUpdateAssignment    : création/édition (prof → pending_validation,
+     admin → publication directe possible).
+   - validateAssignment          : validation admin (approve / reject / archive).
+   - correctAssignmentSubmission : correction d'un dépôt (prof de la formation
+     ou admin) ; feedback + note (si évaluation).
+   - notifyAssignmentToProfs     : email Brevo aux profs de la formation après le
+     dépôt d'un élève (déclenché par l'élève après son dépôt).
+   ============================================================ */
+
+const ASSIGNMENT_ROLES_STUDENT = ["student", "eleve", "élève", "etudiant", "étudiant"];
+
+function callerTeachesFormation(callerData, formationData, callerUid, formationId) {
+    const profs = Array.isArray(formationData && formationData.profs) ? formationData.profs : [];
+    const fIds = Array.isArray(callerData && callerData.formationIds) ? callerData.formationIds : [];
+    return profs.includes(callerUid) || fIds.includes(formationId);
+}
+
+exports.createOrUpdateAssignment = onCall({
+    region: "europe-west1",
+    timeoutSeconds: 30,
+    memory: "256MiB"
+}, async (request) => {
+    const db = admin.firestore();
+    const caller = await requireActiveCourseCaller(request, db);
+    if (!caller.isAdmin && !caller.isTeacher) {
+        throw new HttpsError("permission-denied", "Seuls les professeurs et administrateurs peuvent créer un devoir.");
+    }
+
+    const data = request.data || {};
+    const assignmentId = cleanString(data.assignmentId, 200);
+    const kind = data.kind === "evaluation" ? "evaluation" : "devoir";
+    const title = cleanString(data.title, 200);
+    const consigne = cleanString(data.consigne, 8000);
+    const formationId = cleanString(data.formationId, 200);
+    const promotionId = cleanString(data.promotionId, 200);
+    const dueAt = cleanString(data.dueAt, 40);
+    const fileMode = data.submissionMode && data.submissionMode.file !== false;
+    const textMode = data.submissionMode && data.submissionMode.text === true;
+    const isQualiopiEvidence = data.isQualiopiEvidence === true;
+
+    if (!title) throw new HttpsError("invalid-argument", "Le titre est obligatoire.");
+    if (!formationId) throw new HttpsError("invalid-argument", "La formation est obligatoire.");
+    if (!fileMode && !textMode) throw new HttpsError("invalid-argument", "Au moins un mode de dépôt (fichier ou texte) est requis.");
+
+    let gradeMax = null;
+    if (kind === "evaluation") {
+        gradeMax = Number(data.gradeMax);
+        if (!Number.isFinite(gradeMax) || gradeMax <= 0 || gradeMax > 1000) gradeMax = 20;
+    }
+
+    const formationDoc = await db.collection("formations").doc(formationId).get();
+    if (!formationDoc.exists) throw new HttpsError("not-found", "Formation introuvable.");
+    const formation = formationDoc.data() || {};
+    const formationName = cleanString(formation.titre || formation.nom || formation.name || "", 200);
+
+    if (!caller.isAdmin && !callerTeachesFormation(caller.data, formation, caller.uid, formationId)) {
+        throw new HttpsError("permission-denied", "Vous n'enseignez pas dans cette formation.");
+    }
+
+    let promotionName = "";
+    if (promotionId) {
+        const promoDoc = await db.collection("promotions").doc(promotionId).get();
+        if (!promoDoc.exists) throw new HttpsError("not-found", "Promotion introuvable.");
+        const promo = promoDoc.data() || {};
+        const promoFormationId = cleanString(promo.formationId || "", 200);
+        if (promoFormationId && promoFormationId !== formationId) {
+            throw new HttpsError("failed-precondition", "La promotion ne correspond pas à la formation.");
+        }
+        promotionName = cleanString(promo.nom || promo.titre || promo.name || "", 200);
+    }
+
+    const requestedStatus = cleanString(data.status, 40);
+    let status;
+    if (caller.isAdmin) {
+        status = ["draft", "pending_validation", "published", "archived"].includes(requestedStatus) ? requestedStatus : "published";
+    } else {
+        status = requestedStatus === "draft" ? "draft" : "pending_validation";
+    }
+
+    const now = admin.firestore.FieldValue.serverTimestamp();
+    const base = {
+        kind,
+        title,
+        consigne,
+        formationId,
+        formationName,
+        promotionId: promotionId || "",
+        promotionName,
+        dueAt,
+        submissionMode: { file: fileMode, text: textMode },
+        gradeMax,
+        isQualiopiEvidence,
+        status,
+        updatedAt: now
+    };
+
+    let ref;
+    if (assignmentId) {
+        ref = db.collection("assignments").doc(assignmentId);
+        const snap = await ref.get();
+        if (!snap.exists) throw new HttpsError("not-found", "Devoir introuvable.");
+        const existing = snap.data() || {};
+        if (!caller.isAdmin) {
+            if (existing.createdBy !== caller.uid) {
+                throw new HttpsError("permission-denied", "Vous ne pouvez modifier que vos propres devoirs.");
+            }
+            if (!["draft", "rejected"].includes(existing.status)) {
+                throw new HttpsError("failed-precondition", "Ce devoir est déjà soumis ou publié : modification impossible.");
+            }
+        }
+        if (status === "pending_validation" || status === "published") {
+            base.rejectionReason = "";
+        }
+        await ref.set(base, { merge: true });
+    } else {
+        ref = db.collection("assignments").doc();
+        await ref.set({
+            ...base,
+            createdBy: caller.uid,
+            createdByRole: caller.isAdmin ? "admin" : "teacher",
+            createdByName: caller.name,
+            createdAt: now
+        });
+    }
+
+    await safeWriteAccountAuditLog(db, {
+        type: "assignment.upserted",
+        actorUid: caller.uid,
+        actorEmail: caller.email,
+        changes: { assignmentId: ref.id, kind, status, formationId, title },
+        source: "assignments"
+    });
+
+    return { success: true, assignmentId: ref.id, status };
+});
+
+exports.validateAssignment = onCall({
+    region: "europe-west1",
+    timeoutSeconds: 30,
+    memory: "256MiB"
+}, async (request) => {
+    const db = admin.firestore();
+    const caller = await requireAdminCaller(request, db);
+    const data = request.data || {};
+    const assignmentId = cleanString(data.assignmentId, 200);
+    const decision = ["approve", "reject", "archive", "republish"].includes(data.decision) ? data.decision : "approve";
+    const rejectionReason = cleanString(data.rejectionReason, 1000);
+    if (!assignmentId) throw new HttpsError("invalid-argument", "Devoir manquant.");
+
+    const ref = db.collection("assignments").doc(assignmentId);
+    const snap = await ref.get();
+    if (!snap.exists) throw new HttpsError("not-found", "Devoir introuvable.");
+
+    const statusMap = { approve: "published", reject: "rejected", archive: "archived", republish: "published" };
+    const status = statusMap[decision];
+    const now = admin.firestore.FieldValue.serverTimestamp();
+
+    await ref.set({
+        status,
+        validatedBy: caller.uid,
+        validatedByName: caller.name,
+        validatedAt: now,
+        rejectionReason: decision === "reject" ? rejectionReason : "",
+        updatedAt: now
+    }, { merge: true });
+
+    await safeWriteAccountAuditLog(db, {
+        type: "assignment.validated",
+        actorUid: caller.uid,
+        actorEmail: caller.email,
+        changes: { assignmentId, decision, status },
+        source: "assignments"
+    });
+
+    return { success: true, status };
+});
+
+exports.correctAssignmentSubmission = onCall({
+    region: "europe-west1",
+    timeoutSeconds: 30,
+    memory: "256MiB"
+}, async (request) => {
+    const db = admin.firestore();
+    const caller = await requireActiveCourseCaller(request, db);
+    if (!caller.isAdmin && !caller.isTeacher) {
+        throw new HttpsError("permission-denied", "Seuls les professeurs et administrateurs peuvent corriger.");
+    }
+
+    const data = request.data || {};
+    const submissionId = cleanString(data.submissionId, 400);
+    if (!submissionId) throw new HttpsError("invalid-argument", "Dépôt manquant.");
+
+    const ref = db.collection("assignmentSubmissions").doc(submissionId);
+    const snap = await ref.get();
+    if (!snap.exists) throw new HttpsError("not-found", "Dépôt introuvable.");
+    const sub = snap.data() || {};
+    const formationId = cleanString(sub.formationId || "", 200);
+
+    if (!caller.isAdmin) {
+        const formationDoc = formationId ? await db.collection("formations").doc(formationId).get() : null;
+        const formation = formationDoc && formationDoc.exists ? formationDoc.data() : {};
+        if (!callerTeachesFormation(caller.data, formation, caller.uid, formationId)) {
+            throw new HttpsError("permission-denied", "Vous ne pouvez pas corriger ce dépôt.");
+        }
+    }
+
+    const feedback = cleanString(data.feedback, 8000);
+    let gradeMax = Number(sub.gradeMax);
+    if (!Number.isFinite(gradeMax) || gradeMax <= 0) {
+        const aSnap = await db.collection("assignments").doc(cleanString(sub.assignmentId || "", 200)).get();
+        gradeMax = aSnap.exists ? Number(aSnap.data().gradeMax) : null;
+        if (!Number.isFinite(gradeMax) || gradeMax <= 0) gradeMax = null;
+    }
+
+    let note = null;
+    const rawNote = data.note;
+    if (rawNote !== undefined && rawNote !== null && String(rawNote).trim() !== "") {
+        note = Number(rawNote);
+        const cap = gradeMax || 20;
+        if (!Number.isFinite(note) || note < 0 || note > cap) {
+            throw new HttpsError("invalid-argument", `La note doit être comprise entre 0 et ${cap}.`);
+        }
+    }
+
+    if (!feedback && note === null) {
+        throw new HttpsError("invalid-argument", "Ajoutez au moins un retour ou une note.");
+    }
+
+    const now = admin.firestore.FieldValue.serverTimestamp();
+    await ref.set({
+        status: "corrected",
+        correction: {
+            feedback,
+            note,
+            gradeMax: gradeMax || null,
+            correctedBy: caller.uid,
+            correctedByName: caller.name,
+            correctedAt: now
+        },
+        updatedAt: now
+    }, { merge: true });
+
+    await safeWriteAccountAuditLog(db, {
+        type: "assignment.corrected",
+        actorUid: caller.uid,
+        actorEmail: caller.email,
+        targetUid: cleanString(sub.studentUid || "", 200),
+        changes: { submissionId, assignmentId: sub.assignmentId, note },
+        source: "assignments"
+    });
+
+    return { success: true };
+});
+
+exports.notifyAssignmentToProfs = onCall({
+    region: "europe-west1",
+    secrets: [BREVO_API_KEY],
+    timeoutSeconds: 30,
+    memory: "256MiB"
+}, async (request) => {
+    const db = admin.firestore();
+    const caller = await requireActiveCourseCaller(request, db);
+    const data = request.data || {};
+    const assignmentId = cleanString(data.assignmentId, 200);
+    if (!assignmentId) throw new HttpsError("invalid-argument", "Devoir manquant.");
+
+    const submissionId = `${assignmentId}_${caller.uid}`;
+    const subSnap = await db.collection("assignmentSubmissions").doc(submissionId).get();
+    if (!subSnap.exists) throw new HttpsError("not-found", "Dépôt introuvable.");
+    const sub = subSnap.data() || {};
+    if (sub.studentUid !== caller.uid) {
+        throw new HttpsError("permission-denied", "Ce dépôt ne vous appartient pas.");
+    }
+
+    const aSnap = await db.collection("assignments").doc(assignmentId).get();
+    const assignment = aSnap.exists ? (aSnap.data() || {}) : {};
+    const formationId = cleanString(assignment.formationId || sub.formationId || "", 200);
+    const formationDoc = formationId ? await db.collection("formations").doc(formationId).get() : null;
+    const profs = formationDoc && formationDoc.exists && Array.isArray(formationDoc.data().profs)
+        ? formationDoc.data().profs.slice(0, 25)
+        : [];
+
+    const recipients = [];
+    for (const profUid of profs) {
+        try {
+            const pdoc = await db.collection("users").doc(profUid).get();
+            if (!pdoc.exists) continue;
+            const p = pdoc.data() || {};
+            if (p.statut === "suspendu") continue;
+            const e = cleanString(p.email || "", 180);
+            if (e && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) {
+                recipients.push({ email: e, name: `${p.prenom || ""} ${p.nom || ""}`.trim() || e });
+            }
+        } catch (error) {
+            console.warn("[SBI Assignment Notify] prof ignoré", profUid, error && error.message ? error.message : error);
+        }
+    }
+
+    if (!recipients.length) {
+        return { success: true, notified: 0, message: "Aucun professeur à notifier." };
+    }
+
+    const kindLabel = assignment.kind === "evaluation" ? "évaluation" : "devoir";
+    const studentName = cleanString(sub.studentName || caller.name || "Un élève", 180);
+    const title = cleanString(assignment.title || "Devoir", 200);
+    const messageHtml = `
+        <p><strong>${escapeHtml(studentName)}</strong> vient de déposer son travail pour ${escapeHtml(kindLabel)} :</p>
+        <p style="font-size:16px;"><strong>${escapeHtml(title)}</strong>${assignment.formationName ? ` — ${escapeHtml(assignment.formationName)}` : ""}</p>
+        <p>Connecte-toi à ton espace professeur SBI, onglet « Devoirs &amp; Évaluations » → « À corriger », pour consulter le dépôt et le corriger.</p>
+    `;
+    const textContent = `${studentName} a déposé son travail pour ${kindLabel} : ${title}.\nConnecte-toi à ton espace professeur SBI (Devoirs & Évaluations -> À corriger) pour le corriger.`;
+
+    try {
+        await sendBrevoTransactionalEmail({
+            sender: { name: SBI_SENDER_NAME, email: SBI_SENDER_EMAIL },
+            to: recipients,
+            replyTo: { name: "Sport Business Institute", email: SBI_CONTACT_EMAIL },
+            subject: `SBI — nouveau dépôt à corriger : ${title}`,
+            htmlContent: renderSbiEmailTemplate({
+                prenom: "",
+                nomExpediteur: "Le suivi pédagogique SBI",
+                posteExpediteur: "Suivi pédagogique",
+                preheader: `${studentName} a déposé son travail pour « ${title} ».`,
+                messageHtml
+            }),
+            textContent
+        }, BREVO_API_KEY.value(), ["sbi_assignment_submitted"]);
+    } catch (error) {
+        console.error("[SBI Assignment Notify] Brevo erreur :", error && error.message ? error.message : error);
+        return { success: false, notified: 0, message: "Dépôt enregistré, mais l'email aux professeurs n'a pas pu partir." };
+    }
+
+    return { success: true, notified: recipients.length };
+});

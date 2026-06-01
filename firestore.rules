@@ -713,6 +713,86 @@ service cloud.firestore {
     }
 
     /* ============================================================
+       DEVOIRS & ÉVALUATIONS (8.0P.167.273)
+       ------------------------------------------------------------
+       assignments         : créés/édités/validés UNIQUEMENT via Cloud
+                             Functions (Admin SDK). Lecture par rôle ci-dessous.
+       assignmentSubmissions: dépôt élève (création client) ; correction prof
+                             via Cloud Function ; lecture par propriétaire / prof
+                             de la formation / admin.
+       ============================================================ */
+
+    function assignmentReadableByTeacher(data) {
+      return isTeacher()
+        && (
+          (data.keys().hasAny(['createdBy']) && data.createdBy == request.auth.uid)
+          || (
+            data.keys().hasAny(['formationId'])
+            && data.formationId is string
+            && (
+              formationDocHasCurrentUser(data.formationId)
+              || (currentUserHasFormationIds() && data.formationId in currentUser().formationIds)
+            )
+          )
+        );
+    }
+
+    function assignmentReadableByStudent(data) {
+      return isStudent()
+        && data.keys().hasAny(['status'])
+        && data.status == 'published'
+        && (
+          (
+            data.keys().hasAny(['promotionId'])
+            && data.promotionId is string
+            && data.promotionId != ''
+            && currentUserPromotionIdMatches(data.promotionId)
+          )
+          || (
+            (!data.keys().hasAny(['promotionId']) || data.promotionId == '')
+            && data.keys().hasAny(['formationId'])
+            && data.formationId is string
+            && (
+              formationDocHasCurrentUser(data.formationId)
+              || (currentUserHasFormationIds() && data.formationId in currentUser().formationIds)
+            )
+          )
+        );
+    }
+
+    function canReadAssignment(data) {
+      return isAdmin()
+        || assignmentReadableByTeacher(data)
+        || assignmentReadableByStudent(data);
+    }
+
+    function canReadAssignmentSubmission(data) {
+      return isAdmin()
+        || (
+          isActiveUser()
+          && data.keys().hasAny(['studentUid'])
+          && data.studentUid == request.auth.uid
+        )
+        || (
+          isTeacher()
+          && data.keys().hasAny(['formationId'])
+          && data.formationId is string
+          && (
+            formationDocHasCurrentUser(data.formationId)
+            || (currentUserHasFormationIds() && data.formationId in currentUser().formationIds)
+          )
+        );
+    }
+
+    function validStudentSubmissionCreate() {
+      return isActiveUser()
+        && request.resource.data.keys().hasAll(['assignmentId', 'studentUid', 'formationId', 'status'])
+        && request.resource.data.studentUid == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && !request.resource.data.keys().hasAny(['correction']);
+    }
+
+    /* ============================================================
        PUBLIC SITE SETTINGS
        ============================================================ */
 
@@ -978,6 +1058,29 @@ service cloud.firestore {
           ]));
 
       allow delete: if isAdmin();
+    }
+
+    /* ============================================================
+       DEVOIRS & ÉVALUATIONS
+       ============================================================ */
+
+    match /assignments/{assignmentId} {
+      allow get, list: if canReadAssignment(resource.data);
+
+      // Création / édition / validation / archivage : Cloud Functions (Admin SDK)
+      // uniquement, pour garantir le workflow draft → pending_validation → published.
+      allow create, update, delete: if false;
+    }
+
+    match /assignmentSubmissions/{submissionId} {
+      allow get, list: if canReadAssignmentSubmission(resource.data);
+
+      // Dépôt élève : création unique côté client (id = assignmentId_studentUid).
+      allow create: if validStudentSubmissionCreate();
+
+      // Verrouillé après dépôt : l'élève ne peut plus modifier/supprimer.
+      // Les corrections passent par Cloud Function (Admin SDK).
+      allow update, delete: if isAdmin();
     }
 
     /* ============================================================

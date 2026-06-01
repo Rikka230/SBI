@@ -20,6 +20,7 @@ export class TeacherLeftPanel extends HTMLElement {
         <ul class="nav-menu">
           <li class="nav-item ${path.includes('teacherindex.html') || path.includes('dashboard.html') ? 'active' : ''}" data-sbi-href="/teacher/dashboard.html" role="link" tabindex="0">${ICONS.dashboard}<span class="nav-text">Mon Espace</span></li>
           <li class="nav-item ${path.includes('mes-cours.html') ? 'active' : ''}" data-sbi-href="/teacher/mes-cours.html" role="link" tabindex="0">${ICONS.formations}<span class="nav-text">Formations & Cours</span></li>
+          <li class="nav-item ${path.includes('/teacher/assignments.html') ? 'active' : ''}" data-sbi-href="/teacher/assignments.html" role="link" tabindex="0">${ICONS.formations}<span class="nav-text">Devoirs & Évals</span></li>
           <li class="nav-item ${path.includes('/teacher/lives') ? 'active' : ''}" data-sbi-href="/teacher/lives.html" role="link" tabindex="0">${ICONS.live}<span class="nav-text">Lives</span></li>
           <li class="nav-item ${path.includes('mon-profil.html') ? 'active' : ''}" data-sbi-href="/teacher/mon-profil.html" role="link" tabindex="0">${ICONS.profile}<span class="nav-text">Mon Profil Public</span></li>
         </ul>

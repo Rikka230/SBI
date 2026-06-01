@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.272',
+  version: '8.0P.167.273',
   branch: 'main',
-  channel: 'Plan B - suivi eleves / Qualiopi',
-  stage: 'temps de connexion affiche en duree lisible (45 min / 1 h 30) sur fiche eleve + registre PDF (leve l ambiguite minutes/heures sous 1 h) ; CSV garde la valeur numerique en heures',
+  channel: 'Devoirs & Evaluations (depot eleve + correction prof)',
+  stage: 'nouveau module Devoirs & Evaluations : collections assignments / assignmentSubmissions, rules Firestore + Storage, 4 Cloud Functions (createOrUpdateAssignment, validateAssignment, correctAssignmentSubmission, notifyAssignmentToProfs), pages admin (creation + file de validation + suivi), prof (a corriger + correction), eleve (depot unique + correction). Formulaire de creation mutualise admin/prof. Brevo aux profs au depot.',
   updatedAt: '2026-06-01',
-  label: 'SBI 8.0P.167.272 - temps connexion en duree lisible (min/heures) sur fiche + PDF'
+  label: 'SBI 8.0P.167.273 - module Devoirs & Evaluations (admin/prof/eleve, depot + correction)'
 };
 
 export function getSbiVersionLabel() {
