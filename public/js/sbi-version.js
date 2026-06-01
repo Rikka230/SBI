@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.277',
+  version: '8.0P.167.278',
   branch: 'main',
   channel: 'Devoirs & Evaluations (depot eleve + correction prof)',
-  stage: 'suppression du depot d un seul eleve : Cloud Function deleteAssignmentSubmission (admin ou prof de la formation) supprime le doc + les fichiers Storage de CE depot, et permet a l eleve de redeposer. Bouton "Supprimer ce depot" cote admin + prof. Rappel : supprimer un devoir efface deja tous ses rendus (db + storage) via deleteAssignment.',
+  stage: 'registre PDF de suivi (ecran eleves en retard) : nouvelle section "Preuves d evaluation Qualiopi" reprenant les devoirs/evaluations marques isQualiopiEvidence de la promotion (ciblage promo ou formation-wide) avec, par eleve evalue, la note, la date de correction et le correcteur. Fenetre ouverte avant le fetch pour eviter le blocage popup.',
   updatedAt: '2026-06-01',
-  label: 'SBI 8.0P.167.277 - suppression du depot d un eleve seul (admin/prof) + redepot possible'
+  label: 'SBI 8.0P.167.278 - preuves Qualiopi (devoirs/evals) reprises dans le registre PDF de suivi'
 };
 
 export function getSbiVersionLabel() {

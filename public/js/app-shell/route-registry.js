@@ -572,7 +572,7 @@ async function mountAdminLateStudents({ url }) {
   window.__SBI_APP_SHELL_MOUNTING_LATE_STUDENTS = true;
 
   try {
-    const module = await import('/admin/js/admin-late-students.js?v=8.0P.167.272');
+    const module = await import('/admin/js/admin-late-students.js?v=8.0P.167.278');
     const cleanupLate = module.mountAdminLateStudents?.();
 
     if (typeof cleanupLate === 'function') {

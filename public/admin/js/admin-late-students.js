@@ -575,7 +575,43 @@ function registryStyles() {
   `;
 }
 
-function buildPromotionRegistryHtml(promotion = {}, adminEmail = '') {
+function tsToDateStr(value) {
+  const ms = toMillis(value);
+  if (!ms) return '—';
+  const d = new Date(ms);
+  return formatDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
+}
+
+function renderQualiopiAssignmentRows(evidence = []) {
+  if (!evidence.length) {
+    return '<tr><td colspan="6">Aucune preuve Qualiopi (devoir/évaluation) déclarée pour cette promotion.</td></tr>';
+  }
+  const rows = [];
+  evidence.forEach(({ assignment, submissions }) => {
+    const typeLabel = assignment.kind === 'evaluation' ? 'Évaluation' : 'Devoir';
+    const corrected = (submissions || []).filter((s) => s.status === 'corrected');
+    if (!corrected.length) {
+      rows.push(`<tr><td>${escapeHtml(assignment.title || '—')}</td><td>${typeLabel}</td><td colspan="4">Publié — aucune copie corrigée pour l'instant</td></tr>`);
+      return;
+    }
+    corrected.forEach((s) => {
+      const c = s.correction || {};
+      const hasNote = c.note !== null && c.note !== undefined && c.note !== '';
+      const note = hasNote ? `${c.note}/${c.gradeMax || assignment.gradeMax || 20}` : '—';
+      rows.push(`<tr>
+        <td>${escapeHtml(assignment.title || '—')}</td>
+        <td>${typeLabel}</td>
+        <td>${escapeHtml(s.studentName || '—')}</td>
+        <td class="num">${escapeHtml(note)}</td>
+        <td class="num">${tsToDateStr(c.correctedAt)}</td>
+        <td>${escapeHtml(c.correctedByName || '—')}</td>
+      </tr>`);
+    });
+  });
+  return rows.join('');
+}
+
+function buildPromotionRegistryHtml(promotion = {}, adminEmail = '', evidence = []) {
   const { global, rows } = computePromotionRows(promotion);
   const origin = (typeof window !== 'undefined' && window.location && window.location.origin) ? window.location.origin : '';
   const today = todayIso();
@@ -636,21 +672,83 @@ function buildPromotionRegistryHtml(promotion = {}, adminEmail = '') {
     <tbody>${studentRows || '<tr><td colspan="8">Aucun élève rattaché.</td></tr>'}</tbody>
   </table>
 
+  <h2>Preuves d'évaluation Qualiopi (devoirs &amp; évaluations)</h2>
+  <table class="reg-table">
+    <thead><tr><th>Évaluation / Devoir</th><th>Type</th><th>Élève évalué</th><th class="num">Note</th><th class="num">Corrigé le</th><th>Correcteur</th></tr></thead>
+    <tbody>${renderQualiopiAssignmentRows(evidence)}</tbody>
+  </table>
+
   <div class="reg-foot">Document de suivi pédagogique — Sport Business Institute / CFMFS · Confidentiel · Édité le ${formatDate(today)}</div>
 </div>
 <script>window.onload=function(){setTimeout(function(){window.print();},400);};</script>
 </body></html>`;
 }
 
-function exportSelectedPromotionRegistry() {
+// Charge les preuves Qualiopi (devoirs/évaluations) pour une promotion :
+// devoirs publiés marqués isQualiopiEvidence (ciblés sur la promo OU sur toute la
+// formation), avec leurs dépôts corrigés (= preuve d'évaluation des acquis).
+async function loadQualiopiAssignmentEvidence(promotion = {}) {
+  const seen = new Map();
+  const keep = (snap, extraFilter) => snap.forEach((d) => {
+    const a = { id: d.id, ...d.data() };
+    if (a.isQualiopiEvidence === true && a.status === 'published' && extraFilter(a)) seen.set(a.id, a);
+  });
+
+  try {
+    keep(await getDocs(query(collection(db, 'assignments'), where('promotionId', '==', promotion.id))), () => true);
+  } catch (error) {
+    console.warn('[SBI Retards] preuves devoirs (promo) indisponibles :', error?.message || error);
+  }
+
+  const formationId = promotion.formationId || promotion.formationID || '';
+  if (formationId) {
+    try {
+      keep(
+        await getDocs(query(collection(db, 'assignments'), where('formationId', '==', formationId))),
+        (a) => !a.promotionId || a.promotionId === '' || a.promotionId === promotion.id
+      );
+    } catch (error) {
+      console.warn('[SBI Retards] preuves devoirs (formation) indisponibles :', error?.message || error);
+    }
+  }
+
+  const evidence = [];
+  for (const assignment of seen.values()) {
+    const submissions = [];
+    try {
+      const ss = await getDocs(query(collection(db, 'assignmentSubmissions'), where('assignmentId', '==', assignment.id)));
+      ss.forEach((d) => submissions.push({ id: d.id, ...d.data() }));
+    } catch (error) {
+      console.warn('[SBI Retards] dépôts preuve indisponibles :', error?.message || error);
+    }
+    evidence.push({ assignment, submissions });
+  }
+  evidence.sort((a, b) => (a.assignment.title || '').localeCompare(b.assignment.title || '', 'fr', { sensitivity: 'base' }));
+  return evidence;
+}
+
+async function exportSelectedPromotionRegistry() {
   const promotion = promotions.find((item) => item.id === selectedPromotionId) || null;
   if (!promotion) return;
-  const html = buildPromotionRegistryHtml(promotion, currentAdmin?.email || '');
+
+  // Ouvrir la fenêtre tout de suite (geste utilisateur) pour éviter le blocage popup.
   const win = window.open('', `registre-${promotion.id}`, 'width=920,height=680,menubar=yes,toolbar=yes');
   if (!win) {
     alert('La fenêtre du registre a été bloquée par le navigateur. Autorise les pop-ups pour ce site, puis réessaie.');
     return;
   }
+  win.document.open();
+  win.document.write('<!doctype html><html lang="fr"><head><meta charset="UTF-8"><title>Registre…</title></head><body style="font-family:system-ui,sans-serif;padding:40px;color:#3a4459;">Génération du registre de suivi… un instant.</body></html>');
+  win.document.close();
+
+  let evidence = [];
+  try {
+    evidence = await loadQualiopiAssignmentEvidence(promotion);
+  } catch (error) {
+    console.warn('[SBI Retards] preuves Qualiopi devoirs non chargées :', error?.message || error);
+  }
+
+  const html = buildPromotionRegistryHtml(promotion, currentAdmin?.email || '', evidence);
   win.document.open();
   win.document.write(html);
   win.document.close();
