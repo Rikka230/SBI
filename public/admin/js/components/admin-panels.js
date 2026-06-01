@@ -5,7 +5,6 @@ import { dispatchComponentMounted } from './ready.js';
 const PROMOTIONS_ICON = '<svg viewBox="0 0 24 24"><path d="M7 3h10a2 2 0 0 1 2 2v3h-2V5H7v14h3v2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Zm3 4h4v2h-4V7Zm0 4h5v2h-5v-2Zm6.5 1A4.5 4.5 0 0 1 21 16.5c0 .84-.23 1.63-.63 2.3L22 20.43 20.43 22l-1.63-1.63A4.5 4.5 0 1 1 16.5 12Zm0 2a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Z"/></svg>';
 const CURSUS_ICON = '<svg viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v14a1 1 0 0 1-1.45.9L12 16.62 5.45 19.9A1 1 0 0 1 4 19V5Zm2 0v11.38l6-3 6 3V5H6Zm2 3h8v2H8V8Zm0 3h6v2H8v-2Z"/></svg>';
 const LATE_STUDENTS_ICON = '<svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8Zm.75-13h-1.5v6l5.25 3.15.75-1.23-4.5-2.67Z"/></svg>';
-const ASSIGNMENTS_ICON = '<svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Zm0 2 4 4h-4V4ZM8 13h8v2H8v-2Zm0 4h5v2H8v-2Zm0-8h3v2H8V9Z"/></svg>';
 
 function adminNavItem({ id, target, label, icon }) {
   const href = `/admin/index.html?tab=${target}`;
@@ -55,10 +54,6 @@ export class AdminLeftPanel extends HTMLElement {
             <span class="nav-text">Élèves en retard</span>
           </li>
           ${adminNavItem({ id:'nav-formations', target:'view-formations', label:'Formations', icon:ICONS.formations })}
-          <li class="nav-item" id="nav-assignments" data-href="/admin/admin-assignments.html" data-sbi-href="/admin/admin-assignments.html" data-sbi-route="admin-assignments" role="link" tabindex="0" title="Devoirs & évaluations avec dépôt élève">
-            ${ASSIGNMENTS_ICON}
-            <span class="nav-text">Devoirs & Évals</span>
-          </li>
           ${adminNavItem({ id:'nav-settings', target:'view-settings', label:'Serveur & Vidéos', icon:ICONS.settings })}
         </ul>
       </aside>
@@ -76,8 +71,8 @@ export class AdminLeftPanel extends HTMLElement {
       this.querySelector('#nav-promotions')?.classList.add('active');
     } else if (path.includes('admin-late-students.html')) {
       this.querySelector('#nav-late-students')?.classList.add('active');
-    } else if (path.includes('admin-assignments.html')) {
-      this.querySelector('#nav-assignments')?.classList.add('active');
+    } else if (path.includes('admin-assignments.html') || path.includes('formations-cours.html')) {
+      this.querySelector('#nav-formations')?.classList.add('active');
     } else if (path.includes('admin-cursus.html') || path.includes('admin-lives.html')) {
       this.querySelector('#nav-cursus')?.classList.add('active');
     } else if (path.includes('formations-cours.html')) {

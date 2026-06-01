@@ -595,7 +595,7 @@ async function mountAdminAssignments({ url }) {
   applyBodyRouteClassesFromDocument(doc, ['sbi-admin-surface']);
   replaceMainFromDocument(doc);
   updateAdminChromeFromDocument(doc, 'Devoirs & Évaluations - SBI Console');
-  setLeftNavActive('nav-assignments');
+  setLeftNavActive('nav-formations');
   updateUrlContext(url);
 
   window.__SBI_APP_SHELL_MOUNTING_ASSIGNMENTS = true;

@@ -20,7 +20,7 @@ export class TeacherLeftPanel extends HTMLElement {
         <ul class="nav-menu">
           <li class="nav-item ${path.includes('teacherindex.html') || path.includes('dashboard.html') ? 'active' : ''}" data-sbi-href="/teacher/dashboard.html" role="link" tabindex="0">${ICONS.dashboard}<span class="nav-text">Mon Espace</span></li>
           <li class="nav-item ${path.includes('mes-cours.html') ? 'active' : ''}" data-sbi-href="/teacher/mes-cours.html" role="link" tabindex="0">${ICONS.formations}<span class="nav-text">Formations & Cours</span></li>
-          <li class="nav-item ${path.includes('/teacher/assignments.html') ? 'active' : ''}" data-sbi-href="/teacher/assignments.html" role="link" tabindex="0">${ICONS.formations}<span class="nav-text">Devoirs & Évals</span></li>
+          <li class="nav-item ${path.includes('/teacher/assignments.html') ? 'active' : ''}" data-sbi-href="/teacher/assignments.html" role="link" tabindex="0"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Zm0 2 4 4h-4V4ZM8 13h8v2H8v-2Zm0 4h5v2H8v-2Zm0-8h3v2H8V9Z"/></svg><span class="nav-text">Devoirs & Évals</span></li>
           <li class="nav-item ${path.includes('/teacher/lives') ? 'active' : ''}" data-sbi-href="/teacher/lives.html" role="link" tabindex="0">${ICONS.live}<span class="nav-text">Lives</span></li>
           <li class="nav-item ${path.includes('mon-profil.html') ? 'active' : ''}" data-sbi-href="/teacher/mon-profil.html" role="link" tabindex="0">${ICONS.profile}<span class="nav-text">Mon Profil Public</span></li>
         </ul>

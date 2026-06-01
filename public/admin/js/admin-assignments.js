@@ -13,7 +13,7 @@
 import { auth, db } from '/js/firebase-init.js';
 import { isSbiAdminLike } from '/js/sbi-permissions.js?v=8.0P.167.44';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js';
-import { collection, getDocs } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
+import { collection, getDocs, doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
 import {
   escapeHtml,
   kindMeta,
@@ -61,9 +61,11 @@ function setStatus(message, tone = 'muted') {
 
 async function loadCurrentAdmin(user) {
   if (!user) throw new Error('Connexion requise.');
-  const ok = await isSbiAdminLike(user.uid);
-  if (!ok) throw new Error('Accès réservé aux administrateurs.');
-  currentAdmin = { uid: user.uid };
+  const snap = await getDoc(doc(db, 'users', user.uid));
+  if (!snap.exists()) throw new Error('Profil admin introuvable.');
+  const profile = snap.data() || {};
+  if (!isSbiAdminLike(profile)) throw new Error('Accès réservé aux administrateurs.');
+  currentAdmin = { uid: user.uid, profile };
 }
 
 async function loadData() {
