@@ -42,6 +42,7 @@ let formations = [];
 let filter = 'pending';
 let search = '';
 let selectedId = '';
+let selectedSubmissionId = '';
 let mode = 'view'; // view | create | edit
 
 const FILTERS = [
@@ -217,7 +218,7 @@ function renderDetail() {
     <div class="sbi-asg-section-title">Suivi des dépôts (${subs.length}${subs.length ? ` · ${corrected} corrigés` : ''})</div>
     ${subs.length ? `
       <table class="sbi-asg-table">
-        <thead><tr><th>Élève</th><th>Déposé le</th><th>Statut</th><th>Note</th></tr></thead>
+        <thead><tr><th>Élève</th><th>Déposé le</th><th>Statut</th><th>Note</th><th></th></tr></thead>
         <tbody>
           ${subs.map((s) => {
             const ssm = subStatusMeta(s.status);
@@ -226,10 +227,12 @@ function renderDetail() {
               <td>${escapeHtml(formatDateTime(s.submittedAt) || '—')}</td>
               <td>${badge(ssm.label, ssm.tone)}</td>
               <td>${escapeHtml(formatNote(s.correction) || '—')}</td>
+              <td><button type="button" class="sbi-asg-btn ghost" data-open-sub="${escapeHtml(s.id)}" style="padding:.25rem .55rem;">${s.status === 'corrected' ? 'Revoir' : 'Corriger'}</button></td>
             </tr>`;
           }).join('')}
         </tbody>
       </table>` : '<p class="sbi-asg-status">Aucun dépôt pour le moment.</p>'}
+    ${selectedSubmissionId ? renderAdminCorrection(subs.find((s) => s.id === selectedSubmissionId), a) : ''}
   `;
 
   return `
@@ -246,6 +249,42 @@ function renderDetail() {
     ${a.consigne ? `<div class="sbi-asg-consigne">${escapeHtml(a.consigne)}</div>` : '<p class="sbi-asg-status">Aucune consigne saisie.</p>'}
     ${actions}
     ${a.status === 'published' || a.status === 'archived' ? tracking : ''}
+    <div class="sbi-asg-actions" style="margin-top:1.25rem; border-top:1px solid var(--border-color,#333); padding-top:.9rem;">
+      <button type="button" class="sbi-asg-btn danger" data-asg-delete="${escapeHtml(a.id)}">Supprimer ce devoir</button>
+    </div>
+  `;
+}
+
+function renderFileLinks(files) {
+  if (!Array.isArray(files) || !files.length) return '<p class="sbi-asg-status">Aucun fichier déposé.</p>';
+  return `<ul class="sbi-asg-filelist">${files.map((f) => `
+    <li>📎 ${f.downloadURL ? `<a href="${escapeHtml(f.downloadURL)}" target="_blank" rel="noopener">${escapeHtml(f.fileName || 'fichier')}</a>` : escapeHtml(f.fileName || 'fichier')}</li>
+  `).join('')}</ul>`;
+}
+
+function renderAdminCorrection(sub, a) {
+  if (!sub) return '';
+  const isEval = a.kind === 'evaluation';
+  const gradeMax = Number(a.gradeMax) > 0 ? Number(a.gradeMax) : 20;
+  const corr = sub.correction || null;
+  return `
+    <div class="sbi-asg-section-title">Correction — ${escapeHtml(sub.studentName || sub.studentUid || 'Élève')}</div>
+    ${renderFileLinks(sub.files)}
+    ${sub.text ? `<div class="sbi-asg-consigne" style="margin-top:.5rem;">${escapeHtml(sub.text)}</div>` : ''}
+    <div class="sbi-asg-field" style="margin-top:.6rem;">
+      <label for="asg-admin-feedback">Retour à l'élève</label>
+      <textarea id="asg-admin-feedback" class="sbi-asg-textarea" rows="4" placeholder="Points forts, axes d'amélioration…">${escapeHtml(corr?.feedback || '')}</textarea>
+    </div>
+    ${isEval ? `
+      <div class="sbi-asg-field" style="max-width:220px;">
+        <label for="asg-admin-note">Note (sur ${gradeMax})</label>
+        <input id="asg-admin-note" class="sbi-asg-input" type="number" min="0" max="${gradeMax}" step="0.5" value="${corr && Number.isFinite(Number(corr.note)) ? escapeHtml(String(corr.note)) : ''}">
+      </div>` : ''}
+    <p class="sbi-asg-status" data-asg-corr-status hidden></p>
+    <div class="sbi-asg-actions">
+      <button type="button" class="sbi-asg-btn primary" data-asg-correct="${escapeHtml(sub.id)}">${corr ? 'Mettre à jour la correction' : 'Enregistrer la correction'}</button>
+      <button type="button" class="sbi-asg-btn ghost" data-asg-close-sub>Fermer</button>
+    </div>
   `;
 }
 
@@ -292,6 +331,49 @@ async function handleValidate(decision, button) {
   }
 }
 
+async function handleDelete(assignmentId, button) {
+  const a = assignments.find((x) => x.id === assignmentId);
+  if (!a) return;
+  const subs = submissionsByAssignment.get(assignmentId) || [];
+  const warn = subs.length
+    ? `Supprimer « ${a.title || 'ce devoir'} » ET les ${subs.length} dépôt(s) associé(s) ? Cette action est définitive.`
+    : `Supprimer définitivement « ${a.title || 'ce devoir'} » ?`;
+  if (!window.confirm(warn)) return;
+  button.disabled = true;
+  try {
+    await assignmentCallable('deleteAssignment')({ assignmentId });
+    selectedId = '';
+    selectedSubmissionId = '';
+    await loadData();
+  } catch (error) {
+    console.error('[SBI Assignments admin] suppression impossible :', error);
+    window.alert(getCallableMessage(error, 'Suppression impossible.'));
+    button.disabled = false;
+  }
+}
+
+async function handleCorrect(submissionId, button) {
+  const feedback = root()?.querySelector('#asg-admin-feedback')?.value?.trim() || '';
+  const noteInput = root()?.querySelector('#asg-admin-note');
+  const note = noteInput ? noteInput.value : undefined;
+  const statusEl = root()?.querySelector('[data-asg-corr-status]');
+  const setCorrStatus = (m, tone = 'muted') => { if (statusEl) { statusEl.hidden = !m; statusEl.textContent = m; statusEl.dataset.tone = tone; } };
+  if (!feedback && (note === undefined || String(note).trim() === '')) {
+    setCorrStatus('Ajoute un retour ou une note.', 'error');
+    return;
+  }
+  button.disabled = true;
+  setCorrStatus('Enregistrement…');
+  try {
+    await assignmentCallable('correctAssignmentSubmission')({ submissionId, feedback, note });
+    await loadData();
+  } catch (error) {
+    console.error('[SBI Assignments admin] correction impossible :', error);
+    setCorrStatus(getCallableMessage(error, 'Correction impossible.'), 'error');
+    button.disabled = false;
+  }
+}
+
 function bindEvents() {
   const r = root();
   if (!r) return;
@@ -312,6 +394,7 @@ function bindEvents() {
     const item = e.target.closest('[data-asg-id]');
     if (!item) return;
     selectedId = item.dataset.asgId;
+    selectedSubmissionId = '';
     mode = 'view';
     teardownForm();
     render();
@@ -322,6 +405,13 @@ function bindEvents() {
     const validateBtn = e.target.closest('[data-asg-validate]');
     if (validateBtn) { handleValidate(validateBtn.dataset.asgValidate, validateBtn); return; }
     if (e.target.closest('[data-asg-edit]')) { mode = 'edit'; render(); return; }
+    const deleteBtn = e.target.closest('[data-asg-delete]');
+    if (deleteBtn) { handleDelete(deleteBtn.dataset.asgDelete, deleteBtn); return; }
+    const correctBtn = e.target.closest('[data-asg-correct]');
+    if (correctBtn) { handleCorrect(correctBtn.dataset.asgCorrect, correctBtn); return; }
+    const openSub = e.target.closest('[data-open-sub]');
+    if (openSub) { selectedSubmissionId = openSub.dataset.openSub; render(); return; }
+    if (e.target.closest('[data-asg-close-sub]')) { selectedSubmissionId = ''; render(); return; }
   });
 
   mountFormIfNeeded();

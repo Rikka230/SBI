@@ -8854,3 +8854,45 @@ exports.notifyAssignmentToProfs = onCall({
 
     return { success: true, notified: recipients.length };
 });
+
+exports.deleteAssignment = onCall({
+    region: "europe-west1",
+    timeoutSeconds: 60,
+    memory: "256MiB"
+}, async (request) => {
+    const db = admin.firestore();
+    const caller = await requireAdminCaller(request, db);
+    const assignmentId = cleanString(request.data && request.data.assignmentId, 200);
+    if (!assignmentId) throw new HttpsError("invalid-argument", "Devoir manquant.");
+
+    const ref = db.collection("assignments").doc(assignmentId);
+    const snap = await ref.get();
+    if (!snap.exists) throw new HttpsError("not-found", "Devoir introuvable.");
+
+    // Supprime les dépôts liés (par lots de 450) puis le devoir.
+    const subsSnap = await db.collection("assignmentSubmissions").where("assignmentId", "==", assignmentId).get();
+    const docs = subsSnap.docs;
+    for (let i = 0; i < docs.length; i += 450) {
+        const batch = db.batch();
+        docs.slice(i, i + 450).forEach((d) => batch.delete(d.ref));
+        await batch.commit();
+    }
+    await ref.delete();
+
+    // Nettoyage best-effort des fichiers déposés dans Storage.
+    try {
+        await admin.storage().bucket().deleteFiles({ prefix: `assignment-submissions/${assignmentId}/` });
+    } catch (error) {
+        console.warn("[SBI Assignment Delete] nettoyage Storage non bloquant :", error && error.message ? error.message : error);
+    }
+
+    await safeWriteAccountAuditLog(db, {
+        type: "assignment.deleted",
+        actorUid: caller.uid,
+        actorEmail: caller.email,
+        changes: { assignmentId, deletedSubmissions: docs.length },
+        source: "assignments"
+    });
+
+    return { success: true, deletedSubmissions: docs.length };
+});

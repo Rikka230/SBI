@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.275',
+  version: '8.0P.167.276',
   branch: 'main',
   channel: 'Devoirs & Evaluations (depot eleve + correction prof)',
-  stage: 'theme : adaptation du module Devoirs au thème SOMBRE admin (override scopé .sbi-admin-surface : fonds var(--bg-card/--bg-panel), texte var(--text-main), bordures var(--border-color)) ; les espaces prof/eleve restent en thème clair. Suite aux correctifs .274 (acces admin, bloc onglet Formations, icones prof/eleve).',
+  stage: 'admin : peut desormais SUPPRIMER un devoir/eval (Cloud Function deleteAssignment : supprime le devoir + ses depots + fichiers Storage best-effort) et CORRIGER un depot depuis le suivi (feedback + note), comme un prof. Suite au theme sombre admin .275.',
   updatedAt: '2026-06-01',
-  label: 'SBI 8.0P.167.275 - module Devoirs adapte au theme sombre admin (override .sbi-admin-surface)'
+  label: 'SBI 8.0P.167.276 - admin peut supprimer un devoir + corriger les depots'
 };
 
 export function getSbiVersionLabel() {
