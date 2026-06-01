@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.274',
+  version: '8.0P.167.275',
   branch: 'main',
   channel: 'Devoirs & Evaluations (depot eleve + correction prof)',
-  stage: 'correctifs module Devoirs & Evaluations : fix acces admin (isSbiAdminLike attend le profil, plus l uid) ; acces admin deplace du panel vers un BLOC dans l onglet Formations (index.html?tab=view-formations) ; icones distinctes (document) pour les onglets prof/eleve au lieu de l icone Formations.',
+  stage: 'theme : adaptation du module Devoirs au thème SOMBRE admin (override scopé .sbi-admin-surface : fonds var(--bg-card/--bg-panel), texte var(--text-main), bordures var(--border-color)) ; les espaces prof/eleve restent en thème clair. Suite aux correctifs .274 (acces admin, bloc onglet Formations, icones prof/eleve).',
   updatedAt: '2026-06-01',
-  label: 'SBI 8.0P.167.274 - fix acces admin Devoirs + bloc onglet Formations + icones distinctes prof/eleve'
+  label: 'SBI 8.0P.167.275 - module Devoirs adapte au theme sombre admin (override .sbi-admin-surface)'
 };
 
 export function getSbiVersionLabel() {

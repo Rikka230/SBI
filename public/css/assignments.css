@@ -136,3 +136,50 @@
 
 .sbi-asg-status { font-size: .88rem; color: var(--text-muted, #6b7280); padding: .6rem 0; }
 .sbi-asg-status[data-tone="error"] { color: #b91c1c; }
+
+/* ============================================================
+   ADAPTATION THÈME SOMBRE ADMIN (sbi-admin-surface)
+   Les espaces prof/élève restent en thème clair (base ci-dessus).
+   ============================================================ */
+.sbi-admin-surface .sbi-asg-chip,
+.sbi-admin-surface .sbi-asg-item,
+.sbi-admin-surface .sbi-asg-detail,
+.sbi-admin-surface .sbi-asg-metric,
+.sbi-admin-surface .sbi-asg-btn,
+.sbi-admin-surface .sbi-asg-radio {
+  background: var(--bg-card, #2c2c2c);
+  color: var(--text-main, #f3f4f6);
+  border-color: var(--border-color, #333);
+}
+.sbi-admin-surface .sbi-asg-search input,
+.sbi-admin-surface .sbi-asg-select,
+.sbi-admin-surface .sbi-asg-input,
+.sbi-admin-surface .sbi-asg-textarea,
+.sbi-admin-surface .sbi-asg-consigne,
+.sbi-admin-surface .sbi-asg-drop,
+.sbi-admin-surface .sbi-asg-filelist li {
+  background: var(--bg-panel, #1e1e1e);
+  color: var(--text-main, #f3f4f6);
+  border-color: var(--border-color, #333);
+}
+.sbi-admin-surface .sbi-asg-head h1,
+.sbi-admin-surface .sbi-asg-item__title,
+.sbi-admin-surface .sbi-asg-detail h2,
+.sbi-admin-surface .sbi-asg-section-title,
+.sbi-admin-surface .sbi-asg-metric strong,
+.sbi-admin-surface .sbi-asg-field > label,
+.sbi-admin-surface .sbi-asg-legend,
+.sbi-admin-surface .sbi-asg-check,
+.sbi-admin-surface .sbi-asg-radio span,
+.sbi-admin-surface .sbi-asg-table td {
+  color: var(--text-main, #f3f4f6);
+}
+.sbi-admin-surface .sbi-asg-table th { color: var(--text-muted, #9ca3af); }
+.sbi-admin-surface .sbi-asg-table th,
+.sbi-admin-surface .sbi-asg-table td { border-bottom-color: var(--border-color, #333); }
+.sbi-admin-surface .sbi-asg-radio.is-on { background: color-mix(in srgb, var(--asg-accent) 22%, var(--bg-card, #2c2c2c)); }
+/* États accentués : priment sur l'override sombre (spécificité supérieure). */
+.sbi-admin-surface .sbi-asg-chip.is-active { background: var(--asg-accent); color: #fff; border-color: var(--asg-accent); }
+.sbi-admin-surface .sbi-asg-btn.primary { background: var(--asg-accent); color: #fff; border-color: var(--asg-accent); }
+.sbi-admin-surface .sbi-asg-btn.danger { background: #7f1d1d; color: #fee2e2; border-color: #991b1b; }
+.sbi-admin-surface .sbi-asg-btn.ghost { background: transparent; }
