@@ -7622,6 +7622,58 @@ exports.emitCourseWorkflowNotifications = onCall({
     return result;
 });
 
+// SBI 8.0P.167.280 — Purge de notifications (maintenance, ADMIN only).
+// Sert a "remettre a zero" les notifs eleves bugguees heritees de l'ancien
+// systeme (creation client). scope: "students" (par defaut) ou "all".
+exports.adminPurgeNotifications = onCall({
+    region: "europe-west1",
+    timeoutSeconds: 300,
+    memory: "512MiB"
+}, async (request) => {
+    const db = admin.firestore();
+    const caller = await requireAdminCaller(request, db);
+    const scope = cleanString(request.data?.scope, 40) || "students";
+    const STUDENT_TYPES = ["new_course_published", "student_document_visible", "assignment_corrected", "live_replay_available"];
+
+    async function deleteQuery(makeQuery) {
+        let removed = 0;
+        // Boucle de suppression par lots jusqu'a epuisement.
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+            const snap = await makeQuery().limit(400).get();
+            if (snap.empty) break;
+            const batch = db.batch();
+            snap.docs.forEach((d) => batch.delete(d.ref));
+            await batch.commit();
+            removed += snap.size;
+            if (snap.size < 400) break;
+        }
+        return removed;
+    }
+
+    let deleted = 0;
+    const byType = {};
+    if (scope === "all") {
+        deleted = await deleteQuery(() => db.collection("notifications"));
+    } else {
+        for (const t of STUDENT_TYPES) {
+            const n = await deleteQuery(() => db.collection("notifications").where("type", "==", t));
+            byType[t] = n;
+            deleted += n;
+        }
+    }
+
+    await safeWriteAccountAuditLog(db, {
+        type: "notifications.purged",
+        actorUid: caller.uid,
+        actorEmail: caller.email,
+        changes: { scope, deleted, byType },
+        source: "notifications-maintenance"
+    });
+
+    return { success: true, scope, deleted, byType };
+});
+
 
 
 function buildStudentVisibleDocumentUrl() {
