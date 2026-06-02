@@ -881,6 +881,27 @@ service cloud.firestore {
     }
 
     /* ============================================================
+       DOCUMENTS DE FORMATION (8.0P.167.282)
+       Livret / règlement / planning / référentiel + autres, par formation.
+       Lecture : admin OU membre (élève/prof) de la formation. Écriture : admin.
+       (Visibilité membre = query where('formationId','in',[mes formations]).)
+       ============================================================ */
+    match /formationDocuments/{docId} {
+      allow get, list: if isAdmin()
+        || (
+          isActiveUser()
+          && resource.data.keys().hasAny(['formationId'])
+          && resource.data.formationId is string
+          && (
+            formationDocHasCurrentUser(resource.data.formationId)
+            || (currentUserHasFormationIds() && resource.data.formationId in currentUser().formationIds)
+          )
+        );
+
+      allow create, update, delete: if isAdmin();
+    }
+
+    /* ============================================================
        PROMOTIONS
        ============================================================ */
 

@@ -491,6 +491,32 @@ service firebase.storage {
     }
 
     /* ============================================================
+       DOCUMENTS DE FORMATION (8.0P.167.282)
+       Chemin : formation-documents/{formationId}/{docId}/{fileName}
+       Lecture : admin OU membre (élève/prof) de la formation.
+       Écriture : admin uniquement (50 Mo max, liste blanche PDF/image/bureautique).
+       ============================================================ */
+    match /formation-documents/{formationId}/{docId}/{fileName} {
+      allow read: if isAdmin() || formationDocHasCurrentUser(formationId);
+
+      allow create, update: if isAdmin()
+        && request.resource.size < 50 * 1024 * 1024
+        && request.resource.contentType != null
+        && (
+          request.resource.contentType == 'application/pdf' ||
+          (request.resource.contentType.matches('image/.*') && request.resource.contentType != 'image/svg+xml') ||
+          request.resource.contentType == 'application/msword' ||
+          request.resource.contentType == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+          request.resource.contentType == 'application/vnd.ms-excel' ||
+          request.resource.contentType == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+          request.resource.contentType == 'application/vnd.ms-powerpoint' ||
+          request.resource.contentType == 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+        );
+
+      allow delete: if isAdmin();
+    }
+
+    /* ============================================================
        SÉCURITÉ PAR DÉFAUT
        ============================================================ */
     match /{allPaths=**} {

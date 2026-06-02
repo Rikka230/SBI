@@ -117,6 +117,18 @@ function isStudentAssignments(url) {
   return normalizePath(url.pathname).toLowerCase() === '/student/assignments.html';
 }
 
+function isAdminFormationDocuments(url) {
+  return normalizePath(url.pathname).toLowerCase() === '/admin/formation-documents.html';
+}
+
+function isTeacherDocuments(url) {
+  return normalizePath(url.pathname).toLowerCase() === '/teacher/documents.html';
+}
+
+function isStudentDocuments(url) {
+  return normalizePath(url.pathname).toLowerCase() === '/student/documents.html';
+}
+
 function isAdminAuditLog(url) {
   return normalizePath(url.pathname).toLowerCase() === '/admin/admin-audit-log.html';
 }
@@ -194,6 +206,7 @@ function isAdminShellContext() {
     || path === '/admin/admin-cursus.html'
     || path === '/admin/admin-late-students.html'
     || path === '/admin/admin-assignments.html'
+    || path === '/admin/formation-documents.html'
     || path === '/admin/admin-audit-log.html';
 }
 
@@ -207,6 +220,7 @@ function isStudentShellContext() {
     || path.startsWith('/student/live-replay/')
     || path.startsWith('/student/live-replay.html/')
     || path === '/student/assignments.html'
+    || path === '/student/documents.html'
     || path === '/student/mon-profil.html';
 }
 
@@ -219,6 +233,7 @@ function isTeacherShellContext() {
     || path === '/teacher/lives-v1.html'
     || path === '/teacher/course-editor.html'
     || path === '/teacher/assignments.html'
+    || path === '/teacher/documents.html'
     || path === '/teacher/mon-profil.html';
 }
 
@@ -658,6 +673,79 @@ async function mountStudentAssignments({ url }) {
   return { viewKey: 'student:assignments' };
 }
 
+async function mountAdminFormationDocuments({ url }) {
+  cleanupCourseEditorV2Artifacts();
+  maybeCacheAdminIndexMain('leave-for-admin-formation-documents');
+
+  const doc = await fetchAdminDocument(url);
+
+  await ensureDocumentStyles(doc, url.href);
+  applyBodyRouteClassesFromDocument(doc, ['sbi-admin-surface']);
+  replaceMainFromDocument(doc);
+  updateAdminChromeFromDocument(doc, 'Documents de formation - SBI Admin');
+  setLeftNavActive('nav-formations');
+  updateUrlContext(url);
+
+  window.__SBI_APP_SHELL_MOUNTING_ADMIN_FORMATION_DOCS = true;
+  try {
+    const module = await import('/admin/js/admin-formation-documents.js?v=8.0P.167.282');
+    const cleanup = module.mountAdminFormationDocuments?.();
+    if (typeof cleanup === 'function') registerCleanup(cleanup, 'admin-formation-documents');
+  } finally {
+    window.__SBI_APP_SHELL_MOUNTING_ADMIN_FORMATION_DOCS = false;
+  }
+
+  return { viewKey: 'admin:formation-documents' };
+}
+
+async function mountTeacherDocuments({ url }) {
+  cleanupCourseEditorV2Artifacts();
+
+  const doc = await fetchAdminDocument(url);
+
+  await ensureDocumentStyles(doc, url.href);
+  applyBodyRouteClassesFromDocument(doc, ['sbi-teacher-surface', 'no-right-panel']);
+  replaceMainFromDocument(doc);
+  updateAdminChromeFromDocument(doc, 'Documents de formation - SBI Prof');
+  setLeftNavActive('/teacher/documents.html');
+  updateUrlContext(url);
+
+  window.__SBI_APP_SHELL_MOUNTING_TEACHER_DOCUMENTS = true;
+  try {
+    const module = await import('/teacher/js/teacher-documents.js?v=8.0P.167.282');
+    const cleanup = module.mountTeacherDocuments?.();
+    if (typeof cleanup === 'function') registerCleanup(cleanup, 'teacher-documents');
+  } finally {
+    window.__SBI_APP_SHELL_MOUNTING_TEACHER_DOCUMENTS = false;
+  }
+
+  return { viewKey: 'teacher:documents' };
+}
+
+async function mountStudentDocuments({ url }) {
+  cleanupCourseEditorV2Artifacts();
+
+  const doc = await fetchAdminDocument(url);
+
+  await ensureDocumentStyles(doc, url.href);
+  applyBodyRouteClassesFromDocument(doc, ['no-right-panel']);
+  replaceMainFromDocument(doc);
+  updateAdminChromeFromDocument(doc, 'Mes documents - SBI Student');
+  setLeftNavActive('/student/documents.html');
+  updateUrlContext(url);
+
+  window.__SBI_APP_SHELL_MOUNTING_STUDENT_DOCUMENTS = true;
+  try {
+    const module = await import('/student/js/student-documents.js?v=8.0P.167.282');
+    const cleanup = module.mountStudentDocuments?.();
+    if (typeof cleanup === 'function') registerCleanup(cleanup, 'student-documents');
+  } finally {
+    window.__SBI_APP_SHELL_MOUNTING_STUDENT_DOCUMENTS = false;
+  }
+
+  return { viewKey: 'student:documents' };
+}
+
 async function mountLiveSchedulerRoute({ url, role = 'admin' }) {
   cleanupCourseEditorV2Artifacts();
   if (role === 'admin') maybeCacheAdminIndexMain('leave-for-admin-lives');
@@ -1041,6 +1129,7 @@ export function createRouteRegistry() {
   routes.push({ id: 'teacher-course-editor-v2', canHandle(url) { return isTeacherCourseEditorV2(url) && isTeacherShellContext(); }, mount: mountTeacherCourseEditorV2 });
   routes.push({ id: 'teacher-courses', canHandle(url) { return isTeacherCourses(url) && isTeacherShellContext(); }, mount: mountTeacherCourses });
   routes.push({ id: 'teacher-assignments', canHandle(url) { return isTeacherAssignments(url) && isTeacherShellContext(); }, mount: mountTeacherAssignments });
+  routes.push({ id: 'teacher-documents', canHandle(url) { return isTeacherDocuments(url) && isTeacherShellContext(); }, mount: mountTeacherDocuments });
   routes.push({ id: 'teacher-lives-v2', canHandle(url) { return isTeacherLivesV2(url) && isTeacherShellContext(); }, mount: mountTeacherLivesV2 });
   routes.push({ id: 'teacher-lives-v1', canHandle(url) { return isTeacherLives(url) && isTeacherShellContext(); }, mount: mountTeacherLives });
   routes.push({ id: 'teacher-profile', canHandle(url) { return isTeacherProfile(url) && isTeacherShellContext(); }, mount: mountTeacherProfile });
@@ -1049,6 +1138,7 @@ export function createRouteRegistry() {
   routes.push({ id: 'student-courses', canHandle(url) { return isStudentCourses(url) && isStudentShellContext(); }, mount: mountStudentPage });
   routes.push({ id: 'student-lives', canHandle(url) { return isStudentLives(url) && isStudentShellContext(); }, mount: mountStudentLives });
   routes.push({ id: 'student-assignments', canHandle(url) { return isStudentAssignments(url) && isStudentShellContext(); }, mount: mountStudentAssignments });
+  routes.push({ id: 'student-documents', canHandle(url) { return isStudentDocuments(url) && isStudentShellContext(); }, mount: mountStudentDocuments });
   routes.push({ id: 'student-live-replay', canHandle(url) { return isStudentLiveReplay(url) && isStudentShellContext(); }, mount: mountStudentLiveReplay });
   routes.push({ id: 'admin-course-editor-v2', canHandle(url) { return isAdminCourseEditorV2(url) && isAdminShellContext(); }, mount: mountAdminCourseEditorV2 });
   routes.push({ id: 'admin-courses', canHandle(url) { return isAdminCourses(url) && isAdminShellContext(); }, mount: mountAdminCourses });
@@ -1060,6 +1150,7 @@ export function createRouteRegistry() {
   routes.push({ id: 'admin-cursus', canHandle(url) { return isAdminCursus(url) && isAdminShellContext(); }, mount: mountAdminCursus });
   routes.push({ id: 'admin-late-students', canHandle(url) { return isAdminLateStudents(url) && isAdminShellContext(); }, mount: mountAdminLateStudents });
   routes.push({ id: 'admin-assignments', canHandle(url) { return isAdminAssignments(url) && isAdminShellContext(); }, mount: mountAdminAssignments });
+  routes.push({ id: 'admin-formation-documents', canHandle(url) { return isAdminFormationDocuments(url) && isAdminShellContext(); }, mount: mountAdminFormationDocuments });
   routes.push({ id: 'admin-audit-log', canHandle(url) { return isAdminAuditLog(url) && isAdminShellContext(); }, mount: mountAdminAuditLog });
   routes.push({ id: 'admin-site-index', canHandle(url) { return isAdminSiteIndex(url) && isAdminShellContext(); }, mount: mountSiteIndex });
 
