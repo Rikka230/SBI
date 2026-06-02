@@ -4785,6 +4785,19 @@ exports.endLiveConference = onCall({
 
     const fileCleanup = await cleanupLiveSessionFiles({ db, liveId });
 
+    // SBI 8.0P.167.279 — Archive le replay vers Storage (best-effort). A la cloture
+    // le recording Daily est presque toujours encore en "processing" : ceci marque
+    // surtout replayArchive:"pending" ; le cron runLiveReplayArchival reprend ensuite
+    // toutes les 5 min jusqu'a reussite (puis supprime l'enregistrement Daily).
+    let replayArchive = "pending";
+    try {
+        const archiveResult = await archiveDailyReplayToStorage(db, apiKey, { ...liveSession, status: "ended" });
+        if (archiveResult?.archived) replayArchive = "archived";
+    } catch (error) {
+        console.warn("[SBI End Live] Archivage replay differe :", liveId, error?.message || error);
+        try { await liveRef.set({ replayArchive: "pending", updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true }); } catch (_) {}
+    }
+
     await updatePromotionLivePlanningForEnded({ promotionRef, promotion, liveSession, caller });
 
     await safeWriteAccountAuditLog(db, {
@@ -4805,7 +4818,8 @@ exports.endLiveConference = onCall({
         liveId,
         message: "Session live terminee.",
         providerClosed,
-        fileCleanup
+        fileCleanup,
+        replayArchive
     };
 });
 
@@ -4859,6 +4873,15 @@ exports.cancelLiveReplay = onCall({
         }
     }
 
+    // 1bis) Supprimer aussi la copie Storage du replay (SBI 8.0P.167.279).
+    let storageReplayDeleted = false;
+    try {
+        await admin.storage().bucket(SBI_STORAGE_BUCKET).deleteFiles({ prefix: `${LIVE_REPLAY_STORAGE_PREFIX}/${liveId}/` });
+        storageReplayDeleted = true;
+    } catch (error) {
+        console.warn("[SBI Cancel Live] suppression replay Storage ignoree :", liveId, error.message || error);
+    }
+
     // 2) Repasser le live en "a venir" (scheduled) + purge des champs replay.
     await liveRef.set({
         status: "scheduled",
@@ -4869,6 +4892,12 @@ exports.cancelLiveReplay = onCall({
         replayUrl: admin.firestore.FieldValue.delete(),
         replayAccessExpiresAt: admin.firestore.FieldValue.delete(),
         replayLastAccessResolvedAt: admin.firestore.FieldValue.delete(),
+        replayStoragePath: admin.firestore.FieldValue.delete(),
+        replayBytes: admin.firestore.FieldValue.delete(),
+        replayArchive: admin.firestore.FieldValue.delete(),
+        replayArchivedAt: admin.firestore.FieldValue.delete(),
+        replayDailyDeleted: admin.firestore.FieldValue.delete(),
+        replayDailyDeletedIds: admin.firestore.FieldValue.delete(),
         endedAt: admin.firestore.FieldValue.delete(),
         endedByUid: admin.firestore.FieldValue.delete(),
         endedByEmail: admin.firestore.FieldValue.delete(),
@@ -4925,7 +4954,7 @@ exports.cancelLiveReplay = onCall({
         source: "admin-live",
         liveId,
         promotionId,
-        changes: { roomName, deletedRecordings, deletedCount: deletedRecordings.length }
+        changes: { roomName, deletedRecordings, deletedCount: deletedRecordings.length, storageReplayDeleted }
     });
 
     return {
@@ -5043,6 +5072,291 @@ async function createLiveReplayAccessToken(db, { liveId = "", promotionId = "", 
         updatedAt: admin.firestore.FieldValue.serverTimestamp()
     });
     return { token, expiresAt };
+}
+
+// =======================================================================
+// SBI 8.0P.167.279 — Archivage des replays Live vers Firebase Storage
+// -----------------------------------------------------------------------
+// Economie de cout Daily : a la cloture (puis via cron de relance) on
+// telecharge le replay Daily vers Storage, on supprime l'enregistrement
+// Daily, et les eleves chargent la video DIRECTEMENT depuis Storage via
+// une URL signee (zero passage Cloud Function dans le hot path).
+// =======================================================================
+const LIVE_REPLAY_STORAGE_PREFIX = "live-replays";
+const LIVE_REPLAY_SIGNED_URL_TTL_MS = 6 * 60 * 60 * 1000;
+
+function liveReplayStoragePath(liveId = "") {
+    return `${LIVE_REPLAY_STORAGE_PREFIX}/${cleanString(liveId, 180)}/replay.mp4`;
+}
+
+function isDailyRecordingReady(recording = {}) {
+    const status = cleanString(recording.status || recording.state || "", 80).toLowerCase();
+    return ["finished", "ready", "completed", "uploaded", "available", "done"].includes(status);
+}
+
+async function createLiveReplaySignedUrl(storagePath = "") {
+    const path = cleanString(storagePath, 800);
+    if (!path) return "";
+    const bucket = admin.storage().bucket(SBI_STORAGE_BUCKET);
+    const [url] = await bucket.file(path).getSignedUrl({
+        version: "v4",
+        action: "read",
+        expires: Date.now() + LIVE_REPLAY_SIGNED_URL_TTL_MS
+    });
+    return url;
+}
+
+// Localise l'enregistrement Daily d'un live : id connu -> liste par room_name
+// -> fallback non filtre (match room_name puis fenetre temporelle). Logue l'ecart.
+async function findDailyRecordingForLive(apiKey, liveSession = {}) {
+    const liveId = cleanString(liveSession.id || "", 180);
+    const roomName = cleanString(liveSession.providerRoomName || liveSession.roomName || liveSession.liveTech?.roomName || getDailyRoomNameFromSession(liveSession), 180);
+    const existingRecordingId = cleanString(liveSession.replayRecordingId || liveSession.liveTech?.recordingId || liveSession.liveTech?.recordingInstanceId || "", 180);
+    let recordingId = existingRecordingId;
+    let recording = null;
+
+    if (recordingId) {
+        recording = await callDailyApi(apiKey, `/recordings/${encodeURIComponent(recordingId)}`, { allowNotFound: true });
+        if (!recording) recordingId = "";
+    }
+
+    if (!recordingId && roomName) {
+        const result = await callDailyApi(apiKey, `/recordings?room_name=${encodeURIComponent(roomName)}&limit=10`);
+        const recordings = Array.isArray(result?.data) ? result.data : [];
+        recording = pickDailyRecordingForLive(recordings);
+        recordingId = extractDailyRecordingId(recording || {});
+
+        if (!recordingId) {
+            const fallback = await callDailyApi(apiKey, "/recordings?limit=100");
+            const all = Array.isArray(fallback?.data) ? fallback.data : [];
+            const target = roomName.trim().toLowerCase();
+            const byRoom = all.filter((item) => cleanString(item.room_name || "", 180).trim().toLowerCase() === target);
+            let candidate = pickDailyRecordingForLive(byRoom);
+
+            if (!candidate) {
+                const startMs = Date.parse(liveSession.selectedStartAt || "");
+                const endMs = Date.parse(liveSession.selectedEndAt || "");
+                if (Number.isFinite(startMs)) {
+                    const lo = Math.floor((startMs - 60 * 60 * 1000) / 1000);
+                    const hi = Math.floor(((Number.isFinite(endMs) ? endMs : startMs) + DAILY_ROOM_KEEP_AFTER_MS) / 1000);
+                    const byTime = all
+                        .filter((item) => {
+                            const ts = Number(item.start_ts);
+                            return Number.isFinite(ts) && ts >= lo && ts <= hi;
+                        })
+                        .sort((a, b) => Number(b.start_ts || 0) - Number(a.start_ts || 0));
+                    candidate = pickDailyRecordingForLive(byTime);
+                }
+            }
+
+            if (candidate) {
+                recording = candidate;
+                recordingId = extractDailyRecordingId(candidate);
+            }
+
+            console.log("[SBI Live Replay] recordings fallback", JSON.stringify({
+                liveId,
+                roomName,
+                filteredCount: recordings.length,
+                unfilteredCount: all.length,
+                unfilteredTotal: Number(fallback?.total_count) || all.length,
+                matchedByRoom: byRoom.length,
+                resolvedRecordingId: recordingId || null,
+                sampleRoomNames: all.slice(0, 20).map((item) => cleanString(item.room_name || "", 180) || null)
+            }));
+        }
+    }
+
+    return { recording, recordingId, roomName };
+}
+
+async function markLiveReplayArchivePending(liveRef, liveSession = {}, reason = "") {
+    await liveRef.set({
+        replayArchive: "pending",
+        replayStatus: liveSession.replayStatus === "available" ? "available" : "processing",
+        liveTech: {
+            ...(liveSession.liveTech || {}),
+            replayArchive: "pending",
+            replayArchiveReason: cleanString(reason, 200),
+            replayArchiveLastTryAt: new Date().toISOString()
+        },
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+}
+
+// Telecharge (stream) le replay Daily vers Storage puis supprime l'enregistrement
+// Daily (cout). Renvoie { archived:true, storagePath, ... } ou { pending:true, reason }.
+async function archiveDailyReplayToStorage(db, apiKey, liveSession = {}) {
+    const liveId = cleanString(liveSession.id || "", 180);
+    if (!liveId) return { pending: true, reason: "missing_live_id" };
+    const liveRef = db.collection("liveSessions").doc(liveId);
+
+    if (cleanString(liveSession.replayProvider || "", 40) === "storage" && cleanString(liveSession.replayStoragePath || "", 800)) {
+        return { archived: true, storagePath: cleanString(liveSession.replayStoragePath, 800), alreadyArchived: true };
+    }
+
+    const { recording, recordingId, roomName } = await findDailyRecordingForLive(apiKey, liveSession);
+    if (!recordingId || !recording || !isDailyRecordingReady(recording)) {
+        await markLiveReplayArchivePending(liveRef, liveSession, "recording_not_ready");
+        return { pending: true, reason: "recording_not_ready" };
+    }
+
+    const access = await callDailyApi(apiKey, `/recordings/${encodeURIComponent(recordingId)}/access-link?valid_for_secs=3600`);
+    const downloadLink = cleanString(access?.download_link || access?.downloadLink || access?.url || "", 8000);
+    if (!downloadLink) {
+        await markLiveReplayArchivePending(liveRef, liveSession, "access_link_unavailable");
+        return { pending: true, reason: "access_link_unavailable" };
+    }
+
+    const storagePath = liveReplayStoragePath(liveId);
+    const bucket = admin.storage().bucket(SBI_STORAGE_BUCKET);
+    const file = bucket.file(storagePath);
+
+    const upstream = await fetch(downloadLink);
+    if (!upstream.ok || !upstream.body) {
+        await markLiveReplayArchivePending(liveRef, liveSession, `download_http_${upstream.status}`);
+        return { pending: true, reason: `download_http_${upstream.status}` };
+    }
+
+    await new Promise((resolve, reject) => {
+        const writeStream = file.createWriteStream({
+            resumable: false,
+            metadata: {
+                contentType: upstream.headers.get("content-type") || "video/mp4",
+                cacheControl: "private, max-age=0, no-transform"
+            }
+        });
+        const readStream = Readable.fromWeb(upstream.body);
+        readStream.on("error", reject);
+        writeStream.on("error", reject);
+        writeStream.on("finish", resolve);
+        readStream.pipe(writeStream);
+    });
+
+    // Verifie que le fichier est bien ecrit (taille > 0) AVANT de supprimer Daily.
+    let bytes = 0;
+    try {
+        const [metadata] = await file.getMetadata();
+        bytes = Number(metadata?.size) || 0;
+    } catch (error) {
+        bytes = 0;
+    }
+    if (!bytes) {
+        await file.delete({ ignoreNotFound: true }).catch(() => {});
+        await markLiveReplayArchivePending(liveRef, liveSession, "empty_upload");
+        return { pending: true, reason: "empty_upload" };
+    }
+
+    const durationSeconds = extractDailyRecordingDuration(recording || {});
+
+    await liveRef.set({
+        status: (liveSession.status === "ended" || liveSession.status === "replay_available") ? "replay_available" : (liveSession.status || "replay_available"),
+        replayStatus: "available",
+        replayProvider: "storage",
+        replayStoragePath: storagePath,
+        replayBytes: bytes,
+        replayArchive: "archived",
+        replayArchivedAt: admin.firestore.FieldValue.serverTimestamp(),
+        replayRecordingId: recordingId,
+        liveTech: {
+            ...(liveSession.liveTech || {}),
+            replayStatus: "available",
+            replayArchive: "archived",
+            recordingStatus: "ready",
+            recordingId,
+            recordingDurationSeconds: durationSeconds,
+            recordingUpdatedAt: new Date().toISOString()
+        },
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+
+    // Supprime les enregistrements Daily lies a ce live (cout). Best-effort.
+    const recordingIds = new Set([recordingId]);
+    if (roomName) {
+        try {
+            const list = await callDailyApi(apiKey, `/recordings?room_name=${encodeURIComponent(roomName)}&limit=100`);
+            (Array.isArray(list?.data) ? list.data : []).forEach((rec) => {
+                const id = extractDailyRecordingId(rec || {});
+                if (id) recordingIds.add(id);
+            });
+        } catch (error) {
+            console.warn("[SBI Live Replay Archive] list recordings ignored:", liveId, error.message || error);
+        }
+    }
+    const deletedRecordings = [];
+    for (const id of recordingIds) {
+        try {
+            await callDailyApi(apiKey, `/recordings/${encodeURIComponent(id)}`, { method: "DELETE", allowNotFound: true });
+            deletedRecordings.push(id);
+        } catch (error) {
+            console.warn("[SBI Live Replay Archive] delete recording ignored:", id, error.message || error);
+        }
+    }
+    await liveRef.set({
+        replayDailyDeleted: deletedRecordings.length > 0,
+        replayDailyDeletedIds: deletedRecordings
+    }, { merge: true });
+
+    await safeWriteAccountAuditLog(db, {
+        type: "live.replay_archived",
+        actorUid: "system",
+        actorEmail: "",
+        targetUid: "",
+        targetEmail: "",
+        targetRole: "promotion",
+        source: "live-replay-archival",
+        liveId,
+        promotionId: cleanString(liveSession.promotionId || "", 180),
+        changes: { storagePath, bytes, durationSeconds, recordingId, deletedRecordings, deletedCount: deletedRecordings.length }
+    });
+
+    console.log("[SBI Live Replay Archive] archived", JSON.stringify({ liveId, storagePath, bytes, durationSeconds, deletedRecordings: deletedRecordings.length }));
+
+    return { archived: true, storagePath, bytes, durationSeconds, deletedRecordings };
+}
+
+// Sert un replay deja archive sur Storage : URL signee directe + attendance + audit.
+async function serveArchivedLiveReplay(db, liveRef, liveSession = {}, caller, { liveId = "", promotionId = "" } = {}) {
+    const storagePath = cleanString(liveSession.replayStoragePath || "", 800);
+    const signedUrl = await createLiveReplaySignedUrl(storagePath);
+    if (!signedUrl) throw new HttpsError("failed-precondition", "Lien replay indisponible. Reessayez dans quelques minutes.");
+    const durationSeconds = Number(liveSession.liveTech?.recordingDurationSeconds) || 0;
+
+    await liveRef.collection("attendance").doc(caller.uid).set({
+        uid: caller.uid,
+        email: cleanEmail(caller.email),
+        displayName: getAccountDisplayName(caller.data || {}) || caller.email || "Participant SBI",
+        role: isHostLiveRole(caller) ? "host" : "student",
+        watchedReplay: true,
+        replayWatchedAt: admin.firestore.FieldValue.serverTimestamp(),
+        replayAccessedAt: admin.firestore.FieldValue.serverTimestamp(),
+        replayProvider: "storage",
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+
+    await safeWriteAccountAuditLog(db, {
+        type: "live.replay_access",
+        actorUid: caller.uid,
+        actorEmail: caller.email,
+        targetUid: "",
+        targetEmail: "",
+        targetRole: "promotion",
+        source: "student-lives",
+        liveId,
+        promotionId,
+        changes: { provider: "storage", storagePath, stream: true }
+    });
+
+    return {
+        success: true,
+        liveId,
+        streamUrl: signedUrl,
+        replayUrl: signedUrl,
+        playbackUrl: signedUrl,
+        downloadLink: signedUrl,
+        provider: "storage",
+        durationSeconds
+    };
 }
 
 
@@ -5281,6 +5595,37 @@ exports.resolveLiveReplay = onCall({
     if (!canAccess) throw new HttpsError("permission-denied", "Vous ne pouvez pas consulter ce replay.");
 
     const apiKey = DAILY_API_KEY.value();
+
+    // SBI 8.0P.167.279 — Voie nominale : replay deja archive sur Firebase Storage.
+    // L'eleve charge la video DIRECTEMENT depuis Storage via une URL signee.
+    if (cleanString(liveSession.replayProvider || "", 40) === "storage" && cleanString(liveSession.replayStoragePath || "", 800)) {
+        return await serveArchivedLiveReplay(db, liveRef, liveSession, caller, { liveId, promotionId });
+    }
+
+    // Pas encore archive (live recemment termine, ou termine avant le deploiement) :
+    // on tente l'archivage a la volee. Le cron runLiveReplayArchival fait de meme
+    // toutes les 5 min. Si l'archivage reussit, on sert directement depuis Storage.
+    try {
+        const archiveResult = await archiveDailyReplayToStorage(db, apiKey, liveSession);
+        if (archiveResult?.archived && archiveResult.storagePath) {
+            return await serveArchivedLiveReplay(
+                db,
+                liveRef,
+                {
+                    ...liveSession,
+                    replayProvider: "storage",
+                    replayStoragePath: archiveResult.storagePath,
+                    liveTech: { ...(liveSession.liveTech || {}), recordingDurationSeconds: archiveResult.durationSeconds }
+                },
+                caller,
+                { liveId, promotionId }
+            );
+        }
+    } catch (error) {
+        console.warn("[SBI Live Replay] Archivage a la volee impossible, repli proxy Daily :", liveId, error?.message || error);
+    }
+
+    // Repli transitoire : proxy Daily (tant que l'enregistrement n'est pas archivable).
     const roomName = cleanString(liveSession.providerRoomName || liveSession.roomName || liveSession.liveTech?.roomName || getDailyRoomNameFromSession(liveSession), 180);
     if (!roomName) throw new HttpsError("failed-precondition", "Room Daily introuvable pour ce live.");
 
@@ -5522,6 +5867,44 @@ exports.streamLiveReplay = onRequest({
         if (!res.headersSent) res.status(500).send("Streaming replay impossible.");
         else res.end();
     }
+});
+
+// SBI 8.0P.167.279 — Cron d'archivage des replays Live vers Firebase Storage.
+// Reprend les lives dont l'enregistrement Daily n'etait pas pret a la cloture
+// (replayArchive == "pending"), les telecharge vers Storage et supprime Daily.
+exports.runLiveReplayArchival = onSchedule({
+    region: "europe-west1",
+    schedule: "every 5 minutes",
+    timeZone: "Europe/Paris",
+    secrets: [DAILY_API_KEY],
+    timeoutSeconds: 540,
+    memory: "1GiB"
+}, async () => {
+    const db = admin.firestore();
+    const apiKey = DAILY_API_KEY.value();
+    if (!apiKey) {
+        console.error("[SBI Live Replay Archival] DAILY_API_KEY manquant.");
+        return;
+    }
+
+    const snap = await db.collection("liveSessions").where("replayArchive", "==", "pending").limit(8).get();
+    if (snap.empty) return;
+
+    let archived = 0;
+    let stillPending = 0;
+    for (const docSnap of snap.docs) {
+        const liveSession = { id: docSnap.id, ...(docSnap.data() || {}) };
+        try {
+            const result = await archiveDailyReplayToStorage(db, apiKey, liveSession);
+            if (result?.archived) archived += 1;
+            else stillPending += 1;
+        } catch (error) {
+            stillPending += 1;
+            console.warn("[SBI Live Replay Archival] live ignore :", docSnap.id, error?.message || error);
+        }
+    }
+
+    console.log("[SBI Live Replay Archival] cycle", JSON.stringify({ scanned: snap.size, archived, stillPending }));
 });
 
 exports.getLiveSchedulerData = onCall({

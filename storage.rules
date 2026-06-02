@@ -479,6 +479,18 @@ service firebase.storage {
     }
 
     /* ============================================================
+       REPLAYS LIVE ARCHIVÉS (8.0P.167.279)
+       ------------------------------------------------------------
+       Chemin : live-replays/{liveId}/replay.mp4
+       Écrit par la Cloud Function d'archivage (Admin SDK) depuis Daily.
+       Aucun accès client direct : la lecture se fait via une URL signée
+       V4 émise par resolveLiveReplay après contrôle d'accès promotion.
+       ============================================================ */
+    match /live-replays/{liveId}/{fileName=**} {
+      allow read, write: if false;
+    }
+
+    /* ============================================================
        SÉCURITÉ PAR DÉFAUT
        ============================================================ */
     match /{allPaths=**} {

@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.278',
+  version: '8.0P.167.279',
   branch: 'main',
-  channel: 'Devoirs & Evaluations (depot eleve + correction prof)',
-  stage: 'registre PDF de suivi (ecran eleves en retard) : nouvelle section "Preuves d evaluation Qualiopi" reprenant les devoirs/evaluations marques isQualiopiEvidence de la promotion (ciblage promo ou formation-wide) avec, par eleve evalue, la note, la date de correction et le correcteur. Fenetre ouverte avant le fetch pour eviter le blocage popup.',
-  updatedAt: '2026-06-01',
-  label: 'SBI 8.0P.167.278 - preuves Qualiopi (devoirs/evals) reprises dans le registre PDF de suivi'
+  channel: 'Replay Live servi depuis Firebase Storage (economie Daily)',
+  stage: 'nouvelle logique replay : a la cloture le replay Daily est telecharge vers Firebase Storage (live-replays/{liveId}/replay.mp4) puis supprime cote Daily ; les eleves chargent la video DIRECTEMENT depuis Storage via une URL signee V4 emise par resolveLiveReplay. Archivage best-effort a la cloture + cron runLiveReplayArchival toutes les 5 min (recording Daily pas pret a l instant de la cloture) + archivage a la volee au 1er visionnage. cancelLiveReplay supprime aussi la copie Storage.',
+  updatedAt: '2026-06-02',
+  label: 'SBI 8.0P.167.279 - replay Live archive sur Storage + suppression Daily (economie de cout)'
 };
 
 export function getSbiVersionLabel() {
