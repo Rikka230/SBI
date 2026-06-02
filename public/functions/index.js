@@ -681,7 +681,7 @@ async function sendBrevoNewsletterConfirmation(data, apiKey) {
  * avec mails Brevo + audit.
  * ======================================================================= */
 
-const ACCOUNT_ROLES = ["student", "teacher", "admin"];
+const ACCOUNT_ROLES = ["student", "teacher", "admin", "tutor"];
 const ACCOUNT_PREPARATION_STATES = ["not_prepared", "to_check", "ready", "completed"];
 const ACCOUNT_PREPARATION_LABELS = {
     not_prepared: "Compte à préparer",
@@ -787,6 +787,7 @@ function getAccountRoleLabel(role) {
     const normalized = normalizeAccountRole(role);
     if (normalized === "teacher") return "Enseignant";
     if (normalized === "admin") return "Administrateur";
+    if (normalized === "tutor") return "Maître d'apprentissage";
     return "Étudiant";
 }
 
@@ -3556,6 +3557,7 @@ function normalizePublicUserRole(data = {}) {
     const role = normalizePublicKey(data.role || data.userRole || data.type || "");
     if (["admin", "administrator"].includes(role)) return "admin";
     if (["teacher", "prof", "professeur", "enseignant", "professor"].includes(role)) return "teacher";
+    if (["tutor", "tuteur", "mentor", "maitre", "maitre d'apprentissage"].includes(role)) return "tutor";
     if (["student", "eleve", "eleve", "etudiant", "etudiant", "apprenant"].includes(role)) return "student";
     return "student";
 }

@@ -12,20 +12,24 @@
 export const SBI_ROLE_ALIASES = Object.freeze({
   admin: ['admin', 'administrator', 'administrateur'],
   teacher: ['teacher', 'prof', 'professeur', 'enseignant'],
-  student: ['student', 'eleve', 'élève', 'etudiant', 'étudiant']
+  student: ['student', 'eleve', 'élève', 'etudiant', 'étudiant'],
+  // SBI 8.0P.167.287 — nouveau rôle « tuteur » / maître d'apprentissage.
+  tutor: ['tutor', 'tuteur', 'mentor', 'maitre', 'maître', "maitre d'apprentissage"]
 });
 
 export const SBI_LANDING_PATHS = Object.freeze({
   admin: '/admin/index.html',
   teacher: '/teacher/dashboard.html',
   student: '/student/dashboard.html',
+  tutor: '/tutor/dashboard.html',
   unknown: '/login.html'
 });
 
 export const SBI_PROTECTED_ROOTS = Object.freeze({
   admin: '/admin',
   teacher: '/teacher',
-  student: '/student'
+  student: '/student',
+  tutor: '/tutor'
 });
 
 function normalizeText(value = '') {
@@ -46,6 +50,7 @@ export function normalizeSbiRole(roleOrProfile = '') {
   if (SBI_ROLE_ALIASES.admin.includes(role)) return 'admin';
   if (SBI_ROLE_ALIASES.teacher.includes(role)) return 'teacher';
   if (SBI_ROLE_ALIASES.student.includes(role)) return 'student';
+  if (SBI_ROLE_ALIASES.tutor.includes(role)) return 'tutor';
 
   return role || 'unknown';
 }
@@ -66,9 +71,13 @@ export function isSbiStudent(profile = {}) {
   return normalizeSbiRole(profile) === 'student';
 }
 
+export function isSbiTutor(profile = {}) {
+  return normalizeSbiRole(profile) === 'tutor';
+}
+
 export function isSbiTeacherOrStudent(profile = {}) {
   const role = normalizeSbiRole(profile);
-  return role === 'teacher' || role === 'student';
+  return role === 'teacher' || role === 'student' || role === 'tutor';
 }
 
 export function getSbiRoleLabel(profile = {}) {
@@ -78,6 +87,7 @@ export function getSbiRoleLabel(profile = {}) {
   if (role === 'admin') return 'Administrateur';
   if (role === 'teacher') return 'Professeur';
   if (role === 'student') return 'Élève';
+  if (role === 'tutor') return "Maître d'apprentissage";
 
   return 'Compte';
 }
@@ -96,6 +106,7 @@ export function normalizeSbiPath(pathname = '') {
   if (clean === '/admin') return '/admin/index.html';
   if (clean === '/teacher') return '/teacher/dashboard.html';
   if (clean === '/student') return '/student/dashboard.html';
+  if (clean === '/tutor') return '/tutor/dashboard.html';
 
   return clean;
 }
@@ -106,6 +117,7 @@ export function getSbiRouteGroup(pathname = '') {
   if (path.startsWith(SBI_PROTECTED_ROOTS.admin)) return 'admin';
   if (path.startsWith(SBI_PROTECTED_ROOTS.teacher)) return 'teacher';
   if (path.startsWith(SBI_PROTECTED_ROOTS.student)) return 'student';
+  if (path.startsWith(SBI_PROTECTED_ROOTS.tutor)) return 'tutor';
 
   return 'public';
 }
@@ -125,6 +137,7 @@ export function canAccessSbiRoute(profile = {}, pathname = '') {
   if (group === 'admin') return false;
   if (group === 'teacher') return role === 'teacher';
   if (group === 'student') return role === 'student';
+  if (group === 'tutor') return role === 'tutor';
 
   return false;
 }
@@ -146,6 +159,7 @@ export function getSbiPermissions(profile = {}) {
   const adminLike = isSbiAdminLike(profile);
   const teacher = role === 'teacher';
   const student = role === 'student';
+  const tutor = role === 'tutor';
 
   return Object.freeze({
     role,
@@ -155,6 +169,7 @@ export function getSbiPermissions(profile = {}) {
     canAccessAdminSpace: adminLike,
     canAccessTeacherSpace: adminLike || teacher,
     canAccessStudentSpace: adminLike || student,
+    canAccessTutorSpace: adminLike || tutor,
 
     canManageAccounts: adminLike,
     canDeleteAccounts: adminLike,
@@ -176,7 +191,7 @@ export function getSbiPermissions(profile = {}) {
     canViewOwnDocuments: student,
     canViewOwnProgress: student,
 
-    canCompleteFirstLoginChecklist: teacher || student
+    canCompleteFirstLoginChecklist: teacher || student || tutor
   });
 }
 

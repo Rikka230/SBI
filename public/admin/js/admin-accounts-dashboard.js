@@ -101,6 +101,7 @@ function getRoleLabel(user) {
   if (user?.isGod === true) return 'Suprême';
   if (user?.role === 'admin') return 'Admin';
   if (user?.role === 'teacher') return 'Professeur';
+  if (user?.role === 'tutor') return "Maître d'apprentissage";
   if (user?.role === 'student') return 'Élève';
   return 'Non défini';
 }

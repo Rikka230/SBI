@@ -31,6 +31,7 @@ const ROUTE_BODY_CLASSES = new Set([
   'sbi-admin-surface',
   'sbi-student-surface',
   'sbi-teacher-surface',
+  'sbi-tutor-surface',
   'sbi-course-editor-page',
   'sbi-editor-v2',
   'sbi-editor-v2--admin',

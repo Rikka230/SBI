@@ -237,6 +237,21 @@ function isTeacherShellContext() {
     || path === '/teacher/mon-profil.html';
 }
 
+// SBI 8.0P.167.287 — Espace Tuteur / maître d'apprentissage.
+function isTutorShellContext() {
+  const path = getCurrentPath();
+  return path === '/tutor/dashboard.html'
+    || path === '/tutor/livret.html';
+}
+
+function isTutorDashboard(url) {
+  return normalizePath(url.pathname).toLowerCase() === '/tutor/dashboard.html';
+}
+
+function isTutorBooklet(url) {
+  return normalizePath(url.pathname).toLowerCase() === '/tutor/livret.html';
+}
+
 function isCurrentAdminIndex() {
   return getCurrentPath() === '/admin/index.html';
 }
@@ -991,6 +1006,47 @@ async function mountTeacherDashboard({ url }) {
   return { viewKey: 'teacher:dashboard' };
 }
 
+// SBI 8.0P.167.287 — Espace Tuteur (thème vert lime).
+async function mountTutorDashboard({ url }) {
+  cleanupCourseEditorV2Artifacts();
+  const doc = await fetchAdminDocument(url);
+  await ensureDocumentStyles(doc, url.href);
+  applyBodyRouteClassesFromDocument(doc, ['sbi-tutor-surface', 'no-right-panel']);
+  replaceMainFromDocument(doc);
+  updateAdminChromeFromDocument(doc, 'Tableau de bord - SBI Tuteur');
+  setLeftNavActive('/tutor/dashboard.html');
+  updateUrlContext(url);
+  window.__SBI_APP_SHELL_MOUNTING_TUTOR_DASHBOARD = true;
+  try {
+    const module = await import('/tutor/js/tutor-dashboard.js?v=8.0P.167.287');
+    const cleanup = module.mountTutorDashboard?.();
+    if (typeof cleanup === 'function') registerCleanup(cleanup, 'tutor-dashboard');
+  } finally {
+    window.__SBI_APP_SHELL_MOUNTING_TUTOR_DASHBOARD = false;
+  }
+  return { viewKey: 'tutor:dashboard' };
+}
+
+async function mountTutorBooklet({ url }) {
+  cleanupCourseEditorV2Artifacts();
+  const doc = await fetchAdminDocument(url);
+  await ensureDocumentStyles(doc, url.href);
+  applyBodyRouteClassesFromDocument(doc, ['sbi-tutor-surface', 'no-right-panel']);
+  replaceMainFromDocument(doc);
+  updateAdminChromeFromDocument(doc, 'Livret apprenti - SBI Tuteur');
+  setLeftNavActive('/tutor/livret.html');
+  updateUrlContext(url);
+  window.__SBI_APP_SHELL_MOUNTING_TUTOR_BOOKLET = true;
+  try {
+    const module = await import('/tutor/js/tutor-livret.js?v=8.0P.167.287');
+    const cleanup = module.mountTutorBooklet?.();
+    if (typeof cleanup === 'function') registerCleanup(cleanup, 'tutor-livret');
+  } finally {
+    window.__SBI_APP_SHELL_MOUNTING_TUTOR_BOOKLET = false;
+  }
+  return { viewKey: 'tutor:livret' };
+}
+
 async function mountTeacherCourses({ url }) {
   cleanupCourseEditorV2Artifacts();
   const doc = await fetchAdminDocument(url);
@@ -1125,6 +1181,8 @@ async function mountTeacherProfile({ url }) {
 export function createRouteRegistry() {
   const routes = [];
 
+  routes.push({ id: 'tutor-dashboard', canHandle(url) { return isTutorDashboard(url) && isTutorShellContext(); }, mount: mountTutorDashboard });
+  routes.push({ id: 'tutor-livret', canHandle(url) { return isTutorBooklet(url) && isTutorShellContext(); }, mount: mountTutorBooklet });
   routes.push({ id: 'teacher-dashboard', canHandle(url) { return isTeacherDashboard(url) && isTeacherShellContext(); }, mount: mountTeacherDashboard });
   routes.push({ id: 'teacher-course-editor-v2', canHandle(url) { return isTeacherCourseEditorV2(url) && isTeacherShellContext(); }, mount: mountTeacherCourseEditorV2 });
   routes.push({ id: 'teacher-courses', canHandle(url) { return isTeacherCourses(url) && isTeacherShellContext(); }, mount: mountTeacherCourses });

@@ -13,6 +13,10 @@
     --sbi-blue-deep: #1237c9;
     --sbi-orange: #f97316;
     --sbi-orange-deep: #ea580c;
+    /* SBI 8.0P.167.287 — espace Tuteur (vert lime) */
+    --sbi-lime: #84cc16;
+    --sbi-lime-deep: #4d7c0f;
+    --accent-lime: #84cc16;
     --sbi-ink: #101827;
     --sbi-muted: #667085;
     --sbi-soft-line: rgba(16, 24, 40, 0.1);
@@ -296,6 +300,16 @@ body.sbi-teacher-space {
     --space-accent-deep: var(--sbi-orange-deep);
     --space-accent-soft: rgba(249, 115, 22, 0.13);
     --space-accent-pale: #fff4e8;
+}
+
+/* SBI 8.0P.167.287 — Espace Tuteur (vert lime) */
+body.sbi-tutor-space,
+body.sbi-tutor-surface {
+    --space-accent: var(--sbi-lime);
+    --space-accent-deep: var(--sbi-lime-deep);
+    --space-accent-soft: rgba(132, 204, 22, 0.14);
+    --space-accent-pale: #f2ffd6;
+    --accent-lime: var(--sbi-lime);
 }
 
 body.sbi-student-space.sbi-dashboard-page,

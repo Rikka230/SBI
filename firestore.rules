@@ -63,6 +63,11 @@ service cloud.firestore {
       return hasAnyRole(['student', 'eleve', 'élève', 'etudiant', 'étudiant']);
     }
 
+    // SBI 8.0P.167.287 — rôle « tuteur » / maître d'apprentissage.
+    function isTutor() {
+      return hasAnyRole(['tutor', 'tuteur', 'mentor']);
+    }
+
     function isSelf(uid) {
       return signedIn() && request.auth.uid == uid;
     }
@@ -899,6 +904,27 @@ service cloud.firestore {
         );
 
       allow create, update, delete: if isAdmin();
+    }
+
+    /* ============================================================
+       LIVRET D'APPRENTISSAGE (8.0P.167.287)
+       1 livret par élève. Lecture : admin ; élève propriétaire (studentId) ;
+       tuteur assigné (tutorId) ; teacher/responsable péda de la promotion/formation.
+       Écriture : Cloud Functions UNIQUEMENT (portée par champ + verrou côté serveur).
+       ============================================================ */
+    match /apprenticeshipBooklets/{bookletId} {
+      allow get, list: if isAdmin()
+        || (isActiveUser() && resource.data.keys().hasAny(['studentId']) && resource.data.studentId == request.auth.uid)
+        || (isActiveUser() && resource.data.keys().hasAny(['tutorId']) && resource.data.tutorId == request.auth.uid)
+        || (
+          isTeacher()
+          && (
+            (resource.data.keys().hasAny(['promotionId']) && currentUserPromotionIdMatches(resource.data.promotionId))
+            || (resource.data.keys().hasAny(['formationId']) && formationDocHasCurrentUser(resource.data.formationId))
+          )
+        );
+
+      allow create, update, delete: if false;
     }
 
     /* ============================================================

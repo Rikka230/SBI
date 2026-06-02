@@ -20,6 +20,11 @@ const SPACE_CONFIG = {
     tags: ['teacher-left-panel', 'teacher-top-bar'],
     selectors: ['#left-panel', '.top-bar'],
     topbarIds: ['top-user-name', 'top-user-avatar']
+  },
+  tutor: {
+    tags: ['tutor-left-panel', 'tutor-top-bar'],
+    selectors: ['#left-panel', '.top-bar'],
+    topbarIds: ['top-user-name', 'top-user-avatar']
   }
 };
 
@@ -32,6 +37,7 @@ export function getSbiSpace(pathname = window.location.pathname) {
   if (path.startsWith('/admin/')) return 'admin';
   if (path.startsWith('/student/')) return 'student';
   if (path.startsWith('/teacher/')) return 'teacher';
+  if (path.startsWith('/tutor/')) return 'tutor';
   return 'public';
 }
 
