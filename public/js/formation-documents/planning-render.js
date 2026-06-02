@@ -135,6 +135,41 @@ function resolvePlanItemTitle(item = {}, type = 'real_course') {
   return pick || title || courseTitle || label;
 }
 
+function isGenericTitle(title = '', type = 'real_course') {
+  const t = String(title || '').trim();
+  return !t || GENERIC_ITEM_TITLES.has(t) || t === planningTypeLabel(type);
+}
+
+// Enrichit les noms manquants/génériques d'un plan DATÉ (promotion) à partir des
+// items du cursus (qui portent les vrais noms) : cours matchés par courseId,
+// autres types (live, devoir…) par ordre d'apparition du même type.
+function enrichRowNamesFromCursus(rows = [], cursusItems = []) {
+  if (!Array.isArray(rows) || !rows.length || !Array.isArray(cursusItems) || !cursusItems.length) return;
+  const byCourseId = new Map();
+  const byTypeQueue = {};
+  cursusItems.forEach((it) => {
+    const type = String(it.type || it.activityType || 'real_course');
+    const title = resolvePlanItemTitle(it, type);
+    if (isGenericTitle(title, type)) return;
+    if (it.courseId) byCourseId.set(String(it.courseId), title);
+    (byTypeQueue[type] = byTypeQueue[type] || []).push(title);
+  });
+  const cursor = {};
+  rows.forEach((r) => {
+    if (!isGenericTitle(r.title, r.type)) return;
+    if (r.type === 'real_course' && r.courseId && byCourseId.has(String(r.courseId))) {
+      r.title = byCourseId.get(String(r.courseId));
+      return;
+    }
+    const queue = byTypeQueue[r.type] || [];
+    const i = cursor[r.type] || 0;
+    if (queue[i]) {
+      r.title = queue[i];
+      cursor[r.type] = i + 1;
+    }
+  });
+}
+
 function rowFromPlanItem(item = {}, index = 0) {
   const type = String(item.type || item.activityType || 'real_course');
   return {
@@ -142,6 +177,7 @@ function rowFromPlanItem(item = {}, index = 0) {
     type,
     typeLabel: planningTypeLabel(type),
     title: resolvePlanItemTitle(item, type),
+    courseId: String(item.courseId || ''),
     block: String(item.blockTitle || ''),
     startAt: item.recommendedStartAt || item.plannedStartAt || item.startAt || '',
     endAt: item.recommendedEndAt || item.plannedEndAt || item.endAt || '',
@@ -178,15 +214,19 @@ export function buildPlanningRows({ coursePlan = [], cursusItems = [] } = {}) {
 
 export async function resolvePlanningModel({ db, cursusId = '', promotionIds = [] } = {}) {
   const dateInfo = await loadDatedCoursePlan({ db, promotionIds });
-  let cursusItems = [];
-  let cursusTitle = '';
-  if (!dateInfo.plan.length && cursusId) {
-    const cursus = await loadCursusItems({ db, cursusId });
-    cursusItems = cursus.items;
-    cursusTitle = cursus.title;
+  // On charge le cursus dès qu'il est connu : il fournit les VRAIS noms,
+  // qu'on fusionne sur le plan daté de la promotion (qui fournit les dates).
+  const cursus = cursusId ? await loadCursusItems({ db, cursusId }) : { title: '', items: [] };
+
+  if (dateInfo.plan.length) {
+    const model = buildPlanningRows({ coursePlan: dateInfo.plan, cursusItems: [] });
+    enrichRowNamesFromCursus(model.rows, cursus.items);
+    return { ...model, promotionName: dateInfo.promotionName, cursusTitle: cursus.title };
   }
-  const model = buildPlanningRows({ coursePlan: dateInfo.plan, cursusItems });
-  return { ...model, promotionName: dateInfo.promotionName, cursusTitle };
+
+  // Pas de plan daté : cursus template seul (noms + semaines indicatives).
+  const model = buildPlanningRows({ coursePlan: [], cursusItems: cursus.items });
+  return { ...model, promotionName: dateInfo.promotionName, cursusTitle: cursus.title };
 }
 
 // ── Rendu HTML inline ───────────────────────────────────────────────────
