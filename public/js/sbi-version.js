@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.279',
+  version: '8.0P.167.280',
   branch: 'main',
-  channel: 'Replay Live servi depuis Firebase Storage (economie Daily)',
-  stage: 'nouvelle logique replay : a la cloture le replay Daily est telecharge vers Firebase Storage (live-replays/{liveId}/replay.mp4) puis supprime cote Daily ; les eleves chargent la video DIRECTEMENT depuis Storage via une URL signee V4 emise par resolveLiveReplay. Archivage best-effort a la cloture + cron runLiveReplayArchival toutes les 5 min (recording Daily pas pret a l instant de la cloture) + archivage a la volee au 1er visionnage. cancelLiveReplay supprime aussi la copie Storage.',
+  channel: 'Refonte des notifications internes (cloche/bulle) : creation serveur + registre de types',
+  stage: 'toutes les notifications internes sont desormais creees cote SERVEUR via une fabrique unique (Cloud Functions, ids deterministes, zero creation client => regles canCreateNotification:false). Le consommateur (admin-notifications.js) utilise un registre de types unique (rendu/icone/routage), avec fallback sur type inconnu ; fin du monkey-patch des alertes documents. Nouvelles notifs : devoir corrige -> eleve, depot -> profs, devoir en validation -> admin, replay dispo -> eleves. Notifs cours (validation/publication/refus/suppression) routees vers la CF emitCourseWorkflowNotifications + new_course_for_teacher cote serveur.',
   updatedAt: '2026-06-02',
-  label: 'SBI 8.0P.167.279 - replay Live archive sur Storage + suppression Daily (economie de cout)'
+  label: 'SBI 8.0P.167.280 - refonte notifications internes (creation serveur unique + registre + Devoirs/Live)'
 };
 
 export function getSbiVersionLabel() {

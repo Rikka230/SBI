@@ -649,17 +649,11 @@ service cloud.firestore {
         );
     }
 
+    // SBI 8.0P.167.280 — Création de notifications = SERVEUR uniquement (Admin SDK).
+    // Le client ne crée plus jamais de notification (refonte : toutes les notifs
+    // passent par des Cloud Functions). Il ne fait que lire / dismiss / resolve.
     function canCreateNotification() {
-      return isActiveUser()
-        && (
-          isAdmin() ||
-          (
-            isTeacher()
-            && request.resource.data.type == 'course_validation'
-            && request.resource.data.auteurId == request.auth.uid
-            && request.resource.data.status == 'open'
-          )
-        );
+      return false;
     }
 
     function canDismissNotification() {

@@ -40,18 +40,6 @@ function getProfileUrl(alert = {}) {
   return uid ? `/admin/admin-profile.html?id=${uid}` : '/admin/admin-accounts.html';
 }
 
-async function getNotificationById(notifId = '') {
-  if (!notifId) return null;
-  try {
-    const snap = await getDoc(doc(db, 'notifications', notifId));
-    if (!snap.exists()) return null;
-    return { id: snap.id, ...(snap.data() || {}) };
-  } catch (error) {
-    console.warn('[SBI Documents] Lecture notification impossible :', error?.message || error);
-    return null;
-  }
-}
-
 function ensureToast() {
   let toast = document.getElementById('sbi-student-doc-alert-toast');
   if (toast) return toast;
@@ -119,34 +107,6 @@ async function dismissAlert(alertId) {
   });
 }
 
-function patchNotificationPanel() {
-  document.querySelectorAll('.notif-item[data-type="student_documents.submitted"]').forEach((item) => {
-    if (item.dataset.studentDocsPatched === 'true') return;
-    item.dataset.studentDocsPatched = 'true';
-    const studentUid = item.getAttribute('data-student-uid') || item.getAttribute('data-course') || '';
-    const studentName = item.getAttribute('data-author') || item.getAttribute('data-title') || 'Élève SBI';
-    const title = item.querySelector('p:first-of-type');
-    const body = item.querySelector('p:nth-of-type(2)');
-    if (title) title.textContent = 'Documents élève à vérifier';
-    if (body) body.innerHTML = `<strong>${escapeHTML(studentName)}</strong> a transmis des documents.`;
-    if (studentUid) item.setAttribute('data-student-uid', studentUid);
-  });
-}
-
-async function openStudentProfileFromNotificationItem(item) {
-  if (!item) return;
-  const notifId = item.getAttribute('data-id') || '';
-  let studentUid = item.getAttribute('data-student-uid') || item.getAttribute('data-course') || '';
-
-  if (!studentUid && notifId) {
-    const notification = await getNotificationById(notifId);
-    studentUid = notification?.studentUid || notification?.courseId || '';
-  }
-
-  if (notifId) await dismissAlert(notifId).catch(() => {});
-  window.location.assign(studentUid ? `/admin/admin-profile.html?id=${encodeURIComponent(studentUid)}` : '/admin/admin-accounts.html');
-}
-
 function startAlerts(uid) {
   unsubscribeAlerts?.();
   if (!uid) return;
@@ -167,30 +127,14 @@ function startAlerts(uid) {
       return bMs - aMs;
     });
     const active = alerts.find(isActive);
-    patchNotificationPanel();
+    // SBI 8.0P.167.280 — Le rendu + le routage du clic de ce type sont desormais
+    // geres par le registre central (admin-notifications.js). Ce module ne fait
+    // plus que le toast transitoire (plus de monkey-patch DOM ni de hijack de clic).
     if (active) renderToast(active);
   }, (error) => {
     console.warn('[SBI Documents] Notifications documents indisponibles :', error?.message || error);
   });
 }
-
-window.addEventListener('sbi:notifications-updated', patchNotificationPanel);
-
-async function handleStudentDocumentNotificationActivation(event) {
-  const item = event.target.closest?.('.notif-item[data-type="student_documents.submitted"]');
-  if (!item) return;
-
-  event.preventDefault();
-  event.stopPropagation();
-  event.stopImmediatePropagation();
-  await openStudentProfileFromNotificationItem(item);
-}
-
-document.addEventListener('click', handleStudentDocumentNotificationActivation, true);
-document.addEventListener('keydown', async (event) => {
-  if (event.key !== 'Enter' && event.key !== ' ') return;
-  await handleStudentDocumentNotificationActivation(event);
-}, true);
 
 document.addEventListener('DOMContentLoaded', () => {
   onAuthStateChanged(auth, (user) => {

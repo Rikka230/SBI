@@ -5312,6 +5312,35 @@ async function archiveDailyReplayToStorage(db, apiKey, liveSession = {}) {
 
     console.log("[SBI Live Replay Archive] archived", JSON.stringify({ liveId, storagePath, bytes, durationSeconds, deletedRecordings: deletedRecordings.length }));
 
+    // SBI 8.0P.167.280 — Notif interne aux eleves de la promotion : replay disponible.
+    // Idempotent (skipExisting) => pas de re-notif sur re-archivage. Hors lives TEST.
+    try {
+        const isTest = liveSession.isTestLive === true || liveSession.testLive === true;
+        const promotionId = cleanString(liveSession.promotionId || "", 180);
+        if (!isTest && promotionId) {
+            const promoSnap = await db.collection("promotions").doc(promotionId).get();
+            if (promoSnap.exists) {
+                const promotion = { id: promoSnap.id, ...(promoSnap.data() || {}) };
+                const students = await listPromotionStudents(db, promotion);
+                const liveTitle = cleanString(liveSession.title || liveSession.courseTitle || liveSession.name || "Live", 200);
+                await writeSbiNotificationsForRecipients(db, students.map((s) => s.id), (studentUid) => ({
+                    id: `live_replay_${liveId}_${studentUid}`,
+                    type: "live_replay_available",
+                    fields: {
+                        liveId,
+                        promotionId,
+                        promotionName: cleanString(promotion.name || promotion.promotionName || promotion.nom || "", 200),
+                        liveTitle,
+                        targetStudents: [studentUid],
+                        actionUrl: `/student/live-replay/${encodeURIComponent(liveId)}?liveId=${encodeURIComponent(liveId)}`
+                    }
+                }), { skipExisting: true });
+            }
+        }
+    } catch (error) {
+        console.warn("[SBI Live Replay] Notif replay eleves ignoree :", error && error.message ? error.message : error);
+    }
+
     return { archived: true, storagePath, bytes, durationSeconds, deletedRecordings };
 }
 
@@ -6633,7 +6662,7 @@ async function createCourseValidationNotification(db, { courseId, courseData, ca
 async function addDirectCourseNotification(db, notificationId, payload) {
     await db.collection("notifications").doc(notificationId).set({
         ...payload,
-        status: payload.status || "open",
+        status: payload.status || "active",
         dateCreation: admin.firestore.FieldValue.serverTimestamp(),
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -6641,6 +6670,94 @@ async function addDirectCourseNotification(db, notificationId, payload) {
         resolvedAt: admin.firestore.FieldValue.delete(),
         resolvedBy: admin.firestore.FieldValue.delete()
     }, { merge: true });
+}
+
+// =======================================================================
+// SBI 8.0P.167.280 — Fabrique unique de notifications internes (cloche/bulle)
+// -----------------------------------------------------------------------
+// Creation SERVEUR uniquement (les regles Firestore interdisent desormais la
+// creation cote client). Ids DETERMINISTES => idempotent, pas de doublon.
+// Une notif multi-destinataires = N docs (1 par destinataireId) captes par le
+// listener "direct" du consommateur.
+// =======================================================================
+function buildSbiNotificationPayload(type, destinataireId, fields = {}) {
+    const now = admin.firestore.FieldValue.serverTimestamp();
+    return {
+        type,
+        status: "active",
+        destinataireId: cleanString(destinataireId, 180),
+        dateCreation: now,
+        createdAt: now,
+        updatedAt: now,
+        dismissedBy: [],
+        ...fields
+    };
+}
+
+async function writeSbiNotification(db, { id, type, destinataireId, fields = {} } = {}) {
+    const docId = cleanString(id, 300);
+    const uid = cleanString(destinataireId, 180);
+    if (!docId || !uid || !type) return false;
+    await db.collection("notifications").doc(docId).set(buildSbiNotificationPayload(type, uid, fields), { merge: true });
+    return true;
+}
+
+// builder(uid) -> { id, type, fields }. skipExisting:true => idempotence stricte
+// (ne re-notifie pas un destinataire deja notifie). Batched + chunke (>500 docs).
+async function writeSbiNotificationsForRecipients(db, recipientUids, builder, { skipExisting = false } = {}) {
+    const uids = [...new Set((recipientUids || []).map((u) => cleanString(u, 180)).filter(Boolean))];
+    if (!uids.length) return 0;
+    let total = 0;
+    const CHUNK = 300;
+    for (let i = 0; i < uids.length; i += CHUNK) {
+        const slice = uids.slice(i, i + CHUNK);
+        let existingIds = new Set();
+        if (skipExisting) {
+            const refs = slice.map((uid) => {
+                const spec = builder(uid);
+                return spec && spec.id ? db.collection("notifications").doc(cleanString(spec.id, 300)) : null;
+            }).filter(Boolean);
+            if (refs.length) {
+                const snaps = await db.getAll(...refs);
+                existingIds = new Set(snaps.filter((s) => s.exists).map((s) => s.id));
+            }
+        }
+        const batch = db.batch();
+        let count = 0;
+        for (const uid of slice) {
+            const spec = builder(uid);
+            if (!spec || !spec.id || !spec.type) continue;
+            const docId = cleanString(spec.id, 300);
+            if (skipExisting && existingIds.has(docId)) continue;
+            batch.set(db.collection("notifications").doc(docId), buildSbiNotificationPayload(spec.type, uid, spec.fields || {}), { merge: true });
+            count += 1;
+        }
+        if (count > 0) { await batch.commit(); total += count; }
+    }
+    return total;
+}
+
+// SBI 8.0P.167.280 — Resout les uids des profs des formations d'un cours
+// (pour la notif "new_course_for_teacher"). Prefere targetFormationIds (ids
+// normalises), retombe sur formations[] si ce sont des ids.
+async function collectCourseTeacherUids(db, courseData = {}) {
+    const formationIds = [];
+    const pushId = (x) => { const v = cleanString(x, 180); if (v) formationIds.push(v); };
+    if (Array.isArray(courseData.targetFormationIds)) courseData.targetFormationIds.forEach(pushId);
+    if (!formationIds.length && Array.isArray(courseData.formations)) courseData.formations.forEach(pushId);
+
+    const teacherUids = new Set();
+    for (const fid of [...new Set(formationIds)].slice(0, 25)) {
+        try {
+            const fdoc = await db.collection("formations").doc(fid).get();
+            if (!fdoc.exists) continue;
+            const profs = fdoc.data().profs;
+            if (Array.isArray(profs)) profs.forEach((p) => { const v = cleanString(p, 180); if (v) teacherUids.add(v); });
+        } catch (error) {
+            console.warn("[SBI Course Notify] formation profs ignoree :", fid, error.message || error);
+        }
+    }
+    return Array.from(teacherUids);
 }
 
 function isStudentNotificationProfile(data = {}) {
@@ -7371,6 +7488,22 @@ exports.reviewCourseValidation = onCall({
         if (studentReport.emailFailures > 0) {
             warnings.push(`${studentReport.emailFailures} email(s) élève non envoyé(s).`);
         }
+
+        // SBI 8.0P.167.280 — Notif interne aux profs des formations du cours.
+        try {
+            const teacherUids = (await collectCourseTeacherUids(db, nextCourseData)).filter((uid) => uid && uid !== authorId && uid !== caller.uid);
+            await writeSbiNotificationsForRecipients(db, teacherUids, (teacherUid) => ({
+                id: `new_course_for_teacher_${courseId}_${teacherUid}`,
+                type: "new_course_for_teacher",
+                fields: {
+                    courseId,
+                    courseTitle: getCourseWorkflowTitle(nextCourseData),
+                    actionUrl: getCourseWorkflowUrl("/teacher/cours-viewer.html", courseId)
+                }
+            }));
+        } catch (error) {
+            console.warn("[SBI Course Notify] Notif profs (publish V2) ignoree :", error.message || error);
+        }
     }
 
     await safeWriteAccountAuditLog(db, {
@@ -7404,6 +7537,89 @@ exports.reviewCourseValidation = onCall({
         warnings,
         studentReport
     };
+});
+
+// SBI 8.0P.167.280 — Notifications du workflow cours pour l'EDITEUR ADMIN
+// (admin-courses.js fait ses propres ecritures du doc cours ; cette callable
+// ne fait QUE creer les notifications internes, cote serveur, via la fabrique).
+// action: submit | publish | reject | deleted. Admin uniquement.
+exports.emitCourseWorkflowNotifications = onCall({
+    region: "europe-west1",
+    secrets: [BREVO_API_KEY],
+    timeoutSeconds: 120,
+    memory: "512MiB"
+}, async (request) => {
+    const db = admin.firestore();
+    const caller = await requireAdminCaller(request, db);
+    const courseId = cleanString(request.data?.courseId, 180);
+    const action = cleanString(request.data?.action, 40);
+    if (!courseId) throw new HttpsError("invalid-argument", "Identifiant cours manquant.");
+    if (!["submit", "publish", "reject", "deleted"].includes(action)) {
+        throw new HttpsError("invalid-argument", "Action notification invalide.");
+    }
+
+    const courseSnap = await db.collection("courses").doc(courseId).get();
+    const courseData = courseSnap.exists ? (courseSnap.data() || {}) : (request.data?.courseData || {});
+    const authorId = cleanString(courseData.auteurId || "", 180);
+    const courseTitle = getCourseWorkflowTitle(courseData);
+    const result = { success: true, action };
+
+    if (action === "submit") {
+        await createCourseValidationNotification(db, { courseId, courseData, caller });
+    } else if (action === "publish") {
+        if (authorId && authorId !== caller.uid) {
+            await addDirectCourseNotification(db, `course_approved_${courseId}_${authorId}`, {
+                type: "course_approved", courseId, courseTitle, destinataireId: authorId
+            });
+        }
+        try {
+            const teacherUids = (await collectCourseTeacherUids(db, courseData)).filter((uid) => uid && uid !== authorId && uid !== caller.uid);
+            await writeSbiNotificationsForRecipients(db, teacherUids, (teacherUid) => ({
+                id: `new_course_for_teacher_${courseId}_${teacherUid}`,
+                type: "new_course_for_teacher",
+                fields: { courseId, courseTitle, actionUrl: getCourseWorkflowUrl("/teacher/cours-viewer.html", courseId) }
+            }));
+        } catch (error) {
+            console.warn("[SBI Course Notify] profs (publish admin) ignore :", error.message || error);
+        }
+        try {
+            const apiKey = BREVO_API_KEY.value();
+            result.studentReport = await notifyStudentsForReplacementCourse(db, {
+                courseId, courseData, apiKey, options: { skipExistingNotifications: true }
+            });
+        } catch (error) {
+            console.warn("[SBI Course Notify] notif eleves (publish admin) ignoree :", error.message || error);
+        }
+        await resolveCourseValidationNotificationsServer(db, courseId, caller.uid);
+    } else if (action === "reject") {
+        if (authorId && authorId !== caller.uid) {
+            await addDirectCourseNotification(db, `course_rejected_${courseId}_${authorId}`, {
+                type: "course_rejected", courseId, courseTitle, destinataireId: authorId
+            });
+        }
+        await resolveCourseValidationNotificationsServer(db, courseId, caller.uid);
+    } else if (action === "deleted") {
+        const status = cleanString(courseData.statutValidation || (courseData.actif === true ? "approved" : "draft"), 40);
+        if (status === "pending" && authorId && authorId !== caller.uid) {
+            await addDirectCourseNotification(db, `course_deleted_${courseId}_${authorId}`, {
+                type: "course_deleted", courseId, courseTitle, destinataireId: authorId
+            });
+        }
+        await resolveCourseValidationNotificationsServer(db, courseId, caller.uid);
+    }
+
+    await safeWriteAccountAuditLog(db, {
+        type: "course.workflow_notifications",
+        actorUid: caller.uid,
+        actorEmail: caller.email,
+        targetUid: authorId,
+        courseId,
+        courseTitle,
+        changes: { action, studentNotificationCount: result.studentReport?.notificationCount || 0 },
+        source: "course-workflow"
+    });
+
+    return result;
 });
 
 
@@ -9036,6 +9252,27 @@ exports.createOrUpdateAssignment = onCall({
         source: "assignments"
     });
 
+    // SBI 8.0P.167.280 — Notif interne aux admins : un prof a soumis un devoir/eval a valider.
+    if (!caller.isAdmin && status === "pending_validation") {
+        try {
+            const admins = await listAdminNotificationRecipients(db);
+            await writeSbiNotificationsForRecipients(db, admins.map((a) => a.uid), (adminUid) => ({
+                id: `assignment_pending_${ref.id}_${adminUid}`,
+                type: "assignment_pending_validation",
+                fields: {
+                    assignmentId: ref.id,
+                    assignmentTitle: title,
+                    assignmentKind: kind,
+                    formationName,
+                    createdByName: caller.name,
+                    actionUrl: "/admin/admin-assignments.html"
+                }
+            }));
+        } catch (error) {
+            console.warn("[SBI Assignment] Notif validation admin ignoree :", error && error.message ? error.message : error);
+        }
+    }
+
     return { success: true, assignmentId: ref.id, status };
 });
 
@@ -9154,6 +9391,31 @@ exports.correctAssignmentSubmission = onCall({
         source: "assignments"
     });
 
+    // SBI 8.0P.167.280 — Notif interne a l'eleve : son travail a ete corrige.
+    try {
+        const studentUid = cleanString(sub.studentUid || "", 200);
+        const assignmentId = cleanString(sub.assignmentId || "", 200);
+        if (studentUid && assignmentId) {
+            const aSnap = await db.collection("assignments").doc(assignmentId).get();
+            const a = aSnap.exists ? (aSnap.data() || {}) : {};
+            await writeSbiNotification(db, {
+                id: `assignment_corrected_${assignmentId}_${studentUid}`,
+                type: "assignment_corrected",
+                destinataireId: studentUid,
+                fields: {
+                    assignmentId,
+                    assignmentTitle: cleanString(a.title || "Devoir", 200),
+                    assignmentKind: a.kind === "evaluation" ? "evaluation" : "devoir",
+                    note: note === null ? null : note,
+                    targetStudents: [studentUid],
+                    actionUrl: "/student/assignments.html"
+                }
+            });
+        }
+    } catch (error) {
+        console.warn("[SBI Assignment] Notif correction eleve ignoree :", error && error.message ? error.message : error);
+    }
+
     return { success: true };
 });
 
@@ -9186,12 +9448,15 @@ exports.notifyAssignmentToProfs = onCall({
         : [];
 
     const recipients = [];
+    const notifiedProfUids = [];
     for (const profUid of profs) {
         try {
             const pdoc = await db.collection("users").doc(profUid).get();
             if (!pdoc.exists) continue;
             const p = pdoc.data() || {};
             if (p.statut === "suspendu") continue;
+            // Notif interne au prof (meme sans email valide).
+            notifiedProfUids.push(cleanString(profUid, 180));
             const e = cleanString(p.email || "", 180);
             if (e && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) {
                 recipients.push({ email: e, name: `${p.prenom || ""} ${p.nom || ""}`.trim() || e });
@@ -9201,13 +9466,33 @@ exports.notifyAssignmentToProfs = onCall({
         }
     }
 
-    if (!recipients.length) {
-        return { success: true, notified: 0, message: "Aucun professeur à notifier." };
-    }
-
     const kindLabel = assignment.kind === "evaluation" ? "évaluation" : "devoir";
     const studentName = cleanString(sub.studentName || caller.name || "Un élève", 180);
     const title = cleanString(assignment.title || "Devoir", 200);
+
+    // SBI 8.0P.167.280 — Notif interne aux profs (en plus de l'email Brevo).
+    try {
+        await writeSbiNotificationsForRecipients(db, notifiedProfUids, (profUid) => ({
+            id: `assignment_submitted_${assignmentId}_${caller.uid}_${profUid}`,
+            type: "assignment_submitted",
+            fields: {
+                assignmentId,
+                studentUid: caller.uid,
+                studentName,
+                assignmentTitle: title,
+                assignmentKind: assignment.kind === "evaluation" ? "evaluation" : "devoir",
+                formationName: cleanString(assignment.formationName || "", 200),
+                actionUrl: "/teacher/assignments.html"
+            }
+        }));
+    } catch (error) {
+        console.warn("[SBI Assignment] Notif depot profs ignoree :", error && error.message ? error.message : error);
+    }
+
+    if (!recipients.length) {
+        return { success: true, notified: notifiedProfUids.length, emailed: 0, message: "Professeurs notifiés (aucun email valide)." };
+    }
+
     const messageHtml = `
         <p><strong>${escapeHtml(studentName)}</strong> vient de déposer son travail pour ${escapeHtml(kindLabel)} :</p>
         <p style="font-size:16px;"><strong>${escapeHtml(title)}</strong>${assignment.formationName ? ` — ${escapeHtml(assignment.formationName)}` : ""}</p>
@@ -9232,10 +9517,10 @@ exports.notifyAssignmentToProfs = onCall({
         }, BREVO_API_KEY.value(), ["sbi_assignment_submitted"]);
     } catch (error) {
         console.error("[SBI Assignment Notify] Brevo erreur :", error && error.message ? error.message : error);
-        return { success: false, notified: 0, message: "Dépôt enregistré, mais l'email aux professeurs n'a pas pu partir." };
+        return { success: false, notified: notifiedProfUids.length, emailed: 0, message: "Dépôt enregistré et profs notifiés, mais l'email n'a pas pu partir." };
     }
 
-    return { success: true, notified: recipients.length };
+    return { success: true, notified: notifiedProfUids.length, emailed: recipients.length };
 });
 
 exports.deleteAssignment = onCall({

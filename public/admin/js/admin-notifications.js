@@ -377,6 +377,159 @@ function updateRedBadges(count, attempt) {
     }
 }
 
+/* =======================================================================
+ * SBI 8.0P.167.280 — Registre unique de types de notifications
+ * -----------------------------------------------------------------------
+ * Source de verite cote consommateur : rendu (titre/corps/icone) + routage
+ * au clic, centralises par type. Fin des chaines de if + du monkey-patch.
+ * Les notifs sont creees SERVEUR uniquement (Cloud Functions).
+ * ======================================================================= */
+const renderedNotifsById = new Map();
+
+function escNotif(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
+function escNotifAttr(value) {
+    return String(value ?? '').replace(/"/g, '&quot;');
+}
+
+function currentUserRoleIsTeacher() {
+    if (!currentUserProfile) return false;
+    if (currentUserProfile.isGod) return false;
+    return currentUserProfile.role === 'teacher';
+}
+
+const NOTIF_ICONS = {
+    courseBlue: `<svg width="20" height="20" style="min-width:20px; flex-shrink:0;" fill="var(--accent-blue, #2A57FF)" viewBox="0 0 24 24"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3z"/></svg>`,
+    courseOrange: `<svg width="20" height="20" style="min-width:20px; flex-shrink:0;" fill="var(--accent-orange, #f59e0b)" viewBox="0 0 24 24"><path d="M12 3 1 9l11 6 9-4.91V17h2V9L12 3Zm0 14.2L5 13.4v3L12 20l7-3.6v-3l-7 3.8Z"/></svg>`,
+    greenCheck: `<svg width="20" height="20" style="min-width:20px; flex-shrink:0;" fill="var(--accent-green, #10b981)" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>`,
+    redCross: `<svg width="20" height="20" style="min-width:20px; flex-shrink:0;" fill="var(--accent-red, #ff4a4a)" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11H7v-2h10v2z"/></svg>`,
+    redTrash: `<svg width="20" height="20" style="min-width:20px; flex-shrink:0;" fill="var(--accent-red, #ff4a4a)" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM8 9h8v10H8V9zm7.5-5l-1-1h-5l-1 1H5v2h14V4z"/></svg>`,
+    blueDoc: `<svg width="20" height="20" style="min-width:20px; flex-shrink:0;" fill="var(--accent-blue, #2A57FF)" viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm1 7V3.5L19.5 9H15zM8 13h8v2H8v-2zm0 4h8v2H8v-2zm0-8h4v2H8V9z"/></svg>`,
+    yellowWarn: `<svg width="20" height="20" style="min-width:20px; flex-shrink:0;" fill="var(--accent-yellow, #fbbc04)" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>`,
+    play: `<svg width="20" height="20" style="min-width:20px; flex-shrink:0;" fill="var(--accent-blue, #2A57FF)" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM10 16.5v-9l6 4.5-6 4.5z"/></svg>`
+};
+NOTIF_ICONS.fallback = NOTIF_ICONS.blueDoc;
+
+const NOTIFICATION_REGISTRY = {
+    new_course_published: {
+        title: 'Nouveau cours disponible !',
+        body: (n) => `Le cours <strong>${escNotif(n.courseTitle)}</strong> est maintenant disponible.`,
+        icon: NOTIF_ICONS.courseBlue,
+        onClick: (n) => showStudentCourseActionModal({ notifId: n.id, courseId: n.courseId, courseTitle: n.courseTitle })
+    },
+    new_course_for_teacher: {
+        title: 'Nouveau cours dans votre formation',
+        body: (n) => `Le cours <strong>${escNotif(n.courseTitle)}</strong> est disponible dans une formation que vous accompagnez.`,
+        icon: NOTIF_ICONS.courseOrange,
+        navigate: (n) => `/teacher/cours-viewer.html?id=${encodeURIComponent(n.courseId || '')}&preview=true`
+    },
+    course_approved: {
+        title: 'Cours validé !',
+        body: (n) => `Votre cours « <strong>${escNotif(n.courseTitle)}</strong> » a été publié.`,
+        icon: NOTIF_ICONS.greenCheck,
+        onClick: async (n, { item }) => {
+            if (item) item.style.display = 'none';
+            await dismissNotificationForCurrentUser(n.id);
+            closeNotificationsPanel();
+            showTeacherCourseActionModal(n.courseId, n.courseTitle);
+        }
+    },
+    course_rejected: {
+        title: 'Cours refusé',
+        body: (n) => `Votre cours « <strong>${escNotif(n.courseTitle)}</strong> » nécessite des modifications.`,
+        icon: NOTIF_ICONS.redCross,
+        navigate: (n) => currentUserRoleIsTeacher() ? getTeacherCourseEditorUrl(n.courseId) : getAdminCourseEditorUrl(n.courseId)
+    },
+    course_deleted: {
+        title: 'Cours supprimé',
+        body: (n) => `Votre cours « <strong>${escNotif(n.courseTitle)}</strong> » a été supprimé par l'administration.`,
+        icon: NOTIF_ICONS.redTrash,
+        navigate: null
+    },
+    student_document_visible: {
+        title: 'Nouveau document disponible',
+        body: (n) => `Le document <strong>${escNotif(n.documentTitle || 'Document SBI')}</strong> est disponible dans votre espace.`,
+        icon: NOTIF_ICONS.blueDoc,
+        navigate: (n) => n.actionUrl || '/student/mon-profil.html#student-visible-documents'
+    },
+    'student_documents.submitted': {
+        title: 'Documents élève à vérifier',
+        body: (n) => `<strong>${escNotif(n.studentName || 'Un élève')}</strong> a transmis des documents.`,
+        icon: NOTIF_ICONS.blueDoc,
+        navigate: (n) => {
+            const uid = n.studentUid || n.courseId || '';
+            return uid ? `/admin/admin-profile.html?id=${encodeURIComponent(uid)}` : '/admin/admin-accounts.html';
+        }
+    },
+    course_validation: {
+        title: 'Validation requise',
+        body: (n) => `<strong>${escNotif(n.auteurName || 'Un professeur')}</strong> a soumis « <strong>${escNotif(n.courseTitle)}</strong> ».`,
+        icon: NOTIF_ICONS.yellowWarn,
+        onClick: async (n, { item }) => {
+            if (!isAdminLike()) {
+                if (item) item.style.display = 'none';
+                await dismissNotificationForCurrentUser(n.id);
+                closeNotificationsPanel();
+                return;
+            }
+            showAdminValidationActionModal({ notifId: n.id, courseId: n.courseId, courseTitle: n.courseTitle, auteurName: n.auteurName });
+        }
+    },
+    assignment_corrected: {
+        title: (n) => n.assignmentKind === 'evaluation' ? 'Évaluation corrigée' : 'Devoir corrigé',
+        body: (n) => `Votre ${n.assignmentKind === 'evaluation' ? 'évaluation' : 'devoir'} « <strong>${escNotif(n.assignmentTitle || 'Devoir')}</strong> » a été corrigé${(n.note !== undefined && n.note !== null && n.note !== '') ? ` — note : <strong>${escNotif(n.note)}</strong>` : ''}.`,
+        icon: NOTIF_ICONS.greenCheck,
+        navigate: (n) => n.actionUrl || '/student/assignments.html'
+    },
+    assignment_submitted: {
+        title: 'Nouveau dépôt à corriger',
+        body: (n) => `<strong>${escNotif(n.studentName || 'Un élève')}</strong> a déposé son travail${n.assignmentTitle ? ` pour « ${escNotif(n.assignmentTitle)} »` : ''}.`,
+        icon: NOTIF_ICONS.blueDoc,
+        navigate: (n) => n.actionUrl || '/teacher/assignments.html'
+    },
+    assignment_pending_validation: {
+        title: 'Devoir à valider',
+        body: (n) => `<strong>${escNotif(n.createdByName || 'Un professeur')}</strong> a soumis « <strong>${escNotif(n.assignmentTitle || 'Devoir')}</strong> »${n.formationName ? ` — ${escNotif(n.formationName)}` : ''}.`,
+        icon: NOTIF_ICONS.yellowWarn,
+        navigate: (n) => n.actionUrl || '/admin/admin-assignments.html'
+    },
+    live_replay_available: {
+        title: 'Replay disponible',
+        body: (n) => `Le replay <strong>${escNotif(n.liveTitle || 'du live')}</strong> est disponible${n.promotionName ? ` (${escNotif(n.promotionName)})` : ''}.`,
+        icon: NOTIF_ICONS.play,
+        navigate: (n) => n.actionUrl || '/student/lives.html?tab=replay'
+    }
+};
+
+const NOTIFICATION_FALLBACK_ENTRY = {
+    title: 'Notification',
+    body: () => 'Vous avez une nouvelle notification.',
+    icon: NOTIF_ICONS.fallback,
+    navigate: null
+};
+
+function getNotifRegistryEntry(type) {
+    return NOTIFICATION_REGISTRY[type] || NOTIFICATION_FALLBACK_ENTRY;
+}
+
+async function handleNotifClick(item, notif) {
+    const entry = getNotifRegistryEntry(notif?.type);
+    if (typeof entry.onClick === 'function') {
+        await entry.onClick(notif, { item });
+        return;
+    }
+    if (item) item.style.display = 'none';
+    await dismissNotificationForCurrentUser(notif.id);
+    closeNotificationsPanel();
+    const url = typeof entry.navigate === 'function' ? entry.navigate(notif) : entry.navigate;
+    if (url) window.location.assign(url);
+}
+
 function renderNotificationsList(notifs, attempt) {
     attempt = attempt || 0;
     const container = document.getElementById('notifications-list');
@@ -396,49 +549,18 @@ function renderNotificationsList(notifs, attempt) {
         return;
     }
 
+    renderedNotifsById.clear();
+
     notifs.forEach((notif) => {
+        renderedNotifsById.set(notif.id, notif);
+        const entry = getNotifRegistryEntry(notif.type);
+        const titleText = typeof entry.title === 'function' ? entry.title(notif) : entry.title;
+        const bodyText = typeof entry.body === 'function' ? entry.body(notif) : (entry.body || '');
+        const iconSvg = entry.icon || NOTIF_ICONS.fallback;
         const dotIndicator = `<div style="width:8px; height:8px; min-width:8px; background:var(--accent-red, #ff4a4a); border-radius:50%; flex-shrink:0; margin-top: 5px;"></div>`;
 
-        let titleText = "";
-        let bodyText = "";
-        let iconSvg = "";
-
-        if (notif.type === 'new_course_published') {
-            titleText = "Nouveau cours disponible !";
-            bodyText = `Le cours <strong>${notif.courseTitle}</strong> est maintenant disponible.`;
-            iconSvg = `<svg width="20" height="20" style="min-width:20px; flex-shrink:0;" fill="var(--accent-blue, #2A57FF)" viewBox="0 0 24 24"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3z"/></svg>`;
-        } else if (notif.type === 'new_course_for_teacher') {
-            titleText = "Nouveau cours dans votre formation";
-            bodyText = `Le cours <strong>${notif.courseTitle}</strong> est disponible dans une formation que vous accompagnez.`;
-            iconSvg = `<svg width="20" height="20" style="min-width:20px; flex-shrink:0;" fill="var(--accent-orange, #f59e0b)" viewBox="0 0 24 24"><path d="M12 3 1 9l11 6 9-4.91V17h2V9L12 3Zm0 14.2L5 13.4v3L12 20l7-3.6v-3l-7 3.8Z"/></svg>`;
-        } else if (notif.type === 'course_approved') {
-            titleText = "Cours Validé !";
-            bodyText = `Votre cours "<strong>${notif.courseTitle}</strong>" a été publié.`;
-            iconSvg = `<svg width="20" height="20" style="min-width:20px; flex-shrink:0;" fill="var(--accent-green, #10b981)" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>`;
-        } else if (notif.type === 'course_rejected') {
-            titleText = "Cours Refusé";
-            bodyText = `Votre cours "<strong>${notif.courseTitle}</strong>" nécessite des modifications.`;
-            iconSvg = `<svg width="20" height="20" style="min-width:20px; flex-shrink:0;" fill="var(--accent-red, #ff4a4a)" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11H7v-2h10v2z"/></svg>`;
-        } else if (notif.type === 'course_deleted') {
-            titleText = "Cours supprimé";
-            bodyText = `Votre cours "<strong>${notif.courseTitle}</strong>" a été supprimé par l'administration.`;
-            iconSvg = `<svg width="20" height="20" style="min-width:20px; flex-shrink:0;" fill="var(--accent-red, #ff4a4a)" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM8 9h8v10H8V9zm7.5-5l-1-1h-5l-1 1H5v2h14V4z"/></svg>`;
-        } else if (notif.type === 'student_document_visible') {
-            titleText = "Nouveau document disponible";
-            bodyText = `Le document <strong>${notif.documentTitle || 'Document SBI'}</strong> est disponible dans votre espace.`;
-            iconSvg = `<svg width="20" height="20" style="min-width:20px; flex-shrink:0;" fill="var(--accent-blue, #2A57FF)" viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm1 7V3.5L19.5 9H15zM8 13h8v2H8v-2zm0 4h8v2H8v-2zm0-8h4v2H8V9z"/></svg>`;
-        } else {
-            titleText = "Validation requise";
-            bodyText = `<strong>${notif.auteurName}</strong> a soumis "<strong>${notif.courseTitle}</strong>".`;
-            iconSvg = `<svg width="20" height="20" style="min-width:20px; flex-shrink:0;" fill="var(--accent-yellow, #fbbc04)" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>`;
-        }
-
-        const safeTitle = notif.courseTitle ? String(notif.courseTitle).replace(/"/g, '&quot;') : 'Cours';
-        const safeAuthor = notif.auteurName ? String(notif.auteurName).replace(/"/g, '&quot;') : 'Professeur';
-        const safeActionUrl = notif.actionUrl ? String(notif.actionUrl).replace(/"/g, '&quot;') : '';
-
         const html = `
-            <div class="notif-item" data-id="${notif.id}" data-type="${notif.type}" data-course="${notif.courseId}" data-title="${safeTitle}" data-author="${safeAuthor}" data-action-url="${safeActionUrl}" style="display: flex; align-items: flex-start; gap: 1rem; padding: 1rem; border-bottom: 1px solid var(--border-color, #333); cursor: pointer; transition: background 0.2s; background: rgba(128, 128, 128, 0.05);">
+            <div class="notif-item" data-id="${escNotifAttr(notif.id)}" data-type="${escNotifAttr(notif.type)}" style="display: flex; align-items: flex-start; gap: 1rem; padding: 1rem; border-bottom: 1px solid var(--border-color, #333); cursor: pointer; transition: background 0.2s; background: rgba(128, 128, 128, 0.05);">
                 ${dotIndicator}
                 <div style="flex-shrink:0;">${iconSvg}</div>
                 <div>
@@ -455,85 +577,9 @@ function renderNotificationsList(notifs, attempt) {
         item.addEventListener('click', async (e) => {
             e.preventDefault();
             e.stopPropagation();
-
             const notifId = e.currentTarget.getAttribute('data-id');
-            const notifType = e.currentTarget.getAttribute('data-type');
-            const courseId = e.currentTarget.getAttribute('data-course');
-            const courseTitle = e.currentTarget.getAttribute('data-title');
-            const auteurName = e.currentTarget.getAttribute('data-author');
-            const actionUrl = e.currentTarget.getAttribute('data-action-url') || '';
-
-            if (notifType === 'student_document_visible') {
-                e.currentTarget.style.display = 'none';
-                await dismissNotificationForCurrentUser(notifId);
-                closeNotificationsPanel();
-                window.location.assign(actionUrl || '/student/mon-profil.html#student-visible-documents');
-                return;
-            }
-
-            if (notifType === 'course_validation') {
-                if (!isAdminLike()) {
-                    e.currentTarget.style.display = 'none';
-                    await dismissNotificationForCurrentUser(notifId);
-                    closeNotificationsPanel();
-                    return;
-                }
-
-                showAdminValidationActionModal({
-                    notifId,
-                    courseId,
-                    courseTitle,
-                    auteurName
-                });
-                return;
-            }
-
-            if (notifType === 'new_course_published') {
-                showStudentCourseActionModal({
-                    notifId,
-                    courseId,
-                    courseTitle
-                });
-                return;
-            }
-
-            if (notifType === 'new_course_for_teacher') {
-                e.currentTarget.style.display = 'none';
-                await dismissNotificationForCurrentUser(notifId);
-                closeNotificationsPanel();
-                window.location.assign(`/teacher/cours-viewer.html?id=${encodeURIComponent(courseId)}&preview=true`);
-                return;
-            }
-
-            e.currentTarget.style.display = 'none';
-
-            await dismissNotificationForCurrentUser(notifId);
-
-            closeNotificationsPanel();
-
-            let userRole = 'student';
-
-            if (currentUserProfile) {
-                if (currentUserProfile.isGod) {
-                    userRole = 'admin';
-                } else if (currentUserProfile.role) {
-                    userRole = currentUserProfile.role;
-                }
-            }
-
-            if (notifType === 'course_approved') {
-                showTeacherCourseActionModal(courseId, courseTitle);
-            } else if (notifType === 'course_deleted') {
-                return;
-            } else if (notifType === 'course_rejected') {
-                if (userRole === 'teacher') {
-                    window.location.assign(getTeacherCourseEditorUrl(courseId));
-                } else {
-                    window.location.assign(getAdminCourseEditorUrl(courseId));
-                }
-            } else {
-                window.location.assign(getAdminCourseEditorUrl(courseId));
-            }
+            const notif = renderedNotifsById.get(notifId) || { id: notifId, type: e.currentTarget.getAttribute('data-type') };
+            await handleNotifClick(e.currentTarget, notif);
         });
     });
 }

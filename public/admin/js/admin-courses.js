@@ -6,7 +6,7 @@
  * Étape 5.2.4 : Query-safe consolidation.
  * =======================================================================
  */
-import { db, auth } from '/js/firebase-init.js';
+import { db, auth, app } from '/js/firebase-init.js';
 import {
     collection,
     addDoc,
@@ -21,6 +21,7 @@ import {
     setDoc
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js";
 import { logoutUser } from '/js/auth.js?v=8.0P.167.44';
 import {
     setPendingImageFile,
@@ -46,7 +47,6 @@ import {
     loadCoursesForMediaSafety
 } from '/admin/js/course-data-access.js?v=8.0P.167.85';
 import { renderCourseActionButtons } from '/admin/js/course-action-buttons.js?v=8.0P.167.188';
-import { notifyCourseDeletedIfNeeded } from '/admin/js/course-delete-notifications.js';
 import { SVG_PREVIEW, SVG_QUIZ_LIST } from '/admin/js/courses/course-icons.js';
 import {
     addQuizQuestion,
@@ -68,10 +68,6 @@ import {
     shouldHideDraftForAdmin as shouldHideDraftForAdminBase,
     getAuthorName as getAuthorNameBase
 } from '/admin/js/courses/course-save-feedback.js';
-import {
-    resolveCourseValidationNotifications as resolveCourseValidationNotificationsService,
-    handleCourseNotifications as handleCourseNotificationsService
-} from '/admin/js/courses/course-notifications.js?v=8.0P.167.85';
 import { getCourseTargetingSnapshot } from '/admin/js/courses/course-targeting.js?v=8.0P.167.85';
 import {
     syncTeacherCourseAccessIndexForCourse,
@@ -184,18 +180,19 @@ function refreshBlocsList() {
     refreshBlocsListUi(courseUiState);
 }
 
-async function resolveCourseValidationNotifications(courseId) {
-    return resolveCourseValidationNotificationsService({ courseId, currentUid });
-}
+// SBI 8.0P.167.280 — Les notifications du workflow cours sont desormais creees
+// cote SERVEUR (Cloud Function emitCourseWorkflowNotifications). Le client se
+// contente de declencher l'action ; plus aucune ecriture client dans /notifications.
+const sbiFunctions = getFunctions(app, 'europe-west1');
+const emitCourseWorkflowNotificationsCallable = httpsCallable(sbiFunctions, 'emitCourseWorkflowNotifications');
 
-async function handleCourseNotifications(args) {
-    return handleCourseNotificationsService({
-        ...args,
-        currentUid,
-        currentUserProfile,
-        editingCourseAuthorId,
-        allFormationsData
-    });
+async function emitCourseWorkflowNotifications(courseId, action) {
+    if (!courseId || !action) return;
+    try {
+        await emitCourseWorkflowNotificationsCallable({ courseId, action });
+    } catch (error) {
+        console.warn('[SBI Courses] Notification workflow non envoyée :', error);
+    }
 }
 
 function isAdminAuthor(authorId) {
@@ -1147,22 +1144,13 @@ async function saveCourseToFirebase(actionType = 'admin_save') {
         }
 
         try {
-            await handleCourseNotifications({
-                actionType,
-                courseRefId,
-                title,
-                selectedPills,
-                targetStudentsForCourse,
-                targetTeacherIds: targetTeacherIdsForCourse,
-                targetFormationIds,
-                targetFormationTitles,
-                isPublishing,
-                isRejecting,
-                currentUid,
-                currentUserProfile,
-                editingCourseAuthorId: finalAuteurId,
-                allFormationsData
-            });
+            // Le doc cours vient d'être écrit ci-dessus : la Cloud Function lit ce
+            // doc (auteur/cibles) et crée les notifications serveur (idempotent).
+            let notifAction = '';
+            if (actionType === 'submit') notifAction = 'submit';
+            else if (isPublishing) notifAction = 'publish';
+            else if (isRejecting) notifAction = 'reject';
+            if (notifAction) await emitCourseWorkflowNotifications(courseRefId, notifAction);
         } catch (notificationError) {
             console.warn("[SBI Courses] Cours sauvegardé, mais notification non envoyée :", notificationError);
         }
@@ -1362,8 +1350,9 @@ window.deleteCourse = async (id) => {
             allCourses
         });
 
-        await notifyCourseDeletedIfNeeded({ courseId: id, courseData, currentUid });
-        await resolveCourseValidationNotifications(id);
+        // Notif serveur (course_deleted au prof si pending) AVANT la suppression
+        // du doc, pour que la Cloud Function puisse encore le lire.
+        await emitCourseWorkflowNotifications(id, 'deleted');
         await deleteDoc(courseRef);
         await loadCourses();
 
