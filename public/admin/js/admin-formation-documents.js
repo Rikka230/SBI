@@ -47,6 +47,12 @@ import {
   groupByCategory,
   FORMATION_DOCS_COLLECTION
 } from '/js/formation-documents/formation-docs-data.js?v=8.0P.167.282';
+import {
+  loadCursusOptions,
+  resolvePlanningModel,
+  renderPlanningHtml,
+  downloadPlanningPdf
+} from '/js/formation-documents/planning-render.js?v=8.0P.167.284';
 
 const MAX_BYTES = 50 * 1024 * 1024;
 
@@ -72,6 +78,9 @@ let selectedFormationId = '';
 let documents = [];
 let promotions = [];
 let selectedPlanningPromo = '';
+let cursusOptions = [];
+// Cache des aperçus de planning générés depuis un cursus, indexés par docId.
+const planningPreviews = new Map();
 
 const SINGLE_CATEGORIES = DOC_CATEGORIES.filter((c) => c.mode === 'single');
 
@@ -117,14 +126,22 @@ async function loadFormationData() {
   if (!selectedFormationId) {
     documents = [];
     promotions = [];
+    cursusOptions = [];
+    planningPreviews.clear();
     return;
   }
-  const [docs, promos] = await Promise.all([
+  planningPreviews.clear();
+  const [docs, promos, cursus] = await Promise.all([
     loadFormationDocuments({ db, formationId: selectedFormationId }),
-    loadPromotionsForFormation({ db, formationId: selectedFormationId })
+    loadPromotionsForFormation({ db, formationId: selectedFormationId }),
+    loadCursusOptions({ db, formationId: selectedFormationId }).catch((error) => {
+      console.warn('[SBI Formation Docs admin] cursus non chargés :', error);
+      return [];
+    })
   ]);
   documents = docs;
   promotions = promos;
+  cursusOptions = Array.isArray(cursus) ? cursus : [];
   if (selectedPlanningPromo && !promotions.some((p) => p.id === selectedPlanningPromo)) {
     selectedPlanningPromo = '';
   }
@@ -136,6 +153,10 @@ function findDoc(predicate) {
 
 function promoName(promotionId) {
   return promotions.find((p) => p.id === promotionId)?.name || promotionId;
+}
+
+function formationName() {
+  return formations.find((f) => f.id === selectedFormationId)?.titre || selectedFormationId;
 }
 
 function validateFile(file) {
@@ -232,6 +253,154 @@ async function handleDelete(document) {
   }
 }
 
+// Définit un planning « généré depuis un cursus » pour une portée (formation-wide
+// ou une promotion). Écrase un éventuel PDF de même portée (supprime son fichier
+// Storage best-effort), puis recharge.
+async function handleSetCursusPlanning({ docId, promotionId = '', cursusId }) {
+  if (busy) return;
+  const cursusIdClean = String(cursusId || '').trim();
+  if (!cursusIdClean) { flash('Choisis un cursus.', 'error'); return; }
+  const option = cursusOptions.find((c) => c.id === cursusIdClean);
+  const cursusName = option?.title || cursusIdClean;
+  busy = true;
+  flash('Enregistrement du planning…');
+  try {
+    const previous = findDoc((d) => d.id === docId);
+    if (previous?.filePath) {
+      await deleteStorageBestEffort(previous.filePath);
+    }
+    const uid = auth.currentUser?.uid || currentAdmin?.uid || '';
+    await setDoc(doc(db, FORMATION_DOCS_COLLECTION, docId), {
+      category: 'planning',
+      source: 'cursus',
+      cursusId: cursusIdClean,
+      cursusName,
+      formationId: selectedFormationId,
+      promotionId: promotionId || '',
+      title: `Planning — ${cursusName}`,
+      createdAt: serverTimestamp(),
+      createdBy: uid,
+      createdByName: currentAdmin?.displayName || ''
+    }, { merge: false });
+    planningPreviews.delete(docId);
+    await loadFormationData();
+    render();
+    flash('Planning défini depuis le cursus.', 'success');
+  } catch (error) {
+    console.error('[SBI Formation Docs admin] planning cursus impossible :', error);
+    render();
+    flash(error?.message || 'Enregistrement impossible.', 'error');
+  } finally {
+    busy = false;
+  }
+}
+
+// Charge (et met en cache) le modèle de planning d'une entrée source:'cursus',
+// puis injecte son aperçu HTML dans le conteneur dédié.
+async function loadPlanningPreview(document) {
+  if (!document || planningPreviews.has(document.id)) return;
+  try {
+    const model = await resolvePlanningModel({
+      db,
+      cursusId: document.cursusId || '',
+      promotionIds: document.promotionId ? [document.promotionId] : []
+    });
+    planningPreviews.set(document.id, model);
+  } catch (error) {
+    console.warn('[SBI Formation Docs admin] aperçu planning indisponible :', error);
+    planningPreviews.set(document.id, null);
+  }
+  const r = root();
+  const host = r?.querySelector(`[data-fdoc-planning-preview="${cssAttr(document.id)}"]`);
+  if (host) host.innerHTML = renderPlanningPreviewBody(document);
+}
+
+function renderPlanningPreviewBody(document) {
+  if (!planningPreviews.has(document.id)) {
+    return '<p class="sbi-fdoc-empty">Chargement de l\'aperçu…</p>';
+  }
+  const model = planningPreviews.get(document.id);
+  if (!model) {
+    return '<p class="sbi-fdoc-empty">Aperçu indisponible.</p>';
+  }
+  return renderPlanningHtml(model, {
+    title: document.title || 'Planning',
+    promotionName: document.promotionId ? promoName(document.promotionId) : ''
+  });
+}
+
+function handleDownloadPlanningPdf(document) {
+  const model = planningPreviews.get(document.id);
+  if (!model) { flash('Aperçu pas encore chargé, réessaie dans un instant.', 'error'); return; }
+  downloadPlanningPdf(model, {
+    id: document.id,
+    title: document.title || 'Planning de formation',
+    formationName: formationName(),
+    promotionName: document.promotionId ? promoName(document.promotionId) : ''
+  });
+}
+
+function cssAttr(value) {
+  return String(value).replace(/"/g, '\\"');
+}
+
+// Rend une entrée planning générée depuis un cursus (aperçu + PDF + suppression).
+function renderCursusPlanningLine(document) {
+  const id = escapeHtml(document.id);
+  const sub = [document.cursusName, document.promotionId ? promoName(document.promotionId) : '']
+    .filter(Boolean).map(escapeHtml).join(' · ');
+  return `
+    <div class="sbi-fdoc-item">
+      <div class="sbi-fdoc-item__main">
+        <span class="sbi-fdoc-item__name">${escapeHtml(document.title || 'Planning')}</span>
+        <span class="sbi-fdoc-item__meta">${sub ? `Généré depuis le cursus · ${sub}` : 'Généré depuis un cursus'}</span>
+      </div>
+      <div class="sbi-fdoc-item__actions">
+        <button type="button" class="sbi-fdoc-btn primary" data-fdoc-planning-pdf="${id}">Télécharger en PDF</button>
+        <button type="button" class="sbi-fdoc-btn danger" data-fdoc-delete="${id}">Supprimer</button>
+      </div>
+    </div>
+    <div class="sbi-fdoc-planning-preview" data-fdoc-planning-preview="${id}" style="margin:.5rem 0 .25rem;">${renderPlanningPreviewBody(document)}</div>`;
+}
+
+// Bloc « Générer depuis un cursus » pour une portée donnée (formation ou promotion).
+function renderCursusPicker({ docId, promotionId = '' }) {
+  if (!cursusOptions.length) {
+    return '<p class="sbi-fdoc-section__hint" style="margin-top:.5rem;">Aucun cursus disponible pour générer un planning.</p>';
+  }
+  const opts = cursusOptions.map((c) =>
+    `<option value="${escapeHtml(c.id)}">${escapeHtml(c.title)}${c.itemCount ? ` (${c.itemCount})` : ''}</option>`
+  ).join('');
+  return `
+    <div class="sbi-fdoc-upload" style="margin-top:.5rem; flex-wrap:wrap; gap:.5rem;">
+      <span class="sbi-fdoc-section__hint" style="flex-basis:100%; margin:0;">Générer depuis un cursus</span>
+      <select class="sbi-fdoc-select" data-fdoc-cursus-select data-doc-id="${escapeHtml(docId)}" data-promotion="${escapeHtml(promotionId)}">
+        <option value="">— Choisir un cursus —</option>
+        ${opts}
+      </select>
+      <button type="button" class="sbi-fdoc-btn primary"
+        data-fdoc-cursus-set data-doc-id="${escapeHtml(docId)}" data-promotion="${escapeHtml(promotionId)}">
+        Définir le planning depuis ce cursus
+      </button>
+    </div>`;
+}
+
+// Rend l'état d'une portée planning : PDF uploadé (comportement actuel),
+// planning généré depuis un cursus, ou rien (upload + picker cursus).
+function renderPlanningScope({ docId, promotionId = '', uploadLabel }) {
+  const existing = findDoc((d) => d.id === docId);
+  if (existing && existing.source === 'cursus') {
+    return renderCursusPlanningLine(existing) + renderCursusPicker({ docId, promotionId });
+  }
+  if (existing) {
+    return renderDocLine(existing, { replaceCategory: 'planning', replacePromotion: promotionId, replaceDocId: docId })
+      + renderCursusPicker({ docId, promotionId });
+  }
+  return `<p class="sbi-fdoc-empty">Aucun planning.</p>`
+    + renderUpload({ category: 'planning', promotionId, docId, label: uploadLabel })
+    + renderCursusPicker({ docId, promotionId });
+}
+
 function renderDocLine(document, { replaceCategory, replacePromotion = '', replaceDocId } = {}) {
   const meta = [formatSize(document.size), document.fileName].filter(Boolean).map(escapeHtml).join(' · ');
   return `
@@ -285,7 +454,6 @@ function renderSingleSection(cat) {
 
 function renderPlanningSection() {
   const defaultDocId = buildFormationDocId({ formationId: selectedFormationId, category: 'planning' });
-  const defaultDoc = findDoc((d) => d.id === defaultDocId);
 
   const promoOptions = promotions.map((p) =>
     `<option value="${escapeHtml(p.id)}" ${selectedPlanningPromo === p.id ? 'selected' : ''}>${escapeHtml(p.name)}</option>`
@@ -298,10 +466,7 @@ function renderPlanningSection() {
     let targeted = '';
     if (selectedPlanningPromo) {
       const promoDocId = buildFormationDocId({ formationId: selectedFormationId, category: 'planning', promotionId: selectedPlanningPromo });
-      const promoDoc = findDoc((d) => d.id === promoDocId);
-      targeted = promoDoc
-        ? renderDocLine(promoDoc, { replaceCategory: 'planning', replacePromotion: selectedPlanningPromo, replaceDocId: promoDocId })
-        : `<p class="sbi-fdoc-empty">Aucun planning pour cette promotion.</p>${renderUpload({ category: 'planning', promotionId: selectedPlanningPromo, docId: promoDocId, label: 'Ajouter le planning de la promotion' })}`;
+      targeted = renderPlanningScope({ docId: promoDocId, promotionId: selectedPlanningPromo, uploadLabel: 'Ajouter le planning de la promotion' });
     } else {
       targeted = '<p class="sbi-fdoc-empty">Sélectionne une promotion pour gérer son planning dédié.</p>';
     }
@@ -311,16 +476,21 @@ function renderPlanningSection() {
       .filter((d) => d.category === 'planning' && d.promotionId)
       .sort((a, b) => String(promoName(a.promotionId)).localeCompare(String(promoName(b.promotionId)), 'fr'));
     const list = promoDocs.length
-      ? promoDocs.map((d) => `<div class="sbi-fdoc-item">
+      ? promoDocs.map((d) => {
+          const meta = d.source === 'cursus'
+            ? `Cursus · ${escapeHtml(d.cursusName || '—')}`
+            : ([formatSize(d.size), d.fileName].filter(Boolean).map(escapeHtml).join(' · ') || '—');
+          return `<div class="sbi-fdoc-item">
           <div class="sbi-fdoc-item__main">
             <span class="sbi-fdoc-item__name">${escapeHtml(promoName(d.promotionId))}</span>
-            <span class="sbi-fdoc-item__meta">${[formatSize(d.size), d.fileName].filter(Boolean).map(escapeHtml).join(' · ') || '—'}</span>
+            <span class="sbi-fdoc-item__meta">${meta}</span>
           </div>
           <div class="sbi-fdoc-item__actions">
             ${d.downloadURL ? `<a class="sbi-fdoc-btn" href="${escapeHtml(d.downloadURL)}" target="_blank" rel="noopener">Voir</a>` : ''}
             <button type="button" class="sbi-fdoc-btn danger" data-fdoc-delete="${escapeHtml(d.id)}">Supprimer</button>
           </div>
-        </div>`).join('')
+        </div>`;
+        }).join('')
       : '';
 
     promoBlock = `
@@ -342,9 +512,7 @@ function renderPlanningSection() {
         <h2 class="sbi-fdoc-section__title">${escapeHtml(CATEGORY_LABELS.planning)}</h2>
       </div>
       <p class="sbi-fdoc-section__hint">Planning par défaut de la formation (visible par tous, sauf si un planning de promotion existe).</p>
-      ${defaultDoc
-        ? renderDocLine(defaultDoc, { replaceCategory: 'planning', replaceDocId: defaultDocId })
-        : `<p class="sbi-fdoc-empty">Aucun planning par défaut.</p>${renderUpload({ category: 'planning', docId: defaultDocId, label: 'Ajouter le planning par défaut' })}`}
+      ${renderPlanningScope({ docId: defaultDocId, promotionId: '', uploadLabel: 'Ajouter le planning par défaut' })}
       <hr style="border:none;border-top:1px solid var(--border-color,#333);margin:1rem 0 .75rem;">
       ${promoBlock}
     </div>`;
@@ -474,6 +642,33 @@ function bindEvents() {
       handleDelete(target);
     });
   });
+
+  // Planning depuis un cursus : définition.
+  r.querySelectorAll('[data-fdoc-cursus-set]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const docId = btn.dataset.docId;
+      const promotionId = btn.dataset.promotion || '';
+      const select = r.querySelector(`[data-fdoc-cursus-select][data-doc-id="${cssAttr(docId)}"]`);
+      handleSetCursusPlanning({ docId, promotionId, cursusId: select?.value || '' });
+    });
+  });
+
+  // Téléchargement PDF d'un planning généré depuis un cursus.
+  r.querySelectorAll('[data-fdoc-planning-pdf]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const target = documents.find((d) => d.id === btn.dataset.fdocPlanningPdf);
+      handleDownloadPlanningPdf(target);
+    });
+  });
+
+  // Chargement asynchrone des aperçus de planning « cursus ».
+  documents
+    .filter((d) => d.category === 'planning' && d.source === 'cursus')
+    .forEach((d) => {
+      if (r.querySelector(`[data-fdoc-planning-preview="${cssAttr(d.id)}"]`)) {
+        loadPlanningPreview(d);
+      }
+    });
 
   // Autres documents : titre libre + fichier.
   const otherFile = r.querySelector('[data-fdoc-other-file]');

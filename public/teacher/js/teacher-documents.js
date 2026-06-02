@@ -19,6 +19,16 @@ import {
   loadFormationDocumentsForFormations,
   groupByCategory
 } from '/js/formation-documents/formation-docs-data.js?v=8.0P.167.282';
+import {
+  resolvePlanningModel,
+  renderPlanningHtml,
+  downloadPlanningPdf
+} from '/js/formation-documents/planning-render.js?v=8.0P.167.284';
+
+// Compteur pour générer des id uniques de placeholder planning (hydratés async).
+let planningSeq = 0;
+// Entrées planning « cursus » à hydrater après le rendu : id placeholder → entry.
+const pendingPlanningEntries = new Map();
 
 let mounted = false;
 let mountedView = null;
@@ -84,6 +94,23 @@ function renderItem(docItem) {
   metaParts.push(formationName(docItem.formationId));
   const meta = metaParts.filter(Boolean).map((m) => escapeHtml(m)).join(' · ');
 
+  // Planning généré depuis un cursus : tableau dynamique + export PDF (pas de
+  // lien de téléchargement). Le prof n'a pas de promotion propre.
+  if (docItem.category === 'planning' && docItem.source === 'cursus' && docItem.cursusId) {
+    const phId = `fdoc-planning-${++planningSeq}`;
+    pendingPlanningEntries.set(phId, docItem);
+    return `
+      <div class="sbi-fdoc-item sbi-fdoc-item--planning">
+        <div class="sbi-fdoc-item__main">
+          <div class="sbi-fdoc-item__name">${escapeHtml(name)}</div>
+          <div class="sbi-fdoc-item__meta">${meta}</div>
+          <div class="sbi-fdoc-planning" id="${phId}">
+            <div class="sbi-fdoc-empty">Chargement du planning…</div>
+          </div>
+        </div>
+      </div>`;
+  }
+
   const action = docItem.downloadURL
     ? `<a class="sbi-fdoc-btn primary" href="${escapeHtml(docItem.downloadURL)}" target="_blank" rel="noopener">Ouvrir / Télécharger</a>`
     : '<span class="sbi-fdoc-empty">Fichier indisponible.</span>';
@@ -96,6 +123,41 @@ function renderItem(docItem) {
       </div>
       <div class="sbi-fdoc-item__actions">${action}</div>
     </div>`;
+}
+
+// Hydrate les placeholders planning « cursus » après insertion dans le DOM :
+// résout le modèle, injecte le tableau, branche le bouton « Télécharger en PDF ».
+async function hydratePlanningEntries() {
+  const entries = [...pendingPlanningEntries.entries()];
+  pendingPlanningEntries.clear();
+  for (const [phId, entry] of entries) {
+    const host = document.getElementById(phId);
+    if (!host) continue;
+    try {
+      const promotionIds = entry.promotionId ? [entry.promotionId] : [];
+      const model = await resolvePlanningModel({ db, cursusId: entry.cursusId, promotionIds });
+      const title = entry.title || 'Planning';
+      host.innerHTML = `
+        ${renderPlanningHtml(model, { title, promotionName: model.promotionName })}
+        <div class="sbi-fdoc-item__actions" style="margin-top:.6rem;">
+          <button type="button" class="sbi-fdoc-btn primary" data-fdoc-planning-pdf>Télécharger en PDF</button>
+        </div>`;
+      const btn = host.querySelector('[data-fdoc-planning-pdf]');
+      if (btn) {
+        btn.addEventListener('click', () => {
+          downloadPlanningPdf(model, {
+            id: entry.id,
+            title: entry.title || 'Planning de formation',
+            formationName: '',
+            promotionName: model.promotionName
+          });
+        });
+      }
+    } catch (error) {
+      console.warn('[SBI Documents prof] planning cursus indisponible :', error);
+      host.innerHTML = '<div class="sbi-fdoc-empty">Planning indisponible pour le moment.</div>';
+    }
+  }
 }
 
 function renderSection(category, docs) {
@@ -138,6 +200,9 @@ function render() {
     return;
   }
 
+  // Nouveau rendu : on repart d'une liste vierge de placeholders planning.
+  pendingPlanningEntries.clear();
+
   const docs = visibleDocuments();
   const grouped = groupByCategory(docs);
 
@@ -158,6 +223,7 @@ function render() {
     ${body}`;
 
   bindEvents();
+  hydratePlanningEntries();
 }
 
 function bindEvents() {

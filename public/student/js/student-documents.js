@@ -21,6 +21,9 @@ import {
   userFormationIds, userPromotionIds,
   loadFormationDocumentsForFormations, resolveVisibleDocuments
 } from '/js/formation-documents/formation-docs-data.js?v=8.0P.167.282';
+import {
+  resolvePlanningModel, renderPlanningHtml, downloadPlanningPdf
+} from '/js/formation-documents/planning-render.js?v=8.0P.167.284';
 
 let mounted = false;
 let mountedView = null;
@@ -60,7 +63,29 @@ async function resolveScope() {
   formationIds = Array.from(new Set(formationIds.filter(Boolean)));
 }
 
+// Entrées planning générées depuis un cursus : id -> entry, hydratées après rendu.
+let pendingCursusPlannings = [];
+
+function isCursusPlanning(d) {
+  return d && d.source === 'cursus' && d.cursusId;
+}
+
+function renderCursusPlanningItem(d) {
+  const name = d.title || 'Planning';
+  // Placeholder rendu d'abord ; rempli en asynchrone par hydrateCursusPlannings().
+  return `
+    <div class="sbi-fdoc-item sbi-fdoc-item--planning" data-planning-id="${escapeHtml(d.id || '')}">
+      <div class="sbi-fdoc-item__main" style="width:100%;">
+        <div class="sbi-fdoc-item__name">${escapeHtml(name)}</div>
+        <div class="sbi-fdoc-planning-body" data-planning-body>
+          <div class="sbi-fdoc-status">Génération du planning…</div>
+        </div>
+      </div>
+    </div>`;
+}
+
 function renderItem(d) {
+  if (isCursusPlanning(d)) return renderCursusPlanningItem(d);
   const name = d.title || d.fileName || 'Document';
   const size = formatSize(d.size);
   const url = d.downloadURL || '';
@@ -76,6 +101,38 @@ function renderItem(d) {
           : '<span class="sbi-fdoc-empty">Fichier indisponible</span>'}
       </div>
     </div>`;
+}
+
+// Après l'insertion du HTML, calcule et injecte le tableau de planning + bouton PDF.
+async function hydrateCursusPlannings() {
+  const entries = pendingCursusPlannings;
+  pendingCursusPlannings = [];
+  for (const entry of entries) {
+    const host = document.querySelector(`.sbi-fdoc-item--planning[data-planning-id="${(window.CSS && CSS.escape) ? CSS.escape(entry.id || '') : (entry.id || '')}"] [data-planning-body]`);
+    if (!host) continue;
+    try {
+      const model = await resolvePlanningModel({ db, cursusId: entry.cursusId, promotionIds });
+      host.innerHTML = `
+        ${renderPlanningHtml(model, { title: entry.title || 'Planning', promotionName: model.promotionName })}
+        <div class="sbi-fdoc-item__actions" style="margin-top:.6rem;">
+          <button type="button" class="sbi-fdoc-btn primary" data-planning-pdf>Télécharger en PDF</button>
+        </div>`;
+      const btn = host.querySelector('[data-planning-pdf]');
+      if (btn) {
+        btn.addEventListener('click', () => {
+          downloadPlanningPdf(model, {
+            id: entry.id,
+            title: entry.title || 'Planning de formation',
+            formationName: '',
+            promotionName: model.promotionName
+          });
+        });
+      }
+    } catch (error) {
+      console.warn('[SBI Documents élève] planning cursus introuvable :', error?.message || error);
+      host.innerHTML = '<div class="sbi-fdoc-empty">Planning indisponible.</div>';
+    }
+  }
 }
 
 function renderSection(cat, docs) {
@@ -105,12 +162,19 @@ function render(visible) {
     return;
   }
 
+  // Collecte les plannings générés depuis un cursus pour hydratation asynchrone.
+  pendingCursusPlannings = DOC_CATEGORIES
+    .flatMap((cat) => (visible[cat.key] || []))
+    .filter(isCursusPlanning);
+
   r.innerHTML = `
     <div class="sbi-fdoc-head">
       <h1>Mes documents</h1>
       <p>Retrouve les documents de ta formation : livret d'accueil, règlement intérieur, planning, référentiel et autres documents.</p>
     </div>
     ${DOC_CATEGORIES.map((cat) => renderSection(cat, visible[cat.key])).join('')}`;
+
+  if (pendingCursusPlannings.length) hydrateCursusPlannings();
 }
 
 async function loadData() {

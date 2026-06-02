@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.283',
+  version: '8.0P.167.284',
   branch: 'main',
-  channel: 'Documents de formation : acces eleve depuis le coffre du profil',
-  stage: 'ajustement : l acces eleve aux Documents de formation passe par un bouton dans le bloc coffre de documents perso de la fiche profil (#student-visible-documents) au lieu d une entree dans le panneau de navigation (entree nav eleve retiree). La feature Documents de formation (livret/reglement/planning/referentiel + autres, gestion admin + lecture eleve/prof par formation, planning par promotion) reste inchangee par ailleurs.',
+  channel: 'Documents de formation : planning genere depuis un cursus + export PDF',
+  stage: 'le planning d une formation peut etre genere EN DIRECT depuis un cursus (curriculumTemplates) : cote admin on selectionne un cursus (par defaut formation ou par promotion) au lieu d uploader un PDF ; cote eleve/prof le planning s affiche en tableau dynamique (planning DATE de la promotion sinon cursus template, semaines indicatives) avec un bouton Telecharger en PDF (fenetre d impression, comme le registre Qualiopi). Nouveau module /js/formation-documents/planning-render.js. Acces eleve toujours via le coffre du profil.',
   updatedAt: '2026-06-02',
-  label: 'SBI 8.0P.167.283 - Documents de formation : acces eleve depuis le coffre du profil (hors panel)'
+  label: 'SBI 8.0P.167.284 - Documents de formation : planning genere depuis un cursus (vue dynamique + export PDF)'
 };
 
 export function getSbiVersionLabel() {
