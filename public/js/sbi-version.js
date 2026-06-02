@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.282',
+  version: '8.0P.167.283',
   branch: 'main',
-  channel: 'Documents de formation (livret/reglement/planning/referentiel + autres)',
-  stage: 'nouvelle feature Documents de formation : page admin de gestion (livret d accueil, reglement interieur, planning, referentiel + documents libres) + acces lecture eleve/prof par formation, planning par promotion. Stockage : collection Firestore formationDocuments + Storage formation-documents/, lecture reservee aux membres et ecriture reservee a l admin. Routing PJAX, navigation eleve/prof cables.',
+  channel: 'Documents de formation : acces eleve depuis le coffre du profil',
+  stage: 'ajustement : l acces eleve aux Documents de formation passe par un bouton dans le bloc coffre de documents perso de la fiche profil (#student-visible-documents) au lieu d une entree dans le panneau de navigation (entree nav eleve retiree). La feature Documents de formation (livret/reglement/planning/referentiel + autres, gestion admin + lecture eleve/prof par formation, planning par promotion) reste inchangee par ailleurs.',
   updatedAt: '2026-06-02',
-  label: 'SBI 8.0P.167.282 - Documents de formation : page admin de gestion + lecture eleve/prof par formation, planning par promotion'
+  label: 'SBI 8.0P.167.283 - Documents de formation : acces eleve depuis le coffre du profil (hors panel)'
 };
 
 export function getSbiVersionLabel() {
