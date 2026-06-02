@@ -115,13 +115,33 @@ export async function loadDatedCoursePlan({ db, promotionIds = [] } = {}) {
 }
 
 // ── Construction du modèle de lignes ────────────────────────────────────
+// Placeholders génériques posés à la création d'un item de cursus : à ignorer
+// au profit du vrai nom saisi (sinon un live affiche « Nouveau live »/« Live »).
+const GENERIC_ITEM_TITLES = new Set([
+  'Live', 'Cours', 'Devoir', 'Examen', 'Évaluation', 'Marge', 'Révisions', 'Rattrapage', 'Atelier', 'Cours futur',
+  'Nouveau live', 'Nouveau devoir', 'Nouvel examen', 'Nouvelle évaluation', 'Nouvel atelier',
+  'Marge pédagogique', 'Période de révisions', 'Nouvel élément'
+]);
+
+function resolvePlanItemTitle(item = {}, type = 'real_course') {
+  const label = planningTypeLabel(type);
+  const title = String(item.title || '').trim();
+  const courseTitle = String(item.courseTitle || '').trim();
+  // Cours : le titre du cours fait foi (courseTitle). Autres types (live, devoir,
+  // examen…) : le nom éditable est dans title ; on saute les placeholders génériques.
+  if (type === 'real_course') return courseTitle || title || label;
+  const extra = [item.liveTitle, item.sessionTitle, item.label, item.name].map((v) => String(v || '').trim());
+  const pick = [title, courseTitle, ...extra].find((v) => v && !GENERIC_ITEM_TITLES.has(v));
+  return pick || title || courseTitle || label;
+}
+
 function rowFromPlanItem(item = {}, index = 0) {
   const type = String(item.type || item.activityType || 'real_course');
   return {
     order: Number.isFinite(Number(item.order)) ? Number(item.order) : index,
     type,
     typeLabel: planningTypeLabel(type),
-    title: String(item.courseTitle || item.title || planningTypeLabel(type)),
+    title: resolvePlanItemTitle(item, type),
     block: String(item.blockTitle || ''),
     startAt: item.recommendedStartAt || item.plannedStartAt || item.startAt || '',
     endAt: item.recommendedEndAt || item.plannedEndAt || item.endAt || '',
