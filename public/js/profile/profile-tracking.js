@@ -4,6 +4,8 @@ import { loadAssignedFormationsForUser, loadCoursesForUser, loadSearchUsersForRo
 import { getVisibleFormationsForProfile } from './profile-formations.js';
 import {
   computeQuizMaxScore,
+  getChapterMaxScore,
+  getScoredChapterTypeLabel,
   escapeHTML,
   formatScore,
   getCourseChapterIds,
@@ -239,20 +241,28 @@ function buildStatusBadge(status, isStudentUI) {
 
 function buildQuizHtml({ courseId, courseData, progressData, isAdmin, isStudentUI }) {
   if (!Array.isArray(courseData.chapitres)) return '';
+  const quizScores = progressData.quizScores || {};
 
   return courseData.chapitres.map((chapter) => {
-    if (chapter.type !== 'quiz') return '';
-    const totalPossible = computeQuizMaxScore(chapter);
-    const scoreObtained = progressData.quizScores?.[chapter.id] !== undefined ? Number(progressData.quizScores[chapter.id]) || 0 : 0;
+    // SBI 8.0P.167.281 — On affiche TOUS les chapitres scorés (quiz, checkpoint
+    // +10, texte à trous, devoir/étude de cas...), pas seulement les quiz : le
+    // score obtenu est lu dans quizScores[chapter.id] (alimenté pour tous les
+    // chapitres scorés, checkpoints inclus), le max via getChapterMaxScore.
+    const totalPossible = getChapterMaxScore(chapter);
+    const hasStoredScore = quizScores[chapter.id] !== undefined;
+    if (totalPossible <= 0 && !hasStoredScore) return '';
+
+    const scoreObtained = hasStoredScore ? (Number(quizScores[chapter.id]) || 0) : 0;
     const scoreDisplay = formatScore(scoreObtained);
     const maxScoreDisplay = formatScore(totalPossible);
+    const typeLabel = getScoredChapterTypeLabel(chapter);
     const editBtnHtml = isAdmin
       ? `<button class="action-btn btn-edit-grade" data-course="${escapeHTML(courseId)}" data-chapter="${escapeHTML(chapter.id)}" data-current="${escapeHTML(scoreDisplay)}" data-max="${totalPossible}" style="width: auto; margin: 0; padding: 4px 8px; font-size: 0.75rem; background: #333; color: white; border: none;">${SVG_EDIT} Éditer</button>`
       : '';
 
     return `
       <div style="display: flex; justify-content: space-between; align-items: center; background: ${isStudentUI ? '#f9fafb' : 'rgba(0,0,0,0.2)'}; padding: 0.5rem 1rem; border-radius: 6px; margin-top: 0.8rem; border: 1px solid ${isStudentUI ? 'var(--border-color)' : 'transparent'};">
-        <span style="font-size: 0.85rem; color: var(--text-muted);">${escapeHTML(chapter.titre || 'Quiz')}</span>
+        <span style="font-size: 0.85rem; color: var(--text-muted);">${escapeHTML(chapter.titre || typeLabel)} <span style="opacity:0.6;">· ${escapeHTML(typeLabel)}</span></span>
         <div style="display: flex; align-items: center; gap: 10px;">
           <span style="font-size: 0.85rem; font-weight: bold; color: ${scoreObtained === totalPossible && totalPossible > 0 ? 'var(--accent-blue)' : 'var(--text-main)'};">Score: ${scoreDisplay} / ${maxScoreDisplay}</span>
           ${editBtnHtml}

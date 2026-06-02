@@ -71,6 +71,38 @@ export function computeQuizMaxScore(chapter = {}) {
   }, 0);
 }
 
+// SBI 8.0P.167.281 — Score max d'un chapitre, TOUS types confondus (suivi pédagogique).
+// Aligné sur cours-viewer.getChapterMaxScore : quiz = somme des points,
+// fill_blank = somme des points des trous, checkpoint = +10 (ou champ dédié),
+// sinon maxScore/score. Corrige le suivi qui n'affichait que les quiz et
+// ignorait le +10 des checkpoints.
+export function getChapterMaxScore(chapter = {}) {
+  const type = chapter.type || chapter.activityType;
+  if (type === 'quiz') return computeQuizMaxScore(chapter);
+  if (type === 'checkpoint') {
+    const score = Number(chapter.checkpointScore ?? chapter.xpReward ?? chapter.maxScore ?? chapter.score ?? 10);
+    return Number.isFinite(score) && score > 0 ? score : 10;
+  }
+  if (type === 'fill_blank' || Array.isArray(chapter.blanks)) {
+    const rows = Array.isArray(chapter.blanks) ? chapter.blanks : (Array.isArray(chapter.rows) ? chapter.rows : []);
+    const sum = rows.reduce((total, blank) => total + (Number(blank?.points) || 0), 0);
+    if (sum > 0) return sum;
+  }
+  const score = Number(chapter.maxScore ?? chapter.score ?? 0);
+  return Number.isFinite(score) && score > 0 ? score : 0;
+}
+
+// Libellé court du type de chapitre scoré (pour le suivi pédagogique).
+export function getScoredChapterTypeLabel(chapter = {}) {
+  const type = chapter.type || chapter.activityType;
+  if (type === 'quiz') return 'QCM';
+  if (type === 'checkpoint') return 'Checkpoint';
+  if (type === 'fill_blank' || Array.isArray(chapter.blanks)) return 'Texte à trous';
+  if (type === 'devoir') return 'Devoir';
+  if (type === 'etude_cas' || type === 'case_study') return 'Étude de cas';
+  return 'Activité';
+}
+
 export function getCourseChapterIds(courseData = {}) {
   if (!Array.isArray(courseData.chapitres)) return [];
   return courseData.chapitres.map((chapter) => chapter?.id).filter(Boolean);

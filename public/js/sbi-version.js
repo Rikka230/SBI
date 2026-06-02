@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.280',
+  version: '8.0P.167.281',
   branch: 'main',
-  channel: 'Refonte des notifications internes (cloche/bulle) : creation serveur + registre de types',
-  stage: 'toutes les notifications internes sont desormais creees cote SERVEUR via une fabrique unique (Cloud Functions, ids deterministes, zero creation client => regles canCreateNotification:false). Le consommateur (admin-notifications.js) utilise un registre de types unique (rendu/icone/routage), avec fallback sur type inconnu ; fin du monkey-patch des alertes documents. Nouvelles notifs : devoir corrige -> eleve, depot -> profs, devoir en validation -> admin, replay dispo -> eleves. Notifs cours (validation/publication/refus/suppression) routees vers la CF emitCourseWorkflowNotifications + new_course_for_teacher cote serveur.',
+  channel: 'Suivi pedagogique : scores tous chapitres (checkpoints +10 inclus)',
+  stage: 'le suivi pedagogique (profil eleve admin + cote eleve) affiche desormais TOUS les chapitres scores et plus seulement les quiz : checkpoints (+10), textes a trous, devoirs/etudes de cas. Nouveau helper getChapterMaxScore (profile-utils.js) aligne sur cours-viewer. La borne d edition admin utilise ce vrai max (checkpoints inclus) : on peut atteindre la bonne valeur (avant : plafonnee au max quiz seul). Score obtenu lu dans quizScores[chapterId] (alimente pour tous les chapitres scores).',
   updatedAt: '2026-06-02',
-  label: 'SBI 8.0P.167.280 - refonte notifications internes (creation serveur unique + registre + Devoirs/Live)'
+  label: 'SBI 8.0P.167.281 - suivi pedagogique : scores tous chapitres + checkpoints +10 + plafond admin corrige'
 };
 
 export function getSbiVersionLabel() {
