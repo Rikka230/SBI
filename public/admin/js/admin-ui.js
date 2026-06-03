@@ -85,7 +85,7 @@ async function initInternalUi() {
 
     // Assistant commun aux espaces internes. Le module se limite lui-même
     // aux profils admin / professeur / élève, sans charger les modules lourds admin.
-    await callOptionalModule('/admin/js/admin-ui/assistant.js?v=8.0P.167.247', 'initAssistantPrototype');
+    await callOptionalModule('/admin/js/admin-ui/assistant.js?v=8.0P.167.288', 'initAssistantPrototype');
 
     if (area === 'admin') {
       await initAdminOnlyModules();

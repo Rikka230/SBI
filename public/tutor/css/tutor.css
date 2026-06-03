@@ -30,6 +30,12 @@
 *, *::before, *::after { box-sizing: border-box; }
 body { background-color: var(--bg-body) !important; color: var(--text-main); }
 
+/* Forçage du logo de marque + libellé de niveau en lime (sinon une règle
+   !important de sbi-ui-polish/chrome les remet en bleu via --space-accent). */
+.sbi-polish-brand-main,
+#top-user-level,
+.user-info .role { color: var(--accent-lime) !important; }
+
 /* Architecture graphique (grilles, cartes) */
 .hub-grid { display: grid; grid-template-columns: minmax(300px, 1fr) 2.5fr; gap: 2.5rem; align-items: start; width: 100%; }
 .hub-card {
