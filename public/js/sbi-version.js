@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.299',
+  version: '8.0P.167.300',
   branch: 'main',
-  channel: 'Livret : rappel debut de periode (notif+mail) + UX tuteur (logout reduit, recherche apprenti)',
-  stage: 'NOUVEAU : rappel automatique en DEBUT de periode (cron notifyOverdueBookletPeriods etendu) -> notification cloche (type booklet_period_start) a eleve/tuteur/profs/admin + EMAIL Brevo eleve+tuteur, une seule fois (period.startNotifiedAt). UX tuteur : (a) panneau reduit -> icone de deconnexion/retour visible (CSS left-collapsed centre les boutons du bas) ; (b) barre de recherche tuteur ouvre uniquement le livret d un apprenti LIE (filtre loadBookletsForTutor -> /tutor/livret.html?id=). Type notif booklet_period_start ajoute au registre client.',
+  channel: 'Espace tuteur : badge/theme aligne (sbi-tutor-space) + recherche apprenti isolee',
+  stage: 'FIX tuteur : (1) theme.js ajoute enfin la classe body.sbi-tutor-space (absente -> --space-accent retombait en bleu : badge version, bordures, niveau non alignes au lime) + tutor.css force l accent lime en !important sur cette classe ; (2) la recherche tuteur n est plus captee par le global-search partage (renommee .tutor-apprentice-search/.tutor-apprentice-results) -> elle ouvre UNIQUEMENT le livret d un apprenti lie, plus le profil eleve.',
   updatedAt: '2026-06-03',
-  label: 'SBI 8.0P.167.299 - Livret : rappel debut periode (notif+mail) + UX tuteur (logout reduit / recherche apprenti lie)'
+  label: 'SBI 8.0P.167.300 - Espace tuteur : badge/theme lime aligne + recherche apprenti (livret) isolee du global-search'
 };
 
 export function getSbiVersionLabel() {

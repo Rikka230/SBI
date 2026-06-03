@@ -5,7 +5,7 @@ import { dispatchComponentMounted } from './ready.js';
 import { signOutToLogin } from './shared-actions.js';
 import { auth, db } from '/js/firebase-init.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js';
-import { loadBookletsForTutor, escapeHtml } from '/js/booklet/booklet-data.js?v=8.0P.167.299';
+import { loadBookletsForTutor, escapeHtml } from '/js/booklet/booklet-data.js?v=8.0P.167.300';
 
 const ICON_APPRENTICES = '<svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3Zm-8 0c1.66 0 3-1.34 3-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3Zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5Zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5Z"/></svg>';
 
@@ -53,8 +53,8 @@ export class TutorTopBar extends HTMLElement {
         <button class="mobile-toggle left-toggle" id="btn-toggle-mobile">${ICONS.dashboard}</button>
         <div class="search-bar-top" style="position:relative; flex-grow:1; max-width:450px; margin-left:2rem;">
           <span style="position:absolute; left:1rem; top:50%; transform:translateY(-50%); width:18px; color:var(--text-muted); display:flex;">${ICONS.search}</span>
-          <input type="text" class="global-search-input" placeholder="Rechercher un apprenti..." style="width:100%; box-sizing:border-box; padding:.7rem 1.5rem .7rem 2.8rem; background:#f9fafb; border:1px solid var(--border-color); border-radius:20px; outline:none; font-size:.95rem; color:var(--text-main);">
-          <div class="global-search-results"></div>
+          <input type="text" class="tutor-apprentice-search" placeholder="Rechercher un apprenti..." style="width:100%; box-sizing:border-box; padding:.7rem 1.5rem .7rem 2.8rem; background:#f9fafb; border:1px solid var(--border-color); border-radius:20px; outline:none; font-size:.95rem; color:var(--text-main);">
+          <div class="tutor-apprentice-results"></div>
         </div>
         <div style="display:flex; align-items:center; gap:1.5rem; margin-left:auto; padding-right:1rem;">
           <div style="position:relative;">
@@ -81,8 +81,8 @@ export class TutorTopBar extends HTMLElement {
   // La barre de recherche tuteur n'ouvre QUE les livrets de ses apprentis liés
   // (livrets où tutorId == tuteur courant).
   initApprenticeSearch() {
-    const input = this.querySelector('.global-search-input');
-    const results = this.querySelector('.global-search-results');
+    const input = this.querySelector('.tutor-apprentice-search');
+    const results = this.querySelector('.tutor-apprentice-results');
     if (!input || !results) return;
     results.style.cssText = 'position:absolute; top:calc(100% + 6px); left:0; right:0; background:#fff; border:1px solid var(--border-color,#e5e7eb); border-radius:10px; box-shadow:0 10px 30px rgba(0,0,0,.12); z-index:1100; max-height:320px; overflow-y:auto; display:none;';
 

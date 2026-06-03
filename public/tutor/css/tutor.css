@@ -27,6 +27,17 @@
     --space-accent-pale: #f2ffd6;
 }
 
+/* L'accent « espace » est aussi posé sur body.sbi-tutor-space avec !important :
+   les feuilles sbi-ui-polish/chrome (injectées au runtime APRÈS tutor.css) posent
+   --space-accent au niveau body et écrasaient sinon le :root ci-dessus (badge,
+   bordures, niveau utilisateur repassaient en bleu). */
+body.sbi-tutor-space {
+    --space-accent: #84cc16 !important;
+    --space-accent-deep: #4d7c0f !important;
+    --space-accent-soft: rgba(132, 204, 22, 0.14) !important;
+    --space-accent-pale: #f2ffd6 !important;
+}
+
 *, *::before, *::after { box-sizing: border-box; }
 body { background-color: var(--bg-body) !important; color: var(--text-main); }
 

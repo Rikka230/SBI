@@ -22,12 +22,17 @@ export function initSpaceTheme() {
 
     document.body.classList.add('sbi-internal-ui');
 
-    document.body.classList.remove('sbi-admin-space', 'sbi-student-space', 'sbi-teacher-space');
+    document.body.classList.remove('sbi-admin-space', 'sbi-student-space', 'sbi-teacher-space', 'sbi-tutor-space');
 
     if (dashboardPaths.has(path)) {
         document.body.classList.add('sbi-dashboard-page', 'sbi-dashboard-redesign');
     } else {
         document.body.classList.remove('sbi-dashboard-page', 'sbi-dashboard-redesign');
+    }
+
+    if (path.startsWith('/tutor/')) {
+        document.body.classList.add('sbi-tutor-space');
+        return;
     }
 
     if (path.startsWith('/teacher/')) {
