@@ -25,8 +25,9 @@ import {
   statusMeta,
   updateBookletSection,
   loadBooklet
-} from '/js/booklet/booklet-data.js?v=8.0P.167.291';
-import { downloadBookletPdf } from '/js/booklet/booklet-pdf.js?v=8.0P.167.291';
+} from '/js/booklet/booklet-data.js?v=8.0P.167.292';
+import { downloadBookletPdf } from '/js/booklet/booklet-pdf.js?v=8.0P.167.292';
+import { resolveBookletPlanningModel } from '/js/formation-documents/planning-render.js?v=8.0P.167.292';
 
 let mounted = false;
 let mountedView = null;
@@ -36,7 +37,7 @@ let currentUid = null;
 let booklet = null;
 let activeTab = 'overview'; // overview | section:<name> | absences | period:<id>
 
-// SBI 8.0P.167.291 — Tampon local des absences en structure (édition tuteur).
+// SBI 8.0P.167.292 — Tampon local des absences en structure (édition tuteur).
 // Reflète booklet.absences.entreprise + modifications non encore enregistrées.
 let absencesDraft = null;
 
@@ -276,7 +277,7 @@ function periodViewHtml(periodId) {
 }
 
 /* ---------------------------------------------------------------------
- * SBI 8.0P.167.291 — Absences en structure (édition tuteur)
+ * SBI 8.0P.167.292 — Absences en structure (édition tuteur)
  * ------------------------------------------------------------------- */
 // Les absences sont au niveau livret (booklet.absences.entreprise) et stockées
 // en LISTE d'items. Le tuteur a le droit serveur (section absencesEntreprise).
@@ -453,7 +454,7 @@ async function signPeriod(periodId, btn) {
 }
 
 /* ---------------------------------------------------------------------
- * SBI 8.0P.167.291 — Sauvegarde des absences en structure
+ * SBI 8.0P.167.292 — Sauvegarde des absences en structure
  * ------------------------------------------------------------------- */
 // Lit l'état courant des inputs dans le DOM vers le tampon (avant ajout/suppr/save).
 function syncAbsencesDraftFromDom() {
@@ -511,6 +512,25 @@ async function saveAbsences(btn) {
 }
 
 /* ---------------------------------------------------------------------
+ * Export PDF (récupère le planning réel de « Documents de formation »)
+ * ------------------------------------------------------------------- */
+async function exportPdf() {
+  if (!booklet) return;
+  try {
+    const p = await resolveBookletPlanningModel({ db, booklet });
+    downloadBookletPdf(booklet, p ? {
+      planningModel: p.model,
+      planningTitle: p.title,
+      planningPromotionName: p.promotionName,
+      planningUploadedUrl: p.uploadedUrl
+    } : {});
+  } catch (error) {
+    console.warn('[SBI Tuteur] planning indisponible pour le PDF :', error);
+    downloadBookletPdf(booklet);
+  }
+}
+
+/* ---------------------------------------------------------------------
  * Câblage des événements
  * ------------------------------------------------------------------- */
 function wire() {
@@ -526,7 +546,7 @@ function wire() {
     });
   });
 
-  r.querySelector('[data-download-pdf]')?.addEventListener('click', () => downloadBookletPdf(booklet));
+  r.querySelector('[data-download-pdf]')?.addEventListener('click', () => exportPdf());
 
   const saveSec = r.querySelector('[data-save-section]');
   saveSec?.addEventListener('click', () => saveSection(saveSec.dataset.saveSection, saveSec));

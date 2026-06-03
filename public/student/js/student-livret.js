@@ -25,8 +25,9 @@ import {
   statusMeta,
   updateBookletSection,
   loadBookletByStudent
-} from '/js/booklet/booklet-data.js?v=8.0P.167.291';
-import { downloadBookletPdf } from '/js/booklet/booklet-pdf.js?v=8.0P.167.291';
+} from '/js/booklet/booklet-data.js?v=8.0P.167.292';
+import { downloadBookletPdf } from '/js/booklet/booklet-pdf.js?v=8.0P.167.292';
+import { resolveBookletPlanningModel } from '/js/formation-documents/planning-render.js?v=8.0P.167.292';
 
 /* =====================================================================
  * État du module
@@ -517,6 +518,25 @@ async function signPeriod(periodKey, button) {
 }
 
 /* =====================================================================
+ * Export PDF (récupère le planning réel de « Documents de formation »)
+ * ===================================================================== */
+async function exportPdf() {
+  if (!booklet) return;
+  try {
+    const p = await resolveBookletPlanningModel({ db, booklet });
+    downloadBookletPdf(booklet, p ? {
+      planningModel: p.model,
+      planningTitle: p.title,
+      planningPromotionName: p.promotionName,
+      planningUploadedUrl: p.uploadedUrl
+    } : {});
+  } catch (error) {
+    console.warn('[SBI Livret élève] planning indisponible pour le PDF :', error);
+    downloadBookletPdf(booklet);
+  }
+}
+
+/* =====================================================================
  * Événements
  * ===================================================================== */
 function bindEvents() {
@@ -540,7 +560,7 @@ function bindEvents() {
     if (signBtn) { signPeriod(signBtn.dataset.signPeriod, signBtn); return; }
 
     const pdfBtn = e.target.closest('[data-download-pdf]');
-    if (pdfBtn) { downloadBookletPdf(booklet); return; }
+    if (pdfBtn) { exportPdf(); return; }
   });
 }
 

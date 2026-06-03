@@ -32,8 +32,9 @@ import {
   loadBooklet,
   loadBookletsForAdmin,
   periodGuide
-} from '/js/booklet/booklet-data.js?v=8.0P.167.291';
-import { downloadBookletPdf } from '/js/booklet/booklet-pdf.js?v=8.0P.167.291';
+} from '/js/booklet/booklet-data.js?v=8.0P.167.292';
+import { downloadBookletPdf } from '/js/booklet/booklet-pdf.js?v=8.0P.167.292';
+import { resolveBookletPlanningModel } from '/js/formation-documents/planning-render.js?v=8.0P.167.292';
 
 const ROLE = 'admin';
 
@@ -350,7 +351,7 @@ function renderCreateView() {
  * Édition d'un livret
  * ============================================================ */
 function fieldHtml({ key, label, value, target, multiline = true, type = 'text', full = false }) {
-  // 8.0P.167.291 — CORRECTIF MAJEUR : pour une SECTION, le droit s'évalue sur le
+  // 8.0P.167.292 — CORRECTIF MAJEUR : pour une SECTION, le droit s'évalue sur le
   // NOM DE SECTION (target.section), pas sur la clé de champ. FIELD_PERMISSIONS.section
   // mappe des noms de section -> true (identity/employer/tutor/contract/formation…),
   // donc canEditField(role,'section', cleDeChamp) renvoyait toujours false et TOUS les
@@ -514,6 +515,176 @@ function renderMetaPanel(b) {
   return blocks + assignBlock;
 }
 
+/* ============================================================
+ * Absences (listes éditables : centre & structure)
+ * ============================================================ */
+
+// Normalise une absence (depuis Firestore) en objet plat exploitable par l'éditeur.
+function normalizeAbsence(a = {}) {
+  return {
+    startDate: dateInputValue(a.startDate || a.start || a.date),
+    endDate: dateInputValue(a.endDate || a.end),
+    reason: a.reason || a.motif || a.label || '',
+    justified: a.justified === true || a.justifie === true,
+    justificatifUrl: a.justificatifUrl || '',
+    validatedBy: a.validatedBy || ''
+  };
+}
+
+// Une ligne d'absence. `withValidatedBy` n'est vrai que pour le centre.
+function absenceRowHtml(scope, index, abs, withValidatedBy) {
+  const a = normalizeAbsence(abs);
+  const base = `data-abs-scope="${scope}" data-abs-index="${index}"`;
+  const validatedField = withValidatedBy
+    ? `
+        <div class="sbi-booklet-field">
+          <label>Validé par</label>
+          <input class="sbi-booklet-input" type="text" data-abs-field="validatedBy" ${base} value="${escapeHtml(a.validatedBy)}" placeholder="Nom du valideur (optionnel)">
+        </div>`
+    : '';
+  return `
+    <div class="sbi-booklet-section" data-abs-row="${scope}" data-abs-row-index="${index}" style="margin:.5rem 0;">
+      <div class="sbi-booklet-grid">
+        <div class="sbi-booklet-field">
+          <label>Date de début</label>
+          <input class="sbi-booklet-input" type="date" data-abs-field="startDate" ${base} value="${escapeHtml(a.startDate)}">
+        </div>
+        <div class="sbi-booklet-field">
+          <label>Date de fin (optionnelle)</label>
+          <input class="sbi-booklet-input" type="date" data-abs-field="endDate" ${base} value="${escapeHtml(a.endDate)}">
+        </div>
+        <div class="sbi-booklet-field is-full">
+          <label>Motif</label>
+          <input class="sbi-booklet-input" type="text" data-abs-field="reason" ${base} value="${escapeHtml(a.reason)}" placeholder="Motif de l'absence">
+        </div>
+        <div class="sbi-booklet-field">
+          <label><input type="checkbox" data-abs-field="justified" ${base} ${a.justified ? 'checked' : ''}> Justifiée</label>
+        </div>
+        <div class="sbi-booklet-field is-full">
+          <label>Justificatif (URL, optionnel)</label>
+          <input class="sbi-booklet-input" type="url" data-abs-field="justificatifUrl" ${base} value="${escapeHtml(a.justificatifUrl)}" placeholder="https://…">
+        </div>
+        ${validatedField}
+      </div>
+      <div class="sbi-booklet-actions">
+        <button type="button" class="sbi-booklet-btn ghost danger" data-abs-remove="${scope}" data-abs-remove-index="${index}">Supprimer cette ligne</button>
+      </div>
+    </div>`;
+}
+
+function absenceListBlock({ scope, section, title, list, withValidatedBy }) {
+  const items = Array.isArray(list) ? list : [];
+  const rows = items.length
+    ? items.map((a, i) => absenceRowHtml(scope, i, a, withValidatedBy)).join('')
+    : `<div class="sbi-booklet-empty">Aucune absence enregistrée.</div>`;
+  return `
+    <div class="sbi-booklet-section" data-abs-block="${scope}" data-abs-section="${section}">
+      <h2>${escapeHtml(title)}</h2>
+      <div data-abs-rows="${scope}">${rows}</div>
+      <div class="sbi-booklet-actions">
+        <button type="button" class="sbi-booklet-btn" data-abs-add="${scope}">+ Ajouter une absence</button>
+        <button type="button" class="sbi-booklet-btn primary" data-abs-save="${scope}">${escapeHtml(scope === 'cfmfs' ? 'Enregistrer les absences (centre)' : 'Enregistrer les absences (structure)')}</button>
+      </div>
+      <p class="sbi-booklet-status" data-abs-status="${scope}" hidden></p>
+    </div>`;
+}
+
+function renderAbsencesPanel(b) {
+  const absences = b.absences || {};
+  const locked = b.status === 'locked';
+  const lockWarn = locked
+    ? `<div class="sbi-booklet-guide" style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:.6rem .9rem;margin:.5rem 0;font-size:.85rem;color:#9a3412;">Ce livret est verrouillé. En tant qu'administrateur vous pouvez tout de même modifier les absences ; vos changements seront enregistrés.</div>`
+    : '';
+  return lockWarn
+    + absenceListBlock({ scope: 'cfmfs', section: 'absencesCfmfs', title: LABELS.sections.absencesCfmfs, list: absences.cfmfs, withValidatedBy: true })
+    + absenceListBlock({ scope: 'entreprise', section: 'absencesEntreprise', title: LABELS.sections.absencesEntreprise, list: absences.entreprise, withValidatedBy: false });
+}
+
+// Lit les lignes saisies dans le DOM pour un scope donné -> tableau d'items.
+function collectAbsences(scope) {
+  const r = root();
+  const rowsContainer = r?.querySelector(`[data-abs-rows="${scope}"]`);
+  if (!rowsContainer) return [];
+  const items = [];
+  rowsContainer.querySelectorAll('[data-abs-row]').forEach((rowEl) => {
+    const item = {};
+    rowEl.querySelectorAll('[data-abs-field]').forEach((el) => {
+      const field = el.dataset.absField;
+      if (el.type === 'checkbox') item[field] = el.checked;
+      else item[field] = el.value.trim();
+    });
+    // Ligne vide (ni date ni motif) -> ignorée.
+    if (!item.startDate && !item.endDate && !item.reason) return;
+    const clean = {
+      startDate: item.startDate || '',
+      reason: item.reason || '',
+      justified: item.justified === true
+    };
+    if (item.endDate) clean.endDate = item.endDate;
+    if (item.justificatifUrl) clean.justificatifUrl = item.justificatifUrl;
+    if (scope === 'cfmfs' && item.validatedBy) clean.validatedBy = item.validatedBy;
+    items.push(clean);
+  });
+  return items;
+}
+
+const ABSENCE_SCOPES = {
+  cfmfs: { section: 'absencesCfmfs', withValidatedBy: true },
+  entreprise: { section: 'absencesEntreprise', withValidatedBy: false }
+};
+
+// Ajout / suppression locale : on relit l'état DOM courant, on le mute, on re-rend le bloc.
+function currentAbsenceItems(scope) {
+  return collectAbsences(scope);
+}
+
+function rerenderAbsenceRows(scope, items) {
+  const r = root();
+  const rowsContainer = r?.querySelector(`[data-abs-rows="${scope}"]`);
+  if (!rowsContainer) return;
+  const cfg = ABSENCE_SCOPES[scope] || {};
+  rowsContainer.innerHTML = items.length
+    ? items.map((a, i) => absenceRowHtml(scope, i, a, cfg.withValidatedBy)).join('')
+    : `<div class="sbi-booklet-empty">Aucune absence enregistrée.</div>`;
+}
+
+function handleAbsenceAdd(scope) {
+  const items = currentAbsenceItems(scope);
+  items.push({ startDate: '', endDate: '', reason: '', justified: false, justificatifUrl: '', validatedBy: '' });
+  rerenderAbsenceRows(scope, items);
+}
+
+function handleAbsenceRemove(scope, index) {
+  const items = currentAbsenceItems(scope);
+  if (index >= 0 && index < items.length) items.splice(index, 1);
+  rerenderAbsenceRows(scope, items);
+}
+
+async function handleSaveAbsences(scope, button) {
+  const r = root();
+  const cfg = ABSENCE_SCOPES[scope];
+  if (!cfg) return;
+  const statusEl = r.querySelector(`[data-abs-status="${scope}"]`);
+  const items = collectAbsences(scope);
+
+  button.disabled = true;
+  setLocalStatus(statusEl, 'Enregistrement…');
+  try {
+    await updateBookletSection({
+      bookletId: selectedId,
+      target: { kind: 'section', section: cfg.section },
+      fields: { items }
+    });
+    selectedBooklet = await loadBooklet({ db, bookletId: selectedId });
+    setLocalStatus(statusEl, 'Absences enregistrées.', 'success');
+    render();
+  } catch (error) {
+    console.error('[SBI Livret admin] sauvegarde absences impossible :', error);
+    setLocalStatus(statusEl, error?.message || 'Enregistrement impossible.', 'error');
+    button.disabled = false;
+  }
+}
+
 function renderPeriodPanel(b, period, index) {
   const target = { kind: 'period', periodId: period.id };
   const dateFields = `
@@ -565,8 +736,10 @@ function renderEditView() {
   const comp = computeCompletion(b);
   const periods = Array.isArray(b.periods) ? b.periods : [];
 
-  const tabs = [{ key: 'meta', label: "En-tête & sections" }]
-    .concat(periods.map((p, i) => ({ key: p.id || `p${i + 1}`, label: p.label || `Période ${i + 1}` })));
+  const tabs = [
+    { key: 'meta', label: "En-tête & sections" },
+    { key: 'absences', label: 'Absences' }
+  ].concat(periods.map((p, i) => ({ key: p.id || `p${i + 1}`, label: p.label || `Période ${i + 1}` })));
 
   const tabsHtml = tabs.map((t) => `
     <button type="button" class="sbi-booklet-tab ${activeTab === t.key ? 'is-active' : ''}" data-tab="${escapeHtml(t.key)}">${escapeHtml(t.label)}</button>`).join('');
@@ -574,6 +747,8 @@ function renderEditView() {
   let panel;
   if (activeTab === 'meta') {
     panel = renderMetaPanel(b);
+  } else if (activeTab === 'absences') {
+    panel = renderAbsencesPanel(b);
   } else {
     const idx = periods.findIndex((p, i) => (p.id || `p${i + 1}`) === activeTab);
     panel = idx >= 0 ? renderPeriodPanel(b, periods[idx], idx) : '<div class="sbi-booklet-empty">Période introuvable.</div>';
@@ -664,7 +839,7 @@ function onClick(e) {
     if (action === 'create') { mode = 'create'; render(); return; }
     if (action === 'back') { mode = 'list'; selectedId = ''; selectedBooklet = null; render(); return; }
     if (action === 'create-submit') { handleCreate(actionEl); return; }
-    if (action === 'pdf') { if (selectedBooklet) downloadBookletPdf(selectedBooklet); return; }
+    if (action === 'pdf') { if (selectedBooklet) handlePdf(); return; }
     if (action === 'assign-tutor') { handleAssignTutor(actionEl); return; }
   }
 
@@ -682,6 +857,15 @@ function onClick(e) {
 
   const lockBtn = e.target.closest('[data-lock-period]');
   if (lockBtn) { handleLockPeriod(lockBtn.dataset.lockPeriod, lockBtn.dataset.locked === '1', lockBtn); return; }
+
+  const absAdd = e.target.closest('[data-abs-add]');
+  if (absAdd) { handleAbsenceAdd(absAdd.dataset.absAdd); return; }
+
+  const absRemove = e.target.closest('[data-abs-remove]');
+  if (absRemove) { handleAbsenceRemove(absRemove.dataset.absRemove, Number(absRemove.dataset.absRemoveIndex)); return; }
+
+  const absSave = e.target.closest('[data-abs-save]');
+  if (absSave) { handleSaveAbsences(absSave.dataset.absSave, absSave); return; }
 }
 
 /* ============================================================
@@ -847,6 +1031,25 @@ async function handleAssignTutor(button) {
     setLocalStatus(statusEl, error?.message || 'Assignation impossible.', 'error');
     button.disabled = false;
   }
+}
+
+async function handlePdf() {
+  const booklet = selectedBooklet;
+  if (!booklet) return;
+  // Résout le planning « Documents de formation » (promotion/cursus) de façon
+  // tolérante : si la résolution échoue, on génère le PDF sans planning.
+  const p = await resolveBookletPlanningModel({ db, booklet }).catch(() => null);
+  downloadBookletPdf(
+    booklet,
+    p
+      ? {
+          planningModel: p.model,
+          planningTitle: p.title,
+          planningPromotionName: p.promotionName,
+          planningUploadedUrl: p.uploadedUrl
+        }
+      : {}
+  );
 }
 
 /* ============================================================

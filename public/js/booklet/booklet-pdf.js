@@ -15,6 +15,7 @@
  */
 
 import { LABELS, PERIOD_FIELDS, STATUS_META, ROLE_TEXTS, periodGuide, escapeHtml as esc, formatDate as fmtDate } from '/js/booklet/booklet-data.js';
+import { renderPlanningHtml } from '/js/formation-documents/planning-render.js?v=8.0P.167.292';
 
 // Champs "tuteur" d'une période (rendus à part, après le bloc apprenti).
 const TUTOR_PERIOD_FIELDS = [
@@ -125,7 +126,31 @@ function renderPeriod(period = {}, index = 0) {
   </section>`;
 }
 
-function buildBookletPrintHtml(booklet = {}) {
+// Section « Planning de l'alternance » : priorité au planning réel issu de
+// « Documents de formation » (options.planningModel / planningUploadedUrl),
+// repli sur la liste manuelle booklet.planningAlternance.
+function renderBookletPlanningSection(booklet = {}, options = {}) {
+  if (options.planningModel && Array.isArray(options.planningModel.rows) && options.planningModel.rows.length) {
+    return renderPlanningHtml(options.planningModel, {
+      title: options.planningTitle || '',
+      promotionName: options.planningPromotionName || ''
+    });
+  }
+  if (options.planningUploadedUrl) {
+    const label = esc(options.planningTitle || 'Planning de l\'alternance');
+    return `<p class="sub">${label} : <a href="${esc(options.planningUploadedUrl)}">Voir le planning (PDF)</a></p>`;
+  }
+  // Modèle fourni mais vide (cursus sans éléments planifiés) : message explicite.
+  if (options.planningModel) {
+    return renderPlanningHtml(options.planningModel, {
+      title: options.planningTitle || '',
+      promotionName: options.planningPromotionName || ''
+    });
+  }
+  return renderPlanningAlternance(booklet.planningAlternance);
+}
+
+function buildBookletPrintHtml(booklet = {}, options = {}) {
   const st = STATUS_META[booklet.status] || STATUS_META.draft;
   const isLocked = booklet.status === 'locked';
   const title = "Livret d'apprentissage";
@@ -179,7 +204,7 @@ function buildBookletPrintHtml(booklet = {}) {
   const absencesBlock = `${renderAbsences(absences.cfmfs, LABELS.sections.absencesCfmfs)}
     ${renderAbsences(absences.entreprise, LABELS.sections.absencesEntreprise)}`;
 
-  const planningBlock = renderPlanningAlternance(booklet.planningAlternance);
+  const planningBlock = renderBookletPlanningSection(booklet, options);
 
   // Page de garde (1ʳᵉ page) + page « Rôles ».
   const coverPage = `<section class="cover">
@@ -245,7 +270,8 @@ function buildBookletPrintHtml(booklet = {}) {
        Charte SBI (alignée sur le template email) :
        police Arial, accent bleu #0051ff, bandeau sombre #050913.
        ========================================================= */
-    *{box-sizing:border-box;}
+    *{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact;}
+    html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact;}
     body{font-family:Arial,Helvetica,sans-serif;color:#253047;background:#f3f5f9;padding:32px;position:relative;}
     h1{font-size:22px;margin:0 0 4px;color:#101828;}
     .sub{color:#667085;font-size:13px;margin:0 0 14px;}
@@ -298,6 +324,12 @@ function buildBookletPrintHtml(booklet = {}) {
       letter-spacing:.05em;pointer-events:none;z-index:0;white-space:nowrap;
     }
     @media print{
+      /* Forçage des couleurs : sans cela le bandeau sombre, les badges et les
+         cartouches colorés disparaissent (les navigateurs n'impriment pas les
+         fonds par défaut). */
+      *,html,body,.cover-header,.badge,.field-value,table.grid th,.guide{
+        -webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact;
+      }
       body{padding:0;background:#fff;}
       /* Marges propres + pas d'en-tête/pied navigateur géré par l'utilisateur. */
       @page{margin:14mm;}
@@ -339,8 +371,11 @@ function buildBookletPrintHtml(booklet = {}) {
 /**
  * Ouvre une fenêtre d'impression et y écrit le livret complet, puis auto-print.
  * @param {object} booklet  document apprenticeshipBooklets
+ * @param {object} [options] Planning réel (Documents de formation) :
+ *   { planningModel, planningTitle, planningPromotionName, planningUploadedUrl }.
+ *   Si absent, repli sur booklet.planningAlternance (rétrocompatible).
  */
-export function downloadBookletPdf(booklet = {}) {
+export function downloadBookletPdf(booklet = {}, options = {}) {
   const id = (booklet && (booklet.id || booklet.studentId)) || 'sbi';
   const win = window.open('', `livret-${id}`, 'width=960,height=720,menubar=yes,toolbar=yes');
   if (!win) {
@@ -349,7 +384,7 @@ export function downloadBookletPdf(booklet = {}) {
   }
   win.document.write('<!doctype html><html lang="fr"><head><meta charset="UTF-8"><title>Livret…</title></head><body style="font-family:Arial,Helvetica,sans-serif;padding:40px;color:#253047;">Génération du livret d\'apprentissage… un instant.</body></html>');
   win.document.close();
-  const html = buildBookletPrintHtml(booklet);
+  const html = buildBookletPrintHtml(booklet, options || {});
   win.document.open();
   win.document.write(html);
   win.document.close();

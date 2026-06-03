@@ -18,8 +18,9 @@ import {
   LABELS, PERIOD_FIELDS, periodFieldLabel,
   escapeHtml, formatDate, computeCompletion, statusMeta,
   validateBookletPeriod, loadBookletsForTeacher
-} from '/js/booklet/booklet-data.js?v=8.0P.167.291';
-import { downloadBookletPdf } from '/js/booklet/booklet-pdf.js?v=8.0P.167.291';
+} from '/js/booklet/booklet-data.js?v=8.0P.167.292';
+import { downloadBookletPdf } from '/js/booklet/booklet-pdf.js?v=8.0P.167.292';
+import { resolveBookletPlanningModel } from '/js/formation-documents/planning-render.js?v=8.0P.167.292';
 import { loadAssignedFormationsForUser } from '/js/learning-access.js';
 
 const TEACHER_ROLES = ['teacher', 'prof', 'professeur', 'enseignant'];
@@ -98,7 +99,7 @@ async function loadScope() {
 async function loadData() {
   const { promotionIds, formationIds, promotionNameById, formationNameById } = await loadScope();
 
-  // 8.0P.167.291 — Lecture UNIQUEMENT par formationId : la règle Firestore
+  // 8.0P.167.292 — Lecture UNIQUEMENT par formationId : la règle Firestore
   // n'autorise le prof à lire un livret que via `formation.profs` (fonction
   // formationDocHasCurrentUser), PAS via promotionId (qui exige que la promotion
   // soit dans le user.promotionIds — champ élève, jamais prof). La requête par
@@ -292,6 +293,23 @@ async function handleValidate(periodId, decision) {
   }
 }
 
+/* Export PDF d'un livret : récupère le planning réel de « Documents de formation ». */
+async function exportPdf(b) {
+  if (!b) return;
+  try {
+    const p = await resolveBookletPlanningModel({ db, booklet: b });
+    downloadBookletPdf(b, p ? {
+      planningModel: p.model,
+      planningTitle: p.title,
+      planningPromotionName: p.promotionName,
+      planningUploadedUrl: p.uploadedUrl
+    } : {});
+  } catch (error) {
+    console.warn('[SBI Livrets prof] planning indisponible pour le PDF :', error);
+    downloadBookletPdf(b);
+  }
+}
+
 function bindEvents() {
   const r = root();
   if (!r) return;
@@ -305,7 +323,7 @@ function bindEvents() {
   detail?.addEventListener('click', (e) => {
     if (e.target.closest('[data-booklet-pdf]')) {
       const b = bookletById.get(selectedBookletId);
-      if (b) downloadBookletPdf(b);
+      if (b) exportPdf(b);
       return;
     }
     const validateBtn = e.target.closest('[data-booklet-validate]');

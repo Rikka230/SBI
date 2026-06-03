@@ -18,6 +18,7 @@ import {
   query,
   where
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { loadFormationDocumentsForFormations } from '/js/formation-documents/formation-docs-data.js?v=8.0P.167.292';
 
 const STRUCTURAL_TYPES = ['real_course', 'placeholder_course', 'buffer_period', 'revision_period', 'catchup_period', 'workshop'];
 
@@ -90,7 +91,7 @@ export async function loadCursusOptions({ db, formationId = '' } = {}) {
 export async function loadCursusItems({ db, cursusId = '' } = {}) {
   const id = String(cursusId || '').trim();
   if (!id) return { title: '', items: [], readable: true };
-  // SBI 8.0P.167.291 — La collection curriculumTemplates est en lecture ADMIN
+  // SBI 8.0P.167.292 — La collection curriculumTemplates est en lecture ADMIN
   // uniquement (firestore.rules). Côté élève/prof, le getDoc est refusé : on
   // l'absorbe ici (readable:false) pour que resolvePlanningModel puisse tout de
   // même rendre le plan DATÉ de la promotion (lisible par l'élève/prof concerné)
@@ -280,7 +281,7 @@ export function renderPlanningHtml(model = { dated: false, rows: [] }, meta = {}
     </div>`;
 }
 
-// ── Export PDF (fenêtre d'impression, pattern registre Qualiopi) ─────────
+// ── Export PDF (fenêtre d'impression, identité SBI alignée sur le livret) ──
 function buildPlanningPrintHtml(model, meta = {}) {
   const rows = Array.isArray(model.rows) ? model.rows : [];
   const periodHead = model.dated ? 'Période' : 'Semaine';
@@ -291,22 +292,70 @@ function buildPlanningPrintHtml(model, meta = {}) {
       ? `${esc(fmtDate(r.startAt))}${r.endAt ? ' → ' + esc(fmtDate(r.endAt)) : ''}`
       : esc(r.weekLabel || '');
     const due = r.dueAt ? esc(fmtDate(r.dueAt)) : '';
-    return `<tr><td>${period || '—'}</td><td>${esc(r.typeLabel)}</td><td>${esc(r.title)}${r.block ? ` · ${esc(r.block)}` : ''}</td><td>${due || '—'}</td></tr>`;
+    return `<tr><td>${period || '—'}</td><td>${esc(r.typeLabel)}</td><td>${esc(r.title)}${r.block ? ` <span class="block">· ${esc(r.block)}</span>` : ''}</td><td>${due || '—'}</td></tr>`;
   }).join('');
+  const tableBlock = rows.length
+    ? `<table class="grid"><thead><tr><th>${periodHead}</th><th>Type</th><th>Intitulé</th><th>Échéance</th></tr></thead><tbody>${trs}</tbody></table>`
+    : `<p class="sub"><span class="empty">Aucun élément planifié pour ce planning.</span></p>`;
   return `<!doctype html><html lang="fr"><head><meta charset="UTF-8"><title>${title}</title>
   <style>
-    *{box-sizing:border-box;} body{font-family:system-ui,Segoe UI,Roboto,sans-serif;color:#1f2937;padding:32px;}
-    h1{font-size:20px;margin:0 0 4px;} .sub{color:#6b7280;margin:0 0 18px;font-size:13px;}
-    table{width:100%;border-collapse:collapse;font-size:12px;}
-    th,td{text-align:left;padding:7px 9px;border-bottom:1px solid #e5e7eb;vertical-align:top;}
-    th{background:#f3f4f6;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#374151;}
-    .foot{margin-top:20px;color:#9ca3af;font-size:11px;}
-    @media print{body{padding:0;} @page{margin:16mm;}}
+    /* =========================================================
+       Charte SBI (alignée sur le livret / le template email) :
+       police Arial, accent bleu #0051ff, bandeau sombre #050913.
+       Forçage des couleurs à l'impression (les navigateurs n'impriment
+       pas les fonds par défaut → header sombre/cartouches conservés).
+       ========================================================= */
+    *{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact;}
+    html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact;}
+    body{font-family:Arial,Helvetica,sans-serif;color:#253047;background:#f3f5f9;padding:32px;}
+    h1{font-size:22px;margin:0 0 4px;color:#101828;border:none;padding:0;}
+    .sub{color:#667085;font-size:13px;margin:0 0 14px;}
+    .empty{color:#9ca3af;font-style:italic;}
+    a{color:#0051ff;}
+
+    /* Bandeau d'en-tête (clone livret/email) */
+    .cover-header{background:#050913;border-bottom:4px solid #0051ff;border-radius:14px 14px 0 0;padding:24px 30px;display:flex;align-items:center;gap:18px;}
+    .cover-header img.logo{height:48px;width:auto;display:block;border:0;}
+    .cover-header .brand-block{display:flex;flex-direction:column;}
+    .cover-header img.wordmark{width:200px;max-width:200px;height:auto;display:block;border:0;}
+    .cover-tagline{font-size:12px;line-height:18px;color:#8a93a6;font-style:italic;margin-top:8px;}
+    .cover-tagline .accent{color:#0051ff;}
+    .cover-body{border:1px solid #dce4f2;border-top:none;border-radius:0 0 14px 14px;background:#fff;padding:22px 26px;margin:0 0 22px;}
+    .cover-title{font-size:24px;margin:0;color:#101828;}
+    .cover-sub{color:#667085;font-size:14px;margin:4px 0 0;}
+
+    table.grid{width:100%;border-collapse:collapse;font-size:12px;margin:0 0 10px;}
+    table.grid th,table.grid td{text-align:left;padding:6px 9px;border:1px solid #dce4f2;vertical-align:top;}
+    table.grid th{background:#f7f9fd;color:#0051ff;font-weight:700;}
+    table.grid td{color:#253047;}
+    table.grid td .block{opacity:.6;}
+
+    .foot{margin-top:22px;padding-top:12px;border-top:1px solid #dce4f2;color:#667085;font-size:11px;line-height:1.6;}
+    .foot .accent{color:#0051ff;}
+
+    @media print{
+      body{padding:0;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact;}
+      @page{margin:14mm;}
+      .cover-header{-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact;}
+      table.grid th{-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact;}
+      h1{break-after:avoid;page-break-after:avoid;}
+      tr{break-inside:avoid;page-break-inside:avoid;}
+    }
   </style></head><body>
-    <h1>${title}</h1>
-    ${sub ? `<p class="sub">${sub}</p>` : ''}
-    <table><thead><tr><th>${periodHead}</th><th>Type</th><th>Intitulé</th><th>Échéance</th></tr></thead><tbody>${trs}</tbody></table>
-    <p class="foot">Planning généré depuis le cursus SBI — ${esc(fmtDate(new Date()))}</p>
+    <div class="cover-header">
+      <img class="logo" src="https://firebasestorage.googleapis.com/v0/b/sbi-web-4f6b4.firebasestorage.app/o/site%2Findex%2Flogos%2FLogo_SBI_Tome.png?alt=media" alt="SBI">
+      <div class="brand-block">
+        <img class="wordmark" src="https://firebasestorage.googleapis.com/v0/b/sbi-web-4f6b4.firebasestorage.app/o/site%2Findex%2Flogos%2Fsbi_brand.png?alt=media" alt="Sport Business Institute">
+        <div class="cover-tagline">Apprendre. Progresser. <span class="accent">Performer.</span></div>
+      </div>
+    </div>
+    <div class="cover-body">
+      <h1 class="cover-title">${title}</h1>
+      ${sub ? `<p class="cover-sub">${sub}</p>` : ''}
+    </div>
+    ${tableBlock}
+    <p class="foot">Planning généré depuis le cursus SBI — édité le ${esc(fmtDate(new Date()))}<br>
+    <span class="accent">Sport Business Institute</span> · contact@sbigroup.fr · 04.92.90.90.25 · www.sbigroup.fr</p>
     <script>window.onload=function(){setTimeout(function(){window.print();},400);};</script>
   </body></html>`;
 }
@@ -323,4 +372,54 @@ export function downloadPlanningPdf(model, meta = {}) {
   win.document.open();
   win.document.write(html);
   win.document.close();
+}
+
+// ── Planning du LIVRET = même source que « Documents de formation » ───────
+// Résout, pour un livret donné, le planning réel de sa formation/promotion :
+// on lit les documents planning de la formation, on choisit l'entrée ciblée
+// sur la promotion du livret (sinon le planning par défaut formation), puis :
+//  - source 'cursus'  → on génère le modèle daté/relatif via resolvePlanningModel ;
+//  - PDF uploadé      → on renvoie l'URL pour un simple lien « Voir le planning ».
+// Retourne null si rien d'exploitable (try/catch global → null en cas d'échec).
+export async function resolveBookletPlanningModel({ db, booklet } = {}) {
+  try {
+    if (!db || !booklet || !booklet.formationId) return null;
+    const formationId = String(booklet.formationId || '').trim();
+    const promotionId = String(booklet.promotionId || '').trim();
+    if (!formationId) return null;
+
+    const docs = await loadFormationDocumentsForFormations({ db, formationIds: [formationId] });
+    const plannings = (Array.isArray(docs) ? docs : [])
+      .filter((d) => d && String(d.category || '').trim().toLowerCase() === 'planning');
+    if (!plannings.length) return null;
+
+    // Entrée ciblée sur la promotion du livret, sinon entrée par défaut (promotionId vide).
+    const targeted = promotionId
+      ? plannings.find((d) => String(d.promotionId || '').trim() === promotionId)
+      : null;
+    const fallback = plannings.find((d) => !String(d.promotionId || '').trim());
+    const entry = targeted || fallback || null;
+    if (!entry) return null;
+
+    const title = entry.title || "Planning de l'alternance";
+
+    if (entry.source === 'cursus' && entry.cursusId) {
+      const model = await resolvePlanningModel({
+        db,
+        cursusId: entry.cursusId,
+        promotionIds: [promotionId].filter(Boolean)
+      });
+      return { model, title, promotionName: '', uploadedUrl: entry.downloadURL || '' };
+    }
+
+    // PDF uploadé (sans cursus) : pas de modèle, on transmet l'URL.
+    if (entry.downloadURL) {
+      return { model: null, title, promotionName: '', uploadedUrl: entry.downloadURL };
+    }
+
+    return null;
+  } catch (error) {
+    console.warn('[SBI Planning livret] résolution impossible :', error?.message || error);
+    return null;
+  }
 }

@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.291',
+  version: '8.0P.167.292',
   branch: 'main',
-  channel: 'Livret apprentissage : Phase B + correctifs multi-agents',
-  stage: 'Phase B : PDF brande comme les emails SBI (bleu #0051ff, logo/wordmark, page de garde) + sauts de page corriges ; synchro miroir top-level cote serveur (l admin edite identite/etablissement/employeur/maitre d apprentissage et ca persiste apres reload) ; le tuteur ajoute des absences en entreprise (avec/sans justificatif) et accede aux documents de formation (/tutor/documents) ; planning cible re-affiche apres reload (auto-selection de la promo ayant un planning) ; plannings visibles cote prof/eleve (curriculumTemplates lisible par utilisateur actif, getDoc resilient) ; fix ecriture absences imbriquees (set merge + cle pointee).',
+  channel: 'Livret apprentissage : Phase B + correctifs (vague 2 multi-agents)',
+  stage: 'Correctifs critiques : (1) fix 500 validation/verrou periode (serverTimestamp interdit dans un array -> Timestamp.now()) ; (2) edition admin enfin fonctionnelle (fieldHtml evaluait le droit sur la cle de champ au lieu du nom de section -> tout etait en lecture seule) ; (3) acces prof aux livrets par formationId (la requete par promotionId etait toujours refusee). Phase B vague 2 : PDF (livret + planning) impression couleurs forcees (print-color-adjust:exact) ; PDF planning brande comme le livret ; la section planning du livret recupere le planning de Documents de formation (resolveBookletPlanningModel) ; editeur ABSENCES admin (centre + structure, justificatif/validation).',
   updatedAt: '2026-06-03',
-  label: 'SBI 8.0P.167.291 - Livret Phase B : PDF brande, edition admin persistante, absences/docs tuteur, planning prof/eleve'
+  label: 'SBI 8.0P.167.292 - Livret : fix validation/edition admin/prof + PDF couleurs impression + planning branding + absences admin'
 };
 
 export function getSbiVersionLabel() {
