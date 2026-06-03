@@ -398,3 +398,35 @@ export async function loadBookletsForTeacherPromotions({ db, promotionIds = [] }
   }
   return [...results.values()];
 }
+
+// SBI 8.0P.167.288 — un livret peut être rattaché par formation (promotion
+// optionnelle). Le prof de la formation y a droit (règle formationDocHasCurrentUser),
+// mais il faut aussi le requêter par formationId, sinon invisible.
+export async function loadBookletsForTeacherFormations({ db, formationIds = [] } = {}) {
+  const ids = [...new Set((formationIds || []).map((v) => String(v || '').trim()).filter(Boolean))];
+  if (!db || !ids.length) return [];
+  const ref = collection(db, COLLECTION);
+  const results = new Map();
+  for (let i = 0; i < ids.length; i += 30) {
+    const chunk = ids.slice(i, i + 30);
+    const snap = await getDocs(query(ref, where('formationId', 'in', chunk)));
+    snap.forEach((d) => results.set(d.id, { id: d.id, ...(d.data() || {}) }));
+  }
+  return [...results.values()];
+}
+
+// Union dédupliquée : livrets visibles par un prof via ses promotions ET ses formations.
+export async function loadBookletsForTeacher({ db, promotionIds = [], formationIds = [] } = {}) {
+  const byId = new Map();
+  try {
+    (await loadBookletsForTeacherPromotions({ db, promotionIds })).forEach((b) => byId.set(b.id, b));
+  } catch (error) {
+    console.warn('[SBI Booklet] lecture par promotions échouée :', error?.message || error);
+  }
+  try {
+    (await loadBookletsForTeacherFormations({ db, formationIds })).forEach((b) => byId.set(b.id, b));
+  } catch (error) {
+    console.warn('[SBI Booklet] lecture par formations échouée :', error?.message || error);
+  }
+  return [...byId.values()];
+}

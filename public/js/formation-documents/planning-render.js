@@ -233,7 +233,10 @@ export async function resolvePlanningModel({ db, cursusId = '', promotionIds = [
 export function renderPlanningHtml(model = { dated: false, rows: [] }, meta = {}) {
   const rows = Array.isArray(model.rows) ? model.rows : [];
   if (!rows.length) {
-    return `<div class="sbi-fdoc-empty">Aucun élément de planning à afficher.</div>`;
+    // SBI 8.0P.167.288 — message explicite : le planning EST bien défini (entrée
+    // enregistrée), mais le cursus choisi n'a pas encore d'éléments datés/planifiés.
+    const name = meta.cursusTitle || model.cursusTitle || '';
+    return `<div class="sbi-fdoc-empty">Planning défini${name ? ` depuis le cursus « ${esc(name)} »` : ''}, mais ce cursus ne contient pas encore d'éléments planifiés (cours, lives, examens…). Ajoute des éléments au cursus (onglet Cursus) pour qu'ils apparaissent ici.</div>`;
   }
   const periodHead = model.dated ? 'Période' : 'Semaine';
   const body = rows.map((r) => {

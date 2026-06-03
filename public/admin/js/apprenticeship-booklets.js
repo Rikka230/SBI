@@ -410,8 +410,8 @@ function metaSectionsConfig(b) {
     {
       section: 'contract', title: LABELS.sections.contract,
       fields: [
-        { key: 'contractStart', label: LABELS.fields.contractStart, value: dateInputValue(b.contractStart || contract.start), multiline: false, type: 'date' },
-        { key: 'contractEnd', label: LABELS.fields.contractEnd, value: dateInputValue(b.contractEnd || contract.end), multiline: false, type: 'date' }
+        { key: 'start', label: LABELS.fields.contractStart, value: dateInputValue(b.contractStart || contract.start), multiline: false, type: 'date' },
+        { key: 'end', label: LABELS.fields.contractEnd, value: dateInputValue(b.contractEnd || contract.end), multiline: false, type: 'date' }
       ]
     }
   ];
@@ -449,7 +449,7 @@ function renderMetaPanel(b) {
       <div class="sbi-booklet-grid">
         ${sec.fields.map((f) => fieldHtml({
           key: f.key, label: f.label, value: f.value,
-          target: { kind: sec.section === 'contract' ? 'meta' : 'section', section: sec.section },
+          target: { kind: 'section', section: sec.section },
           multiline: f.multiline !== false, type: f.type, full: f.full
         })).join('')}
       </div>

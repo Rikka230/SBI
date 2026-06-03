@@ -17,8 +17,8 @@ import {
 import {
   LABELS, PERIOD_FIELDS, periodFieldLabel,
   escapeHtml, formatDate, computeCompletion, statusMeta,
-  validateBookletPeriod, loadBookletsForTeacherPromotions
-} from '/js/booklet/booklet-data.js?v=8.0P.167.287';
+  validateBookletPeriod, loadBookletsForTeacher
+} from '/js/booklet/booklet-data.js?v=8.0P.167.288';
 import { downloadBookletPdf } from '/js/booklet/booklet-pdf.js?v=8.0P.167.287';
 import { loadAssignedFormationsForUser } from '/js/learning-access.js';
 
@@ -92,14 +92,16 @@ async function loadScope() {
     }
   }
 
-  return { promotionIds, promotionNameById, formationNameById };
+  return { promotionIds, formationIds, promotionNameById, formationNameById };
 }
 
 async function loadData() {
-  const { promotionIds, promotionNameById, formationNameById } = await loadScope();
+  const { promotionIds, formationIds, promotionNameById, formationNameById } = await loadScope();
 
-  booklets = promotionIds.length
-    ? await loadBookletsForTeacherPromotions({ db, promotionIds })
+  // Union promotions + formations : un livret rattaché par formation (sans
+  // promotion) doit aussi remonter pour le prof de cette formation.
+  booklets = (promotionIds.length || formationIds.length)
+    ? await loadBookletsForTeacher({ db, promotionIds, formationIds })
     : [];
 
   // Enrichit chaque livret avec des noms lisibles (sinon retombe sur les champs stockés).
