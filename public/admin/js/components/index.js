@@ -3,7 +3,7 @@ import { registerAdminPanels } from './admin-panels.js?v=8.0P.167.305';
 import { registerStudentPanels } from './student-panels.js?v=8.0P.167.305';
 import { registerTeacherPanels } from './teacher-panels.js?v=8.0P.167.305';
 import { registerTutorPanels } from './tutor-panels.js?v=8.0P.167.305';
-import { registerBottomNav } from './bottom-nav.js?v=8.0P.167.306';
+import { registerBottomNav } from './bottom-nav.js?v=8.0P.167.307';
 export { waitForExpectedComponents, waitForSbiComponents, waitForSbiTopbar } from './ready.js';
 
 injectPanelStyles();

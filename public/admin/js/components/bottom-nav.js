@@ -11,7 +11,7 @@ import { ICONS, defineOnce } from './shared-icons.js';
 import { signOutToLogin } from './shared-actions.js';
 import { NAV_BY_ROLE, isActive, primaryNav, overflowNav } from './nav-manifest.js?v=8.0P.167.306';
 
-const BOTTOM_NAV_CSS = '/admin/css/sbi-bottom-nav.css?v=8.0P.167.306';
+const BOTTOM_NAV_CSS = '/admin/css/sbi-bottom-nav.css?v=8.0P.167.307';
 const PLUS_ICON = '<svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>';
 
 function effectivePath() {
@@ -55,6 +55,7 @@ class SbiBottomNav extends HTMLElement {
     window.removeEventListener('popstate', this._onNav);
     window.removeEventListener('sbi:page-loaded', this._onNav);
     window.removeEventListener('resize', this._onResize);
+    this._ro?.disconnect();
   }
 
   render() {
@@ -96,6 +97,16 @@ class SbiBottomNav extends HTMLElement {
     this.querySelector('#sbi-bn-backdrop')?.addEventListener('click', () => this.toggleSheet(false));
     this.querySelector('#sbi-bn-logout')?.addEventListener('click', () => { this.toggleSheet(false); signOutToLogin(); });
     this.querySelectorAll('.sbi-bn-sheet-item[data-sbi-href]').forEach((a) => a.addEventListener('click', () => this.toggleSheet(false)));
+
+    // L'indicateur doit être (re)positionné dès que la barre est réellement mise en page :
+    // le CSS est chargé en <link> async, donc les offsets au premier rendu sont faux
+    // (« étiré tout à droite »). Un ResizeObserver sur la barre corrige au bon moment.
+    const nav = this.querySelector('.sbi-bottom-nav');
+    if (nav && 'ResizeObserver' in window) {
+      this._ro?.disconnect();
+      this._ro = new ResizeObserver(() => this.positionIndicator());
+      this._ro.observe(nav);
+    }
 
     this.syncActive();
   }
@@ -139,9 +150,12 @@ class SbiBottomNav extends HTMLElement {
   }
 
   positionIndicator() {
+    const nav = this.querySelector('.sbi-bottom-nav');
     const ind = this.querySelector('.sbi-bn-indicator');
+    if (!nav || !ind) return;
+    // Barre non visible (desktop ≥1025px : display:none) → ne rien mesurer.
+    if (!nav.offsetParent || nav.offsetWidth === 0) { ind.style.opacity = '0'; return; }
     const active = this.querySelector('.sbi-bn-item.is-active');
-    if (!ind) return;
     if (!active) { ind.style.opacity = '0'; ind.style.width = '0px'; return; }
     ind.style.opacity = '1';
     ind.style.left = `${active.offsetLeft}px`;

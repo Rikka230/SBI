@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.306',
+  version: '8.0P.167.307',
   branch: 'main',
-  channel: 'Mobile : bottom-nav flottante (espaces élève/prof/tuteur, ≤1024px)',
-  stage: 'Phase 1 du shell mobile : barre de navigation flottante en bas d écran (capsule translucide, indicateur coulissant recoloré par --space-accent, cibles ≥44px, safe-area, prefers-reduced-motion) pour les espaces élève/prof/tuteur en ≤1024px. Additive : sur ≤1024px le panneau latéral et son hamburger sont masqués pour ces 3 rôles, la bottom-nav prend le relais ; ≥1025px = panneau latéral inchangé ; admin jamais touché. Onglets directs = les `primary` du manifeste (nav-manifest.js, même ordre que les panneaux PC) ; le reste + Déconnexion vont dans la feuille « Plus ». Sync de l onglet actif sur les navigations PJAX.',
+  channel: 'Mobile : correctifs QA bottom-nav + badge version + profil responsive',
+  stage: 'Suite QA mobile : (1) badge de version simplifié en haut à gauche (juste le numéro, lettres grises « gravées », sans cadre) en ≤1024px ; (2) feuille « Plus » réparée (elle restait display:none — re-affichée dans la media-query) ; (3) indicateur d onglet actif corrigé (mesuré avant application du CSS chargé en async → ResizeObserver + garde hors-écran) ; (4) page profil élève + prof rendue responsive (grille 1.2fr/2fr inline → classe .profile-grid qui passe en 1 colonne ≤1024px, header centré, sous-onglets repliables).',
   updatedAt: '2026-06-03',
-  label: 'SBI 8.0P.167.306 - Bottom-nav flottante mobile (élève/prof/tuteur, ≤1024px)'
+  label: 'SBI 8.0P.167.307 - QA mobile : bottom-nav (Plus + indicateur), badge version, profil responsive'
 };
 
 export function getSbiVersionLabel() {

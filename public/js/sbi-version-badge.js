@@ -68,12 +68,32 @@ function injectVersionBadgeStyles() {
       opacity: 0.82;
     }
 
-    @media (max-width: 768px) {
+    /* Mobile / tablette : badge simplifié en haut à gauche — juste le numéro,
+       lettres grises « gravées », sans cadre ni puce (sort aussi du chemin de la bottom-nav). */
+    @media (max-width: 1024px) {
       #${BADGE_ID} {
-        left: 8px;
-        bottom: 8px;
-        max-width: calc(100vw - 16px);
+        top: calc(env(safe-area-inset-top, 0px) + 6px);
+        left: 10px;
+        bottom: auto;
+        right: auto;
+        max-width: none;
+        padding: 0;
+        border: 0;
+        background: none;
+        box-shadow: none;
+        clip-path: none;
+        opacity: 1;
+        font-size: 0;
+        color: transparent;
+      }
+      #${BADGE_ID}::before { display: none; }
+      #${BADGE_ID}::after {
+        content: attr(data-sbi-version);
         font-size: 9px;
+        font-weight: 800;
+        letter-spacing: 0.14em;
+        color: #b4bac6;
+        text-shadow: 0 1px 0 rgba(255, 255, 255, 0.85), 0 -1px 0 rgba(15, 23, 42, 0.06);
       }
     }
   `;

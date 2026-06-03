@@ -29,6 +29,10 @@
   body.sbi-bottom-nav-active .mobile-toggle.left-toggle { display: none !important; }
 
   body.sbi-bottom-nav-active .sbi-bottom-nav { display: flex; }
+  /* La feuille « Plus » est gérée par opacity/transform/pointer-events ; il faut
+     simplement la rendre displayable ici (sinon le display:none par défaut bloque tout). */
+  body.sbi-bottom-nav-active .sbi-bn-sheet,
+  body.sbi-bottom-nav-active .sbi-bn-sheet-backdrop { display: block; }
 }
 
 /* ── Capsule flottante ── */
