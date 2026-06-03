@@ -101,8 +101,8 @@ export const LABELS = {
     plannedMeans:         "Moyens prévus",
     objectivesEvaluation: "Évaluation des objectifs",
     projectDescription:   "Décrivez le projet ou la situation d'animation",
-    projectContext:       "Lieu / contexte",
-    projectLocation:      "Lieu / contexte",
+    projectContext:       "Contexte",
+    projectLocation:      "Lieu",
     projectGoals:         "Objectifs du projet",
     projectMeans:         "Moyens",
     targetAudience:       "Public concerné",
@@ -438,7 +438,7 @@ export function recomputeBookletPeriodDates(payload) {
   return bookletCallable('recomputeApprenticeshipBookletPeriodDates')(payload);
 }
 
-// SBI 8.0P.167.296 — Génération serveur du dossier PDF (corps rendu via
+// SBI 8.0P.167.297 — Génération serveur du dossier PDF (corps rendu via
 // Puppeteer + paged.js, sommaire à pages réelles), puis fusion des annexes PDF
 // de la formation. Renvoie { success, url, fileName, bodyPages, annexCount, missing }.
 export function buildBookletPdf(payload) {

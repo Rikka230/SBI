@@ -15,7 +15,7 @@
  */
 
 import { LABELS, PERIOD_FIELDS, STATUS_META, ROLE_TEXTS, periodGuide, escapeHtml as esc, formatDate as fmtDate, buildBookletPdf } from '/js/booklet/booklet-data.js';
-import { renderPlanningHtml } from '/js/formation-documents/planning-render.js?v=8.0P.167.296';
+import { renderPlanningHtml } from '/js/formation-documents/planning-render.js?v=8.0P.167.297';
 
 // Champs "tuteur" d'une période (rendus à part, après le bloc apprenti).
 const TUTOR_PERIOD_FIELDS = [
@@ -185,6 +185,11 @@ const BOOKLET_PDF_STYLE = `
     .field-label{font-size:11px;font-weight:700;color:#344054;text-transform:uppercase;letter-spacing:.02em;margin-bottom:2px;}
     .field-value{font-size:12px;border:1px solid #dce4f2;border-radius:8px;padding:6px 9px;background:#f7f9fd;min-height:18px;line-height:1.5;color:#253047;}
     .empty{color:#9ca3af;font-style:italic;}
+    /* Table de planning (injectée par planning-render) : cellules bordées + padding,
+       sinon les colonnes Type/Intitulé se collent (« ExamenÉvaluation »). */
+    table.sbi-fdoc-planning-table{width:100%;border-collapse:collapse;font-size:11px;margin:0 0 10px;}
+    table.sbi-fdoc-planning-table th,table.sbi-fdoc-planning-table td{text-align:left;padding:5px 8px;border:1px solid #dce4f2;vertical-align:top;}
+    table.sbi-fdoc-planning-table th{background:#f7f9fd;color:#0051ff;font-weight:700;}
     .period{border:1px solid #dce4f2;border-radius:14px;padding:12px 16px;margin-bottom:18px;}
     .period h2{margin-top:0;}
     .guide{background:#f7f9fd;border:1px solid #dce4f2;border-left:4px solid #0051ff;border-radius:8px;padding:8px 12px;margin:6px 0 12px;font-size:11.5px;color:#344054;break-inside:avoid;page-break-inside:avoid;}
@@ -232,6 +237,10 @@ const BOOKLET_PDF_STYLE = `
       /* Sous-blocs courts insécables (sans risquer de faire disparaître une période entière). */
       .sigs,.guide,.field,tr{break-inside:avoid;page-break-inside:avoid;}
       .roles{break-inside:avoid;page-break-inside:avoid;}
+      /* Chaque période démarre sur une nouvelle page ; les signatures (dans .period)
+         restent avec leur période. Si une période dépasse une page, le navigateur
+         coupe quand même (break-inside:avoid n'est respecté que si ça tient). */
+      .period{page-break-before:always;break-before:page;break-inside:avoid;page-break-inside:avoid;}
     }`;
 
 /**
@@ -373,7 +382,7 @@ function buildBookletFragments(booklet = {}, options = {}, { withToc = false } =
     <section${toc(LABELS.sections.planningAlternance)}><h2>${esc(LABELS.sections.planningAlternance)}</h2>${planningBlock}</section>
     <section${toc(LABELS.sections.absencesCfmfs)}><h2>${esc(LABELS.sections.absencesCfmfs)} / ${esc(LABELS.sections.absencesEntreprise)}</h2>${absencesBlock}</section>
 
-    <h2 class="page-break">${esc(LABELS.sections.periods)}</h2>
+    <h2>${esc(LABELS.sections.periods)}</h2>
     ${periodsHtml}
 
     <section${toc(LABELS.sections.signatures)}><h2>${esc(LABELS.sections.signatures)}</h2>${signaturesBlock}</section>
@@ -404,7 +413,7 @@ function buildBookletPrintHtml(booklet = {}, options = {}) {
 }
 
 /**
- * SBI 8.0P.167.296 — Document HTML COMPLET du CORPS du livret destiné au rendu
+ * SBI 8.0P.167.297 — Document HTML COMPLET du CORPS du livret destiné au rendu
  * serveur (Cloud Function buildApprenticeshipBookletPdf, Puppeteer + paged.js).
  *
  * Identique en charte/contenu à buildBookletPrintHtml, MAIS :
@@ -457,7 +466,7 @@ export function downloadBookletPdf(booklet = {}, options = {}) {
 }
 
 /**
- * SBI 8.0P.167.296 — Demande au serveur le DOSSIER PDF complet : corps du livret
+ * SBI 8.0P.167.297 — Demande au serveur le DOSSIER PDF complet : corps du livret
  * rendu en PDF (sommaire à pages réelles) PUIS fusion des annexes PDF autorisées
  * de la formation. Ouvre l'URL signée renvoyée dans un nouvel onglet.
  *

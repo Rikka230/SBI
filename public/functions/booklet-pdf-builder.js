@@ -60,13 +60,25 @@ function escapeHtml(value) {
         .replace(/"/g, "&quot;").replace(/'/g, "&#039;");
 }
 
-// Extrait, dans l'ordre du document, les titres de section annotés data-toc.
+// Les valeurs data-toc sont échappées HTML dans le bodyHtml ; on décode pour
+// l'affichage du sommaire (sinon « Livret d&#039;apprentissage »). buildTocHtml
+// ré-échappe proprement ensuite.
+function decodeBasicEntities(s) {
+    return String(s == null ? "" : s)
+        .replace(/&#0?39;/g, "'").replace(/&apos;/g, "'")
+        .replace(/&quot;/g, '"')
+        .replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+        .replace(/&#x27;/gi, "'")
+        .replace(/&amp;/g, "&");
+}
+
+// Extrait, dans l'ordre du document, les titres de section annotés data-toc (décodés).
 function extractTocTitles(bodyHtml) {
     const titles = [];
     const re = /data-toc="([^"]*)"/g;
     let m;
     while ((m = re.exec(bodyHtml)) !== null) {
-        const t = m[1].trim();
+        const t = decodeBasicEntities(m[1]).trim();
         if (t) titles.push(t);
     }
     return titles;
@@ -113,6 +125,13 @@ const TOC_CSS = `
   .sbi-toc-annex .sbi-toc-title{font-style:italic;}
   .annex-list{font-size:13px;line-height:1.8;color:#253047;}
   .annex-missing{color:#b91c1c;}
+  /* paged.js a besoin du @page au NIVEAU RACINE (le livret ne le déclarait que
+     dans @media print, non lu par paged.js -> mauvaise géométrie -> Chromium
+     re-paginait et scindait les pages -> sommaire faux). On le pose ici + on
+     neutralise le padding écran pour que 1 page paged.js = 1 page PDF. */
+  @page { size: A4; margin: 14mm; }
+  body { padding: 0 !important; background: #fff !important; }
+  .pagedjs_page { background: #fff; }
 `;
 
 // Injecte le CSS du sommaire juste avant </style>, le sommaire dans son
@@ -178,10 +197,15 @@ async function renderWithPaged(html, { withPdf }) {
 
         let pdf = null;
         if (withPdf) {
+            // Impression 1:1 des pages paged.js (déjà dimensionnées A4, marge interne
+            // gérée par paged.js) : taille A4 explicite + marge 0, SANS preferCSSPageSize
+            // (qui réappliquerait une marge @page et scinderait chaque page en deux).
             pdf = await page.pdf({
                 printBackground: true,
-                preferCSSPageSize: true,
+                preferCSSPageSize: false,
                 displayHeaderFooter: false,
+                width: "210mm",
+                height: "297mm",
                 margin: { top: "0", right: "0", bottom: "0", left: "0" }
             });
         }
@@ -344,6 +368,12 @@ async function build(ctx) {
     // --- Fusion pdf-lib : corps + annexes. ---
     const finalDoc = await PDFDocument.create();
     const bodyDoc = await PDFDocument.load(pass2.pdf, { ignoreEncryption: true });
+    // Contrôle 1:1 paged.js <-> PDF : si écart, le sommaire est décalé (re-pagination).
+    if (pass2.totalPages !== bodyDoc.getPageCount()) {
+        console.warn(`[booklet-pdf] ECART pagination paged.js=${pass2.totalPages} vs PDF=${bodyDoc.getPageCount()} (sommaire potentiellement decale) — bookletId=${bookletId}`);
+    } else {
+        console.log(`[booklet-pdf] corps ${bodyDoc.getPageCount()} pages, ${merged.length} annexe(s) — bookletId=${bookletId}`);
+    }
     const bodyCopied = await finalDoc.copyPages(bodyDoc, bodyDoc.getPageIndices());
     bodyCopied.forEach((p) => finalDoc.addPage(p));
     for (const a of merged) {

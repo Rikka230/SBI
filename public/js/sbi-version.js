@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.296',
+  version: '8.0P.167.297',
   branch: 'main',
-  channel: 'Livret apprentissage : fix pagedjs + dates periodes prorata + cron retard',
-  stage: 'FIX dossier PDF (suite) : pagedjs charge par chemin absolu (son champ exports ne publie pas de sous-chemin -> require.resolve echouait) + pagination EXPLICITE via Paged.Previewer().preview() (plus fiable que l auto-run apres setContent). Combine au fix Chromium .default (.294), le sommaire pagine + annexes hybrides fonctionnent. NOUVEAU : dates des 6 periodes calculees AU PRORATA des dates de contrat (sinon promotion) a la generation + callable admin recomputeApprenticeshipBookletPeriodDates (bouton "Calculer les dates au prorata") ; CRON quotidien notifyOverdueBookletPeriods qui notifie eleve/tuteur/profs/admin quand une periode est en retard et vide (type notif booklet_period_overdue). serverTimestamp jamais dans un array (Timestamp.now).',
+  channel: 'Livret apprentissage : sommaire fiable + corrections PDF (QA)',
+  stage: 'QA dossier PDF : (1) sommaire FIABLE -> @page au niveau racine pour paged.js + impression 1:1 (A4 explicite, marge 0, sans preferCSSPageSize) sinon Chromium re-paginait et scindait les pages (numeros faux apres le planning) + log de controle pagination ; (2) entites HTML decodees dans le sommaire (Livret d apprentissage, Signatures & validation) ; (3) doublon "Lieu / contexte" corrige -> "Contexte" + "Lieu" ; (4) chaque periode demarre sur une nouvelle page, signatures gardees avec leur periode (page-break-before + break-inside avoid) ; (6) table planning : cellules bordees + padding (fin du collage "ExamenEvaluation"). RESTE : (5) densite planning / placeholders "Cours futur", (7) fiche referentiel RNCP propre.',
   updatedAt: '2026-06-03',
-  label: 'SBI 8.0P.167.296 - Livret : fix pagedjs (sommaire/annexes) + dates periodes prorata + cron retard'
+  label: 'SBI 8.0P.167.297 - Livret PDF : sommaire fiable + decodage HTML + doublon Lieu/contexte + sauts de page periodes'
 };
 
 export function getSbiVersionLabel() {

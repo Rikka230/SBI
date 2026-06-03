@@ -25,9 +25,9 @@ import {
   statusMeta,
   updateBookletSection,
   loadBookletByStudent
-} from '/js/booklet/booklet-data.js?v=8.0P.167.296';
-import { requestMergedBookletPdf } from '/js/booklet/booklet-pdf.js?v=8.0P.167.296';
-import { resolveBookletPlanningModel } from '/js/formation-documents/planning-render.js?v=8.0P.167.296';
+} from '/js/booklet/booklet-data.js?v=8.0P.167.297';
+import { requestMergedBookletPdf } from '/js/booklet/booklet-pdf.js?v=8.0P.167.297';
+import { resolveBookletPlanningModel } from '/js/formation-documents/planning-render.js?v=8.0P.167.297';
 
 /* =====================================================================
  * État du module
