@@ -15,7 +15,7 @@
  */
 
 import { LABELS, PERIOD_FIELDS, STATUS_META, ROLE_TEXTS, periodGuide, escapeHtml as esc, formatDate as fmtDate, buildBookletPdf } from '/js/booklet/booklet-data.js';
-import { renderPlanningHtml } from '/js/formation-documents/planning-render.js?v=8.0P.167.297';
+import { renderPlanningHtml } from '/js/formation-documents/planning-render.js?v=8.0P.167.298';
 
 // Champs "tuteur" d'une période (rendus à part, après le bloc apprenti).
 const TUTOR_PERIOD_FIELDS = [
@@ -133,11 +133,14 @@ function renderPeriod(period = {}, index = 0, tocTitle = '') {
 // « Documents de formation » (options.planningModel / planningUploadedUrl),
 // repli sur la liste manuelle booklet.planningAlternance.
 function renderBookletPlanningSection(booklet = {}, options = {}) {
+  // Dans le livret on allège : on masque les placeholders « Cours futur ».
+  const planningMeta = {
+    title: options.planningTitle || '',
+    promotionName: options.planningPromotionName || '',
+    hidePlaceholders: true
+  };
   if (options.planningModel && Array.isArray(options.planningModel.rows) && options.planningModel.rows.length) {
-    return renderPlanningHtml(options.planningModel, {
-      title: options.planningTitle || '',
-      promotionName: options.planningPromotionName || ''
-    });
+    return renderPlanningHtml(options.planningModel, planningMeta);
   }
   if (options.planningUploadedUrl) {
     const label = esc(options.planningTitle || 'Planning de l\'alternance');
@@ -145,10 +148,7 @@ function renderBookletPlanningSection(booklet = {}, options = {}) {
   }
   // Modèle fourni mais vide (cursus sans éléments planifiés) : message explicite.
   if (options.planningModel) {
-    return renderPlanningHtml(options.planningModel, {
-      title: options.planningTitle || '',
-      promotionName: options.planningPromotionName || ''
-    });
+    return renderPlanningHtml(options.planningModel, planningMeta);
   }
   return renderPlanningAlternance(booklet.planningAlternance);
 }
@@ -360,9 +360,20 @@ function buildBookletFragments(booklet = {}, options = {}, { withToc = false } =
     ? `<div class="watermark">DOCUMENT PROVISOIRE</div>`
     : '';
 
+  // Fiche référentiel/certification générée proprement depuis les données SBI.
+  // Le document officiel France Compétences reste joint en annexe (pièce justificative).
+  const refRows = `<table class="grid">
+    ${row(ff.formationTitle, formation.formationTitle || booklet.formationName || booklet.formationTitle)}
+    ${row(ff.rncp, formation.rncp)}
+    ${row(ff.certifier, formation.certifier)}
+    ${row(ff.rncpLevel, formation.rncpLevel)}
+    ${row(ff.rncpDate, formation.rncpDate)}
+  </table>`;
   const annex = `<section class="annex"${toc(LABELS.annexTitle)}>
     <h2>${esc(LABELS.annexTitle)}</h2>
-    <p class="sub">Le livret d'apprentissage accompagne le parcours de l'apprenti Animateur E-Sport :
+    <p class="sub">Fiche certification — synthèse SBI. Le référentiel officiel complet (France Compétences) est joint en annexe du dossier le cas échéant.</p>
+    ${refRows}
+    <p class="sub" style="margin-top:10px;">Le livret d'apprentissage accompagne le parcours de l'apprenti Animateur E-Sport :
     structuration des objectifs pédagogiques, suivi des situations d'animation et des projets,
     bilans croisés de l'apprenti et du maître d'apprentissage, et validation par le responsable
     pédagogique SBI à chacune des périodes.</p>
@@ -413,7 +424,7 @@ function buildBookletPrintHtml(booklet = {}, options = {}) {
 }
 
 /**
- * SBI 8.0P.167.297 — Document HTML COMPLET du CORPS du livret destiné au rendu
+ * SBI 8.0P.167.298 — Document HTML COMPLET du CORPS du livret destiné au rendu
  * serveur (Cloud Function buildApprenticeshipBookletPdf, Puppeteer + paged.js).
  *
  * Identique en charte/contenu à buildBookletPrintHtml, MAIS :
@@ -466,7 +477,7 @@ export function downloadBookletPdf(booklet = {}, options = {}) {
 }
 
 /**
- * SBI 8.0P.167.297 — Demande au serveur le DOSSIER PDF complet : corps du livret
+ * SBI 8.0P.167.298 — Demande au serveur le DOSSIER PDF complet : corps du livret
  * rendu en PDF (sommaire à pages réelles) PUIS fusion des annexes PDF autorisées
  * de la formation. Ouvre l'URL signée renvoyée dans un nouvel onglet.
  *

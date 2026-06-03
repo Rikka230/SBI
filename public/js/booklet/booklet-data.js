@@ -67,7 +67,10 @@ export const LABELS = {
     pedagogicalManager:   "Responsable pédagogique",
     handicapReferent:     "Référent handicap",
     formationTitle:       "Intitulé de la formation",
-    rncp:                 "Code RNCP / certification"
+    rncp:                 "Code RNCP / certification",
+    certifier:            "Certificateur",
+    rncpLevel:            "Niveau de qualification",
+    rncpDate:             "Date d'enregistrement RNCP"
   },
   // Champs « Identité » détaillés (éditables apprenti + admin).
   identityFields: {
@@ -438,7 +441,7 @@ export function recomputeBookletPeriodDates(payload) {
   return bookletCallable('recomputeApprenticeshipBookletPeriodDates')(payload);
 }
 
-// SBI 8.0P.167.297 — Génération serveur du dossier PDF (corps rendu via
+// SBI 8.0P.167.298 — Génération serveur du dossier PDF (corps rendu via
 // Puppeteer + paged.js, sommaire à pages réelles), puis fusion des annexes PDF
 // de la formation. Renvoie { success, url, fileName, bodyPages, annexCount, missing }.
 export function buildBookletPdf(payload) {

@@ -32,10 +32,10 @@ import {
   loadBooklet,
   loadBookletsForAdmin,
   periodGuide
-} from '/js/booklet/booklet-data.js?v=8.0P.167.297';
-import { recomputeBookletPeriodDates } from '/js/booklet/booklet-data.js?v=8.0P.167.297';
-import { requestMergedBookletPdf } from '/js/booklet/booklet-pdf.js?v=8.0P.167.297';
-import { resolveBookletPlanningModel } from '/js/formation-documents/planning-render.js?v=8.0P.167.297';
+} from '/js/booklet/booklet-data.js?v=8.0P.167.298';
+import { recomputeBookletPeriodDates } from '/js/booklet/booklet-data.js?v=8.0P.167.298';
+import { requestMergedBookletPdf } from '/js/booklet/booklet-pdf.js?v=8.0P.167.298';
+import { resolveBookletPlanningModel } from '/js/formation-documents/planning-render.js?v=8.0P.167.298';
 
 const ROLE = 'admin';
 
@@ -352,7 +352,7 @@ function renderCreateView() {
  * Édition d'un livret
  * ============================================================ */
 function fieldHtml({ key, label, value, target, multiline = true, type = 'text', full = false }) {
-  // 8.0P.167.297 — CORRECTIF MAJEUR : pour une SECTION, le droit s'évalue sur le
+  // 8.0P.167.298 — CORRECTIF MAJEUR : pour une SECTION, le droit s'évalue sur le
   // NOM DE SECTION (target.section), pas sur la clé de champ. FIELD_PERMISSIONS.section
   // mappe des noms de section -> true (identity/employer/tutor/contract/formation…),
   // donc canEditField(role,'section', cleDeChamp) renvoyait toujours false et TOUS les
@@ -423,7 +423,10 @@ function metaSectionsConfig(b) {
         { key: 'pedagogicalManager', label: ff.pedagogicalManager, value: formation.pedagogicalManager, multiline: false },
         { key: 'handicapReferent', label: ff.handicapReferent, value: formation.handicapReferent, multiline: false },
         { key: 'formationTitle', label: ff.formationTitle, value: formation.formationTitle || b.formationName, multiline: false, full: true },
-        { key: 'rncp', label: ff.rncp, value: formation.rncp, multiline: false }
+        { key: 'rncp', label: ff.rncp, value: formation.rncp, multiline: false },
+        { key: 'certifier', label: ff.certifier, value: formation.certifier, multiline: false },
+        { key: 'rncpLevel', label: ff.rncpLevel, value: formation.rncpLevel, multiline: false },
+        { key: 'rncpDate', label: ff.rncpDate, value: formation.rncpDate, multiline: false }
       ]
     },
     {

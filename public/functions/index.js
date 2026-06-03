@@ -10005,7 +10005,10 @@ exports.generateApprenticeshipBooklet = onCall({
             pedagogicalManager: "",
             handicapReferent: "",
             formationTitle: formationName,
-            rncp: ""
+            rncp: "",
+            certifier: "",
+            rncpLevel: "",
+            rncpDate: ""
         },
         employer: {
             name: cleanString(data.employerName, 200),

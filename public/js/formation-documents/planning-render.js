@@ -18,7 +18,7 @@ import {
   query,
   where
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
-import { loadFormationDocumentsForFormations } from '/js/formation-documents/formation-docs-data.js?v=8.0P.167.297';
+import { loadFormationDocumentsForFormations } from '/js/formation-documents/formation-docs-data.js?v=8.0P.167.298';
 
 const STRUCTURAL_TYPES = ['real_course', 'placeholder_course', 'buffer_period', 'revision_period', 'catchup_period', 'workshop'];
 
@@ -91,7 +91,7 @@ export async function loadCursusOptions({ db, formationId = '' } = {}) {
 export async function loadCursusItems({ db, cursusId = '' } = {}) {
   const id = String(cursusId || '').trim();
   if (!id) return { title: '', items: [], readable: true };
-  // SBI 8.0P.167.297 — La collection curriculumTemplates est en lecture ADMIN
+  // SBI 8.0P.167.298 — La collection curriculumTemplates est en lecture ADMIN
   // uniquement (firestore.rules). Côté élève/prof, le getDoc est refusé : on
   // l'absorbe ici (readable:false) pour que resolvePlanningModel puisse tout de
   // même rendre le plan DATÉ de la promotion (lisible par l'élève/prof concerné)
@@ -254,7 +254,16 @@ export function renderPlanningHtml(model = { dated: false, rows: [] }, meta = {}
     return `<div class="sbi-fdoc-empty">Planning défini${name ? ` depuis le cursus « ${esc(name)} »` : ''}, mais ce cursus ne contient pas encore d'éléments planifiés (cours, lives, examens…). Ajoute des éléments au cursus (onglet Cursus) pour qu'ils apparaissent ici.</div>`;
   }
   const periodHead = model.dated ? 'Période' : 'Semaine';
-  const body = rows.map((r) => {
+  // meta.hidePlaceholders (livret) : on masque les « Cours futur » (placeholder_course)
+  // pour alléger le planning, avec un récap du nombre masqué.
+  let viewRows = rows;
+  let hiddenPlaceholders = 0;
+  if (meta.hidePlaceholders) {
+    const before = viewRows.length;
+    viewRows = viewRows.filter((r) => r.type !== 'placeholder_course');
+    hiddenPlaceholders = before - viewRows.length;
+  }
+  const body = viewRows.map((r) => {
     const period = model.dated
       ? `${esc(fmtDate(r.startAt))}${r.endAt ? ' → ' + esc(fmtDate(r.endAt)) : ''}`
       : esc(r.weekLabel || '');
@@ -266,6 +275,9 @@ export function renderPlanningHtml(model = { dated: false, rows: [] }, meta = {}
       <td>${due || '—'}</td>
     </tr>`;
   }).join('');
+  const hiddenNote = hiddenPlaceholders > 0
+    ? `<p class="sbi-fdoc-section__hint" style="margin:.35rem 0 0;">+ ${hiddenPlaceholders} cours à venir non détaillé${hiddenPlaceholders > 1 ? 's' : ''} (planning prévisionnel).</p>`
+    : '';
   const caption = meta.title ? `<p class="sbi-fdoc-section__hint" style="margin:0 0 .5rem;">${esc(meta.title)}${model.dated && meta.promotionName ? ` — ${esc(meta.promotionName)}` : (!model.dated ? ' — modèle (semaines indicatives)' : '')}</p>` : '';
   return `${caption}
     <div style="overflow:auto;">
@@ -278,7 +290,7 @@ export function renderPlanningHtml(model = { dated: false, rows: [] }, meta = {}
         </tr></thead>
         <tbody>${body}</tbody>
       </table>
-    </div>`;
+    </div>${hiddenNote}`;
 }
 
 // ── Export PDF (fenêtre d'impression, identité SBI alignée sur le livret) ──
