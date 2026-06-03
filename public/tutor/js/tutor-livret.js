@@ -77,11 +77,20 @@ function setStatus(message, tone = 'muted') {
 }
 
 function bookletIdFromUrl() {
-  try {
-    return new URLSearchParams(window.location.search).get('id') || '';
-  } catch (_) {
-    return '';
+  // En PJAX, l'URL réelle est dans window.SBI_APP_SHELL_CURRENT_URL (pas toujours
+  // window.location). On lit les deux + le hash en repli.
+  const candidates = [];
+  try { if (window.SBI_APP_SHELL_CURRENT_URL) candidates.push(new URL(window.SBI_APP_SHELL_CURRENT_URL, window.location.origin)); } catch (_) {}
+  try { candidates.push(new URL(window.location.href)); } catch (_) {}
+  for (const u of candidates) {
+    const fromQuery = u.searchParams.get('id');
+    if (fromQuery) return fromQuery;
+    try {
+      const fromHash = new URLSearchParams(String(u.hash || '').replace(/^#/, '')).get('id');
+      if (fromHash) return fromHash;
+    } catch (_) {}
   }
+  return '';
 }
 
 function hasValue(v) {

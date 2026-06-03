@@ -712,10 +712,11 @@ async function handleSaveSection(section, button) {
   if (!sectionEl) return;
   const fields = collectFields(sectionEl);
 
-  // La section "contract" est rangée dans la méta (cf. permissions admin.section.contract + meta).
-  const target = section === 'contract'
-    ? { kind: 'meta' }
-    : { kind: 'section', section };
+  // Toutes les sections de la méta-config (identity, employer, tutor, contract)
+  // sont de vraies sections acceptées par le serveur (BOOKLET_SECTION_ADMIN).
+  // Le contrat passe par section 'contract' (clés start/end), PAS par 'meta'
+  // (dont la whitelist ne contient pas contractStart/contractEnd).
+  const target = { kind: 'section', section };
 
   button.disabled = true;
   setLocalStatus(statusEl, 'Enregistrement…');
