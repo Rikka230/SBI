@@ -22,8 +22,7 @@ export class TutorLeftPanel extends HTMLElement {
           </button>
         </div>
         <ul class="nav-menu">
-          <li class="nav-item ${path.includes('/tutor/dashboard.html') ? 'active' : ''}" data-sbi-href="/tutor/dashboard.html" role="link" tabindex="0">${ICONS.dashboard}<span class="nav-text">Tableau de bord</span></li>
-          <li class="nav-item ${(path.includes('/tutor/dashboard.html') || path.includes('/tutor/livret')) ? 'active' : ''}" data-sbi-href="/tutor/dashboard.html" role="link" tabindex="0">${ICON_APPRENTICES}<span class="nav-text">Mes apprentis</span></li>
+          <li class="nav-item ${(path.includes('/tutor/dashboard.html') || path.includes('/tutor/livret')) ? 'active' : ''}" data-sbi-href="/tutor/dashboard.html" role="link" tabindex="0">${ICONS.dashboard}<span class="nav-text">Tableau de bord</span></li>
         </ul>
         <div style="margin-top:auto; padding:1rem; border-top:1px solid var(--border-color); overflow:hidden;">
           <button class="admin-return-link" type="button" data-sbi-href="/admin/index.html" title="Retour au panel administrateur">
