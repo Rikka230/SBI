@@ -17,8 +17,9 @@ import { updateProfilePresenceStatus } from './profile-presence.js';
 import {
   recomputeAccountCompleteness,
   renderCompletenessPanelHtml,
+  renderCompletenessBadge,
   injectCompletenessBadgeStyles
-} from '/js/account-completeness.js?v=8.0P.167.303';
+} from '/js/account-completeness.js?v=8.0P.167.304';
 
 const functionsInstance = getFunctions(app, 'europe-west1');
 const adminUpdateUserAccountCallable = httpsCallable(functionsInstance, 'adminUpdateUserAccount');
@@ -256,7 +257,9 @@ export async function renderProfileShell({ db, uid, data, context, reloadProfile
   const nameEl = document.getElementById('prof-name');
 
   if (nameEl) {
-    nameEl.innerHTML = `${escapeHTML(displayName)} <span id="prof-badge-zone" style="margin-left: 10px; font-size: 0.45em; vertical-align: middle;"></span>`;
+    // Badge ✗ de complétude à côté du nom (élèves uniquement ; vide sinon ou si 100%).
+    const nameCompletenessBadge = renderCompletenessBadge(data, { uid: data.id || uid });
+    nameEl.innerHTML = `${escapeHTML(displayName)}<span id="prof-name-completeness">${nameCompletenessBadge}</span> <span id="prof-badge-zone" style="margin-left: 10px; font-size: 0.45em; vertical-align: middle;"></span>`;
   }
 
   const bioDisplay = document.getElementById('prof-bio-display');
@@ -1838,7 +1841,7 @@ function renderAccountActionsPanel({ db, uid, data = {}, reloadProfile }) {
   // Le panel n'est rendu que pour les admins (cf. renderActivity), donc on
   // peut appeler la CF sans contrôle de rôle supplémentaire.
   injectCompletenessBadgeStyles();
-  loadAccountCompletenessCard({ uid });
+  loadAccountCompletenessCard({ uid, role: data.role });
 }
 
 /**
@@ -1847,7 +1850,7 @@ function renderAccountActionsPanel({ db, uid, data = {}, reloadProfile }) {
  * et installe le bouton « Recalculer ».
  * @param {{ uid:String }} params
  */
-async function loadAccountCompletenessCard({ uid }) {
+async function loadAccountCompletenessCard({ uid, role = '' }) {
   const container = document.getElementById('prof-account-completeness');
   if (!container || !uid) return;
 
@@ -1859,6 +1862,10 @@ async function loadAccountCompletenessCard({ uid }) {
     const result = await recomputeAccountCompleteness({ uid });
     const completeness = result?.data?.completeness || {};
     const panelHtml = renderCompletenessPanelHtml(completeness, { uid });
+
+    // Rafraîchit le badge ✗ à côté du nom avec la complétude fraîchement calculée.
+    const headerBadge = document.getElementById('prof-name-completeness');
+    if (headerBadge) headerBadge.innerHTML = renderCompletenessBadge({ role, completeness }, { uid });
 
     container.innerHTML = `
       <div style="display:flex; justify-content:space-between; gap:0.75rem; align-items:flex-start; flex-wrap:wrap;">

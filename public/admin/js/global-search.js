@@ -19,7 +19,7 @@ import {
     loadSearchUsersForRole,
     roleOf
 } from '/js/learning-access.js?v=8.0P.167.205';
-import { renderCompletenessBadge, injectCompletenessBadgeStyles } from '/js/account-completeness.js?v=8.0P.167.303';
+import { renderCompletenessBadge, injectCompletenessBadgeStyles } from '/js/account-completeness.js?v=8.0P.167.304';
 
 let activeSearchContext = {
     currentUid: null,

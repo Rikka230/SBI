@@ -107,25 +107,27 @@ export function injectCompletenessBadgeStyles() {
   display:inline-flex;
   align-items:center;
   justify-content:center;
-  min-width:18px;
-  min-height:18px;
-  padding:0 .28em;
-  margin-left:.35rem;
+  width:16px;
+  height:16px;
+  padding:0;
+  margin-left:.4rem;
   vertical-align:middle;
   font-weight:900;
   line-height:1;
-  font-size:12px;
-  color:#ff4a4a;
-  background:rgba(255,74,74,.14);
-  border:1px solid rgba(255,74,74,.5);
-  border-radius:6px;
+  font-size:10px;
+  color:#fff;
+  background:#ff4a4a;
+  border:0;
+  border-radius:50%;
   text-decoration:none;
   cursor:pointer;
   box-sizing:border-box;
+  box-shadow:0 0 0 2px rgba(255,74,74,.22);
   -webkit-user-select:none;
   user-select:none;
+  flex:0 0 auto;
 }
-.sbi-acc-badge:hover{ background:rgba(255,74,74,.22); }
+.sbi-acc-badge:hover{ background:#e23b3b; }
 .sbi-acc-badge:focus-visible,
 .sbi-acc-badge:focus{
   outline:2px solid #ff4a4a;
@@ -262,8 +264,18 @@ span.sbi-acc-badge{ cursor:default; }
  * @param {{ uid?:String, size?:String }} opts
  * @returns {String} HTML
  */
+// Le badge de complétude ne concerne QUE les élèves (pas prof/admin/tuteur).
+const STUDENT_ROLES = ['student', 'eleve', 'élève', 'etudiant', 'étudiant', 'apprenti'];
+export function isStudentAccount(user = {}) {
+  const role = String((user && (user.role || user.type)) || '').toLowerCase();
+  return STUDENT_ROLES.includes(role);
+}
+
 export function renderCompletenessBadge(user = {}, { uid = '', size = 'sm' } = {}) {
   injectCompletenessBadgeStyles();
+
+  // Réservé aux comptes élèves : un prof/admin/tuteur n'a pas de badge.
+  if (!isStudentAccount(user)) return '';
 
   const res = readCompleteness(user);
   if (res.complete === true) return '';

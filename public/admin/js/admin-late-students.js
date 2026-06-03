@@ -26,7 +26,7 @@ import {
   where
 } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js';
-import { renderCompletenessBadge, injectCompletenessBadgeStyles } from '/js/account-completeness.js?v=8.0P.167.303';
+import { renderCompletenessBadge, injectCompletenessBadgeStyles } from '/js/account-completeness.js?v=8.0P.167.304';
 
 const sbiFunctions = getFunctions(app, 'europe-west1');
 const callGetLiveAttendance = httpsCallable(sbiFunctions, 'getPromotionLiveAttendanceBatch');

@@ -16,7 +16,7 @@
 
 import { auth, db } from '/js/firebase-init.js';
 import { isSbiAdminLike } from '/js/sbi-permissions.js?v=8.0P.167.44';
-import { renderCompletenessBadge, injectCompletenessBadgeStyles } from '/js/account-completeness.js?v=8.0P.167.303';
+import { renderCompletenessBadge, injectCompletenessBadgeStyles } from '/js/account-completeness.js?v=8.0P.167.304';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js';
 import {
   addDoc,

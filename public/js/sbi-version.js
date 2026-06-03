@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.303',
+  version: '8.0P.167.304',
   branch: 'main',
-  channel: 'Complétude de compte : checklist + jauge (panel profil) + badge croix global',
-  stage: 'NOUVEAU : complétude de compte calculée serveur (CF recomputeAccountCompleteness -> users.completeness {percent,complete,missing,items}, init à la création + champ protégé). Refonte ÉPURÉE du panel « Actions compte » du profil élève : carte « Complétude du compte » (jauge + checklist des critères profil/finalisation/formation/promotion+coursePlan/livret avec liens « Compléter ») en haut, actions avancées/notes repliées. Module partagé /js/account-completeness.js (badge + jauge + checklist). Badge croix ✗ derrière le nom des comptes <100% PARTOUT (roster promo, élèves en retard, recherche globale admin, liste comptes admin) -> redirige vers /admin/admin-profile.html?id=&tab=account. Accessibilité : glyphe ✗ + aria-label (pas couleur seule).',
+  channel: 'Complétude de compte : raffinements badge (cercle, élèves only, sur le profil)',
+  stage: 'Raffinements suite QA : (1) badge ✗ = petit cercle rouge discret (au lieu d un gros carré) ; (2) badge AUSSI affiché à côté du nom sur la page profil élève (rafraîchi après recalcul) ; (3) badge réservé aux ÉLÈVES uniquement (gate role student dans renderCompletenessBadge) — plus de badge sur prof/admin/tuteur. Base : complétude serveur (CF recomputeAccountCompleteness, users.completeness) + panel profil épuré (jauge+checklist) + badge global (roster/retard/recherche/liste comptes).',
   updatedAt: '2026-06-03',
-  label: 'SBI 8.0P.167.303 - Complétude compte : checklist+jauge profil + badge croix global (incomplet)'
+  label: 'SBI 8.0P.167.304 - Complétude : badge cercle discret, élèves only, affiché sur le profil'
 };
 
 export function getSbiVersionLabel() {
