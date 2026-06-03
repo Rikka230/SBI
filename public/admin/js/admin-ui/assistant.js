@@ -35,7 +35,7 @@ function getAssistantConfig({ isTeacher, isStudent, isTutor }) {
             title: 'Suivi de tes apprentis',
             text: 'Retrouve ici les livrets de tes apprentis, les périodes à compléter et tes notifications.',
             primary: 'Mes apprentis',
-            primaryUrl: '/tutor/livret.html',
+            primaryUrl: '/tutor/dashboard.html',
             badge: ''
         };
     }

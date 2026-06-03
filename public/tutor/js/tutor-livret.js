@@ -404,7 +404,11 @@ export function mountTutorBooklet() {
   unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
     if (!user) { setStatus('Connexion requise.', 'error'); return; }
     currentUid = user.uid;
-    if (!id) { setStatus('Aucun livret indiqué.', 'error'); return; }
+    if (!id) {
+      const v = document.getElementById('tutor-livret-root') || mountedView;
+      if (v) v.innerHTML = '<div class="sbi-booklet-status">Aucun apprenti sélectionné. <a href="/tutor/dashboard.html" data-sbi-href="/tutor/dashboard.html">Reviens au tableau de bord</a> et ouvre le livret d\'un apprenti.</div>';
+      return;
+    }
     try {
       booklet = await loadBooklet({ db, bookletId: id });
       if (!booklet) { setStatus('Livret introuvable.', 'error'); return; }
