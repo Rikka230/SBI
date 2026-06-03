@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.300',
+  version: '8.0P.167.301',
   branch: 'main',
-  channel: 'Espace tuteur : badge/theme aligne (sbi-tutor-space) + recherche apprenti isolee',
-  stage: 'FIX tuteur : (1) theme.js ajoute enfin la classe body.sbi-tutor-space (absente -> --space-accent retombait en bleu : badge version, bordures, niveau non alignes au lime) + tutor.css force l accent lime en !important sur cette classe ; (2) la recherche tuteur n est plus captee par le global-search partage (renommee .tutor-apprentice-search/.tutor-apprentice-results) -> elle ouvre UNIQUEMENT le livret d un apprenti lie, plus le profil eleve.',
+  channel: 'Espace interne : suppression du badge de dev fige (6.2-bis) ; badge version = dynamique',
+  stage: 'FIX badge : l ancien badge CSS fige « SBI UI 6.2-bis · avatar-profile-test » (body.sbi-internal-ui::after dans sbi-ui-polish.css) etait encore visible cote tuteur (l override du badge dynamique ne gagnait pas toujours). Neutralise a la source (content:none) -> seul le badge de version REEL (#sbi-version-badge, lit sbi-version.js) s affiche, sur tous les espaces. Suite des fix tuteur .300 (sbi-tutor-space lime + recherche apprenti isolee).',
   updatedAt: '2026-06-03',
-  label: 'SBI 8.0P.167.300 - Espace tuteur : badge/theme lime aligne + recherche apprenti (livret) isolee du global-search'
+  label: 'SBI 8.0P.167.301 - Suppression badge dev fige (6.2-bis) ; badge version dynamique seul'
 };
 
 export function getSbiVersionLabel() {

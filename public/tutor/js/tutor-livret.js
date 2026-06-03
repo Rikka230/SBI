@@ -25,9 +25,9 @@ import {
   statusMeta,
   updateBookletSection,
   loadBooklet
-} from '/js/booklet/booklet-data.js?v=8.0P.167.300';
-import { requestMergedBookletPdf } from '/js/booklet/booklet-pdf.js?v=8.0P.167.300';
-import { resolveBookletPlanningModel } from '/js/formation-documents/planning-render.js?v=8.0P.167.300';
+} from '/js/booklet/booklet-data.js?v=8.0P.167.301';
+import { requestMergedBookletPdf } from '/js/booklet/booklet-pdf.js?v=8.0P.167.301';
+import { resolveBookletPlanningModel } from '/js/formation-documents/planning-render.js?v=8.0P.167.301';
 
 let mounted = false;
 let mountedView = null;
@@ -37,7 +37,7 @@ let currentUid = null;
 let booklet = null;
 let activeTab = 'overview'; // overview | section:<name> | absences | period:<id>
 
-// SBI 8.0P.167.300 — Tampon local des absences en structure (édition tuteur).
+// SBI 8.0P.167.301 — Tampon local des absences en structure (édition tuteur).
 // Reflète booklet.absences.entreprise + modifications non encore enregistrées.
 let absencesDraft = null;
 
@@ -277,7 +277,7 @@ function periodViewHtml(periodId) {
 }
 
 /* ---------------------------------------------------------------------
- * SBI 8.0P.167.300 — Absences en structure (édition tuteur)
+ * SBI 8.0P.167.301 — Absences en structure (édition tuteur)
  * ------------------------------------------------------------------- */
 // Les absences sont au niveau livret (booklet.absences.entreprise) et stockées
 // en LISTE d'items. Le tuteur a le droit serveur (section absencesEntreprise).
@@ -455,7 +455,7 @@ async function signPeriod(periodId, btn) {
 }
 
 /* ---------------------------------------------------------------------
- * SBI 8.0P.167.300 — Sauvegarde des absences en structure
+ * SBI 8.0P.167.301 — Sauvegarde des absences en structure
  * ------------------------------------------------------------------- */
 // Lit l'état courant des inputs dans le DOM vers le tampon (avant ajout/suppr/save).
 function syncAbsencesDraftFromDom() {
