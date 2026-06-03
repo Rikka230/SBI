@@ -21,15 +21,12 @@ export class TeacherLeftPanel extends HTMLElement {
           <li class="nav-item ${path.includes('teacherindex.html') || path.includes('dashboard.html') ? 'active' : ''}" data-sbi-href="/teacher/dashboard.html" role="link" tabindex="0">${ICONS.dashboard}<span class="nav-text">Mon Espace</span></li>
           <li class="nav-item ${path.includes('mes-cours.html') ? 'active' : ''}" data-sbi-href="/teacher/mes-cours.html" role="link" tabindex="0">${ICONS.formations}<span class="nav-text">Formations & Cours</span></li>
           <li class="nav-item ${path.includes('/teacher/assignments.html') ? 'active' : ''}" data-sbi-href="/teacher/assignments.html" role="link" tabindex="0"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Zm0 2 4 4h-4V4ZM8 13h8v2H8v-2Zm0 4h5v2H8v-2Zm0-8h3v2H8V9Z"/></svg><span class="nav-text">Devoirs & Évals</span></li>
-          <li class="nav-item ${path.includes('/teacher/documents.html') ? 'active' : ''}" data-sbi-href="/teacher/documents.html" role="link" tabindex="0"><svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Zm2 3v8h14v-8H5Z"/></svg><span class="nav-text">Documents</span></li>
-          <li class="nav-item ${path.includes('/teacher/livrets.html') ? 'active' : ''}" data-sbi-href="/teacher/livrets.html" role="link" tabindex="0"><svg viewBox="0 0 24 24"><path d="M4 4a2 2 0 0 1 2-2h11a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H6a2 2 0 0 0 2 2h10a1 1 0 0 0 1-1V5h1a1 1 0 0 1 1 1v15a2 2 0 0 1-2 2H6a4 4 0 0 1-4-4V4Zm4 3h6v2H8V7Zm0 4h6v2H8v-2Z"/></svg><span class="nav-text">Livrets</span></li>
           <li class="nav-item ${path.includes('/teacher/lives') ? 'active' : ''}" data-sbi-href="/teacher/lives.html" role="link" tabindex="0">${ICONS.live}<span class="nav-text">Lives</span></li>
           <li class="nav-item ${path.includes('mon-profil.html') ? 'active' : ''}" data-sbi-href="/teacher/mon-profil.html" role="link" tabindex="0">${ICONS.profile}<span class="nav-text">Mon Profil Public</span></li>
+          <li class="nav-item ${path.includes('/teacher/livrets.html') ? 'active' : ''}" data-sbi-href="/teacher/livrets.html" role="link" tabindex="0"><svg viewBox="0 0 24 24"><path d="M4 4a2 2 0 0 1 2-2h11a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H6a2 2 0 0 0 2 2h10a1 1 0 0 0 1-1V5h1a1 1 0 0 1 1 1v15a2 2 0 0 1-2 2H6a4 4 0 0 1-4-4V4Zm4 3h6v2H8V7Zm0 4h6v2H8v-2Z"/></svg><span class="nav-text">Livrets</span></li>
+          <li class="nav-item ${path.includes('/teacher/documents.html') ? 'active' : ''}" data-sbi-href="/teacher/documents.html" role="link" tabindex="0"><svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Zm2 3v8h14v-8H5Z"/></svg><span class="nav-text">Documents</span></li>
         </ul>
         <div style="margin-top:auto; padding:1rem; border-top:1px solid var(--border-color); overflow:hidden;">
-          <button class="admin-return-link" type="button" data-sbi-href="/admin/index.html" title="Retour au panel administrateur">
-            ${ICONS.back}<span class="nav-text">Retour admin</span>
-          </button>
           <button id="logout-btn-teacher" class="action-btn danger" style="width:100%; justify-content:center; gap:.5rem;">
             ${ICONS.logout}<span class="nav-text">Déconnexion</span>
           </button>

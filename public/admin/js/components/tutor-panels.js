@@ -29,9 +29,6 @@ export class TutorLeftPanel extends HTMLElement {
           <li class="nav-item ${path.includes('/tutor/documents.html') ? 'active' : ''}" data-sbi-href="/tutor/documents.html" role="link" tabindex="0">${ICONS.formations}<span class="nav-text">Documents</span></li>
         </ul>
         <div style="margin-top:auto; padding:1rem; border-top:1px solid var(--border-color); overflow:hidden;">
-          <button class="admin-return-link" type="button" data-sbi-href="/admin/index.html" title="Retour au panel administrateur">
-            ${ICONS.back}<span class="nav-text">Retour admin</span>
-          </button>
           <button id="logout-btn-tutor" class="action-btn danger" style="width:100%; justify-content:center; gap:.5rem;">
             ${ICONS.logout}<span class="nav-text">Déconnexion</span>
           </button>

@@ -37,10 +37,6 @@ export class AdminLeftPanel extends HTMLElement {
             ${ICONS.users}
             <span class="nav-text">Comptes</span>
           </li>
-          <li class="nav-item" id="nav-audit-log" data-href="/admin/admin-audit-log.html" data-sbi-href="/admin/admin-audit-log.html" role="link" tabindex="0">
-            ${ICONS.bell}
-            <span class="nav-text">Journal admin</span>
-          </li>
           <li class="nav-item" id="nav-promotions" data-href="/admin/admin-promotions.html" data-sbi-href="/admin/admin-promotions.html" role="link" tabindex="0">
             ${PROMOTIONS_ICON}
             <span class="nav-text">Promotions</span>
@@ -49,11 +45,15 @@ export class AdminLeftPanel extends HTMLElement {
             ${CURSUS_ICON}
             <span class="nav-text">Cursus</span>
           </li>
+          ${adminNavItem({ id:'nav-formations', target:'view-formations', label:'Formations', icon:ICONS.formations })}
           <li class="nav-item" id="nav-late-students" data-href="/admin/admin-late-students.html" data-sbi-href="/admin/admin-late-students.html" data-sbi-route="admin-late-students" role="link" tabindex="0" title="Élèves en retard sur leur cursus">
             ${LATE_STUDENTS_ICON}
             <span class="nav-text">Élèves en retard</span>
           </li>
-          ${adminNavItem({ id:'nav-formations', target:'view-formations', label:'Formations', icon:ICONS.formations })}
+          <li class="nav-item" id="nav-audit-log" data-href="/admin/admin-audit-log.html" data-sbi-href="/admin/admin-audit-log.html" role="link" tabindex="0">
+            ${ICONS.bell}
+            <span class="nav-text">Journal admin</span>
+          </li>
           ${adminNavItem({ id:'nav-settings', target:'view-settings', label:'Serveur & Vidéos', icon:ICONS.settings })}
         </ul>
       </aside>
