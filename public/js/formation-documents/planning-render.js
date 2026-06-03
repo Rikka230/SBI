@@ -90,7 +90,7 @@ export async function loadCursusOptions({ db, formationId = '' } = {}) {
 export async function loadCursusItems({ db, cursusId = '' } = {}) {
   const id = String(cursusId || '').trim();
   if (!id) return { title: '', items: [], readable: true };
-  // SBI 8.0P.167.290 — La collection curriculumTemplates est en lecture ADMIN
+  // SBI 8.0P.167.291 — La collection curriculumTemplates est en lecture ADMIN
   // uniquement (firestore.rules). Côté élève/prof, le getDoc est refusé : on
   // l'absorbe ici (readable:false) pour que resolvePlanningModel puisse tout de
   // même rendre le plan DATÉ de la promotion (lisible par l'élève/prof concerné)

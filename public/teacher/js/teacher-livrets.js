@@ -18,8 +18,8 @@ import {
   LABELS, PERIOD_FIELDS, periodFieldLabel,
   escapeHtml, formatDate, computeCompletion, statusMeta,
   validateBookletPeriod, loadBookletsForTeacher
-} from '/js/booklet/booklet-data.js?v=8.0P.167.290';
-import { downloadBookletPdf } from '/js/booklet/booklet-pdf.js?v=8.0P.167.290';
+} from '/js/booklet/booklet-data.js?v=8.0P.167.291';
+import { downloadBookletPdf } from '/js/booklet/booklet-pdf.js?v=8.0P.167.291';
 import { loadAssignedFormationsForUser } from '/js/learning-access.js';
 
 const TEACHER_ROLES = ['teacher', 'prof', 'professeur', 'enseignant'];

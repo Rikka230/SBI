@@ -25,8 +25,8 @@ import {
   statusMeta,
   updateBookletSection,
   loadBooklet
-} from '/js/booklet/booklet-data.js?v=8.0P.167.290';
-import { downloadBookletPdf } from '/js/booklet/booklet-pdf.js?v=8.0P.167.290';
+} from '/js/booklet/booklet-data.js?v=8.0P.167.291';
+import { downloadBookletPdf } from '/js/booklet/booklet-pdf.js?v=8.0P.167.291';
 
 let mounted = false;
 let mountedView = null;
@@ -36,7 +36,7 @@ let currentUid = null;
 let booklet = null;
 let activeTab = 'overview'; // overview | section:<name> | absences | period:<id>
 
-// SBI 8.0P.167.290 — Tampon local des absences en structure (édition tuteur).
+// SBI 8.0P.167.291 — Tampon local des absences en structure (édition tuteur).
 // Reflète booklet.absences.entreprise + modifications non encore enregistrées.
 let absencesDraft = null;
 
@@ -276,7 +276,7 @@ function periodViewHtml(periodId) {
 }
 
 /* ---------------------------------------------------------------------
- * SBI 8.0P.167.290 — Absences en structure (édition tuteur)
+ * SBI 8.0P.167.291 — Absences en structure (édition tuteur)
  * ------------------------------------------------------------------- */
 // Les absences sont au niveau livret (booklet.absences.entreprise) et stockées
 // en LISTE d'items. Le tuteur a le droit serveur (section absencesEntreprise).
@@ -453,7 +453,7 @@ async function signPeriod(periodId, btn) {
 }
 
 /* ---------------------------------------------------------------------
- * SBI 8.0P.167.290 — Sauvegarde des absences en structure
+ * SBI 8.0P.167.291 — Sauvegarde des absences en structure
  * ------------------------------------------------------------------- */
 // Lit l'état courant des inputs dans le DOM vers le tampon (avant ajout/suppr/save).
 function syncAbsencesDraftFromDom() {

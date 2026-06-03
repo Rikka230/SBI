@@ -32,8 +32,8 @@ import {
   loadBooklet,
   loadBookletsForAdmin,
   periodGuide
-} from '/js/booklet/booklet-data.js?v=8.0P.167.290';
-import { downloadBookletPdf } from '/js/booklet/booklet-pdf.js?v=8.0P.167.290';
+} from '/js/booklet/booklet-data.js?v=8.0P.167.291';
+import { downloadBookletPdf } from '/js/booklet/booklet-pdf.js?v=8.0P.167.291';
 
 const ROLE = 'admin';
 
