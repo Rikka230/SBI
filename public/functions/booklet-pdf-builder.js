@@ -132,6 +132,11 @@ const TOC_CSS = `
   @page { size: A4; margin: 14mm; }
   body { padding: 0 !important; background: #fff !important; }
   .pagedjs_page { background: #fff; }
+  /* La page de garde utilise min-height:calc(100vh-…) pour l'impression navigateur ;
+     sous paged.js, 100vh = le viewport (plus grand que la page A4) -> la table d'infos
+     déborde en page 2. On neutralise pour que la garde tienne sur une seule page. */
+  .cover { min-height: 0 !important; }
+  .cover-body { min-height: 0 !important; display: block !important; }
 `;
 
 // Injecte le CSS du sommaire juste avant </style>, le sommaire dans son
@@ -340,10 +345,20 @@ async function build(ctx) {
     const pass1 = await renderWithPaged(pass1Html, { withPdf: false });
     const bodyPages = pass1.totalPages;
 
-    // Page de chaque section = mesure paged.js (ordre identique à l'extraction).
-    const measuredRows = baseRows.map((r, i) => ({
+    // Page de chaque section = mesure paged.js. ATTENTION : paged.js scinde une
+    // section longue (ex. le planning) sur plusieurs pages et CLONE l'attribut
+    // data-toc sur chaque fragment -> un mapping par INDEX décale tout ce qui suit.
+    // On indexe donc par TITRE en gardant la PREMIÈRE page (la plus petite) de
+    // chaque titre = sa page de début.
+    const pageByTitle = new Map();
+    for (const t of pass1.titles) {
+        if (!t || !t.title || !t.page) continue;
+        const prev = pageByTitle.get(t.title);
+        if (prev == null || t.page < prev) pageByTitle.set(t.title, t.page);
+    }
+    const measuredRows = baseRows.map((r) => ({
         title: r.title,
-        page: pass1.titles[i] ? pass1.titles[i].page : null,
+        page: pageByTitle.has(r.title) ? pageByTitle.get(r.title) : null,
         isAnnex: false
     }));
     // Pages de début des annexes : juste après le corps, cumul des pages d'annexes.
