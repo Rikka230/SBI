@@ -13,7 +13,8 @@ function shouldShowVersionBadge() {
   const path = window.location.pathname.toLowerCase();
   return path.startsWith('/admin/')
     || path.startsWith('/student/')
-    || path.startsWith('/teacher/');
+    || path.startsWith('/teacher/')
+    || path.startsWith('/tutor/');
 }
 
 function injectVersionBadgeStyles() {

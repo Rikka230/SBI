@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.301',
+  version: '8.0P.167.302',
   branch: 'main',
-  channel: 'Espace interne : suppression du badge de dev fige (6.2-bis) ; badge version = dynamique',
-  stage: 'FIX badge : l ancien badge CSS fige « SBI UI 6.2-bis · avatar-profile-test » (body.sbi-internal-ui::after dans sbi-ui-polish.css) etait encore visible cote tuteur (l override du badge dynamique ne gagnait pas toujours). Neutralise a la source (content:none) -> seul le badge de version REEL (#sbi-version-badge, lit sbi-version.js) s affiche, sur tous les espaces. Suite des fix tuteur .300 (sbi-tutor-space lime + recherche apprenti isolee).',
+  channel: 'Badge version : affiche aussi cote tuteur (/tutor/ ajoute au whitelist)',
+  stage: 'FIX badge tuteur : shouldShowVersionBadge() ne listait que /admin//student//teacher/ -> le badge dynamique #sbi-version-badge ne s affichait PAS sur /tutor/ (seul l ancien ::after 6.2-bis, retire en .301, etait visible -> badge disparu). Ajout de /tutor/ au whitelist + bump du ?v d import de sbi-version-badge.js (.247 fige). Le vrai badge de version s affiche desormais cote tuteur (lime via sbi-tutor-space).',
   updatedAt: '2026-06-03',
-  label: 'SBI 8.0P.167.301 - Suppression badge dev fige (6.2-bis) ; badge version dynamique seul'
+  label: 'SBI 8.0P.167.302 - Badge version affiche cote tuteur (whitelist /tutor/) + lime'
 };
 
 export function getSbiVersionLabel() {

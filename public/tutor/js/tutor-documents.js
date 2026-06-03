@@ -1,6 +1,6 @@
 /**
  * =======================================================================
- * SBI 8.0P.167.301 — Espace TUTEUR « Documents de formation » (lecture seule)
+ * SBI 8.0P.167.302 — Espace TUTEUR « Documents de formation » (lecture seule)
  * -----------------------------------------------------------------------
  * Calqué sur student-documents.js. Le tuteur n'a pas de formations propres :
  * son périmètre est déduit des livrets de ses apprentis
@@ -17,11 +17,11 @@ import {
   DOC_CATEGORIES, CATEGORY_LABELS, CATEGORY_ICONS,
   escapeHtml, formatSize,
   loadFormationDocumentsForFormations, resolveVisibleDocuments
-} from '/js/formation-documents/formation-docs-data.js?v=8.0P.167.301';
+} from '/js/formation-documents/formation-docs-data.js?v=8.0P.167.302';
 import {
   resolvePlanningModel, renderPlanningHtml, downloadPlanningPdf
-} from '/js/formation-documents/planning-render.js?v=8.0P.167.301';
-import { loadBookletsForTutor } from '/js/booklet/booklet-data.js?v=8.0P.167.301';
+} from '/js/formation-documents/planning-render.js?v=8.0P.167.302';
+import { loadBookletsForTutor } from '/js/booklet/booklet-data.js?v=8.0P.167.302';
 
 let mounted = false;
 let mountedView = null;
