@@ -353,7 +353,7 @@ function renderCursusPlanningLine(document) {
     <div class="sbi-fdoc-item">
       <div class="sbi-fdoc-item__main">
         <span class="sbi-fdoc-item__name">${escapeHtml(document.title || 'Planning')}</span>
-        <span class="sbi-fdoc-item__meta">${sub ? `Généré depuis le cursus · ${sub}` : 'Généré depuis un cursus'}</span>
+        <span class="sbi-fdoc-item__meta" style="color:#15803d; font-weight:600;">✓ Enregistré en base${sub ? ` · ${sub}` : ' (depuis un cursus)'}</span>
       </div>
       <div class="sbi-fdoc-item__actions">
         <button type="button" class="sbi-fdoc-btn primary" data-fdoc-planning-pdf="${id}">Télécharger en PDF</button>
@@ -380,7 +380,7 @@ function renderCursusPicker({ docId, promotionId = '' }) {
       </select>
       <button type="button" class="sbi-fdoc-btn primary"
         data-fdoc-cursus-set data-doc-id="${escapeHtml(docId)}" data-promotion="${escapeHtml(promotionId)}">
-        Définir le planning depuis ce cursus
+        💾 Sauvegarder ce planning
       </button>
     </div>`;
 }

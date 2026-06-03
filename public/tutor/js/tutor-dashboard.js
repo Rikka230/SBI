@@ -17,7 +17,7 @@ import {
   computeCompletion,
   statusMeta,
   escapeHtml
-} from '/js/booklet/booklet-data.js?v=8.0P.167.287';
+} from '/js/booklet/booklet-data.js?v=8.0P.167.288';
 
 let mounted = false;
 let mountedView = null;

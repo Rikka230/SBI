@@ -25,8 +25,8 @@ import {
   statusMeta,
   updateBookletSection,
   loadBookletByStudent
-} from '/js/booklet/booklet-data.js?v=8.0P.167.287';
-import { downloadBookletPdf } from '/js/booklet/booklet-pdf.js?v=8.0P.167.287';
+} from '/js/booklet/booklet-data.js?v=8.0P.167.288';
+import { downloadBookletPdf } from '/js/booklet/booklet-pdf.js?v=8.0P.167.288';
 
 /* =====================================================================
  * État du module
