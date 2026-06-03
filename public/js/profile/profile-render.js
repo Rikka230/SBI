@@ -14,6 +14,11 @@ import { escapeHTML, getDisplayName, SVG_EDIT } from './profile-utils.js';
 import { roleOf } from '/js/learning-access.js?v=8.0P.167.205';
 import { maybeMigrateVisibleLegacyAvatar } from './profile-avatar-cropper.js';
 import { updateProfilePresenceStatus } from './profile-presence.js';
+import {
+  recomputeAccountCompleteness,
+  renderCompletenessPanelHtml,
+  injectCompletenessBadgeStyles
+} from '/js/account-completeness.js?v=8.0P.167.303';
 
 const functionsInstance = getFunctions(app, 'europe-west1');
 const adminUpdateUserAccountCallable = httpsCallable(functionsInstance, 'adminUpdateUserAccount');
@@ -378,6 +383,9 @@ async function renderActivity({ db, uid, data = {}, context, reloadProfile }) {
   }
 
   renderAccountActionsPanel({ db, uid, data, reloadProfile });
+
+  // ?tab=account : activer l'onglet « Activité » et défiler vers la complétude.
+  maybeFocusAccountTabFromUrl();
 
   list.innerHTML = renderAccountLogsLoading();
 
@@ -1307,6 +1315,58 @@ async function hydrateStudentFollowupFormationSnapshot({ db, data = {}, panel })
   }
 }
 
+/**
+ * Si l'URL contient ?tab=account, active l'onglet profil qui contient le
+ * panneau « Actions compte » (#ptab-activity) puis défile en douceur vers
+ * la carte de complétude (#prof-account-completeness).
+ * Respecte prefers-reduced-motion. Idempotent : ne s'exécute qu'une fois.
+ */
+function maybeFocusAccountTabFromUrl() {
+  if (maybeFocusAccountTabFromUrl._done) return;
+
+  let tabParam = '';
+  try {
+    const url = new URL(
+      window.SBI_APP_SHELL_CURRENT_URL || window.location.href,
+      window.location.origin
+    );
+    tabParam = url.searchParams.get('tab') || '';
+  } catch (_) {
+    return;
+  }
+
+  if (tabParam !== 'account') return;
+  maybeFocusAccountTabFromUrl._done = true;
+
+  // Active l'onglet « Activité » (celui qui cible #ptab-activity).
+  const activityTab = Array.from(document.querySelectorAll('.p-tab')).find((node) => {
+    const action = String(node.getAttribute('onclick') || '');
+    return action.includes('ptab-activity');
+  });
+  activityTab?.click?.();
+
+  // Défile vers la carte de complétude une fois le panneau monté.
+  const scrollToCard = () => {
+    const target = document.getElementById('prof-account-completeness');
+    if (!target) return;
+    let reduceMotion = false;
+    try {
+      reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches === true;
+    } catch (_) {}
+    try {
+      target.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
+    } catch (_) {
+      target.scrollIntoView();
+    }
+  };
+
+  if (typeof window.requestAnimationFrame === 'function') {
+    window.requestAnimationFrame(() => window.requestAnimationFrame(scrollToCard));
+  } else {
+    setTimeout(scrollToCard, 60);
+  }
+}
+
 function renderAccountActionsPanel({ db, uid, data = {}, reloadProfile }) {
   const list = document.getElementById('prof-activity-list');
   const group = list?.closest?.('.data-group');
@@ -1329,60 +1389,8 @@ function renderAccountActionsPanel({ db, uid, data = {}, reloadProfile }) {
     ? escapeHTML(currentNote).replace(/\n/g, '<br>')
     : 'Aucune note interne enregistrée pour ce compte.';
 
-  panel.innerHTML = `
-    <div style="
-      margin:0 0 1rem 0;
-      padding:1rem;
-      border:1px solid rgba(42,87,255,0.18);
-      border-radius:12px;
-      background:rgba(42,87,255,0.045);
-    ">
-      <div style="display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap; align-items:flex-start; margin-bottom:0.85rem;">
-        <div>
-          <strong style="color:#fff;">Actions compte</strong>
-          <p style="margin:0.25rem 0 0; color:var(--text-muted); font-size:0.82rem; line-height:1.45;">
-            Suivi manuel, notes internes, accès et finalisation du compte.
-          </p>
-        </div>
-        <div style="display:flex; gap:0.55rem; flex-wrap:wrap; justify-content:flex-end;">
-          <button id="prof-send-finalization-btn" type="button" style="
-            border:1px solid rgba(42,87,255,0.55);
-            background:rgba(42,87,255,0.12);
-            color:#dbe5ff;
-            border-radius:999px;
-            padding:0.55rem 0.85rem;
-            font-weight:900;
-            cursor:pointer;
-          ">Renvoyer finalisation</button>
-          <button id="prof-resend-access-btn" type="button" style="
-            border:1px solid rgba(251,188,4,0.45);
-            background:rgba(251,188,4,0.10);
-            color:#fbbc04;
-            border-radius:999px;
-            padding:0.55rem 0.85rem;
-            font-weight:800;
-            cursor:pointer;
-          ">Reset accès</button>
-        </div>
-      </div>
-
-
-      <div style="
-        margin:0 0 0.85rem 0;
-        padding:0.8rem 0.9rem;
-        border:1px solid rgba(255,255,255,0.10);
-        border-radius:10px;
-        background:var(--sbi-profile-activity-bg, rgba(255,255,255,0.035));
-      ">
-        <div style="display:flex; justify-content:space-between; gap:0.75rem; flex-wrap:wrap; align-items:center;">
-          <strong style="color:${finalizationInfo.tone}; font-size:0.88rem;">${escapeHTML(finalizationInfo.label)}</strong>
-          <span style="color:var(--text-muted); font-size:0.76rem;">Manuelles : ${finalizationInfo.inviteCount} · Auto : ${finalizationInfo.reminderCount || 0}/3</span>
-        </div>
-        <p style="margin:0.35rem 0 0; color:var(--text-muted); font-size:0.8rem; line-height:1.45;">
-          ${escapeHTML(finalizationInfo.detail)}
-        </p>
-      </div>
-
+  // --- Alertes BLOQUANTES : rendues HORS du repli (importantes) -----------
+  const blockingAlertsHtml = `
       ${finalizationInfo.needsEmailCorrection ? `
         <div style="
           margin:0 0 0.85rem 0;
@@ -1404,42 +1412,6 @@ function renderAccountActionsPanel({ db, uid, data = {}, reloadProfile }) {
               <p style="margin:0.45rem 0 0; word-break:break-word;">${escapeHTML(finalizationInfo.issueTechnicalDetail)}</p>
             </details>
           ` : ''}
-        </div>
-      ` : ''}
-
-      ${finalizationInfo.needsEmailVerification ? `
-        <div style="
-          margin:0 0 0.85rem 0;
-          padding:0.9rem 1rem;
-          border:1px solid rgba(251,188,4,0.32);
-          border-left:4px solid #fbbc04;
-          border-radius:12px;
-          background:rgba(251,188,4,0.08);
-        ">
-          <strong style="display:block; color:#ffe39a; font-size:0.88rem; margin-bottom:0.35rem;">
-            Email suspect : vérification recommandée
-          </strong>
-          <p style="margin:0; color:rgba(255,239,190,0.84); font-size:0.8rem; line-height:1.5;">
-            ${escapeHTML(finalizationInfo.detail)}
-          </p>
-        </div>
-      ` : ''}
-
-      ${finalizationInfo.linkLikelyOld ? `
-        <div style="
-          margin:0 0 0.85rem 0;
-          padding:0.9rem 1rem;
-          border:1px solid rgba(251,188,4,0.32);
-          border-left:4px solid #fbbc04;
-          border-radius:12px;
-          background:rgba(251,188,4,0.08);
-        ">
-          <strong style="display:block; color:#ffe39a; font-size:0.88rem; margin-bottom:0.35rem;">
-            Lien de finalisation ancien
-          </strong>
-          <p style="margin:0; color:rgba(255,239,190,0.84); font-size:0.8rem; line-height:1.5;">
-            Le dernier lien envoyé date de plus de 48h. Utilisez “Renvoyer finalisation” si l’utilisateur n’a pas activé son accès.
-          </p>
         </div>
       ` : ''}
 
@@ -1485,6 +1457,61 @@ function renderAccountActionsPanel({ db, uid, data = {}, reloadProfile }) {
             ">Marquer contact traité</button>
             <span style="color:rgba(255,214,214,0.76); font-size:0.75rem;">Le compteur Auto reste à 3/3.</span>
           </div>
+        </div>
+      ` : ''}
+  `;
+
+  // --- Contenu replié : état détaillé + alertes secondaires + suivi + note -
+  const advancedHtml = `
+      <div style="
+        margin:0 0 0.85rem 0;
+        padding:0.8rem 0.9rem;
+        border:1px solid rgba(255,255,255,0.10);
+        border-radius:10px;
+        background:var(--sbi-profile-activity-bg, rgba(255,255,255,0.035));
+      ">
+        <div style="display:flex; justify-content:space-between; gap:0.75rem; flex-wrap:wrap; align-items:center;">
+          <strong style="color:${finalizationInfo.tone}; font-size:0.88rem;">${escapeHTML(finalizationInfo.label)}</strong>
+          <span style="color:var(--text-muted); font-size:0.76rem;">Manuelles : ${finalizationInfo.inviteCount} · Auto : ${finalizationInfo.reminderCount || 0}/3</span>
+        </div>
+        <p style="margin:0.35rem 0 0; color:var(--text-muted); font-size:0.8rem; line-height:1.45;">
+          ${escapeHTML(finalizationInfo.detail)}
+        </p>
+      </div>
+
+      ${finalizationInfo.needsEmailVerification ? `
+        <div style="
+          margin:0 0 0.85rem 0;
+          padding:0.9rem 1rem;
+          border:1px solid rgba(251,188,4,0.32);
+          border-left:4px solid #fbbc04;
+          border-radius:12px;
+          background:rgba(251,188,4,0.08);
+        ">
+          <strong style="display:block; color:#ffe39a; font-size:0.88rem; margin-bottom:0.35rem;">
+            Email suspect : vérification recommandée
+          </strong>
+          <p style="margin:0; color:rgba(255,239,190,0.84); font-size:0.8rem; line-height:1.5;">
+            ${escapeHTML(finalizationInfo.detail)}
+          </p>
+        </div>
+      ` : ''}
+
+      ${finalizationInfo.linkLikelyOld ? `
+        <div style="
+          margin:0 0 0.85rem 0;
+          padding:0.9rem 1rem;
+          border:1px solid rgba(251,188,4,0.32);
+          border-left:4px solid #fbbc04;
+          border-radius:12px;
+          background:rgba(251,188,4,0.08);
+        ">
+          <strong style="display:block; color:#ffe39a; font-size:0.88rem; margin-bottom:0.35rem;">
+            Lien de finalisation ancien
+          </strong>
+          <p style="margin:0; color:rgba(255,239,190,0.84); font-size:0.8rem; line-height:1.5;">
+            Le dernier lien envoyé date de plus de 48h. Utilisez “Renvoyer finalisation” si l’utilisateur n’a pas activé son accès.
+          </p>
         </div>
       ` : ''}
 
@@ -1578,6 +1605,75 @@ function renderAccountActionsPanel({ db, uid, data = {}, reloadProfile }) {
           cursor:pointer;
         ">Sauvegarder le suivi</button>
       </div>
+  `;
+
+  panel.innerHTML = `
+    <div style="
+      margin:0 0 1rem 0;
+      padding:1rem;
+      border:1px solid rgba(42,87,255,0.18);
+      border-radius:12px;
+      background:rgba(42,87,255,0.045);
+    ">
+      <div style="display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap; align-items:flex-start; margin-bottom:0.85rem;">
+        <div>
+          <strong style="color:#fff;">Actions compte</strong>
+          <p style="margin:0.25rem 0 0; color:var(--text-muted); font-size:0.82rem; line-height:1.45;">
+            Suivi manuel, notes internes, accès et finalisation du compte.
+          </p>
+        </div>
+        <div style="display:flex; gap:0.55rem; flex-wrap:wrap; justify-content:flex-end;">
+          <button id="prof-send-finalization-btn" type="button" style="
+            border:1px solid rgba(42,87,255,0.55);
+            background:rgba(42,87,255,0.12);
+            color:#dbe5ff;
+            border-radius:999px;
+            padding:0.55rem 0.85rem;
+            font-weight:900;
+            cursor:pointer;
+          ">Renvoyer finalisation</button>
+          <button id="prof-resend-access-btn" type="button" style="
+            border:1px solid rgba(251,188,4,0.45);
+            background:rgba(251,188,4,0.10);
+            color:#fbbc04;
+            border-radius:999px;
+            padding:0.55rem 0.85rem;
+            font-weight:800;
+            cursor:pointer;
+          ">Reset accès</button>
+        </div>
+      </div>
+
+      <!-- EN HAUT : carte Complétude du compte (jauge + checklist) -->
+      <div id="prof-account-completeness" aria-label="Complétude du compte" aria-live="polite" style="
+        margin:0 0 0.95rem 0;
+        padding:0.9rem 1rem;
+        border:1px solid rgba(255,255,255,0.10);
+        border-radius:12px;
+        background:var(--sbi-profile-activity-bg, rgba(255,255,255,0.035));
+        color:var(--text-main, #fff);
+      ">
+        <p style="margin:0; color:var(--text-muted); font-size:0.82rem;">Calcul de la complétude…</p>
+      </div>
+
+      <!-- Alertes bloquantes : toujours visibles -->
+      ${blockingAlertsHtml}
+
+      <!-- Reste replié pour épurer -->
+      <details class="sbi-acc-advanced">
+        <summary style="
+          cursor:pointer;
+          font-weight:800;
+          color:var(--text-main, #fff);
+          font-size:0.86rem;
+          padding:0.55rem 0;
+          list-style:revert;
+          outline:none;
+        ">Actions avancées &amp; notes</summary>
+        <div style="margin-top:0.75rem;">
+          ${advancedHtml}
+        </div>
+      </details>
     </div>
   `;
 
@@ -1736,6 +1832,75 @@ function renderAccountActionsPanel({ db, uid, data = {}, reloadProfile }) {
       resendButton.disabled = false;
       resendButton.style.opacity = '';
     }
+  });
+
+  // --- Carte « Complétude du compte » : calcul à l'ouverture --------------
+  // Le panel n'est rendu que pour les admins (cf. renderActivity), donc on
+  // peut appeler la CF sans contrôle de rôle supplémentaire.
+  injectCompletenessBadgeStyles();
+  loadAccountCompletenessCard({ uid });
+}
+
+/**
+ * Charge (ou recharge) la carte de complétude dans #prof-account-completeness.
+ * Affiche un skeleton pendant le calcul, gère l'erreur de façon non bloquante,
+ * et installe le bouton « Recalculer ».
+ * @param {{ uid:String }} params
+ */
+async function loadAccountCompletenessCard({ uid }) {
+  const container = document.getElementById('prof-account-completeness');
+  if (!container || !uid) return;
+
+  container.innerHTML = `
+    <p style="margin:0; color:var(--text-muted); font-size:0.82rem;">Calcul de la complétude…</p>
+  `;
+
+  try {
+    const result = await recomputeAccountCompleteness({ uid });
+    const completeness = result?.data?.completeness || {};
+    const panelHtml = renderCompletenessPanelHtml(completeness, { uid });
+
+    container.innerHTML = `
+      <div style="display:flex; justify-content:space-between; gap:0.75rem; align-items:flex-start; flex-wrap:wrap;">
+        <div style="flex:1 1 auto; min-width:0;">${panelHtml}</div>
+        <button id="prof-account-completeness-recalc" type="button" style="
+          flex:0 0 auto;
+          border:1px solid rgba(255,255,255,0.18);
+          background:rgba(255,255,255,0.06);
+          color:var(--text-main, #fff);
+          border-radius:999px;
+          padding:0.4rem 0.8rem;
+          font-weight:800;
+          font-size:0.78rem;
+          cursor:pointer;
+        ">Recalculer</button>
+      </div>
+    `;
+  } catch (error) {
+    console.warn('[SBI Profile] Calcul de la complétude impossible :', error);
+    container.innerHTML = `
+      <div style="display:flex; justify-content:space-between; gap:0.75rem; align-items:center; flex-wrap:wrap;">
+        <p style="margin:0; color:var(--text-muted); font-size:0.82rem;">
+          Complétude indisponible pour le moment.
+        </p>
+        <button id="prof-account-completeness-recalc" type="button" style="
+          flex:0 0 auto;
+          border:1px solid rgba(255,255,255,0.18);
+          background:rgba(255,255,255,0.06);
+          color:var(--text-main, #fff);
+          border-radius:999px;
+          padding:0.4rem 0.8rem;
+          font-weight:800;
+          font-size:0.78rem;
+          cursor:pointer;
+        ">Réessayer</button>
+      </div>
+    `;
+  }
+
+  const recalcButton = container.querySelector('#prof-account-completeness-recalc');
+  recalcButton?.addEventListener('click', () => {
+    loadAccountCompletenessCard({ uid });
   });
 }
 

@@ -859,6 +859,102 @@ async function safeWriteAccountAuditLog(db, payload) {
     }
 }
 
+async function computeUserCompletenessData(db, uid, userData) {
+    const data = userData || {};
+    const role = normalizeAccountRole(data.role);
+    const isStudent = role === "student";
+    const isTutor = role === "tutor";
+
+    const items = [];
+
+    // profile_basics (tous)
+    const profileDone = Boolean(
+        cleanString(data.prenom) &&
+        cleanString(data.nom) &&
+        cleanString(data.email) &&
+        cleanString(data.role) &&
+        data.statut !== "suspendu"
+    );
+    items.push({ key: "profile_basics", label: "Profil de base", done: profileDone, applicable: true });
+
+    // account_finalized (tous)
+    const accountStatus = data.accountStatus || {};
+    const accountFinalized = Boolean(
+        accountStatus.activationState === "active" ||
+        accountStatus.firstLoginCompleted === true ||
+        accountStatus.firstLoginAt ||
+        data.firstLoginAt ||
+        data.lastSeenAt
+    );
+    items.push({ key: "account_finalized", label: "Compte finalisé / 1ʳᵉ connexion", done: accountFinalized, applicable: true });
+
+    // formation (student/tutor)
+    const formationApplicable = isStudent || isTutor;
+    const formationDone = formationApplicable && Array.isArray(data.formationIds) && data.formationIds.length > 0;
+    items.push({ key: "formation", label: "Rattaché à une formation", done: formationDone, applicable: formationApplicable });
+
+    // promotion (student) : au moins une promo avec coursePlan non vide
+    let promotionDone = false;
+    if (isStudent) {
+        try {
+            const promotionIds = Array.from(new Set([
+                ...(Array.isArray(data.promotionIds) ? data.promotionIds : []),
+                data.promotionId,
+                data.currentPromotionId,
+                data.cohortId
+            ].map((value) => cleanString(value, 180)).filter(Boolean)));
+
+            for (const promotionId of promotionIds) {
+                try {
+                    const promotionSnap = await db.collection("promotions").doc(promotionId).get();
+                    if (!promotionSnap.exists) continue;
+                    const coursePlan = getCoursePlanItemsFromPromotion(promotionSnap.data() || {});
+                    if (Array.isArray(coursePlan) && coursePlan.length > 0) {
+                        promotionDone = true;
+                        break;
+                    }
+                } catch (error) {
+                    console.error(`computeUserCompletenessData promotion ${promotionId} :`, error.message);
+                }
+            }
+        } catch (error) {
+            console.error("computeUserCompletenessData promotions :", error.message);
+        }
+    }
+    items.push({ key: "promotion", label: "Promotion avec programme (coursePlan)", done: promotionDone, applicable: isStudent });
+
+    // livret (student) : apprenticeshipBooklets/{uid} + tutorId
+    let livretDone = false;
+    if (isStudent) {
+        try {
+            const bookletSnap = await db.collection("apprenticeshipBooklets").doc(uid).get();
+            if (bookletSnap.exists) {
+                const bookletData = bookletSnap.data() || {};
+                livretDone = Boolean(cleanString(bookletData.tutorId, 180));
+            }
+        } catch (error) {
+            console.error("computeUserCompletenessData livret :", error.message);
+        }
+    }
+    items.push({ key: "livret", label: "Livret d'apprentissage + tuteur", done: livretDone, applicable: isStudent });
+
+    const applicableItems = items.filter((item) => item.applicable);
+    const doneItems = applicableItems.filter((item) => item.done);
+    const total = applicableItems.length;
+    const percent = total > 0 ? Math.round((doneItems.length / total) * 100) : 0;
+    const complete = percent === 100;
+    const missing = applicableItems.filter((item) => !item.done).map((item) => item.key);
+
+    return {
+        percent,
+        complete,
+        missing,
+        items,
+        role,
+        computedAt: admin.firestore.Timestamp.now()
+    };
+}
+
 async function requireActiveCourseCaller(request, db) {
     if (!request.auth || !request.auth.uid) {
         throw new HttpsError("unauthenticated", "Vous devez être connecté pour effectuer cette action.");
@@ -1819,6 +1915,13 @@ exports.adminCreateUserAccount = onCall({
         });
         creationLock = null;
 
+        try {
+            const completeness = await computeUserCompletenessData(db, createdUser.uid, accountData);
+            await db.collection("users").doc(createdUser.uid).set({ completeness }, { merge: true });
+        } catch (error) {
+            console.error("Init complétude compte SBI :", error.message);
+        }
+
         return {
             success: true,
             uid: createdUser.uid,
@@ -1832,6 +1935,31 @@ exports.adminCreateUserAccount = onCall({
         }
     }
 });
+
+exports.recomputeAccountCompleteness = onCall({
+    region: "europe-west1",
+    timeoutSeconds: 30,
+    memory: "256MiB"
+}, async (request) => {
+    const db = admin.firestore();
+    await requireAdminCaller(request, db);
+
+    const data = request.data || {};
+    const uid = cleanString(data.uid, 180);
+    if (!uid) throw new HttpsError("invalid-argument", "L'identifiant utilisateur (uid) est obligatoire.");
+
+    const userRef = db.collection("users").doc(uid);
+    const userSnap = await userRef.get();
+    if (!userSnap.exists) {
+        throw new HttpsError("not-found", "Utilisateur introuvable.");
+    }
+
+    const completeness = await computeUserCompletenessData(db, uid, userSnap.data() || {});
+    await userRef.set({ completeness }, { merge: true });
+
+    return { success: true, completeness };
+});
+
 exports.adminSendPasswordReset = onCall({
     region: "europe-west1",
     secrets: [BREVO_API_KEY],

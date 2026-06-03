@@ -26,6 +26,7 @@ import {
   where
 } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js';
+import { renderCompletenessBadge, injectCompletenessBadgeStyles } from '/js/account-completeness.js?v=8.0P.167.303';
 
 const sbiFunctions = getFunctions(app, 'europe-west1');
 const callGetLiveAttendance = httpsCallable(sbiFunctions, 'getPromotionLiveAttendanceBatch');
@@ -1046,7 +1047,7 @@ function renderStudentListItem(row = {}) {
   badges.push(`<span class="sbi-late-chip is-q" title="couverture Qualiopi">${row.coverage === null ? '—' : row.coverage + '%'}</span>`);
   return `
     <button type="button" class="sbi-late-srow ${active ? 'is-active' : ''}" data-student-id="${escapeHtml(student.id)}">
-      <span class="sbi-late-srow-name">${escapeHtml(getStudentName(student))}</span>
+      <span class="sbi-late-srow-name">${escapeHtml(getStudentName(student))}${renderCompletenessBadge(student, { uid: student.id })}</span>
       <span class="sbi-late-srow-badges">${badges.join('')}</span>
     </button>
   `;
@@ -1353,6 +1354,7 @@ export function mountAdminLateStudents() {
   mounted = true;
   mountedView = view;
   ensureStyles();
+  injectCompletenessBadgeStyles();
   bindEvents();
 
   unsubscribeAuth = onAuthStateChanged(auth, async (user) => {

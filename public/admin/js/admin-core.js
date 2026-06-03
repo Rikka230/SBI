@@ -12,6 +12,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js";
+import { renderCompletenessBadge, injectCompletenessBadgeStyles } from '/js/account-completeness.js?v=8.0P.167.303';
 
 const functionsInstance = getFunctions(app, "europe-west1");
 
@@ -711,7 +712,7 @@ const renderUsersList = (usersToRender, reason = 'manual') => {
                 <div class="sbi-account-name-cell" style="color: white; font-weight: bold; word-break: break-word; min-width: 0; padding: 0.58rem 0.65rem; display: flex; align-items: center; gap:0.35rem;">
                     ${onlineIndicator}
                     <span class="sbi-account-name-line" style="display:flex; flex-direction:column; min-width:0; line-height:1.25;">
-                        <span>${escapeHtml(displayName)}</span>
+                        <span>${escapeHtml(displayName)}${renderCompletenessBadge(user, { uid: user.id })}</span>
                         ${promotionHtml}
                     </span>
                 </div>
@@ -1147,6 +1148,8 @@ function initAdminCore() {
     }
 
     window.__SBI_ADMIN_CORE_READY = true;
+
+    injectCompletenessBadgeStyles();
 
     const myProfileBtn = document.getElementById('btn-my-profile');
 

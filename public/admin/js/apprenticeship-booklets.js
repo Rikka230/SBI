@@ -32,10 +32,10 @@ import {
   loadBooklet,
   loadBookletsForAdmin,
   periodGuide
-} from '/js/booklet/booklet-data.js?v=8.0P.167.302';
-import { recomputeBookletPeriodDates } from '/js/booklet/booklet-data.js?v=8.0P.167.302';
-import { requestMergedBookletPdf } from '/js/booklet/booklet-pdf.js?v=8.0P.167.302';
-import { resolveBookletPlanningModel } from '/js/formation-documents/planning-render.js?v=8.0P.167.302';
+} from '/js/booklet/booklet-data.js?v=8.0P.167.303';
+import { recomputeBookletPeriodDates } from '/js/booklet/booklet-data.js?v=8.0P.167.303';
+import { requestMergedBookletPdf } from '/js/booklet/booklet-pdf.js?v=8.0P.167.303';
+import { resolveBookletPlanningModel } from '/js/formation-documents/planning-render.js?v=8.0P.167.303';
 
 const ROLE = 'admin';
 
@@ -352,7 +352,7 @@ function renderCreateView() {
  * Édition d'un livret
  * ============================================================ */
 function fieldHtml({ key, label, value, target, multiline = true, type = 'text', full = false }) {
-  // 8.0P.167.302 — CORRECTIF MAJEUR : pour une SECTION, le droit s'évalue sur le
+  // 8.0P.167.303 — CORRECTIF MAJEUR : pour une SECTION, le droit s'évalue sur le
   // NOM DE SECTION (target.section), pas sur la clé de champ. FIELD_PERMISSIONS.section
   // mappe des noms de section -> true (identity/employer/tutor/contract/formation…),
   // donc canEditField(role,'section', cleDeChamp) renvoyait toujours false et TOUS les

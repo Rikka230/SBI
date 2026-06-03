@@ -16,6 +16,7 @@
 
 import { auth, db } from '/js/firebase-init.js';
 import { isSbiAdminLike } from '/js/sbi-permissions.js?v=8.0P.167.44';
+import { renderCompletenessBadge, injectCompletenessBadgeStyles } from '/js/account-completeness.js?v=8.0P.167.303';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js';
 import {
   addDoc,
@@ -1802,7 +1803,7 @@ function renderRosterStudents() {
   dom.rosterList.innerHTML = filtered.map((student) => `
     <article class="sbi-promotions-student-row" data-student-id="${escapeHtml(student.id)}">
       <div>
-        <strong>${escapeHtml(getStudentName(student))}</strong>
+        <strong>${escapeHtml(getStudentName(student))}${renderCompletenessBadge(student, { uid: student.id })}</strong>
         <p>${escapeHtml(student.email || 'Email manquant')}</p>
       </div>
       <div class="sbi-promotions-actions">
@@ -2169,6 +2170,7 @@ export function mountAdminPromotions() {
 
   mounted = true;
   mountedView = view;
+  injectCompletenessBadgeStyles();
   cacheDom();
   bindEvents();
   resetForm();

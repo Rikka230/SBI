@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.302',
+  version: '8.0P.167.303',
   branch: 'main',
-  channel: 'Badge version : affiche aussi cote tuteur (/tutor/ ajoute au whitelist)',
-  stage: 'FIX badge tuteur : shouldShowVersionBadge() ne listait que /admin//student//teacher/ -> le badge dynamique #sbi-version-badge ne s affichait PAS sur /tutor/ (seul l ancien ::after 6.2-bis, retire en .301, etait visible -> badge disparu). Ajout de /tutor/ au whitelist + bump du ?v d import de sbi-version-badge.js (.247 fige). Le vrai badge de version s affiche desormais cote tuteur (lime via sbi-tutor-space).',
+  channel: 'Complétude de compte : checklist + jauge (panel profil) + badge croix global',
+  stage: 'NOUVEAU : complétude de compte calculée serveur (CF recomputeAccountCompleteness -> users.completeness {percent,complete,missing,items}, init à la création + champ protégé). Refonte ÉPURÉE du panel « Actions compte » du profil élève : carte « Complétude du compte » (jauge + checklist des critères profil/finalisation/formation/promotion+coursePlan/livret avec liens « Compléter ») en haut, actions avancées/notes repliées. Module partagé /js/account-completeness.js (badge + jauge + checklist). Badge croix ✗ derrière le nom des comptes <100% PARTOUT (roster promo, élèves en retard, recherche globale admin, liste comptes admin) -> redirige vers /admin/admin-profile.html?id=&tab=account. Accessibilité : glyphe ✗ + aria-label (pas couleur seule).',
   updatedAt: '2026-06-03',
-  label: 'SBI 8.0P.167.302 - Badge version affiche cote tuteur (whitelist /tutor/) + lime'
+  label: 'SBI 8.0P.167.303 - Complétude compte : checklist+jauge profil + badge croix global (incomplet)'
 };
 
 export function getSbiVersionLabel() {

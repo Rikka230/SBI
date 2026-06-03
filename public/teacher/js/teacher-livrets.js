@@ -18,9 +18,9 @@ import {
   LABELS, PERIOD_FIELDS, periodFieldLabel,
   escapeHtml, formatDate, computeCompletion, statusMeta,
   validateBookletPeriod, loadBookletsForTeacher
-} from '/js/booklet/booklet-data.js?v=8.0P.167.302';
-import { requestMergedBookletPdf } from '/js/booklet/booklet-pdf.js?v=8.0P.167.302';
-import { resolveBookletPlanningModel } from '/js/formation-documents/planning-render.js?v=8.0P.167.302';
+} from '/js/booklet/booklet-data.js?v=8.0P.167.303';
+import { requestMergedBookletPdf } from '/js/booklet/booklet-pdf.js?v=8.0P.167.303';
+import { resolveBookletPlanningModel } from '/js/formation-documents/planning-render.js?v=8.0P.167.303';
 import { loadAssignedFormationsForUser } from '/js/learning-access.js';
 
 const TEACHER_ROLES = ['teacher', 'prof', 'professeur', 'enseignant'];
@@ -99,7 +99,7 @@ async function loadScope() {
 async function loadData() {
   const { promotionIds, formationIds, promotionNameById, formationNameById } = await loadScope();
 
-  // 8.0P.167.302 — Lecture UNIQUEMENT par formationId : la règle Firestore
+  // 8.0P.167.303 — Lecture UNIQUEMENT par formationId : la règle Firestore
   // n'autorise le prof à lire un livret que via `formation.profs` (fonction
   // formationDocHasCurrentUser), PAS via promotionId (qui exige que la promotion
   // soit dans le user.promotionIds — champ élève, jamais prof). La requête par

@@ -19,6 +19,7 @@ import {
     loadSearchUsersForRole,
     roleOf
 } from '/js/learning-access.js?v=8.0P.167.205';
+import { renderCompletenessBadge, injectCompletenessBadgeStyles } from '/js/account-completeness.js?v=8.0P.167.303';
 
 let activeSearchContext = {
     currentUid: null,
@@ -207,10 +208,15 @@ function renderSearchResults({ container, term, users, courses, role }) {
             const profileLink = getProfileLinkForSearchResult(userData, role);
             const subText = getUserSearchSubText(userData, role);
             const displayName = `${userData.prenom || ''} ${userData.nom || ''}`.trim() || 'Utilisateur';
+            // Badge ✗ uniquement côté admin : seul l'admin charge des docs user complets
+            // (avec `completeness`) et le badge renvoie vers le panel de check admin.
+            const completenessBadge = role === 'admin'
+                ? renderCompletenessBadge(userData, { uid: userData.id })
+                : '';
             html += `
                 <div class="search-result-item" data-url="${profileLink}">
                     <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24" style="opacity:.6;min-width:18px;flex-shrink:0;"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
-                    <div><div class="search-result-title">${escapeHTML(displayName)}</div><div class="search-result-sub">${escapeHTML(subText)}</div></div>
+                    <div><div class="search-result-title">${escapeHTML(displayName)}${completenessBadge}</div><div class="search-result-sub">${escapeHTML(subText)}</div></div>
                 </div>`;
         });
     }
@@ -223,6 +229,7 @@ function renderSearchResults({ container, term, users, courses, role }) {
 
 export function setupGlobalSearch({ currentUid, currentUserProfile } = {}) {
     activeSearchContext = { currentUid, currentUserProfile };
+    injectCompletenessBadgeStyles();
     const searchInputs = document.querySelectorAll('.global-search-input');
 
     searchInputs.forEach((input) => {

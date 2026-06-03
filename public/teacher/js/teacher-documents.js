@@ -23,7 +23,7 @@ import {
   resolvePlanningModel,
   renderPlanningHtml,
   downloadPlanningPdf
-} from '/js/formation-documents/planning-render.js?v=8.0P.167.302';
+} from '/js/formation-documents/planning-render.js?v=8.0P.167.303';
 
 // Compteur pour générer des id uniques de placeholder planning (hydratés async).
 let planningSeq = 0;
