@@ -98,10 +98,14 @@ async function loadScope() {
 async function loadData() {
   const { promotionIds, formationIds, promotionNameById, formationNameById } = await loadScope();
 
-  // Union promotions + formations : un livret rattaché par formation (sans
-  // promotion) doit aussi remonter pour le prof de cette formation.
-  booklets = (promotionIds.length || formationIds.length)
-    ? await loadBookletsForTeacher({ db, promotionIds, formationIds })
+  // 8.0P.167.291 — Lecture UNIQUEMENT par formationId : la règle Firestore
+  // n'autorise le prof à lire un livret que via `formation.profs` (fonction
+  // formationDocHasCurrentUser), PAS via promotionId (qui exige que la promotion
+  // soit dans le user.promotionIds — champ élève, jamais prof). La requête par
+  // promotionId échouait donc toujours (« Missing or insufficient permissions »).
+  // Tout livret porte un formationId, donc la requête par formation couvre tout.
+  booklets = formationIds.length
+    ? await loadBookletsForTeacher({ db, promotionIds: [], formationIds })
     : [];
 
   // Enrichit chaque livret avec des noms lisibles (sinon retombe sur les champs stockés).

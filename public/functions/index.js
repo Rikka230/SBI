@@ -10055,7 +10055,8 @@ exports.updateBookletSection = onCall({
             throw new HttpsError("permission-denied", "Aucun champ autorisé pour votre rôle sur cette période.");
         }
 
-        nextPeriod.updatedAt = now;
+        // serverTimestamp() interdit dans un tableau -> Timestamp concret pour periods[].
+        nextPeriod.updatedAt = admin.firestore.Timestamp.now();
         periods[idx] = nextPeriod;
         update.periods = periods;
         update.completionRate = computeBookletCompletionRate(periods);
@@ -10196,15 +10197,18 @@ exports.validateBookletPeriod = onCall({
     if (idx < 0) throw new HttpsError("not-found", "Période introuvable.");
 
     const now = admin.firestore.FieldValue.serverTimestamp();
+    // Firestore INTERDIT FieldValue.serverTimestamp() à l'intérieur d'un tableau :
+    // on utilise un Timestamp concret pour les champs écrits DANS periods[].
+    const arrayNow = admin.firestore.Timestamp.now();
     const nextPeriod = Object.assign({}, periods[idx]);
     if (decision === "validate") {
-        nextPeriod.sbiValidatedAt = now;
+        nextPeriod.sbiValidatedAt = arrayNow;
         nextPeriod.validatedBy = caller.uid;
     } else {
         nextPeriod.sbiValidatedAt = null;
         nextPeriod.validatedBy = null;
     }
-    nextPeriod.updatedAt = now;
+    nextPeriod.updatedAt = arrayNow;
     periods[idx] = nextPeriod;
 
     await ref.set({ periods, updatedAt: now, updatedBy: caller.uid }, { merge: true });
@@ -10246,9 +10250,11 @@ exports.lockBookletPeriod = onCall({
     if (idx < 0) throw new HttpsError("not-found", "Période introuvable.");
 
     const now = admin.firestore.FieldValue.serverTimestamp();
+    // serverTimestamp() interdit dans un tableau -> Timestamp concret pour periods[].
+    const arrayNow = admin.firestore.Timestamp.now();
     const nextPeriod = Object.assign({}, periods[idx]);
-    nextPeriod.lockedAt = locked ? now : null;
-    nextPeriod.updatedAt = now;
+    nextPeriod.lockedAt = locked ? arrayNow : null;
+    nextPeriod.updatedAt = arrayNow;
     periods[idx] = nextPeriod;
 
     await ref.set({ periods, updatedAt: now, updatedBy: caller.uid }, { merge: true });

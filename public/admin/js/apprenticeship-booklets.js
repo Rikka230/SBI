@@ -350,7 +350,20 @@ function renderCreateView() {
  * Édition d'un livret
  * ============================================================ */
 function fieldHtml({ key, label, value, target, multiline = true, type = 'text', full = false }) {
-  const editable = canEditField(ROLE, target.kind === 'period' ? 'period' : 'section', key) || target.kind === 'meta';
+  // 8.0P.167.291 — CORRECTIF MAJEUR : pour une SECTION, le droit s'évalue sur le
+  // NOM DE SECTION (target.section), pas sur la clé de champ. FIELD_PERMISSIONS.section
+  // mappe des noms de section -> true (identity/employer/tutor/contract/formation…),
+  // donc canEditField(role,'section', cleDeChamp) renvoyait toujours false et TOUS les
+  // champs de section s'affichaient en lecture seule (admin inclus) -> rien n'était
+  // jamais enregistré. On évalue désormais le droit sur la section.
+  let editable;
+  if (target.kind === 'period') {
+    editable = canEditField(ROLE, 'period', key);
+  } else if (target.kind === 'meta') {
+    editable = ROLE === 'admin';
+  } else {
+    editable = canEditField(ROLE, 'section', target.section);
+  }
   const safe = escapeHtml(value == null ? '' : String(value));
   const idAttr = `f-${target.kind}-${target.section || target.periodId || 'meta'}-${key}`;
   let control;
