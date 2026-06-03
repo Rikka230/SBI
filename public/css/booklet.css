@@ -1,0 +1,170 @@
+/* =======================================================================
+   SBI — Livret d'apprentissage (Animateur E-Sport)
+   Base claire (espaces apprenti / tuteur) + override sombre scopé
+   .sbi-admin-surface (même approche que assignments.css / formation-documents.css).
+   Accent neutre selon l'espace : var(--space-accent, var(--accent-blue)).
+   L'espace tuteur fournit --space-accent: vert lime.
+   ======================================================================= */
+
+.sbi-booklet-page {
+  --bk-accent: var(--space-accent, var(--accent-blue, #2A57FF));
+  padding: 1.25rem;
+  max-width: 1180px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+/* ---- En-tête ---- */
+.sbi-booklet-head { margin-bottom: 1rem; }
+.sbi-booklet-head h1 { font-size: 1.45rem; margin: 0 0 .25rem; color: var(--text-main, #111827); }
+.sbi-booklet-head p { margin: 0; color: var(--text-muted, #6b7280); font-size: .92rem; }
+.sbi-booklet-meta { display: flex; flex-wrap: wrap; gap: .4rem .9rem; margin-top: .4rem; color: var(--text-muted, #6b7280); font-size: .85rem; }
+
+/* ---- Onglets (périodes / sections) ---- */
+.sbi-booklet-tabs {
+  display: flex; flex-wrap: wrap; gap: .4rem;
+  margin: 1rem 0; border-bottom: 1px solid var(--border-color, #e5e7eb); padding-bottom: .5rem;
+}
+.sbi-booklet-tab {
+  display: inline-flex; align-items: center; gap: .4rem;
+  border: 1px solid var(--border-color, #e5e7eb);
+  background: #fff; color: var(--text-main, #111827);
+  border-radius: 10px; padding: .45rem .9rem; font-size: .85rem; font-weight: 600;
+  cursor: pointer; transition: all .15s ease;
+}
+.sbi-booklet-tab:hover { border-color: var(--bk-accent); }
+.sbi-booklet-tab.is-active { background: var(--bk-accent); color: #fff; border-color: var(--bk-accent); }
+
+/* ---- Barre de complétion ---- */
+.sbi-booklet-completion { margin: .75rem 0 1.25rem; }
+.sbi-booklet-completion__label {
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-size: .82rem; color: var(--text-muted, #6b7280); margin-bottom: .35rem;
+}
+.sbi-booklet-completion__label strong { color: var(--text-main, #111827); font-size: 1rem; }
+.sbi-booklet-progress {
+  height: 10px; border-radius: 999px; background: var(--border-color, #e5e7eb); overflow: hidden;
+}
+.sbi-booklet-progress__bar {
+  height: 100%; border-radius: 999px; background: var(--bk-accent);
+  transition: width .3s ease; width: 0;
+}
+.sbi-booklet-missing { margin: .5rem 0 0; padding-left: 1.1rem; font-size: .82rem; color: var(--text-muted, #6b7280); }
+.sbi-booklet-missing li { margin: .15rem 0; }
+
+/* ---- Sections / cartes ---- */
+.sbi-booklet-section {
+  border: 1px solid var(--border-color, #e5e7eb); border-radius: 14px; background: #fff;
+  padding: 1.1rem 1.2rem; margin-bottom: 1rem;
+}
+.sbi-booklet-section > h2 {
+  margin: 0 0 .8rem; font-size: 1.1rem; color: var(--text-main, #111827);
+  padding-bottom: .4rem; border-bottom: 2px solid var(--border-color, #eef2f7);
+}
+.sbi-booklet-section__hint { margin: -.4rem 0 .8rem; color: var(--text-muted, #6b7280); font-size: .85rem; }
+.sbi-booklet-subtitle {
+  font-weight: 700; color: var(--text-main, #111827); font-size: .9rem;
+  margin: 1.1rem 0 .6rem; text-transform: uppercase; letter-spacing: .02em;
+}
+
+/* ---- Champs ---- */
+.sbi-booklet-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: .85rem; }
+@media (max-width: 640px) { .sbi-booklet-grid { grid-template-columns: 1fr; } }
+.sbi-booklet-field { display: flex; flex-direction: column; gap: .35rem; }
+.sbi-booklet-field.is-full { grid-column: 1 / -1; }
+.sbi-booklet-field > label { font-weight: 600; font-size: .85rem; color: var(--text-main, #111827); }
+.sbi-booklet-field__hint { font-size: .78rem; color: var(--text-muted, #6b7280); font-weight: 400; }
+.sbi-booklet-input,
+.sbi-booklet-textarea {
+  width: 100%; box-sizing: border-box; padding: .6rem .8rem; font-size: .9rem; font-family: inherit;
+  border: 1px solid var(--border-color, #e5e7eb); border-radius: 10px;
+  background: #f9fafb; color: var(--text-main, #111827);
+}
+.sbi-booklet-textarea { resize: vertical; min-height: 84px; line-height: 1.5; }
+.sbi-booklet-input:focus,
+.sbi-booklet-textarea:focus {
+  outline: none; border-color: var(--bk-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--bk-accent) 18%, transparent);
+}
+.sbi-booklet-input:disabled,
+.sbi-booklet-textarea:disabled,
+.sbi-booklet-input[readonly],
+.sbi-booklet-textarea[readonly] {
+  opacity: .7; cursor: not-allowed; background: #f3f4f6;
+}
+/* Champ en lecture seule (pas éditable par le rôle courant) */
+.sbi-booklet-readonly {
+  font-size: .9rem; white-space: pre-wrap; line-height: 1.5;
+  border: 1px solid var(--border-color, #e5e7eb); border-radius: 10px;
+  padding: .6rem .8rem; background: #fafafa; color: var(--text-main, #111827); min-height: 18px;
+}
+.sbi-booklet-readonly:empty::before { content: "—"; color: #9ca3af; }
+
+/* ---- Badges de statut ---- */
+.sbi-booklet-badge {
+  display: inline-flex; align-items: center; gap: .3rem; font-size: .73rem; font-weight: 700;
+  padding: .2rem .6rem; border-radius: 999px; color: #fff; white-space: nowrap;
+  background: var(--bk-accent);
+}
+.sbi-booklet-badge.is-soft {
+  background: color-mix(in srgb, var(--bk-accent) 14%, #fff);
+  color: var(--bk-accent); border: 1px solid color-mix(in srgb, var(--bk-accent) 35%, transparent);
+}
+
+/* ---- Boutons ---- */
+.sbi-booklet-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1rem; }
+.sbi-booklet-btn {
+  border: 1px solid var(--border-color, #e5e7eb); background: #fff; color: var(--text-main, #111827);
+  border-radius: 10px; padding: .55rem .95rem; font-size: .88rem; font-weight: 600; cursor: pointer; transition: all .15s;
+}
+.sbi-booklet-btn:hover { border-color: var(--bk-accent); }
+.sbi-booklet-btn.primary { background: var(--bk-accent); border-color: var(--bk-accent); color: #fff; }
+.sbi-booklet-btn.primary:hover { filter: brightness(1.05); }
+.sbi-booklet-btn.ghost { background: transparent; }
+.sbi-booklet-btn.danger { background: #fee2e2; border-color: #fecaca; color: #991b1b; }
+.sbi-booklet-btn:disabled { opacity: .55; cursor: not-allowed; }
+
+/* ---- Statut / messages ---- */
+.sbi-booklet-status { font-size: .86rem; margin: .4rem 0 0; color: var(--text-muted, #6b7280); }
+.sbi-booklet-status[data-tone="error"]   { color: #b91c1c; }
+.sbi-booklet-status[data-tone="success"] { color: #166534; }
+.sbi-booklet-empty { color: var(--text-muted, #6b7280); text-align: center; padding: 2.5rem 1rem; }
+
+/* ============================================================
+   OVERRIDE THÈME SOMBRE ADMIN (.sbi-admin-surface)
+   Les espaces apprenti / tuteur restent en thème clair (base ci-dessus).
+   ============================================================ */
+.sbi-admin-surface .sbi-booklet-section,
+.sbi-admin-surface .sbi-booklet-tab,
+.sbi-admin-surface .sbi-booklet-btn {
+  background: var(--bg-card, #2c2c2c);
+  color: var(--text-main, #f3f4f6);
+  border-color: var(--border-color, #333);
+}
+.sbi-admin-surface .sbi-booklet-input,
+.sbi-admin-surface .sbi-booklet-textarea,
+.sbi-admin-surface .sbi-booklet-readonly {
+  background: var(--bg-panel, #1e1e1e);
+  color: var(--text-main, #f3f4f6);
+  border-color: var(--border-color, #333);
+}
+.sbi-admin-surface .sbi-booklet-input:disabled,
+.sbi-admin-surface .sbi-booklet-textarea:disabled,
+.sbi-admin-surface .sbi-booklet-input[readonly],
+.sbi-admin-surface .sbi-booklet-textarea[readonly] {
+  background: #262626;
+}
+.sbi-admin-surface .sbi-booklet-head h1,
+.sbi-admin-surface .sbi-booklet-section > h2,
+.sbi-admin-surface .sbi-booklet-subtitle,
+.sbi-admin-surface .sbi-booklet-field > label,
+.sbi-admin-surface .sbi-booklet-completion__label strong {
+  color: var(--text-main, #f3f4f6);
+}
+.sbi-admin-surface .sbi-booklet-section > h2 { border-bottom-color: var(--border-color, #333); }
+.sbi-admin-surface .sbi-booklet-progress { background: var(--border-color, #333); }
+/* États accentués : priment sur l'override sombre (spécificité supérieure). */
+.sbi-admin-surface .sbi-booklet-tab.is-active { background: var(--bk-accent); color: #fff; border-color: var(--bk-accent); }
+.sbi-admin-surface .sbi-booklet-btn.primary { background: var(--bk-accent); color: #fff; border-color: var(--bk-accent); }
+.sbi-admin-surface .sbi-booklet-btn.danger { background: #7f1d1d; color: #fee2e2; border-color: #991b1b; }
+.sbi-admin-surface .sbi-booklet-btn.ghost { background: transparent; }

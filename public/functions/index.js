@@ -9670,3 +9670,541 @@ exports.deleteAssignmentSubmission = onCall({
 
     return { success: true };
 });
+
+/* ============================================================
+   LIVRET D'APPRENTISSAGE — Cloud Functions onCall (europe-west1)
+   ------------------------------------------------------------
+   Collection : apprenticeshipBooklets/{bookletId} (id = studentId).
+   - generateApprenticeshipBooklet : création du livret (admin).
+   - updateBookletSection          : édition par section/période avec
+     whitelist serveur par rôle (admin | élève propriétaire | tuteur).
+   - validateBookletPeriod         : validation SBI d'une période
+     (admin OU teacher).
+   - lockBookletPeriod             : verrouillage d'une période (admin).
+   - assignBookletTutor            : affectation d'un tuteur (admin).
+   ============================================================ */
+
+const BOOKLET_PERIOD_COUNT = 6;
+const BOOKLET_FIELD_MAX = 8000;
+
+// Whitelists serveur — IDENTIQUES au client.
+const BOOKLET_PERIOD_STUDENT_FIELDS = [
+    "studentObjectives", "resources", "plannedMeans", "projectDescription",
+    "projectContext", "projectLocation", "projectGoals", "projectMeans",
+    "targetAudience", "satisfyingPoints", "difficulties", "improvementTopics",
+    "theoryLinks", "studentReport", "studentSignedAt"
+];
+const BOOKLET_PERIOD_TUTOR_FIELDS = [
+    "objectivesEvaluation", "tutorPositivePoints", "tutorImprovementAxes",
+    "tutorReport", "tutorSignedAt"
+];
+const BOOKLET_PERIOD_ADMIN_FIELDS = Array.from(new Set([
+    ...BOOKLET_PERIOD_STUDENT_FIELDS,
+    ...BOOKLET_PERIOD_TUTOR_FIELDS,
+    "sbiValidatedAt", "lockedAt", "validatedBy",
+    "label", "startDate", "endDate", "status"
+]));
+
+// Sections autorisées par rôle (clés de target.section).
+const BOOKLET_SECTION_STUDENT = ["identity"];
+const BOOKLET_SECTION_TUTOR = ["employer", "tutor", "absencesEntreprise"];
+const BOOKLET_SECTION_ADMIN = ["identity", "employer", "tutor", "contract", "absencesCfmfs", "absencesEntreprise", "meta"];
+
+// Champs « attendus » par période pour le calcul du taux de complétion
+// (objectifs + bilans + recueil).
+const BOOKLET_PERIOD_COMPLETION_FIELDS = [
+    "studentObjectives", "resources", "plannedMeans",
+    "studentReport", "tutorReport", "objectivesEvaluation"
+];
+
+function bookletCleanValue(value) {
+    if (value === null || value === undefined) return "";
+    if (Array.isArray(value)) {
+        return value.map((item) => bookletCleanValue(item)).filter((item) => item !== "");
+    }
+    if (typeof value === "object") {
+        const out = {};
+        Object.keys(value).forEach((key) => {
+            out[cleanString(key, 120)] = bookletCleanValue(value[key]);
+        });
+        return out;
+    }
+    if (typeof value === "boolean" || typeof value === "number") return value;
+    return cleanString(value, BOOKLET_FIELD_MAX);
+}
+
+function buildEmptyBookletPeriod(index) {
+    return {
+        id: `period-${index + 1}`,
+        label: `Période ${index + 1}`,
+        startDate: "",
+        endDate: "",
+        status: "draft",
+        studentObjectives: "",
+        resources: "",
+        plannedMeans: "",
+        objectivesEvaluation: "",
+        projectDescription: "",
+        projectContext: "",
+        projectLocation: "",
+        projectGoals: "",
+        projectMeans: "",
+        targetAudience: "",
+        satisfyingPoints: "",
+        difficulties: "",
+        improvementTopics: "",
+        theoryLinks: "",
+        studentReport: "",
+        tutorPositivePoints: "",
+        tutorImprovementAxes: "",
+        tutorReport: "",
+        studentSignedAt: null,
+        tutorSignedAt: null,
+        sbiValidatedAt: null,
+        validatedBy: null,
+        lockedAt: null,
+        updatedAt: null
+    };
+}
+
+function bookletFieldFilled(value) {
+    if (value === null || value === undefined) return false;
+    if (Array.isArray(value)) return value.length > 0;
+    if (typeof value === "object") return Object.keys(value).length > 0;
+    return cleanString(value, BOOKLET_FIELD_MAX) !== "";
+}
+
+function computeBookletCompletionRate(periods) {
+    const list = Array.isArray(periods) ? periods : [];
+    let expected = 0;
+    let filled = 0;
+    list.forEach((period) => {
+        BOOKLET_PERIOD_COMPLETION_FIELDS.forEach((field) => {
+            expected += 1;
+            if (period && bookletFieldFilled(period[field])) filled += 1;
+        });
+    });
+    if (expected <= 0) return 0;
+    return Math.round((filled / expected) * 100);
+}
+
+exports.generateApprenticeshipBooklet = onCall({
+    region: "europe-west1",
+    timeoutSeconds: 30,
+    memory: "256MiB"
+}, async (request) => {
+    const db = admin.firestore();
+    const caller = await requireAdminCaller(request, db);
+
+    const data = request.data || {};
+    const studentId = cleanString(data.studentId, 200);
+    if (!studentId) throw new HttpsError("invalid-argument", "L'élève est obligatoire.");
+
+    const studentDoc = await db.collection("users").doc(studentId).get();
+    if (!studentDoc.exists) throw new HttpsError("not-found", "Élève introuvable.");
+    const studentData = studentDoc.data() || {};
+    const studentName = getAccountDisplayName(studentData);
+
+    const ref = db.collection("apprenticeshipBooklets").doc(studentId);
+    const existingSnap = await ref.get();
+    if (existingSnap.exists) {
+        return { success: true, bookletId: ref.id, alreadyExisted: true, booklet: existingSnap.data() || {} };
+    }
+
+    const formationId = cleanString(data.formationId, 200);
+    const promotionId = cleanString(data.promotionId, 200);
+    const employerId = cleanString(data.employerId, 200);
+    const tutorId = cleanString(data.tutorId, 200);
+
+    let formationName = "";
+    if (formationId) {
+        const formationDoc = await db.collection("formations").doc(formationId).get();
+        if (formationDoc.exists) {
+            const formation = formationDoc.data() || {};
+            formationName = cleanString(formation.titre || formation.nom || formation.name || "", 200);
+        }
+    }
+
+    let promotionName = "";
+    if (promotionId) {
+        const promoDoc = await db.collection("promotions").doc(promotionId).get();
+        if (promoDoc.exists) {
+            const promo = promoDoc.data() || {};
+            promotionName = cleanString(promo.nom || promo.titre || promo.name || "", 200);
+        }
+    }
+
+    let tutorName = cleanString(data.tutorName, 200);
+    if (tutorId && !tutorName) {
+        const tutorDoc = await db.collection("users").doc(tutorId).get();
+        if (tutorDoc.exists) tutorName = getAccountDisplayName(tutorDoc.data() || {});
+    }
+
+    const now = admin.firestore.FieldValue.serverTimestamp();
+    const periods = [];
+    for (let i = 0; i < BOOKLET_PERIOD_COUNT; i += 1) {
+        periods.push(buildEmptyBookletPeriod(i));
+    }
+
+    const booklet = {
+        studentId,
+        studentName,
+        formationId,
+        formationName,
+        promotionId,
+        promotionName,
+        employerId,
+        employerName: cleanString(data.employerName, 200),
+        tutorId,
+        tutorName,
+        status: "draft",
+        completionRate: 0,
+        identity: {
+            nom: cleanString(studentData.nom, 200),
+            prenom: cleanString(studentData.prenom, 200),
+            email: cleanString(studentData.email, 200)
+        },
+        employer: {
+            name: cleanString(data.employerName, 200),
+            id: employerId
+        },
+        tutor: {
+            id: tutorId,
+            name: tutorName
+        },
+        contract: {
+            start: cleanString(data.contractStart, 40),
+            end: cleanString(data.contractEnd, 40)
+        },
+        absences: { cfmfs: [], entreprise: [] },
+        signatures: {},
+        documents: [],
+        periods,
+        createdAt: now,
+        createdBy: caller.uid,
+        createdByName: caller.name,
+        updatedAt: now,
+        updatedBy: caller.uid
+    };
+
+    await ref.set(booklet);
+
+    await safeWriteAccountAuditLog(db, {
+        type: "booklet.generated",
+        actorUid: caller.uid,
+        actorEmail: caller.email,
+        targetUid: studentId,
+        changes: { bookletId: ref.id, studentName, formationId, promotionId },
+        source: "booklet"
+    });
+
+    return { success: true, bookletId: ref.id, alreadyExisted: false };
+});
+
+exports.updateBookletSection = onCall({
+    region: "europe-west1",
+    timeoutSeconds: 30,
+    memory: "256MiB"
+}, async (request) => {
+    const db = admin.firestore();
+    const caller = await requireActiveCourseCaller(request, db);
+
+    const data = request.data || {};
+    const bookletId = cleanString(data.bookletId, 200);
+    if (!bookletId) throw new HttpsError("invalid-argument", "Livret manquant.");
+
+    const target = (data.target && typeof data.target === "object") ? data.target : {};
+    const kind = cleanString(target.kind, 40);
+    if (!["meta", "section", "period"].includes(kind)) {
+        throw new HttpsError("invalid-argument", "Cible invalide.");
+    }
+
+    const fields = (data.fields && typeof data.fields === "object" && !Array.isArray(data.fields)) ? data.fields : null;
+    if (!fields || Object.keys(fields).length === 0) {
+        throw new HttpsError("invalid-argument", "Aucune donnée à enregistrer.");
+    }
+
+    const ref = db.collection("apprenticeshipBooklets").doc(bookletId);
+    const snap = await ref.get();
+    if (!snap.exists) throw new HttpsError("not-found", "Livret introuvable.");
+    const booklet = snap.data() || {};
+
+    // Détermination du rôle de l'appelant vis-à-vis du livret.
+    let role = null;
+    if (caller.isAdmin) {
+        role = "admin";
+    } else if (cleanString(booklet.studentId, 200) === caller.uid) {
+        role = "student";
+    } else if (cleanString(booklet.tutorId, 200) === caller.uid) {
+        role = "tutor";
+    }
+    if (!role) {
+        throw new HttpsError("permission-denied", "Vous n'êtes pas autorisé à modifier ce livret.");
+    }
+
+    const now = admin.firestore.FieldValue.serverTimestamp();
+    const update = { updatedAt: now, updatedBy: caller.uid };
+    const changedKeys = [];
+
+    if (kind === "period") {
+        const periodId = cleanString(target.periodId, 120);
+        if (!periodId) throw new HttpsError("invalid-argument", "Période manquante.");
+
+        const periods = Array.isArray(booklet.periods) ? booklet.periods.slice() : [];
+        const idx = periods.findIndex((p) => p && cleanString(p.id, 120) === periodId);
+        if (idx < 0) throw new HttpsError("not-found", "Période introuvable.");
+
+        // Verrou : refus si période verrouillée ou livret verrouillé — SAUF admin.
+        const periodLocked = !!(periods[idx] && periods[idx].lockedAt);
+        const bookletLocked = cleanString(booklet.status, 40) === "locked";
+        if ((periodLocked || bookletLocked) && role !== "admin") {
+            throw new HttpsError("failed-precondition", "Cette période est verrouillée : modification impossible.");
+        }
+
+        let allowed;
+        if (role === "admin") allowed = BOOKLET_PERIOD_ADMIN_FIELDS;
+        else if (role === "student") allowed = BOOKLET_PERIOD_STUDENT_FIELDS;
+        else allowed = BOOKLET_PERIOD_TUTOR_FIELDS;
+
+        const nextPeriod = Object.assign({}, periods[idx]);
+        Object.keys(fields).forEach((key) => {
+            if (allowed.includes(key)) {
+                nextPeriod[key] = bookletCleanValue(fields[key]);
+                changedKeys.push(key);
+            }
+        });
+
+        if (changedKeys.length === 0) {
+            throw new HttpsError("permission-denied", "Aucun champ autorisé pour votre rôle sur cette période.");
+        }
+
+        nextPeriod.updatedAt = now;
+        periods[idx] = nextPeriod;
+        update.periods = periods;
+        update.completionRate = computeBookletCompletionRate(periods);
+    } else if (kind === "section") {
+        const section = cleanString(target.section, 80);
+        if (!section) throw new HttpsError("invalid-argument", "Section manquante.");
+
+        let allowedSections;
+        if (role === "admin") allowedSections = BOOKLET_SECTION_ADMIN;
+        else if (role === "student") allowedSections = BOOKLET_SECTION_STUDENT;
+        else allowedSections = BOOKLET_SECTION_TUTOR;
+
+        if (!allowedSections.includes(section)) {
+            throw new HttpsError("permission-denied", "Section non autorisée pour votre rôle.");
+        }
+
+        // Mapping section -> chemin de stockage dans le doc.
+        const sectionPathMap = {
+            identity: "identity",
+            employer: "employer",
+            tutor: "tutor",
+            contract: "contract",
+            meta: "meta",
+            absencesCfmfs: "absences.cfmfs",
+            absencesEntreprise: "absences.entreprise"
+        };
+        const path = sectionPathMap[section] || section;
+
+        if (section === "absencesCfmfs" || section === "absencesEntreprise") {
+            // Les absences sont une liste : on attend fields.items (tableau).
+            const items = Array.isArray(fields.items) ? bookletCleanValue(fields.items) : null;
+            if (!items) throw new HttpsError("invalid-argument", "Liste d'absences invalide.");
+            update[path] = items;
+            changedKeys.push("items");
+        } else {
+            const merged = Object.assign({}, booklet[path] && typeof booklet[path] === "object" ? booklet[path] : {});
+            Object.keys(fields).forEach((key) => {
+                merged[cleanString(key, 120)] = bookletCleanValue(fields[key]);
+                changedKeys.push(key);
+            });
+            if (changedKeys.length === 0) {
+                throw new HttpsError("permission-denied", "Aucun champ autorisé.");
+            }
+            update[path] = merged;
+        }
+    } else {
+        // kind === "meta" : réservé admin.
+        if (role !== "admin") {
+            throw new HttpsError("permission-denied", "Seuls les administrateurs peuvent modifier ces champs.");
+        }
+        const allowedMeta = [
+            "studentName", "formationId", "formationName", "promotionId", "promotionName",
+            "employerId", "employerName", "tutorId", "tutorName", "status"
+        ];
+        Object.keys(fields).forEach((key) => {
+            if (allowedMeta.includes(key)) {
+                update[key] = bookletCleanValue(fields[key]);
+                changedKeys.push(key);
+            }
+        });
+        if (changedKeys.length === 0) {
+            throw new HttpsError("permission-denied", "Aucun champ méta autorisé.");
+        }
+    }
+
+    await ref.set(update, { merge: true });
+
+    await safeWriteAccountAuditLog(db, {
+        type: "booklet.section_updated",
+        actorUid: caller.uid,
+        actorEmail: caller.email,
+        targetUid: cleanString(booklet.studentId, 200),
+        changes: {
+            bookletId,
+            target: { kind, section: cleanString(target.section, 80), periodId: cleanString(target.periodId, 120) },
+            keys: changedKeys,
+            role
+        },
+        source: "booklet"
+    });
+
+    return { success: true, role, changedKeys };
+});
+
+exports.validateBookletPeriod = onCall({
+    region: "europe-west1",
+    timeoutSeconds: 30,
+    memory: "256MiB"
+}, async (request) => {
+    const db = admin.firestore();
+    const caller = await requireActiveCourseCaller(request, db);
+    if (!caller.isAdmin && !caller.isTeacher) {
+        throw new HttpsError("permission-denied", "Seuls les administrateurs et enseignants peuvent valider une période.");
+    }
+
+    const data = request.data || {};
+    const bookletId = cleanString(data.bookletId, 200);
+    const periodId = cleanString(data.periodId, 120);
+    const decision = data.decision === "unvalidate" ? "unvalidate" : "validate";
+    if (!bookletId) throw new HttpsError("invalid-argument", "Livret manquant.");
+    if (!periodId) throw new HttpsError("invalid-argument", "Période manquante.");
+
+    const ref = db.collection("apprenticeshipBooklets").doc(bookletId);
+    const snap = await ref.get();
+    if (!snap.exists) throw new HttpsError("not-found", "Livret introuvable.");
+    const booklet = snap.data() || {};
+
+    const periods = Array.isArray(booklet.periods) ? booklet.periods.slice() : [];
+    const idx = periods.findIndex((p) => p && cleanString(p.id, 120) === periodId);
+    if (idx < 0) throw new HttpsError("not-found", "Période introuvable.");
+
+    const now = admin.firestore.FieldValue.serverTimestamp();
+    const nextPeriod = Object.assign({}, periods[idx]);
+    if (decision === "validate") {
+        nextPeriod.sbiValidatedAt = now;
+        nextPeriod.validatedBy = caller.uid;
+    } else {
+        nextPeriod.sbiValidatedAt = null;
+        nextPeriod.validatedBy = null;
+    }
+    nextPeriod.updatedAt = now;
+    periods[idx] = nextPeriod;
+
+    await ref.set({ periods, updatedAt: now, updatedBy: caller.uid }, { merge: true });
+
+    await safeWriteAccountAuditLog(db, {
+        type: "booklet.period_validated",
+        actorUid: caller.uid,
+        actorEmail: caller.email,
+        targetUid: cleanString(booklet.studentId, 200),
+        changes: { bookletId, periodId, decision },
+        source: "booklet"
+    });
+
+    return { success: true, decision };
+});
+
+exports.lockBookletPeriod = onCall({
+    region: "europe-west1",
+    timeoutSeconds: 30,
+    memory: "256MiB"
+}, async (request) => {
+    const db = admin.firestore();
+    const caller = await requireAdminCaller(request, db);
+
+    const data = request.data || {};
+    const bookletId = cleanString(data.bookletId, 200);
+    const periodId = cleanString(data.periodId, 120);
+    const locked = data.locked === true;
+    if (!bookletId) throw new HttpsError("invalid-argument", "Livret manquant.");
+    if (!periodId) throw new HttpsError("invalid-argument", "Période manquante.");
+
+    const ref = db.collection("apprenticeshipBooklets").doc(bookletId);
+    const snap = await ref.get();
+    if (!snap.exists) throw new HttpsError("not-found", "Livret introuvable.");
+    const booklet = snap.data() || {};
+
+    const periods = Array.isArray(booklet.periods) ? booklet.periods.slice() : [];
+    const idx = periods.findIndex((p) => p && cleanString(p.id, 120) === periodId);
+    if (idx < 0) throw new HttpsError("not-found", "Période introuvable.");
+
+    const now = admin.firestore.FieldValue.serverTimestamp();
+    const nextPeriod = Object.assign({}, periods[idx]);
+    nextPeriod.lockedAt = locked ? now : null;
+    nextPeriod.updatedAt = now;
+    periods[idx] = nextPeriod;
+
+    await ref.set({ periods, updatedAt: now, updatedBy: caller.uid }, { merge: true });
+
+    await safeWriteAccountAuditLog(db, {
+        type: "booklet.period_locked",
+        actorUid: caller.uid,
+        actorEmail: caller.email,
+        targetUid: cleanString(booklet.studentId, 200),
+        changes: { bookletId, periodId, locked },
+        source: "booklet"
+    });
+
+    return { success: true, locked };
+});
+
+exports.assignBookletTutor = onCall({
+    region: "europe-west1",
+    timeoutSeconds: 30,
+    memory: "256MiB"
+}, async (request) => {
+    const db = admin.firestore();
+    const caller = await requireAdminCaller(request, db);
+
+    const data = request.data || {};
+    const bookletId = cleanString(data.bookletId, 200);
+    const tutorId = cleanString(data.tutorId, 200);
+    if (!bookletId) throw new HttpsError("invalid-argument", "Livret manquant.");
+    if (!tutorId) throw new HttpsError("invalid-argument", "Tuteur manquant.");
+
+    const ref = db.collection("apprenticeshipBooklets").doc(bookletId);
+    const snap = await ref.get();
+    if (!snap.exists) throw new HttpsError("not-found", "Livret introuvable.");
+    const booklet = snap.data() || {};
+
+    let tutorName = cleanString(data.tutorName, 200);
+    if (!tutorName) {
+        const tutorDoc = await db.collection("users").doc(tutorId).get();
+        if (tutorDoc.exists) tutorName = getAccountDisplayName(tutorDoc.data() || {});
+    }
+
+    const now = admin.firestore.FieldValue.serverTimestamp();
+    await ref.set({
+        tutorId,
+        tutorName,
+        tutor: Object.assign({}, booklet.tutor && typeof booklet.tutor === "object" ? booklet.tutor : {}, {
+            id: tutorId,
+            name: tutorName
+        }),
+        updatedAt: now,
+        updatedBy: caller.uid
+    }, { merge: true });
+
+    await safeWriteAccountAuditLog(db, {
+        type: "booklet.tutor_assigned",
+        actorUid: caller.uid,
+        actorEmail: caller.email,
+        targetUid: cleanString(booklet.studentId, 200),
+        changes: { bookletId, tutorId, tutorName },
+        source: "booklet"
+    });
+
+    return { success: true, tutorId, tutorName };
+});
