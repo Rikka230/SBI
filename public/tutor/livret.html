@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Livret apprenti - SBI Tuteur</title>
+
+    <link rel="stylesheet" href="/admin/css/admin-layout.css">
+    <link rel="stylesheet" href="/admin/css/admin.css">
+    <link rel="stylesheet" href="/admin/css/admin-notifications.css">
+    <link rel="stylesheet" href="/css/booklet.css?v=8.0P.167.287">
+
+    <script src="/admin/js/components.js"></script>
+</head>
+<body class="preload no-right-panel">
+
+<div class="app-container" id="app-container">
+    <script>
+        if (window.innerWidth > 1024 && localStorage.getItem('leftPanelCollapsed') === 'true') {
+            document.getElementById('app-container').classList.add('left-collapsed');
+        }
+    </script>
+
+    <tutor-left-panel></tutor-left-panel>
+    <tutor-top-bar></tutor-top-bar>
+
+    <main id="main-content">
+        <div class="content-wrapper">
+            <section id="view-tutor-livret" aria-label="Livret d'apprentissage">
+                <div id="tutor-livret-root" class="sbi-booklet-page">
+                    <div class="sbi-booklet-status">Chargement…</div>
+                </div>
+            </section>
+        </div>
+    </main>
+</div>
+
+<script type="module" src="/admin/js/admin-ui.js?v=8.0P.167.205"></script>
+<script src="/admin/js/sbi-safe-fixes.js"></script>
+<script type="module" src="/admin/js/admin-notifications.js?v=8.0P.167.205"></script>
+
+<script type="module">
+    import { db, auth } from '/js/firebase-init.js';
+    import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+    document.addEventListener('DOMContentLoaded', () => {
+        onAuthStateChanged(auth, async (user) => {
+            if (!user) { window.location.replace('/login.html'); return; }
+            try {
+                const userSnap = await getDoc(doc(db, "users", user.uid));
+                if (!userSnap.exists()) return;
+                const p = userSnap.data();
+                const displayName = `${p.prenom || ''} ${p.nom || ''}`.trim() || "Tuteur";
+                const avatarUrl = p.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=111&color=fff`;
+                const topName = document.getElementById('top-user-name');
+                if (topName) topName.textContent = displayName;
+                const topAvatar = document.getElementById('top-user-avatar');
+                if (topAvatar) topAvatar.innerHTML = `<img src="${avatarUrl}" alt="Avatar" style="width:100%; height:100%; object-fit:cover;">`;
+            } catch (error) {
+                console.warn('[SBI Tuteur] résumé profil indisponible :', error);
+            }
+        });
+    });
+</script>
+
+<script type="module" src="/tutor/js/tutor-livret.js?v=8.0P.167.287"></script>
+<script type="module" src="/admin/js/tracker.js?v=8.0P.167.44"></script>
+</body>
+</html>

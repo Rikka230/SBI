@@ -129,6 +129,18 @@ function isStudentDocuments(url) {
   return normalizePath(url.pathname).toLowerCase() === '/student/documents.html';
 }
 
+function isAdminBooklets(url) {
+  return normalizePath(url.pathname).toLowerCase() === '/admin/apprenticeship-booklets.html';
+}
+
+function isStudentBooklet(url) {
+  return normalizePath(url.pathname).toLowerCase() === '/student/livret.html';
+}
+
+function isTeacherBooklets(url) {
+  return normalizePath(url.pathname).toLowerCase() === '/teacher/livrets.html';
+}
+
 function isAdminAuditLog(url) {
   return normalizePath(url.pathname).toLowerCase() === '/admin/admin-audit-log.html';
 }
@@ -207,6 +219,7 @@ function isAdminShellContext() {
     || path === '/admin/admin-late-students.html'
     || path === '/admin/admin-assignments.html'
     || path === '/admin/formation-documents.html'
+    || path === '/admin/apprenticeship-booklets.html'
     || path === '/admin/admin-audit-log.html';
 }
 
@@ -221,6 +234,7 @@ function isStudentShellContext() {
     || path.startsWith('/student/live-replay.html/')
     || path === '/student/assignments.html'
     || path === '/student/documents.html'
+    || path === '/student/livret.html'
     || path === '/student/mon-profil.html';
 }
 
@@ -234,6 +248,7 @@ function isTeacherShellContext() {
     || path === '/teacher/course-editor.html'
     || path === '/teacher/assignments.html'
     || path === '/teacher/documents.html'
+    || path === '/teacher/livrets.html'
     || path === '/teacher/mon-profil.html';
 }
 
@@ -761,6 +776,80 @@ async function mountStudentDocuments({ url }) {
   return { viewKey: 'student:documents' };
 }
 
+// SBI 8.0P.167.287 — Livret d'apprentissage numérique (admin / élève / teacher).
+async function mountAdminBooklets({ url }) {
+  cleanupCourseEditorV2Artifacts();
+  maybeCacheAdminIndexMain('leave-for-admin-booklets');
+
+  const doc = await fetchAdminDocument(url);
+
+  await ensureDocumentStyles(doc, url.href);
+  applyBodyRouteClassesFromDocument(doc, ['sbi-admin-surface']);
+  replaceMainFromDocument(doc);
+  updateAdminChromeFromDocument(doc, 'Livret d\'apprentissage - SBI Admin');
+  setLeftNavActive('nav-formations');
+  updateUrlContext(url);
+
+  window.__SBI_APP_SHELL_MOUNTING_ADMIN_BOOKLETS = true;
+  try {
+    const module = await import('/admin/js/apprenticeship-booklets.js?v=8.0P.167.287');
+    const cleanup = module.mountAdminBooklets?.();
+    if (typeof cleanup === 'function') registerCleanup(cleanup, 'admin-booklets');
+  } finally {
+    window.__SBI_APP_SHELL_MOUNTING_ADMIN_BOOKLETS = false;
+  }
+
+  return { viewKey: 'admin:booklets' };
+}
+
+async function mountStudentBooklet({ url }) {
+  cleanupCourseEditorV2Artifacts();
+
+  const doc = await fetchAdminDocument(url);
+
+  await ensureDocumentStyles(doc, url.href);
+  applyBodyRouteClassesFromDocument(doc, ['no-right-panel']);
+  replaceMainFromDocument(doc);
+  updateAdminChromeFromDocument(doc, 'Mon livret - SBI Student');
+  setLeftNavActive('/student/livret.html');
+  updateUrlContext(url);
+
+  window.__SBI_APP_SHELL_MOUNTING_STUDENT_BOOKLET = true;
+  try {
+    const module = await import('/student/js/student-livret.js?v=8.0P.167.287');
+    const cleanup = module.mountStudentBooklet?.();
+    if (typeof cleanup === 'function') registerCleanup(cleanup, 'student-livret');
+  } finally {
+    window.__SBI_APP_SHELL_MOUNTING_STUDENT_BOOKLET = false;
+  }
+
+  return { viewKey: 'student:booklet' };
+}
+
+async function mountTeacherBooklets({ url }) {
+  cleanupCourseEditorV2Artifacts();
+
+  const doc = await fetchAdminDocument(url);
+
+  await ensureDocumentStyles(doc, url.href);
+  applyBodyRouteClassesFromDocument(doc, ['sbi-teacher-surface', 'no-right-panel']);
+  replaceMainFromDocument(doc);
+  updateAdminChromeFromDocument(doc, 'Livrets - SBI Prof');
+  setLeftNavActive('/teacher/livrets.html');
+  updateUrlContext(url);
+
+  window.__SBI_APP_SHELL_MOUNTING_TEACHER_BOOKLETS = true;
+  try {
+    const module = await import('/teacher/js/teacher-livrets.js?v=8.0P.167.287');
+    const cleanup = module.mountTeacherBooklets?.();
+    if (typeof cleanup === 'function') registerCleanup(cleanup, 'teacher-booklets');
+  } finally {
+    window.__SBI_APP_SHELL_MOUNTING_TEACHER_BOOKLETS = false;
+  }
+
+  return { viewKey: 'teacher:booklets' };
+}
+
 async function mountLiveSchedulerRoute({ url, role = 'admin' }) {
   cleanupCourseEditorV2Artifacts();
   if (role === 'admin') maybeCacheAdminIndexMain('leave-for-admin-lives');
@@ -1188,6 +1277,7 @@ export function createRouteRegistry() {
   routes.push({ id: 'teacher-courses', canHandle(url) { return isTeacherCourses(url) && isTeacherShellContext(); }, mount: mountTeacherCourses });
   routes.push({ id: 'teacher-assignments', canHandle(url) { return isTeacherAssignments(url) && isTeacherShellContext(); }, mount: mountTeacherAssignments });
   routes.push({ id: 'teacher-documents', canHandle(url) { return isTeacherDocuments(url) && isTeacherShellContext(); }, mount: mountTeacherDocuments });
+  routes.push({ id: 'teacher-booklets', canHandle(url) { return isTeacherBooklets(url) && isTeacherShellContext(); }, mount: mountTeacherBooklets });
   routes.push({ id: 'teacher-lives-v2', canHandle(url) { return isTeacherLivesV2(url) && isTeacherShellContext(); }, mount: mountTeacherLivesV2 });
   routes.push({ id: 'teacher-lives-v1', canHandle(url) { return isTeacherLives(url) && isTeacherShellContext(); }, mount: mountTeacherLives });
   routes.push({ id: 'teacher-profile', canHandle(url) { return isTeacherProfile(url) && isTeacherShellContext(); }, mount: mountTeacherProfile });
@@ -1197,6 +1287,7 @@ export function createRouteRegistry() {
   routes.push({ id: 'student-lives', canHandle(url) { return isStudentLives(url) && isStudentShellContext(); }, mount: mountStudentLives });
   routes.push({ id: 'student-assignments', canHandle(url) { return isStudentAssignments(url) && isStudentShellContext(); }, mount: mountStudentAssignments });
   routes.push({ id: 'student-documents', canHandle(url) { return isStudentDocuments(url) && isStudentShellContext(); }, mount: mountStudentDocuments });
+  routes.push({ id: 'student-booklet', canHandle(url) { return isStudentBooklet(url) && isStudentShellContext(); }, mount: mountStudentBooklet });
   routes.push({ id: 'student-live-replay', canHandle(url) { return isStudentLiveReplay(url) && isStudentShellContext(); }, mount: mountStudentLiveReplay });
   routes.push({ id: 'admin-course-editor-v2', canHandle(url) { return isAdminCourseEditorV2(url) && isAdminShellContext(); }, mount: mountAdminCourseEditorV2 });
   routes.push({ id: 'admin-courses', canHandle(url) { return isAdminCourses(url) && isAdminShellContext(); }, mount: mountAdminCourses });
@@ -1209,6 +1300,7 @@ export function createRouteRegistry() {
   routes.push({ id: 'admin-late-students', canHandle(url) { return isAdminLateStudents(url) && isAdminShellContext(); }, mount: mountAdminLateStudents });
   routes.push({ id: 'admin-assignments', canHandle(url) { return isAdminAssignments(url) && isAdminShellContext(); }, mount: mountAdminAssignments });
   routes.push({ id: 'admin-formation-documents', canHandle(url) { return isAdminFormationDocuments(url) && isAdminShellContext(); }, mount: mountAdminFormationDocuments });
+  routes.push({ id: 'admin-apprenticeship-booklets', canHandle(url) { return isAdminBooklets(url) && isAdminShellContext(); }, mount: mountAdminBooklets });
   routes.push({ id: 'admin-audit-log', canHandle(url) { return isAdminAuditLog(url) && isAdminShellContext(); }, mount: mountAdminAuditLog });
   routes.push({ id: 'admin-site-index', canHandle(url) { return isAdminSiteIndex(url) && isAdminShellContext(); }, mount: mountSiteIndex });
 

@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.286',
+  version: '8.0P.167.287',
   branch: 'main',
-  channel: 'Planning : fusion dates (promotion) + noms (cursus)',
-  stage: 'le planning genere combine desormais les VRAIES dates du plan de la promotion ET les noms reels issus du cursus : sur un plan date de promotion, les noms manquants/generiques (lives, devoirs...) sont enrichis depuis les items du cursus (cours matches par courseId, autres types par ordre du meme type). Resout : promotion = dates mais pas de noms / cursus = noms mais pas de dates. Module /js/formation-documents/planning-render.js (resolvePlanningModel + enrichRowNamesFromCursus). Export PDF inchange.',
-  updatedAt: '2026-06-02',
-  label: 'SBI 8.0P.167.286 - Planning : fusion dates promotion + noms cursus (lives inclus)'
+  channel: 'Livret d\'apprentissage numerique + role Tuteur',
+  stage: 'nouveau module Livret d\'apprentissage numerique avec role Tuteur (maitre d\'apprentissage) et son espace dedie /tutor (theme vert lime). Admin, eleve et tuteur editent chacun leur partie du livret ; le teacher (responsable pedagogique) valide. Donnees : collection apprenticeshipBooklets, ecritures Cloud Functions par role avec verrou, export PDF. Routing + nav cables pour admin (/admin/apprenticeship-booklets.html), eleve (/student/livret.html) et teacher (/teacher/livrets.html).',
+  updatedAt: '2026-06-03',
+  label: 'SBI 8.0P.167.287 - Module Livret d\'apprentissage + role Tuteur (espace /tutor)'
 };
 
 export function getSbiVersionLabel() {
