@@ -11,7 +11,11 @@
 - **Profil de rôle** — la *donnée* qui décrit le chrome d'un espace, et la **surface de test** du Shell : `{ role, label, accent, levelLabel, searchMode, nav, hasRightPanel }`. `searchMode` ∈ `global` (recherche globale partagée) | `apprentice` (recherche d'apprenti lié, tuteur).
 - **Manifeste de navigation** — liste ordonnée d'entrées de nav par rôle : `{ id, label, href, icon, match, primary }`, + un résolveur pur `isActive(route, entry)`. `primary:true` (max 4) = affiché directement dans la bottom-nav ; les autres vont dans « Plus ». Consommé à l'identique par les deux présentations.
 - **Bottom-nav flottante** — présentation mobile/tablette (≤1024px) : capsule translucide (`backdrop-filter`), **indicateur coulissant recoloré** par `--space-accent`, `env(safe-area-inset-bottom)`, cibles ≥44px, `prefers-reduced-motion` respecté, sens porté par icône+label (jamais la couleur seule).
-- **Feuille « Plus »** — bottom-sheet ouverte par le 5ᵉ onglet de la bottom-nav ; liste les entrées non-`primary` + Profil, Retour admin, Déconnexion.
+- **Feuille « Plus »** — bottom-sheet ouverte par le dernier onglet de la bottom-nav ; liste les entrées non-`primary` + Déconnexion. *(Retour admin = entrée admin-only, prévue côté Shell.)*
+
+### État d'implémentation (2026-06-03, .306)
+- **LIVRÉ (additif, non destructif)** : `nav-manifest.js` (manifeste + `isActive`/`primaryNav`/`overflowNav`), `<sbi-bottom-nav>` (`components/bottom-nav.js`) auto-injecté sur student/teacher/tutor, `sbi-bottom-nav.css`. En ≤1024px (classe `body.sbi-bottom-nav-active`), le **panneau latéral + hamburger sont masqués** pour ces 3 rôles et la bottom-nav prend le relais ; ≥1025px = panneau latéral **inchangé** ; **admin jamais touché** ; pages immersives (cours-viewer) **exclues**. Actif resynchronisé sur `sbi:app-shell:navigated`.
+- **RESTE (phase 1b)** : convergence desktop — fusionner `*-panels.js` derrière un `<sbi-shell>` lisant le **même** manifeste + Profil de rôle, puis appliquer la **deletion test** (supprimer les 3 modules dupliqués). Optionnel : `viewport-fit=cover` dans les `<meta viewport>` des pages de rôle pour activer réellement `env(safe-area-inset-*)` sur encoche.
 
 ## Ordre par importance (fréquence d'usage) — par rôle
 > Source unique de l'ordre des onglets. **Le panneau PC et la bottom-nav partagent cet ordre.** Les **4 premiers** d'un rôle = `primary:true` (bottom-nav directe) ; les suivants vont dans « Plus ». Appliqué aux `*-panels.js` le 2026-06-03.
