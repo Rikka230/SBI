@@ -510,6 +510,12 @@ const NOTIFICATION_REGISTRY = {
         body: (n) => `Le replay <strong>${escNotif(n.liveTitle || 'du live')}</strong> est disponible${n.promotionName ? ` (${escNotif(n.promotionName)})` : ''}.`,
         icon: NOTIF_ICONS.play,
         navigate: (n) => n.actionUrl || '/student/lives.html?tab=replay'
+    },
+    booklet_period_overdue: {
+        title: 'Période de livret à compléter',
+        body: (n) => `La période <strong>${escNotif(n.periodLabel || 'du livret')}</strong>${n.studentName ? ` de <strong>${escNotif(n.studentName)}</strong>` : ''} est en retard et doit être complétée${n.dueDate ? ` (échéance : ${escNotif(n.dueDate)})` : ''}.`,
+        icon: NOTIF_ICONS.yellowWarn,
+        navigate: (n) => n.actionUrl || '/admin/admin-booklets.html'
     }
 };
 

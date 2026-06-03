@@ -289,6 +289,40 @@ export function formatDate(value) {
   }
 }
 
+// Formatte un timestamp (ms) en chaîne 'yyyy-mm-dd' (UTC, stable).
+function toIsoDay(ms) {
+  const d = new Date(ms);
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(d.getUTCDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+/**
+ * Découpe l'intervalle [start, end] en `count` tranches consécutives (prorata).
+ * Accepte des chaînes 'yyyy-mm-dd', des ms ou des objets Timestamp-like.
+ * La fin d'une tranche = veille du début de la suivante ; la dernière finit à `end`.
+ * @returns {Array<{startDate:string,endDate:string}>} (vide si dates invalides).
+ */
+export function computeProratedPeriodDates(start, end, count = 6) {
+  const slices = Math.max(1, Math.floor(count) || 0);
+  const startMs = toMillis(start);
+  const endMs = toMillis(end);
+  if (!startMs || !endMs || endMs <= startMs) return [];
+
+  const DAY = 24 * 60 * 60 * 1000;
+  const span = endMs - startMs;
+  const out = [];
+  for (let i = 0; i < slices; i += 1) {
+    const sliceStart = startMs + Math.round((span * i) / slices);
+    const isLast = i === slices - 1;
+    const nextStart = startMs + Math.round((span * (i + 1)) / slices);
+    const sliceEnd = isLast ? endMs : Math.max(sliceStart, nextStart - DAY);
+    out.push({ startDate: toIsoDay(sliceStart), endDate: toIsoDay(sliceEnd) });
+  }
+  return out;
+}
+
 /**
  * Période vierge prête à l'édition.
  */
@@ -399,8 +433,12 @@ export function lockBookletPeriod(payload) {
 export function assignBookletTutor(payload) {
   return bookletCallable('assignBookletTutor')(payload);
 }
+// SBI — recalcule au prorata les dates des périodes non verrouillées (admin).
+export function recomputeBookletPeriodDates(payload) {
+  return bookletCallable('recomputeApprenticeshipBookletPeriodDates')(payload);
+}
 
-// SBI 8.0P.167.294 — Génération serveur du dossier PDF (corps rendu via
+// SBI 8.0P.167.295 — Génération serveur du dossier PDF (corps rendu via
 // Puppeteer + paged.js, sommaire à pages réelles), puis fusion des annexes PDF
 // de la formation. Renvoie { success, url, fileName, bodyPages, annexCount, missing }.
 export function buildBookletPdf(payload) {

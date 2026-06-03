@@ -9734,6 +9734,71 @@ function bookletCleanValue(value) {
     return cleanString(value, BOOKLET_FIELD_MAX);
 }
 
+// Parse une date livret ('yyyy-mm-dd' | ms | Timestamp-like) en ms (0 si invalide).
+function bookletDateToMillis(value) {
+    if (!value) return 0;
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+    if (typeof value.toMillis === "function") {
+        try { return value.toMillis(); } catch (_) { return 0; }
+    }
+    if (typeof value.seconds === "number") return value.seconds * 1000;
+    const parsed = Date.parse(String(value));
+    return Number.isNaN(parsed) ? 0 : parsed;
+}
+
+function bookletMillisToIsoDay(ms) {
+    const d = new Date(ms);
+    const y = d.getUTCFullYear();
+    const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+    const day = String(d.getUTCDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+}
+
+// Découpe [start, end] en `count` tranches consécutives (même logique que le
+// helper client computeProratedPeriodDates). Renvoie [] si dates invalides.
+function bookletProratedPeriodDates(start, end, count = BOOKLET_PERIOD_COUNT) {
+    const slices = Math.max(1, Math.floor(count) || 0);
+    const startMs = bookletDateToMillis(start);
+    const endMs = bookletDateToMillis(end);
+    if (!startMs || !endMs || endMs <= startMs) return [];
+    const DAY = 24 * 60 * 60 * 1000;
+    const span = endMs - startMs;
+    const out = [];
+    for (let i = 0; i < slices; i += 1) {
+        const sliceStart = startMs + Math.round((span * i) / slices);
+        const isLast = i === slices - 1;
+        const nextStart = startMs + Math.round((span * (i + 1)) / slices);
+        const sliceEnd = isLast ? endMs : Math.max(sliceStart, nextStart - DAY);
+        out.push({ startDate: bookletMillisToIsoDay(sliceStart), endDate: bookletMillisToIsoDay(sliceEnd) });
+    }
+    return out;
+}
+
+// Résout les dates source d'un livret : contrat d'abord, sinon promotion.
+// Renvoie { start:'yyyy-mm-dd'|'' , end:'yyyy-mm-dd'|'' }.
+async function resolveBookletSourceDates(db, { contractStart, contractEnd, promotionId } = {}) {
+    let start = cleanString(contractStart, 40);
+    let end = cleanString(contractEnd, 40);
+    if (start && end && bookletDateToMillis(end) > bookletDateToMillis(start)) {
+        return { start, end };
+    }
+    const promoId = cleanString(promotionId, 200);
+    if (promoId) {
+        try {
+            const promoDoc = await db.collection("promotions").doc(promoId).get();
+            if (promoDoc.exists) {
+                const promo = promoDoc.data() || {};
+                const pStart = cleanString(promo.dateDebut || promo.startDate || promo.debut || "", 40);
+                const pEnd = cleanString(promo.dateFin || promo.endDate || promo.fin || "", 40);
+                if (pStart && pEnd) return { start: pStart, end: pEnd };
+            }
+        } catch (error) {
+            console.error("[SBI Booklet] lecture dates promotion impossible :", error.message);
+        }
+    }
+    return { start, end };
+}
+
 function buildEmptyBookletPeriod(index) {
     return {
         id: `period-${index + 1}`,
@@ -9892,6 +9957,20 @@ exports.generateApprenticeshipBooklet = onCall({
     for (let i = 0; i < BOOKLET_PERIOD_COUNT; i += 1) {
         periods.push(buildEmptyBookletPeriod(i));
     }
+
+    // Dates de période au prorata : contrat d'abord, sinon dates de la promotion.
+    const sourceDates = await resolveBookletSourceDates(db, {
+        contractStart: data.contractStart,
+        contractEnd: data.contractEnd,
+        promotionId
+    });
+    const proratedSlices = bookletProratedPeriodDates(sourceDates.start, sourceDates.end, BOOKLET_PERIOD_COUNT);
+    proratedSlices.forEach((slice, i) => {
+        if (periods[i]) {
+            periods[i].startDate = slice.startDate;
+            periods[i].endDate = slice.endDate;
+        }
+    });
 
     const booklet = {
         studentId,
@@ -10352,4 +10431,234 @@ exports.buildApprenticeshipBookletPdf = onCall({
     return bookletPdfBuilder.build({
         admin, db, caller, data: request.data || {}, HttpsError, cleanString
     });
+});
+
+/**
+ * Recalcule au prorata les dates de période d'un livret (admin).
+ * Source : contractStart/End sinon dates de la promotion. Seules les périodes
+ * NON verrouillées (!lockedAt) sont mises à jour ; les autres champs sont
+ * préservés. Ne throw pas si pas de dates source.
+ */
+exports.recomputeApprenticeshipBookletPeriodDates = onCall({
+    region: "europe-west1",
+    timeoutSeconds: 30,
+    memory: "256MiB"
+}, async (request) => {
+    const db = admin.firestore();
+    const caller = await requireAdminCaller(request, db);
+
+    const data = request.data || {};
+    const bookletId = cleanString(data.bookletId, 200);
+    if (!bookletId) throw new HttpsError("invalid-argument", "Livret manquant.");
+
+    const ref = db.collection("apprenticeshipBooklets").doc(bookletId);
+    const snap = await ref.get();
+    if (!snap.exists) throw new HttpsError("not-found", "Livret introuvable.");
+    const booklet = snap.data() || {};
+
+    const contract = (booklet.contract && typeof booklet.contract === "object") ? booklet.contract : {};
+    const sourceDates = await resolveBookletSourceDates(db, {
+        contractStart: booklet.contractStart || contract.start,
+        contractEnd: booklet.contractEnd || contract.end,
+        promotionId: booklet.promotionId
+    });
+
+    const slices = bookletProratedPeriodDates(sourceDates.start, sourceDates.end, BOOKLET_PERIOD_COUNT);
+    if (!slices.length) {
+        return { success: false, reason: "no_dates" };
+    }
+
+    const periods = Array.isArray(booklet.periods) ? booklet.periods.map((p) => Object.assign({}, p)) : [];
+    let applied = 0;
+    slices.forEach((slice, i) => {
+        const period = periods[i];
+        if (!period) return;
+        if (period.lockedAt) return; // verrou respecté
+        period.startDate = slice.startDate;
+        period.endDate = slice.endDate;
+        period.updatedAt = admin.firestore.Timestamp.now(); // jamais serverTimestamp() dans un array
+        applied += 1;
+    });
+
+    await ref.set({
+        periods,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedBy: caller.uid
+    }, { merge: true });
+
+    await safeWriteAccountAuditLog(db, {
+        type: "booklet.period_dates_recomputed",
+        actorUid: caller.uid,
+        actorEmail: caller.email,
+        targetUid: cleanString(booklet.studentId, 200),
+        changes: { bookletId, applied, start: sourceDates.start, end: sourceDates.end },
+        source: "booklet"
+    });
+
+    return { success: true, applied, start: sourceDates.start, end: sourceDates.end };
+});
+
+/* ============================================================
+   CRON — Notification « période de livret en retard non complétée »
+   Tous les jours à 07:00 (Europe/Paris). Pour chaque période dont
+   l'échéance (endDate) est dépassée, non verrouillée, non validée et
+   au contenu vide, notifie élève + tuteur + profs de la formation + admins.
+   Idempotent via id déterministe + merge.
+   ============================================================ */
+
+// Une période est « vide » si aucun champ de fond n'est renseigné.
+function isPeriodEmpty(period = {}) {
+    const keys = ["studentObjectives", "projectDescription", "studentReport"];
+    return keys.every((k) => !bookletFieldFilled(period[k]));
+}
+
+// Date FR lisible depuis une chaîne 'yyyy-mm-dd' (ou autre date-like).
+function bookletFrenchDate(value) {
+    const ms = bookletDateToMillis(value);
+    if (!ms) return "";
+    try {
+        return new Intl.DateTimeFormat("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(ms));
+    } catch (_) {
+        return "";
+    }
+}
+
+exports.notifyOverdueBookletPeriods = onSchedule({
+    region: "europe-west1",
+    schedule: "every day 07:00",
+    timeZone: "Europe/Paris",
+    timeoutSeconds: 300,
+    memory: "512MiB"
+}, async () => {
+    const db = admin.firestore();
+    const serverTimestamp = () => admin.firestore.FieldValue.serverTimestamp();
+    const todayMs = Date.now();
+
+    // Cache des destinataires « admins » (peu nombreux) — calculé une seule fois.
+    let adminIdsPromise = null;
+    const getAdminIds = () => {
+        if (!adminIdsPromise) {
+            adminIdsPromise = (async () => {
+                const ids = new Set();
+                try {
+                    const byRole = await db.collection("users").where("role", "==", "admin").limit(200).get();
+                    byRole.forEach((d) => ids.add(d.id));
+                } catch (error) {
+                    console.error("[SBI Booklet overdue] lecture admins (role) :", error.message);
+                }
+                try {
+                    const byGod = await db.collection("users").where("isGod", "==", true).limit(200).get();
+                    byGod.forEach((d) => ids.add(d.id));
+                } catch (error) {
+                    console.error("[SBI Booklet overdue] lecture admins (isGod) :", error.message);
+                }
+                return [...ids];
+            })();
+        }
+        return adminIdsPromise;
+    };
+
+    // Cache des profs par formation.
+    const formationProfsCache = new Map();
+    const getFormationProfs = async (formationId) => {
+        const fid = cleanString(formationId, 200);
+        if (!fid) return [];
+        if (formationProfsCache.has(fid)) return formationProfsCache.get(fid);
+        let profs = [];
+        try {
+            const fDoc = await db.collection("formations").doc(fid).get();
+            if (fDoc.exists) {
+                const data = fDoc.data() || {};
+                profs = Array.isArray(data.profs) ? data.profs.map((p) => cleanString(p, 200)).filter(Boolean) : [];
+            }
+        } catch (error) {
+            console.error("[SBI Booklet overdue] lecture profs formation :", fid, error.message);
+        }
+        formationProfsCache.set(fid, profs);
+        return profs;
+    };
+
+    let bookletsScanned = 0;
+    let overduePeriods = 0;
+    let notificationsWritten = 0;
+
+    const upsertNotification = async (destinataireId, actionUrl, context) => {
+        const dest = cleanString(destinataireId, 200);
+        if (!dest) return;
+        const notificationId = `booklet_period_overdue_${context.bookletId}_${context.periodId}_${dest}`.slice(0, 240);
+        const notificationRef = db.collection("notifications").doc(notificationId);
+        const previousSnap = await notificationRef.get();
+        const previous = previousSnap.exists ? (previousSnap.data() || {}) : {};
+        await notificationRef.set({
+            type: "booklet_period_overdue",
+            destinataireId: dest,
+            bookletId: context.bookletId,
+            periodId: context.periodId,
+            periodLabel: context.periodLabel,
+            studentName: context.studentName,
+            studentId: context.studentId,
+            dueDate: context.dueDate,
+            actionUrl,
+            message: `Période "${context.periodLabel}" du livret de ${context.studentName || "l'apprenti"} non complétée — échéance dépassée (${bookletFrenchDate(context.dueDate) || context.dueDate}).`,
+            status: "open",
+            updatedAt: serverTimestamp(),
+            createdAt: previous.createdAt || serverTimestamp(),
+            dateCreation: previous.dateCreation || serverTimestamp(),
+            dismissedBy: Array.isArray(previous.dismissedBy) ? previous.dismissedBy : []
+        }, { merge: true });
+        notificationsWritten += 1;
+    };
+
+    const snap = await db.collection("apprenticeshipBooklets").get();
+    for (const docSnap of snap.docs) {
+        bookletsScanned += 1;
+        try {
+            const booklet = docSnap.data() || {};
+            const bookletId = docSnap.id;
+            const studentId = cleanString(booklet.studentId, 200);
+            const tutorId = cleanString(booklet.tutorId, 200);
+            const formationId = cleanString(booklet.formationId, 200);
+            const studentName = cleanString(booklet.studentName, 200);
+            const periods = Array.isArray(booklet.periods) ? booklet.periods : [];
+
+            for (const period of periods) {
+                if (!period || typeof period !== "object") continue;
+                const dueMs = bookletDateToMillis(period.endDate);
+                if (!dueMs || dueMs >= todayMs) continue; // pas d'échéance ou pas dépassée
+                if (period.lockedAt) continue; // verrouillée
+                if (period.sbiValidatedAt || period.status === "validated") continue; // validée
+                if (!isPeriodEmpty(period)) continue; // contenu déjà saisi
+
+                overduePeriods += 1;
+                const context = {
+                    bookletId,
+                    periodId: cleanString(period.id, 60) || "period",
+                    periodLabel: cleanString(period.label, 200) || "Période",
+                    studentName,
+                    studentId,
+                    dueDate: cleanString(period.endDate, 40)
+                };
+
+                if (studentId) {
+                    await upsertNotification(studentId, `/student/livret.html?id=${encodeURIComponent(bookletId)}`, context);
+                }
+                if (tutorId) {
+                    await upsertNotification(tutorId, `/tutor/livret.html?id=${encodeURIComponent(bookletId)}`, context);
+                }
+                const profs = await getFormationProfs(formationId);
+                for (const profId of profs) {
+                    await upsertNotification(profId, "/teacher/livrets.html", context);
+                }
+                const adminIds = await getAdminIds();
+                for (const adminId of adminIds) {
+                    await upsertNotification(adminId, "/admin/apprenticeship-booklets.html", context);
+                }
+            }
+        } catch (error) {
+            console.error("[SBI Booklet overdue] livret ignoré :", docSnap.id, error.message);
+            continue;
+        }
+    }
+
+    console.log(`[SBI Booklet overdue] livrets parcourus=${bookletsScanned} périodes en retard=${overduePeriods} notifications écrites=${notificationsWritten}`);
 });

@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.294',
+  version: '8.0P.167.295',
   branch: 'main',
-  channel: 'Livret apprentissage : fix dossier PDF (Chromium) + annexes auto hybride',
-  stage: 'FIX bloquant : @sparticuz/chromium v149 expose son API sur .default -> require(...).default (sinon chromium.executablePath crashait a chaque appel -> fallback impression sans sommaire ni annexes). Le sommaire pagine (paged.js) fonctionne desormais. ANNEXES en mode HYBRIDE : les documents institutionnels PDF de la formation visibles par l eleve (reglement, referentiel, planning, livret accueil) sont joints AUTOMATIQUEMENT (sauf decochage), les documents "autre" seulement si coches. Portee par promotion + visibilite par role. Fallback formationId via eleve/promotion. UI admin : libelle de la case adapte (joint par defaut vs opt-in).',
+  channel: 'Livret apprentissage : fix pagedjs + dates periodes prorata + cron retard',
+  stage: 'FIX dossier PDF (suite) : pagedjs charge par chemin absolu (son champ exports ne publie pas de sous-chemin -> require.resolve echouait) + pagination EXPLICITE via Paged.Previewer().preview() (plus fiable que l auto-run apres setContent). Combine au fix Chromium .default (.294), le sommaire pagine + annexes hybrides fonctionnent. NOUVEAU : dates des 6 periodes calculees AU PRORATA des dates de contrat (sinon promotion) a la generation + callable admin recomputeApprenticeshipBookletPeriodDates (bouton "Calculer les dates au prorata") ; CRON quotidien notifyOverdueBookletPeriods qui notifie eleve/tuteur/profs/admin quand une periode est en retard et vide (type notif booklet_period_overdue). serverTimestamp jamais dans un array (Timestamp.now).',
   updatedAt: '2026-06-03',
-  label: 'SBI 8.0P.167.294 - Livret : fix dossier PDF (Chromium .default) + annexes auto hybride'
+  label: 'SBI 8.0P.167.295 - Livret : fix pagedjs (sommaire/annexes) + dates periodes prorata + cron retard'
 };
 
 export function getSbiVersionLabel() {

@@ -32,9 +32,10 @@ import {
   loadBooklet,
   loadBookletsForAdmin,
   periodGuide
-} from '/js/booklet/booklet-data.js?v=8.0P.167.294';
-import { requestMergedBookletPdf } from '/js/booklet/booklet-pdf.js?v=8.0P.167.294';
-import { resolveBookletPlanningModel } from '/js/formation-documents/planning-render.js?v=8.0P.167.294';
+} from '/js/booklet/booklet-data.js?v=8.0P.167.295';
+import { recomputeBookletPeriodDates } from '/js/booklet/booklet-data.js?v=8.0P.167.295';
+import { requestMergedBookletPdf } from '/js/booklet/booklet-pdf.js?v=8.0P.167.295';
+import { resolveBookletPlanningModel } from '/js/formation-documents/planning-render.js?v=8.0P.167.295';
 
 const ROLE = 'admin';
 
@@ -351,7 +352,7 @@ function renderCreateView() {
  * Édition d'un livret
  * ============================================================ */
 function fieldHtml({ key, label, value, target, multiline = true, type = 'text', full = false }) {
-  // 8.0P.167.294 — CORRECTIF MAJEUR : pour une SECTION, le droit s'évalue sur le
+  // 8.0P.167.295 — CORRECTIF MAJEUR : pour une SECTION, le droit s'évalue sur le
   // NOM DE SECTION (target.section), pas sur la clé de champ. FIELD_PERMISSIONS.section
   // mappe des noms de section -> true (identity/employer/tutor/contract/formation…),
   // donc canEditField(role,'section', cleDeChamp) renvoyait toujours false et TOUS les
@@ -477,7 +478,16 @@ function dateInputValue(value) {
 
 function renderMetaPanel(b) {
   const sections = metaSectionsConfig(b);
-  const blocks = sections.map((sec) => `
+  const blocks = sections.map((sec) => {
+    // Sur la section Contrat : bouton de recalcul des dates des 6 périodes au
+    // prorata des dates de contrat/promotion (callable admin côté serveur).
+    const proRataBtn = sec.section === 'contract'
+      ? `<button type="button" class="sbi-booklet-btn" data-action="prorata-periods">Calculer les dates des périodes au prorata</button>`
+      : '';
+    const proRataStatus = sec.section === 'contract'
+      ? `<p class="sbi-booklet-status" data-prorata-status hidden></p>`
+      : '';
+    return `
     <div class="sbi-booklet-section" data-meta-section="${sec.section}">
       <h2>${escapeHtml(sec.title)}</h2>
       <div class="sbi-booklet-grid">
@@ -489,9 +499,12 @@ function renderMetaPanel(b) {
       </div>
       <div class="sbi-booklet-actions">
         <button type="button" class="sbi-booklet-btn primary" data-save-section="${sec.section}">Enregistrer</button>
+        ${proRataBtn}
       </div>
       <p class="sbi-booklet-status" data-section-status="${sec.section}" hidden></p>
-    </div>`).join('');
+      ${proRataStatus}
+    </div>`;
+  }).join('');
 
   // Bloc tuteur (assignation rapide)
   const tutorOpts = ['<option value="">— Aucun —</option>']
@@ -844,6 +857,7 @@ function onClick(e) {
     if (action === 'pdf-full') { if (selectedBooklet) handlePdf(actionEl, true); return; }
     if (action === 'pdf-bookletonly') { if (selectedBooklet) handlePdf(actionEl, false); return; }
     if (action === 'assign-tutor') { handleAssignTutor(actionEl); return; }
+    if (action === 'prorata-periods') { handleRecomputePeriodDates(actionEl); return; }
   }
 
   const tabBtn = e.target.closest('[data-tab]');
@@ -1032,6 +1046,40 @@ async function handleAssignTutor(button) {
   } catch (error) {
     console.error('[SBI Livret admin] assignation tuteur impossible :', error);
     setLocalStatus(statusEl, error?.message || 'Assignation impossible.', 'error');
+    button.disabled = false;
+  }
+}
+
+async function handleRecomputePeriodDates(button) {
+  const r = root();
+  const statusEl = r?.querySelector('[data-prorata-status]');
+  if (!selectedId) {
+    setLocalStatus(statusEl, 'Aucun livret sélectionné.', 'error');
+    return;
+  }
+  button.disabled = true;
+  setLocalStatus(statusEl, 'Calcul des dates au prorata…');
+  try {
+    const res = await recomputeBookletPeriodDates({ bookletId: selectedId });
+    const data = res?.data ?? res ?? {};
+    if (data.success === false && data.reason === 'no_dates') {
+      setLocalStatus(statusEl, 'Renseigne d\'abord les dates de contrat (ou de promotion) pour calculer le prorata.', 'error');
+      button.disabled = false;
+      return;
+    }
+    // Recharge le livret (même flux que les autres actions) puis re-rend.
+    selectedBooklet = await loadBooklet({ db, bookletId: selectedId });
+    const count = Number(
+      data.count ?? data.updated ?? data.periodsCount ??
+      (Array.isArray(selectedBooklet?.periods) ? selectedBooklet.periods.length : 0)
+    );
+    render();
+    // setStatus du bloc prorata : re-rendu reconstruit le DOM, on re-cible l'élément.
+    const freshStatus = root()?.querySelector('[data-prorata-status]');
+    setLocalStatus(freshStatus, `Dates des périodes recalculées (${count} période${count > 1 ? 's' : ''}).`, 'success');
+  } catch (error) {
+    console.error('[SBI Livret admin] recalcul prorata impossible :', error);
+    setLocalStatus(statusEl, error?.message || 'Recalcul impossible.', 'error');
     button.disabled = false;
   }
 }

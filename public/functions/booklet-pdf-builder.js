@@ -29,6 +29,7 @@ const puppeteer = require("puppeteer-core");
 const chromium = require("@sparticuz/chromium").default || require("@sparticuz/chromium");
 const { PDFDocument } = require("pdf-lib");
 const fs = require("fs");
+const path = require("path");
 
 // Catégories institutionnelles jointes AUTOMATIQUEMENT au livret (mode hybride),
 // sauf opt-out explicite (includeInApprenticeshipBooklet === false).
@@ -127,12 +128,17 @@ function assembleHtml(bodyHtml, tocHtml, annexIntroHtml) {
 }
 
 let cachedPagedScript = null;
-function pagedPolyfillScript() {
+function pagedBrowserScript() {
     if (cachedPagedScript) return cachedPagedScript;
-    let p;
-    try { p = require.resolve("pagedjs/dist/paged.polyfill.min.js"); }
-    catch (_) { p = require.resolve("pagedjs/dist/paged.polyfill.js"); }
-    cachedPagedScript = fs.readFileSync(p, "utf8");
+    // Le champ "exports" de pagedjs ne publie pas de sous-chemin -> require.resolve
+    // d'un fichier dist échoue (ERR_PACKAGE_PATH_NOT_EXPORTED). On résout le main
+    // puis on lit le bundle navigateur directement par chemin absolu (fs ignore exports).
+    const mainCjs = require.resolve("pagedjs"); // …/node_modules/pagedjs/lib/index.cjs
+    const marker = `${path.sep}pagedjs${path.sep}`;
+    const idx = mainCjs.lastIndexOf(marker);
+    const pkgRoot = idx !== -1 ? mainCjs.slice(0, idx + marker.length - 1) : path.dirname(path.dirname(mainCjs));
+    // dist/paged.js expose window.Paged.Previewer SANS auto-run (contrôle explicite).
+    cachedPagedScript = fs.readFileSync(path.join(pkgRoot, "dist", "paged.js"), "utf8");
     return cachedPagedScript;
 }
 
@@ -148,13 +154,15 @@ async function renderWithPaged(html, { withPdf }) {
         const page = await browser.newPage();
         await page.emulateMediaType("print");
         await page.setContent(html, { waitUntil: "networkidle0", timeout: 60000 });
-        await page.addScriptTag({ content: pagedPolyfillScript() });
-        // paged.js pagine sur chargement du script ; on attend la fin du rendu.
+        await page.addScriptTag({ content: pagedBrowserScript() });
+        // Pagination EXPLICITE via l'API Previewer (pas de dépendance au timing
+        // d'auto-run du polyfill après setContent).
+        await page.evaluate(async () => {
+            const Prev = window.Paged && window.Paged.Previewer;
+            if (!Prev) throw new Error("pagedjs Previewer indisponible");
+            await new Prev().preview();
+        });
         await page.waitForSelector(".pagedjs_page", { timeout: 60000 });
-        await page.waitForFunction(
-            () => window.PagedPolyfill === undefined || document.querySelectorAll(".pagedjs_page").length > 0,
-            { timeout: 60000 }
-        );
         // Petit délai pour laisser paged.js stabiliser les compteurs de page.
         await new Promise((r) => setTimeout(r, 300));
 
