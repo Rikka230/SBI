@@ -22,9 +22,26 @@
  */
 
 const puppeteer = require("puppeteer-core");
-const chromium = require("@sparticuz/chromium");
+// @sparticuz/chromium v149 est publié en ESM : require() renvoie un wrapper
+// d'interop dont la vraie API (executablePath/args/headless/defaultViewport)
+// est sur `.default`. Sans `.default`, chromium.executablePath est undefined
+// -> "TypeError: chromium.executablePath is not a function" à chaque appel.
+const chromium = require("@sparticuz/chromium").default || require("@sparticuz/chromium");
 const { PDFDocument } = require("pdf-lib");
 const fs = require("fs");
+
+// Catégories institutionnelles jointes AUTOMATIQUEMENT au livret (mode hybride),
+// sauf opt-out explicite (includeInApprenticeshipBooklet === false).
+const AUTO_ANNEX_CATEGORIES = ["livret", "reglement", "referentiel", "planning"];
+// Ordre d'affichage par défaut des annexes (si appendixOrder non défini).
+const CATEGORY_ORDER = { livret: 1, reglement: 2, referentiel: 3, planning: 4, autre: 5 };
+const CATEGORY_LABEL = {
+    livret: "Livret d'accueil",
+    reglement: "Règlement intérieur",
+    referentiel: "Référentiel / certification",
+    planning: "Planning de formation",
+    autre: "Document de formation"
+};
 
 // Visibilité d'une annexe -> rôles autorisés à la recevoir.
 // Un doc sans appendixVisibility est considéré 'tous'.
@@ -198,32 +215,77 @@ async function build(ctx) {
     }
     if (!role) throw new HttpsError("permission-denied", "Vous n'êtes pas autorisé à télécharger ce livret.");
 
-    // --- Annexes : documents de formation marqués includeInApprenticeshipBooklet. ---
+    // --- Annexes : mode HYBRIDE (auto institutionnel + opt-in « autres »). ---
     const merged = [];   // { title, version, bytes }
-    const missing = [];  // titres marqués mais non joignables
+    const missing = [];  // titres attendus mais non joignables
     if (withAnnexes) {
-        const fId = cleanString(booklet.formationId, 200);
+        // Formation du livret, avec fallback élève -> promotion si absente.
+        let fId = cleanString(booklet.formationId, 200);
+        if (!fId) {
+            try {
+                const sId = cleanString(booklet.studentId, 200);
+                if (sId) {
+                    const sSnap = await db.collection("users").doc(sId).get();
+                    const fids = sSnap.exists && Array.isArray(sSnap.data().formationIds) ? sSnap.data().formationIds : [];
+                    if (fids.length) fId = cleanString(fids[0], 200);
+                }
+                if (!fId) {
+                    const pId = cleanString(booklet.promotionId, 200);
+                    if (pId) {
+                        const pSnap = await db.collection("promotions").doc(pId).get();
+                        if (pSnap.exists) fId = cleanString(pSnap.data().formationId, 200);
+                    }
+                }
+            } catch (err) {
+                console.warn("[booklet-pdf] fallback formationId échoué :", err && err.message);
+            }
+        }
+
         if (fId) {
             const allowed = allowedVisibilitiesForRole(role);
+            const promotionId = cleanString(booklet.promotionId, 200);
             const docsSnap = await db.collection("formationDocuments")
                 .where("formationId", "==", fId)
-                .where("includeInApprenticeshipBooklet", "==", true)
                 .get();
-            const entries = [];
+            let entries = [];
             docsSnap.forEach((d) => entries.push({ id: d.id, ...(d.data() || {}) }));
-            entries.sort((a, b) =>
-                (Number(a.appendixOrder || 999) - Number(b.appendixOrder || 999))
+
+            // Portée élève : doc « formation-wide » (promotionId vide) OU ciblé sur SA promotion.
+            entries = entries.filter((e) => {
+                const ep = cleanString(e.promotionId, 200);
+                return !ep || ep === promotionId;
+            });
+            // Planning : si une entrée ciblée sur la promotion existe, on écarte la version formation.
+            const planningTargeted = entries.some((e) => e.category === "planning" && cleanString(e.promotionId, 200) === promotionId && promotionId);
+            if (planningTargeted) {
+                entries = entries.filter((e) => !(e.category === "planning" && !cleanString(e.promotionId, 200)));
+            }
+
+            // Règle hybride : institutionnel = auto (sauf opt-out), « autre » = opt-in.
+            entries = entries.filter((e) => {
+                if (e.includeInApprenticeshipBooklet === false) return false;
+                if (AUTO_ANNEX_CATEGORIES.includes(e.category)) return true;
+                return e.includeInApprenticeshipBooklet === true;
+            });
+
+            // Tri : appendixOrder explicite sinon ordre de catégorie, puis titre.
+            const orderKey = (e) => Number.isFinite(Number(e.appendixOrder)) && e.appendixOrder !== "" && e.appendixOrder != null
+                ? Number(e.appendixOrder) : (CATEGORY_ORDER[e.category] || 9) * 100;
+            entries.sort((a, b) => (orderKey(a) - orderKey(b))
                 || String(a.appendixTitle || a.title || "").localeCompare(String(b.appendixTitle || b.title || "")));
 
             const bucket = admin.storage().bucket();
             for (const e of entries) {
                 const vis = cleanString(e.appendixVisibility || "tous", 20) || "tous";
-                const title = cleanString(e.appendixTitle || e.title || "Annexe", 200);
                 if (!allowed.includes(vis)) continue; // doc réservé : ignoré pour ce rôle
+                const title = cleanString(e.appendixTitle || CATEGORY_LABEL[e.category] || e.title || "Annexe", 200);
                 const isPdf = String(e.contentType || e.mimeType || "").indexOf("pdf") !== -1
                     || /\.pdf$/i.test(String(e.fileName || e.filePath || ""));
                 const filePath = cleanString(e.filePath, 500);
-                if (!filePath || !isPdf) { missing.push(title); continue; }
+                // Planning généré depuis un cursus (sans fichier) : déjà présent dans le
+                // corps du livret -> on l'ignore silencieusement (pas « non joint »).
+                if (!filePath) { if (e.category !== "planning") missing.push(title); continue; }
+                if (!isPdf) { missing.push(title); continue; }
                 try {
                     const [bytes] = await bucket.file(filePath).download();
                     merged.push({ title, version: cleanString(e.version, 60), bytes });

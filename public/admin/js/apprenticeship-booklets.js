@@ -32,9 +32,9 @@ import {
   loadBooklet,
   loadBookletsForAdmin,
   periodGuide
-} from '/js/booklet/booklet-data.js?v=8.0P.167.293';
-import { requestMergedBookletPdf } from '/js/booklet/booklet-pdf.js?v=8.0P.167.293';
-import { resolveBookletPlanningModel } from '/js/formation-documents/planning-render.js?v=8.0P.167.293';
+} from '/js/booklet/booklet-data.js?v=8.0P.167.294';
+import { requestMergedBookletPdf } from '/js/booklet/booklet-pdf.js?v=8.0P.167.294';
+import { resolveBookletPlanningModel } from '/js/formation-documents/planning-render.js?v=8.0P.167.294';
 
 const ROLE = 'admin';
 
@@ -351,7 +351,7 @@ function renderCreateView() {
  * Édition d'un livret
  * ============================================================ */
 function fieldHtml({ key, label, value, target, multiline = true, type = 'text', full = false }) {
-  // 8.0P.167.293 — CORRECTIF MAJEUR : pour une SECTION, le droit s'évalue sur le
+  // 8.0P.167.294 — CORRECTIF MAJEUR : pour une SECTION, le droit s'évalue sur le
   // NOM DE SECTION (target.section), pas sur la clé de champ. FIELD_PERMISSIONS.section
   // mappe des noms de section -> true (identity/employer/tutor/contract/formation…),
   // donc canEditField(role,'section', cleDeChamp) renvoyait toujours false et TOUS les

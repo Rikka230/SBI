@@ -52,7 +52,7 @@ import {
   resolvePlanningModel,
   renderPlanningHtml,
   downloadPlanningPdf
-} from '/js/formation-documents/planning-render.js?v=8.0P.167.293';
+} from '/js/formation-documents/planning-render.js?v=8.0P.167.294';
 
 const MAX_BYTES = 50 * 1024 * 1024;
 
@@ -145,7 +145,7 @@ async function loadFormationData() {
   if (selectedPlanningPromo && !promotions.some((p) => p.id === selectedPlanningPromo)) {
     selectedPlanningPromo = '';
   }
-  // SBI 8.0P.167.293 — Persistance du planning CIBLÉ : si aucune promo n'est
+  // SBI 8.0P.167.294 — Persistance du planning CIBLÉ : si aucune promo n'est
   // sélectionnée mais qu'au moins une promotion a déjà un planning enregistré
   // (PDF ou cursus), on la sélectionne d'office pour que son état « ✓ Enregistré »
   // s'affiche immédiatement au (re)chargement, comme le planning par défaut.
@@ -475,10 +475,23 @@ function isPdfFileDocument(document) {
 // un document PDF comme annexe à fusionner automatiquement à la suite du livret.
 // Écrit 5 champs (cf. handleSaveAppendix) consommés par une Cloud Function de
 // fusion PDF. Réservé aux documents PDF (cf. isPdfFileDocument).
+// Catégories institutionnelles jointes AUTOMATIQUEMENT au livret (mode hybride,
+// aligné sur la Cloud Function) — sauf décochage explicite.
+const AUTO_ANNEX_CATEGORIES = ['livret', 'reglement', 'referentiel', 'planning'];
+
 function renderAppendixBlock(document) {
   if (!isPdfFileDocument(document)) return '';
   const id = escapeHtml(document.id);
-  const checked = document.includeInApprenticeshipBooklet ? ' checked' : '';
+  const isAuto = AUTO_ANNEX_CATEGORIES.includes(document.category);
+  // Institutionnel : joint par défaut (coché) sauf opt-out explicite (=== false).
+  // « Autre » : opt-in (coché uniquement si === true).
+  const isChecked = isAuto
+    ? document.includeInApprenticeshipBooklet !== false
+    : document.includeInApprenticeshipBooklet === true;
+  const checked = isChecked ? ' checked' : '';
+  const includeLabel = isAuto
+    ? "Joint au livret d'apprentissage par défaut — décocher pour exclure"
+    : "Ajouter au livret d'apprentissage";
   const appendixTitle = escapeHtml(document.appendixTitle || document.title || '');
   const order = Number.isFinite(Number(document.appendixOrder)) && document.appendixOrder !== '' && document.appendixOrder != null
     ? Number(document.appendixOrder)
@@ -499,7 +512,7 @@ function renderAppendixBlock(document) {
       style="margin:.4rem 0 .75rem; padding:.6rem .75rem; border:1px solid var(--border-color,#333); border-radius:8px; display:flex; flex-direction:column; gap:.5rem;">
       <label style="display:flex; align-items:center; gap:.5rem; font-weight:600;">
         <input type="checkbox" data-fdoc-appendix-include data-doc-id="${id}"${checked}>
-        Ajouter automatiquement au livret d'apprentissage
+        ${escapeHtml(includeLabel)}
       </label>
       <div class="sbi-fdoc-upload" style="flex-wrap:wrap; gap:.5rem; margin:0;">
         <label style="display:flex; flex-direction:column; gap:.2rem; flex:1 1 220px;">

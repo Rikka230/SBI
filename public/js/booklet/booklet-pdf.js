@@ -15,7 +15,7 @@
  */
 
 import { LABELS, PERIOD_FIELDS, STATUS_META, ROLE_TEXTS, periodGuide, escapeHtml as esc, formatDate as fmtDate, buildBookletPdf } from '/js/booklet/booklet-data.js';
-import { renderPlanningHtml } from '/js/formation-documents/planning-render.js?v=8.0P.167.293';
+import { renderPlanningHtml } from '/js/formation-documents/planning-render.js?v=8.0P.167.294';
 
 // Champs "tuteur" d'une période (rendus à part, après le bloc apprenti).
 const TUTOR_PERIOD_FIELDS = [
@@ -404,7 +404,7 @@ function buildBookletPrintHtml(booklet = {}, options = {}) {
 }
 
 /**
- * SBI 8.0P.167.293 — Document HTML COMPLET du CORPS du livret destiné au rendu
+ * SBI 8.0P.167.294 — Document HTML COMPLET du CORPS du livret destiné au rendu
  * serveur (Cloud Function buildApprenticeshipBookletPdf, Puppeteer + paged.js).
  *
  * Identique en charte/contenu à buildBookletPrintHtml, MAIS :
@@ -457,7 +457,7 @@ export function downloadBookletPdf(booklet = {}, options = {}) {
 }
 
 /**
- * SBI 8.0P.167.293 — Demande au serveur le DOSSIER PDF complet : corps du livret
+ * SBI 8.0P.167.294 — Demande au serveur le DOSSIER PDF complet : corps du livret
  * rendu en PDF (sommaire à pages réelles) PUIS fusion des annexes PDF autorisées
  * de la formation. Ouvre l'URL signée renvoyée dans un nouvel onglet.
  *

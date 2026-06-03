@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.293',
+  version: '8.0P.167.294',
   branch: 'main',
-  channel: 'Livret apprentissage : dossier PDF fusionne (Cloud Function Puppeteer + pdf-lib)',
-  stage: 'DOSSIER PDF complet : nouvelle Cloud Function buildApprenticeshipBookletPdf (Puppeteer + paged.js + pdf-lib, memoire 2GiB) qui rend le corps du livret en PDF (sommaire a numeros de pages REELS, 2 passes paged.js), fusionne les ANNEXES PDF de la formation (documents marques includeInApprenticeshipBooklet, ordre/titre/visibilite/version), et retourne une URL signee V4. Annexes filtrees par role (admin/prof/eleve/tuteur). Annexe manquante = note "Document non joint" (non bloquant). UI admin Documents de formation : bloc "Annexe livret" (case + titre sommaire + ordre + visibilite + version). 4 pages cablees : bouton "Telecharger le dossier (PDF)", admin a aussi "Livret seul". Fallback impression navigateur si la CF echoue. Pas de about:blank / en-tete navigateur (displayHeaderFooter:false, printBackground, A4).',
+  channel: 'Livret apprentissage : fix dossier PDF (Chromium) + annexes auto hybride',
+  stage: 'FIX bloquant : @sparticuz/chromium v149 expose son API sur .default -> require(...).default (sinon chromium.executablePath crashait a chaque appel -> fallback impression sans sommaire ni annexes). Le sommaire pagine (paged.js) fonctionne desormais. ANNEXES en mode HYBRIDE : les documents institutionnels PDF de la formation visibles par l eleve (reglement, referentiel, planning, livret accueil) sont joints AUTOMATIQUEMENT (sauf decochage), les documents "autre" seulement si coches. Portee par promotion + visibilite par role. Fallback formationId via eleve/promotion. UI admin : libelle de la case adapte (joint par defaut vs opt-in).',
   updatedAt: '2026-06-03',
-  label: 'SBI 8.0P.167.293 - Livret : dossier PDF fusionne (corps + sommaire pagine + annexes formation)'
+  label: 'SBI 8.0P.167.294 - Livret : fix dossier PDF (Chromium .default) + annexes auto hybride'
 };
 
 export function getSbiVersionLabel() {
