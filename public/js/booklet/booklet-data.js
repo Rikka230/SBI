@@ -50,13 +50,36 @@ export const LABELS = {
     employer:          "Structure / employeur",
     tutor:             "Maître d'apprentissage",
     contract:          "Contrat d'apprentissage",
-    formation:         "Formation Animateur E-Sport",
+    formation:         "Établissement & formation",
+    planningAlternance:"Planning de l'alternance",
     absencesCfmfs:     "Absences au centre de formation",
     absencesEntreprise:"Absences en structure",
-    documents:         "Pièces jointes",
+    documents:         "Documents associés",
     signatures:        "Signatures & validation",
     periods:           "Périodes de suivi",
     project:           "Recueil de données / projet d'animation"
+  },
+  // Champs de la section « Établissement & formation » (éditables admin).
+  formationFields: {
+    establishmentName:    "Établissement de formation",
+    establishmentAddress: "Adresse de l'établissement",
+    director:             "Directeur / responsable d'établissement",
+    pedagogicalManager:   "Responsable pédagogique",
+    handicapReferent:     "Référent handicap",
+    formationTitle:       "Intitulé de la formation",
+    rncp:                 "Code RNCP / certification"
+  },
+  // Champs « Identité » détaillés (éditables apprenti + admin).
+  identityFields: {
+    studentName:   "Nom et prénom de l'apprenti",
+    birthDate:     "Date de naissance",
+    birthPlace:    "Lieu de naissance",
+    email:         "Email",
+    phone:         "Téléphone",
+    address:       "Adresse",
+    postalCode:    "Code postal",
+    city:          "Ville",
+    legalGuardian: "Représentant légal (si mineur)"
   },
   // Champs des sections d'en-tête
   fields: {
@@ -104,6 +127,43 @@ export const LABELS = {
   },
   annexTitle: "Référentiel Animateur E-Sport"
 };
+
+/* =====================================================================
+ * 2 bis. Textes statiques du livret (rôles + guides de période)
+ * ===================================================================== */
+// Textes « Rôle du livret » / « Rôle de chacun » repris en PDF et en en-tête.
+export const ROLE_TEXTS = {
+  bookletRole:
+    "Le livret d'apprentissage est l'outil de liaison entre l'apprenti, le maître " +
+    "d'apprentissage en structure et le centre de formation SBI. Il retrace le parcours " +
+    "de l'apprenti Animateur E-Sport : objectifs, situations d'animation, projets conduits, " +
+    "bilans croisés et validations à chaque période. Il sert de preuve de suivi pédagogique.",
+  actors: [
+    { role: "L'apprenti", text: "complète ses objectifs, décrit ses projets et situations d'animation, et rédige ses bilans de période." },
+    { role: "Le maître d'apprentissage", text: "suit l'apprenti en structure, évalue l'atteinte des objectifs et rédige le bilan côté entreprise." },
+    { role: "Le responsable pédagogique SBI", text: "accompagne l'apprenti, valide chaque période et veille à la cohérence du parcours." }
+  ]
+};
+
+// Guides de questions par période (1→6) — affichés en aide à la rédaction.
+export const PERIOD_GUIDES = [
+  { title: "Période 1 — Découverte & intégration",
+    hints: ["Comment s'est passée ton intégration dans la structure ?", "Quels outils et publics as-tu découverts ?", "Quels premiers objectifs te fixes-tu ?"] },
+  { title: "Période 2 — Prise en main de l'animation",
+    hints: ["Quelles animations as-tu observées ou co-animées ?", "Quelles compétences techniques as-tu mobilisées ?", "Quelles difficultés as-tu rencontrées ?"] },
+  { title: "Période 3 — Conception d'animations",
+    hints: ["Décris une animation que tu as conçue.", "Quel public visais-tu et quels objectifs ?", "Quels moyens as-tu mis en œuvre ?"] },
+  { title: "Période 4 — Conduite de projet",
+    hints: ["Décris le projet d'animation conduit.", "Comment as-tu organisé et animé ?", "Quels résultats et points d'amélioration ?"] },
+  { title: "Période 5 — Autonomie & événementiel",
+    hints: ["Quelle action as-tu menée en autonomie ?", "Comment as-tu géré l'imprévu ?", "Quels liens avec les apports théoriques ?"] },
+  { title: "Période 6 — Bilan & professionnalisation",
+    hints: ["Quel bilan global de ton alternance ?", "Quelles compétences as-tu consolidées ?", "Quel est ton projet professionnel ?"] }
+];
+
+export function periodGuide(index) {
+  return PERIOD_GUIDES[index] || null;
+}
 
 export function periodFieldLabel(key) {
   return LABELS.period[key] || key;
@@ -163,6 +223,7 @@ export const FIELD_PERMISSIONS = {
     tutor:   { employer: true, tutor: true, absencesEntreprise: true },
     admin:   {
       identity: true, employer: true, tutor: true, contract: true,
+      formation: true, planningAlternance: true,
       absencesCfmfs: true, absencesEntreprise: true, meta: true
     }
   }

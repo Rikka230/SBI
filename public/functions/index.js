@@ -9708,7 +9708,7 @@ const BOOKLET_PERIOD_ADMIN_FIELDS = Array.from(new Set([
 // Sections autorisées par rôle (clés de target.section).
 const BOOKLET_SECTION_STUDENT = ["identity"];
 const BOOKLET_SECTION_TUTOR = ["employer", "tutor", "absencesEntreprise"];
-const BOOKLET_SECTION_ADMIN = ["identity", "employer", "tutor", "contract", "absencesCfmfs", "absencesEntreprise", "meta"];
+const BOOKLET_SECTION_ADMIN = ["identity", "employer", "tutor", "contract", "formation", "planningAlternance", "absencesCfmfs", "absencesEntreprise", "meta"];
 
 // Champs « attendus » par période pour le calcul du taux de complétion
 // (objectifs + bilans + recueil).
@@ -9862,7 +9862,24 @@ exports.generateApprenticeshipBooklet = onCall({
         identity: {
             nom: cleanString(studentData.nom, 200),
             prenom: cleanString(studentData.prenom, 200),
-            email: cleanString(studentData.email, 200)
+            email: cleanString(studentData.email, 200),
+            phone: cleanString(studentData.telephone || studentData.phone, 60),
+            address: cleanString(studentData.adresse || studentData.address, 300),
+            postalCode: cleanString(studentData.codePostal || studentData.postalCode, 20),
+            city: cleanString(studentData.ville || studentData.city, 120),
+            birthDate: cleanString(studentData.dateNaissance || studentData.birthDate, 40),
+            birthPlace: cleanString(studentData.lieuNaissance || studentData.birthPlace, 120),
+            legalGuardian: ""
+        },
+        // Établissement & formation : pré-rempli depuis la formation, le reste éditable par l'admin.
+        formation: {
+            establishmentName: "SBI",
+            establishmentAddress: "",
+            director: "",
+            pedagogicalManager: "",
+            handicapReferent: "",
+            formationTitle: formationName,
+            rncp: ""
         },
         employer: {
             name: cleanString(data.employerName, 200),
@@ -9876,6 +9893,7 @@ exports.generateApprenticeshipBooklet = onCall({
             start: cleanString(data.contractStart, 40),
             end: cleanString(data.contractEnd, 40)
         },
+        planningAlternance: [],
         absences: { cfmfs: [], entreprise: [] },
         signatures: {},
         documents: [],
@@ -10001,13 +10019,15 @@ exports.updateBookletSection = onCall({
             employer: "employer",
             tutor: "tutor",
             contract: "contract",
+            formation: "formation",
+            planningAlternance: "planningAlternance",
             meta: "meta",
             absencesCfmfs: "absences.cfmfs",
             absencesEntreprise: "absences.entreprise"
         };
         const path = sectionPathMap[section] || section;
 
-        if (section === "absencesCfmfs" || section === "absencesEntreprise") {
+        if (section === "absencesCfmfs" || section === "absencesEntreprise" || section === "planningAlternance") {
             // Les absences sont une liste : on attend fields.items (tableau).
             const items = Array.isArray(fields.items) ? bookletCleanValue(fields.items) : null;
             if (!items) throw new HttpsError("invalid-argument", "Liste d'absences invalide.");

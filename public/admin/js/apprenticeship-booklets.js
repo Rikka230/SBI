@@ -30,9 +30,10 @@ import {
   lockBookletPeriod,
   assignBookletTutor,
   loadBooklet,
-  loadBookletsForAdmin
-} from '/js/booklet/booklet-data.js?v=8.0P.167.288';
-import { downloadBookletPdf } from '/js/booklet/booklet-pdf.js?v=8.0P.167.288';
+  loadBookletsForAdmin,
+  periodGuide
+} from '/js/booklet/booklet-data.js?v=8.0P.167.289';
+import { downloadBookletPdf } from '/js/booklet/booklet-pdf.js?v=8.0P.167.289';
 
 const ROLE = 'admin';
 
@@ -380,15 +381,34 @@ function metaSectionsConfig(b) {
   const employer = b.employer || {};
   const tutor = b.tutor || {};
   const contract = b.contract || {};
+  const formation = b.formation || {};
+  const idf = LABELS.identityFields;
+  const ff = LABELS.formationFields;
   return [
     {
       section: 'identity', title: LABELS.sections.identity,
       fields: [
-        { key: 'studentName', label: LABELS.fields.studentName, value: b.studentName || identity.fullName || identity.name, multiline: false, full: true },
-        { key: 'birthDate', label: 'Date de naissance', value: identity.birthDate, multiline: false, type: 'date' },
-        { key: 'email', label: 'Email', value: identity.email || b.studentEmail, multiline: false, type: 'email' },
-        { key: 'phone', label: 'Téléphone', value: identity.phone, multiline: false },
-        { key: 'address', label: 'Adresse', value: identity.address, full: true }
+        { key: 'fullName', label: idf.studentName, value: identity.fullName || identity.name || b.studentName, multiline: false, full: true },
+        { key: 'birthDate', label: idf.birthDate, value: identity.birthDate, multiline: false, type: 'date' },
+        { key: 'birthPlace', label: idf.birthPlace, value: identity.birthPlace, multiline: false },
+        { key: 'email', label: idf.email, value: identity.email || b.studentEmail, multiline: false, type: 'email' },
+        { key: 'phone', label: idf.phone, value: identity.phone, multiline: false },
+        { key: 'address', label: idf.address, value: identity.address, full: true },
+        { key: 'postalCode', label: idf.postalCode, value: identity.postalCode, multiline: false },
+        { key: 'city', label: idf.city, value: identity.city, multiline: false },
+        { key: 'legalGuardian', label: idf.legalGuardian, value: identity.legalGuardian, multiline: false, full: true }
+      ]
+    },
+    {
+      section: 'formation', title: LABELS.sections.formation,
+      fields: [
+        { key: 'establishmentName', label: ff.establishmentName, value: formation.establishmentName, multiline: false, full: true },
+        { key: 'establishmentAddress', label: ff.establishmentAddress, value: formation.establishmentAddress, full: true },
+        { key: 'director', label: ff.director, value: formation.director, multiline: false },
+        { key: 'pedagogicalManager', label: ff.pedagogicalManager, value: formation.pedagogicalManager, multiline: false },
+        { key: 'handicapReferent', label: ff.handicapReferent, value: formation.handicapReferent, multiline: false },
+        { key: 'formationTitle', label: ff.formationTitle, value: formation.formationTitle || b.formationName, multiline: false, full: true },
+        { key: 'rncp', label: ff.rncp, value: formation.rncp, multiline: false }
       ]
     },
     {
@@ -498,12 +518,21 @@ function renderPeriodPanel(b, period, index) {
   const locked = period.status === 'locked' || !!period.lockedAt;
   const validated = !!period.sbiValidatedAt || period.status === 'validated';
 
+  const guide = periodGuide(index);
+  const guideHtml = guide
+    ? `<div class="sbi-booklet-guide" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:.6rem .9rem;margin:.5rem 0;font-size:.85rem;color:#166534;">
+        <strong>${escapeHtml(guide.title)}</strong>
+        <ul style="margin:.35rem 0 0;padding-left:1.1rem;">${guide.hints.map((h) => `<li>${escapeHtml(h)}</li>`).join('')}</ul>
+      </div>`
+    : '';
+
   return `
     <div class="sbi-booklet-section" data-period-id="${escapeHtml(period.id)}">
       <h2>${escapeHtml(period.label || `Période ${index + 1}`)}
         <span class="sbi-booklet-badge" style="background:${sm.color};margin-left:.5rem;">${escapeHtml(sm.label)}</span>
       </h2>
       ${dateFields}
+      ${guideHtml}
       <div class="sbi-booklet-subtitle">Recueil / projet d'animation &amp; bilans</div>
       ${periodTextFields}
       <div class="sbi-booklet-actions">

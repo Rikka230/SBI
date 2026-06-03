@@ -14,7 +14,7 @@
  * =======================================================================
  */
 
-import { LABELS, PERIOD_FIELDS, STATUS_META, escapeHtml as esc, formatDate as fmtDate } from '/js/booklet/booklet-data.js';
+import { LABELS, PERIOD_FIELDS, STATUS_META, ROLE_TEXTS, periodGuide, escapeHtml as esc, formatDate as fmtDate } from '/js/booklet/booklet-data.js';
 
 // Champs "tuteur" d'une période (rendus à part, après le bloc apprenti).
 const TUTOR_PERIOD_FIELDS = [
@@ -51,10 +51,31 @@ function renderAbsences(list, title) {
     const end = fmtDate(a.endDate || a.end);
     const period = end && end !== start ? `${start} → ${end}` : (start || '—');
     const reason = esc(String(a.reason || a.motif || a.label || '').trim()) || '—';
-    return `<tr><td>${period}</td><td>${reason}</td></tr>`;
+    const justif = a.justified === true || a.justifie === true
+      ? (a.justificatifUrl ? `<a href="${esc(a.justificatifUrl)}">justifiée</a>` : 'justifiée')
+      : '<span class="empty">non justifiée</span>';
+    const validated = a.validatedBy || a.validatedAt
+      ? esc(String(a.validatedBy || 'validée'))
+      : '<span class="empty">—</span>';
+    return `<tr><td>${period}</td><td>${reason}</td><td>${justif}</td><td>${validated}</td></tr>`;
   }).join('');
   return `<p class="sub">${esc(title)}</p>
-    <table class="grid"><thead><tr><th>Période</th><th>Motif</th></tr></thead><tbody>${trs}</tbody></table>`;
+    <table class="grid"><thead><tr><th>Période</th><th>Motif</th><th>Justificatif</th><th>Validation</th></tr></thead><tbody>${trs}</tbody></table>`;
+}
+
+function renderPlanningAlternance(list) {
+  const items = Array.isArray(list) ? list : [];
+  if (!items.length) {
+    return `<p class="sub"><span class="empty">Aucun planning d'alternance renseigné.</span></p>`;
+  }
+  const trs = items.map((p) => {
+    const start = fmtDate(p.startDate || p.start);
+    const end = fmtDate(p.endDate || p.end);
+    const dates = end && end !== start ? `${start} → ${end}` : (start || '—');
+    const typeLabel = p.type === 'centre' ? 'Centre de formation' : (p.type === 'entreprise' ? 'Structure / entreprise' : esc(String(p.type || '—')));
+    return `<tr><td>${esc(String(p.label || '—'))}</td><td>${typeLabel}</td><td>${dates}</td></tr>`;
+  }).join('');
+  return `<table class="grid"><thead><tr><th>Intitulé</th><th>Lieu</th><th>Période</th></tr></thead><tbody>${trs}</tbody></table>`;
 }
 
 function renderPeriod(period = {}, index = 0) {
@@ -88,8 +109,14 @@ function renderPeriod(period = {}, index = 0) {
     </tr>
   </table>`;
 
+  const guide = periodGuide(index);
+  const guideHtml = guide
+    ? `<div class="guide"><strong>${esc(guide.title)}</strong><ul>${guide.hints.map((h) => `<li>${esc(h)}</li>`).join('')}</ul></div>`
+    : '';
+
   return `<section class="period">
     <h2>${label}${dates ? ` <span class="sub-inline">${esc(dates)}</span>` : ''} ${statusBadge}</h2>
+    ${guideHtml}
     <h3>${esc(LABELS.roles.student)} — ${esc(LABELS.sections.project)}</h3>
     ${studentFields}
     <h3>${esc(LABELS.roles.tutor)}</h3>
@@ -104,14 +131,34 @@ function buildBookletPrintHtml(booklet = {}) {
   const title = "Livret d'apprentissage";
   const sub = [booklet.studentName, booklet.formationTitle, booklet.promotionLabel].filter(Boolean).map(esc).join(' — ');
 
-  // En-tête : identité / formation / contrat
+  // En-tête : identité détaillée
   const identity = booklet.identity || {};
+  const idf = LABELS.identityFields;
+  const studentFullName = identity.fullName || identity.name
+    || [identity.prenom, identity.nom].filter(Boolean).join(' ') || booklet.studentName;
   const headTable = `<table class="grid">
-    ${row(LABELS.fields.studentName, booklet.studentName || identity.fullName || identity.name)}
-    ${row(LABELS.fields.formationTitle, booklet.formationTitle)}
-    ${row(LABELS.fields.promotionLabel, booklet.promotionLabel)}
-    ${row(LABELS.fields.contractStart, fmtDate(booklet.contractStart))}
-    ${row(LABELS.fields.contractEnd, fmtDate(booklet.contractEnd))}
+    ${row(idf.studentName, studentFullName)}
+    ${row(idf.birthDate, fmtDate(identity.birthDate) || identity.birthDate)}
+    ${row(idf.birthPlace, identity.birthPlace)}
+    ${row(idf.email, identity.email || booklet.studentEmail)}
+    ${row(idf.phone, identity.phone)}
+    ${row(idf.address, [identity.address, [identity.postalCode, identity.city].filter(Boolean).join(' ')].filter(Boolean).join(', '))}
+    ${row(idf.legalGuardian, identity.legalGuardian)}
+  </table>`;
+
+  // Établissement & formation
+  const formation = booklet.formation || {};
+  const ff = LABELS.formationFields;
+  const formationTable = `<table class="grid">
+    ${row(ff.establishmentName, formation.establishmentName)}
+    ${row(ff.establishmentAddress, formation.establishmentAddress)}
+    ${row(ff.director, formation.director)}
+    ${row(ff.pedagogicalManager, formation.pedagogicalManager)}
+    ${row(ff.handicapReferent, formation.handicapReferent)}
+    ${row(ff.formationTitle, formation.formationTitle || booklet.formationName || booklet.formationTitle)}
+    ${row(ff.rncp, formation.rncp)}
+    ${row(LABELS.fields.contractStart, fmtDate(booklet.contractStart || (booklet.contract || {}).start))}
+    ${row(LABELS.fields.contractEnd, fmtDate(booklet.contractEnd || (booklet.contract || {}).end))}
   </table>`;
 
   const employer = booklet.employer || {};
@@ -131,6 +178,33 @@ function buildBookletPrintHtml(booklet = {}) {
   const absences = booklet.absences || {};
   const absencesBlock = `${renderAbsences(absences.cfmfs, LABELS.sections.absencesCfmfs)}
     ${renderAbsences(absences.entreprise, LABELS.sections.absencesEntreprise)}`;
+
+  const planningBlock = renderPlanningAlternance(booklet.planningAlternance);
+
+  // Page de garde (1ʳᵉ page) + page « Rôles ».
+  const coverPage = `<section class="cover">
+    <div class="cover-brand">SBI</div>
+    <h1 class="cover-title">Livret d'apprentissage</h1>
+    <p class="cover-sub">Animateur E-Sport</p>
+    <table class="grid cover-grid">
+      ${row(idf.studentName, studentFullName)}
+      ${row(ff.formationTitle, formation.formationTitle || booklet.formationName)}
+      ${row(LABELS.fields.promotionLabel, booklet.promotionName || booklet.promotionLabel)}
+      ${row(LABELS.fields.employerName, booklet.employerName || (booklet.employer || {}).name)}
+      ${row(LABELS.fields.tutorName, booklet.tutorName || (booklet.tutor || {}).name)}
+      ${row(LABELS.fields.contractStart, fmtDate(booklet.contractStart || (booklet.contract || {}).start))}
+      ${row(LABELS.fields.contractEnd, fmtDate(booklet.contractEnd || (booklet.contract || {}).end))}
+    </table>
+  </section>`;
+
+  const actorsRows = ROLE_TEXTS.actors
+    .map((a) => `<tr><th>${esc(a.role)}</th><td>${esc(a.text)}</td></tr>`).join('');
+  const rolesPage = `<section class="roles">
+    <h2>Rôle du livret</h2>
+    <p class="sub">${esc(ROLE_TEXTS.bookletRole)}</p>
+    <h2>Rôle de chacun</h2>
+    <table class="grid">${actorsRows}</table>
+  </section>`;
 
   const periods = Array.isArray(booklet.periods) ? booklet.periods : [];
   const periodsHtml = periods.length
@@ -178,27 +252,47 @@ function buildBookletPrintHtml(booklet = {}) {
     .field-label{font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.02em;margin-bottom:2px;}
     .field-value{font-size:12px;border:1px solid #e5e7eb;border-radius:6px;padding:6px 9px;background:#fafafa;min-height:18px;line-height:1.5;}
     .empty{color:#9ca3af;font-style:italic;}
-    .period{border:1px solid #e5e7eb;border-radius:8px;padding:12px 16px;margin-bottom:18px;}
+    .period{border:1px solid #e5e7eb;border-radius:8px;padding:12px 16px;margin-bottom:18px;break-inside:avoid;page-break-inside:avoid;}
+    .guide{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:8px 12px;margin:6px 0 12px;font-size:11.5px;color:#166534;}
+    .guide ul{margin:4px 0 0;padding-left:18px;}
     .annex .sub{font-size:12px;line-height:1.6;}
     .foot{margin-top:22px;color:#9ca3af;font-size:11px;}
+    .cover{min-height:88vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;page-break-after:always;break-after:page;}
+    .cover-brand{font-size:54px;font-weight:800;letter-spacing:.12em;color:#84cc16;margin-bottom:8px;}
+    .cover-title{font-size:30px;margin:0;border:none;}
+    .cover-sub{color:#6b7280;font-size:16px;margin:4px 0 28px;}
+    .cover-grid{max-width:520px;}
+    .roles{page-break-after:always;break-after:page;}
+    .page-break{page-break-before:always;break-before:page;}
     .watermark{
       position:fixed;top:42%;left:50%;transform:translate(-50%,-50%) rotate(-28deg);
       font-size:74px;font-weight:800;color:rgba(220,38,38,.12);
       letter-spacing:.05em;pointer-events:none;z-index:0;white-space:nowrap;
     }
-    @media print{body{padding:0;} @page{margin:16mm;} .watermark{position:fixed;}}
+    @media print{
+      body{padding:0;}
+      /* Marges propres + pas d'en-tête/pied navigateur géré par l'utilisateur. */
+      @page{margin:14mm;}
+      .watermark{position:fixed;}
+      h2{break-after:avoid;page-break-after:avoid;}
+    }
   </style></head><body>
     ${watermark}
+    ${coverPage}
+    ${rolesPage}
+
     <h1>${esc(title)}</h1>
     ${sub ? `<p class="sub">${sub}</p>` : ''}
     <p class="status-line">Statut : <span class="badge" style="background:${st.color};">${esc(st.label)}</span></p>
 
     <section><h2>${esc(LABELS.sections.identity)}</h2>${headTable}</section>
+    <section><h2>${esc(LABELS.sections.formation)}</h2>${formationTable}</section>
     <section><h2>${esc(LABELS.sections.employer)}</h2>${employerTable}</section>
     <section><h2>${esc(LABELS.sections.tutor)}</h2>${tutorTable}</section>
+    <section><h2>${esc(LABELS.sections.planningAlternance)}</h2>${planningBlock}</section>
     <section><h2>${esc(LABELS.sections.absencesCfmfs)} / ${esc(LABELS.sections.absencesEntreprise)}</h2>${absencesBlock}</section>
 
-    <h2>${esc(LABELS.sections.periods)}</h2>
+    <h2 class="page-break">${esc(LABELS.sections.periods)}</h2>
     ${periodsHtml}
 
     <section><h2>${esc(LABELS.sections.signatures)}</h2>${signaturesBlock}</section>
