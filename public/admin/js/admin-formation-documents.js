@@ -52,7 +52,7 @@ import {
   resolvePlanningModel,
   renderPlanningHtml,
   downloadPlanningPdf
-} from '/js/formation-documents/planning-render.js?v=8.0P.167.298';
+} from '/js/formation-documents/planning-render.js?v=8.0P.167.299';
 
 const MAX_BYTES = 50 * 1024 * 1024;
 
@@ -145,7 +145,7 @@ async function loadFormationData() {
   if (selectedPlanningPromo && !promotions.some((p) => p.id === selectedPlanningPromo)) {
     selectedPlanningPromo = '';
   }
-  // SBI 8.0P.167.298 — Persistance du planning CIBLÉ : si aucune promo n'est
+  // SBI 8.0P.167.299 — Persistance du planning CIBLÉ : si aucune promo n'est
   // sélectionnée mais qu'au moins une promotion a déjà un planning enregistré
   // (PDF ou cursus), on la sélectionne d'office pour que son état « ✓ Enregistré »
   // s'affiche immédiatement au (re)chargement, comme le planning par défaut.

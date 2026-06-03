@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.298',
+  version: '8.0P.167.299',
   branch: 'main',
-  channel: 'Livret apprentissage : sommaire fiable + corrections PDF (QA)',
-  stage: 'QA dossier PDF : (1) sommaire FIABLE -> @page au niveau racine pour paged.js + impression 1:1 (A4 explicite, marge 0, sans preferCSSPageSize) sinon Chromium re-paginait et scindait les pages (numeros faux apres le planning) + log de controle pagination ; (2) entites HTML decodees dans le sommaire (Livret d apprentissage, Signatures & validation) ; (3) doublon "Lieu / contexte" corrige -> "Contexte" + "Lieu" ; (4) chaque periode demarre sur une nouvelle page, signatures gardees avec leur periode (page-break-before + break-inside avoid) ; (6) table planning : cellules bordees + padding (fin du collage "ExamenEvaluation"). RESTE : (5) densite planning / placeholders "Cours futur", (7) fiche referentiel RNCP propre.',
+  channel: 'Livret : rappel debut de periode (notif+mail) + UX tuteur (logout reduit, recherche apprenti)',
+  stage: 'NOUVEAU : rappel automatique en DEBUT de periode (cron notifyOverdueBookletPeriods etendu) -> notification cloche (type booklet_period_start) a eleve/tuteur/profs/admin + EMAIL Brevo eleve+tuteur, une seule fois (period.startNotifiedAt). UX tuteur : (a) panneau reduit -> icone de deconnexion/retour visible (CSS left-collapsed centre les boutons du bas) ; (b) barre de recherche tuteur ouvre uniquement le livret d un apprenti LIE (filtre loadBookletsForTutor -> /tutor/livret.html?id=). Type notif booklet_period_start ajoute au registre client.',
   updatedAt: '2026-06-03',
-  label: 'SBI 8.0P.167.298 - Livret PDF : sommaire fiable + decodage HTML + doublon Lieu/contexte + sauts de page periodes'
+  label: 'SBI 8.0P.167.299 - Livret : rappel debut periode (notif+mail) + UX tuteur (logout reduit / recherche apprenti lie)'
 };
 
 export function getSbiVersionLabel() {

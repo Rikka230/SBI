@@ -10531,11 +10531,50 @@ exports.notifyOverdueBookletPeriods = onSchedule({
     schedule: "every day 07:00",
     timeZone: "Europe/Paris",
     timeoutSeconds: 300,
-    memory: "512MiB"
+    memory: "512MiB",
+    secrets: [BREVO_API_KEY]
 }, async () => {
     const db = admin.firestore();
     const serverTimestamp = () => admin.firestore.FieldValue.serverTimestamp();
     const todayMs = Date.now();
+    let apiKey = "";
+    try { apiKey = cleanString(BREVO_API_KEY.value(), 240); } catch (_) { apiKey = ""; }
+
+    // Email + cache des emails utilisateurs (élève/tuteur) pour les rappels de début.
+    const userEmailCache = new Map();
+    const getUserEmail = async (uid) => {
+        const id = cleanString(uid, 200);
+        if (!id) return "";
+        if (userEmailCache.has(id)) return userEmailCache.get(id);
+        let email = "";
+        try {
+            const uDoc = await db.collection("users").doc(id).get();
+            if (uDoc.exists) email = cleanEmail(uDoc.data().email);
+        } catch (_) { email = ""; }
+        userEmailCache.set(id, email);
+        return email;
+    };
+    const sendPeriodStartEmail = async (email, ctx) => {
+        if (!apiKey || !isValidEmail(email)) return;
+        const messageHtml = `<p>La période <strong>${escapeHtml(ctx.periodLabel)}</strong> du livret d'apprentissage de ${escapeHtml(ctx.studentName || "l'apprenti")} a commencé${ctx.startDate ? ` (${bookletFrenchDate(ctx.startDate) || ctx.startDate})` : ""}.</p>`
+            + `<p>Pense à compléter les informations attendues dans le livret (objectifs, situations d'animation, bilans).</p>`;
+        try {
+            await sendBrevoTransactionalEmail({
+                sender: { name: SBI_SENDER_NAME, email: SBI_SENDER_EMAIL },
+                to: [{ email }],
+                subject: "Livret d'apprentissage — nouvelle période à compléter",
+                htmlContent: renderSbiEmailTemplate({
+                    prenom: "",
+                    nomExpediteur: "L'équipe SBI",
+                    posteExpediteur: "Pédagogie",
+                    preheader: "Nouvelle période de livret à compléter",
+                    messageHtml
+                })
+            }, apiKey, ["sbi_booklet_period_start"]);
+        } catch (error) {
+            console.error("[SBI Booklet start] email impossible :", email, error.message);
+        }
+    };
 
     // Cache des destinataires « admins » (peu nombreux) — calculé une seule fois.
     let adminIdsPromise = null;
@@ -10583,7 +10622,35 @@ exports.notifyOverdueBookletPeriods = onSchedule({
 
     let bookletsScanned = 0;
     let overduePeriods = 0;
+    let startedPeriods = 0;
     let notificationsWritten = 0;
+
+    const upsertStartNotification = async (destinataireId, actionUrl, context) => {
+        const dest = cleanString(destinataireId, 200);
+        if (!dest) return;
+        const notificationId = `booklet_period_start_${context.bookletId}_${context.periodId}_${dest}`.slice(0, 240);
+        const notificationRef = db.collection("notifications").doc(notificationId);
+        const previousSnap = await notificationRef.get();
+        const previous = previousSnap.exists ? (previousSnap.data() || {}) : {};
+        await notificationRef.set({
+            type: "booklet_period_start",
+            destinataireId: dest,
+            bookletId: context.bookletId,
+            periodId: context.periodId,
+            periodLabel: context.periodLabel,
+            studentName: context.studentName,
+            studentId: context.studentId,
+            startDate: context.startDate,
+            actionUrl,
+            message: `Période "${context.periodLabel}" du livret de ${context.studentName || "l'apprenti"} : pense à compléter les informations attendues.`,
+            status: "open",
+            updatedAt: serverTimestamp(),
+            createdAt: previous.createdAt || serverTimestamp(),
+            dateCreation: previous.dateCreation || serverTimestamp(),
+            dismissedBy: Array.isArray(previous.dismissedBy) ? previous.dismissedBy : []
+        }, { merge: true });
+        notificationsWritten += 1;
+    };
 
     const upsertNotification = async (destinataireId, actionUrl, context) => {
         const dest = cleanString(destinataireId, 200);
@@ -10657,11 +10724,55 @@ exports.notifyOverdueBookletPeriods = onSchedule({
                     await upsertNotification(adminId, "/admin/apprenticeship-booklets.html", context);
                 }
             }
+
+            // --- Notifications + email de DÉBUT de période (une seule fois) ---
+            // Quand une période a commencé (startDate <= aujourd'hui) et n'a pas encore
+            // été notifiée, on prévient élève/tuteur/profs/admin (cloche) + email
+            // élève/tuteur, et on marque period.startNotifiedAt (Timestamp concret,
+            // JAMAIS serverTimestamp() dans un array).
+            const nextPeriods = periods.map((p) => (p && typeof p === "object") ? Object.assign({}, p) : p);
+            let periodsMutated = false;
+            for (let i = 0; i < nextPeriods.length; i += 1) {
+                const period = nextPeriods[i];
+                if (!period || typeof period !== "object") continue;
+                const startMs = bookletDateToMillis(period.startDate);
+                if (!startMs || startMs > todayMs) continue;     // pas (encore) commencée
+                if (period.startNotifiedAt) continue;            // déjà notifiée
+                if (period.lockedAt) continue;
+                if (period.sbiValidatedAt || period.status === "validated") continue;
+
+                startedPeriods += 1;
+                const ctx = {
+                    bookletId,
+                    periodId: cleanString(period.id, 60) || "period",
+                    periodLabel: cleanString(period.label, 200) || "Période",
+                    studentName,
+                    studentId,
+                    startDate: cleanString(period.startDate, 40)
+                };
+                if (studentId) await upsertStartNotification(studentId, `/student/livret.html?id=${encodeURIComponent(bookletId)}`, ctx);
+                if (tutorId) await upsertStartNotification(tutorId, `/tutor/livret.html?id=${encodeURIComponent(bookletId)}`, ctx);
+                for (const profId of await getFormationProfs(formationId)) {
+                    await upsertStartNotification(profId, "/teacher/livrets.html", ctx);
+                }
+                for (const adminId of await getAdminIds()) {
+                    await upsertStartNotification(adminId, "/admin/apprenticeship-booklets.html", ctx);
+                }
+                if (apiKey) {
+                    if (studentId) await sendPeriodStartEmail(await getUserEmail(studentId), ctx);
+                    if (tutorId) await sendPeriodStartEmail(await getUserEmail(tutorId), ctx);
+                }
+                nextPeriods[i] = Object.assign({}, period, { startNotifiedAt: admin.firestore.Timestamp.now() });
+                periodsMutated = true;
+            }
+            if (periodsMutated) {
+                await docSnap.ref.set({ periods: nextPeriods, updatedAt: serverTimestamp() }, { merge: true });
+            }
         } catch (error) {
             console.error("[SBI Booklet overdue] livret ignoré :", docSnap.id, error.message);
             continue;
         }
     }
 
-    console.log(`[SBI Booklet overdue] livrets parcourus=${bookletsScanned} périodes en retard=${overduePeriods} notifications écrites=${notificationsWritten}`);
+    console.log(`[SBI Booklet rappels] livrets=${bookletsScanned} début=${startedPeriods} retard=${overduePeriods} notifications=${notificationsWritten}`);
 });

@@ -113,7 +113,21 @@ body.auth-ready .app-container {
     .app-container.left-collapsed .nav-item { justify-content: center; padding: 0.8rem 0; }
     .app-container.left-collapsed .nav-item svg { margin-right: 0; }
     .app-container.left-collapsed .panel-header { justify-content: center; padding: 0; }
-    .app-container.left-collapsed #btn-toggle-panel { display: none; } 
+    .app-container.left-collapsed #btn-toggle-panel { display: none; }
+    /* Panneau réduit : centrer les boutons du bas (Retour admin / Déconnexion) et
+       retirer leur padding horizontal pour que l'icône reste visible (sinon clippée
+       à la largeur mini — bug constaté côté tuteur). */
+    .app-container.left-collapsed #left-panel .action-btn,
+    .app-container.left-collapsed #left-panel .admin-return-link {
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+        justify-content: center !important;
+    }
+    .app-container.left-collapsed #left-panel .action-btn > svg,
+    .app-container.left-collapsed #left-panel .admin-return-link > svg {
+        margin: 0 !important;
+        flex-shrink: 0;
+    }
 
     .app-container.right-collapsed #right-panel { transform: translateX(100%); }
     .app-container.right-collapsed #main-content { margin-right: 0; }

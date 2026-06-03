@@ -3,6 +3,9 @@
 import { ICONS, brand, defineOnce } from './shared-icons.js';
 import { dispatchComponentMounted } from './ready.js';
 import { signOutToLogin } from './shared-actions.js';
+import { auth, db } from '/js/firebase-init.js';
+import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js';
+import { loadBookletsForTutor, escapeHtml } from '/js/booklet/booklet-data.js?v=8.0P.167.299';
 
 const ICON_APPRENTICES = '<svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3Zm-8 0c1.66 0 3-1.34 3-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3Zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5Zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5Z"/></svg>';
 
@@ -72,6 +75,52 @@ export class TutorTopBar extends HTMLElement {
       </header>
     `;
     dispatchComponentMounted('tutor-top-bar', this);
+    this.initApprenticeSearch();
+  }
+
+  // La barre de recherche tuteur n'ouvre QUE les livrets de ses apprentis liés
+  // (livrets où tutorId == tuteur courant).
+  initApprenticeSearch() {
+    const input = this.querySelector('.global-search-input');
+    const results = this.querySelector('.global-search-results');
+    if (!input || !results) return;
+    results.style.cssText = 'position:absolute; top:calc(100% + 6px); left:0; right:0; background:#fff; border:1px solid var(--border-color,#e5e7eb); border-radius:10px; box-shadow:0 10px 30px rgba(0,0,0,.12); z-index:1100; max-height:320px; overflow-y:auto; display:none;';
+
+    let apprentis = [];
+    let loaded = false;
+    const loadOnce = (uid) => {
+      if (loaded || !uid) return;
+      loaded = true;
+      loadBookletsForTutor({ db, tutorId: uid })
+        .then((list) => {
+          apprentis = (list || []).map((b) => ({ id: b.id, name: b.studentName || b.id || 'Apprenti' }))
+            .sort((a, b) => String(a.name).localeCompare(String(b.name), 'fr', { sensitivity: 'base' }));
+        })
+        .catch(() => { loaded = false; });
+    };
+    onAuthStateChanged(auth, (u) => { if (u) loadOnce(u.uid); });
+
+    const render = (items) => {
+      if (!items.length) {
+        results.innerHTML = input.value.trim()
+          ? '<div style="padding:.6rem .9rem; color:var(--text-muted,#9ca3af); font-size:.85rem;">Aucun apprenti lié.</div>'
+          : '';
+        results.style.display = input.value.trim() ? 'block' : 'none';
+        return;
+      }
+      results.innerHTML = items.map((a) =>
+        `<div data-sbi-href="/tutor/livret.html?id=${encodeURIComponent(a.id)}" role="link" tabindex="0" style="padding:.6rem .9rem; cursor:pointer; border-bottom:1px solid var(--border-color,#f0f0f0); color:var(--text-main,#1f2937); font-size:.9rem;">${escapeHtml(a.name)}</div>`
+      ).join('');
+      results.style.display = 'block';
+    };
+
+    input.addEventListener('input', () => {
+      const q = input.value.trim().toLowerCase();
+      if (!q) { render([]); return; }
+      render(apprentis.filter((a) => String(a.name).toLowerCase().includes(q)).slice(0, 8));
+    });
+    results.addEventListener('click', () => { results.style.display = 'none'; input.value = ''; });
+    document.addEventListener('click', (e) => { if (!this.contains(e.target)) results.style.display = 'none'; });
   }
 }
 

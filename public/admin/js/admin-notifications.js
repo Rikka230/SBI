@@ -516,6 +516,12 @@ const NOTIFICATION_REGISTRY = {
         body: (n) => `La période <strong>${escNotif(n.periodLabel || 'du livret')}</strong>${n.studentName ? ` de <strong>${escNotif(n.studentName)}</strong>` : ''} est en retard et doit être complétée${n.dueDate ? ` (échéance : ${escNotif(n.dueDate)})` : ''}.`,
         icon: NOTIF_ICONS.yellowWarn,
         navigate: (n) => n.actionUrl || '/admin/admin-booklets.html'
+    },
+    booklet_period_start: {
+        title: 'Nouvelle période de livret',
+        body: (n) => `La période <strong>${escNotif(n.periodLabel || 'du livret')}</strong>${n.studentName ? ` de <strong>${escNotif(n.studentName)}</strong>` : ''} a commencé : pense à compléter les informations${n.startDate ? ` (depuis le ${escNotif(n.startDate)})` : ''}.`,
+        icon: NOTIF_ICONS.yellowWarn,
+        navigate: (n) => n.actionUrl || '/admin/apprenticeship-booklets.html'
     }
 };
 
