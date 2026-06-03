@@ -23,7 +23,7 @@ import {
 } from '/js/formation-documents/formation-docs-data.js?v=8.0P.167.282';
 import {
   resolvePlanningModel, renderPlanningHtml, downloadPlanningPdf
-} from '/js/formation-documents/planning-render.js?v=8.0P.167.295';
+} from '/js/formation-documents/planning-render.js?v=8.0P.167.296';
 
 let mounted = false;
 let mountedView = null;
@@ -111,7 +111,7 @@ async function hydrateCursusPlannings() {
     const host = document.querySelector(`.sbi-fdoc-item--planning[data-planning-id="${(window.CSS && CSS.escape) ? CSS.escape(entry.id || '') : (entry.id || '')}"] [data-planning-body]`);
     if (!host) continue;
     try {
-      // SBI 8.0P.167.295 — Planning CIBLÉ : on date le plan sur la promotion de
+      // SBI 8.0P.167.296 — Planning CIBLÉ : on date le plan sur la promotion de
       // l'entrée (sa promotionId, qui fait partie des promotions de l'élève) ;
       // pour un planning par défaut (sans promotionId), on retombe sur toutes
       // les promotions de l'élève pour récupérer un éventuel plan daté.

@@ -18,7 +18,7 @@ import {
   query,
   where
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
-import { loadFormationDocumentsForFormations } from '/js/formation-documents/formation-docs-data.js?v=8.0P.167.295';
+import { loadFormationDocumentsForFormations } from '/js/formation-documents/formation-docs-data.js?v=8.0P.167.296';
 
 const STRUCTURAL_TYPES = ['real_course', 'placeholder_course', 'buffer_period', 'revision_period', 'catchup_period', 'workshop'];
 
@@ -91,7 +91,7 @@ export async function loadCursusOptions({ db, formationId = '' } = {}) {
 export async function loadCursusItems({ db, cursusId = '' } = {}) {
   const id = String(cursusId || '').trim();
   if (!id) return { title: '', items: [], readable: true };
-  // SBI 8.0P.167.295 — La collection curriculumTemplates est en lecture ADMIN
+  // SBI 8.0P.167.296 — La collection curriculumTemplates est en lecture ADMIN
   // uniquement (firestore.rules). Côté élève/prof, le getDoc est refusé : on
   // l'absorbe ici (readable:false) pour que resolvePlanningModel puisse tout de
   // même rendre le plan DATÉ de la promotion (lisible par l'élève/prof concerné)

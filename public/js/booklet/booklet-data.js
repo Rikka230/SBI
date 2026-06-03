@@ -438,7 +438,7 @@ export function recomputeBookletPeriodDates(payload) {
   return bookletCallable('recomputeApprenticeshipBookletPeriodDates')(payload);
 }
 
-// SBI 8.0P.167.295 — Génération serveur du dossier PDF (corps rendu via
+// SBI 8.0P.167.296 — Génération serveur du dossier PDF (corps rendu via
 // Puppeteer + paged.js, sommaire à pages réelles), puis fusion des annexes PDF
 // de la formation. Renvoie { success, url, fileName, bodyPages, annexCount, missing }.
 export function buildBookletPdf(payload) {
