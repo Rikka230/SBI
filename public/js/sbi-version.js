@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.289',
+  version: '8.0P.167.290',
   branch: 'main',
-  channel: 'Livret apprentissage : correctifs (admin edition, acces prof, planning)',
-  stage: 'correctifs Phase A : (A1) l admin peut desormais editer/enregistrer le contrat et toutes les sections (le contrat passait en target meta non autorise -> route en section, cles start/end) ; (A2) le prof voit les livrets de ses formations meme sans promotion (requete par formationId en plus de promotionId, union dedupliquee) ; (A3) planning genere depuis un cursus : message explicite quand le cursus ne contient pas encore d elements planifies (le planning est bien enregistre). Role tuteur (creation de compte) deja corrige. Enrichissement (sections originales + PDF propre) en cours.',
+  channel: 'Livret apprentissage : Phase B + correctifs multi-agents',
+  stage: 'Phase B : PDF brande comme les emails SBI (bleu #0051ff, logo/wordmark, page de garde) + sauts de page corriges ; synchro miroir top-level cote serveur (l admin edite identite/etablissement/employeur/maitre d apprentissage et ca persiste apres reload) ; le tuteur ajoute des absences en entreprise (avec/sans justificatif) et accede aux documents de formation (/tutor/documents) ; planning cible re-affiche apres reload (auto-selection de la promo ayant un planning) ; plannings visibles cote prof/eleve (curriculumTemplates lisible par utilisateur actif, getDoc resilient) ; fix ecriture absences imbriquees (set merge + cle pointee).',
   updatedAt: '2026-06-03',
-  label: 'SBI 8.0P.167.289 - Livret : correctifs admin edition / acces prof / planning'
+  label: 'SBI 8.0P.167.290 - Livret Phase B : PDF brande, edition admin persistante, absences/docs tuteur, planning prof/eleve'
 };
 
 export function getSbiVersionLabel() {

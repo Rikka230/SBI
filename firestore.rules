@@ -975,7 +975,12 @@ service cloud.firestore {
        ============================================================ */
 
     match /curriculumTemplates/{curriculumId} {
-      allow get, list: if isAdmin();
+      // 8.0P.167.290 — Lecture unitaire ouverte aux utilisateurs actifs : un planning
+      // « Documents de formation » généré depuis un cursus doit pouvoir s'hydrater
+      // côté élève / prof / tuteur (getDoc du template). Les templates ne sont pas
+      // confidentiels (structure de cursus). La liste reste réservée à l'admin.
+      allow get: if isActiveUser() || isAdmin();
+      allow list: if isAdmin();
       allow create, update, delete: if isAdmin();
     }
 

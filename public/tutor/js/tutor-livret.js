@@ -25,8 +25,8 @@ import {
   statusMeta,
   updateBookletSection,
   loadBooklet
-} from '/js/booklet/booklet-data.js?v=8.0P.167.289';
-import { downloadBookletPdf } from '/js/booklet/booklet-pdf.js?v=8.0P.167.289';
+} from '/js/booklet/booklet-data.js?v=8.0P.167.290';
+import { downloadBookletPdf } from '/js/booklet/booklet-pdf.js?v=8.0P.167.290';
 
 let mounted = false;
 let mountedView = null;
@@ -34,7 +34,11 @@ let unsubscribeAuth = null;
 
 let currentUid = null;
 let booklet = null;
-let activeTab = 'overview'; // overview | section:<name> | period:<id>
+let activeTab = 'overview'; // overview | section:<name> | absences | period:<id>
+
+// SBI 8.0P.167.290 — Tampon local des absences en structure (édition tuteur).
+// Reflète booklet.absences.entreprise + modifications non encore enregistrées.
+let absencesDraft = null;
 
 const ROLE = 'tutor';
 
@@ -162,6 +166,7 @@ function tabsHtml() {
   const tabs = [];
   tabs.push({ key: 'overview', label: 'Aperçu' });
   Object.keys(TUTOR_SECTIONS).forEach((s) => tabs.push({ key: `section:${s}`, label: TUTOR_SECTIONS[s].label }));
+  tabs.push({ key: 'absences', label: LABELS.sections.absencesEntreprise });
   periods.forEach((p, i) => {
     const pending = !(hasValue(p?.tutorReport) || hasValue(p?.tutorSignedAt));
     tabs.push({ key: `period:${p?.id || `p${i + 1}`}`, label: (p && p.label) || `Période ${i + 1}`, dot: pending });
@@ -270,7 +275,92 @@ function periodViewHtml(periodId) {
   </div>`;
 }
 
+/* ---------------------------------------------------------------------
+ * SBI 8.0P.167.290 — Absences en structure (édition tuteur)
+ * ------------------------------------------------------------------- */
+// Les absences sont au niveau livret (booklet.absences.entreprise) et stockées
+// en LISTE d'items. Le tuteur a le droit serveur (section absencesEntreprise).
+function readAbsencesEntreprise() {
+  const list = booklet && booklet.absences && Array.isArray(booklet.absences.entreprise)
+    ? booklet.absences.entreprise
+    : [];
+  return list.map((it) => ({
+    startDate: it && it.startDate ? String(it.startDate) : '',
+    endDate: it && it.endDate ? String(it.endDate) : '',
+    reason: it && it.reason ? String(it.reason) : '',
+    justified: !!(it && it.justified),
+    justificatifUrl: it && it.justificatifUrl ? String(it.justificatifUrl) : '',
+    validatedBy: it && it.validatedBy ? String(it.validatedBy) : '',
+    validatedAt: it && it.validatedAt ? it.validatedAt : null
+  }));
+}
+
+function ensureAbsencesDraft() {
+  if (!Array.isArray(absencesDraft)) absencesDraft = readAbsencesEntreprise();
+  return absencesDraft;
+}
+
+function absenceRowHtml(item, index, locked) {
+  return `<div class="sbi-booklet-absence-row" data-absence-index="${index}">
+    <div class="sbi-booklet-grid">
+      <div class="sbi-booklet-field">
+        <label for="abs-start-${index}">Date de début</label>
+        <input id="abs-start-${index}" class="sbi-booklet-input" type="date"
+          data-absence-field="startDate" value="${escapeHtml(item.startDate || '')}" ${locked ? 'disabled' : ''}>
+      </div>
+      <div class="sbi-booklet-field">
+        <label for="abs-end-${index}">Date de fin (optionnel)</label>
+        <input id="abs-end-${index}" class="sbi-booklet-input" type="date"
+          data-absence-field="endDate" value="${escapeHtml(item.endDate || '')}" ${locked ? 'disabled' : ''}>
+      </div>
+      <div class="sbi-booklet-field is-full">
+        <label for="abs-reason-${index}">Motif</label>
+        <input id="abs-reason-${index}" class="sbi-booklet-input" type="text"
+          data-absence-field="reason" value="${escapeHtml(item.reason || '')}" ${locked ? 'disabled' : ''}>
+      </div>
+      <div class="sbi-booklet-field is-full">
+        <label style="display:flex; align-items:center; gap:.5rem; font-weight:400;">
+          <input type="checkbox" data-absence-field="justified" ${item.justified ? 'checked' : ''} ${locked ? 'disabled' : ''}>
+          Justifiée
+        </label>
+      </div>
+      <div class="sbi-booklet-field is-full">
+        <label for="abs-url-${index}">Justificatif (URL, optionnel)</label>
+        <input id="abs-url-${index}" class="sbi-booklet-input" type="text" placeholder="https://…"
+          data-absence-field="justificatifUrl" value="${escapeHtml(item.justificatifUrl || '')}" ${locked ? 'disabled' : ''}>
+      </div>
+    </div>
+    <div class="sbi-booklet-actions">
+      <button type="button" class="sbi-booklet-btn danger" data-absence-remove="${index}" ${locked ? 'disabled' : ''}>Supprimer cette absence</button>
+    </div>
+  </div>`;
+}
+
+function absencesViewHtml() {
+  // Verrou : les absences sont au niveau livret. On autorise l'édition tant que
+  // le tuteur a le droit serveur ; on respecte uniquement le verrou global livret.
+  const editable = canEditField(ROLE, 'section', 'absencesEntreprise') && !isBookletLocked();
+  const list = ensureAbsencesDraft();
+
+  const rows = list.length
+    ? list.map((it, i) => absenceRowHtml(it, i, !editable)).join('')
+    : '<p class="sbi-booklet-section__hint">Aucune absence en structure enregistrée.</p>';
+
+  return `<div class="sbi-booklet-section" data-absences>
+    <h2>${escapeHtml(LABELS.sections.absencesEntreprise)}</h2>
+    <p class="sbi-booklet-section__hint">Déclarez ici les absences de l'apprenti dans votre structure. Indiquez si l'absence est justifiée et, si besoin, un lien vers le justificatif.</p>
+    ${isBookletLocked() ? '<p class="sbi-booklet-section__hint">Livret verrouillé : lecture seule.</p>' : ''}
+    <div data-absences-list>${rows}</div>
+    <div class="sbi-booklet-actions">
+      <button type="button" class="sbi-booklet-btn" data-absence-add ${editable ? '' : 'disabled'}>+ Ajouter une absence</button>
+      <button type="button" class="sbi-booklet-btn primary" data-absences-save ${editable ? '' : 'disabled'}>Enregistrer les absences</button>
+    </div>
+    <div class="sbi-booklet-status" data-absences-status></div>
+  </div>`;
+}
+
 function bodyHtml() {
+  if (activeTab === 'absences') return absencesViewHtml();
   if (activeTab.startsWith('section:')) return sectionViewHtml(activeTab.slice('section:'.length));
   if (activeTab.startsWith('period:')) return periodViewHtml(activeTab.slice('period:'.length));
   return overviewHtml();
@@ -363,6 +453,64 @@ async function signPeriod(periodId, btn) {
 }
 
 /* ---------------------------------------------------------------------
+ * SBI 8.0P.167.290 — Sauvegarde des absences en structure
+ * ------------------------------------------------------------------- */
+// Lit l'état courant des inputs dans le DOM vers le tampon (avant ajout/suppr/save).
+function syncAbsencesDraftFromDom() {
+  const r = root();
+  if (!r) return;
+  const rows = r.querySelectorAll('.sbi-booklet-absence-row');
+  const next = [];
+  rows.forEach((rowEl) => {
+    const idx = Number(rowEl.dataset.absenceIndex);
+    const prev = (Array.isArray(absencesDraft) && absencesDraft[idx]) ? absencesDraft[idx] : {};
+    const item = {
+      startDate: '',
+      endDate: '',
+      reason: '',
+      justified: false,
+      justificatifUrl: '',
+      validatedBy: prev.validatedBy || '',
+      validatedAt: prev.validatedAt || null
+    };
+    rowEl.querySelectorAll('[data-absence-field]').forEach((el) => {
+      const key = el.dataset.absenceField;
+      if (key === 'justified') item.justified = !!el.checked;
+      else item[key] = el.value || '';
+    });
+    next.push(item);
+  });
+  absencesDraft = next;
+}
+
+async function saveAbsences(btn) {
+  const r = root();
+  const card = r?.querySelector('[data-absences]');
+  const statusEl = card?.querySelector('[data-absences-status]');
+  syncAbsencesDraftFromDom();
+
+  // Nettoyage : on retire les lignes totalement vides (pas de date ni de motif).
+  const items = (absencesDraft || []).filter((it) => it.startDate || it.endDate || it.reason || it.justificatifUrl);
+
+  btn.disabled = true;
+  if (statusEl) { statusEl.dataset.tone = 'muted'; statusEl.textContent = 'Enregistrement…'; }
+  try {
+    await updateBookletSection({
+      bookletId: booklet.id,
+      target: { kind: 'section', section: 'absencesEntreprise' },
+      fields: { items }
+    });
+    absencesDraft = null;
+    await reload();
+    render();
+  } catch (error) {
+    console.warn('[SBI Tuteur] enregistrement des absences échoué :', error);
+    if (statusEl) { statusEl.dataset.tone = 'error'; statusEl.textContent = error?.message || 'Échec de l\'enregistrement.'; }
+    btn.disabled = false;
+  }
+}
+
+/* ---------------------------------------------------------------------
  * Câblage des événements
  * ------------------------------------------------------------------- */
 function wire() {
@@ -370,7 +518,12 @@ function wire() {
   if (!r) return;
 
   r.querySelectorAll('[data-tab]').forEach((btn) => {
-    btn.addEventListener('click', () => { activeTab = btn.dataset.tab; render(); });
+    btn.addEventListener('click', () => {
+      // En quittant l'onglet absences, on repart de l'état serveur au prochain affichage.
+      if (activeTab === 'absences' && btn.dataset.tab !== 'absences') absencesDraft = null;
+      activeTab = btn.dataset.tab;
+      render();
+    });
   });
 
   r.querySelector('[data-download-pdf]')?.addEventListener('click', () => downloadBookletPdf(booklet));
@@ -383,6 +536,26 @@ function wire() {
 
   const signPer = r.querySelector('[data-sign-period]');
   signPer?.addEventListener('click', () => signPeriod(signPer.dataset.signPeriod, signPer));
+
+  // Absences en structure (édition tuteur).
+  const addAbs = r.querySelector('[data-absence-add]');
+  addAbs?.addEventListener('click', () => {
+    syncAbsencesDraftFromDom();
+    ensureAbsencesDraft().push({ startDate: '', endDate: '', reason: '', justified: false, justificatifUrl: '', validatedBy: '', validatedAt: null });
+    render();
+  });
+
+  r.querySelectorAll('[data-absence-remove]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      syncAbsencesDraftFromDom();
+      const idx = Number(btn.dataset.absenceRemove);
+      if (Array.isArray(absencesDraft) && idx >= 0) absencesDraft.splice(idx, 1);
+      render();
+    });
+  });
+
+  const saveAbs = r.querySelector('[data-absences-save]');
+  saveAbs?.addEventListener('click', () => saveAbsences(saveAbs));
 }
 
 /* ---------------------------------------------------------------------
@@ -418,6 +591,7 @@ export function mountTutorBooklet() {
         return;
       }
       activeTab = 'overview';
+      absencesDraft = null;
       render();
     } catch (error) {
       console.warn('[SBI Tuteur] chargement du livret échoué :', error);

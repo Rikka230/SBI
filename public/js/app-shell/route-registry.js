@@ -256,7 +256,8 @@ function isTeacherShellContext() {
 function isTutorShellContext() {
   const path = getCurrentPath();
   return path === '/tutor/dashboard.html'
-    || path === '/tutor/livret.html';
+    || path === '/tutor/livret.html'
+    || path === '/tutor/documents.html';
 }
 
 function isTutorDashboard(url) {
@@ -265,6 +266,10 @@ function isTutorDashboard(url) {
 
 function isTutorBooklet(url) {
   return normalizePath(url.pathname).toLowerCase() === '/tutor/livret.html';
+}
+
+function isTutorDocuments(url) {
+  return normalizePath(url.pathname).toLowerCase() === '/tutor/documents.html';
 }
 
 function isCurrentAdminIndex() {
@@ -718,7 +723,7 @@ async function mountAdminFormationDocuments({ url }) {
 
   window.__SBI_APP_SHELL_MOUNTING_ADMIN_FORMATION_DOCS = true;
   try {
-    const module = await import('/admin/js/admin-formation-documents.js?v=8.0P.167.289');
+    const module = await import('/admin/js/admin-formation-documents.js?v=8.0P.167.290');
     const cleanup = module.mountAdminFormationDocuments?.();
     if (typeof cleanup === 'function') registerCleanup(cleanup, 'admin-formation-documents');
   } finally {
@@ -742,7 +747,7 @@ async function mountTeacherDocuments({ url }) {
 
   window.__SBI_APP_SHELL_MOUNTING_TEACHER_DOCUMENTS = true;
   try {
-    const module = await import('/teacher/js/teacher-documents.js?v=8.0P.167.282');
+    const module = await import('/teacher/js/teacher-documents.js?v=8.0P.167.290');
     const cleanup = module.mountTeacherDocuments?.();
     if (typeof cleanup === 'function') registerCleanup(cleanup, 'teacher-documents');
   } finally {
@@ -766,7 +771,7 @@ async function mountStudentDocuments({ url }) {
 
   window.__SBI_APP_SHELL_MOUNTING_STUDENT_DOCUMENTS = true;
   try {
-    const module = await import('/student/js/student-documents.js?v=8.0P.167.282');
+    const module = await import('/student/js/student-documents.js?v=8.0P.167.290');
     const cleanup = module.mountStudentDocuments?.();
     if (typeof cleanup === 'function') registerCleanup(cleanup, 'student-documents');
   } finally {
@@ -792,7 +797,7 @@ async function mountAdminBooklets({ url }) {
 
   window.__SBI_APP_SHELL_MOUNTING_ADMIN_BOOKLETS = true;
   try {
-    const module = await import('/admin/js/apprenticeship-booklets.js?v=8.0P.167.289');
+    const module = await import('/admin/js/apprenticeship-booklets.js?v=8.0P.167.290');
     const cleanup = module.mountAdminBooklets?.();
     if (typeof cleanup === 'function') registerCleanup(cleanup, 'admin-booklets');
   } finally {
@@ -816,7 +821,7 @@ async function mountStudentBooklet({ url }) {
 
   window.__SBI_APP_SHELL_MOUNTING_STUDENT_BOOKLET = true;
   try {
-    const module = await import('/student/js/student-livret.js?v=8.0P.167.289');
+    const module = await import('/student/js/student-livret.js?v=8.0P.167.290');
     const cleanup = module.mountStudentBooklet?.();
     if (typeof cleanup === 'function') registerCleanup(cleanup, 'student-livret');
   } finally {
@@ -840,7 +845,7 @@ async function mountTeacherBooklets({ url }) {
 
   window.__SBI_APP_SHELL_MOUNTING_TEACHER_BOOKLETS = true;
   try {
-    const module = await import('/teacher/js/teacher-livrets.js?v=8.0P.167.289');
+    const module = await import('/teacher/js/teacher-livrets.js?v=8.0P.167.290');
     const cleanup = module.mountTeacherBooklets?.();
     if (typeof cleanup === 'function') registerCleanup(cleanup, 'teacher-booklets');
   } finally {
@@ -1107,7 +1112,7 @@ async function mountTutorDashboard({ url }) {
   updateUrlContext(url);
   window.__SBI_APP_SHELL_MOUNTING_TUTOR_DASHBOARD = true;
   try {
-    const module = await import('/tutor/js/tutor-dashboard.js?v=8.0P.167.289');
+    const module = await import('/tutor/js/tutor-dashboard.js?v=8.0P.167.290');
     const cleanup = module.mountTutorDashboard?.();
     if (typeof cleanup === 'function') registerCleanup(cleanup, 'tutor-dashboard');
   } finally {
@@ -1127,13 +1132,33 @@ async function mountTutorBooklet({ url }) {
   updateUrlContext(url);
   window.__SBI_APP_SHELL_MOUNTING_TUTOR_BOOKLET = true;
   try {
-    const module = await import('/tutor/js/tutor-livret.js?v=8.0P.167.289');
+    const module = await import('/tutor/js/tutor-livret.js?v=8.0P.167.290');
     const cleanup = module.mountTutorBooklet?.();
     if (typeof cleanup === 'function') registerCleanup(cleanup, 'tutor-livret');
   } finally {
     window.__SBI_APP_SHELL_MOUNTING_TUTOR_BOOKLET = false;
   }
   return { viewKey: 'tutor:livret' };
+}
+
+async function mountTutorDocuments({ url }) {
+  cleanupCourseEditorV2Artifacts();
+  const doc = await fetchAdminDocument(url);
+  await ensureDocumentStyles(doc, url.href);
+  applyBodyRouteClassesFromDocument(doc, ['sbi-tutor-surface', 'no-right-panel']);
+  replaceMainFromDocument(doc);
+  updateAdminChromeFromDocument(doc, 'Documents de formation - SBI Tuteur');
+  setLeftNavActive('/tutor/documents.html');
+  updateUrlContext(url);
+  window.__SBI_APP_SHELL_MOUNTING_TUTOR_DOCUMENTS = true;
+  try {
+    const module = await import('/tutor/js/tutor-documents.js?v=8.0P.167.290');
+    const cleanup = module.mountTutorDocuments?.();
+    if (typeof cleanup === 'function') registerCleanup(cleanup, 'tutor-documents');
+  } finally {
+    window.__SBI_APP_SHELL_MOUNTING_TUTOR_DOCUMENTS = false;
+  }
+  return { viewKey: 'tutor:documents' };
 }
 
 async function mountTeacherCourses({ url }) {
@@ -1272,6 +1297,7 @@ export function createRouteRegistry() {
 
   routes.push({ id: 'tutor-dashboard', canHandle(url) { return isTutorDashboard(url) && isTutorShellContext(); }, mount: mountTutorDashboard });
   routes.push({ id: 'tutor-livret', canHandle(url) { return isTutorBooklet(url) && isTutorShellContext(); }, mount: mountTutorBooklet });
+  routes.push({ id: 'tutor-documents', canHandle(url) { return isTutorDocuments(url) && isTutorShellContext(); }, mount: mountTutorDocuments });
   routes.push({ id: 'teacher-dashboard', canHandle(url) { return isTeacherDashboard(url) && isTeacherShellContext(); }, mount: mountTeacherDashboard });
   routes.push({ id: 'teacher-course-editor-v2', canHandle(url) { return isTeacherCourseEditorV2(url) && isTeacherShellContext(); }, mount: mountTeacherCourseEditorV2 });
   routes.push({ id: 'teacher-courses', canHandle(url) { return isTeacherCourses(url) && isTeacherShellContext(); }, mount: mountTeacherCourses });

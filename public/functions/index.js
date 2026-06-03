@@ -9788,6 +9788,52 @@ function computeBookletCompletionRate(periods) {
     return Math.round((filled / expected) * 100);
 }
 
+/**
+ * Synchronise les miroirs top-level du livret après édition d'une section.
+ *
+ * L'UI admin/élève/tuteur édite des objets imbriqués (identity, employer, tutor,
+ * formation, contract) MAIS la liste, l'en-tête, les filtres, le calcul de
+ * complétion et le PDF lisent des champs « miroir » top-level (studentName,
+ * employerName, tutorName, formationName/formationTitle, contractStart/contractEnd).
+ * Sans cette synchro, une édition de section ne se reflète pas après rechargement.
+ *
+ * @param {string} section   nom de la section éditée
+ * @param {object} merged    objet de section fusionné (valeurs après édition)
+ * @param {object} update    objet d'update (set merge) à enrichir
+ */
+function syncBookletTopLevelMirror(section, merged, update) {
+    if (!merged || typeof merged !== "object") return;
+    const pick = (...keys) => {
+        for (const k of keys) {
+            const v = merged[k];
+            if (v !== null && v !== undefined && cleanString(v, BOOKLET_FIELD_MAX) !== "") {
+                return cleanString(v, 200);
+            }
+        }
+        return "";
+    };
+    if (section === "identity") {
+        const name = pick("fullName", "name");
+        const composed = name || cleanString(`${merged.prenom || ""} ${merged.nom || ""}`, 200);
+        if (composed) update.studentName = composed;
+    } else if (section === "employer") {
+        const name = pick("name");
+        if (name) update.employerName = name;
+    } else if (section === "tutor") {
+        const name = pick("name", "fullName");
+        if (name) update.tutorName = name;
+    } else if (section === "formation") {
+        const title = pick("formationTitle");
+        if (title) {
+            update.formationName = title;
+            update.formationTitle = title;
+        }
+    } else if (section === "contract") {
+        if (merged.start !== undefined) update.contractStart = cleanString(merged.start, 40);
+        if (merged.end !== undefined) update.contractEnd = cleanString(merged.end, 40);
+    }
+}
+
 exports.generateApprenticeshipBooklet = onCall({
     region: "europe-west1",
     timeoutSeconds: 30,
@@ -9906,6 +9952,19 @@ exports.generateApprenticeshipBooklet = onCall({
     };
 
     await ref.set(booklet);
+
+    // Si un tuteur est rattaché dès la génération et que le livret a une
+    // formation, on l'ajoute aux formationIds du tuteur pour lui ouvrir l'accès
+    // aux documents de la formation (règle Firestore formationDocuments).
+    if (tutorId && formationId) {
+        try {
+            await db.collection("users").doc(tutorId).set({
+                formationIds: admin.firestore.FieldValue.arrayUnion(formationId)
+            }, { merge: true });
+        } catch (error) {
+            console.error("Erreur ajout formationId au tuteur (generate) :", error.message);
+        }
+    }
 
     await safeWriteAccountAuditLog(db, {
         type: "booklet.generated",
@@ -10028,10 +10087,22 @@ exports.updateBookletSection = onCall({
         const path = sectionPathMap[section] || section;
 
         if (section === "absencesCfmfs" || section === "absencesEntreprise" || section === "planningAlternance") {
-            // Les absences sont une liste : on attend fields.items (tableau).
+            // Sections « liste » : on attend fields.items (tableau).
             const items = Array.isArray(fields.items) ? bookletCleanValue(fields.items) : null;
-            if (!items) throw new HttpsError("invalid-argument", "Liste d'absences invalide.");
-            update[path] = items;
+            if (!items) throw new HttpsError("invalid-argument", "Liste invalide.");
+            // IMPORTANT : avec ref.set(update, {merge:true}), une clé pointée
+            // (« absences.entreprise ») est traitée LITTÉRALEMENT (champ avec un
+            // point dans le nom), pas comme un chemin imbriqué. On reconstruit donc
+            // l'objet parent imbriqué en préservant la liste sœur (cfmfs/entreprise).
+            if (path.indexOf(".") !== -1) {
+                const parts = path.split(".");
+                const parent = parts[0];
+                const child = parts[1];
+                const base = (booklet[parent] && typeof booklet[parent] === "object") ? booklet[parent] : {};
+                update[parent] = Object.assign({}, base, { [child]: items });
+            } else {
+                update[path] = items;
+            }
             changedKeys.push("items");
         } else {
             const merged = Object.assign({}, booklet[path] && typeof booklet[path] === "object" ? booklet[path] : {});
@@ -10043,6 +10114,11 @@ exports.updateBookletSection = onCall({
                 throw new HttpsError("permission-denied", "Aucun champ autorisé.");
             }
             update[path] = merged;
+            // Synchronise les miroirs top-level (studentName, employerName,
+            // tutorName, formationName/Title, contractStart/End) pour que la
+            // liste, l'en-tête, les filtres, la complétion et le PDF reflètent
+            // l'édition après rechargement.
+            syncBookletTopLevelMirror(section, merged, update);
         }
     } else {
         // kind === "meta" : réservé admin.
@@ -10050,8 +10126,10 @@ exports.updateBookletSection = onCall({
             throw new HttpsError("permission-denied", "Seuls les administrateurs peuvent modifier ces champs.");
         }
         const allowedMeta = [
-            "studentName", "formationId", "formationName", "promotionId", "promotionName",
-            "employerId", "employerName", "tutorId", "tutorName", "status"
+            "studentName", "formationId", "formationName", "formationTitle",
+            "promotionId", "promotionName", "promotionLabel",
+            "employerId", "employerName", "tutorId", "tutorName",
+            "contractStart", "contractEnd", "status"
         ];
         Object.keys(fields).forEach((key) => {
             if (allowedMeta.includes(key)) {
@@ -10059,6 +10137,13 @@ exports.updateBookletSection = onCall({
                 changedKeys.push(key);
             }
         });
+        // Miroirs croisés : si l'admin édite formationName via meta, alimente
+        // aussi formationTitle (lu par l'en-tête/liste) et inversement.
+        if (changedKeys.includes("formationName") && !changedKeys.includes("formationTitle")) {
+            update.formationTitle = update.formationName;
+        } else if (changedKeys.includes("formationTitle") && !changedKeys.includes("formationName")) {
+            update.formationName = update.formationTitle;
+        }
         if (changedKeys.length === 0) {
             throw new HttpsError("permission-denied", "Aucun champ méta autorisé.");
         }
@@ -10216,6 +10301,20 @@ exports.assignBookletTutor = onCall({
         updatedAt: now,
         updatedBy: caller.uid
     }, { merge: true });
+
+    // Le tuteur doit pouvoir lire les documents de la formation de son apprenti :
+    // on ajoute le formationId du livret à son tableau users/{tutorId}.formationIds
+    // (alimente la règle Firestore formationDocuments : formationId in formationIds).
+    const tutorFormationId = cleanString(booklet.formationId, 200);
+    if (tutorFormationId) {
+        try {
+            await db.collection("users").doc(tutorId).set({
+                formationIds: admin.firestore.FieldValue.arrayUnion(tutorFormationId)
+            }, { merge: true });
+        } catch (error) {
+            console.error("Erreur ajout formationId au tuteur (assign) :", error.message);
+        }
+    }
 
     await safeWriteAccountAuditLog(db, {
         type: "booklet.tutor_assigned",

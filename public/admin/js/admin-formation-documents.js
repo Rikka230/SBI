@@ -52,7 +52,7 @@ import {
   resolvePlanningModel,
   renderPlanningHtml,
   downloadPlanningPdf
-} from '/js/formation-documents/planning-render.js?v=8.0P.167.284';
+} from '/js/formation-documents/planning-render.js?v=8.0P.167.290';
 
 const MAX_BYTES = 50 * 1024 * 1024;
 
@@ -144,6 +144,15 @@ async function loadFormationData() {
   cursusOptions = Array.isArray(cursus) ? cursus : [];
   if (selectedPlanningPromo && !promotions.some((p) => p.id === selectedPlanningPromo)) {
     selectedPlanningPromo = '';
+  }
+  // SBI 8.0P.167.290 — Persistance du planning CIBLÉ : si aucune promo n'est
+  // sélectionnée mais qu'au moins une promotion a déjà un planning enregistré
+  // (PDF ou cursus), on la sélectionne d'office pour que son état « ✓ Enregistré »
+  // s'affiche immédiatement au (re)chargement, comme le planning par défaut.
+  if (!selectedPlanningPromo) {
+    const firstPromoWithPlanning = promotions.find((p) =>
+      documents.some((d) => d.category === 'planning' && d.promotionId === p.id));
+    if (firstPromoWithPlanning) selectedPlanningPromo = firstPromoWithPlanning.id;
   }
 }
 
@@ -364,12 +373,12 @@ function renderCursusPlanningLine(document) {
 }
 
 // Bloc « Générer depuis un cursus » pour une portée donnée (formation ou promotion).
-function renderCursusPicker({ docId, promotionId = '' }) {
+function renderCursusPicker({ docId, promotionId = '', selectedCursusId = '' }) {
   if (!cursusOptions.length) {
     return '<p class="sbi-fdoc-section__hint" style="margin-top:.5rem;">Aucun cursus disponible pour générer un planning.</p>';
   }
   const opts = cursusOptions.map((c) =>
-    `<option value="${escapeHtml(c.id)}">${escapeHtml(c.title)}${c.itemCount ? ` (${c.itemCount})` : ''}</option>`
+    `<option value="${escapeHtml(c.id)}"${selectedCursusId && selectedCursusId === c.id ? ' selected' : ''}>${escapeHtml(c.title)}${c.itemCount ? ` (${c.itemCount})` : ''}</option>`
   ).join('');
   return `
     <div class="sbi-fdoc-upload" style="margin-top:.5rem; flex-wrap:wrap; gap:.5rem;">
@@ -390,7 +399,7 @@ function renderCursusPicker({ docId, promotionId = '' }) {
 function renderPlanningScope({ docId, promotionId = '', uploadLabel }) {
   const existing = findDoc((d) => d.id === docId);
   if (existing && existing.source === 'cursus') {
-    return renderCursusPlanningLine(existing) + renderCursusPicker({ docId, promotionId });
+    return renderCursusPlanningLine(existing) + renderCursusPicker({ docId, promotionId, selectedCursusId: existing.cursusId || '' });
   }
   if (existing) {
     return renderDocLine(existing, { replaceCategory: 'planning', replacePromotion: promotionId, replaceDocId: docId })

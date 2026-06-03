@@ -183,18 +183,26 @@ function buildBookletPrintHtml(booklet = {}) {
 
   // Page de garde (1ʳᵉ page) + page « Rôles ».
   const coverPage = `<section class="cover">
-    <div class="cover-brand">SBI</div>
-    <h1 class="cover-title">Livret d'apprentissage</h1>
-    <p class="cover-sub">Animateur E-Sport</p>
-    <table class="grid cover-grid">
-      ${row(idf.studentName, studentFullName)}
-      ${row(ff.formationTitle, formation.formationTitle || booklet.formationName)}
-      ${row(LABELS.fields.promotionLabel, booklet.promotionName || booklet.promotionLabel)}
-      ${row(LABELS.fields.employerName, booklet.employerName || (booklet.employer || {}).name)}
-      ${row(LABELS.fields.tutorName, booklet.tutorName || (booklet.tutor || {}).name)}
-      ${row(LABELS.fields.contractStart, fmtDate(booklet.contractStart || (booklet.contract || {}).start))}
-      ${row(LABELS.fields.contractEnd, fmtDate(booklet.contractEnd || (booklet.contract || {}).end))}
-    </table>
+    <div class="cover-header">
+      <img class="logo" src="https://firebasestorage.googleapis.com/v0/b/sbi-web-4f6b4.firebasestorage.app/o/site%2Findex%2Flogos%2FLogo_SBI_Tome.png?alt=media" alt="SBI">
+      <div class="brand-block">
+        <img class="wordmark" src="https://firebasestorage.googleapis.com/v0/b/sbi-web-4f6b4.firebasestorage.app/o/site%2Findex%2Flogos%2Fsbi_brand.png?alt=media" alt="Sport Business Institute">
+        <div class="cover-tagline">Apprendre. Progresser. <span class="accent">Performer.</span></div>
+      </div>
+    </div>
+    <div class="cover-body">
+      <h1 class="cover-title">Livret d'apprentissage</h1>
+      <p class="cover-sub">Animateur E-Sport</p>
+      <table class="grid cover-grid">
+        ${row(idf.studentName, studentFullName)}
+        ${row(ff.formationTitle, formation.formationTitle || booklet.formationName)}
+        ${row(LABELS.fields.promotionLabel, booklet.promotionName || booklet.promotionLabel)}
+        ${row(LABELS.fields.employerName, booklet.employerName || (booklet.employer || {}).name)}
+        ${row(LABELS.fields.tutorName, booklet.tutorName || (booklet.tutor || {}).name)}
+        ${row(LABELS.fields.contractStart, fmtDate(booklet.contractStart || (booklet.contract || {}).start))}
+        ${row(LABELS.fields.contractEnd, fmtDate(booklet.contractEnd || (booklet.contract || {}).end))}
+      </table>
+    </div>
   </section>`;
 
   const actorsRows = ROLE_TEXTS.actors
@@ -233,48 +241,72 @@ function buildBookletPrintHtml(booklet = {}) {
 
   return `<!doctype html><html lang="fr"><head><meta charset="UTF-8"><title>${esc(title)}</title>
   <style>
+    /* =========================================================
+       Charte SBI (alignée sur le template email) :
+       police Arial, accent bleu #0051ff, bandeau sombre #050913.
+       ========================================================= */
     *{box-sizing:border-box;}
-    body{font-family:system-ui,Segoe UI,Roboto,sans-serif;color:#1f2937;padding:32px;position:relative;}
-    h1{font-size:22px;margin:0 0 4px;}
-    .sub{color:#6b7280;font-size:13px;margin:0 0 14px;}
-    .sub-inline{color:#6b7280;font-size:13px;font-weight:400;}
-    .status-line{margin:0 0 20px;font-size:12px;}
+    body{font-family:Arial,Helvetica,sans-serif;color:#253047;background:#f3f5f9;padding:32px;position:relative;}
+    h1{font-size:22px;margin:0 0 4px;color:#101828;}
+    .sub{color:#667085;font-size:13px;margin:0 0 14px;}
+    .sub-inline{color:#667085;font-size:13px;font-weight:400;}
+    .status-line{margin:0 0 20px;font-size:12px;color:#344054;}
     .badge{display:inline-block;color:#fff;border-radius:999px;padding:2px 10px;font-size:11px;font-weight:700;vertical-align:middle;}
-    section{margin:0 0 22px;break-inside:avoid;}
-    h2{font-size:16px;margin:18px 0 8px;border-bottom:2px solid #e5e7eb;padding-bottom:4px;}
-    h3{font-size:13px;margin:14px 0 6px;color:#374151;text-transform:uppercase;letter-spacing:.03em;}
+    a{color:#0051ff;}
+    section{margin:0 0 22px;}
+    h2{font-size:16px;margin:18px 0 10px;color:#101828;border-left:4px solid #0051ff;padding:2px 0 2px 10px;}
+    h3{font-size:13px;margin:14px 0 6px;color:#344054;text-transform:uppercase;letter-spacing:.03em;}
     table.grid{width:100%;border-collapse:collapse;font-size:12px;margin:0 0 10px;}
-    table.grid th,table.grid td{text-align:left;padding:6px 9px;border:1px solid #e5e7eb;vertical-align:top;}
-    table.grid th{background:#f3f4f6;color:#374151;font-weight:600;width:32%;}
+    table.grid th,table.grid td{text-align:left;padding:6px 9px;border:1px solid #dce4f2;vertical-align:top;}
+    table.grid th{background:#f7f9fd;color:#0051ff;font-weight:700;width:32%;}
+    table.grid td{color:#253047;}
     table.grid.sigs th{width:33%;text-align:center;}
     table.grid.sigs td{text-align:center;}
     .field{margin:0 0 9px;}
-    .field-label{font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.02em;margin-bottom:2px;}
-    .field-value{font-size:12px;border:1px solid #e5e7eb;border-radius:6px;padding:6px 9px;background:#fafafa;min-height:18px;line-height:1.5;}
+    .field-label{font-size:11px;font-weight:700;color:#344054;text-transform:uppercase;letter-spacing:.02em;margin-bottom:2px;}
+    .field-value{font-size:12px;border:1px solid #dce4f2;border-radius:8px;padding:6px 9px;background:#f7f9fd;min-height:18px;line-height:1.5;color:#253047;}
     .empty{color:#9ca3af;font-style:italic;}
-    .period{border:1px solid #e5e7eb;border-radius:8px;padding:12px 16px;margin-bottom:18px;break-inside:avoid;page-break-inside:avoid;}
-    .guide{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:8px 12px;margin:6px 0 12px;font-size:11.5px;color:#166534;}
+    .period{border:1px solid #dce4f2;border-radius:14px;padding:12px 16px;margin-bottom:18px;}
+    .period h2{margin-top:0;}
+    .guide{background:#f7f9fd;border:1px solid #dce4f2;border-left:4px solid #0051ff;border-radius:8px;padding:8px 12px;margin:6px 0 12px;font-size:11.5px;color:#344054;break-inside:avoid;page-break-inside:avoid;}
+    .guide strong{color:#101828;}
     .guide ul{margin:4px 0 0;padding-left:18px;}
-    .annex .sub{font-size:12px;line-height:1.6;}
-    .foot{margin-top:22px;color:#9ca3af;font-size:11px;}
-    .cover{min-height:88vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;page-break-after:always;break-after:page;}
-    .cover-brand{font-size:54px;font-weight:800;letter-spacing:.12em;color:#84cc16;margin-bottom:8px;}
-    .cover-title{font-size:30px;margin:0;border:none;}
-    .cover-sub{color:#6b7280;font-size:16px;margin:4px 0 28px;}
+    .annex .sub{font-size:12px;line-height:1.6;color:#253047;}
+
+    /* Bandeau d'en-tête de page de garde (clone email) */
+    .cover{min-height:calc(100vh - 28mm);display:flex;flex-direction:column;page-break-after:always;break-after:page;}
+    .cover-header{background:#050913;border-bottom:4px solid #0051ff;border-radius:14px 14px 0 0;padding:24px 30px;display:flex;align-items:center;gap:18px;}
+    .cover-header img.logo{height:48px;width:auto;display:block;border:0;}
+    .cover-header .brand-block{display:flex;flex-direction:column;}
+    .cover-header img.wordmark{width:200px;max-width:200px;height:auto;display:block;border:0;}
+    .cover-tagline{font-size:12px;line-height:18px;color:#8a93a6;font-style:italic;margin-top:8px;}
+    .cover-tagline .accent{color:#0051ff;}
+    .cover-body{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;border:1px solid #dce4f2;border-top:none;border-radius:0 0 14px 14px;background:#fff;padding:28px;}
+    .cover-title{font-size:30px;margin:0;color:#101828;border:none;padding:0;}
+    .cover-sub{color:#667085;font-size:16px;margin:4px 0 28px;}
     .cover-grid{max-width:520px;}
+
     .roles{page-break-after:always;break-after:page;}
     .page-break{page-break-before:always;break-before:page;}
+
+    .foot{margin-top:22px;padding-top:12px;border-top:1px solid #dce4f2;color:#667085;font-size:11px;line-height:1.6;}
+    .foot .accent{color:#0051ff;}
+
     .watermark{
       position:fixed;top:42%;left:50%;transform:translate(-50%,-50%) rotate(-28deg);
-      font-size:74px;font-weight:800;color:rgba(220,38,38,.12);
+      font-size:74px;font-weight:800;color:rgba(0,81,255,.10);
       letter-spacing:.05em;pointer-events:none;z-index:0;white-space:nowrap;
     }
     @media print{
-      body{padding:0;}
+      body{padding:0;background:#fff;}
       /* Marges propres + pas d'en-tête/pied navigateur géré par l'utilisateur. */
       @page{margin:14mm;}
       .watermark{position:fixed;}
-      h2{break-after:avoid;page-break-after:avoid;}
+      /* Titres jamais orphelins en bas de page. */
+      h2,h3{break-after:avoid;page-break-after:avoid;}
+      /* Sous-blocs courts insécables (sans risquer de faire disparaître une période entière). */
+      .sigs,.guide,.field,tr{break-inside:avoid;page-break-inside:avoid;}
+      .roles{break-inside:avoid;page-break-inside:avoid;}
     }
   </style></head><body>
     ${watermark}
@@ -298,7 +330,8 @@ function buildBookletPrintHtml(booklet = {}) {
     <section><h2>${esc(LABELS.sections.signatures)}</h2>${signaturesBlock}</section>
     ${annex}
 
-    <p class="foot">Livret d'apprentissage SBI — Animateur E-Sport — édité le ${esc(fmtDate(new Date()))}</p>
+    <p class="foot">Livret d'apprentissage SBI — Animateur E-Sport — édité le ${esc(fmtDate(new Date()))}<br>
+    <span class="accent">Sport Business Institute</span> · contact@sbigroup.fr · 04.92.90.90.25 · www.sbigroup.fr</p>
     <script>window.onload=function(){setTimeout(function(){window.print();},400);};</script>
   </body></html>`;
 }
@@ -314,7 +347,7 @@ export function downloadBookletPdf(booklet = {}) {
     alert("La fenêtre du livret a été bloquée par le navigateur. Autorise les pop-ups pour ce site, puis réessaie.");
     return;
   }
-  win.document.write('<!doctype html><html lang="fr"><head><meta charset="UTF-8"><title>Livret…</title></head><body style="font-family:system-ui,sans-serif;padding:40px;color:#3a4459;">Génération du livret d\'apprentissage… un instant.</body></html>');
+  win.document.write('<!doctype html><html lang="fr"><head><meta charset="UTF-8"><title>Livret…</title></head><body style="font-family:Arial,Helvetica,sans-serif;padding:40px;color:#253047;">Génération du livret d\'apprentissage… un instant.</body></html>');
   win.document.close();
   const html = buildBookletPrintHtml(booklet);
   win.document.open();

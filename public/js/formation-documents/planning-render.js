@@ -89,11 +89,25 @@ export async function loadCursusOptions({ db, formationId = '' } = {}) {
 
 export async function loadCursusItems({ db, cursusId = '' } = {}) {
   const id = String(cursusId || '').trim();
-  if (!id) return { title: '', items: [] };
-  const snap = await getDoc(doc(db, 'curriculumTemplates', id));
-  if (!snap.exists()) return { title: '', items: [] };
-  const data = snap.data() || {};
-  return { title: data.titre || data.title || data.name || id, items: Array.isArray(data.items) ? data.items : [] };
+  if (!id) return { title: '', items: [], readable: true };
+  // SBI 8.0P.167.290 — La collection curriculumTemplates est en lecture ADMIN
+  // uniquement (firestore.rules). Côté élève/prof, le getDoc est refusé : on
+  // l'absorbe ici (readable:false) pour que resolvePlanningModel puisse tout de
+  // même rendre le plan DATÉ de la promotion (lisible par l'élève/prof concerné)
+  // plutôt que de planter et d'afficher « Planning indisponible ».
+  try {
+    const snap = await getDoc(doc(db, 'curriculumTemplates', id));
+    if (!snap.exists()) return { title: '', items: [], readable: true };
+    const data = snap.data() || {};
+    return {
+      title: data.titre || data.title || data.name || id,
+      items: Array.isArray(data.items) ? data.items : [],
+      readable: true
+    };
+  } catch (error) {
+    console.warn('[SBI Planning] cursus non lisible (lecture admin only) :', error?.message || error);
+    return { title: '', items: [], readable: false };
+  }
 }
 
 // Récupère le coursePlan daté de la première promotion (du jeu fourni) qui en a un.

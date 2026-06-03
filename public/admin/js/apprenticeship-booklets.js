@@ -32,8 +32,8 @@ import {
   loadBooklet,
   loadBookletsForAdmin,
   periodGuide
-} from '/js/booklet/booklet-data.js?v=8.0P.167.289';
-import { downloadBookletPdf } from '/js/booklet/booklet-pdf.js?v=8.0P.167.289';
+} from '/js/booklet/booklet-data.js?v=8.0P.167.290';
+import { downloadBookletPdf } from '/js/booklet/booklet-pdf.js?v=8.0P.167.290';
 
 const ROLE = 'admin';
 
@@ -388,7 +388,7 @@ function metaSectionsConfig(b) {
     {
       section: 'identity', title: LABELS.sections.identity,
       fields: [
-        { key: 'fullName', label: idf.studentName, value: identity.fullName || identity.name || b.studentName, multiline: false, full: true },
+        { key: 'fullName', label: idf.studentName, value: identity.fullName || identity.name || [identity.prenom, identity.nom].filter(Boolean).join(' ').trim() || b.studentName, multiline: false, full: true },
         { key: 'birthDate', label: idf.birthDate, value: identity.birthDate, multiline: false, type: 'date' },
         { key: 'birthPlace', label: idf.birthPlace, value: identity.birthPlace, multiline: false },
         { key: 'email', label: idf.email, value: identity.email || b.studentEmail, multiline: false, type: 'email' },
