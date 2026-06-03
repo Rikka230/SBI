@@ -1,0 +1,83 @@
+/* =======================================================================
+   THÈME TUTEUR / MAÎTRE D'APPRENTISSAGE (LIGHT MODE) — VERT LIME
+   Calqué sur teacher.css, accent vert lime (#84cc16). Chargé APRÈS admin.css
+   pour ramener la surface claire + l'accent identitaire de l'espace /tutor.
+   ======================================================================= */
+
+:root {
+    --bg-body: #f4f7f6;
+    --bg-panel: #ffffff;
+    --bg-card: #ffffff;
+    --border-color: #e2e8f0;
+    --text-main: #1f2937;
+    --text-muted: #6b7280;
+
+    /* Couleur identitaire : vert lime */
+    --accent-lime: #84cc16;
+    --accent-orange: #84cc16 !important;  /* force les styles hérités vers le lime */
+    --accent-blue: #84cc16 !important;
+    --accent-green: #84cc16 !important;
+    --accent-blue-light: rgba(132, 204, 22, 0.12);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+body { background-color: var(--bg-body) !important; color: var(--text-main); }
+
+/* Architecture graphique (grilles, cartes) */
+.hub-grid { display: grid; grid-template-columns: minmax(300px, 1fr) 2.5fr; gap: 2.5rem; align-items: start; width: 100%; }
+.hub-card {
+    background: var(--bg-card);
+    border-radius: 16px;
+    padding: 1.8rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+    border: 1px solid var(--border-color);
+}
+.section-title { margin-top: 0; font-size: 1.2rem; color: var(--text-main); display: flex; align-items: center; gap: 10px; }
+.section-icon { width: 36px; height: 36px; border-radius: 10px; background: #f3f4f6; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; }
+
+/* Onglets */
+.student-sub-nav { display: flex; gap: 1.5rem; border-bottom: 2px solid var(--border-color); margin-bottom: 2rem; overflow-x: auto; }
+.student-sub-nav-item { padding-bottom: 0.8rem; cursor: pointer; color: var(--text-muted); font-weight: bold; border-bottom: 3px solid transparent; transition: 0.2s; white-space: nowrap; }
+.student-sub-nav-item:hover { color: var(--text-main); }
+.student-sub-nav-item.active { color: var(--accent-lime); border-bottom-color: var(--accent-lime); }
+.student-view { display: none; animation: fadeIn 0.3s; }
+.student-view.active { display: flex; flex-direction: column; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Formulaires */
+.form-group { margin-bottom: 1.5rem; }
+.form-group label { display: block; font-weight: 600; margin-bottom: 0.5rem; color: var(--text-main); font-size: 0.95rem; }
+.prof-input {
+    width: 100%; padding: 0.8rem 1rem; border: 1px solid var(--border-color);
+    border-radius: 8px; background: var(--bg-card); color: var(--text-main);
+    font-family: inherit; font-size: 0.95rem; outline: none; transition: 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+}
+.prof-input:focus { border-color: var(--accent-lime); background: #fff; box-shadow: 0 0 0 3px rgba(132, 204, 22, 0.15); }
+
+/* Boutons */
+.action-btn {
+    background: var(--accent-lime); color: #14310a; font-weight: bold; border: none;
+    padding: 0.8rem 1.5rem; border-radius: 8px; cursor: pointer; transition: 0.2s;
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+}
+.action-btn:hover { opacity: 0.9; transform: translateY(-2px); }
+.action-btn.danger { background: rgba(239, 68, 68, 0.1); color: var(--accent-red, #ef4444); border: 1px solid rgba(239, 68, 68, 0.3); }
+.action-btn.danger:hover { background: var(--accent-red, #ef4444); color: white; }
+
+/* Éléments de liste / cartes cliquables */
+.course-item {
+    background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px;
+    padding: 1rem 1.5rem; display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 0.8rem; cursor: pointer; transition: 0.2s;
+}
+.course-item:hover { border-color: var(--accent-lime); background: var(--accent-blue-light); }
+
+/* Barre de progression */
+.xp-bar-bg { width: 100%; height: 8px; background: #e5e7eb; border-radius: 10px; overflow: hidden; margin-top: 1rem; }
+.xp-bar-fill { height: 100%; background: var(--accent-lime) !important; width: 0%; transition: width 0.5s ease; }
+
+@media (max-width: 1024px) {
+    .hub-grid { grid-template-columns: 1fr; }
+    .search-bar-top { display: none; }
+    .content-wrapper { padding: 1.5rem; }
+}
