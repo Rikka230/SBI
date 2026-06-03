@@ -1,0 +1,183 @@
+/* SBI 8.0P.167.306 — Bottom-nav flottante (présentation mobile/tablette des espaces de rôle).
+ *
+ * Visible UNIQUEMENT sur student/teacher/tutor en ≤1024px. L'admin (cockpit) n'est
+ * jamais touché : toutes les règles sont préfixées par body.sbi-{student|teacher|tutor}-space.
+ * Couleur portée par --space-accent (déjà posé par body.sbi-*-space).
+ */
+
+/* Masquée par défaut (desktop ≥1025px : on garde le panneau latéral). */
+.sbi-bottom-nav,
+.sbi-bn-sheet,
+.sbi-bn-sheet-backdrop { display: none; }
+
+@media (max-width: 1024px) {
+  /* ── Bascule de présentation : on cache le panneau latéral + son hamburger,
+       on rend la pleine largeur au contenu, et on affiche la bottom-nav.
+       Gardée par body.sbi-bottom-nav-active (posée par le composant uniquement
+       quand la barre est réellement montée → jamais sur les pages immersives
+       type cours-viewer, jamais sur l'admin). ── */
+  body.sbi-bottom-nav-active #left-panel { display: none !important; }
+
+  body.sbi-bottom-nav-active #main-content {
+    margin-left: 0 !important;
+    /* Place pour la capsule flottante (≈ 86px) + safe-area. */
+    padding-bottom: calc(94px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  body.sbi-bottom-nav-active .top-bar { left: 0 !important; }
+
+  body.sbi-bottom-nav-active .mobile-toggle.left-toggle { display: none !important; }
+
+  body.sbi-bottom-nav-active .sbi-bottom-nav { display: flex; }
+}
+
+/* ── Capsule flottante ── */
+.sbi-bottom-nav {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  z-index: 6000; /* au-dessus du toast de navigation (5000), sous le badge de version */
+  box-sizing: border-box;
+  width: min(560px, calc(100vw - 24px));
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.4rem;
+  background: rgba(255, 255, 255, 0.74);
+  -webkit-backdrop-filter: blur(20px) saturate(165%);
+  backdrop-filter: blur(20px) saturate(165%);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 22px;
+  box-shadow: 0 14px 44px rgba(15, 23, 42, 0.2), 0 2px 8px rgba(15, 23, 42, 0.08);
+}
+
+.sbi-bn-item {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-height: 50px;
+  padding: 0.35rem 0.2rem;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  text-decoration: none;
+  font: inherit;
+  color: var(--text-muted, #6b7280);
+  border-radius: 16px;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.2s ease, transform 0.12s ease;
+}
+
+.sbi-bn-item:active { transform: scale(0.94); }
+.sbi-bn-item svg { width: 22px; height: 22px; fill: currentColor; display: block; }
+
+.sbi-bn-label {
+  font-size: 0.64rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sbi-bn-item.is-active { color: var(--space-accent, #2a57ff); }
+
+/* Indicateur coulissant (tint d'accent), positionné en inline par JS. */
+.sbi-bn-indicator {
+  position: absolute;
+  top: 0.4rem;
+  bottom: 0.4rem;
+  left: 0;
+  width: 0;
+  z-index: 0;
+  border-radius: 16px;
+  opacity: 0;
+  pointer-events: none;
+  background: rgba(42, 87, 255, 0.14);
+  transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.2s ease;
+}
+
+body.sbi-student-space .sbi-bn-indicator { background: rgba(42, 87, 255, 0.14); }
+body.sbi-teacher-space .sbi-bn-indicator { background: rgba(249, 115, 22, 0.17); }
+body.sbi-tutor-space   .sbi-bn-indicator { background: rgba(132, 204, 22, 0.20); }
+
+/* ── Feuille « Plus » ── */
+.sbi-bn-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 5999;
+  background: rgba(15, 23, 42, 0.4);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+.sbi-bn-sheet-backdrop.is-open { opacity: 1; pointer-events: auto; }
+
+.sbi-bn-sheet {
+  position: fixed;
+  left: 50%;
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%) translateY(140%);
+  z-index: 6001;
+  box-sizing: border-box;
+  width: min(560px, calc(100vw - 24px));
+  padding: 0.5rem;
+  background: rgba(255, 255, 255, 0.97);
+  -webkit-backdrop-filter: blur(22px) saturate(160%);
+  backdrop-filter: blur(22px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 22px;
+  box-shadow: 0 -10px 44px rgba(15, 23, 42, 0.24);
+  transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.sbi-bn-sheet.is-open { transform: translateX(-50%) translateY(0); }
+
+.sbi-bn-sheet-grip {
+  width: 40px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.18);
+  margin: 0.1rem auto 0.5rem;
+}
+
+.sbi-bn-sheet-item {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 50px;
+  padding: 0.7rem 0.9rem;
+  border: 0;
+  background: none;
+  border-radius: 14px;
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  color: var(--text-main, #1f2937);
+  -webkit-tap-highlight-color: transparent;
+}
+.sbi-bn-sheet-item:hover { background: rgba(15, 23, 42, 0.05); }
+.sbi-bn-sheet-item:active { background: rgba(15, 23, 42, 0.09); }
+.sbi-bn-sheet-item svg { width: 20px; height: 20px; fill: currentColor; flex-shrink: 0; }
+.sbi-bn-sheet-item.is-active { color: var(--space-accent, #2a57ff); }
+.sbi-bn-sheet-logout { color: #ef4444; }
+
+@media (prefers-reduced-motion: reduce) {
+  .sbi-bn-indicator,
+  .sbi-bn-sheet,
+  .sbi-bn-sheet-backdrop,
+  .sbi-bn-item { transition: none; }
+}
