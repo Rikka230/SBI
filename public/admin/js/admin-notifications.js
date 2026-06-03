@@ -84,6 +84,9 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (currentUserProfile.role === 'teacher') {
                 bgColor = "fef3c7";
                 textColor = "f59e0b";
+            } else if (currentUserProfile.role === 'tutor') {
+                bgColor = "ecfccb";
+                textColor = "4d7c0f";
             }
 
             const avatarUrl = currentUserProfile.photoURL || `https://ui-avatars.com/api/?name=${displayName}&background=${bgColor}&color=${textColor}`;
@@ -128,6 +131,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (window.location.pathname.includes('student')) {
                     activeColor = 'var(--accent-green)';
+                }
+
+                if (window.location.pathname.includes('/tutor/')) {
+                    activeColor = 'var(--accent-lime, #84cc16)';
                 }
 
                 if (window.location.pathname.includes('teacher')) {
@@ -348,7 +355,7 @@ function updateRedBadges(count, attempt) {
     const bellBadge = document.getElementById('bell-badge');
     const avatarBadge = document.getElementById('avatar-badge');
 
-    if (!bellBadge && document.querySelector('teacher-top-bar, admin-top-bar, student-top-bar')) {
+    if (!bellBadge && document.querySelector('teacher-top-bar, admin-top-bar, student-top-bar, tutor-top-bar')) {
         // 8.0P.167.248 (audit) : borne d'essais pour éviter une boucle infinie de timers.
         if (attempt < 30) setTimeout(() => updateRedBadges(count, attempt + 1), 100);
         return;
@@ -534,7 +541,7 @@ function renderNotificationsList(notifs, attempt) {
     attempt = attempt || 0;
     const container = document.getElementById('notifications-list');
 
-    if (!container && document.querySelector('teacher-top-bar, admin-top-bar, student-top-bar')) {
+    if (!container && document.querySelector('teacher-top-bar, admin-top-bar, student-top-bar, tutor-top-bar')) {
         // 8.0P.167.248 (audit) : borne d'essais pour éviter une boucle infinie de timers.
         if (attempt < 30) setTimeout(() => renderNotificationsList(notifs, attempt + 1), 100);
         return;

@@ -18,6 +18,13 @@
     --accent-blue: #84cc16 !important;
     --accent-green: #84cc16 !important;
     --accent-blue-light: rgba(132, 204, 22, 0.12);
+
+    /* Accent « espace » (sbi-internal-theme) : sans classe body sbi-*-space, il
+       retombait sur le bleu par défaut → on le force en lime dès le 1er rendu. */
+    --space-accent: #84cc16;
+    --space-accent-deep: #4d7c0f;
+    --space-accent-soft: rgba(132, 204, 22, 0.14);
+    --space-accent-pale: #f2ffd6;
 }
 
 *, *::before, *::after { box-sizing: border-box; }

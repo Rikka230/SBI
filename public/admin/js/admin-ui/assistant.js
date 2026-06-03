@@ -10,12 +10,13 @@ export function initAssistantPrototype() {
     const isAdmin = path.startsWith('/admin/');
     const isTeacher = path.startsWith('/teacher/');
     const isStudent = path.startsWith('/student/');
+    const isTutor = path.startsWith('/tutor/');
 
-    if (!isAdmin && !isTeacher && !isStudent) return;
+    if (!isAdmin && !isTeacher && !isStudent && !isTutor) return;
 
     primeAssistantAudioOnGesture();
 
-    const config = getAssistantConfig({ isAdmin, isTeacher, isStudent });
+    const config = getAssistantConfig({ isAdmin, isTeacher, isStudent, isTutor });
     const assistant = document.createElement('div');
     assistant.className = 'sbi-assistant';
     assistant.innerHTML = buildAssistantHTML(config);
@@ -27,7 +28,18 @@ export function initAssistantPrototype() {
     showAssistantIntroOnce(assistant);
 }
 
-function getAssistantConfig({ isTeacher, isStudent }) {
+function getAssistantConfig({ isTeacher, isStudent, isTutor }) {
+    if (isTutor) {
+        return {
+            eyebrow: 'Assistant tuteur',
+            title: 'Suivi de tes apprentis',
+            text: 'Retrouve ici les livrets de tes apprentis, les périodes à compléter et tes notifications.',
+            primary: 'Mes apprentis',
+            primaryUrl: '/tutor/livret.html',
+            badge: ''
+        };
+    }
+
     if (isTeacher) {
         return {
             eyebrow: 'Assistant prof',
