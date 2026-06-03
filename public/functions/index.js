@@ -11,6 +11,7 @@ const { defineSecret } = require("firebase-functions/params");
 const admin = require("firebase-admin");
 const crypto = require("crypto");
 const { Readable } = require("stream");
+const bookletPdfBuilder = require("./booklet-pdf-builder");
 
 admin.initializeApp();
 
@@ -10332,4 +10333,23 @@ exports.assignBookletTutor = onCall({
     });
 
     return { success: true, tutorId, tutorName };
+});
+
+/**
+ * Construit le DOSSIER PDF complet du livret : corps (HTML rendu via Puppeteer +
+ * paged.js, sommaire à pages réelles) + annexes PDF de la formation fusionnées
+ * (pdf-lib). Retourne une URL signée V4. Droits = lecture du livret (admin /
+ * élève propriétaire / tuteur assigné / prof de la formation). Chromium étant
+ * lourd : mémoire 2 GiB, timeout long.
+ */
+exports.buildApprenticeshipBookletPdf = onCall({
+    region: "europe-west1",
+    timeoutSeconds: 300,
+    memory: "2GiB"
+}, async (request) => {
+    const db = admin.firestore();
+    const caller = await requireActiveCourseCaller(request, db);
+    return bookletPdfBuilder.build({
+        admin, db, caller, data: request.data || {}, HttpsError, cleanString
+    });
 });

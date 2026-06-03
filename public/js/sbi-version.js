@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.292',
+  version: '8.0P.167.293',
   branch: 'main',
-  channel: 'Livret apprentissage : Phase B + correctifs (vague 2 multi-agents)',
-  stage: 'Correctifs critiques : (1) fix 500 validation/verrou periode (serverTimestamp interdit dans un array -> Timestamp.now()) ; (2) edition admin enfin fonctionnelle (fieldHtml evaluait le droit sur la cle de champ au lieu du nom de section -> tout etait en lecture seule) ; (3) acces prof aux livrets par formationId (la requete par promotionId etait toujours refusee). Phase B vague 2 : PDF (livret + planning) impression couleurs forcees (print-color-adjust:exact) ; PDF planning brande comme le livret ; la section planning du livret recupere le planning de Documents de formation (resolveBookletPlanningModel) ; editeur ABSENCES admin (centre + structure, justificatif/validation).',
+  channel: 'Livret apprentissage : dossier PDF fusionne (Cloud Function Puppeteer + pdf-lib)',
+  stage: 'DOSSIER PDF complet : nouvelle Cloud Function buildApprenticeshipBookletPdf (Puppeteer + paged.js + pdf-lib, memoire 2GiB) qui rend le corps du livret en PDF (sommaire a numeros de pages REELS, 2 passes paged.js), fusionne les ANNEXES PDF de la formation (documents marques includeInApprenticeshipBooklet, ordre/titre/visibilite/version), et retourne une URL signee V4. Annexes filtrees par role (admin/prof/eleve/tuteur). Annexe manquante = note "Document non joint" (non bloquant). UI admin Documents de formation : bloc "Annexe livret" (case + titre sommaire + ordre + visibilite + version). 4 pages cablees : bouton "Telecharger le dossier (PDF)", admin a aussi "Livret seul". Fallback impression navigateur si la CF echoue. Pas de about:blank / en-tete navigateur (displayHeaderFooter:false, printBackground, A4).',
   updatedAt: '2026-06-03',
-  label: 'SBI 8.0P.167.292 - Livret : fix validation/edition admin/prof + PDF couleurs impression + planning branding + absences admin'
+  label: 'SBI 8.0P.167.293 - Livret : dossier PDF fusionne (corps + sommaire pagine + annexes formation)'
 };
 
 export function getSbiVersionLabel() {

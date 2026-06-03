@@ -32,9 +32,9 @@ import {
   loadBooklet,
   loadBookletsForAdmin,
   periodGuide
-} from '/js/booklet/booklet-data.js?v=8.0P.167.292';
-import { downloadBookletPdf } from '/js/booklet/booklet-pdf.js?v=8.0P.167.292';
-import { resolveBookletPlanningModel } from '/js/formation-documents/planning-render.js?v=8.0P.167.292';
+} from '/js/booklet/booklet-data.js?v=8.0P.167.293';
+import { requestMergedBookletPdf } from '/js/booklet/booklet-pdf.js?v=8.0P.167.293';
+import { resolveBookletPlanningModel } from '/js/formation-documents/planning-render.js?v=8.0P.167.293';
 
 const ROLE = 'admin';
 
@@ -351,7 +351,7 @@ function renderCreateView() {
  * Édition d'un livret
  * ============================================================ */
 function fieldHtml({ key, label, value, target, multiline = true, type = 'text', full = false }) {
-  // 8.0P.167.292 — CORRECTIF MAJEUR : pour une SECTION, le droit s'évalue sur le
+  // 8.0P.167.293 — CORRECTIF MAJEUR : pour une SECTION, le droit s'évalue sur le
   // NOM DE SECTION (target.section), pas sur la clé de champ. FIELD_PERMISSIONS.section
   // mappe des noms de section -> true (identity/employer/tutor/contract/formation…),
   // donc canEditField(role,'section', cleDeChamp) renvoyait toujours false et TOUS les
@@ -770,7 +770,9 @@ function renderEditView() {
 
     <div class="sbi-booklet-actions" style="margin:0 0 .5rem;">
       <button type="button" class="sbi-booklet-btn ghost" data-action="back">← Retour à la liste</button>
-      <button type="button" class="sbi-booklet-btn" data-action="pdf">Télécharger le PDF</button>
+      <button type="button" class="sbi-booklet-btn primary" data-action="pdf-full">Télécharger le dossier complet (PDF + annexes)</button>
+      <button type="button" class="sbi-booklet-btn" data-action="pdf-bookletonly">Livret seul (sans annexes)</button>
+      <span class="sbi-booklet-status" data-pdf-status hidden style="margin-left:.5rem;"></span>
     </div>
 
     <div class="sbi-booklet-completion">
@@ -839,7 +841,8 @@ function onClick(e) {
     if (action === 'create') { mode = 'create'; render(); return; }
     if (action === 'back') { mode = 'list'; selectedId = ''; selectedBooklet = null; render(); return; }
     if (action === 'create-submit') { handleCreate(actionEl); return; }
-    if (action === 'pdf') { if (selectedBooklet) handlePdf(); return; }
+    if (action === 'pdf-full') { if (selectedBooklet) handlePdf(actionEl, true); return; }
+    if (action === 'pdf-bookletonly') { if (selectedBooklet) handlePdf(actionEl, false); return; }
     if (action === 'assign-tutor') { handleAssignTutor(actionEl); return; }
   }
 
@@ -1033,23 +1036,41 @@ async function handleAssignTutor(button) {
   }
 }
 
-async function handlePdf() {
+async function handlePdf(button, withAnnexes) {
   const booklet = selectedBooklet;
   if (!booklet) return;
-  // Résout le planning « Documents de formation » (promotion/cursus) de façon
-  // tolérante : si la résolution échoue, on génère le PDF sans planning.
-  const p = await resolveBookletPlanningModel({ db, booklet }).catch(() => null);
-  downloadBookletPdf(
-    booklet,
-    p
+  const r = root();
+  const statusEl = r?.querySelector('[data-pdf-status]');
+  // Désactive les deux boutons PDF pendant la génération (CF 10-30 s : cold start).
+  const pdfButtons = r ? [...r.querySelectorAll('[data-action="pdf-full"],[data-action="pdf-bookletonly"]')] : [];
+  pdfButtons.forEach((b) => { b.disabled = true; });
+  setLocalStatus(statusEl, 'Génération du dossier PDF en cours… (jusqu\'à 30 s)');
+  try {
+    // Résout le planning « Documents de formation » (promotion/cursus) de façon
+    // tolérante : si la résolution échoue, on génère le PDF sans planning.
+    const p = await resolveBookletPlanningModel({ db, booklet }).catch(() => null);
+    const planningOpts = p
       ? {
           planningModel: p.model,
           planningTitle: p.title,
           planningPromotionName: p.promotionName,
           planningUploadedUrl: p.uploadedUrl
         }
-      : {}
-  );
+      : {};
+    const res = await requestMergedBookletPdf(booklet, { withAnnexes, ...planningOpts });
+    if (res?.fallback) {
+      setLocalStatus(statusEl, 'Service serveur indisponible : ouverture de la version imprimable.', 'muted');
+    } else if (res?.missing && res.missing.length) {
+      setLocalStatus(statusEl, `Dossier généré. Documents non joints : ${res.missing.join(', ')}.`, 'muted');
+    } else {
+      setLocalStatus(statusEl, 'Dossier PDF généré.', 'success');
+    }
+  } catch (error) {
+    console.error('[SBI Livret admin] génération PDF impossible :', error);
+    setLocalStatus(statusEl, error?.message || 'Génération impossible.', 'error');
+  } finally {
+    pdfButtons.forEach((b) => { b.disabled = false; });
+  }
 }
 
 /* ============================================================

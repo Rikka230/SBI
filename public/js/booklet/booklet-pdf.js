@@ -14,8 +14,8 @@
  * =======================================================================
  */
 
-import { LABELS, PERIOD_FIELDS, STATUS_META, ROLE_TEXTS, periodGuide, escapeHtml as esc, formatDate as fmtDate } from '/js/booklet/booklet-data.js';
-import { renderPlanningHtml } from '/js/formation-documents/planning-render.js?v=8.0P.167.292';
+import { LABELS, PERIOD_FIELDS, STATUS_META, ROLE_TEXTS, periodGuide, escapeHtml as esc, formatDate as fmtDate, buildBookletPdf } from '/js/booklet/booklet-data.js';
+import { renderPlanningHtml } from '/js/formation-documents/planning-render.js?v=8.0P.167.293';
 
 // Champs "tuteur" d'une période (rendus à part, après le bloc apprenti).
 const TUTOR_PERIOD_FIELDS = [
@@ -79,7 +79,9 @@ function renderPlanningAlternance(list) {
   return `<table class="grid"><thead><tr><th>Intitulé</th><th>Lieu</th><th>Période</th></tr></thead><tbody>${trs}</tbody></table>`;
 }
 
-function renderPeriod(period = {}, index = 0) {
+// `tocTitle` (optionnel) : pose data-toc="<titre>" sur la section pour le
+// sommaire serveur (buildBookletBodyHtml). Sans effet pour l'impression navigateur.
+function renderPeriod(period = {}, index = 0, tocTitle = '') {
   const label = esc(period.label || `Période ${index + 1}`);
   const dates = [fmtDate(period.startDate), fmtDate(period.endDate)].filter(Boolean).join(' → ');
   const st = STATUS_META[period.status] || null;
@@ -115,7 +117,8 @@ function renderPeriod(period = {}, index = 0) {
     ? `<div class="guide"><strong>${esc(guide.title)}</strong><ul>${guide.hints.map((h) => `<li>${esc(h)}</li>`).join('')}</ul></div>`
     : '';
 
-  return `<section class="period">
+  const tocAttr = tocTitle ? ` data-toc="${esc(tocTitle)}"` : '';
+  return `<section class="period"${tocAttr}>
     <h2>${label}${dates ? ` <span class="sub-inline">${esc(dates)}</span>` : ''} ${statusBadge}</h2>
     ${guideHtml}
     <h3>${esc(LABELS.roles.student)} — ${esc(LABELS.sections.project)}</h3>
@@ -150,11 +153,99 @@ function renderBookletPlanningSection(booklet = {}, options = {}) {
   return renderPlanningAlternance(booklet.planningAlternance);
 }
 
-function buildBookletPrintHtml(booklet = {}, options = {}) {
+/* =====================================================================
+ * CSS partagé entre l'impression navigateur et le rendu serveur (paged.js).
+ * Extrait pour ne pas dupliquer la charte entre buildBookletPrintHtml et
+ * buildBookletBodyHtml.
+ * ===================================================================== */
+const BOOKLET_PDF_STYLE = `
+    /* =========================================================
+       Charte SBI (alignée sur le template email) :
+       police Arial, accent bleu #0051ff, bandeau sombre #050913.
+       ========================================================= */
+    *{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact;}
+    html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact;}
+    body{font-family:Arial,Helvetica,sans-serif;color:#253047;background:#f3f5f9;padding:32px;position:relative;}
+    h1{font-size:22px;margin:0 0 4px;color:#101828;}
+    .sub{color:#667085;font-size:13px;margin:0 0 14px;}
+    .sub-inline{color:#667085;font-size:13px;font-weight:400;}
+    .status-line{margin:0 0 20px;font-size:12px;color:#344054;}
+    .badge{display:inline-block;color:#fff;border-radius:999px;padding:2px 10px;font-size:11px;font-weight:700;vertical-align:middle;}
+    a{color:#0051ff;}
+    section{margin:0 0 22px;}
+    h2{font-size:16px;margin:18px 0 10px;color:#101828;border-left:4px solid #0051ff;padding:2px 0 2px 10px;}
+    h3{font-size:13px;margin:14px 0 6px;color:#344054;text-transform:uppercase;letter-spacing:.03em;}
+    table.grid{width:100%;border-collapse:collapse;font-size:12px;margin:0 0 10px;}
+    table.grid th,table.grid td{text-align:left;padding:6px 9px;border:1px solid #dce4f2;vertical-align:top;}
+    table.grid th{background:#f7f9fd;color:#0051ff;font-weight:700;width:32%;}
+    table.grid td{color:#253047;}
+    table.grid.sigs th{width:33%;text-align:center;}
+    table.grid.sigs td{text-align:center;}
+    .field{margin:0 0 9px;}
+    .field-label{font-size:11px;font-weight:700;color:#344054;text-transform:uppercase;letter-spacing:.02em;margin-bottom:2px;}
+    .field-value{font-size:12px;border:1px solid #dce4f2;border-radius:8px;padding:6px 9px;background:#f7f9fd;min-height:18px;line-height:1.5;color:#253047;}
+    .empty{color:#9ca3af;font-style:italic;}
+    .period{border:1px solid #dce4f2;border-radius:14px;padding:12px 16px;margin-bottom:18px;}
+    .period h2{margin-top:0;}
+    .guide{background:#f7f9fd;border:1px solid #dce4f2;border-left:4px solid #0051ff;border-radius:8px;padding:8px 12px;margin:6px 0 12px;font-size:11.5px;color:#344054;break-inside:avoid;page-break-inside:avoid;}
+    .guide strong{color:#101828;}
+    .guide ul{margin:4px 0 0;padding-left:18px;}
+    .annex .sub{font-size:12px;line-height:1.6;color:#253047;}
+
+    /* Bandeau d'en-tête de page de garde (clone email) */
+    .cover{min-height:calc(100vh - 28mm);display:flex;flex-direction:column;page-break-after:always;break-after:page;}
+    .cover-header{background:#050913;border-bottom:4px solid #0051ff;border-radius:14px 14px 0 0;padding:24px 30px;display:flex;align-items:center;gap:18px;}
+    .cover-header img.logo{height:48px;width:auto;display:block;border:0;}
+    .cover-header .brand-block{display:flex;flex-direction:column;}
+    .cover-header img.wordmark{width:200px;max-width:200px;height:auto;display:block;border:0;}
+    .cover-tagline{font-size:12px;line-height:18px;color:#8a93a6;font-style:italic;margin-top:8px;}
+    .cover-tagline .accent{color:#0051ff;}
+    .cover-body{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;border:1px solid #dce4f2;border-top:none;border-radius:0 0 14px 14px;background:#fff;padding:28px;}
+    .cover-title{font-size:30px;margin:0;color:#101828;border:none;padding:0;}
+    .cover-sub{color:#667085;font-size:16px;margin:4px 0 28px;}
+    .cover-grid{max-width:520px;}
+
+    .roles{page-break-after:always;break-after:page;}
+    .page-break{page-break-before:always;break-before:page;}
+
+    .foot{margin-top:22px;padding-top:12px;border-top:1px solid #dce4f2;color:#667085;font-size:11px;line-height:1.6;}
+    .foot .accent{color:#0051ff;}
+
+    .watermark{
+      position:fixed;top:42%;left:50%;transform:translate(-50%,-50%) rotate(-28deg);
+      font-size:74px;font-weight:800;color:rgba(0,81,255,.10);
+      letter-spacing:.05em;pointer-events:none;z-index:0;white-space:nowrap;
+    }
+    @media print{
+      /* Forçage des couleurs : sans cela le bandeau sombre, les badges et les
+         cartouches colorés disparaissent (les navigateurs n'impriment pas les
+         fonds par défaut). */
+      *,html,body,.cover-header,.badge,.field-value,table.grid th,.guide{
+        -webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact;
+      }
+      body{padding:0;background:#fff;}
+      /* Marges propres + pas d'en-tête/pied navigateur géré par l'utilisateur. */
+      @page{margin:14mm;}
+      .watermark{position:fixed;}
+      /* Titres jamais orphelins en bas de page. */
+      h2,h3{break-after:avoid;page-break-after:avoid;}
+      /* Sous-blocs courts insécables (sans risquer de faire disparaître une période entière). */
+      .sigs,.guide,.field,tr{break-inside:avoid;page-break-inside:avoid;}
+      .roles{break-inside:avoid;page-break-inside:avoid;}
+    }`;
+
+/**
+ * Fabrique les fragments HTML communs du livret (cover, rôles, sections,
+ * périodes, signatures, annexe). `withToc` ajoute les attributs data-toc et le
+ * placeholder de sommaire/intro annexes attendus par la Cloud Function.
+ */
+function buildBookletFragments(booklet = {}, options = {}, { withToc = false } = {}) {
   const st = STATUS_META[booklet.status] || STATUS_META.draft;
   const isLocked = booklet.status === 'locked';
   const title = "Livret d'apprentissage";
   const sub = [booklet.studentName, booklet.formationTitle, booklet.promotionLabel].filter(Boolean).map(esc).join(' — ');
+  // Helper de marquage du sommaire (no-op si withToc=false).
+  const toc = (label) => (withToc ? ` data-toc="${esc(label)}"` : '');
 
   // En-tête : identité détaillée
   const identity = booklet.identity || {};
@@ -233,15 +324,19 @@ function buildBookletPrintHtml(booklet = {}, options = {}) {
   const actorsRows = ROLE_TEXTS.actors
     .map((a) => `<tr><th>${esc(a.role)}</th><td>${esc(a.text)}</td></tr>`).join('');
   const rolesPage = `<section class="roles">
-    <h2>Rôle du livret</h2>
+    <h2${toc("Rôle du livret")}>Rôle du livret</h2>
     <p class="sub">${esc(ROLE_TEXTS.bookletRole)}</p>
-    <h2>Rôle de chacun</h2>
+    <h2${toc("Rôle de chacun")}>Rôle de chacun</h2>
     <table class="grid">${actorsRows}</table>
   </section>`;
 
   const periods = Array.isArray(booklet.periods) ? booklet.periods : [];
   const periodsHtml = periods.length
-    ? periods.map((p, i) => renderPeriod(p, i)).join('')
+    ? periods.map((p, i) => {
+        // Titre de sommaire : vrai label de période s'il existe, sinon « Période N ».
+        const tocTitle = withToc ? (String(p && p.label || '').trim() || `Période ${i + 1}`) : '';
+        return renderPeriod(p, i, tocTitle);
+      }).join('')
     : `<p class="empty">Aucune période enregistrée.</p>`;
 
   // Signatures / validation globales
@@ -256,7 +351,7 @@ function buildBookletPrintHtml(booklet = {}, options = {}) {
     ? `<div class="watermark">DOCUMENT PROVISOIRE</div>`
     : '';
 
-  const annex = `<section class="annex">
+  const annex = `<section class="annex"${toc(LABELS.annexTitle)}>
     <h2>${esc(LABELS.annexTitle)}</h2>
     <p class="sub">Le livret d'apprentissage accompagne le parcours de l'apprenti Animateur E-Sport :
     structuration des objectifs pédagogiques, suivi des situations d'animation et des projets,
@@ -264,107 +359,78 @@ function buildBookletPrintHtml(booklet = {}, options = {}) {
     pédagogique SBI à chacune des périodes.</p>
   </section>`;
 
-  return `<!doctype html><html lang="fr"><head><meta charset="UTF-8"><title>${esc(title)}</title>
-  <style>
-    /* =========================================================
-       Charte SBI (alignée sur le template email) :
-       police Arial, accent bleu #0051ff, bandeau sombre #050913.
-       ========================================================= */
-    *{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact;}
-    html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact;}
-    body{font-family:Arial,Helvetica,sans-serif;color:#253047;background:#f3f5f9;padding:32px;position:relative;}
-    h1{font-size:22px;margin:0 0 4px;color:#101828;}
-    .sub{color:#667085;font-size:13px;margin:0 0 14px;}
-    .sub-inline{color:#667085;font-size:13px;font-weight:400;}
-    .status-line{margin:0 0 20px;font-size:12px;color:#344054;}
-    .badge{display:inline-block;color:#fff;border-radius:999px;padding:2px 10px;font-size:11px;font-weight:700;vertical-align:middle;}
-    a{color:#0051ff;}
-    section{margin:0 0 22px;}
-    h2{font-size:16px;margin:18px 0 10px;color:#101828;border-left:4px solid #0051ff;padding:2px 0 2px 10px;}
-    h3{font-size:13px;margin:14px 0 6px;color:#344054;text-transform:uppercase;letter-spacing:.03em;}
-    table.grid{width:100%;border-collapse:collapse;font-size:12px;margin:0 0 10px;}
-    table.grid th,table.grid td{text-align:left;padding:6px 9px;border:1px solid #dce4f2;vertical-align:top;}
-    table.grid th{background:#f7f9fd;color:#0051ff;font-weight:700;width:32%;}
-    table.grid td{color:#253047;}
-    table.grid.sigs th{width:33%;text-align:center;}
-    table.grid.sigs td{text-align:center;}
-    .field{margin:0 0 9px;}
-    .field-label{font-size:11px;font-weight:700;color:#344054;text-transform:uppercase;letter-spacing:.02em;margin-bottom:2px;}
-    .field-value{font-size:12px;border:1px solid #dce4f2;border-radius:8px;padding:6px 9px;background:#f7f9fd;min-height:18px;line-height:1.5;color:#253047;}
-    .empty{color:#9ca3af;font-style:italic;}
-    .period{border:1px solid #dce4f2;border-radius:14px;padding:12px 16px;margin-bottom:18px;}
-    .period h2{margin-top:0;}
-    .guide{background:#f7f9fd;border:1px solid #dce4f2;border-left:4px solid #0051ff;border-radius:8px;padding:8px 12px;margin:6px 0 12px;font-size:11.5px;color:#344054;break-inside:avoid;page-break-inside:avoid;}
-    .guide strong{color:#101828;}
-    .guide ul{margin:4px 0 0;padding-left:18px;}
-    .annex .sub{font-size:12px;line-height:1.6;color:#253047;}
-
-    /* Bandeau d'en-tête de page de garde (clone email) */
-    .cover{min-height:calc(100vh - 28mm);display:flex;flex-direction:column;page-break-after:always;break-after:page;}
-    .cover-header{background:#050913;border-bottom:4px solid #0051ff;border-radius:14px 14px 0 0;padding:24px 30px;display:flex;align-items:center;gap:18px;}
-    .cover-header img.logo{height:48px;width:auto;display:block;border:0;}
-    .cover-header .brand-block{display:flex;flex-direction:column;}
-    .cover-header img.wordmark{width:200px;max-width:200px;height:auto;display:block;border:0;}
-    .cover-tagline{font-size:12px;line-height:18px;color:#8a93a6;font-style:italic;margin-top:8px;}
-    .cover-tagline .accent{color:#0051ff;}
-    .cover-body{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;border:1px solid #dce4f2;border-top:none;border-radius:0 0 14px 14px;background:#fff;padding:28px;}
-    .cover-title{font-size:30px;margin:0;color:#101828;border:none;padding:0;}
-    .cover-sub{color:#667085;font-size:16px;margin:4px 0 28px;}
-    .cover-grid{max-width:520px;}
-
-    .roles{page-break-after:always;break-after:page;}
-    .page-break{page-break-before:always;break-before:page;}
-
-    .foot{margin-top:22px;padding-top:12px;border-top:1px solid #dce4f2;color:#667085;font-size:11px;line-height:1.6;}
-    .foot .accent{color:#0051ff;}
-
-    .watermark{
-      position:fixed;top:42%;left:50%;transform:translate(-50%,-50%) rotate(-28deg);
-      font-size:74px;font-weight:800;color:rgba(0,81,255,.10);
-      letter-spacing:.05em;pointer-events:none;z-index:0;white-space:nowrap;
-    }
-    @media print{
-      /* Forçage des couleurs : sans cela le bandeau sombre, les badges et les
-         cartouches colorés disparaissent (les navigateurs n'impriment pas les
-         fonds par défaut). */
-      *,html,body,.cover-header,.badge,.field-value,table.grid th,.guide{
-        -webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact;
-      }
-      body{padding:0;background:#fff;}
-      /* Marges propres + pas d'en-tête/pied navigateur géré par l'utilisateur. */
-      @page{margin:14mm;}
-      .watermark{position:fixed;}
-      /* Titres jamais orphelins en bas de page. */
-      h2,h3{break-after:avoid;page-break-after:avoid;}
-      /* Sous-blocs courts insécables (sans risquer de faire disparaître une période entière). */
-      .sigs,.guide,.field,tr{break-inside:avoid;page-break-inside:avoid;}
-      .roles{break-inside:avoid;page-break-inside:avoid;}
-    }
-  </style></head><body>
-    ${watermark}
-    ${coverPage}
-    ${rolesPage}
-
-    <h1>${esc(title)}</h1>
+  // Corps « cœur » : tout ce qui suit la page de garde / placeholder de sommaire.
+  // Identique pour l'impression navigateur et le rendu serveur (hors marqueurs toc).
+  const bodyCore = `
+    <h1${toc("Livret d'apprentissage")}>${esc(title)}</h1>
     ${sub ? `<p class="sub">${sub}</p>` : ''}
     <p class="status-line">Statut : <span class="badge" style="background:${st.color};">${esc(st.label)}</span></p>
 
-    <section><h2>${esc(LABELS.sections.identity)}</h2>${headTable}</section>
+    <section${toc(LABELS.sections.identity)}><h2>${esc(LABELS.sections.identity)}</h2>${headTable}</section>
     <section><h2>${esc(LABELS.sections.formation)}</h2>${formationTable}</section>
     <section><h2>${esc(LABELS.sections.employer)}</h2>${employerTable}</section>
     <section><h2>${esc(LABELS.sections.tutor)}</h2>${tutorTable}</section>
-    <section><h2>${esc(LABELS.sections.planningAlternance)}</h2>${planningBlock}</section>
-    <section><h2>${esc(LABELS.sections.absencesCfmfs)} / ${esc(LABELS.sections.absencesEntreprise)}</h2>${absencesBlock}</section>
+    <section${toc(LABELS.sections.planningAlternance)}><h2>${esc(LABELS.sections.planningAlternance)}</h2>${planningBlock}</section>
+    <section${toc(LABELS.sections.absencesCfmfs)}><h2>${esc(LABELS.sections.absencesCfmfs)} / ${esc(LABELS.sections.absencesEntreprise)}</h2>${absencesBlock}</section>
 
     <h2 class="page-break">${esc(LABELS.sections.periods)}</h2>
     ${periodsHtml}
 
-    <section><h2>${esc(LABELS.sections.signatures)}</h2>${signaturesBlock}</section>
-    ${annex}
+    <section${toc(LABELS.sections.signatures)}><h2>${esc(LABELS.sections.signatures)}</h2>${signaturesBlock}</section>
+    ${annex}`;
 
-    <p class="foot">Livret d'apprentissage SBI — Animateur E-Sport — édité le ${esc(fmtDate(new Date()))}<br>
-    <span class="accent">Sport Business Institute</span> · contact@sbigroup.fr · 04.92.90.90.25 · www.sbigroup.fr</p>
+  const foot = `<p class="foot">Livret d'apprentissage SBI — Animateur E-Sport — édité le ${esc(fmtDate(new Date()))}<br>
+    <span class="accent">Sport Business Institute</span> · contact@sbigroup.fr · 04.92.90.90.25 · www.sbigroup.fr</p>`;
+
+  return { title, watermark, coverPage, rolesPage, bodyCore, foot };
+}
+
+/**
+ * Document HTML complet pour l'IMPRESSION NAVIGATEUR (avec auto-print).
+ * Assemble les fragments + la feuille de style partagée.
+ */
+function buildBookletPrintHtml(booklet = {}, options = {}) {
+  const f = buildBookletFragments(booklet, options, { withToc: false });
+  return `<!doctype html><html lang="fr"><head><meta charset="UTF-8"><title>${esc(f.title)}</title>
+  <style>${BOOKLET_PDF_STYLE}
+  </style></head><body>
+    ${f.watermark}
+    ${f.coverPage}
+    ${f.rolesPage}
+    ${f.bodyCore}
+    ${f.foot}
     <script>window.onload=function(){setTimeout(function(){window.print();},400);};</script>
+  </body></html>`;
+}
+
+/**
+ * SBI 8.0P.167.293 — Document HTML COMPLET du CORPS du livret destiné au rendu
+ * serveur (Cloud Function buildApprenticeshipBookletPdf, Puppeteer + paged.js).
+ *
+ * Identique en charte/contenu à buildBookletPrintHtml, MAIS :
+ *  · pas de <script> d'auto-impression ;
+ *  · <div data-sbi-toc-placeholder></div> juste après la page de garde (la
+ *    fonction y injecte le sommaire à pages réelles) ;
+ *  · attributs data-toc="<titre exact>" sur chaque section listée au sommaire ;
+ *  · <div data-sbi-annex-intro></div> juste avant </body> (intro des annexes).
+ *
+ * @param {object} booklet  document apprenticeshipBooklets
+ * @param {object} [options] Planning réel : { planningModel, planningTitle,
+ *   planningPromotionName, planningUploadedUrl }.
+ * @returns {string} document HTML complet (<!doctype html>…</html>).
+ */
+export function buildBookletBodyHtml(booklet = {}, options = {}) {
+  const f = buildBookletFragments(booklet, options, { withToc: true });
+  return `<!doctype html><html lang="fr"><head><meta charset="UTF-8"><title>${esc(f.title)}</title>
+  <style>${BOOKLET_PDF_STYLE}
+  </style></head><body>
+    ${f.watermark}
+    ${f.coverPage}
+    <div data-sbi-toc-placeholder></div>
+    ${f.rolesPage}
+    ${f.bodyCore}
+    ${f.foot}
+    <div data-sbi-annex-intro></div>
   </body></html>`;
 }
 
@@ -388,4 +454,43 @@ export function downloadBookletPdf(booklet = {}, options = {}) {
   win.document.open();
   win.document.write(html);
   win.document.close();
+}
+
+/**
+ * SBI 8.0P.167.293 — Demande au serveur le DOSSIER PDF complet : corps du livret
+ * rendu en PDF (sommaire à pages réelles) PUIS fusion des annexes PDF autorisées
+ * de la formation. Ouvre l'URL signée renvoyée dans un nouvel onglet.
+ *
+ * Robuste : en cas d'erreur (function indisponible / timeout / cold start), on
+ * retombe sur l'impression navigateur (downloadBookletPdf) pour que l'utilisateur
+ * obtienne quand même son livret.
+ *
+ * @param {object} booklet  document apprenticeshipBooklets
+ * @param {object} [options] { withAnnexes=true, planningModel, planningTitle,
+ *   planningPromotionName, planningUploadedUrl }.
+ * @returns {Promise<{ ok:boolean, fallback?:boolean, missing?:string[] }>}
+ */
+export async function requestMergedBookletPdf(booklet = {}, options = {}) {
+  const withAnnexes = options.withAnnexes !== false;
+  const bookletId = booklet.id || booklet.studentId;
+  try {
+    const bodyHtml = buildBookletBodyHtml(booklet, options);
+    const result = await buildBookletPdf({ bookletId, withAnnexes, bodyHtml });
+    const data = (result && result.data) || {};
+    if (!data.url) throw new Error('Réponse serveur sans URL de PDF.');
+
+    window.open(data.url, '_blank');
+
+    const missing = Array.isArray(data.missing) ? data.missing : [];
+    if (missing.length) {
+      console.warn('[SBI Livret] Documents non joints au dossier PDF :', missing);
+    }
+    return { ok: true, missing };
+  } catch (error) {
+    // Repli impression navigateur : l'utilisateur a quand même le livret (sans
+    // les annexes fusionnées, qui exigent le serveur).
+    console.warn('[SBI Livret] Génération serveur du dossier PDF indisponible, repli sur l\'impression navigateur :', error?.message || error);
+    downloadBookletPdf(booklet, options || {});
+    return { ok: false, fallback: true };
+  }
 }

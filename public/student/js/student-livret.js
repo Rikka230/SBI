@@ -25,9 +25,9 @@ import {
   statusMeta,
   updateBookletSection,
   loadBookletByStudent
-} from '/js/booklet/booklet-data.js?v=8.0P.167.292';
-import { downloadBookletPdf } from '/js/booklet/booklet-pdf.js?v=8.0P.167.292';
-import { resolveBookletPlanningModel } from '/js/formation-documents/planning-render.js?v=8.0P.167.292';
+} from '/js/booklet/booklet-data.js?v=8.0P.167.293';
+import { requestMergedBookletPdf } from '/js/booklet/booklet-pdf.js?v=8.0P.167.293';
+import { resolveBookletPlanningModel } from '/js/formation-documents/planning-render.js?v=8.0P.167.293';
 
 /* =====================================================================
  * État du module
@@ -359,8 +359,9 @@ function renderExport() {
       <p class="sbi-booklet-section__hint">Télécharge une version imprimable de ton livret (complétion actuelle : ${rate}%).</p>
       ${missing.length ? `<p class="sbi-booklet-section__hint">${missing.length} information(s) encore à compléter.</p>` : ''}
       <div class="sbi-booklet-actions">
-        <button type="button" class="sbi-booklet-btn primary" data-download-pdf>Télécharger le PDF</button>
+        <button type="button" class="sbi-booklet-btn primary" data-download-pdf>Télécharger le dossier (PDF)</button>
       </div>
+      <p class="sbi-booklet-status" data-pdf-status hidden></p>
     </div>`;
 }
 
@@ -520,19 +521,32 @@ async function signPeriod(periodKey, button) {
 /* =====================================================================
  * Export PDF (récupère le planning réel de « Documents de formation »)
  * ===================================================================== */
-async function exportPdf() {
+async function exportPdf(button) {
   if (!booklet) return;
+  const statusEl = root()?.querySelector('[data-pdf-status]');
+  const setPdfStatus = (msg, tone = 'muted') => {
+    if (statusEl) { statusEl.hidden = !msg; statusEl.textContent = msg || ''; statusEl.dataset.tone = tone; }
+  };
+  if (button) button.disabled = true;
+  setPdfStatus('Génération du dossier PDF en cours… (jusqu\'à 30 s)');
   try {
-    const p = await resolveBookletPlanningModel({ db, booklet });
-    downloadBookletPdf(booklet, p ? {
+    // Récupère le planning réel de « Documents de formation » (tolérant).
+    const p = await resolveBookletPlanningModel({ db, booklet }).catch(() => null);
+    const planningOpts = p ? {
       planningModel: p.model,
       planningTitle: p.title,
       planningPromotionName: p.promotionName,
       planningUploadedUrl: p.uploadedUrl
-    } : {});
+    } : {};
+    // Les annexes autorisées à l'élève sont filtrées côté serveur.
+    const res = await requestMergedBookletPdf(booklet, { withAnnexes: true, ...planningOpts });
+    if (res?.fallback) setPdfStatus('Service serveur indisponible : ouverture de la version imprimable.');
+    else setPdfStatus('Dossier PDF généré.', 'success');
   } catch (error) {
-    console.warn('[SBI Livret élève] planning indisponible pour le PDF :', error);
-    downloadBookletPdf(booklet);
+    console.warn('[SBI Livret élève] génération du dossier PDF impossible :', error);
+    setPdfStatus(error?.message || 'Génération impossible.', 'error');
+  } finally {
+    if (button) button.disabled = false;
   }
 }
 
@@ -560,7 +574,7 @@ function bindEvents() {
     if (signBtn) { signPeriod(signBtn.dataset.signPeriod, signBtn); return; }
 
     const pdfBtn = e.target.closest('[data-download-pdf]');
-    if (pdfBtn) { exportPdf(); return; }
+    if (pdfBtn) { exportPdf(pdfBtn); return; }
   });
 }
 

@@ -25,9 +25,9 @@ import {
   statusMeta,
   updateBookletSection,
   loadBooklet
-} from '/js/booklet/booklet-data.js?v=8.0P.167.292';
-import { downloadBookletPdf } from '/js/booklet/booklet-pdf.js?v=8.0P.167.292';
-import { resolveBookletPlanningModel } from '/js/formation-documents/planning-render.js?v=8.0P.167.292';
+} from '/js/booklet/booklet-data.js?v=8.0P.167.293';
+import { requestMergedBookletPdf } from '/js/booklet/booklet-pdf.js?v=8.0P.167.293';
+import { resolveBookletPlanningModel } from '/js/formation-documents/planning-render.js?v=8.0P.167.293';
 
 let mounted = false;
 let mountedView = null;
@@ -37,7 +37,7 @@ let currentUid = null;
 let booklet = null;
 let activeTab = 'overview'; // overview | section:<name> | absences | period:<id>
 
-// SBI 8.0P.167.292 — Tampon local des absences en structure (édition tuteur).
+// SBI 8.0P.167.293 — Tampon local des absences en structure (édition tuteur).
 // Reflète booklet.absences.entreprise + modifications non encore enregistrées.
 let absencesDraft = null;
 
@@ -277,7 +277,7 @@ function periodViewHtml(periodId) {
 }
 
 /* ---------------------------------------------------------------------
- * SBI 8.0P.167.292 — Absences en structure (édition tuteur)
+ * SBI 8.0P.167.293 — Absences en structure (édition tuteur)
  * ------------------------------------------------------------------- */
 // Les absences sont au niveau livret (booklet.absences.entreprise) et stockées
 // en LISTE d'items. Le tuteur a le droit serveur (section absencesEntreprise).
@@ -372,7 +372,8 @@ function render() {
   if (!r) return;
   r.innerHTML = `${headHtml()}
     <div class="sbi-booklet-actions" style="margin:0 0 .5rem;">
-      <button type="button" class="sbi-booklet-btn ghost" data-download-pdf>Télécharger PDF</button>
+      <button type="button" class="sbi-booklet-btn ghost" data-download-pdf>Télécharger le dossier (PDF)</button>
+      <span class="sbi-booklet-status" data-pdf-status hidden style="margin-left:.5rem;"></span>
     </div>
     ${tabsHtml()}
     ${bodyHtml()}`;
@@ -454,7 +455,7 @@ async function signPeriod(periodId, btn) {
 }
 
 /* ---------------------------------------------------------------------
- * SBI 8.0P.167.292 — Sauvegarde des absences en structure
+ * SBI 8.0P.167.293 — Sauvegarde des absences en structure
  * ------------------------------------------------------------------- */
 // Lit l'état courant des inputs dans le DOM vers le tampon (avant ajout/suppr/save).
 function syncAbsencesDraftFromDom() {
@@ -514,19 +515,31 @@ async function saveAbsences(btn) {
 /* ---------------------------------------------------------------------
  * Export PDF (récupère le planning réel de « Documents de formation »)
  * ------------------------------------------------------------------- */
-async function exportPdf() {
+async function exportPdf(button) {
   if (!booklet) return;
+  const statusEl = root()?.querySelector('[data-pdf-status]');
+  const setPdfStatus = (msg, tone = 'muted') => {
+    if (statusEl) { statusEl.hidden = !msg; statusEl.textContent = msg || ''; statusEl.dataset.tone = tone; }
+  };
+  if (button) button.disabled = true;
+  setPdfStatus('Génération du dossier PDF en cours… (jusqu\'à 30 s)');
   try {
-    const p = await resolveBookletPlanningModel({ db, booklet });
-    downloadBookletPdf(booklet, p ? {
+    const p = await resolveBookletPlanningModel({ db, booklet }).catch(() => null);
+    const planningOpts = p ? {
       planningModel: p.model,
       planningTitle: p.title,
       planningPromotionName: p.promotionName,
       planningUploadedUrl: p.uploadedUrl
-    } : {});
+    } : {};
+    // Les annexes autorisées au tuteur sont filtrées côté serveur.
+    const res = await requestMergedBookletPdf(booklet, { withAnnexes: true, ...planningOpts });
+    if (res?.fallback) setPdfStatus('Service serveur indisponible : ouverture de la version imprimable.');
+    else setPdfStatus('Dossier PDF généré.', 'success');
   } catch (error) {
-    console.warn('[SBI Tuteur] planning indisponible pour le PDF :', error);
-    downloadBookletPdf(booklet);
+    console.warn('[SBI Tuteur] génération du dossier PDF impossible :', error);
+    setPdfStatus(error?.message || 'Génération impossible.', 'error');
+  } finally {
+    if (button) button.disabled = false;
   }
 }
 
@@ -546,7 +559,8 @@ function wire() {
     });
   });
 
-  r.querySelector('[data-download-pdf]')?.addEventListener('click', () => exportPdf());
+  const pdfBtn = r.querySelector('[data-download-pdf]');
+  pdfBtn?.addEventListener('click', () => exportPdf(pdfBtn));
 
   const saveSec = r.querySelector('[data-save-section]');
   saveSec?.addEventListener('click', () => saveSection(saveSec.dataset.saveSection, saveSec));

@@ -400,6 +400,13 @@ export function assignBookletTutor(payload) {
   return bookletCallable('assignBookletTutor')(payload);
 }
 
+// SBI 8.0P.167.293 — Génération serveur du dossier PDF (corps rendu via
+// Puppeteer + paged.js, sommaire à pages réelles), puis fusion des annexes PDF
+// de la formation. Renvoie { success, url, fileName, bodyPages, annexCount, missing }.
+export function buildBookletPdf(payload) {
+  return bookletCallable('buildApprenticeshipBookletPdf')(payload);
+}
+
 /* =====================================================================
  * 8. Loaders Firestore (lecture directe autorisée par rôle)
  * ===================================================================== */

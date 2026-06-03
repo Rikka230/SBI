@@ -52,7 +52,7 @@ import {
   resolvePlanningModel,
   renderPlanningHtml,
   downloadPlanningPdf
-} from '/js/formation-documents/planning-render.js?v=8.0P.167.292';
+} from '/js/formation-documents/planning-render.js?v=8.0P.167.293';
 
 const MAX_BYTES = 50 * 1024 * 1024;
 
@@ -145,7 +145,7 @@ async function loadFormationData() {
   if (selectedPlanningPromo && !promotions.some((p) => p.id === selectedPlanningPromo)) {
     selectedPlanningPromo = '';
   }
-  // SBI 8.0P.167.292 — Persistance du planning CIBLÉ : si aucune promo n'est
+  // SBI 8.0P.167.293 — Persistance du planning CIBLÉ : si aucune promo n'est
   // sélectionnée mais qu'au moins une promotion a déjà un planning enregistré
   // (PDF ou cursus), on la sélectionne d'office pour que son état « ✓ Enregistré »
   // s'affiche immédiatement au (re)chargement, comme le planning par défaut.
@@ -257,6 +257,55 @@ async function handleDelete(document) {
     console.error('[SBI Formation Docs admin] suppression impossible :', error);
     render();
     flash(error?.message || 'Suppression impossible.', 'error');
+  } finally {
+    busy = false;
+  }
+}
+
+// SBI 8.0P.167.287 — Enregistre les réglages « Annexe livret d'apprentissage »
+// d'un document PDF : écrit EXACTEMENT les 5 champs attendus par la Cloud Function
+// de fusion (includeInApprenticeshipBooklet, appendixTitle, appendixOrder Number,
+// appendixVisibility, version), puis recharge la vue.
+async function handleSaveAppendix(docId) {
+  if (busy || !docId) return;
+  const document = findDoc((d) => d.id === docId);
+  if (!document || !isPdfFileDocument(document)) {
+    flash('Document PDF introuvable.', 'error');
+    return;
+  }
+  const r = root();
+  const sel = (attr) => r?.querySelector(`[${attr}][data-doc-id="${cssAttr(docId)}"]`);
+
+  const include = Boolean(sel('data-fdoc-appendix-include')?.checked);
+  const appendixTitleRaw = (sel('data-fdoc-appendix-title')?.value || '').trim();
+  const appendixTitle = appendixTitleRaw || document.title || '';
+  const orderRaw = sel('data-fdoc-appendix-order')?.value;
+  const orderNum = Number(orderRaw);
+  const appendixOrder = Number.isFinite(orderNum) ? orderNum : 1;
+  const visRaw = sel('data-fdoc-appendix-visibility')?.value || 'tous';
+  const appendixVisibility = ['tous', 'eleve', 'tuteur', 'admin'].includes(visRaw) ? visRaw : 'tous';
+  const version = (sel('data-fdoc-appendix-version')?.value || '').trim();
+
+  const VALID_VISIBILITIES = ['tous', 'eleve', 'tuteur', 'admin'];
+  if (!VALID_VISIBILITIES.includes(appendixVisibility)) return;
+
+  busy = true;
+  flash('Enregistrement de l\'annexe…');
+  try {
+    await setDoc(doc(db, FORMATION_DOCS_COLLECTION, docId), {
+      includeInApprenticeshipBooklet: include,
+      appendixTitle,
+      appendixOrder,
+      appendixVisibility,
+      version
+    }, { merge: true });
+    await loadFormationData();
+    render();
+    flash('Réglages d\'annexe enregistrés.', 'success');
+  } catch (error) {
+    console.error('[SBI Formation Docs admin] enregistrement annexe impossible :', error);
+    render();
+    flash(error?.message || 'Enregistrement impossible.', 'error');
   } finally {
     busy = false;
   }
@@ -410,6 +459,79 @@ function renderPlanningScope({ docId, promotionId = '', uploadLabel }) {
     + renderCursusPicker({ docId, promotionId });
 }
 
+// SBI 8.0P.167.287 — Détecte une entrée document basée sur un fichier PDF :
+// elle doit posséder un fichier (filePath ou downloadURL) ET être un PDF
+// (contentType contenant 'pdf' ou fileName se terminant par .pdf).
+function isPdfFileDocument(document) {
+  if (!document) return false;
+  const hasFile = Boolean(document.filePath || document.downloadURL);
+  if (!hasFile) return false;
+  const byMime = /pdf/i.test(String(document.contentType || ''));
+  const byExt = /\.pdf$/i.test(String(document.fileName || ''));
+  return byMime || byExt;
+}
+
+// SBI 8.0P.167.287 — Bloc « Annexe livret d'apprentissage » : permet de marquer
+// un document PDF comme annexe à fusionner automatiquement à la suite du livret.
+// Écrit 5 champs (cf. handleSaveAppendix) consommés par une Cloud Function de
+// fusion PDF. Réservé aux documents PDF (cf. isPdfFileDocument).
+function renderAppendixBlock(document) {
+  if (!isPdfFileDocument(document)) return '';
+  const id = escapeHtml(document.id);
+  const checked = document.includeInApprenticeshipBooklet ? ' checked' : '';
+  const appendixTitle = escapeHtml(document.appendixTitle || document.title || '');
+  const order = Number.isFinite(Number(document.appendixOrder)) && document.appendixOrder !== '' && document.appendixOrder != null
+    ? Number(document.appendixOrder)
+    : 1;
+  const visibility = String(document.appendixVisibility || 'tous');
+  const version = escapeHtml(document.version || '');
+  const visOptions = [
+    ['tous', 'Tous'],
+    ['eleve', 'Élève'],
+    ['tuteur', 'Tuteur'],
+    ['admin', 'Admin uniquement']
+  ].map(([value, label]) =>
+    `<option value="${value}"${visibility === value ? ' selected' : ''}>${escapeHtml(label)}</option>`
+  ).join('');
+
+  return `
+    <div class="sbi-fdoc-appendix" data-fdoc-appendix data-doc-id="${id}"
+      style="margin:.4rem 0 .75rem; padding:.6rem .75rem; border:1px solid var(--border-color,#333); border-radius:8px; display:flex; flex-direction:column; gap:.5rem;">
+      <label style="display:flex; align-items:center; gap:.5rem; font-weight:600;">
+        <input type="checkbox" data-fdoc-appendix-include data-doc-id="${id}"${checked}>
+        Ajouter automatiquement au livret d'apprentissage
+      </label>
+      <div class="sbi-fdoc-upload" style="flex-wrap:wrap; gap:.5rem; margin:0;">
+        <label style="display:flex; flex-direction:column; gap:.2rem; flex:1 1 220px;">
+          <span class="sbi-fdoc-section__hint" style="margin:0;">Titre dans le sommaire</span>
+          <input type="text" class="sbi-fdoc-input" data-fdoc-appendix-title data-doc-id="${id}"
+            placeholder="Titre dans le sommaire" value="${appendixTitle}">
+        </label>
+        <label style="display:flex; flex-direction:column; gap:.2rem; flex:0 1 120px;">
+          <span class="sbi-fdoc-section__hint" style="margin:0;">Ordre dans les annexes</span>
+          <input type="number" class="sbi-fdoc-input" data-fdoc-appendix-order data-doc-id="${id}"
+            min="0" step="1" value="${order}">
+        </label>
+        <label style="display:flex; flex-direction:column; gap:.2rem; flex:0 1 160px;">
+          <span class="sbi-fdoc-section__hint" style="margin:0;">Visibilité</span>
+          <select class="sbi-fdoc-select" data-fdoc-appendix-visibility data-doc-id="${id}">
+            ${visOptions}
+          </select>
+        </label>
+        <label style="display:flex; flex-direction:column; gap:.2rem; flex:1 1 160px;">
+          <span class="sbi-fdoc-section__hint" style="margin:0;">Version / date (optionnel)</span>
+          <input type="text" class="sbi-fdoc-input" data-fdoc-appendix-version data-doc-id="${id}"
+            placeholder="Ex. v1 · 2026-06-03" value="${version}">
+        </label>
+      </div>
+      <div class="sbi-fdoc-upload" style="margin:0;">
+        <button type="button" class="sbi-fdoc-btn primary" data-fdoc-appendix-save data-doc-id="${id}">
+          Enregistrer l'annexe
+        </button>
+      </div>
+    </div>`;
+}
+
 function renderDocLine(document, { replaceCategory, replacePromotion = '', replaceDocId } = {}) {
   const meta = [formatSize(document.size), document.fileName].filter(Boolean).map(escapeHtml).join(' · ');
   return `
@@ -430,7 +552,8 @@ function renderDocLine(document, { replaceCategory, replacePromotion = '', repla
         </label>
         <button type="button" class="sbi-fdoc-btn danger" data-fdoc-delete="${escapeHtml(document.id)}">Supprimer</button>
       </div>
-    </div>`;
+    </div>
+    ${renderAppendixBlock(document)}`;
 }
 
 function renderUpload({ category, promotionId = '', docId, label = 'Ajouter un fichier' }) {
@@ -659,6 +782,13 @@ function bindEvents() {
       const promotionId = btn.dataset.promotion || '';
       const select = r.querySelector(`[data-fdoc-cursus-select][data-doc-id="${cssAttr(docId)}"]`);
       handleSetCursusPlanning({ docId, promotionId, cursusId: select?.value || '' });
+    });
+  });
+
+  // SBI 8.0P.167.287 — Enregistrement des réglages d'annexe livret (PDF).
+  r.querySelectorAll('[data-fdoc-appendix-save]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      handleSaveAppendix(btn.dataset.docId);
     });
   });
 

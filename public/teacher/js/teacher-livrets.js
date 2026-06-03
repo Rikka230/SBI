@@ -18,9 +18,9 @@ import {
   LABELS, PERIOD_FIELDS, periodFieldLabel,
   escapeHtml, formatDate, computeCompletion, statusMeta,
   validateBookletPeriod, loadBookletsForTeacher
-} from '/js/booklet/booklet-data.js?v=8.0P.167.292';
-import { downloadBookletPdf } from '/js/booklet/booklet-pdf.js?v=8.0P.167.292';
-import { resolveBookletPlanningModel } from '/js/formation-documents/planning-render.js?v=8.0P.167.292';
+} from '/js/booklet/booklet-data.js?v=8.0P.167.293';
+import { requestMergedBookletPdf } from '/js/booklet/booklet-pdf.js?v=8.0P.167.293';
+import { resolveBookletPlanningModel } from '/js/formation-documents/planning-render.js?v=8.0P.167.293';
 import { loadAssignedFormationsForUser } from '/js/learning-access.js';
 
 const TEACHER_ROLES = ['teacher', 'prof', 'professeur', 'enseignant'];
@@ -99,7 +99,7 @@ async function loadScope() {
 async function loadData() {
   const { promotionIds, formationIds, promotionNameById, formationNameById } = await loadScope();
 
-  // 8.0P.167.292 — Lecture UNIQUEMENT par formationId : la règle Firestore
+  // 8.0P.167.293 — Lecture UNIQUEMENT par formationId : la règle Firestore
   // n'autorise le prof à lire un livret que via `formation.profs` (fonction
   // formationDocHasCurrentUser), PAS via promotionId (qui exige que la promotion
   // soit dans le user.promotionIds — champ élève, jamais prof). La requête par
@@ -187,7 +187,8 @@ function renderDetail() {
         </div>
         <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
           ${badge(sm.label)}
-          <button type="button" class="sbi-booklet-btn ghost" data-booklet-pdf>Télécharger PDF</button>
+          <button type="button" class="sbi-booklet-btn ghost" data-booklet-pdf>Télécharger le dossier (PDF)</button>
+          <span class="sbi-booklet-status" data-pdf-status hidden></span>
         </div>
       </div>
       <div class="sbi-booklet-completion">
@@ -293,20 +294,32 @@ async function handleValidate(periodId, decision) {
   }
 }
 
-/* Export PDF d'un livret : récupère le planning réel de « Documents de formation ». */
-async function exportPdf(b) {
+/* Export PDF d'un livret : dossier complet (corps + annexes autorisées au prof,
+ * filtrées côté serveur). Récupère le planning réel de « Documents de formation ». */
+async function exportPdf(b, button) {
   if (!b) return;
+  const statusEl = root()?.querySelector('[data-pdf-status]');
+  const setPdfStatus = (msg, tone = 'muted') => {
+    if (statusEl) { statusEl.hidden = !msg; statusEl.textContent = msg || ''; statusEl.dataset.tone = tone; }
+  };
+  if (button) button.disabled = true;
+  setPdfStatus('Génération du dossier PDF en cours… (jusqu\'à 30 s)');
   try {
-    const p = await resolveBookletPlanningModel({ db, booklet: b });
-    downloadBookletPdf(b, p ? {
+    const p = await resolveBookletPlanningModel({ db, booklet: b }).catch(() => null);
+    const planningOpts = p ? {
       planningModel: p.model,
       planningTitle: p.title,
       planningPromotionName: p.promotionName,
       planningUploadedUrl: p.uploadedUrl
-    } : {});
+    } : {};
+    const res = await requestMergedBookletPdf(b, { withAnnexes: true, ...planningOpts });
+    if (res?.fallback) setPdfStatus('Service serveur indisponible : ouverture de la version imprimable.');
+    else setPdfStatus('Dossier PDF généré.', 'success');
   } catch (error) {
-    console.warn('[SBI Livrets prof] planning indisponible pour le PDF :', error);
-    downloadBookletPdf(b);
+    console.warn('[SBI Livrets prof] génération du dossier PDF impossible :', error);
+    setPdfStatus(error?.message || 'Génération impossible.', 'error');
+  } finally {
+    if (button) button.disabled = false;
   }
 }
 
@@ -321,9 +334,10 @@ function bindEvents() {
 
   const detail = r.querySelector('[data-booklet-detail]');
   detail?.addEventListener('click', (e) => {
-    if (e.target.closest('[data-booklet-pdf]')) {
+    const pdfBtn = e.target.closest('[data-booklet-pdf]');
+    if (pdfBtn) {
       const b = bookletById.get(selectedBookletId);
-      if (b) exportPdf(b);
+      if (b) exportPdf(b, pdfBtn);
       return;
     }
     const validateBtn = e.target.closest('[data-booklet-validate]');
