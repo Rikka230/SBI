@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.325',
+  version: '8.0P.167.326',
   branch: 'adapt-admin-mobile',
-  channel: 'Admin mobile : carte Comptes + dégagement enfin appliqués (CSS injecté en JS, PJAX-proof) + carte ≤1024px',
-  stage: 'Suite au constat « nav PJAX bonne mais carte Comptes + dégagement inchangés » : la barre du bas (sombre) s\'affichait car son CSS est INJECTÉ EN JS, alors que la carte/dégagement dépendaient d\'un <link> statique qui ne « prenait » pas en PJAX. Fix : admin-responsive.css est désormais INJECTÉ EN JS (comme la bottom-nav) → présent sur chaque page admin, PJAX-proof, posé en dernier (prime sur admin-accounts.css). En plus : (a) dégagement appliqué AUSSI au conteneur de liste interne (#users-list-container), pas seulement #main-content ; (b) carte Comptes passée en ≤1024px (= où la bottom-nav est active) pour ne pas dépendre d\'un device exactement ≤640px. Cache : bump components.js?v=325 sur les 17 pages → index.js/bottom-nav.js .325 + admin-responsive.css?v=325 injecté.',
+  channel: 'Admin mobile : carte Comptes — CSS chargé aussi via le <link> statique de la page (fiable en full-load ET PJAX)',
+  stage: 'Diagnostic via harnais headless (Edge/puppeteer) : la cascade CSS de la carte Comptes est CORRECTE (au 375px, .sbi-account-row calcule bien « 44px 1fr 1fr », 3 pistes, border-radius 16px → la carte gagne sur admin-accounts.css + la grille inline). Donc ce n\'était JAMAIS un bug de style : le souci était le CHARGEMENT du CSS sur l\'appareil. L\'injection JS (.325) ne s\'applique qu\'après un rechargement complet (dans une session PJAX, components.js reste figé). Fix fiable : on pointe le <link> STATIQUE admin-responsive.css?v=325 de chaque page de consultation (chargé au full-load ET re-chargé en PJAX par ensureDocumentStyles) → la carte se charge même dans une session déjà ouverte, dès la prochaine navigation vers Comptes. L\'injection JS reste en secours.',
   updatedAt: '2026-06-04',
-  label: 'SBI 8.0P.167.325 - Admin mobile : carte Comptes + dégagement appliqués (CSS injecté JS, PJAX-proof)'
+  label: 'SBI 8.0P.167.326 - Admin mobile : carte Comptes chargée via <link> statique (full-load + PJAX)'
 };
 
 export function getSbiVersionLabel() {
