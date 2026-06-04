@@ -70,6 +70,11 @@
   const V = SBI_VERSION.version;
   const withVersion = (path) => `${path}${path.includes('?') ? '&' : '?'}v=${V}`;
 
+  // [DIAG-WIDTH] instrumentation temporaire de débordement horizontal (inerte sauf ?diagwidth).
+  if (/[?&]diagwidth/.test(window.location.search)) {
+    import(withVersion('/admin/js/diag-width.js')).catch(() => {});
+  }
+
   const moveOrCreateStylesheet = (href, markerName = '') => {
     const absoluteHref = new URL(href, window.location.origin).href;
     const markerSelector = markerName ? `link[rel="stylesheet"][data-sbi-style="${markerName}"]` : '';
