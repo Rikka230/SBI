@@ -632,14 +632,6 @@ function renderStudentConstructionNotice(userData = {}, { afterFirstLogin = fals
           <div class="sbi-student-notice-advice-item"><strong>Important :</strong> si une page paraît incomplète, recharge-la une fois puis préviens l’équipe SBI si le blocage persiste.</div>
         </div>
 
-        <ul class="sbi-student-notice-patch" aria-label="Dernières nouveautés côté étudiant">
-          <li><span class="sbi-student-notice-dot"></span><span><strong>Documents demandés</strong>Tu peux transmettre les pièces demandées, reprendre un envoi plus tard et renvoyer uniquement les documents à corriger.</span></li>
-          <li><span class="sbi-student-notice-dot"></span><span><strong>Coffre documents</strong>Les documents validés sont mieux centralisés dans ton dossier étudiant.</span></li>
-          <li><span class="sbi-student-notice-dot"></span><span><strong>Mes documents SBI</strong>Les documents rendus accessibles par SBI apparaissent maintenant dans ton profil, onglet Mon Suivi, avec notification et email.</span></li>
-          <li><span class="sbi-student-notice-dot"></span><span><strong>Suivi pédagogique</strong>La progression, les infos de formation et les futurs checkpoints sont progressivement regroupés dans ton espace.</span></li>
-          <li><span class="sbi-student-notice-dot"></span><span><strong>Cours et planning</strong>Le planning pédagogique par promotion est en préparation pour clarifier l’ordre conseillé des cours.</span></li>
-        </ul>
-
         <div class="sbi-student-notice-actions">
           <div class="sbi-student-notice-footnote">Ce message revient à chaque nouvelle connexion pendant la phase de construction.</div>
           <button type="button" class="sbi-student-notice-button" id="sbi-student-notice-dismiss">J’ai compris, ouvrir mon espace</button>
