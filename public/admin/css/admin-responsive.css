@@ -1,0 +1,30 @@
+/* =======================================================================
+   SBI 8.0P.167.319 — Filet de sécurité responsive des pages de CONSULTATION admin
+   (Comptes, Élèves en retard, Journal, Profil, Dashboard, Réglages accueil).
+
+   Objectif PRUDENT et NON destructif : en ≤768px, empêcher les tables/grilles
+   denses de CASSER la mise en page. Le contenu large devient scrollable DANS
+   #main-content (au lieu de pousser la page et de passer sous/à côté de la
+   bottom-nav). Padding resserré pour gagner de la largeur utile.
+
+   Volontairement scopé ≤768px → le desktop n'est JAMAIS touché. Le « mode cartes »
+   fin par table (Comptes, Journal…) relève d'une passe QA visuelle ultérieure.
+   ======================================================================= */
+@media (max-width: 768px) {
+  body.sbi-admin-surface #main-content,
+  body.sbi-admin-space #main-content {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  body.sbi-admin-surface .content-wrapper,
+  body.sbi-admin-space .content-wrapper {
+    /* #main-content réserve déjà la place de la capsule (.317) via padding-bottom ;
+       ici on resserre seulement les marges latérales/hautes du contenu. */
+    padding: 1rem !important;
+  }
+
+  /* Sécurité : aucun média/élément inline ne doit forcer une largeur > écran. */
+  body.sbi-admin-surface #main-content img,
+  body.sbi-admin-space #main-content img { max-width: 100%; height: auto; }
+}

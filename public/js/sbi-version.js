@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.318',
+  version: '8.0P.167.319',
   branch: 'adapt-admin-mobile',
-  channel: 'Admin mobile (2/3) : notice « ordinateur requis » sur les éditeurs lourds (Cursus, Promotions, Formations)',
-  stage: 'Adaptation mobile ADMIN — éditeurs lourds. Sous 900px, les 3 outils d\'autorité desktop (Cursus timeline, Promotions planning, Formations éditeur de cours) masquent leur contenu et affichent une notice plein écran « Cet écran nécessite un ordinateur » (thème sombre cockpit), comme l\'éditeur prof .308. La bottom-nav .317 reste au-dessus → l\'admin peut quand même naviguer ailleurs depuis le téléphone. CSS-only partagé (admin-mobile-block.css) + classe body.sbi-admin-editor-lock + markup notice sur les 3 pages. Aucun rebuild tactile. Desktop inchangé.',
+  channel: 'Admin mobile (3/3) : filet responsive sur les pages de consultation (anti-débordement ≤768px)',
+  stage: 'Adaptation mobile ADMIN — pages de consultation (Comptes, Élèves en retard, Journal, Profil, Dashboard, Réglages accueil). Filet de sécurité PRUDENT (admin-responsive.css, ≤768px uniquement) : les tables/grilles denses deviennent scrollables DANS #main-content au lieu de casser la mise en page ; padding resserré ; images bornées. Desktop jamais touché. Le « mode cartes » fin par table reste une passe QA visuelle ultérieure (à faire avec retours réels).',
   updatedAt: '2026-06-04',
-  label: 'SBI 8.0P.167.318 - Admin mobile (2/3) : notice « ordinateur requis » Cursus/Promotions/Formations'
+  label: 'SBI 8.0P.167.319 - Admin mobile (3/3) : filet responsive consultation (anti-débordement)'
 };
 
 export function getSbiVersionLabel() {
