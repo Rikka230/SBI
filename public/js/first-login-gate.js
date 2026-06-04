@@ -598,15 +598,12 @@ function renderCheck(id, title, desc) {
 }
 
 function maybeRenderStudentConstructionNotice(userData = {}, options = {}) {
-  if (!currentUid) return;
-  if (!window.location.pathname.startsWith('/student/')) return;
-  if (document.getElementById(MODAL_ID)) return;
-  if (document.getElementById(STUDENT_NOTICE_ID)) return;
-  if (readStudentNoticeDismissed(currentUid)) return;
-  if (userData?.statut === 'suspendu') return;
-  if (isSbiAdminLike(userData)) return;
-
-  renderStudentConstructionNotice(userData, options);
+  // 8.0P.167.314 — Panneau d'info étudiant (« site en construction ») RETIRÉ à la
+  // demande client : il ne s'affiche plus jamais après connexion. Le gate de
+  // première connexion (cases obligatoires) reste actif, lui. Garde unique : tous
+  // les chemins de rendu de la notice passent ici. renderStudentConstructionNotice
+  // est conservée (inutilisée) pour réactivation éventuelle.
+  return;
 }
 
 function renderStudentConstructionNotice(userData = {}, { afterFirstLogin = false } = {}) {
@@ -631,14 +628,6 @@ function renderStudentConstructionNotice(userData = {}, { afterFirstLogin = fals
           <div class="sbi-student-notice-advice-item"><strong>Mobile à éviter pour le moment :</strong> certains écrans peuvent encore être incomplets, trop serrés ou moins confortables sur téléphone. Utilise le mobile seulement en dépannage.</div>
           <div class="sbi-student-notice-advice-item"><strong>Important :</strong> si une page paraît incomplète, recharge-la une fois puis préviens l’équipe SBI si le blocage persiste.</div>
         </div>
-
-        <ul class="sbi-student-notice-patch" aria-label="Dernières nouveautés côté étudiant">
-          <li><span class="sbi-student-notice-dot"></span><span><strong>Documents demandés</strong>Tu peux transmettre les pièces demandées, reprendre un envoi plus tard et renvoyer uniquement les documents à corriger.</span></li>
-          <li><span class="sbi-student-notice-dot"></span><span><strong>Coffre documents</strong>Les documents validés sont mieux centralisés dans ton dossier étudiant.</span></li>
-          <li><span class="sbi-student-notice-dot"></span><span><strong>Mes documents SBI</strong>Les documents rendus accessibles par SBI apparaissent maintenant dans ton profil, onglet Mon Suivi, avec notification et email.</span></li>
-          <li><span class="sbi-student-notice-dot"></span><span><strong>Suivi pédagogique</strong>La progression, les infos de formation et les futurs checkpoints sont progressivement regroupés dans ton espace.</span></li>
-          <li><span class="sbi-student-notice-dot"></span><span><strong>Cours et planning</strong>Le planning pédagogique par promotion est en préparation pour clarifier l’ordre conseillé des cours.</span></li>
-        </ul>
 
         <div class="sbi-student-notice-actions">
           <div class="sbi-student-notice-footnote">Ce message revient à chaque nouvelle connexion pendant la phase de construction.</div>

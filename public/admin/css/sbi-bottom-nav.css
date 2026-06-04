@@ -33,6 +33,25 @@
      simplement la rendre displayable ici (sinon le display:none par défaut bloque tout). */
   body.sbi-bottom-nav-active .sbi-bn-sheet,
   body.sbi-bottom-nav-active .sbi-bn-sheet-backdrop { display: block; }
+
+  /* 8.0P.167.315 — L'assistant (bulle flottante, bas-droite, z-index 3000) était
+     recouvert par la capsule de la bottom-nav (bas-centre, quasi pleine largeur,
+     z-index 6000). Quand la bottom-nav est active (≤1024px), on remonte l'assistant
+     en HAUT À GAUCHE pour qu'il reste accessible ; son panneau s'ouvre alors vers
+     le bas depuis la bulle. (Override de base : sbi-internal-theme.css:609/881.) */
+  body.sbi-bottom-nav-active .sbi-assistant {
+    top: calc(12px + env(safe-area-inset-top, 0px)) !important;
+    left: 14px !important;
+    right: auto !important;
+    bottom: auto !important;
+  }
+  body.sbi-bottom-nav-active .sbi-assistant__panel {
+    top: 48px !important;
+    bottom: auto !important;
+    left: 0 !important;
+    right: auto !important;
+    transform-origin: top left;
+  }
 }
 
 /* ── Capsule flottante ── */

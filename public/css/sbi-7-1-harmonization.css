@@ -335,20 +335,10 @@
     }
 }
 
-@media (max-width: 860px) {
-    .sbi-profile-page .profile-header,
-    .sbi-profile-page .profile-main-info {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-
-    .sbi-profile-page .profile-tabs-header,
-    .sbi-course-editor-page .sub-nav,
-    .sbi-course-editor-page .student-sub-nav {
-        border-radius: 18px;
-        overflow-x: auto;
-    }
-
+/* 8.0P.167.309 - Visualiseuse de cours : on empile dès la tablette (≤1024px)
+   au lieu de garder la sidebar 340px latérale jusqu'à 860px (elle mangeait ~47%
+   d'un écran 768px). Rules viewer extraites du bloc 860px ci-dessous. */
+@media (max-width: 1024px) {
     .sbi-course-viewer-page .viewer-header {
         display: grid;
         grid-template-columns: 1fr;
@@ -368,16 +358,13 @@
         height: calc(100vh - 112px);
     }
 
-    .sbi-course-viewer-page .viewer-sidebar {
-        order: -1;
-        width: 100%;
-        max-height: 34vh;
-        border-left: none;
-        border-bottom: 1px solid var(--border-color);
-    }
+    /* 8.0P.167.316 — La liste de chapitres n'est plus empilée : elle devient une
+       feuille « Sommaire » coulissante (stylée dans viewer.css, hors flux ici). */
 
     .sbi-course-viewer-page .viewer-main {
         padding: 1rem !important;
+        /* Place pour la capsule flottante « ‹ Préc · ☰ Sommaire · Suiv › ». */
+        padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important;
     }
 
     .sbi-course-viewer-page .text-container {
@@ -390,6 +377,21 @@
 
     .sbi-course-viewer-page .btn-validate {
         width: 100%;
+    }
+}
+
+@media (max-width: 860px) {
+    .sbi-profile-page .profile-header,
+    .sbi-profile-page .profile-main-info {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .sbi-profile-page .profile-tabs-header,
+    .sbi-course-editor-page .sub-nav,
+    .sbi-course-editor-page .student-sub-nav {
+        border-radius: 18px;
+        overflow-x: auto;
     }
 }
 

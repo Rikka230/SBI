@@ -131,6 +131,22 @@
 .sbi-booklet-empty { color: var(--text-muted, #6b7280); text-align: center; padding: 2.5rem 1rem; }
 
 /* ============================================================
+   RESPONSIVE MOBILE (≤640px) — 8.0P.167.310
+   Le livret est rempli au doigt (élève : identité/périodes ; tuteur : absences).
+   Les tables planning/absences sont rendues avec des styles INLINE dans
+   student-livret.js → on doit passer par !important pour réduire le padding.
+   ============================================================ */
+@media (max-width: 640px) {
+  .sbi-booklet-page { padding: .75rem; }
+  /* Tables planning / absences : scroll de secours + cellules compactes. */
+  .sbi-booklet-table { display: block; width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .sbi-booklet-table th,
+  .sbi-booklet-table td { padding: .4rem .5rem !important; font-size: .82rem; }
+  /* Les badges de statut peuvent retourner à la ligne dans une cellule étroite. */
+  .sbi-booklet-table .sbi-booklet-badge { white-space: normal; }
+}
+
+/* ============================================================
    OVERRIDE THÈME SOMBRE ADMIN (.sbi-admin-surface)
    Les espaces apprenti / tuteur restent en thème clair (base ci-dessus).
    ============================================================ */

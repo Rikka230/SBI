@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.307',
-  branch: 'main',
-  channel: 'Mobile : correctifs QA bottom-nav + badge version + profil responsive',
-  stage: 'Suite QA mobile : (1) badge de version simplifié en haut à gauche (juste le numéro, lettres grises « gravées », sans cadre) en ≤1024px ; (2) feuille « Plus » réparée (elle restait display:none — re-affichée dans la media-query) ; (3) indicateur d onglet actif corrigé (mesuré avant application du CSS chargé en async → ResizeObserver + garde hors-écran) ; (4) page profil élève + prof rendue responsive (grille 1.2fr/2fr inline → classe .profile-grid qui passe en 1 colonne ≤1024px, header centré, sous-onglets repliables).',
-  updatedAt: '2026-06-03',
-  label: 'SBI 8.0P.167.307 - QA mobile : bottom-nav (Plus + indicateur), badge version, profil responsive'
+  version: '8.0P.167.316',
+  branch: 'refonte-mobile-308-311',
+  channel: 'Refonte lecture mobile de la visualiseuse : plein écran + capsule flottante « ‹ Préc · ☰ Sommaire · Suiv › »',
+  stage: 'Visualiseuse de cours (élève + prof) repensée en ≤1024px : le chapitre s\'affiche en PLEIN ÉCRAN (fini la liste de chapitres empilée qui mangeait l\'écran). La navigation passe dans une capsule flottante (langage visuel de la bottom-nav) « ‹ Préc · ☰ Sommaire · Suiv › » : Préc/Suiv sautent entre chapitres déverrouillés (Suiv grisé si verrouillé), « Sommaire » ouvre une feuille coulissante = la sidebar existante réutilisée (mêmes onglets ✓/🔒/quiz, onclick→loadChapter). La validation/progression reste via le bouton « Suivant » du contenu. CSS (viewer.css + harmonization) + câblage cours-viewer.js (ensureViewerBar/updateViewerBar/isNextChapterUnlocked). Desktop ≥1025px inchangé.',
+  updatedAt: '2026-06-04',
+  label: 'SBI 8.0P.167.316 - Mobile : visualiseuse plein écran + capsule flottante Préc/Sommaire/Suiv'
 };
 
 export function getSbiVersionLabel() {
