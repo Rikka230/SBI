@@ -77,13 +77,20 @@ class SbiBottomNav extends HTMLElement {
     const primary = primaryNav(role);
     const overflow = overflowNav(role);
 
+    // L'admin n'est pas (fiablement) routé en PJAX pour ces pages/vues `?tab=`
+    // (le routeur peut considérer l'URL équivalente ou non migrée → clic avalé).
+    // → navigation classique forcée (data-sbi-no-pjax) : rechargement complet, OK
+    // partout (index.html relit le ?tab). Les rôles élève/prof/tuteur gardent PJAX.
+    const isAdmin = role === 'admin';
+    const noPjax = isAdmin ? ' data-sbi-no-pjax="true"' : '';
+
     const items = primary.map((e) => `
-      <a class="sbi-bn-item" data-sbi-href="${e.href}" href="${e.href}" data-id="${e.id}" role="link" aria-label="${e.label}">
+      <a class="sbi-bn-item"${noPjax} data-sbi-href="${e.href}" href="${e.href}" data-id="${e.id}" role="link" aria-label="${e.label}">
         ${e.icon}<span class="sbi-bn-label">${e.label}</span>
       </a>`).join('');
 
     const sheetLinks = overflow.map((e) => `
-      <a class="sbi-bn-sheet-item" data-sbi-href="${e.href}" href="${e.href}" data-id="${e.id}">
+      <a class="sbi-bn-sheet-item"${noPjax} data-sbi-href="${e.href}" href="${e.href}" data-id="${e.id}">
         ${e.icon}<span>${e.label}</span>
       </a>`).join('');
 
@@ -91,7 +98,6 @@ class SbiBottomNav extends HTMLElement {
     // global-search.js → querySelectorAll('.global-search-input')) + Mon Profil +
     // Rafraîchir le cache. Notifications = via l'assistant (déjà monté). Le panneau
     // droit desktop reste intact (la barre n'est active qu'en ≤1024px).
-    const isAdmin = role === 'admin';
     const adminSearch = isAdmin ? `
         <div class="sbi-bn-sheet-search">
           ${ICONS.search}
@@ -99,7 +105,7 @@ class SbiBottomNav extends HTMLElement {
           <div class="global-search-results"></div>
         </div>` : '';
     const adminActions = isAdmin ? `
-        <a class="sbi-bn-sheet-item" data-sbi-href="/admin/admin-profile.html" href="/admin/admin-profile.html" data-id="profil">
+        <a class="sbi-bn-sheet-item"${noPjax} data-sbi-href="/admin/admin-profile.html" href="/admin/admin-profile.html" data-id="profil">
           ${ICONS.profile}<span>Mon Profil</span>
         </a>
         <button type="button" class="sbi-bn-sheet-item" id="sbi-bn-cache">

@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.319',
+  version: '8.0P.167.320',
   branch: 'adapt-admin-mobile',
-  channel: 'Admin mobile (3/3) : filet responsive sur les pages de consultation (anti-débordement ≤768px)',
-  stage: 'Adaptation mobile ADMIN — pages de consultation (Comptes, Élèves en retard, Journal, Profil, Dashboard, Réglages accueil). Filet de sécurité PRUDENT (admin-responsive.css, ≤768px uniquement) : les tables/grilles denses deviennent scrollables DANS #main-content au lieu de casser la mise en page ; padding resserré ; images bornées. Desktop jamais touché. Le « mode cartes » fin par table reste une passe QA visuelle ultérieure (à faire avec retours réels).',
+  channel: 'Fix admin mobile : les liens de la bottom-nav (capsule + feuille « Plus ») naviguent enfin (navigation classique forcée)',
+  stage: 'Correctif : sur l\'admin, les liens de la bottom-nav (onglets directs ET feuille « Plus ») ne chargeaient pas — le routeur PJAX avalait le clic (URL jugée équivalente / route non migrée), notamment pour les vues `?tab=`. Les liens admin de la barre sont désormais marqués data-sbi-no-pjax → navigation classique (rechargement complet), fiable partout (index.html relit le ?tab). Les espaces élève/prof/tuteur gardent le PJAX. Cache : index.js?v=320 (components.js) → bottom-nav.js?v=320.',
   updatedAt: '2026-06-04',
-  label: 'SBI 8.0P.167.319 - Admin mobile (3/3) : filet responsive consultation (anti-débordement)'
+  label: 'SBI 8.0P.167.320 - Fix admin : navigation bottom-nav (capsule + Plus) fonctionnelle'
 };
 
 export function getSbiVersionLabel() {
