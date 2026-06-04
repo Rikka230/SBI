@@ -525,9 +525,105 @@ body.learning-mode .viewer-main .ql-editor {
     .fib-viewer-blank { white-space: normal; }
 }
 
-/* 8.0P.167.309 - Palier téléphone : onglets de chapitres plus compacts pour ne
-   pas déborder de la sidebar empilée (≤480px). */
+/* 8.0P.167.309 - Palier téléphone : onglets de chapitres plus compacts (≤480px). */
 @media (max-width: 480px) {
     .chapter-tab { padding: 0.85rem 0.9rem; margin: 0.3rem 0.5rem; }
     .tab-title { font-size: 0.9rem; }
+}
+
+/* ============================================================
+   8.0P.167.316 — REFONTE LECTURE MOBILE (≤1024px)
+   Chapitre en PLEIN ÉCRAN ; navigation dans une capsule flottante
+   « ‹ Préc · ☰ Sommaire · Suiv › » (langage visuel de la bottom-nav).
+   La feuille « Sommaire » réutilise .viewer-sidebar (mêmes .chapter-tab,
+   onclick→loadChapter déjà câblé). Injection/câblage : cours-viewer.js.
+   ============================================================ */
+.sbi-viewer-bar,
+.sbi-viewer-sheet-backdrop { display: none; }
+
+@media (max-width: 1024px) {
+    /* ── Capsule flottante ── */
+    .sbi-viewer-bar {
+        position: fixed;
+        left: 50%;
+        transform: translateX(-50%);
+        bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+        z-index: 6000;
+        box-sizing: border-box;
+        display: flex;
+        align-items: center;
+        gap: 0.3rem;
+        width: min(520px, calc(100vw - 24px));
+        padding: 0.4rem;
+        background: rgba(255, 255, 255, 0.82);
+        -webkit-backdrop-filter: blur(20px) saturate(165%);
+        backdrop-filter: blur(20px) saturate(165%);
+        border: 1px solid rgba(255, 255, 255, 0.6);
+        border-radius: 20px;
+        box-shadow: 0 14px 44px rgba(15, 23, 42, 0.2), 0 2px 8px rgba(15, 23, 42, 0.08);
+    }
+    .sbi-viewer-bar__btn {
+        flex: 1 1 0;
+        min-width: 0;
+        min-height: 48px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 3px;
+        border: 0;
+        background: none;
+        cursor: pointer;
+        font: inherit;
+        color: var(--text-muted, #6b7280);
+        border-radius: 14px;
+        -webkit-tap-highlight-color: transparent;
+        transition: color 0.2s ease, background 0.2s ease, transform 0.12s ease;
+    }
+    .sbi-viewer-bar__btn:active { transform: scale(0.94); }
+    .sbi-viewer-bar__btn svg { width: 22px; height: 22px; fill: currentColor; display: block; }
+    .sbi-viewer-bar__label { font-size: 0.64rem; font-weight: 800; line-height: 1; letter-spacing: 0.01em; }
+    .sbi-viewer-bar__btn--sommaire { color: var(--sbi-role-accent, var(--accent-blue, #2A57FF)); }
+    .sbi-viewer-bar__btn[disabled] { opacity: 0.35; pointer-events: none; }
+
+    /* ── Feuille « Sommaire » = la sidebar existante, coulissante ── */
+    .sbi-course-viewer-page .viewer-sidebar {
+        position: fixed !important;
+        left: 50% !important;
+        bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important;
+        transform: translateX(-50%) translateY(150%);
+        z-index: 6002;
+        width: min(520px, calc(100vw - 24px)) !important;
+        max-height: min(70vh, 560px) !important;
+        margin: 0 !important;
+        border: 1px solid rgba(255, 255, 255, 0.6) !important;
+        border-radius: 22px !important;
+        box-shadow: 0 -10px 44px rgba(15, 23, 42, 0.24) !important;
+        background: rgba(255, 255, 255, 0.98) !important;
+        -webkit-backdrop-filter: blur(22px) saturate(160%);
+        backdrop-filter: blur(22px) saturate(160%);
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    body.sbi-viewer-sheet-open .viewer-sidebar { transform: translateX(-50%) translateY(0); }
+
+    /* ── Backdrop de la feuille ── */
+    .sbi-viewer-sheet-backdrop {
+        display: block;
+        position: fixed;
+        inset: 0;
+        z-index: 6001;
+        background: rgba(15, 23, 42, 0.4);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.25s ease;
+    }
+    body.sbi-viewer-sheet-open .sbi-viewer-sheet-backdrop { opacity: 1; pointer-events: auto; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sbi-course-viewer-page .viewer-sidebar,
+    .sbi-viewer-sheet-backdrop,
+    .sbi-viewer-bar__btn { transition: none; }
 }

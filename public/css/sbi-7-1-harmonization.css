@@ -358,16 +358,13 @@
         height: calc(100vh - 112px);
     }
 
-    .sbi-course-viewer-page .viewer-sidebar {
-        order: -1;
-        width: 100%;
-        max-height: 34vh;
-        border-left: none;
-        border-bottom: 1px solid var(--border-color);
-    }
+    /* 8.0P.167.316 — La liste de chapitres n'est plus empilée : elle devient une
+       feuille « Sommaire » coulissante (stylée dans viewer.css, hors flux ici). */
 
     .sbi-course-viewer-page .viewer-main {
         padding: 1rem !important;
+        /* Place pour la capsule flottante « ‹ Préc · ☰ Sommaire · Suiv › ». */
+        padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important;
     }
 
     .sbi-course-viewer-page .text-container {

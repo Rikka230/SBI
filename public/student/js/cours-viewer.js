@@ -891,6 +891,73 @@ async function initViewer() {
     loadChapter(nextUnfinishedIndex);
 }
 
+// ── 8.0P.167.316 — Barre de lecture flottante (mobile ≤1024px) ───────────────
+// Plein écran de lecture + capsule « ‹ Préc · ☰ Sommaire · Suiv › ». La feuille
+// « Sommaire » réutilise la sidebar (#chapters-nav-list) telle quelle ; les
+// onglets gardent leur onclick→loadChapter. Styles : viewer.css.
+const VIEWER_BAR_ID = 'sbi-viewer-bar';
+
+function closeViewerSheet() {
+    document.body.classList.remove('sbi-viewer-sheet-open');
+}
+
+// Le chapitre suivant est-il déverrouillé ? (même règle que renderSidebar)
+function isNextChapterUnlocked() {
+    if (!courseData || !Array.isArray(courseData.chapitres)) return false;
+    const nextIndex = currentChapterIndex + 1;
+    if (nextIndex >= courseData.chapitres.length) return false;
+    if (isAdminOrTeacher || isPreviewMode) return true;
+    const completed = userProgress.courses?.[courseData.id]?.completedChapters || [];
+    const current = courseData.chapitres[currentChapterIndex];
+    const next = courseData.chapitres[nextIndex];
+    return completed.includes(next.id) || (current && completed.includes(current.id));
+}
+
+function ensureViewerBar() {
+    if (document.getElementById(VIEWER_BAR_ID)) return;
+
+    const ICON_PREV = '<svg viewBox="0 0 24 24"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>';
+    const ICON_NEXT = '<svg viewBox="0 0 24 24"><path d="M8.59 16.59 10 18l6-6-6-6-1.41 1.41L13.17 12z"/></svg>';
+    const ICON_LIST = '<svg viewBox="0 0 24 24"><path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/></svg>';
+
+    const backdrop = document.createElement('div');
+    backdrop.className = 'sbi-viewer-sheet-backdrop';
+    backdrop.addEventListener('click', closeViewerSheet);
+    document.body.appendChild(backdrop);
+
+    const bar = document.createElement('nav');
+    bar.className = 'sbi-viewer-bar';
+    bar.id = VIEWER_BAR_ID;
+    bar.setAttribute('aria-label', 'Navigation du cours');
+    bar.innerHTML = `
+        <button class="sbi-viewer-bar__btn" type="button" data-viewer-prev aria-label="Chapitre précédent">${ICON_PREV}<span class="sbi-viewer-bar__label">Préc.</span></button>
+        <button class="sbi-viewer-bar__btn sbi-viewer-bar__btn--sommaire" type="button" data-viewer-sommaire aria-label="Sommaire des chapitres">${ICON_LIST}<span class="sbi-viewer-bar__label">Sommaire</span></button>
+        <button class="sbi-viewer-bar__btn" type="button" data-viewer-next aria-label="Chapitre suivant">${ICON_NEXT}<span class="sbi-viewer-bar__label">Suiv.</span></button>
+    `;
+    bar.querySelector('[data-viewer-prev]').addEventListener('click', () => {
+        if (currentChapterIndex > 0) loadChapter(currentChapterIndex - 1);
+    });
+    bar.querySelector('[data-viewer-next]').addEventListener('click', () => {
+        if (isNextChapterUnlocked()) loadChapter(currentChapterIndex + 1);
+    });
+    bar.querySelector('[data-viewer-sommaire]').addEventListener('click', () => {
+        document.body.classList.toggle('sbi-viewer-sheet-open');
+    });
+    document.body.appendChild(bar);
+}
+
+// Met à jour l'état Préc/Suiv et ferme la feuille à chaque changement de chapitre.
+function updateViewerBar() {
+    const bar = document.getElementById(VIEWER_BAR_ID);
+    if (bar) {
+        const prevBtn = bar.querySelector('[data-viewer-prev]');
+        const nextBtn = bar.querySelector('[data-viewer-next]');
+        if (prevBtn) prevBtn.disabled = currentChapterIndex <= 0;
+        if (nextBtn) nextBtn.disabled = !isNextChapterUnlocked();
+    }
+    closeViewerSheet();
+}
+
 function renderSidebar() {
     const navList = document.getElementById('chapters-nav-list');
     navList.innerHTML = '';
@@ -928,6 +995,8 @@ function renderSidebar() {
 
         navList.appendChild(tab);
     });
+
+    ensureViewerBar();
 }
 
 function loadChapter(index, forceReload = false) {
@@ -942,6 +1011,8 @@ function loadChapter(index, forceReload = false) {
     document.querySelectorAll('.chapter-tab').forEach(t => t.classList.remove('active'));
     const activeTab = document.getElementById(`tab-chap-${index}`);
     if(activeTab) activeTab.classList.add('active');
+
+    updateViewerBar();
 
     const main = document.getElementById('viewer-main-content');
 
