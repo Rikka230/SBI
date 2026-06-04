@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.309',
+  version: '8.0P.167.310',
   branch: 'refonte-mobile-308-311',
-  channel: 'Refonte mobile (B) : visualiseuse de cours responsive (sidebar empilée ≤1024px + garde-fous contenu)',
-  stage: 'Workstream B de la refonte mobile : la visualiseuse de cours (élève + prof) empile la sidebar chapitres dès la tablette (≤1024px au lieu de 860px, fini les 340px latéraux qui mangeaient l\'écran), ajoute des garde-fous pour le contenu utilisateur Quill (tables/code/iframes scrollables, plus de débordement horizontal), cadre les embeds legacy en 16:9, fait retourner à la ligne les blancs « fill-in », et compacte les onglets de chapitres ≤480px. CSS-only (viewer.css + sbi-7-1-harmonization.css).',
+  channel: 'Refonte mobile (C) : page livret (élève + tuteur) responsive ≤640px',
+  stage: 'Workstream C de la refonte mobile : le livret d\'apprentissage (rempli au doigt — élève : identité/périodes ; tuteur : absences) devient lisible ≤640px : tables planning/absences avec cellules compactes + scroll de secours, badges de statut qui retournent à la ligne dans les cellules étroites, padding de page réduit. CSS-only (booklet.css), appliqué aux pages student/livret, tutor/livret, tutor/dashboard et teacher/livrets (admin desktop inchangé).',
   updatedAt: '2026-06-04',
-  label: 'SBI 8.0P.167.309 - Mobile : visualiseuse de cours responsive (sidebar empilée + contenu sans débordement)'
+  label: 'SBI 8.0P.167.310 - Mobile : page livret (élève + tuteur) responsive (tables + badges + padding)'
 };
 
 export function getSbiVersionLabel() {
