@@ -11,7 +11,7 @@ import { ICONS, defineOnce } from './shared-icons.js';
 import { signOutToLogin, clearCacheAndReload } from './shared-actions.js';
 import { NAV_BY_ROLE, isActive, primaryNav, overflowNav } from './nav-manifest.js?v=8.0P.167.317';
 
-const BOTTOM_NAV_CSS = '/admin/css/sbi-bottom-nav.css?v=8.0P.167.317';
+const BOTTOM_NAV_CSS = '/admin/css/sbi-bottom-nav.css?v=8.0P.167.323';
 const PLUS_ICON = '<svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>';
 
 function effectivePath() {
@@ -85,13 +85,15 @@ class SbiBottomNav extends HTMLElement {
     const isAdmin = role === 'admin';
     const linkNoPjax = (e) => (e && e.tab) ? ' data-sbi-no-pjax="true"' : '';
 
+    const tabAttr = (e) => (e && e.tab) ? ` data-bn-tab="${e.tab}"` : '';
+
     const items = primary.map((e) => `
-      <a class="sbi-bn-item"${linkNoPjax(e)} data-sbi-href="${e.href}" href="${e.href}" data-id="${e.id}" role="link" aria-label="${e.label}">
+      <a class="sbi-bn-item"${linkNoPjax(e)}${tabAttr(e)} data-sbi-href="${e.href}" href="${e.href}" data-id="${e.id}" role="link" aria-label="${e.label}">
         ${e.icon}<span class="sbi-bn-label">${e.label}</span>
       </a>`).join('');
 
     const sheetLinks = overflow.map((e) => `
-      <a class="sbi-bn-sheet-item"${linkNoPjax(e)} data-sbi-href="${e.href}" href="${e.href}" data-id="${e.id}">
+      <a class="sbi-bn-sheet-item"${linkNoPjax(e)}${tabAttr(e)} data-sbi-href="${e.href}" href="${e.href}" data-id="${e.id}">
         ${e.icon}<span>${e.label}</span>
       </a>`).join('');
 
@@ -137,6 +139,23 @@ class SbiBottomNav extends HTMLElement {
     this.querySelector('#sbi-bn-logout')?.addEventListener('click', () => { this.toggleSheet(false); signOutToLogin(); });
     this.querySelector('#sbi-bn-cache')?.addEventListener('click', () => { this.toggleSheet(false); clearCacheAndReload(); });
     this.querySelectorAll('.sbi-bn-sheet-item[data-sbi-href]').forEach((a) => a.addEventListener('click', () => this.toggleSheet(false)));
+
+    // Vues SPA admin (?tab=) : si on est DÉJÀ sur /admin/index.html, on bascule
+    // l'onglet EN PLACE (pas de rechargement → plus de « saut ») en déléguant à
+    // l'item de nav gauche correspondant (data-target), qui porte le switchToTab
+    // du shell admin. Hors index.html, on laisse la navigation classique charger
+    // index.html?tab=… (le ?tab y est relu au chargement).
+    this.querySelectorAll('[data-bn-tab]').forEach((a) => a.addEventListener('click', (ev) => {
+      if (!effectivePath().includes('/admin/index')) { this.toggleSheet(false); return; }
+      const target = a.getAttribute('data-bn-tab');
+      const leftItem = document.querySelector(`[data-target="${target}"]`);
+      if (!leftItem) { this.toggleSheet(false); return; }
+      ev.preventDefault();
+      ev.stopImmediatePropagation();
+      this.toggleSheet(false);
+      leftItem.click();
+      window.setTimeout(() => this.syncActive(), 0);
+    }));
 
     // L'indicateur doit être (re)positionné dès que la barre est réellement mise en page :
     // le CSS est chargé en <link> async, donc les offsets au premier rendu sont faux

@@ -20,8 +20,9 @@
 
   body.sbi-bottom-nav-active #main-content {
     margin-left: 0 !important;
-    /* Place pour la capsule flottante (≈ 86px) + safe-area. */
-    padding-bottom: calc(94px + env(safe-area-inset-bottom, 0px)) !important;
+    /* Place pour la capsule flottante : le bas de page doit TOUJOURS rester
+       au-dessus de la barre (sinon derniers éléments inaccessibles). ~112px. */
+    padding-bottom: calc(112px + env(safe-area-inset-bottom, 0px)) !important;
   }
 
   body.sbi-bottom-nav-active .top-bar { left: 0 !important; }

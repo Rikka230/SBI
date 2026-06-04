@@ -30,39 +30,75 @@
 }
 
 /* ════════════════════════════════════════════════════════════
-   8.0P.167.322 — COMPTES : liste 6 colonnes → CARTES empilées (≤640px)
-   La ligne .sbi-account-row (grille avatar·nom·email·statut·voir·éditer) est
-   re-disposée en carte verticale. La grille inline (row.style) et la règle de
-   admin-accounts.css:338 sont battues par !important + source order.
+   8.0P.167.323 — COMPTES : vraie CARTE de gestion mobile (≤640px)
+   La ligne dense .sbi-account-row (avatar·nom·email·statut·Voir·Éditer) devient
+   une carte : avatar à gauche, nom (titre) + email/activité, badges de statut en
+   pastilles, puis 2 actions tactiles (Voir vert / Éditer bleu). !important +
+   source order battent la grille inline (row.style) et admin-accounts.css.
+   Principes ui-ux-pro-max : hiérarchie par taille/poids, cibles ≥44px, contraste
+   dark-mode, pastilles de statut, une action primaire visible.
    ════════════════════════════════════════════════════════════ */
 @media (max-width: 640px) {
   #users-list-container .sbi-account-row {
     display: grid !important;
-    grid-template-columns: 46px 1fr 1fr !important;
-    grid-auto-rows: auto !important;
-    gap: 0.25rem 0.6rem !important;
+    grid-template-columns: 44px 1fr 1fr !important;
+    grid-auto-rows: min-content !important;
+    column-gap: 0.7rem !important;
+    row-gap: 0.4rem !important;
     align-items: center !important;
     min-height: 0 !important;
-    padding: 0.85rem 0.9rem !important;
-    margin-bottom: 0.55rem !important;
-    border: 1px solid var(--sbi-admin-line, rgba(255, 255, 255, 0.12)) !important;
-    border-radius: 14px !important;
-    background: var(--sbi-admin-card, rgba(255, 255, 255, 0.05)) !important;
-    box-shadow: none !important;
-    contain: none !important;                 /* annule contain:layout (hauteur figée) */
+    padding: 0.85rem 0.95rem 0.9rem !important;
+    margin: 0 0 0.6rem !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 16px !important;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.022)) !important;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28) !important;
+    contain: none !important;
     content-visibility: visible !important;
   }
-  #users-list-container .sbi-account-role-cell   { grid-column: 1; grid-row: 1 / 3; align-self: start; }
-  #users-list-container .sbi-account-name-cell   { grid-column: 2 / -1; grid-row: 1; }
-  #users-list-container .sbi-account-email-cell  { grid-column: 2 / -1; grid-row: 2; }
-  #users-list-container .sbi-account-status-cell { grid-column: 1 / -1; grid-row: 3; margin-top: 0.2rem; }
-  #users-list-container .sbi-account-row .btn-view-profile { grid-column: 1 / -1; grid-row: 4; }
-  #users-list-container .sbi-account-row .btn-edit-user    { grid-column: 1 / -1; grid-row: 5; }
+
+  /* Avatar / rôle (gauche, sur 2 lignes) */
+  #users-list-container .sbi-account-role-cell {
+    grid-column: 1; grid-row: 1 / 3; align-self: start; padding: 0 !important;
+  }
+
+  /* Nom = titre de la carte */
+  #users-list-container .sbi-account-name-cell {
+    grid-column: 2 / -1; grid-row: 1; align-self: end; min-width: 0; overflow: hidden;
+  }
+  #users-list-container .sbi-account-name-line {
+    font-size: 0.98rem !important; font-weight: 800 !important; color: #fff !important;
+  }
+
+  /* Email + dernière activité (secondaire) */
+  #users-list-container .sbi-account-email-cell {
+    grid-column: 2 / -1; grid-row: 2; align-self: start; min-width: 0; overflow: hidden;
+  }
+  #users-list-container .sbi-account-email-line { font-size: 0.82rem !important; color: #b9c2db !important; }
+  #users-list-container .sbi-account-card-meta { font-size: 0.72rem !important; color: #818db0 !important; margin-top: 0.12rem; }
+
+  /* Statut → pastilles lisibles, pleine largeur */
+  #users-list-container .sbi-account-status-cell {
+    grid-column: 1 / -1; grid-row: 3; margin-top: 0.2rem;
+    flex-direction: row !important; flex-wrap: wrap !important; gap: 0.35rem !important;
+  }
+  #users-list-container .sbi-account-status-cell small,
+  #users-list-container .sbi-account-status-cell .sbi-status-dot {
+    display: inline-flex !important; align-items: center;
+    padding: 0.22rem 0.6rem !important; border-radius: 999px !important;
+    background: rgba(255, 255, 255, 0.07) !important;
+    font-size: 0.72rem !important; line-height: 1.25 !important; max-width: 100% !important;
+  }
+
+  /* Actions : 2 boutons tactiles côte à côte (Voir primaire vert, Éditer bleu) */
+  #users-list-container .sbi-account-row .btn-view-profile { grid-column: 1 / 3; grid-row: 4; }
+  #users-list-container .sbi-account-row .btn-edit-user    { grid-column: 3 / -1; grid-row: 4; }
   #users-list-container .sbi-account-row .btn-view-profile,
   #users-list-container .sbi-account-row .btn-edit-user {
-    width: 100% !important;
-    min-width: 0 !important;
-    min-height: 42px !important;
-    margin: 0 !important;
+    width: 100% !important; height: auto !important; min-height: 44px !important;
+    min-width: 0 !important; margin: 0 !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important; border-left: 0 !important;
+    border-radius: 11px !important; font-size: 0.74rem !important;
+    gap: 0.4rem !important; padding: 0 0.6rem !important;
   }
 }
