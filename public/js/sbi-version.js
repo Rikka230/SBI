@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.314',
+  version: '8.0P.167.315',
   branch: 'refonte-mobile-308-311',
-  channel: 'Panneau d\'info étudiant (« site en construction ») retiré à la demande client',
-  stage: 'Le panneau d\'information étudiant post-connexion (« site en construction », conseils ordinateur/mobile) est désactivé : il ne s\'affiche plus jamais après connexion (garde unique posée dans maybeRenderStudentConstructionNotice). Le gate de première connexion (cases à cocher obligatoires) reste actif. renderStudentConstructionNotice conservée mais inutilisée (réactivation possible). Propagation cache : first-login-gate.js?v=8.0P.167.314 dans tracker.js + tracker.js?v=8.0P.167.314 sur les 32 pages.',
+  channel: 'Mobile : assistant (bulle) repositionné en haut à gauche sur les espaces de rôle (plus recouvert par la bottom-nav)',
+  stage: 'La bulle « assistant » (bas-droite, z-index 3000) était recouverte par la capsule de la bottom-nav (bas-centre, quasi pleine largeur, z-index 6000) en ≤1024px. Quand la bottom-nav est active (élève/prof/tuteur), l\'assistant est désormais remonté en haut à gauche (son panneau s\'ouvrant vers le bas). CSS-only dans sbi-bottom-nav.css ; aucun changement ≥1025px ni sur l\'admin. Propagation cache : sbi-bottom-nav.css?v=315 → bottom-nav.js → index.js?v=315 dans components.js.',
   updatedAt: '2026-06-04',
-  label: 'SBI 8.0P.167.314 - Retrait du panneau d\'info étudiant post-connexion (site en construction)'
+  label: 'SBI 8.0P.167.315 - Mobile : assistant déplacé en haut à gauche (plus caché par la bottom-nav)'
 };
 
 export function getSbiVersionLabel() {
