@@ -12,6 +12,11 @@ import { signOutToLogin, clearCacheAndReload } from './shared-actions.js';
 import { NAV_BY_ROLE, isActive, primaryNav, overflowNav } from './nav-manifest.js?v=8.0P.167.317';
 
 const BOTTOM_NAV_CSS = '/admin/css/sbi-bottom-nav.css?v=8.0P.167.323';
+// Feuille responsive admin (carte Comptes + dégagements). Injectée en JS (comme la
+// bottom-nav) pour qu'elle soit présente sur CHAQUE page admin, y compris en
+// navigation PJAX — au lieu de dépendre du <link> statique de la page (qui, lui,
+// ne « prenait » pas, d'où « carte Comptes inchangée »).
+const ADMIN_RESPONSIVE_CSS = '/admin/css/admin-responsive.css?v=8.0P.167.325';
 const PLUS_ICON = '<svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>';
 
 function effectivePath() {
@@ -42,12 +47,23 @@ function currentRole() {
 }
 
 function injectStyles() {
-  if (document.querySelector('link[data-sbi-bottom-nav]')) return;
-  const link = document.createElement('link');
-  link.rel = 'stylesheet';
-  link.href = BOTTOM_NAV_CSS;
-  link.setAttribute('data-sbi-bottom-nav', '1');
-  document.head.appendChild(link);
+  if (!document.querySelector('link[data-sbi-bottom-nav]')) {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = BOTTOM_NAV_CSS;
+    link.setAttribute('data-sbi-bottom-nav', '1');
+    document.head.appendChild(link);
+  }
+  // Admin uniquement : la feuille responsive (carte Comptes + dégagements) doit
+  // être présente même en PJAX → on l'injecte ici, exactement comme la bottom-nav
+  // (qui, elle, s'affiche bien). Posée en DERNIER → prime sur admin-accounts.css.
+  if (currentRole() === 'admin' && !document.querySelector('link[data-sbi-admin-responsive]')) {
+    const l = document.createElement('link');
+    l.rel = 'stylesheet';
+    l.href = ADMIN_RESPONSIVE_CSS;
+    l.setAttribute('data-sbi-admin-responsive', '1');
+    document.head.appendChild(l);
+  }
 }
 
 class SbiBottomNav extends HTMLElement {

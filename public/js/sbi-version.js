@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.324',
+  version: '8.0P.167.325',
   branch: 'adapt-admin-mobile',
-  channel: 'Admin mobile : (0) DÉBLOCAGE du chargement (cache-bust components.js sur les 17 pages) + (1) nav bottom-nav alignée sur le desktop (PJAX, plus de saut)',
-  stage: 'CORRECTIF MAJEUR. (0) Cause de « les changements admin ne se voyaient pas » : chaque page admin chargeait components.js avec un ?v figé/ancien → le mobile gardait l\'ancienne chaîne (components→index→bottom-nav) et .317→.323 ne se chargeaient jamais vraiment. On bump components.js?v=8.0P.167.324 sur les 17 pages admin (HTML no-cache → URL neuve fetchée immédiatement) → toute la chaîne admin se charge enfin. (1) NAV : la bottom-nav admin délègue désormais chaque clic à l\'item de nav DESKTOP équivalent (même data-sbi-href dans #left-panel/#right-panel) via .click() → comportement strictement identique au PC (PJAX fluide, switch d\'onglet en place, plus aucun « saut »). Retrait de la rustine no-pjax/data-bn-tab. Rôles élève/prof/tuteur inchangés ; .323 (carte/dégagement) inchangé, à valider une fois chargé.',
+  channel: 'Admin mobile : carte Comptes + dégagement enfin appliqués (CSS injecté en JS, PJAX-proof) + carte ≤1024px',
+  stage: 'Suite au constat « nav PJAX bonne mais carte Comptes + dégagement inchangés » : la barre du bas (sombre) s\'affichait car son CSS est INJECTÉ EN JS, alors que la carte/dégagement dépendaient d\'un <link> statique qui ne « prenait » pas en PJAX. Fix : admin-responsive.css est désormais INJECTÉ EN JS (comme la bottom-nav) → présent sur chaque page admin, PJAX-proof, posé en dernier (prime sur admin-accounts.css). En plus : (a) dégagement appliqué AUSSI au conteneur de liste interne (#users-list-container), pas seulement #main-content ; (b) carte Comptes passée en ≤1024px (= où la bottom-nav est active) pour ne pas dépendre d\'un device exactement ≤640px. Cache : bump components.js?v=325 sur les 17 pages → index.js/bottom-nav.js .325 + admin-responsive.css?v=325 injecté.',
   updatedAt: '2026-06-04',
-  label: 'SBI 8.0P.167.324 - Admin mobile : déblocage cache (components.js x17) + nav alignée desktop (PJAX)'
+  label: 'SBI 8.0P.167.325 - Admin mobile : carte Comptes + dégagement appliqués (CSS injecté JS, PJAX-proof)'
 };
 
 export function getSbiVersionLabel() {

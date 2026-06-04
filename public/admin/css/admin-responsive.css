@@ -30,7 +30,21 @@
 }
 
 /* ════════════════════════════════════════════════════════════
-   8.0P.167.323 — COMPTES : vraie CARTE de gestion mobile (≤640px)
+   8.0P.167.325 — DÉGAGEMENT BAS : les listes admin scrollent souvent EN INTERNE
+   (#users-list-container, etc.), donc le padding de #main-content (.317) ne
+   suffit pas — la dernière ligne finit sous la capsule. On réserve la place
+   directement sous les conteneurs de liste quand la bottom-nav est active.
+   ════════════════════════════════════════════════════════════ */
+@media (max-width: 1024px) {
+  body.sbi-bottom-nav-active #users-list-container,
+  body.sbi-bottom-nav-active #main-content {
+    padding-bottom: calc(116px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════
+   8.0P.167.325 — COMPTES : vraie CARTE de gestion mobile (≤1024px, = où la
+   bottom-nav est active, pour ne pas dépendre d'un device exactement ≤640px)
    La ligne dense .sbi-account-row (avatar·nom·email·statut·Voir·Éditer) devient
    une carte : avatar à gauche, nom (titre) + email/activité, badges de statut en
    pastilles, puis 2 actions tactiles (Voir vert / Éditer bleu). !important +
@@ -38,7 +52,7 @@
    Principes ui-ux-pro-max : hiérarchie par taille/poids, cibles ≥44px, contraste
    dark-mode, pastilles de statut, une action primaire visible.
    ════════════════════════════════════════════════════════════ */
-@media (max-width: 640px) {
+@media (max-width: 1024px) {
   #users-list-container .sbi-account-row {
     display: grid !important;
     grid-template-columns: 44px 1fr 1fr !important;
