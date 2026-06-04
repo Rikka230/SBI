@@ -89,7 +89,10 @@
 @media (max-width: 1024px) {
   #users-list-container .sbi-account-row {
     display: grid !important;
-    grid-template-columns: 44px 1fr 1fr !important;
+    /* minmax(0,1fr) : sans le « 0 », 1fr = minmax(auto,1fr) et un email insécable
+       (min-content large) empêche la colonne de rétrécir → débordement horizontal. */
+    grid-template-columns: 44px minmax(0, 1fr) minmax(0, 1fr) !important;
+    max-width: 100% !important;
     grid-auto-rows: min-content !important;
     column-gap: 0.7rem !important;
     row-gap: 0.4rem !important;
@@ -116,13 +119,17 @@
   }
   #users-list-container .sbi-account-name-line {
     font-size: 0.98rem !important; font-weight: 800 !important; color: #fff !important;
+    overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important;
   }
 
   /* Email + dernière activité (secondaire) */
   #users-list-container .sbi-account-email-cell {
     grid-column: 2 / -1; grid-row: 2; align-self: start; min-width: 0; overflow: hidden;
   }
-  #users-list-container .sbi-account-email-line { font-size: 0.82rem !important; color: #b9c2db !important; }
+  #users-list-container .sbi-account-email-line {
+    font-size: 0.82rem !important; color: #b9c2db !important;
+    overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important;
+  }
   #users-list-container .sbi-account-card-meta { font-size: 0.72rem !important; color: #818db0 !important; margin-top: 0.12rem; }
 
   /* Statut → pastilles lisibles, pleine largeur */

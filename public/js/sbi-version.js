@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.328',
+  version: '8.0P.167.329',
   branch: 'adapt-admin-mobile',
-  channel: 'Admin mobile : scroll naturel des pages (≤1024px) — fin du « hors cadre » Dashboard + dégagement sous la capsule',
-  stage: 'Le Sceau de version (.327) fait son office : ce patch CSS atteint l\'appareil SANS ré-éditer les 17 pages (preuve du sceau). Correctif scroll : l\'admin desktop est en « single scroll » (html/body/.app-container/#main-content en 100dvh + overflow:hidden, seul #main-content scrolle en interne). Sur mobile, .app-container { height:100dvh; overflow:hidden } clippait le contenu à un écran → Dashboard « hors cadre », impossible de défiler, et dernière ligne sous la barre. Fix (admin-responsive.css, ≤1024px + body.sbi-bottom-nav-active) : rebascule en SCROLL DE DOCUMENT naturel (html/body/.app-container/#main-content en height:auto + overflow visible/auto) + dégagement padding-bottom pour la capsule + listes (#users-list-container) qui s\'étendent au lieu de scroller en interne. Desktop ≥1025px strictement inchangé. La carte Comptes reste à optimiser visuellement (Candidat C).',
+  channel: 'Admin mobile : carte Comptes — fin du scroll horizontal (minmax(0,1fr) + ellipsis nom/email)',
+  stage: 'Correctif scroll horizontal page Comptes. Cause : les colonnes 1fr de la carte valent minmax(auto,1fr) ; auto = largeur min-content de la cellule, donc un email long et insécable empêchait la colonne de rétrécir → la grille débordait la largeur d\'écran (révélé par le passage en overflow:visible du scroll naturel .328, qui auparavant masquait le débordement via overflow-x:hidden). Fix (admin-responsive.css) : grid-template-columns 44px minmax(0,1fr) minmax(0,1fr) + max-width:100% sur la carte + ellipsis (overflow/text-overflow/nowrap) sur nom et email → les cellules rétrécissent et tronquent proprement au lieu de pousser la largeur. Filet : html { overflow-x:hidden } (.328) reste en secours. Carte Comptes : optimisation visuelle plus poussée encore possible (Candidat C).',
   updatedAt: '2026-06-04',
-  label: 'SBI 8.0P.167.328 - Admin mobile : scroll naturel des pages (≤1024px) + dégagement capsule'
+  label: 'SBI 8.0P.167.329 - Admin mobile : carte Comptes sans scroll horizontal (minmax(0,1fr) + ellipsis)'
 };
 
 export function getSbiVersionLabel() {
