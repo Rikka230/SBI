@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.307',
-  branch: 'main',
-  channel: 'Mobile : correctifs QA bottom-nav + badge version + profil responsive',
-  stage: 'Suite QA mobile : (1) badge de version simplifié en haut à gauche (juste le numéro, lettres grises « gravées », sans cadre) en ≤1024px ; (2) feuille « Plus » réparée (elle restait display:none — re-affichée dans la media-query) ; (3) indicateur d onglet actif corrigé (mesuré avant application du CSS chargé en async → ResizeObserver + garde hors-écran) ; (4) page profil élève + prof rendue responsive (grille 1.2fr/2fr inline → classe .profile-grid qui passe en 1 colonne ≤1024px, header centré, sous-onglets repliables).',
-  updatedAt: '2026-06-03',
-  label: 'SBI 8.0P.167.307 - QA mobile : bottom-nav (Plus + indicateur), badge version, profil responsive'
+  version: '8.0P.167.308',
+  branch: 'refonte-mobile-308-311',
+  channel: 'Refonte mobile (A) : éditeur de cours prof → notice « ordinateur requis » <900px',
+  stage: 'Workstream A de la refonte mobile : l\'éditeur de cours V2 (outil d\'autorité desktop : grille 3 colonnes, glisser-déposer souris, bank fixe) affiche désormais une notice plein écran « L\'éditeur de cours nécessite un ordinateur » sous 900px, et masque l\'éditeur + la bank fixe. CSS-only (course-editor-v2.css + markup course-editor.html), aucun JS, aucun changement ≥900px. Pas de rebuild tactile (décision client).',
+  updatedAt: '2026-06-04',
+  label: 'SBI 8.0P.167.308 - Mobile : éditeur de cours prof → notice « ordinateur requis » <900px'
 };
 
 export function getSbiVersionLabel() {
