@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.323',
+  version: '8.0P.167.324',
   branch: 'adapt-admin-mobile',
-  channel: 'Admin mobile : nav fluide (onglets ?tab sans saut) + dégagement bas global + carte Comptes repensée',
-  stage: 'Trois points QA admin mobile : (1) NAV — plus de « saut » en revenant sur Tableau de bord/Formations/Serveur : si on est déjà sur index.html, la bottom-nav bascule l\'onglet EN PLACE (délégation à l\'item de nav gauche correspondant via data-target → switchToTab du shell), pas de rechargement ; (2) DÉGAGEMENT — le bas de page reste toujours au-dessus de la capsule (#main-content padding-bottom ~112px) pour ne plus bloquer les derniers éléments ; (3) COMPTES — vraie carte de gestion mobile (avatar + nom titre, email/activité, badges statut en pastilles, actions Voir/Éditer tactiles ≥44px), repensée selon ui-ux-pro-max. CSS + bottom-nav.js ; cache index.js?v=323 → bottom-nav.js?v=323 + sbi-bottom-nav.css?v=323 + admin-responsive.css?v=323.',
+  channel: 'Admin mobile : (0) DÉBLOCAGE du chargement (cache-bust components.js sur les 17 pages) + (1) nav bottom-nav alignée sur le desktop (PJAX, plus de saut)',
+  stage: 'CORRECTIF MAJEUR. (0) Cause de « les changements admin ne se voyaient pas » : chaque page admin chargeait components.js avec un ?v figé/ancien → le mobile gardait l\'ancienne chaîne (components→index→bottom-nav) et .317→.323 ne se chargeaient jamais vraiment. On bump components.js?v=8.0P.167.324 sur les 17 pages admin (HTML no-cache → URL neuve fetchée immédiatement) → toute la chaîne admin se charge enfin. (1) NAV : la bottom-nav admin délègue désormais chaque clic à l\'item de nav DESKTOP équivalent (même data-sbi-href dans #left-panel/#right-panel) via .click() → comportement strictement identique au PC (PJAX fluide, switch d\'onglet en place, plus aucun « saut »). Retrait de la rustine no-pjax/data-bn-tab. Rôles élève/prof/tuteur inchangés ; .323 (carte/dégagement) inchangé, à valider une fois chargé.',
   updatedAt: '2026-06-04',
-  label: 'SBI 8.0P.167.323 - Admin mobile : nav onglets sans saut + dégagement bas + carte Comptes repensée'
+  label: 'SBI 8.0P.167.324 - Admin mobile : déblocage cache (components.js x17) + nav alignée desktop (PJAX)'
 };
 
 export function getSbiVersionLabel() {

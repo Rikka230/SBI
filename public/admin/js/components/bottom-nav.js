@@ -77,23 +77,22 @@ class SbiBottomNav extends HTMLElement {
     const primary = primaryNav(role);
     const overflow = overflowNav(role);
 
-    // Navigation : on garde le PJAX (fluide, pas de « saut ») pour les vraies
-    // PAGES. On force la navigation classique (data-sbi-no-pjax → rechargement
-    // complet) UNIQUEMENT pour les vues SPA d'index.html (`?tab=`) : un simple
-    // swap PJAX charge bien index.html mais ne relit pas le `?tab`, donc la bonne
-    // vue ne s'affiche pas. Les entrées `tab` du manifeste sont ces vues SPA.
+    // Navigation : pour l'ADMIN, on délègue chaque clic à l'item de nav DESKTOP
+    // équivalent (même data-sbi-href dans #left-panel/#right-panel) → comportement
+    // strictement identique au PC (PJAX fluide, switch d'onglet en place, pas de
+    // « saut »). Les liens de la barre portent donc data-sbi-no-pjax (le routeur les
+    // ignore) ; c'est le handler de délégation plus bas qui agit. Les rôles
+    // élève/prof/tuteur gardent leurs liens PJAX directs (inchangés).
     const isAdmin = role === 'admin';
-    const linkNoPjax = (e) => (e && e.tab) ? ' data-sbi-no-pjax="true"' : '';
-
-    const tabAttr = (e) => (e && e.tab) ? ` data-bn-tab="${e.tab}"` : '';
+    const noPjaxAttr = isAdmin ? ' data-sbi-no-pjax="true"' : '';
 
     const items = primary.map((e) => `
-      <a class="sbi-bn-item"${linkNoPjax(e)}${tabAttr(e)} data-sbi-href="${e.href}" href="${e.href}" data-id="${e.id}" role="link" aria-label="${e.label}">
+      <a class="sbi-bn-item"${noPjaxAttr} data-sbi-href="${e.href}" href="${e.href}" data-id="${e.id}" role="link" aria-label="${e.label}">
         ${e.icon}<span class="sbi-bn-label">${e.label}</span>
       </a>`).join('');
 
     const sheetLinks = overflow.map((e) => `
-      <a class="sbi-bn-sheet-item"${linkNoPjax(e)}${tabAttr(e)} data-sbi-href="${e.href}" href="${e.href}" data-id="${e.id}">
+      <a class="sbi-bn-sheet-item"${noPjaxAttr} data-sbi-href="${e.href}" href="${e.href}" data-id="${e.id}">
         ${e.icon}<span>${e.label}</span>
       </a>`).join('');
 
@@ -108,7 +107,7 @@ class SbiBottomNav extends HTMLElement {
           <div class="global-search-results"></div>
         </div>` : '';
     const adminActions = isAdmin ? `
-        <a class="sbi-bn-sheet-item" data-sbi-href="/admin/admin-profile.html" href="/admin/admin-profile.html" data-id="profil">
+        <a class="sbi-bn-sheet-item"${noPjaxAttr} data-sbi-href="/admin/admin-profile.html" href="/admin/admin-profile.html" data-id="profil">
           ${ICONS.profile}<span>Mon Profil</span>
         </a>
         <button type="button" class="sbi-bn-sheet-item" id="sbi-bn-cache">
@@ -140,22 +139,24 @@ class SbiBottomNav extends HTMLElement {
     this.querySelector('#sbi-bn-cache')?.addEventListener('click', () => { this.toggleSheet(false); clearCacheAndReload(); });
     this.querySelectorAll('.sbi-bn-sheet-item[data-sbi-href]').forEach((a) => a.addEventListener('click', () => this.toggleSheet(false)));
 
-    // Vues SPA admin (?tab=) : si on est DÉJÀ sur /admin/index.html, on bascule
-    // l'onglet EN PLACE (pas de rechargement → plus de « saut ») en déléguant à
-    // l'item de nav gauche correspondant (data-target), qui porte le switchToTab
-    // du shell admin. Hors index.html, on laisse la navigation classique charger
-    // index.html?tab=… (le ?tab y est relu au chargement).
-    this.querySelectorAll('[data-bn-tab]').forEach((a) => a.addEventListener('click', (ev) => {
-      if (!effectivePath().includes('/admin/index')) { this.toggleSheet(false); return; }
-      const target = a.getAttribute('data-bn-tab');
-      const leftItem = document.querySelector(`[data-target="${target}"]`);
-      if (!leftItem) { this.toggleSheet(false); return; }
-      ev.preventDefault();
-      ev.stopImmediatePropagation();
-      this.toggleSheet(false);
-      leftItem.click();
-      window.setTimeout(() => this.syncActive(), 0);
-    }));
+    // ADMIN — Délégation au chrome desktop : chaque lien de la barre relaie son
+    // clic à l'item de nav desktop équivalent (même data-sbi-href dans
+    // #left-panel/#right-panel). On hérite ainsi EXACTEMENT du comportement PC :
+    // switch d'onglet en place sur index.html, PJAX cross-page partout, historique
+    // + actif synchronisés — donc plus aucun « saut ». Fallback : si aucun proxy
+    // (cas improbable), on laisse la navigation classique du <a href>.
+    if (isAdmin) {
+      this.querySelectorAll('a[data-sbi-href]').forEach((a) => a.addEventListener('click', (ev) => {
+        const target = a.getAttribute('data-sbi-href');
+        const proxy = document.querySelector(`#left-panel [data-sbi-href="${target}"], #right-panel [data-sbi-href="${target}"]`);
+        this.toggleSheet(false);
+        if (!proxy) return;
+        ev.preventDefault();
+        ev.stopImmediatePropagation();
+        proxy.click();
+        window.setTimeout(() => this.syncActive(), 0);
+      }));
+    }
 
     // L'indicateur doit être (re)positionné dès que la barre est réellement mise en page :
     // le CSS est chargé en <link> async, donc les offsets au premier rendu sont faux
