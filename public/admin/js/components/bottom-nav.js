@@ -8,10 +8,10 @@
 // Style : public/admin/css/sbi-bottom-nav.css (injecté ici via <link>).
 
 import { ICONS, defineOnce } from './shared-icons.js';
-import { signOutToLogin } from './shared-actions.js';
-import { NAV_BY_ROLE, isActive, primaryNav, overflowNav } from './nav-manifest.js?v=8.0P.167.306';
+import { signOutToLogin, clearCacheAndReload } from './shared-actions.js';
+import { NAV_BY_ROLE, isActive, primaryNav, overflowNav } from './nav-manifest.js?v=8.0P.167.317';
 
-const BOTTOM_NAV_CSS = '/admin/css/sbi-bottom-nav.css?v=8.0P.167.315';
+const BOTTOM_NAV_CSS = '/admin/css/sbi-bottom-nav.css?v=8.0P.167.317';
 const PLUS_ICON = '<svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>';
 
 function effectivePath() {
@@ -22,11 +22,22 @@ function effectivePath() {
   }
 }
 
+// Route complète (path + ?search) pour l'active-state des vues SPA admin (?tab=).
+function effectiveRoute() {
+  try {
+    const u = new URL(window.SBI_APP_SHELL_CURRENT_URL || window.location.href, window.location.origin);
+    return (u.pathname + u.search).toLowerCase();
+  } catch (_) {
+    return String((window.location.pathname || '') + (window.location.search || '')).toLowerCase();
+  }
+}
+
 function currentRole() {
   const p = effectivePath();
   if (p.startsWith('/student/')) return 'student';
   if (p.startsWith('/teacher/')) return 'teacher';
   if (p.startsWith('/tutor/')) return 'tutor';
+  if (p.startsWith('/admin/')) return 'admin';
   return null;
 }
 
@@ -76,11 +87,32 @@ class SbiBottomNav extends HTMLElement {
         ${e.icon}<span>${e.label}</span>
       </a>`).join('');
 
+    // Cockpit admin re-logé dans la feuille « Plus » : recherche (câblée seule via
+    // global-search.js → querySelectorAll('.global-search-input')) + Mon Profil +
+    // Rafraîchir le cache. Notifications = via l'assistant (déjà monté). Le panneau
+    // droit desktop reste intact (la barre n'est active qu'en ≤1024px).
+    const isAdmin = role === 'admin';
+    const adminSearch = isAdmin ? `
+        <div class="sbi-bn-sheet-search">
+          ${ICONS.search}
+          <input type="text" class="global-search-input" placeholder="Chercher utilisateur, cours...">
+          <div class="global-search-results"></div>
+        </div>` : '';
+    const adminActions = isAdmin ? `
+        <a class="sbi-bn-sheet-item" data-sbi-href="/admin/admin-profile.html" href="/admin/admin-profile.html" data-id="profil">
+          ${ICONS.profile}<span>Mon Profil</span>
+        </a>
+        <button type="button" class="sbi-bn-sheet-item" id="sbi-bn-cache">
+          ${ICONS.refresh}<span>Rafraîchir le cache</span>
+        </button>` : '';
+
     this.innerHTML = `
       <div class="sbi-bn-sheet-backdrop" id="sbi-bn-backdrop"></div>
       <div class="sbi-bn-sheet" id="sbi-bn-sheet" role="dialog" aria-modal="true" aria-label="Plus d'options" aria-hidden="true">
         <div class="sbi-bn-sheet-grip"></div>
+        ${adminSearch}
         ${sheetLinks}
+        ${adminActions}
         <button type="button" class="sbi-bn-sheet-item sbi-bn-sheet-logout" id="sbi-bn-logout">
           ${ICONS.logout}<span>Déconnexion</span>
         </button>
@@ -96,6 +128,7 @@ class SbiBottomNav extends HTMLElement {
     this.querySelector('#sbi-bn-plus')?.addEventListener('click', () => this.toggleSheet());
     this.querySelector('#sbi-bn-backdrop')?.addEventListener('click', () => this.toggleSheet(false));
     this.querySelector('#sbi-bn-logout')?.addEventListener('click', () => { this.toggleSheet(false); signOutToLogin(); });
+    this.querySelector('#sbi-bn-cache')?.addEventListener('click', () => { this.toggleSheet(false); clearCacheAndReload(); });
     this.querySelectorAll('.sbi-bn-sheet-item[data-sbi-href]').forEach((a) => a.addEventListener('click', () => this.toggleSheet(false)));
 
     // L'indicateur doit être (re)positionné dès que la barre est réellement mise en page :
@@ -129,10 +162,10 @@ class SbiBottomNav extends HTMLElement {
     const role = this.dataset.role;
     if (!role) { this.render(); return; }
 
-    const path = effectivePath();
+    const route = effectiveRoute();
     const entries = NAV_BY_ROLE[role] || [];
     let activeId = null;
-    for (const e of entries) { if (isActive(path, e)) { activeId = e.id; break; } }
+    for (const e of entries) { if (isActive(route, e)) { activeId = e.id; break; } }
     const primaryIds = primaryNav(role).map((e) => e.id);
 
     this.querySelectorAll('.sbi-bn-item, .sbi-bn-sheet-item').forEach((el) => el.classList.remove('is-active'));

@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.316',
-  branch: 'refonte-mobile-308-311',
-  channel: 'Refonte lecture mobile de la visualiseuse : plein écran + capsule flottante « ‹ Préc · ☰ Sommaire · Suiv › »',
-  stage: 'Visualiseuse de cours (élève + prof) repensée en ≤1024px : le chapitre s\'affiche en PLEIN ÉCRAN (fini la liste de chapitres empilée qui mangeait l\'écran). La navigation passe dans une capsule flottante (langage visuel de la bottom-nav) « ‹ Préc · ☰ Sommaire · Suiv › » : Préc/Suiv sautent entre chapitres déverrouillés (Suiv grisé si verrouillé), « Sommaire » ouvre une feuille coulissante = la sidebar existante réutilisée (mêmes onglets ✓/🔒/quiz, onclick→loadChapter). La validation/progression reste via le bouton « Suivant » du contenu. CSS (viewer.css + harmonization) + câblage cours-viewer.js (ensureViewerBar/updateViewerBar/isNextChapterUnlocked). Desktop ≥1025px inchangé.',
+  version: '8.0P.167.317',
+  branch: 'adapt-admin-mobile',
+  channel: 'Admin mobile (1/3) : bottom-nav flottante sombre + feuille « Plus » cockpit (recherche/profil/cache/déco)',
+  stage: 'Adaptation mobile de l\'espace ADMIN — chrome. La bottom-nav flottante (jusqu\'ici réservée élève/prof/tuteur) couvre désormais l\'admin (rôle ajouté au manifeste) : 4 onglets directs (Tableau de Bord · Comptes · Promotions · Cursus) ; le reste (Formations, Élèves en retard, Journal, Serveur&Vidéos) + le cockpit (recherche globale, Mon Profil, Rafraîchir le cache, Déconnexion) dans la feuille « Plus ». Notifications via l\'assistant (déjà monté, remonté haut-gauche par .315). En ≤1024px les DEUX panneaux (nav gauche + cockpit droit) sont masqués ; capsule + feuille en verre SOMBRE (variante admin). isActive étendu pour les vues SPA (?tab=). Desktop ≥1025px inchangé (2 panneaux). Cache : sbi-bottom-nav.css?v=317 + nav-manifest/bottom-nav → index.js?v=317 (components.js).',
   updatedAt: '2026-06-04',
-  label: 'SBI 8.0P.167.316 - Mobile : visualiseuse plein écran + capsule flottante Préc/Sommaire/Suiv'
+  label: 'SBI 8.0P.167.317 - Admin mobile (1/3) : bottom-nav sombre + feuille Plus (cockpit)'
 };
 
 export function getSbiVersionLabel() {
