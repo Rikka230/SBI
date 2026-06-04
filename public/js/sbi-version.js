@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.320',
+  version: '8.0P.167.321',
   branch: 'adapt-admin-mobile',
-  channel: 'Fix admin mobile : les liens de la bottom-nav (capsule + feuille « Plus ») naviguent enfin (navigation classique forcée)',
-  stage: 'Correctif : sur l\'admin, les liens de la bottom-nav (onglets directs ET feuille « Plus ») ne chargeaient pas — le routeur PJAX avalait le clic (URL jugée équivalente / route non migrée), notamment pour les vues `?tab=`. Les liens admin de la barre sont désormais marqués data-sbi-no-pjax → navigation classique (rechargement complet), fiable partout (index.html relit le ?tab). Les espaces élève/prof/tuteur gardent le PJAX. Cache : index.js?v=320 (components.js) → bottom-nav.js?v=320.',
+  channel: 'Fix admin : navigation bottom-nav fluide (PJAX pour les pages, rechargement seulement pour les vues ?tab)',
+  stage: 'Affinage du correctif .320 : le rechargement complet forcé sur TOUS les liens admin provoquait un « saut » à chaque changement de page. On revient au PJAX (fluide, sans saut) pour les vraies PAGES (Comptes, Promotions, Cursus, Élèves en retard, Journal, Mon Profil) et on ne force la navigation classique (data-sbi-no-pjax) QUE pour les vues SPA d\'index.html (?tab= : Tableau de bord, Formations, Serveur&Vidéos) — un swap PJAX charge index.html mais ne relit pas le ?tab, donc la bonne vue ne s\'affichait pas. Per-entry via le champ `tab` du manifeste. Cache : index.js?v=321 → bottom-nav.js?v=321.',
   updatedAt: '2026-06-04',
-  label: 'SBI 8.0P.167.320 - Fix admin : navigation bottom-nav (capsule + Plus) fonctionnelle'
+  label: 'SBI 8.0P.167.321 - Fix admin : nav bottom-nav fluide (PJAX pages, reload seulement vues ?tab)'
 };
 
 export function getSbiVersionLabel() {
