@@ -16,11 +16,10 @@ import { SBI_VERSION } from '/js/sbi-version.js';
 const { NAV_BY_ROLE, isActive, primaryNav, overflowNav } = await import(`./nav-manifest.js?v=${SBI_VERSION.version}`);
 
 const BOTTOM_NAV_CSS = `/admin/css/sbi-bottom-nav.css?v=${SBI_VERSION.version}`;
-// Feuille responsive admin (carte Comptes + dégagements). Injectée en JS (comme la
-// bottom-nav) pour qu'elle soit présente sur CHAQUE page admin, y compris en
-// navigation PJAX — au lieu de dépendre du <link> statique de la page (qui, lui,
-// ne « prenait » pas, d'où « carte Comptes inchangée »).
-const ADMIN_RESPONSIVE_CSS = `/admin/css/admin-responsive.css?v=${SBI_VERSION.version}`;
+// admin-responsive.css n'est PLUS injecté ici : il est chargé en <link> STATIQUE
+// tokenless dans le <head> de chaque page admin (servi no-cache → toujours frais,
+// présent avant le paint → pas de FOUC, et plus de conflit de double livraison qui
+// rendait la carte Comptes « trop large »).
 const PLUS_ICON = '<svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>';
 
 function effectivePath() {
@@ -57,16 +56,6 @@ function injectStyles() {
     link.href = BOTTOM_NAV_CSS;
     link.setAttribute('data-sbi-bottom-nav', '1');
     document.head.appendChild(link);
-  }
-  // Admin uniquement : la feuille responsive (carte Comptes + dégagements) doit
-  // être présente même en PJAX → on l'injecte ici, exactement comme la bottom-nav
-  // (qui, elle, s'affiche bien). Posée en DERNIER → prime sur admin-accounts.css.
-  if (currentRole() === 'admin' && !document.querySelector('link[data-sbi-admin-responsive]')) {
-    const l = document.createElement('link');
-    l.rel = 'stylesheet';
-    l.href = ADMIN_RESPONSIVE_CSS;
-    l.setAttribute('data-sbi-admin-responsive', '1');
-    document.head.appendChild(l);
   }
 }
 

@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.330',
+  version: '8.0P.167.331',
   branch: 'adapt-admin-mobile',
-  channel: 'Admin mobile : fin du conflit de double livraison CSS (retrait des <link> admin-responsive.css statiques périmés) — la carte Comptes prend enfin la bonne largeur',
-  stage: 'Diagnostic « encore plus large » : double livraison CSS (Candidat B) qui mord. Les 6 pages de consultation avaient un <link admin-responsive.css?v=325> STATIQUE ; cette URL ?v=325 était l\'ancienne mise en cache navigateur (grid 1fr 1fr, large), et après une nav PJAX ensureDocumentStyles la ré-ajoutait EN DERNIER → elle gagnait la cascade sur l\'injection fraîche ?v=329 (minmax) → carte plus large. Le <link> statique avait été ajouté en .326 car l\'injection JS n\'était PAS fiable à l\'époque (pré-sceau, components.js caché) ; le Sceau de version (.327) rend désormais l\'injection fiable → le backup statique est devenu une source périmée nuisible. Fix : retrait des 6 <link> statiques ; admin-responsive.css n\'a plus qu\'UNE source, injectée et versionnée par le sceau (bottom-nav.js, ?v=V). Plus de conflit, plus de cache périmé. (Convergence A→B : le sceau fiabilise l\'injection, ce qui permet de supprimer le doublon statique.)',
+  channel: 'Admin mobile : CSS responsive en <link> STATIQUE no-cache (fin du FOUC + carte Comptes à la bonne largeur) + modulepreload de la version',
+  stage: 'Correctif des deux symptômes (carte trop large + FOUC « icônes par défaut » ~1s au 1er chargement), même cause racine : admin-responsive.css livré trop tard. .330 (retrait des <link> statiques) était une ERREUR — il ne restait que l\'injection JS, tardive (après le fetch de version de l\'amorce async), donc la carte gardait sa grille desktop inline (large) et le contenu flashait non stylé. Vraie solution (Candidat B) : admin-responsive.css redevient un <link> STATIQUE dans le <head> des 17 pages, mais TOKENLESS + no-cache (firebase.json) → chargé avant le paint (pas de FOUC, carte à la bonne largeur dès le 1er rendu) ET toujours frais (plus de conflit ?v=325 périmé). Injection JS retirée de bottom-nav.js. + <link rel=modulepreload href=/js/sbi-version.js> avant components.js sur les 17 pages → annule le délai d\'amorçage introduit par l\'await du sceau (le fetch de version est déjà prêt → composants rendus aussi vite qu\'avant). Convergence A→B : livraison CSS unifiée sur la voie statique <head>, fraîcheur via no-cache (même mécanisme que le sceau).',
   updatedAt: '2026-06-04',
-  label: 'SBI 8.0P.167.330 - Admin mobile : source CSS unique (retrait <link> statiques périmés) — largeur carte Comptes corrigée'
+  label: 'SBI 8.0P.167.331 - Admin mobile : admin-responsive.css en <link> statique no-cache (fin FOUC + largeur carte) + modulepreload version'
 };
 
 export function getSbiVersionLabel() {
