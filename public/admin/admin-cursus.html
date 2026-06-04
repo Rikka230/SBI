@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="css/admin-cursus-stability.css?v=8.0P.167.99-GPT2.1">
     <script src="js/components.js?v=8.0P.167.98.1"></script>
     <link rel="stylesheet" href="css/admin-surface-unified.css?v=8.0P.167.52">
+    <link rel="stylesheet" href="css/admin-mobile-block.css?v=8.0P.167.318">
     <style>
         /* SBI 8.0P.167.116 - Qualiopi panel responsive hardening */
         .sbi-cursus-qualiopi-panel {
@@ -146,7 +147,7 @@
         }
     </style>
 </head>
-<body class="preload sbi-admin-surface">
+<body class="preload sbi-admin-surface sbi-admin-editor-lock">
 
 <div class="app-container" id="app-container">
     <script>
@@ -169,6 +170,13 @@
     </header>
 
     <main id="main-content">
+        <div class="sbi-admin-mobile-block" role="alert">
+          <div class="sbi-admin-mobile-block__card">
+            <span class="sbi-admin-mobile-block__icon" aria-hidden="true">🖥️</span>
+            <p class="sbi-admin-mobile-block__title">Cet écran nécessite un ordinateur</p>
+            <p class="sbi-admin-mobile-block__text">L'éditeur de cursus (timeline par semaines) se manipule sur grand écran. Ouvrez cette page sur un ordinateur ; depuis le téléphone, utilisez la barre du bas pour aller ailleurs.</p>
+          </div>
+        </div>
         <div class="content-wrapper sbi-cursus-wrapper">
             <section id="view-cursus" class="admin-view active sbi-cursus-shell">
                 <div class="sbi-cursus-app" aria-label="Outil de construction de cursus">

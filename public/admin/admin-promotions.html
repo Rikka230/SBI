@@ -10,8 +10,9 @@
     <link rel="stylesheet" href="css/admin-promotions.css?v=8.0P.167.98.2">
     <script src="js/components.js?v=8.0P.167.64"></script>
     <link rel="stylesheet" href="css/admin-surface-unified.css?v=8.0P.167.52">
+    <link rel="stylesheet" href="css/admin-mobile-block.css?v=8.0P.167.318">
 </head>
-<body class="preload sbi-admin-surface">
+<body class="preload sbi-admin-surface sbi-admin-editor-lock">
 
 <div class="app-container" id="app-container">
 
@@ -35,6 +36,13 @@
     </header>
 
     <main id="main-content">
+        <div class="sbi-admin-mobile-block" role="alert">
+          <div class="sbi-admin-mobile-block__card">
+            <span class="sbi-admin-mobile-block__icon" aria-hidden="true">🖥️</span>
+            <p class="sbi-admin-mobile-block__title">Cet écran nécessite un ordinateur</p>
+            <p class="sbi-admin-mobile-block__text">Le planning des promotions (3 colonnes) se manipule sur grand écran. Ouvrez cette page sur un ordinateur ; depuis le téléphone, utilisez la barre du bas pour aller ailleurs.</p>
+          </div>
+        </div>
         <div class="content-wrapper">
             <section id="view-promotions" class="admin-view active sbi-promotions-shell">
                 <div class="sbi-promotions-header">

@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.317',
+  version: '8.0P.167.318',
   branch: 'adapt-admin-mobile',
-  channel: 'Admin mobile (1/3) : bottom-nav flottante sombre + feuille « Plus » cockpit (recherche/profil/cache/déco)',
-  stage: 'Adaptation mobile de l\'espace ADMIN — chrome. La bottom-nav flottante (jusqu\'ici réservée élève/prof/tuteur) couvre désormais l\'admin (rôle ajouté au manifeste) : 4 onglets directs (Tableau de Bord · Comptes · Promotions · Cursus) ; le reste (Formations, Élèves en retard, Journal, Serveur&Vidéos) + le cockpit (recherche globale, Mon Profil, Rafraîchir le cache, Déconnexion) dans la feuille « Plus ». Notifications via l\'assistant (déjà monté, remonté haut-gauche par .315). En ≤1024px les DEUX panneaux (nav gauche + cockpit droit) sont masqués ; capsule + feuille en verre SOMBRE (variante admin). isActive étendu pour les vues SPA (?tab=). Desktop ≥1025px inchangé (2 panneaux). Cache : sbi-bottom-nav.css?v=317 + nav-manifest/bottom-nav → index.js?v=317 (components.js).',
+  channel: 'Admin mobile (2/3) : notice « ordinateur requis » sur les éditeurs lourds (Cursus, Promotions, Formations)',
+  stage: 'Adaptation mobile ADMIN — éditeurs lourds. Sous 900px, les 3 outils d\'autorité desktop (Cursus timeline, Promotions planning, Formations éditeur de cours) masquent leur contenu et affichent une notice plein écran « Cet écran nécessite un ordinateur » (thème sombre cockpit), comme l\'éditeur prof .308. La bottom-nav .317 reste au-dessus → l\'admin peut quand même naviguer ailleurs depuis le téléphone. CSS-only partagé (admin-mobile-block.css) + classe body.sbi-admin-editor-lock + markup notice sur les 3 pages. Aucun rebuild tactile. Desktop inchangé.',
   updatedAt: '2026-06-04',
-  label: 'SBI 8.0P.167.317 - Admin mobile (1/3) : bottom-nav sombre + feuille Plus (cockpit)'
+  label: 'SBI 8.0P.167.318 - Admin mobile (2/3) : notice « ordinateur requis » Cursus/Promotions/Formations'
 };
 
 export function getSbiVersionLabel() {
