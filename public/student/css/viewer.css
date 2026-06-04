@@ -98,15 +98,25 @@ body.learning-mode {
     width: 100%; max-width: 900px; margin: 0 auto 2.5rem auto; 
     display: flex; justify-content: center; flex-shrink: 0;
 }
-.media-container img, .media-container video { 
-    max-width: 100%; 
-    max-height: 70vh; 
+.media-container img, .media-container video {
+    max-width: 100%;
+    max-height: 70vh;
     height: auto;
-    object-fit: contain; 
-    display: block; 
+    object-fit: contain;
+    display: block;
     border-radius: 16px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.05); 
-    border: 1px solid var(--border-color); 
+    box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+    border: 1px solid var(--border-color);
+}
+/* 8.0P.167.309 - Embeds legacy (iframe YouTube/Vimeo) : cadrage 16:9 de secours
+   pour éviter qu'une largeur fixe inline ne déborde sur petit écran. */
+.media-container iframe {
+    width: 100%;
+    max-width: 100%;
+    aspect-ratio: 16 / 9;
+    height: auto;
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
 }
 
 .text-container { 
@@ -134,6 +144,11 @@ body.learning-mode {
 }
 .ql-editor h1, .ql-editor h2, .ql-editor h3 { color: var(--text-main); margin-top: 1.5em; }
 .ql-editor img { max-width: 100%; height: auto; border-radius: 8px; margin: 1rem 0; }
+/* 8.0P.167.309 - Garde-fous mobile pour le contenu utilisateur (Quill) :
+   tables/code/iframes ne doivent jamais déborder horizontalement sur téléphone. */
+.ql-editor table { display: block; max-width: 100%; overflow-x: auto; }
+.ql-editor pre { white-space: pre-wrap; word-break: break-word; }
+.ql-editor iframe { max-width: 100%; }
 
 body.learning-mode .viewer-main .text-container.ql-editor,
 body.learning-mode .viewer-main .ql-editor {
@@ -504,4 +519,15 @@ body.learning-mode .viewer-main .ql-editor {
     .fib-viewer-input {
         width: min(58vw, 220px);
     }
+
+    /* 8.0P.167.309 - Les blancs « fill-in » peuvent retourner à la ligne sur
+       téléphone (sinon plusieurs blancs sur une ligne débordent). */
+    .fib-viewer-blank { white-space: normal; }
+}
+
+/* 8.0P.167.309 - Palier téléphone : onglets de chapitres plus compacts pour ne
+   pas déborder de la sidebar empilée (≤480px). */
+@media (max-width: 480px) {
+    .chapter-tab { padding: 0.85rem 0.9rem; margin: 0.3rem 0.5rem; }
+    .tab-title { font-size: 0.9rem; }
 }
