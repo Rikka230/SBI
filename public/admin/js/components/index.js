@@ -1,16 +1,14 @@
 import { injectPanelStyles } from './panel-styles.js';
 import { registerAdminPanels } from './admin-panels.js?v=8.0P.167.305';
-import { registerStudentPanels } from './student-panels.js?v=8.0P.167.305';
-import { registerTeacherPanels } from './teacher-panels.js?v=8.0P.167.305';
-import { registerTutorPanels } from './tutor-panels.js?v=8.0P.167.305';
+// Phase 1b : student/teacher/tutor convergés derrière un shell unique piloté par
+// le manifeste (remplace student-panels.js / teacher-panels.js / tutor-panels.js).
+import { registerRoleShell } from './shell.js?v=8.0P.167.311';
 import { registerBottomNav } from './bottom-nav.js?v=8.0P.167.307';
 export { waitForExpectedComponents, waitForSbiComponents, waitForSbiTopbar } from './ready.js';
 
 injectPanelStyles();
 registerAdminPanels();
-registerStudentPanels();
-registerTeacherPanels();
-registerTutorPanels();
+registerRoleShell();
 registerBottomNav();
 
 window.__SBI_COMPONENTS_MODULES_LOADED = true;
