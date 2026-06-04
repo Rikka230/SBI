@@ -30,15 +30,49 @@
 }
 
 /* ════════════════════════════════════════════════════════════
-   8.0P.167.325 — DÉGAGEMENT BAS : les listes admin scrollent souvent EN INTERNE
-   (#users-list-container, etc.), donc le padding de #main-content (.317) ne
-   suffit pas — la dernière ligne finit sous la capsule. On réserve la place
-   directement sous les conteneurs de liste quand la bottom-nav est active.
+   8.0P.167.328 — SCROLL NATUREL MOBILE (≤1024px, bottom-nav active)
+   L'admin desktop utilise un « single scroll » (admin-layout.css) : html / body /
+   .app-container / #main-content sont tous en 100dvh + overflow:hidden, et SEUL
+   #main-content scrolle EN INTERNE. Sur mobile, ce modèle à hauteur d'écran fixe +
+   la capsule flottante casse tout : .app-container { height:100dvh; overflow:hidden }
+   clippe le contenu à UN écran → Dashboard « hors cadre », impossible de défiler ;
+   et la dernière ligne passe sous la barre.
+   Fix : on rebascule l'admin en SCROLL DE DOCUMENT naturel (comme élève/prof/tuteur)
+   et on réserve la place de la capsule. Desktop ≥1025px : STRICTEMENT inchangé.
    ════════════════════════════════════════════════════════════ */
 @media (max-width: 1024px) {
-  body.sbi-bottom-nav-active #users-list-container,
+  /* html ne porte pas la classe body → ciblé via le media. admin-responsive.css
+     n'est chargé QUE sur les pages admin, donc aucun autre espace n'est impacté. */
+  html {
+    height: auto !important;
+    min-height: 100% !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+  }
+  body.sbi-bottom-nav-active,
+  body.sbi-bottom-nav-active .app-container {
+    height: auto !important;
+    min-height: 100dvh !important;
+    overflow: visible !important;
+  }
   body.sbi-bottom-nav-active #main-content {
-    padding-bottom: calc(116px + env(safe-area-inset-bottom, 0px)) !important;
+    height: auto !important;
+    min-height: 100dvh !important;
+    overflow: visible !important;
+    overscroll-behavior: auto !important;
+    /* Dégagement : la capsule fait ~64px + marge + safe-area. */
+    padding-bottom: calc(108px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  /* Les listes ne scrollent plus EN INTERNE (sinon double scroll) : elles s'étendent
+     et c'est le document qui défile. */
+  body.sbi-bottom-nav-active #users-list-container {
+    max-height: none !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+  /* Le wrapper ne réimpose pas une hauteur plein écran (rallongerait inutilement). */
+  body.sbi-bottom-nav-active #main-content > .content-wrapper {
+    min-height: 0 !important;
   }
 }
 
