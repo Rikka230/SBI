@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.326',
+  version: '8.0P.167.327',
   branch: 'adapt-admin-mobile',
-  channel: 'Admin mobile : carte Comptes — CSS chargé aussi via le <link> statique de la page (fiable en full-load ET PJAX)',
-  stage: 'Diagnostic via harnais headless (Edge/puppeteer) : la cascade CSS de la carte Comptes est CORRECTE (au 375px, .sbi-account-row calcule bien « 44px 1fr 1fr », 3 pistes, border-radius 16px → la carte gagne sur admin-accounts.css + la grille inline). Donc ce n\'était JAMAIS un bug de style : le souci était le CHARGEMENT du CSS sur l\'appareil. L\'injection JS (.325) ne s\'applique qu\'après un rechargement complet (dans une session PJAX, components.js reste figé). Fix fiable : on pointe le <link> STATIQUE admin-responsive.css?v=325 de chaque page de consultation (chargé au full-load ET re-chargé en PJAX par ensureDocumentStyles) → la carte se charge même dans une session déjà ouverte, dès la prochaine navigation vers Comptes. L\'injection JS reste en secours.',
+  channel: 'Sceau de version (Candidat A) : cache-bust piloté par CETTE constante pour toute la colonne d\'amorçage admin',
+  stage: 'Deepening « Sceau de version » (admin, Phase 1). L\'amorce components.js et sbi-version.js passent no-cache (firebase.json) ; les 17 pages admin chargent components.js SANS ?v= ; components.js lit la version ici et l\'appose à toute la chaîne via withVersion() ; index.js importe {admin-panels, shell, bottom-nav} en dynamique versionné, et bottom-nav/shell versionnent nav-manifest + le CSS injecté depuis V. Résultat : un seul bump de cette constante rafraîchit toute la chaîne admin, SANS ré-éditer les pages (fin des bugs « rien n\'a changé »). Garde-fou : scripts/check-version-seal.mjs (npm check:version-seal + pre-commit via core.hooksPath=.githooks). Tokens feuilles profonds (sbi-permissions, account-completeness…) hors périmètre passe 1 (auto-cicatrisent en ≤max-age car l\'entrée ne gèle plus rien). PREUVE attendue : ce bump .327, sans toucher aux 17 pages, doit suffire à charger la chaîne fraîche en navigation privée.',
   updatedAt: '2026-06-04',
-  label: 'SBI 8.0P.167.326 - Admin mobile : carte Comptes chargée via <link> statique (full-load + PJAX)'
+  label: 'SBI 8.0P.167.327 - Admin : Sceau de version (cache-bust depuis sbi-version.js, entrée no-cache tokenless)'
 };
 
 export function getSbiVersionLabel() {

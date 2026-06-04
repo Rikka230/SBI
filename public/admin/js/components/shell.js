@@ -19,7 +19,10 @@
 import { ICONS, brand, defineOnce } from './shared-icons.js';
 import { dispatchComponentMounted } from './ready.js';
 import { signOutToLogin } from './shared-actions.js';
-import { NAV_BY_ROLE, isActive } from './nav-manifest.js?v=8.0P.167.306';
+import { SBI_VERSION } from '/js/sbi-version.js';
+// Sceau de version (A2) : même V que le reste de la colonne (import dynamique car
+// un import statique ne peut pas interpoler la version).
+const { NAV_BY_ROLE, isActive } = await import(`./nav-manifest.js?v=${SBI_VERSION.version}`);
 
 // Profil de rôle : la donnée qui décrit le chrome d'un espace. Ajouter un rôle =
 // une entrée ici + une entrée dans NAV_BY_ROLE, pas un nouveau composant.

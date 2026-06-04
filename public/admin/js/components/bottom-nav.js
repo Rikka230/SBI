@@ -9,14 +9,18 @@
 
 import { ICONS, defineOnce } from './shared-icons.js';
 import { signOutToLogin, clearCacheAndReload } from './shared-actions.js';
-import { NAV_BY_ROLE, isActive, primaryNav, overflowNav } from './nav-manifest.js?v=8.0P.167.317';
+import { SBI_VERSION } from '/js/sbi-version.js';
+// Sceau de version (A2) : nav-manifest porte le même V que le reste de la colonne
+// (import dynamique car un import statique ne peut pas interpoler la version).
+// Au passage, ceci unifie l'ancien split de tokens (bottom-nav 317 / shell 306).
+const { NAV_BY_ROLE, isActive, primaryNav, overflowNav } = await import(`./nav-manifest.js?v=${SBI_VERSION.version}`);
 
-const BOTTOM_NAV_CSS = '/admin/css/sbi-bottom-nav.css?v=8.0P.167.323';
+const BOTTOM_NAV_CSS = `/admin/css/sbi-bottom-nav.css?v=${SBI_VERSION.version}`;
 // Feuille responsive admin (carte Comptes + dégagements). Injectée en JS (comme la
 // bottom-nav) pour qu'elle soit présente sur CHAQUE page admin, y compris en
 // navigation PJAX — au lieu de dépendre du <link> statique de la page (qui, lui,
 // ne « prenait » pas, d'où « carte Comptes inchangée »).
-const ADMIN_RESPONSIVE_CSS = '/admin/css/admin-responsive.css?v=8.0P.167.325';
+const ADMIN_RESPONSIVE_CSS = `/admin/css/admin-responsive.css?v=${SBI_VERSION.version}`;
 const PLUS_ICON = '<svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>';
 
 function effectivePath() {

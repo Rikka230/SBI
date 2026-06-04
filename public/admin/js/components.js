@@ -26,7 +26,7 @@
  * 8.0P.167.125 : chargement léger des dates issues de promotions.coursePlan sur les pages cours élève/prof.
  */
 
-(function bootstrapSbiComponents(){
+(async function bootstrapSbiComponents(){
   let accountsModulePromise = null;
   let adminIndexModulesPromise = null;
   let accountEscalationsModulePromise = null;
@@ -61,6 +61,15 @@
 
   scheduleEarlyDisplay();
 
+  // === Sceau de version (A2) ===
+  // sbi-version.js ET ce fichier sont servis no-cache (firebase.json) → la version
+  // lue ici est toujours fraîche. On l'appose à TOUTE la chaîne d'amorçage admin via
+  // withVersion(), de sorte qu'un seul bump de sbi-version.js rafraîchisse la chaîne
+  // sans jamais ré-éditer les pages. (Voir CONTEXT.md « Sceau de version ».)
+  const { SBI_VERSION } = await import('/js/sbi-version.js');
+  const V = SBI_VERSION.version;
+  const withVersion = (path) => `${path}${path.includes('?') ? '&' : '?'}v=${V}`;
+
   const moveOrCreateStylesheet = (href, markerName = '') => {
     const absoluteHref = new URL(href, window.location.origin).href;
     const markerSelector = markerName ? `link[rel="stylesheet"][data-sbi-style="${markerName}"]` : '';
@@ -90,11 +99,11 @@
   };
 
   const injectAdminSingleScrollFix = () => {
-    moveOrCreateStylesheet('/admin/css/sbi-admin-single-scroll.css?v=8.0P.167.24', 'admin-single-scroll');
+    moveOrCreateStylesheet(withVersion('/admin/css/sbi-admin-single-scroll.css'), 'admin-single-scroll');
   };
 
   const injectAdminCanonicalSurface = () => {
-    moveOrCreateStylesheet('/admin/css/admin-surface-unified.css?v=8.0P.167.52', 'admin-surface-unified');
+    moveOrCreateStylesheet(withVersion('/admin/css/admin-surface-unified.css'), 'admin-surface-unified');
   };
 
   const injectAdminSurfaceStack = () => {
@@ -110,7 +119,7 @@
   window.addEventListener('sbi:app-shell-rendered', injectAdminSurfaceStack);
 
 
-  import('/admin/js/admin-profile-panel-fast.js?v=8.0P.166.4')
+  import(withVersion('/admin/js/admin-profile-panel-fast.js'))
     .catch((error) => {
       if (window.localStorage?.getItem('sbiDebugAccess') === 'true') {
         console.warn('[SBI Profile Panel] Chargement rapide indisponible :', error);
@@ -130,7 +139,7 @@
 
     if (path.endsWith('/student/mes-cours.html')) {
       if (!studentCoursePlanEnhancementPromise) {
-        studentCoursePlanEnhancementPromise = import('/student/js/student-course-plan-dates.js?v=8.0P.167.125')
+        studentCoursePlanEnhancementPromise = import(withVersion('/student/js/student-course-plan-dates.js'))
           .catch((error) => {
             studentCoursePlanEnhancementPromise = null;
             if (window.localStorage?.getItem('sbiDebugAccess') === 'true') {
@@ -147,7 +156,7 @@
 
     if (path.endsWith('/teacher/mes-cours.html')) {
       if (!teacherCoursePlanEnhancementPromise) {
-        teacherCoursePlanEnhancementPromise = import('/teacher/js/teacher-course-plan-dates.js?v=8.0P.167.125')
+        teacherCoursePlanEnhancementPromise = import(withVersion('/teacher/js/teacher-course-plan-dates.js'))
           .catch((error) => {
             teacherCoursePlanEnhancementPromise = null;
             if (window.localStorage?.getItem('sbiDebugAccess') === 'true') {
@@ -181,8 +190,8 @@
     if (!shouldBootAdminIndexModules()) return Promise.resolve(false);
 
     if (!adminIndexModulesPromise) {
-      const imports = [import('/admin/js/admin-core.js?v=8.0P.167.271')];
-      if (hasDashboardDom()) imports.push(import('/admin/js/admin-dashboard.js?v=8.0P.167.0'));
+      const imports = [import(withVersion('/admin/js/admin-core.js'))];
+      if (hasDashboardDom()) imports.push(import(withVersion('/admin/js/admin-dashboard.js')));
 
       adminIndexModulesPromise = Promise.allSettled(imports).then((results) => {
         const failed = results.filter((result) => result.status === 'rejected');
@@ -207,7 +216,7 @@
     if (!shouldMountAccountsModule()) return Promise.resolve(false);
 
     if (!accountEscalationsModulePromise) {
-      accountEscalationsModulePromise = import('/admin/js/admin-account-escalations-lite.js?v=8.0P.167.25')
+      accountEscalationsModulePromise = import(withVersion('/admin/js/admin-account-escalations-lite.js'))
         .catch((error) => {
           accountEscalationsModulePromise = null;
           if (window.localStorage?.getItem('sbiDebugAccess') === 'true') {
@@ -227,7 +236,7 @@
     loadAccountEscalationsModule();
 
     if (!accountsModulePromise) {
-      accountsModulePromise = import('/admin/js/admin-accounts-dashboard.js?v=8.0P.167.62')
+      accountsModulePromise = import(withVersion('/admin/js/admin-accounts-dashboard.js'))
         .catch((error) => {
           accountsModulePromise = null;
           console.warn('[SBI Accounts] Module comptes non chargé :', error);
@@ -269,7 +278,7 @@
     scheduleAccountsMount();
   }, 900);
 
-  window.SBI_COMPONENTS_READY = import('/admin/js/components/index.js?v=8.0P.167.325')
+  window.SBI_COMPONENTS_READY = import(withVersion('/admin/js/components/index.js'))
     .then(async (module) => {
       if (module?.waitForExpectedComponents) {
         await module.waitForExpectedComponents(650);

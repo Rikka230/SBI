@@ -27,6 +27,12 @@
 ## « Retour admin »
 - Affordance réservée à un **admin** qui visite un espace de rôle (impersonation). Retirée du markup statique élève/prof/tuteur (elle était de toute façon morte hors `/admin/` : `initAdminVisitorShortcut` n'est câblé que pour `area === 'admin'`). Dans le **Shell**, ce sera une entrée de profil **conditionnelle** rendue uniquement si le visiteur est `isSbiAdminLike`.
 
+## Livraison & cache (chantier deepening, 2026-06)
+- **Sceau de version** — *seam* unique de cache-bust : `sbi-version.js` (la version vivante) est la **seule** source qui casse le cache de la **colonne d'amorçage** d'un espace. Forme (Phase 1 = **admin**, `.327`) : l'amorce `components.js` **et** `sbi-version.js` sont servis `no-cache` (règle `firebase.json` ciblée, placée **après** la règle `js|css` pour primer) ; les 17 pages admin référencent l'amorce **sans `?v=`** ; `components.js` lit la version à l'exécution et l'appose à *tous* ses imports dynamiques via un helper pur `withVersion(path)`. La **colonne scellée** = `components.js → index.js → {admin-panels, shell, bottom-nav} → nav-manifest` + les feuilles CSS injectées (surface admin, bottom-nav, responsive) ; pour qu'un import porte `?v=V`, les imports statiques de cette colonne passent en **dynamiques** (un specifier statique ne peut pas interpoler une variable).
+- **Interface** = une constante. **Deletion test** : supprimer la discipline « bumper le token externe sur N pages + à chaque étage » ne fait plus réapparaître de complexité — elle est concentrée dans l'amorce. Remplace le motif « token `?v=` recopié à la main » (cause des bugs « rien n'a changé » : l'entrée mise en cache figeait toute la chaîne).
+- **Garde-fou** : `scripts/check-version-seal.mjs` (npm `check:version-seal`, câblé en `pre-commit` via `core.hooksPath=.githooks`) échoue si un token codé en dur réapparaît sur la colonne.
+- **Hors périmètre passe 1** (assumé) : les tokens **feuilles** profonds (`sbi-permissions.js?v=…`, `account-completeness.js?v=…`, `booklet-data.js?v=…`, ~30 imports dans ~25 fichiers). L'entrée étant `no-cache`, plus rien ne **gèle** la chaîne ; ces feuilles auto-cicatrisent en ≤ `max-age` (300 s). Extension élève/prof/tuteur + sceau des feuilles = passes ultérieures.
+
 ## Principes (architecture)
 - Le **Profil de rôle** est l'interface : ajouter un rôle ou une entrée de nav = de la **donnée**, pas un nouveau composant.
 - Un **seam** = présentation (desktop/mobile) interchangeable sans éditer le Shell.

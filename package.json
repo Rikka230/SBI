@@ -4,6 +4,7 @@
   "private": true,
   "description": "SBI e-learning web app deployed with Firebase Hosting.",
   "scripts": {
+    "check:version-seal": "node scripts/check-version-seal.mjs",
     "deploy": "firebase deploy --only hosting",
     "deploy:hosting": "firebase deploy --only hosting",
     "preview": "firebase hosting:channel:deploy preview --expires 7d",
