@@ -28,3 +28,41 @@
   body.sbi-admin-surface #main-content img,
   body.sbi-admin-space #main-content img { max-width: 100%; height: auto; }
 }
+
+/* ════════════════════════════════════════════════════════════
+   8.0P.167.322 — COMPTES : liste 6 colonnes → CARTES empilées (≤640px)
+   La ligne .sbi-account-row (grille avatar·nom·email·statut·voir·éditer) est
+   re-disposée en carte verticale. La grille inline (row.style) et la règle de
+   admin-accounts.css:338 sont battues par !important + source order.
+   ════════════════════════════════════════════════════════════ */
+@media (max-width: 640px) {
+  #users-list-container .sbi-account-row {
+    display: grid !important;
+    grid-template-columns: 46px 1fr 1fr !important;
+    grid-auto-rows: auto !important;
+    gap: 0.25rem 0.6rem !important;
+    align-items: center !important;
+    min-height: 0 !important;
+    padding: 0.85rem 0.9rem !important;
+    margin-bottom: 0.55rem !important;
+    border: 1px solid var(--sbi-admin-line, rgba(255, 255, 255, 0.12)) !important;
+    border-radius: 14px !important;
+    background: var(--sbi-admin-card, rgba(255, 255, 255, 0.05)) !important;
+    box-shadow: none !important;
+    contain: none !important;                 /* annule contain:layout (hauteur figée) */
+    content-visibility: visible !important;
+  }
+  #users-list-container .sbi-account-role-cell   { grid-column: 1; grid-row: 1 / 3; align-self: start; }
+  #users-list-container .sbi-account-name-cell   { grid-column: 2 / -1; grid-row: 1; }
+  #users-list-container .sbi-account-email-cell  { grid-column: 2 / -1; grid-row: 2; }
+  #users-list-container .sbi-account-status-cell { grid-column: 1 / -1; grid-row: 3; margin-top: 0.2rem; }
+  #users-list-container .sbi-account-row .btn-view-profile { grid-column: 1 / -1; grid-row: 4; }
+  #users-list-container .sbi-account-row .btn-edit-user    { grid-column: 1 / -1; grid-row: 5; }
+  #users-list-container .sbi-account-row .btn-view-profile,
+  #users-list-container .sbi-account-row .btn-edit-user {
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 42px !important;
+    margin: 0 !important;
+  }
+}
