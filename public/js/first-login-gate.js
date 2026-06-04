@@ -598,15 +598,12 @@ function renderCheck(id, title, desc) {
 }
 
 function maybeRenderStudentConstructionNotice(userData = {}, options = {}) {
-  if (!currentUid) return;
-  if (!window.location.pathname.startsWith('/student/')) return;
-  if (document.getElementById(MODAL_ID)) return;
-  if (document.getElementById(STUDENT_NOTICE_ID)) return;
-  if (readStudentNoticeDismissed(currentUid)) return;
-  if (userData?.statut === 'suspendu') return;
-  if (isSbiAdminLike(userData)) return;
-
-  renderStudentConstructionNotice(userData, options);
+  // 8.0P.167.314 — Panneau d'info étudiant (« site en construction ») RETIRÉ à la
+  // demande client : il ne s'affiche plus jamais après connexion. Le gate de
+  // première connexion (cases obligatoires) reste actif, lui. Garde unique : tous
+  // les chemins de rendu de la notice passent ici. renderStudentConstructionNotice
+  // est conservée (inutilisée) pour réactivation éventuelle.
+  return;
 }
 
 function renderStudentConstructionNotice(userData = {}, { afterFirstLogin = false } = {}) {
