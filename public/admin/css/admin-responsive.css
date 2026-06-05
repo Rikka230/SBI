@@ -1,0 +1,211 @@
+/* =======================================================================
+   SBI 8.0P.167.335 — FILET SYSTÉMIQUE : en mobile admin (≤1024px), aucun élément de
+   contenu ne peut dépasser la largeur de son parent. box-sizing border-box (un
+   width:100% + padding en content-box débordait) + max-width:100% (cape les largeurs
+   fixes inline, ex. inputs/box à 250-300px). Couvre la cause des débordements diffus
+   (Profil, etc.) sans archéologie élément par élément. Desktop ≥1025px non touché.
+   ======================================================================= */
+@media (max-width: 1024px) {
+  body.sbi-admin-surface #main-content *,
+  body.sbi-admin-space #main-content * {
+    box-sizing: border-box;
+    max-width: 100%;
+  }
+}
+
+/* =======================================================================
+   SBI 8.0P.167.319 — Filet de sécurité responsive des pages de CONSULTATION admin
+   (Comptes, Élèves en retard, Journal, Profil, Dashboard, Réglages accueil).
+
+   Objectif PRUDENT et NON destructif : en ≤768px, empêcher les tables/grilles
+   denses de CASSER la mise en page. Le contenu large devient scrollable DANS
+   #main-content (au lieu de pousser la page et de passer sous/à côté de la
+   bottom-nav). Padding resserré pour gagner de la largeur utile.
+
+   Volontairement scopé ≤768px → le desktop n'est JAMAIS touché. Le « mode cartes »
+   fin par table (Comptes, Journal…) relève d'une passe QA visuelle ultérieure.
+   ======================================================================= */
+@media (max-width: 768px) {
+  body.sbi-admin-surface #main-content,
+  body.sbi-admin-space #main-content {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  body.sbi-admin-surface .content-wrapper,
+  body.sbi-admin-space .content-wrapper {
+    /* #main-content réserve déjà la place de la capsule (.317) via padding-bottom ;
+       ici on resserre seulement les marges latérales/hautes du contenu. */
+    padding: 1rem !important;
+  }
+
+  /* Sécurité : aucun média/élément inline ne doit forcer une largeur > écran. */
+  body.sbi-admin-surface #main-content img,
+  body.sbi-admin-space #main-content img { max-width: 100%; height: auto; }
+}
+
+/* ════════════════════════════════════════════════════════════
+   8.0P.167.328 — SCROLL NATUREL MOBILE (≤1024px, bottom-nav active)
+   L'admin desktop utilise un « single scroll » (admin-layout.css) : html / body /
+   .app-container / #main-content sont tous en 100dvh + overflow:hidden, et SEUL
+   #main-content scrolle EN INTERNE. Sur mobile, ce modèle à hauteur d'écran fixe +
+   la capsule flottante casse tout : .app-container { height:100dvh; overflow:hidden }
+   clippe le contenu à UN écran → Dashboard « hors cadre », impossible de défiler ;
+   et la dernière ligne passe sous la barre.
+   Fix : on rebascule l'admin en SCROLL DE DOCUMENT naturel (comme élève/prof/tuteur)
+   et on réserve la place de la capsule. Desktop ≥1025px : STRICTEMENT inchangé.
+   ════════════════════════════════════════════════════════════ */
+@media (max-width: 1024px) {
+  /* html ne porte pas la classe body → ciblé via le media. admin-responsive.css
+     n'est chargé QUE sur les pages admin, donc aucun autre espace n'est impacté. */
+  html {
+    height: auto !important;
+    min-height: 100% !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+  }
+  body.sbi-bottom-nav-active,
+  body.sbi-bottom-nav-active .app-container {
+    height: auto !important;
+    min-height: 100dvh !important;
+    overflow: visible !important;
+    min-width: 0 !important;
+  }
+  body.sbi-bottom-nav-active #main-content {
+    height: auto !important;
+    min-height: 100dvh !important;
+    overflow: visible !important;
+    overscroll-behavior: auto !important;
+    /* min-width:0 : #main-content est un flex-item ; sans ça (min-width:auto par
+       défaut) il refuse de rétrécir sous la min-content de son contenu → débordement
+       diffus (gotcha flexbox classique, cause du « trop large » du Profil). SYSTÉMIQUE. */
+    min-width: 0 !important;
+    /* Dégagement : la capsule fait ~64px + marge + safe-area. */
+    padding-bottom: calc(108px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  /* Les listes ne scrollent plus EN INTERNE (sinon double scroll) : elles s'étendent
+     et c'est le document qui défile. */
+  body.sbi-bottom-nav-active #users-list-container {
+    max-height: none !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+  /* Le wrapper ne réimpose pas une hauteur plein écran (rallongerait inutilement). */
+  body.sbi-bottom-nav-active #main-content > .content-wrapper {
+    min-height: 0 !important;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════
+   8.0P.167.325 — COMPTES : vraie CARTE de gestion mobile (≤1024px, = où la
+   bottom-nav est active, pour ne pas dépendre d'un device exactement ≤640px)
+   La ligne dense .sbi-account-row (avatar·nom·email·statut·Voir·Éditer) devient
+   une carte : avatar à gauche, nom (titre) + email/activité, badges de statut en
+   pastilles, puis 2 actions tactiles (Voir vert / Éditer bleu). !important +
+   source order battent la grille inline (row.style) et admin-accounts.css.
+   Principes ui-ux-pro-max : hiérarchie par taille/poids, cibles ≥44px, contraste
+   dark-mode, pastilles de statut, une action primaire visible.
+   ════════════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════════
+   8.0P.167.332 — PAGE COMPTES : empêcher le débordement horizontal mobile.
+   Mesuré (harnais headless 375px) : le débordement (~113px) vient de l'EN-TÊTE
+   (titre + recherche + select 120px) qui ne passe pas à la ligne, et de la grille
+   2-colonnes repeat(auto-fit, minmax(300px,1fr)). Le scroll naturel (.328,
+   overflow:visible) ne faisait que RÉVÉLER ce débordement intrinsèque (avant,
+   overflow-x:hidden le masquait en coupant la carte). On force l'en-tête à passer à
+   la ligne et la grille à UNE colonne en ≤1024px.
+   ════════════════════════════════════════════════════════════ */
+@media (max-width: 1024px) {
+  /* En-tête « Gestion des Utilisateurs » + recherche : passe à la ligne. */
+  #view-users > div:first-child {
+    flex-wrap: wrap !important;
+    gap: 0.75rem !important;
+  }
+  #view-users > div:first-child > div {
+    flex-wrap: wrap !important;
+    width: 100% !important;
+  }
+  #view-users #search-user,
+  #view-users #filter-role {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+  /* Grille « Créer un compte » / « Comptes existants » → 1 colonne. */
+  #view-users > div:last-child {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 1024px) {
+  #users-list-container .sbi-account-row {
+    display: grid !important;
+    /* minmax(0,1fr) : sans le « 0 », 1fr = minmax(auto,1fr) et un email insécable
+       (min-content large) empêche la colonne de rétrécir → débordement horizontal. */
+    grid-template-columns: 44px minmax(0, 1fr) minmax(0, 1fr) !important;
+    max-width: 100% !important;
+    grid-auto-rows: min-content !important;
+    column-gap: 0.7rem !important;
+    row-gap: 0.4rem !important;
+    align-items: center !important;
+    min-height: 0 !important;
+    padding: 0.85rem 0.95rem 0.9rem !important;
+    margin: 0 0 0.6rem !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 16px !important;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.022)) !important;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28) !important;
+    contain: none !important;
+    content-visibility: visible !important;
+  }
+
+  /* Avatar / rôle (gauche, sur 2 lignes) */
+  #users-list-container .sbi-account-role-cell {
+    grid-column: 1; grid-row: 1 / 3; align-self: start; padding: 0 !important;
+  }
+
+  /* Nom = titre de la carte */
+  #users-list-container .sbi-account-name-cell {
+    grid-column: 2 / -1; grid-row: 1; align-self: end; min-width: 0; overflow: hidden;
+  }
+  #users-list-container .sbi-account-name-line {
+    font-size: 0.98rem !important; font-weight: 800 !important; color: #fff !important;
+    /* le nom s'enroule (2 lignes possibles) au lieu d'être tronqué → badge complétude visible */
+    white-space: normal !important; overflow-wrap: anywhere !important; overflow: visible !important;
+  }
+
+  /* Email + dernière activité (secondaire) */
+  #users-list-container .sbi-account-email-cell {
+    grid-column: 2 / -1; grid-row: 2; align-self: start; min-width: 0; overflow: hidden;
+  }
+  #users-list-container .sbi-account-email-line {
+    font-size: 0.82rem !important; color: #b9c2db !important;
+    overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important;
+  }
+  #users-list-container .sbi-account-card-meta { font-size: 0.72rem !important; color: #818db0 !important; margin-top: 0.12rem; }
+
+  /* Statut → pastilles lisibles, pleine largeur */
+  #users-list-container .sbi-account-status-cell {
+    grid-column: 1 / -1; grid-row: 3; margin-top: 0.2rem;
+    flex-direction: row !important; flex-wrap: wrap !important; gap: 0.35rem !important;
+  }
+  #users-list-container .sbi-account-status-cell small,
+  #users-list-container .sbi-account-status-cell .sbi-status-dot {
+    display: inline-flex !important; align-items: center;
+    padding: 0.22rem 0.6rem !important; border-radius: 999px !important;
+    background: rgba(255, 255, 255, 0.07) !important;
+    font-size: 0.72rem !important; line-height: 1.25 !important; max-width: 100% !important;
+  }
+
+  /* Actions : 2 boutons tactiles côte à côte (Voir primaire vert, Éditer bleu) */
+  #users-list-container .sbi-account-row .btn-view-profile { grid-column: 1 / 3; grid-row: 4; }
+  #users-list-container .sbi-account-row .btn-edit-user    { grid-column: 3 / -1; grid-row: 4; }
+  #users-list-container .sbi-account-row .btn-view-profile,
+  #users-list-container .sbi-account-row .btn-edit-user {
+    width: 100% !important; height: auto !important; min-height: 44px !important;
+    min-width: 0 !important; margin: 0 !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important; border-left: 0 !important;
+    border-radius: 11px !important; font-size: 0.74rem !important;
+    gap: 0.4rem !important; padding: 0 0.6rem !important;
+  }
+}

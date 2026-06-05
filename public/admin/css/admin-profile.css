@@ -728,3 +728,20 @@
         grid-template-columns: 1fr;
     }
 }
+
+/* ════════════════════════════════════════════════════════════
+   SBI 8.0P.167.335 — Profil admin : adaptation mobile (≤1024px).
+   Bug : .profile-grid (300px 1fr) ne collapsait JAMAIS (le @media 980 ne visait
+   que les grilles du suivi) → la page débordait (586px à 360, 178px à 768).
+   Fix : 1 colonne, colonnes qui rétrécissent (min-width:0), onglets qui s'enroulent.
+   ════════════════════════════════════════════════════════════ */
+@media (max-width: 1024px) {
+  .profile-grid { grid-template-columns: 1fr !important; }
+  .profile-grid > *,
+  .profile-sidebar,
+  .profile-main { min-width: 0 !important; max-width: 100% !important; }
+
+  /* Onglets : s'enroulent au lieu de forcer la largeur (flex no-wrap + gros padding). */
+  .profile-tabs-header { flex-wrap: wrap !important; gap: 0.4rem !important; }
+  .p-tab { padding: 0.7rem 1rem !important; }
+}

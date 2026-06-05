@@ -1,0 +1,14 @@
+#!/bin/sh
+# Sceau de version (Candidat A) — garde-fou de pre-commit.
+# Bloque le commit si un token de cache-bust codé en dur réapparaît sur la colonne
+# d'amorçage admin (l'entrée doit rester tokenless + no-cache). Voir CONTEXT.md
+# « Sceau de version » et scripts/check-version-seal.mjs.
+#
+# Activation (une fois) : git config core.hooksPath .githooks
+node scripts/check-version-seal.mjs
+status=$?
+if [ "$status" -ne 0 ]; then
+  echo "pre-commit: sceau de version en échec — commit bloqué." >&2
+  exit 1
+fi
+exit 0

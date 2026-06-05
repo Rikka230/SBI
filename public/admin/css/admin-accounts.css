@@ -334,13 +334,18 @@
   overflow-anchor: none;
 }
 
-#users-list-container .sbi-account-row {
-  grid-template-columns: 64px minmax(104px, .92fr) minmax(136px, 1.22fr) minmax(132px, 1fr) 62px 62px !important;
-  min-height: 72px !important;
-  contain: layout paint style;
-  contain-intrinsic-size: 72px;
-  transform: translateZ(0);
-  box-shadow: none !important;
+/* Grille TABLE 6 colonnes = DESKTOP uniquement. Gardée ≥1025px pour ne pas combattre
+   la carte mobile (admin-responsive.css). Sans ce garde, ces !important sans media
+   query polluaient le mobile (contain/content-visibility/min-height parasites). */
+@media (min-width: 1025px) {
+  #users-list-container .sbi-account-row {
+    grid-template-columns: 64px minmax(104px, .92fr) minmax(136px, 1.22fr) minmax(132px, 1fr) 62px 62px !important;
+    min-height: 72px !important;
+    contain: layout paint style;
+    contain-intrinsic-size: 72px;
+    transform: translateZ(0);
+    box-shadow: none !important;
+  }
 }
 
 #users-list-container .sbi-account-row > * {
@@ -438,12 +443,15 @@
   will-change: scroll-position;
 }
 
-#users-list-container .sbi-account-row {
-  grid-template-columns: 64px minmax(108px, .88fr) minmax(138px, 1.1fr) minmax(156px, 1.24fr) 62px 62px !important;
-  min-height: 74px !important;
-  max-height: none !important;
-  content-visibility: auto;
-  contain-intrinsic-size: 74px;
+/* (idem) grille TABLE desktop only — ne pas laisser ces !important sur mobile. */
+@media (min-width: 1025px) {
+  #users-list-container .sbi-account-row {
+    grid-template-columns: 64px minmax(108px, .88fr) minmax(138px, 1.1fr) minmax(156px, 1.24fr) 62px 62px !important;
+    min-height: 74px !important;
+    max-height: none !important;
+    content-visibility: auto;
+    contain-intrinsic-size: 74px;
+  }
 }
 
 #users-list-container .sbi-account-status-cell {

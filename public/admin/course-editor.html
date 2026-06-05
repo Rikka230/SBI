@@ -9,8 +9,10 @@
   <link rel="stylesheet" href="/admin/css/admin-notifications.css">
   <link rel="stylesheet" href="/admin/css/admin-surface-unified.css?v=8.0P.167.52">
   <link rel="stylesheet" href="/css/course-editor-v2.css?v=8.0P.167.203">
+  <link rel="stylesheet" href="css/admin-mobile-block.css?v=8.0P.167.318">
   <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
-  <script src="/admin/js/components.js?v=8.0P.167.64"></script>
+  <link rel="modulepreload" href="/js/sbi-version.js">
+  <script src="/admin/js/components.js"></script>
   <style>
     body.sbi-editor-v2--embedded #main-content,
     body.sbi-editor-v2--embedded .content-wrapper,
@@ -20,8 +22,9 @@
       opacity: 1 !important;
     }
   </style>
+  <link rel="stylesheet" href="css/admin-responsive.css">
 </head>
-<body class="preload sbi-editor-v2 sbi-editor-v2--admin sbi-editor-v2--embedded sbi-admin-surface" data-editor-role="admin">
+<body class="preload sbi-editor-v2 sbi-editor-v2--admin sbi-editor-v2--embedded sbi-admin-surface sbi-admin-editor-lock" data-editor-role="admin">
   <div class="app-container" id="app-container">
     <admin-left-panel></admin-left-panel>
     <header class="top-bar">
@@ -33,6 +36,13 @@
       </button>
     </header>
     <main id="main-content">
+      <div class="sbi-admin-mobile-block" role="alert">
+        <div class="sbi-admin-mobile-block__card">
+          <span class="sbi-admin-mobile-block__icon" aria-hidden="true">🖥️</span>
+          <p class="sbi-admin-mobile-block__title">Cet écran nécessite un ordinateur</p>
+          <p class="sbi-admin-mobile-block__text">L'éditeur de cours (blocs, glisser-déposer, Quill) se manipule sur grand écran. Ouvrez cette page sur un ordinateur ; depuis le téléphone, utilisez la barre du bas pour aller ailleurs.</p>
+        </div>
+      </div>
       <div class="content-wrapper sbi-course-editor-content-wrapper">
         <div id="sbi-course-editor-v2" data-editor-role="admin">
           <div class="sbi-editor-v2-fallback">

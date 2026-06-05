@@ -121,6 +121,33 @@
             "value": "public,max-age=86400,must-revalidate"
           }
         ]
+      },
+      {
+        "source": "/admin/js/components.js",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          }
+        ]
+      },
+      {
+        "source": "/js/sbi-version.js",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          }
+        ]
+      },
+      {
+        "source": "/admin/css/admin-responsive.css",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          }
+        ]
       }
     ],
     "cleanUrls": false,
