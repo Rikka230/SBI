@@ -11335,25 +11335,34 @@ exports.onMessagingMessageCreated = onDocumentCreated({
         console.error("[SBI Messaging] bump lastMessage :", conversationId, error.message || error);
     }
 
-    // Ping cloche : uniquement en 1:1, à l'autre participant. (Salons de groupe :
-    // pas de notif par message — on s'appuie sur le badge non-lus.)
-    if (conv.kind === "dm" && Array.isArray(conv.participants)) {
-        const others = conv.participants
-            .map((u) => cleanString(u, 180))
-            .filter((u) => u && u !== senderUid);
+    // Ping cloche / assistant : aux AUTRES membres (DM, groupe perso, salon de
+    // formation). Id stable par (conversation, destinataire) → 1 notif par fil,
+    // ré-actualisée à chaque message (pas de spam). Annonces : gérées par leur CF.
+    let recipients = [];
+    let groupTitle = "";
+    if ((conv.kind === "dm" || conv.kind === "custom") && Array.isArray(conv.participants)) {
+        recipients = conv.participants.map((u) => cleanString(u, 180)).filter((u) => u && u !== senderUid);
+        if (conv.kind === "custom") groupTitle = cleanString(conv.title, 120) || "Groupe";
+    } else if (conv.kind === "group" && conv.scope && conv.scope.id) {
+        const members = await listFormationMemberUids(db, cleanString(conv.scope.id, 180));
+        recipients = members.filter((u) => u && u !== senderUid);
+        groupTitle = cleanString(conv.title, 120) || "Salon";
+    }
+    if (recipients.length) {
         try {
-            await writeSbiNotificationsForRecipients(db, others, (uid) => ({
+            await writeSbiNotificationsForRecipients(db, recipients, (uid) => ({
                 id: `new_message_${conversationId}_${uid}`,
                 type: "new_message",
                 fields: {
                     conversationId,
                     senderUid,
                     senderName,
+                    groupTitle,
                     preview: cleanString(previewFull, 140)
                 }
             }));
         } catch (error) {
-            console.error("[SBI Messaging] ping DM :", conversationId, error.message || error);
+            console.error("[SBI Messaging] ping message :", conversationId, error.message || error);
         }
     }
 });

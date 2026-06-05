@@ -533,8 +533,10 @@ const NOTIFICATION_REGISTRY = {
         navigate: (n) => n.actionUrl || '/admin/apprenticeship-booklets.html'
     },
     new_message: {
-        title: (n) => `Message de ${n.senderName || 'votre interlocuteur'}`,
-        body: (n) => n.preview ? escNotif(n.preview) : 'Vous avez reçu un nouveau message.',
+        title: (n) => n.groupTitle ? escNotif(n.groupTitle) : `Message de ${n.senderName || 'votre interlocuteur'}`,
+        body: (n) => n.groupTitle
+            ? `<strong>${escNotif(n.senderName || '—')}</strong> : ${n.preview ? escNotif(n.preview) : 'nouveau message'}`
+            : (n.preview ? escNotif(n.preview) : 'Vous avez reçu un nouveau message.'),
         icon: NOTIF_ICONS.chat,
         navigate: (n) => messagerieUrlForCurrentUser(n.conversationId)
     },
