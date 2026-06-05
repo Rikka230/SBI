@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.337',
+  version: '8.0P.167.340',
   branch: 'adapt-admin-mobile',
-  channel: 'Chantier mobile admin TERMINÉ : frame systémique + Comptes/Profil corrigés + 4 éditeurs bloqués <900px + instrumentation retirée (prêt à merger)',
-  stage: 'Fin du chantier mobile admin (toutes pages), piloté par un harnais headless FIDÈLE. Acquis : (1) FRAME systémique (admin-responsive.css ≤1024px) — #main-content { min-width:0 } (gotcha flexbox = cause racine des débordements diffus), max-width:100% + box-sizing:border-box sur le contenu, scroll naturel ; (2) Comptes : carte propre (grilles TABLE desktop gardées ≥1025px, nom enroulé/badge visible) ; (3) Profil corrigé (.profile-grid → 1 colonne, onglets enroulés) ; (4) les 4 éditeurs lourds (Cursus/Promotions/Formations/course-editor) bloqués « ordinateur requis » <900px de façon homogène ; (5) instrumentation diag-width retirée. Harnais : 0 débordement sur les 14 pages de consultation à 360/768/1024 ; desktop ≥1025px inchangé. Refacto renderers→classes (Candidat C) volontairement REPORTÉ (le filet systémique a réglé les débordements sans toucher au cœur admin). Prêt à merger adapt-admin-mobile → main.',
+  channel: 'Admin mobile : bottom-nav en thème ADMIN dès le 1er rendu (theme keyé sur sbi-admin-surface statique) — fin du « skin élève avant admin »',
+  stage: 'Correctif FOUC (« CSS cassé / icônes dans tous les sens » au 1er chargement mobile). Cause : sur les 17 pages admin, admin-responsive.css / admin-surface-unified.css / admin-mobile-block.css étaient déclarés APRÈS le <script src=components.js>. Or components.js est parser-bloquant ET servi no-cache (Sceau) → il est re-fetché à chaque chargement et BLOQUE le téléchargement des CSS placés après lui. Sur mobile lent, la page se révèle (gate body.auth-ready de admin-layout.css qui affiche .app-container) AVANT que ces CSS soient chargés → flash non stylé ~1s. Fix : remontée de tous les <link rel=stylesheet> AVANT le script sur les 17 pages → quand .app-container se révèle, tout le CSS est prêt. Aucun changement de comportement de components.js (toujours parser-bloquant, juste précédé par le CSS).',
   updatedAt: '2026-06-05',
-  label: 'SBI 8.0P.167.337 - Chantier mobile admin terminé (frame systémique + Comptes/Profil + 4 éditeurs bloqués + instrumentation retirée)'
+  label: 'SBI 8.0P.167.340 - Admin mobile : bottom-nav thème admin dès le 1er rendu (keyé sur sbi-admin-surface statique)'
 };
 
 export function getSbiVersionLabel() {
