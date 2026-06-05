@@ -1089,9 +1089,20 @@ service cloud.firestore {
     match /conversations/{conversationId} {
       allow get, list: if canReadConversation(resource.data);
 
-      // Création / maj du fil (lastMessage*, titre…) : Cloud Functions +
-      // trigger Admin SDK uniquement (jamais le client).
-      allow create, update, delete: if false;
+      // Création / suppression / changement de structure : Cloud Functions only.
+      allow create, delete: if false;
+
+      // 8.0P.167.346 — Dénormalisation lastMessage* : un membre (hors annonce) peut
+      // mettre à jour UNIQUEMENT l'aperçu du dernier message (robuste même si le
+      // trigger serveur ne se déclenche pas — base eur3 / fonction europe-west1).
+      // Impossible de toucher participants/kind/scope/audience.
+      allow update: if isAdmin()
+        || (
+          canReadConversation(resource.data)
+          && resource.data.kind != 'announcement'
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['lastMessageAt', 'lastMessageText', 'lastMessageSenderUid', 'lastMessageSenderName', 'updatedAt'])
+        );
 
       match /messages/{messageId} {
         allow get, list: if canReadConversation(conversationData(conversationId));

@@ -336,13 +336,27 @@ function initMessaging(me, role) {
         if (!trimmed || !activeCid) return;
         const conv = conversations.get(activeCid);
         if (!conv || conv.kind === "announcement") return;
+        const body = trimmed.slice(0, 4000);
+        const cid = activeCid;
         try {
-            await addDoc(collection(db, "conversations", activeCid, "messages"), {
+            await addDoc(collection(db, "conversations", cid, "messages"), {
                 senderUid: me.id,
                 senderName: displayName(me),
-                text: trimmed.slice(0, 4000),
+                text: body,
                 createdAt: serverTimestamp()
             });
+            // Dénormalisation de l'aperçu côté client (robuste même si le trigger
+            // serveur ne se déclenche pas) : le listener de l'autre participant
+            // rafraîchit alors sa liste + l'indicateur de non-lu.
+            try {
+                await setDoc(doc(db, "conversations", cid), {
+                    lastMessageAt: serverTimestamp(),
+                    lastMessageText: body.slice(0, 140),
+                    lastMessageSenderUid: me.id,
+                    lastMessageSenderName: displayName(me),
+                    updatedAt: serverTimestamp()
+                }, { merge: true });
+            } catch (e) { /* le trigger prendra le relais s'il est actif */ }
         } catch (error) {
             console.error("[SBI Messagerie] envoi impossible :", error);
             alert("Le message n'a pas pu être envoyé.");

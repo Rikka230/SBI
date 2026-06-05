@@ -603,10 +603,11 @@ function renderNotificationsList(notifs, attempt) {
             <div class="notif-item" data-id="${escNotifAttr(notif.id)}" data-type="${escNotifAttr(notif.type)}" style="display: flex; align-items: flex-start; gap: 1rem; padding: 1rem; border-bottom: 1px solid var(--border-color, #333); cursor: pointer; transition: background 0.2s; background: rgba(128, 128, 128, 0.05);">
                 ${dotIndicator}
                 <div style="flex-shrink:0;">${iconSvg}</div>
-                <div>
+                <div style="flex:1; min-width:0;">
                     <p style="margin:0; font-size:0.85rem; color:var(--text-main, #fff); font-weight:bold;">${titleText}</p>
                     <p style="margin:0.3rem 0 0 0; font-size:0.8rem; color:var(--text-muted, #9ca3af); line-height: 1.4;">${bodyText}</p>
                 </div>
+                <button type="button" class="notif-dismiss" data-id="${escNotifAttr(notif.id)}" title="Supprimer cette notification" aria-label="Supprimer cette notification" style="flex-shrink:0; border:0; background:none; cursor:pointer; color:var(--text-muted, #9ca3af); font-size:1.25rem; line-height:1; padding:2px 6px; border-radius:6px; align-self:flex-start;">&times;</button>
             </div>
         `;
 
@@ -615,11 +616,25 @@ function renderNotificationsList(notifs, attempt) {
 
     document.querySelectorAll('.notif-item').forEach((item) => {
         item.addEventListener('click', async (e) => {
+            // Le clic sur la croix « supprimer » ne doit pas ouvrir la notification.
+            if (e.target.closest('.notif-dismiss')) return;
             e.preventDefault();
             e.stopPropagation();
             const notifId = e.currentTarget.getAttribute('data-id');
             const notif = renderedNotifsById.get(notifId) || { id: notifId, type: e.currentTarget.getAttribute('data-type') };
             await handleNotifClick(e.currentTarget, notif);
+        });
+    });
+
+    // 8.0P.167.346 — Croix « supprimer sans ouvrir » sur CHAQUE notification (tous types).
+    document.querySelectorAll('.notif-dismiss').forEach((btn) => {
+        btn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const id = btn.getAttribute('data-id');
+            const itemEl = btn.closest('.notif-item');
+            if (itemEl) itemEl.style.display = 'none';
+            try { await dismissNotificationForCurrentUser(id); } catch (error) { console.warn('[SBI Notif] suppression impossible :', error); }
         });
     });
 }
