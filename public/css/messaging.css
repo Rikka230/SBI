@@ -218,8 +218,16 @@
 .sbi-msg-picker-list { overflow-y: auto; padding: 0 0.6rem 0.8rem; }
 .sbi-msg-contact { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; width: 100%; text-align: left; border: 0; background: none; font: inherit; cursor: pointer; padding: 0.7rem 0.8rem; border-radius: 10px; color: var(--text-main, #111827); }
 .sbi-msg-contact:hover { background: var(--bg-hover, rgba(0, 0, 0, 0.05)); }
-.sbi-msg-contact-name { font-weight: 700; }
-.sbi-msg-contact-role { font-size: 0.74rem; color: var(--text-muted, #6b7280); }
+.sbi-msg-contact-name { font-weight: 700; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sbi-msg-contact-role { font-size: 0.74rem; color: var(--text-muted, #6b7280); flex-shrink: 0; }
+
+/* ── Groupes personnalisés ── */
+.sbi-msg-aside-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+.sbi-msg-new-btn--ghost { background: transparent; color: var(--accent-blue, #2a57ff); border: 1px solid var(--accent-blue, #2a57ff); }
+.sbi-msg-manage-btn { flex-shrink: 0; margin-left: auto; border: 1px solid var(--border-color, #e5e7eb); background: none; color: var(--text-main, #111827); font: inherit; font-weight: 700; font-size: 0.78rem; padding: 0.4rem 0.7rem; border-radius: 9px; cursor: pointer; }
+.sbi-msg-contact--check { cursor: pointer; }
+.sbi-msg-contact--check input { width: 18px; height: 18px; flex-shrink: 0; accent-color: var(--accent-blue, #2a57ff); }
+.sbi-msg-group-foot { display: flex; align-items: center; justify-content: space-between; gap: 0.8rem; padding: 0.8rem 1.1rem; border-top: 1px solid var(--border-color, #e5e7eb); }
 
 /* ═══════════════════════════════════════════════════════════════
    Admin — composer d'annonces (admin-messagerie.html)

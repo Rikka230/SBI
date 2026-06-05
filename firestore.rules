@@ -1,6 +1,6 @@
 rules_version = '2';
 
-// SBI 8.0P.167.347 — messagerie : lecture canal inexistant autorisée (resource==null).
+// SBI 8.0P.167.349 — messagerie : groupes personnalisés (kind:'custom', participants[]).
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -851,10 +851,20 @@ service cloud.firestore {
         );
     }
 
+    // 8.0P.167.349 — Groupe personnalisé (créé par prof/admin) : membres = participants[].
+    function convIsCustomMember(c) {
+      return c.keys().hasAny(['kind'])
+        && c.kind == 'custom'
+        && c.keys().hasAny(['participants'])
+        && c.participants is list
+        && request.auth.uid in c.participants;
+    }
+
     function convIsMember(c) {
       return convIsDmMember(c)
         || convIsGroupMember(c)
-        || convIsAnnouncementMember(c);
+        || convIsAnnouncementMember(c)
+        || convIsCustomMember(c);
     }
 
     function canReadConversation(c) {
