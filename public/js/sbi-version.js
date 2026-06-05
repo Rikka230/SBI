@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.336',
+  version: '8.0P.167.337',
   branch: 'adapt-admin-mobile',
-  channel: 'Chantier mobile admin : éditeur de cours (course-editor) bloqué « ordinateur requis » <900px (les 4 éditeurs homogènes désormais)',
-  stage: 'Chantier mobile admin (toutes pages), piloté par un harnais headless FIDÈLE (vraie page + tous CSS + classes mobiles réelles). Triage : seule la page PROFIL débordait vraiment (586px à 360) — .profile-grid (300px 1fr) ne collapsait jamais. Fixes SYSTÉMIQUES dans admin-responsive.css (≤1024px) : (1) #main-content { min-width:0 } — gotcha flexbox : un flex-item à min-width:auto refuse de rétrécir sous la min-content de son contenu → débordement diffus ; c\'était LA cause racine du Profil et un filet pour toutes les pages ; (2) max-width:100% + box-sizing:border-box sur tout #main-content * (cape les largeurs fixes inline) ; (3) Profil : .profile-grid → 1 colonne, onglets qui s\'enroulent (admin-profile.css). Résultat harnais : 0 débordement sur les 14 pages de consultation à 360/768/1024. Reste : tester le contenu injecté en JS (listes) avec données, revue visuelle, bloc éditeurs <900px (course-editor), nettoyage instrumentation.',
+  channel: 'Chantier mobile admin TERMINÉ : frame systémique + Comptes/Profil corrigés + 4 éditeurs bloqués <900px + instrumentation retirée (prêt à merger)',
+  stage: 'Fin du chantier mobile admin (toutes pages), piloté par un harnais headless FIDÈLE. Acquis : (1) FRAME systémique (admin-responsive.css ≤1024px) — #main-content { min-width:0 } (gotcha flexbox = cause racine des débordements diffus), max-width:100% + box-sizing:border-box sur le contenu, scroll naturel ; (2) Comptes : carte propre (grilles TABLE desktop gardées ≥1025px, nom enroulé/badge visible) ; (3) Profil corrigé (.profile-grid → 1 colonne, onglets enroulés) ; (4) les 4 éditeurs lourds (Cursus/Promotions/Formations/course-editor) bloqués « ordinateur requis » <900px de façon homogène ; (5) instrumentation diag-width retirée. Harnais : 0 débordement sur les 14 pages de consultation à 360/768/1024 ; desktop ≥1025px inchangé. Refacto renderers→classes (Candidat C) volontairement REPORTÉ (le filet systémique a réglé les débordements sans toucher au cœur admin). Prêt à merger adapt-admin-mobile → main.',
   updatedAt: '2026-06-05',
-  label: 'SBI 8.0P.167.335 - Chantier mobile admin : frame systémique (min-width:0 + max-width + box-sizing) + Profil corrigé'
+  label: 'SBI 8.0P.167.337 - Chantier mobile admin terminé (frame systémique + Comptes/Profil + 4 éditeurs bloqués + instrumentation retirée)'
 };
 
 export function getSbiVersionLabel() {
