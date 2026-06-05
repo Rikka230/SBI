@@ -606,39 +606,13 @@ function initMessaging(me, role) {
         }
     }
 
-    // --- Mouchard TEMPORAIRE (inert sans ?msgdebug=1) ---------------------
-    const MSG_DEBUG = /[?&]msgdebug/i.test(location.search);
-    const dbgState = { uid: me.id, role: roleKey, dm: "…", chan: 0, chanErr: "" };
-    function renderDebug() {
-        if (!MSG_DEBUG) return;
-        let box = document.getElementById("sbi-msg-debug");
-        if (!box) {
-            box = document.createElement("div");
-            box.id = "sbi-msg-debug";
-            box.style.cssText = "position:fixed;left:6px;right:6px;bottom:6px;z-index:2147483647;background:#0b1020;color:#cfe3ff;font:11px/1.4 monospace;padding:8px;border:2px solid #ff4a4a;border-radius:8px;white-space:pre-wrap;max-height:55vh;overflow:auto;";
-            document.body.appendChild(box);
-        }
-        const k = {}; conversations.forEach((c) => { k[c.kind] = (k[c.kind] || 0) + 1; });
-        box.textContent = `[MSG-DEBUG] (fais une capture d'écran)\nuid=${dbgState.uid}  role=${dbgState.role}\nDM query: ${dbgState.dm}\ncanaux reçus: ${dbgState.chan}${dbgState.chanErr ? "\ncanal err: " + dbgState.chanErr : ""}\nconvs total=${conversations.size} ${JSON.stringify(k)}`;
-    }
-
     // --- Branchement des listeners temps réel -----------------------------
-    // 1) DMs : toutes les conversations où je suis participant.
+    // 1) DMs + groupes perso : conversations où je suis dans participants.
     trackUnsub(onSnapshot(
         query(collection(db, "conversations"), where("participants", "array-contains", me.id)),
-        (snap) => {
-            dbgState.dm = `${snap.size} docs (${snap.metadata.fromCache ? "CACHE" : "serveur"})`;
-            snap.forEach((d) => upsertConversation(d.id, d.data()));
-            maybeOpenFromQuery();
-            renderDebug();
-        },
-        (error) => {
-            dbgState.dm = `ERREUR ${error.code || ""} ${error.message || error}`;
-            console.warn("[SBI Messagerie] DMs indisponibles :", error);
-            renderDebug();
-        }
+        (snap) => { snap.forEach((d) => upsertConversation(d.id, d.data())); maybeOpenFromQuery(); },
+        (error) => console.warn("[SBI Messagerie] DMs indisponibles :", error)
     ));
-    renderDebug();
 
     // 2) Salons de formation + annonces (ids déterministes).
     (async () => {
@@ -665,8 +639,8 @@ function initMessaging(me, role) {
 
     function listenChannelDoc(cid) {
         trackUnsub(onSnapshot(doc(db, "conversations", cid),
-            (snap) => { if (snap.exists()) { upsertConversation(cid, snap.data()); dbgState.chan += 1; renderDebug(); } },
-            (error) => { dbgState.chanErr = `${cid}: ${error.code || error.message || error}`; renderDebug(); }
+            (snap) => { if (snap.exists()) upsertConversation(cid, snap.data()); },
+            (error) => console.warn("[SBI Messagerie] canal indisponible :", cid, error)
         ));
     }
 

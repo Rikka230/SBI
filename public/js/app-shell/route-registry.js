@@ -1324,7 +1324,7 @@ async function mountStudentMessagerie({ url }) {
 
   window.__SBI_APP_SHELL_MOUNTING_STUDENT_MESSAGERIE = true;
   try {
-    const module = await import('/js/messaging/messaging-ui.js?v=8.0P.167.352');
+    const module = await import('/js/messaging/messaging-ui.js?v=8.0P.167.353');
     const cleanup = module.mountMessaging?.({ role: 'student' });
     if (typeof cleanup === 'function') registerCleanup(cleanup, 'student-messagerie');
   } finally {
@@ -1347,7 +1347,7 @@ async function mountTeacherMessagerie({ url }) {
 
   window.__SBI_APP_SHELL_MOUNTING_TEACHER_MESSAGERIE = true;
   try {
-    const module = await import('/js/messaging/messaging-ui.js?v=8.0P.167.352');
+    const module = await import('/js/messaging/messaging-ui.js?v=8.0P.167.353');
     const cleanup = module.mountMessaging?.({ role: 'teacher' });
     if (typeof cleanup === 'function') registerCleanup(cleanup, 'teacher-messagerie');
   } finally {
