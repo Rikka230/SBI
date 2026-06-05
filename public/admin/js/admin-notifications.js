@@ -325,6 +325,12 @@ function renderCombinedNotifications() {
     updateRedBadges(notifs.length);
     renderNotificationsList(notifs);
 
+    // 8.0P.167.351 — Pastille « nouveaux messages » sur l'entrée Messagerie de la
+    // nav (bottom-nav + bouton « Plus » + nav desktop) : visible sur MOBILE, où la
+    // cloche/assistant est peu repérable. Compte les notifs de messagerie non lues.
+    const msgCount = notifs.filter((n) => n.type === 'new_message' || n.type === 'admin_announcement').length;
+    updateMessagingNavBadge(msgCount);
+
     window.dispatchEvent(new CustomEvent('sbi:notifications-updated', {
         detail: {
             count: notifs.length,
@@ -332,6 +338,62 @@ function renderCombinedNotifications() {
             types: notifs.map((notif) => notif.type).filter(Boolean)
         }
     }));
+}
+
+let navBadgeStylesInjected = false;
+function injectNavBadgeStyles() {
+    if (navBadgeStylesInjected || typeof document === 'undefined') return;
+    navBadgeStylesInjected = true;
+    const style = document.createElement('style');
+    style.id = 'sbi-nav-msg-badge-style';
+    style.textContent = `
+.sbi-nav-msg-badge{position:absolute;top:2px;right:6px;min-width:16px;height:16px;padding:0 4px;
+  display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;
+  background:#ff4a4a;color:#fff;font-size:10px;font-weight:900;line-height:1;border-radius:999px;
+  z-index:3;pointer-events:none;box-shadow:0 0 0 2px rgba(0,0,0,.18);}
+.sbi-nav-msg-badge--dot{min-width:10px;width:10px;height:10px;padding:0;}
+.sbi-bn-sheet-item .sbi-nav-msg-badge{top:50%;transform:translateY(-50%);right:12px;}`;
+    (document.head || document.documentElement).appendChild(style);
+}
+
+function setNavBadge(el, count, dotOnly) {
+    if (!el) return;
+    let badge = el.querySelector(':scope > .sbi-nav-msg-badge');
+    if (count > 0) {
+        if (!badge) {
+            badge = document.createElement('span');
+            badge.className = 'sbi-nav-msg-badge';
+            if (getComputedStyle(el).position === 'static') el.style.position = 'relative';
+            el.appendChild(badge);
+        }
+        badge.textContent = dotOnly ? '' : (count > 9 ? '9+' : String(count));
+        badge.classList.toggle('sbi-nav-msg-badge--dot', Boolean(dotOnly));
+    } else if (badge) {
+        badge.remove();
+    }
+}
+
+// Pastille « messagerie » sur la nav (mobile + desktop). Bornée si la nav n'est
+// pas encore montée.
+function updateMessagingNavBadge(count, attempt) {
+    attempt = attempt || 0;
+    injectNavBadgeStyles();
+    const items = [];
+    document.querySelectorAll('.sbi-bn-item[data-id="messagerie"], .sbi-bn-sheet-item[data-id="messagerie"], a[href*="/messagerie"]')
+        .forEach((el) => { if (!items.includes(el)) items.push(el); });
+
+    if (!items.length && attempt < 25) {
+        setTimeout(() => updateMessagingNavBadge(count, attempt + 1), 200);
+        return;
+    }
+    items.forEach((el) => setNavBadge(el, count));
+
+    // Si la messagerie est dans la feuille « Plus » (overflow) et non dans la barre,
+    // on pose une pastille sur le bouton « Plus » (visible sans ouvrir la feuille).
+    const inSheet = document.querySelector('.sbi-bn-sheet-item[data-id="messagerie"]');
+    const inBar = document.querySelector('.sbi-bn-item[data-id="messagerie"]');
+    const plus = document.getElementById('sbi-bn-plus');
+    if (plus) setNavBadge(plus, (inSheet && !inBar) ? count : 0, true);
 }
 
 async function dismissNotificationForCurrentUser(notifId) {

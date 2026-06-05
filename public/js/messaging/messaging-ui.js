@@ -12,7 +12,7 @@
 import { app, db, auth } from "/js/firebase-init.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import {
-    collection, doc, getDoc, setDoc, addDoc, serverTimestamp,
+    collection, doc, getDoc, setDoc, addDoc, updateDoc, arrayUnion, serverTimestamp,
     onSnapshot, query, where, orderBy, limit
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js";
@@ -356,6 +356,10 @@ function initMessaging(me, role) {
         try {
             await setDoc(doc(db, "conversations", cid, "reads", me.id), { lastReadAt: serverTimestamp() }, { merge: true });
         } catch (_) { /* non bloquant */ }
+        // Efface la notif « nouveau message » de ce fil à la lecture (badge nav + cloche).
+        try {
+            await updateDoc(doc(db, "notifications", `new_message_${cid}_${me.id}`), { dismissedBy: arrayUnion(me.id) });
+        } catch (_) { /* pas de notif pour ce fil */ }
     }
 
     // --- Envoi d'un message ----------------------------------------------
