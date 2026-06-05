@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.338',
+  version: '8.0P.167.339',
   branch: 'adapt-admin-mobile',
-  channel: 'Admin mobile : fin du FOUC au 1er chargement — tout le CSS chargé AVANT le <script components.js> (qui est parser-bloquant + no-cache)',
+  channel: 'Admin mobile : bottom-nav colorée dès le 1er rendu (sbi-bottom-nav.css en <link> statique no-cache) — fin du « pop blanc » au F5',
   stage: 'Correctif FOUC (« CSS cassé / icônes dans tous les sens » au 1er chargement mobile). Cause : sur les 17 pages admin, admin-responsive.css / admin-surface-unified.css / admin-mobile-block.css étaient déclarés APRÈS le <script src=components.js>. Or components.js est parser-bloquant ET servi no-cache (Sceau) → il est re-fetché à chaque chargement et BLOQUE le téléchargement des CSS placés après lui. Sur mobile lent, la page se révèle (gate body.auth-ready de admin-layout.css qui affiche .app-container) AVANT que ces CSS soient chargés → flash non stylé ~1s. Fix : remontée de tous les <link rel=stylesheet> AVANT le script sur les 17 pages → quand .app-container se révèle, tout le CSS est prêt. Aucun changement de comportement de components.js (toujours parser-bloquant, juste précédé par le CSS).',
   updatedAt: '2026-06-05',
-  label: 'SBI 8.0P.167.338 - Admin mobile : fin du FOUC 1er chargement (CSS avant le script components.js)'
+  label: 'SBI 8.0P.167.339 - Admin mobile : bottom-nav colorée dès le 1er rendu (sbi-bottom-nav.css statique no-cache)'
 };
 
 export function getSbiVersionLabel() {
