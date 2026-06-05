@@ -5,51 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SBI Student - Messagerie</title>
 
-    <!-- 8.0P.167.347 — Traceur FOUC TEMPORAIRE (inert sans ?fouctrace=1).
-         Capture la chronologie réelle du chargement pour diagnostiquer le flash. -->
-    <script>
-    (function () {
-      if (!/[?&]fouctrace/i.test(location.search)) return;
-      var t0 = performance.now();
-      var log = [];
-      function mark(label) { log.push(('' + (performance.now() - t0).toFixed(0)).padStart(5) + 'ms  ' + label); }
-      mark('head script start (CSS pas encore chargé)');
-      function observeBody() {
-        var prev = document.body ? document.body.className : '';
-        mark('body class @start: [' + prev + ']');
-        new MutationObserver(function () {
-          if (document.body.className !== prev) { mark('body class -> [' + document.body.className + ']'); prev = document.body.className; }
-        }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
-      }
-      if (document.body) observeBody(); else document.addEventListener('DOMContentLoaded', observeBody);
-      var frames = 0;
-      (function raf() {
-        frames++;
-        if (frames <= 4) {
-          var mc = document.getElementById('main-content');
-          var vis = mc ? getComputedStyle(mc).visibility + '/op=' + getComputedStyle(mc).opacity : 'no #main-content';
-          mark('frame ' + frames + ' peinte — #main-content ' + vis + ' — body=[' + (document.body ? document.body.className : '') + ']');
-          requestAnimationFrame(raf);
-        }
-      })();
-      window.addEventListener('load', function () {
-        setTimeout(function () {
-          try {
-            performance.getEntriesByType('resource').forEach(function (r) {
-              if (/\.(css|js)(\?|$)/.test(r.name)) log.push(('' + r.responseEnd.toFixed(0)).padStart(5) + 'ms  [load] ' + r.name.split('/').slice(-1)[0]);
-            });
-          } catch (e) {}
-          ['student-left-panel', 'student-top-bar'].forEach(function (n) {
-            var el = document.querySelector(n);
-            mark(n + ': ' + (el ? (customElements.get(n) ? 'upgraded' : 'PRESENT-NON-UPGRADE') : 'absent'));
-          });
-          console.log('%c[FOUC-TRACE]\n' + log.sort(function (a, b) { return parseInt(a) - parseInt(b); }).join('\n'), 'color:#2a57ff;font-weight:bold');
-          window.__FOUC_TRACE__ = log;
-        }, 80);
-      });
-    })();
-    </script>
-
     <link rel="stylesheet" href="/admin/css/admin-layout.css">
     <link rel="stylesheet" href="/admin/css/admin.css">
     <link rel="stylesheet" href="/admin/css/admin-notifications.css">
