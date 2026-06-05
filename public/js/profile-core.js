@@ -23,7 +23,7 @@ import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/
 import { waitForSbiTopbar } from '/admin/js/components/ready.js';
 import { waitForSbiComponents } from '/js/profile/profile-utils.js?v=8.0P.167.74';
 import { hydrateLoggedInTopbar } from '/js/profile/profile-topbar.js';
-import { renderProfileShell } from '/js/profile/profile-render.js?v=8.0P.167.205';
+import { renderProfileShell } from '/js/profile/profile-render.js?v=8.0P.167.341';
 import { renderUserFormations } from '/js/profile/profile-formations.js?v=8.0P.167.205';
 import { renderStudentDocumentsPanel } from '/js/profile/profile-student-documents.js?v=8.0P.167.96.1-GPT2.1';
 import { renderGodTimerBypassPanel } from '/js/profile/profile-god-timer-bypass.js?v=8.0P.167.203';
