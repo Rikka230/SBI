@@ -96,12 +96,13 @@ const SHELL_HTML = `
 </div>
 `;
 
-export async function mountMessaging({ role, container } = {}) {
+export function mountMessaging({ role, container } = {}) {
     const host = container || document.querySelector(".content-wrapper") || document.getElementById("main-content");
-    if (!host) return;
+    if (!host) return () => {};
     host.innerHTML = SHELL_HTML;
 
-    onAuthStateChanged(auth, async (user) => {
+    let teardownActive = null;
+    const authUnsub = onAuthStateChanged(auth, async (user) => {
         if (!user) { window.location.replace("/login.html"); return; }
         let me = { id: user.uid };
         try {
@@ -111,8 +112,15 @@ export async function mountMessaging({ role, container } = {}) {
             console.warn("[SBI Messagerie] profil indisponible :", error);
         }
         const safeRole = roleOf(me, role) || role || STUDENT_ROLE_KEY;
-        initMessaging(me, safeRole);
+        if (teardownActive) { try { teardownActive(); } catch (_) {} }
+        teardownActive = initMessaging(me, safeRole);
     });
+
+    // Cleanup pour la navigation PJAX (et idempotence au remontage).
+    return () => {
+        try { authUnsub(); } catch (_) {}
+        if (teardownActive) { try { teardownActive(); } catch (_) {} teardownActive = null; }
+    };
 }
 
 function initMessaging(me, role) {
@@ -127,10 +135,13 @@ function initMessaging(me, role) {
 
     const unsubs = [];
     const trackUnsub = (fn) => { if (typeof fn === "function") unsubs.push(fn); };
-    window.addEventListener("beforeunload", () => {
+    function teardown() {
         unsubs.forEach((u) => { try { u(); } catch (_) {} });
-        if (messagesUnsub) { try { messagesUnsub(); } catch (_) {} }
-    });
+        unsubs.length = 0;
+        if (messagesUnsub) { try { messagesUnsub(); } catch (_) {} messagesUnsub = null; }
+    }
+    const onBeforeUnload = () => teardown();
+    window.addEventListener("beforeunload", onBeforeUnload);
 
     // --- Réception d'un doc conversation (toutes sources) -----------------
     function upsertConversation(cid, data) {
@@ -306,21 +317,42 @@ function initMessaging(me, role) {
 
     // --- Sélecteur de contacts (nouveau DM) -------------------------------
     let contactsCache = null;
+    let contactsLoading = false;
     async function openPicker() {
         const picker = el("sbi-msg-picker");
         picker.hidden = false;
         const listEl = el("sbi-msg-picker-list");
-        if (!contactsCache) {
-            listEl.innerHTML = `<p class="sbi-msg-muted">Chargement des contacts…</p>`;
-            try {
-                const formations = await loadAssignedFormationsForUser({ uid: me.id, userData: me, role: roleKey });
-                contactsCache = await loadSearchUsersForRole({ uid: me.id, userData: me, role: roleKey, formations });
-            } catch (error) {
-                console.warn("[SBI Messagerie] contacts indisponibles :", error);
-                contactsCache = [];
-            }
+        if (contactsCache) { renderContacts(""); return; }
+        if (contactsLoading) return;
+        contactsLoading = true;
+        listEl.innerHTML = `<p class="sbi-msg-muted">Chargement des contacts…</p>`;
+
+        let settled = false;
+        const showRetry = (msg) => {
+            if (settled) return;
+            settled = true;
+            contactsLoading = false;
+            listEl.innerHTML = `<p class="sbi-msg-muted">${escapeHtml(msg)} <button type="button" class="sbi-msg-new-btn" id="sbi-msg-contacts-retry">Réessayer</button></p>`;
+            const retry = el("sbi-msg-contacts-retry");
+            if (retry) retry.addEventListener("click", () => { contactsCache = null; openPicker(); });
+        };
+        // Garde-fou anti « spin infini » : au-delà de 12 s on propose un retry.
+        const guard = setTimeout(() => showRetry("Chargement trop long."), 12000);
+
+        try {
+            const formations = await loadAssignedFormationsForUser({ uid: me.id, userData: me, role: roleKey });
+            const users = await loadSearchUsersForRole({ uid: me.id, userData: me, role: roleKey, formations });
+            if (settled) return;
+            clearTimeout(guard);
+            settled = true;
+            contactsLoading = false;
+            contactsCache = Array.isArray(users) ? users : [];
+            renderContacts("");
+        } catch (error) {
+            clearTimeout(guard);
+            console.error("[SBI Messagerie] contacts indisponibles :", error);
+            showRetry("Contacts indisponibles.");
         }
-        renderContacts("");
     }
 
     function renderContacts(filter) {
@@ -434,4 +466,10 @@ function initMessaging(me, role) {
     });
 
     scheduleRender();
+
+    // Teardown (navigation PJAX / remontage) : coupe tous les listeners temps réel.
+    return () => {
+        window.removeEventListener("beforeunload", onBeforeUnload);
+        teardown();
+    };
 }

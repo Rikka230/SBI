@@ -160,7 +160,18 @@ function audienceLabel(cid, formations) {
     return f ? `Formation — ${f.titre || f.nom || fid}` : "Formation";
 }
 
-onAuthStateChanged(auth, (user) => {
-    if (!user) { window.location.replace("/login.html"); return; }
-    init();
-});
+export function mountAdminMessagerie() {
+    const unsub = onAuthStateChanged(auth, (user) => {
+        if (!user) { window.location.replace("/login.html"); return; }
+        init();
+    });
+    return () => { try { unsub(); } catch (_) {} };
+}
+
+// Chargement plein page (hors PJAX) : auto-montage. En PJAX, le route-registry pose
+// le flag __SBI_APP_SHELL_MOUNTING_ADMIN_MESSAGERIE puis appelle mountAdminMessagerie()
+// explicitement (les modules ES sont mis en cache : le top-level ne se ré-exécute pas
+// aux navigations suivantes).
+if (!window.__SBI_APP_SHELL_MOUNTING_ADMIN_MESSAGERIE) {
+    mountAdminMessagerie();
+}

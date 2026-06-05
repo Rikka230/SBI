@@ -194,6 +194,19 @@ function isTeacherProfile(url) {
   return normalizePath(url.pathname).toLowerCase() === '/teacher/mon-profil.html';
 }
 
+// SBI 8.0P.167.343 — Messagerie interne (élève / prof) + Annonces (admin).
+function isStudentMessagerie(url) {
+  return normalizePath(url.pathname).toLowerCase() === '/student/messagerie.html';
+}
+
+function isTeacherMessagerie(url) {
+  return normalizePath(url.pathname).toLowerCase() === '/teacher/messagerie.html';
+}
+
+function isAdminMessagerie(url) {
+  return normalizePath(url.pathname).toLowerCase() === '/admin/admin-messagerie.html';
+}
+
 function getCurrentUrl() {
   return new URL(window.SBI_APP_SHELL_CURRENT_URL || window.location.href, window.location.origin);
 }
@@ -220,7 +233,8 @@ function isAdminShellContext() {
     || path === '/admin/admin-assignments.html'
     || path === '/admin/formation-documents.html'
     || path === '/admin/apprenticeship-booklets.html'
-    || path === '/admin/admin-audit-log.html';
+    || path === '/admin/admin-audit-log.html'
+    || path === '/admin/admin-messagerie.html';
 }
 
 function isStudentShellContext() {
@@ -235,6 +249,7 @@ function isStudentShellContext() {
     || path === '/student/assignments.html'
     || path === '/student/documents.html'
     || path === '/student/livret.html'
+    || path === '/student/messagerie.html'
     || path === '/student/mon-profil.html';
 }
 
@@ -249,6 +264,7 @@ function isTeacherShellContext() {
     || path === '/teacher/assignments.html'
     || path === '/teacher/documents.html'
     || path === '/teacher/livrets.html'
+    || path === '/teacher/messagerie.html'
     || path === '/teacher/mon-profil.html';
 }
 
@@ -1292,6 +1308,79 @@ async function mountTeacherProfile({ url }) {
   return { viewKey: 'teacher:profile' };
 }
 
+// SBI 8.0P.167.343 — Messagerie interne (module partagé js/messaging/messaging-ui.js
+// exporte mountMessaging(role) ; re-appel à chaque navigation car les modules ES
+// sont mis en cache après le 1er import).
+async function mountStudentMessagerie({ url }) {
+  cleanupCourseEditorV2Artifacts();
+  const doc = await fetchAdminDocument(url);
+
+  await ensureDocumentStyles(doc, url.href);
+  applyBodyRouteClassesFromDocument(doc, ['no-right-panel']);
+  replaceMainFromDocument(doc);
+  updateAdminChromeFromDocument(doc, 'Messagerie - SBI Student');
+  setLeftNavActive('/student/messagerie.html');
+  updateUrlContext(url);
+
+  window.__SBI_APP_SHELL_MOUNTING_STUDENT_MESSAGERIE = true;
+  try {
+    const module = await import('/js/messaging/messaging-ui.js?v=8.0P.167.343');
+    const cleanup = module.mountMessaging?.({ role: 'student' });
+    if (typeof cleanup === 'function') registerCleanup(cleanup, 'student-messagerie');
+  } finally {
+    window.__SBI_APP_SHELL_MOUNTING_STUDENT_MESSAGERIE = false;
+  }
+
+  return { viewKey: 'student:messagerie' };
+}
+
+async function mountTeacherMessagerie({ url }) {
+  cleanupCourseEditorV2Artifacts();
+  const doc = await fetchAdminDocument(url);
+
+  await ensureDocumentStyles(doc, url.href);
+  applyBodyRouteClassesFromDocument(doc, ['sbi-teacher-surface', 'no-right-panel']);
+  replaceMainFromDocument(doc);
+  updateAdminChromeFromDocument(doc, 'Messagerie - SBI Teacher');
+  setLeftNavActive('/teacher/messagerie.html');
+  updateUrlContext(url);
+
+  window.__SBI_APP_SHELL_MOUNTING_TEACHER_MESSAGERIE = true;
+  try {
+    const module = await import('/js/messaging/messaging-ui.js?v=8.0P.167.343');
+    const cleanup = module.mountMessaging?.({ role: 'teacher' });
+    if (typeof cleanup === 'function') registerCleanup(cleanup, 'teacher-messagerie');
+  } finally {
+    window.__SBI_APP_SHELL_MOUNTING_TEACHER_MESSAGERIE = false;
+  }
+
+  return { viewKey: 'teacher:messagerie' };
+}
+
+async function mountAdminMessagerie({ url }) {
+  cleanupCourseEditorV2Artifacts();
+  maybeCacheAdminIndexMain('leave-for-admin-messagerie');
+  const doc = await fetchAdminDocument(url);
+
+  await ensureDocumentStyles(doc, url.href);
+  applyBodyRouteClassesFromDocument(doc, ['sbi-admin-surface']);
+  replaceMainFromDocument(doc);
+  updateAdminChromeFromDocument(doc, 'Annonces - SBI Console');
+  setLeftNavActive('');
+  updateUrlContext(url);
+
+  window.__SBI_APP_SHELL_MOUNTING_ADMIN_MESSAGERIE = true;
+  try {
+    const module = await import('/admin/js/admin-messagerie.js?v=8.0P.167.343');
+    const cleanup = module.mountAdminMessagerie?.();
+    if (typeof cleanup === 'function') registerCleanup(cleanup, 'admin-messagerie');
+  } finally {
+    window.__SBI_APP_SHELL_MOUNTING_ADMIN_MESSAGERIE = false;
+  }
+
+  return { viewKey: 'admin:messagerie' };
+}
+
 export function createRouteRegistry() {
   const routes = [];
 
@@ -1306,7 +1395,9 @@ export function createRouteRegistry() {
   routes.push({ id: 'teacher-booklets', canHandle(url) { return isTeacherBooklets(url) && isTeacherShellContext(); }, mount: mountTeacherBooklets });
   routes.push({ id: 'teacher-lives-v2', canHandle(url) { return isTeacherLivesV2(url) && isTeacherShellContext(); }, mount: mountTeacherLivesV2 });
   routes.push({ id: 'teacher-lives-v1', canHandle(url) { return isTeacherLives(url) && isTeacherShellContext(); }, mount: mountTeacherLives });
+  routes.push({ id: 'teacher-messagerie', canHandle(url) { return isTeacherMessagerie(url) && isTeacherShellContext(); }, mount: mountTeacherMessagerie });
   routes.push({ id: 'teacher-profile', canHandle(url) { return isTeacherProfile(url) && isTeacherShellContext(); }, mount: mountTeacherProfile });
+  routes.push({ id: 'student-messagerie', canHandle(url) { return isStudentMessagerie(url) && isStudentShellContext(); }, mount: mountStudentMessagerie });
   routes.push({ id: 'student-profile', canHandle(url) { return isStudentProfile(url) && isStudentShellContext(); }, mount: mountStudentProfile });
   routes.push({ id: 'student-dashboard', canHandle(url) { return isStudentDashboard(url) && isStudentShellContext(); }, mount: mountStudentPage });
   routes.push({ id: 'student-courses', canHandle(url) { return isStudentCourses(url) && isStudentShellContext(); }, mount: mountStudentPage });
@@ -1328,6 +1419,7 @@ export function createRouteRegistry() {
   routes.push({ id: 'admin-formation-documents', canHandle(url) { return isAdminFormationDocuments(url) && isAdminShellContext(); }, mount: mountAdminFormationDocuments });
   routes.push({ id: 'admin-apprenticeship-booklets', canHandle(url) { return isAdminBooklets(url) && isAdminShellContext(); }, mount: mountAdminBooklets });
   routes.push({ id: 'admin-audit-log', canHandle(url) { return isAdminAuditLog(url) && isAdminShellContext(); }, mount: mountAdminAuditLog });
+  routes.push({ id: 'admin-messagerie', canHandle(url) { return isAdminMessagerie(url) && isAdminShellContext(); }, mount: mountAdminMessagerie });
   routes.push({ id: 'admin-site-index', canHandle(url) { return isAdminSiteIndex(url) && isAdminShellContext(); }, mount: mountSiteIndex });
 
   routes.push({
