@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.340',
-  branch: 'adapt-admin-mobile',
-  channel: 'Admin mobile : bottom-nav en thème ADMIN dès le 1er rendu (theme keyé sur sbi-admin-surface statique) — fin du « skin élève avant admin »',
-  stage: 'Correctif FOUC (« CSS cassé / icônes dans tous les sens » au 1er chargement mobile). Cause : sur les 17 pages admin, admin-responsive.css / admin-surface-unified.css / admin-mobile-block.css étaient déclarés APRÈS le <script src=components.js>. Or components.js est parser-bloquant ET servi no-cache (Sceau) → il est re-fetché à chaque chargement et BLOQUE le téléchargement des CSS placés après lui. Sur mobile lent, la page se révèle (gate body.auth-ready de admin-layout.css qui affiche .app-container) AVANT que ces CSS soient chargés → flash non stylé ~1s. Fix : remontée de tous les <link rel=stylesheet> AVANT le script sur les 17 pages → quand .app-container se révèle, tout le CSS est prêt. Aucun changement de comportement de components.js (toujours parser-bloquant, juste précédé par le CSS).',
+  version: '8.0P.167.348',
+  branch: 'feature-messagerie',
+  channel: 'FOUC élève/prof CORRIGÉ : recette validée sur la messagerie (thème interne en <link> STATIQUE + classes body sbi-internal-ui/sbi-*-space, AVANT components.js) généralisée aux 12 pages shell (dashboard/mes-cours/profil/documents/devoirs/livret ×2). Diag par traceur on-screen : le flash venait de feuilles ré-injectées en JS APRÈS le reveal ; en les ayant en statique avant le 1er paint, plus de re-style visible.',
+  stage: 'Nouvelle messagerie interne (distincte des notifications/emails). Modèle hybride : Cloud Functions (openDirectConversation / ensureGroupChannel / sendAdminAnnouncement) OUVRENT et valident la conversation, puis le client écrit les messages EN DIRECT (onSnapshot temps réel, comme le chat des lives). Règles Firestore conversations/{cid} (kind dm/group/announcement) + sous-collections messages (sender==uid + membre + non-announcement) et reads/{uid} (pointeur non-lus). Trigger onMessagingMessageCreated : dénormalise lastMessage* + ping cloche en DM. Pages : student/messagerie.html, teacher/messagerie.html (module partagé js/messaging/messaging-ui.js) + admin/admin-messagerie.html (composer d\'annonces). Nav-manifest + 2 types de notif (new_message, admin_announcement). Admin (god) lit tout (modération/Qualiopi).',
   updatedAt: '2026-06-05',
-  label: 'SBI 8.0P.167.340 - Admin mobile : bottom-nav thème admin dès le 1er rendu (keyé sur sbi-admin-surface statique)'
+  label: 'SBI 8.0P.167.348 - FOUC élève/prof corrigé (thème statique généralisé aux 12 pages shell)'
 };
 
 export function getSbiVersionLabel() {

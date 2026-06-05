@@ -257,8 +257,12 @@ export async function renderProfileShell({ db, uid, data, context, reloadProfile
   const nameEl = document.getElementById('prof-name');
 
   if (nameEl) {
-    // Badge ✗ de complétude à côté du nom (élèves uniquement ; vide sinon ou si 100%).
-    const nameCompletenessBadge = renderCompletenessBadge(data, { uid: data.id || uid });
+    // Badge ✗ de complétude à côté du nom : OUTIL ADMIN uniquement (il pointe vers
+    // /admin/admin-profile.html). Un élève/prof ne doit JAMAIS le voir — ni sur son
+    // propre profil (il a la jauge dédiée), ni sur le profil d'autrui (fuite).
+    const nameCompletenessBadge = context && context.isAdmin
+      ? renderCompletenessBadge(data, { uid: data.id || uid })
+      : '';
     nameEl.innerHTML = `${escapeHTML(displayName)}<span id="prof-name-completeness">${nameCompletenessBadge}</span> <span id="prof-badge-zone" style="margin-left: 10px; font-size: 0.45em; vertical-align: middle;"></span>`;
   }
 

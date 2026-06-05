@@ -1,0 +1,283 @@
+/* =======================================================================
+   SBI 8.0P.167.341 — Messagerie interne (élève / prof)
+   Thème porté par les variables d'espace (--accent-blue, --text-main…).
+   Desktop : 2 panneaux (liste | fil). Mobile ≤768px : 1 panneau commuté.
+   ======================================================================= */
+
+/* L'attribut [hidden] (origine UA) est écrasé par nos display:flex de classe
+   (origine auteur). On le ré-impose explicitement, sinon l'overlay « Nouveau
+   message », le fil et le composer ne peuvent plus être masqués/fermés. */
+.sbi-msg-picker[hidden],
+.sbi-msg-conv[hidden],
+.sbi-msg-placeholder[hidden],
+.sbi-msg-composer[hidden] { display: none !important; }
+
+.sbi-msg {
+  display: grid;
+  grid-template-columns: minmax(0, 340px) minmax(0, 1fr);
+  gap: 0;
+  height: calc(100dvh - 160px);
+  min-height: 420px;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 16px;
+  overflow: hidden;
+  background: var(--bg-card, #fff);
+}
+
+/* ── Liste de conversations ── */
+.sbi-msg-aside {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border-right: 1px solid var(--border-color, #e5e7eb);
+  background: var(--bg-soft, rgba(0, 0, 0, 0.015));
+}
+.sbi-msg-aside-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 1rem 1.1rem;
+  border-bottom: 1px solid var(--border-color, #e5e7eb);
+}
+.sbi-msg-title { margin: 0; font-size: 1.25rem; font-weight: 800; color: var(--text-main, #111827); }
+.sbi-msg-new-btn {
+  border: 0;
+  background: var(--accent-blue, #2a57ff);
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.82rem;
+  padding: 0.55rem 0.85rem;
+  border-radius: 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.sbi-msg-new-btn:active { transform: scale(0.97); }
+
+.sbi-msg-threads { flex: 1; overflow-y: auto; padding: 0.4rem; }
+.sbi-msg-muted { color: var(--text-muted, #6b7280); font-size: 0.9rem; padding: 0.8rem; }
+
+.sbi-msg-thread {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+  padding: 0.7rem 0.8rem;
+  border-radius: 12px;
+  color: var(--text-main, #111827);
+}
+.sbi-msg-thread:hover { background: var(--bg-hover, rgba(0, 0, 0, 0.04)); }
+.sbi-msg-thread.is-active { background: var(--accent-soft, rgba(42, 87, 255, 0.12)); }
+.sbi-msg-thread-top { display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem; }
+.sbi-msg-thread-name { font-weight: 700; font-size: 0.95rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.sbi-msg-thread.is-unread .sbi-msg-thread-name { font-weight: 800; }
+.sbi-msg-thread-tag {
+  font-size: 0.62rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--accent-blue, #2a57ff);
+  background: var(--accent-soft, rgba(42, 87, 255, 0.12));
+  padding: 0.05rem 0.35rem;
+  border-radius: 6px;
+  vertical-align: middle;
+}
+.sbi-msg-thread-time { font-size: 0.72rem; color: var(--text-muted, #6b7280); flex-shrink: 0; }
+.sbi-msg-thread-preview {
+  font-size: 0.82rem;
+  color: var(--text-muted, #6b7280);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sbi-msg-thread.is-unread .sbi-msg-thread-preview { color: var(--text-main, #111827); }
+.sbi-msg-dot {
+  position: absolute;
+  top: 0.85rem;
+  right: 0.55rem;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--accent-blue, #2a57ff);
+}
+
+/* ── Fil de conversation ── */
+.sbi-msg-main { display: flex; flex-direction: column; min-width: 0; }
+.sbi-msg-placeholder {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted, #6b7280);
+  text-align: center;
+  padding: 2rem;
+}
+.sbi-msg-conv { display: flex; flex-direction: column; min-width: 0; height: 100%; }
+.sbi-msg-conv-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--border-color, #e5e7eb);
+}
+.sbi-msg-back { display: none; border: 0; background: none; font-size: 1.4rem; line-height: 1; cursor: pointer; color: var(--text-main, #111827); padding: 0.2rem 0.4rem; }
+.sbi-msg-conv-meta { display: flex; flex-direction: column; min-width: 0; }
+.sbi-msg-conv-title { font-weight: 800; font-size: 1.05rem; color: var(--text-main, #111827); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sbi-msg-conv-sub { font-size: 0.74rem; color: var(--text-muted, #6b7280); }
+
+.sbi-msg-stream { flex: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; gap: 0.5rem; }
+.sbi-msg-bubble-row { display: flex; }
+.sbi-msg-bubble-row.is-mine { justify-content: flex-end; }
+.sbi-msg-bubble {
+  max-width: min(78%, 520px);
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.55rem 0.8rem;
+  border-radius: 14px;
+  background: var(--bg-hover, rgba(0, 0, 0, 0.05));
+  color: var(--text-main, #111827);
+}
+.sbi-msg-bubble-row.is-mine .sbi-msg-bubble { background: var(--accent-blue, #2a57ff); color: #fff; }
+.sbi-msg-bubble-author { font-size: 0.72rem; font-weight: 800; color: var(--accent-blue, #2a57ff); }
+.sbi-msg-bubble-title { font-weight: 800; }
+.sbi-msg-bubble-text { font-size: 0.95rem; line-height: 1.4; word-wrap: break-word; overflow-wrap: anywhere; }
+.sbi-msg-bubble-time { align-self: flex-end; font-size: 0.66rem; opacity: 0.7; }
+.sbi-msg-receipt { font-weight: 700; }
+.sbi-msg-bubble-row.is-mine .sbi-msg-receipt { color: rgba(255, 255, 255, 0.85); }
+.sbi-msg-bubble-row.is-mine .sbi-msg-receipt.is-read { color: #bbf7d0; }
+
+.sbi-msg-composer {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-end;
+  padding: 0.8rem 1rem;
+  border-top: 1px solid var(--border-color, #e5e7eb);
+}
+.sbi-msg-input {
+  flex: 1;
+  resize: none;
+  font: inherit;
+  font-size: 0.95rem;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 12px;
+  background: var(--bg-card, #fff);
+  color: var(--text-main, #111827);
+  max-height: 140px;
+  min-width: 0;
+}
+.sbi-msg-input:focus { outline: none; border-color: var(--accent-blue, #2a57ff); }
+.sbi-msg-send {
+  border: 0;
+  background: var(--accent-blue, #2a57ff);
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  padding: 0.65rem 1.1rem;
+  border-radius: 12px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.sbi-msg-send:active { transform: scale(0.97); }
+.sbi-msg-readonly { margin: 0; padding: 0.9rem 1rem; text-align: center; color: var(--text-muted, #6b7280); border-top: 1px solid var(--border-color, #e5e7eb); font-size: 0.85rem; }
+
+/* ── Sélecteur de contacts ── */
+.sbi-msg-picker {
+  position: fixed;
+  inset: 0;
+  z-index: 7000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(15, 23, 42, 0.45);
+}
+.sbi-msg-picker-card {
+  width: min(440px, 100%);
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-card, #fff);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+.sbi-msg-picker-head { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.1rem; border-bottom: 1px solid var(--border-color, #e5e7eb); }
+.sbi-msg-picker-head h2 { margin: 0; font-size: 1.1rem; color: var(--text-main, #111827); }
+.sbi-msg-picker-close { border: 0; background: none; font-size: 1.6rem; line-height: 1; cursor: pointer; color: var(--text-muted, #6b7280); }
+.sbi-msg-picker-search { margin: 0.8rem 1.1rem; padding: 0.6rem 0.8rem; border: 1px solid var(--border-color, #e5e7eb); border-radius: 10px; font: inherit; background: var(--bg-card, #fff); color: var(--text-main, #111827); }
+.sbi-msg-picker-search:focus { outline: none; border-color: var(--accent-blue, #2a57ff); }
+.sbi-msg-picker-list { overflow-y: auto; padding: 0 0.6rem 0.8rem; }
+.sbi-msg-contact { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; width: 100%; text-align: left; border: 0; background: none; font: inherit; cursor: pointer; padding: 0.7rem 0.8rem; border-radius: 10px; color: var(--text-main, #111827); }
+.sbi-msg-contact:hover { background: var(--bg-hover, rgba(0, 0, 0, 0.05)); }
+.sbi-msg-contact-name { font-weight: 700; }
+.sbi-msg-contact-role { font-size: 0.74rem; color: var(--text-muted, #6b7280); }
+
+/* ═══════════════════════════════════════════════════════════════
+   Admin — composer d'annonces (admin-messagerie.html)
+   ═══════════════════════════════════════════════════════════════ */
+.sbi-annc { max-width: 1100px; }
+.sbi-annc-head { margin-bottom: 1.4rem; }
+.sbi-annc-kicker { margin: 0; font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent-blue, #2a57ff); }
+.sbi-annc-head h2 { margin: 0.2rem 0; font-size: 1.6rem; color: var(--text-main, #111827); }
+.sbi-annc-lead { margin: 0; color: var(--text-muted, #6b7280); max-width: 760px; line-height: 1.5; }
+.sbi-annc-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 1.5rem; align-items: start; }
+.sbi-annc-form, .sbi-annc-history {
+  background: var(--bg-card, #fff);
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 14px;
+  padding: 1.2rem;
+}
+.sbi-annc-form { display: flex; flex-direction: column; gap: 1rem; }
+.sbi-annc-fieldset { border: 1px solid var(--border-color, #e5e7eb); border-radius: 10px; padding: 0.8rem 1rem; display: flex; flex-direction: column; gap: 0.5rem; }
+.sbi-annc-fieldset legend { padding: 0 0.4rem; font-weight: 700; color: var(--text-main, #111827); font-size: 0.85rem; }
+.sbi-annc-radio { display: flex; align-items: center; gap: 0.5rem; color: var(--text-main, #111827); font-size: 0.92rem; cursor: pointer; }
+.sbi-annc-select, .sbi-annc-input, .sbi-annc-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 10px;
+  background: var(--bg-card, #fff);
+  color: var(--text-main, #111827);
+}
+.sbi-annc-textarea { resize: vertical; min-height: 120px; }
+.sbi-annc-select:focus, .sbi-annc-input:focus, .sbi-annc-textarea:focus { outline: none; border-color: var(--accent-blue, #2a57ff); }
+.sbi-annc-label { display: flex; flex-direction: column; gap: 0.35rem; font-weight: 700; font-size: 0.85rem; color: var(--text-main, #111827); }
+.sbi-annc-check { display: flex; align-items: center; gap: 0.5rem; color: var(--text-muted, #6b7280); font-size: 0.9rem; }
+.sbi-annc-actions { display: flex; align-items: center; gap: 0.9rem; flex-wrap: wrap; }
+.sbi-annc-send { border: 0; background: var(--accent-blue, #2a57ff); color: #fff; font: inherit; font-weight: 700; padding: 0.7rem 1.3rem; border-radius: 10px; cursor: pointer; }
+.sbi-annc-send:disabled { opacity: 0.6; cursor: default; }
+.sbi-annc-status { font-size: 0.85rem; color: var(--text-muted, #6b7280); }
+.sbi-annc-history h3 { margin: 0 0 0.8rem; font-size: 1.05rem; color: var(--text-main, #111827); }
+.sbi-annc-muted { color: var(--text-muted, #6b7280); font-size: 0.9rem; }
+.sbi-annc-item { border: 1px solid var(--border-color, #e5e7eb); border-radius: 10px; padding: 0.7rem 0.85rem; margin-bottom: 0.7rem; }
+.sbi-annc-item-top { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.3rem; }
+.sbi-annc-item-aud { font-size: 0.68rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.03em; color: var(--accent-blue, #2a57ff); }
+.sbi-annc-item-when { font-size: 0.72rem; color: var(--text-muted, #6b7280); }
+.sbi-annc-item p { margin: 0.25rem 0 0; color: var(--text-main, #111827); font-size: 0.92rem; line-height: 1.4; }
+
+@media (max-width: 900px) {
+  .sbi-annc-grid { grid-template-columns: 1fr; }
+}
+
+/* ── Mobile : un seul panneau à la fois ── */
+@media (max-width: 768px) {
+  .sbi-msg {
+    grid-template-columns: 1fr;
+    height: calc(100dvh - 130px);
+  }
+  .sbi-msg-main { display: none; }
+  .sbi-msg.is-conv-open .sbi-msg-aside { display: none; }
+  .sbi-msg.is-conv-open .sbi-msg-main { display: flex; }
+  .sbi-msg-back { display: block; }
+}

@@ -420,7 +420,16 @@ const NOTIF_ICONS = {
     yellowWarn: `<svg width="20" height="20" style="min-width:20px; flex-shrink:0;" fill="var(--accent-yellow, #fbbc04)" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>`,
     play: `<svg width="20" height="20" style="min-width:20px; flex-shrink:0;" fill="var(--accent-blue, #2A57FF)" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM10 16.5v-9l6 4.5-6 4.5z"/></svg>`
 };
+NOTIF_ICONS.chat = `<svg width="20" height="20" style="min-width:20px; flex-shrink:0;" fill="var(--accent-blue, #2A57FF)" viewBox="0 0 24 24"><path d="M4 4h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H8l-4 4V6a2 2 0 0 1 2-2Zm3 5v2h10V9H7Zm0 4v2h7v-2H7Z"/></svg>`;
 NOTIF_ICONS.fallback = NOTIF_ICONS.blueDoc;
+
+// SBI 8.0P.167.341 — route vers la messagerie du bon espace selon le rôle.
+function messagerieUrlForCurrentUser(conversationId) {
+    const cid = conversationId ? `?c=${encodeURIComponent(conversationId)}` : '';
+    return (currentUserProfile && currentUserProfile.role === 'teacher')
+        ? `/teacher/messagerie.html${cid}`
+        : `/student/messagerie.html${cid}`;
+}
 
 const NOTIFICATION_REGISTRY = {
     new_course_published: {
@@ -522,6 +531,18 @@ const NOTIFICATION_REGISTRY = {
         body: (n) => `La période <strong>${escNotif(n.periodLabel || 'du livret')}</strong>${n.studentName ? ` de <strong>${escNotif(n.studentName)}</strong>` : ''} a commencé : pense à compléter les informations${n.startDate ? ` (depuis le ${escNotif(n.startDate)})` : ''}.`,
         icon: NOTIF_ICONS.yellowWarn,
         navigate: (n) => n.actionUrl || '/admin/apprenticeship-booklets.html'
+    },
+    new_message: {
+        title: (n) => `Message de ${n.senderName || 'votre interlocuteur'}`,
+        body: (n) => n.preview ? escNotif(n.preview) : 'Vous avez reçu un nouveau message.',
+        icon: NOTIF_ICONS.chat,
+        navigate: (n) => messagerieUrlForCurrentUser(n.conversationId)
+    },
+    admin_announcement: {
+        title: (n) => n.announcementTitle ? escNotif(n.announcementTitle) : 'Nouvelle annonce',
+        body: (n) => `<strong>${escNotif(n.senderName || 'La direction')}</strong> : ${n.preview ? escNotif(n.preview) : 'nouvelle annonce.'}`,
+        icon: NOTIF_ICONS.chat,
+        navigate: (n) => messagerieUrlForCurrentUser(n.conversationId)
     }
 };
 
@@ -582,10 +603,11 @@ function renderNotificationsList(notifs, attempt) {
             <div class="notif-item" data-id="${escNotifAttr(notif.id)}" data-type="${escNotifAttr(notif.type)}" style="display: flex; align-items: flex-start; gap: 1rem; padding: 1rem; border-bottom: 1px solid var(--border-color, #333); cursor: pointer; transition: background 0.2s; background: rgba(128, 128, 128, 0.05);">
                 ${dotIndicator}
                 <div style="flex-shrink:0;">${iconSvg}</div>
-                <div>
+                <div style="flex:1; min-width:0;">
                     <p style="margin:0; font-size:0.85rem; color:var(--text-main, #fff); font-weight:bold;">${titleText}</p>
                     <p style="margin:0.3rem 0 0 0; font-size:0.8rem; color:var(--text-muted, #9ca3af); line-height: 1.4;">${bodyText}</p>
                 </div>
+                <button type="button" class="notif-dismiss" data-id="${escNotifAttr(notif.id)}" title="Supprimer cette notification" aria-label="Supprimer cette notification" style="flex-shrink:0; border:0; background:none; cursor:pointer; color:var(--text-muted, #9ca3af); font-size:1.25rem; line-height:1; padding:2px 6px; border-radius:6px; align-self:flex-start;">&times;</button>
             </div>
         `;
 
@@ -594,11 +616,25 @@ function renderNotificationsList(notifs, attempt) {
 
     document.querySelectorAll('.notif-item').forEach((item) => {
         item.addEventListener('click', async (e) => {
+            // Le clic sur la croix « supprimer » ne doit pas ouvrir la notification.
+            if (e.target.closest('.notif-dismiss')) return;
             e.preventDefault();
             e.stopPropagation();
             const notifId = e.currentTarget.getAttribute('data-id');
             const notif = renderedNotifsById.get(notifId) || { id: notifId, type: e.currentTarget.getAttribute('data-type') };
             await handleNotifClick(e.currentTarget, notif);
+        });
+    });
+
+    // 8.0P.167.346 — Croix « supprimer sans ouvrir » sur CHAQUE notification (tous types).
+    document.querySelectorAll('.notif-dismiss').forEach((btn) => {
+        btn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const id = btn.getAttribute('data-id');
+            const itemEl = btn.closest('.notif-item');
+            if (itemEl) itemEl.style.display = 'none';
+            try { await dismissNotificationForCurrentUser(id); } catch (error) { console.warn('[SBI Notif] suppression impossible :', error); }
         });
     });
 }

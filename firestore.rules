@@ -1,5 +1,6 @@
 rules_version = '2';
 
+// SBI 8.0P.167.347 — messagerie : lecture canal inexistant autorisée (resource==null).
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -793,6 +794,87 @@ service cloud.firestore {
     }
 
     /* ============================================================
+       MESSAGERIE INTERNE (8.0P.167.341)
+       ------------------------------------------------------------
+       conversations : créées UNIQUEMENT via Cloud Functions (Admin SDK).
+         - kind 'dm'           : 1:1, membres = participants[]
+         - kind 'group'        : salon de formation, membres = enrôlement
+         - kind 'announcement' : annonce admin (lecture seule), membres = audience
+       messages      : écrits EN DIRECT par le client (sender==uid + membre du
+                       fil + fil non-announcement). Annonces = Admin SDK only.
+       reads/{uid}   : pointeur de lecture (non-lus) propre à chaque membre.
+       lastMessage*  : maj par trigger serveur (jamais par le client).
+       ============================================================ */
+
+    function convIsDmMember(c) {
+      return c.keys().hasAny(['kind'])
+        && c.kind == 'dm'
+        && c.keys().hasAny(['participants'])
+        && c.participants is list
+        && request.auth.uid in c.participants;
+    }
+
+    function convIsGroupMember(c) {
+      return c.keys().hasAny(['kind'])
+        && c.kind == 'group'
+        && c.keys().hasAny(['scope'])
+        && c.scope.keys().hasAny(['id'])
+        && c.scope.id is string
+        && (
+          formationDocHasCurrentUser(c.scope.id)
+          || currentUserHasFormationId(c.scope.id)
+        );
+    }
+
+    function convIsAnnouncementMember(c) {
+      return c.keys().hasAny(['kind'])
+        && c.kind == 'announcement'
+        && c.keys().hasAny(['audienceType'])
+        && (
+          (
+            c.audienceType == 'role'
+            && c.keys().hasAny(['audienceRole'])
+            && (
+              (c.audienceRole == 'teacher' && isTeacher())
+              || (c.audienceRole == 'student' && isStudent())
+            )
+          )
+          || (
+            c.audienceType == 'formation'
+            && c.keys().hasAny(['audienceFormationId'])
+            && c.audienceFormationId is string
+            && (
+              formationDocHasCurrentUser(c.audienceFormationId)
+              || currentUserHasFormationId(c.audienceFormationId)
+            )
+          )
+        );
+    }
+
+    function convIsMember(c) {
+      return convIsDmMember(c)
+        || convIsGroupMember(c)
+        || convIsAnnouncementMember(c);
+    }
+
+    function canReadConversation(c) {
+      return isActiveUser()
+        && (isAdmin() || convIsMember(c));
+    }
+
+    function conversationData(cid) {
+      return get(/databases/$(database)/documents/conversations/$(cid)).data;
+    }
+
+    function canWriteConversationMessage(cid) {
+      return isActiveUser()
+        && request.resource.data.keys().hasAny(['senderUid'])
+        && request.resource.data.senderUid == request.auth.uid
+        && conversationData(cid).kind != 'announcement'
+        && (isAdmin() || convIsMember(conversationData(cid)));
+    }
+
+    /* ============================================================
        PUBLIC SITE SETTINGS
        ============================================================ */
 
@@ -999,6 +1081,53 @@ service cloud.firestore {
         || canResolveNotification();
 
       allow delete: if isAdmin();
+    }
+
+    /* ============================================================
+       MESSAGERIE INTERNE — CONVERSATIONS (8.0P.167.341)
+       ============================================================ */
+
+    match /conversations/{conversationId} {
+      // 8.0P.167.347 — get : un doc INEXISTANT (resource == null) doit pouvoir être
+      // lu (le client écoute des canaux à id déterministe pas encore créés → renvoie
+      // "absent", aucune fuite). Sinon resource.data.keys() sur null lève → denied.
+      allow get: if resource == null || canReadConversation(resource.data);
+      allow list: if canReadConversation(resource.data);
+
+      // Création / suppression / changement de structure : Cloud Functions only.
+      allow create, delete: if false;
+
+      // 8.0P.167.346 — Dénormalisation lastMessage* : un membre (hors annonce) peut
+      // mettre à jour UNIQUEMENT l'aperçu du dernier message (robuste même si le
+      // trigger serveur ne se déclenche pas — base eur3 / fonction europe-west1).
+      // Impossible de toucher participants/kind/scope/audience.
+      allow update: if isAdmin()
+        || (
+          canReadConversation(resource.data)
+          && resource.data.kind != 'announcement'
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['lastMessageAt', 'lastMessageText', 'lastMessageSenderUid', 'lastMessageSenderName', 'updatedAt'])
+        );
+
+      match /messages/{messageId} {
+        allow get, list: if canReadConversation(conversationData(conversationId));
+
+        // Écriture directe d'un message par un membre (hors annonces, qui
+        // passent par Cloud Function). senderUid forcé == auteur.
+        allow create: if canWriteConversationMessage(conversationId);
+
+        // Modération : édition / suppression réservées à l'admin.
+        allow update, delete: if isAdmin();
+      }
+
+      match /reads/{uid} {
+        // Pointeur de lecture personnel : chacun lit/écrit le sien, à condition
+        // d'être membre du fil.
+        allow get: if isSelf(uid) || isAdmin();
+        allow create, update: if isSelf(uid)
+          && canReadConversation(conversationData(conversationId));
+        allow delete: if isAdmin();
+      }
     }
 
     /* ============================================================

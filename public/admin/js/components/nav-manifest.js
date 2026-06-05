@@ -27,6 +27,7 @@ export const NAV_BY_ROLE = {
     { id: 'cours',    label: 'Mes Cours',      href: '/student/mes-cours.html',   icon: ICONS.formations, match: ['/student/mes-cours'],                   primary: true },
     { id: 'devoirs',  label: 'Mes Devoirs',    href: '/student/assignments.html', icon: ICON_DEVOIRS,     match: ['/student/assignments'],                primary: true },
     { id: 'lives',    label: 'Lives',          href: '/student/lives.html',       icon: ICONS.live,       match: ['/student/lives'],                      primary: true },
+    { id: 'messagerie', label: 'Messagerie',   href: '/student/messagerie.html',  icon: ICONS.message,    match: ['/student/messagerie'],                 primary: false },
     { id: 'profil',   label: 'Mon Profil & XP', href: '/student/mon-profil.html', icon: ICONS.profile,    match: ['/student/mon-profil'],                 primary: false }
   ],
   teacher: [
@@ -34,6 +35,7 @@ export const NAV_BY_ROLE = {
     { id: 'cours',    label: 'Formations & Cours', href: '/teacher/mes-cours.html',   icon: ICONS.formations, match: ['/teacher/mes-cours'],                 primary: true },
     { id: 'devoirs',  label: 'Devoirs & Évals',    href: '/teacher/assignments.html', icon: ICON_DEVOIRS,     match: ['/teacher/assignments'],               primary: true },
     { id: 'lives',    label: 'Lives',              href: '/teacher/lives.html',       icon: ICONS.live,       match: ['/teacher/lives'],                     primary: true },
+    { id: 'messagerie', label: 'Messagerie',       href: '/teacher/messagerie.html',  icon: ICONS.message,    match: ['/teacher/messagerie'],                primary: false },
     { id: 'profil',   label: 'Mon Profil Public',  href: '/teacher/mon-profil.html',  icon: ICONS.profile,    match: ['/teacher/mon-profil'],                primary: false },
     { id: 'livrets',  label: 'Livrets',            href: '/teacher/livrets.html',     icon: ICON_LIVRET,      match: ['/teacher/livrets'],                   primary: false },
     { id: 'documents', label: 'Documents',         href: '/teacher/documents.html',   icon: ICON_DOCUMENTS,   match: ['/teacher/documents'],                 primary: false }
@@ -51,6 +53,7 @@ export const NAV_BY_ROLE = {
     { id: 'cursus',     label: 'Cursus',           href: '/admin/admin-cursus.html',              icon: ICON_CURSUS,      match: ['/admin/admin-cursus', '/admin/admin-lives'],     primary: true },
     { id: 'formations', label: 'Formations',       href: '/admin/index.html?tab=view-formations', icon: ICONS.formations, tab: 'view-formations', match: ['/admin/formations-cours', '/admin/admin-assignments'], primary: false },
     { id: 'late',       label: 'Élèves en retard', href: '/admin/admin-late-students.html',       icon: ICON_LATE,        match: ['/admin/admin-late-students'],                    primary: false },
+    { id: 'annonces',   label: 'Annonces',         href: '/admin/admin-messagerie.html',          icon: ICONS.message,    match: ['/admin/admin-messagerie'],                       primary: false },
     { id: 'journal',    label: 'Journal admin',    href: '/admin/admin-audit-log.html',           icon: ICONS.bell,       match: ['/admin/admin-audit-log'],                        primary: false },
     { id: 'settings',   label: 'Serveur & Vidéos', href: '/admin/index.html?tab=view-settings',   icon: ICONS.settings,   tab: 'view-settings',   match: ['/admin/site-index-settings'],                    primary: false }
   ]
