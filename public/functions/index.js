@@ -7,6 +7,7 @@
 // Importation spécifique pour la V2
 const { onCall, onRequest, HttpsError } = require("firebase-functions/v2/https");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
+const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { defineSecret } = require("firebase-functions/params");
 const admin = require("firebase-admin");
 const crypto = require("crypto");
@@ -10903,4 +10904,362 @@ exports.notifyOverdueBookletPeriods = onSchedule({
     }
 
     console.log(`[SBI Booklet rappels] livrets=${bookletsScanned} début=${startedPeriods} retard=${overduePeriods} notifications=${notificationsWritten}`);
+});
+
+/* =======================================================================
+ * SBI 8.0P.167.341 — MESSAGERIE INTERNE
+ * -----------------------------------------------------------------------
+ * Modèle « hybride » : une Cloud Function OUVRE / VALIDE la conversation
+ * (relation prof↔élève, élève↔élève même formation, salon de formation),
+ * puis le client ÉCRIT les messages EN DIRECT (règles strictes). Les
+ * annonces admin sont écrites côté serveur (lecture seule). Un trigger
+ * Firestore dénormalise lastMessage* et envoie le « ping » cloche en DM.
+ * Réutilise la fabrique de notifications (writeSbiNotificationsForRecipients)
+ * et Brevo (sendBrevoTransactionalEmail).
+ * ======================================================================= */
+
+const MESSAGING_REGION = "europe-west1";
+const STUDENT_ROLE_SPELLINGS = ["student", "eleve", "élève", "etudiant", "étudiant"];
+const TEACHER_ROLE_SPELLINGS = ["teacher", "prof", "professeur", "enseignant"];
+
+function userFormationIdList(data = {}) {
+    return Array.isArray(data.formationIds)
+        ? data.formationIds.map((v) => cleanString(v, 180)).filter(Boolean)
+        : [];
+}
+
+function usersShareFormation(a = {}, b = {}) {
+    const setB = new Set(userFormationIdList(b));
+    return userFormationIdList(a).some((id) => setB.has(id));
+}
+
+function directConversationId(uidA, uidB) {
+    const ids = [cleanString(uidA, 180), cleanString(uidB, 180)].sort();
+    return `dm_${ids[0]}_${ids[1]}`;
+}
+
+async function listUserUidsByRoleSpellings(db, spellings = []) {
+    const uids = new Set();
+    const roleList = spellings.map((r) => cleanString(r, 40)).filter(Boolean).slice(0, 10);
+    if (!roleList.length) return [];
+    try {
+        const snap = await db.collection("users").where("role", "in", roleList).get();
+        snap.forEach((d) => {
+            const data = d.data() || {};
+            if (cleanString(data.statut, 40).toLowerCase() === "suspendu") return;
+            uids.add(d.id);
+        });
+    } catch (error) {
+        console.error("[SBI Messaging] listUserUidsByRoleSpellings :", error.message || error);
+    }
+    return [...uids];
+}
+
+async function listFormationMemberUids(db, formationId) {
+    const uids = new Set();
+    try {
+        const fdoc = await db.collection("formations").doc(cleanString(formationId, 180)).get();
+        if (fdoc.exists) {
+            const f = fdoc.data() || {};
+            (Array.isArray(f.students) ? f.students : []).forEach((u) => { const v = cleanString(u, 180); if (v) uids.add(v); });
+            (Array.isArray(f.profs) ? f.profs : []).forEach((u) => { const v = cleanString(u, 180); if (v) uids.add(v); });
+        }
+    } catch (error) {
+        console.error("[SBI Messaging] listFormationMemberUids :", formationId, error.message || error);
+    }
+    return [...uids];
+}
+
+async function fetchUserEmailRecipients(db, uids = []) {
+    const recipients = [];
+    const list = [...new Set(uids.map((u) => cleanString(u, 180)).filter(Boolean))].slice(0, 800);
+    const CHUNK = 100;
+    for (let i = 0; i < list.length; i += CHUNK) {
+        const refs = list.slice(i, i + CHUNK).map((uid) => db.collection("users").doc(uid));
+        try {
+            const snaps = await db.getAll(...refs);
+            for (const snap of snaps) {
+                if (!snap.exists) continue;
+                const u = snap.data() || {};
+                if (cleanString(u.statut, 40).toLowerCase() === "suspendu") continue;
+                const email = cleanEmail(u.email);
+                if (isValidEmail(email)) recipients.push({ email, name: getAccountDisplayName(u) });
+            }
+        } catch (error) {
+            console.error("[SBI Messaging] fetchUserEmailRecipients :", error.message || error);
+        }
+    }
+    return recipients;
+}
+
+// --- 1) Ouvrir (ou retrouver) une conversation 1:1 -----------------------
+exports.openDirectConversation = onCall({
+    region: MESSAGING_REGION,
+    timeoutSeconds: 30,
+    memory: "256MiB"
+}, async (request) => {
+    const db = admin.firestore();
+    const caller = await requireActiveCourseCaller(request, db);
+    const targetUid = cleanString(request.data?.targetUid, 180);
+    if (!targetUid) throw new HttpsError("invalid-argument", "Destinataire manquant.");
+    if (targetUid === caller.uid) throw new HttpsError("invalid-argument", "Impossible de s'écrire à soi-même.");
+
+    const targetDoc = await db.collection("users").doc(targetUid).get();
+    if (!targetDoc.exists) throw new HttpsError("not-found", "Destinataire introuvable.");
+    const target = targetDoc.data() || {};
+    if (cleanString(target.statut, 40).toLowerCase() === "suspendu") {
+        throw new HttpsError("failed-precondition", "Ce compte est suspendu.");
+    }
+
+    // Relation autorisée : admin OU formation partagée (prof↔élève, élève↔élève).
+    const allowed = caller.isAdmin || usersShareFormation(caller.data, target);
+    if (!allowed) {
+        throw new HttpsError("permission-denied", "Vous ne partagez aucune formation avec ce destinataire.");
+    }
+
+    const conversationId = directConversationId(caller.uid, targetUid);
+    const ref = db.collection("conversations").doc(conversationId);
+    const snap = await ref.get();
+    if (!snap.exists) {
+        const now = admin.firestore.FieldValue.serverTimestamp();
+        await ref.set({
+            kind: "dm",
+            participants: [caller.uid, targetUid].sort(),
+            participantNames: {
+                [caller.uid]: caller.name,
+                [targetUid]: getAccountDisplayName(target)
+            },
+            createdAt: now,
+            updatedAt: now,
+            lastMessageAt: null,
+            lastMessageText: "",
+            lastMessageSenderUid: "",
+            lastMessageSenderName: ""
+        }, { merge: true });
+    }
+    return { conversationId, kind: "dm" };
+});
+
+// --- 2) Garantir le salon de groupe d'une formation ----------------------
+exports.ensureGroupChannel = onCall({
+    region: MESSAGING_REGION,
+    timeoutSeconds: 30,
+    memory: "256MiB"
+}, async (request) => {
+    const db = admin.firestore();
+    const caller = await requireActiveCourseCaller(request, db);
+    const formationId = cleanString(request.data?.formationId, 180);
+    if (!formationId) throw new HttpsError("invalid-argument", "Formation manquante.");
+
+    const fdoc = await db.collection("formations").doc(formationId).get();
+    if (!fdoc.exists) throw new HttpsError("not-found", "Formation introuvable.");
+    const f = fdoc.data() || {};
+
+    const isMember = caller.isAdmin
+        || (Array.isArray(f.students) && f.students.includes(caller.uid))
+        || (Array.isArray(f.profs) && f.profs.includes(caller.uid))
+        || userFormationIdList(caller.data).includes(formationId);
+    if (!isMember) throw new HttpsError("permission-denied", "Vous n'êtes pas membre de cette formation.");
+
+    const conversationId = `group_formation_${formationId}`;
+    const title = cleanString(f.titre || f.nom || f.name || "Formation", 200);
+    const ref = db.collection("conversations").doc(conversationId);
+    const snap = await ref.get();
+    if (!snap.exists) {
+        const now = admin.firestore.FieldValue.serverTimestamp();
+        await ref.set({
+            kind: "group",
+            scope: { type: "formation", id: formationId },
+            title,
+            createdAt: now,
+            updatedAt: now,
+            lastMessageAt: null,
+            lastMessageText: "",
+            lastMessageSenderUid: "",
+            lastMessageSenderName: ""
+        }, { merge: true });
+    }
+    return { conversationId, kind: "group", title };
+});
+
+// --- 3) Annonce admin (unidirectionnelle, lecture seule) -----------------
+exports.sendAdminAnnouncement = onCall({
+    region: MESSAGING_REGION,
+    secrets: [BREVO_API_KEY],
+    timeoutSeconds: 120,
+    memory: "512MiB"
+}, async (request) => {
+    const db = admin.firestore();
+    const caller = await requireAdminCaller(request, db);
+    const data = request.data || {};
+    const audienceType = cleanString(data.audienceType, 40).toLowerCase();
+    const audienceRole = cleanString(data.audienceRole, 40).toLowerCase();
+    const audienceFormationId = cleanString(data.audienceFormationId, 180);
+    const subject = cleanString(data.title, 200);
+    const body = cleanMultiline(data.body, 4000);
+    const sendEmail = data.sendEmail === true;
+    if (!body) throw new HttpsError("invalid-argument", "Le message est vide.");
+
+    let conversationId = "";
+    let audienceFields = {};
+    let audienceLabel = "";
+    let recipientUids = [];
+
+    if (audienceType === "role" && (audienceRole === "teacher" || audienceRole === "student")) {
+        conversationId = `announce_role_${audienceRole}`;
+        audienceFields = { audienceType: "role", audienceRole };
+        audienceLabel = audienceRole === "teacher" ? "Tous les enseignants" : "Tous les élèves";
+        recipientUids = await listUserUidsByRoleSpellings(
+            db,
+            audienceRole === "teacher" ? TEACHER_ROLE_SPELLINGS : STUDENT_ROLE_SPELLINGS
+        );
+    } else if (audienceType === "formation" && audienceFormationId) {
+        conversationId = `announce_formation_${audienceFormationId}`;
+        audienceFields = { audienceType: "formation", audienceFormationId };
+        const fdoc = await db.collection("formations").doc(audienceFormationId).get();
+        const fname = fdoc.exists ? cleanString((fdoc.data() || {}).titre || (fdoc.data() || {}).nom || "", 200) : "";
+        audienceLabel = fname ? `Formation — ${fname}` : "Formation";
+        recipientUids = await listFormationMemberUids(db, audienceFormationId);
+    } else {
+        throw new HttpsError("invalid-argument", "Audience invalide.");
+    }
+
+    const ref = db.collection("conversations").doc(conversationId);
+    const now = admin.firestore.FieldValue.serverTimestamp();
+    const existing = await ref.get();
+    await ref.set({
+        kind: "announcement",
+        ...audienceFields,
+        title: `Annonces — ${audienceLabel}`,
+        createdAt: existing.exists ? (existing.data() || {}).createdAt || now : now,
+        updatedAt: now
+    }, { merge: true });
+
+    const msgRef = ref.collection("messages").doc();
+    await msgRef.set({
+        senderUid: caller.uid,
+        senderName: caller.name,
+        title: subject,
+        text: body,
+        createdAt: now
+    });
+
+    const preview = cleanString(body, 140);
+    const targets = recipientUids.filter((uid) => uid && uid !== caller.uid);
+    let notified = 0;
+    try {
+        notified = await writeSbiNotificationsForRecipients(db, targets, (uid) => ({
+            id: `admin_announcement_${conversationId}_${msgRef.id}_${uid}`,
+            type: "admin_announcement",
+            fields: {
+                conversationId,
+                announcementTitle: subject || audienceLabel,
+                senderName: caller.name,
+                preview
+            }
+        }));
+    } catch (error) {
+        console.error("[SBI Messaging] notif annonce :", error.message || error);
+    }
+
+    let emailed = 0;
+    if (sendEmail) {
+        try {
+            const recipients = await fetchUserEmailRecipients(db, targets);
+            if (recipients.length) {
+                const messageHtml = `${subject ? `<p style="font-size:16px;"><strong>${escapeHtml(subject)}</strong></p>` : ""}`
+                    + `<p>${body.split("\n").map((line) => escapeHtml(line)).join("<br>")}</p>`
+                    + `<p style="color:#64748b;font-size:13px;">Connecte-toi à ton espace SBI, onglet « Messagerie », pour retrouver cette annonce.</p>`;
+                await sendBrevoTransactionalEmail({
+                    sender: { name: SBI_SENDER_NAME, email: SBI_SENDER_EMAIL },
+                    // Destinataires en BCC pour ne pas exposer les emails entre eux.
+                    to: [{ name: "Sport Business Institute", email: SBI_CONTACT_EMAIL }],
+                    bcc: recipients.slice(0, 800),
+                    replyTo: { name: "Sport Business Institute", email: SBI_CONTACT_EMAIL },
+                    subject: `SBI — ${subject || "Nouvelle annonce"}`,
+                    htmlContent: renderSbiEmailTemplate({
+                        prenom: "",
+                        nomExpediteur: "La direction SBI",
+                        posteExpediteur: "Direction",
+                        preheader: subject || "Nouvelle annonce de la direction",
+                        messageHtml
+                    }),
+                    textContent: `${subject ? subject + "\n\n" : ""}${body}\n\nRetrouve cette annonce dans ton espace SBI (Messagerie).`
+                }, BREVO_API_KEY.value(), ["sbi_admin_announcement"]);
+                emailed = recipients.length;
+            }
+        } catch (error) {
+            console.error("[SBI Messaging] email annonce :", error.message || error);
+        }
+    }
+
+    await safeWriteAccountAuditLog(db, {
+        type: "messaging.admin_announcement",
+        actorUid: caller.uid,
+        actorEmail: caller.email,
+        conversationId,
+        audience: audienceLabel,
+        recipientCount: targets.length,
+        notified,
+        emailed,
+        source: "messaging"
+    });
+
+    return { success: true, conversationId, messageId: msgRef.id, recipients: targets.length, notified, emailed };
+});
+
+// --- 4) Trigger : dénormalisation lastMessage* + ping cloche (DM) ---------
+exports.onMessagingMessageCreated = onDocumentCreated({
+    region: MESSAGING_REGION,
+    document: "conversations/{conversationId}/messages/{messageId}",
+    timeoutSeconds: 60,
+    memory: "256MiB"
+}, async (event) => {
+    const db = admin.firestore();
+    const snap = event.data;
+    if (!snap) return;
+    const msg = snap.data() || {};
+    const conversationId = cleanString(event.params.conversationId, 300);
+    const convRef = db.collection("conversations").doc(conversationId);
+    const convSnap = await convRef.get();
+    if (!convSnap.exists) return;
+    const conv = convSnap.data() || {};
+
+    const senderUid = cleanString(msg.senderUid, 180);
+    const senderName = cleanString(msg.senderName, 180);
+    const previewFull = cleanString(msg.text, 200);
+
+    try {
+        await convRef.set({
+            lastMessageAt: msg.createdAt || admin.firestore.FieldValue.serverTimestamp(),
+            lastMessageText: cleanString(msg.text, 140),
+            lastMessageSenderUid: senderUid,
+            lastMessageSenderName: senderName,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+    } catch (error) {
+        console.error("[SBI Messaging] bump lastMessage :", conversationId, error.message || error);
+    }
+
+    // Ping cloche : uniquement en 1:1, à l'autre participant. (Salons de groupe :
+    // pas de notif par message — on s'appuie sur le badge non-lus.)
+    if (conv.kind === "dm" && Array.isArray(conv.participants)) {
+        const others = conv.participants
+            .map((u) => cleanString(u, 180))
+            .filter((u) => u && u !== senderUid);
+        try {
+            await writeSbiNotificationsForRecipients(db, others, (uid) => ({
+                id: `new_message_${conversationId}_${uid}`,
+                type: "new_message",
+                fields: {
+                    conversationId,
+                    senderUid,
+                    senderName,
+                    preview: cleanString(previewFull, 140)
+                }
+            }));
+        } catch (error) {
+            console.error("[SBI Messaging] ping DM :", conversationId, error.message || error);
+        }
+    }
 });

@@ -420,7 +420,16 @@ const NOTIF_ICONS = {
     yellowWarn: `<svg width="20" height="20" style="min-width:20px; flex-shrink:0;" fill="var(--accent-yellow, #fbbc04)" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>`,
     play: `<svg width="20" height="20" style="min-width:20px; flex-shrink:0;" fill="var(--accent-blue, #2A57FF)" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM10 16.5v-9l6 4.5-6 4.5z"/></svg>`
 };
+NOTIF_ICONS.chat = `<svg width="20" height="20" style="min-width:20px; flex-shrink:0;" fill="var(--accent-blue, #2A57FF)" viewBox="0 0 24 24"><path d="M4 4h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H8l-4 4V6a2 2 0 0 1 2-2Zm3 5v2h10V9H7Zm0 4v2h7v-2H7Z"/></svg>`;
 NOTIF_ICONS.fallback = NOTIF_ICONS.blueDoc;
+
+// SBI 8.0P.167.341 — route vers la messagerie du bon espace selon le rôle.
+function messagerieUrlForCurrentUser(conversationId) {
+    const cid = conversationId ? `?c=${encodeURIComponent(conversationId)}` : '';
+    return (currentUserProfile && currentUserProfile.role === 'teacher')
+        ? `/teacher/messagerie.html${cid}`
+        : `/student/messagerie.html${cid}`;
+}
 
 const NOTIFICATION_REGISTRY = {
     new_course_published: {
@@ -522,6 +531,18 @@ const NOTIFICATION_REGISTRY = {
         body: (n) => `La période <strong>${escNotif(n.periodLabel || 'du livret')}</strong>${n.studentName ? ` de <strong>${escNotif(n.studentName)}</strong>` : ''} a commencé : pense à compléter les informations${n.startDate ? ` (depuis le ${escNotif(n.startDate)})` : ''}.`,
         icon: NOTIF_ICONS.yellowWarn,
         navigate: (n) => n.actionUrl || '/admin/apprenticeship-booklets.html'
+    },
+    new_message: {
+        title: (n) => `Message de ${n.senderName || 'votre interlocuteur'}`,
+        body: (n) => n.preview ? escNotif(n.preview) : 'Vous avez reçu un nouveau message.',
+        icon: NOTIF_ICONS.chat,
+        navigate: (n) => messagerieUrlForCurrentUser(n.conversationId)
+    },
+    admin_announcement: {
+        title: (n) => n.announcementTitle ? escNotif(n.announcementTitle) : 'Nouvelle annonce',
+        body: (n) => `<strong>${escNotif(n.senderName || 'La direction')}</strong> : ${n.preview ? escNotif(n.preview) : 'nouvelle annonce.'}`,
+        icon: NOTIF_ICONS.chat,
+        navigate: (n) => messagerieUrlForCurrentUser(n.conversationId)
     }
 };
 

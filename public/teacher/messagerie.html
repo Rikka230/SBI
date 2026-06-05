@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Messagerie - SBI Teacher</title>
+
+    <link rel="stylesheet" href="/admin/css/admin-layout.css">
+    <link rel="stylesheet" href="/admin/css/admin.css">
+    <link rel="stylesheet" href="/admin/css/admin-notifications.css">
+    <link rel="stylesheet" href="/teacher/css/teacher.css">
+    <link rel="stylesheet" href="/css/messaging.css?v=8.0P.167.341">
+    <script src="/admin/js/components.js"></script>
+</head>
+<body class="preload">
+
+<div class="app-container" id="app-container">
+    <script>
+        if (window.innerWidth > 1024 && localStorage.getItem('leftPanelCollapsed') === 'true') {
+            document.getElementById('app-container').classList.add('left-collapsed');
+        }
+    </script>
+
+    <teacher-left-panel></teacher-left-panel>
+    <teacher-top-bar></teacher-top-bar>
+
+    <main id="main-content">
+        <div class="content-wrapper">
+            <p class="sbi-msg-muted">Chargement de la messagerie…</p>
+        </div>
+    </main>
+</div>
+
+<script type="module" src="/admin/js/admin-ui.js?v=8.0P.167.205"></script>
+<script src="/admin/js/sbi-safe-fixes.js"></script>
+<script type="module" src="/admin/js/tracker.js?v=8.0P.167.314"></script>
+<script type="module" src="/teacher/js/teacher-messagerie.js?v=8.0P.167.341"></script>
+<script type="module" src="/admin/js/admin-notifications.js?v=8.0P.167.205"></script>
+</body>
+</html>
