@@ -1,6 +1,6 @@
 rules_version = '2';
 
-// SBI 8.0P.167.349 — messagerie : groupes personnalisés (kind:'custom', participants[]).
+// SBI 8.0P.167.352 — messagerie : requête DM en motif canonique array-contains (fix list).
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -1102,7 +1102,16 @@ service cloud.firestore {
       // lu (le client écoute des canaux à id déterministe pas encore créés → renvoie
       // "absent", aucune fuite). Sinon resource.data.keys() sur null lève → denied.
       allow get: if resource == null || canReadConversation(resource.data);
-      allow list: if canReadConversation(resource.data);
+      // 8.0P.167.352 — La seule requête cliente sur conversations est
+      // `where participants array-contains uid` (DM + groupes perso). On utilise donc
+      // le motif CANONIQUE array-contains : vérif directe du tableau, SANS get()/OR de
+      // fonctions (que l'analyseur de requêtes Firestore refuse → « insufficient
+      // permissions », la liste ne s'affichait que depuis le cache local). Les salons
+      // de formation / annonces se lisent en doc-par-doc (allow get), pas en list.
+      allow list: if isActiveUser()
+        && resource.data.keys().hasAny(['participants'])
+        && resource.data.participants is list
+        && request.auth.uid in resource.data.participants;
 
       // Création / suppression / changement de structure : Cloud Functions only.
       allow create, delete: if false;
