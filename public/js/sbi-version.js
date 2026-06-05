@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.334',
+  version: '8.0P.167.335',
   branch: 'adapt-admin-mobile',
-  channel: 'Admin mobile : carte Comptes propre (nom enroulé → badge complétude visible) + grilles TABLE desktop gardées ≥1025px (fin du conflit double-source) — harnais FIDÈLE prouve 0 débordement',
-  stage: 'Harnais headless FIDÈLE (vraie page admin-accounts.html + TOUS les CSS dont sbi-bottom-nav.css/sbi-admin-single-scroll.css + classes body réelles + lignes riches) : la page Comptes déployée NE déborde PAS (0px à 360/390/414/768/1024), la carte fait 278-332px et tient, le rendu est propre (cf. capture). Donc le « toujours trop large » vient très probablement du CACHE de l\'appareil (session ouverte / PJAX ne recharge pas le CSS statique). Corrections au passage : admin-accounts.css avait DEUX grilles TABLE 6-col en !important SANS media query (L337/L441) qui polluaient le mobile (contain/content-visibility/min-height) → gardées ≥1025px ; le nom de la carte passe en white-space:normal (au lieu de nowrap qui tronquait nom+badge) → badge complétude ✗ enfin visible. À confirmer : screenshot ?diagwidth sur appareil RÉEL (full reload) pour valider 0 débordement chez le client.',
+  channel: 'Chantier mobile admin : FRAME SYSTÉMIQUE (min-width:0 flex-item + max-width:100% + box-sizing) → Profil corrigé + toutes les pages durcies ; harnais headless fidèle sur les 14 pages',
+  stage: 'Chantier mobile admin (toutes pages), piloté par un harnais headless FIDÈLE (vraie page + tous CSS + classes mobiles réelles). Triage : seule la page PROFIL débordait vraiment (586px à 360) — .profile-grid (300px 1fr) ne collapsait jamais. Fixes SYSTÉMIQUES dans admin-responsive.css (≤1024px) : (1) #main-content { min-width:0 } — gotcha flexbox : un flex-item à min-width:auto refuse de rétrécir sous la min-content de son contenu → débordement diffus ; c\'était LA cause racine du Profil et un filet pour toutes les pages ; (2) max-width:100% + box-sizing:border-box sur tout #main-content * (cape les largeurs fixes inline) ; (3) Profil : .profile-grid → 1 colonne, onglets qui s\'enroulent (admin-profile.css). Résultat harnais : 0 débordement sur les 14 pages de consultation à 360/768/1024. Reste : tester le contenu injecté en JS (listes) avec données, revue visuelle, bloc éditeurs <900px (course-editor), nettoyage instrumentation.',
   updatedAt: '2026-06-05',
-  label: 'SBI 8.0P.167.334 - Admin mobile : carte Comptes propre (nom enroulé + badge visible) + grilles desktop gardées ≥1025px'
+  label: 'SBI 8.0P.167.335 - Chantier mobile admin : frame systémique (min-width:0 + max-width + box-sizing) + Profil corrigé'
 };
 
 export function getSbiVersionLabel() {

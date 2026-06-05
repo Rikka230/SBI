@@ -1,4 +1,19 @@
 /* =======================================================================
+   SBI 8.0P.167.335 — FILET SYSTÉMIQUE : en mobile admin (≤1024px), aucun élément de
+   contenu ne peut dépasser la largeur de son parent. box-sizing border-box (un
+   width:100% + padding en content-box débordait) + max-width:100% (cape les largeurs
+   fixes inline, ex. inputs/box à 250-300px). Couvre la cause des débordements diffus
+   (Profil, etc.) sans archéologie élément par élément. Desktop ≥1025px non touché.
+   ======================================================================= */
+@media (max-width: 1024px) {
+  body.sbi-admin-surface #main-content *,
+  body.sbi-admin-space #main-content * {
+    box-sizing: border-box;
+    max-width: 100%;
+  }
+}
+
+/* =======================================================================
    SBI 8.0P.167.319 — Filet de sécurité responsive des pages de CONSULTATION admin
    (Comptes, Élèves en retard, Journal, Profil, Dashboard, Réglages accueil).
 
@@ -54,12 +69,17 @@
     height: auto !important;
     min-height: 100dvh !important;
     overflow: visible !important;
+    min-width: 0 !important;
   }
   body.sbi-bottom-nav-active #main-content {
     height: auto !important;
     min-height: 100dvh !important;
     overflow: visible !important;
     overscroll-behavior: auto !important;
+    /* min-width:0 : #main-content est un flex-item ; sans ça (min-width:auto par
+       défaut) il refuse de rétrécir sous la min-content de son contenu → débordement
+       diffus (gotcha flexbox classique, cause du « trop large » du Profil). SYSTÉMIQUE. */
+    min-width: 0 !important;
     /* Dégagement : la capsule fait ~64px + marge + safe-area. */
     padding-bottom: calc(108px + env(safe-area-inset-bottom, 0px)) !important;
   }
