@@ -373,27 +373,38 @@ function setNavBadge(el, count, dotOnly) {
     }
 }
 
-// Pastille « messagerie » sur la nav (mobile + desktop). Bornée si la nav n'est
-// pas encore montée.
+// Pastille « messagerie » sur la nav (mobile + desktop).
+let lastMsgNavCount = 0;
 function updateMessagingNavBadge(count, attempt) {
+    if (typeof count === 'number') lastMsgNavCount = count;
+    count = lastMsgNavCount;
     attempt = attempt || 0;
     injectNavBadgeStyles();
-    const items = [];
-    document.querySelectorAll('.sbi-bn-item[data-id="messagerie"], .sbi-bn-sheet-item[data-id="messagerie"], a[href*="/messagerie"]')
-        .forEach((el) => { if (!items.includes(el)) items.push(el); });
 
-    if (!items.length && attempt < 25) {
-        setTimeout(() => updateMessagingNavBadge(count, attempt + 1), 200);
+    // Nav desktop (présente même sur mobile, mais cachée) — badge posé quand même.
+    document.querySelectorAll('a[href*="/messagerie"]').forEach((el) => setNavBadge(el, count));
+
+    // Bottom-nav (SEULE surface visible sur mobile) : on RÉESSAIE tant qu'elle
+    // n'est pas montée (sinon la pastille mobile ne se pose jamais).
+    const bn = document.querySelector('.sbi-bottom-nav');
+    if (!bn) {
+        if (attempt < 40) setTimeout(() => updateMessagingNavBadge(undefined, attempt + 1), 250);
         return;
     }
-    items.forEach((el) => setNavBadge(el, count));
+    bn.querySelectorAll('.sbi-bn-item[data-id="messagerie"], .sbi-bn-sheet-item[data-id="messagerie"]').forEach((el) => setNavBadge(el, count));
 
-    // Si la messagerie est dans la feuille « Plus » (overflow) et non dans la barre,
-    // on pose une pastille sur le bouton « Plus » (visible sans ouvrir la feuille).
-    const inSheet = document.querySelector('.sbi-bn-sheet-item[data-id="messagerie"]');
-    const inBar = document.querySelector('.sbi-bn-item[data-id="messagerie"]');
-    const plus = document.getElementById('sbi-bn-plus');
+    // Messagerie en overflow (« Plus ») → pastille sur le bouton « Plus » (visible
+    // sans ouvrir la feuille).
+    const inSheet = bn.querySelector('.sbi-bn-sheet-item[data-id="messagerie"]');
+    const inBar = bn.querySelector('.sbi-bn-item[data-id="messagerie"]');
+    const plus = bn.querySelector('#sbi-bn-plus') || document.getElementById('sbi-bn-plus');
     if (plus) setNavBadge(plus, (inSheet && !inBar) ? count : 0, true);
+}
+
+// La bottom-nav se re-rend en navigation PJAX → on re-pose la pastille.
+if (typeof window !== 'undefined' && !window.__SBI_MSG_NAV_BADGE_BOUND__) {
+    window.__SBI_MSG_NAV_BADGE_BOUND__ = true;
+    window.addEventListener('sbi:app-shell:navigated', () => setTimeout(() => updateMessagingNavBadge(undefined), 350));
 }
 
 async function dismissNotificationForCurrentUser(notifId) {
