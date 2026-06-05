@@ -11208,6 +11208,100 @@ exports.sendAdminAnnouncement = onCall({
     return { success: true, conversationId, messageId: msgRef.id, recipients: targets.length, notified, emailed };
 });
 
+// --- 3bis) Groupe personnalisé : création (prof/admin) --------------------
+exports.createCustomGroup = onCall({
+    region: MESSAGING_REGION,
+    timeoutSeconds: 30,
+    memory: "256MiB"
+}, async (request) => {
+    const db = admin.firestore();
+    const caller = await requireActiveCourseCaller(request, db);
+    if (!caller.isAdmin && !caller.isTeacher) {
+        throw new HttpsError("permission-denied", "Seuls les enseignants et l'administration peuvent créer un groupe.");
+    }
+    const name = cleanString(request.data?.name, 120);
+    const memberUids = [...new Set((request.data?.memberUids || []).map((u) => cleanString(u, 180)).filter(Boolean))].slice(0, 50);
+    if (!name) throw new HttpsError("invalid-argument", "Nom du groupe manquant.");
+    if (!memberUids.length) throw new HttpsError("invalid-argument", "Sélectionnez au moins un membre.");
+
+    const validated = [];
+    for (const uid of memberUids) {
+        if (uid === caller.uid) continue;
+        try {
+            const doc = await db.collection("users").doc(uid).get();
+            if (!doc.exists) continue;
+            const u = doc.data() || {};
+            if (cleanString(u.statut, 40).toLowerCase() === "suspendu") continue;
+            if (caller.isAdmin || usersShareFormation(caller.data, u)) validated.push(uid);
+        } catch (_) { /* membre ignoré */ }
+    }
+    if (!validated.length) throw new HttpsError("failed-precondition", "Aucun membre valide (formation partagée requise).");
+
+    const participants = [...new Set([caller.uid, ...validated])];
+    const ref = db.collection("conversations").doc();
+    const now = admin.firestore.FieldValue.serverTimestamp();
+    await ref.set({
+        kind: "custom",
+        participants,
+        participantNames: { [caller.uid]: caller.name },
+        title: name,
+        createdBy: caller.uid,
+        createdAt: now,
+        updatedAt: now,
+        lastMessageAt: null,
+        lastMessageText: "",
+        lastMessageSenderUid: "",
+        lastMessageSenderName: ""
+    });
+    return { conversationId: ref.id, kind: "custom", participants: participants.length };
+});
+
+// --- 3ter) Groupe personnalisé : édition (créateur/admin) -----------------
+exports.updateCustomGroup = onCall({
+    region: MESSAGING_REGION,
+    timeoutSeconds: 30,
+    memory: "256MiB"
+}, async (request) => {
+    const db = admin.firestore();
+    const caller = await requireActiveCourseCaller(request, db);
+    const conversationId = cleanString(request.data?.conversationId, 300);
+    if (!conversationId) throw new HttpsError("invalid-argument", "Conversation manquante.");
+
+    const ref = db.collection("conversations").doc(conversationId);
+    const snap = await ref.get();
+    if (!snap.exists) throw new HttpsError("not-found", "Groupe introuvable.");
+    const conv = snap.data() || {};
+    if (conv.kind !== "custom") throw new HttpsError("failed-precondition", "Ce fil n'est pas un groupe personnalisé.");
+    if (!caller.isAdmin && conv.createdBy !== caller.uid) {
+        throw new HttpsError("permission-denied", "Seuls le créateur du groupe et l'administration peuvent le modifier.");
+    }
+
+    let participants = Array.isArray(conv.participants) ? [...conv.participants] : [];
+    const addUids = [...new Set((request.data?.addUids || []).map((u) => cleanString(u, 180)).filter(Boolean))];
+    const removeUids = new Set((request.data?.removeUids || []).map((u) => cleanString(u, 180)).filter(Boolean));
+
+    for (const uid of addUids) {
+        if (participants.includes(uid)) continue;
+        try {
+            const doc = await db.collection("users").doc(uid).get();
+            if (!doc.exists) continue;
+            const u = doc.data() || {};
+            if (cleanString(u.statut, 40).toLowerCase() === "suspendu") continue;
+            if (caller.isAdmin || usersShareFormation(caller.data, u)) participants.push(uid);
+        } catch (_) { /* membre ignoré */ }
+    }
+    // Retrait (impossible de retirer le créateur).
+    participants = participants.filter((u) => !removeUids.has(u) || u === conv.createdBy);
+    participants = [...new Set(participants)];
+    if (participants.length < 1) throw new HttpsError("failed-precondition", "Un groupe doit garder au moins un membre.");
+
+    const update = { participants, updatedAt: admin.firestore.FieldValue.serverTimestamp() };
+    const name = cleanString(request.data?.name, 120);
+    if (name) update.title = name;
+    await ref.set(update, { merge: true });
+    return { conversationId, participants: participants.length };
+});
+
 // --- 4) Trigger : dénormalisation lastMessage* + ping cloche (DM) ---------
 exports.onMessagingMessageCreated = onDocumentCreated({
     region: MESSAGING_REGION,
@@ -11241,25 +11335,34 @@ exports.onMessagingMessageCreated = onDocumentCreated({
         console.error("[SBI Messaging] bump lastMessage :", conversationId, error.message || error);
     }
 
-    // Ping cloche : uniquement en 1:1, à l'autre participant. (Salons de groupe :
-    // pas de notif par message — on s'appuie sur le badge non-lus.)
-    if (conv.kind === "dm" && Array.isArray(conv.participants)) {
-        const others = conv.participants
-            .map((u) => cleanString(u, 180))
-            .filter((u) => u && u !== senderUid);
+    // Ping cloche / assistant : aux AUTRES membres (DM, groupe perso, salon de
+    // formation). Id stable par (conversation, destinataire) → 1 notif par fil,
+    // ré-actualisée à chaque message (pas de spam). Annonces : gérées par leur CF.
+    let recipients = [];
+    let groupTitle = "";
+    if ((conv.kind === "dm" || conv.kind === "custom") && Array.isArray(conv.participants)) {
+        recipients = conv.participants.map((u) => cleanString(u, 180)).filter((u) => u && u !== senderUid);
+        if (conv.kind === "custom") groupTitle = cleanString(conv.title, 120) || "Groupe";
+    } else if (conv.kind === "group" && conv.scope && conv.scope.id) {
+        const members = await listFormationMemberUids(db, cleanString(conv.scope.id, 180));
+        recipients = members.filter((u) => u && u !== senderUid);
+        groupTitle = cleanString(conv.title, 120) || "Salon";
+    }
+    if (recipients.length) {
         try {
-            await writeSbiNotificationsForRecipients(db, others, (uid) => ({
+            await writeSbiNotificationsForRecipients(db, recipients, (uid) => ({
                 id: `new_message_${conversationId}_${uid}`,
                 type: "new_message",
                 fields: {
                     conversationId,
                     senderUid,
                     senderName,
+                    groupTitle,
                     preview: cleanString(previewFull, 140)
                 }
             }));
         } catch (error) {
-            console.error("[SBI Messaging] ping DM :", conversationId, error.message || error);
+            console.error("[SBI Messaging] ping message :", conversationId, error.message || error);
         }
     }
 });

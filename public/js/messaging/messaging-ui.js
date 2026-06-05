@@ -12,7 +12,7 @@
 import { app, db, auth } from "/js/firebase-init.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import {
-    collection, doc, getDoc, setDoc, addDoc, serverTimestamp,
+    collection, doc, getDoc, setDoc, addDoc, updateDoc, arrayUnion, serverTimestamp,
     onSnapshot, query, where, orderBy, limit
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js";
@@ -21,6 +21,8 @@ import { loadAssignedFormationsForUser, loadSearchUsersForRole, roleOf } from "/
 const functions = getFunctions(app, "europe-west1");
 const openDirectConversationFn = httpsCallable(functions, "openDirectConversation");
 const ensureGroupChannelFn = httpsCallable(functions, "ensureGroupChannel");
+const createCustomGroupFn = httpsCallable(functions, "createCustomGroup");
+const updateCustomGroupFn = httpsCallable(functions, "updateCustomGroup");
 
 const STUDENT_ROLE_KEY = "student";
 const TEACHER_ROLE_KEY = "teacher";
@@ -57,7 +59,10 @@ const SHELL_HTML = `
   <aside class="sbi-msg-aside" id="sbi-msg-aside">
     <div class="sbi-msg-aside-head">
       <h1 class="sbi-msg-title">Messagerie</h1>
-      <button type="button" class="sbi-msg-new-btn" id="sbi-msg-new-btn">Nouveau message</button>
+      <div class="sbi-msg-aside-actions">
+        <button type="button" class="sbi-msg-new-btn" id="sbi-msg-new-btn">Nouveau message</button>
+        <button type="button" class="sbi-msg-new-btn sbi-msg-new-btn--ghost" id="sbi-msg-new-group-btn" hidden>Nouveau groupe</button>
+      </div>
     </div>
     <div class="sbi-msg-threads" id="sbi-msg-threads">
       <p class="sbi-msg-muted">Chargement…</p>
@@ -74,6 +79,7 @@ const SHELL_HTML = `
           <span class="sbi-msg-conv-title" id="sbi-msg-conv-title"></span>
           <span class="sbi-msg-conv-sub" id="sbi-msg-conv-sub"></span>
         </div>
+        <button type="button" class="sbi-msg-manage-btn" id="sbi-msg-manage-btn" hidden>Gérer</button>
       </header>
       <div class="sbi-msg-stream" id="sbi-msg-stream"></div>
       <form class="sbi-msg-composer" id="sbi-msg-composer">
@@ -92,6 +98,21 @@ const SHELL_HTML = `
     </div>
     <input type="search" class="sbi-msg-picker-search" id="sbi-msg-picker-search" placeholder="Rechercher un contact…">
     <div class="sbi-msg-picker-list" id="sbi-msg-picker-list"><p class="sbi-msg-muted">Chargement des contacts…</p></div>
+  </div>
+</div>
+<div class="sbi-msg-picker" id="sbi-msg-group" hidden>
+  <div class="sbi-msg-picker-card">
+    <div class="sbi-msg-picker-head">
+      <h2 id="sbi-msg-group-title">Nouveau groupe</h2>
+      <button type="button" class="sbi-msg-picker-close" id="sbi-msg-group-close" aria-label="Fermer">&times;</button>
+    </div>
+    <input type="text" class="sbi-msg-picker-search" id="sbi-msg-group-name" placeholder="Nom du groupe…" maxlength="120">
+    <input type="search" class="sbi-msg-picker-search" id="sbi-msg-group-search" placeholder="Rechercher un contact…">
+    <div class="sbi-msg-picker-list" id="sbi-msg-group-list"><p class="sbi-msg-muted">Chargement des contacts…</p></div>
+    <div class="sbi-msg-group-foot">
+      <span class="sbi-msg-muted" id="sbi-msg-group-count">0 sélectionné(s)</span>
+      <button type="button" class="sbi-msg-new-btn" id="sbi-msg-group-submit">Créer le groupe</button>
+    </div>
   </div>
 </div>
 `;
@@ -203,6 +224,7 @@ function initMessaging(me, role) {
 
     function convTag(conv) {
         if (conv.kind === "group") return "Salon";
+        if (conv.kind === "custom") return "Groupe";
         if (conv.kind === "announcement") return "Annonces";
         return "";
     }
@@ -245,11 +267,17 @@ function initMessaging(me, role) {
         el("sbi-msg-conv").hidden = false;
         document.querySelector(".sbi-msg").classList.add("is-conv-open");
         el("sbi-msg-conv-title").textContent = convLabel(conv);
-        el("sbi-msg-conv-sub").textContent = convTag(conv) || (conv.kind === "dm" ? "Message privé" : "");
+        const memberSuffix = (conv.kind === "custom" || conv.kind === "group") && Array.isArray(conv.participants)
+            ? ` · ${conv.participants.length} membre(s)` : "";
+        el("sbi-msg-conv-sub").textContent = (convTag(conv) || (conv.kind === "dm" ? "Message privé" : "")) + memberSuffix;
 
         const isAnnouncement = conv.kind === "announcement";
         el("sbi-msg-composer").hidden = isAnnouncement;
         el("sbi-msg-readonly").hidden = !isAnnouncement;
+
+        // « Gérer » : visible pour le créateur d'un groupe personnalisé (admin via la console).
+        const canManage = conv.kind === "custom" && conv.createdBy === me.id;
+        el("sbi-msg-manage-btn").hidden = !canManage;
 
         listenOtherRead(cid, conv);
         listenMessages(cid);
@@ -328,6 +356,10 @@ function initMessaging(me, role) {
         try {
             await setDoc(doc(db, "conversations", cid, "reads", me.id), { lastReadAt: serverTimestamp() }, { merge: true });
         } catch (_) { /* non bloquant */ }
+        // Efface la notif « nouveau message » de ce fil à la lecture (badge nav + cloche).
+        try {
+            await updateDoc(doc(db, "notifications", `new_message_${cid}_${me.id}`), { dismissedBy: arrayUnion(me.id) });
+        } catch (_) { /* pas de notif pour ce fil */ }
     }
 
     // --- Envoi d'un message ----------------------------------------------
@@ -446,8 +478,136 @@ function initMessaging(me, role) {
         }
     }
 
+    // --- Groupes personnalisés (création / gestion) ----------------------
+    const groupSelected = new Set();
+    let groupMode = "create";   // 'create' | 'manage'
+    let groupManageCid = "";
+    let groupOriginal = new Set();
+
+    async function ensureContactsLoaded() {
+        if (contactsCache) return contactsCache;
+        try {
+            const formations = await loadAssignedFormationsForUser({ uid: me.id, userData: me, role: roleKey });
+            const users = await loadSearchUsersForRole({ uid: me.id, userData: me, role: roleKey, formations });
+            contactsCache = Array.isArray(users) ? users : [];
+        } catch (error) {
+            console.error("[SBI Messagerie] contacts indisponibles :", error);
+            contactsCache = [];
+        }
+        return contactsCache;
+    }
+
+    async function openGroupCreator() {
+        groupMode = "create";
+        groupManageCid = "";
+        groupSelected.clear();
+        groupOriginal = new Set();
+        el("sbi-msg-group-title").textContent = "Nouveau groupe";
+        el("sbi-msg-group-name").value = "";
+        el("sbi-msg-group-submit").textContent = "Créer le groupe";
+        el("sbi-msg-group").hidden = false;
+        el("sbi-msg-group-list").innerHTML = `<p class="sbi-msg-muted">Chargement des contacts…</p>`;
+        await ensureContactsLoaded();
+        renderGroupContacts("");
+    }
+
+    async function openGroupManager(conv) {
+        if (!conv) return;
+        groupMode = "manage";
+        groupManageCid = conv.id;
+        groupOriginal = new Set((conv.participants || []).filter((u) => u !== me.id));
+        groupSelected.clear();
+        groupOriginal.forEach((u) => groupSelected.add(u));
+        el("sbi-msg-group-title").textContent = "Gérer le groupe";
+        el("sbi-msg-group-name").value = conv.title || "";
+        el("sbi-msg-group-submit").textContent = "Enregistrer";
+        el("sbi-msg-group").hidden = false;
+        el("sbi-msg-group-list").innerHTML = `<p class="sbi-msg-muted">Chargement des contacts…</p>`;
+        await ensureContactsLoaded();
+        renderGroupContacts("");
+    }
+
+    function groupContactPool() {
+        const pool = [...(contactsCache || [])];
+        if (groupMode === "manage") {
+            const conv = conversations.get(groupManageCid);
+            const names = (conv && conv.participantNames) || {};
+            const known = new Set(pool.map((u) => u.id));
+            groupOriginal.forEach((uid) => {
+                if (!known.has(uid)) pool.push({ id: uid, prenom: "", nom: names[uid] || "Membre", role: "" });
+            });
+        }
+        return pool;
+    }
+
+    function updateGroupCount() {
+        el("sbi-msg-group-count").textContent = `${groupSelected.size} sélectionné(s)`;
+    }
+
+    function renderGroupContacts(filter) {
+        const listEl = el("sbi-msg-group-list");
+        const f = (filter || "").toLowerCase();
+        const items = groupContactPool()
+            .filter((u) => u.id !== me.id)
+            .filter((u) => !f || displayName(u).toLowerCase().includes(f) || String(u.email || "").toLowerCase().includes(f))
+            .sort((a, b) => displayName(a).localeCompare(displayName(b), "fr"));
+        if (!items.length) { listEl.innerHTML = `<p class="sbi-msg-muted">Aucun contact trouvé.</p>`; updateGroupCount(); return; }
+        listEl.innerHTML = items.map((u) => `
+          <label class="sbi-msg-contact sbi-msg-contact--check">
+            <input type="checkbox" class="sbi-msg-group-cb" data-uid="${escapeHtml(u.id)}"${groupSelected.has(u.id) ? " checked" : ""}>
+            <span class="sbi-msg-contact-name">${escapeHtml(displayName(u))}</span>
+            <span class="sbi-msg-contact-role">${escapeHtml(roleLabel(u.role))}</span>
+          </label>`).join("");
+        listEl.querySelectorAll(".sbi-msg-group-cb").forEach((cb) => {
+            cb.addEventListener("change", () => {
+                const uid = cb.getAttribute("data-uid");
+                if (cb.checked) groupSelected.add(uid); else groupSelected.delete(uid);
+                updateGroupCount();
+            });
+        });
+        updateGroupCount();
+    }
+
+    async function submitGroup() {
+        const name = el("sbi-msg-group-name").value.trim();
+        if (!name) { alert("Donnez un nom au groupe."); return; }
+        if (!groupSelected.size && groupMode === "create") { alert("Sélectionnez au moins un membre."); return; }
+        const submitBtn = el("sbi-msg-group-submit");
+        submitBtn.disabled = true;
+        try {
+            if (groupMode === "create") {
+                const res = await createCustomGroupFn({ name, memberUids: [...groupSelected] });
+                const cid = res?.data?.conversationId;
+                el("sbi-msg-group").hidden = true;
+                if (cid) {
+                    if (!conversations.has(cid)) {
+                        const snap = await getDoc(doc(db, "conversations", cid));
+                        if (snap.exists()) upsertConversation(cid, snap.data());
+                    }
+                    scheduleRender();
+                    setTimeout(() => openConversation(cid), 50);
+                }
+            } else {
+                const addUids = [...groupSelected].filter((u) => !groupOriginal.has(u));
+                const removeUids = [...groupOriginal].filter((u) => !groupSelected.has(u));
+                await updateCustomGroupFn({ conversationId: groupManageCid, addUids, removeUids, name });
+                el("sbi-msg-group").hidden = true;
+                const snap = await getDoc(doc(db, "conversations", groupManageCid));
+                if (snap.exists()) {
+                    upsertConversation(groupManageCid, snap.data());
+                    if (groupManageCid === activeCid) openConversation(groupManageCid);
+                }
+            }
+        } catch (error) {
+            console.error("[SBI Messagerie] groupe :", error);
+            alert(error?.message || "Action impossible.");
+        } finally {
+            submitBtn.disabled = false;
+        }
+    }
+
     // --- Branchement des listeners temps réel -----------------------------
-    // 1) DMs : toutes les conversations où je suis participant.
+    // 1) DMs + groupes perso : conversations où je suis dans participants.
     trackUnsub(onSnapshot(
         query(collection(db, "conversations"), where("participants", "array-contains", me.id)),
         (snap) => { snap.forEach((d) => upsertConversation(d.id, d.data())); maybeOpenFromQuery(); },
@@ -497,6 +657,15 @@ function initMessaging(me, role) {
     el("sbi-msg-picker-close").addEventListener("click", () => { el("sbi-msg-picker").hidden = true; });
     el("sbi-msg-picker").addEventListener("click", (e) => { if (e.target.id === "sbi-msg-picker") el("sbi-msg-picker").hidden = true; });
     el("sbi-msg-picker-search").addEventListener("input", (e) => renderContacts(e.target.value));
+
+    // Groupes personnalisés : bouton « Nouveau groupe » réservé aux profs (admin via console).
+    if (roleKey === TEACHER_ROLE_KEY) el("sbi-msg-new-group-btn").hidden = false;
+    el("sbi-msg-new-group-btn").addEventListener("click", openGroupCreator);
+    el("sbi-msg-group-close").addEventListener("click", () => { el("sbi-msg-group").hidden = true; });
+    el("sbi-msg-group").addEventListener("click", (e) => { if (e.target.id === "sbi-msg-group") el("sbi-msg-group").hidden = true; });
+    el("sbi-msg-group-search").addEventListener("input", (e) => renderGroupContacts(e.target.value));
+    el("sbi-msg-group-submit").addEventListener("click", submitGroup);
+    el("sbi-msg-manage-btn").addEventListener("click", () => openGroupManager(conversations.get(activeCid)));
     el("sbi-msg-back").addEventListener("click", () => {
         document.querySelector(".sbi-msg").classList.remove("is-conv-open");
         activeCid = "";

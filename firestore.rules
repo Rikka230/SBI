@@ -1,6 +1,6 @@
 rules_version = '2';
 
-// SBI 8.0P.167.347 — messagerie : lecture canal inexistant autorisée (resource==null).
+// SBI 8.0P.167.354 — messagerie : regle list = motif documente strict (uid in participants).
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -851,10 +851,20 @@ service cloud.firestore {
         );
     }
 
+    // 8.0P.167.349 — Groupe personnalisé (créé par prof/admin) : membres = participants[].
+    function convIsCustomMember(c) {
+      return c.keys().hasAny(['kind'])
+        && c.kind == 'custom'
+        && c.keys().hasAny(['participants'])
+        && c.participants is list
+        && request.auth.uid in c.participants;
+    }
+
     function convIsMember(c) {
       return convIsDmMember(c)
         || convIsGroupMember(c)
-        || convIsAnnouncementMember(c);
+        || convIsAnnouncementMember(c)
+        || convIsCustomMember(c);
     }
 
     function canReadConversation(c) {
@@ -1092,7 +1102,13 @@ service cloud.firestore {
       // lu (le client écoute des canaux à id déterministe pas encore créés → renvoie
       // "absent", aucune fuite). Sinon resource.data.keys() sur null lève → denied.
       allow get: if resource == null || canReadConversation(resource.data);
-      allow list: if canReadConversation(resource.data);
+      // 8.0P.167.353 — Requête cliente : `where participants array-contains uid`.
+      // CRUCIAL : la règle `list` d'une requête array-contains ne doit faire AUCUN
+      // get()/exists() — sinon Firestore REFUSE la requête entière (même résultat
+      // vide) → « Missing or insufficient permissions », DM invisibles hors cache.
+      // (isActiveUser() faisait un get() → c'était la cause.) Motif pur : appartenance
+      // directe au tableau participants. Sécurité OK (il faut être participant).
+      allow list: if request.auth.uid in resource.data.participants;
 
       // Création / suppression / changement de structure : Cloud Functions only.
       allow create, delete: if false;

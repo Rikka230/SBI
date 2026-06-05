@@ -325,6 +325,12 @@ function renderCombinedNotifications() {
     updateRedBadges(notifs.length);
     renderNotificationsList(notifs);
 
+    // 8.0P.167.351 — Pastille « nouveaux messages » sur l'entrée Messagerie de la
+    // nav (bottom-nav + bouton « Plus » + nav desktop) : visible sur MOBILE, où la
+    // cloche/assistant est peu repérable. Compte les notifs de messagerie non lues.
+    const msgCount = notifs.filter((n) => n.type === 'new_message' || n.type === 'admin_announcement').length;
+    updateMessagingNavBadge(msgCount);
+
     window.dispatchEvent(new CustomEvent('sbi:notifications-updated', {
         detail: {
             count: notifs.length,
@@ -332,6 +338,73 @@ function renderCombinedNotifications() {
             types: notifs.map((notif) => notif.type).filter(Boolean)
         }
     }));
+}
+
+let navBadgeStylesInjected = false;
+function injectNavBadgeStyles() {
+    if (navBadgeStylesInjected || typeof document === 'undefined') return;
+    navBadgeStylesInjected = true;
+    const style = document.createElement('style');
+    style.id = 'sbi-nav-msg-badge-style';
+    style.textContent = `
+.sbi-nav-msg-badge{position:absolute;top:2px;right:6px;min-width:16px;height:16px;padding:0 4px;
+  display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;
+  background:#ff4a4a;color:#fff;font-size:10px;font-weight:900;line-height:1;border-radius:999px;
+  z-index:3;pointer-events:none;box-shadow:0 0 0 2px rgba(0,0,0,.18);}
+.sbi-nav-msg-badge--dot{min-width:10px;width:10px;height:10px;padding:0;}
+.sbi-bn-sheet-item .sbi-nav-msg-badge{top:50%;transform:translateY(-50%);right:12px;}`;
+    (document.head || document.documentElement).appendChild(style);
+}
+
+function setNavBadge(el, count, dotOnly) {
+    if (!el) return;
+    let badge = el.querySelector(':scope > .sbi-nav-msg-badge');
+    if (count > 0) {
+        if (!badge) {
+            badge = document.createElement('span');
+            badge.className = 'sbi-nav-msg-badge';
+            if (getComputedStyle(el).position === 'static') el.style.position = 'relative';
+            el.appendChild(badge);
+        }
+        badge.textContent = dotOnly ? '' : (count > 9 ? '9+' : String(count));
+        badge.classList.toggle('sbi-nav-msg-badge--dot', Boolean(dotOnly));
+    } else if (badge) {
+        badge.remove();
+    }
+}
+
+// Pastille « messagerie » sur la nav (mobile + desktop).
+let lastMsgNavCount = 0;
+function updateMessagingNavBadge(count, attempt) {
+    if (typeof count === 'number') lastMsgNavCount = count;
+    count = lastMsgNavCount;
+    attempt = attempt || 0;
+    injectNavBadgeStyles();
+
+    // Nav desktop (présente même sur mobile, mais cachée) — badge posé quand même.
+    document.querySelectorAll('a[href*="/messagerie"]').forEach((el) => setNavBadge(el, count));
+
+    // Bottom-nav (SEULE surface visible sur mobile) : on RÉESSAIE tant qu'elle
+    // n'est pas montée (sinon la pastille mobile ne se pose jamais).
+    const bn = document.querySelector('.sbi-bottom-nav');
+    if (!bn) {
+        if (attempt < 40) setTimeout(() => updateMessagingNavBadge(undefined, attempt + 1), 250);
+        return;
+    }
+    bn.querySelectorAll('.sbi-bn-item[data-id="messagerie"], .sbi-bn-sheet-item[data-id="messagerie"]').forEach((el) => setNavBadge(el, count));
+
+    // Messagerie en overflow (« Plus ») → pastille sur le bouton « Plus » (visible
+    // sans ouvrir la feuille).
+    const inSheet = bn.querySelector('.sbi-bn-sheet-item[data-id="messagerie"]');
+    const inBar = bn.querySelector('.sbi-bn-item[data-id="messagerie"]');
+    const plus = bn.querySelector('#sbi-bn-plus') || document.getElementById('sbi-bn-plus');
+    if (plus) setNavBadge(plus, (inSheet && !inBar) ? count : 0, true);
+}
+
+// La bottom-nav se re-rend en navigation PJAX → on re-pose la pastille.
+if (typeof window !== 'undefined' && !window.__SBI_MSG_NAV_BADGE_BOUND__) {
+    window.__SBI_MSG_NAV_BADGE_BOUND__ = true;
+    window.addEventListener('sbi:app-shell:navigated', () => setTimeout(() => updateMessagingNavBadge(undefined), 350));
 }
 
 async function dismissNotificationForCurrentUser(notifId) {
@@ -533,8 +606,10 @@ const NOTIFICATION_REGISTRY = {
         navigate: (n) => n.actionUrl || '/admin/apprenticeship-booklets.html'
     },
     new_message: {
-        title: (n) => `Message de ${n.senderName || 'votre interlocuteur'}`,
-        body: (n) => n.preview ? escNotif(n.preview) : 'Vous avez reçu un nouveau message.',
+        title: (n) => n.groupTitle ? escNotif(n.groupTitle) : `Message de ${n.senderName || 'votre interlocuteur'}`,
+        body: (n) => n.groupTitle
+            ? `<strong>${escNotif(n.senderName || '—')}</strong> : ${n.preview ? escNotif(n.preview) : 'nouveau message'}`
+            : (n.preview ? escNotif(n.preview) : 'Vous avez reçu un nouveau message.'),
         icon: NOTIF_ICONS.chat,
         navigate: (n) => messagerieUrlForCurrentUser(n.conversationId)
     },
