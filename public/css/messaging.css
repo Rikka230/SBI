@@ -150,6 +150,9 @@
 .sbi-msg-bubble-title { font-weight: 800; }
 .sbi-msg-bubble-text { font-size: 0.95rem; line-height: 1.4; word-wrap: break-word; overflow-wrap: anywhere; }
 .sbi-msg-bubble-time { align-self: flex-end; font-size: 0.66rem; opacity: 0.7; }
+.sbi-msg-receipt { font-weight: 700; }
+.sbi-msg-bubble-row.is-mine .sbi-msg-receipt { color: rgba(255, 255, 255, 0.85); }
+.sbi-msg-bubble-row.is-mine .sbi-msg-receipt.is-read { color: #bbf7d0; }
 
 .sbi-msg-composer {
   display: flex;

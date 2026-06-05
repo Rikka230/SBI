@@ -132,6 +132,9 @@ function initMessaging(me, role) {
     let activeCid = "";
     let messagesUnsub = null;
     let renderQueued = false;
+    let currentMessages = [];         // messages du fil ouvert (pour re-render reçu de lecture)
+    let otherReadMillis = 0;          // pointeur de lecture de l'autre (DM) → accusé « Lu »
+    let otherReadUnsub = null;
 
     const unsubs = [];
     const trackUnsub = (fn) => { if (typeof fn === "function") unsubs.push(fn); };
@@ -139,6 +142,7 @@ function initMessaging(me, role) {
         unsubs.forEach((u) => { try { u(); } catch (_) {} });
         unsubs.length = 0;
         if (messagesUnsub) { try { messagesUnsub(); } catch (_) {} messagesUnsub = null; }
+        if (otherReadUnsub) { try { otherReadUnsub(); } catch (_) {} otherReadUnsub = null; }
     }
     const onBeforeUnload = () => teardown();
     window.addEventListener("beforeunload", onBeforeUnload);
@@ -247,9 +251,28 @@ function initMessaging(me, role) {
         el("sbi-msg-composer").hidden = isAnnouncement;
         el("sbi-msg-readonly").hidden = !isAnnouncement;
 
+        listenOtherRead(cid, conv);
         listenMessages(cid);
         markRead(cid);
         renderThreadList();
+    }
+
+    // Accusé de lecture : on suit le pointeur de lecture de l'autre participant (DM).
+    function listenOtherRead(cid, conv) {
+        if (otherReadUnsub) { try { otherReadUnsub(); } catch (_) {} otherReadUnsub = null; }
+        otherReadMillis = 0;
+        if (!conv || conv.kind !== "dm") return;
+        const otherUid = (conv.participants || []).find((u) => u !== me.id);
+        if (!otherUid) return;
+        otherReadUnsub = onSnapshot(
+            doc(db, "conversations", cid, "reads", otherUid),
+            (snap) => {
+                if (cid !== activeCid) return;
+                otherReadMillis = snap.exists() ? tsToMillis(snap.data().lastReadAt) : 0;
+                renderMessages(currentMessages);
+            },
+            () => {}
+        );
     }
 
     function listenMessages(cid) {
@@ -261,6 +284,7 @@ function initMessaging(me, role) {
             if (cid !== activeCid) return;
             const msgs = [];
             snap.forEach((d) => msgs.push({ id: d.id, ...d.data() }));
+            currentMessages = msgs;
             renderMessages(msgs);
             markRead(cid);
         }, (error) => {
@@ -272,16 +296,26 @@ function initMessaging(me, role) {
     function renderMessages(msgs) {
         const stream = el("sbi-msg-stream");
         if (!msgs.length) { stream.innerHTML = `<p class="sbi-msg-muted">Aucun message. Écrivez le premier !</p>`; return; }
-        stream.innerHTML = msgs.map((m) => {
+        const isDm = conversations.get(activeCid)?.kind === "dm";
+        let lastMineIdx = -1;
+        for (let i = 0; i < msgs.length; i++) { if (msgs[i].senderUid === me.id) lastMineIdx = i; }
+        stream.innerHTML = msgs.map((m, i) => {
             const mine = m.senderUid === me.id;
             const when = formatTime(tsToMillis(m.createdAt));
+            // Accusé de lecture sous MON dernier message d'un DM.
+            let receipt = "";
+            if (mine && isDm && i === lastMineIdx) {
+                const createdMs = tsToMillis(m.createdAt);
+                const read = Boolean(otherReadMillis && createdMs && otherReadMillis >= createdMs);
+                receipt = ` <span class="sbi-msg-receipt${read ? " is-read" : ""}">${read ? "✓✓ Lu" : "✓ Envoyé"}</span>`;
+            }
             return `
               <div class="sbi-msg-bubble-row${mine ? " is-mine" : ""}">
                 <div class="sbi-msg-bubble">
                   ${mine ? "" : `<span class="sbi-msg-bubble-author">${escapeHtml(m.senderName || "—")}</span>`}
                   ${m.title ? `<span class="sbi-msg-bubble-title">${escapeHtml(m.title)}</span>` : ""}
                   <span class="sbi-msg-bubble-text">${escapeHtml(m.text || "").replace(/\n/g, "<br>")}</span>
-                  <span class="sbi-msg-bubble-time">${when}</span>
+                  <span class="sbi-msg-bubble-time">${when}${receipt}</span>
                 </div>
               </div>`;
         }).join("");
@@ -416,12 +450,16 @@ function initMessaging(me, role) {
         }
         // Annonces par rôle.
         listenChannelDoc(`announce_role_${roleKey}`);
+        // Les listeners sont posés tout de suite (ils capteront le doc dès sa création) ;
+        // les provisionnements de salon partent EN PARALLÈLE (avant : séquentiel = lent).
+        const ensures = [];
         for (const f of formations) {
             if (!f || !f.id) continue;
-            try { await ensureGroupChannelFn({ formationId: f.id }); } catch (_) { /* idempotent */ }
+            ensures.push(ensureGroupChannelFn({ formationId: f.id }).catch(() => {}));
             listenChannelDoc(`group_formation_${f.id}`);
             listenChannelDoc(`announce_formation_${f.id}`);
         }
+        await Promise.all(ensures);
         maybeOpenFromQuery();
     })();
 
@@ -449,6 +487,7 @@ function initMessaging(me, role) {
         document.querySelector(".sbi-msg").classList.remove("is-conv-open");
         activeCid = "";
         if (messagesUnsub) { try { messagesUnsub(); } catch (_) {} messagesUnsub = null; }
+        if (otherReadUnsub) { try { otherReadUnsub(); } catch (_) {} otherReadUnsub = null; }
         renderThreadList();
     });
     el("sbi-msg-composer").addEventListener("submit", (e) => {
