@@ -4,6 +4,14 @@
    Desktop : 2 panneaux (liste | fil). Mobile ≤768px : 1 panneau commuté.
    ======================================================================= */
 
+/* L'attribut [hidden] (origine UA) est écrasé par nos display:flex de classe
+   (origine auteur). On le ré-impose explicitement, sinon l'overlay « Nouveau
+   message », le fil et le composer ne peuvent plus être masqués/fermés. */
+.sbi-msg-picker[hidden],
+.sbi-msg-conv[hidden],
+.sbi-msg-placeholder[hidden],
+.sbi-msg-composer[hidden] { display: none !important; }
+
 .sbi-msg {
   display: grid;
   grid-template-columns: minmax(0, 340px) minmax(0, 1fr);
