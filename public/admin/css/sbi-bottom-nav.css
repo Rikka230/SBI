@@ -217,29 +217,29 @@ body.sbi-tutor-space   .sbi-bn-indicator { background: rgba(132, 204, 22, 0.20);
 
 /* ════════════════════════════════════════════════════════════
    8.0P.167.317 — VARIANTE ADMIN (cockpit sombre)
-   La capsule + la feuille passent en verre SOMBRE sur body.sbi-admin-space
+   La capsule + la feuille passent en verre SOMBRE sur body.sbi-admin-surface
    (le verre blanc tranchait sur le fond cockpit). Accent bleu déjà via --space-accent.
    ════════════════════════════════════════════════════════════ */
-body.sbi-admin-space .sbi-bottom-nav {
+body.sbi-admin-surface .sbi-bottom-nav {
   background: rgba(9, 14, 27, 0.92);
   border-color: rgba(255, 255, 255, 0.12);
   box-shadow: 0 14px 44px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.4);
 }
-body.sbi-admin-space .sbi-bn-item { color: rgba(255, 255, 255, 0.62); }
-body.sbi-admin-space .sbi-bn-item.is-active { color: var(--space-accent, #2a57ff); }
-body.sbi-admin-space .sbi-bn-indicator { background: rgba(42, 87, 255, 0.26); }
+body.sbi-admin-surface .sbi-bn-item { color: rgba(255, 255, 255, 0.62); }
+body.sbi-admin-surface .sbi-bn-item.is-active { color: var(--space-accent, #2a57ff); }
+body.sbi-admin-surface .sbi-bn-indicator { background: rgba(42, 87, 255, 0.26); }
 
-body.sbi-admin-space .sbi-bn-sheet {
+body.sbi-admin-surface .sbi-bn-sheet {
   background: rgba(9, 14, 27, 0.98);
   border-color: rgba(255, 255, 255, 0.12);
   box-shadow: 0 -10px 44px rgba(0, 0, 0, 0.55);
 }
-body.sbi-admin-space .sbi-bn-sheet-grip { background: rgba(255, 255, 255, 0.22); }
-body.sbi-admin-space .sbi-bn-sheet-item { color: rgba(255, 255, 255, 0.92); }
-body.sbi-admin-space .sbi-bn-sheet-item:hover { background: rgba(255, 255, 255, 0.07); }
-body.sbi-admin-space .sbi-bn-sheet-item:active { background: rgba(255, 255, 255, 0.11); }
-body.sbi-admin-space .sbi-bn-sheet-item.is-active { color: var(--space-accent, #2a57ff); }
-body.sbi-admin-space .sbi-bn-sheet-logout { color: #ff6b6b; }
+body.sbi-admin-surface .sbi-bn-sheet-grip { background: rgba(255, 255, 255, 0.22); }
+body.sbi-admin-surface .sbi-bn-sheet-item { color: rgba(255, 255, 255, 0.92); }
+body.sbi-admin-surface .sbi-bn-sheet-item:hover { background: rgba(255, 255, 255, 0.07); }
+body.sbi-admin-surface .sbi-bn-sheet-item:active { background: rgba(255, 255, 255, 0.11); }
+body.sbi-admin-surface .sbi-bn-sheet-item.is-active { color: var(--space-accent, #2a57ff); }
+body.sbi-admin-surface .sbi-bn-sheet-logout { color: #ff6b6b; }
 
 /* Champ de recherche dans la feuille « Plus » admin (réutilise .global-search-input). */
 .sbi-bn-sheet-search {
