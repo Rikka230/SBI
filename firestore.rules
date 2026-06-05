@@ -1,5 +1,6 @@
 rules_version = '2';
 
+// SBI 8.0P.167.347 — messagerie : lecture canal inexistant autorisée (resource==null).
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -1087,7 +1088,11 @@ service cloud.firestore {
        ============================================================ */
 
     match /conversations/{conversationId} {
-      allow get, list: if canReadConversation(resource.data);
+      // 8.0P.167.347 — get : un doc INEXISTANT (resource == null) doit pouvoir être
+      // lu (le client écoute des canaux à id déterministe pas encore créés → renvoie
+      // "absent", aucune fuite). Sinon resource.data.keys() sur null lève → denied.
+      allow get: if resource == null || canReadConversation(resource.data);
+      allow list: if canReadConversation(resource.data);
 
       // Création / suppression / changement de structure : Cloud Functions only.
       allow create, delete: if false;
