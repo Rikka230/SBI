@@ -150,7 +150,8 @@
   }
   #users-list-container .sbi-account-name-line {
     font-size: 0.98rem !important; font-weight: 800 !important; color: #fff !important;
-    overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important;
+    /* le nom s'enroule (2 lignes possibles) au lieu d'être tronqué → badge complétude visible */
+    white-space: normal !important; overflow-wrap: anywhere !important; overflow: visible !important;
   }
 
   /* Email + dernière activité (secondaire) */

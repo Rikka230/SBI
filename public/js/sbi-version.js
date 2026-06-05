@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.333',
+  version: '8.0P.167.334',
   branch: 'adapt-admin-mobile',
-  channel: 'Admin mobile : instrumentation TEMPORAIRE de débordement (?diagwidth) — le harnais file:// n\'était pas fidèle (panneaux + sbi-bottom-nav.css + marges #main-content manquants), on mesure sur l\'appareil réel',
-  stage: 'Diagnostic déterministe (harnais headless Edge, viewport 375px) : le débordement horizontal (~113px) ne venait PAS de la carte (son override 44px/1fr/1fr s\'appliquait bien) mais de l\'EN-TÊTE de la page Comptes (titre « Gestion des Utilisateurs » + champ recherche + select 120px en flex sans wrap) et de la grille 2-colonnes repeat(auto-fit, minmax(300px,1fr)). Le scroll naturel (.328, overflow:visible) ne faisait que RÉVÉLER ce débordement intrinsèque préexistant (avant, overflow-x:hidden le masquait en coupant la carte à droite). Fix (admin-responsive.css, ≤1024px) : en-tête en flex-wrap (recherche pleine largeur, champs min-width:0) + grille passée à 1 colonne. Vérifié au harnais : débordement = 0px de 360 à 1280px ; desktop ≥1025px inchangé. Méthode : on MESURE, on ne devine plus.',
-  updatedAt: '2026-06-04',
-  label: 'SBI 8.0P.167.332 - Admin mobile : page Comptes sans scroll horizontal (en-tête wrap + grille 1 colonne)'
+  channel: 'Admin mobile : carte Comptes propre (nom enroulé → badge complétude visible) + grilles TABLE desktop gardées ≥1025px (fin du conflit double-source) — harnais FIDÈLE prouve 0 débordement',
+  stage: 'Harnais headless FIDÈLE (vraie page admin-accounts.html + TOUS les CSS dont sbi-bottom-nav.css/sbi-admin-single-scroll.css + classes body réelles + lignes riches) : la page Comptes déployée NE déborde PAS (0px à 360/390/414/768/1024), la carte fait 278-332px et tient, le rendu est propre (cf. capture). Donc le « toujours trop large » vient très probablement du CACHE de l\'appareil (session ouverte / PJAX ne recharge pas le CSS statique). Corrections au passage : admin-accounts.css avait DEUX grilles TABLE 6-col en !important SANS media query (L337/L441) qui polluaient le mobile (contain/content-visibility/min-height) → gardées ≥1025px ; le nom de la carte passe en white-space:normal (au lieu de nowrap qui tronquait nom+badge) → badge complétude ✗ enfin visible. À confirmer : screenshot ?diagwidth sur appareil RÉEL (full reload) pour valider 0 débordement chez le client.',
+  updatedAt: '2026-06-05',
+  label: 'SBI 8.0P.167.334 - Admin mobile : carte Comptes propre (nom enroulé + badge visible) + grilles desktop gardées ≥1025px'
 };
 
 export function getSbiVersionLabel() {
