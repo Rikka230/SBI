@@ -228,7 +228,9 @@ async function uploadResource(idToken, uid, courseId, blockId, filePath) {
 const args = process.argv.slice(2);
 if (!args.length || args.includes('--help')) {
   console.log(`Usage :
-  node scripts/course-tools/inject-course.mjs <payload.json> [--resource "Titre du bloc=chemin.pdf"]...
+  node scripts/course-tools/inject-course.mjs <payload.json> [--yes] [--resource "Titre du bloc=chemin.pdf"]...
+  node scripts/course-tools/inject-course.mjs --verify <courseId>
+  node scripts/course-tools/inject-course.mjs --delete <courseId>   (brouillon de CE prof uniquement)
   node scripts/course-tools/inject-course.mjs --submit <courseId>`);
   process.exit(args.length ? 0 : 1);
 }
@@ -241,6 +243,38 @@ if (args[0] === '--submit') {
   if (!/^o(ui)?$/i.test(confirm)) { console.log('Annulé.'); process.exit(0); }
   const result = await callFunction('submitCourseForValidation', { courseId }, idToken);
   console.log(`✔ Soumis : ${result?.message || 'cours en attente de validation admin.'}`);
+  process.exit(0);
+}
+
+// --verify : relecture de contrôle d'un cours injecté (champs clés).
+// --delete : suppression d'un BROUILLON appartenant à ce prof (garde-fous :
+//            refuse tout cours soumis/publié ou d'un autre auteur).
+if (args[0] === '--verify' || args[0] === '--delete') {
+  const courseId = args[1];
+  if (!courseId) { console.error(`courseId requis après ${args[0]}.`); process.exit(1); }
+  const { idToken, uid } = await signIn();
+  const doc = await fsRequest(`/courses/${courseId}`, { idToken });
+  const c = fromFsDoc(doc);
+  console.log(`titre   : ${c.title}`);
+  console.log(`statut  : ${c.statutValidation} | actif: ${c.actif} | bloc: ${JSON.stringify(c.bloc)}`);
+  console.log(`blocs   : ${(c.learningBlocks || []).length} | maxScore: ${c.maxScore} | durée: ${c.estimatedDurationMinutes} min`);
+  const rsrc = (c.learningBlocks || []).find((b) => b.type === 'resource');
+  if (rsrc) console.log(`ressource: ${rsrc.resourceStoragePath || '(aucun fichier)'}`);
+  const caseB = (c.learningBlocks || []).find((b) => b.type === 'case_study');
+  if (caseB) console.log(`étude de cas: instructions ${String(caseB.instructions || '').length} car.`);
+  const assignB = (c.learningBlocks || []).find((b) => b.type === 'assignment');
+  if (assignB) console.log(`devoir: corrigé ${String(assignB.assignmentCorrection || '').length} car.`);
+  if (args[0] === '--delete') {
+    if (c.auteurId !== uid) { console.error('✗ Refus : ce cours n’appartient pas à ce prof.'); process.exit(1); }
+    if (c.statutValidation !== 'draft' && c.statutValidation !== 'rejected') {
+      console.error(`✗ Refus : statut « ${c.statutValidation} » — seuls les brouillons/refusés se suppriment.`);
+      process.exit(1);
+    }
+    const confirm = args.includes('--yes') ? 'oui' : await ask(`SUPPRIMER ce brouillon (${c.title}) ? (oui/non) : `);
+    if (!/^o(ui)?$/i.test(confirm)) { console.log('Annulé.'); process.exit(0); }
+    await fsRequest(`/courses/${courseId}`, { method: 'DELETE', idToken });
+    console.log(`✔ Brouillon ${courseId} supprimé.`);
+  }
   process.exit(0);
 }
 
