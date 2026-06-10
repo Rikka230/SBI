@@ -1403,17 +1403,35 @@ async function renderCoursesLibrary() {
         return a[0].localeCompare(b[0], 'fr', { numeric: true });
     });
 
-    listContainer.innerHTML = cursusInfoHtml + orderedGroups.map(([bloc, list]) => `
-        <details class="sbi-lib-bloc" open>
+    // 8.0P.167.355 : blocs REPLIÉS par défaut + rendu PARESSEUX — les cartes
+    // d'un bloc ne sont générées dans le DOM qu'à sa première ouverture
+    // (recherche active = exception : peu de résultats, on déplie tout).
+    const expandForSearch = Boolean(libraryView.search);
+
+    listContainer.innerHTML = cursusInfoHtml + orderedGroups.map(([bloc, list], index) => `
+        <details class="sbi-lib-bloc" data-lib-group="${index}"${expandForSearch ? ' open' : ''}>
             <summary class="sbi-lib-bloc-header">
                 <span class="sbi-lib-bloc-chevron">▸</span>
                 <span class="sbi-lib-bloc-title">${bloc}</span>
                 <span class="sbi-lib-bloc-count">${list.length} cours · ${list.filter(c => c.actif).length} actif(s)</span>
             </summary>
-            <div class="sbi-lib-bloc-body">
-                ${list.map(data => renderLibraryCourseCard(data, orderMap.get(data.id))).join('')}
-            </div>
+            <div class="sbi-lib-bloc-body" data-lib-pending="1"></div>
         </details>`).join('');
+
+    const renderGroupBody = (detailsEl) => {
+        const body = detailsEl.querySelector('[data-lib-pending]');
+        if (!body) return;
+        const list = orderedGroups[Number(detailsEl.dataset.libGroup)]?.[1] || [];
+        body.innerHTML = list.map(data => renderLibraryCourseCard(data, orderMap.get(data.id))).join('');
+        body.removeAttribute('data-lib-pending');
+    };
+
+    listContainer.querySelectorAll('details.sbi-lib-bloc').forEach(detailsEl => {
+        detailsEl.addEventListener('toggle', () => {
+            if (detailsEl.open) renderGroupBody(detailsEl);
+        });
+        if (detailsEl.open) renderGroupBody(detailsEl);
+    });
 }
 
 async function loadCourses() {
