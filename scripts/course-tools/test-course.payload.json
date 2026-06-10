@@ -1,0 +1,212 @@
+{
+  "course": {
+    "titre": "TEST - Procédure d'intégration (à supprimer)",
+    "title": "TEST - Procédure d'intégration (à supprimer)",
+    "bloc": "",
+    "blockTitle": "",
+    "actif": false,
+    "statutValidation": "draft",
+    "objectives": "Vérifier que l'injection produit un cours identique à un cours créé dans l'éditeur :\n- bloc leçon avec contenu structuré ;\n- texte à trous détecté avec variantes ;\n- QCM multi-options avec bonne réponse correcte.",
+    "competency": "Test technique — aucune compétence réelle.",
+    "qualiopiEvidence": "2.2 Moyens pédagogiques",
+    "visibleInProgram": true,
+    "validationRule": "score_minimum",
+    "validationScore": 70,
+    "estimatedDurationMinutes": 5,
+    "maxScore": 6,
+    "totalScore": 6,
+    "totalXp": 6,
+    "schemaVersion": "lms-course-v2",
+    "editorVersion": "course-tools-v1",
+    "learningBlocks": [
+      {
+        "id": "lesson_6132f4cb",
+        "type": "lesson",
+        "title": "Leçon de test",
+        "instructions": "Ceci est un cours de TEST. Ne pas en tenir compte.",
+        "durationMinutes": 2,
+        "visibleInProgram": true,
+        "qualiopiEvidence": "2.2 Moyens pédagogiques",
+        "competency": "Test.",
+        "content": "<p>Ce bloc vérifie le rendu d&#039;une leçon injectée.</p><p>Points contrôlés :</p><ul><li>les paragraphes s&#039;affichent correctement</li><li>les listes à puces s&#039;affichent correctement</li><li>le timer minimum est appliqué.</li></ul>",
+        "mediaType": "image",
+        "mediaImage": "",
+        "mediaVideo": "",
+        "score": 0,
+        "order": 0,
+        "activityType": "lesson",
+        "schemaVersion": "learning-block-v1",
+        "maxScore": 0
+      },
+      {
+        "id": "fib_bfde3784",
+        "type": "fill_blank",
+        "title": "Texte à trous de test",
+        "instructions": "Complète les phrases (test).",
+        "durationMinutes": 2,
+        "visibleInProgram": true,
+        "qualiopiEvidence": "2.4 Modalités d’évaluation",
+        "competency": "Test.",
+        "prompt": "La syntaxe des trous utilise des [[crochets]] doubles dans l'éditeur.\n\nLe viewer accepte les [[variantes]] listées avec un point-virgule.",
+        "blanks": [
+          {
+            "id": "blank_f442a16a",
+            "token": "crochets",
+            "answers": "crochets; doubles crochets",
+            "points": 2
+          },
+          {
+            "id": "blank_e2ba55f5",
+            "token": "variantes",
+            "answers": "variantes; alternatives; réponses",
+            "points": 2
+          }
+        ],
+        "scoringMode": "per_blank",
+        "maxAttempts": 2,
+        "showAnswersAtEnd": true,
+        "feedbackCorrect": "Bonne réponse ! Vous avez correctement complété l’idée.",
+        "feedbackIncorrect": "Relisez la consigne et vérifiez chaque élément attendu.",
+        "order": 1,
+        "activityType": "fill_blank",
+        "schemaVersion": "learning-block-v1",
+        "maxScore": 4,
+        "score": 4
+      },
+      {
+        "id": "quiz_fc5c376d",
+        "type": "quiz",
+        "title": "QCM de test",
+        "instructions": "Réponds à la question (test).",
+        "durationMinutes": 1,
+        "visibleInProgram": true,
+        "qualiopiEvidence": "2.4 Modalités d’évaluation",
+        "competency": "Test.",
+        "questions": [
+          {
+            "id": "question_66031621",
+            "question": "Ce cours est-il un test ?",
+            "options": [
+              "Non, c'est un vrai cours.",
+              "Oui, c'est un test de la procédure d'injection.",
+              "Peut-être."
+            ],
+            "correctIndices": [
+              1
+            ],
+            "points": 2
+          }
+        ],
+        "order": 2,
+        "activityType": "quiz",
+        "schemaVersion": "learning-block-v1",
+        "maxScore": 2,
+        "score": 2
+      }
+    ],
+    "chapitres": [
+      {
+        "id": "lesson_6132f4cb",
+        "type": "text",
+        "titre": "Leçon de test",
+        "contenu": "<p>Ce bloc vérifie le rendu d&#039;une leçon injectée.</p><p>Points contrôlés :</p><ul><li>les paragraphes s&#039;affichent correctement</li><li>les listes à puces s&#039;affichent correctement</li><li>le timer minimum est appliqué.</li></ul>",
+        "mediaType": "image",
+        "mediaImage": "",
+        "mediaVideo": "",
+        "durationMinutes": 2,
+        "questions": []
+      },
+      {
+        "id": "fib_bfde3784",
+        "type": "text",
+        "activityType": "fill_blank",
+        "titre": "Texte à trous de test",
+        "instructions": "Complète les phrases (test).",
+        "prompt": "La syntaxe des trous utilise des [[crochets]] doubles dans l'éditeur.\n\nLe viewer accepte les [[variantes]] listées avec un point-virgule.",
+        "blanks": [
+          {
+            "id": "blank_f442a16a",
+            "token": "crochets",
+            "answers": "crochets; doubles crochets",
+            "points": 2
+          },
+          {
+            "id": "blank_e2ba55f5",
+            "token": "variantes",
+            "answers": "variantes; alternatives; réponses",
+            "points": 2
+          }
+        ],
+        "scoringMode": "per_blank",
+        "maxAttempts": 2,
+        "showAnswersAtEnd": true,
+        "feedbackCorrect": "Bonne réponse ! Vous avez correctement complété l’idée.",
+        "feedbackIncorrect": "Relisez la consigne et vérifiez chaque élément attendu.",
+        "contenu": "<h3>Texte à trous de test</h3><p>Complète les phrases (test).</p><div>La syntaxe des trous utilise des <span class=\"sbi-fib-blank-static\" aria-hidden=\"true\"></span> doubles dans l&#039;éditeur.\n\nLe viewer accepte les <span class=\"sbi-fib-blank-static\" aria-hidden=\"true\"></span> listées avec un point-virgule.</div>",
+        "mediaType": "image",
+        "durationMinutes": 2,
+        "maxScore": 4,
+        "score": 4,
+        "questions": []
+      },
+      {
+        "id": "quiz_fc5c376d",
+        "type": "quiz",
+        "titre": "QCM de test",
+        "durationMinutes": 1,
+        "maxScore": 2,
+        "score": 2,
+        "questions": [
+          {
+            "id": "question_66031621",
+            "question": "Ce cours est-il un test ?",
+            "options": [
+              "Non, c'est un vrai cours.",
+              "Oui, c'est un test de la procédure d'injection.",
+              "Peut-être."
+            ],
+            "correctIndices": [
+              1
+            ],
+            "points": 2
+          }
+        ]
+      }
+    ],
+    "lessonCount": 1,
+    "quizCount": 1,
+    "fillBlankCount": 1,
+    "resourceCount": 0,
+    "lessonType": "mixed",
+    "lmsStatus": "draft"
+  },
+  "_meta": {
+    "source": "test-course.md",
+    "formationTitle": "Formation Animateur E-Sport",
+    "blocFull": "",
+    "consigneGenerale": "",
+    "courseQualiopiFree": "Test de la chaîne d'intégration (aucune preuve réelle).",
+    "warnings": [],
+    "videosToProduce": [],
+    "imagesToProduce": [],
+    "pdfsToGenerate": [],
+    "qualiopiFreeTexts": [
+      {
+        "block": "Leçon de test",
+        "note": "Consultation test.",
+        "mapped": "2.2 Moyens pédagogiques"
+      },
+      {
+        "block": "Texte à trous de test",
+        "note": "Exercice test complété.",
+        "mapped": "2.4 Modalités d’évaluation"
+      },
+      {
+        "block": "QCM de test",
+        "note": "QCM test réalisé.",
+        "mapped": "2.4 Modalités d’évaluation"
+      }
+    ],
+    "mediaPlanned": []
+  }
+}
