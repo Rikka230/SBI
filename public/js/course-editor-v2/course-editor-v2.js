@@ -27,7 +27,7 @@ import {
   syncChapterMediaFromDom,
   uploadPendingMediaForChapters,
   validateCourseDocumentSize
-} from '/admin/js/course-media-storage.js?v=8.0P.167.205';
+} from '/admin/js/course-media-storage.js?v=8.0P.167.354';
 
 const MAX_QUERY_VALUES = 10;
 const VERSION = '8.0P.167.205';
@@ -3193,6 +3193,13 @@ async function saveCourse(action = 'draft', { silent = false } = {}) {
       const mediaChapitres = convertBlocksToLegacyChapters(state.course.learningBlocks);
       await uploadPendingMediaForChapters(targetCourseId, mediaChapitres, { uploadedBy: state.uid });
       syncUploadedMediaBackToBlocks(mediaChapitres);
+      // 8.0P.167.354 : après upload, resynchroniser les inputs cachés du bloc
+      // actif (#chapter-image-base64 / #chapter-video-base64) avec les URLs
+      // Storage fraîches. Sans cela, la sauvegarde SUIVANTE (« Enregistrer »
+      // puis « Mettre en ligne », séquence typique admin) relisait la valeur
+      // périmée du DOM et écrasait silencieusement l'image uploadée.
+      const activeLessonAfterUpload = getActiveLessonBlock();
+      if (activeLessonAfterUpload) restoreCurrentMediaPreview(activeLessonAfterUpload.id, activeLessonAfterUpload);
       payload = buildCoursePayload(persistenceAction);
       validateCourseDocumentSize(payload);
     }

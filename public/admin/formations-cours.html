@@ -142,11 +142,35 @@
             </div>
 
             <div id="tab-list" class="course-section active">
-                <div style="background: var(--bg-card); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 1.5rem; display: flex; gap: 1rem;">
-                    <select id="library-formation-filter" style="padding: 0.8rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px; flex-grow: 1;">
+                <!-- 8.0P.167.354 : filtres actifs + tri par ordre du cursus + groupement par bloc dépliable -->
+                <style>
+                    .sbi-lib-filters { background: var(--bg-card); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 1.5rem; display: flex; gap: 1rem; flex-wrap: wrap; }
+                    .sbi-lib-filters select, .sbi-lib-filters input { padding: 0.8rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px; }
+                    .sbi-lib-bloc { margin-bottom: 1rem; border: 1px solid var(--border-color, #333); border-radius: 8px; background: var(--bg-panel, #1e1e1e); overflow: hidden; }
+                    .sbi-lib-bloc-header { display: flex; align-items: center; gap: 0.75rem; padding: 0.9rem 1.2rem; cursor: pointer; user-select: none; list-style: none; transition: background 0.15s; }
+                    .sbi-lib-bloc-header::-webkit-details-marker { display: none; }
+                    .sbi-lib-bloc-header:hover { background: rgba(255, 255, 255, 0.04); }
+                    .sbi-lib-bloc-title { flex: 1; font-weight: 700; color: var(--accent-blue, #2a57ff); font-size: 1.05rem; }
+                    .sbi-lib-bloc-count { color: var(--text-muted, #888); font-size: 0.85rem; white-space: nowrap; }
+                    .sbi-lib-bloc-chevron { color: var(--accent-blue, #2a57ff); transition: transform 0.15s; font-size: 0.9rem; }
+                    .sbi-lib-bloc[open] .sbi-lib-bloc-chevron { transform: rotate(90deg); }
+                    .sbi-lib-bloc-body { padding: 0.5rem 1rem 0.25rem; border-top: 1px solid var(--border-color, #333); }
+                    @media (max-width: 700px) { .sbi-lib-filters { flex-direction: column; } }
+                </style>
+                <div class="sbi-lib-filters">
+                    <select id="library-formation-filter" style="flex: 1 1 200px;">
                         <option value="all">Toutes les Catégories</option>
                     </select>
-                    <input type="text" id="search-course" placeholder="Rechercher un cours..." style="padding: 0.8rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px; flex-grow: 2;">
+                    <select id="library-sort" style="flex: 0 1 190px;" title="Ordre d'affichage">
+                        <option value="cursus">Ordre du cursus</option>
+                        <option value="recent">Plus récents</option>
+                        <option value="title">Titre A → Z</option>
+                    </select>
+                    <select id="library-group" style="flex: 0 1 190px;" title="Groupement">
+                        <option value="bloc">Groupé par bloc</option>
+                        <option value="flat">Liste à plat</option>
+                    </select>
+                    <input type="text" id="search-course" placeholder="Rechercher un cours ou un bloc..." style="flex: 2 1 240px;">
                 </div>
 
                 <div id="courses-list-container">
@@ -805,7 +829,7 @@
 </script>
 
 <script type="module" src="js/admin-ui.js?v=8.0P.167.205"></script>
-<script type="module" src="js/admin-courses.js?v=8.0P.167.188"></script>
+<script type="module" src="js/admin-courses.js?v=8.0P.167.354"></script>
 <script type="module" src="js/tracker.js?v=8.0P.167.314"></script>
 <script type="module" src="js/admin-notifications.js?v=8.0P.167.205"></script>
 </body>
