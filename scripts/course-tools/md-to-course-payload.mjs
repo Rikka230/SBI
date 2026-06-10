@@ -465,8 +465,12 @@ function parsePedagogicParams(text = '') {
 }
 
 // Preuve Qualiopi libre (note) → valeur EXACTE du select fermé de l'éditeur.
+// Priorité au préfixe explicite « 2.2 / 2.4 / 3.1 » s'il est présent dans la note.
 function mapQualiopiEvidence(freeText = '', blockType = '') {
   const t = deburr(freeText);
+  if (/\b2[.,]2\b/.test(t)) return QUALIOPI_MOYENS;
+  if (/\b2[.,]4\b/.test(t)) return QUALIOPI_EVALUATION;
+  if (/\b3[.,]1\b/.test(t)) return QUALIOPI_ADAPTATION;
   if (/adaptation|positionnement|besoin|rythme|niveau/.test(t)) return QUALIOPI_ADAPTATION;
   if (['quiz', 'fill_blank', 'assignment', 'checkpoint', 'case_study'].includes(blockType)) return QUALIOPI_EVALUATION;
   if (/quiz|evaluation|devoir|checkpoint|score|exercice|complete/.test(t)) return QUALIOPI_EVALUATION;
@@ -659,7 +663,7 @@ function parseBlocks(sections, report) {
         ...base,
         checkpointGoal: itemText(section, /^contenu$|^objectif/),
         checkpointMode: 'acquis_checklist',
-        expectedResult: itemText(section, /conditions pedagogiques|resultat attendu/),
+        expectedResult: itemText(section, /conditions pedagogiques|resultat attendu|elements a valider/),
         checkpointItems: [],
         requiresAllChecked: true, isBlockingPrerequisite: true,
         checkpointScore: Number(params.score || 10), xpReward: Number(params.score || 10)

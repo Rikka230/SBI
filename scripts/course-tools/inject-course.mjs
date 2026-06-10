@@ -28,9 +28,24 @@
  * =======================================================================
  */
 
-import { readFileSync } from 'node:fs';
-import { resolve, basename } from 'node:path';
+import { readFileSync, existsSync } from 'node:fs';
+import { resolve, basename, join } from 'node:path';
+import { homedir } from 'node:os';
 import readline from 'node:readline';
+
+// Identifiants : fichier LOCAL hors de tout dépôt git (~/.sbi/prof.env), jamais
+// committé ni loggé. Format : SBI_PROF_EMAIL=… / SBI_PROF_PASSWORD=…
+// À défaut : variables d'env, puis invite interactive.
+(() => {
+  try {
+    const envPath = join(homedir(), '.sbi', 'prof.env');
+    if (!existsSync(envPath)) return;
+    for (const line of readFileSync(envPath, 'utf8').split(/\r?\n/)) {
+      const m = line.match(/^(SBI_PROF_EMAIL|SBI_PROF_PASSWORD)\s*=\s*(.+)$/);
+      if (m && !process.env[m[1]]) process.env[m[1]] = m[2].trim();
+    }
+  } catch (_) { /* silencieux : on retombera sur l'invite */ }
+})();
 
 const PROJECT_ID = 'sbi-web-4f6b4';
 const API_KEY = 'AIzaSyBCBY51kkexg7jJgEpVYlKCNbZemrtdaiY'; // clé WEB publique (public/js/firebase-init.js)
@@ -80,9 +95,15 @@ async function signIn() {
   const email = process.env.SBI_PROF_EMAIL || await ask('Email du compte PROFESSEUR : ');
   const password = process.env.SBI_PROF_PASSWORD || await ask('Mot de passe (saisie masquée) : ', { hidden: true });
   if (!email || !password) { console.error('Identifiants requis.'); process.exit(1); }
+  // La clé API web est restreinte par référent HTTP → on présente le référent du
+  // site (même clé/destination que le navigateur, aucune élévation de privilège).
   const res = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${API_KEY}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      Referer: `https://${PROJECT_ID}.web.app/`,
+      Origin: `https://${PROJECT_ID}.web.app`
+    },
     body: JSON.stringify({ email, password, returnSecureToken: true })
   });
   const data = await res.json();
@@ -244,11 +265,20 @@ if (!['teacher', 'prof', 'professeur', 'enseignant'].includes(String(profile.rol
 }
 
 // 1) Formation : résolution par titre parmi les formations du prof.
-const formations = await runQuery(idToken, {
-  from: [{ collectionId: 'formations' }],
-  where: { fieldFilter: { field: { fieldPath: 'profs' }, op: 'ARRAY_CONTAINS', value: { stringValue: uid } } }
-});
-if (!formations.length) { console.error('✗ Aucune formation où ce prof est membre (formation.profs).'); process.exit(1); }
+// NB : pas de runQuery ici — la règle `list` de formations contient des get()
+// que l'analyseur de requêtes Firestore rejette (gotcha array-contains).
+// On lit donc les ids depuis le profil puis chaque doc en get (autorisé).
+const profFormationIds = Array.isArray(profile.formationIds) ? profile.formationIds.filter(Boolean) : [];
+const formations = [];
+for (const fid of profFormationIds.slice(0, 25)) {
+  try {
+    const fdoc = await fsRequest(`/formations/${fid}`, { idToken });
+    formations.push({ id: fid, ...fromFsDoc(fdoc) });
+  } catch (error) {
+    console.warn(`⚠ Formation ${fid} illisible : ${error.message}`);
+  }
+}
+if (!formations.length) { console.error('✗ Aucune formation lisible depuis le profil du prof (users.formationIds).'); process.exit(1); }
 const wanted = String(_meta.formationTitle || '').toLowerCase();
 const formation = formations.find((f) => String(f.titre || f.title || '').toLowerCase().includes(wanted.replace(/^formation\s+/i, '')))
   || (formations.length === 1 ? formations[0] : null);
@@ -296,7 +326,8 @@ try {
 }
 
 // 4) Confirmation et création (BROUILLON, règles validTeacherCourseWrite).
-const go = await ask(`Créer ce cours en BROUILLON (${course.learningBlocks.length} blocs, ${course.maxScore} pts) ? (oui/non) : `);
+const autoYes = args.includes('--yes');
+const go = autoYes ? 'oui' : await ask(`Créer ce cours en BROUILLON (${course.learningBlocks.length} blocs, ${course.maxScore} pts) ? (oui/non) : `);
 if (!/^o(ui)?$/i.test(go)) { console.log('Annulé.'); process.exit(0); }
 
 const nowIso = new Date().toISOString();
