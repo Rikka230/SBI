@@ -35,6 +35,7 @@ const { course, _meta } = JSON.parse(readFileSync(path, 'utf8'));
 
 /* --- Racine ----------------------------------------------------------- */
 if (!course.title || course.title === 'Cours sans titre') err('Titre du cours manquant.');
+if (/^Bloc\s*\d/i.test(course.title || '')) err(`Titre avec numéro de bloc (« ${course.title} ») — règle Tony : pas de numéro dans le titre.`);
 if (course.titre !== course.title) err('titre et title doivent être identiques.');
 if (!_meta?.formationTitle) err('_meta.formationTitle manquant (la note doit indiquer la Formation).');
 if (course.statutValidation !== 'draft') err(`statutValidation doit être 'draft' (reçu : ${course.statutValidation}).`);
@@ -113,11 +114,16 @@ blocks.forEach((block, i) => {
   if (block.type === 'assignment') {
     if (!block.assignmentPrompt) err(`${tag} : sujet du devoir vide.`);
     if (!block.evaluationCriteria) warn(`${tag} : critères de réussite vides.`);
+    if (!block.assignmentCorrection) err(`${tag} : correction autonome (assignmentCorrection) vide — retour Tony 2026-06-10.`);
   }
   if (block.type === 'case_study') {
     if (!block.scenario && !block.caseContext) err(`${tag} : étude de cas sans cas ni contexte.`);
+    if (!block.instructions) err(`${tag} : consigne (instructions) manquante — retour Tony 2026-06-10.`);
     if (!block.guidedQuestions) warn(`${tag} : pas de questions guidées.`);
     if (!block.expectedAnswer) warn(`${tag} : pas de correction attendue (auto-évaluation impossible).`);
+  }
+  if (block.type === 'lesson' && !/sbi-|style=|<h2|<strong/.test(String(block.content || ''))) {
+    warn(`${tag} : contenu sans mise en forme SBI (styles Quill attendus).`);
   }
   if (block.type === 'checkpoint') {
     if (!block.checkpointGoal) warn(`${tag} : objectif du checkpoint vide.`);

@@ -203,11 +203,18 @@ async function uploadResource(idToken, uid, courseId, blockId, filePath) {
   const head = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${metadata}\r\n--${boundary}\r\nContent-Type: ${contentType}\r\n\r\n`;
   const tail = `\r\n--${boundary}--`;
   const body = Buffer.concat([Buffer.from(head, 'utf8'), fileBuffer, Buffer.from(tail, 'utf8')]);
+  // Protocole multipart du SDK Firebase (en-tête X-Goog-Upload-Protocol) :
+  // sans lui, l'API v0 ne parse pas la partie JSON → métadonnée uploadedBy
+  // absente → règles Storage refusent (403 constaté le 2026-06-10).
   const res = await fetch(
-    `https://firebasestorage.googleapis.com/v0/b/${STORAGE_BUCKET}/o?uploadType=multipart&name=${encodeURIComponent(objectName)}`,
+    `https://firebasestorage.googleapis.com/v0/b/${STORAGE_BUCKET}/o?name=${encodeURIComponent(objectName)}`,
     {
       method: 'POST',
-      headers: { Authorization: `Firebase ${idToken}`, 'Content-Type': `multipart/related; boundary=${boundary}` },
+      headers: {
+        Authorization: `Firebase ${idToken}`,
+        'X-Goog-Upload-Protocol': 'multipart',
+        'Content-Type': `multipart/related; boundary=${boundary}`
+      },
       body
     }
   );

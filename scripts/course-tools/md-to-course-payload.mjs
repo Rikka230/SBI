@@ -477,23 +477,76 @@ function mapQualiopiEvidence(freeText = '', blockType = '') {
   return QUALIOPI_MOYENS;
 }
 
-// Texte brut (note) → HTML simple compatible Quill (paragraphes + listes).
+/* Texte brut (note) → HTML Quill au format des STYLES SBI de l'éditeur
+ * (applySbiQuillPreset, course-editor-v2.js l.182) :
+ *   - section_title : <h2><strong style="color:#2A57FF">…</strong></h2>
+ *   - highlight     : <strong style="color:#0f172a;background-color:#fff3e8">…</strong>
+ *   - body          : <p>…</p>
+ * + gras des intitulés (« Lieu : », « Ce que X attend : »), italique/gras
+ * inline (*x* / **x**), et espacement (<p><br></p>) avant chaque section. */
+
+const SBI_SECTION_TITLE_STYLE = 'color: #2A57FF;';
+const SBI_HIGHLIGHT_STYLE = 'color: #0f172a; background-color: #fff3e8;';
+const HIGHLIGHT_LEADINS = /^(à retenir|a retenir|règle d['’]or|regle d['’]or|règle|regle|attention|important)\s*:/i;
+
+// **gras** et *italique* éventuels des notes (après échappement HTML).
+function renderInline(escaped) {
+  return escaped
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/(^|[\s(>])\*([^*\n]+)\*(?=[\s.,;:!?)<]|$)/g, '$1<em>$2</em>');
+}
+
+// « Intitulé : suite » → intitulé en gras (intitulé court uniquement).
+function boldLeadIn(escaped, maxLen = 48) {
+  const m = escaped.match(/^(.{2,}?)\s*:\s+(.+)$/s);
+  if (!m || m[1].length > maxLen || m[1].includes('.')) return renderInline(escaped);
+  return `<strong>${renderInline(m[1])} :</strong> ${renderInline(m[2])}`;
+}
+
+function isSectionHeading(line) {
+  if (line.length > 70 || /[.;,]$/.test(line)) return false;
+  if (line.includes(' : ') || /:$/.test(line)) return false;
+  if (/^[-•]/.test(line)) return false;
+  return true;
+}
+
+function sbiSectionTitle(text) {
+  return `<h2><strong style="${SBI_SECTION_TITLE_STYLE}">${renderInline(escapeHtml(text))}</strong></h2>`;
+}
+
+function sbiHighlight(text) {
+  return `<p><strong style="${SBI_HIGHLIGHT_STYLE}">${renderInline(escapeHtml(text))}</strong></p>`;
+}
+
 function textToHtml(text = '') {
   const out = [];
   let listBuffer = [];
   const flushList = () => {
     if (listBuffer.length) {
-      out.push(`<ul>${listBuffer.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul>`);
+      out.push(`<ul>${listBuffer.map((item) => `<li>${boldLeadIn(escapeHtml(item))}</li>`).join('')}</ul>`);
       listBuffer = [];
     }
   };
+  const pushSpacer = () => {
+    if (out.length && !out[out.length - 1].startsWith('<h2')) out.push('<p><br></p>');
+  };
+
   for (const paragraph of text.split(/\n{2,}/)) {
     const lines = paragraph.split(/\n/).map((l) => l.trim()).filter(Boolean);
+    const isSingle = lines.length === 1;
     for (const line of lines) {
       const li = line.match(/^[-•]\s+(.+)$/);
       if (li) { listBuffer.push(li[1].replace(/\s*;\s*$/, '')); continue; }
       flushList();
-      out.push(`<p>${escapeHtml(line)}</p>`);
+      if (HIGHLIGHT_LEADINS.test(line)) {
+        pushSpacer();
+        out.push(sbiHighlight(line));
+      } else if (isSingle && isSectionHeading(line)) {
+        pushSpacer();
+        out.push(sbiSectionTitle(line));
+      } else {
+        out.push(`<p>${boldLeadIn(escapeHtml(line))}</p>`);
+      }
     }
     flushList();
   }
@@ -543,16 +596,21 @@ function buildLessonContent(section, report) {
   const script = itemText(section, /script video/);
   const content = itemText(section, /^contenu$/);
   const media = deburr(itemText(section, /^media$/));
-  const imageSuggestion = itemText(section, /suggestion image/);
+  const imageSuggestion = itemText(section, /suggestion image|prompt image/);
   const title = itemText(section, /^titre du bloc$/);
   let html = '';
   if (script) {
     report.videosToProduce.push({ block: title, script: script.slice(0, 120) + '…' });
-    html += `<h2>Script vidéo</h2>${textToHtml(script)}<h2>Contenu du cours</h2>`;
+    html += `${sbiSectionTitle('Script vidéo (à produire)')}${textToHtml(script)}<p><br></p>`;
   }
+  if (imageSuggestion) {
+    // Image non générée → prompt GPT Image 2 placé AVANT le contenu (règle Tony).
+    report.imagesToProduce.push({ block: title, suggestion: imageSuggestion });
+    html += `${sbiSectionTitle('Image à générer — prompt GPT Image 2')}<p><em>${renderInline(escapeHtml(imageSuggestion.replace(/\s*\n\s*/g, ' ')))}</em></p><p><br></p>`;
+  }
+  if (script) html += sbiSectionTitle('Contenu du cours');
   html += textToHtml(content);
   if (media.includes('video')) report.mediaPlanned.push({ block: title, type: 'video' });
-  if (imageSuggestion) report.imagesToProduce.push({ block: title, suggestion: imageSuggestion });
   return html;
 }
 
@@ -652,7 +710,7 @@ function parseBlocks(sections, report) {
       blocks.push({
         ...base,
         assignmentPrompt: itemText(section, /^sujet$|^travail demande$/),
-        assignmentCorrection: itemText(section, /correction attendue|grille/),
+        assignmentCorrection: itemText(section, /^correction$|corrige indicatif|correction attendue|grille/),
         evaluationCriteria: itemText(section, /criteres/),
         deliverableType: 'text', duePolicy: 'promotion_date',
         correctionMode: 'self', manualValidation: false, teacherSubmissionPlanned: true,
@@ -688,7 +746,11 @@ function convertNote(markdown, sourceName) {
     || sections[0];
   const objectivesSection = sections.find((s) => /^OBJECTIFS/i.test(s.title));
 
-  const title = itemText(courseInfo, /^titre du cours$/);
+  // Règle Tony : pas de numéro de bloc dans le titre visible du cours
+  // (le code « Bloc 1.2 » reste dans la note/tracker Obsidian).
+  const rawTitle = itemText(courseInfo, /^titre du cours$/);
+  const title = rawTitle.replace(/^Bloc\s*\d+(?:\.\d+)?\s*[—–-]\s*/i, '').trim();
+  if (title !== rawTitle) report.warnings.push(`Titre : numéro de bloc retiré (« ${rawTitle} » → « ${title} »).`);
   const formationTitle = itemText(courseInfo, /^formation$/);
   const blocFull = itemText(courseInfo, /^bloc partage$/);
   const blocShortMatch = blocFull.match(/^(Bloc\s*\d+)/i);
