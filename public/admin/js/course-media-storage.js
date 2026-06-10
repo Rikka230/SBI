@@ -416,12 +416,16 @@ export const syncChapterMediaFromDom = (chapter) => {
     const imageHidden = document.getElementById('chapter-image-base64');
     const videoHidden = document.getElementById('chapter-video-base64');
 
-    if (imageHidden && !pending?.imageFile) {
-        chapter.mediaImage = imageHidden.value || '';
+    // 8.0P.167.354 : ne jamais laisser un input caché VIDE écraser une URL
+    // déjà persistée (il n'existe pas de bouton « retirer le média » dans
+    // l'UI). Cas du bug « image admin perdue » : après upload, le DOM n'était
+    // pas resynchronisé et sa valeur vide effaçait mediaImage au save suivant.
+    if (imageHidden && !pending?.imageFile && imageHidden.value) {
+        chapter.mediaImage = imageHidden.value;
     }
 
-    if (videoHidden && !pending?.videoFile) {
-        chapter.mediaVideo = videoHidden.value || '';
+    if (videoHidden && !pending?.videoFile && videoHidden.value) {
+        chapter.mediaVideo = videoHidden.value;
     }
 };
 

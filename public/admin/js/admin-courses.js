@@ -1181,6 +1181,241 @@ async function saveCourseToFirebase(actionType = 'admin_save') {
     }
 }
 
+/* =======================================================================
+ * Bibliothèque (8.0P.167.354) : filtre formation + recherche ACTIFS,
+ * groupement par bloc partagé (accordéons dépliables) et tri selon
+ * l'ORDRE DU CURSUS (promotions.coursePlan[].order de la formation).
+ * ===================================================================== */
+
+const libraryView = { formation: 'all', search: '', group: 'bloc', sort: 'cursus' };
+const libraryCursusCache = new Map(); // formationId -> { orderMap: Map(courseId -> ordre), promoName }
+let libraryFiltersWired = false;
+
+// Ordre pédagogique : coursePlan de la promotion (active de préférence) de chaque formation.
+async function getCursusOrderForFormation(formationId) {
+    if (libraryCursusCache.has(formationId)) return libraryCursusCache.get(formationId);
+
+    const entry = { orderMap: new Map(), promoName: '' };
+    try {
+        const snap = await getDocs(query(collection(db, 'promotions'), where('formationId', '==', formationId)));
+        const promos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const promo = promos.find(p => String(p.status || '').toLowerCase() === 'active') || promos[0];
+
+        if (promo && Array.isArray(promo.coursePlan)) {
+            entry.promoName = promo.name || '';
+            promo.coursePlan.forEach((item, idx) => {
+                if (item?.courseId && !entry.orderMap.has(item.courseId)) {
+                    entry.orderMap.set(item.courseId, Number.isFinite(item.order) ? item.order : idx);
+                }
+            });
+        }
+    } catch (error) {
+        console.warn('[SBI Courses] Cursus illisible pour', formationId, error);
+    }
+
+    libraryCursusCache.set(formationId, entry);
+    return entry;
+}
+
+async function getMergedCursusOrder(formationIds) {
+    const merged = new Map();
+    const promoNames = [];
+
+    for (const fid of formationIds) {
+        const { orderMap, promoName } = await getCursusOrderForFormation(fid);
+        if (promoName) promoNames.push(promoName);
+        orderMap.forEach((order, courseId) => {
+            if (!merged.has(courseId)) merged.set(courseId, order);
+        });
+    }
+    return { orderMap: merged, promoNames };
+}
+
+function courseFormationRefs(data) {
+    const refs = new Set();
+    [data.formations, data.targetFormationIds, data.formationIds].forEach(list => {
+        if (Array.isArray(list)) list.forEach(v => { if (v) refs.add(String(v)); });
+    });
+    return refs;
+}
+
+function renderLibraryCourseCard(data, cursusOrder) {
+    const courseId = data.id;
+    let statusHtml = '';
+
+    if (data.statutValidation === 'pending') {
+        statusHtml = `<span style="color: var(--accent-yellow, #fbbc04); font-weight: bold; font-size: 0.8rem;"><span style="display:inline-block;width:7px;height:7px;border-radius:999px;background:currentColor;margin-right:6px;vertical-align:middle;"></span>EN ATTENTE</span>`;
+    } else {
+        statusHtml = data.actif
+            ? `<span style="color: var(--accent-green, #10b981); font-weight: bold; font-size: 0.8rem;">● ACTIF</span>`
+            : `<span style="color: var(--accent-red, #ff4a4a); font-weight: bold; font-size: 0.8rem;">● BROUILLON</span>`;
+    }
+
+    const tagsHtml = data.formations
+        ? data.formations.map(fId => {
+            const formObj = allFormationsData.find(f => f.id === fId || f.titre === fId);
+            const displayName = formObj ? formObj.titre : fId;
+
+            return `<span class="tag" style="background: var(--bg-body, #222); padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; border: 1px solid var(--border-color, #444);"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-2px;margin-right:4px;"><path d="M10 4 12 6h8c1.1 0 2 .9 2 2v10c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2h6Z"/></svg>${displayName}</span>`;
+        }).join(' ')
+        : '';
+
+    const cursusBadgeHtml = Number.isFinite(cursusOrder)
+        ? `<span style="color: var(--accent-green, #10b981); font-size: 0.75rem; border: 1px solid var(--accent-green, #10b981); padding: 2px 8px; border-radius: 12px; margin-left: 10px; white-space: nowrap;">Cursus n°${cursusOrder + 1}</span>`
+        : (libraryView.sort === 'cursus'
+            ? `<span style="color: var(--text-muted, #888); font-size: 0.75rem; border: 1px dashed var(--border-color, #444); padding: 2px 8px; border-radius: 12px; margin-left: 10px; white-space: nowrap;">hors cursus</span>`
+            : '');
+
+    const blocHtml = data.bloc
+        ? `<span style="color: var(--accent-blue); font-size: 0.8rem; border: 1px solid var(--accent-blue); padding: 2px 8px; border-radius: 12px; margin-left: 10px;">${data.bloc}</span>`
+        : '';
+
+    const nbChapitres = data.chapitres ? data.chapitres.length : 0;
+    const authorName = getAuthorName(data.auteurId, data);
+    const actionButtonsHtml = renderCourseActionButtons({ courseId, courseData: data, currentUid, isAdminLike: isAdminLikeUser() });
+
+    return `
+    <div style="background: var(--bg-card, #111); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color, #333); display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; opacity: ${data.actif ? '1' : '0.6'};">
+        <div>
+            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem; flex-wrap: wrap;">
+                ${statusHtml}
+                <h3 style="margin: 0; display: flex; align-items: center; flex-wrap: wrap; color: var(--text-main, white);">
+                    ${data.titre}
+                    ${blocHtml}
+                    ${cursusBadgeHtml}
+                    <span style="font-size: 0.85rem; font-weight: normal; color: var(--text-muted, #888); font-style: italic; margin-left: 0.8rem;">
+                        par ${authorName}
+                    </span>
+                </h3>
+            </div>
+            <div style="color: var(--text-main, white);">${tagsHtml} <span style="color: var(--text-muted, #888); font-size: 0.85rem; margin-left: 1rem;">${nbChapitres} Étape(s)</span></div>
+        </div>
+        <div style="display: flex; gap: 0.5rem;">
+            ${actionButtonsHtml}
+        </div>
+    </div>`;
+}
+
+function wireLibraryFilters() {
+    if (libraryFiltersWired) return;
+    libraryFiltersWired = true;
+
+    const formationFilter = document.getElementById('library-formation-filter');
+    const searchInput = document.getElementById('search-course');
+    const sortSelect = document.getElementById('library-sort');
+    const groupSelect = document.getElementById('library-group');
+
+    if (formationFilter) formationFilter.addEventListener('change', () => {
+        libraryView.formation = formationFilter.value || 'all';
+        renderCoursesLibrary();
+    });
+    if (searchInput) searchInput.addEventListener('input', () => {
+        libraryView.search = (searchInput.value || '').trim().toLowerCase();
+        renderCoursesLibrary();
+    });
+    if (sortSelect) sortSelect.addEventListener('change', () => {
+        libraryView.sort = sortSelect.value || 'cursus';
+        renderCoursesLibrary();
+    });
+    if (groupSelect) groupSelect.addEventListener('change', () => {
+        libraryView.group = groupSelect.value || 'bloc';
+        renderCoursesLibrary();
+    });
+}
+
+function libraryTimestampMs(data) {
+    const ts = data.updatedAt || data.dateCreation || data.createdAt;
+    if (ts?.seconds) return ts.seconds * 1000;
+    if (ts?.toMillis) return ts.toMillis();
+    return 0;
+}
+
+async function renderCoursesLibrary() {
+    const listContainer = document.getElementById('courses-list-container');
+    if (!listContainer) return;
+
+    // 1) Filtres formation + recherche.
+    let courses = allCoursesData.slice();
+    if (libraryView.formation !== 'all') {
+        courses = courses.filter(data => courseFormationRefs(data).has(libraryView.formation));
+    }
+    if (libraryView.search) {
+        courses = courses.filter(data =>
+            String(data.titre || '').toLowerCase().includes(libraryView.search)
+            || String(data.bloc || '').toLowerCase().includes(libraryView.search));
+    }
+
+    if (!courses.length) {
+        listContainer.innerHTML = '<p style="color:var(--text-muted); text-align:center;">Aucun cours ne correspond aux filtres.</p>';
+        return;
+    }
+
+    // 2) Ordre du cursus (coursePlan des promotions de la/les formation(s) visée(s)).
+    let orderMap = new Map();
+    let promoNames = [];
+    if (libraryView.sort === 'cursus') {
+        const formationIds = libraryView.formation !== 'all'
+            ? [libraryView.formation]
+            : allFormationsData.map(f => f.id).filter(Boolean);
+        ({ orderMap, promoNames } = await getMergedCursusOrder(formationIds));
+    }
+
+    const sortCourses = (a, b) => {
+        if (libraryView.sort === 'cursus') {
+            const oa = orderMap.has(a.id) ? orderMap.get(a.id) : Infinity;
+            const ob = orderMap.has(b.id) ? orderMap.get(b.id) : Infinity;
+            if (oa !== ob) return oa - ob;
+        } else if (libraryView.sort === 'recent') {
+            const diff = libraryTimestampMs(b) - libraryTimestampMs(a);
+            if (diff !== 0) return diff;
+        }
+        return String(a.titre || '').localeCompare(String(b.titre || ''), 'fr');
+    };
+
+    const cursusInfoHtml = (libraryView.sort === 'cursus' && promoNames.length)
+        ? `<p style="color: var(--text-muted, #888); font-size: 0.8rem; margin: 0 0 1rem;">Ordre du cursus : ${promoNames.map(n => `<strong>${n}</strong>`).join(' · ')}</p>`
+        : '';
+
+    // 3) Rendu : liste à plat ou groupes par bloc dépliables.
+    if (libraryView.group !== 'bloc') {
+        courses.sort(sortCourses);
+        listContainer.innerHTML = cursusInfoHtml + courses.map(data => renderLibraryCourseCard(data, orderMap.get(data.id))).join('');
+        return;
+    }
+
+    const groups = new Map(); // bloc -> courses[]
+    courses.forEach(data => {
+        const bloc = String(data.bloc || '').trim() || 'Sans bloc';
+        if (!groups.has(bloc)) groups.set(bloc, []);
+        groups.get(bloc).push(data);
+    });
+    groups.forEach(list => list.sort(sortCourses));
+
+    const orderedGroups = Array.from(groups.entries()).sort((a, b) => {
+        if (a[0] === 'Sans bloc') return 1;
+        if (b[0] === 'Sans bloc') return -1;
+        if (libraryView.sort === 'cursus') {
+            const minOrder = list => list.reduce((min, c) => Math.min(min, orderMap.has(c.id) ? orderMap.get(c.id) : Infinity), Infinity);
+            const ma = minOrder(a[1]);
+            const mb = minOrder(b[1]);
+            if (ma !== mb) return ma - mb;
+        }
+        return a[0].localeCompare(b[0], 'fr', { numeric: true });
+    });
+
+    listContainer.innerHTML = cursusInfoHtml + orderedGroups.map(([bloc, list]) => `
+        <details class="sbi-lib-bloc" open>
+            <summary class="sbi-lib-bloc-header">
+                <span class="sbi-lib-bloc-chevron">▸</span>
+                <span class="sbi-lib-bloc-title">${bloc}</span>
+                <span class="sbi-lib-bloc-count">${list.length} cours · ${list.filter(c => c.actif).length} actif(s)</span>
+            </summary>
+            <div class="sbi-lib-bloc-body">
+                ${list.map(data => renderLibraryCourseCard(data, orderMap.get(data.id))).join('')}
+            </div>
+        </details>`).join('');
+}
+
 async function loadCourses() {
     const listContainer = document.getElementById('courses-list-container');
     if (!listContainer) return;
@@ -1202,58 +1437,8 @@ async function loadCourses() {
             return;
         }
 
-        allCoursesData.forEach((data) => {
-            const courseId = data.id;
-
-            let statusHtml = '';
-
-            if (data.statutValidation === 'pending') {
-                statusHtml = `<span style="color: var(--accent-yellow, #fbbc04); font-weight: bold; font-size: 0.8rem;"><span style="display:inline-block;width:7px;height:7px;border-radius:999px;background:currentColor;margin-right:6px;vertical-align:middle;"></span>EN ATTENTE</span>`;
-            } else {
-                statusHtml = data.actif
-                    ? `<span style="color: var(--accent-green, #10b981); font-weight: bold; font-size: 0.8rem;">● ACTIF</span>`
-                    : `<span style="color: var(--accent-red, #ff4a4a); font-weight: bold; font-size: 0.8rem;">● BROUILLON</span>`;
-            }
-
-            const tagsHtml = data.formations
-                ? data.formations.map(fId => {
-                    const formObj = allFormationsData.find(f => f.id === fId || f.titre === fId);
-                    const displayName = formObj ? formObj.titre : fId;
-
-                    return `<span class="tag" style="background: var(--bg-body, #222); padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; border: 1px solid var(--border-color, #444);"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-2px;margin-right:4px;"><path d="M10 4 12 6h8c1.1 0 2 .9 2 2v10c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2h6Z"/></svg>${displayName}</span>`;
-                }).join(' ')
-                : '';
-
-            const blocHtml = data.bloc
-                ? `<span style="color: var(--accent-blue); font-size: 0.8rem; border: 1px solid var(--accent-blue); padding: 2px 8px; border-radius: 12px; margin-left: 10px;">${data.bloc}</span>`
-                : '';
-
-            const nbChapitres = data.chapitres ? data.chapitres.length : 0;
-            const authorName = getAuthorName(data.auteurId, data);
-            const actionButtonsHtml = renderCourseActionButtons({ courseId, courseData: data, currentUid, isAdminLike: isAdminLikeUser() });
-
-            const html = `
-            <div style="background: var(--bg-card, #111); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color, #333); display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; opacity: ${data.actif ? '1' : '0.6'};">
-                <div>
-                    <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem;">
-                        ${statusHtml}
-                        <h3 style="margin: 0; display: flex; align-items: center; color: var(--text-main, white);">
-                            ${data.titre}
-                            ${blocHtml}
-                            <span style="font-size: 0.85rem; font-weight: normal; color: var(--text-muted, #888); font-style: italic; margin-left: 0.8rem;">
-                                par ${authorName}
-                            </span>
-                        </h3>
-                    </div>
-                    <div style="color: var(--text-main, white);">${tagsHtml} <span style="color: var(--text-muted, #888); font-size: 0.85rem; margin-left: 1rem;">${nbChapitres} Étape(s)</span></div>
-                </div>
-                <div style="display: flex; gap: 0.5rem;">
-                    ${actionButtonsHtml}
-                </div>
-            </div>`;
-
-            listContainer.insertAdjacentHTML('beforeend', html);
-        });
+        wireLibraryFilters();
+        await renderCoursesLibrary();
 
         refreshBlocsList();
 
