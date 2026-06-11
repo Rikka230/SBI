@@ -210,6 +210,7 @@
                                     <input type="file" id="chapter-image-upload" accept="image/*" style="display: none;">
                                     <input type="hidden" id="chapter-image-base64">
                                     <img id="chapter-image-preview" class="protected-media" oncontextmenu="return false;" src="" style="display:none; max-height: 200px; border-radius:6px; object-fit: contain; border: 1px solid #333;">
+                                    <button type="button" id="media-image-remove" class="action-btn danger" style="display:none; align-self:flex-start; padding:.35rem .7rem; font-size:.82rem;">✕ Retirer l'image</button>
                                 </div>
                                 
                                 <div id="media-video-zone" style="display: none; flex-direction: column; gap: 1rem;">
@@ -220,6 +221,7 @@
                                     <input type="file" id="chapter-video-upload" accept="video/mp4,video/webm" style="display: none;">
                                     <input type="hidden" id="chapter-video-base64">
                                     <video id="chapter-video-preview" controls controlsList="nodownload" oncontextmenu="return false;" class="protected-media" style="display:none; max-height: 300px; width:100%; border-radius:6px; background:#000; border: 1px solid #333;"></video>
+                                    <button type="button" id="media-video-remove" class="action-btn danger" style="display:none; align-self:flex-start; padding:.35rem .7rem; font-size:.82rem;">✕ Retirer la vidéo</button>
                                 </div>
                             </div>
 
@@ -828,8 +830,8 @@
     });
 </script>
 
-<script type="module" src="js/admin-ui.js?v=8.0P.167.357"></script>
-<script type="module" src="js/admin-courses.js?v=8.0P.167.356"></script>
+<script type="module" src="js/admin-ui.js?v=8.0P.167.360"></script>
+<script type="module" src="js/admin-courses.js?v=8.0P.167.359"></script>
 <script type="module" src="js/tracker.js?v=8.0P.167.314"></script>
 <script type="module" src="js/admin-notifications.js?v=8.0P.167.205"></script>
 </body>

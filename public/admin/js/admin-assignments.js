@@ -26,9 +26,10 @@ import {
   timestampToMs,
   assignmentCallable,
   getCallableMessage,
-  loadFormationsForCreation
-} from '/js/assignments/assignment-data.js?v=8.0P.167.273';
-import { buildAssignmentFormHtml, wireAssignmentForm } from '/js/assignments/assignment-form.js?v=8.0P.167.273';
+  loadFormationsForCreation,
+  cursusBadgeHtml
+} from '/js/assignments/assignment-data.js?v=8.0P.167.360';
+import { buildAssignmentFormHtml, wireAssignmentForm } from '/js/assignments/assignment-form.js?v=8.0P.167.360';
 
 let mounted = false;
 let mountedView = null;
@@ -41,6 +42,7 @@ let submissionsByAssignment = new Map();
 let formations = [];
 let filter = 'pending';
 let search = '';
+let sort = 'recent'; // recent | cursus (8.0P.167.358)
 let selectedId = '';
 let selectedSubmissionId = '';
 let mode = 'view'; // view | create | edit
@@ -88,9 +90,19 @@ async function loadData() {
 function filteredAssignments() {
   const def = FILTERS.find((f) => f.key === filter) || FILTERS[0];
   const needle = search.trim().toLowerCase();
-  return assignments
+  const list = assignments
     .filter((a) => def.match(a))
     .filter((a) => !needle || `${a.title} ${a.formationName} ${a.promotionName}`.toLowerCase().includes(needle));
+  if (sort === 'cursus') {
+    // Ordre du cursus : devoirs liés d'abord (par n° d'item), non liés ensuite.
+    return list.slice().sort((a, b) => {
+      const oa = Number.isFinite(Number(a.cursusItemOrder)) && a.cursusItemId ? Number(a.cursusItemOrder) : Number.MAX_SAFE_INTEGER;
+      const ob = Number.isFinite(Number(b.cursusItemOrder)) && b.cursusItemId ? Number(b.cursusItemOrder) : Number.MAX_SAFE_INTEGER;
+      if (oa !== ob) return oa - ob;
+      return timestampToMs(b.updatedAt) - timestampToMs(a.updatedAt);
+    });
+  }
+  return list;
 }
 
 function pendingSubmissionsCount() {
@@ -133,6 +145,10 @@ function render() {
 
     <div class="sbi-asg-toolbar">
       <div class="sbi-asg-search"><input type="search" placeholder="Rechercher (titre, formation, promotion)…" value="${escapeHtml(search)}" data-asg-search></div>
+      <select class="sbi-asg-input" data-asg-sort style="max-width:200px;">
+        <option value="recent" ${sort === 'recent' ? 'selected' : ''}>Tri : récents</option>
+        <option value="cursus" ${sort === 'cursus' ? 'selected' : ''}>Tri : ordre du cursus</option>
+      </select>
     </div>
 
     <div class="sbi-asg-shell">
@@ -159,6 +175,7 @@ function renderListItem(a) {
       <div class="sbi-asg-item__badges">
         ${badge(km.label, a.kind === 'evaluation' ? 'info' : 'muted')}
         ${badge(sm.label, sm.tone)}
+        ${cursusBadgeHtml(a)}
         ${subs.length ? badge(`${corrected}/${subs.length} corrigés`, corrected === subs.length ? 'success' : 'pending') : ''}
       </div>
     </button>
@@ -243,6 +260,8 @@ function renderDetail() {
       ${a.kind === 'evaluation' && a.gradeMax ? `<span>Barème /${escapeHtml(String(a.gradeMax))}</span>` : ''}
       <span>${escapeHtml(a.formationName || '—')}${a.promotionName ? ` · ${escapeHtml(a.promotionName)}` : ''}</span>
       <span>${escapeHtml(formatDate(a.dueAt))}</span>
+      ${cursusBadgeHtml(a)}
+      ${a.cursusItemTitle ? `<span title="Item du cursus">🧭 ${escapeHtml(a.cursusItemTitle)}${a.cursusItemRelatedCourseTitle ? ` · après « ${escapeHtml(a.cursusItemRelatedCourseTitle)} »` : ''}</span>` : ''}
       ${a.isQualiopiEvidence ? badge('Qualiopi', 'success') : ''}
       ${a.createdByName ? `<span>par ${escapeHtml(a.createdByName)}</span>` : ''}
     </div>
@@ -404,6 +423,12 @@ function bindEvents() {
 
   r.querySelector('[data-asg-search]')?.addEventListener('input', (e) => {
     search = e.target.value;
+    const listEl = r.querySelector('[data-asg-list]');
+    if (listEl) listEl.innerHTML = renderList();
+  });
+
+  r.querySelector('[data-asg-sort]')?.addEventListener('change', (e) => {
+    sort = e.target.value === 'cursus' ? 'cursus' : 'recent';
     const listEl = r.querySelector('[data-asg-list]');
     if (listEl) listEl.innerHTML = renderList();
   });

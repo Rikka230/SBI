@@ -8,6 +8,8 @@
 import { app } from '/js/firebase-init.js';
 import {
   collection,
+  doc,
+  getDoc,
   getDocs,
   query,
   where,
@@ -216,6 +218,149 @@ export async function loadPromotionsForFormation({ db, formationId }) {
     console.warn('[SBI Assignments] requête promotions échouée :', error?.message || error);
     return [];
   }
+}
+
+/* ============================================================
+   8.0P.167.358 — Lien devoirs ↔ cursus
+   Les cursus (promotions.coursePlan) contiennent des items typés
+   assignment / exam / evaluation, avec ordre et dates par promotion
+   (recommendedStartAt / dueAt calculés au prorata). Ces helpers les
+   exposent au formulaire et aux listes.
+   ============================================================ */
+
+export const CURSUS_ASSIGNMENT_TYPES = ['assignment', 'exam', 'evaluation'];
+
+export const CURSUS_TYPE_LABELS = {
+  assignment: 'Devoir',
+  exam: 'Examen',
+  evaluation: 'Évaluation'
+};
+
+/**
+ * Items devoir/examen/évaluation du cursus d'une formation, uniques par
+ * itemId, avec les dates calculées par promotion :
+ * { itemId, title, type, order, datesByPromotion: Map(promotionId → {dueAt, startAt, endAt}) }
+ */
+function promotionTemplateId(promotion = {}) {
+  return String(
+    promotion.curriculumTemplateId
+    || promotion.templateId
+    || promotion.cursusTemplateId
+    || promotion.curriculumId
+    || promotion.curriculumTemplate?.id
+    || promotion.cursus?.id
+    || ''
+  ).trim();
+}
+
+export async function loadCursusAssignmentItems({ db, formationId }) {
+  if (!formationId) return [];
+  let promotions = [];
+  try {
+    const snap = await getDocs(query(collection(db, 'promotions'), where('formationId', '==', formationId)));
+    promotions = snapToArray(snap).filter((p) => String(p.status || 'active').toLowerCase() !== 'archived');
+  } catch (error) {
+    console.warn('[SBI Assignments] items cursus indisponibles :', error?.message || error);
+    return [];
+  }
+
+  const items = new Map();
+  const upsert = (item, { fromTemplate = false } = {}) => {
+    const type = String(item?.type || '').toLowerCase();
+    if (!CURSUS_ASSIGNMENT_TYPES.includes(type)) return null;
+    const itemId = String(item.itemId || item.id || '').trim();
+    if (!itemId) return null;
+    const existing = items.get(itemId) || {
+      itemId,
+      title: '',
+      type,
+      order: 9999,
+      relatedCourseTitle: '',
+      __titleFromTemplate: false,
+      datesByPromotion: new Map()
+    };
+    const title = String(item.title || item.courseTitle || '').trim();
+    // 8.0P.167.360 : le TEMPLATE du cursus est la source de vérité des titres —
+    // la copie promotions.coursePlan peut être périmée (item renommé après sync).
+    if (fromTemplate || !existing.__titleFromTemplate) {
+      if (title) existing.title = title;
+      const related = String(item.relatedCourseTitle || '').trim();
+      if (related) existing.relatedCourseTitle = related;
+      if (Number.isFinite(Number(item.order))) existing.order = Number(item.order);
+      existing.type = type;
+      if (fromTemplate) existing.__titleFromTemplate = true;
+    }
+    if (!existing.title) existing.title = CURSUS_TYPE_LABELS[type] || 'Devoir';
+    items.set(itemId, existing);
+    return existing;
+  };
+
+  promotions.forEach((promotion) => {
+    const plan = Array.isArray(promotion.coursePlan) ? promotion.coursePlan : [];
+    plan.forEach((item) => {
+      const entry = upsert(item, { fromTemplate: false });
+      if (!entry) return;
+      entry.datesByPromotion.set(promotion.id, {
+        dueAt: item.dueAt || item.deadlineAt || item.recommendedEndAt || '',
+        startAt: item.recommendedStartAt || '',
+        endAt: item.recommendedEndAt || ''
+      });
+    });
+  });
+
+  // Titres frais depuis les templates de cursus (lecture unitaire ouverte aux
+  // utilisateurs actifs — rules 8.0P.167.290).
+  const templateIds = Array.from(new Set(promotions.map(promotionTemplateId).filter(Boolean)));
+  for (const templateId of templateIds) {
+    try {
+      const snap = await getDoc(doc(db, 'curriculumTemplates', templateId));
+      if (!snap.exists()) continue;
+      const templateItems = Array.isArray(snap.data()?.items) ? snap.data().items : [];
+      templateItems.forEach((item) => upsert(item, { fromTemplate: true }));
+    } catch (error) {
+      console.warn('[SBI Assignments] template cursus illisible :', error?.message || error);
+    }
+  }
+
+  return Array.from(items.values()).sort((a, b) => a.order - b.order || a.title.localeCompare(b.title, 'fr', { sensitivity: 'base' }));
+}
+
+/** Date limite suggérée pour un item cursus : promotion ciblée, sinon première promotion datée. */
+export function suggestedDueAtForCursusItem(item, promotionId = '') {
+  if (!item?.datesByPromotion) return '';
+  if (promotionId && item.datesByPromotion.has(promotionId)) {
+    return item.datesByPromotion.get(promotionId).dueAt || '';
+  }
+  for (const dates of item.datesByPromotion.values()) {
+    if (dates.dueAt) return dates.dueAt;
+  }
+  return '';
+}
+
+/** Titre générique posé par l'éditeur de cursus (jamais renommé par l'admin). */
+export function isGenericCursusItemTitle(title = '') {
+  return /^(nouveau|nouvelle|nouvel)\b/i.test(String(title || '').trim());
+}
+
+/** Libellé d'un item cursus pour le sélecteur : le cours de rattachement
+ *  remplace les titres génériques « Nouveau devoir / Nouvel examen ». */
+export function cursusItemOptionLabel(item = {}) {
+  const typeLabel = CURSUS_TYPE_LABELS[item.type] || 'Devoir';
+  const bits = [`n°${item.order + 1}`, typeLabel];
+  if (item.title && !isGenericCursusItemTitle(item.title)) bits.push(item.title);
+  if (item.relatedCourseTitle) bits.push(`après « ${item.relatedCourseTitle} »`);
+  if (bits.length === 2) bits.push(item.title || typeLabel);
+  return bits.join(' · ');
+}
+
+/** Badge « Cursus n°X » pour un devoir lié (assignment doc). */
+export function cursusBadgeHtml(assignment = {}) {
+  if (!assignment.cursusItemId) return '';
+  const order = Number(assignment.cursusItemOrder);
+  const label = Number.isFinite(order) ? `Cursus n°${order + 1}` : 'Cursus';
+  const tip = [assignment.cursusItemTitle, assignment.cursusItemRelatedCourseTitle ? `après « ${assignment.cursusItemRelatedCourseTitle} »` : '']
+    .filter(Boolean).join(' · ');
+  return `<span class="sbi-asg-badge" data-tone="info" title="${escapeHtml(tip)}">🧭 ${escapeHtml(label)}</span>`;
 }
 
 export function getCallableMessage(error, fallback = 'Action impossible pour le moment.') {

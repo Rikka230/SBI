@@ -408,6 +408,73 @@ export const restoreCurrentMediaPreview = (chapterId, chapter) => {
     }
 };
 
+/* ============================================================
+   8.0P.167.358 — Retrait explicite d'un média de leçon
+   ------------------------------------------------------------
+   Il n'existait AUCUN moyen de supprimer une image/vidéo (le fix
+   .354 empêche d'ailleurs un input vide d'écraser une URL). Le
+   retrait passe donc par ces helpers : état du bloc vidé + fichier
+   en attente purgé + ancienne URL Storage mémorisée pour suppression
+   APRÈS une sauvegarde réussie (jamais avant : un save annulé ne
+   doit pas casser le média en ligne).
+   ============================================================ */
+
+const pendingStorageDeletes = new Set();
+
+const isDeletableStorageUrl = (url = '') =>
+    typeof url === 'string' && url.includes('firebasestorage.googleapis.com');
+
+export const clearChapterMedia = (chapterId, chapter, kind = 'image') => {
+    if (!chapterId || !chapter) return;
+    const pending = pendingChapterMedia.get(chapterId);
+
+    if (kind === 'video') {
+        if (pending) {
+            revokePreviewUrl(pending.videoPreviewUrl);
+            pending.videoFile = null;
+            pending.videoPreviewUrl = '';
+        }
+        if (isDeletableStorageUrl(chapter.mediaVideo)) pendingStorageDeletes.add(chapter.mediaVideo);
+        chapter.mediaVideo = '';
+    } else {
+        if (pending) {
+            revokePreviewUrl(pending.imagePreviewUrl);
+            pending.imageFile = null;
+            pending.imagePreviewUrl = '';
+        }
+        if (isDeletableStorageUrl(chapter.mediaImage)) pendingStorageDeletes.add(chapter.mediaImage);
+        chapter.mediaImage = '';
+    }
+
+    restoreCurrentMediaPreview(chapterId, chapter);
+};
+
+export const hasChapterMedia = (chapterId, chapter, kind = 'image') => {
+    const pending = pendingChapterMedia.get(chapterId) || {};
+    return kind === 'video'
+        ? Boolean(pending.videoFile || chapter?.mediaVideo)
+        : Boolean(pending.imageFile || chapter?.mediaImage);
+};
+
+export const consumePendingMediaDeletes = () => {
+    const urls = Array.from(pendingStorageDeletes);
+    pendingStorageDeletes.clear();
+    return urls;
+};
+
+export const deleteStoredMediaByUrl = async (url = '') => {
+    if (!isDeletableStorageUrl(url)) return false;
+    try {
+        await deleteObject(ref(storage, url));
+        return true;
+    } catch (error) {
+        // Non bloquant : le doc cours ne référence plus le média, un orphelin
+        // Storage est tolérable (droits ou fichier déjà absent).
+        console.warn('[SBI Media] Suppression Storage ignorée :', error?.message || error);
+        return false;
+    }
+};
+
 export const syncChapterMediaFromDom = (chapter) => {
     if (!chapter?.id) return;
 

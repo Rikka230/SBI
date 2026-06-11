@@ -460,7 +460,7 @@ async function mountAdminCourses({ url }) {
   window.__SBI_APP_SHELL_MOUNTING_COURSE_EDITOR = true;
 
   try {
-    const module = await import('/admin/js/admin-courses.js?v=8.0P.167.356');
+    const module = await import('/admin/js/admin-courses.js?v=8.0P.167.359');
     const cleanupCourses = module.mountAdminCourses?.({ source: 'pjax-admin-courses' });
 
     if (typeof cleanupCourses === 'function') {
@@ -638,7 +638,7 @@ async function mountAdminLateStudents({ url }) {
   window.__SBI_APP_SHELL_MOUNTING_LATE_STUDENTS = true;
 
   try {
-    const module = await import('/admin/js/admin-late-students.js?v=8.0P.167.278');
+    const module = await import('/admin/js/admin-late-students.js?v=8.0P.167.359');
     const cleanupLate = module.mountAdminLateStudents?.();
 
     if (typeof cleanupLate === 'function') {
@@ -666,7 +666,7 @@ async function mountAdminAssignments({ url }) {
 
   window.__SBI_APP_SHELL_MOUNTING_ASSIGNMENTS = true;
   try {
-    const module = await import('/admin/js/admin-assignments.js?v=8.0P.167.273');
+    const module = await import('/admin/js/admin-assignments.js?v=8.0P.167.360');
     const cleanup = module.mountAdminAssignments?.();
     if (typeof cleanup === 'function') registerCleanup(cleanup, 'admin-assignments');
   } finally {
@@ -690,7 +690,7 @@ async function mountTeacherAssignments({ url }) {
 
   window.__SBI_APP_SHELL_MOUNTING_TEACHER_ASSIGNMENTS = true;
   try {
-    const module = await import('/teacher/js/teacher-assignments.js?v=8.0P.167.273');
+    const module = await import('/teacher/js/teacher-assignments.js?v=8.0P.167.360');
     const cleanup = module.mountTeacherAssignments?.();
     if (typeof cleanup === 'function') registerCleanup(cleanup, 'teacher-assignments');
   } finally {
@@ -714,7 +714,7 @@ async function mountStudentAssignments({ url }) {
 
   window.__SBI_APP_SHELL_MOUNTING_STUDENT_ASSIGNMENTS = true;
   try {
-    const module = await import('/student/js/student-assignments.js?v=8.0P.167.273');
+    const module = await import('/student/js/student-assignments.js?v=8.0P.167.360');
     const cleanup = module.mountStudentAssignments?.();
     if (typeof cleanup === 'function') registerCleanup(cleanup, 'student-assignments');
   } finally {
@@ -1249,7 +1249,7 @@ async function mountCourseEditorV2Page({ url, role = 'teacher' }) {
   window.__SBI_APP_SHELL_MOUNTING_COURSE_EDITOR_V2 = true;
 
   try {
-    const module = await import('/js/course-editor-v2/course-editor-v2.js?v=8.0P.167.205');
+    const module = await import('/js/course-editor-v2/course-editor-v2.js?v=8.0P.167.359');
     const cleanup = module.mountCourseEditorV2?.({
       source: isAdmin ? 'pjax-admin-course-editor-v2' : 'pjax-teacher-course-editor-v2',
       force: true

@@ -14,9 +14,9 @@ import {
 import {
   escapeHtml, kindMeta, statusMeta, subStatusMeta, formatDate, formatDateTime, formatNote,
   snapToArray, timestampToMs, chunk, assignmentCallable, getCallableMessage,
-  loadFormationsForCreation, TEACHER_ROLES
-} from '/js/assignments/assignment-data.js?v=8.0P.167.273';
-import { buildAssignmentFormHtml, wireAssignmentForm } from '/js/assignments/assignment-form.js?v=8.0P.167.273';
+  loadFormationsForCreation, TEACHER_ROLES, cursusBadgeHtml
+} from '/js/assignments/assignment-data.js?v=8.0P.167.360';
+import { buildAssignmentFormHtml, wireAssignmentForm } from '/js/assignments/assignment-form.js?v=8.0P.167.360';
 
 let mounted = false;
 let mountedView = null;
@@ -152,7 +152,7 @@ function renderAssignmentList() {
       <button type="button" class="sbi-asg-item ${selectedAssignmentId === a.id ? 'is-selected' : ''}" data-asg-id="${escapeHtml(a.id)}">
         <div class="sbi-asg-item__title">${km.icon} ${escapeHtml(a.title || 'Sans titre')}</div>
         <div class="sbi-asg-item__meta"><span>${escapeHtml(a.formationName || '')}</span>${a.promotionName ? `<span>· ${escapeHtml(a.promotionName)}</span>` : ''}</div>
-        <div class="sbi-asg-item__badges">${badge(sm.label, sm.tone)}${subs.length ? badge(`${subs.length} dépôt(s)`, 'info') : ''}</div>
+        <div class="sbi-asg-item__badges">${badge(sm.label, sm.tone)}${cursusBadgeHtml(a)}${subs.length ? badge(`${subs.length} dépôt(s)`, 'info') : ''}</div>
       </button>`;
   }).join('');
 }

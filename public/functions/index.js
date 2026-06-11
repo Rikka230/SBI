@@ -9314,6 +9314,89 @@ exports.adminCreateStudentDocumentRequest = onCall({
 
 const ASSIGNMENT_ROLES_STUDENT = ["student", "eleve", "élève", "etudiant", "étudiant"];
 
+// 8.0P.167.358 — types d'items du cursus auxquels un devoir peut être lié.
+const ASSIGNMENT_CURSUS_ITEM_TYPES = ["assignment", "exam", "evaluation"];
+
+function normalizeCursusTitleKey(value) {
+    return String(value || "")
+        .normalize("NFD").replace(/[̀-ͯ]/g, "")
+        .toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+/**
+ * 8.0P.167.358 — Résout le lien cursus d'un devoir : retrouve l'item
+ * devoir/examen/évaluation dans les coursePlan des promotions de la formation,
+ * par id explicite ou par titre normalisé (auto-match outillage). Renvoie les
+ * champs dénormalisés à écrire sur le doc assignment (vides si aucun lien).
+ */
+async function resolveAssignmentCursusLink(db, formationId, { cursusItemId = "", autoMatchTitle = "" } = {}) {
+    const empty = { cursusItemId: "", cursusItemTitle: "", cursusItemType: "", cursusItemOrder: null, cursusItemRelatedCourseTitle: "" };
+    if (!formationId || (!cursusItemId && !autoMatchTitle)) return empty;
+    const wantedTitle = normalizeCursusTitleKey(autoMatchTitle);
+    try {
+        const snap = await db.collection("promotions").where("formationId", "==", formationId).get();
+
+        // 8.0P.167.360 — candidats fusionnés : coursePlan (dates par promotion)
+        // ÉCRASÉ par les items du TEMPLATE de cursus (source de vérité des titres,
+        // un renommage n'est pas toujours resynchronisé dans coursePlan).
+        const candidates = new Map();
+        const pushItem = (item, fromTemplate) => {
+            const type = String(item && item.type || "").toLowerCase();
+            if (!ASSIGNMENT_CURSUS_ITEM_TYPES.includes(type)) return;
+            const itemId = cleanString(item.itemId || item.id || "", 200);
+            if (!itemId) return;
+            const existing = candidates.get(itemId);
+            if (existing && existing.__fromTemplate && !fromTemplate) return;
+            candidates.set(itemId, {
+                __id: itemId,
+                __fromTemplate: fromTemplate === true || existing?.__fromTemplate === true,
+                title: cleanString(item.title || item.courseTitle || "", 200) || existing?.title || "",
+                type,
+                order: Number.isFinite(Number(item.order)) ? Number(item.order) : (existing ? existing.order : null),
+                relatedCourseTitle: cleanString(item.relatedCourseTitle || "", 200) || existing?.relatedCourseTitle || ""
+            });
+        };
+
+        const templateCache = new Map();
+        for (const promoDoc of snap.docs) {
+            const promo = promoDoc.data() || {};
+            (Array.isArray(promo.coursePlan) ? promo.coursePlan : []).forEach((item) => pushItem(item, false));
+            const templateId = cleanString(
+                promo.curriculumTemplateId || promo.templateId || promo.cursusTemplateId || promo.curriculumId || "",
+                180
+            );
+            if (templateId && !templateCache.has(templateId)) {
+                try {
+                    const tDoc = await db.collection("curriculumTemplates").doc(templateId).get();
+                    templateCache.set(templateId, tDoc.exists ? (tDoc.data() || {}) : null);
+                } catch (error) {
+                    templateCache.set(templateId, null);
+                }
+            }
+            const template = templateId ? templateCache.get(templateId) : null;
+            (Array.isArray(template && template.items) ? template.items : []).forEach((item) => pushItem(item, true));
+        }
+
+        for (const item of candidates.values()) {
+            const matchesId = cursusItemId && item.__id === cursusItemId;
+            const matchesTitle = !cursusItemId && wantedTitle
+                && normalizeCursusTitleKey(item.title) === wantedTitle;
+            if (matchesId || matchesTitle) {
+                return {
+                    cursusItemId: item.__id,
+                    cursusItemTitle: item.title,
+                    cursusItemType: item.type,
+                    cursusItemOrder: item.order,
+                    cursusItemRelatedCourseTitle: item.relatedCourseTitle
+                };
+            }
+        }
+    } catch (error) {
+        console.warn("[SBI Assignment] resolution lien cursus ignoree :", error && error.message ? error.message : error);
+    }
+    return empty;
+}
+
 function callerTeachesFormation(callerData, formationData, callerUid, formationId) {
     const profs = Array.isArray(formationData && formationData.profs) ? formationData.profs : [];
     const fIds = Array.isArray(callerData && callerData.formationIds) ? callerData.formationIds : [];
@@ -9376,6 +9459,14 @@ exports.createOrUpdateAssignment = onCall({
         promotionName = cleanString(promo.nom || promo.titre || promo.name || "", 200);
     }
 
+    // 8.0P.167.358 — lien cursus : id explicite (formulaire) ou auto-match par
+    // titre (outillage, data.cursusAutoMatch === true). Toujours réécrit (un id
+    // vide délie le devoir du cursus).
+    const cursusLink = await resolveAssignmentCursusLink(db, formationId, {
+        cursusItemId: cleanString(data.cursusItemId, 200),
+        autoMatchTitle: data.cursusAutoMatch === true ? title : ""
+    });
+
     const requestedStatus = cleanString(data.status, 40);
     let status;
     if (caller.isAdmin) {
@@ -9397,6 +9488,11 @@ exports.createOrUpdateAssignment = onCall({
         submissionMode: { file: fileMode, text: textMode },
         gradeMax,
         isQualiopiEvidence,
+        cursusItemId: cursusLink.cursusItemId,
+        cursusItemTitle: cursusLink.cursusItemTitle,
+        cursusItemType: cursusLink.cursusItemType,
+        cursusItemOrder: cursusLink.cursusItemOrder,
+        cursusItemRelatedCourseTitle: cursusLink.cursusItemRelatedCourseTitle,
         status,
         updatedAt: now
     };

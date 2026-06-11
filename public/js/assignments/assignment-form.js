@@ -7,9 +7,14 @@ import {
   escapeHtml,
   kindMeta,
   loadPromotionsForFormation,
+  loadCursusAssignmentItems,
+  suggestedDueAtForCursusItem,
+  cursusItemOptionLabel,
   assignmentCallable,
   getCallableMessage
-} from './assignment-data.js';
+// 8.0P.167.359 : jeton sur l'import relatif (sans lui, une version en cache
+// sans les nouveaux exports casse tout le formulaire).
+} from './assignment-data.js?v=8.0P.167.360';
 
 function optionTag(value, label, selected) {
   return `<option value="${escapeHtml(value)}"${selected ? ' selected' : ''}>${escapeHtml(label)}</option>`;
@@ -59,8 +64,15 @@ export function buildAssignmentFormHtml({ assignment = null, formations = [], is
           </select>
         </div>
         <div class="sbi-asg-field">
+          <label for="asg-cursus-item">Item du cursus <span class="sbi-asg-muted">(optionnel)</span></label>
+          <select id="asg-cursus-item" class="sbi-asg-input" disabled>
+            <option value="">Aucun lien cursus</option>
+          </select>
+        </div>
+        <div class="sbi-asg-field">
           <label for="asg-due">Date limite</label>
           <input id="asg-due" class="sbi-asg-input" type="date" value="${escapeHtml(a.dueAt || '')}">
+          <small class="sbi-asg-muted" data-asg-due-hint hidden></small>
         </div>
         <div class="sbi-asg-field sbi-asg-grade" ${kind === 'evaluation' ? '' : 'hidden'}>
           <label for="asg-grade-max">Barème (note sur)</label>
@@ -100,8 +112,13 @@ export function wireAssignmentForm({ root, db, isAdmin = false, assignment = nul
   const statusEl = form.querySelector('[data-asg-form-status]');
   const formationSelect = form.querySelector('#asg-formation');
   const promotionSelect = form.querySelector('#asg-promotion');
+  const cursusSelect = form.querySelector('#asg-cursus-item');
+  const dueInput = form.querySelector('#asg-due');
+  const dueHint = form.querySelector('[data-asg-due-hint]');
   const gradeField = form.querySelector('.sbi-asg-grade');
   const editingId = assignment?.id || '';
+  // 8.0P.167.358 — items devoir/éval du cursus de la formation choisie.
+  let cursusItems = [];
 
   const setStatus = (message, tone = 'muted') => {
     if (!statusEl) return;
@@ -124,6 +141,41 @@ export function wireAssignmentForm({ root, db, isAdmin = false, assignment = nul
       promotionSelect.appendChild(opt);
     });
     promotionSelect.disabled = false;
+  }
+
+  // 8.0P.167.358 — sélecteur « Item du cursus » : liste les items devoir /
+  // examen / évaluation du cursus de la formation (uniques, ordre du cursus).
+  async function refreshCursusItems(selectedItemId = '') {
+    const formationId = formationSelect.value;
+    cursusSelect.innerHTML = '<option value="">Aucun lien cursus</option>';
+    cursusSelect.disabled = true;
+    cursusItems = [];
+    if (!formationId) { updateDueSuggestion(); return; }
+    cursusItems = await loadCursusAssignmentItems({ db, formationId });
+    cursusItems.forEach((item) => {
+      const opt = document.createElement('option');
+      opt.value = item.itemId;
+      opt.textContent = cursusItemOptionLabel(item);
+      if (item.itemId === selectedItemId) opt.selected = true;
+      cursusSelect.appendChild(opt);
+    });
+    cursusSelect.disabled = !cursusItems.length;
+    if (!cursusItems.length) {
+      cursusSelect.innerHTML = '<option value="">Aucun item devoir/éval dans le cursus</option>';
+    }
+    updateDueSuggestion();
+  }
+
+  // Date limite proposée depuis le planning du cursus (promotion ciblée de
+  // préférence). Ne remplit le champ que s'il est vide ; sinon, simple indice.
+  function updateDueSuggestion() {
+    const item = cursusItems.find((c) => c.itemId === cursusSelect.value) || null;
+    const suggested = item ? suggestedDueAtForCursusItem(item, promotionSelect.value || '') : '';
+    if (dueHint) {
+      dueHint.hidden = !suggested;
+      dueHint.textContent = suggested ? `Planning du cursus : échéance prévue le ${suggested.split('-').reverse().join('/')}` : '';
+    }
+    if (suggested && dueInput && !dueInput.value) dueInput.value = suggested;
   }
 
   function onKindChange(event) {
@@ -149,6 +201,7 @@ export function wireAssignmentForm({ root, db, isAdmin = false, assignment = nul
         text: form.querySelector('#asg-mode-text').checked
       },
       isQualiopiEvidence: form.querySelector('#asg-qualiopi').checked,
+      cursusItemId: cursusSelect?.value || '',
       status
     };
     if (kind === 'evaluation') {
@@ -185,14 +238,19 @@ export function wireAssignmentForm({ root, db, isAdmin = false, assignment = nul
 
   const kindInputs = Array.from(form.querySelectorAll('input[name="asg-kind"]'));
   kindInputs.forEach((input) => input.addEventListener('change', onKindChange));
-  formationSelect.addEventListener('change', () => refreshPromotions(''));
+  formationSelect.addEventListener('change', () => { refreshPromotions(''); refreshCursusItems(''); });
+  promotionSelect.addEventListener('change', updateDueSuggestion);
+  cursusSelect?.addEventListener('change', updateDueSuggestion);
   const saveButtons = Array.from(form.querySelectorAll('[data-asg-save]'));
   saveButtons.forEach((b) => b.addEventListener('click', onSave));
   const cancelBtn = form.querySelector('[data-asg-cancel]');
   cancelBtn?.addEventListener('click', () => onCancel?.());
 
-  // Pré-remplissage des promotions si on édite un devoir lié à une formation.
-  if (formationSelect.value) refreshPromotions(assignment?.promotionId || '');
+  // Pré-remplissage des promotions + items cursus si on édite un devoir lié.
+  if (formationSelect.value) {
+    refreshPromotions(assignment?.promotionId || '');
+    refreshCursusItems(assignment?.cursusItemId || '');
+  }
 
   return () => {
     kindInputs.forEach((input) => input.removeEventListener('change', onKindChange));
