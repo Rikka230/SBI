@@ -77,6 +77,51 @@ function fail(error) {
   return { isError: true, content: [{ type: 'text', text: `Erreur : ${error?.message || error}` }] };
 }
 
+/* ------------------- Garde-fou : comptes admin isGod --------------------- */
+// RÈGLE ABSOLUE (demande utilisateur 2026-06-11) : interdiction totale de
+// toucher aux comptes isGod via ce MCP — aucune écriture/suppression sur leur
+// doc users/{uid} (et sous-collections), aucun fichier Storage users/{uid}/**,
+// et le champ isGod lui-même n'est JAMAIS modifiable (ni accordé ni retiré).
+
+const godUidCache = new Map(); // uid → boolean (résolu à la demande)
+
+async function isGodUid(uid) {
+  if (!uid) return false;
+  if (godUidCache.has(uid)) return godUidCache.get(uid);
+  let god = false;
+  try {
+    const snap = await db.doc(`users/${uid}`).get();
+    god = snap.exists && snap.data().isGod === true;
+  } catch (_) {
+    god = true; // doute = interdit
+  }
+  godUidCache.set(uid, god);
+  return god;
+}
+
+async function assertNotGodTarget(path, data = null) {
+  const segments = String(path || '').split('/').filter(Boolean);
+  if (segments[0] === 'users' && segments[1] && await isGodUid(segments[1])) {
+    throw new Error('INTERDIT : ce document appartient à un compte admin isGod — toute écriture/suppression via le MCP est bloquée (règle absolue).');
+  }
+  if (data) {
+    const scan = (obj) => {
+      for (const [k, v] of Object.entries(obj)) {
+        if (k === 'isGod') throw new Error('INTERDIT : le champ isGod ne peut être ni accordé ni retiré via le MCP (règle absolue).');
+        if (v && typeof v === 'object' && !Array.isArray(v)) scan(v);
+      }
+    };
+    scan(data);
+  }
+}
+
+async function assertNotGodStoragePath(path) {
+  const match = String(path || '').match(/^users\/([^/]+)\//);
+  if (match && await isGodUid(match[1])) {
+    throw new Error('INTERDIT : fichier d\'un compte admin isGod — suppression bloquée (règle absolue).');
+  }
+}
+
 function parseData(json) {
   const data = JSON.parse(json);
   if (!data || typeof data !== 'object' || Array.isArray(data)) {
@@ -189,7 +234,9 @@ server.tool(
   },
   async ({ path, data, merge = true }) => {
     try {
-      await db.doc(path).set(parseData(data), { merge });
+      const parsed = parseData(data);
+      await assertNotGodTarget(path, parsed);
+      await db.doc(path).set(parsed, { merge });
       return ok({ written: path, merge });
     } catch (error) { return fail(error); }
   }
@@ -204,6 +251,7 @@ server.tool(
       if (!/^([^/]+\/[^/]+)(\/[^/]+\/[^/]+)*$/.test(path)) {
         throw new Error('Chemin de DOCUMENT requis (nombre pair de segments).');
       }
+      await assertNotGodTarget(path);
       await db.doc(path).delete();
       return ok({ deleted: path });
     } catch (error) { return fail(error); }
@@ -306,10 +354,11 @@ server.tool(
 
 server.tool(
   'storage_delete',
-  'SUPPRESSION d\'un fichier Storage. Action définitive.',
+  'SUPPRESSION d\'un fichier Storage. Action définitive. Les fichiers des comptes isGod sont protégés.',
   { path: z.string() },
   async ({ path }) => {
     try {
+      await assertNotGodStoragePath(path);
       await bucket.file(path).delete();
       return ok({ deleted: path });
     } catch (error) { return fail(error); }
