@@ -28,8 +28,8 @@ import {
   getCallableMessage,
   loadFormationsForCreation,
   cursusBadgeHtml
-} from '/js/assignments/assignment-data.js?v=8.0P.167.358';
-import { buildAssignmentFormHtml, wireAssignmentForm } from '/js/assignments/assignment-form.js?v=8.0P.167.358';
+} from '/js/assignments/assignment-data.js?v=8.0P.167.359';
+import { buildAssignmentFormHtml, wireAssignmentForm } from '/js/assignments/assignment-form.js?v=8.0P.167.359';
 
 let mounted = false;
 let mountedView = null;
@@ -261,7 +261,7 @@ function renderDetail() {
       <span>${escapeHtml(a.formationName || '—')}${a.promotionName ? ` · ${escapeHtml(a.promotionName)}` : ''}</span>
       <span>${escapeHtml(formatDate(a.dueAt))}</span>
       ${cursusBadgeHtml(a)}
-      ${a.cursusItemTitle ? `<span title="Item du cursus">🧭 ${escapeHtml(a.cursusItemTitle)}</span>` : ''}
+      ${a.cursusItemTitle ? `<span title="Item du cursus">🧭 ${escapeHtml(a.cursusItemTitle)}${a.cursusItemRelatedCourseTitle ? ` · après « ${escapeHtml(a.cursusItemRelatedCourseTitle)} »` : ''}</span>` : ''}
       ${a.isQualiopiEvidence ? badge('Qualiopi', 'success') : ''}
       ${a.createdByName ? `<span>par ${escapeHtml(a.createdByName)}</span>` : ''}
     </div>

@@ -9330,7 +9330,7 @@ function normalizeCursusTitleKey(value) {
  * champs dénormalisés à écrire sur le doc assignment (vides si aucun lien).
  */
 async function resolveAssignmentCursusLink(db, formationId, { cursusItemId = "", autoMatchTitle = "" } = {}) {
-    const empty = { cursusItemId: "", cursusItemTitle: "", cursusItemType: "", cursusItemOrder: null };
+    const empty = { cursusItemId: "", cursusItemTitle: "", cursusItemType: "", cursusItemOrder: null, cursusItemRelatedCourseTitle: "" };
     if (!formationId || (!cursusItemId && !autoMatchTitle)) return empty;
     const wantedTitle = normalizeCursusTitleKey(autoMatchTitle);
     try {
@@ -9350,7 +9350,10 @@ async function resolveAssignmentCursusLink(db, formationId, { cursusItemId = "",
                         cursusItemId: itemId,
                         cursusItemTitle: cleanString(item.title || item.courseTitle || "", 200),
                         cursusItemType: type,
-                        cursusItemOrder: Number.isFinite(Number(item.order)) ? Number(item.order) : null
+                        cursusItemOrder: Number.isFinite(Number(item.order)) ? Number(item.order) : null,
+                        // 8.0P.167.359 : cours de rattachement — donne un nom parlant
+                        // quand l'item du cursus a gardé son titre générique.
+                        cursusItemRelatedCourseTitle: cleanString(item.relatedCourseTitle || "", 200)
                     };
                 }
             }
@@ -9456,6 +9459,7 @@ exports.createOrUpdateAssignment = onCall({
         cursusItemTitle: cursusLink.cursusItemTitle,
         cursusItemType: cursusLink.cursusItemType,
         cursusItemOrder: cursusLink.cursusItemOrder,
+        cursusItemRelatedCourseTitle: cursusLink.cursusItemRelatedCourseTitle,
         status,
         updatedAt: now
     };

@@ -31,7 +31,7 @@ import {
   syncChapterMediaFromDom,
   uploadPendingMediaForChapters,
   validateCourseDocumentSize
-} from '/admin/js/course-media-storage.js?v=8.0P.167.358';
+} from '/admin/js/course-media-storage.js?v=8.0P.167.359';
 
 const MAX_QUERY_VALUES = 10;
 const VERSION = '8.0P.167.205';

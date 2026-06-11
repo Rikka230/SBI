@@ -40,7 +40,10 @@ import {
     validateCourseDocumentSize,
     validateVideoFileForStorage,
     deleteUnusedCourseMediaFromStorage
-} from '/admin/js/course-media-storage.js';
+// 8.0P.167.359 : import AVEC jeton — l'import sans jeton servait une version
+// en cache sans les nouveaux exports (clearChapterMedia…) → module entier KO
+// (bibliothèque vide + rechargement). Règle : module modifié ⇒ jeton partout.
+} from '/admin/js/course-media-storage.js?v=8.0P.167.359';
 import {
     syncUserFormationIndexesFromData
 } from '/admin/js/user-formation-index.js';

@@ -265,6 +265,7 @@ export async function loadCursusAssignmentItems({ db, formationId }) {
           title: String(item.title || item.courseTitle || '').trim() || CURSUS_TYPE_LABELS[type] || 'Devoir',
           type,
           order: Number.isFinite(Number(item.order)) ? Number(item.order) : 9999,
+          relatedCourseTitle: String(item.relatedCourseTitle || '').trim(),
           datesByPromotion: new Map()
         };
         existing.datesByPromotion.set(promotion.id, {
@@ -291,12 +292,30 @@ export function suggestedDueAtForCursusItem(item, promotionId = '') {
   return '';
 }
 
+/** Titre générique posé par l'éditeur de cursus (jamais renommé par l'admin). */
+export function isGenericCursusItemTitle(title = '') {
+  return /^(nouveau|nouvelle|nouvel)\b/i.test(String(title || '').trim());
+}
+
+/** Libellé d'un item cursus pour le sélecteur : le cours de rattachement
+ *  remplace les titres génériques « Nouveau devoir / Nouvel examen ». */
+export function cursusItemOptionLabel(item = {}) {
+  const typeLabel = CURSUS_TYPE_LABELS[item.type] || 'Devoir';
+  const bits = [`n°${item.order + 1}`, typeLabel];
+  if (item.title && !isGenericCursusItemTitle(item.title)) bits.push(item.title);
+  if (item.relatedCourseTitle) bits.push(`après « ${item.relatedCourseTitle} »`);
+  if (bits.length === 2) bits.push(item.title || typeLabel);
+  return bits.join(' · ');
+}
+
 /** Badge « Cursus n°X » pour un devoir lié (assignment doc). */
 export function cursusBadgeHtml(assignment = {}) {
   if (!assignment.cursusItemId) return '';
   const order = Number(assignment.cursusItemOrder);
   const label = Number.isFinite(order) ? `Cursus n°${order + 1}` : 'Cursus';
-  return `<span class="sbi-asg-badge" data-tone="info" title="${escapeHtml(assignment.cursusItemTitle || '')}">🧭 ${escapeHtml(label)}</span>`;
+  const tip = [assignment.cursusItemTitle, assignment.cursusItemRelatedCourseTitle ? `après « ${assignment.cursusItemRelatedCourseTitle} »` : '']
+    .filter(Boolean).join(' · ');
+  return `<span class="sbi-asg-badge" data-tone="info" title="${escapeHtml(tip)}">🧭 ${escapeHtml(label)}</span>`;
 }
 
 export function getCallableMessage(error, fallback = 'Action impossible pour le moment.') {

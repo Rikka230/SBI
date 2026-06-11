@@ -9,10 +9,12 @@ import {
   loadPromotionsForFormation,
   loadCursusAssignmentItems,
   suggestedDueAtForCursusItem,
-  CURSUS_TYPE_LABELS,
+  cursusItemOptionLabel,
   assignmentCallable,
   getCallableMessage
-} from './assignment-data.js';
+// 8.0P.167.359 : jeton sur l'import relatif (sans lui, une version en cache
+// sans les nouveaux exports casse tout le formulaire).
+} from './assignment-data.js?v=8.0P.167.359';
 
 function optionTag(value, label, selected) {
   return `<option value="${escapeHtml(value)}"${selected ? ' selected' : ''}>${escapeHtml(label)}</option>`;
@@ -153,7 +155,7 @@ export function wireAssignmentForm({ root, db, isAdmin = false, assignment = nul
     cursusItems.forEach((item) => {
       const opt = document.createElement('option');
       opt.value = item.itemId;
-      opt.textContent = `n°${item.order + 1} · ${CURSUS_TYPE_LABELS[item.type] || 'Devoir'} · ${item.title}`;
+      opt.textContent = cursusItemOptionLabel(item);
       if (item.itemId === selectedItemId) opt.selected = true;
       cursusSelect.appendChild(opt);
     });
