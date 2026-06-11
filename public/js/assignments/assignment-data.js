@@ -8,6 +8,8 @@
 import { app } from '/js/firebase-init.js';
 import {
   collection,
+  doc,
+  getDoc,
   getDocs,
   query,
   where,
@@ -239,43 +241,86 @@ export const CURSUS_TYPE_LABELS = {
  * itemId, avec les dates calculées par promotion :
  * { itemId, title, type, order, datesByPromotion: Map(promotionId → {dueAt, startAt, endAt}) }
  */
+function promotionTemplateId(promotion = {}) {
+  return String(
+    promotion.curriculumTemplateId
+    || promotion.templateId
+    || promotion.cursusTemplateId
+    || promotion.curriculumId
+    || promotion.curriculumTemplate?.id
+    || promotion.cursus?.id
+    || ''
+  ).trim();
+}
+
 export async function loadCursusAssignmentItems({ db, formationId }) {
   if (!formationId) return [];
   let promotions = [];
   try {
     const snap = await getDocs(query(collection(db, 'promotions'), where('formationId', '==', formationId)));
-    promotions = snapToArray(snap);
+    promotions = snapToArray(snap).filter((p) => String(p.status || 'active').toLowerCase() !== 'archived');
   } catch (error) {
     console.warn('[SBI Assignments] items cursus indisponibles :', error?.message || error);
     return [];
   }
 
   const items = new Map();
-  promotions
-    .filter((p) => String(p.status || 'active').toLowerCase() !== 'archived')
-    .forEach((promotion) => {
-      const plan = Array.isArray(promotion.coursePlan) ? promotion.coursePlan : [];
-      plan.forEach((item) => {
-        const type = String(item?.type || '').toLowerCase();
-        if (!CURSUS_ASSIGNMENT_TYPES.includes(type)) return;
-        const itemId = String(item.itemId || item.id || '').trim();
-        if (!itemId) return;
-        const existing = items.get(itemId) || {
-          itemId,
-          title: String(item.title || item.courseTitle || '').trim() || CURSUS_TYPE_LABELS[type] || 'Devoir',
-          type,
-          order: Number.isFinite(Number(item.order)) ? Number(item.order) : 9999,
-          relatedCourseTitle: String(item.relatedCourseTitle || '').trim(),
-          datesByPromotion: new Map()
-        };
-        existing.datesByPromotion.set(promotion.id, {
-          dueAt: item.dueAt || item.deadlineAt || item.recommendedEndAt || '',
-          startAt: item.recommendedStartAt || '',
-          endAt: item.recommendedEndAt || ''
-        });
-        items.set(itemId, existing);
+  const upsert = (item, { fromTemplate = false } = {}) => {
+    const type = String(item?.type || '').toLowerCase();
+    if (!CURSUS_ASSIGNMENT_TYPES.includes(type)) return null;
+    const itemId = String(item.itemId || item.id || '').trim();
+    if (!itemId) return null;
+    const existing = items.get(itemId) || {
+      itemId,
+      title: '',
+      type,
+      order: 9999,
+      relatedCourseTitle: '',
+      __titleFromTemplate: false,
+      datesByPromotion: new Map()
+    };
+    const title = String(item.title || item.courseTitle || '').trim();
+    // 8.0P.167.360 : le TEMPLATE du cursus est la source de vérité des titres —
+    // la copie promotions.coursePlan peut être périmée (item renommé après sync).
+    if (fromTemplate || !existing.__titleFromTemplate) {
+      if (title) existing.title = title;
+      const related = String(item.relatedCourseTitle || '').trim();
+      if (related) existing.relatedCourseTitle = related;
+      if (Number.isFinite(Number(item.order))) existing.order = Number(item.order);
+      existing.type = type;
+      if (fromTemplate) existing.__titleFromTemplate = true;
+    }
+    if (!existing.title) existing.title = CURSUS_TYPE_LABELS[type] || 'Devoir';
+    items.set(itemId, existing);
+    return existing;
+  };
+
+  promotions.forEach((promotion) => {
+    const plan = Array.isArray(promotion.coursePlan) ? promotion.coursePlan : [];
+    plan.forEach((item) => {
+      const entry = upsert(item, { fromTemplate: false });
+      if (!entry) return;
+      entry.datesByPromotion.set(promotion.id, {
+        dueAt: item.dueAt || item.deadlineAt || item.recommendedEndAt || '',
+        startAt: item.recommendedStartAt || '',
+        endAt: item.recommendedEndAt || ''
       });
     });
+  });
+
+  // Titres frais depuis les templates de cursus (lecture unitaire ouverte aux
+  // utilisateurs actifs — rules 8.0P.167.290).
+  const templateIds = Array.from(new Set(promotions.map(promotionTemplateId).filter(Boolean)));
+  for (const templateId of templateIds) {
+    try {
+      const snap = await getDoc(doc(db, 'curriculumTemplates', templateId));
+      if (!snap.exists()) continue;
+      const templateItems = Array.isArray(snap.data()?.items) ? snap.data().items : [];
+      templateItems.forEach((item) => upsert(item, { fromTemplate: true }));
+    } catch (error) {
+      console.warn('[SBI Assignments] template cursus illisible :', error?.message || error);
+    }
+  }
 
   return Array.from(items.values()).sort((a, b) => a.order - b.order || a.title.localeCompare(b.title, 'fr', { sensitivity: 'base' }));
 }

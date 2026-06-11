@@ -14,7 +14,7 @@ import {
   getCallableMessage
 // 8.0P.167.359 : jeton sur l'import relatif (sans lui, une version en cache
 // sans les nouveaux exports casse tout le formulaire).
-} from './assignment-data.js?v=8.0P.167.359';
+} from './assignment-data.js?v=8.0P.167.360';
 
 function optionTag(value, label, selected) {
   return `<option value="${escapeHtml(value)}"${selected ? ' selected' : ''}>${escapeHtml(label)}</option>`;

@@ -28,8 +28,8 @@ import {
   getCallableMessage,
   loadFormationsForCreation,
   cursusBadgeHtml
-} from '/js/assignments/assignment-data.js?v=8.0P.167.359';
-import { buildAssignmentFormHtml, wireAssignmentForm } from '/js/assignments/assignment-form.js?v=8.0P.167.359';
+} from '/js/assignments/assignment-data.js?v=8.0P.167.360';
+import { buildAssignmentFormHtml, wireAssignmentForm } from '/js/assignments/assignment-form.js?v=8.0P.167.360';
 
 let mounted = false;
 let mountedView = null;

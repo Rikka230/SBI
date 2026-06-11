@@ -9335,27 +9335,60 @@ async function resolveAssignmentCursusLink(db, formationId, { cursusItemId = "",
     const wantedTitle = normalizeCursusTitleKey(autoMatchTitle);
     try {
         const snap = await db.collection("promotions").where("formationId", "==", formationId).get();
+
+        // 8.0P.167.360 — candidats fusionnés : coursePlan (dates par promotion)
+        // ÉCRASÉ par les items du TEMPLATE de cursus (source de vérité des titres,
+        // un renommage n'est pas toujours resynchronisé dans coursePlan).
+        const candidates = new Map();
+        const pushItem = (item, fromTemplate) => {
+            const type = String(item && item.type || "").toLowerCase();
+            if (!ASSIGNMENT_CURSUS_ITEM_TYPES.includes(type)) return;
+            const itemId = cleanString(item.itemId || item.id || "", 200);
+            if (!itemId) return;
+            const existing = candidates.get(itemId);
+            if (existing && existing.__fromTemplate && !fromTemplate) return;
+            candidates.set(itemId, {
+                __id: itemId,
+                __fromTemplate: fromTemplate === true || existing?.__fromTemplate === true,
+                title: cleanString(item.title || item.courseTitle || "", 200) || existing?.title || "",
+                type,
+                order: Number.isFinite(Number(item.order)) ? Number(item.order) : (existing ? existing.order : null),
+                relatedCourseTitle: cleanString(item.relatedCourseTitle || "", 200) || existing?.relatedCourseTitle || ""
+            });
+        };
+
+        const templateCache = new Map();
         for (const promoDoc of snap.docs) {
-            const plan = Array.isArray(promoDoc.data().coursePlan) ? promoDoc.data().coursePlan : [];
-            for (const item of plan) {
-                const type = String(item && item.type || "").toLowerCase();
-                if (!ASSIGNMENT_CURSUS_ITEM_TYPES.includes(type)) continue;
-                const itemId = cleanString(item.itemId || item.id || "", 200);
-                if (!itemId) continue;
-                const matchesId = cursusItemId && itemId === cursusItemId;
-                const matchesTitle = !cursusItemId && wantedTitle
-                    && normalizeCursusTitleKey(item.title || item.courseTitle) === wantedTitle;
-                if (matchesId || matchesTitle) {
-                    return {
-                        cursusItemId: itemId,
-                        cursusItemTitle: cleanString(item.title || item.courseTitle || "", 200),
-                        cursusItemType: type,
-                        cursusItemOrder: Number.isFinite(Number(item.order)) ? Number(item.order) : null,
-                        // 8.0P.167.359 : cours de rattachement — donne un nom parlant
-                        // quand l'item du cursus a gardé son titre générique.
-                        cursusItemRelatedCourseTitle: cleanString(item.relatedCourseTitle || "", 200)
-                    };
+            const promo = promoDoc.data() || {};
+            (Array.isArray(promo.coursePlan) ? promo.coursePlan : []).forEach((item) => pushItem(item, false));
+            const templateId = cleanString(
+                promo.curriculumTemplateId || promo.templateId || promo.cursusTemplateId || promo.curriculumId || "",
+                180
+            );
+            if (templateId && !templateCache.has(templateId)) {
+                try {
+                    const tDoc = await db.collection("curriculumTemplates").doc(templateId).get();
+                    templateCache.set(templateId, tDoc.exists ? (tDoc.data() || {}) : null);
+                } catch (error) {
+                    templateCache.set(templateId, null);
                 }
+            }
+            const template = templateId ? templateCache.get(templateId) : null;
+            (Array.isArray(template && template.items) ? template.items : []).forEach((item) => pushItem(item, true));
+        }
+
+        for (const item of candidates.values()) {
+            const matchesId = cursusItemId && item.__id === cursusItemId;
+            const matchesTitle = !cursusItemId && wantedTitle
+                && normalizeCursusTitleKey(item.title) === wantedTitle;
+            if (matchesId || matchesTitle) {
+                return {
+                    cursusItemId: item.__id,
+                    cursusItemTitle: item.title,
+                    cursusItemType: item.type,
+                    cursusItemOrder: item.order,
+                    cursusItemRelatedCourseTitle: item.relatedCourseTitle
+                };
             }
         }
     } catch (error) {
