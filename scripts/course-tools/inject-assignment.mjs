@@ -70,7 +70,8 @@ function sectionBody(name) {
   // Capture le corps d'une section "## NAME" jusqu'au prochain "## " ou "# " de tête.
   const re = new RegExp(`^##\\s*${name}[^\\n]*\\n([\\s\\S]*?)(?=^#{1,2}\\s|$(?![\\s\\S]))`, 'im');
   const m = raw.match(re);
-  return m ? m[1].trim() : '';
+  // Retire les séparateurs horizontaux Markdown (---) en bordure de section.
+  return m ? m[1].replace(/^\s*-{3,}\s*$/gm, '').trim() : '';
 }
 
 function paramValue(label) {
