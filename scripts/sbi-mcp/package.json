@@ -1,0 +1,12 @@
+{
+  "name": "sbi-mcp",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Serveur MCP SBI — accès admin Firestore / Auth / Storage du projet sbi-web-4f6b4 (Admin SDK, hors rules). Identifiants JAMAIS committés : ~/.sbi/sbi-admin-sa.json ou ADC gcloud.",
+  "type": "module",
+  "main": "server.mjs",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "firebase-admin": "^13.4.0"
+  }
+}
