@@ -517,6 +517,33 @@ service firebase.storage {
     }
 
     /* ============================================================
+       SCRIPTS DE LIVE (8.0P.167.357)
+       ------------------------------------------------------------
+       Chemin : live-scripts/{scriptId}/{fileName}
+       Script d'animation attaché à un live du cursus (doc Firestore
+       liveScripts/{scriptId}). Réservé profs/admins — jamais élèves.
+       ============================================================ */
+    match /live-scripts/{scriptId}/{fileName} {
+      allow read: if isTeacher() || isAdmin();
+
+      allow create, update: if (isTeacher() || isAdmin())
+        && request.resource.size < 40 * 1024 * 1024
+        && request.resource.metadata.keys().hasAny(['uploadedBy'])
+        && request.resource.metadata.uploadedBy == request.auth.uid
+        && request.resource.contentType != null
+        && (
+          request.resource.contentType == 'application/pdf' ||
+          request.resource.contentType == 'application/msword' ||
+          request.resource.contentType == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+          request.resource.contentType == 'application/vnd.ms-powerpoint' ||
+          request.resource.contentType == 'application/vnd.openxmlformats-officedocument.presentationml.presentation' ||
+          request.resource.contentType == 'text/plain'
+        );
+
+      allow delete: if isTeacher() || isAdmin();
+    }
+
+    /* ============================================================
        SÉCURITÉ PAR DÉFAUT
        ============================================================ */
     match /{allPaths=**} {
