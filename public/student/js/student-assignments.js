@@ -17,7 +17,7 @@ import {
   escapeHtml, kindMeta, subStatusMeta, formatDate, dueState, formatNote,
   snapToArray, chunk, assignmentCallable, getCallableMessage,
   userFormationIds, userPromotionIds, STUDENT_ROLES, submissionId as buildSubmissionId
-} from '/js/assignments/assignment-data.js?v=8.0P.167.273';
+} from '/js/assignments/assignment-data.js?v=8.0P.167.358';
 
 const MAX_FILE_SIZE = 40 * 1024 * 1024;
 const MAX_IMAGE_DIMENSION = 1800;

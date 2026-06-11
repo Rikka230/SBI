@@ -32,6 +32,7 @@
   let accountEscalationsModulePromise = null;
   let accountsWatchStarted = false;
   let studentCoursePlanEnhancementPromise = null;
+  let studentPlanAssignmentsPromise = null;
   let teacherCoursePlanEnhancementPromise = null;
 
   const releasePreload = () => {
@@ -151,6 +152,21 @@
 
       studentCoursePlanEnhancementPromise.then((module) => {
         module?.mountStudentCoursePlanDates?.({ source: 'components' });
+      });
+
+      // 8.0P.167.358 — devoirs/évaluations du cursus dans la progression élève.
+      if (!studentPlanAssignmentsPromise) {
+        studentPlanAssignmentsPromise = import(withVersion('/student/js/student-plan-assignments.js'))
+          .catch((error) => {
+            studentPlanAssignmentsPromise = null;
+            if (window.localStorage?.getItem('sbiDebugAccess') === 'true') {
+              console.warn('[SBI Student PlanAsg] Devoirs du parcours non chargés :', error);
+            }
+            return null;
+          });
+      }
+      studentPlanAssignmentsPromise.then((module) => {
+        module?.mountStudentPlanAssignments?.();
       });
     }
 

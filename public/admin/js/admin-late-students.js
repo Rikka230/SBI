@@ -42,6 +42,7 @@ let latenessByPromotion = new Map();
 let qualiopiByPromotion = new Map();
 let rowsByPromotion = new Map();
 let liveByPromotion = new Map();
+let assignmentLateByPromotion = new Map(); // 8.0P.167.358 — devoirs/évals en retard
 let selectedPromotionId = '';
 let selectedStudentId = '';
 let studentFilter = 'all';
@@ -793,6 +794,119 @@ function renderLiveSection(studentId = '') {
     </div>`;
 }
 
+// ── Devoirs & évaluations en retard (8.0P.167.358) ──────────────────────────
+// Devoirs PUBLIÉS de la promotion (ciblés promo ou toute la formation), avec
+// échéance effective = dueAt du devoir, sinon échéance de l'item du cursus lié
+// (assignments.cursusItemId → coursePlan). En retard = échéance passée + aucun
+// dépôt de l'élève (id dépôt = `${assignmentId}_${uid}`).
+async function ensureAssignmentLateness(promotionId = '') {
+  if (!promotionId || assignmentLateByPromotion.has(promotionId)) return;
+  assignmentLateByPromotion.set(promotionId, { status: 'loading' });
+  const promotion = promotions.find((item) => item.id === promotionId);
+  if (!promotion) { assignmentLateByPromotion.set(promotionId, { status: 'error' }); return; }
+
+  try {
+    const seen = new Map();
+    const keep = (snap, extraFilter) => snap.forEach((d) => {
+      const a = { id: d.id, ...d.data() };
+      if (a.status === 'published' && extraFilter(a)) seen.set(a.id, a);
+    });
+    keep(await getDocs(query(collection(db, 'assignments'), where('promotionId', '==', promotionId))), () => true);
+    const formationId = promotion.formationId || promotion.formationID || '';
+    if (formationId) {
+      keep(
+        await getDocs(query(collection(db, 'assignments'), where('formationId', '==', formationId))),
+        (a) => !a.promotionId || a.promotionId === '' || a.promotionId === promotionId
+      );
+    }
+
+    // Échéance effective : dueAt du devoir, sinon planning du cursus via le lien.
+    const plan = getPlanForPromotion(promotion);
+    const planByItemId = new Map();
+    plan.forEach((item) => {
+      const itemId = String(item.itemId || item.id || '').trim();
+      if (itemId) planByItemId.set(itemId, item);
+    });
+    const today = todayIso();
+    const dueAssignments = [];
+    for (const a of seen.values()) {
+      let due = String(a.dueAt || '').slice(0, 10);
+      if (!due && a.cursusItemId && planByItemId.has(a.cursusItemId)) {
+        due = getDeadlineDate(planByItemId.get(a.cursusItemId));
+      }
+      if (!isIsoDate(due)) continue;
+      dueAssignments.push({ assignment: a, due, isPast: due < today });
+    }
+
+    // Dépôts existants pour les devoirs échus (un getDocs par devoir, borné).
+    const submissionsByAssignment = new Map();
+    await Promise.all(dueAssignments.filter((entry) => entry.isPast).map(async ({ assignment }) => {
+      try {
+        const snap = await getDocs(query(collection(db, 'assignmentSubmissions'), where('assignmentId', '==', assignment.id)));
+        const uids = new Set();
+        snap.forEach((d) => { const s = d.data() || {}; if (s.studentUid) uids.add(s.studentUid); });
+        submissionsByAssignment.set(assignment.id, uids);
+      } catch (error) {
+        console.warn('[SBI Retards] dépôts devoir indisponibles :', error?.message || error);
+        submissionsByAssignment.set(assignment.id, null); // inconnu → ne pas accuser à tort
+      }
+    }));
+
+    assignmentLateByPromotion.set(promotionId, { status: 'ready', dueAssignments, submissionsByAssignment, today });
+  } catch (error) {
+    console.warn('[SBI Retards] devoirs en retard indisponibles :', error?.message || error);
+    assignmentLateByPromotion.set(promotionId, { status: 'error' });
+  }
+  if (promotionId === selectedPromotionId) {
+    renderStudentList();
+    renderStudentFiche();
+  }
+}
+
+function getLateAssignmentsForStudent(studentId = '') {
+  const entry = assignmentLateByPromotion.get(selectedPromotionId);
+  if (!entry || entry.status !== 'ready') return null;
+  const out = [];
+  entry.dueAssignments.forEach(({ assignment, due, isPast }) => {
+    if (!isPast) return;
+    const uids = entry.submissionsByAssignment.get(assignment.id);
+    if (uids === null || uids === undefined) return; // dépôts illisibles → neutre
+    if (uids.has(studentId)) return;
+    out.push({
+      title: assignment.title || 'Devoir',
+      kind: assignment.kind === 'evaluation' ? 'Évaluation' : 'Devoir',
+      due,
+      daysLate: Math.max(1, diffDaysInclusive(due, entry.today) - 1)
+    });
+  });
+  return out.sort((a, b) => b.daysLate - a.daysLate);
+}
+
+function renderAssignmentLateSection(studentId = '') {
+  const entry = assignmentLateByPromotion.get(selectedPromotionId);
+  if (!entry || entry.status === 'loading') {
+    return '<div class="sbi-late-fiche-section"><h4>Devoirs &amp; évaluations</h4><div class="sbi-late-empty">Chargement des devoirs…</div></div>';
+  }
+  if (entry.status === 'error') {
+    return '<div class="sbi-late-fiche-section"><h4>Devoirs &amp; évaluations</h4><div class="sbi-late-empty">Devoirs indisponibles.</div></div>';
+  }
+  if (!entry.dueAssignments.length) {
+    return '<div class="sbi-late-fiche-section"><h4>Devoirs &amp; évaluations</h4><div class="sbi-late-empty">Aucun devoir publié avec échéance pour cette promotion.</div></div>';
+  }
+  const late = getLateAssignmentsForStudent(studentId) || [];
+  return `
+    <div class="sbi-late-fiche-section">
+      <h4>Devoirs &amp; évaluations en retard <span class="sbi-late-d-kicker ${late.length ? 'is-red' : ''}">${late.length}</span></h4>
+      ${late.length
+        ? `<ul class="sbi-late-courses">${late.map((item) => `<li>
+            <span class="late-course-title">${escapeHtml(item.kind)} — ${escapeHtml(item.title)}</span>
+            <span class="late-course-meta">échéance ${formatDate(item.due)} · aucun dépôt</span>
+            <span class="late-course-days">+${item.daysLate} j</span>
+          </li>`).join('')}</ul>`
+        : '<div class="sbi-late-empty">Aucun devoir en retard (dépôts à jour). ✅</div>'}
+    </div>`;
+}
+
 // ── Relance email d'un élève en retard (Cloud Function Brevo, confirmation) ──
 async function handleSendReminder(studentId = '') {
   const promotion = promotions.find((item) => item.id === selectedPromotionId);
@@ -1044,6 +1158,8 @@ function renderStudentListItem(row = {}) {
   const badges = [];
   if (lateness.lateCount) badges.push(`<span class="sbi-late-chip is-late" title="cours en retard">⚠ ${lateness.lateCount}</span>`);
   if (lateness.dropoutCount) badges.push(`<span class="sbi-late-chip is-amber" title="cours non commencés">${lateness.dropoutCount}</span>`);
+  const lateAsg = getLateAssignmentsForStudent(student.id);
+  if (Array.isArray(lateAsg) && lateAsg.length) badges.push(`<span class="sbi-late-chip is-late" title="devoirs/évaluations en retard">📝 ${lateAsg.length}</span>`);
   badges.push(`<span class="sbi-late-chip is-q" title="couverture Qualiopi">${row.coverage === null ? '—' : row.coverage + '%'}</span>`);
   return `
     <button type="button" class="sbi-late-srow ${active ? 'is-active' : ''}" data-student-id="${escapeHtml(student.id)}">
@@ -1130,6 +1246,8 @@ function renderStudentFiche() {
         : '<div class="sbi-late-empty">Aucune preuve Qualiopi de type cours dans le cursus.</div>'}
     </div>
 
+    ${renderAssignmentLateSection(student.id)}
+
     ${renderLiveSection(student.id)}
   `;
 }
@@ -1203,6 +1321,7 @@ function renderDetail() {
   renderStudentList();
   renderStudentFiche();
   ensureLiveAttendance(promotion.id);
+  ensureAssignmentLateness(promotion.id);
 }
 
 function renderAll() {

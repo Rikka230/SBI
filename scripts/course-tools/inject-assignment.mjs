@@ -54,6 +54,7 @@ if (args[0] === '--verify') {
   console.log(`statut    : ${a.status} | Qualiopi: ${a.isQualiopiEvidence ? 'oui' : 'non'}`);
   console.log(`formation : ${a.formationName} (${a.formationId})${a.promotionId ? ` | promotion: ${a.promotionName}` : ' | toutes promotions'}`);
   console.log(`dépôt     : fichier=${a.submissionMode?.file ? 'oui' : 'non'} texte=${a.submissionMode?.text ? 'oui' : 'non'} | date limite: ${a.dueAt || '(admin)'}`);
+  console.log(`cursus    : ${a.cursusItemId ? `lié — n°${Number(a.cursusItemOrder) + 1} « ${a.cursusItemTitle} » (${a.cursusItemId})` : 'non lié'}`);
   console.log(`consigne  : ${String(a.consigne || '').length} car., ${String(a.consigne || '').split('\n').length} ligne(s)`);
   console.log('--- début consigne ---');
   console.log(String(a.consigne || '').slice(0, 600));
@@ -174,6 +175,10 @@ const result = await callFunction('createOrUpdateAssignment', {
   submissionMode: { file: fileMode, text: textMode },
   gradeMax,
   isQualiopiEvidence,
+  // 8.0P.167.358 : la CF lie automatiquement le devoir à l'item du cursus
+  // (coursePlan, types assignment/exam/evaluation) dont le titre normalisé
+  // correspond au titre du devoir.
+  cursusAutoMatch: true,
   status: 'pending_validation'
 }, idToken);
 

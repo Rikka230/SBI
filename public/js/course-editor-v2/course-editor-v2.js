@@ -16,9 +16,13 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
 
 import {
+  clearChapterMedia,
   clearPendingMediaForChapter,
+  consumePendingMediaDeletes,
+  deleteStoredMediaByUrl,
   formatBytes,
   getPendingResourceFileMeta,
+  hasChapterMedia,
   hasPendingMedia,
   restoreCurrentMediaPreview,
   setPendingImageFile,
@@ -27,7 +31,7 @@ import {
   syncChapterMediaFromDom,
   uploadPendingMediaForChapters,
   validateCourseDocumentSize
-} from '/admin/js/course-media-storage.js?v=8.0P.167.354';
+} from '/admin/js/course-media-storage.js?v=8.0P.167.358';
 
 const MAX_QUERY_VALUES = 10;
 const VERSION = '8.0P.167.205';
@@ -1717,6 +1721,15 @@ function setMediaZonesVisibility(mediaType = 'image') {
   if (videoZone) videoZone.style.display = safeType === 'video' ? 'grid' : 'none';
 }
 
+// 8.0P.167.358 — visibilité des boutons « Retirer » selon l'état du média
+// (URL persistée OU fichier en attente d'upload).
+function updateMediaRemoveButtons(block) {
+  const imageBtn = document.getElementById('media-image-remove');
+  const videoBtn = document.getElementById('media-video-remove');
+  if (imageBtn) imageBtn.style.display = !state.readOnly && hasChapterMedia(block.id, block, 'image') ? '' : 'none';
+  if (videoBtn) videoBtn.style.display = !state.readOnly && hasChapterMedia(block.id, block, 'video') ? '' : 'none';
+}
+
 function setupLessonMediaControls(block) {
   if (!block || block.type !== 'lesson') return;
   block.mediaType = block.mediaType === 'video' ? 'video' : 'image';
@@ -1725,6 +1738,7 @@ function setupLessonMediaControls(block) {
 
   setMediaZonesVisibility(block.mediaType);
   restoreCurrentMediaPreview(block.id, block);
+  updateMediaRemoveButtons(block);
 
   $all('input[name="media_type"]').forEach((input) => {
     input.addEventListener('change', () => {
@@ -1732,6 +1746,7 @@ function setupLessonMediaControls(block) {
       block.mediaType = input.value === 'video' ? 'video' : 'image';
       setMediaZonesVisibility(block.mediaType);
       restoreCurrentMediaPreview(block.id, block);
+      updateMediaRemoveButtons(block);
       markDirty();
       renderPreview();
     });
@@ -1739,6 +1754,24 @@ function setupLessonMediaControls(block) {
 
   setupV2DropZone('drop-zone-image', 'chapter-image-upload', 'image', block);
   setupV2DropZone('drop-zone-video', 'chapter-video-upload', 'video', block);
+
+  // 8.0P.167.358 — retrait explicite du média (la suppression Storage de
+  // l'ancien fichier n'a lieu qu'APRÈS une sauvegarde réussie).
+  const bindRemove = (buttonId, kind) => {
+    const button = document.getElementById(buttonId);
+    if (!button) return;
+    button.addEventListener('click', () => {
+      if (state.readOnly) return;
+      const label = kind === 'video' ? 'la vidéo' : "l'image";
+      if (!window.confirm(`Retirer ${label} de cette leçon ? Le retrait sera définitif à la prochaine sauvegarde.`)) return;
+      clearChapterMedia(block.id, block, kind);
+      updateMediaRemoveButtons(block);
+      markDirty();
+      renderPreview();
+    });
+  };
+  bindRemove('media-image-remove', 'image');
+  bindRemove('media-video-remove', 'video');
 }
 
 function setupV2DropZone(dropZoneId, inputId, type, block) {
@@ -1794,6 +1827,7 @@ function handleV2MediaFile(type, file, block, input = null) {
     if (input) input.value = '';
     setMediaZonesVisibility(block.mediaType);
     restoreCurrentMediaPreview(block.id, block);
+    updateMediaRemoveButtons(block);
     markDirty();
     renderPreview();
   } catch (error) {
@@ -2270,6 +2304,7 @@ function renderLessonMediaEditor(block) {
         </div>
         <input type="hidden" id="chapter-image-base64" value="${escapeHtml(block.mediaImage || '')}">
         <img id="chapter-image-preview" class="sbi-media-preview sbi-media-preview--image" alt="Aperçu image" style="display:none;">
+        <button type="button" id="media-image-remove" class="sbi-editor-btn sbi-editor-btn--tiny sbi-editor-btn--danger" style="justify-self:start; display:none;">✕ Retirer l'image</button>
       </div>
       <div id="media-video-zone" class="sbi-media-zone" data-media-zone="video" style="display:${mediaType === 'video' ? 'grid' : 'none'};">
         <div class="sbi-media-dropzone" id="drop-zone-video" role="button" tabindex="0">
@@ -2280,6 +2315,7 @@ function renderLessonMediaEditor(block) {
         </div>
         <input type="hidden" id="chapter-video-base64" value="${escapeHtml(block.mediaVideo || '')}">
         <video id="chapter-video-preview" class="sbi-media-preview sbi-media-preview--video" controls style="display:none;"></video>
+        <button type="button" id="media-video-remove" class="sbi-editor-btn sbi-editor-btn--tiny sbi-editor-btn--danger" style="justify-self:start; display:none;">✕ Retirer la vidéo</button>
       </div>
     </div>
   `;
@@ -3232,6 +3268,12 @@ async function saveCourse(action = 'draft', { silent = false } = {}) {
         actif: true,
         lmsStatus: 'published'
       };
+    }
+
+    // 8.0P.167.358 — médias retirés : le doc cours ne les référence plus,
+    // on peut maintenant purger les anciens fichiers Storage (best effort).
+    for (const mediaUrl of consumePendingMediaDeletes()) {
+      void deleteStoredMediaByUrl(mediaUrl);
     }
 
     state.status = payload.statutValidation;

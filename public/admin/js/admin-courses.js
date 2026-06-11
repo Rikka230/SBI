@@ -33,6 +33,10 @@ import {
     hasPendingMedia,
     clearAllPendingMedia,
     clearPendingMediaForChapter,
+    clearChapterMedia,
+    hasChapterMedia,
+    consumePendingMediaDeletes,
+    deleteStoredMediaByUrl,
     validateCourseDocumentSize,
     validateVideoFileForStorage,
     deleteUnusedCourseMediaFromStorage
@@ -615,7 +619,35 @@ function setupRejectButton() {
     });
 }
 
+// 8.0P.167.358 — boutons « Retirer l'image / la vidéo » (éditeur legacy).
+function updateLegacyMediaRemoveButtons(chapter) {
+    const imageBtn = document.getElementById('media-image-remove');
+    const videoBtn = document.getElementById('media-video-remove');
+    if (imageBtn) imageBtn.style.display = chapter && hasChapterMedia(chapter.id, chapter, 'image') ? '' : 'none';
+    if (videoBtn) videoBtn.style.display = chapter && hasChapterMedia(chapter.id, chapter, 'video') ? '' : 'none';
+}
+
+function setupMediaRemoveButtons() {
+    const bind = (buttonId, kind) => {
+        const button = document.getElementById(buttonId);
+        if (!button || button.dataset.sbiMediaRemoveBound === 'true') return;
+        button.dataset.sbiMediaRemoveBound = 'true';
+        button.addEventListener('click', () => {
+            if (!activeChapterId) return;
+            const chapter = currentChapters.find(c => c.id === activeChapterId);
+            if (!chapter) return;
+            const label = kind === 'video' ? 'la vidéo' : "l'image";
+            if (!confirm(`Retirer ${label} de cette étape ? Le retrait sera définitif à la prochaine sauvegarde.`)) return;
+            clearChapterMedia(activeChapterId, chapter, kind);
+            updateLegacyMediaRemoveButtons(chapter);
+        });
+    };
+    bind('media-image-remove', 'image');
+    bind('media-video-remove', 'video');
+}
+
 function setupMediaInputs() {
+    setupMediaRemoveButtons();
     const imgUpload = document.getElementById('chapter-image-upload');
 
     if (imgUpload) {
@@ -635,6 +667,7 @@ function setupMediaInputs() {
 
                 const chapter = currentChapters.find(c => c.id === activeChapterId);
                 restoreCurrentMediaPreview(activeChapterId, chapter);
+                updateLegacyMediaRemoveButtons(chapter);
 
             } catch (error) {
                 e.target.value = '';
@@ -663,6 +696,7 @@ function setupMediaInputs() {
 
                 const chapter = currentChapters.find(c => c.id === activeChapterId);
                 restoreCurrentMediaPreview(activeChapterId, chapter);
+                updateLegacyMediaRemoveButtons(chapter);
 
             } catch (error) {
                 e.target.value = '';
@@ -884,6 +918,7 @@ window.selectChapter = function(id) {
         }
 
         restoreCurrentMediaPreview(chapter.id, chapter);
+        updateLegacyMediaRemoveButtons(chapter);
 
         if (window.quill) {
             window.quill.setContents([]);
@@ -1153,6 +1188,12 @@ async function saveCourseToFirebase(actionType = 'admin_save') {
             if (notifAction) await emitCourseWorkflowNotifications(courseRefId, notifAction);
         } catch (notificationError) {
             console.warn("[SBI Courses] Cours sauvegardé, mais notification non envoyée :", notificationError);
+        }
+
+        // 8.0P.167.358 — médias retirés : le doc ne les référence plus, purge
+        // best effort des anciens fichiers Storage.
+        for (const mediaUrl of consumePendingMediaDeletes()) {
+            void deleteStoredMediaByUrl(mediaUrl);
         }
 
         editingCourseOriginalStatus = finalStatut;

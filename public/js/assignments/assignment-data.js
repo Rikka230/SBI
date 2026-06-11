@@ -218,6 +218,87 @@ export async function loadPromotionsForFormation({ db, formationId }) {
   }
 }
 
+/* ============================================================
+   8.0P.167.358 — Lien devoirs ↔ cursus
+   Les cursus (promotions.coursePlan) contiennent des items typés
+   assignment / exam / evaluation, avec ordre et dates par promotion
+   (recommendedStartAt / dueAt calculés au prorata). Ces helpers les
+   exposent au formulaire et aux listes.
+   ============================================================ */
+
+export const CURSUS_ASSIGNMENT_TYPES = ['assignment', 'exam', 'evaluation'];
+
+export const CURSUS_TYPE_LABELS = {
+  assignment: 'Devoir',
+  exam: 'Examen',
+  evaluation: 'Évaluation'
+};
+
+/**
+ * Items devoir/examen/évaluation du cursus d'une formation, uniques par
+ * itemId, avec les dates calculées par promotion :
+ * { itemId, title, type, order, datesByPromotion: Map(promotionId → {dueAt, startAt, endAt}) }
+ */
+export async function loadCursusAssignmentItems({ db, formationId }) {
+  if (!formationId) return [];
+  let promotions = [];
+  try {
+    const snap = await getDocs(query(collection(db, 'promotions'), where('formationId', '==', formationId)));
+    promotions = snapToArray(snap);
+  } catch (error) {
+    console.warn('[SBI Assignments] items cursus indisponibles :', error?.message || error);
+    return [];
+  }
+
+  const items = new Map();
+  promotions
+    .filter((p) => String(p.status || 'active').toLowerCase() !== 'archived')
+    .forEach((promotion) => {
+      const plan = Array.isArray(promotion.coursePlan) ? promotion.coursePlan : [];
+      plan.forEach((item) => {
+        const type = String(item?.type || '').toLowerCase();
+        if (!CURSUS_ASSIGNMENT_TYPES.includes(type)) return;
+        const itemId = String(item.itemId || item.id || '').trim();
+        if (!itemId) return;
+        const existing = items.get(itemId) || {
+          itemId,
+          title: String(item.title || item.courseTitle || '').trim() || CURSUS_TYPE_LABELS[type] || 'Devoir',
+          type,
+          order: Number.isFinite(Number(item.order)) ? Number(item.order) : 9999,
+          datesByPromotion: new Map()
+        };
+        existing.datesByPromotion.set(promotion.id, {
+          dueAt: item.dueAt || item.deadlineAt || item.recommendedEndAt || '',
+          startAt: item.recommendedStartAt || '',
+          endAt: item.recommendedEndAt || ''
+        });
+        items.set(itemId, existing);
+      });
+    });
+
+  return Array.from(items.values()).sort((a, b) => a.order - b.order || a.title.localeCompare(b.title, 'fr', { sensitivity: 'base' }));
+}
+
+/** Date limite suggérée pour un item cursus : promotion ciblée, sinon première promotion datée. */
+export function suggestedDueAtForCursusItem(item, promotionId = '') {
+  if (!item?.datesByPromotion) return '';
+  if (promotionId && item.datesByPromotion.has(promotionId)) {
+    return item.datesByPromotion.get(promotionId).dueAt || '';
+  }
+  for (const dates of item.datesByPromotion.values()) {
+    if (dates.dueAt) return dates.dueAt;
+  }
+  return '';
+}
+
+/** Badge « Cursus n°X » pour un devoir lié (assignment doc). */
+export function cursusBadgeHtml(assignment = {}) {
+  if (!assignment.cursusItemId) return '';
+  const order = Number(assignment.cursusItemOrder);
+  const label = Number.isFinite(order) ? `Cursus n°${order + 1}` : 'Cursus';
+  return `<span class="sbi-asg-badge" data-tone="info" title="${escapeHtml(assignment.cursusItemTitle || '')}">🧭 ${escapeHtml(label)}</span>`;
+}
+
 export function getCallableMessage(error, fallback = 'Action impossible pour le moment.') {
   return String(error?.message || error?.details?.message || fallback)
     .replace(/^Firebase:\s*/i, '')
