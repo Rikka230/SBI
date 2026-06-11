@@ -1,8 +1,13 @@
 import { auth, app } from '/js/firebase-init.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js';
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-functions.js';
+// 8.0P.167.357 — Scripts de live : doc liveScripts/{scriptId} + fichier Storage live-scripts/.
+import { getFirestore, collection, query, where, getDocs, doc, setDoc, deleteDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js';
 
 const functionsInstance = getFunctions(app, 'europe-west1');
+const firestoreDb = getFirestore(app);
+const storage = getStorage(app);
 const getLiveSchedulerData = httpsCallable(functionsInstance, 'getLiveSchedulerData');
 const scheduleLiveSession = httpsCallable(functionsInstance, 'scheduleLiveSession');
 const notifyLiveStarted = httpsCallable(functionsInstance, 'notifyLiveStarted');
@@ -14,6 +19,7 @@ const state = {
   promotions: [],
   sessions: [],
   templatesById: new Map(),
+  scriptsById: new Map(),
   selectedPromotionId: '',
   selectedLiveId: ''
 };
@@ -564,6 +570,178 @@ function renderTestRoomBox(promotion = {}) {
   `;
 }
 
+/* ============================================================
+   8.0P.167.357 — SCRIPTS DE LIVE (profs/admins uniquement)
+   Un script d'animation (PDF) est attaché à un live du cursus par
+   formation + titre normalisé : il reste disponible que le live soit
+   planifié ou non, et pour toutes les promotions de la formation.
+   ============================================================ */
+
+const LIVE_SCRIPT_ALLOWED_TYPES = new Set([
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-powerpoint',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'text/plain'
+]);
+
+function slugifyScriptKey(value = '') {
+  return normalizeText(value).replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80) || 'live';
+}
+
+function getPromotionFormationId(promotion = {}) {
+  return clean(promotion.formationId || promotion.formation?.id || '', 180);
+}
+
+function getRowScriptId(promotion = {}, row = {}) {
+  const formationId = getPromotionFormationId(promotion);
+  if (!formationId) return '';
+  return `${formationId}__${slugifyScriptKey(row.title || '')}`;
+}
+
+function findScriptForRow(promotion = {}, row = {}) {
+  const scriptId = getRowScriptId(promotion, row);
+  if (scriptId && state.scriptsById.has(scriptId)) return state.scriptsById.get(scriptId);
+  const formationId = getPromotionFormationId(promotion);
+  const rowIds = new Set(getItemIds(row.item || {}).concat(getItemIds(row.coursePlan || {}), getItemIds(row.planning || {}), [clean(row.id, 180)]));
+  const titleKey = normalizeText(row.title || '');
+  for (const script of state.scriptsById.values()) {
+    if (formationId && clean(script.formationId, 180) !== formationId) continue;
+    if (script.sourceItemId && rowIds.has(clean(script.sourceItemId, 180))) return script;
+    if (titleKey && normalizeText(script.titleKey || script.liveTitle || '') === titleKey) return script;
+  }
+  return null;
+}
+
+async function loadLiveScripts() {
+  const formationIds = [...new Set(state.promotions.map(getPromotionFormationId).filter(Boolean))];
+  const nextScripts = new Map();
+  for (const formationId of formationIds) {
+    try {
+      const snap = await getDocs(query(collection(firestoreDb, 'liveScripts'), where('formationId', '==', formationId)));
+      snap.forEach((docSnap) => nextScripts.set(docSnap.id, { id: docSnap.id, ...(docSnap.data() || {}) }));
+    } catch (error) {
+      console.warn('[SBI Lives V2] Scripts de live non chargés pour la formation', formationId, error);
+    }
+  }
+  state.scriptsById = nextScripts;
+}
+
+function formatScriptDate(value) {
+  const date = value && typeof value.toDate === 'function' ? value.toDate() : (value ? new Date(value) : null);
+  if (!date || !Number.isFinite(date.getTime())) return '';
+  return new Intl.DateTimeFormat('fr-FR', { dateStyle: 'medium', timeStyle: 'short' }).format(date);
+}
+
+function renderScriptBox(promotion = {}, row = {}) {
+  const script = findScriptForRow(promotion, row);
+  const canDelete = Boolean(script) && (state.role === 'admin' || script.uploadedBy === state.uid);
+  const uploadedLine = script
+    ? [script.fileName, formatScriptDate(script.uploadedAt) ? `déposé le ${formatScriptDate(script.uploadedAt)}` : '', script.uploadedByEmail ? `par ${script.uploadedByEmail}` : '']
+      .filter(Boolean).join(' · ')
+    : '';
+  return `
+    <section class="sbi-live-v2-info">
+      <h3>Script d'animation (profs / admins)</h3>
+      ${script
+        ? `<p class="sbi-live-v2-form-note">${escapeHtml(uploadedLine)}</p>
+           <div class="sbi-live-v2-actions">
+             <button class="sbi-live-v2-btn sbi-live-v2-btn-primary" type="button" id="sbi-live-v2-script-download">Télécharger le script</button>
+             <button class="sbi-live-v2-btn" type="button" id="sbi-live-v2-script-upload">Remplacer le script</button>
+             ${canDelete ? '<button class="sbi-live-v2-btn" type="button" id="sbi-live-v2-script-delete" style="color:var(--live-v2-red);border-color:var(--live-v2-red);">Supprimer</button>' : ''}
+           </div>`
+        : `<p class="sbi-live-v2-form-note">Aucun script pour ce live. Ajoutez un PDF de déroulé pour les animateurs (jamais visible des élèves).</p>
+           <div class="sbi-live-v2-actions">
+             <button class="sbi-live-v2-btn" type="button" id="sbi-live-v2-script-upload">Ajouter un script (PDF)</button>
+           </div>`}
+      <input type="file" id="sbi-live-v2-script-file" accept=".pdf,.doc,.docx,.ppt,.pptx,.txt" style="display:none">
+    </section>
+  `;
+}
+
+async function uploadScriptForRow(promotion, row, file) {
+  if (!file) return;
+  const contentType = clean(file.type || '', 120) || 'application/pdf';
+  if (!LIVE_SCRIPT_ALLOWED_TYPES.has(contentType)) {
+    setStatus('Format non autorisé : utilisez un PDF (ou Word/PowerPoint/texte).', 'error');
+    return;
+  }
+  const formationId = getPromotionFormationId(promotion);
+  if (!formationId) {
+    setStatus('Formation introuvable pour cette promotion : script impossible.', 'error');
+    return;
+  }
+  const previous = findScriptForRow(promotion, row);
+  const scriptId = previous?.id || getRowScriptId(promotion, row);
+  const safeName = clean(file.name || 'script.pdf', 160).replace(/[^\w.\- ]+/g, '_') || 'script.pdf';
+  const storagePath = `live-scripts/${scriptId}/${safeName}`;
+  setStatus('Envoi du script de live…', 'muted');
+  try {
+    await uploadBytes(storageRef(storage, storagePath), file, {
+      contentType,
+      customMetadata: { uploadedBy: state.uid }
+    });
+    const payload = {
+      formationId,
+      sourceItemId: clean(getRowSourceId(row), 180),
+      titleKey: normalizeText(row.title || ''),
+      liveTitle: clean(row.title || '', 200),
+      fileName: safeName,
+      storagePath,
+      contentType,
+      size: Number(file.size) || 0,
+      uploadedBy: state.uid,
+      uploadedByEmail: clean(auth.currentUser?.email || '', 200),
+      uploadedAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    };
+    await setDoc(doc(firestoreDb, 'liveScripts', scriptId), payload);
+    if (previous?.storagePath && previous.storagePath !== storagePath) {
+      try { await deleteObject(storageRef(storage, previous.storagePath)); } catch (_) {}
+    }
+    state.scriptsById.set(scriptId, { id: scriptId, ...payload, uploadedAt: new Date() });
+    renderDetail();
+    setStatus('Script de live enregistré.', 'success');
+  } catch (error) {
+    console.error('[SBI Lives V2] Envoi du script impossible :', error);
+    setStatus(error?.message || 'Envoi du script impossible.', 'error');
+  }
+}
+
+async function downloadScriptForRow(promotion, row) {
+  const script = findScriptForRow(promotion, row);
+  if (!script?.storagePath) return;
+  setStatus('Préparation du téléchargement…', 'muted');
+  try {
+    const url = await getDownloadURL(storageRef(storage, script.storagePath));
+    window.open(url, '_blank', 'noopener,noreferrer');
+    setStatus('Script de live prêt.', 'success');
+  } catch (error) {
+    console.error('[SBI Lives V2] Téléchargement du script impossible :', error);
+    setStatus(error?.message || 'Téléchargement du script impossible.', 'error');
+  }
+}
+
+async function deleteScriptForRow(promotion, row) {
+  const script = findScriptForRow(promotion, row);
+  if (!script?.id) return;
+  if (!window.confirm(`Supprimer le script « ${script.fileName || 'script'} » de ce live ?`)) return;
+  setStatus('Suppression du script…', 'muted');
+  try {
+    await deleteDoc(doc(firestoreDb, 'liveScripts', script.id));
+    if (script.storagePath) {
+      try { await deleteObject(storageRef(storage, script.storagePath)); } catch (_) {}
+    }
+    state.scriptsById.delete(script.id);
+    renderDetail();
+    setStatus('Script supprimé.', 'success');
+  } catch (error) {
+    console.error('[SBI Lives V2] Suppression du script impossible :', error);
+    setStatus(error?.message || 'Suppression du script impossible.', 'error');
+  }
+}
+
 function renderDetail() {
   const root = $('sbi-live-v2-detail');
   const promotion = getSelectedPromotion();
@@ -602,6 +780,8 @@ function renderDetail() {
           <span>Source du titre</span><strong>${escapeHtml(row.titleSource)}</strong>
         </div>
       </section>
+
+      ${renderScriptBox(promotion, row)}
 
       ${renderTestRoomBox(promotion)}
 
@@ -728,7 +908,47 @@ function bindLiveV2DelegatedEvents() {
       event.preventDefault();
       const promotion = getSelectedPromotion();
       if (promotion) await openOrCreateTestRoom(promotion);
+      return;
     }
+
+    // 8.0P.167.357 — actions Script de live.
+    const scriptDownloadButton = target?.closest?.('#sbi-live-v2-script-download');
+    if (scriptDownloadButton && root.contains(scriptDownloadButton)) {
+      event.preventDefault();
+      const promotion = getSelectedPromotion();
+      const row = getSelectedLiveRow(promotion);
+      if (promotion && row) await downloadScriptForRow(promotion, row);
+      return;
+    }
+
+    const scriptUploadButton = target?.closest?.('#sbi-live-v2-script-upload');
+    if (scriptUploadButton && root.contains(scriptUploadButton)) {
+      event.preventDefault();
+      $('sbi-live-v2-script-file')?.click();
+      return;
+    }
+
+    const scriptDeleteButton = target?.closest?.('#sbi-live-v2-script-delete');
+    if (scriptDeleteButton && root.contains(scriptDeleteButton)) {
+      event.preventDefault();
+      const promotion = getSelectedPromotion();
+      const row = getSelectedLiveRow(promotion);
+      if (promotion && row) await deleteScriptForRow(promotion, row);
+      return;
+    }
+  });
+
+  // 8.0P.167.357 — input fichier du script de live (recréé à chaque renderDetail,
+  // donc délégation sur le change au niveau racine).
+  root.addEventListener('change', async (event) => {
+    const input = event.target?.closest?.('#sbi-live-v2-script-file');
+    if (!input || !root.contains(input)) return;
+    const file = input.files && input.files[0];
+    input.value = '';
+    if (!file) return;
+    const promotion = getSelectedPromotion();
+    const row = getSelectedLiveRow(promotion);
+    if (promotion && row) await uploadScriptForRow(promotion, row, file);
   });
 
   root.addEventListener('submit', async (event) => {
@@ -884,6 +1104,7 @@ async function refreshData(options = {}) {
     state.promotions = Array.isArray(data.promotions) ? data.promotions : [];
     state.sessions = Array.isArray(data.sessions) ? data.sessions : [];
     loadTemplatesFromServer(data.templates);
+    await loadLiveScripts();
     state.promotions.sort((a, b) => getPromotionName(a).localeCompare(getPromotionName(b), 'fr', { sensitivity: 'base' }));
     if (options.preserveSelection) {
       state.selectedPromotionId = state.promotions.some((promotion) => promotion.id === previousPromotionId) ? previousPromotionId : '';

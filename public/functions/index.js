@@ -9335,7 +9335,9 @@ exports.createOrUpdateAssignment = onCall({
     const assignmentId = cleanString(data.assignmentId, 200);
     const kind = data.kind === "evaluation" ? "evaluation" : "devoir";
     const title = cleanString(data.title, 200);
-    const consigne = cleanString(data.consigne, 8000);
+    // 8.0P.167.357 : la consigne est saisie en textarea et rendue en pre-wrap —
+    // cleanString écrasait les sauts de ligne, cleanMultiline les préserve.
+    const consigne = cleanMultiline(data.consigne, 8000);
     const formationId = cleanString(data.formationId, 200);
     const promotionId = cleanString(data.promotionId, 200);
     const dueAt = cleanString(data.dueAt, 40);

@@ -1276,6 +1276,40 @@ service cloud.firestore {
     }
 
     /* ============================================================
+       SCRIPTS DE LIVE (8.0P.167.357)
+       ------------------------------------------------------------
+       Script d'animation (PDF) attaché à un live du cursus, partagé
+       entre profs/admins d'une formation. JAMAIS visible des élèves.
+       Fichier sur Storage : live-scripts/{scriptId}/{fileName}.
+       ============================================================ */
+
+    function validLiveScriptWrite() {
+      return (isTeacher() || isAdmin())
+        && request.resource.data.keys().hasAll(['formationId', 'titleKey', 'fileName', 'storagePath', 'uploadedBy'])
+        && request.resource.data.formationId is string
+        && request.resource.data.formationId.size() > 0
+        && request.resource.data.titleKey is string
+        && request.resource.data.titleKey.size() > 0
+        && request.resource.data.fileName is string
+        && request.resource.data.storagePath is string
+        && request.resource.data.storagePath.size() > 0
+        && request.resource.data.uploadedBy == request.auth.uid;
+    }
+
+    match /liveScripts/{scriptId} {
+      allow get, list: if isTeacher() || isAdmin();
+
+      allow create: if validLiveScriptWrite();
+
+      // Remplacement du script : tout prof de la plateforme ou admin
+      // (uploadedBy est réécrit au nom du remplaçant).
+      allow update: if validLiveScriptWrite();
+
+      allow delete: if isAdmin()
+        || (isTeacher() && resource.data.uploadedBy == request.auth.uid);
+    }
+
+    /* ============================================================
        FALLBACK
        ============================================================ */
 
