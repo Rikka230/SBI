@@ -9,7 +9,7 @@
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
     <link rel="stylesheet" href="css/admin-notifications.css">
     <link rel="stylesheet" href="css/public-content-admin.css?v=8.0P.119">
-    <link rel="stylesheet" href="/css/sbi-7-1-harmonization.css?v=8.0P.167.48">
+    <link rel="stylesheet" href="/css/sbi-7-1-harmonization.css?v=8.0P.167.361">
     <link rel="stylesheet" href="css/admin-mobile-block.css?v=8.0P.167.318">
     <link rel="modulepreload" href="/js/sbi-version.js">
     <link rel="stylesheet" href="css/admin-surface-unified.css?v=8.0P.167.52">
@@ -71,7 +71,7 @@
             background: var(--accent-blue); border-color: var(--accent-blue);
         }
         input[type="checkbox"].compact-cb:checked::after {
-            content: '✔'; position: absolute; top: 50%; left: 50%;
+            content: 'âœ”'; position: absolute; top: 50%; left: 50%;
             transform: translate(-50%, -50%); color: white; font-size: 11px;
         }
         .sbi-formation-next-blocks {
@@ -118,9 +118,9 @@
     <main id="main-content">
         <div class="sbi-admin-mobile-block" role="alert">
           <div class="sbi-admin-mobile-block__card">
-            <span class="sbi-admin-mobile-block__icon" aria-hidden="true">🖥️</span>
-            <p class="sbi-admin-mobile-block__title">Cet écran nécessite un ordinateur</p>
-            <p class="sbi-admin-mobile-block__text">L'éditeur de formations &amp; cours se manipule sur grand écran. Ouvrez cette page sur un ordinateur ; depuis le téléphone, utilisez la barre du bas pour aller ailleurs.</p>
+            <span class="sbi-admin-mobile-block__icon" aria-hidden="true">ðŸ–¥ï¸</span>
+            <p class="sbi-admin-mobile-block__title">Cet Ã©cran nÃ©cessite un ordinateur</p>
+            <p class="sbi-admin-mobile-block__text">L'Ã©diteur de formations &amp; cours se manipule sur grand Ã©cran. Ouvrez cette page sur un ordinateur ; depuis le tÃ©lÃ©phone, utilisez la barre du bas pour aller ailleurs.</p>
           </div>
         </div>
         <div class="content-wrapper">
@@ -133,16 +133,16 @@
             </div>
 
             <div class="sub-nav">
-                <div class="sub-nav-item active" onclick="switchCourseTab('tab-list')" id="nav-tab-list">Bibliothèque</div>
-                <a class="sub-nav-item" href="/admin/course-editor.html" id="nav-tab-editor" style="text-decoration:none;">Éditeur de Cours</a>
-                <div class="sub-nav-item" onclick="switchCourseTab('tab-formations')" id="nav-tab-formations">Catégories & Accès</div>
+                <div class="sub-nav-item active" onclick="switchCourseTab('tab-list')" id="nav-tab-list">BibliothÃ¨que</div>
+                <a class="sub-nav-item" href="/admin/course-editor.html" id="nav-tab-editor" style="text-decoration:none;">Ã‰diteur de Cours</a>
+                <div class="sub-nav-item" onclick="switchCourseTab('tab-formations')" id="nav-tab-formations">CatÃ©gories & AccÃ¨s</div>
                 <div class="sub-nav-item" onclick="switchCourseTab('tab-public-formations')" id="nav-tab-public-formations">Catalogue public</div>
                 <div class="sub-nav-item" onclick="switchCourseTab('tab-public-resources')" id="nav-tab-public-resources">Brochures</div>
-                <div class="sub-nav-item" onclick="switchCourseTab('tab-tracking')" id="nav-tab-tracking">Suivi Pédagogique</div>
+                <div class="sub-nav-item" onclick="switchCourseTab('tab-tracking')" id="nav-tab-tracking">Suivi PÃ©dagogique</div>
             </div>
 
             <div id="tab-list" class="course-section active">
-                <!-- 8.0P.167.354 : filtres actifs + tri par ordre du cursus + groupement par bloc dépliable -->
+                <!-- 8.0P.167.354 : filtres actifs + tri par ordre du cursus + groupement par bloc dÃ©pliable -->
                 <style>
                     .sbi-lib-filters { background: var(--bg-card); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 1.5rem; display: flex; gap: 1rem; flex-wrap: wrap; }
                     .sbi-lib-filters select, .sbi-lib-filters input { padding: 0.8rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px; }
@@ -159,22 +159,22 @@
                 </style>
                 <div class="sbi-lib-filters">
                     <select id="library-formation-filter" style="flex: 1 1 200px;">
-                        <option value="all">Toutes les Catégories</option>
+                        <option value="all">Toutes les CatÃ©gories</option>
                     </select>
                     <select id="library-sort" style="flex: 0 1 190px;" title="Ordre d'affichage">
                         <option value="cursus">Ordre du cursus</option>
-                        <option value="recent">Plus récents</option>
-                        <option value="title">Titre A → Z</option>
+                        <option value="recent">Plus rÃ©cents</option>
+                        <option value="title">Titre A â†’ Z</option>
                     </select>
                     <select id="library-group" style="flex: 0 1 190px;" title="Groupement">
-                        <option value="bloc">Groupé par bloc</option>
-                        <option value="flat">Liste à plat</option>
+                        <option value="bloc">GroupÃ© par bloc</option>
+                        <option value="flat">Liste Ã  plat</option>
                     </select>
                     <input type="text" id="search-course" placeholder="Rechercher un cours ou un bloc..." style="flex: 2 1 240px;">
                 </div>
 
                 <div id="courses-list-container">
-                    <p style="color: var(--text-muted); text-align: center;">Chargement de la bibliothèque...</p>
+                    <p style="color: var(--text-muted); text-align: center;">Chargement de la bibliothÃ¨que...</p>
                 </div>
             </div>
 
@@ -189,17 +189,17 @@
                         </div>
 
                         <div id="no-chapter-zone" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 400px; background: rgba(255,255,255,0.02); border: 1px dashed var(--border-color); border-radius: 8px; color: var(--text-muted);">
-                            <p style="font-size: 1.1rem;">Sélectionnez ou créez une étape à droite.</p>
+                            <p style="font-size: 1.1rem;">SÃ©lectionnez ou crÃ©ez une Ã©tape Ã  droite.</p>
                         </div>
 
                         <div id="chapter-editor-zone" style="display: none; flex-direction: column; gap: 1rem; background: var(--bg-card); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color);">
-                            <label style="color: var(--accent-blue); font-size: 0.85rem; font-weight: bold;">Édition de la leçon</label>
-                            <input type="text" id="chapter-title" placeholder="Titre de l'étape" style="width: 100%; font-size: 1.2rem; padding: 0.8rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px; outline: none;">
+                            <label style="color: var(--accent-blue); font-size: 0.85rem; font-weight: bold;">Ã‰dition de la leÃ§on</label>
+                            <input type="text" id="chapter-title" placeholder="Titre de l'Ã©tape" style="width: 100%; font-size: 1.2rem; padding: 0.8rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px; outline: none;">
                             
                             <div style="background: #111; padding: 1.5rem; border-radius: 6px; border: 1px solid #333;">
                                 <div class="media-toggle">
-                                    <label><input type="radio" name="media_type" value="image" checked> <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg> Image Optimisée</label>
-                                    <label><input type="radio" name="media_type" value="video"> <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M18 3v2h-2V3H8v2H6V3H4v18h2v-2h2v2h8v-2h2v2h2V3h-2zM8 17H6v-2h2v2zm0-4H6v-2h2v2zm0-4H6V7h2v2zm10 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V7h2v2z"/></svg> Fichier Vidéo (Protégé)</label>
+                                    <label><input type="radio" name="media_type" value="image" checked> <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg> Image OptimisÃ©e</label>
+                                    <label><input type="radio" name="media_type" value="video"> <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M18 3v2h-2V3H8v2H6V3H4v18h2v-2h2v2h8v-2h2v2h2V3h-2zM8 17H6v-2h2v2zm0-4H6v-2h2v2zm0-4H6V7h2v2zm10 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V7h2v2z"/></svg> Fichier VidÃ©o (ProtÃ©gÃ©)</label>
                                 </div>
                                 
                                 <div id="media-image-zone" style="display: flex; flex-direction: column; gap: 1rem;">
@@ -210,18 +210,18 @@
                                     <input type="file" id="chapter-image-upload" accept="image/*" style="display: none;">
                                     <input type="hidden" id="chapter-image-base64">
                                     <img id="chapter-image-preview" class="protected-media" oncontextmenu="return false;" src="" style="display:none; max-height: 200px; border-radius:6px; object-fit: contain; border: 1px solid #333;">
-                                    <button type="button" id="media-image-remove" class="action-btn danger" style="display:none; align-self:flex-start; padding:.35rem .7rem; font-size:.82rem;">✕ Retirer l'image</button>
+                                    <button type="button" id="media-image-remove" class="action-btn danger" style="display:none; align-self:flex-start; padding:.35rem .7rem; font-size:.82rem;">âœ• Retirer l'image</button>
                                 </div>
                                 
                                 <div id="media-video-zone" style="display: none; flex-direction: column; gap: 1rem;">
                                     <div class="upload-zone" onclick="document.getElementById('chapter-video-upload').click()">
                                         <svg width="32" height="32" fill="var(--text-muted)" viewBox="0 0 24 24" style="margin-bottom:10px;"><path d="M18 3v2h-2V3H8v2H6V3H4v18h2v-2h2v2h8v-2h2v2h2V3h-2zM8 17H6v-2h2v2zm0-4H6v-2h2v2zm0-4H6V7h2v2zm10 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V7h2v2z"/></svg>
-                                        <p style="margin:0; color:var(--text-muted); font-size:0.9rem;">Cliquez pour uploader un fichier Vidéo (MP4/WebM)</p>
+                                        <p style="margin:0; color:var(--text-muted); font-size:0.9rem;">Cliquez pour uploader un fichier VidÃ©o (MP4/WebM)</p>
                                     </div>
                                     <input type="file" id="chapter-video-upload" accept="video/mp4,video/webm" style="display: none;">
                                     <input type="hidden" id="chapter-video-base64">
                                     <video id="chapter-video-preview" controls controlsList="nodownload" oncontextmenu="return false;" class="protected-media" style="display:none; max-height: 300px; width:100%; border-radius:6px; background:#000; border: 1px solid #333;"></video>
-                                    <button type="button" id="media-video-remove" class="action-btn danger" style="display:none; align-self:flex-start; padding:.35rem .7rem; font-size:.82rem;">✕ Retirer la vidéo</button>
+                                    <button type="button" id="media-video-remove" class="action-btn danger" style="display:none; align-self:flex-start; padding:.35rem .7rem; font-size:.82rem;">âœ• Retirer la vidÃ©o</button>
                                 </div>
                             </div>
 
@@ -242,17 +242,17 @@
 
                     <div style="display: flex; flex-direction: column; gap: 1.5rem;">
                         <div style="background: var(--bg-card); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color);">
-                            <h4 style="margin-top: 0; color: var(--accent-blue);">Paramètres du Cours</h4>
+                            <h4 style="margin-top: 0; color: var(--accent-blue);">ParamÃ¨tres du Cours</h4>
                             <label style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.5rem; cursor: pointer;">
                                 <input type="checkbox" id="course-active" checked> Rendre le cours visible
                             </label>
                             
-                            <label style="display: block; margin-bottom: 0.8rem; color: var(--text-muted); font-size: 0.9rem;">Assigner aux Catégories :</label>
+                            <label style="display: block; margin-bottom: 0.8rem; color: var(--text-muted); font-size: 0.9rem;">Assigner aux CatÃ©gories :</label>
                             <div id="formations-selector" style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.5rem;">
                                 <span style="color: var(--text-muted); font-size: 0.85rem;">Chargement...</span>
                             </div>
 
-                            <label style="display: block; margin-bottom: 0.8rem; color: var(--text-muted); font-size: 0.9rem;">Bloc (Sous-catégorie) :</label>
+                            <label style="display: block; margin-bottom: 0.8rem; color: var(--text-muted); font-size: 0.9rem;">Bloc (Sous-catÃ©gorie) :</label>
                             <div style="display: flex; gap: 0.5rem;">
                                 <select id="course-bloc-select" style="flex-grow: 1; padding: 0.8rem; background: #111; color: white; border: 1px solid #333; border-radius: 4px; outline: none;">
                                     <option value="">-- Aucun Bloc --</option>
@@ -265,7 +265,7 @@
                             <h4 style="margin-top: 0;">Structure du cours</h4>
                             <ul id="chapters-list" style="list-style: none; padding: 0; margin: 0 0 1rem 0; display: flex; flex-direction: column; gap: 0.5rem;"></ul>
                             <div style="display: flex; gap: 0.5rem;">
-                                <button id="btn-add-chapter" class="action-btn" style="flex: 1; margin: 0; justify-content: center; border-style: dashed; color: var(--text-muted); font-size: 0.8rem;">+ Leçon</button>
+                                <button id="btn-add-chapter" class="action-btn" style="flex: 1; margin: 0; justify-content: center; border-style: dashed; color: var(--text-muted); font-size: 0.8rem;">+ LeÃ§on</button>
                                 <button id="btn-add-quiz" class="action-btn" style="flex: 1; margin: 0; justify-content: center; border-style: dashed; color: var(--accent-yellow); border-color: rgba(255, 188, 4, 0.4); font-size: 0.8rem;">+ Examen</button>
                             </div>
                         </div>
@@ -280,11 +280,11 @@
             <div id="tab-formations" class="course-section">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
                     <div>
-                        <h2 style="margin:0;">Catégories & Accès</h2>
-                        <p style="color: var(--text-muted); margin: 0;">Gérez les accès de vos étudiants et professeurs aux différentes formations.</p>
+                        <h2 style="margin:0;">CatÃ©gories & AccÃ¨s</h2>
+                        <p style="color: var(--text-muted); margin: 0;">GÃ©rez les accÃ¨s de vos Ã©tudiants et professeurs aux diffÃ©rentes formations.</p>
                     </div>
                     <button id="btn-create-formation" class="action-btn" style="width: auto; background: var(--accent-blue); color: white; border: none; font-weight: bold; margin:0;">
-                        + Nouvelle Catégorie
+                        + Nouvelle CatÃ©gorie
                     </button>
                 </div>
                 <div class="sbi-formation-next-blocks" aria-label="Blocs pedagogiques a preparer">
@@ -311,7 +311,7 @@
                         <div>
                             <span class="public-admin-kicker">Catalogue public</span>
                             <h2>Fiches formations publiques</h2>
-                            <p>Ces fiches alimentent la page Formations et le bloc mis en avant sur l’index. Elles sont séparées des catégories privées élèves/profs.</p>
+                            <p>Ces fiches alimentent la page Formations et le bloc mis en avant sur lâ€™index. Elles sont sÃ©parÃ©es des catÃ©gories privÃ©es Ã©lÃ¨ves/profs.</p>
                         </div>
                         <button id="btn-create-public-formation" class="action-btn" type="button">
                             + Fiche publique
@@ -320,9 +320,9 @@
 
                     <div class="public-admin-note">
                         <strong>Statuts :</strong>
-                        <span><b>Publié</b> = visible et cliquable.</span>
-                        <span><b>Prochainement</b> = visible avec titre et image par défaut/couverture, mais non cliquable.</span>
-                        <span><b>Brouillon</b> = masqué côté public.</span>
+                        <span><b>PubliÃ©</b> = visible et cliquable.</span>
+                        <span><b>Prochainement</b> = visible avec titre et image par dÃ©faut/couverture, mais non cliquable.</span>
+                        <span><b>Brouillon</b> = masquÃ© cÃ´tÃ© public.</span>
                     </div>
 
                     <div id="public-formations-admin-status" class="public-admin-status">Chargement du catalogue public...</div>
@@ -334,9 +334,9 @@
                         <div class="public-admin-modal-head">
                             <div>
                                 <span class="public-admin-kicker">Fiche publique</span>
-                                <h3 id="public-formation-modal-title">Créer une fiche formation</h3>
+                                <h3 id="public-formation-modal-title">CrÃ©er une fiche formation</h3>
                             </div>
-                            <button type="button" id="close-public-formation-modal" class="public-admin-icon-btn" aria-label="Fermer">×</button>
+                            <button type="button" id="close-public-formation-modal" class="public-admin-icon-btn" aria-label="Fermer">Ã—</button>
                         </div>
 
                         <form id="public-formation-form" class="public-admin-form">
@@ -358,7 +358,7 @@
                             <div class="public-admin-form-grid three">
                                 <label>Statut
                                     <select id="public-formation-status">
-                                        <option value="published">Publié</option>
+                                        <option value="published">PubliÃ©</option>
                                         <option value="coming_soon">Prochainement</option>
                                         <option value="draft">Brouillon</option>
                                     </select>
@@ -375,20 +375,20 @@
                                 <summary>SEO de la fiche formation</summary>
                                 <div class="public-admin-form-grid two">
                                     <label>SEO title
-                                        <input type="text" id="public-formation-seo-title" maxlength="70" placeholder="Titre affiché dans Google et les partages">
+                                        <input type="text" id="public-formation-seo-title" maxlength="70" placeholder="Titre affichÃ© dans Google et les partages">
                                     </label>
-                                    <label>Priorité sitemap
+                                    <label>PrioritÃ© sitemap
                                         <input type="number" id="public-formation-seo-priority" min="0" max="1" step="0.1" value="0.8">
                                     </label>
                                 </div>
                                 <label>Meta description
-                                    <textarea id="public-formation-seo-description" rows="3" maxlength="170" placeholder="Résumé SEO court, clair et unique."></textarea>
+                                    <textarea id="public-formation-seo-description" rows="3" maxlength="170" placeholder="RÃ©sumÃ© SEO court, clair et unique."></textarea>
                                 </label>
                                 <div class="public-admin-form-grid two">
-                                    <label>Image sociale URL <small>optionnel, par défaut couverture</small>
+                                    <label>Image sociale URL <small>optionnel, par dÃ©faut couverture</small>
                                         <input type="url" id="public-formation-seo-image" placeholder="https://...">
                                     </label>
-                                    <label>Fréquence sitemap
+                                    <label>FrÃ©quence sitemap
                                         <select id="public-formation-seo-changefreq">
                                             <option value="weekly">Weekly</option>
                                             <option value="monthly" selected>Monthly</option>
@@ -398,9 +398,9 @@
                                 </div>
                                 <label class="public-admin-check">
                                     <input type="checkbox" id="public-formation-seo-indexable" checked>
-                                    Préparer cette fiche pour l’indexation future
+                                    PrÃ©parer cette fiche pour lâ€™indexation future
                                 </label>
-                                <p class="public-admin-help">Ces champs sont stockés dans <code>seo</code>. Ils n’activent pas encore une URL dédiée, mais préparent les futures fiches indexables.</p>
+                                <p class="public-admin-help">Ces champs sont stockÃ©s dans <code>seo</code>. Ils nâ€™activent pas encore une URL dÃ©diÃ©e, mais prÃ©parent les futures fiches indexables.</p>
                             </details>
 
                             <label>Sous-titre
@@ -408,32 +408,32 @@
                             </label>
 
                             <div class="public-admin-form-grid two">
-                                <label>Catégorie
+                                <label>CatÃ©gorie
                                     <input type="text" id="public-formation-category" placeholder="Sport business">
                                 </label>
                                 <label>Niveau
-                                    <input type="text" id="public-formation-level" placeholder="À compléter">
+                                    <input type="text" id="public-formation-level" placeholder="Ã€ complÃ©ter">
                                 </label>
                             </div>
 
                             <div class="public-admin-form-grid three">
-                                <label>Durée
-                                    <input type="text" id="public-formation-duration" placeholder="À compléter">
+                                <label>DurÃ©e
+                                    <input type="text" id="public-formation-duration" placeholder="Ã€ complÃ©ter">
                                 </label>
-                                <label>Modalité
+                                <label>ModalitÃ©
                                     <input type="text" id="public-formation-modality" placeholder="E-learning / Alternance">
                                 </label>
                                 <label>Public cible
-                                    <input type="text" id="public-formation-target" placeholder="Étudiants, alternants...">
+                                    <input type="text" id="public-formation-target" placeholder="Ã‰tudiants, alternants...">
                                 </label>
                             </div>
 
-                            <label>Résumé court
-                                <textarea id="public-formation-short" rows="3" placeholder="Résumé visible sur les cartes publiques."></textarea>
+                            <label>RÃ©sumÃ© court
+                                <textarea id="public-formation-short" rows="3" placeholder="RÃ©sumÃ© visible sur les cartes publiques."></textarea>
                             </label>
 
                             <label>Description longue
-                                <textarea id="public-formation-long" rows="5" placeholder="Texte affiché dans le détail de la formation."></textarea>
+                                <textarea id="public-formation-long" rows="5" placeholder="Texte affichÃ© dans le dÃ©tail de la formation."></textarea>
                             </label>
 
                             <div class="public-admin-cover-layout">
@@ -441,10 +441,10 @@
                                     <label>Image de couverture
                                         <input type="file" id="public-formation-cover-file" accept="image/*">
                                     </label>
-                                    <p class="public-admin-help">L’image est compressée en WebP avant upload. Glisse l’image dans le cadre pour sauvegarder son cadrage public.</p>
+                                    <p class="public-admin-help">Lâ€™image est compressÃ©e en WebP avant upload. Glisse lâ€™image dans le cadre pour sauvegarder son cadrage public.</p>
                                 </div>
                                 <div class="public-admin-cover-frame" id="public-formation-cover-frame">
-                                    <img id="public-formation-cover-preview" alt="Prévisualisation couverture" hidden>
+                                    <img id="public-formation-cover-preview" alt="PrÃ©visualisation couverture" hidden>
                                     <span id="public-formation-cover-fallback">SBI</span>
                                 </div>
                             </div>
@@ -453,13 +453,13 @@
                                 <label>Objectifs <small>1 ligne = 1 objectif</small>
                                     <textarea id="public-formation-objectives" rows="5"></textarea>
                                 </label>
-                                <label>Prérequis <small>1 ligne = 1 prérequis</small>
+                                <label>PrÃ©requis <small>1 ligne = 1 prÃ©requis</small>
                                     <textarea id="public-formation-prerequisites" rows="5"></textarea>
                                 </label>
                             </div>
 
                             <div class="public-admin-form-grid two">
-                                <label>Débouchés <small>1 ligne = 1 débouché</small>
+                                <label>DÃ©bouchÃ©s <small>1 ligne = 1 dÃ©bouchÃ©</small>
                                     <textarea id="public-formation-outcomes" rows="5"></textarea>
                                 </label>
                                 <label>Points forts <small>1 ligne = 1 point fort</small>
@@ -468,42 +468,42 @@
                             </div>
 
                             <label>Sections d'information <small>Format : Titre | Contenu, une section par ligne</small>
-                                <textarea id="public-formation-sections" rows="6" placeholder="Admission | Modalités à compléter\nAccompagnement | Suivi individualisé..."></textarea>
+                                <textarea id="public-formation-sections" rows="6" placeholder="Admission | ModalitÃ©s Ã  complÃ©ter\nAccompagnement | Suivi individualisÃ©..."></textarea>
                             </label>
 
-                            <label>Programme détaillé <small>Format : Titre | Contenu, une ligne par bloc</small>
+                            <label>Programme dÃ©taillÃ© <small>Format : Titre | Contenu, une ligne par bloc</small>
                                 <textarea id="public-formation-program" rows="6" placeholder="Bloc 1 | Fondamentaux du sport business..."></textarea>
                             </label>
 
                             <details id="public-formation-compliance-panel" class="public-admin-seo-panel public-admin-compliance-panel" open>
-                                <summary>Blocs conformité / Qualiopi / RNCP</summary>
-                                <p class="public-admin-help">Ces blocs s’affichent dans la fiche publique, dans une section dédiée “Informations pédagogiques et qualité”.</p>
+                                <summary>Blocs conformitÃ© / Qualiopi / RNCP</summary>
+                                <p class="public-admin-help">Ces blocs sâ€™affichent dans la fiche publique, dans une section dÃ©diÃ©e â€œInformations pÃ©dagogiques et qualitÃ©â€.</p>
                                 <div class="public-admin-form-grid two">
-                                    <label>Évaluation
-                                        <textarea id="public-formation-compliance-evaluation" rows="5" placeholder="Modalités d’évaluation, mises en situation, quiz, projet final..."></textarea>
+                                    <label>Ã‰valuation
+                                        <textarea id="public-formation-compliance-evaluation" rows="5" placeholder="ModalitÃ©s dâ€™Ã©valuation, mises en situation, quiz, projet final..."></textarea>
                                     </label>
                                     <label>Certification / RNCP
-                                        <textarea id="public-formation-compliance-certification" rows="5" placeholder="Certification visée, RNCP, niveau, blocs de compétences, équivalences..."></textarea>
+                                        <textarea id="public-formation-compliance-certification" rows="5" placeholder="Certification visÃ©e, RNCP, niveau, blocs de compÃ©tences, Ã©quivalences..."></textarea>
                                     </label>
                                 </div>
                                 <div class="public-admin-form-grid two">
-                                    <label>Accessibilité / handicap
+                                    <label>AccessibilitÃ© / handicap
                                         <textarea id="public-formation-compliance-accessibility" rows="5" placeholder="Accueil des personnes en situation de handicap, adaptations possibles..."></textarea>
                                     </label>
-                                    <label>Méthodes pédagogiques
-                                        <textarea id="public-formation-compliance-teachingMethods" rows="5" placeholder="E-learning, tutorat, études de cas, exercices pratiques..."></textarea>
+                                    <label>MÃ©thodes pÃ©dagogiques
+                                        <textarea id="public-formation-compliance-teachingMethods" rows="5" placeholder="E-learning, tutorat, Ã©tudes de cas, exercices pratiques..."></textarea>
                                     </label>
                                 </div>
                                 <div class="public-admin-form-grid two">
-                                    <label>Modalités d’admission
-                                        <textarea id="public-formation-compliance-admission" rows="5" placeholder="Conditions d’entrée, dossier, entretien, délai d’accès..."></textarea>
+                                    <label>ModalitÃ©s dâ€™admission
+                                        <textarea id="public-formation-compliance-admission" rows="5" placeholder="Conditions dâ€™entrÃ©e, dossier, entretien, dÃ©lai dâ€™accÃ¨s..."></textarea>
                                     </label>
                                     <label>Moyens techniques
-                                        <textarea id="public-formation-compliance-technicalMeans" rows="5" placeholder="Plateforme, supports numériques, outils, prérequis techniques..."></textarea>
+                                        <textarea id="public-formation-compliance-technicalMeans" rows="5" placeholder="Plateforme, supports numÃ©riques, outils, prÃ©requis techniques..."></textarea>
                                     </label>
                                 </div>
-                                <label>Procédure réclamation
-                                    <textarea id="public-formation-compliance-complaints" rows="5" placeholder="Canal de réclamation, contact, traitement, délais indicatifs..."></textarea>
+                                <label>ProcÃ©dure rÃ©clamation
+                                    <textarea id="public-formation-compliance-complaints" rows="5" placeholder="Canal de rÃ©clamation, contact, traitement, dÃ©lais indicatifs..."></textarea>
                                 </label>
                             </details>
 
@@ -518,17 +518,17 @@
 
                             <label class="public-admin-check">
                                 <input type="checkbox" id="public-formation-featured">
-                                Afficher cette formation sur l’index
+                                Afficher cette formation sur lâ€™index
                             </label>
 
-                            <label class="public-admin-brochure-field" hidden aria-hidden="true">Brochures associées <small>À venir dans le patch Ressources/Brochures.</small>
+                            <label class="public-admin-brochure-field" hidden aria-hidden="true">Brochures associÃ©es <small>Ã€ venir dans le patch Ressources/Brochures.</small>
                                 <textarea id="public-formation-brochure-ids" rows="3"></textarea>
                             </label>
 
                             <div class="public-admin-preview-card" id="public-formation-admin-preview">
-                                <span>Prévisualisation</span>
+                                <span>PrÃ©visualisation</span>
                                 <h4>Formation SBI</h4>
-                                <p>Le rendu public se met à jour pendant la saisie.</p>
+                                <p>Le rendu public se met Ã  jour pendant la saisie.</p>
                             </div>
 
                             <div class="public-admin-modal-actions">
@@ -547,7 +547,7 @@
                         <div>
                             <span class="public-admin-kicker">Ressources publiques</span>
                             <h2>Brochures PDF</h2>
-                            <p>Ajoutez les brochures PDF affichées sur la page Ressources. Une brochure peut rester globale, être masquée, ou être associée à une fiche formation publique pour un usage futur.</p>
+                            <p>Ajoutez les brochures PDF affichÃ©es sur la page Ressources. Une brochure peut rester globale, Ãªtre masquÃ©e, ou Ãªtre associÃ©e Ã  une fiche formation publique pour un usage futur.</p>
                         </div>
                         <button id="btn-create-public-resource" class="action-btn" type="button">
                             + Brochure PDF
@@ -555,10 +555,10 @@
                     </div>
 
                     <div class="public-admin-note public-admin-note-stack">
-                        <strong>Règles :</strong>
-                        <span><b>Publié + visible Ressources</b> = affiché sur la page Ressources.</span>
-                        <span><b>Brouillon</b> = masqué côté public.</span>
-                        <span><b>Formation associée</b> = prêt pour la future fiche formation sans forcer l’affichage global.</span>
+                        <strong>RÃ¨gles :</strong>
+                        <span><b>PubliÃ© + visible Ressources</b> = affichÃ© sur la page Ressources.</span>
+                        <span><b>Brouillon</b> = masquÃ© cÃ´tÃ© public.</span>
+                        <span><b>Formation associÃ©e</b> = prÃªt pour la future fiche formation sans forcer lâ€™affichage global.</span>
                     </div>
 
                     <div id="public-resources-admin-status" class="public-admin-status">Chargement des brochures...</div>
@@ -570,9 +570,9 @@
                         <div class="public-admin-modal-head">
                             <div>
                                 <span class="public-admin-kicker">Brochure PDF</span>
-                                <h3 id="public-resource-modal-title">Créer une brochure</h3>
+                                <h3 id="public-resource-modal-title">CrÃ©er une brochure</h3>
                             </div>
-                            <button type="button" id="close-public-resource-modal" class="public-admin-icon-btn" aria-label="Fermer">×</button>
+                            <button type="button" id="close-public-resource-modal" class="public-admin-icon-btn" aria-label="Fermer">Ã—</button>
                         </div>
 
                         <form id="public-resource-form" class="public-admin-form public-admin-resource-form">
@@ -596,11 +596,11 @@
                             <div class="public-admin-form-grid three">
                                 <label>Statut
                                     <select id="public-resource-status">
-                                        <option value="published">Publié</option>
+                                        <option value="published">PubliÃ©</option>
                                         <option value="draft">Brouillon</option>
                                     </select>
                                 </label>
-                                <label>Catégorie
+                                <label>CatÃ©gorie
                                     <input type="text" id="public-resource-category" placeholder="Formation">
                                 </label>
                                 <label>Ordre page
@@ -609,15 +609,15 @@
                             </div>
 
                             <label>Description courte
-                                <textarea id="public-resource-description" rows="3" placeholder="Résumé affiché sur la carte Ressources."></textarea>
+                                <textarea id="public-resource-description" rows="3" placeholder="RÃ©sumÃ© affichÃ© sur la carte Ressources."></textarea>
                             </label>
 
                             <div class="public-admin-form-grid two public-admin-resource-options">
                                 <label class="public-admin-file-field">Fichier PDF
                                     <input type="file" id="public-resource-file" accept="application/pdf,.pdf">
-                                    <span id="public-resource-file-current" class="public-admin-file-current">Aucun PDF sélectionné.</span>
+                                    <span id="public-resource-file-current" class="public-admin-file-current">Aucun PDF sÃ©lectionnÃ©.</span>
                                 </label>
-                                <label>Formation associée <small>optionnel, multi-sélection possible</small>
+                                <label>Formation associÃ©e <small>optionnel, multi-sÃ©lection possible</small>
                                     <select id="public-resource-formations" multiple size="6"></select>
                                 </label>
                             </div>
@@ -631,20 +631,20 @@
                                 <summary>SEO de la brochure</summary>
                                 <div class="public-admin-form-grid two">
                                     <label>SEO title
-                                        <input type="text" id="public-resource-seo-title" maxlength="70" placeholder="Titre affiché dans Google et les partages">
+                                        <input type="text" id="public-resource-seo-title" maxlength="70" placeholder="Titre affichÃ© dans Google et les partages">
                                     </label>
-                                    <label>Priorité sitemap
+                                    <label>PrioritÃ© sitemap
                                         <input type="number" id="public-resource-seo-priority" min="0" max="1" step="0.1" value="0.5">
                                     </label>
                                 </div>
                                 <label>Meta description
-                                    <textarea id="public-resource-seo-description" rows="3" maxlength="170" placeholder="Résumé SEO court, clair et unique."></textarea>
+                                    <textarea id="public-resource-seo-description" rows="3" maxlength="170" placeholder="RÃ©sumÃ© SEO court, clair et unique."></textarea>
                                 </label>
                                 <div class="public-admin-form-grid two">
                                     <label>Image sociale URL <small>optionnel</small>
                                         <input type="url" id="public-resource-seo-image" placeholder="https://...">
                                     </label>
-                                    <label>Fréquence sitemap
+                                    <label>FrÃ©quence sitemap
                                         <select id="public-resource-seo-changefreq">
                                             <option value="weekly">Weekly</option>
                                             <option value="monthly" selected>Monthly</option>
@@ -655,20 +655,20 @@
                                 <div class="public-admin-form-grid two">
                                     <label class="public-admin-check">
                                         <input type="checkbox" id="public-resource-seo-indexable" checked>
-                                        Préparer cette brochure pour l’indexation future
+                                        PrÃ©parer cette brochure pour lâ€™indexation future
                                     </label>
                                     <label class="public-admin-check">
                                         <input type="checkbox" id="public-resource-seo-pdf-indexable" checked>
-                                        Autoriser l’indexation du PDF associé
+                                        Autoriser lâ€™indexation du PDF associÃ©
                                     </label>
                                 </div>
-                                <p class="public-admin-help">Ces champs sont stockés dans <code>seo</code>. La page Ressources actuelle n’est pas modifiée.</p>
+                                <p class="public-admin-help">Ces champs sont stockÃ©s dans <code>seo</code>. La page Ressources actuelle nâ€™est pas modifiÃ©e.</p>
                             </details>
 
                             <div class="public-admin-preview-card public-admin-resource-preview" id="public-resource-admin-preview">
-                                <span>Prévisualisation</span>
+                                <span>PrÃ©visualisation</span>
                                 <h4>Brochure SBI</h4>
-                                <p>Le rendu public se met à jour pendant la saisie.</p>
+                                <p>Le rendu public se met Ã  jour pendant la saisie.</p>
                                 <div class="public-admin-resource-file-meta" id="public-resource-preview-file">PDF requis pour publier une brochure consultable.</div>
                             </div>
 
@@ -683,7 +683,7 @@
 
             <div id="tab-tracking" class="course-section">
                 <div style="text-align: center; padding: 4rem; background: var(--bg-card); border-radius: 8px; border: 1px solid var(--border-color);">
-                    <h3 style="color: var(--accent-blue);">Suivi Pédagogique</h3>
+                    <h3 style="color: var(--accent-blue);">Suivi PÃ©dagogique</h3>
                     <p style="color: var(--text-muted);">Espace en cours de construction...</p>
                 </div>
             </div>
@@ -695,7 +695,7 @@
 
 <div id="formation-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center;">
     <div style="background: var(--bg-card); padding: 2rem; border-radius: 8px; border: 1px solid var(--border-color); width: 100%; max-width: 600px; max-height: 90vh; overflow-y: auto;">
-        <h3 id="formation-modal-title" style="margin-top: 0;">Créer une Catégorie de Formation</h3>
+        <h3 id="formation-modal-title" style="margin-top: 0;">CrÃ©er une CatÃ©gorie de Formation</h3>
         <form id="formation-form" style="display: flex; flex-direction: column; gap: 1rem;">
             <input type="hidden" id="edit-formation-id">
             <label style="color: var(--text-muted); font-size: 0.85rem; font-weight: bold;">Titre de la formation</label>
@@ -703,27 +703,27 @@
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
                 <div style="background: #111; padding: 1rem; border-radius: 6px; border: 1px solid #333; display: flex; flex-direction: column;">
                     <label style="color: var(--accent-yellow); font-size: 0.85rem; font-weight: bold; display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                        <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg> Professeurs autorisés
+                        <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg> Professeurs autorisÃ©s
                     </label>
                     <input type="text" id="search-profs" placeholder="Rechercher un prof..." style="width: 100%; padding: 0.5rem; background: #222; color: white; border: 1px solid #444; border-radius: 4px; margin-bottom: 0.5rem; font-size: 0.8rem; outline: none;">
                     <div id="formation-profs-list" class="search-list-container" style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 200px; overflow-y: auto; padding-right: 5px;"></div>
                 </div>
                 <div style="background: #111; padding: 1rem; border-radius: 6px; border: 1px solid #333; display: flex; flex-direction: column;">
                     <label style="color: var(--accent-green); font-size: 0.85rem; font-weight: bold; display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                        <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/></svg> Étudiants inscrits
+                        <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/></svg> Ã‰tudiants inscrits
                     </label>
-                    <input type="text" id="search-students" placeholder="Rechercher un élève..." style="width: 100%; padding: 0.5rem; background: #222; color: white; border: 1px solid #444; border-radius: 4px; margin-bottom: 0.5rem; font-size: 0.8rem; outline: none;">
+                    <input type="text" id="search-students" placeholder="Rechercher un Ã©lÃ¨ve..." style="width: 100%; padding: 0.5rem; background: #222; color: white; border: 1px solid #444; border-radius: 4px; margin-bottom: 0.5rem; font-size: 0.8rem; outline: none;">
                     <div id="formation-students-list" class="search-list-container" style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 200px; overflow-y: auto; padding-right: 5px;"></div>
                 </div>
             </div>
-            <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">Note : Les administrateurs ont un accès automatique à tout.</p>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">Note : Les administrateurs ont un accÃ¨s automatique Ã  tout.</p>
             <div style="display: flex; gap: 1rem; margin-top: 1rem;">
                 <button type="submit" style="flex: 1; padding: 1rem; background: var(--accent-blue); color: #000; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">Sauvegarder</button>
                 <button type="button" id="close-formation-modal-btn" style="flex: 1; padding: 1rem; background: transparent; color: white; border: 1px solid #555; border-radius: 4px; cursor: pointer;">Annuler</button>
             </div>
         </form>
         <div id="delete-formation-zone" style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #444; display: none;">
-            <button id="delete-formation-btn" style="width: 100%; padding: 1rem; background: rgba(255, 74, 74, 0.1); color: var(--accent-red); border: 1px solid var(--accent-red); border-radius: 4px; font-weight: bold; cursor: pointer;">Supprimer cette catégorie</button>
+            <button id="delete-formation-btn" style="width: 100%; padding: 1rem; background: rgba(255, 74, 74, 0.1); color: var(--accent-red); border: 1px solid var(--accent-red); border-radius: 4px; font-weight: bold; cursor: pointer;">Supprimer cette catÃ©gorie</button>
         </div>
     </div>
 </div>
@@ -773,7 +773,7 @@
 
         window.quill = new Quill('#course-editor', {
             theme: 'snow',
-            placeholder: 'Rédigez le contenu de la leçon ici...',
+            placeholder: 'RÃ©digez le contenu de la leÃ§on ici...',
             modules: {
                 toolbar: {
                     container: toolbarOptions,
@@ -794,8 +794,8 @@
                                 return;
                             }
 
-                            // Sans sélection explicite, on ne modifie pas toute la ligne.
-                            // La taille SBI s'applique uniquement au texte sélectionné.
+                            // Sans sÃ©lection explicite, on ne modifie pas toute la ligne.
+                            // La taille SBI s'applique uniquement au texte sÃ©lectionnÃ©.
                         }
                     }
                 }
@@ -817,10 +817,10 @@
 
         const tooltips = [
             ['.ql-size .ql-picker-label', 'Taille du texte'], ['button.ql-bold', 'Gras'], ['button.ql-italic', 'Italique'],
-            ['button.ql-underline', 'Souligné'], ['button.ql-strike', 'Barré'], ['.ql-color .ql-picker-label', 'Couleur du texte'],
-            ['.ql-background .ql-picker-label', 'Surlignage'], ['button.ql-list[value="ordered"]', 'Liste numérotée'],
-            ['button.ql-list[value="bullet"]', 'Liste à puces'], ['.ql-align .ql-picker-label', 'Alignement'],
-            ['button.ql-link', 'Insérer un lien'], ['button.ql-clean', 'Effacer le formatage']
+            ['button.ql-underline', 'SoulignÃ©'], ['button.ql-strike', 'BarrÃ©'], ['.ql-color .ql-picker-label', 'Couleur du texte'],
+            ['.ql-background .ql-picker-label', 'Surlignage'], ['button.ql-list[value="ordered"]', 'Liste numÃ©rotÃ©e'],
+            ['button.ql-list[value="bullet"]', 'Liste Ã  puces'], ['.ql-align .ql-picker-label', 'Alignement'],
+            ['button.ql-link', 'InsÃ©rer un lien'], ['button.ql-clean', 'Effacer le formatage']
         ];
 
         tooltips.forEach(([selector, title]) => {

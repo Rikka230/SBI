@@ -741,7 +741,14 @@
   .profile-sidebar,
   .profile-main { min-width: 0 !important; max-width: 100% !important; }
 
-  /* Onglets : s'enroulent au lieu de forcer la largeur (flex no-wrap + gros padding). */
-  .profile-tabs-header { flex-wrap: wrap !important; gap: 0.4rem !important; }
-  .p-tab { padding: 0.7rem 1rem !important; }
+  /* Onglets : UNE seule ligne, scroll horizontal discret si la place manque.
+     (Aligné sur sbi-7-1-harmonization ≤860px — avant, wrap entre 861 et 1024px
+     créait un rail sur deux lignes incohérent avec le reste.) */
+  .profile-tabs-header {
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    scrollbar-width: thin;
+    gap: 0.4rem !important;
+  }
+  .p-tab { flex: 0 0 auto; padding: 0.7rem 1rem !important; }
 }
