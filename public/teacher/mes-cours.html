@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="/teacher/css/teacher.css?v=8.0P.130">
     <link rel="stylesheet" href="/css/sbi-7-1-harmonization.css?v=8.0P.167.361">
 
-    <!-- 8.0P.167.348 â€” Theme interne STATIQUE (anti-FOUC, recette validee sur messagerie) -->
+    <!-- 8.0P.167.348 — Theme interne STATIQUE (anti-FOUC, recette validee sur messagerie) -->
     <link rel="stylesheet" href="/admin/css/sbi-internal-theme.css">
     <link rel="stylesheet" href="/admin/css/sbi-ui-polish.css">
     <link rel="stylesheet" href="/admin/css/sbi-ui-fixes.css">
@@ -46,7 +46,7 @@
             box-shadow: 0 24px 80px rgba(0,0,0,0.24);
         }
         .teacher-library-hero::after {
-            content: "BIBLIOTHÃˆQUE";
+            content: "BIBLIOTHÈQUE";
             position: absolute;
             right: -0.4rem;
             bottom: -0.8rem;
@@ -228,41 +228,41 @@
                 </div>
 
                 <div class="student-sub-nav">
-                    <div class="student-sub-nav-item active" onclick="safeSwitchTab('tab-list')">Ma BibliothÃ¨que</div>
-                    <a class="student-sub-nav-item" href="/teacher/course-editor.html" data-teacher-new-course-v2="true" data-sbi-no-pjax="true" id="nav-tab-editor" style="text-decoration:none;">Ã‰diteur de Cours</a>
+                    <div class="student-sub-nav-item active" onclick="safeSwitchTab('tab-list')">Ma Bibliothèque</div>
+                    <a class="student-sub-nav-item" href="/teacher/course-editor.html" data-teacher-new-course-v2="true" data-sbi-no-pjax="true" id="nav-tab-editor" style="text-decoration:none;">Éditeur de Cours</a>
                 </div>
 
                 <div id="tab-list" class="student-view active">
-                    <section class="teacher-library-hero" aria-label="BibliothÃ¨que professeur">
-                        <span class="teacher-library-kicker">BibliothÃ¨que professeur</span>
-                        <h2>Vos cours, prÃªts Ã  ouvrir ou Ã  prÃ©parer.</h2>
-                        <p>Retrouvez les cours publiÃ©s, les brouillons et les contenus partagÃ©s avec vos formations. Lorsquâ€™un cours est placÃ© dans une promotion, ses dates et sa prioritÃ© apparaissent directement dans la carte.</p>
+                    <section class="teacher-library-hero" aria-label="Bibliothèque professeur">
+                        <span class="teacher-library-kicker">Bibliothèque professeur</span>
+                        <h2>Vos cours, prêts à ouvrir ou à préparer.</h2>
+                        <p>Retrouvez les cours publiés, les brouillons et les contenus partagés avec vos formations. Lorsqu’un cours est placé dans une promotion, ses dates et sa priorité apparaissent directement dans la carte.</p>
                         <div id="teacher-courses-insights" class="teacher-library-stats" aria-live="polite">
-                            <div class="teacher-library-stat"><strong>â€¦</strong><span>Chargement</span></div>
+                            <div class="teacher-library-stat"><strong>…</strong><span>Chargement</span></div>
                         </div>
                     </section>
 
                     <div class="teacher-courses-toolbar">
                         <div class="teacher-courses-toolbar__left">
-                            <span class="teacher-courses-toolbar__title">BibliothÃ¨que professeur</span>
-                            <span id="teacher-courses-count" class="teacher-courses-toolbar__count">Chargementâ€¦</span>
+                            <span class="teacher-courses-toolbar__title">Bibliothèque professeur</span>
+                            <span id="teacher-courses-count" class="teacher-courses-toolbar__count">Chargement…</span>
                         </div>
                         <div class="teacher-courses-toolbar__right">
-                            <input id="teacher-courses-search" class="teacher-courses-search" type="search" placeholder="Rechercher un cours, bloc, auteurâ€¦">
+                            <input id="teacher-courses-search" class="teacher-courses-search" type="search" placeholder="Rechercher un cours, bloc, auteur…">
                             <select id="teacher-courses-status-filter" class="teacher-courses-select" aria-label="Filtrer par statut">
                                 <option value="all">Tous statuts</option>
-                                <option value="published">PubliÃ©s</option>
+                                <option value="published">Publiés</option>
                                 <option value="pending">En attente</option>
                                 <option value="draft">Brouillons</option>
-                                <option value="rejected">Ã€ corriger</option>
+                                <option value="rejected">À corriger</option>
                             </select>
-                            <select id="teacher-courses-scope-filter" class="teacher-courses-select" aria-label="Filtrer par propriÃ©taire">
-                                <option value="all">Tous accÃ¨s</option>
+                            <select id="teacher-courses-scope-filter" class="teacher-courses-select" aria-label="Filtrer par propriétaire">
+                                <option value="all">Tous accès</option>
                                 <option value="mine">Mes cours</option>
-                                <option value="shared">PartagÃ©s</option>
+                                <option value="shared">Partagés</option>
                             </select>
                             <select id="teacher-courses-sort" class="teacher-courses-select" aria-label="Trier les cours">
-                                <option value="recent">Plus rÃ©cents</option>
+                                <option value="recent">Plus récents</option>
                                 <option value="title">Titre A-Z</option>
                                 <option value="status">Statut</option>
                             </select>
