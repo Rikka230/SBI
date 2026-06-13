@@ -772,9 +772,10 @@ body[data-sbi-public-page] .public-page::after {
     line-height: 1.35;
 }
 
-/* Programme détaillé : bloc pleine largeur + scroll interne pour ne pas déborder */
+/* Programme détaillé : case de grille normale (pas de pleine largeur, sinon trous
+   dans la grille) + scroll interne à hauteur bornée pour ne pas déborder */
 .public-formation-program {
-    grid-column: 1 / -1;
+    min-width: 0;
 }
 
 .public-formation-program-scroll {
