@@ -772,6 +772,43 @@ body[data-sbi-public-page] .public-page::after {
     line-height: 1.35;
 }
 
+/* Programme détaillé : case de grille normale (pas de pleine largeur, sinon trous
+   dans la grille) + scroll interne à hauteur bornée pour ne pas déborder */
+.public-formation-program {
+    min-width: 0;
+}
+
+.public-formation-program-scroll {
+    max-height: 340px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-right: 0.6rem;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(126, 181, 255, 0.35) transparent;
+}
+
+.public-formation-program-scroll::-webkit-scrollbar {
+    width: 8px;
+}
+
+.public-formation-program-scroll::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.public-formation-program-scroll::-webkit-scrollbar-thumb {
+    background: rgba(126, 181, 255, 0.3);
+    border-radius: 4px;
+}
+
+.public-formation-program-scroll::-webkit-scrollbar-thumb:hover {
+    background: rgba(126, 181, 255, 0.5);
+}
+
+.public-formation-program-text {
+    white-space: pre-line;
+    margin: 0.35rem 0 0;
+}
+
 .public-formation-card.is-coming-soon {
     cursor: default;
 }

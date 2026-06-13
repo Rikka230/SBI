@@ -171,11 +171,18 @@ function createRuntimeUrl(pathname = '/', params = {}) {
 }
 
 function createFormationSeoUrl(formation) {
-  return createSeoUrl('/formations.html', { [FORMATION_QUERY_KEY]: formation?.slug });
+  const slug = text(formation?.slug);
+  // Page statique dédiée (crawlable Google + Bing), canonical consolidé.
+  return slug
+    ? `${SEO_SITE_ORIGIN}/formations/${slug}.html`
+    : createSeoUrl('/formations.html');
 }
 
 function createFormationRuntimeUrl(formation) {
-  return createRuntimeUrl('/formations.html', { [FORMATION_QUERY_KEY]: formation?.slug });
+  const slug = text(formation?.slug);
+  return slug
+    ? createRuntimeUrl(`/formations/${slug}.html`)
+    : createRuntimeUrl('/formations.html');
 }
 
 function createResourceSeoUrl(resource) {
@@ -820,14 +827,16 @@ function createFormationDetails(formation) {
   appendList(details, 'Débouchés', formation.outcomes);
 
   if (formation.program?.length) {
-    const program = createElement('div', 'public-formation-detail-block');
+    const program = createElement('div', 'public-formation-detail-block public-formation-program');
     program.append(createElement('h4', 'text-italic', 'Programme'));
+    const programScroll = createElement('div', 'public-formation-program-scroll');
     formation.program.forEach((section) => {
       const item = createElement('article', 'public-formation-mini-section');
       item.append(createElement('strong', 'text-italic', section.title));
-      if (section.content) item.append(createElement('p', 'text-italic', section.content));
-      program.append(item);
+      if (section.content) item.append(createElement('p', 'text-italic public-formation-program-text', section.content));
+      programScroll.append(item);
     });
+    program.append(programScroll);
     details.append(program);
   }
 

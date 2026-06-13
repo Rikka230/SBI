@@ -4,6 +4,18 @@
  * =======================================================================
  */
 
+/* SEO : canonicalisation du domaine. Les domaines techniques Firebase
+ * (sbi-web-4f6b4.web.app / .firebaseapp.com) redirigent vers le domaine
+ * de production www.sbigroup.fr pour éviter le contenu dupliqué. */
+(function () {
+    try {
+        var h = location.hostname;
+        if (h === 'sbi-web-4f6b4.web.app' || h === 'sbi-web-4f6b4.firebaseapp.com') {
+            location.replace('https://www.sbigroup.fr' + location.pathname + location.search + location.hash);
+        }
+    } catch (e) { /* noop */ }
+}());
+
 (function () {
     const MOBILE_MEDIA = '(max-width: 768px)';
     const REDUCED_MOTION_MEDIA = '(prefers-reduced-motion: reduce)';
