@@ -820,14 +820,16 @@ function createFormationDetails(formation) {
   appendList(details, 'Débouchés', formation.outcomes);
 
   if (formation.program?.length) {
-    const program = createElement('div', 'public-formation-detail-block');
+    const program = createElement('div', 'public-formation-detail-block public-formation-program');
     program.append(createElement('h4', 'text-italic', 'Programme'));
+    const programScroll = createElement('div', 'public-formation-program-scroll');
     formation.program.forEach((section) => {
       const item = createElement('article', 'public-formation-mini-section');
       item.append(createElement('strong', 'text-italic', section.title));
-      if (section.content) item.append(createElement('p', 'text-italic', section.content));
-      program.append(item);
+      if (section.content) item.append(createElement('p', 'text-italic public-formation-program-text', section.content));
+      programScroll.append(item);
     });
+    program.append(programScroll);
     details.append(program);
   }
 
