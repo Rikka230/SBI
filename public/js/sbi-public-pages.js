@@ -171,11 +171,18 @@ function createRuntimeUrl(pathname = '/', params = {}) {
 }
 
 function createFormationSeoUrl(formation) {
-  return createSeoUrl('/formations.html', { [FORMATION_QUERY_KEY]: formation?.slug });
+  const slug = text(formation?.slug);
+  // Page statique dédiée (crawlable Google + Bing), canonical consolidé.
+  return slug
+    ? `${SEO_SITE_ORIGIN}/formations/${slug}.html`
+    : createSeoUrl('/formations.html');
 }
 
 function createFormationRuntimeUrl(formation) {
-  return createRuntimeUrl('/formations.html', { [FORMATION_QUERY_KEY]: formation?.slug });
+  const slug = text(formation?.slug);
+  return slug
+    ? createRuntimeUrl(`/formations/${slug}.html`)
+    : createRuntimeUrl('/formations.html');
 }
 
 function createResourceSeoUrl(resource) {
