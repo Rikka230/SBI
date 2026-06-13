@@ -33,6 +33,7 @@ let promotionIds = [];
 let assignments = [];
 let submissionByAssignment = new Map();
 let filter = 'todo';
+let kindFilter = 'all'; // all | devoir | evaluation
 let selectedId = '';
 let busy = false;
 
@@ -157,16 +158,29 @@ const FILTERS = [
   { key: 'all', label: 'Tous', match: () => true }
 ];
 
+// Onglets de type : séparer devoirs et évaluations (filtre sur a.kind).
+const KIND_TABS = [
+  { key: 'all', label: 'Tout' },
+  { key: 'devoir', label: 'Devoirs' },
+  { key: 'evaluation', label: 'Évaluations' }
+];
+function inKind(a) { return kindFilter === 'all' || (a.kind || 'devoir') === kindFilter; }
+
 function render() {
   const r = root();
   if (!r) return;
   const counts = {};
-  FILTERS.forEach((f) => { counts[f.key] = assignments.filter((a) => f.match(a)).length; });
+  FILTERS.forEach((f) => { counts[f.key] = assignments.filter((a) => inKind(a) && f.match(a)).length; });
+  const kindCounts = {};
+  KIND_TABS.forEach((k) => { kindCounts[k.key] = assignments.filter((a) => k.key === 'all' || (a.kind || 'devoir') === k.key).length; });
 
   r.innerHTML = `
     <div class="sbi-asg-head">
       <h1>Mes devoirs & évaluations</h1>
       <p>Consulte tes devoirs, dépose ton travail (un seul dépôt par devoir) et retrouve la correction de tes professeurs.</p>
+    </div>
+    <div class="sbi-asg-tabs" data-asg-kind role="tablist">
+      ${KIND_TABS.map((k) => `<button type="button" class="sbi-asg-tab ${kindFilter === k.key ? 'is-active' : ''}" data-kind="${k.key}">${escapeHtml(k.label)} <span class="sbi-asg-count">${kindCounts[k.key]}</span></button>`).join('')}
     </div>
     <div class="sbi-asg-chips" data-asg-chips>
       ${FILTERS.map((f) => `<button type="button" class="sbi-asg-chip ${filter === f.key ? 'is-active' : ''}" data-filter="${f.key}">${escapeHtml(f.label)} <span class="sbi-asg-count">${counts[f.key]}</span></button>`).join('')}
@@ -181,8 +195,11 @@ function render() {
 
 function renderList() {
   const def = FILTERS.find((f) => f.key === filter) || FILTERS[0];
-  const list = assignments.filter((a) => def.match(a));
-  if (!list.length) return '<div class="sbi-asg-status">Aucun devoir ici.</div>';
+  const list = assignments.filter((a) => inKind(a) && def.match(a));
+  if (!list.length) {
+    const what = kindFilter === 'evaluation' ? 'évaluation' : (kindFilter === 'devoir' ? 'devoir' : 'devoir');
+    return `<div class="sbi-asg-status">Aucun ${what} ici.</div>`;
+  }
   return list.map((a) => {
     const km = kindMeta(a.kind);
     const status = effectiveStatus(a);
@@ -356,6 +373,10 @@ async function handleDeposit(assignmentId, button) {
 function bindEvents() {
   const r = root();
   if (!r) return;
+  r.querySelector('[data-asg-kind]')?.addEventListener('click', (e) => {
+    const tabBtn = e.target.closest('[data-kind]');
+    if (tabBtn) { kindFilter = tabBtn.dataset.kind; render(); }
+  });
   r.querySelector('[data-asg-chips]')?.addEventListener('click', (e) => {
     const chip = e.target.closest('[data-filter]');
     if (chip) { filter = chip.dataset.filter; render(); }

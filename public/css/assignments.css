@@ -29,6 +29,28 @@
 }
 .sbi-asg-chip.is-active .sbi-asg-count { background: rgba(255,255,255,.25); }
 
+/* ---- Onglets de TYPE (Devoirs / Évaluations) : rail sur UNE ligne ---- */
+.sbi-asg-tabs {
+  display: flex; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: thin;
+  gap: .25rem; margin: .35rem 0 .25rem;
+  border-bottom: 1px solid var(--border-color, #e5e7eb);
+}
+.sbi-asg-tabs::-webkit-scrollbar { height: 4px; }
+.sbi-asg-tab {
+  flex: 0 0 auto; display: inline-flex; align-items: center; gap: .4rem;
+  border: 0; background: transparent; color: var(--text-muted, #6b7280);
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
+  padding: .5rem .9rem; font-size: .92rem; font-weight: 700; white-space: nowrap;
+  cursor: pointer; transition: color .15s ease, border-color .15s ease;
+}
+.sbi-asg-tab:hover { color: var(--text-main, #111827); }
+.sbi-asg-tab.is-active { color: var(--asg-accent); border-bottom-color: var(--asg-accent); }
+.sbi-asg-tab .sbi-asg-count {
+  background: rgba(0,0,0,.07); border-radius: 999px; padding: 0 .45rem;
+  font-size: .72rem; font-weight: 700; min-width: 1.2rem; text-align: center;
+}
+.sbi-asg-tab.is-active .sbi-asg-count { background: color-mix(in srgb, var(--asg-accent) 18%, transparent); color: var(--asg-accent); }
+
 .sbi-asg-toolbar { display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; margin-bottom: .75rem; }
 .sbi-asg-search { flex: 1 1 220px; }
 .sbi-asg-search input,

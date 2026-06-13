@@ -690,7 +690,7 @@ async function mountTeacherAssignments({ url }) {
 
   window.__SBI_APP_SHELL_MOUNTING_TEACHER_ASSIGNMENTS = true;
   try {
-    const module = await import('/teacher/js/teacher-assignments.js?v=8.0P.167.360');
+    const module = await import('/teacher/js/teacher-assignments.js?v=8.0P.167.362');
     const cleanup = module.mountTeacherAssignments?.();
     if (typeof cleanup === 'function') registerCleanup(cleanup, 'teacher-assignments');
   } finally {
@@ -714,7 +714,7 @@ async function mountStudentAssignments({ url }) {
 
   window.__SBI_APP_SHELL_MOUNTING_STUDENT_ASSIGNMENTS = true;
   try {
-    const module = await import('/student/js/student-assignments.js?v=8.0P.167.360');
+    const module = await import('/student/js/student-assignments.js?v=8.0P.167.362');
     const cleanup = module.mountStudentAssignments?.();
     if (typeof cleanup === 'function') registerCleanup(cleanup, 'student-assignments');
   } finally {
