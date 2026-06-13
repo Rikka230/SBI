@@ -32,7 +32,17 @@ let submissions = [];
 let submissionsByAssignment = new Map();
 
 let tab = 'correct'; // correct | assignments
+let kindFilter = 'all'; // all | devoir | evaluation
 let search = '';
+
+// Onglets de type : séparer devoirs et évaluations (filtre sur a.kind).
+const KIND_TABS = [
+  { key: 'all', label: 'Tout' },
+  { key: 'devoir', label: 'Devoirs' },
+  { key: 'evaluation', label: 'Évaluations' }
+];
+function assignmentKind(a) { return (a && a.kind) || 'devoir'; }
+function inKind(a) { return kindFilter === 'all' || assignmentKind(a) === kindFilter; }
 let selectedSubmissionId = '';
 let selectedAssignmentId = '';
 let mode = 'view'; // view | create | edit
@@ -102,8 +112,17 @@ function render() {
   const r = root();
   if (!r) return;
 
-  const pending = pendingSubmissions();
-  const correctedCount = submissions.filter((s) => s.status === 'corrected').length;
+  const pending = pendingSubmissions().filter((s) => inKind(assignmentById.get(s.assignmentId)));
+  const pendingAll = pendingSubmissions();
+
+  // Compteurs du rail de type, selon l'onglet actif (à corriger / mes devoirs).
+  const kindCounts = {};
+  KIND_TABS.forEach((k) => {
+    const keep = (a) => k.key === 'all' || assignmentKind(a) === k.key;
+    kindCounts[k.key] = tab === 'correct'
+      ? pendingAll.filter((s) => keep(assignmentById.get(s.assignmentId))).length
+      : assignments.filter(keep).length;
+  });
 
   r.innerHTML = `
     <div class="sbi-asg-head">
@@ -112,9 +131,13 @@ function render() {
     </div>
 
     <div class="sbi-asg-chips" data-asg-chips>
-      <button type="button" class="sbi-asg-chip ${tab === 'correct' ? 'is-active' : ''}" data-tab="correct">À corriger <span class="sbi-asg-count">${pending.length}</span></button>
+      <button type="button" class="sbi-asg-chip ${tab === 'correct' ? 'is-active' : ''}" data-tab="correct">À corriger <span class="sbi-asg-count">${pendingAll.length}</span></button>
       <button type="button" class="sbi-asg-chip ${tab === 'assignments' ? 'is-active' : ''}" data-tab="assignments">Mes devoirs <span class="sbi-asg-count">${assignments.length}</span></button>
       <button type="button" class="sbi-asg-btn primary" data-asg-create style="margin-left:auto;">+ Créer</button>
+    </div>
+
+    <div class="sbi-asg-tabs" data-asg-kind role="tablist">
+      ${KIND_TABS.map((k) => `<button type="button" class="sbi-asg-tab ${kindFilter === k.key ? 'is-active' : ''}" data-kind="${k.key}">${escapeHtml(k.label)} <span class="sbi-asg-count">${kindCounts[k.key]}</span></button>`).join('')}
     </div>
 
     ${!formationIds.length ? '<div class="sbi-asg-status">Aucune formation ne vous est rattachée pour le moment.</div>' : `
@@ -142,8 +165,8 @@ function renderCorrectList(pending) {
 
 function renderAssignmentList() {
   const needle = search.trim().toLowerCase();
-  const list = assignments.filter((a) => !needle || `${a.title} ${a.formationName}`.toLowerCase().includes(needle));
-  if (!list.length) return '<div class="sbi-asg-status">Aucun devoir.</div>';
+  const list = assignments.filter((a) => inKind(a) && (!needle || `${a.title} ${a.formationName}`.toLowerCase().includes(needle)));
+  if (!list.length) return `<div class="sbi-asg-status">Aucun${kindFilter === 'evaluation' ? 'e évaluation' : ' devoir'} ici.</div>`;
   return list.map((a) => {
     const km = kindMeta(a.kind);
     const sm = statusMeta(a.status);
@@ -320,6 +343,11 @@ function bindEvents() {
     const chipTab = e.target.closest('[data-tab]');
     if (chipTab) { tab = chipTab.dataset.tab; mode = 'view'; teardownForm(); render(); return; }
     if (e.target.closest('[data-asg-create]')) { mode = 'create'; teardownForm(); render(); }
+  });
+
+  r.querySelector('[data-asg-kind]')?.addEventListener('click', (e) => {
+    const tabBtn = e.target.closest('[data-kind]');
+    if (tabBtn) { kindFilter = tabBtn.dataset.kind; mode = 'view'; teardownForm(); render(); }
   });
 
   r.querySelector('[data-asg-list]')?.addEventListener('click', (e) => {
