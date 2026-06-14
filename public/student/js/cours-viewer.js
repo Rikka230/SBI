@@ -49,6 +49,8 @@ function getEffectiveViewerUrl() {
 
 function resetViewerState() {
     clearViewerTimer();
+    viewerNavObserver?.disconnect();
+    viewerNavObserver = null;
     currentUid = null;
     isAdminOrTeacher = false;
     currentUserRole = 'student';
@@ -121,6 +123,8 @@ export function mountCourseViewer({ source = 'standard' } = {}) {
     const cleanup = () => {
         disposed = true;
         clearViewerTimer();
+        viewerNavObserver?.disconnect();
+        viewerNavObserver = null;
         unsubscribeAuth?.();
 
         const backButton = document.getElementById('btn-back-dynamic');
@@ -896,6 +900,11 @@ async function initViewer() {
 // « Sommaire » réutilise la sidebar (#chapters-nav-list) telle quelle ; les
 // onglets gardent leur onclick→loadChapter. Styles : viewer.css.
 const VIEWER_BAR_ID = 'sbi-viewer-bar';
+// Icônes compactes pour le slot d'action (« Suiv. ») de la capsule mobile.
+const NAV_NEXT_ARROW = '<svg viewBox="0 0 24 24"><path d="M8.59 16.59 10 18l6-6-6-6-1.41 1.41L13.17 12z"/></svg>';
+const NAV_CLOCK = '<svg viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>';
+const NAV_CHECK = '<svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>';
+let viewerNavObserver = null;
 
 function closeViewerSheet() {
     document.body.classList.remove('sbi-viewer-sheet-open');
@@ -938,12 +947,81 @@ function ensureViewerBar() {
         if (currentChapterIndex > 0) loadChapter(currentChapterIndex - 1);
     });
     bar.querySelector('[data-viewer-next]').addEventListener('click', () => {
+        // Mobile : « Suiv. » est le proxy du bouton d'action du chapitre.
+        // Tout (minuteur, validation, passage à la suite) passe par lui.
+        const actionBtn = document.getElementById('btn-next-chapter');
+        if (actionBtn) {
+            if (actionBtn.disabled) return; // minuteur en cours / préparation
+            actionBtn.click();
+            return;
+        }
         if (isNextChapterUnlocked()) loadChapter(currentChapterIndex + 1);
     });
     bar.querySelector('[data-viewer-sommaire]').addEventListener('click', () => {
         document.body.classList.toggle('sbi-viewer-sheet-open');
     });
     document.body.appendChild(bar);
+
+    // Garde la capsule synchronisée avec le bouton d'action (minuteur qui
+    // décompte, passage en mode validation/continuer…) sans toucher chaque
+    // point d'appel : on observe les mutations du contenu du chapitre.
+    const mainEl = document.getElementById('viewer-main-content');
+    if (mainEl && 'MutationObserver' in window) {
+        viewerNavObserver?.disconnect();
+        viewerNavObserver = new MutationObserver(() => syncViewerNav());
+        viewerNavObserver.observe(mainEl, {
+            subtree: true, childList: true, characterData: true,
+            attributes: true, attributeFilter: ['disabled']
+        });
+    }
+}
+
+// Décrit ce que le bouton « Suiv. » de la capsule mobile doit afficher, déduit
+// du bouton d'action principal du chapitre (#btn-next-chapter), qui reste la
+// source de vérité. Le minuteur remplace la flèche tant qu'il n'est pas fini.
+function deriveNavAction(actionBtn) {
+    const text = (actionBtn.textContent || '').replace(/\s+/g, ' ').trim();
+    const waiting = actionBtn.disabled === true;
+
+    if (/Temps minimum/i.test(text)) {
+        const m = text.match(/(\d+\s*min(?:\s*\d+\s*s)?|\d+\s*:\s*\d{2}|\d+\s*s)\s*$/i);
+        return { icon: NAV_CLOCK, label: m ? m[1].replace(/\s+/g, ' ').trim() : '…', waiting: true };
+    }
+    if (/Préparation|Validation/i.test(text)) {
+        return { icon: NAV_CLOCK, label: '…', waiting: true };
+    }
+    if (/Soumettre|Valider mes|Cochez/i.test(text)) {
+        return { icon: NAV_CHECK, label: 'Valider', waiting };
+    }
+    if (/Terminer le cours/i.test(text)) {
+        return { icon: NAV_CHECK, label: 'Terminer', waiting };
+    }
+    // Continuer / Passer à la suite / Valider et passer à la suite
+    return { icon: NAV_NEXT_ARROW, label: 'Continuer', waiting };
+}
+
+// Reflète l'état du bouton d'action dans le slot « Suiv. » de la capsule.
+function syncViewerNav() {
+    const bar = document.getElementById(VIEWER_BAR_ID);
+    if (!bar) return;
+    const navNext = bar.querySelector('[data-viewer-next]');
+    if (!navNext) return;
+
+    const actionBtn = document.getElementById('btn-next-chapter');
+    if (!actionBtn) {
+        navNext.classList.remove('sbi-viewer-bar__btn--action', 'is-waiting');
+        navNext.innerHTML = `${NAV_NEXT_ARROW}<span class="sbi-viewer-bar__label">Suiv.</span>`;
+        navNext.disabled = !isNextChapterUnlocked();
+        return;
+    }
+
+    const { icon, label, waiting } = deriveNavAction(actionBtn);
+    navNext.classList.add('sbi-viewer-bar__btn--action');
+    navNext.classList.toggle('is-waiting', waiting);
+    // On laisse le bouton « activé » : l'état d'attente (minuteur) est rendu
+    // lisible et non cliquable via .is-waiting (le clic est filtré ci-dessus).
+    navNext.disabled = false;
+    navNext.innerHTML = `${icon}<span class="sbi-viewer-bar__label">${label}</span>`;
 }
 
 // Met à jour l'état Préc/Suiv et ferme la feuille à chaque changement de chapitre.
@@ -951,9 +1029,8 @@ function updateViewerBar() {
     const bar = document.getElementById(VIEWER_BAR_ID);
     if (bar) {
         const prevBtn = bar.querySelector('[data-viewer-prev]');
-        const nextBtn = bar.querySelector('[data-viewer-next]');
         if (prevBtn) prevBtn.disabled = currentChapterIndex <= 0;
-        if (nextBtn) nextBtn.disabled = !isNextChapterUnlocked();
+        syncViewerNav();
     }
     closeViewerSheet();
 }
@@ -1079,6 +1156,7 @@ function loadChapter(index, forceReload = false) {
     bindAutonomousEvaluationControls(main);
     bindResourceDownloadControls(main);
     startSecurityTimer(isDone);
+    syncViewerNav();
 }
 
 function goToNextChapter(isLast) {

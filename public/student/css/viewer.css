@@ -620,6 +620,41 @@ body.learning-mode .viewer-main .ql-editor {
         transition: opacity 0.25s ease;
     }
     body.sbi-viewer-sheet-open .sbi-viewer-sheet-backdrop { opacity: 1; pointer-events: auto; }
+
+    /* ── Tout passe par la capsule ──
+       La barre d'action en bas de page est masquée : le minuteur / « continuer »
+       est repris par le slot « Suiv. » de la capsule. On la garde uniquement
+       quand elle porte un bouton « Refaire » (post-QCM / texte à trous), sinon
+       cette action serait perdue. */
+    .sbi-course-viewer-page .action-bar:not(:has(#btn-retry-quiz)):not(:has(#btn-retry-fib)) {
+        display: none !important;
+    }
+
+    /* « Suiv. » devient le bouton d'action principal (minuteur / validation). */
+    .sbi-viewer-bar__btn--action {
+        flex: 2.4 1 0;
+        flex-direction: row;
+        gap: 6px;
+        padding: 0 0.55rem;
+        background: var(--sbi-role-accent, var(--accent-blue, #2A57FF));
+        color: #fff;
+        font-weight: 800;
+    }
+    .sbi-viewer-bar__btn--action svg { width: 18px; height: 18px; flex-shrink: 0; fill: currentColor; }
+    .sbi-viewer-bar__btn--action .sbi-viewer-bar__label {
+        font-size: 0.8rem;
+        line-height: 1.1;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-variant-numeric: tabular-nums;
+    }
+    /* Minuteur en cours : visible (lisible) mais non cliquable, ton neutre. */
+    .sbi-viewer-bar__btn--action.is-waiting {
+        background: rgba(15, 23, 42, 0.07);
+        color: var(--text-muted, #475569);
+        pointer-events: none;
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {
