@@ -54,6 +54,10 @@ export class AdminLeftPanel extends HTMLElement {
             ${ICONS.bell}
             <span class="nav-text">Journal admin</span>
           </li>
+          <li class="nav-item" id="nav-audience" data-href="/admin/admin-analytics.html" data-sbi-href="/admin/admin-analytics.html" role="link" tabindex="0" title="Audience du site public">
+            ${ICONS.dashboard}
+            <span class="nav-text">Audience</span>
+          </li>
           ${adminNavItem({ id:'nav-settings', target:'view-settings', label:'Serveur & Vidéos', icon:ICONS.settings })}
         </ul>
       </aside>
@@ -67,6 +71,8 @@ export class AdminLeftPanel extends HTMLElement {
       this.querySelector('#nav-users')?.classList.add('active');
     } else if (path.includes('admin-audit-log.html')) {
       this.querySelector('#nav-audit-log')?.classList.add('active');
+    } else if (path.includes('admin-analytics.html')) {
+      this.querySelector('#nav-audience')?.classList.add('active');
     } else if (path.includes('admin-promotions.html')) {
       this.querySelector('#nav-promotions')?.classList.add('active');
     } else if (path.includes('admin-late-students.html')) {
