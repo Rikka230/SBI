@@ -912,6 +912,14 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    /* Mesure d'audience maison : agregats journaliers.
+       Lecture admin uniquement ; ecriture exclusivement par la Cloud
+       Function ingestAnalytics (Admin SDK, hors regles). */
+    match /analyticsDaily/{day} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
     /* ============================================================
        USERS
        ============================================================ */
