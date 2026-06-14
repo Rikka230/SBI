@@ -542,12 +542,9 @@ body.learning-mode .viewer-main .ql-editor {
 .sbi-viewer-sheet-backdrop { display: none; }
 
 @media (max-width: 1024px) {
-    /* La capsule flotte au-dessus du contenu (position:fixed) : on réserve de
-       la place en bas de la zone scrollable pour que la fin du chapitre ne
-       passe pas dessous (hauteur capsule ~62px + offset 12px + marge). */
-    .sbi-course-viewer-page .viewer-main {
-        padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
-    }
+    /* NB : le padding-bas qui dégage la fin du chapitre sous la capsule flottante
+       est défini AVEC !important dans sbi-7-1-harmonization.css (.viewer-main) —
+       c'est la source de vérité (sinon un rule ici sans !important est ignoré). */
 
     /* ── Capsule flottante ── */
     .sbi-viewer-bar {

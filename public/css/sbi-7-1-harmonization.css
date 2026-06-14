@@ -363,8 +363,9 @@
 
     .sbi-course-viewer-page .viewer-main {
         padding: 1rem !important;
-        /* Place pour la capsule flottante « ‹ Préc · ☰ Sommaire · Suiv › ». */
-        padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important;
+        /* Place pour la capsule flottante (≈75px de haut) + marge confortable
+           pour que la fin du chapitre ne soit pas collée/masquée par la capsule. */
+        padding-bottom: calc(128px + env(safe-area-inset-bottom, 0px)) !important;
     }
 
     .sbi-course-viewer-page .text-container {
