@@ -184,6 +184,13 @@
         }
       },
       {
+        "source": "/api/ingestAnalytics",
+        "function": {
+          "functionId": "ingestAnalytics",
+          "region": "europe-west1"
+        }
+      },
+      {
         "source": "/teacher/lives",
         "destination": "/teacher/lives.html"
       },

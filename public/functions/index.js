@@ -11464,3 +11464,68 @@ exports.onMessagingMessageCreated = onDocumentCreated({
         }
     }
 });
+
+/* =======================================================================
+ * Analytics maison (first-party, anonyme, sans cookie)
+ * Endpoint public POST /api/ingestAnalytics : recoit des evenements de
+ * mesure d'audience et les agrege par jour dans analyticsDaily/{YYYY-MM-DD}.
+ * Aucune donnee personnelle, aucune ecriture client directe (Admin SDK).
+ * ===================================================================== */
+exports.ingestAnalytics = onRequest({
+    region: "europe-west1",
+    timeoutSeconds: 10,
+    memory: "128MiB"
+}, async (req, res) => {
+    res.set("Cache-Control", "no-store");
+    res.set("X-Content-Type-Options", "nosniff");
+    if (req.method === "OPTIONS") { res.status(204).send(""); return; }
+    if (req.method !== "POST") { res.status(405).end(); return; }
+
+    try {
+        let body = req.body;
+        if (typeof body === "string") { try { body = JSON.parse(body); } catch (e) { body = {}; } }
+        body = body && typeof body === "object" ? body : {};
+
+        const type = cleanString(body.t, 40);
+        const allowed = ["pageview", "dwell", "formation_open", "brochure_download", "contact_submit"];
+        if (allowed.indexOf(type) === -1) { res.status(204).end(); return; }
+
+        const sanitizeKey = (s) => {
+            let k = (cleanString(s, 120) || "autre");
+            k = k.replace(/[^A-Za-z0-9_-]/g, "_").replace(/_+/g, "_").slice(0, 120);
+            return k || "autre";
+        };
+
+        const inc = admin.firestore.FieldValue.increment;
+        const day = new Date().toISOString().slice(0, 10);
+        const upd = { date: day, updatedAt: admin.firestore.FieldValue.serverTimestamp() };
+
+        if (type === "pageview") {
+            upd.pageViews = inc(1);
+            if (body.new) upd.sessions = inc(1);
+            upd.pages = {};
+            upd.pages[sanitizeKey(body.p || "home")] = inc(1);
+        } else if (type === "dwell") {
+            let ms = Number(body.ms) || 0;
+            if (ms <= 0) { res.status(204).end(); return; }
+            if (ms > 1800000) ms = 1800000;
+            upd.dwellTotalMs = inc(Math.round(ms));
+            upd.dwellCount = inc(1);
+        } else if (type === "formation_open") {
+            upd.formationOpensTotal = inc(1);
+            upd.formationOpens = {};
+            upd.formationOpens[sanitizeKey(body.slug)] = inc(1);
+        } else if (type === "brochure_download") {
+            upd.brochureDownloadsTotal = inc(1);
+            upd.brochures = {};
+            upd.brochures[sanitizeKey(body.title)] = inc(1);
+        } else if (type === "contact_submit") {
+            upd.contactSubmits = inc(1);
+        }
+
+        await admin.firestore().doc("analyticsDaily/" + day).set(upd, { merge: true });
+        res.status(204).end();
+    } catch (error) {
+        res.status(204).end();
+    }
+});

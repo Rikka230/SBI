@@ -55,6 +55,7 @@ export const NAV_BY_ROLE = {
     { id: 'late',       label: 'Élèves en retard', href: '/admin/admin-late-students.html',       icon: ICON_LATE,        match: ['/admin/admin-late-students'],                    primary: false },
     { id: 'annonces',   label: 'Annonces',         href: '/admin/admin-messagerie.html',          icon: ICONS.message,    match: ['/admin/admin-messagerie'],                       primary: false },
     { id: 'journal',    label: 'Journal admin',    href: '/admin/admin-audit-log.html',           icon: ICONS.bell,       match: ['/admin/admin-audit-log'],                        primary: false },
+    { id: 'audience',   label: 'Audience',         href: '/admin/admin-analytics.html',           icon: ICONS.dashboard,  match: ['/admin/admin-analytics'],                        primary: false },
     { id: 'settings',   label: 'Serveur & Vidéos', href: '/admin/index.html?tab=view-settings',   icon: ICONS.settings,   tab: 'view-settings',   match: ['/admin/site-index-settings'],                    primary: false }
   ]
 };

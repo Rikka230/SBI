@@ -229,6 +229,8 @@ ${HEADER}
 ${FOOTER}
     <script src="/js/sbi-background.js?v=8.0P.155"></script>
     <script src="/js/main.js?v=8.0P.80"></script>
+    <script src="/js/sbi-analytics.js?v=8.0P.156"></script>
+    <script>window.sbiTrack&&window.sbiTrack('formation_open',{slug:${JSON.stringify(slug)}});</script>
 </body></html>`;
   return { slug, url, indexable, html };
 }

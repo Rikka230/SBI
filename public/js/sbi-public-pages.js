@@ -915,6 +915,10 @@ window.addEventListener('pagehide', forceCloseFormationSheet);
 function openFormationSheet(formation, options = {}) {
   if (!formation || isComingSoon(formation)) return;
 
+  if (typeof window.sbiTrack === 'function') {
+    window.sbiTrack('formation_open', { slug: text(formation.slug) });
+  }
+
   closeFormationSheet(null, { immediate: true, restoreUrl: false });
 
   const sheet = createElement('aside', 'public-formation-sheet');
@@ -1083,6 +1087,9 @@ function triggerDirectDownload(url, filename) {
 }
 
 async function downloadPublicResourceFile(item) {
+  if (typeof window.sbiTrack === 'function') {
+    window.sbiTrack('brochure_download', { title: text(item?.title) });
+  }
   const filename = getPublicResourceFileName(item);
   const storagePath = text(item?.file?.storagePath);
   const directUrl = text(item?.file?.url || item?.externalUrl);
@@ -1799,6 +1806,7 @@ function initContactForm(root) {
 
     try {
       const result = await submitBrevoPayload(form, payload);
+      if (typeof window.sbiTrack === 'function') window.sbiTrack('contact_submit');
       const message = result.mode === 'sent'
         ? text(result.message, 'Votre message a bien été envoyé. L’équipe SBI revient vers vous rapidement.')
         : 'Votre demande est validée. Il reste à brancher l’envoi Brevo côté serveur.';
