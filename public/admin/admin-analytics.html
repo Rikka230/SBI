@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audience du site - SBI Console</title>
+    <link rel="stylesheet" href="css/admin-layout.css">
+    <link rel="stylesheet" href="css/admin.css?v=8.0P.167.51">
+    <link rel="stylesheet" href="css/admin-notifications.css">
+    <link rel="modulepreload" href="/js/sbi-version.js">
+    <link rel="stylesheet" href="css/admin-surface-unified.css?v=8.0P.167.52">
+    <link rel="stylesheet" href="css/admin-responsive.css">
+    <link rel="stylesheet" href="css/sbi-bottom-nav.css" data-sbi-bottom-nav="1">
+    <script src="js/components.js"></script>
+    <style>
+      .sbi-an-wrap { padding: 4px 0 40px; }
+      .sbi-an-head { display:flex; flex-wrap:wrap; gap:14px; align-items:flex-end; justify-content:space-between; margin-bottom:18px; }
+      .sbi-an-head h2 { margin:0 0 4px; }
+      .sbi-an-head p { margin:0; opacity:.7; font-size:.9rem; }
+      .sbi-an-ranges { display:flex; gap:8px; }
+      .sbi-an-range-btn { border:1px solid rgba(126,181,255,.3); background:transparent; color:inherit; border-radius:8px; padding:7px 13px; cursor:pointer; font-size:.85rem; }
+      .sbi-an-range-btn.is-active { background:#2A57FF; border-color:#2A57FF; color:#fff; }
+      .sbi-an-kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:14px; margin-bottom:22px; }
+      .sbi-an-kpi { border:1px solid rgba(126,181,255,.18); border-radius:14px; padding:16px 18px; background:rgba(255,255,255,.03); }
+      .sbi-an-kpi .v { font-size:1.9rem; font-weight:800; line-height:1.1; }
+      .sbi-an-kpi .l { font-size:.82rem; opacity:.72; margin-top:4px; }
+      .sbi-an-kpi .s { font-size:.74rem; opacity:.55; margin-top:2px; }
+      .sbi-an-card { border:1px solid rgba(126,181,255,.18); border-radius:14px; padding:18px; background:rgba(255,255,255,.03); margin-bottom:18px; }
+      .sbi-an-card h3 { margin:0 0 14px; font-size:1rem; }
+      .sbi-an-grid2 { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:18px; }
+      .sbi-an-bar { display:flex; align-items:center; gap:10px; margin:7px 0; font-size:.85rem; }
+      .sbi-an-bar .name { flex:0 0 42%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; opacity:.85; }
+      .sbi-an-bar .track { flex:1; height:10px; background:rgba(126,181,255,.12); border-radius:6px; overflow:hidden; }
+      .sbi-an-bar .fill { height:100%; background:linear-gradient(90deg,#2A57FF,#7eb5ff); border-radius:6px; }
+      .sbi-an-bar .num { flex:0 0 auto; font-weight:700; min-width:34px; text-align:right; }
+      .sbi-an-chart { width:100%; height:200px; }
+      .sbi-an-empty { opacity:.6; font-size:.9rem; padding:8px 0; }
+      .sbi-an-muted { opacity:.6; font-size:.8rem; }
+    </style>
+</head>
+<body class="preload sbi-admin-surface">
+
+<div class="app-container" id="app-container">
+    <script>
+        if (window.innerWidth > 1024) {
+            const app = document.getElementById('app-container');
+            if (localStorage.getItem('leftPanelCollapsed') === 'true') app.classList.add('left-collapsed');
+            if (localStorage.getItem('rightPanelCollapsed') === 'true') app.classList.add('right-collapsed');
+        }
+    </script>
+
+    <admin-left-panel></admin-left-panel>
+
+    <header class="top-bar">
+        <button class="mobile-toggle left-toggle" id="btn-toggle-mobile"><svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg></button>
+        <span class="page-title" style="font-weight: 600;">Audience du site</span>
+        <button class="mobile-toggle right-toggle" id="btn-toggle-right" style="position: relative;">
+            <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+            <span class="notif-badge" id="avatar-badge" style="display:none; top: 0; right: 0;">0</span>
+        </button>
+    </header>
+
+    <main id="main-content">
+        <div class="content-wrapper">
+            <section class="admin-view active">
+                <div class="sbi-an-wrap">
+                    <div class="sbi-an-head">
+                        <div>
+                            <h2>Audience du site public</h2>
+                            <p>Mesure d'audience maison, anonyme et sans cookie. <span class="sbi-an-muted" id="sbi-an-period"></span></p>
+                        </div>
+                        <div class="sbi-an-ranges" id="sbi-an-ranges">
+                            <button type="button" class="sbi-an-range-btn" data-days="7">7 jours</button>
+                            <button type="button" class="sbi-an-range-btn is-active" data-days="30">30 jours</button>
+                            <button type="button" class="sbi-an-range-btn" data-days="90">90 jours</button>
+                        </div>
+                    </div>
+
+                    <div class="sbi-an-kpis" id="sbi-an-kpis">
+                        <div class="sbi-an-empty">Chargement…</div>
+                    </div>
+
+                    <div class="sbi-an-card">
+                        <h3>Visiteurs &amp; pages vues par jour</h3>
+                        <svg class="sbi-an-chart" id="sbi-an-chart" viewBox="0 0 720 200" preserveAspectRatio="none" role="img" aria-label="Graphique des visiteurs par jour"></svg>
+                        <div class="sbi-an-muted" id="sbi-an-chart-legend"></div>
+                    </div>
+
+                    <div class="sbi-an-grid2">
+                        <div class="sbi-an-card">
+                            <h3>Fiches formation ouvertes</h3>
+                            <div id="sbi-an-formations"><div class="sbi-an-empty">—</div></div>
+                        </div>
+                        <div class="sbi-an-card">
+                            <h3>Pages les plus vues</h3>
+                            <div id="sbi-an-pages"><div class="sbi-an-empty">—</div></div>
+                        </div>
+                        <div class="sbi-an-card">
+                            <h3>Brochures téléchargées</h3>
+                            <div id="sbi-an-brochures"><div class="sbi-an-empty">—</div></div>
+                        </div>
+                        <div class="sbi-an-card">
+                            <h3>Conversions</h3>
+                            <div id="sbi-an-conversions"><div class="sbi-an-empty">—</div></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <admin-right-panel></admin-right-panel>
+</div>
+
+<script type="module" src="js/admin-ui.js?v=8.0P.167.360"></script>
+<script type="module" src="js/tracker.js?v=8.0P.167.314"></script>
+<script type="module" src="js/admin-notifications.js?v=8.0P.167.205"></script>
+<script type="module" src="js/admin-analytics.js?v=8.0P.167.363"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        document.body.classList.remove('preload');
+        document.body.classList.add('sbi-preload-timeout');
+    });
+</script>
+
+</body>
+</html>
