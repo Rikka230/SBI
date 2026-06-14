@@ -7,7 +7,7 @@
 import { auth, db } from '/js/firebase-init.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js';
 import {
-  collection, getDocs, query, orderBy, limit, documentId, doc, getDoc
+  collection, getDocs, doc, getDoc
 } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
 import { isSbiAdminLike } from '/js/sbi-permissions.js?v=8.0P.167.44';
 
@@ -99,13 +99,18 @@ async function loadRange(days) {
   $('sbi-an-kpis').innerHTML = '<div class="sbi-an-empty">Chargement…</div>';
   let docs = [];
   try {
-    const snap = await getDocs(query(collection(db, 'analyticsDaily'), orderBy(documentId(), 'desc'), limit(days)));
-    snap.forEach((d) => docs.push({ date: d.id, ...(d.data() || {}) }));
+    // Collection minuscule (1 doc/jour) : lecture simple sans orderBy/index,
+    // tri + fenêtrage côté client.
+    const snap = await getDocs(collection(db, 'analyticsDaily'));
+    const all = [];
+    snap.forEach((d) => all.push({ date: d.id, ...(d.data() || {}) }));
+    all.sort((a, b) => b.date.localeCompare(a.date)); // récent -> ancien
+    docs = all.slice(0, days);
   } catch (e) {
     $('sbi-an-kpis').innerHTML = '<div class="sbi-an-empty">Lecture impossible (' + (e && e.code ? e.code : 'erreur') + ').</div>';
     return;
   }
-  docs.sort((a, b) => a.date.localeCompare(b.date));
+  docs.sort((a, b) => a.date.localeCompare(b.date)); // ancien -> récent (pour le graphe)
 
   const tot = { sessions: 0, pageViews: 0, dwellTotalMs: 0, dwellCount: 0, formationOpensTotal: 0, brochureDownloadsTotal: 0, contactSubmits: 0 };
   const pages = {}, formationOpens = {}, brochures = {};
