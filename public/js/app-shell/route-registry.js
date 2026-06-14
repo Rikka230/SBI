@@ -985,7 +985,7 @@ async function mountAdminAnalytics({ url }) {
   window.__SBI_APP_SHELL_MOUNTING_ANALYTICS = true;
 
   try {
-    const module = await import('/admin/js/admin-analytics.js?v=8.0P.167.365');
+    const module = await import('/admin/js/admin-analytics.js?v=8.0P.167.366');
     const cleanupAnalytics = module.mountAdminAnalytics?.();
 
     if (typeof cleanupAnalytics === 'function') {

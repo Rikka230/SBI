@@ -53,42 +53,107 @@ function topList(map, prettify, limitN = 8) {
     </div>`).join('');
 }
 
+function smoothPath(pts) {
+  if (!pts.length) return '';
+  if (pts.length === 1) return `M ${pts[0][0]} ${pts[0][1]}`;
+  let d = `M ${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[i - 1] || pts[i];
+    const p1 = pts[i];
+    const p2 = pts[i + 1];
+    const p3 = pts[i + 2] || p2;
+    const c1x = p1[0] + (p2[0] - p0[0]) / 6;
+    const c1y = p1[1] + (p2[1] - p0[1]) / 6;
+    const c2x = p2[0] - (p3[0] - p1[0]) / 6;
+    const c2y = p2[1] - (p3[1] - p1[1]) / 6;
+    d += ` C ${c1x.toFixed(1)} ${c1y.toFixed(1)}, ${c2x.toFixed(1)} ${c2y.toFixed(1)}, ${p2[0].toFixed(1)} ${p2[1].toFixed(1)}`;
+  }
+  return d;
+}
+
 function renderChart(days) {
   const svg = $('sbi-an-chart');
   if (!svg) return;
-  const W = 720, H = 200, padX = 8, padTop = 12, padBot = 22;
+  const W = 720, H = 200, padL = 16, padR = 16, padTop = 16, padBot = 26;
   const n = days.length;
+  const lg = $('sbi-an-chart-legend');
+
+  const DEFS = `<defs>
+    <linearGradient id="anPvFill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#7eb5ff" stop-opacity="0.30"></stop>
+      <stop offset="100%" stop-color="#7eb5ff" stop-opacity="0"></stop>
+    </linearGradient>
+    <linearGradient id="anLine" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#2A57FF"></stop>
+      <stop offset="100%" stop-color="#6f8bff"></stop>
+    </linearGradient>
+  </defs>`;
+
   if (!n) {
-    svg.innerHTML = '<line x1="8" y1="178" x2="712" y2="178" stroke="rgba(126,181,255,.25)" stroke-width="1"></line>'
-      + '<text x="360" y="96" text-anchor="middle" fill="rgba(200,215,240,.55)" font-size="13">Pas encore de données sur cette période</text>';
-    const lg = $('sbi-an-chart-legend'); if (lg) lg.textContent = '';
+    svg.innerHTML = DEFS
+      + '<line x1="16" y1="174" x2="704" y2="174" stroke="rgba(126,181,255,.18)" stroke-width="1"></line>'
+      + '<text x="360" y="98" text-anchor="middle" fill="rgba(200,215,240,.5)" font-size="13" font-weight="500">Pas encore de données sur cette période</text>';
+    if (lg) lg.textContent = '';
     return;
   }
-  const maxPV = Math.max(1, ...days.map((d) => d.pageViews));
-  const innerW = W - padX * 2;
+
+  const innerW = W - padL - padR;
   const innerH = H - padTop - padBot;
-  const bw = innerW / n;
-  const y = (v) => padTop + innerH - (v / maxPV) * innerH;
-  let bars = '';
-  let pts = [];
-  days.forEach((d, i) => {
-    const x = padX + i * bw;
-    const h = (d.pageViews / maxPV) * innerH;
-    bars += `<rect x="${(x + bw * 0.18).toFixed(1)}" y="${(padTop + innerH - h).toFixed(1)}" width="${(bw * 0.64).toFixed(1)}" height="${Math.max(0, h).toFixed(1)}" rx="2" fill="rgba(126,181,255,.35)"></rect>`;
-    pts.push(`${(x + bw / 2).toFixed(1)},${y(d.sessions).toFixed(1)}`);
+  const maxVal = Math.max(1, ...days.map((d) => Math.max(d.pageViews, d.sessions)));
+  const xAt = (i) => n === 1 ? padL + innerW / 2 : padL + (i / (n - 1)) * innerW;
+  const yAt = (v) => padTop + innerH - (v / maxVal) * innerH;
+  const baseY = padTop + innerH;
+
+  // Gridlines horizontales discrètes (4 paliers) + valeurs
+  let grid = '';
+  for (let g = 0; g <= 3; g++) {
+    const gy = padTop + (innerH * g) / 3;
+    const val = Math.round(maxVal * (1 - g / 3));
+    grid += `<line x1="${padL}" y1="${gy.toFixed(1)}" x2="${W - padR}" y2="${gy.toFixed(1)}" stroke="rgba(126,181,255,.10)" stroke-width="1"></line>`;
+    grid += `<text x="${W - padR + 2}" y="${(gy + 3).toFixed(1)}" font-size="9.5" fill="rgba(200,215,240,.40)" text-anchor="start">${num(val)}</text>`;
+  }
+
+  const pvPts = days.map((d, i) => [xAt(i), yAt(d.pageViews)]);
+  const sesPts = days.map((d, i) => [xAt(i), yAt(d.sessions)]);
+
+  // Aire dégradée : pages vues
+  let area = '';
+  const pvLine = smoothPath(pvPts);
+  if (n === 1) {
+    // 1 seul point : petit plateau centré pour éviter le bloc plein
+    const x = pvPts[0][0], yPV = pvPts[0][1], yS = sesPts[0][1];
+    const half = Math.min(60, innerW / 2);
+    area = `<path d="M ${(x - half).toFixed(1)} ${baseY} L ${(x - half).toFixed(1)} ${yPV.toFixed(1)} L ${(x + half).toFixed(1)} ${yPV.toFixed(1)} L ${(x + half).toFixed(1)} ${baseY} Z" fill="url(#anPvFill)"></path>`;
+    area += `<line x1="${(x - half).toFixed(1)}" y1="${yPV.toFixed(1)}" x2="${(x + half).toFixed(1)}" y2="${yPV.toFixed(1)}" stroke="#7eb5ff" stroke-opacity="0.6" stroke-width="2"></line>`;
+    area += `<line x1="${(x - half).toFixed(1)}" y1="${yS.toFixed(1)}" x2="${(x + half).toFixed(1)}" y2="${yS.toFixed(1)}" stroke="url(#anLine)" stroke-width="3" stroke-linecap="round"></line>`;
+  } else {
+    area = `<path d="${pvLine} L ${pvPts[n - 1][0].toFixed(1)} ${baseY} L ${pvPts[0][0].toFixed(1)} ${baseY} Z" fill="url(#anPvFill)"></path>`;
+    area += `<path d="${pvLine}" fill="none" stroke="#7eb5ff" stroke-opacity="0.55" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"></path>`;
+    area += `<path d="${smoothPath(sesPts)}" fill="none" stroke="url(#anLine)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"></path>`;
+  }
+
+  // Points visiteurs (dernier point mis en valeur)
+  let dots = '';
+  sesPts.forEach((p, i) => {
+    const last = i === n - 1;
+    if (n > 24 && !last && i % Math.ceil(n / 16) !== 0) return; // éviter la surcharge sur 90j
+    dots += `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${last ? 4.5 : 2.6}" fill="${last ? '#fff' : '#2A57FF'}" stroke="#2A57FF" stroke-width="${last ? 3 : 0}"></circle>`;
   });
-  const line = `<polyline points="${pts.join(' ')}" fill="none" stroke="#2A57FF" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"></polyline>`;
-  const dots = days.map((d, i) => `<circle cx="${(padX + i * bw + bw / 2).toFixed(1)}" cy="${y(d.sessions).toFixed(1)}" r="2.6" fill="#2A57FF"></circle>`).join('');
-  // labels: first / mid / last date
-  const labelIdx = n <= 1 ? [0] : [0, Math.floor(n / 2), n - 1];
-  const labels = labelIdx.map((i) => {
-    const x = padX + i * bw + bw / 2;
-    const dd = days[i].date.slice(5);
+
+  // Labels de dates : premier / milieu / dernier
+  const labelIdx = n === 1 ? [0] : [0, Math.floor((n - 1) / 2), n - 1];
+  const labels = [...new Set(labelIdx)].map((i) => {
+    const x = xAt(i);
+    const dd = days[i].date.slice(5).replace('-', '/');
     const anchor = i === 0 ? 'start' : (i === n - 1 ? 'end' : 'middle');
-    return `<text x="${x.toFixed(1)}" y="${H - 6}" font-size="11" fill="rgba(200,215,240,.6)" text-anchor="${anchor}">${dd}</text>`;
+    return `<text x="${x.toFixed(1)}" y="${H - 6}" font-size="10.5" fill="rgba(200,215,240,.55)" text-anchor="${anchor}">${dd}</text>`;
   }).join('');
-  svg.innerHTML = bars + line + dots + labels;
-  $('sbi-an-chart-legend').innerHTML = '<span style="color:#2A57FF">●</span> Visiteurs (sessions) &nbsp; <span style="color:rgba(126,181,255,.6)">▮</span> Pages vues &nbsp; — max pages/jour : ' + num(maxPV);
+
+  svg.innerHTML = DEFS + grid + area + dots + labels;
+  if (lg) {
+    lg.innerHTML = '<span style="display:inline-flex;align-items:center;gap:5px"><span style="width:14px;height:3px;border-radius:2px;background:#2A57FF;display:inline-block"></span> Visiteurs</span>'
+      + '&nbsp;&nbsp;<span style="display:inline-flex;align-items:center;gap:5px"><span style="width:12px;height:9px;border-radius:2px;background:linear-gradient(180deg,rgba(126,181,255,.5),rgba(126,181,255,.05));display:inline-block"></span> Pages vues</span>';
+  }
 }
 
 function setActiveRange(days) {
