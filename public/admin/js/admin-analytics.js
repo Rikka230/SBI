@@ -12,7 +12,6 @@ import {
 import { isSbiAdminLike } from '/js/sbi-permissions.js?v=8.0P.167.44';
 
 let currentDays = 30;
-let booted = false;
 
 const $ = (id) => document.getElementById(id);
 const num = (n) => (Number(n) || 0).toLocaleString('fr-FR');
@@ -59,7 +58,12 @@ function renderChart(days) {
   if (!svg) return;
   const W = 720, H = 200, padX = 8, padTop = 12, padBot = 22;
   const n = days.length;
-  if (!n) { svg.innerHTML = ''; return; }
+  if (!n) {
+    svg.innerHTML = '<line x1="8" y1="178" x2="712" y2="178" stroke="rgba(126,181,255,.25)" stroke-width="1"></line>'
+      + '<text x="360" y="96" text-anchor="middle" fill="rgba(200,215,240,.55)" font-size="13">Pas encore de données sur cette période</text>';
+    const lg = $('sbi-an-chart-legend'); if (lg) lg.textContent = '';
+    return;
+  }
   const maxPV = Math.max(1, ...days.map((d) => d.pageViews));
   const innerW = W - padX * 2;
   const innerH = H - padTop - padBot;
@@ -157,24 +161,44 @@ async function loadRange(days) {
     <div class="sbi-an-muted" style="margin-top:10px">Taux de contact : ${convRate.toFixed(1)}% des visiteurs · ${pagesPerVisitor.toFixed(1)} pages/visiteur</div>`;
 }
 
-function boot() {
-  if (booted) return;
-  booted = true;
-  document.getElementById('sbi-an-ranges')?.addEventListener('click', (e) => {
-    const btn = e.target.closest('[data-days]');
-    if (btn) loadRange(Number(btn.dataset.days));
+let unsubscribeAuth = null;
+
+function mount() {
+  const ranges = document.getElementById('sbi-an-ranges');
+  if (ranges && !ranges.dataset.bound) {
+    ranges.dataset.bound = '1';
+    ranges.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-days]');
+      if (btn) loadRange(Number(btn.dataset.days));
+    });
+  }
+
+  unsubscribeAuth?.();
+  unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
+    if (!user) return;
+    let profile = {};
+    try {
+      const snap = await getDoc(doc(db, 'users', user.uid));
+      profile = snap.exists() ? (snap.data() || {}) : {};
+    } catch (e) { /* noop */ }
+    if (isSbiAdminLike(profile)) { loadRange(currentDays); return; }
+    const k = $('sbi-an-kpis');
+    if (k) k.innerHTML = '<div class="sbi-an-empty">Accès réservé aux administrateurs.</div>';
   });
-  loadRange(currentDays);
+
+  return function cleanup() { unsubscribeAuth?.(); unsubscribeAuth = null; };
 }
 
-onAuthStateChanged(auth, async (user) => {
-  if (!user) { window.location.href = '/login.html'; return; }
-  let profile = {};
-  try {
-    const snap = await getDoc(doc(db, 'users', user.uid));
-    profile = snap.exists() ? (snap.data() || {}) : {};
-  } catch (e) { /* noop */ }
-  if (isSbiAdminLike(profile)) { boot(); return; }
-  const k = $('sbi-an-kpis');
-  if (k) k.innerHTML = '<div class="sbi-an-empty">Accès réservé aux administrateurs.</div>';
-});
+// Appelé par le route-registry en navigation PJAX.
+export function mountAdminAnalytics() { return mount(); }
+
+// Chargement direct de la page (hors PJAX).
+function autoMount() {
+  if (window.__SBI_APP_SHELL_MOUNTING_ANALYTICS) return;
+  mount();
+}
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', autoMount, { once: true });
+} else {
+  autoMount();
+}

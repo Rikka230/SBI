@@ -145,6 +145,10 @@ function isAdminAuditLog(url) {
   return normalizePath(url.pathname).toLowerCase() === '/admin/admin-audit-log.html';
 }
 
+function isAdminAnalytics(url) {
+  return normalizePath(url.pathname).toLowerCase() === '/admin/admin-analytics.html';
+}
+
 function isStudentDashboard(url) {
   return normalizePath(url.pathname).toLowerCase() === '/student/dashboard.html';
 }
@@ -234,6 +238,7 @@ function isAdminShellContext() {
     || path === '/admin/formation-documents.html'
     || path === '/admin/apprenticeship-booklets.html'
     || path === '/admin/admin-audit-log.html'
+    || path === '/admin/admin-analytics.html'
     || path === '/admin/admin-messagerie.html';
 }
 
@@ -964,6 +969,35 @@ async function mountAdminAuditLog({ url }) {
   return { viewKey: 'admin:audit-log' };
 }
 
+async function mountAdminAnalytics({ url }) {
+  cleanupCourseEditorV2Artifacts();
+  maybeCacheAdminIndexMain('leave-for-admin-analytics');
+
+  const doc = await fetchAdminDocument(url);
+
+  await ensureDocumentStyles(doc, url.href);
+  applyBodyRouteClassesFromDocument(doc, ['sbi-admin-surface']);
+  replaceMainFromDocument(doc);
+  updateAdminChromeFromDocument(doc, 'Audience du site - SBI Console');
+  setLeftNavActive('nav-audience');
+  updateUrlContext(url);
+
+  window.__SBI_APP_SHELL_MOUNTING_ANALYTICS = true;
+
+  try {
+    const module = await import('/admin/js/admin-analytics.js?v=8.0P.167.365');
+    const cleanupAnalytics = module.mountAdminAnalytics?.();
+
+    if (typeof cleanupAnalytics === 'function') {
+      registerCleanup(cleanupAnalytics, 'admin-analytics');
+    }
+  } finally {
+    window.__SBI_APP_SHELL_MOUNTING_ANALYTICS = false;
+  }
+
+  return { viewKey: 'admin:analytics' };
+}
+
 async function mountStudentPage({ url }) {
   cleanupCourseEditorV2Artifacts();
   const doc = await fetchAdminDocument(url);
@@ -1419,6 +1453,7 @@ export function createRouteRegistry() {
   routes.push({ id: 'admin-formation-documents', canHandle(url) { return isAdminFormationDocuments(url) && isAdminShellContext(); }, mount: mountAdminFormationDocuments });
   routes.push({ id: 'admin-apprenticeship-booklets', canHandle(url) { return isAdminBooklets(url) && isAdminShellContext(); }, mount: mountAdminBooklets });
   routes.push({ id: 'admin-audit-log', canHandle(url) { return isAdminAuditLog(url) && isAdminShellContext(); }, mount: mountAdminAuditLog });
+  routes.push({ id: 'admin-analytics', canHandle(url) { return isAdminAnalytics(url) && isAdminShellContext(); }, mount: mountAdminAnalytics });
   routes.push({ id: 'admin-messagerie', canHandle(url) { return isAdminMessagerie(url) && isAdminShellContext(); }, mount: mountAdminMessagerie });
   routes.push({ id: 'admin-site-index', canHandle(url) { return isAdminSiteIndex(url) && isAdminShellContext(); }, mount: mountSiteIndex });
 
