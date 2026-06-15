@@ -120,10 +120,11 @@ function updateBadge() {
   injectVersionBadgeStyles();
 
   const badge = createOrGetBadge();
-  const label = getSbiVersionLabel();
 
-  badge.textContent = label;
-  badge.title = `${label} · ${SBI_VERSION.branch}`;
+  // Badge = uniquement le numéro de version (les infos détaillées restent dans
+  // sbi-version.js / le tooltip). Demande client : ne plus afficher le libellé.
+  badge.textContent = SBI_VERSION.version;
+  badge.title = getSbiVersionLabel();
   badge.dataset.sbiVersion = SBI_VERSION.version;
   badge.dataset.sbiBranch = SBI_VERSION.branch;
   badge.dataset.sbiChannel = SBI_VERSION.channel;
