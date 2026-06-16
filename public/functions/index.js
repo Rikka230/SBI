@@ -7,7 +7,7 @@
 // Importation spécifique pour la V2
 const { onCall, onRequest, HttpsError } = require("firebase-functions/v2/https");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
-const { onDocumentCreated } = require("firebase-functions/v2/firestore");
+const { onDocumentCreated, onDocumentWritten } = require("firebase-functions/v2/firestore");
 const { defineSecret } = require("firebase-functions/params");
 const admin = require("firebase-admin");
 const crypto = require("crypto");
@@ -11527,5 +11527,76 @@ exports.ingestAnalytics = onRequest({
         res.status(204).end();
     } catch (error) {
         res.status(204).end();
+    }
+});
+
+
+/**
+ * 8.0P.167.373 — Index léger des cours (courseIndex).
+ * La bibliothèque admin lisait TOUS les documents courses en entier (contenu
+ * pédagogique lourd, dupliqué dans chapitres + learningBlocks) juste pour
+ * afficher des cartes de métadonnées => page lente. Firestore ne permet pas de
+ * projeter une partie d'un document. On maintient donc une collection miroir
+ * courseIndex/{courseId} ne contenant QUE les champs d'affichage/filtre/tri.
+ * La bibliothèque lit courseIndex (quelques Ko) ; le contenu complet n'est
+ * chargé qu'à l'édition/aperçu d'un cours précis.
+ */
+function buildCourseIndexPayload(courseId, data) {
+    const chapitres = Array.isArray(data.chapitres)
+        ? data.chapitres
+        : (Array.isArray(data.learningBlocks) ? data.learningBlocks : []);
+    const arr = (k) => (Array.isArray(data[k]) ? data[k] : []);
+    return {
+        courseId: courseId,
+        titre: data.titre || data.title || "",
+        title: data.title || data.titre || "",
+        bloc: data.bloc || "",
+        blockTitle: data.blockTitle || "",
+        actif: data.actif === true,
+        statutValidation: data.statutValidation || "",
+        lmsStatus: data.lmsStatus || "",
+        auteurId: data.auteurId || "",
+        authorName: data.authorName || "",
+        chapitresCount: chapitres.length,
+        lessonCount: Number(data.lessonCount || 0),
+        quizCount: Number(data.quizCount || 0),
+        fillBlankCount: Number(data.fillBlankCount || 0),
+        resourceCount: Number(data.resourceCount || 0),
+        totalXp: Number(data.totalXp || 0),
+        estimatedDurationMinutes: Number(data.estimatedDurationMinutes || 0),
+        formations: arr("formations"),
+        formationIds: arr("formationIds"),
+        formationsIds: arr("formationsIds"),
+        targetFormationIds: arr("targetFormationIds"),
+        targetFormationTitles: arr("targetFormationTitles"),
+        targetTeacherIds: arr("targetTeacherIds"),
+        dateCreation: data.dateCreation || null,
+        createdAt: data.createdAt || null,
+        updatedAt: data.updatedAt || null,
+        indexedAt: admin.firestore.FieldValue.serverTimestamp()
+    };
+}
+
+exports.syncCourseIndex = onDocumentWritten({
+    region: "europe-west1",
+    document: "courses/{courseId}",
+    timeoutSeconds: 60,
+    memory: "256MiB"
+}, async (event) => {
+    const db = admin.firestore();
+    const courseId = event.params.courseId;
+    const indexRef = db.collection("courseIndex").doc(courseId);
+    const after = event.data && event.data.after;
+
+    if (!after || !after.exists) {
+        await indexRef.delete().catch(() => {});
+        return;
+    }
+
+    try {
+        const payload = buildCourseIndexPayload(courseId, after.data() || {});
+        await indexRef.set(payload, { merge: false });
+    } catch (error) {
+        console.error("[syncCourseIndex] échec pour " + courseId, error);
     }
 });

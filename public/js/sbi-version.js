@@ -6,12 +6,12 @@
  */
 
 export const SBI_VERSION = {
-  version: '8.0P.167.372',
-  branch: 'version-badge-number-only',
+  version: '8.0P.167.373',
+  branch: 'course-library-light-index',
   channel: 'Messagerie : CORRECTIF requête DM. La requête `conversations where participants array-contains uid` était refusée (règle list via canReadConversation = OR de get() que l\'analyseur Firestore rejette) → les DM ne s\'affichaient QUE depuis le cache (visibles sur PC déjà chargé, INVISIBLES sur un appareil neuf comme le tél). Règle list passée au motif CANONIQUE array-contains (vérif directe du tableau participants). + pastille nav non-lus + groupes.',
   stage: 'Nouvelle messagerie interne (distincte des notifications/emails). Modèle hybride : Cloud Functions (openDirectConversation / ensureGroupChannel / sendAdminAnnouncement) OUVRENT et valident la conversation, puis le client écrit les messages EN DIRECT (onSnapshot temps réel, comme le chat des lives). Règles Firestore conversations/{cid} (kind dm/group/announcement) + sous-collections messages (sender==uid + membre + non-announcement) et reads/{uid} (pointeur non-lus). Trigger onMessagingMessageCreated : dénormalise lastMessage* + ping cloche en DM. Pages : student/messagerie.html, teacher/messagerie.html (module partagé js/messaging/messaging-ui.js) + admin/admin-messagerie.html (composer d\'annonces). Nav-manifest + 2 types de notif (new_message, admin_announcement). Admin (god) lit tout (modération/Qualiopi).',
   updatedAt: '2026-06-14',
-  label: 'SBI 8.0P.167.372 - Badge de version : affiche uniquement le numero (plus le libelle detaille ; le detail reste dans le title/tooltip). Bump admin-ui.js + import badge sur toutes les pages internes.'
+  label: 'SBI 8.0P.167.373 - Bibliotheque admin plus rapide : lecture d un index leger courseIndex (metadonnees) au lieu de tout le contenu des cours. Nouvelle CF syncCourseIndex (trigger onWrite courses) + regle Firestore courseIndex + backfill. Contenu complet charge seulement a l edition/apercu.'
 };
 
 export function getSbiVersionLabel() {

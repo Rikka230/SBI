@@ -51,8 +51,9 @@ import {
     loadUsersForCourseAccess,
     loadFormationsForCourseAccess,
     loadCoursesForCourseAccess,
+    loadCoursesLibraryView,
     loadCoursesForMediaSafety
-} from '/admin/js/course-data-access.js?v=8.0P.167.85';
+} from '/admin/js/course-data-access.js?v=8.0P.167.373';
 import { renderCourseActionButtons } from '/admin/js/course-action-buttons.js?v=8.0P.167.188';
 import { SVG_PREVIEW, SVG_QUIZ_LIST } from '/admin/js/courses/course-icons.js';
 import {
@@ -1314,7 +1315,9 @@ function renderLibraryCourseCard(data, cursusOrder) {
         ? `<span style="color: var(--accent-blue); font-size: 0.8rem; border: 1px solid var(--accent-blue); padding: 2px 8px; border-radius: 12px; margin-left: 10px;">${data.bloc}</span>`
         : '';
 
-    const nbChapitres = data.chapitres ? data.chapitres.length : 0;
+    const nbChapitres = Number.isFinite(data.chapitresCount)
+        ? data.chapitresCount
+        : (data.chapitres ? data.chapitres.length : 0);
     const authorName = getAuthorName(data.auteurId, data);
     const actionButtonsHtml = renderCourseActionButtons({ courseId, courseData: data, currentUid, isAdminLike: isAdminLikeUser() });
 
@@ -1484,7 +1487,8 @@ async function loadCourses() {
 
     try {
         listContainer.innerHTML = '';
-        allCoursesData = await loadCoursesForCourseAccess({
+        // Bibliothèque = index léger (courseIndex) côté admin, pas tout le contenu.
+        allCoursesData = await loadCoursesLibraryView({
             currentUid,
             currentUserProfile
         });
