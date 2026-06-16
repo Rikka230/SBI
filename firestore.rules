@@ -940,6 +940,15 @@ service cloud.firestore {
        COURSES
        ============================================================ */
 
+    // 8.0P.167.373 — Index léger des cours (métadonnées d'affichage uniquement),
+    // maintenu par la Cloud Function syncCourseIndex (Admin SDK). Lu par la
+    // bibliothèque admin/prof pour éviter de télécharger tout le contenu des cours.
+    // Écriture interdite côté client (la CF passe outre les règles).
+    match /courseIndex/{courseId} {
+      allow read: if isAdmin() || isTeacher();
+      allow write: if false;
+    }
+
     match /courses/{courseId} {
       // 8.0P.167.153 : passe-droit viewer direct strictement par ID.
       // Important : on ne passe plus par canReadCourse() pour get, car certains anciens

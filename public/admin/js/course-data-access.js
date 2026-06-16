@@ -383,6 +383,26 @@ export async function loadCoursesForCourseAccess({
     });
 }
 
+/**
+ * 8.0P.167.373 — Source de la BIBLIOTHÈQUE (vue liste, métadonnées seulement).
+ * L'admin lisait toute la collection `courses` (contenu pédagogique lourd) juste
+ * pour afficher des cartes → page lente. On lit désormais l'index léger
+ * `courseIndex` (maintenu par la CF syncCourseIndex). Le contenu complet d'un
+ * cours n'est chargé qu'à l'édition/aperçu (pages séparées par ID).
+ * Le chemin PROF reste sur `courses` (déjà filtré par formation/auteur, peu de
+ * docs) pour ne rien casser côté permissions/queries.
+ */
+export async function loadCoursesLibraryView({
+    currentUid,
+    currentUserProfile
+} = {}) {
+    if (isAdminLikeProfile(currentUserProfile)) {
+        const snap = await getDocs(collection(db, "courseIndex"));
+        return snapToArray(snap);
+    }
+    return loadCoursesForCourseAccess({ currentUid, currentUserProfile });
+}
+
 export async function loadCoursesForMediaSafety({
     currentUid,
     currentUserProfile
