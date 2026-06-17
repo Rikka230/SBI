@@ -96,6 +96,15 @@ let editingCourseOriginalActive = false;
 let formationIndexSyncedOnce = false;
 let courseTeacherTargetsSyncedOnce = false;
 
+// État de la bibliothèque (filtres/tri). DÉCLARÉ ICI (et pas plus bas) car
+// resetAdminCoursesStateForMount() les réinitialise, et cette fonction tourne
+// dès l'évaluation du module via autoMount (type=module différé). Les déclarer
+// plus bas = zone morte temporelle (TDZ) → ReferenceError qui casserait toute
+// la page gestionnaire de cours (cf. incident viewer .367/.368).
+const libraryView = { formation: 'all', search: '', group: 'bloc', sort: 'cursus' };
+const libraryCursusCache = new Map(); // formationId -> { orderMap: Map(courseId -> ordre), promoName }
+let libraryFiltersWired = false;
+
 window.addOptionToQuestion = addOptionToQuestion;
 
 const courseUiState = {
@@ -293,6 +302,16 @@ function resetAdminCoursesStateForMount() {
     editingCourseOriginalActive = false;
     formationIndexSyncedOnce = false;
     courseTeacherTargetsSyncedOnce = false;
+    // CORRECTIF tri biblio : en PJAX, le DOM de la page (et donc les contrôles
+    // de tri/filtre) est recréé à chaque montage. Sans ce reset, le garde-fou
+    // restait à true → wireLibraryFilters() sortait tôt → les nouveaux <select>
+    // n'avaient plus d'écouteur → « le menu réagit mais ne trie rien ».
+    libraryFiltersWired = false;
+    libraryCursusCache.clear();
+    libraryView.formation = 'all';
+    libraryView.search = '';
+    libraryView.group = 'bloc';
+    libraryView.sort = 'cursus';
     clearAllPendingMedia();
 }
 
@@ -1232,9 +1251,8 @@ async function saveCourseToFirebase(actionType = 'admin_save') {
  * l'ORDRE DU CURSUS (promotions.coursePlan[].order de la formation).
  * ===================================================================== */
 
-const libraryView = { formation: 'all', search: '', group: 'bloc', sort: 'cursus' };
-const libraryCursusCache = new Map(); // formationId -> { orderMap: Map(courseId -> ordre), promoName }
-let libraryFiltersWired = false;
+// (libraryView / libraryCursusCache / libraryFiltersWired sont déclarés en tête
+//  de module — voir la note TDZ là-haut.)
 
 // Ordre pédagogique : coursePlan de la promotion (active de préférence) de chaque formation.
 async function getCursusOrderForFormation(formationId) {
