@@ -518,6 +518,15 @@ function sbiHighlight(text) {
   return `<p><strong style="${SBI_HIGHLIGHT_STYLE}">${renderInline(escapeHtml(text))}</strong></p>`;
 }
 
+// Titre de section numéroté « N. Titre [: sous-titre] » — accepté même avec un
+// « : » (que isSectionHeading refuse), MAIS seulement s'il est ISOLÉ (ni le
+// paragraphe précédent ni le suivant n'est aussi un « N. … » sur une seule
+// ligne). Un enchaînement de numéros = liste → on ne promeut pas. Évite le
+// défaut « le 1. reste en paragraphe alors que 2./3. sont des titres ».
+function isNumberedTitleLine(line) {
+  return /^\d+\.\s+\S/.test(line) && line.length <= 110;
+}
+
 function textToHtml(text = '') {
   const out = [];
   let listBuffer = [];
@@ -531,7 +540,15 @@ function textToHtml(text = '') {
     if (out.length && !out[out.length - 1].startsWith('<h2')) out.push('<p><br></p>');
   };
 
-  for (const paragraph of text.split(/\n{2,}/)) {
+  const paragraphs = text.split(/\n{2,}/);
+  // Pré-scan : paragraphes « une seule ligne, N. … » et lesquels sont ISOLÉS.
+  const numSingle = paragraphs.map((p) => {
+    const ls = p.split(/\n/).map((l) => l.trim()).filter(Boolean);
+    return ls.length === 1 && isNumberedTitleLine(ls[0]);
+  });
+  const isolatedNum = numSingle.map((v, i) => v && !numSingle[i - 1] && !numSingle[i + 1]);
+
+  paragraphs.forEach((paragraph, pi) => {
     const lines = paragraph.split(/\n/).map((l) => l.trim()).filter(Boolean);
     const isSingle = lines.length === 1;
     for (const line of lines) {
@@ -541,7 +558,7 @@ function textToHtml(text = '') {
       if (HIGHLIGHT_LEADINS.test(line)) {
         pushSpacer();
         out.push(sbiHighlight(line));
-      } else if (isSingle && isSectionHeading(line)) {
+      } else if (isSingle && (isSectionHeading(line) || isolatedNum[pi])) {
         pushSpacer();
         out.push(sbiSectionTitle(line));
       } else {
@@ -549,7 +566,7 @@ function textToHtml(text = '') {
       }
     }
     flushList();
-  }
+  });
   flushList();
   return out.join('');
 }

@@ -12,6 +12,8 @@ import {
 import { isSbiAdminLike } from '/js/sbi-permissions.js?v=8.0P.167.44';
 
 let currentDays = 30;
+let lastSeries = null;      // dernière série rendue (pour re-render au resize)
+let resizeBound = false;
 
 const $ = (id) => document.getElementById(id);
 const num = (n) => (Number(n) || 0).toLocaleString('fr-FR');
@@ -74,70 +76,95 @@ function smoothPath(pts) {
 function renderChart(days) {
   const svg = $('sbi-an-chart');
   if (!svg) return;
-  const W = 720, H = 200, padL = 16, padR = 16, padTop = 16, padBot = 26;
+  lastSeries = days;
+
+  // Largeur RÉELLE mesurée → viewBox 1:1. Sinon `preserveAspectRatio="none"`
+  // étirait tout horizontalement (points ovales, trait d'épaisseur variable,
+  // texte déformé) puisque le conteneur est bien plus large que 720.
+  const measured = Math.round(svg.getBoundingClientRect().width);
+  const W = measured > 40 ? measured : 720;
+  const H = 200;
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+
+  const padL = 14, padR = 42, padTop = 20, padBot = 28;
   const n = days.length;
   const lg = $('sbi-an-chart-legend');
 
   const DEFS = `<defs>
     <linearGradient id="anPvFill" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#7eb5ff" stop-opacity="0.30"></stop>
+      <stop offset="0%" stop-color="#7eb5ff" stop-opacity="0.34"></stop>
+      <stop offset="55%" stop-color="#7eb5ff" stop-opacity="0.10"></stop>
       <stop offset="100%" stop-color="#7eb5ff" stop-opacity="0"></stop>
     </linearGradient>
     <linearGradient id="anLine" x1="0" y1="0" x2="1" y2="0">
       <stop offset="0%" stop-color="#2A57FF"></stop>
       <stop offset="100%" stop-color="#6f8bff"></stop>
     </linearGradient>
+    <filter id="anGlow" x="-20%" y="-60%" width="140%" height="220%">
+      <feGaussianBlur stdDeviation="4"></feGaussianBlur>
+    </filter>
   </defs>`;
 
   if (!n) {
     svg.innerHTML = DEFS
-      + '<line x1="16" y1="174" x2="704" y2="174" stroke="rgba(126,181,255,.18)" stroke-width="1"></line>'
-      + '<text x="360" y="98" text-anchor="middle" fill="rgba(200,215,240,.5)" font-size="13" font-weight="500">Pas encore de données sur cette période</text>';
+      + `<line x1="${padL}" y1="${(H - padBot).toFixed(1)}" x2="${(W - padR).toFixed(1)}" y2="${(H - padBot).toFixed(1)}" stroke="rgba(126,181,255,.18)" stroke-width="1"></line>`
+      + `<text x="${(W / 2).toFixed(1)}" y="${(H / 2).toFixed(1)}" text-anchor="middle" fill="rgba(200,215,240,.5)" font-size="13" font-weight="500">Pas encore de données sur cette période</text>`;
     if (lg) lg.textContent = '';
     return;
   }
 
   const innerW = W - padL - padR;
   const innerH = H - padTop - padBot;
-  const maxVal = Math.max(1, ...days.map((d) => Math.max(d.pageViews, d.sessions)));
+  const rawMax = Math.max(1, ...days.map((d) => Math.max(d.pageViews, d.sessions)));
+  const maxVal = rawMax * 1.18;   // marge haute : le pic ne colle plus au sommet
   const xAt = (i) => n === 1 ? padL + innerW / 2 : padL + (i / (n - 1)) * innerW;
   const yAt = (v) => padTop + innerH - (v / maxVal) * innerH;
   const baseY = padTop + innerH;
 
-  // Gridlines horizontales discrètes (4 paliers) + valeurs
+  // Gridlines horizontales pointillées + valeurs sur l'échelle réelle
   let grid = '';
   for (let g = 0; g <= 3; g++) {
     const gy = padTop + (innerH * g) / 3;
-    const val = Math.round(maxVal * (1 - g / 3));
-    grid += `<line x1="${padL}" y1="${gy.toFixed(1)}" x2="${W - padR}" y2="${gy.toFixed(1)}" stroke="rgba(126,181,255,.10)" stroke-width="1"></line>`;
-    grid += `<text x="${W - padR + 2}" y="${(gy + 3).toFixed(1)}" font-size="9.5" fill="rgba(200,215,240,.40)" text-anchor="start">${num(val)}</text>`;
+    const val = Math.round(rawMax * (1 - g / 3));
+    grid += `<line x1="${padL}" y1="${gy.toFixed(1)}" x2="${(W - padR).toFixed(1)}" y2="${gy.toFixed(1)}" stroke="rgba(126,181,255,.09)" stroke-width="1" stroke-dasharray="1 6" stroke-linecap="round"></line>`;
+    grid += `<text x="${(W - padR + 7).toFixed(1)}" y="${(gy + 3).toFixed(1)}" font-size="9.5" fill="rgba(200,215,240,.38)" text-anchor="start">${num(val)}</text>`;
   }
 
   const pvPts = days.map((d, i) => [xAt(i), yAt(d.pageViews)]);
   const sesPts = days.map((d, i) => [xAt(i), yAt(d.sessions)]);
 
-  // Aire dégradée : pages vues
+  // Aire dégradée (pages vues) + ligne visiteurs (avec léger halo)
   let area = '';
-  const pvLine = smoothPath(pvPts);
   if (n === 1) {
     // 1 seul point : petit plateau centré pour éviter le bloc plein
     const x = pvPts[0][0], yPV = pvPts[0][1], yS = sesPts[0][1];
-    const half = Math.min(60, innerW / 2);
-    area = `<path d="M ${(x - half).toFixed(1)} ${baseY} L ${(x - half).toFixed(1)} ${yPV.toFixed(1)} L ${(x + half).toFixed(1)} ${yPV.toFixed(1)} L ${(x + half).toFixed(1)} ${baseY} Z" fill="url(#anPvFill)"></path>`;
-    area += `<line x1="${(x - half).toFixed(1)}" y1="${yPV.toFixed(1)}" x2="${(x + half).toFixed(1)}" y2="${yPV.toFixed(1)}" stroke="#7eb5ff" stroke-opacity="0.6" stroke-width="2"></line>`;
-    area += `<line x1="${(x - half).toFixed(1)}" y1="${yS.toFixed(1)}" x2="${(x + half).toFixed(1)}" y2="${yS.toFixed(1)}" stroke="url(#anLine)" stroke-width="3" stroke-linecap="round"></line>`;
+    const half = Math.min(70, innerW / 2);
+    area = `<path d="M ${(x - half).toFixed(1)} ${baseY.toFixed(1)} L ${(x - half).toFixed(1)} ${yPV.toFixed(1)} L ${(x + half).toFixed(1)} ${yPV.toFixed(1)} L ${(x + half).toFixed(1)} ${baseY.toFixed(1)} Z" fill="url(#anPvFill)"></path>`;
+    area += `<line x1="${(x - half).toFixed(1)}" y1="${yPV.toFixed(1)}" x2="${(x + half).toFixed(1)}" y2="${yPV.toFixed(1)}" stroke="#7eb5ff" stroke-opacity="0.5" stroke-width="1.5"></line>`;
+    area += `<line x1="${(x - half).toFixed(1)}" y1="${yS.toFixed(1)}" x2="${(x + half).toFixed(1)}" y2="${yS.toFixed(1)}" stroke="#2A57FF" stroke-width="3" stroke-linecap="round" filter="url(#anGlow)" opacity="0.4"></line>`;
+    area += `<line x1="${(x - half).toFixed(1)}" y1="${yS.toFixed(1)}" x2="${(x + half).toFixed(1)}" y2="${yS.toFixed(1)}" stroke="url(#anLine)" stroke-width="2.6" stroke-linecap="round"></line>`;
   } else {
-    area = `<path d="${pvLine} L ${pvPts[n - 1][0].toFixed(1)} ${baseY} L ${pvPts[0][0].toFixed(1)} ${baseY} Z" fill="url(#anPvFill)"></path>`;
-    area += `<path d="${pvLine}" fill="none" stroke="#7eb5ff" stroke-opacity="0.55" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"></path>`;
-    area += `<path d="${smoothPath(sesPts)}" fill="none" stroke="url(#anLine)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"></path>`;
+    const pvLine = smoothPath(pvPts);
+    const sesLine = smoothPath(sesPts);
+    area = `<path d="${pvLine} L ${pvPts[n - 1][0].toFixed(1)} ${baseY.toFixed(1)} L ${pvPts[0][0].toFixed(1)} ${baseY.toFixed(1)} Z" fill="url(#anPvFill)"></path>`;
+    area += `<path d="${pvLine}" fill="none" stroke="#7eb5ff" stroke-opacity="0.5" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"></path>`;
+    area += `<path d="${sesLine}" fill="none" stroke="#2A57FF" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" filter="url(#anGlow)" opacity="0.4"></path>`;
+    area += `<path d="${sesLine}" fill="none" stroke="url(#anLine)" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"></path>`;
   }
 
-  // Points visiteurs (dernier point mis en valeur)
+  // Points visiteurs ; dernier point = auréole + pastille blanche
   let dots = '';
   sesPts.forEach((p, i) => {
     const last = i === n - 1;
-    if (n > 24 && !last && i % Math.ceil(n / 16) !== 0) return; // éviter la surcharge sur 90j
-    dots += `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${last ? 4.5 : 2.6}" fill="${last ? '#fff' : '#2A57FF'}" stroke="#2A57FF" stroke-width="${last ? 3 : 0}"></circle>`;
+    if (!last && n > 14 && i % Math.ceil(n / 12) !== 0) return; // aère sur 30/90j
+    const cx = p[0].toFixed(1), cy = p[1].toFixed(1);
+    if (last) {
+      dots += `<circle cx="${cx}" cy="${cy}" r="8" fill="#2A57FF" opacity="0.16"></circle>`;
+      dots += `<circle cx="${cx}" cy="${cy}" r="4.5" fill="#fff" stroke="#2A57FF" stroke-width="3"></circle>`;
+    } else {
+      dots += `<circle cx="${cx}" cy="${cy}" r="2.4" fill="#2A57FF"></circle>`;
+    }
   });
 
   // Labels de dates : premier / milieu / dernier
@@ -146,7 +173,7 @@ function renderChart(days) {
     const x = xAt(i);
     const dd = days[i].date.slice(5).replace('-', '/');
     const anchor = i === 0 ? 'start' : (i === n - 1 ? 'end' : 'middle');
-    return `<text x="${x.toFixed(1)}" y="${H - 6}" font-size="10.5" fill="rgba(200,215,240,.55)" text-anchor="${anchor}">${dd}</text>`;
+    return `<text x="${x.toFixed(1)}" y="${(H - 8).toFixed(1)}" font-size="10.5" fill="rgba(200,215,240,.5)" text-anchor="${anchor}">${dd}</text>`;
   }).join('');
 
   svg.innerHTML = DEFS + grid + area + dots + labels;
@@ -229,6 +256,16 @@ async function loadRange(days) {
 let unsubscribeAuth = null;
 
 function mount() {
+  // Re-render du graphe au redimensionnement (viewBox mesuré = largeur réelle).
+  if (!resizeBound) {
+    resizeBound = true;
+    let rz = null;
+    window.addEventListener('resize', () => {
+      clearTimeout(rz);
+      rz = setTimeout(() => { if (lastSeries) renderChart(lastSeries); }, 150);
+    });
+  }
+
   const ranges = document.getElementById('sbi-an-ranges');
   if (ranges && !ranges.dataset.bound) {
     ranges.dataset.bound = '1';

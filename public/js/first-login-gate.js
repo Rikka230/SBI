@@ -112,10 +112,16 @@ function injectStyle() {
     .sbi-first-login-gate {
       position: fixed;
       inset: 0;
-      z-index: 5000;
-      display: grid;
-      place-items: center;
+      /* 8.0P.167.378 — au-dessus de la bottom-nav mobile (z 6000) : elle
+         recouvrait le bouton « Valider » et bloquait la première connexion. */
+      z-index: 6500;
+      display: flex;
+      /* flex + margin:auto sur la carte = centrée quand elle tient, scrollable
+         (sans clip haut/bas) quand elle dépasse l'écran — cas mobile. */
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
       padding: 1.2rem;
+      padding-bottom: calc(1.2rem + env(safe-area-inset-bottom, 0px));
       background:
         radial-gradient(circle at 20% 15%, rgba(42, 87, 255, 0.22), transparent 34%),
         radial-gradient(circle at 80% 20%, rgba(255, 72, 190, 0.14), transparent 30%),
@@ -124,6 +130,7 @@ function injectStyle() {
     }
 
     .sbi-first-login-card {
+      margin: auto;
       width: min(640px, 100%);
       border: 1px solid rgba(255, 255, 255, 0.14);
       border-radius: 24px;
@@ -281,10 +288,14 @@ function injectStudentNoticeStyle() {
     .sbi-student-construction-notice {
       position: fixed;
       inset: 0;
-      z-index: 4990;
-      display: grid;
-      place-items: center;
+      /* 8.0P.167.378 — même correctif que le gate : au-dessus de la bottom-nav
+         mobile (z 6000) + overlay scrollable au lieu d'un centrage qui clippe. */
+      z-index: 6490;
+      display: flex;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
       padding: 1.2rem;
+      padding-bottom: calc(1.2rem + env(safe-area-inset-bottom, 0px));
       background:
         radial-gradient(circle at 12% 12%, rgba(42, 87, 255, 0.24), transparent 32%),
         radial-gradient(circle at 86% 18%, rgba(0, 212, 255, 0.12), transparent 28%),
@@ -293,6 +304,7 @@ function injectStudentNoticeStyle() {
     }
 
     .sbi-student-notice-card {
+      margin: auto;
       width: min(720px, 100%);
       border: 1px solid rgba(255, 255, 255, 0.14);
       border-radius: 24px;

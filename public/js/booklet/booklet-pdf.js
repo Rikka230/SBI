@@ -455,25 +455,60 @@ export function buildBookletBodyHtml(booklet = {}, options = {}) {
 }
 
 /**
+ * SBI 8.0P.167.375 — Pré-ouvre une fenêtre/onglet VIDE de façon SYNCHRONE.
+ *
+ * À appeler DANS le gestionnaire de clic, AVANT tout `await` (donc dans le geste
+ * utilisateur). C'est la seule façon fiable d'éviter le blocage silencieux de
+ * l'anti-pop-up : un `window.open()` déclenché APRÈS un await (réponse de la
+ * Cloud Function) n'est plus rattaché au geste et est bloqué sans message →
+ * l'utilisateur croit que « ça ne marche pas ». On ouvre ici tout de suite avec
+ * un écran d'attente, puis on y posera l'URL du PDF (ou l'impression de repli).
+ *
+ * @returns {Window|null} la fenêtre pré-ouverte, ou null si déjà bloquée
+ *   (pop-ups désactivés à la main pour le site) — l'appelant le signalera.
+ */
+export function openBookletWindow() {
+  let win = null;
+  try { win = window.open('', '_blank'); } catch (_) { win = null; }
+  if (win) {
+    try {
+      win.document.open();
+      win.document.write('<!doctype html><html lang="fr"><head><meta charset="UTF-8"><title>Livret…</title></head><body style="font-family:Arial,Helvetica,sans-serif;padding:40px;color:#253047;">Génération du dossier PDF du livret d\'apprentissage… un instant (jusqu\'à 30 s).</body></html>');
+      win.document.close();
+    } catch (_) { /* about:blank accessible : on ignore tout souci d'écriture */ }
+  }
+  return win;
+}
+
+/**
  * Ouvre une fenêtre d'impression et y écrit le livret complet, puis auto-print.
  * @param {object} booklet  document apprenticeshipBooklets
  * @param {object} [options] Planning réel (Documents de formation) :
  *   { planningModel, planningTitle, planningPromotionName, planningUploadedUrl }.
  *   Si absent, repli sur booklet.planningAlternance (rétrocompatible).
+ * @param {Window|null} [targetWindow] fenêtre déjà pré-ouverte (openBookletWindow)
+ *   à réutiliser pour ne pas se faire bloquer hors geste utilisateur.
+ * @returns {boolean} true si le livret a pu être écrit dans une fenêtre.
  */
-export function downloadBookletPdf(booklet = {}, options = {}) {
+export function downloadBookletPdf(booklet = {}, options = {}, targetWindow = null) {
   const id = (booklet && (booklet.id || booklet.studentId)) || 'sbi';
-  const win = window.open('', `livret-${id}`, 'width=960,height=720,menubar=yes,toolbar=yes');
+  let win = (targetWindow && !targetWindow.closed) ? targetWindow : null;
+  if (!win) {
+    win = window.open('', `livret-${id}`, 'width=960,height=720,menubar=yes,toolbar=yes');
+  }
   if (!win) {
     alert("La fenêtre du livret a été bloquée par le navigateur. Autorise les pop-ups pour ce site, puis réessaie.");
-    return;
+    return false;
   }
-  win.document.write('<!doctype html><html lang="fr"><head><meta charset="UTF-8"><title>Livret…</title></head><body style="font-family:Arial,Helvetica,sans-serif;padding:40px;color:#253047;">Génération du livret d\'apprentissage… un instant.</body></html>');
-  win.document.close();
   const html = buildBookletPrintHtml(booklet, options || {});
-  win.document.open();
-  win.document.write(html);
-  win.document.close();
+  try {
+    win.document.open();
+    win.document.write(html);
+    win.document.close();
+  } catch (_) {
+    return false;
+  }
+  return true;
 }
 
 /**
@@ -493,24 +528,39 @@ export function downloadBookletPdf(booklet = {}, options = {}) {
 export async function requestMergedBookletPdf(booklet = {}, options = {}) {
   const withAnnexes = options.withAnnexes !== false;
   const bookletId = booklet.id || booklet.studentId;
+  // Fenêtre pré-ouverte par l'appelant DANS le geste utilisateur (anti-pop-up).
+  const preWin = (options.targetWindow && !options.targetWindow.closed) ? options.targetWindow : null;
   try {
     const bodyHtml = buildBookletBodyHtml(booklet, options);
     const result = await buildBookletPdf({ bookletId, withAnnexes, bodyHtml });
     const data = (result && result.data) || {};
     if (!data.url) throw new Error('Réponse serveur sans URL de PDF.');
 
-    window.open(data.url, '_blank');
-
     const missing = Array.isArray(data.missing) ? data.missing : [];
     if (missing.length) {
       console.warn('[SBI Livret] Documents non joints au dossier PDF :', missing);
     }
-    return { ok: true, missing };
+
+    // Affichage du PDF : on réutilise en priorité la fenêtre pré-ouverte (elle,
+    // n'est PAS bloquée car ouverte dans le geste). Sinon, tentative directe ;
+    // si elle échoue, on REMONTE `popupBlocked` + l'URL pour que l'appelant
+    // affiche un lien cliquable au lieu d'un faux « dossier généré » silencieux.
+    if (preWin) {
+      try { preWin.location.href = data.url; }
+      catch (_) { try { preWin.location = data.url; } catch (_) {} }
+      return { ok: true, missing, url: data.url };
+    }
+    const win = window.open(data.url, '_blank');
+    if (!win) {
+      return { ok: true, missing, url: data.url, popupBlocked: true };
+    }
+    return { ok: true, missing, url: data.url };
   } catch (error) {
     // Repli impression navigateur : l'utilisateur a quand même le livret (sans
-    // les annexes fusionnées, qui exigent le serveur).
+    // les annexes fusionnées, qui exigent le serveur). On réutilise la fenêtre
+    // pré-ouverte si possible (sinon ce repli serait lui aussi bloqué).
     console.warn('[SBI Livret] Génération serveur du dossier PDF indisponible, repli sur l\'impression navigateur :', error?.message || error);
-    downloadBookletPdf(booklet, options || {});
-    return { ok: false, fallback: true };
+    const printed = downloadBookletPdf(booklet, options || {}, preWin);
+    return { ok: false, fallback: true, popupBlocked: printed === false };
   }
 }

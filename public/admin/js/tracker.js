@@ -22,7 +22,7 @@
  */
 
 import '/js/auth.js?v=8.0P.167.44';
-import '/js/first-login-gate.js?v=8.0P.167.314';
+import '/js/first-login-gate.js?v=8.0P.167.378';
 import '/student/js/student-visible-documents.js?v=8.0P.167.205';
 
 import { db, auth } from '/js/firebase-init.js';
