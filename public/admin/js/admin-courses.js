@@ -50,7 +50,6 @@ import {
 import {
     loadUsersForCourseAccess,
     loadFormationsForCourseAccess,
-    loadCoursesForCourseAccess,
     loadCoursesLibraryView,
     loadCoursesForMediaSafety
 } from '/admin/js/course-data-access.js?v=8.0P.167.373';
@@ -543,16 +542,22 @@ function listsAreSame(a = [], b = []) {
     return left.every((value, index) => value === right[index]);
 }
 
-async function syncCourseTeacherTargetsIfAllowedOnce() {
+// 8.0P.167.377 — Maintenance idempotente de l'index d'accès prof
+// (teacherCourseAccess). Tourne UNE fois par montage, EN ARRIÈRE-PLAN (voir
+// loadCourses) pour ne plus bloquer l'affichage de la bibliothèque.
+// `coursesForSync` = l'index léger (courseIndex) déjà chargé, passé explicitement
+// pour ne pas dépendre du global (qui est filtré des brouillons admin).
+async function syncCourseTeacherTargetsIfAllowedOnce(coursesForSync = allCoursesData) {
     if (courseTeacherTargetsSyncedOnce) return;
     if (!isAdminLikeUser()) return;
 
     courseTeacherTargetsSyncedOnce = true;
 
     try {
+        let courses = Array.isArray(coursesForSync) ? coursesForSync : allCoursesData;
         const updates = [];
 
-        allCoursesData.forEach((courseData) => {
+        courses.forEach((courseData) => {
             if (!courseData?.id) return;
 
             const targetTeacherIds = resolveTeacherTargetsForCourse(courseData);
@@ -567,13 +572,12 @@ async function syncCourseTeacherTargetsIfAllowedOnce() {
         if (updates.length > 0) {
             await Promise.all(updates);
             console.log(`[SBI Courses] targetTeacherIds synchronisés pour ${updates.length} cours.`);
-            allCoursesData = await loadCoursesForCourseAccess({
-                currentUid,
-                currentUserProfile
-            });
+            // Recharge l'index LÉGER (courseIndex), pas les cours complets : la
+            // resync ne doit jamais réintroduire une lecture lourde.
+            courses = await loadCoursesLibraryView({ currentUid, currentUserProfile });
         }
 
-        const indexedCount = await syncTeacherCourseAccessIndexForCourses(allCoursesData, allFormationsData);
+        const indexedCount = await syncTeacherCourseAccessIndexForCourses(courses, allFormationsData);
         if (indexedCount > 0) {
             console.log(`[SBI Courses] Index accès prof synchronisé pour ${indexedCount} cours.`);
         }
@@ -1506,18 +1510,20 @@ async function loadCourses() {
     try {
         listContainer.innerHTML = '';
         // Bibliothèque = index léger (courseIndex) côté admin, pas tout le contenu.
-        allCoursesData = await loadCoursesLibraryView({
+        const fullIndex = await loadCoursesLibraryView({
             currentUid,
             currentUserProfile
         });
 
-        await syncCourseTeacherTargetsIfAllowedOnce();
-
-        if (isAdminLikeUser()) allCoursesData = allCoursesData.filter(courseData => !shouldHideDraftForAdmin(courseData));
+        allCoursesData = isAdminLikeUser()
+            ? fullIndex.filter(courseData => !shouldHideDraftForAdmin(courseData))
+            : fullIndex;
 
         if (allCoursesData.length === 0) {
             listContainer.innerHTML = '<p style="color:var(--text-muted); text-align:center;">Aucun cours.</p>';
             refreshBlocsList();
+            // Maintenance d'index prof en arrière-plan (ne bloque pas l'affichage).
+            void syncCourseTeacherTargetsIfAllowedOnce(fullIndex);
             return;
         }
 
@@ -1525,6 +1531,13 @@ async function loadCourses() {
         await renderCoursesLibrary();
 
         refreshBlocsList();
+
+        // 8.0P.167.377 — La resync de l'index d'accès prof écrit un doc par cours
+        // (dizaines d'écritures séquentielles). Elle tournait AVANT le rendu et
+        // faisait attendre l'admin plusieurs secondes devant une page vide. On la
+        // lance désormais APRÈS le rendu, SANS l'attendre : la bibliothèque
+        // s'affiche immédiatement. L'index reste maintenu à chaque sauvegarde.
+        void syncCourseTeacherTargetsIfAllowedOnce(fullIndex);
 
     } catch (error) {
         console.error("[SBI Courses] Erreur chargement cours :", error);

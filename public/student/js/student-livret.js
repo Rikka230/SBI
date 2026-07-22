@@ -26,7 +26,7 @@ import {
   updateBookletSection,
   loadBookletByStudent
 } from '/js/booklet/booklet-data.js?v=8.0P.167.304';
-import { requestMergedBookletPdf } from '/js/booklet/booklet-pdf.js?v=8.0P.167.304';
+import { requestMergedBookletPdf, openBookletWindow } from '/js/booklet/booklet-pdf.js?v=8.0P.167.375';
 import { resolveBookletPlanningModel } from '/js/formation-documents/planning-render.js?v=8.0P.167.304';
 
 /* =====================================================================
@@ -529,6 +529,9 @@ async function exportPdf(button) {
   };
   if (button) button.disabled = true;
   setPdfStatus('Génération du dossier PDF en cours… (jusqu\'à 30 s)');
+  // Pré-ouverture SYNCHRONE (dans le geste) : évite le blocage anti-pop-up de
+  // l'onglet du PDF, qui arrive après l'appel serveur (await).
+  const pdfWindow = openBookletWindow();
   try {
     // Récupère le planning réel de « Documents de formation » (tolérant).
     const p = await resolveBookletPlanningModel({ db, booklet }).catch(() => null);
@@ -539,15 +542,28 @@ async function exportPdf(button) {
       planningUploadedUrl: p.uploadedUrl
     } : {};
     // Les annexes autorisées à l'élève sont filtrées côté serveur.
-    const res = await requestMergedBookletPdf(booklet, { withAnnexes: true, ...planningOpts });
-    if (res?.fallback) setPdfStatus('Service serveur indisponible : ouverture de la version imprimable.');
+    const res = await requestMergedBookletPdf(booklet, { withAnnexes: true, targetWindow: pdfWindow, ...planningOpts });
+    if (res?.popupBlocked && res.url) showPdfBlockedLink(statusEl, res.url);
+    else if (res?.fallback) setPdfStatus('Service serveur indisponible : ouverture de la version imprimable.');
     else setPdfStatus('Dossier PDF généré.', 'success');
   } catch (error) {
+    if (pdfWindow && !pdfWindow.closed) { try { pdfWindow.close(); } catch (_) {} }
     console.warn('[SBI Livret élève] génération du dossier PDF impossible :', error);
     setPdfStatus(error?.message || 'Génération impossible.', 'error');
   } finally {
     if (button) button.disabled = false;
   }
+}
+
+// Pop-up bloqué malgré la pré-ouverture (pop-ups désactivés à la main) : on
+// affiche un lien cliquable visible au lieu de laisser croire à un échec.
+function showPdfBlockedLink(statusEl, url) {
+  if (!statusEl) return;
+  statusEl.hidden = false;
+  statusEl.dataset.tone = 'error';
+  statusEl.innerHTML = 'Dossier PDF prêt, mais votre navigateur a bloqué son ouverture. '
+    + '<a href="' + url + '" target="_blank" rel="noopener">Ouvrir le dossier PDF</a> '
+    + '(ou autorisez les pop-ups pour ce site).';
 }
 
 /* =====================================================================

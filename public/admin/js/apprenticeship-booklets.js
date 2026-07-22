@@ -34,7 +34,7 @@ import {
   periodGuide
 } from '/js/booklet/booklet-data.js?v=8.0P.167.304';
 import { recomputeBookletPeriodDates } from '/js/booklet/booklet-data.js?v=8.0P.167.304';
-import { requestMergedBookletPdf } from '/js/booklet/booklet-pdf.js?v=8.0P.167.304';
+import { requestMergedBookletPdf, openBookletWindow } from '/js/booklet/booklet-pdf.js?v=8.0P.167.375';
 import { resolveBookletPlanningModel } from '/js/formation-documents/planning-render.js?v=8.0P.167.304';
 
 const ROLE = 'admin';
@@ -1096,6 +1096,8 @@ async function handlePdf(button, withAnnexes) {
   const pdfButtons = r ? [...r.querySelectorAll('[data-action="pdf-full"],[data-action="pdf-bookletonly"]')] : [];
   pdfButtons.forEach((b) => { b.disabled = true; });
   setLocalStatus(statusEl, 'Génération du dossier PDF en cours… (jusqu\'à 30 s)');
+  // Pré-ouverture SYNCHRONE (dans le geste) : évite le blocage anti-pop-up.
+  const pdfWindow = openBookletWindow();
   try {
     // Résout le planning « Documents de formation » (promotion/cursus) de façon
     // tolérante : si la résolution échoue, on génère le PDF sans planning.
@@ -1108,8 +1110,17 @@ async function handlePdf(button, withAnnexes) {
           planningUploadedUrl: p.uploadedUrl
         }
       : {};
-    const res = await requestMergedBookletPdf(booklet, { withAnnexes, ...planningOpts });
-    if (res?.fallback) {
+    const res = await requestMergedBookletPdf(booklet, { withAnnexes, targetWindow: pdfWindow, ...planningOpts });
+    if (res?.popupBlocked && res.url) {
+      // Pop-up bloqué malgré la pré-ouverture : lien cliquable visible.
+      if (statusEl) {
+        statusEl.hidden = false;
+        statusEl.dataset.tone = 'error';
+        statusEl.innerHTML = 'Dossier PDF prêt, mais votre navigateur a bloqué son ouverture. '
+          + '<a href="' + res.url + '" target="_blank" rel="noopener">Ouvrir le dossier PDF</a> '
+          + '(ou autorisez les pop-ups pour ce site).';
+      }
+    } else if (res?.fallback) {
       setLocalStatus(statusEl, 'Service serveur indisponible : ouverture de la version imprimable.', 'muted');
     } else if (res?.missing && res.missing.length) {
       setLocalStatus(statusEl, `Dossier généré. Documents non joints : ${res.missing.join(', ')}.`, 'muted');
@@ -1117,6 +1128,7 @@ async function handlePdf(button, withAnnexes) {
       setLocalStatus(statusEl, 'Dossier PDF généré.', 'success');
     }
   } catch (error) {
+    if (pdfWindow && !pdfWindow.closed) { try { pdfWindow.close(); } catch (_) {} }
     console.error('[SBI Livret admin] génération PDF impossible :', error);
     setLocalStatus(statusEl, error?.message || 'Génération impossible.', 'error');
   } finally {

@@ -54,6 +54,10 @@ function buildHtml(spec, logoB64) {
     return `<section class="block"><h2>${esc(sec.heading)}</h2>${intro}${items}${note}</section>`;
   }).join('');
   const intro = spec.intro ? `<div class="meta">${esc(spec.intro)}</div>` : '';
+  // Corps brut : rend un texte multi-ligne EXACTEMENT tel qu'écrit (pre-wrap),
+  // brandé. Utile pour attacher fidèlement un contenu déjà rédigé (ex. la
+  // description d'une ressource de cours) sans le re-structurer en sections.
+  const rawBody = spec.body ? `<div class="rawbody">${esc(spec.body)}</div>` : '';
   const footer = spec.footer ? `<div class="foot">${esc(spec.footer)}</div>` : '';
   return `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><style>
 @page { size: A4; margin: 14mm 15mm 16mm; }
@@ -76,6 +80,7 @@ h2 { font-size: 14px; color: #2A57FF; margin: 0 0 8px; padding: 1px 0 1px 12px; 
 ul { margin: 6px 0 0; padding-left: 22px; }
 li { margin: 4px 0; }
 .note { margin: 10px 0 0; background: #fff3e8; border-left: 4px solid #f59e0b; color: #0f172a; font-weight: 600; padding: 10px 13px; border-radius: 6px; }
+.rawbody { white-space: pre-wrap; margin: 0 0 18px; color: #1f2937; }
 .foot { margin-top: 18px; padding-top: 10px; border-top: 1px solid #e2e8f0; font-size: 10px; color: #94a3b8; }
 </style></head><body>
 <div class="header">
@@ -85,10 +90,11 @@ li { margin: 4px 0; }
     <h1>${esc(spec.title || 'Fiche ressource')}</h1>
     ${spec.subtitle ? `<p class="subtitle">${esc(spec.subtitle)}</p>` : ''}
   </div>
-  <div class="brand">SBI · CFMFS<br>Animateur E-Sport</div>
+  <div class="brand">SBI · CFMFS<br>${esc(spec.brand || 'Animateur E-Sport')}</div>
 </div>
 ${intro}
 ${sections}
+${rawBody}
 ${footer}
 </body></html>`;
 }

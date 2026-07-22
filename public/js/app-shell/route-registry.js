@@ -465,7 +465,7 @@ async function mountAdminCourses({ url }) {
   window.__SBI_APP_SHELL_MOUNTING_COURSE_EDITOR = true;
 
   try {
-    const module = await import('/admin/js/admin-courses.js?v=8.0P.167.359');
+    const module = await import('/admin/js/admin-courses.js?v=8.0P.167.377');
     const cleanupCourses = module.mountAdminCourses?.({ source: 'pjax-admin-courses' });
 
     if (typeof cleanupCourses === 'function') {
@@ -818,7 +818,7 @@ async function mountAdminBooklets({ url }) {
 
   window.__SBI_APP_SHELL_MOUNTING_ADMIN_BOOKLETS = true;
   try {
-    const module = await import('/admin/js/apprenticeship-booklets.js?v=8.0P.167.304');
+    const module = await import('/admin/js/apprenticeship-booklets.js?v=8.0P.167.375');
     const cleanup = module.mountAdminBooklets?.();
     if (typeof cleanup === 'function') registerCleanup(cleanup, 'admin-booklets');
   } finally {
@@ -842,7 +842,7 @@ async function mountStudentBooklet({ url }) {
 
   window.__SBI_APP_SHELL_MOUNTING_STUDENT_BOOKLET = true;
   try {
-    const module = await import('/student/js/student-livret.js?v=8.0P.167.304');
+    const module = await import('/student/js/student-livret.js?v=8.0P.167.375');
     const cleanup = module.mountStudentBooklet?.();
     if (typeof cleanup === 'function') registerCleanup(cleanup, 'student-livret');
   } finally {
@@ -866,7 +866,7 @@ async function mountTeacherBooklets({ url }) {
 
   window.__SBI_APP_SHELL_MOUNTING_TEACHER_BOOKLETS = true;
   try {
-    const module = await import('/teacher/js/teacher-livrets.js?v=8.0P.167.304');
+    const module = await import('/teacher/js/teacher-livrets.js?v=8.0P.167.375');
     const cleanup = module.mountTeacherBooklets?.();
     if (typeof cleanup === 'function') registerCleanup(cleanup, 'teacher-booklets');
   } finally {
@@ -985,7 +985,7 @@ async function mountAdminAnalytics({ url }) {
   window.__SBI_APP_SHELL_MOUNTING_ANALYTICS = true;
 
   try {
-    const module = await import('/admin/js/admin-analytics.js?v=8.0P.167.366');
+    const module = await import('/admin/js/admin-analytics.js?v=8.0P.167.376');
     const cleanupAnalytics = module.mountAdminAnalytics?.();
 
     if (typeof cleanupAnalytics === 'function') {
@@ -1182,7 +1182,7 @@ async function mountTutorBooklet({ url }) {
   updateUrlContext(url);
   window.__SBI_APP_SHELL_MOUNTING_TUTOR_BOOKLET = true;
   try {
-    const module = await import('/tutor/js/tutor-livret.js?v=8.0P.167.304');
+    const module = await import('/tutor/js/tutor-livret.js?v=8.0P.167.375');
     const cleanup = module.mountTutorBooklet?.();
     if (typeof cleanup === 'function') registerCleanup(cleanup, 'tutor-livret');
   } finally {

@@ -19,7 +19,7 @@ import {
   escapeHtml, formatDate, computeCompletion, statusMeta,
   validateBookletPeriod, loadBookletsForTeacher
 } from '/js/booklet/booklet-data.js?v=8.0P.167.304';
-import { requestMergedBookletPdf } from '/js/booklet/booklet-pdf.js?v=8.0P.167.304';
+import { requestMergedBookletPdf, openBookletWindow } from '/js/booklet/booklet-pdf.js?v=8.0P.167.375';
 import { resolveBookletPlanningModel } from '/js/formation-documents/planning-render.js?v=8.0P.167.304';
 import { loadAssignedFormationsForUser } from '/js/learning-access.js';
 
@@ -304,6 +304,8 @@ async function exportPdf(b, button) {
   };
   if (button) button.disabled = true;
   setPdfStatus('Génération du dossier PDF en cours… (jusqu\'à 30 s)');
+  // Pré-ouverture SYNCHRONE (dans le geste) : évite le blocage anti-pop-up.
+  const pdfWindow = openBookletWindow();
   try {
     const p = await resolveBookletPlanningModel({ db, booklet: b }).catch(() => null);
     const planningOpts = p ? {
@@ -312,15 +314,27 @@ async function exportPdf(b, button) {
       planningPromotionName: p.promotionName,
       planningUploadedUrl: p.uploadedUrl
     } : {};
-    const res = await requestMergedBookletPdf(b, { withAnnexes: true, ...planningOpts });
-    if (res?.fallback) setPdfStatus('Service serveur indisponible : ouverture de la version imprimable.');
+    const res = await requestMergedBookletPdf(b, { withAnnexes: true, targetWindow: pdfWindow, ...planningOpts });
+    if (res?.popupBlocked && res.url) showPdfBlockedLink(statusEl, res.url);
+    else if (res?.fallback) setPdfStatus('Service serveur indisponible : ouverture de la version imprimable.');
     else setPdfStatus('Dossier PDF généré.', 'success');
   } catch (error) {
+    if (pdfWindow && !pdfWindow.closed) { try { pdfWindow.close(); } catch (_) {} }
     console.warn('[SBI Livrets prof] génération du dossier PDF impossible :', error);
     setPdfStatus(error?.message || 'Génération impossible.', 'error');
   } finally {
     if (button) button.disabled = false;
   }
+}
+
+// Pop-up bloqué malgré la pré-ouverture : lien cliquable visible (pas de faux échec).
+function showPdfBlockedLink(statusEl, url) {
+  if (!statusEl) return;
+  statusEl.hidden = false;
+  statusEl.dataset.tone = 'error';
+  statusEl.innerHTML = 'Dossier PDF prêt, mais votre navigateur a bloqué son ouverture. '
+    + '<a href="' + url + '" target="_blank" rel="noopener">Ouvrir le dossier PDF</a> '
+    + '(ou autorisez les pop-ups pour ce site).';
 }
 
 function bindEvents() {
